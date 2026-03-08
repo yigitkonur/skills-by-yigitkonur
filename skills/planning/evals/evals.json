@@ -1,0 +1,23 @@
+{
+  "skill_name": "planning",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm leading a product team and we need to decide whether to keep our current single-service setup or split one area into event-driven flow. We have reliability complaints during peak usage, two engineers with distributed-systems experience, and a six-week release target. Create a planning document that clearly frames the problem, compares options, and explains trade-offs with verification checkpoints.",
+      "expected_output": "Method-driven planning output with framing, decision criteria, trade-off rationale, and measurable checkpoints.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Customers hit the same billing failure every Monday morning and teams blame each other. I need a root-cause-first plan that includes stakeholder alignment, execution sequencing, and adaptation signals so repeat incidents drop within one month.",
+      "expected_output": "Root-cause-focused plan with explicit diagnosis methods, alignment approach, risk controls, and progress signals.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I run a community mentorship program with limited volunteers. We need fair participant prioritization, session scheduling, and burnout prevention. Build a non-technical plan that still uses strong decision quality methods and clear communication guidance.",
+      "expected_output": "Non-technical yet rigorous plan with method-based prioritization, sequencing, communication, and review loops.",
+      "files": []
+    }
+  ]
+}
