@@ -1,6 +1,6 @@
 ---
 name: mcp-server-tester
-description: "Test MCP servers through mcp-use inspector. Two commands: protocol-level verification across 19 checks, and LLM-powered end-to-end testing with domain-adaptive business case generation. Use when you need to validate an MCP server before shipping."
+description: Use skill if you need to validate an MCP server, debug broken primitives, or test tools, resources, prompts, and transports before shipping.
 license: MIT
 metadata:
   author: yigitkonur

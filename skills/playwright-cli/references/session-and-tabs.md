@@ -2,211 +2,180 @@
 
 ## Table of Contents
 
-- [Session Lifecycle](#session-lifecycle)
-  - [Bootstrap](#bootstrap-run-once-before-any-browser-work)
-  - [Session Cleanup](#session-cleanup)
-  - [Why One Session, Many Tabs](#why-one-session-many-tabs)
-  - [Config](#config)
-- [Tab Management](#tab-management)
-  - [Creating Tabs](#creating-tabs)
-  - [Listing Tabs](#listing-tabs)
-  - [Switching Tabs](#switching-tabs)
-  - [Closing Tabs](#closing-tabs)
-  - [close vs tab-close](#close-vs-tab-close-critical-distinction)
-- [Sub-Agent Tab Lifecycle](#sub-agent-tab-lifecycle)
-  - [The Standard Lifecycle](#the-standard-lifecycle)
-  - [Rules for Sub-Agents](#rules-for-sub-agents)
-  - [Multi-Agent Coordination](#multi-agent-coordination)
-  - [Tab Coordination Patterns](#tab-coordination-patterns)
-- [Named Sessions](#named-sessions)
-- [Persistent Profiles](#persistent-profiles)
+- [What this file is for](#what-this-file-is-for)
+- [Validated baseline](#validated-baseline)
+- [Session lifecycle](#session-lifecycle)
+- [Tab management](#tab-management)
+- [Shared-session rules for sub-agents](#shared-session-rules-for-sub-agents)
+- [Known traps](#known-traps)
 
 ---
 
-## Session Lifecycle
+## What this file is for
 
-### Bootstrap (run once before any browser work)
+This reference is about the installed `playwright-cli` behavior, not older snippets copied from other skills.
+
+Use it when you need to reason about:
+
+- how to bootstrap a session,
+- how to use named sessions,
+- how tabs behave in practice,
+- what is safe in multi-agent shared-browser work,
+- and which old session/profile examples should be treated as stale.
+
+---
+
+## Validated baseline
+
+These were confirmed from the installed CLI help and live runs:
+
+- `playwright-cli install --browser=chrome`
+- `playwright-cli config --browser=chrome --isolated`
+- `playwright-cli --session=name ...`
+- `playwright-cli session-stop [name]`
+- `playwright-cli session-delete [name]`
+- `playwright-cli session-list`
+- `tab-new`, `tab-list`, `tab-select <index>`, `tab-close [index]`
+
+Important stale lore removed from this file:
+
+- `-s=mysession`
+- `open --persistent`
+- `open --profile=...`
+- `delete-data`
+- defaulting docs to `chromium`
+
+Treat the installed CLI plus live runtime behavior as authoritative over copied historical snippets.
+
+---
+
+## Session lifecycle
+
+### Bootstrap
 
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
-PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true npx playwright install chromium
-playwright-cli session-stop 2>/dev/null    # kill stale sessions
-playwright-cli config --browser=chromium
+playwright-cli install --browser=chrome
+playwright-cli session-stop 2>/dev/null
+playwright-cli config --browser=chrome --isolated
 ```
 
-### Session Cleanup
+Why this is the safer baseline:
 
-| Command            | Effect                                              |
-|--------------------|-----------------------------------------------------|
-| `session-stop`     | Stops the current session                           |
-| `session-stop-all` | Stops ALL sessions (use after all work is done)     |
-| `close`            | Closes the entire browser (DANGEROUS in multi-agent setups) |
-| `session-list`     | Shows all running sessions                          |
-| `session-delete`   | Deletes session data                                |
-| `session-restart`  | Restarts the session                                |
+- it uses the documented CLI installer instead of mixing in unrelated `npx playwright` install assumptions,
+- it matches the currently supported `--browser` values,
+- `--isolated` keeps the browser profile in memory and reduces cross-run residue.
 
-### Why One Session, Many Tabs
+### Named sessions
 
-- 5 agents x 5 sessions = CPU death
-- 1 session x 5 tabs = negligible overhead
-- Tabs share cookies and localStorage -- same as real users
-- If session dies mid-run, re-run bootstrap, agents create new tabs
+Use named sessions when you intentionally want parallel or durable command scopes:
 
-### Config
+```bash
+playwright-cli --session=research open https://example.com
+playwright-cli --session=research snapshot
+playwright-cli session-list
+playwright-cli session-stop research
+playwright-cli session-delete research
+```
 
-| Command                      | Description                |
-|------------------------------|----------------------------|
-| `config --browser=chromium`  | Default, recommended       |
-| `config --browser=firefox`   | Firefox                    |
-| `config --browser=webkit`    | WebKit (Safari engine)     |
-| `config --browser=msedge`    | Microsoft Edge             |
-| `config --browser=chrome`    | Google Chrome              |
+### Cleanup
 
-Configuration file location: `~/.playwright-cli/config.json`
+| Command | Effect |
+|---|---|
+| `session-stop` | Stop current session |
+| `session-stop <name>` | Stop named session |
+| `session-stop-all` | Stop all sessions |
+| `session-delete` | Delete current session data |
+| `session-delete <name>` | Delete named session data |
+| `session-list` | Show all sessions |
+| `close` | Close the current page / browser context; risky in shared setups |
 
 ---
 
-## Tab Management
+## Tab management
 
-### Creating Tabs
+### Creating tabs
 
-- `tab-new` -- opens `about:blank` (NOT a URL!)
-- CRITICAL: Always follow with `open <url>` -- two-step pattern
-- The `about:blank` trap is the #1 tab mistake
+The installed help advertises `tab-new [url]`, but the runtime still opened `about:blank` during testing when a URL was supplied inline.
+
+Safe pattern:
 
 ```bash
-# CORRECT: two-step tab creation
 tab-new
 open https://example.com
-
-# WRONG: tab-new does NOT accept a URL argument
-tab-new https://example.com   # This opens about:blank, ignores the URL
+snapshot
 ```
 
-### Listing Tabs
+Treat `tab-new <url>` as untrusted behavior unless you verify it again in your environment.
 
-- `tab-list` -- shows all tabs with indexes and URLs
-- Tab indexes are 0-based
-- The active tab is marked
-
-### Switching Tabs
-
-- `tab-select <index>` -- switches to tab by index
-- All refs from previous tab become stale immediately
-- You MUST run `snapshot` after every `tab-select` — this is not optional
-- The "Page URL" header may lie in multi-tab scenarios
-- Use `eval "() => window.location.href"` for truth
+### Listing tabs
 
 ```bash
-# Correct tab switch sequence:
+tab-list
+```
+
+This shows indexes and current tab state.
+
+### Switching tabs
+
+```bash
 tab-select 0
-snapshot                    # get fresh refs for the switched-to tab
-eval "() => window.location.href"   # verify you're on the right page
-```
-
-### Closing Tabs
-
-- `tab-close <index>` -- closes a specific tab
-- CRITICAL: Tab indexes shift after close!
-- After closing tab 1 of [0,1,2], what was tab 2 becomes tab 1
-- You MUST run `tab-list` after every `tab-close` — this is not optional
-- Close tabs from highest index to lowest to avoid shifting issues
-
-```bash
-# Correct tab close sequence:
-tab-close 2
-tab-list                    # verify remaining tabs and their new indexes
-# Now safe to tab-select or tab-close again
-```
-
-### close vs tab-close (critical distinction)
-
-| Command              | Scope                                    | Safe for sub-agents? |
-|----------------------|------------------------------------------|----------------------|
-| `close`              | Kills the ENTIRE browser for ALL agents  | NO                   |
-| `tab-close <index>`  | Closes only ONE tab                      | YES                  |
-
-- Sub-agents must NEVER use `close`
-- Sub-agents must ONLY use `tab-close <their-index>`
-
----
-
-## Sub-Agent Tab Lifecycle
-
-### The Standard Lifecycle
-
-```
-tab-new → open <url> → [work] → tab-close <your-index>
-```
-
-### Rules for Sub-Agents
-
-1. Never create sessions -- you are a tenant
-2. Never use `close` -- it kills the shared session
-3. Always `tab-close <index>` when done
-4. Track your own tab index via `tab-list`
-5. Your tab shares cookies/localStorage with other tabs
-
-### Multi-Agent Coordination
-
-- Each agent gets their own tab
-- Agents share cookies and localStorage (same as real users)
-- Tab indexes can shift if another agent closes a tab
-- Always verify your tab index with `tab-list` before closing
-
-### Tab Coordination Patterns
-
-#### Close tabs highest-to-lowest
-
-```bash
-# After work is done with tabs 1, 2, 3:
-tab-close 3
-tab-close 2
-tab-close 1
-# This avoids index shifting problems
-```
-
-#### Peek and return
-
-```bash
-# Save current position
-tab-list  # note current tab index
-tab-new
-open <reference-url>
 snapshot
-# ... look up info ...
-tab-close <new-tab-index>
-tab-select <original-index>
-snapshot
-```
-
-#### Recover from about:blank trap
-
-```bash
-# If you ran tab-new <url> and got about:blank:
 eval "() => window.location.href"
-# If it returns "about:blank", just navigate:
-open https://intended-url.com
-snapshot
 ```
+
+Use that full pattern when correctness matters because:
+
+- refs from the old tab are dead,
+- tab-related output can be confusing,
+- `eval(() => window.location.href)` is the most trustworthy URL check.
+
+### Closing tabs
+
+```bash
+tab-close 1
+tab-list
+```
+
+Notes:
+
+- help allows omitting the index to close the current tab, but explicit indexes are easier to reason about;
+- tab order can shift after close, so re-run `tab-list` before follow-up tab actions.
 
 ---
 
-## Named Sessions
+## Shared-session rules for sub-agents
 
-```bash
-# Create named session with persistent profile
-playwright-cli -s=mysession open example.com --persistent
-playwright-cli -s=mysession click e6
-playwright-cli -s=mysession close
-playwright-cli -s=mysession delete-data
+Use one shared session and multiple tabs when several agents need browser access.
+
+### Tenant lifecycle
+
+```text
+tab-new → open <url> → [work] → tab-close <index>
 ```
+
+### Rules
+
+1. You are a tab tenant, not the session owner.
+2. Prefer explicit `tab-close <index>` over bare `tab-close`.
+3. Re-run `snapshot` after `tab-select`.
+4. Re-check tab order with `tab-list` if other agents may have opened or closed tabs.
+5. Avoid `close` in shared runs unless you intentionally want to affect the whole current browser context.
+6. Treat `tab-new <url>` as untrusted even if help advertises it; use `tab-new` then `open <url>`.
 
 ---
 
-## Persistent Profiles
+## Known traps
+
+### Trap: `tab-new <url>`
+Observed behavior on the installed CLI still produced `about:blank`.
+
+### Trap: stale page header after tab changes
+In awkward tab states, command output can be less trustworthy than:
 
 ```bash
-playwright-cli open --persistent                    # default profile location
-playwright-cli open --profile=/path/to/profile      # custom profile directory
+eval "() => window.location.href"
 ```
+
+### Trap: stale session/profile folklore
+Older snippets referencing `-s=...`, `--persistent`, `--profile`, or `delete-data` should not be copied into current docs unless revalidated against a newer CLI version.

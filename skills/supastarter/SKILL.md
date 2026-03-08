@@ -1,13 +1,8 @@
 ---
 name: supastarter
 description: >
-  Comprehensive developer guide for the Supastarter Next.js SaaS boilerplate.
-  Covers monorepo architecture, App Router layout chains, oRPC API patterns,
-  Better Auth, Prisma database usage, payments, organizations, mail, i18n,
-  storage, UI conventions, analytics, and deployment. Use this whenever
-  working on a Supastarter-based Next.js app or when the user mentions
-  Supastarter, oRPC, Better Auth, multi-tenant SaaS patterns, or this repo's
-  feature structure.
+  Use skill if you are changing a Supastarter app and need project-grounded
+  patterns for routing, auth, API, billing, UI, storage, or deployment.
 ---
 
 # Supastarter

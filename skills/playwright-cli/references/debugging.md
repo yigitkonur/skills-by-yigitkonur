@@ -2,291 +2,209 @@
 
 ## Table of Contents
 
-- [Console Logs](#console-logs)
-- [Network Monitoring](#network-monitoring)
-- [JavaScript Evaluation (eval)](#javascript-evaluation-eval)
-- [run-code (Full Playwright API)](#run-code-full-playwright-api)
-- [Tracing](#tracing)
-- [Video Recording](#video-recording)
-- [Troubleshooting Guide](#troubleshooting-guide)
+- [What the debug commands return](#what-the-debug-commands-return)
+- [Console logs](#console-logs)
+- [Network logs](#network-logs)
+- [eval](#eval)
+- [run-code](#run-code)
+- [Troubleshooting guide](#troubleshooting-guide)
 
-## Console Logs
+---
+
+## What the debug commands return
+
+A major correction from the earlier docs:
+
+- `console` and `network` return artifact file paths,
+- those files may contain useful entries or may be empty,
+- you must inspect the returned file instead of expecting inline diagnosis.
+
+Also note that artifact paths should be treated as runtime outputs, not guessed from repo layout.
+Artifact existence alone is not proof: the file may be empty, noisy, or irrelevant to the exact flow you are testing.
+
+---
+
+## Console logs
 
 ### Basic usage
-```bash
-console              # all console messages → returns FILE PATH
-console error        # only errors → returns FILE PATH
-console warning      # only warnings → returns FILE PATH
-console --clear      # clear the console log
-```
 
-### CRITICAL: console returns a FILE PATH, not content
 ```bash
+console
 console error
-# Output: /path/to/.playwright-cli/console-errors-2024-01-15.log
-# You MUST read that file to see actual errors:
-# cat /path/to/.playwright-cli/console-errors-2024-01-15.log
+console warning
+console --clear
 ```
 
-This is the #1 console gotcha. The command outputs a file path. You need to read the file to see the actual console messages.
+### Workflow
 
-### Reading console output files
-The file contains JSON-formatted log entries with:
-- `type`: log, error, warning, info, debug
-- `text`: the console message
-- `url`: source URL
-- `lineNumber`: source line
-- `timestamp`: when it occurred
-
-### Page health check pattern
 ```bash
-open <url>
-console error          # get the file path
-# Read the file → check for JS errors
-network               # get the file path
-# Read the file → check for 4xx/5xx
+console --clear
+# reproduce the issue
+console error
 ```
 
-## Network Monitoring
+Then open the returned file path.
+
+Observed behavior:
+- the CLI prints a path like `.playwright-cli/console-...log`;
+- some pages generate meaningful browser errors;
+- some returned files can be empty.
+
+### Real-world example
+
+On a public Amazon search page, console output included:
+- 405 errors on suggestions endpoints,
+- 400 reporting-related failures,
+- 429 bot-policy related events,
+- GPU / ReadPixels warnings.
+
+That means console logs are useful evidence, but public production sites can also emit noisy telemetry failures that are not necessarily regressions in your app.
+Do not convert public-site noise into a bug claim unless the logs line up with the broken flow you are verifying.
+
+---
+
+## Network logs
 
 ### Basic usage
+
 ```bash
-network              # all network requests → returns FILE PATH
-network --static     # include static resources (CSS, images, fonts)
-network --clear      # clear the network log
-```
-
-### CRITICAL: network also returns a FILE PATH
-Same as console — you must read the returned file to see actual network data.
-
-### Reading network output files
-The file contains request/response pairs with:
-- `url`: request URL
-- `method`: GET, POST, etc.
-- `status`: HTTP status code
-- `statusText`: status message
-- `resourceType`: document, script, stylesheet, image, fetch, xhr
-- `responseHeaders`: response headers
-- `timing`: request timing information
-
-### Common patterns
-```bash
-# Check for failed requests after page load
 network
-# Read file, filter for status >= 400
-
-# Monitor API calls during interaction
-network --clear          # start fresh
-click <ref>              # trigger some action
-network                  # capture what happened
-# Read file, look for fetch/xhr requests
+network --static
+network --clear
 ```
 
-## JavaScript Evaluation (eval)
+### Workflow
 
-### Page context (no ref)
+```bash
+network --clear
+# reproduce the issue
+network
+```
+
+Then open the returned file.
+
+Observed behavior:
+- the returned file can include request method, URL, and status;
+- it may also be empty depending on when you captured it;
+- `--static` is useful when asset failures matter.
+
+### Practical use
+
+Use network logs to answer questions like:
+- did a request 4xx/5xx?
+- did a filter click navigate correctly?
+- are requests being blocked or rate-limited?
+
+---
+
+## eval
+
+Use `eval` for truth checks.
+
+### Page context
+
 ```bash
 eval "() => document.title"
 eval "() => window.location.href"
 eval "() => document.querySelectorAll('.item').length"
-eval "() => JSON.parse(localStorage.getItem('settings'))"
 ```
 
-### Element context (with ref)
+### Element context
+
 ```bash
 eval "(el) => el.value" <ref>
 eval "(el) => el.textContent" <ref>
 eval "(el) => el.checked" <ref>
 eval "(el) => getComputedStyle(el).color" <ref>
-eval "(el) => el.getBoundingClientRect()" <ref>
 ```
 
-### Key rules
-- Returns primitives and plain objects only
-- Don't return DOM nodes — extract data first
-- Use arrow functions: `"() => expr"` or `"(el) => expr"`
-- Page context has no ref argument
-- Element context requires a ref as the second argument
+### Why `eval` matters
 
-### Common gotchas
-- `eval "document.title"` — WRONG. Must wrap in arrow function: `eval "() => document.title"`
-- Returning a NodeList or HTMLElement — won't serialize. Map to plain data first.
-- `eval "(el) => el.value"` without a ref — runs in page context, `el` is undefined
+In several real tests, `eval(() => window.location.href)` was more trustworthy than surrounding command headers when tab state or page metadata looked suspicious.
+Use the same habit for field values, checked state, and uploaded filenames when correctness matters.
 
-## run-code (Full Playwright API)
+---
 
-### When to use run-code (and when NOT to)
+## run-code
 
-Use `run-code` for things CLI commands can't do:
-- Waiting on dynamic conditions (`waitForSelector`, `waitForResponse`)
-- Network interception and monitoring
-- Setting cookies, geolocation, media emulation
-- Complex atomic multi-step operations on the same page
+Use `run-code` when the CLI cannot express the step cleanly.
 
-Do NOT use `run-code` as a replacement for:
-- `tab-new` / `tab-list` / `tab-select` / `tab-close` — use CLI tab commands
-- `snapshot` — run-code doesn't return the accessibility tree with refs
-- `screenshot` — use the CLI command for proper file naming
-- `open` / `go-back` / `reload` — use CLI navigation commands
-- `fill` / `click` / `select` — use CLI interaction commands with refs
+Good use cases:
+- waits (`waitForSelector`, `waitForResponse`, `waitForURL`)
+- popup handling
+- download handling
+- file-input fallback with `setInputFiles`
+- browser-context features like media emulation
 
-The reason: CLI commands return snapshots with element refs and maintain the
-observe-act loop. Using `run-code` to bypass this means you lose the ref-based
-interaction model and skip mandatory observation steps.
+### Syntax
 
-### Basic syntax
-```bash
-run-code 'async (page) => { ... }'
-```
-
-### CRITICAL: Quoting
-Single quotes outer, double quotes inner. This is because bash processes the outer quotes.
-```bash
-# CORRECT:
-run-code 'async (page) => { await page.waitForSelector(".loaded"); return "done"; }'
-
-# WRONG (bash interprets the inner quotes):
-run-code "async (page) => { await page.waitForSelector('.loaded'); return 'done'; }"
-```
-
-### Common recipes
-
-#### Wait for a loading state to finish
-```bash
-run-code 'async (page) => { await page.waitForSelector(".spinner", { state: "hidden" }); return "loaded"; }'
-```
-
-#### Wait for specific network request
 ```bash
 run-code 'async (page) => {
-  const response = await page.waitForResponse(r => r.url().includes("/api/data"));
-  return { status: response.status(), url: response.url() };
+  await page.waitForSelector(".loaded")
+  return "done"
 }'
 ```
 
-#### Intercept and monitor network requests
+### Quoting rule
+
+Use single quotes outside and double quotes inside.
+
+### Re-entry rule
+
+After `run-code`, do not trust old refs.
+Re-enter the normal CLI evidence loop before continuing.
+
 ```bash
-run-code 'async (page) => {
-  let calls = [];
-  page.on("response", r => { if (r.url().includes("api")) calls.push({ url: r.url(), status: r.status() }); });
-  await page.reload();
-  await page.waitForTimeout(2000);
-  return calls;
-}'
+snapshot
+screenshot --filename=after-run-code.png
 ```
 
-#### Set cookies
+---
+
+## Troubleshooting guide
+
+### "Ref not found"
+Your refs are stale.
+
 ```bash
-run-code 'async (page) => {
-  await page.context().addCookies([{ name: "token", value: "abc123", url: "https://example.com" }]);
-  return "cookie set";
-}'
+snapshot
 ```
 
-#### Emulate dark mode
+### Upload fails with modal-state error
+You called `upload` before triggering a file chooser.
+
+Safe pattern:
+
 ```bash
-run-code 'async (page) => { await page.emulateMedia({ colorScheme: "dark" }); }'
+click <upload-trigger-ref>
+upload /absolute/path/to/file
 ```
 
-#### Grant geolocation permission
+### Upload fails with path denied
+The file is outside allowed roots. Move or copy it into an allowed location.
+
+### A command did not print a snapshot
+Do not assume command outputs are uniform.
+
 ```bash
-run-code 'async (page) => { await page.context().grantPermissions(["geolocation"]); }'
+[action]
+snapshot
 ```
 
-#### Set geolocation
+### URL or page header seems inconsistent
+Use:
+
 ```bash
-run-code 'async (page) => {
-  await page.context().setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
-  return "location set to NYC";
-}'
+eval "() => window.location.href"
 ```
 
-#### Extract structured data from a table
+### zsh rejects the URL before the CLI runs
+Quote the URL:
+
 ```bash
-run-code 'async (page) => {
-  return await page.$$eval("table tbody tr", rows =>
-    rows.map(row => [...row.querySelectorAll("td")].map(cell => cell.textContent.trim()))
-  );
-}'
+open "https://www.amazon.com/s?k=fidget+spinner"
 ```
 
-#### Wait for navigation after click
-```bash
-run-code 'async (page) => {
-  await Promise.all([
-    page.waitForNavigation(),
-    page.click("text=Submit")
-  ]);
-  return page.url();
-}'
-```
-
-## Tracing
-
-### Start and stop
-```bash
-tracing-start         # begin recording
-# ... perform actions ...
-tracing-stop          # save trace file
-```
-
-### What traces capture
-- Screenshots at each step
-- DOM snapshots
-- Network requests
-- Console logs
-- Action timing
-
-### Viewing traces
-The trace file can be opened in the Playwright Trace Viewer (trace.playwright.dev)
-
-## Video Recording
-
-### Start and stop
-```bash
-video-start           # begin recording
-# ... perform actions ...
-video-stop            # save video file (WebM format)
-```
-
-## Troubleshooting Guide
-
-### "modal state" error
-A dialog (alert/confirm/prompt) is blocking all interaction.
-```bash
-dialog-accept         # or dialog-dismiss
-```
-
-### "ref not found" error
-Refs are stale — they died after a page change.
-```bash
-snapshot              # get fresh refs
-```
-
-### Blank page after tab-new
-You forgot to navigate after creating the tab.
-```bash
-open <url>            # navigate to intended page
-```
-
-### Unexpected behavior
-Check the command syntax:
-```bash
-playwright-cli --help <command>
-```
-
-### Console errors you can't see
-Remember, `console error` returns a FILE PATH. Read the file.
-
-### Network failures you can't see
-Same — `network` returns a FILE PATH. Read the file.
-
-### Session seems stuck
-```bash
-session-stop          # stop current session
-# Re-run bootstrap commands
-```
-
-### Multiple agents interfering
-Tabs are isolated. If there's interference, it's shared cookies/localStorage.
-Check with `eval "() => JSON.parse(localStorage.getItem('key'))"`
+### Public-site noise
+Production sites may emit telemetry, anti-bot, or graphics warnings. Treat these as evidence to interpret, not automatic proof of a bug in your app.
+Tie any bug claim back to page truth such as `eval "() => window.location.href"`, the actual UI state, and the flow you just reproduced.

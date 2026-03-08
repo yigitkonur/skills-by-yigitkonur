@@ -1,6 +1,6 @@
 ---
 name: skill-builder
-description: Use skill if you are creating or redesigning a Claude skill and need workspace evidence, remote skill research, comparison before synthesis, and original repo-fit output.
+description: Use skill if you are creating or redesigning a Claude skill and need workspace-first evidence, remote skill research, and comparison before drafting.
 ---
 
 # Skill Builder

@@ -1,6 +1,6 @@
 ---
 name: greptile-config
-description: Generate production-ready Greptile AI code review configuration for any repository. Use this skill whenever the user mentions Greptile, AI code review setup, PR review configuration, automated code review rules, or wants to set up .greptile/ config files. Also trigger when someone says "set up code review", "configure PR reviews", "add review rules", or asks about Greptile configuration — even if they don't say "Greptile" explicitly but describe wanting AI-powered PR review automation. This skill analyzes the actual repository structure and produces tailored config, not generic boilerplate.
+description: Use skill if you need Greptile review setup, .greptile config files, or repo-specific AI PR review rules.
 ---
 
 # Greptile Configuration Generator

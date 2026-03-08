@@ -1,29 +1,19 @@
 ---
 name: mcp-apps-builder
-description: |
-  **MANDATORY for ALL MCP server work** - mcp-use framework best practices and patterns.
-
-  **READ THIS FIRST** before any MCP server work, including:
-  - Creating new MCP servers
-  - Modifying existing MCP servers (adding/updating tools, resources, prompts, widgets)
-  - Debugging MCP server issues or errors
-  - Reviewing MCP server code for quality, security, or performance
-  - Answering questions about MCP development or mcp-use patterns
-  - Making ANY changes to server.tool(), server.resource(), server.prompt(), or widgets
-
-  This skill contains critical architecture decisions, security patterns, and common pitfalls.
-  Always consult the relevant reference files BEFORE implementing MCP features.
+description: >
+  Use skill if you are building or modifying an mcp-use app with tools,
+  resources, prompts, widgets, auth, or deployment concerns.
 ---
 
 # IMPORTANT: How to Use This Skill
 
-This file provides a NAVIGATION GUIDE ONLY. Before implementing any MCP server features, you MUST:
+This file provides a navigation guide. Before implementing mcp-use features, you should:
 
 1. Read this overview to understand which reference files are relevant
-2. **ALWAYS read the specific reference file(s)** for the features you're implementing
+2. Read the specific reference file(s) for the features you're implementing
 3. Apply the detailed patterns from those files to your implementation
 
-**Do NOT rely solely on the quick reference examples in this file** - they are minimal examples only. The reference files contain critical best practices, security considerations, and advanced patterns.
+Do not rely solely on the quick reference examples in this file — they are minimal examples. The reference files contain the deeper framework conventions, production patterns, and common pitfalls.
 
 ---
 
@@ -31,7 +21,7 @@ This file provides a NAVIGATION GUIDE ONLY. Before implementing any MCP server f
 
 Comprehensive guide for building production-ready MCP servers with tools, resources, prompts, and widgets using mcp-use.
 
-## ⚠️ FIRST: New Project or Existing Project?
+## First: New Project or Existing Project?
 
 **Before doing anything else, determine whether you are inside an existing mcp-use project.**
 

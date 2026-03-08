@@ -4,16 +4,16 @@
 
 | # | Architecture Decision | Primary Tools | Why These Tools |
 |---|----------------------|--------------|-----------------|
-| 01 | Design Pattern Selection | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Patterns involve nuanced trade-offs needing synthesis; canonical sources provide frameworks; Reddit has survivorship-bias-free signal |
-| 02 | State Management Approach | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Rapidly changing landscape needs current synthesis; benchmarks require extraction; Reddit has migration stories |
-| 03 | API Style Decision | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Multi-boundary problem needs holistic analysis; engineering blogs document real decisions; Reddit has operational metrics |
-| 04 | Database Selection | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Total cost of ownership requires multi-dimensional synthesis; benchmarks need extraction; Reddit has cost surprises |
-| 05 | Caching Strategy Design | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Multi-data-type strategy needs holistic design; vendor guides have decision trees; Reddit has failure mode stories |
-| 06 | Authentication Architecture | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Security decisions cascade; OWASP sets the baseline; Reddit has security reviews in comment form |
-| 07 | Microservices vs Monolith | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Most context-dependent decision (team size, org structure); Reddit has the microservices backlash data |
-| 08 | Real-Time Architecture | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Transport and application protocol are tightly coupled; pricing models are complex; Reddit has scaling numbers |
-| 09 | Event-Driven Design | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Broker selection involves subtle delivery semantic differences; schema evolution needs synthesis |
-| 10 | Deployment Strategy | deep_research -> web_search -> scrape_links -> search_reddit -> get_reddit_post | Cost trajectory analysis needs multi-source modeling; Reddit has billing shock stories |
+| 01 | Design Pattern Selection | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Patterns involve nuanced trade-offs needing synthesis; canonical sources provide frameworks; Reddit has survivorship-bias-free signal |
+| 02 | State Management Approach | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Rapidly changing landscape needs current synthesis; benchmarks require extraction; Reddit has migration stories |
+| 03 | API Style Decision | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Multi-boundary problem needs holistic analysis; engineering blogs document real decisions; Reddit has operational metrics |
+| 04 | Database Selection | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Total cost of ownership requires multi-dimensional synthesis; benchmarks need extraction; Reddit has cost surprises |
+| 05 | Caching Strategy Design | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Multi-data-type strategy needs holistic design; vendor guides have decision trees; Reddit has failure mode stories |
+| 06 | Authentication Architecture | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Security decisions cascade; OWASP sets the baseline; Reddit has security reviews in comment form |
+| 07 | Microservices vs Monolith | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Most context-dependent decision (team size, org structure); Reddit has the microservices backlash data |
+| 08 | Real-Time Architecture | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Transport and application protocol are tightly coupled; pricing models are complex; Reddit has scaling numbers |
+| 09 | Event-Driven Design | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Broker selection involves subtle delivery semantic differences; schema evolution needs synthesis |
+| 10 | Deployment Strategy | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Cost trajectory analysis needs multi-source modeling; Reddit has billing shock stories |
 
 ---
 
@@ -21,10 +21,10 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Determine whether CQRS with Event Sourcing or Repository Pattern for an order system (~5K orders/day). SPECIFIC QUESTIONS: 1) Scale threshold for CQRS+ES? 2) Event schema evolution? 3) Operational costs? 4) CQRS without ES? 5) Failure modes?"`
-**web_search**: `["CQRS vs repository pattern trade-offs", "event sourcing production lessons 2024 2025", "site:martinfowler.com repository pattern event sourcing", "over-engineering design patterns CRUD"]`
-**scrape_links**: `what_to_extract = "decision criteria|trade-offs|scale thresholds|when NOT to use|team size recommendations"`
+**search_google**: `["CQRS vs repository pattern trade-offs", "event sourcing production lessons 2024 2025", "site:martinfowler.com repository pattern event sourcing", "over-engineering design patterns CRUD"]`
+**scrape_pages**: `what_to_extract = "decision criteria|trade-offs|scale thresholds|when NOT to use|team size recommendations"`
 **search_reddit**: `["CQRS regret complexity not worth it", "event sourcing production experience", "r/ExperiencedDevs design pattern over-engineering"]`
-**get_reddit_post**: 5-10 threads with high comment counts from r/ExperiencedDevs, r/softwarearchitecture.
+**fetch_reddit**: 5-10 threads with high comment counts from r/ExperiencedDevs, r/softwarearchitecture.
 ### Best Practices:
 - Attach your current code so deep_research analyzes your actual complexity
 - Ask about failure modes explicitly -- pattern articles rarely cover what goes wrong
@@ -35,10 +35,10 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Select state management for React 19 dashboard (~200 components, 15 slices). SPECIFIC QUESTIONS: 1) Zustand vs Redux Toolkit after 12+ months? 2) Jotai for complex derived state? 3) Do we need an external library with React 19? 4) Migration paths from Redux?"`
-**web_search**: `["zustand vs redux toolkit vs jotai benchmark 2025", "react state management decision tree", "state of react survey 2024 2025"]`
-**scrape_links**: `what_to_extract = "benchmark numbers|bundle sizes|re-render counts|satisfaction scores|migration steps"`
+**search_google**: `["zustand vs redux toolkit vs jotai benchmark 2025", "react state management decision tree", "state of react survey 2024 2025"]`
+**scrape_pages**: `what_to_extract = "benchmark numbers|bundle sizes|re-render counts|satisfaction scores|migration steps"`
 **search_reddit**: `["zustand vs redux toolkit 2024 2025 experience", "redux toolkit regret migrated to what", "react 19 do you still need state management"]`
-**get_reddit_post**: Threads with "experience" or "after X months" in title. Look for library author comments.
+**fetch_reddit**: Threads with "experience" or "after X months" in title. Look for library author comments.
 ### Best Practices:
 - State management recommendations from 2022 may be obsolete -- always include current year
 - Migration cost is often the deciding factor; ask about incremental migration paths
@@ -48,8 +48,8 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Choose between REST, GraphQL, gRPC, tRPC for SaaS with public consumers and internal service-to-service. SPECIFIC QUESTIONS: 1) Different styles at different boundaries? 2) REST vs gRPC latency? 3) GraphQL at >1M req/day? 4) Hidden GraphQL operational costs? 5) tRPC alongside REST?"`
-**web_search**: `["REST vs GraphQL vs gRPC comparison 2024 2025", "netflix API gateway graphql engineering blog", "tRPC vs REST type safety"]`
-**scrape_links**: `what_to_extract = "architecture decisions|benchmarks|latency numbers|when NOT to use|versioning approach"`
+**search_google**: `["REST vs GraphQL vs gRPC comparison 2024 2025", "netflix API gateway graphql engineering blog", "tRPC vs REST type safety"]`
+**scrape_pages**: `what_to_extract = "architecture decisions|benchmarks|latency numbers|when NOT to use|versioning approach"`
 **search_reddit**: `["graphql regret went back to REST", "gRPC vs REST microservices real experience", "graphql n+1 problem production"]`
 ### Best Practices:
 - Describe all API boundaries -- each may warrant a different style
@@ -61,10 +61,10 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Select database for multi-tenant SaaS with IoT data (~50K inserts/sec), time-series queries, relational metadata. SPECIFIC QUESTIONS: 1) PostgreSQL + TimescaleDB at 50K inserts/sec? 2) Polyglot persistence overhead? 3) DynamoDB costs? 4) Multi-tenancy isolation? 5) Failure modes at scale?"`
-**web_search**: `["postgresql vs dynamodb vs mongodb benchmark 2024 2025", "jepsen postgresql mongodb consistency", "timescaledb vs influxdb benchmark", "total cost of ownership database"]`
-**scrape_links**: `what_to_extract = "benchmark results|query latency|throughput|pricing tiers|consistency guarantees|scaling limits"`
+**search_google**: `["postgresql vs dynamodb vs mongodb benchmark 2024 2025", "jepsen postgresql mongodb consistency", "timescaledb vs influxdb benchmark", "total cost of ownership database"]`
+**scrape_pages**: `what_to_extract = "benchmark results|query latency|throughput|pricing tiers|consistency guarantees|scaling limits"`
 **search_reddit**: `["dynamodb cost surprise expensive bill", "postgresql 50000 writes per second tuning", "mongodb vs postgresql when to actually use mongodb"]`
-**get_reddit_post**: Fetch AMA and "X years experience" threads for configuration tips and cost breakdowns.
+**fetch_reddit**: Fetch AMA and "X years experience" threads for configuration tips and cost breakdowns.
 ### Best Practices:
 - Total cost of ownership (including ops) matters more than raw benchmarks
 - Search for Jepsen consistency tests -- they reveal guarantees (or violations) under failure
@@ -74,8 +74,8 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Design multi-layer caching for e-commerce (50K SKUs, sessions, search, dynamic pricing). SPECIFIC QUESTIONS: 1) Invalidation per data type? 2) Write-through vs cache-aside per type? 3) Redis Cluster vs single instance? 4) Stampede prevention? 5) When to add CDN?"`
-**web_search**: `["caching patterns write-through cache-aside write-behind", "redis patterns site:redis.io", "cache stampede prevention production"]`
-**scrape_links**: `what_to_extract = "caching patterns|decision criteria|invalidation strategies|TTL recommendations|stampede prevention"`
+**search_google**: `["caching patterns write-through cache-aside write-behind", "redis patterns site:redis.io", "cache stampede prevention production"]`
+**scrape_pages**: `what_to_extract = "caching patterns|decision criteria|invalidation strategies|TTL recommendations|stampede prevention"`
 **search_reddit**: `["cache invalidation nightmare production", "cache stampede thundering herd solution", "caching mistakes learned hard way"]`
 ### Best Practices:
 - Different data types need different strategies, TTLs, and invalidation approaches
@@ -86,8 +86,8 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Auth architecture for B2B SaaS with SSO (SAML/OIDC), magic links, passkeys. SOC2 required. SPECIFIC QUESTIONS: 1) Auth0 vs Clerk vs WorkOS vs custom? 2) Unified session management? 3) JWT with refresh vs opaque sessions? 4) Passkey maturity for B2B? 5) SOC2 auth requirements?"`
-**web_search**: `["OWASP authentication best practices 2024 2025", "passkeys WebAuthn guide", "auth0 vs clerk vs workos pricing 2025", "JWT security httponly cookie"]`
-**scrape_links**: `what_to_extract = "security requirements|recommended practices|prohibited practices|pricing tiers|session management rules"`
+**search_google**: `["OWASP authentication best practices 2024 2025", "passkeys WebAuthn guide", "auth0 vs clerk vs workos pricing 2025", "JWT security httponly cookie"]`
+**scrape_pages**: `what_to_extract = "security requirements|recommended practices|prohibited practices|pricing tiers|session management rules"`
 **search_reddit**: `["auth0 vs clerk vs workos production 2024 2025", "JWT vs session token debate", "built custom auth regret"]`
 ### Best Practices:
 - OWASP cheat sheets are non-negotiable starting points -- extract as requirements document
@@ -99,10 +99,10 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Decompose monolith into microservices, adopt modular monolith, or stay as-is. Team of 12, 2-hour CI, no K8s experience. SPECIFIC QUESTIONS: 1) Team size threshold? 2) Operational cost without K8s? 3) Is modular monolith a real stepping stone? 4) Which services to extract first? 5) Communication patterns?"`
-**web_search**: `["microservices vs monolith decision framework team size 2024 2025", "monolith first martin fowler", "modular monolith guide", "amazon prime video monolith case study"]`
-**scrape_links**: `what_to_extract = "decision criteria|team size thresholds|migration steps|decomposition patterns|when NOT to use microservices"`
+**search_google**: `["microservices vs monolith decision framework team size 2024 2025", "monolith first martin fowler", "modular monolith guide", "amazon prime video monolith case study"]`
+**scrape_pages**: `what_to_extract = "decision criteria|team size thresholds|migration steps|decomposition patterns|when NOT to use microservices"`
 **search_reddit**: `["microservices regret went back to monolith", "modular monolith experience production", "microservices operational cost small team"]`
-**get_reddit_post**: Fetch famous threads (Amazon Prime Video, Segment.io). Look for migration timelines and cost breakdowns.
+**fetch_reddit**: Fetch famous threads (Amazon Prime Video, Segment.io). Look for migration timelines and cost breakdowns.
 ### Best Practices:
 - Conway's Law reasoning: the decision is about organizational structure, not just technology
 - Modular monolith is a legitimate architecture -- ask about it as a middle ground
@@ -112,8 +112,8 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Real-time layer for collaborative editor (~10K concurrent users, <100ms latency). SPECIFIC QUESTIONS: 1) WebSocket vs WebRTC at 10K? 2) Scaling across server instances? 3) Managed vs self-hosted? 4) How do CRDT libs (Yjs, Automerge) interact with transport?"`
-**web_search**: `["WebSocket vs SSE vs long polling comparison 2024 2025", "WebSocket scaling architecture horizontal Redis pub/sub", "real-time collaborative editing CRDT OT comparison"]`
-**scrape_links**: `what_to_extract = "protocol features|connection limits|pricing per connection|pricing per message|reconnection handling"`
+**search_google**: `["WebSocket vs SSE vs long polling comparison 2024 2025", "WebSocket scaling architecture horizontal Redis pub/sub", "real-time collaborative editing CRDT OT comparison"]`
+**scrape_pages**: `what_to_extract = "protocol features|connection limits|pricing per connection|pricing per message|reconnection handling"`
 **search_reddit**: `["websocket scaling 10000 connections production", "websocket timeout corporate proxy", "pusher vs ably cost comparison"]`
 ### Best Practices:
 - Transport and application protocol (CRDTs, OT) are tightly coupled -- reason about both
@@ -125,8 +125,8 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Event-driven architecture for e-commerce (orders, inventory, notifications, analytics). Choose Kafka, RabbitMQ, NATS, or Redis Streams at ~10K events/min. SPECIFIC QUESTIONS: 1) Is Kafka overkill? 2) Schema evolution (Avro/Protobuf/JSON Schema)? 3) Managed vs self-hosted cost? 4) Exactly-once in practice? 5) Saga patterns?"`
-**web_search**: `["kafka vs rabbitmq vs nats comparison 2024 2025", "event-driven saga choreography orchestration", "schema registry evolution best practices"]`
-**scrape_links**: `what_to_extract = "delivery guarantees with conditions|ordering guarantees|retention|pricing|schema evolution support"`
+**search_google**: `["kafka vs rabbitmq vs nats comparison 2024 2025", "event-driven saga choreography orchestration", "schema registry evolution best practices"]`
+**scrape_pages**: `what_to_extract = "delivery guarantees with conditions|ordering guarantees|retention|pricing|schema evolution support"`
 **search_reddit**: `["kafka overkill small team alternative NATS redis streams", "event schema evolution production", "saga pattern production experience"]`
 ### Best Practices:
 - Below 100K events/min, RabbitMQ or NATS may be simpler to operate than Kafka
@@ -138,10 +138,10 @@
 ### Tools: all 5 (deep_research primary)
 ### Query Templates:
 **deep_research**: `"WHAT I NEED: Deployment platform for full-stack SaaS (Next.js, Node.js, PostgreSQL, Redis). 2 devs, zero DevOps, budget $500-2000/month. SPECIFIC QUESTIONS: 1) When does Vercel become more expensive than AWS? 2) Is AWS ECS manageable for 2 people? 3) Serverless vs containers for sustained traffic? 4) Vendor lock-in risk? 5) Blue-green vs rolling vs canary?"`
-**web_search**: `["vercel vs AWS vs cloudflare cost comparison 2024 2025", "railway render fly.io comparison 2025", "serverless vs containers decision framework"]`
-**scrape_links**: `what_to_extract = "pricing tiers|included limits|overage costs|compute pricing|bandwidth pricing|function limits"`
+**search_google**: `["vercel vs AWS vs cloudflare cost comparison 2024 2025", "railway render fly.io comparison 2025", "serverless vs containers decision framework"]`
+**scrape_pages**: `what_to_extract = "pricing tiers|included limits|overage costs|compute pricing|bandwidth pricing|function limits"`
 **search_reddit**: `["vercel expensive bill pricing shock production", "migrated from vercel to AWS why", "railway render fly.io production experience"]`
-**get_reddit_post**: Fetch "hosting costs from 0 to X users" threads for itemized cost breakdowns.
+**fetch_reddit**: Fetch "hosting costs from 0 to X users" threads for itemized cost breakdowns.
 ### Best Practices:
 - Cost at launch, 10x, and 100x reveals pricing curves that determine long-term viability
 - Platform limits (connections, timeouts, deployment size) determine feasibility before cost matters
@@ -153,10 +153,10 @@
 ## Universal Architecture Research Workflow
 
 1. **Frame the decision** precisely: constraints, scale targets, team composition, risk tolerance.
-2. **Start with deep_research** (unlike bug-fixing which starts with web_search). Architecture decisions benefit from synthesized analysis upfront.
-3. **Use web_search** (5-7 keywords) for canonical sources, benchmarks, and decision frameworks. Use `site:` operators for high-quality sources.
-4. **Use scrape_links** on top 3-5 URLs to extract decision criteria, benchmark data, and pricing tables. Focus on "when to use" and "when NOT to use."
+2. **Start with deep_research** (unlike bug-fixing which starts with search_google). Architecture decisions benefit from synthesized analysis upfront.
+3. **Use search_google** (5-7 keywords) for canonical sources, benchmarks, and decision frameworks. Use `site:` operators for high-quality sources.
+4. **Use scrape_pages** on top 3-5 URLs to extract decision criteria, benchmark data, and pricing tables. Focus on "when to use" and "when NOT to use."
 5. **Use search_reddit** (5-7 queries) for real-world experiences and regret stories. Search for "regret", "rolled back", "not worth it."
-6. **Use get_reddit_post** (fetch_comments=True, use_llm=False) on 5-10 threads from r/ExperiencedDevs and r/softwarearchitecture.
-7. **Synthesize with a second deep_research pass** if new questions arose. Feed Reddit and scrape_links findings into a targeted follow-up.
+6. **Use fetch_reddit** (fetch_comments=True, use_llm=False) on 5-10 threads from r/ExperiencedDevs and r/softwarearchitecture.
+7. **Synthesize with a second deep_research pass** if new questions arose. Feed Reddit and scrape_pages findings into a targeted follow-up.
 8. **Build a decision matrix**: rows = criteria from authoritative sources, columns = options. Score using gathered data.

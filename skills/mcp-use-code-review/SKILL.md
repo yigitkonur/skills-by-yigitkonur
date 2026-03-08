@@ -1,11 +1,8 @@
 ---
-name: mcp-use-code-review-migrate
+name: mcp-use-code-review
 description: >
-  Activate when the user has a Python application that imports from `mcp_use`
-  (the pip package `mcp-use`) and wants to verify, test, debug, or review it
-  for correctness. Covers MCPClient, MCPAgent, MCPSession, LangChain adapter
-  integration, server config validation, and the 6 most common AI-agent
-  derailment patterns.
+  Use skill if you are reviewing or debugging Python code that consumes MCP
+  servers through the `mcp-use` package.
 ---
 
 # Test MCP-Use SDK Based Apps

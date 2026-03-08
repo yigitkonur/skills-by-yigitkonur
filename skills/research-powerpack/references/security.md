@@ -4,16 +4,16 @@
 
 | Use Case | Primary Tool | Secondary Tool | Why This Combination |
 |---|---|---|---|
-| 01. OWASP Top 10 Compliance | `deep_research` | `web_search` + `search_reddit` | Stack-specific checklist + current list + real audit stories |
-| 02. Authentication | `deep_research` | `search_reddit` + `web_search` | Holistic auth architecture + breach stories + CVE monitoring |
-| 03. Secrets Management | `deep_research` | `web_search` | Team-size-calibrated tool selection + breach reports |
-| 04. CORS & CSP Config | `deep_research` | `web_search` | Cross-layer config (app+proxy+CDN) + error-driven debugging |
-| 05. Dependency Scanning | `deep_research` | `web_search` | Multi-language strategy + triage workflow + tool comparison |
-| 06. Encryption & Hashing | `deep_research` | `web_search` | Use-case-specific algorithms + NIST recommendations |
-| 07. Input Validation | `deep_research` | `web_search` | Multi-layer defense design + bypass technique discovery |
-| 08. Rate Limiting | `deep_research` | `web_search` | Tiered limit design + algorithm comparisons + Redis patterns |
-| 09. Secure File Upload | `deep_research` | `web_search` | Complete upload pipeline + attack vector catalog |
-| 10. API Security | `deep_research` | `web_search` + `search_reddit` | Multi-auth architecture + OWASP API Top 10 |
+| 01. OWASP Top 10 Compliance | `deep_research` | `search_google` + `search_reddit` | Stack-specific checklist + current list + real audit stories |
+| 02. Authentication | `deep_research` | `search_reddit` + `search_google` | Holistic auth architecture + breach stories + CVE monitoring |
+| 03. Secrets Management | `deep_research` | `search_google` | Team-size-calibrated tool selection + breach reports |
+| 04. CORS & CSP Config | `deep_research` | `search_google` | Cross-layer config (app+proxy+CDN) + error-driven debugging |
+| 05. Dependency Scanning | `deep_research` | `search_google` | Multi-language strategy + triage workflow + tool comparison |
+| 06. Encryption & Hashing | `deep_research` | `search_google` | Use-case-specific algorithms + NIST recommendations |
+| 07. Input Validation | `deep_research` | `search_google` | Multi-layer defense design + bypass technique discovery |
+| 08. Rate Limiting | `deep_research` | `search_google` | Tiered limit design + algorithm comparisons + Redis patterns |
+| 09. Secure File Upload | `deep_research` | `search_google` | Complete upload pipeline + attack vector catalog |
+| 10. API Security | `deep_research` | `search_google` + `search_reddit` | Multi-auth architecture + OWASP API Top 10 |
 
 ---
 
@@ -31,7 +31,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Practical remediation steps, not theory
 ```
 
-**web_search**: `["OWASP Top 10 2025 2026 updated list", "OWASP A01 broken access control prevention", "OWASP compliance Node.js", "OWASP scanning tools comparison site:github.com"]`
+**search_google**: `["OWASP Top 10 2025 2026 updated list", "OWASP A01 broken access control prevention", "OWASP compliance Node.js", "OWASP scanning tools comparison site:github.com"]`
 
 **search_reddit**: `["OWASP compliance real world audit experience", "r/netsec OWASP 2025 changes", "r/devsecops OWASP CI/CD pipeline", "OWASP Top 10 overrated vs real security"]`
 
@@ -54,7 +54,7 @@ SPECIFIC QUESTIONS:
 
 **search_reddit**: `["bcrypt vs argon2 which should I use", "JWT vs session cookies security debate", "CSRF still needed SameSite cookies 2025", "r/webdev authentication mistakes learned"]`
 
-**web_search**: `["bcrypt vs argon2id 2025 recommendation", "\"next-auth\" OR \"auth.js\" CVE", "passport.js vs lucia auth security comparison"]`
+**search_google**: `["bcrypt vs argon2id 2025 recommendation", "\"next-auth\" OR \"auth.js\" CVE", "passport.js vs lucia auth security comparison"]`
 
 **Best Practices**: Same-origin vs cross-origin changes advice completely. Check for CVEs before committing to any auth library. On Reddit, search for mistakes and failures -- they teach more than "best library" posts. Ask about the full lifecycle: registration through logout.
 
@@ -74,7 +74,7 @@ SPECIFIC QUESTIONS:
 5) Pre-commit hooks to prevent .env commits?
 ```
 
-**web_search**: `["Vault vs AWS Secrets Manager vs Doppler 2025", ".env file security risks", "\"exposed API key\" breach site:bleepingcomputer.com", "git secrets pre-commit hook setup"]`
+**search_google**: `["Vault vs AWS Secrets Manager vs Doppler 2025", ".env file security risks", "\"exposed API key\" breach site:bleepingcomputer.com", "git secrets pre-commit hook setup"]`
 
 **Best Practices**: Describe starting point honestly for better migration advice. Include IaC tooling (Terraform/Pulumi). Specify compliance requirements (SOC2/HIPAA). Ask about developer experience -- painful tools get circumvented. Search for breach reports to justify investment.
 
@@ -95,7 +95,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Exact header values and nginx config
 ```
 
-**web_search**: `["CORS Access-Control-Allow-Origin error Express React", "CSP header generator tool", "CORS preflight 403 nginx reverse proxy", "blocked by CORS policy credentials include"]`
+**search_google**: `["CORS Access-Control-Allow-Origin error Express React", "CSP header generator tool", "CORS preflight 403 nginx reverse proxy", "blocked by CORS policy credentials include"]`
 
 **Best Practices**: List ALL origins and third-party deps -- CORS/CSP are whitelist-based. Attach nginx config -- the most common bug is proxy + app both setting headers. Specify CSS-in-JS solution for CSP. Always deploy CSP in report-only mode first. Search exact error messages in quotes.
 
@@ -114,7 +114,7 @@ SPECIFIC QUESTIONS:
 5) Handling Dependabot PR noise (20+ PRs/week)?
 ```
 
-**web_search**: `["Snyk vs Grype vs Trivy comparison", "npm audit false positives handling", "Dependabot auto-merge configuration", "Trivy container scanning"]`
+**search_google**: `["Snyk vs Grype vs Trivy comparison", "npm audit false positives handling", "Dependabot auto-merge configuration", "Trivy container scanning"]`
 
 **Best Practices**: List all ecosystems -- polyglot advice differs from single-language. Describe pain points ("too many PRs", "false positives"). Request SLA framework: critical 24h, high 1 week. Ask about container scanning separately -- different tools and timing.
 
@@ -134,7 +134,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Correctness and compliance. HIPAA non-negotiable.
 ```
 
-**web_search**: `["AES-GCM vs ChaCha20-Poly1305 2025", "AES-GCM nonce reuse catastrophic", "NIST post-quantum cryptography standard", "libsodium vs node:crypto"]`
+**search_google**: `["AES-GCM vs ChaCha20-Poly1305 2025", "AES-GCM nonce reuse catastrophic", "NIST post-quantum cryptography standard", "libsodium vs node:crypto"]`
 
 **Best Practices**: Specify compliance (HIPAA, FIPS, PCI-DSS) -- each restricts choices. Describe what you encrypt (columns, files, payloads). Ask about key management -- most crypto failures are key management failures. Search for failure modes, not just recommendations. Include hardware context for algorithm selection.
 
@@ -153,7 +153,7 @@ SPECIFIC QUESTIONS:
 5) How to check regex patterns for ReDoS?
 ```
 
-**web_search**: `["SQL injection ORM bypass 2025", "XSS React dangerouslySetInnerHTML DOMPurify", "path traversal Node.js filename sanitization", "ReDoS detection prevention", "Unicode normalization attack bypass"]`
+**search_google**: `["SQL injection ORM bypass 2025", "XSS React dangerouslySetInnerHTML DOMPurify", "path traversal Node.js filename sanitization", "ReDoS detection prevention", "Unicode normalization attack bypass"]`
 
 **Best Practices**: Attach zod/yup schemas for review. Attach dangerouslySetInnerHTML components. Search bypass techniques, not just defenses. Include your ORM name specifically. Request test cases (XSS payloads, SQLi attempts) for automated testing.
 
@@ -174,7 +174,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Specific values, Redis key design, Cloudflare config
 ```
 
-**web_search**: `["token bucket vs sliding window comparison", "rate limiting Redis distributed pattern", "API rate limiting per-user per-IP per-endpoint", "Cloudflare Turnstile vs reCAPTCHA comparison"]`
+**search_google**: `["token bucket vs sliding window comparison", "rate limiting Redis distributed pattern", "API rate limiting per-user per-IP per-endpoint", "Cloudflare Turnstile vs reCAPTCHA comparison"]`
 
 **Best Practices**: Describe traffic patterns ("100 rps, 500 peaks") to calibrate limits. List endpoint categories for tiered limits. Multi-dimensional limiting (IP + user + API key) handles shared IPs. Ask about 429 error responses and Retry-After headers for API UX. Include monitoring.
 
@@ -194,7 +194,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Implementation order, specific libraries, S3 config
 ```
 
-**web_search**: `["secure file upload Node.js 2025", "MIME magic bytes validation", "S3 presigned URL security", "file upload OWASP checklist", "SVG XSS file upload", "zip bomb detection"]`
+**search_google**: `["secure file upload Node.js 2025", "MIME magic bytes validation", "S3 presigned URL security", "file upload OWASP checklist", "SVG XSS file upload", "zip bomb detection"]`
 
 **Best Practices**: Describe all accepted file types -- each has different attack vectors. Ask about serving too (presigned URLs, CDN). Search specific attacks: SVG XSS, polyglot files, ZIP bombs. Extension checking alone is always insufficient. Request test files the pipeline should reject.
 
@@ -214,7 +214,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Implementation patterns with Express middleware
 ```
 
-**web_search**: `["API security 2025 OWASP API Top 10", "JWT validation Node.js jose library", "API key hashing rotation storage", "HMAC webhook verification", "GraphQL security depth limiting"]`
+**search_google**: `["API security 2025 OWASP API Top 10", "JWT validation Node.js jose library", "API key hashing rotation storage", "HMAC webhook verification", "GraphQL security depth limiting"]`
 
 **Best Practices**: Describe all consumers: SPA, mobile, third-party, webhooks -- each needs different auth. Attach auth middleware for JWT check review. OWASP API Top 10 is separate from regular Top 10. Check JWT library for CVEs (algorithm confusion, none bypass). Follow Stripe pattern for webhook signing.
 
@@ -222,10 +222,10 @@ FOCUS: Implementation patterns with Express middleware
 
 ## Universal Security Research Workflow
 
-1. **`web_search`** (5-7 keywords) -- current threats, OWASP/NIST updates, library CVEs
+1. **`search_google`** (5-7 keywords) -- current threats, OWASP/NIST updates, library CVEs
 2. **`search_reddit`** -- target r/netsec, r/AskNetsec, r/devsecops for audit stories and tool opinions
-3. **`scrape_links`** (3-5 URLs) -- OWASP cheat sheets, framework docs for exact config values
-4. **`get_reddit_post`** (`fetch_comments=True`) -- breach stories and expert correction chains
+3. **`scrape_pages`** (3-5 URLs) -- OWASP cheat sheets, framework docs for exact config values
+4. **`fetch_reddit`** (`fetch_comments=True`) -- breach stories and expert correction chains
 5. **`deep_research`** (1-2 questions) -- synthesize into security architecture; attach your actual code
 
 **Key principles:**

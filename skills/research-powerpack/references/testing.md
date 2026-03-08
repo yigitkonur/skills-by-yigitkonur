@@ -5,10 +5,10 @@
 | Use Case | Primary Tool | Secondary Tool | Key Signal |
 |---|---|---|---|
 | 01. Test Framework Selection | `deep_research` | `search_reddit` | Structured decision framework with migration cost |
-| 02. Mocking & Stubbing Strategy | `deep_research` | `web_search` | Architecture-aware mock boundary decisions |
-| 03. End-to-End Testing Setup | `deep_research` | `web_search` | Integrated strategy: framework + CI + flakiness |
-| 04. Load & Stress Testing | `deep_research` | `web_search` | Scenario design + result interpretation methodology |
-| 05. Property-Based Testing | `deep_research` | `web_search` | Property pattern taxonomy and generator design |
+| 02. Mocking & Stubbing Strategy | `deep_research` | `search_google` | Architecture-aware mock boundary decisions |
+| 03. End-to-End Testing Setup | `deep_research` | `search_google` | Integrated strategy: framework + CI + flakiness |
+| 04. Load & Stress Testing | `deep_research` | `search_google` | Scenario design + result interpretation methodology |
+| 05. Property-Based Testing | `deep_research` | `search_google` | Property pattern taxonomy and generator design |
 
 ---
 
@@ -17,7 +17,7 @@
 ### Recommended Tools
 - **deep_research**: Produces weighted comparison tables accounting for your constraints (monorepo size, CI environment, team familiarity) with migration cost estimates.
 - **search_reddit**: Unfiltered practitioner opinions, migration regret stories, and plugin ecosystem gaps.
-- **web_search**: Latest benchmarks, migration guides, and feature comparison tables.
+- **search_google**: Latest benchmarks, migration guides, and feature comparison tables.
 
 ### Query Templates
 ```python
@@ -26,7 +26,7 @@
 ~15,000 tests). Realistic speed improvement for Jest->Vitest? Jest features with no Vitest
 equivalent? Migration effort in developer-weeks? Hybrid approaches during migration?"
 
-# web_search
+# search_google
 keywords = ["vitest vs jest benchmark 2025 performance comparison",
             "vitest migration from jest guide breaking changes"]
 
@@ -50,7 +50,7 @@ queries = ["vitest vs jest which do you use 2025",
 
 ### Recommended Tools
 - **deep_research**: Synthesizes testing philosophy ("mockist vs classicist", "testing trophy") with concrete patterns into a coherent decision framework.
-- **web_search**: Foundational articles (Martin Fowler's "Mocks Aren't Stubs", Kent C. Dodds' "Testing Trophy") and framework-specific docs.
+- **search_google**: Foundational articles (Martin Fowler's "Mocks Aren't Stubs", Kent C. Dodds' "Testing Trophy") and framework-specific docs.
 - **search_reddit**: Real pain points with over-mocking, brittle tests, and practical boundary decisions.
 
 ### Query Templates
@@ -61,7 +61,7 @@ with PostgreSQL, Redis, and three external APIs. 400+ mocks but bugs reach produ
 Mockist vs classicist consensus? When to use testcontainers vs mock DB? Contract testing
 for external APIs? Testing trophy for our architecture?"
 
-# web_search
+# search_google
 keywords = ["when to mock vs integration test backend service 2025",
             "testcontainers vs mock database testing strategy",
             "Martin Fowler mocks stubs fakes test doubles"]
@@ -81,7 +81,7 @@ keywords = ["when to mock vs integration test backend service 2025",
 
 ### Recommended Tools
 - **deep_research**: Integrated E2E strategy covering framework selection, CI pipeline design, flakiness reduction, and test organization as one coherent plan.
-- **web_search**: Official CI integration guides, flakiness reduction articles, and framework benchmarks.
+- **search_google**: Official CI integration guides, flakiness reduction articles, and framework benchmarks.
 - **search_reddit**: Real flakiness struggles, CI configuration problems, and team adoption experiences.
 
 ### Query Templates
@@ -94,7 +94,7 @@ OAuth login handling in E2E? Flakiness prevention from day one? ROI inflection p
 Test data isolation (factory vs seeded DB vs API setup)? Retry vs auto-wait patterns?
 Automatic flaky test detection and quarantine in CI?"
 
-# web_search
+# search_google
 keywords = ["playwright vs cypress vs selenium 2025 comparison benchmark",
             "reduce e2e test flakiness playwright best practices"]
 ```
@@ -113,7 +113,7 @@ keywords = ["playwright vs cypress vs selenium 2025 comparison benchmark",
 
 ### Recommended Tools
 - **deep_research**: Methodology design (scenario types), result interpretation framework, and bottleneck isolation techniques.
-- **web_search**: Official tool documentation (k6, Locust, Gatling), distributed execution guides, and visualization integrations.
+- **search_google**: Official tool documentation (k6, Locust, Gatling), distributed execution guides, and visualization integrations.
 - **search_reddit**: Real load testing stories with diagnostic processes and before/after metrics.
 
 ### Query Templates
@@ -126,7 +126,7 @@ latency. Bottleneck isolation across 12 services. Realistic zero-to-ready timeli
 jumps to 5%. What does large p95-p99 gap indicate? Correlating k6 results with server metrics?
 Most common bottlenecks at 2000+ concurrent? Targeted tests to isolate DB vs network vs compute?"
 
-# web_search
+# search_google
 keywords = ["k6 vs locust vs gatling vs artillery comparison 2025",
             "interpreting load test results percentile latency throughput"]
 ```
@@ -144,7 +144,7 @@ keywords = ["k6 vs locust vs gatling vs artillery comparison 2025",
 
 ### Recommended Tools
 - **deep_research**: Property pattern taxonomy (round-trip, invariant, oracle, metamorphic), generator design principles, and adoption strategy.
-- **web_search**: Library documentation (fast-check, proptest), pattern catalogs, and real-world case studies.
+- **search_google**: Library documentation (fast-check, proptest), pattern catalogs, and real-world case studies.
 - **search_reddit**: Adoption experiences, practical benefits vs example-based tests, and domain-specific property examples.
 
 ### Query Templates
@@ -158,7 +158,7 @@ Realistic test runtime expectations?"
 Stateful property testing (command sequences). Custom strategies for complex domain types.
 Shrinking control for meaningful minimal examples. CI integration and regression files."
 
-# web_search
+# search_google
 keywords = ["property based testing patterns round trip invariant oracle",
             "fast-check advanced generators domain specific types"]
 ```

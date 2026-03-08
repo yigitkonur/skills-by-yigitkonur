@@ -1,6 +1,6 @@
 ---
 name: tauri-devtools
-description: "CrabNebula DevTools integration for Tauri v2 apps. Gives AI agents visibility into the Rust side — console logs with tracing spans, IPC call timings, live config inspection, and frontend source browsing. Use when debugging Tauri apps or when browser devtools isn't enough."
+description: "Use skill if you are debugging a Tauri app's Rust side, IPC calls, config, plugins, or bundled assets with CrabNebula DevTools."
 license: MIT
 metadata:
   author: yigitkonur

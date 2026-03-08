@@ -1,42 +1,42 @@
 {
-  "skill_name": "extract-design-soul-dashboard",
+  "skill_name": "design-soul-saas",
   "evals": [
     {
       "id": 1,
-      "prompt": "Extract the complete design system from the dashboard codebase at extract-design-soul-dashboard-workspace/test-codebase/. It's a Next.js app using Tailwind and shadcn/ui components. I need the full visual DNA — tokens, component specs, everything — so I can recreate this dashboard's look in a new project.",
+      "prompt": "Extract the complete design system from the dashboard codebase at design-soul-saas-workspace/test-codebase/. It's a Next.js app using Tailwind and shadcn/ui components. I need the full visual DNA — tokens, component specs, everything — so I can recreate this dashboard's look in a new project.",
       "expected_output": "Should produce .design-soul/system.md with complete token documentation (colors, spacing, radius, shadows, typography) and individual component specs for button, input, card, badge, table, and sidebar. Each component spec should have anatomy diagrams, variant tables, state documentation, and CSS recreation blocks. Foundation documents (spacing-scale, color-tokens, etc.) should be created with frequency data.",
       "files": [
-        "extract-design-soul-dashboard-workspace/test-codebase/src/styles/globals.css",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/button.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/input.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/card.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/badge.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/table.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/sidebar.tsx"
+        "design-soul-saas-workspace/test-codebase/src/styles/globals.css",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/button.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/input.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/card.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/badge.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/table.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/sidebar.tsx"
       ]
     },
     {
       "id": 2,
-      "prompt": "I'm building a new SaaS product and I want it to look exactly like the dashboard in extract-design-soul-dashboard-workspace/test-codebase/. Can you document the visual design so my team can recreate it? Focus on the button and card components — I need every variant, every state, every pixel value so we can copy the look precisely.",
+      "prompt": "I'm building a new SaaS product and I want it to look exactly like the dashboard in design-soul-saas-workspace/test-codebase/. Can you document the visual design so my team can recreate it? Focus on the button and card components — I need every variant, every state, every pixel value so we can copy the look precisely.",
       "expected_output": "Should produce focused component specs for button and card with complete variant documentation (all 6 button variants, all card sub-components), size tables with pixel values, state documentation (hover, focus, disabled), dark mode differences, and CSS recreation blocks. Should also extract the relevant color tokens and spacing values these components use.",
       "files": [
-        "extract-design-soul-dashboard-workspace/test-codebase/src/styles/globals.css",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/button.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/card.tsx"
+        "design-soul-saas-workspace/test-codebase/src/styles/globals.css",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/button.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/card.tsx"
       ]
     },
     {
       "id": 3,
-      "prompt": "I need to understand the design tokens and foundations of the dashboard at extract-design-soul-dashboard-workspace/test-codebase/. Don't worry about individual components — just give me the system-level stuff: color tokens (light and dark), spacing scale, radius scale, shadow/depth strategy, and typography. I want to set up my theme file to match.",
+      "prompt": "I need to understand the design tokens and foundations of the dashboard at design-soul-saas-workspace/test-codebase/. Don't worry about individual components — just give me the system-level stuff: color tokens (light and dark), spacing scale, radius scale, shadow/depth strategy, and typography. I want to set up my theme file to match.",
       "expected_output": "Should produce a comprehensive system.md with all color tokens (surface, interactive, control, border, semantic, chart, sidebar) with both light and dark values resolved. Spacing scale with frequency data. Radius scale derived from --radius variable. Shadow/depth strategy analysis. Typography information. Should NOT produce individual component specs since the user explicitly said foundations only.",
       "files": [
-        "extract-design-soul-dashboard-workspace/test-codebase/src/styles/globals.css",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/button.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/input.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/card.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/badge.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/table.tsx",
-        "extract-design-soul-dashboard-workspace/test-codebase/src/components/ui/sidebar.tsx"
+        "design-soul-saas-workspace/test-codebase/src/styles/globals.css",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/button.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/input.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/card.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/badge.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/table.tsx",
+        "design-soul-saas-workspace/test-codebase/src/components/ui/sidebar.tsx"
       ]
     }
   ]

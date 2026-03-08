@@ -1,6 +1,6 @@
 ---
 name: design-soul-saas
-description: "Extract the complete visual DNA from any SaaS dashboard, admin panel, or app codebase. Produces pixel-perfect documentation of every token, component, state, and animation — enough for someone to recreate the exact look-and-feel without copying source code. Use this skill whenever the user wants to extract, document, reverse-engineer, or capture the design system from an existing dashboard or SaaS application. Also use when someone says \"extract design\", \"capture the design\", \"document the UI\", \"design system extraction\", \"visual DNA\", \"design soul\", \"copy this design\", or \"how does this app look\". NOT for marketing sites or landing pages — this is for dashboards, admin panels, SaaS products, and internal tools only."
+description: "Use skill if you are documenting the visual system of a SaaS dashboard, admin panel, or internal tool."
 license: MIT
 metadata:
   author: yigitkonur

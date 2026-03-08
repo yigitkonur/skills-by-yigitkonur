@@ -2,213 +2,187 @@
 
 ## Table of Contents
 
-- [Session Architecture](#session-architecture)
-- [What Every Sub-Agent Brief Must Include](#what-every-sub-agent-brief-must-include)
-- [Verification Levels](#verification-levels)
-- [Multi-Agent Tab Coordination](#multi-agent-tab-coordination)
-- [Orchestrator Checklist](#orchestrator-checklist)
-- [Verification Patterns (Building Blocks for Briefs)](#verification-patterns-building-blocks-for-briefs)
+- [What this guide assumes](#what-this-guide-assumes)
+- [Bootstrap](#bootstrap)
+- [What every sub-agent brief should include](#what-every-sub-agent-brief-should-include)
+- [Verification depth](#verification-depth)
+- [Shared-session coordination](#shared-session-coordination)
+- [High-signal patterns](#high-signal-patterns)
 
-## Session Architecture
+## What this guide assumes
 
-One browser process, shared by all agents. The orchestrator bootstraps it. Sub-agents are tenants — they get tabs.
+This guide assumes you are using the installed `playwright-cli`, not generic Playwright examples.
+It is designed for shared-session work where one orchestrator coordinates multiple agents.
 
-### Bootstrap (orchestrator runs ONCE before dispatching any agent)
+Important corrections carried into this file:
+- default examples use `chrome`, not `chromium`;
+- named sessions use `--session=name`, not `-s=name`;
+- uploads are modal-driven, not ref-driven;
+- `tab-new <url>` is not trusted even though help advertises it.
+
+## Bootstrap
+
+Run once before dispatching browser work:
+
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
-PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true npx playwright install chromium
-playwright-cli session-stop 2>/dev/null    # kill stale sessions from previous runs
-playwright-cli config --browser=chromium
+playwright-cli install --browser=chrome
+playwright-cli session-stop 2>/dev/null
+playwright-cli config --browser=chrome --isolated
 ```
 
-### After ALL agents complete
+After all agents complete:
+
 ```bash
 playwright-cli session-stop-all
 ```
 
-### Why this architecture
-- 5 agents x 5 separate sessions = CPU death. 1 session x 5 tabs = negligible overhead.
-- Tabs share cookies and localStorage — same as real users.
-- If the session dies mid-run, re-run the bootstrap block above. Agents can resume.
+## What every sub-agent brief should include
 
-## What Every Sub-Agent Brief Must Include
+Paste or adapt this block for any agent that will touch the browser:
 
-Paste this block into any agent brief that touches the browser:
-
-> **PLAYWRIGHT OPERATING RULES — read fully before your first command:**
+> **PLAYWRIGHT OPERATING RULES**
 >
-> **Session lifecycle — you are a tab tenant, not the session owner:**
+> **You are a tab tenant, not the session owner.**
+> Use:
+> ```text
+> tab-new → open <url> → [your work] → tab-close <index>
 > ```
-> tab-new → open <url> → [your work] → tab-close <your-index>
+>
+> **Do not trust old refs.**
+> After any meaningful UI change, run `snapshot` before using refs again.
+>
+> **Do not trust `tab-new <url>`.**
+> Use `tab-new` then `open <url>`.
+>
+> **Use `eval` for truth checks.**
+> Especially for `window.location.href`, field values, checked state, and uploaded file names.
+> For stateful flows, do not rely on command headers or visual motion alone.
+>
+> **Uploads are modal-driven.**
+> Trigger the file chooser first, then run:
+> ```bash
+> upload /absolute/path/to/file
 > ```
-> Never create sessions. Never run `close` (kills entire shared session for all agents).
-> Only `tab-close <index>` to close YOUR tab when done.
 >
-> **The cardinal rule — refs die on ANY page change:**
-> After `click`, `open`, `hover`, `reload`, `go-back`, `tab-select`, or ANY navigation:
-> run `snapshot` to get fresh refs before interacting with elements.
-> Stale refs either error or silently target the wrong element. No warnings.
-> Pattern: `action → snapshot → use new refs`. Always.
->
-> **The observe-act loop — this is how you work:**
+> **If command output looks suspicious, re-check with:**
+> ```bash
+> snapshot
+> eval "() => window.location.href"
 > ```
-> snapshot                    → read structure, get element refs
-> screenshot --full-page --filename=step-N.png → read visual state
-> [decide based on what you observed]
-> [act: click/fill/navigate]
-> snapshot                    → observe new state (mandatory)
-> screenshot --filename=step-N+1.png           → confirm result
-> [repeat until task is verified]
-> ```
-> Use `snapshot` for interaction (refs). Use `screenshot` for visual judgment. Both, always.
 >
-> **Navigation traps:**
-> - `tab-new <url>` opens `about:blank`, NOT the URL. Always: `tab-new` then `open <url>`.
-> - Multi-tab "Page URL" header lies. Use `eval "() => window.location.href"` for truth.
-> - After `tab-close`, remaining tab indexes shift. Run `tab-list` to reorient.
->
-> **Form interaction:**
-> - Use `fill <ref> "text"` for setting values (replaces content, targets by ref).
-> - `type "text"` appends to focused element — only for keyboard-specific testing.
-> - Snapshots do NOT show form values. Verify with: `eval "(el) => el.value" <ref>`
-> - `fill <ref> "text" --submit` fills then presses Enter — shortcut for search/login.
->
-> **When things go wrong:**
-> - "modal state" error → a dialog is blocking. Run `dialog-accept` or `dialog-dismiss`.
-> - "ref not found" → refs are stale. Run `snapshot`, use new refs.
-> - Blank page → you forgot `open <url>` after `tab-new`.
-> - Unexpected behavior → `playwright-cli --help <command>` to verify syntax.
->
-> **Data extraction:**
-> - `console error` and `network` return FILE PATHS, not content. You must read the file.
-> - `eval "() => expression"` runs JS in page context. Returns primitives and plain objects.
-> - `eval "(el) => el.property" <ref>` runs JS against a specific element.
-> - Don't return DOM nodes from eval — return extracted data (.map, .textContent, etc).
-> - `run-code 'async (page) => { ... }'` for full Playwright API access. Single quotes outer, double inner.
->
-> **Scrolling:** Playwright auto-scrolls to elements before click/fill/hover.
-> Only scroll manually for: fold-by-fold inspection, lazy-load testing, infinite scroll, viewport screenshots.
+> **Console and network return artifact files.**
+> You must open the returned file path.
+> The returned file may also be empty, so inspect before claiming a clean or broken state.
 
-## Verification Levels
+## Verification depth
 
-Match verification depth to risk. Not every task needs the same scrutiny.
+### Level 1 — existence check
 
-### Level 1 — Existence check (low risk, minor change)
-```
-open <url> → snapshot → confirm element exists in tree → screenshot → done
-```
-Use for: copy changes, icon swaps, adding a static element.
-
-### Level 2 — Behavior check (medium risk, interactive change)
-```
-open <url> → snapshot → interact (click/fill) → snapshot again →
-confirm state changed correctly → screenshot before + after → done
-```
-Use for: form fixes, button behavior, toggle states, navigation changes.
-
-### Level 3 — Full visual matrix (high risk, layout/design change)
-```
-Desktop light  → screenshot
-Desktop dark   → screenshot
-Mobile light   → screenshot
-Mobile dark    → screenshot
-+ behavior checks at each viewport
-```
-Use for: new components, responsive redesigns, theme changes, anything visual.
-
-### Level 4 — Regression suite (critical path, multi-flow)
-```
-Full Level 3 matrix
-+ test all connected user flows (not just the changed one)
-+ console error check + network failure check
-+ before/after comparison screenshots
-```
-Use for: auth flows, checkout, onboarding, anything where breakage = lost users.
-
-When writing briefs, specify the level: "This is a Level 3 verification task" or embed the specific commands directly in the Definition of Done.
-
-## Multi-Agent Tab Coordination
-
-### Each agent's lifecycle
-```
-tab-new → open <url> → resize (if needed) → work → screenshot evidence → tab-close <index>
+```text
+open → snapshot → screenshot → confirm target exists
 ```
 
-### Orchestrator's job
-1. Bootstrap the session before Wave 1
-2. Tell each agent which sibling agents share the session
-3. Tell each agent their viewport/theme if doing a visual matrix
-4. After all agents in a wave complete: review their screenshots before next wave
-5. After all waves: `session-stop-all`
+Use for static copy or low-risk UI presence checks.
 
-### Parallel screenshot matrix (dispatch 4 agents simultaneously)
+### Level 2 — behavior check
 
-| Agent | Viewport | Theme | Filename Convention |
-|-------|----------|-------|---------------------|
-| A | `resize 1280 720` | light (default) | `*-desktop-light.png` |
-| B | `resize 1280 720` | dark (emulateMedia) | `*-desktop-dark.png` |
-| C | `resize 375 812` | light (default) | `*-mobile-light.png` |
-| D | `resize 375 812` | dark (emulateMedia) | `*-mobile-dark.png` |
+```text
+open → snapshot → interact → snapshot → verify with eval → screenshot
+```
 
-### If an agent's tab goes wrong
-- Lost track of tab: `tab-list` + `eval "() => window.location.href"`
-- Session died: orchestrator re-runs bootstrap, agent creates a new tab
-- Another agent's tab interfering: tabs are isolated. If it happens, it's a page-level side effect (shared cookies/localStorage)
+Use for form interactions, simple filters, and button behavior.
+For search/filter/sort work, prefer URL proof plus a screenshot rather than only one of them.
 
-## Orchestrator Checklist
+### Level 3 — visual matrix
 
-### Before dispatch
-- [ ] Playwright session bootstrapped
-- [ ] Dev server running and responding
-- [ ] Baseline screenshots captured (if doing before/after comparison)
-- [ ] Each agent's brief includes Playwright rules block
-- [ ] Each agent's DoD includes specific screenshot filenames to produce
-- [ ] Verification level selected per task (Level 1-4)
+```text
+desktop light
+desktop dark
+mobile light
+mobile dark
+```
 
-### During execution
-- [ ] Agents creating tabs (not sessions)
-- [ ] Agents naming screenshots descriptively
-- [ ] Agents reading their own screenshots and reporting observations
+Use for design or layout changes.
 
-### After completion
-- [ ] All agent screenshots reviewed by orchestrator
-- [ ] Console errors checked on final state
-- [ ] Network failures checked on final state
-- [ ] Mobile + desktop verified
-- [ ] Dark mode verified (if applicable)
-- [ ] `session-stop-all` executed
+### Level 4 — regression flow
 
-## Verification Patterns (Building Blocks for Briefs)
+```text
+Level 3 matrix
++ connected user flow checks
++ console/network artifacts
++ before/after screenshots
+```
 
-### Page health check (run after every open)
+Use for high-risk or business-critical paths.
+
+## Shared-session coordination
+
+### Session model
+
+One browser session, many tabs.
+This is usually cheaper and closer to real user state than spinning up many isolated browsers.
+
+### Tab model
+
+Each agent should:
+
+```text
+tab-new
+open <url>
+snapshot
+[work]
+tab-close <index>
+```
+
+### Safety rules
+
+- prefer explicit `tab-close <index>`;
+- re-run `tab-list` if multiple agents are opening/closing tabs;
+- re-run `snapshot` after `tab-select`;
+- use `eval "() => window.location.href"` when tab metadata is ambiguous.
+
+## High-signal patterns
+
+### Page health check
+
 ```bash
 open <url>
-console error              # get file path → read it → check for JS errors
-network                    # get file path → read it → check for 4xx/5xx
+snapshot
+screenshot --filename=initial.png
+console error
+network
 ```
 
-### Visual baseline capture
+### Search / filter flow
+
 ```bash
-screenshot --full-page --filename=<context>-<viewport>-<theme>.png
-# Agent reads the screenshot and states what they observe.
-# This is evidence. Name it well.
+open "https://www.amazon.com/s?k=fidget+spinner"
+snapshot
+screenshot --filename=search-before.png
+# inspect sort/filter refs or option values
+click <filter-ref>
+snapshot
+eval "() => window.location.href"
+screenshot --filename=search-after.png
 ```
 
-### Soft 404 detection (SPAs return 200 for everything)
+### Upload flow
+
 ```bash
-eval "() => document.title"
-eval "() => document.querySelector('h1')?.textContent"
+snapshot
+click <upload-trigger-ref>
+upload /absolute/path/to/file
+eval "() => [...document.querySelector('input[type=file]').files].map(f => f.name)"
 ```
 
-### Before/after comparison (regression detection)
+### Async or complex edge case
+
 ```bash
-# BEFORE changes (orchestrator or dedicated agent captures these):
-screenshot --full-page --filename=BEFORE-desktop.png
-screenshot --full-page --filename=BEFORE-mobile.png
-
-# AFTER changes (implementation agent captures these):
-screenshot --full-page --filename=AFTER-desktop.png
-screenshot --full-page --filename=AFTER-mobile.png
-
-# Agent reads both pairs and reports differences.
+run-code 'async (page) => {
+  await page.waitForSelector("[data-ready=true]")
+  return "ready"
+}'
+snapshot
+screenshot --filename=after-wait.png
 ```

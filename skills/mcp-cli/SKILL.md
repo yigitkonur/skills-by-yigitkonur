@@ -1,6 +1,6 @@
 ---
 name: mcp-cli
-description: Comprehensive MCP server verification and debugging with mcp-cli. Use when Codex needs to configure MCP servers, inspect tool schemas, run end-to-end tool calls, validate failure behavior, troubleshoot connection/auth/filtering issues, or prove server changes with direct CLI commands (without writing helper scripts).
+description: Use skill if you need direct MCP CLI commands to inspect servers, call tools, or debug transport, auth, and argument issues.
 ---
 
 # MCP CLI Testing Playbook
@@ -25,17 +25,8 @@ Use this progressive order to keep context tight:
    - `references/configuration-and-arguments.md`
    - `references/output-debugging-and-chaining.md`
    - `references/errors-and-recovery.md`
-3. **Project docs** for deeper product behavior:
-   - `../docs/getting-started.md`
-   - `../docs/configuration.md`
-   - `../docs/commands.md`
-   - `../docs/testing-guide.md`
-   - `../docs/troubleshooting.md`
-   - `../docs/advanced-usage.md`
-   - `../docs/internals.md`
-4. **README files** for user-facing framing and examples:
-   - `README.md` (repo CLI guide)
-   - `../README.md` (workspace docs index)
+3. **Read only the relevant packaged references** instead of looking for external repo docs.
+4. Return to this file only when you need the overall workflow again.
 
 ## Repository-specific execution mode
 

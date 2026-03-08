@@ -1,790 +1,518 @@
 # Command Reference
 
-Complete syntax documentation for every `playwright-cli` command. All commands are invoked as `playwright-cli <command> [args] [options]`.
+Validated against the installed `playwright-cli` CLI used during this audit. This file intentionally distinguishes between:
 
-Refs (e.g. `e5`, `e12`) are ephemeral element identifiers returned by `snapshot`. They are invalidated by any page-changing action (`open`, `click` that navigates, `reload`, `go-back`, `go-forward`, `tab-select`). Always run `snapshot` after any such action before using refs.
+- what the built-in help documents,
+- what live command behavior confirmed,
+- and where the runtime is inconsistent enough that you should prefer a safer workflow.
+
+All commands are invoked as `playwright-cli <command> [args] [options]`.
+
+Refs like `e5` are ephemeral element identifiers returned by `snapshot`. Treat them as disposable and recapture a fresh snapshot after meaningful page changes.
+Use `eval` for browser truth when URL, values, or selected state matter more than the surrounding command header.
 
 ---
 
 ## Table of Contents
 
-- [Navigation Commands](#navigation-commands) -- open, go-back, go-forward, reload
-- [Interaction Commands](#interaction-commands) -- click, fill, type, select, check, uncheck, hover, dblclick, drag, upload, press
-- [Observation Commands](#observation-commands) -- snapshot, screenshot, pdf
-- [JavaScript Evaluation](#javascript-evaluation) -- eval, run-code
-- [Tab Management](#tab-management) -- tab-new, tab-list, tab-select, tab-close
-- [Session Management](#session-management) -- session-stop, session-stop-all, session-list, session-delete, session-restart, close, config
-- [DevTools / Debugging](#devtools--debugging) -- console, network
-- [Keyboard / Mouse (low-level)](#keyboard--mouse-low-level) -- keydown, keyup, mousedown, mouseup, mousemove, mousewheel
-- [Dialog Handling](#dialog-handling) -- dialog-accept, dialog-dismiss
-- [Recording](#recording) -- video-start, video-stop, tracing-start, tracing-stop
-- [Viewport](#viewport) -- resize
+- [Navigation](#navigation)
+- [Interaction](#interaction)
+- [Observation](#observation)
+- [JavaScript and Playwright API](#javascript-and-playwright-api)
+- [Tabs](#tabs)
+- [Sessions and configuration](#sessions-and-configuration)
+- [DevTools and recording](#devtools-and-recording)
+- [Keyboard and mouse](#keyboard-and-mouse)
+- [Behavior notes](#behavior-notes)
 
 ---
 
-## Navigation Commands
+## Navigation
 
 ### open
 
+```text
+open [url]
 ```
-open <url>
-```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `url` | Yes | Full URL to navigate to (include protocol) |
+Documented help: opens the provided URL.
 
-Navigates the current tab to the given URL. Waits for the page to reach a loaded state. Returns a snapshot of the new page.
-
-**All existing refs are invalidated.** You must use refs from the returned snapshot or call `snapshot` again.
-
----
+Observed behavior: navigates successfully and usually prints page metadata plus a snapshot.
 
 ### go-back
 
-```
+```text
 go-back
 ```
 
-No arguments. Navigates back one step in the browser history (equivalent to the browser back button). Returns a snapshot.
-
-**Invalidates all refs.**
-
----
+Navigates browser history backward.
 
 ### go-forward
 
-```
+```text
 go-forward
 ```
 
-No arguments. Navigates forward one step in the browser history. Returns a snapshot.
-
-**Invalidates all refs.**
-
----
+Navigates browser history forward.
 
 ### reload
 
-```
+```text
 reload
 ```
 
-No arguments. Reloads the current page. Returns a snapshot.
+Reloads the current page.
 
-**Invalidates all refs.**
+**Practical rule:** after any navigation command, run `snapshot` before using refs again.
 
 ---
 
-## Interaction Commands
+## Interaction
 
 ### click
 
-```
+```text
 click <ref> [button] [--modifiers <keys>]
 ```
 
-| Argument / Option | Required | Description |
-|-------------------|----------|-------------|
-| `ref` | Yes | Element ref from snapshot (e.g. `e5`) |
-| `button` | No | `left` (default), `right`, or `middle` |
-| `--modifiers` | No | Comma-separated modifier keys: `Shift`, `Control`, `Meta`, `Alt` |
+Arguments:
+- `ref`: exact target element reference from the page snapshot
+- `button`: optional mouse button, defaults to left
 
-Clicks the specified element. Returns a snapshot after the click.
-
-**Gotcha:** If the click triggers navigation, all refs are invalidated. Always snapshot after click.
-
----
+Observed behavior: may print page metadata and a snapshot when the page state changes.
 
 ### fill
 
+```text
+fill <ref> <text> [--submit]
 ```
-fill <ref> "text" [--submit]
+
+Arguments:
+- `ref`: exact target element reference from the page snapshot
+- `text`: text to insert
+
+Observed behavior: fills correctly, but does **not** reliably print a fresh snapshot by itself in the installed CLI.
+
+Use:
+
+```bash
+fill <ref> "value"
+eval "(el) => el.value" <ref>
 ```
-
-| Argument / Option | Required | Description |
-|-------------------|----------|-------------|
-| `ref` | Yes | Element ref of an input, textarea, or contenteditable |
-| `text` | Yes | Text to fill (replaces all existing content) |
-| `--submit` | No | If present, presses Enter after filling |
-
-Clears the field completely, then types the given text. This **replaces** existing content -- it does not append.
-
-**Gotcha:** Snapshots show the HTML tree, not live input values. To verify fill worked, use `eval "(el) => el.value" <ref>`.
-
----
 
 ### type
 
+```text
+type <text> [--submit]
 ```
-type "text"
-```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `text` | Yes | Text to type |
+Targets the currently focused editable element.
 
-Types text into whatever element currently has focus. Does **not** accept a ref -- it always targets the focused element. **Appends** to existing content (does not clear first).
-
-**Gotcha:** `fill` and `type` are not interchangeable. Use `fill` for 95% of cases. Use `type` only when you need append behavior or are testing keyboard input specifically.
-
----
+Use this only when focus-driven typing is intentional. For most form work, prefer `fill`.
 
 ### select
 
+```text
+select <ref> <value>
 ```
-select <ref> "value"
+
+Observed behavior: selected the option successfully and printed a fresh snapshot in testing.
+
+The value is the option's `value`, not its visible label.
+Inspect first, then select by the concrete value you observed.
+
+Example:
+
+```bash
+eval "(el) => [...el.options].map(o => ({ value: o.value, text: o.textContent.trim() }))" <ref>
+select <ref> "review-rank"
 ```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `ref` | Yes | Element ref of a `<select>` element |
-| `value` | Yes | The `value` attribute of the `<option>` to select |
-
-Selects a dropdown option by its value. Returns a snapshot.
-
-**Gotcha:** The `value` is the option's `value` attribute, not its visible text. Use `eval` or `snapshot` to inspect available option values if unsure.
-
----
 
 ### check
 
-```
+```text
 check <ref>
 ```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `ref` | Yes | Element ref of a checkbox or radio button |
+Documented help: checks a checkbox or radio button.
 
-Checks the element. No-op if already checked. Returns a snapshot.
-
----
+Observed behavior: worked for both checkbox and radio inputs.
 
 ### uncheck
 
-```
+```text
 uncheck <ref>
 ```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `ref` | Yes | Element ref of a checkbox |
+Documented help: unchecks a checkbox or radio button.
 
-Unchecks the element. No-op if already unchecked. Returns a snapshot.
-
----
+Use carefully on radios: browser semantics may make radio unchecking less meaningful than checkbox unchecking, so always verify with `eval`.
 
 ### hover
 
-```
+```text
 hover <ref>
 ```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `ref` | Yes | Element ref to hover over |
-
-Moves the mouse over the element, triggering hover states, tooltips, and dropdown menus. Returns a snapshot.
-
-**Gotcha:** Hover can change the DOM (e.g., revealing menus), which may invalidate refs. Snapshot after hover.
-
----
+Hover the element.
 
 ### dblclick
 
+```text
+dblclick <ref> [button] [--modifiers <keys>]
 ```
-dblclick <ref>
-```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `ref` | Yes | Element ref to double-click |
-
-Double-clicks the element. Returns a snapshot.
-
----
+Double-click the element.
 
 ### drag
 
+```text
+drag <startRef> <endRef>
 ```
-drag <source-ref> <target-ref>
-```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `source-ref` | Yes | Element ref to drag from |
-| `target-ref` | Yes | Element ref to drop onto |
-
-Drags the source element and drops it on the target. Returns a snapshot.
-
----
+Perform drag and drop.
 
 ### upload
 
-```
-upload <ref> <file-path> [<file-path> ...]
+```text
+upload <file> [<file> ...]
 ```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `ref` | Yes | Element ref of a file input (`<input type="file">`) |
-| `file-path` | Yes | Absolute path(s) to file(s) to upload |
+This is one of the most important corrections in the repo.
 
-Sets the file(s) on a file input element. Multiple paths can be provided for multi-file inputs.
+**Documented help:** `upload <file>` uploads one or more files.
+
+**Observed runtime behavior:**
+- `upload` only works when a file chooser modal state is active;
+- it is **not** `upload <ref> ...` on the installed CLI;
+- files outside allowed roots are rejected.
+
+Safe workflow:
+
+```bash
+click <upload-trigger-ref>
+upload /absolute/path/to/file
+eval "() => [...document.querySelector('input[type=file]').files].map(f => f.name)"
+```
+
+If no file chooser modal is active, `upload` fails.
+If the file path is outside an allowed root, `upload` fails.
 
 ---
 
-### press
-
-```
-press <key>
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `key` | Yes | Key or key combination to press |
-
-Presses a single key or key combination. Supported key names include: `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `PageUp`, `PageDown`, `Space`, `F1`-`F12`, and any single character.
-
-Key combinations use `+` as separator: `Control+a`, `Shift+Enter`, `Meta+c`, `Alt+Tab`, `Control+Shift+k`.
-
-**Gotcha:** Key names are case-sensitive. `Enter` works, `enter` may not.
-
----
-
-## Observation Commands
+## Observation
 
 ### snapshot
 
+```text
+snapshot [--filename <path>]
 ```
-snapshot [--filename=<path>]
-```
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--filename` | No | Save snapshot to a YAML file (e.g. `--filename=snap.yaml`) |
+Use this to obtain the current accessibility-tree view and fresh refs.
 
-Returns the accessibility tree of the current page as YAML. Each interactive element is labeled with a ref (e.g. `e5`). These refs are used by all interaction commands.
-
-Without `--filename`, the snapshot is printed to stdout. With `--filename`, it is saved to disk.
-
-**Gotcha:** Snapshot reflects the DOM tree, not necessarily the current visual state of form inputs. Use `eval "(el) => el.value" <ref>` to read live input values.
-
----
+Observed behavior:
+- plain `snapshot` prints the current tree;
+- `snapshot --filename=...` writes a markdown-style outline file, not YAML despite older repo wording.
 
 ### screenshot
 
+```text
+screenshot [ref] [--full-page] [--filename <path>]
 ```
-screenshot [ref] [--full-page] [--filename=<path>]
-```
 
-| Argument / Option | Required | Description |
-|-------------------|----------|-------------|
-| `ref` | No | Element ref to screenshot (screenshots only that element) |
-| `--full-page` | No | Capture the entire scrollable page, not just the viewport |
-| `--filename` | No | Save to specified path (e.g. `--filename=step-1.png`) |
-
-Takes a screenshot. Without `ref`, captures the viewport (or full page with `--full-page`). With `ref`, captures only that element.
-
-Returns the file path of the saved screenshot.
-
----
+Without `ref`, captures the viewport unless `--full-page` is provided.
+With `ref`, captures the target element.
 
 ### pdf
 
-```
-pdf [--filename=<path>]
+```text
+pdf [--filename <path>]
 ```
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--filename` | No | Output path (e.g. `--filename=page.pdf`) |
-
-Saves the current page as a PDF. Chromium only.
+Save the current page as PDF.
 
 ---
 
-## JavaScript Evaluation
+## JavaScript and Playwright API
 
 ### eval
 
-```
-eval "<function>" [ref]
-```
-
-Two forms:
-
-**Page context (no ref):**
-
-```
-eval "() => <expression>"
+```text
+eval <func> [ref]
 ```
 
-The function runs in the page's global scope. Has access to `window`, `document`, and all page globals.
-
-**Element context (with ref):**
-
-```
-eval "(el) => <expression>" <ref>
-```
-
-The function receives the DOM element corresponding to `ref` as its first argument.
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `function` | Yes | JavaScript arrow function as a string |
-| `ref` | No | Element ref -- if provided, the element is passed as the first argument |
-
-**Return value:** Must be JSON-serializable. Do not return DOM nodes -- extract the data you need (text, attributes, dimensions) and return that.
-
-**Gotcha:** The function string uses double quotes on the outside. Use single quotes for strings inside, or escaped doubles.
-
-Examples:
+Two main forms:
 
 ```bash
 eval "() => document.title"
-eval "() => window.location.href"
-eval "(el) => el.value" e5
-eval "(el) => getComputedStyle(el).color" e12
-eval "() => [...document.querySelectorAll('a')].map(a => a.href)"
+eval "(el) => el.value" <ref>
 ```
 
----
+Rules:
+- return primitives or plain JSON-serializable objects;
+- do not return DOM nodes;
+- use this for truth checks like URL, value, checked state, style, or option values.
 
 ### run-code
 
+```text
+run-code <code>
 ```
-run-code '<async-function>'
-```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `async-function` | Yes | Async function receiving a Playwright `page` object |
+Help describes the argument as a JavaScript function that receives `page`.
 
-Executes arbitrary Playwright API code against the current page. The function receives the Playwright `Page` instance and has full access to the Playwright API.
-
-**Quoting rule:** Use single quotes for the outer wrapper, double quotes inside the function body.
+Reliable pattern:
 
 ```bash
-run-code 'async (page) => { await page.waitForSelector(".loaded"); return "done"; }'
-run-code 'async (page) => { await page.emulateMedia({ colorScheme: "dark" }); }'
-run-code 'async (page) => { return await page.evaluate(() => performance.now()); }'
+run-code 'async (page) => {
+  await page.waitForSelector(".loaded")
+  return "done"
+}'
 ```
 
-**Gotcha:** Incorrect quoting is the most common cause of `run-code` failures. Always: single outer, double inner. Never the reverse.
+Use single quotes outside and double quotes inside.
+
+After `run-code`, assume refs may be stale and run `snapshot`.
 
 ---
 
-## Tab Management
+## Tabs
+
+### tab-list
+
+```text
+tab-list
+```
+
+Lists tabs with indexes.
 
 ### tab-new
 
-```
-tab-new
+```text
+tab-new [url]
 ```
 
-No arguments. Opens a new tab navigated to `about:blank`.
+**Important mismatch:** help advertises an optional URL argument, but live testing still opened `about:blank` when a URL was supplied inline.
 
-**Gotcha:** `tab-new` does NOT accept a URL argument. It always opens `about:blank`. To open a URL in a new tab, use two commands:
+Safe pattern:
 
 ```bash
 tab-new
 open https://example.com
+snapshot
 ```
-
----
-
-### tab-list
-
-```
-tab-list
-```
-
-No arguments. Lists all open tabs with their index and URL.
-
----
 
 ### tab-select
 
-```
+```text
 tab-select <index>
 ```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `index` | Yes | Zero-based tab index |
+Select the tab, then explicitly refresh your working context:
 
-Switches the active tab. Returns a snapshot of the selected tab.
-
-**Invalidates all refs** (you are now on a different page context).
-
----
+```bash
+tab-select 0
+snapshot
+eval "() => window.location.href"
+```
 
 ### tab-close
 
+```text
+tab-close [index]
 ```
-tab-close <index>
-```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `index` | Yes | Zero-based tab index to close |
+Help allows the index to be omitted for the current tab.
 
-Closes the specified tab.
-
-**Gotcha:** After closing a tab, all remaining tab indexes shift. Run `tab-list` immediately after to get correct indexes before selecting another tab.
+In shared or multi-step work, prefer explicit indexes and then re-run `tab-list`.
 
 ---
 
-## Session Management
+## Sessions and configuration
 
-### session-stop
+### install
 
-```
-session-stop
-```
-
-No arguments. Stops the current browser session (closes the browser).
-
----
-
-### session-stop-all
-
-```
-session-stop-all
+```text
+install [--browser <browser>]
 ```
 
-No arguments. Stops all running browser sessions. Use for cleanup at the end of all browser work.
-
----
-
-### session-list
-
-```
-session-list
-```
-
-No arguments. Lists all active sessions.
-
----
-
-### session-delete
-
-```
-session-delete
-```
-
-No arguments. Deletes the current session data.
-
----
-
-### session-restart
-
-```
-session-restart
-```
-
-No arguments. Stops and restarts the current session. Useful when the browser gets into a bad state.
-
----
-
-### close
-
-```
-close
-```
-
-No arguments. Closes the entire browser instance and terminates the session.
-
-**Gotcha:** This kills the browser for ALL agents sharing the session. Sub-agents should never use `close` -- use `tab-close <index>` to close only your tab.
-
----
+Observed help values: `chrome`, `firefox`, `webkit`, `msedge`.
 
 ### config
 
-```
-config [--browser=<browser>]
+```text
+config [--browser <browser>] [--config <path>] [--isolated] [--headed]
 ```
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--browser` | No | Browser engine: `chromium` (default), `firefox`, `webkit`, `msedge` |
+Observed supported browser values:
+- `chrome`
+- `firefox`
+- `webkit`
+- `msedge`
 
-Sets configuration options for the session. Currently the primary option is browser selection. Run before opening any pages.
+The repo's older `chromium` examples were stale for the installed CLI.
+
+### session-list
+
+```text
+session-list
+```
+
+List active sessions.
+
+### session-stop
+
+```text
+session-stop [name]
+```
+
+Stop current or named session.
+
+### session-restart
+
+```text
+session-restart [name]
+```
+
+Restart current or named session.
+
+### session-stop-all
+
+```text
+session-stop-all
+```
+
+Stop all sessions.
+
+### session-delete
+
+```text
+session-delete [name]
+```
+
+Delete session data for current or named session.
+
+### Named session invocation
+
+Use:
 
 ```bash
-playwright-cli config --browser=chromium
-playwright-cli config --browser=firefox
-playwright-cli config --browser=webkit
-playwright-cli config --browser=msedge
+playwright-cli --session=my-session open https://example.com
 ```
+
+Do **not** copy old `-s=my-session` examples from outdated docs.
 
 ---
 
-## DevTools / Debugging
+## DevTools and recording
 
 ### console
 
-```
-console [type] [--clear]
-```
-
-| Argument / Option | Required | Description |
-|-------------------|----------|-------------|
-| `type` | No | Filter by log type: `log`, `error`, `warning`, `info`, `debug` |
-| `--clear` | No | Clear the console log buffer |
-
-Without `--clear`, returns a **file path** to a log file containing the captured console messages. You must read that file to see the actual content.
-
-```bash
-console              # all console messages -> file path
-console error        # only errors -> file path
-console --clear      # clear the buffer, no output
+```text
+console [min-level] [--clear]
 ```
 
-**Gotcha:** This command returns a FILE PATH, not the log content itself. You must read the file at the returned path to see the actual console output.
+Returns a path to a console artifact file.
+The file may contain entries or may be empty, so inspect the returned file before drawing conclusions.
 
----
+Typical levels seen in help usage: `info`, `warning`, `error` semantics.
 
 ### network
 
-```
+```text
 network [--static] [--clear]
 ```
 
-| Option | Required | Description |
-|--------|----------|-------------|
-| `--static` | No | Include static assets (images, CSS, fonts) which are excluded by default |
-| `--clear` | No | Clear the network log buffer |
+Returns a path to a network artifact file.
+The file may contain entries or may be empty.
+Use `--static` when you also care about successful asset requests.
 
-Without `--clear`, returns a **file path** to a log file containing captured network requests/responses with status codes.
+### tracing-start / tracing-stop
 
-```bash
-network              # API/document requests -> file path
-network --static     # include static assets -> file path
-network --clear      # clear the buffer
-```
-
-**Gotcha:** Like `console`, this returns a FILE PATH, not the network data. Read the file to see requests, status codes, and responses.
-
----
-
-## Keyboard / Mouse (low-level)
-
-These are low-level input primitives. For most tasks, prefer `click`, `fill`, `type`, and `press` instead.
-
-### keydown
-
-```
-keydown <key>
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `key` | Yes | Key name to press down (e.g. `Shift`, `Control`, `Alt`, `Meta`) |
-
-Dispatches a keydown event. The key remains "held" until `keyup` is called.
-
----
-
-### keyup
-
-```
-keyup <key>
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `key` | Yes | Key name to release |
-
-Dispatches a keyup event, releasing a previously held key.
-
----
-
-### mousedown
-
-```
-mousedown <x> <y> [button]
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `x` | Yes | X coordinate (pixels from left) |
-| `y` | Yes | Y coordinate (pixels from top) |
-| `button` | No | `left` (default), `right`, or `middle` |
-
-Dispatches a mousedown event at the given coordinates.
-
----
-
-### mouseup
-
-```
-mouseup <x> <y> [button]
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `x` | Yes | X coordinate |
-| `y` | Yes | Y coordinate |
-| `button` | No | `left` (default), `right`, or `middle` |
-
-Dispatches a mouseup event at the given coordinates.
-
----
-
-### mousemove
-
-```
-mousemove <x> <y>
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `x` | Yes | X coordinate to move to |
-| `y` | Yes | Y coordinate to move to |
-
-Moves the mouse cursor to the given coordinates without clicking.
-
----
-
-### mousewheel
-
-```
-mousewheel <deltaX> <deltaY>
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `deltaX` | Yes | Horizontal scroll amount in pixels (positive = scroll right) |
-| `deltaY` | Yes | Vertical scroll amount in pixels (positive = scroll down) |
-
-Dispatches a mouse wheel event.
-
-```bash
-mousewheel 0 500      # scroll down 500px
-mousewheel 0 -300     # scroll up 300px
-mousewheel 200 0      # scroll right 200px
-```
-
-**Gotcha:** Positive `deltaY` scrolls **down**, negative scrolls **up**. This matches the browser's native wheel event convention.
-
----
-
-## Dialog Handling
-
-### dialog-accept
-
-```
-dialog-accept [text]
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `text` | No | Text to enter into a `prompt()` dialog before accepting |
-
-Accepts the currently open dialog (alert, confirm, or prompt). If `text` is provided and the dialog is a prompt, the text is entered before accepting.
-
-```bash
-dialog-accept                  # accept alert or confirm
-dialog-accept "my input"       # enter text + accept prompt
-```
-
-**Gotcha:** A pending dialog blocks all other commands. If you get "modal state" errors, a dialog needs to be handled first.
-
----
-
-### dialog-dismiss
-
-```
-dialog-dismiss
-```
-
-No arguments. Dismisses (cancels) the currently open dialog.
-
----
-
-## Recording
-
-### video-start
-
-```
-video-start
-```
-
-No arguments. Starts recording the browser session as a video.
-
----
-
-### video-stop
-
-```
-video-stop
-```
-
-No arguments. Stops recording and saves the video file. Returns the path to the saved video.
-
----
-
-### tracing-start
-
-```
+```text
 tracing-start
-```
-
-No arguments. Starts collecting a Playwright trace (includes screenshots, DOM snapshots, and network activity at each step).
-
----
-
-### tracing-stop
-
-```
 tracing-stop
 ```
 
-No arguments. Stops tracing and saves the trace file. The trace can be viewed with `npx playwright show-trace <file>`.
+Trace recording lifecycle.
+
+### video-start / video-stop
+
+```text
+video-start
+video-stop
+```
+
+Video recording lifecycle.
 
 ---
 
-## Viewport
+## Keyboard and mouse
 
-### resize
+### press
 
+```text
+press <key>
 ```
-resize <width> <height>
+
+Press a key or character.
+
+### keydown / keyup
+
+```text
+keydown <key>
+keyup <key>
 ```
 
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `width` | Yes | Viewport width in pixels |
-| `height` | Yes | Viewport height in pixels |
+Low-level key state control.
 
-Resizes the browser viewport. Useful for responsive testing.
+### mousemove
+
+```text
+mousemove <x> <y>
+```
+
+Move pointer to coordinates.
+
+### mousedown / mouseup
+
+```text
+mousedown [button]
+mouseup [button]
+```
+
+**Correction:** older repo docs described coordinate-based forms for these. The installed help only accepts an optional button argument.
+
+### mousewheel
+
+```text
+mousewheel <dx> <dy>
+```
+
+Scroll mouse wheel.
+
+**Correction:** installed help labels `<dx>` and `<dy>` in a confusing way. Treat the command as a wheel delta pair and test the direction you care about when precision matters.
+
+---
+
+## Behavior notes
+
+### Prefer explicit snapshots over optimistic assumptions
+Not every command reliably prints a fresh snapshot. The safest documentation pattern is:
 
 ```bash
-resize 1280 720      # desktop
-resize 768 1024      # tablet portrait
-resize 375 812       # iPhone X
-resize 1920 1080     # full HD
+[action]
+snapshot
 ```
 
----
+### Prefer `eval` for truth checks
+Use `eval` to verify:
+- current URL
+- input values
+- checked state
+- selected option values
+- uploaded file names
 
-## Quick Comparison: fill vs type
-
-| | `fill` | `type` |
-|---|--------|--------|
-| **Targets** | Specific element by ref | Currently focused element (no ref) |
-| **Behavior** | Clears field, then sets value | Appends to existing content |
-| **Syntax** | `fill <ref> "text"` | `type "text"` |
-| **Use when** | Setting form fields (95% of cases) | Testing raw keyboard input |
-
-## Quick Comparison: eval vs run-code
-
-| | `eval` | `run-code` |
-|---|--------|------------|
-| **Context** | Page JS context (`window`, `document`) | Playwright `Page` API |
-| **Quoting** | Double quotes outer | Single quotes outer, double inner |
-| **Async** | Synchronous expressions only | Full async/await support |
-| **Use when** | Reading DOM state, extracting data | Waiting for conditions, using Playwright API |
+### Prefer artifact paths returned by the CLI
+Do not assume where `.playwright-cli/...` files will land based only on your repo layout. Use the returned path, then inspect that file.
+Do not overclaim from artifact existence alone: the file may be empty or noisy.

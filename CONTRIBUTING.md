@@ -1,5 +1,9 @@
 # Contributing a New Skill
 
+## Source of truth
+
+Before naming or documenting a skill, read **[NAMING.md](NAMING.md)**. Directory names, `SKILL.md` frontmatter `name`, README labels, and cross-skill references must all use the same canonical name.
+
 ## Skill Structure
 
 Every skill lives in `skills/<skill-name>/` and follows this layout:
@@ -7,11 +11,11 @@ Every skill lives in `skills/<skill-name>/` and follows this layout:
 ```
 skills/my-skill/
 ├── SKILL.md                    # Required — the skill definition
-├── evals/
-│   └── evals.json              # Optional — evaluation test cases
 └── references/
     ├── topic-one.md            # Optional — deep-dive reference docs
-    └── topic-two.md
+    ├── topic-two.md
+    └── nested-domain/          # Optional — nested grouping for large skills
+        └── detail.md
 ```
 
 ### SKILL.md
@@ -21,10 +25,7 @@ The only required file. It has two parts: YAML frontmatter and markdown body.
 ```markdown
 ---
 name: my-skill
-description: >
-  One paragraph that tells the AI agent WHEN to activate this skill.
-  Be specific about trigger phrases, file patterns, and user intents.
-  This is what the skills registry uses to match user requests to your skill.
+description: Use skill if the user needs a specific workflow this skill owns.
 ---
 
 # My Skill
@@ -33,70 +34,59 @@ The body is the actual instruction set the agent follows.
 ```
 
 **Frontmatter rules:**
-- `name` must match the directory name
-- `description` is the trigger — write it like a search query, not a summary. Include the exact phrases a user would say ("set up code review", "debug Tauri app", "convert HTML to Next.js")
+- `name` must exactly match the directory name
+- `description` must start with `Use skill if`
+- `description` must be 30 words or fewer
+- `description` is the trigger — write when to load the skill, not a body summary
+- Include concrete phrases, tools, file patterns, or workflows when they help routing
+- Keep it specific enough to avoid collisions with neighboring skills
 
 **Body rules:**
-- Write for an AI agent, not a human reader. Be directive: "Do X", "Check Y", "Never Z"
-- Structure as a workflow with numbered phases
+- Write for an AI agent, not a human reader
+- Be directive: "Do X", "Check Y", "Never Z"
+- Structure as a workflow or routing guide
 - Reference files in `references/` by relative path when the agent needs deeper context
-- Keep under 500 lines — if longer, move content to reference docs
+- Prefer keeping `SKILL.md` focused and moving deep detail into references when the file becomes hard to scan
 
 ### references/
 
-Deep-dive documents the SKILL.md can point agents to. Every file in `references/` **must** be referenced by SKILL.md — unreferenced files are dead weight and will be removed in cleanup.
+Deep-dive documents the `SKILL.md` can point agents to. Every file in `references/` **must** be referenced by `SKILL.md` — unreferenced files are dead weight and should be removed or linked properly.
 
 Good reference docs:
 - Config specs with parameter tables
 - Scenario templates with complete examples
 - Anti-patterns and troubleshooting chains
 - Architecture guides with diagrams
+- Task-specific routing guides
 
-**Naming:** Use kebab-case, descriptive names. `config-spec.md` not `ref1.md`.
-
-### evals/evals.json
-
-Test cases for the skills.sh evaluation system. Format:
-
-```json
-{
-  "skill_name": "my-skill",
-  "evals": [
-    {
-      "id": 1,
-      "prompt": "The exact user message that should trigger this skill",
-      "expected_output": "What a correct response must include — be specific and measurable",
-      "files": []
-    }
-  ]
-}
-```
-
-Each eval should test a different scenario or edge case. Include 5–10 evals for good coverage.
-
----
+**Naming:** Use descriptive `kebab-case`. For large skills, nested folders inside `references/` are valid when they improve discoverability.
 
 ## Adding a Skill — Step by Step
 
-1. **Create the directory:**
+1. **Create the directory** with the canonical name from `NAMING.md`.
    ```bash
    mkdir -p skills/my-skill/references
    ```
 
-2. **Write SKILL.md** — start with the frontmatter trigger description, then the workflow phases
+2. **Write `SKILL.md`** — start with a frontmatter trigger description that begins with `Use skill if`, stays within 30 words, and clearly tells the agent when to load the skill.
 
-3. **Add reference docs** if the skill needs them — make sure every file is referenced in SKILL.md
+3. **Add reference docs** if the skill needs them — make sure every file is explicitly referenced in `SKILL.md`.
 
-4. **Add evals** if you want automated quality testing on skills.sh
+4. **Test locally**:
+   - install the single skill:
+     ```bash
+     npx skills add ./skills/my-skill
+     ```
+   - optionally test the whole repo install behavior:
+     ```bash
+     npx skills add .
+     ```
 
-5. **Test locally** — install the skill in a project and verify it triggers correctly:
-   ```bash
-   npx skills add ./skills/my-skill
-   ```
+5. **Check trigger collisions** — if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
 
-6. **Update README.md** — add your skill to the appropriate category table with a one-sentence description
+6. **Update `README.md`** — add the skill to the appropriate category table with a one-sentence description.
 
-7. **Open a PR**
+7. **Open a PR**.
 
 ---
 
@@ -104,23 +94,29 @@ Each eval should test a different scenario or edge case. Include 5–10 evals fo
 
 Before submitting:
 
-- [ ] `name` in SKILL.md frontmatter matches the directory name
+- [ ] `name` in `SKILL.md` frontmatter matches the directory name exactly
+- [ ] `description` starts with `Use skill if`
+- [ ] `description` is 30 words or fewer
 - [ ] `description` includes trigger phrases a user would actually say
-- [ ] Every file in `references/` is explicitly referenced in SKILL.md
-- [ ] No unreferenced files, no dead content
-- [ ] SKILL.md is under 500 lines (move excess to references)
-- [ ] No LICENSE or README files inside the skill directory (the repo root handles those)
+- [ ] Every file in `references/` is explicitly referenced in `SKILL.md`
+- [ ] No unreferenced files, dead content, or stale sibling-skill names remain
+- [ ] `SKILL.md` is focused enough to scan quickly, with deeper detail moved to references when useful
+- [ ] No LICENSE or README files inside the skill directory unless explicitly required
 - [ ] No `.DS_Store`, `.swp`, or other junk files
-- [ ] Tested locally — the skill triggers and produces correct output
+- [ ] Single-skill install works
+- [ ] Whole-pack install still makes sense if the new skill is part of the combined repo
+- [ ] Trigger phrasing does not accidentally collide with nearby skills unless the overlap is intentional
 
 ---
 
 ## Modifying an Existing Skill
 
-- Edit SKILL.md or reference docs directly
-- If you add a new reference file, make sure SKILL.md references it
-- If you remove a reference file, remove all references to it from SKILL.md
-- Run the skill's evals if they exist to check for regressions
+- Edit `SKILL.md` or reference docs directly
+- If you add a new reference file, make sure `SKILL.md` routes readers to it
+- If you remove a reference file, remove all references to it from `SKILL.md`
+- If you rename a skill, update the directory name, frontmatter `name`, frontmatter `description`, README label, and any cross-skill references together
+- If you edit an existing skill without renaming it, normalize the frontmatter `description` to the current repo standard before you finish
+- Re-check install paths, README label, description format, and cross-skill references after any rename or scope change
 
 ---
 
@@ -128,10 +124,12 @@ Before submitting:
 
 | Convention | Rule |
 |---|---|
-| Directory names | `kebab-case`, descriptive |
-| Reference file names | `kebab-case.md`, descriptive |
-| SKILL.md size | Under 500 lines |
-| Reference doc size | No hard limit, but split at ~300 lines |
-| Frontmatter description | Include trigger phrases, not just a summary |
+| Directory names | Canonical `kebab-case`, install-path-friendly |
+| Frontmatter `name` | Must exactly match the directory name |
+| Reference file names | Descriptive `kebab-case(.md)` |
+| Reference layout | Flat or nested under `references/` |
+| SKILL.md size | Prefer lean routing files; move deep detail to references when needed |
+| Reference doc size | Split when navigation becomes hard, not by a rigid line count |
+| Frontmatter description | Start with `Use skill if`, stay within 30 words, and optimize for trigger clarity |
 | Code examples in SKILL.md | Use fenced blocks with language tags |
 | Good/bad pattern examples | Label with `### Good` / `### Bad` headers |

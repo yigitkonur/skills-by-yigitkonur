@@ -1,6 +1,6 @@
 ---
 name: snapshot-to-nextjs
-description: Convert saved HTML snapshots into pixel-perfect Next.js projects with zero external dependencies. Takes browser "Save As" pages with obfuscated CSS/JS and produces a buildable Next.js App Router project — self-hosted fonts, images, icons, and Tailwind config grounded on real extracted CSS values. Use this skill whenever the user wants to convert a saved webpage to Next.js, rebuild a site from snapshots, turn HTML into a React project, recreate a page as a component, or generate a Next.js template from an existing site. Also triggers on "convert to nextjs", "snapshot to code", "rebuild this site", "recreate this page", "html to nextjs", "page to react", "convert this design", or "make a nextjs version". NOT for SaaS dashboards — use extract-design-soul-dashboard instead.
+description: Use skill if you are rebuilding saved HTML snapshots into grounded Next.js pages with self-hosted assets and extracted styles.
 ---
 
 # Snapshot to Next.js
@@ -714,8 +714,6 @@ How the orchestrator decides which waves to execute based on user intent:
 | "Pixel-perfect copy" | 0 → 1 → 2 → 3 → 4 | `.design-soul/` + `nextjs-project/` |
 | "Just the tokens" | 0 → 1 | `wave0/` + `wave1/` only |
 | "Just the design system" | 0 → 1 | `wave0/` + `wave1/` only |
-| "Extract for rebuild later" | 0 → 1 → 2 | `.design-soul/` docs (Wave 3–4 can resume later) |
-| "Compare these pages" | 0 → 1 | `wave0/` + `wave1/` with cross-page analysis |
 | "Extract and scaffold" | 0 → 1 → 2 → 3 | `.design-soul/` + `nextjs-project/` scaffold (no page builds) |
 
 ### Ambiguity Resolution
@@ -723,7 +721,7 @@ How the orchestrator decides which waves to execute based on user intent:
 If the user's intent is unclear:
 1. Default to **Waves 0–2** (extraction only) — it's safe and non-destructive
 2. Ask: "I've extracted the design documentation. Would you also like me to rebuild it as a Next.js project? (That would run Waves 3–4)"
-3. Never assume reconstruction unless the user explicitly says "build", "rebuild", "recreate", "reconstruct", or "clone"
+3. Never assume reconstruction unless the user explicitly says "build", "rebuild", "recreate", "html to nextjs", "page to react", "convert this design", or "make a nextjs version"
 
 ---
 

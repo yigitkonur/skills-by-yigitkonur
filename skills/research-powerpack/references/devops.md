@@ -4,16 +4,16 @@
 
 | Use Case | Primary Tool | Secondary Tool | Why This Combination |
 |---|---|---|---|
-| 01. CI/CD Pipeline Setup | `deep_research` | `search_reddit` + `scrape_links` | Platform comparison + migration stories + pricing extraction |
-| 02. Docker Optimization | `deep_research` | `web_search` + `search_reddit` | Build/runtime strategy + BuildKit discovery + before/after metrics |
-| 03. Kubernetes Configuration | `deep_research` | `web_search` | Multi-dimensional K8s decisions + current benchmarks |
-| 04. Monitoring & Alerting | `deep_research` | `web_search` + `search_reddit` | TCO analysis + SLO implementation + real cost experiences |
-| 05. Log Aggregation | `deep_research` | `web_search` | TCO at scale + agent/platform comparisons |
-| 06. SSL/TLS Certificates | `deep_research` | `web_search` | Lifecycle automation + cert-manager + TLS hardening |
-| 07. CDN & Edge Config | `deep_research` | `web_search` + `scrape_links` | Cache strategy + edge function comparisons + header extraction |
-| 08. Database Tuning | `deep_research` | `web_search` + `scrape_links` | Index strategy + autovacuum + EXPLAIN guide extraction |
-| 09. Horizontal Scaling | `deep_research` | `web_search` | Phased roadmap + replica/sharding pattern discovery |
-| 10. Infrastructure as Code | `deep_research` | `web_search` + `search_reddit` | Tool selection + state management + at-scale experiences |
+| 01. CI/CD Pipeline Setup | `deep_research` | `search_reddit` + `scrape_pages` | Platform comparison + migration stories + pricing extraction |
+| 02. Docker Optimization | `deep_research` | `search_google` + `search_reddit` | Build/runtime strategy + BuildKit discovery + before/after metrics |
+| 03. Kubernetes Configuration | `deep_research` | `search_google` | Multi-dimensional K8s decisions + current benchmarks |
+| 04. Monitoring & Alerting | `deep_research` | `search_google` + `search_reddit` | TCO analysis + SLO implementation + real cost experiences |
+| 05. Log Aggregation | `deep_research` | `search_google` | TCO at scale + agent/platform comparisons |
+| 06. SSL/TLS Certificates | `deep_research` | `search_google` | Lifecycle automation + cert-manager + TLS hardening |
+| 07. CDN & Edge Config | `deep_research` | `search_google` + `scrape_pages` | Cache strategy + edge function comparisons + header extraction |
+| 08. Database Tuning | `deep_research` | `search_google` + `scrape_pages` | Index strategy + autovacuum + EXPLAIN guide extraction |
+| 09. Horizontal Scaling | `deep_research` | `search_google` | Phased roadmap + replica/sharding pattern discovery |
+| 10. Infrastructure as Code | `deep_research` | `search_google` + `search_reddit` | Tool selection + state management + at-scale experiences |
 
 ---
 
@@ -32,7 +32,7 @@ FOCUS: Total cost including engineering time, not just compute
 
 **search_reddit**: `["GitHub Actions vs GitLab CI real experience", "CircleCI pricing increase alternative", "best CI/CD caching strategy monorepo", "r/devops CI pipeline slow build times"]`
 
-**scrape_links**: `what_to_extract: "cache mechanisms | cache key syntax | cache size limits | pricing tiers | included minutes | overage cost"`
+**scrape_pages**: `what_to_extract: "cache mechanisms | cache key syntax | cache size limits | pricing tiers | included minutes | overage cost"`
 
 **Best Practices**: Search for migration stories ("migrated from X to Y") on Reddit. Include "monorepo" or "polyrepo" since caching strategies differ. Always `fetch_comments=True` -- best CI/CD advice is in replies. Use year-specific queries since platforms ship features quarterly.
 
@@ -51,7 +51,7 @@ SPECIFIC QUESTIONS:
 4) Correct COPY order for maximum layer cache hits?
 ```
 
-**web_search**: `["Docker multi-stage build optimization 2025", "Docker slim base image alpine distroless chainguard", "BuildKit cache mount npm pip cargo best practices"]`
+**search_google**: `["Docker multi-stage build optimization 2025", "Docker slim base image alpine distroless chainguard", "BuildKit cache mount npm pip cargo best practices"]`
 
 **Best Practices**: Attach your Dockerfile as file_attachment. Include package manager since caching differs. Search Reddit for Alpine gotchas: missing glibc, DNS issues, musl problems. Scrape official Docker docs for syntax accuracy. Search "BuildKit" explicitly since older guides predate it.
 
@@ -70,7 +70,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Operational complexity and failure modes, not feature comparison
 ```
 
-**web_search**: `["Kubernetes resource limits requests best practices 2025", "Istio vs Linkerd performance", "Kubernetes HPA custom metrics autoscaling guide", "nginx ingress vs traefik vs envoy gateway"]`
+**search_google**: `["Kubernetes resource limits requests best practices 2025", "Istio vs Linkerd performance", "Kubernetes HPA custom metrics autoscaling guide", "nginx ingress vs traefik vs envoy gateway"]`
 
 **Best Practices**: Include cloud provider (EKS/GKE/AKS). Mention workload types (web vs worker vs batch). Ask about failure modes and rollback, not just happy path. Attach HPA/resource manifests. Search for "production checklist" guides.
 
@@ -89,7 +89,7 @@ SPECIFIC QUESTIONS:
 4) High-cardinality metrics without cost explosion?
 ```
 
-**web_search**: `["Prometheus Grafana vs Datadog vs New Relic 2025", "monitoring alert fatigue reduction", "Datadog pricing high cardinality", "SLO SLI alerting strategy burn rate"]`
+**search_google**: `["Prometheus Grafana vs Datadog vs New Relic 2025", "monitoring alert fatigue reduction", "Datadog pricing high cardinality", "SLO SLI alerting strategy burn rate"]`
 
 **Best Practices**: Include host count, service count, log volume for accurate TCO. Ask about both platform and alerting strategy -- they are deeply connected. "High cardinality" is the primary cost driver. Attach current alerting rules for improvement recommendations.
 
@@ -107,7 +107,7 @@ SPECIFIC QUESTIONS:
 4) Retention tiers (hot/warm/cold/archive)?
 ```
 
-**web_search**: `["ELK vs Grafana Loki vs CloudWatch 2025", "centralized logging Kubernetes fluentbit vector agent", "log retention policy compliance GDPR SOC2"]`
+**search_google**: `["ELK vs Grafana Loki vs CloudWatch 2025", "centralized logging Kubernetes fluentbit vector agent", "log retention policy compliance GDPR SOC2"]`
 
 **Best Practices**: Include daily log volume -- recommendations change dramatically at different scales. Search for agent comparisons (Fluent Bit vs Vector vs Alloy). Look for "Elasticsearch alternatives" to discover ClickHouse-based solutions. Include compliance terms if relevant.
 
@@ -125,7 +125,7 @@ SPECIFIC QUESTIONS:
 4) Service mesh mTLS vs cert-manager directly?
 ```
 
-**web_search**: `["cert-manager Kubernetes ACME DNS challenge setup", "TLS 1.3 nginx hardening guide", "SSL certificate monitoring expiry alerting tools", "certificate rotation zero downtime"]`
+**search_google**: `["cert-manager Kubernetes ACME DNS challenge setup", "TLS 1.3 nginx hardening guide", "SSL certificate monitoring expiry alerting tools", "certificate rotation zero downtime"]`
 
 **Best Practices**: Ask about monitoring separately from automation -- automation fails silently. Search for "certificate outage postmortem" to learn from others' incidents. Reference Mozilla SSL Configuration Generator for cipher suites. Include mobile context if certificate pinning is relevant.
 
@@ -144,7 +144,7 @@ SPECIFIC QUESTIONS:
 FOCUS: API caching and edge compute, not just static delivery
 ```
 
-**web_search**: `["Cloudflare vs Fastly vs CloudFront 2025", "Cloudflare Workers vs CloudFront Functions", "CDN origin shield reduce origin load", "CDN cache rules best practices"]`
+**search_google**: `["Cloudflare vs Fastly vs CloudFront 2025", "Cloudflare Workers vs CloudFront Functions", "CDN origin shield reduce origin load", "CDN cache rules best practices"]`
 
 **Best Practices**: Include all content types (static, HTML, API, WebSocket). Specify freshness requirements per type. Ask about both cache rules and purge strategy together. Search for "origin shield" and "tiered caching" for advanced patterns.
 
@@ -162,7 +162,7 @@ SPECIFIC QUESTIONS:
 4) Write overhead of each index type?
 ```
 
-**web_search**: `["PostgreSQL EXPLAIN ANALYZE guide", "PostgreSQL index strategy composite partial covering", "PgBouncer vs PgCat vs Supavisor comparison", "PostgreSQL autovacuum tuning production"]`
+**search_google**: `["PostgreSQL EXPLAIN ANALYZE guide", "PostgreSQL index strategy composite partial covering", "PgBouncer vs PgCat vs Supavisor comparison", "PostgreSQL autovacuum tuning production"]`
 
 **Best Practices**: Attach slowest EXPLAIN ANALYZE outputs. Include PostgreSQL version and hosting (RDS, Aurora). Specify workload type (OLTP, OLAP, mixed). Remember that indexing, pooling, and vacuum interact: more indexes = more vacuum work = more pool pressure.
 
@@ -181,7 +181,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Sequenced investments with trigger points, avoiding premature complexity
 ```
 
-**web_search**: `["database read replica strategy PostgreSQL", "database sharding when how approaches", "PostgreSQL read replica lag handling", "distributed session management Redis vs JWT"]`
+**search_google**: `["database read replica strategy PostgreSQL", "database sharding when how approaches", "PostgreSQL read replica lag handling", "distributed session management Redis vs JWT"]`
 
 **Best Practices**: Search "sharding alternatives" -- sharding is often premature. "Read replica lag" is the number one operational challenge. Ask about consistency requirements per feature. Caching that defers scaling is often higher-ROI than infrastructure investment.
 
@@ -200,7 +200,7 @@ SPECIFIC QUESTIONS:
 FOCUS: Collaboration and maintainability, not feature lists
 ```
 
-**web_search**: `["Terraform vs Pulumi vs CDK 2025", "Terraform state management best practices", "infrastructure drift detection tools", "Terraform testing framework 2025"]`
+**search_google**: `["Terraform vs Pulumi vs CDK 2025", "Terraform state management best practices", "infrastructure drift detection tools", "Terraform testing framework 2025"]`
 
 **Best Practices**: Include team structure (platform team + product teams) -- IaC architecture mirrors org structure. CDK is AWS-only while Terraform and Pulumi support multi-cloud. Ask about organizational patterns alongside technical ones. Search "Terraform at scale" for enterprise guidance.
 
@@ -208,10 +208,10 @@ FOCUS: Collaboration and maintainability, not feature lists
 
 ## Universal DevOps Research Workflow
 
-1. **`web_search`** (5-7 keywords) -- discover current tools, pricing, features (DevOps tooling evolves quarterly)
+1. **`search_google`** (5-7 keywords) -- discover current tools, pricing, features (DevOps tooling evolves quarterly)
 2. **`search_reddit`** in parallel -- target r/devops, r/docker, r/kubernetes for unfiltered experiences
-3. **`scrape_links`** (3-5 URLs) -- official docs for exact config syntax, pricing, limits
-4. **`get_reddit_post`** (`fetch_comments=True`) -- inline YAML snippets, before/after metrics
+3. **`scrape_pages`** (3-5 URLs) -- official docs for exact config syntax, pricing, limits
+4. **`fetch_reddit`** (`fetch_comments=True`) -- inline YAML snippets, before/after metrics
 5. **`deep_research`** (2 questions) -- one for tool selection, one for optimization of chosen approach
 
 **Key principles:**

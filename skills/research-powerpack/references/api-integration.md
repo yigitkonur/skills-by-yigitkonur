@@ -5,15 +5,15 @@
 | Use Case | Primary Tool | Secondary Tool | Key Signal |
 |---|---|---|---|
 | 01. Third-Party API Integration | `deep_research` | `search_reddit` | Resilient client patterns, rate limit strategies |
-| 02. Webhook Implementation | `deep_research` | `web_search` | Unified security + reliability architecture |
-| 03. OAuth Flow Implementation | `deep_research` | `web_search` | Security-first flow with provider deviations |
-| 04. Payment Processing Integration | `deep_research` | `web_search` | Multi-dimensional (technical + compliance + cost) |
-| 05. Email Service Integration | `deep_research` | `web_search` | Deliverability-first architecture with DNS setup |
-| 06. File Storage Service Integration | `deep_research` | `web_search` | End-to-end upload/delivery/cost architecture |
-| 07. Search Engine Integration | `deep_research` | `web_search` | Use-case-specific engine selection, relevance tuning |
-| 08. Rate Limiting Design | `deep_research` | `web_search` | Complete distributed design with abuse prevention |
-| 09. API Versioning Strategy | `deep_research` | `web_search` | Long-term operational implications mapped out |
-| 10. GraphQL Schema Design | `deep_research` | `web_search` | Schema + performance + security as connected system |
+| 02. Webhook Implementation | `deep_research` | `search_google` | Unified security + reliability architecture |
+| 03. OAuth Flow Implementation | `deep_research` | `search_google` | Security-first flow with provider deviations |
+| 04. Payment Processing Integration | `deep_research` | `search_google` | Multi-dimensional (technical + compliance + cost) |
+| 05. Email Service Integration | `deep_research` | `search_google` | Deliverability-first architecture with DNS setup |
+| 06. File Storage Service Integration | `deep_research` | `search_google` | End-to-end upload/delivery/cost architecture |
+| 07. Search Engine Integration | `deep_research` | `search_google` | Use-case-specific engine selection, relevance tuning |
+| 08. Rate Limiting Design | `deep_research` | `search_google` | Complete distributed design with abuse prevention |
+| 09. API Versioning Strategy | `deep_research` | `search_google` | Long-term operational implications mapped out |
+| 10. GraphQL Schema Design | `deep_research` | `search_google` | Schema + performance + security as connected system |
 
 ---
 
@@ -29,14 +29,14 @@
 "Stripe API integration in TypeScript: rate limits/backoff, pagination at scale,
 idempotency key strategy, retryable vs terminal errors."
 
-# web_search
+# search_google
 keywords = ["Stripe API pagination cursor-based best practices",
             "third-party API error handling patterns TypeScript"]
 ```
 
 ### Best Practices
 - Use `site:` operator for provider docs; search error codes directly for exact solutions.
-- Follow up `search_reddit` with `get_reddit_post` -- real gold is in comment chains.
+- Follow up `search_reddit` with `fetch_reddit` -- real gold is in comment chains.
 
 ---
 
@@ -44,7 +44,7 @@ keywords = ["Stripe API pagination cursor-based best practices",
 
 ### Recommended Tools
 - **deep_research**: Cross-domain synthesis -- signatures, idempotency, queuing, dead letters.
-- **web_search**: Provider-specific signing schemes, retry policies, timeout expectations.
+- **search_google**: Provider-specific signing schemes, retry policies, timeout expectations.
 
 ### Query Templates
 ```python
@@ -52,7 +52,7 @@ keywords = ["Stripe API pagination cursor-based best practices",
 "Webhook receiver for multi-provider SaaS (Stripe, GitHub, Twilio). Unified signature
 verification, async processing, idempotency table, dead letter queue, event ordering."
 
-# web_search
+# search_google
 keywords = ["webhook signature verification HMAC SHA256 Node.js",
             "webhook security SSRF prevention allowlist validation"]
 ```
@@ -67,7 +67,7 @@ keywords = ["webhook signature verification HMAC SHA256 Node.js",
 
 ### Recommended Tools
 - **deep_research**: Unified analysis across OAuth spec, provider implementations, and security.
-- **web_search**: Provider-specific quirks deviating from the RFC.
+- **search_google**: Provider-specific quirks deviating from the RFC.
 
 ### Query Templates
 ```python
@@ -75,7 +75,7 @@ keywords = ["webhook signature verification HMAC SHA256 Node.js",
 "OAuth2 + PKCE for TypeScript SPA + Node.js backend. PKCE generation, secure token
 storage, token refresh with multiple tabs, provider differences (Google, GitHub, OIDC)."
 
-# web_search
+# search_google
 keywords = ["OAuth2 PKCE implementation TypeScript 2025",
             "OAuth2 token storage secure httponly cookie vs memory"]
 ```
@@ -90,7 +90,7 @@ keywords = ["OAuth2 PKCE implementation TypeScript 2025",
 
 ### Recommended Tools
 - **deep_research**: Multi-dimensional analysis -- economics, implementation, and compliance.
-- **web_search**: Pricing pages, PCI compliance guides, feature comparisons.
+- **search_google**: Pricing pages, PCI compliance guides, feature comparisons.
 
 ### Query Templates
 ```python
@@ -99,7 +99,7 @@ keywords = ["OAuth2 PKCE implementation TypeScript 2025",
 subscription feature gaps, migration risks."
 "Q2: Stripe subscription lifecycle. Webhook sequence for CRUD. DB sync. Proration. Dunning."
 
-# web_search
+# search_google
 keywords = ["Stripe vs Paddle vs LemonSqueezy SaaS billing 2025",
             "PCI DSS compliance requirements SaaS 2025"]
 ```
@@ -114,7 +114,7 @@ keywords = ["Stripe vs Paddle vs LemonSqueezy SaaS billing 2025",
 
 ### Recommended Tools
 - **deep_research**: Connects API integration with deliverability and DNS authentication.
-- **web_search**: Provider comparisons, SPF/DKIM/DMARC guides, warm-up procedures.
+- **search_google**: Provider comparisons, SPF/DKIM/DMARC guides, warm-up procedures.
 
 ### Query Templates
 ```python
@@ -123,7 +123,7 @@ keywords = ["Stripe vs Paddle vs LemonSqueezy SaaS billing 2025",
 Separate transactional vs notification? DNS auth. Bounce handling. IP warm-up."
 "Q2: Template rendering. MJML vs React Email vs Maizzle. Dark mode. Testing tools."
 
-# web_search
+# search_google
 keywords = ["SendGrid vs Postmark vs Amazon SES comparison 2025",
             "email deliverability SPF DKIM DMARC configuration guide"]
 ```
@@ -138,7 +138,7 @@ keywords = ["SendGrid vs Postmark vs Amazon SES comparison 2025",
 
 ### Recommended Tools
 - **deep_research**: End-to-end architecture -- uploads, access control, CDN, lifecycle.
-- **web_search**: Cost comparisons (egress), SDK docs, security guides.
+- **search_google**: Cost comparisons (egress), SDK docs, security guides.
 
 ### Query Templates
 ```python
@@ -146,7 +146,7 @@ keywords = ["SendGrid vs Postmark vs Amazon SES comparison 2025",
 "File storage for SaaS: images, PDFs, videos up to 500MB. S3 vs R2 vs GCS. Presigned
 URLs. Multipart upload. Access control. Lifecycle policies."
 
-# web_search
+# search_google
 keywords = ["S3 vs Cloudflare R2 vs GCS comparison 2025",
             "S3 presigned URL upload security best practices"]
 ```
@@ -161,7 +161,7 @@ keywords = ["S3 vs Cloudflare R2 vs GCS comparison 2025",
 
 ### Recommended Tools
 - **deep_research**: Use-case-specific recommendations based on dataset size, query patterns, team constraints.
-- **web_search**: Independent benchmark data cutting through vendor marketing.
+- **search_google**: Independent benchmark data cutting through vendor marketing.
 
 ### Query Templates
 ```python
@@ -171,7 +171,7 @@ vs Algolia. Instant search, faceted filtering, custom relevance. Index sync with
 "Q2: Elasticsearch relevance tuning for docs. Custom analyzers for code/technical terms.
 Multi_match structure. function_score for recency. Relevance measurement."
 
-# web_search
+# search_google
 keywords = ["Elasticsearch vs Meilisearch vs Typesense vs Algolia 2025",
             "search engine typo tolerance fuzzy matching comparison"]
 ```
@@ -186,7 +186,7 @@ keywords = ["Elasticsearch vs Meilisearch vs Typesense vs Algolia 2025",
 
 ### Recommended Tools
 - **deep_research**: Complete design -- algorithm selection, distributed implementation, failure handling, abuse prevention.
-- **web_search**: Algorithm-specific Redis implementations and HTTP header standards.
+- **search_google**: Algorithm-specific Redis implementations and HTTP header standards.
 
 ### Query Templates
 ```python
@@ -196,7 +196,7 @@ Multi-dimensional limits. Fail-open vs fail-closed. HTTP headers."
 "Q2: Bypass prevention. Evasion techniques. Multi-factor limiting (key + IP + fingerprint).
 Escalation from throttling to blocking."
 
-# web_search
+# search_google
 keywords = ["Redis rate limiting Lua script atomic implementation",
             "rate limiting HTTP headers X-RateLimit Retry-After standard"]
 ```
@@ -211,7 +211,7 @@ keywords = ["Redis rate limiting Lua script atomic implementation",
 
 ### Recommended Tools
 - **deep_research**: Decision framework with 5-year operational implications for each approach.
-- **web_search**: Case studies from Stripe, GitHub, Twilio managing versioning at scale.
+- **search_google**: Case studies from Stripe, GitHub, Twilio managing versioning at scale.
 
 ### Query Templates
 ```python
@@ -221,7 +221,7 @@ Stripe's approach internally. Additive-changes-only. Deprecation. SDK generation
 "Q2: Backward compatibility rules. Breaking vs non-breaking taxonomy. Contract testing
 (Pact, Prism, Optic). Behaviorally significant but technically non-breaking changes."
 
-# web_search
+# search_google
 keywords = ["Stripe API versioning date-based changelog",
             "breaking vs non-breaking API changes definition"]
 ```
@@ -236,7 +236,7 @@ keywords = ["Stripe API versioning date-based changelog",
 
 ### Recommended Tools
 - **deep_research**: Complete architecture connecting schema, performance, and security controls.
-- **web_search**: Official spec, production patterns (federation v2, persisted queries), security.
+- **search_google**: Official spec, production patterns (federation v2, persisted queries), security.
 
 ### Query Templates
 ```python
@@ -246,7 +246,7 @@ with dataloaders. Relay cursor pagination. Authorization (resolver vs middleware
 "Q2: Performance and security. Query complexity analysis reflecting DB cost. Depth limiting.
 Persisted queries. Field monitoring. Attacks (batching, alias DOS, introspection)."
 
-# web_search
+# search_google
 keywords = ["GraphQL N+1 dataloader implementation TypeScript",
             "GraphQL security depth limiting query complexity"]
 ```

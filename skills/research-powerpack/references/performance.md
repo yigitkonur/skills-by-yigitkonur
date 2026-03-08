@@ -4,16 +4,16 @@
 
 | Use Case | Primary Tool | Secondary Tool | Key Signal |
 |---|---|---|---|
-| 01. Profiling Data Interpretation | `deep_research` | `scrape_links` | Cross-tool synthesis, decision heuristics |
-| 02. Algorithm & Data Structure Selection | `deep_research` | `web_search` | Workload-specific comparison, benchmark data |
+| 01. Profiling Data Interpretation | `deep_research` | `scrape_pages` | Cross-tool synthesis, decision heuristics |
+| 02. Algorithm & Data Structure Selection | `deep_research` | `search_google` | Workload-specific comparison, benchmark data |
 | 03. Database Query Optimization | `deep_research` | `search_reddit` | Systematic methodology, EXPLAIN walkthroughs |
 | 04. Caching Layer Implementation | `deep_research` | `search_reddit` | Complete architecture with failure modes |
-| 05. Memory Usage Optimization | `deep_research` | `web_search` | Prioritized optimization plan, profiling tools |
-| 06. Frontend Bundle Optimization | `web_search` | `search_reddit` | Bundler-specific techniques, dependency swaps |
+| 05. Memory Usage Optimization | `deep_research` | `search_google` | Prioritized optimization plan, profiling tools |
+| 06. Frontend Bundle Optimization | `search_google` | `search_reddit` | Bundler-specific techniques, dependency swaps |
 | 07. Lazy Loading & Code Splitting | `deep_research` | `search_reddit` | Threshold-based decision framework |
-| 08. Connection Pooling Tuning | `web_search` | `get_reddit_post` | Pool sizing formulas, exact config values |
+| 08. Connection Pooling Tuning | `search_google` | `fetch_reddit` | Pool sizing formulas, exact config values |
 | 09. Concurrent Processing Design | `deep_research` | `search_reddit` | Hybrid architecture, backpressure design |
-| 10. Network Request Optimization | `deep_research` | `scrape_links` | Layered protocol optimization, timeout chains |
+| 10. Network Request Optimization | `deep_research` | `scrape_pages` | Layered protocol optimization, timeout chains |
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### Recommended Tools
 - **deep_research**: Cross-tool synthesis connecting flamegraphs, benchmarks, and browser profiling.
-- **scrape_links**: Decision criteria from authoritative sources (Brendan Gregg, Chrome DevTools docs).
+- **scrape_pages**: Decision criteria from authoritative sources (Brendan Gregg, Chrome DevTools docs).
 
 ### Query Templates
 ```python
@@ -29,7 +29,7 @@
 "Systematic methodology for interpreting CPU profiling output (flamegraphs, perf stat,
 criterion, Chrome DevTools). What percentage makes a function worth optimizing?"
 
-# web_search
+# search_google
 keywords = ["how to read flamegraph wide flat stack frames interpretation",
             "Chrome DevTools performance profile long task main thread interpretation"]
 ```
@@ -44,7 +44,7 @@ keywords = ["how to read flamegraph wide flat stack frames interpretation",
 
 ### Recommended Tools
 - **deep_research**: Workload-specific analysis with comparison matrix (latency, memory, cache, concurrency).
-- **web_search**: Empirical benchmark data capturing cache locality and real-world performance.
+- **search_google**: Empirical benchmark data capturing cache locality and real-world performance.
 
 ### Query Templates
 ```python
@@ -52,7 +52,7 @@ keywords = ["how to read flamegraph wide flat stack frames interpretation",
 "Comparison of ordered map implementations in Rust: BTreeMap, skip list, ART, sorted Vec.
 1-10M entries, 8-byte keys. Realistic ns/op? Cache miss rates? Concurrent read support?"
 
-# web_search
+# search_google
 keywords = ["BTree vs HashMap benchmark real world performance comparison",
             "cache-friendly data structures benchmark L1 L2 cache misses"]
 ```
@@ -67,7 +67,7 @@ keywords = ["BTree vs HashMap benchmark real world performance comparison",
 
 ### Recommended Tools
 - **deep_research**: Systematic methodology connecting indexing, query structure, ORM patterns, and configuration.
-- **web_search**: Database-engine-specific documentation (EXPLAIN node types, index selection).
+- **search_google**: Database-engine-specific documentation (EXPLAIN node types, index selection).
 
 ### Query Templates
 ```python
@@ -75,7 +75,7 @@ keywords = ["BTree vs HashMap benchmark real world performance comparison",
 "Systematic approach to optimizing slow PostgreSQL queries in Django with 50M+ rows.
 EXPLAIN ANALYZE to fix. Partial/covering/expression indexes? N+1 detection? Denormalize vs optimize?"
 
-# web_search
+# search_google
 keywords = ["PostgreSQL EXPLAIN ANALYZE interpret Seq Scan vs Index Scan when",
             "composite index column order selectivity PostgreSQL performance"]
 ```
@@ -99,7 +99,7 @@ keywords = ["PostgreSQL EXPLAIN ANALYZE interpret Seq Scan vs Index Scan when",
 "Caching architecture for Django REST API at 5K req/s with 99:1 read/write ratio.
 Cache-aside vs write-through? Cascading invalidation? Stampede prevention? Redis failure?"
 
-# scrape_links
+# scrape_pages
 urls = ["https://redis.io/docs/latest/develop/use/patterns/"]
 what_to_extract = "caching patterns | invalidation strategies | TTL recommendations | failure handling"
 ```
@@ -115,7 +115,7 @@ what_to_extract = "caching patterns | invalidation strategies | TTL recommendati
 
 ### Recommended Tools
 - **deep_research**: Prioritized optimization plan considering interaction between techniques.
-- **web_search**: Language-runtime-specific techniques (arenas in Rust, GC tuning in Go).
+- **search_google**: Language-runtime-specific techniques (arenas in Rust, GC tuning in Go).
 
 ### Query Templates
 ```python
@@ -123,7 +123,7 @@ what_to_extract = "caching patterns | invalidation strategies | TTL recommendati
 "Reduce memory in Rust JSON processing from 8GB to 2GB RSS. Streaming vs DOM vs zero-copy?
 Arena allocators? String interning? Profiling with DHAT vs heaptrack? Prioritized by impact."
 
-# web_search
+# search_google
 keywords = ["Rust arena allocator benchmark reduce allocations",
             "struct of arrays vs array of structs cache performance memory"]
 ```
@@ -138,7 +138,7 @@ keywords = ["Rust arena allocator benchmark reduce allocations",
 ## 06. Frontend Bundle Optimization
 
 ### Recommended Tools
-- **web_search**: Bundler-specific optimization techniques, analysis tools, and tree-shaking guides.
+- **search_google**: Bundler-specific optimization techniques, analysis tools, and tree-shaking guides.
 - **search_reddit**: Specific dependency swaps and real measured bundle reductions.
 
 ### Query Templates
@@ -147,7 +147,7 @@ keywords = ["Rust arena allocator benchmark reduce allocations",
 "Reduce Next.js 14 bundle from 1.8MB to 500KB gzipped. Top 10 largest contributors?
 modularizeImports, optimizePackageImports? Barrel files defeating tree-shaking?"
 
-# web_search
+# search_google
 keywords = ["barrel file tree shaking problem webpack bundle bloat",
             "Next.js bundle size reduction guide dynamic imports"]
 ```
@@ -186,16 +186,16 @@ queries = ["code splitting strategy route vs component level",
 ## 08. Connection Pooling Tuning
 
 ### Recommended Tools
-- **web_search**: Pool sizing formulas (HikariCP wiki is the canonical reference).
-- **scrape_links**: Extract formulas and parameters from HikariCP wiki and PgBouncer docs.
+- **search_google**: Pool sizing formulas (HikariCP wiki is the canonical reference).
+- **scrape_pages**: Extract formulas and parameters from HikariCP wiki and PgBouncer docs.
 
 ### Query Templates
 ```python
-# web_search
+# search_google
 keywords = ["PostgreSQL connection pool size formula HikariCP optimal",
             "database connection pool too large performance degradation"]
 
-# scrape_links
+# scrape_pages
 urls = ["https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"]
 what_to_extract = "pool sizing formula | configuration parameters | timeout settings"
 ```
@@ -211,7 +211,7 @@ what_to_extract = "pool sizing formula | configuration parameters | timeout sett
 
 ### Recommended Tools
 - **deep_research**: Complete concurrent architecture with backpressure, error handling, and monitoring.
-- **web_search**: Empirical comparisons between concurrency models with real workloads.
+- **search_google**: Empirical comparisons between concurrency models with real workloads.
 
 ### Query Templates
 ```python
@@ -219,7 +219,7 @@ what_to_extract = "pool sizing formula | configuration parameters | timeout sett
 "Concurrent architecture for Rust pipeline: HTTP -> CPU transform -> PostgreSQL + S3.
 Tokio vs rayon vs hybrid? Thread pool sizing for mixed IO/CPU? Backpressure design?"
 
-# web_search
+# search_google
 keywords = ["thread pool vs async comparison when to use which",
             "thread pool size formula CPU bound IO bound mixed workload"]
 ```
@@ -235,7 +235,7 @@ keywords = ["thread pool vs async comparison when to use which",
 
 ### Recommended Tools
 - **deep_research**: Layered optimization covering DNS, TCP, TLS, HTTP, and application protocol interactions.
-- **scrape_links**: Exact configuration directives from web server and load balancer docs.
+- **scrape_pages**: Exact configuration directives from web server and load balancer docs.
 
 ### Query Templates
 ```python
@@ -244,7 +244,7 @@ keywords = ["thread pool vs async comparison when to use which",
 timeout chain across app -> proxy -> LB -> target?"
 "Q2: Compression for API responses 500B-2MB. Brotli vs gzip vs zstd for JSON? Break-even size?"
 
-# scrape_links
+# scrape_pages
 urls = ["https://nginx.org/en/docs/http/ngx_http_v2_module.html"]
 what_to_extract = "HTTP/2 directives | keep-alive timeout defaults | compression parameters"
 ```

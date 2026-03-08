@@ -1,10 +1,30 @@
 # skills-by-yigitkonur
 
-14 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, and framework guides.
+15 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, and framework guides.
+
+## Install the full pack
 
 ```bash
 npx skills add yigitkonur/skills-by-yigitkonur
 ```
+
+## Install a single skill
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/<skill-name>
+```
+
+Examples:
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/skill-builder
+npx skills add yigitkonur/skills-by-yigitkonur/research-powerpack
+npx skills add yigitkonur/skills-by-yigitkonur/playwright-cli
+```
+
+## How discovery works
+
+Each skill uses its `SKILL.md` frontmatter description as a trigger. Install the full pack when you want broad coverage, or install a single skill when you want a narrower setup.
 
 ---
 
@@ -66,7 +86,7 @@ npx skills add yigitkonur/skills-by-yigitkonur/mcp-use-code-review
 
 | Skill | What it does |
 |---|---|
-| **[playwright-cli](skills/playwright-cli/)** | Complete operational guide for `@anthropic-ai/playwright-cli` browser automation — session bootstrap, observe-act loop, element refs, tab management, form filling, screenshots, JS evaluation, console/network debugging, responsive testing, dark mode, and multi-agent coordination. Includes 6 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, and orchestrator guide. |
+| **[playwright-cli](skills/playwright-cli/)** | Reliable operational guide for `@anthropic-ai/playwright-cli` grounded in installed-CLI behavior — chrome bootstrap, observe-act proof loops, form/upload verification, tab/session coordination, console/network artifacts, visual checks, and advanced `run-code` recipes. Includes 7 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, async/advanced recipes, and orchestrator guide. |
 
 ```bash
 npx skills add yigitkonur/skills-by-yigitkonur/playwright-cli

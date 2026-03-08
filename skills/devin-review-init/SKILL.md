@@ -1,6 +1,6 @@
 ---
 name: devin-review-init
-description: Generate production-ready REVIEW.md and AGENTS.md files for Devin Review's AI code review system. Use this skill whenever the user mentions Devin Review, REVIEW.md, Devin code review setup, PR review instructions for Devin, AI code review configuration for Devin, or wants to create instruction files that Devin's Bug Catcher uses. Also trigger when someone says "set up Devin review", "configure Devin for our repo", "create review rules for Devin", or asks about REVIEW.md / AGENTS.md — even if they don't say "Devin" explicitly but describe wanting AI-powered PR review instructions that work with Devin's auto-review or Bug Catcher.
+description: Use skill if you need Devin Review setup, REVIEW.md, AGENTS.md, or repo-specific PR review instructions for Devin Bug Catcher.
 ---
 
 # Devin Review Configuration Generator

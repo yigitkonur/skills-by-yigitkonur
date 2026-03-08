@@ -5,15 +5,15 @@
 | # | Research Need | Primary Tools | Why These Tools |
 |---|-------------|--------------|-----------------|
 | 01 | Choosing Between Competing Libraries | all 5 tools | Multi-dimensional comparison needs benchmarks (scrape), sentiment (Reddit), synthesis (deep_research) |
-| 02 | Checking for Known Issues Before Adoption | web_search -> scrape_links -> search_reddit -> get_reddit_post | GitHub issues are the source of truth; Reddit surfaces bugs not yet in issue trackers |
-| 03 | Finding Correct Configuration | web_search -> scrape_links -> search_reddit -> deep_research | Official docs have the syntax; scrape extracts config snippets; Reddit has battle-tested configs |
-| 04 | Version Upgrade Impact Assessment | web_search -> scrape_links -> search_reddit -> get_reddit_post -> deep_research | Changelogs document changes; Reddit has real upgrade stories; deep_research plans upgrade strategy |
-| 05 | Understanding Internal Behavior | web_search -> scrape_links -> deep_research -> search_reddit | Source code explanations live in blog posts; deep_research synthesizes architecture docs |
-| 06 | Debugging a Library's Unexpected Behavior | web_search -> search_reddit -> get_reddit_post -> scrape_links -> deep_research | Exact errors are highly searchable; Reddit has "same issue" threads; scrape confirms expected vs actual behavior |
-| 07 | Security Audit of Dependencies | web_search -> scrape_links -> search_reddit -> deep_research | CVE databases are scrapeable; Snyk/GitHub advisories have structured data; deep_research does risk assessment |
-| 08 | Finding Alternatives to Abandoned Packages | search_reddit -> get_reddit_post -> web_search -> scrape_links -> deep_research | Reddit is the #1 source for "what should I use instead"; web_search finds curated alternative lists |
-| 09 | Understanding Breaking Changes | web_search -> scrape_links -> search_reddit -> get_reddit_post -> deep_research | Changelogs are the source; scrape extracts version-specific changes; Reddit has fix sequences |
-| 10 | Evaluating Library Maturity | web_search -> scrape_links -> search_reddit -> get_reddit_post -> deep_research | Metrics live on npm/GitHub; Reddit has production experience reports; deep_research does risk-calibrated assessment |
+| 02 | Checking for Known Issues Before Adoption | search_google -> scrape_pages -> search_reddit -> fetch_reddit | GitHub issues are the source of truth; Reddit surfaces bugs not yet in issue trackers |
+| 03 | Finding Correct Configuration | search_google -> scrape_pages -> search_reddit -> deep_research | Official docs have the syntax; scrape extracts config snippets; Reddit has battle-tested configs |
+| 04 | Version Upgrade Impact Assessment | search_google -> scrape_pages -> search_reddit -> fetch_reddit -> deep_research | Changelogs document changes; Reddit has real upgrade stories; deep_research plans upgrade strategy |
+| 05 | Understanding Internal Behavior | search_google -> scrape_pages -> deep_research -> search_reddit | Source code explanations live in blog posts; deep_research synthesizes architecture docs |
+| 06 | Debugging a Library's Unexpected Behavior | search_google -> search_reddit -> fetch_reddit -> scrape_pages -> deep_research | Exact errors are highly searchable; Reddit has "same issue" threads; scrape confirms expected vs actual behavior |
+| 07 | Security Audit of Dependencies | search_google -> scrape_pages -> search_reddit -> deep_research | CVE databases are scrapeable; Snyk/GitHub advisories have structured data; deep_research does risk assessment |
+| 08 | Finding Alternatives to Abandoned Packages | search_reddit -> fetch_reddit -> search_google -> scrape_pages -> deep_research | Reddit is the #1 source for "what should I use instead"; search_google finds curated alternative lists |
+| 09 | Understanding Breaking Changes | search_google -> scrape_pages -> search_reddit -> fetch_reddit -> deep_research | Changelogs are the source; scrape extracts version-specific changes; Reddit has fix sequences |
+| 10 | Evaluating Library Maturity | search_google -> scrape_pages -> search_reddit -> fetch_reddit -> deep_research | Metrics live on npm/GitHub; Reddit has production experience reports; deep_research does risk-calibrated assessment |
 
 ---
 
@@ -28,11 +28,11 @@ WHY: Starting a new production API and need to choose an ORM that will scale.
 WHAT I KNOW: Prisma has the largest community but reportedly slow cold starts. Drizzle is newer but claims better performance.
 SPECIFIC QUESTIONS: 1) Cold-start times in serverless? 2) Type-safety for complex queries? 3) Migration tooling maturity? 4) Learning curve from raw SQL? 5) Maintenance activity?"
 ```
-**web_search** -- Search for benchmark comparisons, feature matrices, and "X vs Y" articles:
+**search_google** -- Search for benchmark comparisons, feature matrices, and "X vs Y" articles:
 ```
 keywords = ["Prisma vs Drizzle vs Kysely benchmark comparison 2025", "TypeScript ORM comparison production experience", "site:npmtrends.com prisma drizzle"]
 ```
-**scrape_links** -- Extract from benchmark articles, npmtrends, and official comparison pages:
+**scrape_pages** -- Extract from benchmark articles, npmtrends, and official comparison pages:
 ```
 what_to_extract = "benchmark results|bundle size|type safety features|migration tools|community size|release frequency"
 ```
@@ -40,23 +40,23 @@ what_to_extract = "benchmark results|bundle size|type safety features|migration 
 ```
 queries = ["Prisma vs Drizzle production experience", "switched from Prisma to Drizzle why", "r/typescript ORM recommendation 2025"]
 ```
-**get_reddit_post** -- Fetch full comparison threads (fetch_comments=True). Comments contain benchmark numbers and migration stories.
+**fetch_reddit** -- Fetch full comparison threads (fetch_comments=True). Comments contain benchmark numbers and migration stories.
 ### Best Practices:
 - State exact project constraints in deep_research (team size, DB type, deployment model, performance requirements)
 - Use 5-10 search_reddit queries covering both "X vs Y" and "recommend me an X" angles
 - Scrape both library READMEs for feature claims; scrape npm for adoption metrics
 - Reddit comments have the most honest take on DX issues that docs never mention
-- Run deep_research AFTER gathering web_search and Reddit data for the most informed synthesis
+- Run deep_research AFTER gathering search_google and Reddit data for the most informed synthesis
 
 ## 02. Checking for Known Issues Before Adoption
 
-### Recommended Tools: web_search -> scrape_links -> search_reddit -> get_reddit_post
+### Recommended Tools: search_google -> scrape_pages -> search_reddit -> fetch_reddit
 ### Query Templates:
-**web_search** -- Target GitHub issues and known bugs:
+**search_google** -- Target GitHub issues and known bugs:
 ```
 keywords = ["site:github.com/[org]/[lib]/issues label:bug", "[library] known issues gotchas production", "[library] memory leak OR crash OR data loss"]
 ```
-**scrape_links** -- Extract from GitHub issue list and Snyk advisor page:
+**scrape_pages** -- Extract from GitHub issue list and Snyk advisor page:
 ```
 what_to_extract = "open bugs|critical issues|issue count|response time|known limitations|breaking bugs|severity"
 ```
@@ -64,7 +64,7 @@ what_to_extract = "open bugs|critical issues|issue count|response time|known lim
 ```
 queries = ["[library] problems issues bugs production", "[library] regret used in production", "r/[language] [library] issues gotchas"]
 ```
-**get_reddit_post** -- Fetch "anyone else experiencing X" threads. Comments reveal scale-dependent issues.
+**fetch_reddit** -- Fetch "anyone else experiencing X" threads. Comments reveal scale-dependent issues.
 ### Best Practices:
 - Check open issues on GitHub filtered by label:bug for severity assessment
 - Scrape the Snyk advisor page (snyk.io/advisor/npm-package/[lib]) for a health score
@@ -73,13 +73,13 @@ queries = ["[library] problems issues bugs production", "[library] regret used i
 
 ## 03. Finding Correct Configuration
 
-### Recommended Tools: web_search -> scrape_links -> search_reddit -> deep_research
+### Recommended Tools: search_google -> scrape_pages -> search_reddit -> deep_research
 ### Query Templates:
-**web_search** -- Search for the exact config directive or option:
+**search_google** -- Search for the exact config directive or option:
 ```
 keywords = ["[library] configuration options reference complete list", "[library] [specific-option] example usage", "\"[library].config\" TypeScript correct setup"]
 ```
-**scrape_links** -- Extract config syntax directly from docs:
+**scrape_pages** -- Extract config syntax directly from docs:
 ```
 what_to_extract = "configuration options|required fields|default values|example configs|TypeScript types|deprecated options"
 ```
@@ -89,20 +89,20 @@ queries = ["[library] config example working production", "[library] configurati
 ```
 **deep_research** -- Attach ALL configuration files. Ask for a validated, consistent set.
 ### Best Practices:
-- Official docs have the syntax, but scrape_links extracts it cleanly without surrounding prose
+- Official docs have the syntax, but scrape_pages extracts it cleanly without surrounding prose
 - Reddit has battle-tested configurations that combine multiple options correctly
 - deep_research is essential for multi-file configuration (tsconfig + bundler + linter) -- it checks consistency across files
 - Search for "example" and "working config" rather than "documentation" for practical results
 
 ## 04. Version Upgrade Impact Assessment
 
-### Recommended Tools: web_search -> scrape_links -> search_reddit -> get_reddit_post -> deep_research
+### Recommended Tools: search_google -> scrape_pages -> search_reddit -> fetch_reddit -> deep_research
 ### Query Templates:
-**web_search** -- Search changelog and migration guides:
+**search_google** -- Search changelog and migration guides:
 ```
 keywords = ["[library] v[X] to v[Y] migration guide", "[library] v[Y] breaking changes changelog", "site:github.com/[org]/[lib]/releases tag/v[Y]"]
 ```
-**scrape_links** -- Extract from release notes and CHANGELOG.md:
+**scrape_pages** -- Extract from release notes and CHANGELOG.md:
 ```
 what_to_extract = "breaking changes|removed APIs|renamed functions|changed defaults|new required configuration|migration steps|before and after code"
 ```
@@ -110,7 +110,7 @@ what_to_extract = "breaking changes|removed APIs|renamed functions|changed defau
 ```
 queries = ["[library] v[Y] upgrade issues", "[library] v[X] to v[Y] broke my app", "r/[framework] [library] upgrade experience"]
 ```
-**get_reddit_post** -- Fetch full threads. The fix is in comment #47, after 3 failed attempts.
+**fetch_reddit** -- Fetch full threads. The fix is in comment #47, after 3 failed attempts.
 **deep_research** -- Attach your current code. Ask for: complete list of affected APIs, mechanical fix patterns, and third-party compatibility.
 ### Best Practices:
 - Scrape the GitHub release page for curated breaking change summaries
@@ -121,13 +121,13 @@ queries = ["[library] v[Y] upgrade issues", "[library] v[X] to v[Y] broke my app
 
 ## 05. Understanding Internal Behavior
 
-### Recommended Tools: web_search -> scrape_links -> deep_research -> search_reddit
+### Recommended Tools: search_google -> scrape_pages -> deep_research -> search_reddit
 ### Query Templates:
-**web_search** -- Target architecture explanations and deep dives:
+**search_google** -- Target architecture explanations and deep dives:
 ```
 keywords = ["[library] internals how it works architecture", "[library] source code walkthrough explained", "\"[library]\" virtual DOM reconciliation algorithm explained"]
 ```
-**scrape_links** -- Extract from architecture blog posts and documentation:
+**scrape_pages** -- Extract from architecture blog posts and documentation:
 ```
 what_to_extract = "architecture overview|internal data structures|algorithm explanation|execution flow|performance characteristics"
 ```
@@ -141,9 +141,9 @@ what_to_extract = "architecture overview|internal data structures|algorithm expl
 
 ## 06. Debugging a Library's Unexpected Behavior
 
-### Recommended Tools: web_search -> search_reddit -> get_reddit_post -> scrape_links -> deep_research
+### Recommended Tools: search_google -> search_reddit -> fetch_reddit -> scrape_pages -> deep_research
 ### Query Templates:
-**web_search** -- Include the exact unexpected behavior:
+**search_google** -- Include the exact unexpected behavior:
 ```
 keywords = ["[library] [function] returns undefined instead of expected value", "[library] [function] behaves differently than documented"]
 ```
@@ -151,8 +151,8 @@ keywords = ["[library] [function] returns undefined instead of expected value", 
 ```
 queries = ["[library] [function] unexpected behavior", "[library] [function] not working as documented"]
 ```
-**get_reddit_post** -- Fetch full threads where others debug the same issue. Comments reveal parameter subtleties.
-**scrape_links** -- Scrape the official docs for the function's expected behavior:
+**fetch_reddit** -- Fetch full threads where others debug the same issue. Comments reveal parameter subtleties.
+**scrape_pages** -- Scrape the official docs for the function's expected behavior:
 ```
 what_to_extract = "function signature|parameters|return value|edge cases|caveats|version differences"
 ```
@@ -165,13 +165,13 @@ what_to_extract = "function signature|parameters|return value|edge cases|caveats
 
 ## 07. Security Audit of Dependencies
 
-### Recommended Tools: web_search -> scrape_links -> search_reddit -> deep_research
+### Recommended Tools: search_google -> scrape_pages -> search_reddit -> deep_research
 ### Query Templates:
-**web_search** -- Target security databases and audit tools:
+**search_google** -- Target security databases and audit tools:
 ```
 keywords = ["site:nvd.nist.gov [library]", "site:github.com/advisories [library]", "[library] CVE vulnerability security", "[ecosystem] dependency audit tool comparison"]
 ```
-**scrape_links** -- Extract from CVE pages and security advisories:
+**scrape_pages** -- Extract from CVE pages and security advisories:
 ```
 what_to_extract = "CVE IDs|CVSS scores|affected versions|patched versions|exploit conditions|severity|mitigation"
 ```
@@ -185,7 +185,7 @@ what_to_extract = "CVE IDs|CVSS scores|affected versions|patched versions|exploi
 
 ## 08. Finding Alternatives to Abandoned Packages
 
-### Recommended Tools: search_reddit -> get_reddit_post -> web_search -> scrape_links -> deep_research
+### Recommended Tools: search_reddit -> fetch_reddit -> search_google -> scrape_pages -> deep_research
 ### Query Templates:
 **search_reddit** -- THE most valuable tool for this use case:
 ```
@@ -197,16 +197,16 @@ queries = [
     "[abandoned-library] community fork active development"
 ]
 ```
-**get_reddit_post** -- Fetch 10-15 "what should I use instead" threads:
+**fetch_reddit** -- Fetch 10-15 "what should I use instead" threads:
 ```
 urls = ["https://reddit.com/r/node/comments/.../request_library_deprecated_what_now/", ...]
 fetch_comments = True  # Recommendations are in comments; exact library names, version numbers, and migration commands
 ```
-**web_search** -- Find curated lists and comparison articles:
+**search_google** -- Find curated lists and comparison articles:
 ```
 keywords = ["[abandoned-library] alternative replacement 2025", "[abandoned-library] fork actively maintained", "awesome [category] curated list github"]
 ```
-**scrape_links** -- Scrape replacement library READMEs, migration guides, and npm pages:
+**scrape_pages** -- Scrape replacement library READMEs, migration guides, and npm pages:
 ```
 what_to_extract = "features|API examples|migration guide|weekly downloads|last release date|contributor count"
 ```
@@ -215,18 +215,18 @@ what_to_extract = "features|API examples|migration guide|weekly downloads|last r
 - Reddit is the #1 source because "what should I use instead" threads generate dozens of recommendations with first-hand migration experiences
 - Search for "switched from" and "migrated from" for real transitions, not hypothetical comparisons
 - Search for "drop-in replacement" and "community fork" for lowest migration cost
-- get_reddit_post with use_llm=False preserves exact library names and code snippets
+- fetch_reddit with use_llm=False preserves exact library names and code snippets
 - deep_research evaluates the shortlist with YOUR codebase constraints -- number of call sites, features used, deploy setup
 
 ## 09. Understanding Breaking Changes
 
-### Recommended Tools: web_search -> scrape_links -> search_reddit -> get_reddit_post -> deep_research
+### Recommended Tools: search_google -> scrape_pages -> search_reddit -> fetch_reddit -> deep_research
 ### Query Templates:
-**web_search** -- Find changelogs, release notes, and migration guides:
+**search_google** -- Find changelogs, release notes, and migration guides:
 ```
 keywords = ["[library] [version] breaking changes changelog", "[library] [version] migration guide codemod", "site:github.com [library] BREAKING CHANGE [version]"]
 ```
-**scrape_links** -- Extract from release page, CHANGELOG.md, and upgrade guide:
+**scrape_pages** -- Extract from release page, CHANGELOG.md, and upgrade guide:
 ```
 what_to_extract = "breaking changes|removed APIs|renamed functions|changed defaults|before and after code examples|migration steps"
 ```
@@ -234,24 +234,24 @@ what_to_extract = "breaking changes|removed APIs|renamed functions|changed defau
 ```
 queries = ["[library] [version] broke my app", "[exact error message from your build]", "[function-name] no longer works [library] update"]
 ```
-**get_reddit_post** -- Fetch threads that match your exact error. Comments contain verified fix sequences.
+**fetch_reddit** -- Fetch threads that match your exact error. Comments contain verified fix sequences.
 **deep_research** -- Attach broken files. Ask for: complete list of affected APIs, codemod availability, third-party compatibility.
 ### Best Practices:
 - Search for exact error messages in quotes -- the highest-signal query for breaking changes
 - Scrape the specific PR that introduced the breaking change for full rationale
 - Reddit threads contain trial-and-error sequences leading to the correct fix
-- get_reddit_post captures "EDIT: solved" markers that confirm the fix
+- fetch_reddit captures "EDIT: solved" markers that confirm the fix
 - deep_research identifies all 17 affected files, not just the 12 that are currently crashing
 
 ## 10. Evaluating Library Maturity
 
-### Recommended Tools: web_search -> scrape_links -> search_reddit -> get_reddit_post -> deep_research
+### Recommended Tools: search_google -> scrape_pages -> search_reddit -> fetch_reddit -> deep_research
 ### Query Templates:
-**web_search** -- Find maturity indicators:
+**search_google** -- Find maturity indicators:
 ```
 keywords = ["[library] production use case study", "[library] who uses companies adoption", "[library] npm weekly downloads trend 2025", "ThoughtWorks technology radar [library]"]
 ```
-**scrape_links** -- Extract quantitative metrics:
+**scrape_pages** -- Extract quantitative metrics:
 ```
 urls = ["https://www.npmjs.com/package/[library]", "https://github.com/[org]/[library]", "https://snyk.io/advisor/npm-package/[library]"]
 what_to_extract = "weekly downloads|GitHub stars|open issues|closed issues ratio|contributors|last release date|dependent packages|Snyk health score"
@@ -260,7 +260,7 @@ what_to_extract = "weekly downloads|GitHub stars|open issues|closed issues ratio
 ```
 queries = ["[library] production ready 2025", "[library] used in production experience", "[library] issues problems at scale"]
 ```
-**get_reddit_post** -- Fetch "is X production ready" threads. Comments provide multi-dimensional maturity evidence:
+**fetch_reddit** -- Fetch "is X production ready" threads. Comments provide multi-dimensional maturity evidence:
 - "8/10 say works great for CRUD" = mature for that use case
 - "3/10 say docs have gaps" = moderate documentation maturity
 **deep_research** -- State your risk tolerance ("fintech API" vs "internal tool"). Ask about bus factor, financial sustainability, and comparative maturity.
@@ -277,9 +277,9 @@ queries = ["[library] production ready 2025", "[library] used in production expe
 ## Universal Library Research Workflow
 
 1. **Define your requirements** before researching: deployment model, performance needs, team size, risk tolerance, and how long you need the dependency to be maintained.
-2. **Start with web_search** (5-7 keywords) to discover candidates and comparison articles.
-3. **Use scrape_links** on comparison articles, npm/GitHub pages, and official docs to extract structured metrics and feature lists.
+2. **Start with search_google** (5-7 keywords) to discover candidates and comparison articles.
+3. **Use scrape_pages** on comparison articles, npm/GitHub pages, and official docs to extract structured metrics and feature lists.
 4. **Use search_reddit** (5-7 queries) to find real-world usage reports. Target language-specific subreddits. Search for "experience", "production", "switched from", and "regret" terms.
-5. **Use get_reddit_post** (fetch_comments=True, use_llm=False) on the 5-10 most relevant threads for full migration stories, code examples, and warnings.
+5. **Use fetch_reddit** (fetch_comments=True, use_llm=False) on the 5-10 most relevant threads for full migration stories, code examples, and warnings.
 6. **Use deep_research** as the synthesis step, incorporating your specific constraints. Attach relevant code files. Ask 3-5 pointed questions.
 7. **Iterate**: initial research narrows from many candidates to 2-3. Run a second pass focused on the finalists with more specific queries (migration effort, edge case handling, operational costs).

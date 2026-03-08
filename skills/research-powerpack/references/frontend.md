@@ -4,11 +4,11 @@
 
 | Use Case | Primary Tool | Secondary Tool | Key Signal |
 |---|---|---|---|
-| 01. Framework Migration Planning | `deep_research` | `web_search` | Phased plan with effort estimates and risk matrix |
-| 02. SSR vs SSG vs SPA Decision | `deep_research` | `web_search` | Multi-factor decision matrix, cost modeling |
-| 03. Accessibility Compliance | `deep_research` | `web_search` | Prioritized remediation plan, testing strategy |
-| 04. Responsive Design Debugging | `deep_research` | `web_search` | Decision framework, mobile Safari bug catalog |
-| 05. Animation & Rendering Performance | `deep_research` | `web_search` | Rendering pipeline mastery, profiling methodology |
+| 01. Framework Migration Planning | `deep_research` | `search_google` | Phased plan with effort estimates and risk matrix |
+| 02. SSR vs SSG vs SPA Decision | `deep_research` | `search_google` | Multi-factor decision matrix, cost modeling |
+| 03. Accessibility Compliance | `deep_research` | `search_google` | Prioritized remediation plan, testing strategy |
+| 04. Responsive Design Debugging | `deep_research` | `search_google` | Decision framework, mobile Safari bug catalog |
+| 05. Animation & Rendering Performance | `deep_research` | `search_google` | Rendering pipeline mastery, profiling methodology |
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### Recommended Tools
 - **deep_research**: Phased migration plans with dependencies, milestones, effort estimates, and risk matrices. Decision frameworks for rewrite vs incremental migration.
-- **web_search**: Official migration guides, codemods, compatibility modes, and breaking change lists from framework teams.
+- **search_google**: Official migration guides, codemods, compatibility modes, and breaking change lists from framework teams.
 - **search_reddit**: Real migration timelines, unexpected obstacles, and "we switched back" cautionary tales.
 
 ### Query Templates
@@ -30,7 +30,7 @@ Codemod handling of complex patterns (HOCs, render props)? Effort for 300 compon
 50K lines, no module system. Strangler fig pattern for frontend (iframe? micro-frontends?
 shared DOM)? Realistic timelines? State sharing between jQuery and React during transition?"
 
-# web_search
+# search_google
 keywords = ["react class components to hooks migration guide 2025",
             "react codemod class to function component automatic",
             "jquery to react migration strategy large codebase"]
@@ -51,7 +51,7 @@ keywords = ["react class components to hooks migration guide 2025",
 
 ### Recommended Tools
 - **deep_research**: Multi-factor decision matrix weighing SEO, performance, cost, complexity, and team expertise for your specific project. Hybrid architecture recommendations when no single approach fits.
-- **web_search**: Framework documentation, Core Web Vitals benchmarks, SEO evidence, and deployment cost analyses.
+- **search_google**: Framework documentation, Core Web Vitals benchmarks, SEO evidence, and deployment cost analyses.
 - **search_reddit**: Real-world experiences with SSR cold starts, SSG build time scaling, and SPA SEO limitations.
 
 ### Query Templates
@@ -66,7 +66,7 @@ Page count threshold where SSG becomes impractical? Next.js ISR at 15K pages -- 
 risk? SSG-first frameworks for large-scale content? SSR caching strategy approaching SSG
 performance?"
 
-# web_search
+# search_google
 keywords = ["SSR vs SSG vs SPA comparison 2025 when to use each",
             "next.js app router server components vs client components"]
 ```
@@ -85,7 +85,7 @@ keywords = ["SSR vs SSG vs SPA comparison 2025 when to use each",
 
 ### Recommended Tools
 - **deep_research**: Prioritized remediation plan ranked by user impact and legal risk. Replace vs retrofit analysis for custom components. Integrated automated + manual testing methodology.
-- **web_search**: WCAG specifications, ARIA Authoring Practices Guide (APG) reference implementations, and audit tool documentation.
+- **search_google**: WCAG specifications, ARIA Authoring Practices Guide (APG) reference implementations, and audit tool documentation.
 - **search_reddit**: Teams sharing their compliance journeys, tool recommendations, and screen reader testing experiences.
 
 ### Query Templates
@@ -99,7 +99,7 @@ vs manual testing limits? Focus management for SPA route changes?"
 browser + screen reader combinations for coverage? Practical testing checklist per PR? Key
 shortcuts for NVDA and VoiceOver? Most common screen reader issues developers miss?"
 
-# web_search
+# search_google
 keywords = ["WCAG 2.1 AA compliance checklist frontend developer 2025",
             "ARIA design patterns APG modal dialog combobox",
             "axe-core accessibility testing automation CI pipeline"]
@@ -119,7 +119,7 @@ keywords = ["WCAG 2.1 AA compliance checklist frontend developer 2025",
 
 ### Recommended Tools
 - **deep_research**: Structured decision framework for container queries vs media queries vs fluid values. Complete mobile Safari bug catalog with canonical fixes.
-- **web_search**: CSS specification references (MDN), browser compatibility data (Can I Use), and DevTools debugging guides.
+- **search_google**: CSS specification references (MDN), browser compatibility data (Can I Use), and DevTools debugging guides.
 - **search_reddit**: Real-world container query experiences at scale, mobile Safari workaround discussions, and design system responsive strategies.
 
 ### Query Templates
@@ -133,7 +133,7 @@ context, nesting, circular refs)?"
 issues with canonical fixes. 100vh overflow, fixed position jumps on keyboard, safe area inset.
 Dev environment setup for mobile Safari testing. Preventive CSS patterns."
 
-# web_search
+# search_google
 keywords = ["container queries vs media queries when to use 2025",
             "CSS viewport units dvh svh lvh mobile Safari iOS",
             "responsive design debugging techniques Chrome DevTools"]
@@ -153,7 +153,7 @@ keywords = ["container queries vs media queries when to use 2025",
 
 ### Recommended Tools
 - **deep_research**: Connects browser rendering pipeline (layout, paint, composite), React's rendering model, and GPU layer management into actionable optimization strategies.
-- **web_search**: Chrome team articles (web.dev), rendering pipeline documentation, and DevTools profiling guides.
+- **search_google**: Chrome team articles (web.dev), rendering pipeline documentation, and DevTools profiling guides.
 - **search_reddit**: Real jank debugging stories, Framer Motion performance tips, and mobile device optimization experiences.
 
 ### Query Templates
@@ -168,7 +168,7 @@ Scroll-driven animation patterns for 60fps?"
 layer promotion? GPU memory cost per layer and how to measure? When will-change helps vs
 hurts? Chrome DevTools Layers panel audit methodology?"
 
-# web_search
+# search_google
 keywords = ["CSS compositor layer will-change transform GPU acceleration",
             "layout thrashing forced reflow prevention JavaScript",
             "Chrome rendering pipeline composite paint layout explained"]

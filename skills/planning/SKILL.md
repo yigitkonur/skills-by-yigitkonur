@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Build robust, decision-ready plans for any task (technical or non-technical). Use this whenever the user asks to plan, prioritize, troubleshoot, choose between options, sequence work, reduce risk, improve alignment, or decide under uncertainty—even if they do not explicitly say “make a plan.”
+description: Use skill if you need structured planning, prioritization, option analysis, or root-cause framing before acting.
 ---
 
 # Planning Skill
@@ -34,7 +34,7 @@ Write like you are guiding a smart junior teammate.
 6. Every plan must contain a verification step.
 7. For technical work, explore current system behavior before structural recommendations.
 
-## Read-If Routing (Dynamic Context Injection)
+## Reference routing
 
 Load only the files needed for the task.
 
