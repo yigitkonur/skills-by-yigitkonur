@@ -82,10 +82,12 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 |---|---|
 | **[planning](skills/planning/)** | Structured planning skill for any task — intake framing, root cause analysis, option design, prioritization, systems thinking, technical strategy, communication alignment, and execution risk. Includes 10 reference docs covering 9 thinking method families and a catalog of 40+ named methods (pre-mortem, Cynefin, RICE, wardley mapping, etc.). |
 | **[research-powerpack](skills/research-powerpack/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
+| **[skill-builder](skills/skill-builder/)** | Skill creation methodology skill for building or redesigning Claude skills from workspace evidence, remote research, and comparison before synthesis. Use when a skill should be original, traceable, and repo-fit instead of improvised. Includes reference docs for research workflow, remote sources, comparison workflow, and source-pattern selection. |
 
 ```bash
 npx skills add yigitkonur/skills-by-yigitkonur/planning
 npx skills add yigitkonur/skills-by-yigitkonur/research-powerpack
+npx skills add yigitkonur/skills-by-yigitkonur/skill-builder
 ```
 
 ---
