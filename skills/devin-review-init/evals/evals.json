@@ -1,0 +1,47 @@
+{
+  "skill_name": "devin-review-init",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just set up Devin Review on our TypeScript monorepo. We have packages/api (Express + Prisma), packages/web (Next.js), and packages/shared. The API handles payments so that needs extra scrutiny. We use ESLint and Prettier already. Can you create the REVIEW.md files for us?",
+      "expected_output": "Root REVIEW.md with shared conventions (TypeScript only, structured logging, shared imports), scoped packages/api/REVIEW.md (auth, validation, error handling rules), scoped packages/payments/REVIEW.md (PCI compliance, idempotency, PII masking), security section near top, no formatting rules since ESLint/Prettier exist, code examples for error handling patterns",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We have a Python Django REST API and Devin keeps flagging trivial stuff but missing the important things. Our main pain points are N+1 queries making it to production and people forgetting to add permission classes to new views. We also have an openapi.yaml spec. Help us write a REVIEW.md that makes Devin's Bug Catcher actually useful.",
+      "expected_output": "REVIEW.md with N+1 prevention rules (select_related/prefetch_related), permission_classes enforcement on all views/viewsets, reference to openapi.yaml in Critical Areas, Python-specific code examples showing good/bad patterns, ignore section covering migrations/__pycache__/etc, security section for SQL injection prevention",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I'm building a Tauri v2 desktop app with Rust backend and React+TypeScript frontend. The app manages terminal sessions and does file system operations via IPC. We use portable-pty and rusqlite. There's sensitive data (SSH keys). Set up Devin Review to catch IPC security issues and command handler safety problems.",
+      "expected_output": "REVIEW.md with Tauri-specific rules: command error handling (no panics/unwrap in #[tauri::command]), Mutex lock scope (no locks across await), shell injection prevention, invoke() error handling on frontend side, sensitive data logging prevention, code examples in both Rust and TypeScript, ignore section covering src-tauri/target/",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I have a production MCP server in TypeScript that exposes SEO tools via the MCP protocol. It uses a middleware pipeline and ResponseBuilder. Transport is stdio for Claude Desktop. Set up Devin Review to catch protocol compliance issues, response formatting mistakes, and security problems. The repo is at /Users/yigitkonur/dev-test/mcp-marketers — analyze it.",
+      "expected_output": "REVIEW.md with MCP-specific rules: Zod validation matching tool schemas, structured error responses, no console.log on stdio transport, AbortSignal propagation, no secrets in error messages, tool handler try-catch requirement, code examples showing correct tool handler pattern vs anti-patterns, references to actual architecture docs found in the repo",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "hey we have a next.js 15 admin dashboard with NextAuth RBAC (admin, editor, viewer). devs keep forgetting auth checks on new API routes and server actions don't validate inputs. last week someone accidentally exposed database connection strings in a client component. please set up devin review to lock this down.",
+      "expected_output": "REVIEW.md with dashboard-specific rules: auth middleware requirement on all dashboard routes, Server Action Zod validation, RBAC enforcement on mutations, route handler authentication, no process.env in client components, error boundaries per route segment, server-side pagination, code examples for auth patterns",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "We're building a marketing website with Next.js App Router and Sanity CMS. SEO is critical. Devs keep making everything a client component and forgetting metadata. Set up Devin Review for us — we want it to catch SEO and performance issues.",
+      "expected_output": "REVIEW.md with Next.js website rules: metadata/generateMetadata required on pages, next/image instead of raw img tags, minimize use client, Suspense for async data, parallel fetches (Promise.all), structured data (JSON-LD) for content pages, ISR revalidation strategy, no style rules since Tailwind exists",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "We're building a Python AI agent that uses mcp-use to connect to multiple MCP servers. We keep having leaked connections when the agent crashes and tool calls hang forever. Also someone committed an API key last week. Create REVIEW.md and AGENTS.md for our repo.",
+      "expected_output": "REVIEW.md with mcp-use rules: async context manager enforcement, tool call error handling (MCPToolCallError), no hardcoded secrets, timeout enforcement, connection recovery with retry logic, multi-server namespace checks. Also AGENTS.md with coding standards for the Python agent codebase",
+      "files": []
+    }
+  ]
+}

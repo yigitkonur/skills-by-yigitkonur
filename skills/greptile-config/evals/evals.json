@@ -1,0 +1,59 @@
+{
+  "skill_name": "greptile-config",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just joined a new team and they asked me to set up Greptile for our TypeScript monorepo. We have packages/api (Express + Prisma), packages/web (Next.js), and packages/shared (utility library). The api handles payments so that needs extra scrutiny. We use ESLint and Prettier already. Can you analyze this repo and generate the full .greptile config?",
+      "expected_output": "Root .greptile/config.json with strictness 2, child configs for packages/api (strictness 1 with security rules), packages/web (frontend-specific rules), properly scoped rules, ignorePatterns as newline-separated string, files.json pointing to any docs/schemas found, style comment type dropped since ESLint/Prettier exist",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We have a Python Django REST API repo. It's a single service, not a monorepo. We use Django REST Framework, PostgreSQL, Celery for async tasks, and Redis for caching. Our main pain points are N+1 queries making it to production and people forgetting to add permission classes to new views. We also have an openapi.yaml spec we want the reviewer to check against. Set up Greptile for us.",
+      "expected_output": "Single .greptile/config.json with Django-specific rules (N+1 prevention, permission_classes enforcement, no raw SQL), files.json pointing to openapi.yaml scoped to views/viewsets, ignorePatterns covering migrations/__pycache__/etc, rules that are semantic not syntactic",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "hey so we have this react + next.js app and our backend team has a separate repo (our-org/backend-api). we keep having issues where frontend devs make API calls that don't match the backend contracts. also people keep creating custom button and input components instead of using our design system from our-org/design-system. can you set up greptile to catch these?",
+      "expected_output": "Config with patternRepositories pointing to our-org/backend-api and our-org/design-system in org/repo format (not URLs), rules for API contract matching and design system usage scoped to relevant directories, frontend-appropriate ignore patterns, all JSON valid with no anti-patterns",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I'm building a Tauri v2 desktop app — Rust backend in src-tauri/ and React+TypeScript frontend in src/. The app manages PTY sessions and does file system operations via IPC commands. We use portable-pty, rusqlite, and tauri-plugin-shell. There's sensitive data (SSH keys, keyring credentials). No linting set up yet. Set up Greptile to catch the things that matter most — IPC security, command handler safety, and frontend-to-Rust communication issues.",
+      "expected_output": "Config with Tauri-specific rules: command error handling (no panics/unwrap), input validation on IPC handlers, Mutex lock scope (no locks across await), shell command injection prevention, invoke() error handling on frontend side, sensitive data logging prevention. ignorePatterns covering src-tauri/target/**, rules.md with Rust code examples for good/bad patterns. Rules scoped separately for src-tauri/src/**/*.rs and src/**/*.ts",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I wrote an MCP server in TypeScript that provides file search, code analysis, and shell execution tools. It uses the @modelcontextprotocol/sdk with stdio transport. I want Greptile to review PRs and catch protocol compliance issues, security problems in tool handlers, and common MCP mistakes. The main concern is that tool handlers accept user parameters that could be used for command injection or path traversal.",
+      "expected_output": "Config with MCP-specific rules: Zod input validation matching advertised schemas, structured error responses with MCP error codes, try-catch in all handlers, command injection prevention (no interpolation in shell commands), path traversal prevention, timeout enforcement on I/O, no secrets in logs, stdio flush after responses. rules.md with TypeScript code examples showing correct tool handler pattern vs anti-patterns",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "We're building a company marketing website with Next.js 14 App Router. It's a content-heavy site with blog, product pages, and landing pages. SEO is critical — we need to rank well. We use Sanity CMS for content, Tailwind for styling, and deploy on Vercel. Some devs keep making everything a client component and forgetting metadata. Set up Greptile to enforce good Next.js patterns for SEO and performance.",
+      "expected_output": "Config with Next.js website rules: metadata/generateMetadata required on pages, no raw <img> tags (use next/image), minimize use client directives, Suspense for async data, parallel fetches (no waterfall awaits), structured data for content pages, ISR revalidation strategy required. No style comment type if Tailwind covers formatting. Rules scoped to app/**/*.tsx and components/**/*.tsx",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I need Greptile set up for our internal admin dashboard built with Next.js 15. It has user management, data tables, analytics charts, and settings. Auth is via NextAuth with role-based access (admin, editor, viewer). Our biggest issues: devs forget to add auth checks to new API routes, server actions don't validate inputs, and we've had a few incidents where sensitive data showed up in client components. Help us lock this down.",
+      "expected_output": "Config with dashboard-specific rules: auth middleware on /dashboard/**, server action Zod validation, RBAC checks on mutations, route handler authentication, error boundaries per route segment, no process.env in client components, server/client boundary enforcement, server-side pagination. Rules scoped to app/dashboard/**/*.tsx, app/api/**/*.ts, and actions/**/*.ts",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "we're building a python AI agent that uses mcp-use to connect to multiple MCP servers — one for file operations, one for web search, and one for database queries. the agent orchestrates tool calls based on user prompts. we keep running into issues with leaked connections when the agent crashes, and sometimes tool calls hang forever because we forgot timeouts. also one intern committed an API key last week. can you set up greptile for this?",
+      "expected_output": "Config with mcp-use rules: async context manager enforcement for MCPClient/MCPAgent, tool call error handling (MCPToolCallError inspection), no hardcoded secrets (use env vars/keyring), timeout enforcement on all tool calls, connection error recovery with retry logic, multi-server namespace collision checks, tool refresh after server restarts. Python-specific ignorePatterns (__pycache__, .venv, etc.)",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "I have a production MCP server written in TypeScript that wraps the DataForSEO API and exposes 19 SEO tools via the MCP protocol. It uses a middleware pipeline (error boundary, circuit breaker, rate limiting, timeout, token budgeting) and a ResponseBuilder for token-optimized responses. Transport is stdio for Claude Desktop and HTTP for self-hosted. The codebase has ESLint with strict TS. Set up Greptile to catch MCP protocol issues, response formatting mistakes, and security problems. The repo is at /Users/yigitkonur/dev-test/mcp-marketers — analyze it and generate the config.",
+      "expected_output": "Config with production MCP server rules: Zod validation matching tool schemas, ResponseBuilder usage (no raw JSON.stringify responses), error boundary in middleware, no secrets in responses, timeout with AbortSignal on all external calls, circuit breaker for upstream services, token budget compliance (no unbounded arrays), structured logger only (no console.log on stdio), env var Zod validation at startup, registry consistency (every listed tool has a handler). files.json pointing to architecture docs, rules.md with response builder and stdio safety examples. ignorePatterns covering build/, scripts/, test-results/",
+      "files": []
+    }
+  ]
+}
