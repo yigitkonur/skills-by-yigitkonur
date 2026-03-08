@@ -1,69 +1,114 @@
 # skills-by-yigitkonur
 
-All my AI agent skills in one place.
-
-## Install
+14 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, and framework guides.
 
 ```bash
-# Install all skills
 npx skills add yigitkonur/skills-by-yigitkonur
+```
 
-# Install a specific skill
-npx skills add yigitkonur/skills-by-yigitkonur/copilot-review-init
-npx skills add yigitkonur/skills-by-yigitkonur/design-soul-saas
-npx skills add yigitkonur/skills-by-yigitkonur/devin-review-init
+---
+
+## Code Review Setup
+
+Skills that analyze your repo and generate review configuration files for AI code review platforms.
+
+| Skill | What it does |
+|---|---|
+| **[greptile-config](skills/greptile-config/)** | Generates `.greptile/config.json`, `rules.md`, and `files.json` with semantic rules scoped to your repo's actual architecture — not linter-level checks, but cross-file implications that require LLM understanding. Includes 3 reference docs covering the full config spec, 11 example scenarios (TypeScript, Python, Go, Rust, Tauri, MCP, Next.js), and an anti-patterns/troubleshooting guide. |
+| **[devin-review-init](skills/devin-review-init/)** | Generates `REVIEW.md` and `AGENTS.md` for Devin's Bug Catcher by exploring your repo structure, tech stack, and pain points, then producing prioritized review rules with code examples. Includes 2 reference docs: the full instruction file spec and 8 complete scenario templates (API, dashboard, Tauri, MCP, monorepo). |
+| **[copilot-review-init](skills/copilot-review-init/)** | Generates a root `copilot-instructions.md` plus path-scoped `*.instructions.md` micro-files that stay within Copilot's 4,000-character processing limit. Includes 4 reference docs: instruction spec, micro-library of 50+ reusable rule blocks, 10 scenario templates, and an anti-patterns guide. |
+
+```bash
 npx skills add yigitkonur/skills-by-yigitkonur/greptile-config
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-apps-builder
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-cli
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-server-tester
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-use-code-review
-npx skills add yigitkonur/skills-by-yigitkonur/planning
-npx skills add yigitkonur/skills-by-yigitkonur/playwright-cli
-npx skills add yigitkonur/skills-by-yigitkonur/research-powerpack
+npx skills add yigitkonur/skills-by-yigitkonur/devin-review-init
+npx skills add yigitkonur/skills-by-yigitkonur/copilot-review-init
+```
+
+---
+
+## Design Extraction
+
+Skills that forensically parse real CSS/JS from existing sites and produce structured design documentation or buildable projects.
+
+| Skill | What it does |
+|---|---|
+| **[design-soul-saas](skills/design-soul-saas/)** | Extracts the complete visual DNA from any SaaS dashboard or admin panel codebase — every token, component state, animation keyframe, and responsive breakpoint — into structured documentation that lets a builder recreate the exact look-and-feel without copying source. Includes 6 reference docs: component/system templates, dashboard patterns catalog, foundations and components agent guides, and a quality checklist. |
+| **[snapshot-to-nextjs](skills/snapshot-to-nextjs/)** | Converts browser "Save As" HTML snapshots into buildable Next.js App Router projects with zero third-party dependencies — self-hosted fonts, images, icons, and a Tailwind config grounded on real extracted CSS values (no approximations, no guessing). Includes 6 reference docs: foundations/sections agent guides, section/system templates, website patterns catalog, and a quality checklist. |
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/design-soul-saas
 npx skills add yigitkonur/skills-by-yigitkonur/snapshot-to-nextjs
+```
+
+---
+
+## MCP Tooling
+
+Skills for building, testing, debugging, and reviewing MCP (Model Context Protocol) servers and clients.
+
+| Skill | What it does |
+|---|---|
+| **[mcp-server-tester](skills/mcp-server-tester/)** | Tests MCP servers through two modes: protocol-level verification across 19 checks (transport, schema, errors, timeouts), and LLM-powered end-to-end testing with domain-adaptive business case generation. Includes 6 reference docs: basic/LLM test guides, Inspector API reference, provider patterns, business cases, and troubleshooting. |
+| **[mcp-cli](skills/mcp-cli/)** | Operational guide for the `mcp` CLI tool — connect to servers, list/call tools, inspect schemas, chain outputs, and debug transport issues interactively. Includes 4 reference docs: command reference, configuration, error recovery, and testing flow. |
+| **[mcp-apps-builder](skills/mcp-apps-builder/)** | Reference for building MCP apps with the mcp-use framework — server creation, tool/resource/prompt handlers, widget system, authentication (Supabase/WorkOS/custom), and deployment. Includes 16 reference docs across foundations, server patterns, widget guides, and auth providers. |
+| **[mcp-use-code-review](skills/mcp-use-code-review/)** | Code review skill for Python apps using the `mcp-use` pip package — catches the 6 most common AI-agent derailment patterns: leaked connections, missing timeouts, improper error handling, session lifecycle bugs, namespace collisions, and auth misuse. Includes 10 reference docs covering async lifecycle, tools deep-dive, LangChain bridge, server config, deployment, and migration from the TypeScript SDK. |
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/mcp-server-tester
+npx skills add yigitkonur/skills-by-yigitkonur/mcp-cli
+npx skills add yigitkonur/skills-by-yigitkonur/mcp-apps-builder
+npx skills add yigitkonur/skills-by-yigitkonur/mcp-use-code-review
+```
+
+---
+
+## Browser Automation
+
+| Skill | What it does |
+|---|---|
+| **[playwright-cli](skills/playwright-cli/)** | Complete operational guide for `@anthropic-ai/playwright-cli` browser automation — session bootstrap, observe-act loop, element refs, tab management, form filling, screenshots, JS evaluation, console/network debugging, responsive testing, dark mode, and multi-agent coordination. Includes 6 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, and orchestrator guide. |
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/playwright-cli
+```
+
+---
+
+## Planning & Research
+
+Skills that provide structured methodologies for decision-making and multi-source research.
+
+| Skill | What it does |
+|---|---|
+| **[planning](skills/planning/)** | Structured planning skill for any task — intake framing, root cause analysis, option design, prioritization, systems thinking, technical strategy, communication alignment, and execution risk. Includes 10 reference docs covering 9 thinking method families and a catalog of 40+ named methods (pre-mortem, Cynefin, RICE, wardley mapping, etc.). |
+| **[research-powerpack](skills/research-powerpack/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/planning
+npx skills add yigitkonur/skills-by-yigitkonur/research-powerpack
+```
+
+---
+
+## Framework Guides
+
+Deep reference skills for specific frameworks and tools.
+
+| Skill | What it does |
+|---|---|
+| **[supastarter](skills/supastarter/)** | Comprehensive developer guide for the SupaStarter Next.js SaaS boilerplate — monorepo architecture, App Router layout chains, oRPC API patterns, Better Auth, Prisma, Stripe payments, organizations, mail, i18n, S3 storage, UI conventions, analytics, and deployment. Includes 93 reference docs organized across 20 domains with cheatsheets for commands, env vars, file locations, and imports. |
+| **[tauri-devtools](skills/tauri-devtools/)** | CrabNebula DevTools integration for debugging Tauri v2 apps — gives AI agents visibility into the Rust side with console logs, tracing spans, IPC call timings, live config inspection, and frontend source browsing. Includes 5 reference docs: architecture deep-dive, IPC span anatomy, integration patterns, tab reference, and common debugging scenarios. |
+
+```bash
 npx skills add yigitkonur/skills-by-yigitkonur/supastarter
 npx skills add yigitkonur/skills-by-yigitkonur/tauri-devtools
 ```
 
-## Skills
+---
 
-| Skill | Description |
-|---|---|
-| **[copilot-review-init](skills/copilot-review-init/)** | Generate Copilot code review instruction files. Analyzes repo structure and produces tailored review rules for GitHub Copilot's code review system. |
-| **[design-soul-saas](skills/design-soul-saas/)** | Forensic visual DNA extraction for SaaS dashboards. Extracts every design token, component pattern, animation, and responsive behavior into structured documentation. |
-| **[devin-review-init](skills/devin-review-init/)** | Generate production-ready `REVIEW.md` and `AGENTS.md` for Devin Review's Bug Catcher. Analyzes the repo and produces tailored review instructions. |
-| **[greptile-config](skills/greptile-config/)** | Generate production-ready Greptile AI code review configuration. Produces tailored `.greptile/` config files with semantic rules. |
-| **[mcp-apps-builder](skills/mcp-apps-builder/)** | Build MCP apps with mcp-use framework — server patterns, widgets, authentication, and deployment. |
-| **[mcp-cli](skills/mcp-cli/)** | Guide for using the `mcp` CLI tool to inspect, test, and debug MCP servers interactively. |
-| **[mcp-server-tester](skills/mcp-server-tester/)** | Comprehensive MCP server testing — protocol compliance, tool validation, error handling, and LLM-driven behavioral testing. |
-| **[mcp-use-code-review](skills/mcp-use-code-review/)** | Code review skill for Python apps using the `mcp-use` library. Validates async lifecycle, tool call handling, and connection management. |
-| **[planning](skills/planning/)** | Structured planning and thinking methods for software architecture decisions. Includes 100+ design principles and pattern references. |
-| **[playwright-cli](skills/playwright-cli/)** | Guide for using Playwright CLI for browser automation — sessions, tabs, forms, visual testing, and debugging. |
-| **[research-powerpack](skills/research-powerpack/)** | Research workflows for software engineering — architecture analysis, bug fixing, library research, performance, security, and more. |
-| **[snapshot-to-nextjs](skills/snapshot-to-nextjs/)** | Convert saved HTML snapshots into pixel-perfect Next.js App Router projects. Forensic CSS parsing, self-hosted assets, Tailwind config. |
-| **[supastarter](skills/supastarter/)** | Complete SupaStarter framework reference — auth, payments, organizations, i18n, routing, database, API, and 90+ reference docs. |
-| **[tauri-devtools](skills/tauri-devtools/)** | Debug Tauri v2 desktop apps using the DevTools instrumentation system. IPC spans, state tracking, log correlation. |
+## Contributing
 
-## Previously Separate Repos
-
-These 14 skills were originally spread across 13 separate repos. All have been combined here:
-
-| Original Repo | Skills |
-|---|---|
-| `skill-supastarter` | supastarter |
-| `skill-mcp-cli` | mcp-cli |
-| `skill-playwright-cli` | playwright-cli |
-| `skill-planning` | planning |
-| `skill-research-powerpack` | research-powerpack |
-| `skill-tauri-mcp` | tauri-devtools |
-| `skill-mcp-use` | mcp-apps-builder |
-| `skill-mcp-use-review` | mcp-use-code-review |
-| `skill-mcp-server-tester` | mcp-server-tester |
-| `skill-greptile-init` | greptile-config |
-| `skill-devin-review-init` | devin-review-init |
-| `skill-copilot-review` | copilot-review-init |
-| `skill-snapshot-to-nextjs` | snapshot-to-nextjs |
-| `skill-design-soul-saas` | design-soul-saas |
+Want to add a new skill or improve an existing one? See **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 ## License
 
