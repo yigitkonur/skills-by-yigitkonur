@@ -69,10 +69,10 @@ Examples:
 - `<product>-builder`
 
 Examples:
-- `mcp-cli`
 - `playwright-cli`
 - `tauri-devtools`
 - `mcp-apps-builder`
+- `test-mcp-by-cli`
 
 ### Method / workflow skills
 - Use the clearest permanent noun phrase
@@ -97,9 +97,14 @@ For published skills, prefer this order:
 - `devin-review-init`
 - `greptile-config`
 - `mcp-apps-builder`
-- `mcp-cli`
+- `mcp-client-dev`
+- `mcp-ext-apps`
+- `mcp-security`
+- `mcp-server-dev`
 - `mcp-server-tester`
+- `mcp-testing`
 - `mcp-use-code-review`
+- `npm-publish-cicd`
 - `planning`
 - `playwright-cli`
 - `research-powerpack`
@@ -107,4 +112,5 @@ For published skills, prefer this order:
 - `snapshot-to-nextjs`
 - `supastarter`
 - `tauri-devtools`
+- `test-mcp-by-cli`
 - `typescript`
