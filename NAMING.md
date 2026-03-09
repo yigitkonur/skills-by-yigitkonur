@@ -26,7 +26,7 @@ This repo is a **single skills pack**. Every skill should look and behave like i
 Every skill description is canonical metadata, not body copy.
 
 Required format:
-- start with `Use skill if`
+- start with `Use skill if you are`
 - 30 words or fewer
 - describe when the skill should trigger
 - use concrete user intent, tools, file patterns, or workflows when helpful
@@ -34,7 +34,7 @@ Required format:
 - do not mention references, packaging, evals, or long procedural detail
 
 Good:
-- `Use skill if you need direct MCP CLI commands to inspect servers, call tools, or debug transport and argument issues.`
+- `Use skill if you are setting up GitHub Copilot review behavior with copilot-instructions.md or scoped *.instructions.md files for repo-specific pull request review.`
 - `Use skill if you are rebuilding saved HTML snapshots into grounded Next.js pages with self-hosted assets and extracted styles.`
 
 Weak:

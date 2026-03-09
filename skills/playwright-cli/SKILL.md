@@ -1,10 +1,9 @@
 ---
 name: playwright-cli
-description: >
-  Use skill if you need reliable @anthropic-ai/playwright-cli browser automation for navigation, forms, screenshots, tab flows, console/network debugging, or small run-code steps.
+description: Use skill if you are automating a browser with @anthropic-ai/playwright-cli for navigation, forms, screenshots, tab flows, debugging, or small run-code steps.
 ---
 
-# Browser Automation with playwright-cli
+# Playwright CLI
 
 Validated against the installed `playwright-cli` binary on this machine (`0.0.62`).
 Treat the installed CLI help and live runtime behavior as the primary authority.

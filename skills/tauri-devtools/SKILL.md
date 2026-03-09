@@ -1,13 +1,9 @@
 ---
 name: tauri-devtools
-description: "Use skill if you are debugging a Tauri app's Rust side, IPC calls, config, plugins, or bundled assets with CrabNebula DevTools."
-license: MIT
-metadata:
-  author: yigitkonur
-  version: "1.0"
+description: Use skill if you are debugging a Tauri app's Rust side, IPC calls, config, plugins, or bundled assets with CrabNebula DevTools.
 ---
 
-# CrabNebula DevTools for Tauri v2
+# Tauri DevTools
 
 ## What CrabNebula DevTools Is (and Is Not)
 

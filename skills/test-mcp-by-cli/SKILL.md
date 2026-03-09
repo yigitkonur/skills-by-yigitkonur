@@ -1,9 +1,9 @@
 ---
 name: test-mcp-by-cli
-description: Use skill if you need to test MCP servers with philschmid/mcp-cli, inspect tools, call them, or debug config, transport, auth, and arguments.
+description: Use skill if you are testing MCP servers with philschmid/mcp-cli, inspecting tools, calling them, or debugging config, transport, auth, and arguments.
 ---
 
-# Test MCP By CLI
+# Test MCP by CLI
 
 Validate MCP servers with `mcp-cli` (philschmid/mcp-cli v0.3.0) using release-verified behavior first, then use official repo source only when it matches what the installed binary actually does.
 

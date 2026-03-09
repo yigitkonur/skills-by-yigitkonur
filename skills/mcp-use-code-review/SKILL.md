@@ -1,11 +1,9 @@
 ---
 name: mcp-use-code-review
-description: >
-  Use skill if you are reviewing or debugging Python code that consumes MCP
-  servers through the `mcp-use` package.
+description: Use skill if you are reviewing or debugging Python code that consumes MCP servers through the `mcp-use` package.
 ---
 
-# Test MCP-Use SDK Based Apps
+# MCP Use Code Review
 
 ## What mcp-use IS vs. What It Is NOT
 

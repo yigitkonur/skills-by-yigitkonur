@@ -1,9 +1,9 @@
 ---
 name: greptile-config
-description: Use skill if you need Greptile review setup, .greptile config files, or repo-specific AI PR review rules.
+description: Use skill if you are setting up Greptile review behavior with .greptile config files or repo-specific AI pull request review rules.
 ---
 
-# Greptile Configuration Generator
+# Greptile Config
 
 Generate optimal Greptile AI code review configuration by analyzing the actual repository — its structure, tech stack, patterns, documentation, and team conventions — then producing tailored `.greptile/` configuration files.
 

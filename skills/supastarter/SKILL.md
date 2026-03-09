@@ -1,8 +1,6 @@
 ---
 name: supastarter
-description: >
-  Use skill if you are changing a Supastarter app and need project-grounded
-  patterns for routing, auth, API, billing, UI, storage, or deployment.
+description: Use skill if you are changing a Supastarter app and need project-grounded patterns for routing, auth, API, billing, UI, storage, or deployment.
 ---
 
 # Supastarter

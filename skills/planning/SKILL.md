@@ -1,9 +1,9 @@
 ---
 name: planning
-description: Use skill if you need structured planning, prioritization, option analysis, or root-cause framing before acting.
+description: Use skill if you are planning work, comparing options, prioritizing tasks, or framing root causes before acting.
 ---
 
-# Planning Skill
+# Planning
 
 Use this skill to create plans that are clear, testable, and adaptable.
 

@@ -1,11 +1,9 @@
 ---
 name: research-powerpack
-description: >
-  Use skill if a coding task needs fresh external research from Google, Reddit,
-  scraped docs, or deep structured synthesis.
+description: Use skill if you are researching a coding task with fresh Google, Reddit, scraped docs, or deep structured synthesis.
 ---
 
-# Research Powerpack Guide
+# Research Powerpack
 
 ## 1. Overview
 

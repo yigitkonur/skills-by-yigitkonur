@@ -1,13 +1,9 @@
 ---
 name: design-soul-saas
-description: "Use skill if you are documenting the visual system of a SaaS dashboard, admin panel, or internal tool."
-license: MIT
-metadata:
-  author: yigitkonur
-  version: "1.0"
+description: Use skill if you are documenting the visual system of a SaaS dashboard, admin panel, or internal tool.
 ---
 
-# Design Soul — SaaS Dashboard Edition
+# Design Soul SaaS
 
 Forensic visual DNA extraction for dashboard codebases. Read every pixel, every state, every micro-interaction. Produce documentation so complete that someone can recreate the exact look-and-feel without copying a single line of source code.
 

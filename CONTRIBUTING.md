@@ -25,7 +25,7 @@ The only required file. It has two parts: YAML frontmatter and markdown body.
 ```markdown
 ---
 name: my-skill
-description: Use skill if the user needs a specific workflow this skill owns.
+description: Use skill if you are applying a specific workflow this skill owns.
 ---
 
 # My Skill
@@ -35,7 +35,7 @@ The body is the actual instruction set the agent follows.
 
 **Frontmatter rules:**
 - `name` must exactly match the directory name
-- `description` must start with `Use skill if`
+- `description` must start with `Use skill if you are`
 - `description` must be 30 words or fewer
 - `description` is the trigger — write when to load the skill, not a body summary
 - Include concrete phrases, tools, file patterns, or workflows when they help routing
@@ -68,7 +68,7 @@ Good reference docs:
    mkdir -p skills/my-skill/references
    ```
 
-2. **Write `SKILL.md`** — start with a frontmatter trigger description that begins with `Use skill if`, stays within 30 words, and clearly tells the agent when to load the skill.
+2. **Write `SKILL.md`** — start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
 
 3. **Add reference docs** if the skill needs them — make sure every file is explicitly referenced in `SKILL.md`.
 
@@ -95,7 +95,7 @@ Good reference docs:
 Before submitting:
 
 - [ ] `name` in `SKILL.md` frontmatter matches the directory name exactly
-- [ ] `description` starts with `Use skill if`
+- [ ] `description` starts with `Use skill if you are`
 - [ ] `description` is 30 words or fewer
 - [ ] `description` includes trigger phrases a user would actually say
 - [ ] Every file in `references/` is explicitly referenced in `SKILL.md`
@@ -130,6 +130,6 @@ Before submitting:
 | Reference layout | Flat or nested under `references/` |
 | SKILL.md size | Prefer lean routing files; move deep detail to references when needed |
 | Reference doc size | Split when navigation becomes hard, not by a rigid line count |
-| Frontmatter description | Start with `Use skill if`, stay within 30 words, and optimize for trigger clarity |
+| Frontmatter description | Start with `Use skill if you are`, stay within 30 words, and optimize for trigger clarity |
 | Code examples in SKILL.md | Use fenced blocks with language tags |
 | Good/bad pattern examples | Label with `### Good` / `### Bad` headers |

@@ -1,11 +1,9 @@
 ---
 name: mcp-apps-builder
-description: >
-  Use skill if you are building or modifying an mcp-use app with tools,
-  resources, prompts, widgets, auth, or deployment concerns.
+description: Use skill if you are building or modifying an mcp-use app with tools, resources, prompts, widgets, auth, or deployment concerns.
 ---
 
-# IMPORTANT: How to Use This Skill
+# MCP Apps Builder
 
 This file provides a navigation guide. Before implementing mcp-use features, you should:
 
@@ -337,5 +335,4 @@ server.listen();
 - `server.proxy()` - Compose/Proxy multiple MCP servers
 - `server.uiResource()` - Define widget resource
 - `server.listen()` - Start server
-
 

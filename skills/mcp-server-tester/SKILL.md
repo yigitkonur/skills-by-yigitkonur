@@ -1,13 +1,9 @@
 ---
 name: mcp-server-tester
-description: Use skill if you need to validate an MCP server, debug broken primitives, or test tools, resources, prompts, and transports before shipping.
-license: MIT
-metadata:
-  author: yigitkonur
-  version: "1.0"
+description: Use skill if you are validating an MCP server, debugging broken primitives, or testing tools, resources, prompts, and transports before shipping.
 ---
 
-# MCP Server Testing Suite
+# MCP Server Tester
 
 This skill provides two testing modes for MCP servers, both powered by `@mcp-use/inspector`.
 
