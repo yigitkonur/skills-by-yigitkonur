@@ -1,9 +1,9 @@
 ---
-name: typescript
+name: develop-typescript
 description: Use skill if you are writing, reviewing, or refactoring TypeScript code and need strict types, anti-patterns, or configuration guidance.
 ---
 
-# TypeScript
+# Develop TypeScript
 
 Strict, type-safe TypeScript for any codebase — frontend, backend, libraries, CLIs.
 

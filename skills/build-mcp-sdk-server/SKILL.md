@@ -1,9 +1,9 @@
 ---
-name: mcp-server-dev
-description: Use skill if you are building an MCP server with the official TypeScript SDK — tools, resources, prompts, transports, or v1-to-v2 migration.
+name: build-mcp-sdk-server
+description: Use skill if you are building an MCP server with the official TypeScript SDK, including tools, resources, prompts, transports, or v1-to-v2 migration.
 ---
 
-# MCP Server Dev
+# Build MCP SDK Server
 
 Build MCP servers with the official TypeScript SDK v2 on the current `main` branch. This skill targets `@modelcontextprotocol/server`; if your code still imports `@modelcontextprotocol/sdk`, read `references/migration-v1-to-v2.md` first.
 

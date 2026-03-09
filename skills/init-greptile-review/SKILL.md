@@ -1,9 +1,9 @@
 ---
-name: greptile-config
+name: init-greptile-review
 description: Use skill if you are setting up Greptile review behavior with .greptile config files or repo-specific AI pull request review rules.
 ---
 
-# Greptile Config
+# Init Greptile Review
 
 Generate optimal Greptile AI code review configuration by analyzing the actual repository — its structure, tech stack, patterns, documentation, and team conventions — then producing tailored `.greptile/` configuration files.
 

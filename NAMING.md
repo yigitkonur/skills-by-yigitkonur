@@ -54,32 +54,57 @@ Avoid these across directory names, frontmatter names, and README labels:
 
 ## Preferred Formula
 
-### Review / setup skills
-- `<tool>-config`
-- `<tool>-review-init`
+Prefer action-first canonical names when they make install paths clearer.
+
+### Build skills
+- `build-<thing>`
+- Use for creation, authoring, scaffolding, or extension workflows
 
 Examples:
-- `greptile-config`
-- `devin-review-init`
-- `copilot-review-init`
+- `build-mcp-sdk-server`
+- `build-mcp-use-apps`
+- `build-supastarter-app`
+- `build-skills`
 
-### Tooling / framework skills
-- `<product>-cli`
-- `<product>-devtools`
-- `<product>-builder`
+### Test skills
+- `test-<thing>`
+- Use for validation, debugging, protocol checks, or verification workflows
+
+Examples:
+- `test-mcp-server`
+- `test-mcp-by-cli`
+
+### Init skills
+- `init-<thing>`
+- Use for first-run setup that generates repo files or review configuration
+
+Examples:
+- `init-greptile-review`
+- `init-devin-review`
+
+### Debug skills
+- `debug-<thing>`
+- Use when the primary job is inspection, diagnosis, or live troubleshooting
+
+Examples:
+- `debug-tauri-devtools`
+
+### Develop / Plan skills
+- `develop-<thing>` for language or implementation guidance
+- `plan-<thing>` for structured decision-making workflows
+
+Examples:
+- `develop-typescript`
+- `plan-work`
+
+### Keep established product names when they are already the clearest public path
 
 Examples:
 - `playwright-cli`
-- `tauri-devtools`
-- `mcp-apps-builder`
-- `test-mcp-by-cli`
-
-### Method / workflow skills
-- Use the clearest permanent noun phrase
-
-Examples:
-- `planning`
 - `research-powerpack`
+- `snapshot-to-nextjs`
+- `mcp-use-code-review`
+- `copilot-review-init`
 
 ## Migration Rule
 
@@ -92,25 +117,20 @@ For published skills, prefer this order:
 
 ## Current Canonical Skill Names
 
+- `build-mcp-sdk-server`
+- `build-mcp-use-apps`
+- `build-skills`
+- `build-supastarter-app`
 - `copilot-review-init`
+- `debug-tauri-devtools`
 - `design-soul-saas`
-- `devin-review-init`
-- `greptile-config`
-- `mcp-apps-builder`
-- `mcp-client-dev`
-- `mcp-ext-apps`
-- `mcp-security`
-- `mcp-server-dev`
-- `mcp-server-tester`
-- `mcp-testing`
+- `develop-typescript`
+- `init-devin-review`
+- `init-greptile-review`
 - `mcp-use-code-review`
-- `npm-publish-cicd`
-- `planning`
+- `plan-work`
 - `playwright-cli`
 - `research-powerpack`
-- `skill-builder`
 - `snapshot-to-nextjs`
-- `supastarter`
-- `tauri-devtools`
 - `test-mcp-by-cli`
-- `typescript`
+- `test-mcp-server`

@@ -1,9 +1,9 @@
 ---
-name: planning
+name: plan-work
 description: Use skill if you are planning work, comparing options, prioritizing tasks, or framing root causes before acting.
 ---
 
-# Planning
+# Plan Work
 
 Use this skill to create plans that are clear, testable, and adaptable.
 

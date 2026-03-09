@@ -1,9 +1,9 @@
 ---
-name: devin-review-init
+name: init-devin-review
 description: Use skill if you are setting up Devin Bug Catcher review behavior with REVIEW.md, AGENTS.md, or repo-specific pull request review instructions.
 ---
 
-# Devin Review Init
+# Init Devin Review
 
 Generate optimal `REVIEW.md` and optionally `AGENTS.md` files by analyzing the actual repository — its structure, tech stack, patterns, documentation, and team conventions — then producing tailored review instruction files that make Devin's Bug Catcher catch real issues.
 

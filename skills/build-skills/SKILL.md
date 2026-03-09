@@ -1,9 +1,9 @@
 ---
-name: skill-builder
+name: build-skills
 description: Use skill if you are creating or redesigning a Claude skill and need workspace-first evidence, remote skill research, and comparison before drafting.
 ---
 
-# Skill Builder
+# Build Skills
 
 Build or revise Claude skills from evidence, not instinct.
 
@@ -77,7 +77,7 @@ Load only the files needed for the task.
 | `references/research-workflow.md` | Read when creating a new skill, redesigning an existing one, or deciding whether remote research is mandatory. |
 | `references/remote-sources.md` | Read when searching Playbooks-style directories, selecting remote skills, or treating downloaded examples as evidence. |
 | `references/comparison-workflow.md` | Read when building the markdown comparison table or separating evidence, selection, and synthesis. |
-| `references/source-patterns.md` | Read when deciding what to inherit from earlier skill-builder patterns and what to leave out to keep the new result lean. |
+| `references/source-patterns.md` | Read when deciding what to inherit from earlier build-skills patterns and what to leave out to keep the new result lean. |
 
 ## Guardrails
 

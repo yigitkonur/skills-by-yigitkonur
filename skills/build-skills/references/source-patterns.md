@@ -1,6 +1,6 @@
 # Source Patterns
 
-Use this file when you need to inherit the strongest ideas from earlier skill-builder work without dragging over unnecessary bulk.
+Use this file when you need to inherit the strongest ideas from earlier build-skills work without dragging over unnecessary bulk.
 
 ## Keep these patterns
 
@@ -64,7 +64,7 @@ If the answer to the last question is yes, remove it.
 
 ## End state
 
-A strong skill-builder contribution should feel:
+A strong build-skills contribution should feel:
 
 - evidence-led
 - comparison-driven

@@ -1,9 +1,9 @@
 ---
-name: tauri-devtools
+name: debug-tauri-devtools
 description: Use skill if you are debugging a Tauri app's Rust side, IPC calls, config, plugins, or bundled assets with CrabNebula DevTools.
 ---
 
-# Tauri DevTools
+# Debug Tauri DevTools
 
 ## What CrabNebula DevTools Is (and Is Not)
 

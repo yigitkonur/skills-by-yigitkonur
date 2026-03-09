@@ -1,9 +1,9 @@
 ---
-name: mcp-server-tester
+name: test-mcp-server
 description: Use skill if you are validating an MCP server, debugging broken primitives, or testing tools, resources, prompts, and transports before shipping.
 ---
 
-# MCP Server Tester
+# Test MCP Server
 
 This skill provides two testing modes for MCP servers, both powered by `@mcp-use/inspector`.
 

@@ -1,9 +1,9 @@
 ---
-name: supastarter
-description: Use skill if you are changing a Supastarter app and need project-grounded patterns for routing, auth, API, billing, UI, storage, or deployment.
+name: build-supastarter-app
+description: Use skill if you are building or extending a Supastarter app and need project-grounded patterns for routing, auth, API, billing, UI, storage, or deployment.
 ---
 
-# Supastarter
+# Build Supastarter App
 
 Use this skill when you need to change or extend a Supastarter-based Next.js SaaS app and you want the implementation to match the real codebase instead of generic boilerplate patterns.
 
