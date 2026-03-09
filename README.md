@@ -69,13 +69,13 @@ Skills for building, testing, debugging, and reviewing MCP (Model Context Protoc
 | Skill | What it does |
 |---|---|
 | **[mcp-server-tester](skills/mcp-server-tester/)** | Tests MCP servers through two modes: protocol-level verification across 19 checks (transport, schema, errors, timeouts), and LLM-powered end-to-end testing with domain-adaptive business case generation. Includes 6 reference docs: basic/LLM test guides, Inspector API reference, provider patterns, business cases, and troubleshooting. |
-| **[mcp-cli](skills/mcp-cli/)** | Operational guide for the `mcp` CLI tool — connect to servers, list/call tools, inspect schemas, chain outputs, and debug transport issues interactively. Includes 4 reference docs: command reference, configuration, error recovery, and testing flow. |
+| **[test-mcp-by-cli](skills/test-mcp-by-cli/)** | Behavior-verified guide for testing MCP servers with `philschmid/mcp-cli` v0.3.0 — 8-phase verification, config and JSON argument patterns, raw `call` response parsing with `jq`, and troubleshooting for daemon, auth, and argument failures. Includes 4 reference docs: testing flow, configuration and arguments, output/debugging/chaining, and errors/recovery. |
 | **[mcp-apps-builder](skills/mcp-apps-builder/)** | Reference for building MCP apps with the mcp-use framework — server creation, tool/resource/prompt handlers, widget system, authentication (Supabase/WorkOS/custom), and deployment. Includes 16 reference docs across foundations, server patterns, widget guides, and auth providers. |
 | **[mcp-use-code-review](skills/mcp-use-code-review/)** | Code review skill for Python apps using the `mcp-use` pip package — catches the 6 most common AI-agent derailment patterns: leaked connections, missing timeouts, improper error handling, session lifecycle bugs, namespace collisions, and auth misuse. Includes 10 reference docs covering async lifecycle, tools deep-dive, LangChain bridge, server config, deployment, and migration from the TypeScript SDK. |
 
 ```bash
 npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-server-tester
-npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-cli
+npx skills add yigitkonur/skills-by-yigitkonur/skills/test-mcp-by-cli
 npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-apps-builder
 npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-use-code-review
 ```
