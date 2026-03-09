@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-15 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, and framework guides.
+16 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, and language standards.
 
 ## Install the full pack
 
@@ -11,20 +11,20 @@ npx skills add yigitkonur/skills-by-yigitkonur
 ## Install a single skill
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/<skill-name>
+npx skills add yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 ```
 
 Examples:
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/skill-builder
-npx skills add yigitkonur/skills-by-yigitkonur/research-powerpack
-npx skills add yigitkonur/skills-by-yigitkonur/playwright-cli
+npx skills add yigitkonur/skills-by-yigitkonur/skills/skill-builder
+npx skills add yigitkonur/skills-by-yigitkonur/skills/research-powerpack
+npx skills add yigitkonur/skills-by-yigitkonur/skills/playwright-cli
 ```
 
 ## How discovery works
 
-Each skill uses its `SKILL.md` frontmatter description as a trigger. Install the full pack when you want broad coverage, or install a single skill when you want a narrower setup.
+Each skill uses its `SKILL.md` frontmatter description as a trigger. Install the full pack when you want broad coverage, or install a single skill from the `skills/` subdirectory when you want a narrower setup.
 
 ---
 
@@ -39,9 +39,9 @@ Skills that analyze your repo and generate review configuration files for AI cod
 | **[copilot-review-init](skills/copilot-review-init/)** | Generates a root `copilot-instructions.md` plus path-scoped `*.instructions.md` micro-files that stay within Copilot's 4,000-character processing limit. Includes 4 reference docs: instruction spec, micro-library of 50+ reusable rule blocks, 10 scenario templates, and an anti-patterns guide. |
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/greptile-config
-npx skills add yigitkonur/skills-by-yigitkonur/devin-review-init
-npx skills add yigitkonur/skills-by-yigitkonur/copilot-review-init
+npx skills add yigitkonur/skills-by-yigitkonur/skills/greptile-config
+npx skills add yigitkonur/skills-by-yigitkonur/skills/devin-review-init
+npx skills add yigitkonur/skills-by-yigitkonur/skills/copilot-review-init
 ```
 
 ---
@@ -56,8 +56,8 @@ Skills that forensically parse real CSS/JS from existing sites and produce struc
 | **[snapshot-to-nextjs](skills/snapshot-to-nextjs/)** | Converts browser "Save As" HTML snapshots into buildable Next.js App Router projects with zero third-party dependencies — self-hosted fonts, images, icons, and a Tailwind config grounded on real extracted CSS values (no approximations, no guessing). Includes 6 reference docs: foundations/sections agent guides, section/system templates, website patterns catalog, and a quality checklist. |
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/design-soul-saas
-npx skills add yigitkonur/skills-by-yigitkonur/snapshot-to-nextjs
+npx skills add yigitkonur/skills-by-yigitkonur/skills/design-soul-saas
+npx skills add yigitkonur/skills-by-yigitkonur/skills/snapshot-to-nextjs
 ```
 
 ---
@@ -74,10 +74,10 @@ Skills for building, testing, debugging, and reviewing MCP (Model Context Protoc
 | **[mcp-use-code-review](skills/mcp-use-code-review/)** | Code review skill for Python apps using the `mcp-use` pip package — catches the 6 most common AI-agent derailment patterns: leaked connections, missing timeouts, improper error handling, session lifecycle bugs, namespace collisions, and auth misuse. Includes 10 reference docs covering async lifecycle, tools deep-dive, LangChain bridge, server config, deployment, and migration from the TypeScript SDK. |
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-server-tester
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-cli
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-apps-builder
-npx skills add yigitkonur/skills-by-yigitkonur/mcp-use-code-review
+npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-server-tester
+npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-cli
+npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-apps-builder
+npx skills add yigitkonur/skills-by-yigitkonur/skills/mcp-use-code-review
 ```
 
 ---
@@ -89,7 +89,7 @@ npx skills add yigitkonur/skills-by-yigitkonur/mcp-use-code-review
 | **[playwright-cli](skills/playwright-cli/)** | Reliable operational guide for `@anthropic-ai/playwright-cli` grounded in installed-CLI behavior — chrome bootstrap, observe-act proof loops, form/upload verification, tab/session coordination, console/network artifacts, visual checks, and advanced `run-code` recipes. Includes 7 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, async/advanced recipes, and orchestrator guide. |
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/playwright-cli
+npx skills add yigitkonur/skills-by-yigitkonur/skills/playwright-cli
 ```
 
 ---
@@ -105,9 +105,23 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 | **[skill-builder](skills/skill-builder/)** | Skill creation methodology skill for building or redesigning Claude skills from workspace evidence, remote research, and comparison before synthesis. Use when a skill should be original, traceable, and repo-fit instead of improvised. Includes reference docs for research workflow, remote sources, comparison workflow, and source-pattern selection. |
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/planning
-npx skills add yigitkonur/skills-by-yigitkonur/research-powerpack
-npx skills add yigitkonur/skills-by-yigitkonur/skill-builder
+npx skills add yigitkonur/skills-by-yigitkonur/skills/planning
+npx skills add yigitkonur/skills-by-yigitkonur/skills/research-powerpack
+npx skills add yigitkonur/skills-by-yigitkonur/skills/skill-builder
+```
+
+---
+
+## Language Standards
+
+Deep reference skills for language-level type safety, patterns, and anti-patterns.
+
+| Skill | What it does |
+|---|---|
+| **[typescript](skills/typescript/)** | Strict TypeScript development guide covering type system patterns, anti-patterns with fixes, error handling strategies, and compiler configuration across application, library, CLI, and backend codebases. Includes 4 reference docs: anti-patterns, patterns, type-system, and strict-config. |
+
+```bash
+npx skills add yigitkonur/skills-by-yigitkonur/skills/typescript
 ```
 
 ---
@@ -122,8 +136,8 @@ Deep reference skills for specific frameworks and tools.
 | **[tauri-devtools](skills/tauri-devtools/)** | CrabNebula DevTools integration for debugging Tauri v2 apps — gives AI agents visibility into the Rust side with console logs, tracing spans, IPC call timings, live config inspection, and frontend source browsing. Includes 5 reference docs: architecture deep-dive, IPC span anatomy, integration patterns, tab reference, and common debugging scenarios. |
 
 ```bash
-npx skills add yigitkonur/skills-by-yigitkonur/supastarter
-npx skills add yigitkonur/skills-by-yigitkonur/tauri-devtools
+npx skills add yigitkonur/skills-by-yigitkonur/skills/supastarter
+npx skills add yigitkonur/skills-by-yigitkonur/skills/tauri-devtools
 ```
 
 ---

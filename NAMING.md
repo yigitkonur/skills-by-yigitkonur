@@ -107,3 +107,4 @@ For published skills, prefer this order:
 - `snapshot-to-nextjs`
 - `supastarter`
 - `tauri-devtools`
+- `typescript`
