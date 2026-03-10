@@ -1,5 +1,5 @@
 ---
-name: extract-design-saas
+name: extract-saas-design
 description: Use skill if you are extracting the visual system of a SaaS dashboard, admin panel, or internal tool into structured design documentation.
 ---
 

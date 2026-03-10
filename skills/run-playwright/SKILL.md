@@ -1,5 +1,5 @@
 ---
-name: automate-playwright
+name: run-playwright
 description: Use skill if you are automating a browser with @anthropic-ai/playwright-cli for navigation, forms, screenshots, tab flows, debugging, or small run-code steps.
 ---
 

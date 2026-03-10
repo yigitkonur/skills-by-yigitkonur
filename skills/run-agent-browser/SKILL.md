@@ -1,5 +1,5 @@
 ---
-name: automate-browser
+name: run-agent-browser
 description: Use skill if you are automating browser tasks like navigation, form filling, screenshots, data extraction, or web app testing with Browserbase agent CLI.
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 ---

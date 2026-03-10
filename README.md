@@ -20,8 +20,8 @@ Examples:
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/research-web
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/automate-playwright
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-playwright
 ```
 
 ## How discovery works
@@ -54,11 +54,11 @@ Skills that forensically parse real CSS/JS from existing sites and produce struc
 
 | Skill | What it does |
 |---|---|
-| **[extract-design-saas](skills/extract-design-saas/)** | Extracts the complete visual DNA from any SaaS dashboard or admin panel codebase — every token, component state, animation keyframe, and responsive breakpoint — into structured documentation that lets a builder recreate the exact look-and-feel without copying source. Includes 6 reference docs: component/system templates, dashboard patterns catalog, foundations and components agent guides, and a quality checklist. |
+| **[extract-saas-design](skills/extract-saas-design/)** | Extracts the complete visual DNA from any SaaS dashboard or admin panel codebase — every token, component state, animation keyframe, and responsive breakpoint — into structured documentation that lets a builder recreate the exact look-and-feel without copying source. Includes 6 reference docs: component/system templates, dashboard patterns catalog, foundations and components agent guides, and a quality checklist. |
 | **[convert-snapshot-nextjs](skills/convert-snapshot-nextjs/)** | Converts browser "Save As" HTML snapshots into buildable Next.js App Router projects with zero third-party dependencies — self-hosted fonts, images, icons, and a Tailwind config grounded on real extracted CSS values (no approximations, no guessing). Includes 6 reference docs: foundations/sections agent guides, section/system templates, website patterns catalog, and a quality checklist. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/extract-design-saas
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/extract-saas-design
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-snapshot-nextjs
 ```
 
@@ -92,12 +92,12 @@ Skills for automating browser interactions — navigation, form filling, screens
 
 | Skill | What it does |
 |---|---|
-| **[automate-browser](skills/automate-browser/)** | Automates browser tasks using the Browserbase agent CLI — navigation, form filling, screenshots, data extraction, and web app testing through a snapshot-and-interact loop with element refs. |
-| **[automate-playwright](skills/automate-playwright/)** | Reliable operational guide for `@anthropic-ai/playwright-cli` grounded in installed-CLI behavior — chrome bootstrap, observe-act proof loops, form/upload verification, tab/session coordination, console/network artifacts, visual checks, and advanced `run-code` recipes. Includes 7 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, async/advanced recipes, and orchestrator guide. |
+| **[run-agent-browser](skills/run-agent-browser/)** | Automates browser tasks using the Browserbase agent CLI — navigation, form filling, screenshots, data extraction, and web app testing through a snapshot-and-interact loop with element refs. |
+| **[run-playwright](skills/run-playwright/)** | Reliable operational guide for `@anthropic-ai/playwright-cli` grounded in installed-CLI behavior — chrome bootstrap, observe-act proof loops, form/upload verification, tab/session coordination, console/network artifacts, visual checks, and advanced `run-code` recipes. Includes 7 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, async/advanced recipes, and orchestrator guide. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/automate-browser
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/automate-playwright
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-browser
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-playwright
 ```
 
 ---
@@ -109,12 +109,12 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 | Skill | What it does |
 |---|---|
 | **[plan-work](skills/plan-work/)** | Structured planning skill for any task — intake framing, root cause analysis, option design, prioritization, systems thinking, technical strategy, communication alignment, and execution risk. Includes 10 reference docs covering 9 thinking method families and a catalog of 40+ named methods (pre-mortem, Cynefin, RICE, wardley mapping, etc.). |
-| **[research-web](skills/research-web/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
+| **[run-research](skills/run-research/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
 | **[build-skills](skills/build-skills/)** | Skill creation methodology skill for building or redesigning Claude skills from workspace evidence, remote research, and comparison before synthesis. Use when a skill should be original, traceable, and repo-fit instead of improvised. Includes reference docs for research workflow, remote sources, comparison workflow, and source-pattern selection. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-work
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/research-web
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
 ```
 
