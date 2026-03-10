@@ -9,6 +9,10 @@ How AI coding agents discover, load, and merge AGENTS.md files. Based on the off
 - No `@import` syntax (that is a CLAUDE.md feature).
 - No file size enforcement by format — but Codex CLI enforces `project_doc_max_bytes`.
 
+## Adoption
+
+AGENTS.md is used by 60,000+ open-source projects. The standard is stewarded by the **Agentic AI Foundation** under the Linux Foundation. It is the closest thing to a universal agent configuration format.
+
 ## Discovery Algorithm (Codex CLI)
 
 Codex builds an instruction chain once per session:
@@ -81,6 +85,52 @@ Most agents follow a simpler model:
 
 For monorepos, some agents (Codex, Cursor, VS Code) check for nested files. Others only read the root file. When in doubt, keep the root file comprehensive.
 
+## Per-Agent Config Snippets
+
+### Aider
+
+Tell Aider to read AGENTS.md in `.aider.conf.yml`:
+
+```yaml
+read:
+  - AGENTS.md
+```
+
+### Gemini CLI
+
+Point Gemini CLI to AGENTS.md in `.gemini/settings.json`:
+
+```json
+{
+  "contextFileName": "AGENTS.md"
+}
+```
+
+Gemini CLI also reads `GEMINI.md` natively — use AGENTS.md for universal content, GEMINI.md for Gemini-specific additions.
+
+### Cursor
+
+Cursor auto-reads AGENTS.md from the workspace root. No configuration needed. For additional Cursor-specific rules, use `.cursor/rules/*.mdc` files with frontmatter.
+
+### VS Code Copilot
+
+VS Code reads AGENTS.md workspace-wide including subdirectories. Additional Copilot instructions go in `.github/copilot-instructions.md`.
+
+### Claude Code
+
+Claude Code reads `CLAUDE.md`, not `AGENTS.md`. For compatibility:
+```bash
+# Option 1: Symlink
+ln -s AGENTS.md CLAUDE.md
+
+# Option 2: Thin wrapper
+echo '@AGENTS.md' > CLAUDE.md
+```
+
+### Codex CLI
+
+Native support. No configuration needed. Reads the full discovery chain (global → project → nested).
+
 ## Monorepo Hierarchy Example
 
 ```
@@ -102,26 +152,35 @@ repo/
 2. `repo/AGENTS.md` (root)
 3. `repo/services/payments/AGENTS.override.md` (nearest — override wins)
 
-**Combined: root instructions + payment override.** The base `services/payments/AGENTS.md` is skipped because the override exists.
+**Combined:** root instructions + payment override. The base `services/payments/AGENTS.md` is skipped because the override exists.
 
 ## Verification
 
 After creating or editing AGENTS.md files, verify the discovery chain:
 
 ```bash
-# Codex: ask it to summarize loaded instructions
+# Codex: summarize loaded instructions
 codex --ask-for-approval never "Summarize the current instructions."
 
 # Codex: check from a subdirectory
 codex --cd services/payments --ask-for-approval never "List the instruction sources you loaded."
+
+# Claude Code: verify CLAUDE.md symlink
+claude "What instructions have you loaded?"
+
+# Any agent: generic verification
+[agent] "What project conventions should you follow?"
 ```
 
 ## Troubleshooting
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| No guidance loaded | File is empty or not at project root | Ensure file has content; check `codex status` for workspace root |
+| No guidance loaded | File is empty or not at project root | Ensure file has content; check for workspace root |
 | Wrong instructions | Override file in parent directory | Search upward for `AGENTS.override.md` files |
-| Fallback names ignored | Not listed in config | Add to `project_doc_fallback_filenames` and restart Codex |
-| Content truncated | Combined size exceeds 32 KiB | Raise `project_doc_max_bytes` or split across nested directories |
+| Fallback names ignored | Not listed in config | Add to `project_doc_fallback_filenames` and restart |
+| Content truncated | Combined size exceeds 32 KiB | Raise `project_doc_max_bytes` or split into nested dirs |
 | Instructions from wrong level | Global file overriding project | Check `~/.codex/AGENTS.md` for conflicting content |
+| Agent ignores AGENTS.md | Agent uses different filename | Check cross-agent-compat.md for agent-specific config |
+| Symlink not followed | OS or tool limitation | Use thin wrapper file instead of symlink |
+| Monorepo loads wrong file | Working directory mismatch | Verify `pwd` matches expected discovery path |

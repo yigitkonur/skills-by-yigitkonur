@@ -100,8 +100,7 @@ When renaming a published skill:
 - `debug-tauri-devtools`
 - `develop-typescript`
 - `extract-saas-design`
-- `init-agents-md`
-- `init-claude-md`
+- `init-agent-config`
 - `init-copilot-review`
 - `init-devin-review`
 - `init-greptile-review`
