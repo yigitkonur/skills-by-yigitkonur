@@ -78,6 +78,7 @@ Load only the files needed for the task.
 | `references/remote-sources.md` | Read when searching Playbooks-style directories, selecting remote skills, or treating downloaded examples as evidence. |
 | `references/comparison-workflow.md` | Read when building the markdown comparison table or separating evidence, selection, and synthesis. |
 | `references/source-patterns.md` | Read when deciding what to inherit from earlier build-skills patterns and what to leave out to keep the new result lean. |
+| `references/skill-research.sh` | Run when you need end-to-end parallel discovery and download in one command. |
 
 ## Guardrails
 

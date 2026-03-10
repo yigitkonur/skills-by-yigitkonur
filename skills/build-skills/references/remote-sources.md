@@ -1,294 +1,125 @@
 # Remote Sources
 
-Use this file when the task requires outside skill examples.
+## Discovery
 
-## Primary source pattern
+### Playbooks search
 
-Start with remote skill directories that expose repeatable listing pages and stable detail URLs.
+- URL pattern: `https://playbooks.com/skills?search=<query>&page=<n>`
+- Detail page: `https://playbooks.com/skills/{owner}/{repo}/{skill}`
 
-For the current workflow, the main pattern is Playbooks-style discovery:
+### Parallel discovery
 
-- listing root: `https://playbooks.com/skills`
-- search page: `https://playbooks.com/skills?search=<query>`
-- paginated search page: `https://playbooks.com/skills?search=<query>&page=<n>`
-- detail page: `https://playbooks.com/skills/{owner}/{repo}/{skill}`
-
-## What to collect from listings
-
-Capture fields that support later comparison, not just download automation.
-
-Useful fields include:
-
-- skill title
-- owner or repo label
-- detail URL
-- short description
-- popularity signal when present
-- verified signal when present
-- pagination coverage so the reader knows how broad the search was
-
-Keep enough detail to explain why a source was selected, not just that it existed.
-
-## Downloading skills with skill-dl
-
-`skill-dl` is the primary tool for downloading skills from Playbooks URLs.
-
-### Installation check
+When researching a topic, search multiple query variants simultaneously to maximize coverage:
 
 ```bash
+# Parallel search — run multiple curl/scrape calls concurrently
+queries=("agent browser" "agent-browser" "browser automation" "headless browser")
+for q in "${queries[@]}"; do
+  curl -s "https://playbooks.com/skills?search=${q// /+}" &
+done | sort -u
+wait
+```
+
+Or via the `skills-as-context` MCP tool (if available):
+- Call `search-skills` with multiple query variants in parallel
+- Deduplicate results by skill ID before proceeding
+
+### What to collect
+
+For each candidate, capture: title, owner/repo, detail URL, description, install count, and selection rationale.
+
+## Downloading with skill-dl
+
+`skill-dl` is the CLI tool for batch-downloading skills from Playbooks URLs.
+
+### Install / verify
+
+```bash
+# Check if installed
 skill-dl --version
-# Expected: skill-dl v1.1.0+
+
+# Install from source if missing
+curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash
 ```
 
-### URL format
-
-Every Playbooks skill URL maps to a GitHub repo:
-
-- `playbooks.com/skills/{owner}/{repo}/{skill}` → `github.com/{owner}/{repo}`
-
-`skill-dl` handles the mapping, cloning, and extraction automatically. It groups URLs by repo so each repo is cloned only once, even when downloading multiple skills from the same repo.
-
-### Single skill
+### Quick start
 
 ```bash
-skill-dl https://playbooks.com/skills/vercel-labs/agent-browser/agent-browser \
-  -o ./research-corpus
-```
+# Single skill
+skill-dl https://playbooks.com/skills/vercel-labs/agent-browser/agent-browser -o ./corpus
 
-### Batch download from a URL file
+# Batch from file
+skill-dl urls.txt -o ./corpus --no-auto-category -f
 
-Write one URL per line. Comments with `#` are supported.
-
-```bash
-cat > urls.txt << 'EOF'
-# ── Canonical source (vercel-labs) ───────────────────────────
-# 10.8k installs — the definitive reference implementation
-https://playbooks.com/skills/vercel-labs/agent-browser/agent-browser
-
-# ── High-install community implementations ───────────────────
-# 9.6k — CLI browser, form fills, clicks, screenshots
-https://playbooks.com/skills/everyinc/compound-engineering-plugin/agent-browser
-
-# ── openclaw/skills — extensive variant collection ───────────
-https://playbooks.com/skills/openclaw/skills/agent-browser
-https://playbooks.com/skills/openclaw/skills/agent-browser-cli
-https://playbooks.com/skills/openclaw/skills/agent-browser-core
-https://playbooks.com/skills/openclaw/skills/openclaw-agent-browser
-https://playbooks.com/skills/openclaw/skills/agent-browser-2
-https://playbooks.com/skills/openclaw/skills/agent-browser-4
-https://playbooks.com/skills/openclaw/skills/agent-browser-vercel
-https://playbooks.com/skills/openclaw/skills/agent-browser-stealth
-https://playbooks.com/skills/openclaw/skills/agent-browser-with-camoufox
-https://playbooks.com/skills/openclaw/skills/agent-browser-clawdbot
-https://playbooks.com/skills/openclaw/skills/agent-browser-ymepfebfpc2x
-
-# ── Mid-tier community variants (50-500 installs) ─────────────
-# 458 — gmickel's marketplace browser skill
-https://playbooks.com/skills/gmickel/gmickel-claude-marketplace/browser
-# 212 — chachamaru127 harness
-https://playbooks.com/skills/chachamaru127/claude-code-harness/agent-browser
-# 206 — fradser dotclaude
-https://playbooks.com/skills/fradser/dotclaude/agent-browser
-# 184 — codervisor lean-spec
-https://playbooks.com/skills/codervisor/lean-spec/agent-browser
-# 76 — partme-ai full-stack
-https://playbooks.com/skills/partme-ai/full-stack-skills/agent-browser
-# 58 — ahonn dotfiles
-https://playbooks.com/skills/ahonn/dotfiles/agent-browser
-
-# ── Low-install / niche variants ─────────────────────────────
-# 24 — supercent-io template (deterministic, a11y refs)
-https://playbooks.com/skills/supercent-io/skills-template/agent-browser
-# 24 — ratacat test-browser (E2E on PR-affected pages)
-https://playbooks.com/skills/ratacat/claude-skills/test-browser
-# 9 — browserbase cloud browser
-https://playbooks.com/skills/browserbase/agent-browser/agent-browser
-# 6 — lambda-curry devagent (UI validation)
-https://playbooks.com/skills/lambda-curry/devagent/agent-browser
-# 2 — am-will codex-skills
-https://playbooks.com/skills/am-will/codex-skills/agent-browser
-# 1 — kernel cloud browser (bot detection, session mgmt)
-https://playbooks.com/skills/kernel/skills/kernel-agent-browser
-# 1 — itechmeat llm-code (commands, refs, sessions, snapshots)
-https://playbooks.com/skills/itechmeat/llm-code/agent-browser
-
-# ── No install count (recently added or unlisted) ────────────
-https://playbooks.com/skills/phenome/skills/agent-browser
-https://playbooks.com/skills/jjuidev/jss/agent-browser
-https://playbooks.com/skills/ansarullahanasz360/cc-guide/agent-browser
-https://playbooks.com/skills/kunhai-88/skills/agent-browser
-https://playbooks.com/skills/sebastiaanwouters/dotagents/agent-browser
-EOF
-
-skill-dl urls.txt -o ./research-corpus --no-auto-category -f
-# Expected: ~31/32 success (dmmulroy/.dotfiles/agent-browser not resolvable)
+# Dry run first
+skill-dl urls.txt --dry-run
 ```
 
 ### Parallel download for large batches
 
-`skill-dl` already groups by repo internally (one clone per repo), but processes repos sequentially. For large batches (50+ URLs across many repos), split the URL file by repo and run multiple `skill-dl` processes in parallel:
+skill-dl groups URLs by repo internally (one clone per repo), but processes repos sequentially. For 50+ URLs across many repos, parallelize at the repo level:
+
+**Option A — split by repo, then parallel skill-dl** (best: no redundant clones)
 
 ```bash
-# Split URLs by unique repo (owner/repo), then download in parallel
-split_and_download() {
-  local url_file="$1"
-  local output_dir="$2"
-  local max_parallel="${3:-4}"
+# Extract unique repos, create per-repo URL files, run in parallel
+tmp=$(mktemp -d)
+while IFS= read -r url; do
+  [[ "$url" =~ ^# ]] || [[ -z "$url" ]] && continue
+  repo=$(echo "$url" | sed 's|.*/skills/\([^/]*/[^/]*\)/.*|\1|' | tr '/' '_')
+  echo "$url" >> "${tmp}/${repo}.txt"
+done < urls.txt
 
-  # Extract unique repos and create per-repo URL files
-  local tmp_dir=$(mktemp -d)
-  while IFS= read -r url; do
-    [[ "$url" =~ ^# ]] || [[ -z "$url" ]] && continue
-    # Extract owner/repo from URL
-    repo_key=$(echo "$url" | sed 's|.*/skills/\([^/]*/[^/]*\)/.*|\1|' | tr '/' '_')
-    echo "$url" >> "${tmp_dir}/${repo_key}.txt"
-  done < "$url_file"
-
-  # Download each repo group in parallel
-  local pids=()
-  for repo_file in "${tmp_dir}"/*.txt; do
-    skill-dl "$repo_file" -o "$output_dir" --no-auto-category -f &
-    pids+=($!)
-    # Throttle to max_parallel concurrent processes
-    if (( ${#pids[@]} >= max_parallel )); then
-      wait "${pids[0]}"
-      pids=("${pids[@]:1}")
-    fi
-  done
-  wait
-  rm -rf "$tmp_dir"
-}
-
-split_and_download urls.txt ./research-corpus 6
+ls "${tmp}"/*.txt | xargs -P 6 -I {} skill-dl {} -o ./corpus --no-auto-category -f
+rm -rf "$tmp"
 ```
 
-Alternatively, use `xargs` for a simpler parallel approach when each URL targets a different repo:
+**Option B — xargs one-URL-per-process** (simple but re-clones shared repos)
 
 ```bash
-# Each URL as a separate skill-dl call, 6 in parallel
-grep -v '^#' urls.txt | grep -v '^$' | \
-  xargs -P 6 -I {} skill-dl {} -o ./research-corpus --no-auto-category -f
+grep -v '^#' urls.txt | grep -v '^$' | xargs -P 6 -I {} skill-dl {} -o ./corpus --no-auto-category -f
 ```
 
-> **Trade-off:** The `xargs` approach re-clones repos that appear multiple times. The split approach avoids this. Use split for large research corpora; use `xargs` for quick grabs with mostly unique repos.
+> Use Option A for large corpora with many skills from the same repo. Use Option B for quick grabs across unique repos.
 
-### Useful flags
+### Flags reference
 
 | Flag | Purpose |
 |---|---|
 | `-o <dir>` | Output directory (default: `./skills-collection`) |
-| `--no-auto-category` | Flat structure — skill folders sit directly in output dir |
-| `-c <name>` | Force all skills into a named category subfolder |
-| `-f, --force` | Overwrite existing skill directories |
-| `--dry-run` | Preview what would be downloaded without writing |
-| `-v, --verbose` | Show debug output including search paths and available skills |
+| `--no-auto-category` | Flat output, no category subfolders |
+| `-c <name>` | Force all into one category folder |
+| `-f` | Overwrite existing |
+| `--dry-run` | Preview only |
+| `-v` | Verbose (shows search paths, available skills) |
 
-### Output structure
+### Output naming
 
-`skill-dl` names output folders as `{owner}--{repo}--{skill}`:
+Folders: `{owner}--{repo}--{skill}/` containing `SKILL.md` + bundled references.
 
-```
-research-corpus/
-  vercel-labs--agent-browser--agent-browser/   # 11 files — canonical
-    SKILL.md
-    references/
-      commands.md
-      authentication.md
-      ...
-  everyinc--compound-engineering-plugin--agent-browser/  # 1 file
-    SKILL.md
-  openclaw--skills--agent-browser/             # 3 files
-    SKILL.md
-    ...
-  openclaw--skills--agent-browser-cli/         # 2 files
-  openclaw--skills--agent-browser-core/        # 7 files
-  openclaw--skills--agent-browser-2/           # 10 files
-  openclaw--skills--agent-browser-4/           # 12 files
-  openclaw--skills--agent-browser-vercel/      # 12 files
-  openclaw--skills--agent-browser-stealth/     # 2 files
-  openclaw--skills--agent-browser-with-camoufox/  # 4 files
-  openclaw--skills--agent-browser-clawdbot/    # 2 files
-  openclaw--skills--agent-browser-ymepfebfpc2x/   # 2 files
-  openclaw--skills--openclaw-agent-browser/    # 4 files
-  gmickel--gmickel-claude-marketplace--browser/ # 8 files
-  browserbase--agent-browser--agent-browser/  # 9 files
-  partme-ai--full-stack-skills--agent-browser/ # 28 files
-  codervisor--lean-spec--agent-browser/        # 10 files
-  fradser--dotclaude--agent-browser/           # 10 files
-  jjuidev--jss--agent-browser/                # 8 files
-  kunhai-88--skills--agent-browser/           # 9 files
-  itechmeat--llm-code--agent-browser/         # 5 files
-  supercent-io--skills-template--agent-browser/ # 8 files
-  chachamaru127--claude-code-harness--agent-browser/ # 3 files
-  kernel--skills--kernel-agent-browser/        # 2 files
-  am-will--codex-skills--agent-browser/        # 2 files
-  ansarullahanasz360--cc-guide--agent-browser/ # 2 files
-  ahonn--dotfiles--agent-browser/              # 1 file
-  phenome--skills--agent-browser/              # 1 file
-  lambda-curry--devagent--agent-browser/       # 1 file
-  ratacat--claude-skills--test-browser/        # 1 file
-  sebastiaanwouters--dotagents--agent-browser/ # 1 file
-```
+### Skill search paths
 
-### Handling failures
+skill-dl checks these locations in order:
+`skills/{skill}`, `{skill}`, `.skills/{skill}`, `.claude/skills/{skill}`, `.agent/skills/{skill}`, `.opencode/skills/{skill}`, `.cursor/skills/{skill}`, `.agents/skills/{skill}`, `src/skills/{skill}`.
+Fallback: full-repo search for SKILL.md with matching parent dir name, then root-level SKILL.md.
 
-Skills that don't exist in the target repo are logged as `[ERR] Not found in repo`. With `-v`, the tool lists available skills in that repo so you can correct the URL. Failures don't stop the batch — all other skills continue downloading.
+## Troubleshooting
 
-After a batch run, check the summary:
+| Problem | Fix |
+|---|---|
+| `skill-dl: command not found` | Install: `curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh \| bash` |
+| `[ERR] Could not clone` | Repo is private, renamed, or deleted. Check URL manually. |
+| `[ERR] Not found in repo` | Skill name doesn't match any path in repo. Run with `-v` to see available skills. |
+| Slow on many repos | Use parallel download (Option A above). |
+| Need to retry failures | Pipe failed URLs from summary into a new file, re-run. |
 
-```
-━━━ Summary ━━━
-  Total:   91
-  Success: 78
-  Failed:  13
-```
+## Using downloaded skills as evidence
 
-Re-run failed URLs individually with `-v` to diagnose, or drop them if the skill was renamed or removed upstream.
-
-## Skill location heuristics
-
-When `skill-dl` searches a cloned repo, it checks these paths in order:
-
-- `skills/{skill}/SKILL.md`
-- `{skill}/SKILL.md`
-- `.skills/{skill}/SKILL.md`
-- `.claude/skills/{skill}/SKILL.md`
-- `.agent/skills/{skill}/SKILL.md`
-- `.opencode/skills/{skill}/SKILL.md`
-- `.cursor/skills/{skill}/SKILL.md`
-- `.agents/skills/{skill}/SKILL.md`
-- `src/skills/{skill}/SKILL.md`
-
-If none match, it searches the entire repo for any `SKILL.md` whose parent directory matches the skill name. If the repo root itself contains `SKILL.md`, it is treated as a single-skill repo.
-
-## Download discipline
-
-When using downloaded skills as research evidence:
-
-- preserve the real skill files that explain how the skill works
-- keep bundled references, scripts, and assets when they are part of the skill itself
-- `skill-dl` already excludes repo metadata (`.git`, `.github`, `node_modules`, `README.md`, `LICENSE`, lockfiles, etc.)
-- treat downloaded examples as temporary evidence unless the user explicitly wants them shipped
-
-## How to use downloaded examples
-
-Downloaded skills are evidence, not templates to clone.
+Downloaded skills are evidence for comparison, not templates to clone.
 
 After download:
-
-1. run `tree` on the downloaded corpus
-2. read the relevant files
-3. cite relative paths in your comparison table
-4. inherit patterns selectively
-5. rewrite the final result so it is original and repo-fit
-
-## Expansion rule
-
-If you later support more remote ecosystems, document each one with the same structure:
-
-- listing URL pattern
-- detail URL pattern
-- fields available from listings
-- repo or archive mapping assumptions
-- download tool and flags
-- how downloaded material should be treated during synthesis
+1. `tree` the corpus
+2. Read high-signal skills (by install count or unique approach)
+3. Cite relative paths in comparison table
+4. Inherit patterns selectively
+5. Rewrite the final result to be original and repo-fit
