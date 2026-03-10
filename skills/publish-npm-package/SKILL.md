@@ -1,6 +1,6 @@
 ---
-name: npm-publish-ci-cd
-description: Use skill if you are setting up automated npm publishing via GitHub Actions, choosing between OIDC and token auth, or picking a version bumping tool.
+name: publish-npm-package
+description: Use skill if you are setting up automated npm publishing via GitHub Actions with OIDC or token auth and version bumping tools.
 ---
 
 # npm Publish CI/CD

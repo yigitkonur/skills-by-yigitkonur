@@ -1,6 +1,6 @@
 ---
-name: research-powerpack
-description: Use skill if you are researching a coding task with fresh Google, Reddit, scraped docs, or deep structured synthesis.
+name: research-web
+description: Use skill if you are researching a coding task using Google, Reddit, page scraping, or deep structured synthesis via Research Powerpack MCP.
 ---
 
 # Research Powerpack

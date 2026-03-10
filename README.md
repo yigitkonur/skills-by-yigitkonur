@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-18 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, and CI/CD.
+19 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, and CI/CD.
 
 ## Install the full pack
 
@@ -20,8 +20,8 @@ Examples:
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/research-powerpack
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/playwright-cli
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/research-web
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/automate-playwright
 ```
 
 ## How discovery works
@@ -38,12 +38,12 @@ Skills that analyze your repo and generate review configuration files for AI cod
 |---|---|
 | **[init-greptile-review](skills/init-greptile-review/)** | Generates `.greptile/config.json`, `rules.md`, and `files.json` with semantic rules scoped to your repo's actual architecture — not linter-level checks, but cross-file implications that require LLM understanding. Includes 3 reference docs covering the full config spec, 11 example scenarios (TypeScript, Python, Go, Rust, Tauri, MCP, Next.js), and an anti-patterns/troubleshooting guide. |
 | **[init-devin-review](skills/init-devin-review/)** | Generates `REVIEW.md` and `AGENTS.md` for Devin's Bug Catcher by exploring your repo structure, tech stack, and pain points, then producing prioritized review rules with code examples. Includes 2 reference docs: the full instruction file spec and 8 complete scenario templates (API, dashboard, Tauri, MCP, monorepo). |
-| **[copilot-review-init](skills/copilot-review-init/)** | Generates a root `copilot-instructions.md` plus path-scoped `*.instructions.md` micro-files that stay within Copilot's 4,000-character processing limit. Includes 4 reference docs: instruction spec, micro-library of 50+ reusable rule blocks, 10 scenario templates, and an anti-patterns guide. |
+| **[init-copilot-review](skills/init-copilot-review/)** | Generates a root `copilot-instructions.md` plus path-scoped `*.instructions.md` micro-files that stay within Copilot's 4,000-character processing limit. Includes 4 reference docs: instruction spec, micro-library of 50+ reusable rule blocks, 10 scenario templates, and an anti-patterns guide. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-greptile-review
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-devin-review
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/copilot-review-init
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-copilot-review
 ```
 
 ---
@@ -54,12 +54,12 @@ Skills that forensically parse real CSS/JS from existing sites and produce struc
 
 | Skill | What it does |
 |---|---|
-| **[design-soul-saas](skills/design-soul-saas/)** | Extracts the complete visual DNA from any SaaS dashboard or admin panel codebase — every token, component state, animation keyframe, and responsive breakpoint — into structured documentation that lets a builder recreate the exact look-and-feel without copying source. Includes 6 reference docs: component/system templates, dashboard patterns catalog, foundations and components agent guides, and a quality checklist. |
-| **[snapshot-to-nextjs](skills/snapshot-to-nextjs/)** | Converts browser "Save As" HTML snapshots into buildable Next.js App Router projects with zero third-party dependencies — self-hosted fonts, images, icons, and a Tailwind config grounded on real extracted CSS values (no approximations, no guessing). Includes 6 reference docs: foundations/sections agent guides, section/system templates, website patterns catalog, and a quality checklist. |
+| **[extract-design-saas](skills/extract-design-saas/)** | Extracts the complete visual DNA from any SaaS dashboard or admin panel codebase — every token, component state, animation keyframe, and responsive breakpoint — into structured documentation that lets a builder recreate the exact look-and-feel without copying source. Includes 6 reference docs: component/system templates, dashboard patterns catalog, foundations and components agent guides, and a quality checklist. |
+| **[convert-snapshot-nextjs](skills/convert-snapshot-nextjs/)** | Converts browser "Save As" HTML snapshots into buildable Next.js App Router projects with zero third-party dependencies — self-hosted fonts, images, icons, and a Tailwind config grounded on real extracted CSS values (no approximations, no guessing). Includes 6 reference docs: foundations/sections agent guides, section/system templates, website patterns catalog, and a quality checklist. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/design-soul-saas
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/snapshot-to-nextjs
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/extract-design-saas
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-snapshot-nextjs
 ```
 
 ---
@@ -73,14 +73,14 @@ Skills for building, testing, debugging, and reviewing MCP (Model Context Protoc
 | **[test-mcp-server](skills/test-mcp-server/)** | Tests MCP servers through two modes: protocol-level verification across 19 checks (transport, schema, errors, timeouts), and LLM-powered end-to-end testing with domain-adaptive business case generation. Includes 6 reference docs: basic/LLM test guides, Inspector API reference, provider patterns, business cases, and troubleshooting. |
 | **[test-mcp-by-cli](skills/test-mcp-by-cli/)** | Behavior-verified guide for testing MCP servers with `philschmid/mcp-cli` v0.3.0 — 8-phase verification, config and JSON argument patterns, raw `call` response parsing with `jq`, and troubleshooting for daemon, auth, and argument failures. Includes 4 reference docs: testing flow, configuration and arguments, output/debugging/chaining, and errors/recovery. |
 | **[build-mcp-use-apps](skills/build-mcp-use-apps/)** | Reference for building MCP apps with the mcp-use framework — server creation, tool/resource/prompt handlers, widget system, authentication (Supabase/WorkOS/custom), and deployment. Includes 16 reference docs across foundations, server patterns, widget guides, and auth providers. |
-| **[mcp-use-code-review](skills/mcp-use-code-review/)** | Code review skill for Python apps using the `mcp-use` pip package — catches the 6 most common AI-agent derailment patterns: leaked connections, missing timeouts, improper error handling, session lifecycle bugs, namespace collisions, and auth misuse. Includes 10 reference docs covering async lifecycle, tools deep-dive, LangChain bridge, server config, deployment, and migration from the TypeScript SDK. |
+| **[review-mcp-use-code](skills/review-mcp-use-code/)** | Code review skill for Python apps using the `mcp-use` pip package — catches the 6 most common AI-agent derailment patterns: leaked connections, missing timeouts, improper error handling, session lifecycle bugs, namespace collisions, and auth misuse. Includes 10 reference docs covering async lifecycle, tools deep-dive, LangChain bridge, server config, deployment, and migration from the TypeScript SDK. |
 | **[build-mcp-sdk-server](skills/build-mcp-sdk-server/)** | TypeScript MCP server development with the official SDK — tool, resource, and prompt registration, transport selection, project scaffolding, sampling, elicitation, and v1-to-v2 migration guidance. Includes 9 reference docs. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-mcp-server
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-mcp-by-cli
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-apps
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/mcp-use-code-review
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/review-mcp-use-code
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-sdk-server
 ```
 
@@ -88,12 +88,16 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-sdk-ser
 
 ## Browser Automation
 
+Skills for automating browser interactions — navigation, form filling, screenshots, data extraction, and web app testing.
+
 | Skill | What it does |
 |---|---|
-| **[playwright-cli](skills/playwright-cli/)** | Reliable operational guide for `@anthropic-ai/playwright-cli` grounded in installed-CLI behavior — chrome bootstrap, observe-act proof loops, form/upload verification, tab/session coordination, console/network artifacts, visual checks, and advanced `run-code` recipes. Includes 7 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, async/advanced recipes, and orchestrator guide. |
+| **[automate-browser](skills/automate-browser/)** | Automates browser tasks using the Browserbase agent CLI — navigation, form filling, screenshots, data extraction, and web app testing through a snapshot-and-interact loop with element refs. |
+| **[automate-playwright](skills/automate-playwright/)** | Reliable operational guide for `@anthropic-ai/playwright-cli` grounded in installed-CLI behavior — chrome bootstrap, observe-act proof loops, form/upload verification, tab/session coordination, console/network artifacts, visual checks, and advanced `run-code` recipes. Includes 7 reference docs: command reference, session/tab management, forms/data, visual testing, debugging, async/advanced recipes, and orchestrator guide. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/playwright-cli
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/automate-browser
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/automate-playwright
 ```
 
 ---
@@ -105,13 +109,27 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 | Skill | What it does |
 |---|---|
 | **[plan-work](skills/plan-work/)** | Structured planning skill for any task — intake framing, root cause analysis, option design, prioritization, systems thinking, technical strategy, communication alignment, and execution risk. Includes 10 reference docs covering 9 thinking method families and a catalog of 40+ named methods (pre-mortem, Cynefin, RICE, wardley mapping, etc.). |
-| **[research-powerpack](skills/research-powerpack/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
+| **[research-web](skills/research-web/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
 | **[build-skills](skills/build-skills/)** | Skill creation methodology skill for building or redesigning Claude skills from workspace evidence, remote research, and comparison before synthesis. Use when a skill should be original, traceable, and repo-fit instead of improvised. Includes reference docs for research workflow, remote sources, comparison workflow, and source-pattern selection. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-work
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/research-powerpack
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/research-web
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
+```
+
+---
+
+## CI/CD
+
+Skills for automating package publishing, release workflows, and continuous deployment pipelines.
+
+| Skill | What it does |
+|---|---|
+| **[publish-npm-package](skills/publish-npm-package/)** | Automates npm package publishing via GitHub Actions — covers OIDC and token authentication, semantic-release/changesets/release-please version strategies, provenance attestation, and copy-paste workflow templates for all combinations. Includes 3 reference docs: auth methods, version tools comparison, and complete workflow templates. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/publish-npm-package
 ```
 
 ---
@@ -126,20 +144,6 @@ Deep reference skills for language-level type safety, patterns, and anti-pattern
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-typescript
-```
-
----
-
-## CI/CD
-
-Skills for automating package publishing, release workflows, and continuous deployment pipelines.
-
-| Skill | What it does |
-|---|---|
-| **[npm-publish-ci-cd](skills/npm-publish-ci-cd/)** | Automates npm package publishing via GitHub Actions — covers OIDC and token authentication, semantic-release/changesets/release-please version strategies, provenance attestation, and copy-paste workflow templates for all combinations. Includes 3 reference docs: auth methods, version tools comparison, and complete workflow templates. |
-
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/npm-publish-ci-cd
 ```
 
 ---
