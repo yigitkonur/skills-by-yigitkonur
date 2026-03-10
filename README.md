@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-17 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, and language standards.
+18 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, and CI/CD.
 
 ## Install the full pack
 
@@ -126,6 +126,20 @@ Deep reference skills for language-level type safety, patterns, and anti-pattern
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-typescript
+```
+
+---
+
+## CI/CD
+
+Skills for automating package publishing, release workflows, and continuous deployment pipelines.
+
+| Skill | What it does |
+|---|---|
+| **[npm-publish-ci-cd](skills/npm-publish-ci-cd/)** | Automates npm package publishing via GitHub Actions — covers OIDC and token authentication, semantic-release/changesets/release-please version strategies, provenance attestation, and copy-paste workflow templates for all combinations. Includes 3 reference docs: auth methods, version tools comparison, and complete workflow templates. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/npm-publish-ci-cd
 ```
 
 ---
