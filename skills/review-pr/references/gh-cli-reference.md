@@ -1,0 +1,247 @@
+# gh CLI Reference for PR Review
+
+> Definitive cheat sheet for all `gh` CLI commands and GitHub API calls used during PR review. An agent should be able to read this file and know the exact syntax for every operation.
+
+---
+
+## PR Operations
+
+### Get PR metadata
+```bash
+gh pr view <N> --repo owner/repo --json title,body,state,author,labels,baseRefName,headRefName,reviewDecision,statusCheckRollup,files,commits,reviewRequests,milestone,number,url
+```
+Use when: Phase 1 — understanding what the PR is about.
+
+Available JSON fields: title, body, state, number, url, author, baseRefName, headRefName, labels, milestone, reviewDecision, reviewRequests, statusCheckRollup, files, commits, additions, deletions, changedFiles, createdAt, updatedAt, mergedAt, mergeable, isDraft
+
+### Get PR diff
+```bash
+gh pr diff <N> --repo owner/repo
+```
+Use when: Phase 4 (goal validation) and Phase 5 (systematic review).
+Note: For large PRs, prefer file-by-file review using checkout + git diff.
+
+### Get changed files with stats
+```bash
+gh api repos/{owner}/{repo}/pulls/{N}/files --paginate
+```
+Returns: Array of objects with filename, status (added/modified/removed/renamed), additions, deletions, changes, patch.
+Use when: Phase 2 — clustering files by concern.
+
+### Checkout PR locally
+```bash
+gh pr checkout <N> --repo owner/repo
+```
+Use when: You need to browse the full codebase, run tests, or use local tools like grep.
+After checkout: `git diff main...HEAD` to see all changes.
+
+---
+
+## Review State Operations
+
+### Get all reviews
+```bash
+gh api repos/{owner}/{repo}/pulls/{N}/reviews
+```
+Returns: Array of reviews with state (APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED), user, body, submitted_at.
+Use when: Phase 3 — understanding who reviewed and their stance.
+
+### Get review comment threads
+```bash
+gh api repos/{owner}/{repo}/pulls/{N}/comments --paginate
+```
+Returns: Inline review comments with path, line, body, user, created_at, in_reply_to_id, pull_request_review_id.
+Use when: Phase 3 — building the already-reviewed map.
+Note: Thread structure is determined by in_reply_to_id. Comments with no in_reply_to_id are thread starters.
+
+### Get general PR conversation
+```bash
+gh api repos/{owner}/{repo}/issues/{N}/comments
+```
+Returns: Non-inline PR conversation comments (discussion, status updates, bot comments).
+Use when: Phase 3 — reading PR discussion for context.
+Note: PRs are issues in GitHub's API, so issue comments endpoint works for PR conversations.
+
+### Get PR comments (simple view)
+```bash
+gh pr view <N> --repo owner/repo --comments
+```
+Use when: Quick scan of PR discussion without JSON parsing.
+
+---
+
+## Repository Content Operations
+
+### Get file contents (specific branch)
+```bash
+# Via API (returns base64-encoded content)
+gh api repos/{owner}/{repo}/contents/{path}?ref={branch}
+
+# Via local checkout (simpler, requires checkout)
+git show {branch}:{path}
+```
+Use when: Phase 5 — reading full file for context around diff hunks, comparing head vs base.
+
+### Search code in repo
+```bash
+# Via GitHub search (works without checkout)
+gh search code "query repo:owner/repo"
+
+# Via local checkout (faster, more flexible)
+grep -rn "pattern" .
+```
+Use when: Phase 5 — tracing blast radius (who calls this function?).
+
+---
+
+## Commit Operations
+
+### Get PR commits
+```bash
+gh api repos/{owner}/{repo}/pulls/{N}/commits
+```
+Returns: Array of commits with sha, message, author, date.
+Use when: Phase 1 — reading commit messages to understand PR evolution.
+
+### Get specific commit details
+```bash
+gh api repos/{owner}/{repo}/commits/{sha}
+```
+Returns: Commit message, author, date, files changed, stats.
+Use when: Understanding individual commits.
+
+---
+
+## CI / Status Operations
+
+### Get check status
+```bash
+gh pr checks <N> --repo owner/repo
+```
+Use when: Phase 1 — checking CI status.
+
+### Get failed CI logs
+```bash
+# List runs for the PR's head branch
+gh run list --repo owner/repo --branch <head-branch> --limit 5
+
+# View failed run logs
+gh run view <run-id> --repo owner/repo --log-failed
+```
+Use when: CI is failing — read the logs to understand what's broken.
+
+---
+
+## Issue Operations
+
+### Get linked issue details
+```bash
+gh issue view <N> --repo owner/repo --json title,body,state,labels,comments
+```
+Use when: Phase 1 — understanding linked issues referenced in PR body.
+
+---
+
+## Submitting Reviews
+
+### Submit a review
+```bash
+# Approve
+gh pr review <N> --repo owner/repo --approve --body "Review body here"
+
+# Request changes
+gh pr review <N> --repo owner/repo --request-changes --body "Review body here"
+
+# Comment only
+gh pr review <N> --repo owner/repo --comment --body "Review body here"
+```
+
+### Post a general comment
+```bash
+gh pr comment <N> --repo owner/repo --body "Comment text"
+```
+
+### Post an inline review comment
+```bash
+gh api repos/{owner}/{repo}/pulls/{N}/comments \
+  --method POST \
+  -f body="Comment text" \
+  -f commit_id="<head-sha>" \
+  -f path="src/file.ts" \
+  -F line=42 \
+  -f side="RIGHT"
+```
+
+### Reply to a review thread
+```bash
+gh api repos/{owner}/{repo}/pulls/{N}/comments/{comment_id}/replies \
+  --method POST \
+  -f body="Reply text"
+```
+
+---
+
+## Labels & Management
+
+### Add labels based on review
+```bash
+gh pr edit <N> --repo owner/repo --add-label "needs-changes"
+gh pr edit <N> --repo owner/repo --remove-label "ready-for-review"
+```
+
+---
+
+## Common Patterns
+
+### Pattern: Full PR context gathering
+```bash
+# 1. Get metadata + files + CI in one call
+gh pr view <N> --repo owner/repo --json title,body,state,author,labels,baseRefName,headRefName,files,statusCheckRollup
+
+# 2. Get linked issues (parse #NNN from body)
+gh issue view <issue-N> --repo owner/repo --json title,body,state,labels
+
+# 3. Get commit messages
+gh api repos/{owner}/{repo}/pulls/{N}/commits
+```
+
+### Pattern: File-level deep dive
+```bash
+# 1. Get file list with stats
+gh api repos/{owner}/{repo}/pulls/{N}/files --paginate
+
+# 2. For interesting files, compare head vs base
+git show main:src/auth/middleware.ts > /tmp/base.ts
+git show HEAD:src/auth/middleware.ts > /tmp/head.ts
+diff /tmp/base.ts /tmp/head.ts
+```
+
+### Pattern: Blast radius analysis
+```bash
+# 1. Identify changed function name from diff
+# 2. Search for all callers
+gh search code "functionName repo:owner/repo"
+# Or locally:
+grep -rn "functionName" --include="*.ts" src/
+```
+
+### Pattern: Review thread correlation
+```bash
+# 1. Get all inline comments
+gh api repos/{owner}/{repo}/pulls/{N}/comments --paginate
+
+# 2. Parse JSON: extract path, line, body, in_reply_to_id for threading
+# 3. Build already-reviewed map: {file: [{line, issue, resolved}]}
+# 4. Skip locations already covered unless resolution is incorrect
+```
+
+### Pattern: Local checkout workflow
+```bash
+# Full local review setup
+gh pr checkout <N> --repo owner/repo
+git diff main...HEAD --stat            # File summary
+git diff main...HEAD                    # Full diff
+git diff main...HEAD -- src/auth/       # Diff for specific directory
+git log main..HEAD --oneline           # Commit messages
+grep -rn "pattern" src/                 # Search locally
+```
