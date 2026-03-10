@@ -61,19 +61,67 @@ Write one URL per line. Comments with `#` are supported.
 
 ```bash
 cat > urls.txt << 'EOF'
-# Agent browser skills — top installs
+# ── Canonical source (vercel-labs) ───────────────────────────
+# 10.8k installs — the definitive reference implementation
 https://playbooks.com/skills/vercel-labs/agent-browser/agent-browser
-https://playbooks.com/skills/vercel-labs/agent-browser/dogfood
-https://playbooks.com/skills/vercel-labs/agent-browser/electron
-https://playbooks.com/skills/vercel-labs/agent-browser/slack
 
-# Community variants
+# ── High-install community implementations ───────────────────
+# 9.6k — CLI browser, form fills, clicks, screenshots
+https://playbooks.com/skills/everyinc/compound-engineering-plugin/agent-browser
+
+# ── openclaw/skills — extensive variant collection ───────────
 https://playbooks.com/skills/openclaw/skills/agent-browser
+https://playbooks.com/skills/openclaw/skills/agent-browser-cli
+https://playbooks.com/skills/openclaw/skills/agent-browser-core
+https://playbooks.com/skills/openclaw/skills/openclaw-agent-browser
+https://playbooks.com/skills/openclaw/skills/agent-browser-2
+https://playbooks.com/skills/openclaw/skills/agent-browser-4
+https://playbooks.com/skills/openclaw/skills/agent-browser-vercel
+https://playbooks.com/skills/openclaw/skills/agent-browser-stealth
+https://playbooks.com/skills/openclaw/skills/agent-browser-with-camoufox
+https://playbooks.com/skills/openclaw/skills/agent-browser-clawdbot
+https://playbooks.com/skills/openclaw/skills/agent-browser-ymepfebfpc2x
+
+# ── Mid-tier community variants (50-500 installs) ─────────────
+# 458 — gmickel's marketplace browser skill
+https://playbooks.com/skills/gmickel/gmickel-claude-marketplace/browser
+# 212 — chachamaru127 harness
+https://playbooks.com/skills/chachamaru127/claude-code-harness/agent-browser
+# 206 — fradser dotclaude
+https://playbooks.com/skills/fradser/dotclaude/agent-browser
+# 184 — codervisor lean-spec
+https://playbooks.com/skills/codervisor/lean-spec/agent-browser
+# 76 — partme-ai full-stack
+https://playbooks.com/skills/partme-ai/full-stack-skills/agent-browser
+# 58 — ahonn dotfiles
+https://playbooks.com/skills/ahonn/dotfiles/agent-browser
+
+# ── Low-install / niche variants ─────────────────────────────
+# 24 — supercent-io template (deterministic, a11y refs)
+https://playbooks.com/skills/supercent-io/skills-template/agent-browser
+# 24 — ratacat test-browser (E2E on PR-affected pages)
+https://playbooks.com/skills/ratacat/claude-skills/test-browser
+# 9 — browserbase cloud browser
 https://playbooks.com/skills/browserbase/agent-browser/agent-browser
+# 6 — lambda-curry devagent (UI validation)
+https://playbooks.com/skills/lambda-curry/devagent/agent-browser
+# 2 — am-will codex-skills
 https://playbooks.com/skills/am-will/codex-skills/agent-browser
+# 1 — kernel cloud browser (bot detection, session mgmt)
+https://playbooks.com/skills/kernel/skills/kernel-agent-browser
+# 1 — itechmeat llm-code (commands, refs, sessions, snapshots)
+https://playbooks.com/skills/itechmeat/llm-code/agent-browser
+
+# ── No install count (recently added or unlisted) ────────────
+https://playbooks.com/skills/phenome/skills/agent-browser
+https://playbooks.com/skills/jjuidev/jss/agent-browser
+https://playbooks.com/skills/ansarullahanasz360/cc-guide/agent-browser
+https://playbooks.com/skills/kunhai-88/skills/agent-browser
+https://playbooks.com/skills/sebastiaanwouters/dotagents/agent-browser
 EOF
 
 skill-dl urls.txt -o ./research-corpus --no-auto-category -f
+# Expected: ~31/32 success (dmmulroy/.dotfiles/agent-browser not resolvable)
 ```
 
 ### Parallel download for large batches
@@ -141,15 +189,45 @@ grep -v '^#' urls.txt | grep -v '^$' | \
 
 ```
 research-corpus/
-  vercel-labs--agent-browser--agent-browser/
+  vercel-labs--agent-browser--agent-browser/   # 11 files — canonical
     SKILL.md
     references/
       commands.md
       authentication.md
       ...
-  openclaw--skills--agent-browser/
+  everyinc--compound-engineering-plugin--agent-browser/  # 1 file
+    SKILL.md
+  openclaw--skills--agent-browser/             # 3 files
     SKILL.md
     ...
+  openclaw--skills--agent-browser-cli/         # 2 files
+  openclaw--skills--agent-browser-core/        # 7 files
+  openclaw--skills--agent-browser-2/           # 10 files
+  openclaw--skills--agent-browser-4/           # 12 files
+  openclaw--skills--agent-browser-vercel/      # 12 files
+  openclaw--skills--agent-browser-stealth/     # 2 files
+  openclaw--skills--agent-browser-with-camoufox/  # 4 files
+  openclaw--skills--agent-browser-clawdbot/    # 2 files
+  openclaw--skills--agent-browser-ymepfebfpc2x/   # 2 files
+  openclaw--skills--openclaw-agent-browser/    # 4 files
+  gmickel--gmickel-claude-marketplace--browser/ # 8 files
+  browserbase--agent-browser--agent-browser/  # 9 files
+  partme-ai--full-stack-skills--agent-browser/ # 28 files
+  codervisor--lean-spec--agent-browser/        # 10 files
+  fradser--dotclaude--agent-browser/           # 10 files
+  jjuidev--jss--agent-browser/                # 8 files
+  kunhai-88--skills--agent-browser/           # 9 files
+  itechmeat--llm-code--agent-browser/         # 5 files
+  supercent-io--skills-template--agent-browser/ # 8 files
+  chachamaru127--claude-code-harness--agent-browser/ # 3 files
+  kernel--skills--kernel-agent-browser/        # 2 files
+  am-will--codex-skills--agent-browser/        # 2 files
+  ansarullahanasz360--cc-guide--agent-browser/ # 2 files
+  ahonn--dotfiles--agent-browser/              # 1 file
+  phenome--skills--agent-browser/              # 1 file
+  lambda-curry--devagent--agent-browser/       # 1 file
+  ratacat--claude-skills--test-browser/        # 1 file
+  sebastiaanwouters--dotagents--agent-browser/ # 1 file
 ```
 
 ### Handling failures
