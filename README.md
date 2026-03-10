@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-22 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
+21 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -36,12 +36,10 @@ Skills that generate project-level instruction files (`CLAUDE.md`, `AGENTS.md`) 
 
 | Skill | What it does |
 |---|---|
-| **[init-claude-md](skills/init-claude-md/)** | Generates a right-sized `CLAUDE.md` for Claude Code using context economics, the WHAT/WHY/HOW framework, and progressive disclosure — respects the ~100-150 instruction-slot budget and the full memory hierarchy (user memory → project rules → local overrides → path-scoped rules). Includes 3 reference docs: best practices, memory hierarchy decision table, and 8 project-type templates. |
-| **[init-agents-md](skills/init-agents-md/)** | Generates an `AGENTS.md` file — the open cross-agent standard read by 20+ tools (Codex, Cursor, VS Code, Devin, Copilot, Jules, Amp, Gemini CLI) — with monorepo hierarchy support, the Always/Ask/Never boundaries pattern, and symlink strategy for CLAUDE.md compatibility. Includes 3 reference docs: discovery specification, cross-agent compatibility matrix, and 8 project-type templates. |
+| **[init-agent-config](skills/init-agent-config/)** | Generates AGENTS.md (cross-agent standard, 20+ tools) and/or CLAUDE.md (Claude Code–specific) using the WHAT/WHY/HOW framework, dual-file architecture, progressive disclosure, and quality scoring. Includes 5 reference docs: best practices with scoring rubric, Claude memory hierarchy, AGENTS.md discovery spec, cross-agent compatibility matrix for 16 agents, and unified templates for 8 project types. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-claude-md
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-agents-md
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-agent-config
 ```
 
 ---
