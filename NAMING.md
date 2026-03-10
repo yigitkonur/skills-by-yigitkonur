@@ -1,18 +1,43 @@
 # Naming Standard
 
-This repo is a **single skills pack**. Every skill should look and behave like it belongs to the same family.
+This repo is a **single skills pack**. Every skill name starts with a verb prefix that signals its primary function.
+
+## The Rule
+
+Every skill directory, `SKILL.md` frontmatter `name`, and README label must:
+- Start with a verb prefix from the table below
+- Use `kebab-case`
+- Be short, stable, and install-path-friendly
+- Match exactly across directory name, frontmatter `name`, and README label
+
+## Verb Prefixes
+
+| Prefix | When to use | Examples |
+|---|---|---|
+| `automate-` | Browser automation, task automation, CLI-driven workflows | `automate-browser`, `automate-playwright` |
+| `build-` | Creation, scaffolding, authoring, extension | `build-mcp-sdk-server`, `build-mcp-use-apps`, `build-skills`, `build-supastarter-app` |
+| `convert-` | Format transformation, migration, rebuild | `convert-snapshot-nextjs` |
+| `debug-` | Inspection, diagnosis, live troubleshooting | `debug-tauri-devtools` |
+| `develop-` | Language standards, implementation patterns, type systems | `develop-typescript` |
+| `extract-` | Design extraction, data forensics, visual system documentation | `extract-design-saas` |
+| `init-` | First-run setup, config generation, review platform onboarding | `init-copilot-review`, `init-devin-review`, `init-greptile-review` |
+| `plan-` | Structured decision-making, prioritization, root-cause framing | `plan-work` |
+| `publish-` | CI/CD, package publishing, release automation | `publish-npm-package` |
+| `research-` | Multi-source investigation, web research, structured synthesis | `research-web` |
+| `review-` | Code review execution, pattern checking, anti-pattern detection | `review-mcp-use-code` |
+| `test-` | Validation, verification, protocol checks, QA workflows | `test-mcp-server`, `test-mcp-by-cli` |
 
 ## Canonical Rules
 
 ### 1) Directory name
+- Must start with a verb prefix from the table above
 - Use short, stable, install-path-friendly `kebab-case`
 - Prefer the name users would actually type in an install command
-- Avoid suffixes like `-guide`, `-migrate`, `-v2`, or `-final` unless they are part of the permanent public name
+- Avoid suffixes like `-guide`, `-migrate`, `-v2`, or `-final`
 
 ### 2) `SKILL.md` frontmatter `name`
 - Must exactly match the directory name
-- No aliases
-- No legacy names
+- No aliases, no legacy names
 
 ### 3) README label
 - Must exactly match the directory name and frontmatter `name`
@@ -20,117 +45,69 @@ This repo is a **single skills pack**. Every skill should look and behave like i
 
 ### 4) Cross-skill references
 - Always use canonical repo-local names
-- Example: use `design-soul-saas`, not an older or invented sibling name
 
 ### 5) Description standard
 Every skill description is canonical metadata, not body copy.
 
 Required format:
-- start with `Use skill if you are`
+- Start with `Use skill if you are`
 - 30 words or fewer
-- describe when the skill should trigger
-- use concrete user intent, tools, file patterns, or workflows when helpful
-- stay specific enough to avoid overlap with nearby skills
-- do not mention references, packaging, evals, or long procedural detail
+- Describe when the skill should trigger, not what the body contains
+- Use concrete user intent, tools, file patterns, or workflows when helpful
+- Stay specific enough to avoid overlap with nearby skills
 
 Good:
 - `Use skill if you are setting up GitHub Copilot review behavior with copilot-instructions.md or scoped *.instructions.md files for repo-specific pull request review.`
-- `Use skill if you are rebuilding saved HTML snapshots into grounded Next.js pages with self-hosted assets and extracted styles.`
+- `Use skill if you are converting saved HTML snapshots into buildable Next.js pages with self-hosted assets and extracted styles.`
 
 Weak:
 - `Best MCP skill ever.`
 - `Research guide.`
 - `Mandatory for all work.`
-- `Includes lots of references and examples for everything.`
 
 ## Naming Anti-Patterns
 
-Avoid these across directory names, frontmatter names, and README labels:
-- `-guide`
-- `-migrate`
-- stale old product names
-- different names for the same skill in different places
-- repo-only nicknames that do not match install paths
+- Names that don't start with a verb prefix
+- `-guide`, `-migrate`, `-v2` suffixes
+- Marketing-heavy names (e.g., "soul", "powerpack" as primary identifiers)
+- Different names in different places (directory vs frontmatter vs README)
+- Noun-first names (e.g., `agent-browser` instead of `automate-browser`)
 
-## Preferred Formula
+## Adding a New Verb Prefix
 
-Prefer action-first canonical names when they make install paths clearer.
-
-### Build skills
-- `build-<thing>`
-- Use for creation, authoring, scaffolding, or extension workflows
-
-Examples:
-- `build-mcp-sdk-server`
-- `build-mcp-use-apps`
-- `build-supastarter-app`
-- `build-skills`
-
-### Test skills
-- `test-<thing>`
-- Use for validation, debugging, protocol checks, or verification workflows
-
-Examples:
-- `test-mcp-server`
-- `test-mcp-by-cli`
-
-### Init skills
-- `init-<thing>`
-- Use for first-run setup that generates repo files or review configuration
-
-Examples:
-- `init-greptile-review`
-- `init-devin-review`
-
-### Debug skills
-- `debug-<thing>`
-- Use when the primary job is inspection, diagnosis, or live troubleshooting
-
-Examples:
-- `debug-tauri-devtools`
-
-### Develop / Plan skills
-- `develop-<thing>` for language or implementation guidance
-- `plan-<thing>` for structured decision-making workflows
-
-Examples:
-- `develop-typescript`
-- `plan-work`
-
-### Keep established product names when they are already the clearest public path
-
-Examples:
-- `playwright-cli`
-- `research-powerpack`
-- `snapshot-to-nextjs`
-- `mcp-use-code-review`
-- `copilot-review-init`
+If none of the existing prefixes fit:
+1. Check whether an existing prefix can stretch to cover the use case
+2. If not, propose the new prefix in a PR with at least one concrete skill example
+3. Keep the prefix to a single common English verb
 
 ## Migration Rule
 
-For published skills, prefer this order:
-1. Keep the directory name stable if it is already a good public install path
-2. Normalize frontmatter `name`
-3. Normalize README labels
-4. Normalize all cross-skill references
-5. Rename directories only when the current public name is clearly wrong or harmful
+When renaming a published skill:
+1. Rename the directory
+2. Update frontmatter `name` to match
+3. Update frontmatter `description` to current standard
+4. Update README label and install commands
+5. Update NAMING.md canonical list
+6. Update all cross-skill references
 
 ## Current Canonical Skill Names
 
+- `automate-browser`
+- `automate-playwright`
 - `build-mcp-sdk-server`
 - `build-mcp-use-apps`
 - `build-skills`
 - `build-supastarter-app`
-- `copilot-review-init`
+- `convert-snapshot-nextjs`
 - `debug-tauri-devtools`
-- `design-soul-saas`
 - `develop-typescript`
+- `extract-design-saas`
+- `init-copilot-review`
 - `init-devin-review`
 - `init-greptile-review`
-- `mcp-use-code-review`
 - `plan-work`
-- `playwright-cli`
-- `research-powerpack`
-- `snapshot-to-nextjs`
+- `publish-npm-package`
+- `research-web`
+- `review-mcp-use-code`
 - `test-mcp-by-cli`
 - `test-mcp-server`

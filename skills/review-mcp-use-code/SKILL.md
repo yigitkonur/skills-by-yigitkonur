@@ -1,5 +1,5 @@
 ---
-name: mcp-use-code-review
+name: review-mcp-use-code
 description: Use skill if you are reviewing or debugging Python code that consumes MCP servers through the `mcp-use` package.
 ---
 

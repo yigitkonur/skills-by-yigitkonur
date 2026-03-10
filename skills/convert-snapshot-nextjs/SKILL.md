@@ -1,6 +1,6 @@
 ---
-name: snapshot-to-nextjs
-description: Use skill if you are rebuilding saved HTML snapshots into grounded Next.js pages with self-hosted assets and extracted styles.
+name: convert-snapshot-nextjs
+description: Use skill if you are converting saved HTML snapshots into buildable Next.js pages with self-hosted assets and extracted styles.
 ---
 
 # Snapshot to Next.js

@@ -1,6 +1,6 @@
 ---
-name: design-soul-saas
-description: Use skill if you are documenting the visual system of a SaaS dashboard, admin panel, or internal tool.
+name: extract-design-saas
+description: Use skill if you are extracting the visual system of a SaaS dashboard, admin panel, or internal tool into structured design documentation.
 ---
 
 # Design Soul SaaS

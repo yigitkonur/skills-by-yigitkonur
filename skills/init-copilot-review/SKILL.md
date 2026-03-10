@@ -1,5 +1,5 @@
 ---
-name: copilot-review-init
+name: init-copilot-review
 description: Use skill if you are setting up GitHub Copilot review behavior with copilot-instructions.md or scoped *.instructions.md files for repo-specific pull request review.
 ---
 
