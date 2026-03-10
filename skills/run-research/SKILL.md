@@ -1,5 +1,5 @@
 ---
-name: research-web
+name: run-research
 description: Use skill if you are researching a coding task using Google, Reddit, page scraping, or deep structured synthesis via Research Powerpack MCP.
 ---
 

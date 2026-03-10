@@ -14,17 +14,16 @@ Every skill directory, `SKILL.md` frontmatter `name`, and README label must:
 
 | Prefix | When to use | Examples |
 |---|---|---|
-| `automate-` | Browser automation, task automation, CLI-driven workflows | `automate-browser`, `automate-playwright` |
 | `build-` | Creation, scaffolding, authoring, extension | `build-mcp-sdk-server`, `build-mcp-use-apps`, `build-skills`, `build-supastarter-app` |
 | `convert-` | Format transformation, migration, rebuild | `convert-snapshot-nextjs` |
 | `debug-` | Inspection, diagnosis, live troubleshooting | `debug-tauri-devtools` |
 | `develop-` | Language standards, implementation patterns, type systems | `develop-typescript` |
-| `extract-` | Design extraction, data forensics, visual system documentation | `extract-design-saas` |
+| `extract-` | Design extraction, data forensics, visual system documentation | `extract-saas-design` |
 | `init-` | First-run setup, config generation, review platform onboarding | `init-copilot-review`, `init-devin-review`, `init-greptile-review` |
 | `plan-` | Structured decision-making, prioritization, root-cause framing | `plan-work` |
 | `publish-` | CI/CD, package publishing, release automation | `publish-npm-package` |
-| `research-` | Multi-source investigation, web research, structured synthesis | `research-web` |
 | `review-` | Code review execution, pattern checking, anti-pattern detection | `review-mcp-use-code` |
+| `run-` | Browser automation, playwright automation, research workflows, CLI-driven execution | `run-agent-browser`, `run-playwright`, `run-research` |
 | `test-` | Validation, verification, protocol checks, QA workflows | `test-mcp-server`, `test-mcp-by-cli` |
 
 ## Canonical Rules
@@ -71,7 +70,7 @@ Weak:
 - `-guide`, `-migrate`, `-v2` suffixes
 - Marketing-heavy names (e.g., "soul", "powerpack" as primary identifiers)
 - Different names in different places (directory vs frontmatter vs README)
-- Noun-first names (e.g., `agent-browser` instead of `automate-browser`)
+- Noun-first names (e.g., `agent-browser` instead of `run-agent-browser`)
 
 ## Adding a New Verb Prefix
 
@@ -92,8 +91,6 @@ When renaming a published skill:
 
 ## Current Canonical Skill Names
 
-- `automate-browser`
-- `automate-playwright`
 - `build-mcp-sdk-server`
 - `build-mcp-use-apps`
 - `build-skills`
@@ -101,13 +98,15 @@ When renaming a published skill:
 - `convert-snapshot-nextjs`
 - `debug-tauri-devtools`
 - `develop-typescript`
-- `extract-design-saas`
+- `extract-saas-design`
 - `init-copilot-review`
 - `init-devin-review`
 - `init-greptile-review`
 - `plan-work`
 - `publish-npm-package`
-- `research-web`
 - `review-mcp-use-code`
+- `run-agent-browser`
+- `run-playwright`
+- `run-research`
 - `test-mcp-by-cli`
 - `test-mcp-server`
