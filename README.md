@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-20 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
+22 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -27,6 +27,22 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-playwright
 ## How discovery works
 
 Each skill uses its `SKILL.md` frontmatter description as a trigger. Install the full pack when you want broad coverage, or install a single skill from the `skills/` subdirectory when you want a narrower setup.
+
+---
+
+## Agent Configuration
+
+Skills that generate project-level instruction files (`CLAUDE.md`, `AGENTS.md`) so AI coding agents understand your codebase from the first session.
+
+| Skill | What it does |
+|---|---|
+| **[init-claude-md](skills/init-claude-md/)** | Generates a right-sized `CLAUDE.md` for Claude Code using context economics, the WHAT/WHY/HOW framework, and progressive disclosure — respects the ~100-150 instruction-slot budget and the full memory hierarchy (user memory → project rules → local overrides → path-scoped rules). Includes 3 reference docs: best practices, memory hierarchy decision table, and 8 project-type templates. |
+| **[init-agents-md](skills/init-agents-md/)** | Generates an `AGENTS.md` file — the open cross-agent standard read by 20+ tools (Codex, Cursor, VS Code, Devin, Copilot, Jules, Amp, Gemini CLI) — with monorepo hierarchy support, the Always/Ask/Never boundaries pattern, and symlink strategy for CLAUDE.md compatibility. Includes 3 reference docs: discovery specification, cross-agent compatibility matrix, and 8 project-type templates. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-claude-md
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-agents-md
+```
 
 ---
 
