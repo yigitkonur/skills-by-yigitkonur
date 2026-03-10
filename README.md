@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-19 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, and CI/CD.
+20 skills for AI coding agents — code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -144,6 +144,20 @@ Deep reference skills for language-level type safety, patterns, and anti-pattern
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-typescript
+```
+
+---
+
+## UI Component Libraries
+
+Skills for building interfaces with component library ecosystems and their MCP tooling.
+
+| Skill | What it does |
+|---|---|
+| **[build-daisyui-mcp](skills/build-daisyui-mcp/)** | Operational guide for the daisyui-blueprint MCP server — two MCP tools, 500+ component snippets, Figma design extraction, 7 conversion workflows (Figma, screenshot, Bootstrap, Tailwind, theme), CSS-only interaction patterns, and daisyUI v5 class reference. Includes 17 reference docs across tool API, component catalog, themes, workflows, and conversion prompts. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-daisyui-mcp
 ```
 
 ---

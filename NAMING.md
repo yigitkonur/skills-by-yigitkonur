@@ -91,6 +91,7 @@ When renaming a published skill:
 
 ## Current Canonical Skill Names
 
+- `build-daisyui-mcp`
 - `build-mcp-sdk-server`
 - `build-mcp-use-apps`
 - `build-skills`
