@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-21 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
+20 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -87,14 +87,12 @@ Skills for building, testing, debugging, and reviewing MCP (Model Context Protoc
 | **[test-mcp-server](skills/test-mcp-server/)** | Tests MCP servers through two modes: protocol-level verification across 19 checks (transport, schema, errors, timeouts), and LLM-powered end-to-end testing with domain-adaptive business case generation. Includes 6 reference docs: basic/LLM test guides, Inspector API reference, provider patterns, business cases, and troubleshooting. |
 | **[test-mcp-by-cli](skills/test-mcp-by-cli/)** | Behavior-verified guide for testing MCP servers with `philschmid/mcp-cli` v0.3.0 — 8-phase verification, config and JSON argument patterns, raw `call` response parsing with `jq`, and troubleshooting for daemon, auth, and argument failures. Includes 4 reference docs: testing flow, configuration and arguments, output/debugging/chaining, and errors/recovery. |
 | **[build-mcp-use-apps](skills/build-mcp-use-apps/)** | Reference for building MCP apps with the mcp-use framework — server creation, tool/resource/prompt handlers, widget system, authentication (Supabase/WorkOS/custom), and deployment. Includes 16 reference docs across foundations, server patterns, widget guides, and auth providers. |
-| **[review-mcp-use-code](skills/review-mcp-use-code/)** | Code review skill for Python apps using the `mcp-use` pip package — catches the 6 most common AI-agent derailment patterns: leaked connections, missing timeouts, improper error handling, session lifecycle bugs, namespace collisions, and auth misuse. Includes 10 reference docs covering async lifecycle, tools deep-dive, LangChain bridge, server config, deployment, and migration from the TypeScript SDK. |
 | **[build-mcp-sdk-server](skills/build-mcp-sdk-server/)** | TypeScript MCP server development with the official SDK — tool, resource, and prompt registration, transport selection, project scaffolding, sampling, elicitation, and v1-to-v2 migration guidance. Includes 9 reference docs. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-mcp-server
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-mcp-by-cli
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-apps
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/review-mcp-use-code
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-sdk-server
 ```
 
