@@ -28,11 +28,13 @@ The local scan prevents you from importing outside patterns that conflict with t
 
 After the local scan:
 
-1. search remote skill directories
+1. search remote skill directories (Playbooks search pages, `skills-as-context` MCP tool, or both)
 2. gather candidate rows with titles, source labels, summaries, and URLs
 3. prefer high-signal candidates over many near-duplicates
-4. download only the skills worth learning from
-5. inspect the downloaded corpus as evidence, not as background trivia
+4. write selected Playbooks URLs to a text file (one per line, `#` comments for grouping)
+5. download with `skill-dl`: `skill-dl urls.txt -o ./research-corpus --no-auto-category -f`
+   - for large batches across many repos, split by repo and run in parallel (see `references/remote-sources.md`)
+6. inspect the downloaded corpus as evidence, not as background trivia
 
 Treat the downloaded corpus as a second source tree that deserves the same attention as local files.
 
