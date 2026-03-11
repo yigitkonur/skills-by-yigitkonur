@@ -220,3 +220,11 @@ FOCUS: Collaboration and maintainability, not feature lists
 - Ask about TCO including engineering time, not just license/compute costs
 - Target migration stories on Reddit -- they contain the most honest comparisons
 - Use year-specific queries since DevOps tools ship major features quarterly
+
+## Steering notes
+
+1. **Include cloud provider + scale in queries.** "Best CI/CD for AWS with 50 microservices" is specific.
+2. **r/devops and r/sysadmin** have experienced practitioners sharing operational reality.
+3. **IaC comparisons are stack-dependent.** Include cloud provider and toolchain.
+4. **Incident research:** `postmortem [company]`, `incident report [technology]`.
+5. **Observability is foundation.** Research monitoring/tracing before CI/CD optimization.

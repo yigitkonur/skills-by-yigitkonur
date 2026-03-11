@@ -183,3 +183,11 @@ keywords = ["CSS compositor layer will-change transform GPU acceleration",
 - Key rendering pipeline: **Layout** (geometry) -> **Paint** (pixels) -> **Composite** (GPU layers). Animate only at the composite level for 60fps.
 - Search for "layout thrashing" and "forced reflow" -- the most common JavaScript animation killers.
 - Web Animations API is underused and often the best solution for complex animations needing JavaScript control with CSS-level performance.
+
+## Steering notes
+
+1. **ALWAYS add current year** to frontend queries. 2022 articles may recommend abandoned libraries.
+2. **Bundle size is hidden constraint.** Include `bundlephobia [library]` in queries.
+3. **Accessibility needs specialized sources:** `site:webaim.org`, `site:w3.org/WAI/`, `r/accessibility`.
+4. **CSS debates are opinionated.** Frame around your constraints, not "which is best."
+5. **i18n, bundle analysis, a11y** are often-missed research areas for frontend projects.

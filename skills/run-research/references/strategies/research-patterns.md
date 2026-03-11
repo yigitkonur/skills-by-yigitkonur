@@ -276,3 +276,19 @@ Match research depth to question importance:
 ## Key Insight
 
 The pattern you choose determines your research efficiency more than the queries you write. A perfectly crafted query in the wrong pattern wastes a tool call. The two most common mistakes: using Pattern A (bug fix) when Pattern B (decision) is needed (symptom: surface-level fix that doesn't address root cause), and using Pattern B when Pattern E (verification) suffices (symptom: over-researching a simple factual question).
+
+## Steering notes from production testing
+
+### Pattern-to-tool-sequence quick reference
+
+| Pattern | Start | Sequence | Tool calls |
+|---|---|---|---|
+| Bug fix | `search_google` | search->scrape->reddit | 6-10 |
+| Verification | `search_google` | search->scrape | 4-6 |
+| Library comparison | `search_google` | search->scrape->reddit->deep_research | 10-15 |
+| Architecture | `deep_research` | deep_research->reddit->search->scrape | 10-15 |
+| Landscape scan | `search_reddit` | reddit->search->scrape | 8-12 |
+
+### Pattern combination
+
+Patterns are not exclusive. A library comparison naturally includes fact-checking sub-patterns. Complete the primary pattern's minimum sequence first, then add secondary tools.

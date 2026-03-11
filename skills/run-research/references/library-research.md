@@ -283,3 +283,11 @@ queries = ["[library] production ready 2025", "[library] used in production expe
 5. **Use fetch_reddit** (fetch_comments=True, use_llm=False) on the 5-10 most relevant threads for full migration stories, code examples, and warnings.
 6. **Use deep_research** as the synthesis step, incorporating your specific constraints. Attach relevant code files. Ask 3-5 pointed questions.
 7. **Iterate**: initial research narrows from many candidates to 2-3. Run a second pass focused on the finalists with more specific queries (migration effort, edge case handling, operational costs).
+
+## Steering notes
+
+1. **Migration stories are gold.** Search `"switched from [X] to [Y]"`, `"migrated from [X]"`.
+2. **Ecosystem health:** check maintainer count, funding, release cadence, issue trends.
+3. **License compliance:** MIT/Apache permissive. GPL/AGPL require disclosure. SSPL restricts SaaS.
+4. **Subreddit bias:** r/node favors server-side; r/webdev favors simpler DX.
+5. **Attach `package.json`** to `deep_research` for library research.
