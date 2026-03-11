@@ -36,8 +36,10 @@ Do not use this skill for:
 
 ### 1. Classify the job
 
-- **Local-only path:** a small cleanup where triggers, structure, and core method stay intact.
-- **Full research path:** a new skill, substantial redesign, multi-source merge, thin or stale workspace, or an explicit request for outside comparison.
+- **Local-only path:** a small cleanup where triggers, structure, and core method stay intact. Examples: fixing typos, reordering sections, tightening one trigger phrase, updating a version number.
+- **Full research path:** a new skill, substantial redesign, multi-source merge, thin or stale workspace, or an explicit request for outside comparison. Examples: adding a new workflow branch, rewriting the decision tree, changing the skill's category, merging two skills, or any change that alters what the skill does (not just how it reads).
+
+Rule of thumb: if the change would alter the comparison table you'd build for this skill, it's the full research path.
 
 ### 2. Classify the skill type
 
@@ -62,7 +64,9 @@ If the skill enhances an MCP, also read `references/patterns/mcp-enhancement.md`
 
 ### 4. Run remote research when the job is non-trivial
 
-- Read `references/research-workflow.md`.
+Only execute this step if step 1 classified the job as **Full research path**. Skip to step 7 for local-only work.
+
+- Read `references/research-workflow.md` for the complete research protocol.
 - Use `skill-dl search` (3–20 keywords) to discover candidates — it outputs a prioritized markdown table to stdout.
 - Use `skill-dl` to download selected candidates, or run `references/skill-research.sh` for end-to-end parallel discovery and download in one command.
 - See `references/remote-sources.md` for `skill-dl search` usage patterns and download options.
@@ -108,10 +112,9 @@ Before drafting, write down what success looks like:
 
 ### 8. Test the skill
 
-- Run 5+ should-trigger queries and 5+ should-NOT-trigger queries.
-- Run at least one complete functional test of the primary workflow.
-- Ask Claude "When would you use [skill-name]?" and verify the answer matches intent.
-- Read `references/authoring/testing-methodology.md` for the full testing guide.
+- **Trigger tests:** Write 5+ should-trigger queries and 5+ should-NOT-trigger queries. Run each one by pasting it as a new message in Claude.ai (with only this skill enabled) or Claude Code, and record whether the skill loaded. See `references/authoring/testing-methodology.md` for the full testing guide.
+- **Functional test:** Run at least one complete functional test of the primary workflow end-to-end.
+- **Self-check:** Ask Claude "When would you use [skill-name]?" and verify the answer matches your intent.
 
 ### 9. Finish with repo-fit and cleanup checks
 

@@ -54,10 +54,14 @@ For each skill, create three lists:
 
 ### Running trigger tests
 
+**Execution method:** Open Claude.ai or Claude Code. Disable all skills except the one under test to avoid interference. Paste each query as a new conversation message. Observe whether the skill loaded (Claude.ai shows the skill name in the response header; Claude Code shows skill invocation in the output).
+
 1. Enable only your skill (disable others to avoid interference)
-2. Run each query and record whether the skill loaded
+2. Run each query in a fresh message and record whether the skill loaded
 3. Target: 90%+ of should-trigger queries activate the skill
 4. Target: 0% of should-NOT-trigger queries activate the skill
+
+For scripted testing (Tier 2), write a test file with one query per line and run them sequentially in Claude Code, capturing output to verify skill activation.
 
 ### Debugging trigger failures
 
