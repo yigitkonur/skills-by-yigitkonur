@@ -362,3 +362,26 @@ Sometimes the answer is no. The goal is to say it without burning the relationsh
 - RACI for follow-up actions
 - Risks and mitigations
 - Open questions and next review point
+
+
+## Steering experiences
+
+### SE-01: Document leads with background instead of recommendation
+**What happens:** Agent writes a 2-page context section before the recommendation. Decision-makers stop reading after paragraph 2 and ask "so what do you recommend?"
+**Why it happens:** Chronological ordering feels natural: first the background, then the analysis, then the conclusion. But executives read bottom-up.
+**Prevention:** Use Minto Pyramid: lead with the recommendation, then supporting arguments, then evidence. Background goes in an appendix or footnote. The first sentence should be the answer.
+
+### SE-02: Audience not identified before writing
+**What happens:** The communication plan has perfect content but wrong packaging. A technical deep-dive goes to the VP; a high-level summary goes to the engineering team.
+**Why it happens:** The skill says "if audience is known" but agents skip audience identification because it feels like overhead.
+**Prevention:** Before writing any communication artifact, state the audience in one line: "This is for [role] who needs to [decide/act on/understand] [topic]." If you do not know the audience, use the output contract section order as-is and note "audience unknown" at the top.
+
+### SE-03: RACI has multiple Accountables
+**What happens:** Agent assigns 3 people as Accountable for the same deliverable. When the deliverable slips, no one feels personally responsible.
+**Why it happens:** Shared accountability feels collaborative. Assigning one person feels like singling someone out.
+**Prevention:** RACI rule: exactly one A per deliverable. If you cannot pick one, the deliverable needs to be split. Two Accountables means two deliverables.
+
+### SE-04: Every decision gets a meeting
+**What happens:** Agent recommends a meeting for every alignment checkpoint. The team ends up with 6 new recurring meetings for a 3-month project.
+**Why it happens:** Meetings feel like the default alignment tool. The skill mentions communication plans but does not explicitly counter meeting-as-default.
+**Prevention:** Default to async (document + comment period). Escalate to sync (meeting) only when: (a) there is active disagreement that text has not resolved, or (b) the decision has a hard deadline within 48 hours. Put this rule in the communication plan.

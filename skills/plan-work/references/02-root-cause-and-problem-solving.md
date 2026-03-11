@@ -420,3 +420,26 @@ Use this after any incident rated SEV-2 or higher. The goal is organizational le
 - [ ] Did we tag it with affected services, failure categories, and root cause type?
 - [ ] Are templates and runbooks updated based on findings?
 - [ ] Is there a link to this postmortem in the relevant service's documentation?
+
+
+## Steering experiences
+
+### SE-01: Root cause analysis stops at "human error"
+**What happens:** The 5 Whys chain reaches "the developer forgot to update the config" and stops. The recommendation is "be more careful" or "add a checklist."
+**Why it happens:** Human error feels like a root cause because it names a person. But the system allowed the error to propagate.
+**Prevention:** If any Why answer names a person or "forgot," ask one more Why: "Why did the system allow this to cause an outage?" Push to a systemic cause that can be changed.
+
+### SE-02: Wrong method selected for the problem shape
+**What happens:** Agent uses 5 Whys for a problem with 4 interacting causes. The chain follows one thread and misses the others entirely.
+**Why it happens:** 5 Whys is a single-thread tool. Multi-cause problems need Ishikawa (fishbone) or fault tree analysis.
+**Prevention:** Before choosing a method, count the suspected contributing factors. If more than 2 are suspected, use Ishikawa or fault tree instead of 5 Whys.
+
+### SE-03: Evidence gathering skipped for speed
+**What happens:** Agent jumps from problem statement to root cause without reviewing logs, metrics, or prior incidents. The "root cause" is actually a hypothesis with no supporting data.
+**Why it happens:** Evidence gathering feels slow. The agent wants to be helpful fast.
+**Prevention:** Require at least 2 evidence sources before declaring a root cause: logs, metrics, git history, prior incident reports, or direct observation. If fewer than 2 exist, label the output as "hypothesis" not "root cause."
+
+### SE-04: System understanding treated as optional
+**What happens:** Agent diagnoses a database timeout without understanding the service topology. The fix addresses the symptom but introduces a new bottleneck upstream.
+**Why it happens:** The root-cause templates focus on the failure itself, not the system context around it.
+**Prevention:** Before root-cause analysis, draw or describe the relevant system boundary: what components are involved, what are the data flows, what are the failure modes. Even a 3-line text description prevents tunnel vision.

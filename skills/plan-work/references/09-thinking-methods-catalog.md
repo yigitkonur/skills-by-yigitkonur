@@ -318,3 +318,31 @@ What's your situation?
 
 ## Practical caution
 Do not use methods mechanically. Choose methods by decision need, context complexity, and available evidence.
+
+
+## Steering experiences
+
+### SE-01: Method selected without checking the selection table
+**What happens:** Agent picks a familiar method (e.g., decision matrix) without consulting the selection flowchart. The method does not fit the problem shape, producing forced output.
+**Why it happens:** Agents have method preferences. The catalog exists but is not consulted because the agent "already knows" which method to use.
+**Prevention:** Before selecting any method, read the selection flowchart in this file. Match the problem shape (single-cause vs. multi-cause, options-present vs. options-needed) to the recommended method. If your preferred method is not recommended for this shape, use the recommended one instead.
+
+### SE-02: Method used without loading its reference file
+**What happens:** Agent selects "Ishikawa diagram" from the catalog and tries to build one from memory. The result is a partial diagram missing the template structure from ref 02.
+**Why it happens:** The catalog lists methods but the templates live in domain reference files. Agents do not always follow the cross-reference.
+**Prevention:** Every method in the catalog links to a reference file. When you select a method, load the linked reference file and use its template. The catalog is for selection; the reference file is for execution.
+
+### SE-03: Two methods applied simultaneously instead of sequentially
+**What happens:** Agent tries to run a decision matrix and a pre-mortem at the same time, mixing the outputs into one confused document.
+**Why it happens:** The skill says "use one primary method, optionally add a companion." Agents interpret this as "run them in parallel."
+**Prevention:** Methods are sequential: complete the primary method fully, write its output, then start the companion if needed. Never mix method outputs in the same section.
+
+### SE-04: Thinking posture confused with method
+**What happens:** Agent declares "I am using divergent thinking" as their method. Divergent thinking is a posture (broad exploration), not a method (structured procedure).
+**Why it happens:** The catalog mentions both postures and methods without a clear boundary.
+**Prevention:** A method has steps you follow (e.g., "list criteria, score options, calculate totals"). A posture is a mindset you apply while following those steps (e.g., "generate options without judging them"). Choose a method, then apply a posture while executing it.
+
+### SE-05: Skip-when conditions not checked before applying method
+**What happens:** Agent applies RICE scoring to a 3-item list. The overhead of calculating Reach, Impact, Confidence, and Effort for 3 items exceeds the value of the ranking.
+**Why it happens:** The method was selected based on the problem type (prioritization) without checking whether the scale justified it.
+**Prevention:** Every method in the catalog should have a "Skip when" condition. Before applying, check: does the current context match a skip-when? If yes, use the simpler alternative noted in the skip-when guidance.
