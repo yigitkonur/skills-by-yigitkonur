@@ -8,10 +8,14 @@
 | `tauri-plugin-devtools-app` | Premium embedded desktop panel | `cargo add tauri-plugin-devtools-app` |
 | `devtools` | Legacy Tauri v1 only | `cargo add devtools` (do NOT use for v2) |
 
+Use `tauri-plugin-devtools` (free web UI) unless the user specifically requests the premium desktop panel.
+
 Current stable versions (Tauri v2):
 - `tauri-plugin-devtools = "2.0.1"`
 - `tauri-plugin-devtools-app = "2.0.1"`
 - Internal core: `devtools-core = "0.3.6"`
+
+> ⚠️ **Steering:** Default to `tauri-plugin-devtools` (free web UI). Agents incorrectly chose `tauri-plugin-devtools-app` (premium) or `devtools` (v1 legacy) in testing. Only use premium if the user explicitly requests it.
 
 ## Cargo.toml Setup
 
@@ -21,6 +25,7 @@ Current stable versions (Tauri v2):
 [dependencies]
 tauri = "2"
 tauri-plugin-devtools = "2"
+tracing = "0.1"  # needed if you add custom tracing events
 ```
 
 ### Premium (embedded desktop panel)
@@ -39,6 +44,19 @@ tauri = "2"
 tauri-plugin-devtools = "2"
 tauri-plugin-log = "2"
 ```
+
+## Which Pattern to Use
+
+| Your project has... | Use |
+|---|---|
+| No `tauri-plugin-log` | Pattern 1 (Basic) |
+| `tauri-plugin-log` | Pattern 2 (split) |
+| Premium license | Pattern 3 |
+| Optional dependency via feature flag | Pattern 5 |
+
+Pattern 4 is an extended example of Pattern 1 with more plugins — choose Pattern 1 and add your plugins after the DevTools plugin. All patterns work with any number of other plugins.
+
+> ⚠️ **Steering:** If unsure, use Pattern 1. In derailment testing, agents incorrectly chose Pattern 2 for projects without `tauri-plugin-log`, adding unnecessary complexity. Pattern 2 is ONLY for projects that already use `tauri-plugin-log`.
 
 ## Initialization Patterns
 
@@ -64,9 +82,18 @@ pub fn run() {
 }
 ```
 
+**Integrating with existing code:** To add DevTools to an existing `run()` function:
+1. Add `#[cfg(debug_assertions)] let devtools = tauri_plugin_devtools::init();` on the line immediately ABOVE your existing `tauri::Builder::default()` call.
+2. Add the `#[cfg(debug_assertions)] { builder = builder.plugin(devtools); }` block BEFORE your other `.plugin()` calls. Equivalently, you can insert `.plugin(devtools)` into your existing builder chain.
+3. Keep all existing `.manage()`, `.plugin()`, `.invoke_handler()`, and `.setup()` chains intact.
+
 Why `init()` comes first: The `init()` call creates the tracing subscriber. Events emitted before the subscriber is registered are lost forever. Calling it before `Builder::default()` ensures plugin initialization events from other plugins are captured.
 
+> ⚠️ **Steering:** The `init()` call MUST come before `Builder::default()`. In derailment testing, placing it after caused all plugin initialization events to be lost — DevTools connected but showed incomplete data. This is the #1 installation mistake.
+
 ### Pattern 2: With tauri-plugin-log (split pattern)
+
+> **Use Pattern 2 ONLY if your project uses `tauri-plugin-log`.** If it doesn't, use Pattern 1.
 
 ```rust
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -123,17 +150,22 @@ pub fn run() {
 
 Premium adds: Cmd/Ctrl+Shift+M keyboard shortcut to toggle embedded panel, offline usage, auto-connect.
 
+> **Note:** `tauri_plugin_devtools_app` (premium) uses a different internal architecture than `tauri_plugin_devtools` (free). The premium crate's `init()` does not create a standalone tracing subscriber in the same way, so the ordering constraint (init before Builder) is less critical. However, registering early is still recommended.
+
 ### Pattern 4: Multi-plugin project
 
 ```rust
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // IMPORTANT: init() BEFORE Builder::default() to capture all tracing events
+    #[cfg(debug_assertions)]
+    let devtools = tauri_plugin_devtools::init();
+
     let mut builder = tauri::Builder::default();
 
     // DevTools FIRST — captures init tracing from all subsequent plugins
     #[cfg(debug_assertions)]
     {
-        let devtools = tauri_plugin_devtools::init();
         builder = builder.plugin(devtools);
     }
 
@@ -183,21 +215,40 @@ Use feature flags when you need finer control than debug/release (e.g., DevTools
 
 ## Connecting to DevTools
 
+> ⚠️ **Steering:** First compilation after adding DevTools takes significantly longer (new dependency tree). Agents in testing mistook the long compile time for a hang and killed the process. Wait for the WebSocket URL in terminal output.
+
 ### Free web UI
 
-1. Run your app: `cargo tauri dev`
-2. Look for terminal output like:
+1. Run your app from the project root (where `package.json` lives): `cargo tauri dev`
+2. First run after adding DevTools triggers a longer recompilation (new dependencies). Wait for the WebSocket URL to appear.
+3. Look for terminal output like:
    ```
    devtools: listening on ws://127.0.0.1:7043
    ```
-3. Open https://devtools.crabnebula.dev in any browser
-4. Paste the connection URL from the terminal
+4. Open https://devtools.crabnebula.dev in any browser
+5. Paste the connection URL from the terminal
 
 ### Premium desktop app
 
 1. Download the DevTools Desktop app from CrabNebula
 2. The embedded panel auto-connects — no URL pasting needed
 3. Toggle with **Cmd+Shift+M** (macOS) or **Ctrl+Shift+M** (Windows/Linux)
+
+## Verifying DevTools Works
+
+After connecting in the browser:
+
+1. **Console tab** — should show Tauri initialization log entries (target: `tauri::*`).
+2. **Config → Plugins** — should list your registered plugins (e.g., opener, fs, store).
+3. **Calls tab** — invoke any `#[tauri::command]` from the frontend. It should appear with Arguments and Response columns populated. Tauri IPC commands are automatically instrumented — no additional code needed.
+4. If the dashboard is blank or shows no data:
+   - **Pattern 1 (basic):** verify `init()` is called BEFORE `Builder::default()`. This ensures the tracing subscriber is active before any builder events.
+   - **Other patterns:** verify the DevTools plugin is registered before `.run()`. The critical requirement is that the tracing subscriber is active before events you want to capture.
+   - Confirm you are running `cargo tauri dev` (not a release build).
+
+> ⚠️ **Steering:** If the dashboard is blank, the most common cause is init() being called too late. Check the ordering. The second most common cause is running a release build (`cargo tauri build` instead of `cargo tauri dev`).
+
+After verifying DevTools works, return to the main SKILL.md workflow at Phase 2.
 
 ## Platform-Specific Setup
 
@@ -254,6 +305,8 @@ In release builds, the compiler completely removes:
 | `cannot find crate tauri_plugin_devtools` | Wrong crate name or not installed | Run `cargo add tauri-plugin-devtools` (hyphens in crate name, underscores in code) |
 | Binary bloat in release | Missing `#[cfg(debug_assertions)]` gate | Wrap all DevTools code in the gate |
 | Port conflict on startup | Another process using ports 6000-9000 | Stop the other process; DevTools will auto-pick a free port in range |
+
+> ⚠️ **Steering:** The error `PluginInitialization('log', ...)` is the most common installation error. It means both DevTools and tauri-plugin-log try to set the global subscriber. The ONLY fix is Pattern 2 (split pattern). Do NOT try to remove tauri-plugin-log — use split().
 
 ## Naming Conventions
 
