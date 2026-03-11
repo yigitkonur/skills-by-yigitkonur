@@ -87,8 +87,8 @@ If the user only asked for extraction or documentation, stop after the appropria
 
 - **Missing `_files/` folder:** treat as SingleFile mode if inline CSS exists; otherwise full reconstruction may be blocked.
 - **Missing assets or remote-only assets:** download them during extraction and record original → local path mapping.
-- **Missing fonts:** Check `<link>` tags for Google Fonts / Typekit URLs. Download font files to `public/fonts/` and create `@font-face` declarations. If URL is unreachable, substitute with a system font stack and add `/* TODO: replace with original font */`.
-- **External JS (analytics, chat widgets):** Do NOT embed third-party scripts. Add a `<!-- TODO: re-add [service] script -->` comment in `layout.tsx`.
+- **Missing fonts:** Check `<link>` tags for Google Fonts / Typekit URLs. Download font files to `public/assets/fonts/` and create `@font-face` declarations. If URL is unreachable, substitute with a system font stack and add `/* TODO: replace with original font */`.
+- **External JS (analytics, chat widgets):** Do NOT embed third-party scripts. Add a `{/* TODO: re-add [service] script */}` comment in `layout.tsx`.
 - **Missing CSS or JS evidence for a value or behavior:** mark it `UNVERIFIED` and avoid inventing the implementation.
 - **Incomplete snapshot:** continue extraction where possible, but do not claim a pixel-perfect rebuild if core layout, type, or asset data is missing.
 - **Shared headers, footers, or components across pages:** deduplicate them intentionally; note page-specific overrides rather than re-documenting the whole component each time.
@@ -105,10 +105,10 @@ npx tsc --noEmit
 npm run build
 
 # No UNVERIFIED comments remain
-grep -r 'UNVERIFIED' src/ && echo "FAIL: unverified values" || echo "PASS"
+grep -r 'UNVERIFIED' app/ components/ lib/ styles/ && echo "FAIL: unverified values" || echo "PASS"
 
 # No external URLs leak into components
-grep -rE 'https?://' src/components/ | grep -v '// original:' && echo "FAIL: external URLs" || echo "PASS"
+grep -rE 'https?://' components/ | grep -v '// original:' && echo "FAIL: external URLs" || echo "PASS"
 ```
 
 ## Verification before claiming completion

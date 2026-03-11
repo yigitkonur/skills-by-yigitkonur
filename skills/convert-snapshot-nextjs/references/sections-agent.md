@@ -401,7 +401,7 @@ cat .design-soul/wave0/*/deobfuscated.css | grep -oE '@keyframes [a-zA-Z0-9_-]+'
 cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'cubic-bezier\([^)]+\)' | sort | uniq -c | sort -rn
 
 # Extract transform values (for animation targets)
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'transform:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'transform:[^;}]+' | grep -v 'uppercase\|capitalize\|lowercase' | sort | uniq -c | sort -rn
 ```
 
 ### Easing Functions Catalog
