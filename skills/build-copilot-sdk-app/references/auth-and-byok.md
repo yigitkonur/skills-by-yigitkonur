@@ -232,3 +232,20 @@ const auth = await client.getAuthStatus();
 const quota = await client.rpc.account.getQuota();
 // { quotaSnapshots: { "chat": { entitlementRequests, usedRequests, remainingPercentage, ... } } }
 ```
+
+## Steering notes
+
+> Common mistakes agents make with authentication and BYOK.
+
+- **Default auth (no config) works out of the box** if the user has the Copilot CLI installed and authenticated (`copilot auth login`). This is the simplest path for local development tools.
+- **BYOK requires BOTH `provider` and `model`** in `createSession`. Omitting `model` creates the session successfully but `sendAndWait` will fail with an unhelpful error. Always pair them:
+  ```typescript
+  const session = await client.createSession({
+    provider: { type: "openai", baseURL: "...", apiKey: "..." },
+    model: "gpt-4.1",  // REQUIRED with provider
+    onPermissionRequest: approveAll,
+  });
+  ```
+- **BYOK tokens are static** — the SDK doesn't refresh them. If your token expires mid-session, requests fail. For long-running apps, implement token rotation at the application level.
+- **`GITHUB_TOKEN` env var** is checked automatically. You don't need to pass it in code. But if set, it takes priority over OAuth tokens.
+- **For GitHub App auth**: Use `authConfig.appAuth` with `appId`, `privateKey`, and `installationId`. This is for server-side apps, not CLIs.

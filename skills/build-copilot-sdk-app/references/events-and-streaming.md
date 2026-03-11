@@ -64,8 +64,11 @@ session.on("assistant.message", (event) => {
 
 session.on("session.idle", () => {
   console.log("--- turn complete ---");
+  idleResolve();
 });
 ```
+
+> **Cleanup.** In single-run scripts, call `await session.disconnect(); await client.stop();` after the final `await idle`. In multi-turn REPLs, disconnect only when the user exits.
 
 ### Streaming pattern with waitForIdle
 
@@ -295,3 +298,13 @@ session.on("session.shutdown", (event) => {
   }
 });
 ```
+
+## Steering notes
+
+> Learned from real-world testing — common mistakes agents make with streaming.
+
+- **Register handlers before `send()`**. Handlers attached after `send()` may miss early events like the first `assistant.message_delta`.
+- **`deltaContent` is always defined** on `assistant.message_delta` events. No need for null checks.
+- **`session.idle` fires once per turn** — after all tool calls complete and the final assistant message is sent. It does NOT fire between individual tool calls.
+- **Parallel tools**: When the model invokes multiple tools at once, events for different tools interleave. Use `toolCallId` from the event data to correlate `tool.execution_start` with its `tool.execution_complete`.
+- **The wildcard handler fires for EVERY event** including internal ones. Filter by `event.type` when using it.

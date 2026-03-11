@@ -327,6 +327,18 @@ session.on("hook.end", (event) => {
 });
 ```
 
+## Steering notes
+
+> Common mistakes agents make with hooks.
+
+- **All hooks can return `void`** (no return statement). This is the most common pattern for logging-only hooks. The hook is treated as a no-op.
+- **Hook errors are silently caught**. If your hook throws, execution continues as if the hook returned `undefined`. This means bugs in hooks are invisible — add try/catch with logging inside hooks for debugging.
+- **`onPreToolUse` can block tools** by returning `{ blocked: true, reason: "..." }`. The model sees the reason and may try alternative approaches. Use this for security guardrails (e.g., blocking `rm -rf /`).
+- **`onPostToolUse` sees the full result** via `toolResult.textResultForLlm`. Use this for audit logging, metrics, or result sanitization.
+- **`onUserPromptSubmitted` can modify the prompt** by returning `{ modifiedPrompt: "..." }`. Use this to inject system context (e.g., prepending repository info). Returning the original prompt is a no-op.
+- **Hook execution is synchronous relative to the SDK pipeline** — the SDK waits for your hook to resolve before proceeding. Long-running hooks will block the pipeline. Keep hooks fast.
+- **Hook events** (`hook.start`, `hook.end`) fire for every hook invocation and include timing data. Use these for performance monitoring, not the hooks themselves.
+
 ## Internal hook type mapping
 
 | Hook function | RPC hook type |
