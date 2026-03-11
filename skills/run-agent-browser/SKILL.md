@@ -1216,37 +1216,44 @@ agent-browser --cdp 9222 snapshot
 
 ## 30. Deep-Dive Reference Files
 
-| Reference | When to Use |
-|-----------|-------------|
-| [references/commands.md](references/commands.md) | Full command reference with all options |
-| [references/snapshot-refs.md](references/snapshot-refs.md) | Ref lifecycle, invalidation rules, troubleshooting |
-| [references/session-management.md](references/session-management.md) | Parallel sessions, state persistence, concurrent scraping |
-| [references/authentication.md](references/authentication.md) | Login flows, OAuth, 2FA handling, state reuse |
-| [references/video-recording.md](references/video-recording.md) | Recording workflows for debugging and documentation |
-| [references/profiling.md](references/profiling.md) | Chrome DevTools profiling for performance analysis |
-| [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |
-| [references/workflows.md](references/workflows.md) | Reusable patterns: snapshot-first, error recovery, data extraction |
-| [references/safety.md](references/safety.md) | Risk-categorized commands, escalation policy, safe mode checklist |
-| [references/troubleshooting.md](references/troubleshooting.md) | Common issues: missing Chromium, stale daemon, invalid refs, SSL errors |
-| [references/stealth-automation.md](references/stealth-automation.md) | Anti-bot techniques: headed mode, human-like typing, session reuse |
-| [references/advanced.md](references/advanced.md) | Extensions, cloud browsers, WebSocket streaming, network interception |
+| File | When to Use |
+|------|-------------|
+| `references/commands.md` | Complete command reference with all 50+ commands, syntax, flags, and examples |
+| `references/selectors.md` | Ref-based, CSS, text/XPath, and semantic locator selection strategies |
+| `references/snapshots.md` | Snapshot options (-i/-C/-c/-d/-s), output format, ref lifecycle, annotated screenshots |
+| `references/configuration.md` | Config file locations, priority chain, all configurable options, environment variables |
+| `references/installation.md` | Global, npx, project, Homebrew, source install, serverless, AI agent setup |
+| `references/sessions.md` | Session isolation, persistence, encryption, state management, auth headers |
+| `references/authentication.md` | Auth vault, header-based auth, state persistence, profiles, HTTP basic auth |
+| `references/security.md` | Threat model, auth vault, content boundaries, domain allowlist, action policy, confirmation |
+| `references/diffing.md` | Snapshot diff, screenshot diff, URL diff — all options and use cases |
+| `references/cdp-mode.md` | CDP connections, WebSocket URLs, auto-connect, cloud providers (browserbase, browseruse, kernel) |
+| `references/streaming.md` | WebSocket streaming protocol, frame/status messages, input events, TypeScript API |
+| `references/profiling.md` | Performance profiling commands, categories, output format, viewing results |
+| `references/ios-simulator.md` | iOS Simulator setup, device list, swipe/tap commands, real device support |
+| `references/native-mode.md` | Experimental native Rust daemon, CDP-based, supported commands, limitations |
+| `references/engines.md` | Chrome engine discovery/config, Lightpanda engine (Zig-based, 10x faster) |
+| `references/nextjs-vercel.md` | Vercel Sandbox integration, server actions, ephemeral microVMs |
+| `references/troubleshooting.md` | Common issues: daemon, browser, Linux deps, containers, CDP, state, iOS |
 
 ---
 
 ## 31. Ready-to-Use Templates
 
-| Template | Description |
-|----------|-------------|
-| [templates/form-automation.sh](templates/form-automation.sh) | Form filling with validation |
-| [templates/authenticated-session.sh](templates/authenticated-session.sh) | Login once, reuse state |
-| [templates/capture-workflow.sh](templates/capture-workflow.sh) | Content extraction with screenshots |
-| [templates/ai-agent-workflow.sh](templates/ai-agent-workflow.sh) | AI agent browser automation with safety boundaries |
-| [templates/e2e-test-workflow.sh](templates/e2e-test-workflow.sh) | PR-affected page E2E testing (requires `gh` CLI) |
+| Template | Purpose |
+|----------|---------|
+| `templates/authenticated-session.sh` | Login flow with state persistence |
+| `templates/form-automation.sh` | Form filling and submission workflow |
+| `templates/capture-workflow.sh` | Page capture with screenshots and snapshots |
+| `templates/e2e-test-workflow.sh` | End-to-end test execution pattern |
+| `templates/data-extraction.sh` | Structured data extraction with pagination |
+| `templates/visual-regression.sh` | Visual regression testing using diff commands |
 
 ```bash
-./templates/form-automation.sh https://example.com/form
-./templates/authenticated-session.sh https://app.example.com/login
-./templates/capture-workflow.sh https://example.com ./output
-./templates/ai-agent-workflow.sh https://example.com "explore page"
-./templates/e2e-test-workflow.sh http://localhost:3000
+./templates/authenticated-session.sh https://app.example.com user@example.com password123
+./templates/form-automation.sh https://example.com/contact
+./templates/capture-workflow.sh https://example.com ./captures
+./templates/e2e-test-workflow.sh https://example.com ./test-results
+./templates/data-extraction.sh https://example.com/products ./output
+./templates/visual-regression.sh https://staging.example.com https://prod.example.com ./diffs
 ```
