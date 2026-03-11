@@ -21,13 +21,26 @@ troubleshoot common issues, and diagnose page problems in `playwright-cli`.
 
 ## What debug commands return
 
-Key correction: `console` and `network` return **artifact file paths**,
-not inline text. Those files may contain useful entries or may be empty.
+> **Steering experience:** This is one of the most common sources of confusion. Debug commands do NOT print results to the terminal. They write files and print file paths.
+
+**Key rule:** `console`, `network`, `snapshot`, and `screenshot` all return **artifact file paths**, not inline text. Those files may contain useful entries or may be empty.
 
 You must:
-1. Run the command.
-2. Open the returned file path.
-3. Inspect the file content before claiming the page is clean or broken.
+1. Run the command (e.g., `console error`).
+2. Read the printed file path (e.g., `.playwright-cli/console-1710456789.txt`).
+3. `cat` the file to inspect actual content.
+4. Only then claim the page is clean or broken.
+
+```bash
+# WRONG — assumes console output appears inline
+console error
+# "No errors" — actually you never read the file!
+
+# RIGHT — read the artifact file
+console error
+cat .playwright-cli/console-1710456789.txt
+# Now you can see actual error content (or confirm it is empty)
+```
 
 Artifact paths are implementation details — use the path the CLI returns,
 do not guess based on repo layout.
@@ -69,11 +82,15 @@ Then open the returned file path and inspect its content.
 ### Clear and re-capture
 
 ```bash
-console --clear
+console --clear          # silent success, produces no output
 # Perform actions
-console error
-# Inspect the artifact file
+console error            # captures errors to a file, prints the file path
+cat <returned-path>      # read the artifact to see actual console output
 ```
+
+> **Note:** `--clear` flags produce no visible output. This is normal.
+> The next capture command (`console error`, `network`, etc.) writes to a new
+> artifact file whose path is printed.
 
 ### What console logs look like
 
@@ -358,7 +375,9 @@ upload /absolute/path/to/file
 
 ### Command did not print a snapshot
 
-Not all commands auto-print. Always follow with `snapshot`.
+> **Steering experience:** Almost no commands auto-print a snapshot. `snapshot` itself only prints a file path, not the tree. Always follow actions with `snapshot` then `cat` the returned file.
+
+Not all commands auto-print. Always follow with `snapshot` then `cat` the file.
 
 ### URL or page header seems wrong
 

@@ -27,12 +27,19 @@ When you run `snapshot`, the CLI traverses the current page DOM and produces
 an accessibility-tree dump. Interactive elements get assigned **ref identifiers**
 like `e0`, `e1`, `e5`.
 
-```text
-<html>
-├─ <body>
-   ├─ [e0] <button>Submit</button>
-   ├─ [e1] <input type="text" placeholder="Name">
-   └─ [e2] <a href="/login">Login</a>
+> **Steering experience:** `snapshot` writes a YAML file to `.playwright-cli/page-<timestamp>.yml` and prints the file path. It does NOT print the tree to the terminal. You must `cat` the printed path to read refs. The format is YAML (role/name/ref), not HTML.
+
+```yaml
+# Example from .playwright-cli/page-<timestamp>.yml
+- role: button
+  name: "Submit"
+  ref: e0
+- role: textbox
+  name: "Name"
+  ref: e1
+- role: link
+  name: "Login"
+  ref: e2
 ```
 
 These refs are the primary way to target elements in CLI commands:
@@ -57,14 +64,19 @@ click e2
 
 ## Snapshot anatomy
 
-### Inline snapshot (printed to terminal)
+### Snapshot output (YAML file)
+
+> **Steering experience:** This is the single most important thing to understand about `snapshot`. It writes a file and prints the path. You must read the file to see the tree.
 
 ```bash
 snapshot
+# Output: Snapshot saved to .playwright-cli/page-1710456789.yml
+cat .playwright-cli/page-1710456789.yml
 ```
 
-Prints the accessibility-tree directly. You read refs from the output
-and use them immediately.
+Writes the accessibility tree to a YAML file at `.playwright-cli/page-<timestamp>.yml`
+and prints the file path. Read it with `cat <path>` to see the refs (e0, e1, ...).
+Use those refs immediately in subsequent commands.
 
 ### Saved snapshot (file)
 
@@ -231,21 +243,32 @@ identified by their role, name, and position.
 
 ### How to read the tree
 
-```text
-- heading "Welcome" [level=1]
-- textbox "Email" [ref=e3]
-- textbox "Password" [ref=e4]
-- button "Sign In" [ref=e5]
-- link "Forgot password?" [ref=e6]
+```yaml
+# Example snapshot YAML for a login page
+- role: heading
+  name: "Welcome"
+  level: 1
+- role: textbox
+  name: "Email"
+  ref: e3
+- role: textbox
+  name: "Password"
+  ref: e4
+- role: button
+  name: "Sign In"
+  ref: e5
+- role: link
+  name: "Forgot password?"
+  ref: e6
 ```
 
 ### Matching strategy
 
 | What you see in snapshot | How to target it |
 |--------------------------|------------------|
-| `[ref=e5]` | `click e5` |
-| `button "Sign In"` | `click e5` (use the ref) |
-| `textbox "Email"` | `fill e3 "user@test.com"` |
+| `ref: e5` | `click e5` |
+| `role: button, name: "Sign In"` | `click e5` (use the ref) |
+| `role: textbox, name: "Email"` | `fill e3 "user@test.com"` |
 | No ref shown | Use `eval` with CSS selector |
 
 ### When refs are missing
@@ -295,6 +318,8 @@ snapshot
 ```
 
 ### Quoting rule
+
+> **Steering experience:** Quoting errors are one of the most common causes of `run-code` failures. Always use single quotes for the outer wrapper and double quotes inside JavaScript.
 
 Single quotes outside, double quotes inside:
 
