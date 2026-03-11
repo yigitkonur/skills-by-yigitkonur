@@ -136,7 +136,7 @@ There is no `#[cfg(dev)]` in standard Rust. Don't use it. If you see it in other
 devtools = ["tauri-plugin-devtools"]
 
 [dependencies]
-tauri-plugin-devtools = { version = "2.0.0", optional = true }
+tauri-plugin-devtools = { version = "2", optional = true }
 ```
 
 ```rust
