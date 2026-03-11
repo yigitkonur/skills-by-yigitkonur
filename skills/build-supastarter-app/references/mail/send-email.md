@@ -39,3 +39,4 @@ export async function sendEmail<T extends TemplateId>(params: { to: string; from
 - `references/mail/template-rendering.md` — How template mode renders HTML/text/subject
 - `references/mail/providers.md` — Active provider dispatch
 - `references/mail/email-templates.md` — Registered template components
+- `references/cheatsheets/imports.md` — Common import patterns

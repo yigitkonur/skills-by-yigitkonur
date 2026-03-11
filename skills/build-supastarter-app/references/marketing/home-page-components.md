@@ -25,3 +25,4 @@
 - `references/marketing/pages.md` — Marketing layout and shared chrome
 - `references/marketing/content-collections.md` — MDX-backed public content
 - `references/payments/plans-config.md` — Pricing data source
+- `references/ui/components.md` — Shared UI component library

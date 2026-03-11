@@ -148,3 +148,5 @@ export {
 - `references/conventions/naming.md` — Naming conventions
 - `references/conventions/component-patterns.md` — React component patterns
 - `references/setup/tooling-biome.md` — Biome lint rules
+- `references/conventions/code-review-checklist.md` — Pre-commit quality checks
+- `references/cheatsheets/imports.md` — Common import patterns

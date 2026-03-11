@@ -36,3 +36,4 @@ const getS3Client = () => {
 - `references/storage/signed-urls.md` — Upload and download URL generation
 - `references/storage/bucket-config.md` — Bucket name mapping
 - `references/setup/environment-setup.md` — Storage env var setup and local MinIO usage
+- `references/deployment/local-services.md` — Docker compose for local MinIO

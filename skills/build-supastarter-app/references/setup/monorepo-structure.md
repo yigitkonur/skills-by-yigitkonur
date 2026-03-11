@@ -151,3 +151,4 @@ All scripts use `dotenv -c -- turbo <task>` to load `.env.local` before running.
 - `references/setup/import-conventions.md` — Path aliases and import patterns
 - `references/cheatsheets/commands.md` — All CLI commands
 - `references/cheatsheets/file-locations.md` — "Where do I put...?" guide
+- `references/setup/tooling-biome.md` — Lint/format config

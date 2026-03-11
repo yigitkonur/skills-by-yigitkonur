@@ -20,3 +20,4 @@ Centralizing logging keeps formatting and environment behavior consistent and gi
 - `references/setup/import-conventions.md` — Importing shared packages through barrels
 - `references/conventions/code-review-checklist.md` — Reminder to avoid stray console logs
 - `references/utils.md` — Small shared utilities often used alongside logging
+- `references/cheatsheets/imports.md` — Common import patterns

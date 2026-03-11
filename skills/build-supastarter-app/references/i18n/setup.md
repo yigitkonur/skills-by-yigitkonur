@@ -33,3 +33,4 @@ export const config = {
 - `references/i18n/locale-routing.md` — How locale is resolved per request
 - `references/i18n/messages-loading.md` — How translations are loaded
 - `references/setup/next-config.md` — next-intl plugin wiring in Next.js config
+- `references/setup/config-feature-flags.md` — Feature flags config
