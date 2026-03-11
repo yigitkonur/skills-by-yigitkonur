@@ -215,7 +215,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `test-` vs `run-` — `test-` is specifically about verification; `run-` is about general tool execution
 - `test-` vs `review-` — `test-` runs the code and checks output; `review-` reads the code and checks quality
 
-**Current skills:** *(none currently — prefix reserved for future skills)*
+**Current skills:** `test-skill-quality`
 
 ## Choosing a Prefix — Decision Tree
 
@@ -358,3 +358,4 @@ When renaming a published skill:
 - `run-agent-browser`
 - `run-playwright`
 - `run-research`
+- `test-skill-quality`

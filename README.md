@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-18 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+19 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -105,11 +105,13 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 | **[plan-work](skills/plan-work/)** | Structured planning skill for any task — intake framing, root cause analysis, option design, prioritization, systems thinking, technical strategy, communication alignment, and execution risk. Includes 10 reference docs covering 9 thinking method families and a catalog of 40+ named methods (pre-mortem, Cynefin, RICE, wardley mapping, etc.). |
 | **[run-research](skills/run-research/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
 | **[build-skills](skills/build-skills/)** | Skill creation methodology skill for building or redesigning Claude skills from workspace evidence, remote research, and comparison before synthesis. Use when a skill should be original, traceable, and repo-fit instead of improvised. Includes reference docs for research workflow, remote sources, comparison workflow, and source-pattern selection. |
+| **[test-skill-quality](skills/test-skill-quality/)** | Derailment Testing methodology — follow a skill's workflow literally on a real task, document every friction point (P0/P1/P2) where instructions fail to specify the next action, classify root causes, apply proven fix patterns, and verify with grep-based consistency checks. Includes 5 reference docs: friction classification, root cause taxonomy, 9 fix patterns, metrics/iteration tracking, and domain adaptation guide. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-work
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-skill-quality
 ```
 
 ---
