@@ -6,6 +6,23 @@ This is the primary reference for `SKILL.md`. Follow phases in order; do not ski
 > **Prerequisites:** You need `gh` (GitHub CLI) authenticated. Run `gh auth status` to confirm.
 > If the repository is cloned locally, many commands can be replaced with faster local equivalents noted throughout.
 
+### Navigation — SKILL.md phase mapping
+
+SKILL.md defines 8 phases; this file covers phases 2-8 as its internal phases 1-7. Use this table to navigate:
+
+| SKILL.md phase | This file's section |
+|---|---|
+| Phase 1 — Triage | Handled in SKILL.md directly (not in this file) |
+| Phase 2 — Gather context | Phase 1 — Gather Context |
+| Phase 3 — Scope the diff | Phase 2 — Scope and Cluster |
+| Phase 4 — Read existing review state | Phase 3 — Read Existing Review State |
+| Phase 5 — Validate goals | Phase 4 — Goal Validation |
+| Phase 6 — Review by cluster | Phase 5 — Systematic Review by Cluster |
+| Phase 7 — Cross-cutting sweep | Phase 6 — Cross-cutting Analysis |
+| Phase 8 — Synthesize and output | Phase 7 — Synthesize and Output |
+
+> The offset is intentional: SKILL.md Phase 1 (Triage) has no counterpart here.
+
 ---
 
 ## Phase 1 — Gather Context
@@ -1050,3 +1067,14 @@ If any check is ⚠️, record it as a **🟡 important** finding and proceed.
 | Post comment | `gh pr comment <N> --repo owner/repo --body "text"` |
 | Post inline comment | `gh api repos/{owner}/{repo}/pulls/{N}/comments -f body="text" -f commit_id="sha" -f path="file" -F line=42 -f side="RIGHT"` |
 | Checkout PR locally | `gh pr checkout <N> --repo owner/repo` |
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Phase ordering is mandatory, not suggestive.** Skipping Phase 1 (Gather Context) and jumping straight to diff analysis is the most common workflow violation. Without context, you cannot validate goals or calibrate severity -- every subsequent finding is less reliable.
+2. **The phase numbering in this file is offset by 1 from SKILL.md.** SKILL.md Phase 1 (Triage) maps to pre-workflow setup. SKILL.md Phase 2 maps to this file's Phase 1 (Gather Context). Consult the Navigation table at the top of this file when cross-referencing.
+3. **Goal validation (this file's Phase 4) is the most frequently skipped phase.** Agents tend to jump from context-gathering to per-file review without confirming that the PR achieves its stated goal. This leads to reviews that are technically correct but miss the biggest risk: "the PR does not do what it claims."
+4. **The cross-cutting sweep (this file's Phase 6) catches issues invisible at the file level.** Schema-consumer mismatches, missing auth on new endpoints, and env-var additions without deploy config are all coordination failures that only appear when you look across clusters.
+
+> **Cross-reference:** See SKILL.md "Default workflow" section for the 8-phase overview and `references/file-clustering.md` for how to structure the cluster review in Phases 5-6.

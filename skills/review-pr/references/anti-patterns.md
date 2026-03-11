@@ -83,3 +83,14 @@ Things to NEVER do during a review, synthesized from 121 skill analyses.
 **Don't:** "This will crash on null input" when you're not sure the input can be null.
 **Why:** If you're wrong, you lose credibility for future reviews.
 **Instead:** If confidence < 70%, phrase as a question: "Can `user.role` be null here? If so, line 42 would throw."
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **The most common anti-pattern in AI reviews is restating the diff.** Saying "this function now takes an extra parameter" is description, not review. Always ask: "so what?" -- what is the impact on callers, contracts, or safety?
+2. **Anti-pattern #4 (pre-existing tech debt) is the hardest to resist.** When reviewing a file, surrounding code flaws are visible and tempting to flag. Only flag pre-existing issues if they create a new interaction hazard with the changed code.
+3. **Anti-pattern #13 (too many findings) often signals scope creep.** If you hit 15+ findings, pause and re-apply the actionability gate from SKILL.md Phase 6 before continuing. Consider whether the PR itself is too large rather than continuing to enumerate problems.
+4. **Style policing is context-dependent.** In a repo with no linter, a single "consider adding a linter" comment is appropriate. In a repo with ESLint/Prettier, zero style comments are appropriate -- the machines handle it.
+
+> **Cross-reference:** Load `references/communication.md` for phrasing alternatives when you catch yourself writing anti-pattern language.

@@ -235,3 +235,15 @@ Reviews get ignored when they exhibit these patterns:
 | Vague suggestions | "Clean this up" is not actionable | Provide specific code suggestions |
 | Style preferences | "I prefer X" is subjective | Only flag if it violates project conventions |
 | Out-of-scope architecture | "You should refactor the whole module" | Not in scope for this PR |
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **"You should" is the most common tone mistake in AI-generated reviews.** Replace with "This could...", "Consider...", or "One approach would be...". The goal is collaborative exploration, not directive instruction.
+2. **Praise must be specific to be credible.** "Nice work!" is noise. "The error boundary at `src/ErrorBoundary.tsx:23` cleanly separates render failures from data failures -- this prevents cascading crashes" is useful praise.
+3. **Batching repeated issues is under-used.** If the same missing-null-check pattern appears in 4 files, write one finding with all 4 locations, not 4 separate findings. This reduces noise by 75% without losing information.
+4. **When extending an existing thread, start with "Agree with @reviewer" or "Building on the above."** This signals collaboration, not competition. Never rephrase someone else's finding as your own.
+5. **Questions beat assertions for low-confidence observations.** "Is it intentional that this endpoint has no rate limiting?" is more useful than "This endpoint needs rate limiting" when you are unsure about the architectural context.
+
+> **Cross-reference:** See `references/anti-patterns.md` for the full list of tone and content anti-patterns to avoid.

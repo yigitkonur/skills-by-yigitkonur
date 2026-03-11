@@ -1,6 +1,6 @@
 # Output Templates
 
-Templates for structuring the review output in Phase 7.
+Templates for structuring the review output in the synthesis and output phase.
 
 ## Full review template
 
@@ -145,3 +145,25 @@ Each finding MUST include:
 | Any blockers | 🔄 Request Changes |
 | Goal validation failed | 🔄 Request Changes |
 | CI failing on critical checks | 🔄 Request Changes |
+
+### Template selection rule
+
+- **Compact template** — PRs under 500 changed lines with 5 or fewer findings
+- **Full template** — PRs over 500 changed lines, or PRs with more than 5 findings
+- **Always include** — at least one 🎯 Praise finding with specific evidence
+
+### Steering note: Present, don't submit
+
+Present the completed review to the user in the conversation. **Do not submit it to GitHub** (via `gh pr review --submit` or MCP tools) unless the user explicitly asks you to submit or post it. This prevents accidental review submissions on the wrong PR or with unintended verdicts.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Template selection happens once at the start of Phase 8, not per-finding.** Choose compact or full based on PR size AND finding count, then use that template consistently. Do not mix template formats within a single review.
+2. **The compact template is for PRs under 500 changed lines with 5 or fewer findings.** If a small PR has many findings, use the full template -- the compact format cannot accommodate detailed evidence for 6+ issues.
+3. **Present the review to the user -- do not auto-submit to GitHub.** Unless the user explicitly says "submit", "post", or "publish", present your review as a chat message. This prevents accidental submissions on the wrong PR or with unintended severity.
+4. **The verdict line must match the findings.** If all findings are suggestions and questions, the verdict is Approve or Comment, never Request Changes. Only escalate to Request Changes when at least one finding is a genuine Blocker.
+5. **Every template instantiation must include at least one Praise finding.** Reviews with zero positive observations appear adversarial. Find something specific and genuine to acknowledge.
+
+> **Cross-reference:** See `references/severity-guide.md` for verdict-to-severity mapping rules and `references/communication.md` for tone guidance within findings.

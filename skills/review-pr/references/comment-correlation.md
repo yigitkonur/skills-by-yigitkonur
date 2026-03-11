@@ -273,7 +273,7 @@ Map these to your own severity scale when building the already-reviewed map. A �
 
 ## Including Existing Review State in Your Output
 
-In Phase 7 (synthesize), always include a section summarizing the existing review state. This is not optional — it is part of a complete review.
+In the synthesis and output phase, always include a section summarizing the existing review state. This is not optional — it is part of a complete review.
 
 ```markdown
 ### Existing Review Threads
@@ -318,3 +318,47 @@ For each finding you are about to report:
 ```
 
 This flow ensures every comment you post adds genuine value to the review conversation.
+
+---
+
+## Conversation-Level Review State
+
+Not all review feedback is inline code comments. Some PRs have strategic discussion in general PR comments — team disagreements about approach, design-level feedback, or scope questions that do not attach to any specific line.
+
+### Classification
+
+| Category | Location | Example | How to handle |
+|---|---|---|---|
+| **Inline threads** | Attached to specific file + line | "This null check is missing on line 42" | Map to your clusters; deduplicate against your findings |
+| **Conversation-level** | General PR comments (not attached to code) | "I disagree with the deprecation approach" | Classify as strategic discussion; summarize in output |
+
+### Handling conversation-level feedback
+
+1. **Read all general PR comments** via `gh api repos/{owner}/{repo}/issues/{N}/comments` or MCP `issue_read` with `get_comments` method
+2. **Identify strategic disagreements** — these are approach/design concerns, not code bugs
+3. **Do not try to resolve team disagreements** — note both sides in your review state summary
+4. **Do not map conversation comments to code lines** — they represent positions, not code issues
+5. **Reflect conversation state in your output** using a dedicated section:
+
+```markdown
+### Team Discussion State
+
+- **Active debate:** [topic]. @alice argues [position A]; @bob argues [position B].
+- **Your observation (if any):** [technical evidence, or "No additional technical evidence to add."]
+```
+
+### Steering note
+
+A common mistake is treating conversation-level comments as inline review threads. If a reviewer posts a general comment saying "I think we should use a different approach," that is strategic discussion, not a code-level finding. Summarize it; do not anchor it to a file and line number.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **The most common correlation failure is ignoring bot comments.** Dependabot, CodeQL, and linter bots produce review findings that count as prior review state. Treat them identically to human comments for deduplication.
+2. **Resolved threads are not "gone."** A resolved thread means the participants agreed the issue was addressed. Before re-raising the same concern, re-read the current code to confirm the fix was actually implemented. Only re-raise if the bug is still present.
+3. **General PR comments (not attached to code lines) represent strategic discussion.** Do not try to map them to specific file:line references. Summarize the positions in your review output under a "Team Discussion" heading.
+4. **Thread classification must happen before per-cluster review.** Build the already-reviewed map in Phase 4, not during Phase 6. Skipping Phase 4 leads to duplicate findings -- the single most common review quality failure.
+5. **Mixed human-and-bot review state requires priority ordering.** When a human and a bot flagged the same issue, the human's conclusion takes precedence for deduplication purposes.
+
+> **Cross-reference:** See `references/automation.md` for interpreting bot findings and `references/communication.md` for phrasing when extending or referencing existing threads.

@@ -41,7 +41,7 @@ skimmed for obvious issues only.
 
 ### Strategy 1: Cluster-Based Chunking
 
-The default approach from Phase 2. Group files by concern, review each cluster as a unit.
+The default approach from the scoping phase. Group files by concern, review each cluster as a unit.
 
 ```
 Cluster 1: Database Migrations    → Review first (highest risk)
@@ -245,3 +245,14 @@ reviewed with full attention.
 - Synthesize the review output
 
 This two-pass approach prevents the common mistake of spending 60% of review time on the first few files encountered (often alphabetically first, not highest risk) and rushing through the rest.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **"This PR is too large" is a valid review finding, but only when actionable.** Recommend specific split points (e.g., "the migration changes could be a separate PR from the API changes") rather than generic "please split."
+2. **Skimmed clusters must be declared.** When reviewing a large PR, state which clusters received deep review and which were skimmed. Never imply full coverage when you only reviewed part of the diff.
+3. **Risk-based chunking is almost always the right strategy for large PRs.** Start with security-sensitive and data-access clusters, then work outward. Alphabetical or commit-order review wastes budget on low-risk changes.
+4. **Generated code inflates line counts.** A PR with 2000 changed lines where 1500 are generated protobuf output is actually a small PR. Classify generated files separately before applying size-based strategy decisions.
+
+> **Cross-reference:** See `references/file-clustering.md` for clustering rules that feed into chunking decisions.

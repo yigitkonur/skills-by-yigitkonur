@@ -30,12 +30,14 @@ Prefer other skills when:
 3. **Conversation-aware** — existing threads and bot reviews are part of the evidence set.
 4. **Cluster before depth** — review related files together and prioritize highest-risk clusters first.
 5. **Evidence before opinion** — every reported finding needs `file:line`, observed behavior, impact, and a suggested fix or question.
-6. **Questions before speculation** — if confidence is below 70 percent, ask instead of asserting.
+6. **Questions before speculation** — if you cannot point to specific evidence for a concern, ask instead of asserting.
 7. **Signal over volume** — fewer high-confidence findings beat long nit lists.
 
 ## Default workflow
 
 Follow these phases in order. Load `references/review-workflow.md` for detailed procedures and command variants.
+
+> **Tool access:** Examples below use `gh` CLI syntax. If you have GitHub MCP server tools available (e.g. `pull_request_read`, `get_file_contents`, `issue_read`), prefer those — they return the same data without shell access. See `references/gh-cli-reference.md` for the MCP equivalents table.
 
 ### Phase 1 — Triage the review request
 
@@ -45,10 +47,13 @@ First identify:
 - whether the PR is draft or ready
 - whether the task is merge-readiness, security-only, performance-only, or general review
 
+If no review type is specified, default to **general merge-readiness review**.
+
 **Decision rules**
 - Draft PR with no explicit request for deep review → stop after a readiness note or limit feedback to high-level concerns.
 - Targeted review request such as security on PR 42 → still do Phases 2 through 4, then go deep only on the requested dimension.
 - No clear repo or PR target → do not begin code review until the target is known.
+- PR is a refactor, deprecation, or behavioral change → in Phase 6, weight call-site impact, backwards compatibility, and migration path over net-new bug patterns. In Phase 7, check that all callers of deprecated APIs have been updated or warned.
 
 ### Phase 2 — Gather context before reading code
 
@@ -70,7 +75,7 @@ Do not start code review before you can explain the goal in plain language.
 - Security scan failed → escalate its findings and read the scan output before concluding the review.
 - No linked issue → rely on the PR description and commit history, but lower confidence on scope judgments.
 
-Load when needed:
+Load if needed:
 - `references/review-workflow.md` for full phase procedure and goal validation
 - `references/gh-cli-reference.md` for exact `gh` syntax
 - `references/automation.md` for CI, static analysis, and bot review signals
@@ -82,10 +87,11 @@ Group changed files by concern before reviewing:
 - Security or auth
 - API or routes
 - Core logic
+- Types, interfaces, or schemas
 - Frontend
 - Infrastructure, config, or docs
 
-Pair tests with the source files they validate. Review clusters in risk order, not file-list order.
+Pair tests with the source files they validate. Pair type definition files (*.d.ts, types.ts, schemas) with the cluster that consumes those types. Review clusters in risk order, not file-list order.
 
 **Decision rules**
 - Under 100 changed lines → deep review the full diff.
@@ -98,7 +104,7 @@ Pair tests with the source files they validate. Review clusters in risk order, n
 - Generated code dominates the diff → review the source definitions and note generated files lightly.
 - Hunk context is insufficient → load full-file and before-vs-after analysis instead of guessing from the patch.
 
-Load when needed:
+Load if needed:
 - `references/file-clustering.md` for clustering rules, test pairing, and size strategy
 - `references/large-pr-strategy.md` for very large PRs
 - `references/diff-analysis.md` for deep diff-reading tactics
@@ -125,8 +131,11 @@ Build an already-reviewed map and classify threads as:
 **Recovery**
 - Thread state is unclear → state the uncertainty and avoid confident duplication.
 - Only bots reviewed so far → continue with a full review, but still deduplicate against bot findings.
+- All review feedback is conversation-level (general PR comments, not inline threads) → classify it as strategic discussion; do not try to map it to code lines. Summarize team positions in your output.
+- Team disagreement on approach → note both sides neutrally; do not take a side unless you have specific technical evidence that favors one. If you do have evidence, state it and let the team decide.
+- Mixed human-and-bot reviews → humans take priority; deduplicate bot findings against human conclusions.
 
-Load when needed:
+Load if needed:
 - `references/comment-correlation.md` for the full thread-state decision flow
 - `references/communication.md` for agreement, extension, and non-duplicative phrasing
 - `references/automation.md` for interpreting bot and static-analysis comments
@@ -140,14 +149,14 @@ Check in order:
 2. failure and error paths are handled
 3. described behavior exists in the diff
 4. risky extra scope is explained
-5. supporting changes exist where needed, such as tests, docs, config, consumers, or migrations
+5. supporting changes exist where needed, such as tests, docs, config, consumers, type definitions, or migrations
 
 **Immediate escalation**
 - Described-but-not-implemented behavior → likely 🔴 blocker
 - Implemented-but-not-described risky scope → at least 🟡 important
 - Cannot explain what success looks like → raise the context or goal gap before deeper review
 
-Load when needed:
+Load if needed:
 - `references/review-workflow.md` for goal-validation steps
 - `references/cross-cutting.md` when the goal spans multiple layers
 
@@ -175,10 +184,9 @@ Trace blast radius when the diff changes:
 - It is not just style, lint, or formatter output.
 - It is not already adequately covered by an existing thread.
 - It matches repo conventions rather than importing your own taste.
-- You can point to evidence in the code.
-- Confidence is at least 70 percent, or you will phrase it as a 💡 question.
+- You can point to evidence in the code — a specific line, a missing guard, or a concrete failing input. If you cannot, phrase it as a 💡 question instead.
 
-Load when needed:
+Load if needed:
 - `references/review-dimensions.md` for the full checklist
 - `references/security-review.md` for security depth
 - `references/performance-review.md` for performance depth
@@ -194,10 +202,12 @@ Look for coordination failures between clusters:
 - new endpoint or page without auth
 - new env var or dependency without deploy or config updates
 - changed source with no meaningful coverage for the risky path
+- deprecated accessor or method with call sites still using the old API — check for cascading deprecation warnings at runtime
+- new abstraction layer without migration path for existing consumers
 
 If individual files look fine in isolation but the layers do not line up, treat that as a real review finding.
 
-Load when needed:
+Load if needed:
 - `references/cross-cutting.md`
 - `references/file-clustering.md` for cross-cluster checks
 
@@ -219,8 +229,12 @@ Choose the verdict from the findings, not from vibes:
 - **🔄 Request Changes** — blocker, goal failure, or risky unaddressed gap
 
 If you only have suggestions, do not escalate to request changes.
+- When a team disagreement on approach exists, note both sides and state your technical evidence if you have it, but do not override team consensus.
+- When PR scope judgment depends on context you do not have (product goals, team conventions), ask rather than assert.
 
-Load when needed:
+**Present the review to the user. Do not submit it to GitHub unless explicitly asked.** Use the compact template from `references/output-templates.md` for PRs under 500 changed lines with 5 or fewer findings; use the full template for larger PRs or reviews with 6+ findings.
+
+Load if needed:
 - `references/severity-guide.md`
 - `references/output-templates.md`
 - `references/communication.md`
@@ -231,7 +245,7 @@ Use this default ladder:
 - **🔴 Blocker** — security flaw, data loss, crash or common-path failure, or goal-validation miss that makes the PR unsafe to merge
 - **🟡 Important** — likely bug, contract gap, missing validation or error handling, meaningful performance issue, or missing coverage for risky behavior
 - **🟢 Suggestion** — worthwhile improvement that does not change merge safety
-- **💡 Question** — intent or behavior is unclear, or confidence is below 70 percent
+- **💡 Question** — intent or behavior is unclear, or you cannot point to specific evidence for the concern
 - **🎯 Praise** — specific thing done well; always include at least one
 
 Calibration checks:
@@ -278,6 +292,8 @@ Avoid:
 | Use repo conventions as the baseline | Import outside style preferences |
 | Recommend a separate discussion for architecture drift | Demand a redesign inside the PR |
 | Include specific praise with evidence | End with generic approval language |
+| Acknowledge team disagreements neutrally | Take sides without technical evidence |
+| Present the review to the user first | Auto-submit reviews to GitHub without being asked |
 
 ## Guardrails and recovery paths
 
@@ -291,6 +307,8 @@ Avoid:
 | Resolved thread may still be wrong | Re-read current code and re-raise only with explicit evidence |
 | Finding count gets noisy | Re-run the actionability gate and cut low-signal comments |
 | Need exact CLI commands or deeper procedure | Load the matching reference instead of expanding SKILL.md |
+| Deprecation or refactor PR | Shift focus from new bugs to call-site impact, migration paths, and backwards compatibility |
+| Team disagreement in PR comments | Note both positions neutrally; provide technical evidence if available but do not override consensus |
 
 ## Reference routing
 
@@ -341,6 +359,19 @@ Read only the smallest set that matches the current phase.
 - Correctness → `references/bug-patterns.md`
 - Language nuance → `references/language-specific.md`
 - CI and bot signals → `references/automation.md`
+
+## Steering experiences
+
+Lessons from real-world execution that prevent common review mistakes:
+
+1. **Do not load all references upfront.** Load only the set listed under "Load if needed" for the current phase. Loading everything wastes context and causes missed instructions in later phases.
+2. **Conversation-level comments are not inline threads.** When a PR has team debate in general comments (not attached to code lines), classify it as strategic discussion. Do not try to map conversation comments to specific lines — they represent positions, not code issues.
+3. **Deprecation and refactor PRs need different scrutiny.** The primary risk is not a net-new bug — it is call-site impact, backwards compatibility, and migration completeness. Shift review weight from "is this new code correct?" to "are all consumers updated?"
+4. **The phase numbering in SKILL.md and review-workflow.md is intentionally offset by one.** SKILL.md Phase 1 (Triage) has no counterpart in review-workflow.md. SKILL.md Phase 2 maps to review-workflow.md Phase 1, and so on. Consult the navigation table in `references/review-workflow.md` if confused.
+5. **Evidence-based, not confidence-based.** Never decide actionability by estimating a confidence percentage. Instead ask: "Can I point to a specific line, a missing guard, or a concrete failing input?" If yes, report it. If no, phrase it as a question.
+6. **Present the review — do not auto-submit.** Unless the user explicitly says "submit" or "post", present your review in the chat. This prevents accidental review submissions on the wrong PR or with unintended severity.
+7. **MCP tools vs gh CLI — either works.** If GitHub MCP server tools are available, prefer them over shell commands. The data is identical. See `references/gh-cli-reference.md` for the equivalence table.
+8. **Type definition files are not their own review silo.** Pair *.d.ts, types.ts, and schema files with the cluster that imports them. Review type changes alongside the code that consumes those types.
 
 ## Final reminder
 
