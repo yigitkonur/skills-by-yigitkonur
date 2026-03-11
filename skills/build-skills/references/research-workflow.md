@@ -4,6 +4,22 @@ Use this file when the task is larger than a small local cleanup.
 
 The rule is simple: research happens before synthesis.
 
+## Prerequisite
+
+Before starting, verify `skill-dl` is installed:
+
+```bash
+skill-dl --version
+```
+
+If missing, install it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash
+```
+
+Also confirm you have classified the skill type (see SKILL.md step 2) before beginning research.
+
 ## When remote research is mandatory
 
 Run the remote research phase when any of these are true:
@@ -34,18 +50,19 @@ After the local scan:
    - Run multiple keyword sets in parallel for broader coverage; deduplicate by URL before proceeding
    - Example: `skill-dl search "agent browser" "headless automation" "browser testing" "playwright"`
    - Requires at least 3 keywords; use varied phrasing to surface different result clusters
-2. **Select** — from the markdown table output, pick high-signal candidates; record skill name, source, URL, match count, rationale
-3. **Write URL file** — one Playbooks URL per line, grouped with `#` comments by tier (high-install, community, niche)
-4. **Download** — `skill-dl urls.txt -o ./research-corpus --no-auto-category -f`
+2. **Triage large result sets** — if results exceed 50 rows, use `--min-match 2` to focus on cross-keyword hits, or `--top 20` to cap results. If the max match count is ≤2 (niche topics), broaden keyword variety or switch to manual curation from the full list
+3. **Select** — from the markdown table output, pick high-signal candidates; record skill name, source, URL, match count, rationale
+4. **Download** — choose one of two paths:
+   - **Manual path**: write a URL file (one Playbooks URL per line, `#` comments for grouping), then run `skill-dl urls.txt -o ./research-corpus --no-auto-category -f`
+   - **Automated path**: run the bundled script `bash references/skill-research.sh "kw1,kw2,kw3" ./research-corpus` — it discovers, downloads, and inspects in one command (note: keywords are comma-separated in the script but space-separated when calling `skill-dl search` directly)
    - Large batches: split by repo and run parallel (see `references/remote-sources.md`)
-   - Or use the bundled script: `bash references/skill-research.sh "<topic>" ./research-corpus`
 5. **Inspect** — the downloaded corpus is first-class evidence, not background noise
 
 Treat the downloaded corpus as a second source tree that deserves the same attention as local files.
 
-## Phase 3 — emit `skills.markdown`
+## Phase 3 — write `skills.markdown`
 
-Before synthesis, produce `skills.markdown` as the research artifact.
+Before synthesis, write `skills.markdown` to disk in the target skill directory (next to `SKILL.md`). This is the durable research artifact.
 
 At minimum it should record:
 
@@ -67,9 +84,9 @@ Do not move directly from search results to a final design. Reading the corpus i
 
 1. **Read `SKILL.md` fully** — understand the trigger boundary, workflow structure, decision rules, and output contract before anything else. Do not skim.
 2. **Tree the `references/` directory** — run `tree <skill-dir>/references/` or equivalent listing to see what reference files exist, how they are named, and how deeply they are nested. This reveals the skill's structural philosophy.
-3. **Read the 2–3 most relevant reference files** — pick based on the file names and the skill's stated routing logic. Read them fully, not just the headings.
+3. **Read the most relevant reference files** — pick based on the file names and the skill's stated routing logic. Read them fully, not just the headings. Scale: 2–3 files for skills with fewer than 8 references; 4–5 for skills with 8+ references.
 4. **Check `scripts/` if present** — script files reveal automation patterns, validation logic, and tooling choices that prose cannot fully convey.
-5. **Capture notes per skill** — record: overall structure (flat vs. layered), workflow style (sequential, branching, iterative), reference organization, what it does well, what it does poorly, and 1–2 direct quotes or patterns worth inheriting.
+5. **Capture notes per skill in `skills.markdown`** under a `## Per-skill notes` heading — record: overall structure (flat vs. layered), workflow style (sequential, branching, iterative), reference organization, size (SKILL.md line count + reference file count), what it does well, what it does poorly, and 1–2 direct quotes or patterns worth inheriting.
 
 **What "reading" means here:**
 
@@ -85,6 +102,22 @@ Do not move directly from search results to a final design. Reading the corpus i
 - any reusable logic, scripts, or validation patterns
 
 This phase produces the raw material for Phase 5 (comparison table). If you skip it, the comparison table will be fabricated from memory rather than evidence.
+
+## Phase 5 — build the comparison table
+
+Build a markdown comparison table with at least these columns:
+
+| Column | Purpose |
+|---|---|
+| Source | Skill name and origin |
+| Focus | What the skill covers |
+| Size | SKILL.md line count + reference file count |
+| Strengths | What it does well |
+| Gaps | What it's missing |
+| Relevant paths | Specific files or sections worth citing |
+| Inherit / Avoid | Decision — what to take vs. what to skip |
+
+Every row must end with a decision (Inherit / Avoid), not just an observation. The comparison table is the bridge between reading and synthesis — it makes your reasoning visible and auditable.
 
 ## Selection heuristics
 
