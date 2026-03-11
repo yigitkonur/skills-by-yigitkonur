@@ -41,13 +41,14 @@ Match files to clusters using these rules, evaluated in order. If a file matches
 | **Infrastructure** | `Dockerfile*`, `docker-compose*`, `.github/**`, `**/ci/**`, `**/deploy/**`, `*.yml`/`*.yaml` (CI/CD), `terraform/**`, `k8s/**`, `helm/**` | 6 |
 | **Configuration** | `*.config.*`, `*.env*`, `package.json`, `tsconfig*`, `*.toml`, `pyproject.toml`, `Cargo.toml`, `go.mod` | 7 |
 | **Documentation** | `*.md`, `**/docs/**`, `CHANGELOG*`, `LICENSE*`, `*.txt` (documentation) | 8 |
+| **Types/Interfaces** | `**/types/**`, `**/interfaces/**`, `**/*.d.ts`, `**/schemas/**`, files with primarily type exports | Paired with consuming cluster |
 | **Tests** | `**/__tests__/**`, `**/test/**`, `**/tests/**`, `**/spec/**`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*.*` | Paired with source |
 
 Note on priority: the number indicates review order, not pattern-matching precedence. A file in `src/auth/middleware.ts` matches Security/Auth (priority 2) even though it could loosely match the middleware pattern. The most specific directory match wins.
 
 ### Step 3: Pair tests with source clusters
 
-Tests are not their own review silo. They should be reviewed alongside the code they validate. For each test file:
+Tests are not their own review silo. The same applies to type definition files — pair types.ts, *.d.ts, and schema files with the cluster that imports those types. They should be reviewed alongside the code they validate. For each test file:
 
 1. **Strip the test indicator** from the filename to get the implied source name:
    - `user.test.ts` → `user.ts`
@@ -189,3 +190,15 @@ The cluster rules above are defaults. Real codebases have their own conventions:
 - **Generated code** (protobuf outputs, GraphQL codegen, ORM models) should be noted but reviewed lightly — focus on the source definitions, not the generated output.
 
 When you encounter a new codebase, spend 30 seconds scanning the top-level directory structure before applying cluster rules. Adjust the patterns to match what you see. The goal is not to follow the rules rigidly but to group related changes together so you can review them as coherent units.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Type definition files (*.d.ts, types.ts, interfaces/, schemas/) are not their own cluster.** Pair them with the cluster that imports and consumes those types. Reviewing type changes in isolation misses the real question: "do the consumers still match the new types?"
+2. **Test files must be paired with their source cluster, not grouped as a separate "tests" cluster.** A test change only makes sense when reviewed alongside the source code it validates. Separating them forces context-switching.
+3. **Generated code (protobuf output, GraphQL codegen, OpenAPI clients) should be clustered separately and reviewed lightly.** The review focus should be on the source definitions (*.proto, *.graphql, openapi.yaml), not the generated output.
+4. **In monorepos, cluster first by package/service, then by concern within each package.** Do not mix files from different packages into the same "API" or "auth" cluster -- they may have different conventions and ownership.
+5. **When a PR touches 1-2 files across many clusters, do not create a cluster per file.** Instead, identify the primary cluster (largest change set) and note the outlier files as "related changes."
+
+> **Cross-reference:** See `references/large-pr-strategy.md` for chunking strategies when clustering produces too many groups.
