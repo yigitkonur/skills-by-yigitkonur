@@ -1,6 +1,25 @@
 # System Template
 
-Use this template for `.design-soul/system.md`. Fill in every section from codebase analysis. Use `[N/A]` only when genuinely not applicable — not when you haven't checked.
+Use this template for `.design-soul/system.md` (created at the **codebase root**).
+
+> **Tech Stack Detection -- Run These First**
+>
+> Before filling in the template, detect the project tech stack:
+> ```bash
+> # Framework
+> grep -l '"next"' package.json && echo "Next.js detected"
+> # UI library
+> ls src/components/ui/ 2>/dev/null && echo "shadcn/ui detected"
+> # Styling
+> grep -rl '@import.*tailwindcss' --include="*.css" src/ . 2>/dev/null && echo "Tailwind v4"
+> ls tailwind.config.* 2>/dev/null && echo "Tailwind v3"
+> # Icons
+> grep '"lucide-react"' package.json && echo "Lucide icons"
+> # Charts
+> grep '"recharts"' package.json && echo "Recharts detected"
+> ```
+
+ Fill in every section from codebase analysis. Use `[N/A]` only when genuinely not applicable — not when you haven't checked.
 
 ---
 
@@ -164,7 +183,7 @@ Primary depth cue: [border / shadow / surface-color-shift]
 
 ### Architecture
 
-Color space: [oklch / hsl / hex / rgb]
+Color space: [oklch / hsl / hex / rgb] -- modern shadcn (2024+) uses oklch; older uses hsl. oklch: `oklch(lightness chroma hue)` L=0-1, C=0-0.4, H=0-360
 Mode switching: [.dark class / @media prefers-color-scheme / data-theme / JS-driven]
 
 ### Surface Tokens

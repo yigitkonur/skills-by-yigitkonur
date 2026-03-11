@@ -147,6 +147,28 @@ Document:
 +------------------------------------------+
 ```
 
+
+#### Command Palette Detection (cmdk)
+
+Many modern SaaS dashboards use `cmdk` for their command palette:
+
+```bash
+grep '"cmdk"' package.json
+grep -rn 'CommandDialog\|CommandInput\|CommandList' --include="*.tsx" --include="*.jsx" src/ | head -10
+```
+
+When documenting a cmdk-based command palette:
+
+| Element | What to Document |
+|---------|-----------------|
+| `CommandDialog` | Backdrop overlay opacity, dialog width/max-height, border-radius, animation |
+| `CommandInput` | Search icon, placeholder text, height, border treatment, font-size |
+| `CommandList` | Max-height, overflow behavior, padding |
+| `CommandGroup` | Group heading style (text-xs, muted-foreground, uppercase tracking) |
+| `CommandItem` | Height, padding, icon-to-text gap, active/selected highlight, cursor |
+| `CommandEmpty` | Empty state message style |
+| `CommandShortcut` | Keyboard hint badge style (text-xs, muted, right-aligned) |
+
 Document:
 - Trigger (keyboard shortcut, button in top bar)
 - Search input styling
@@ -425,6 +447,26 @@ SidebarProvider (context: open/closed state, toggle function)
     └── SidebarRail (click/drag edge for toggle)
 └── SidebarInset (main content area, respects sidebar width)
 ```
+
+---
+
+
+### Chart and Visualization Wrappers
+
+```bash
+grep '"recharts"' package.json && echo "Recharts detected"
+grep -rn 'ChartContainer\|ChartTooltip' --include="*.tsx" --include="*.jsx" src/ | head -20
+grep -rn 'chart-1\|--color-' --include="*.css" --include="*.tsx" src/ | head -10
+```
+
+For each chart type, document:
+1. **Container**: wrapper, aspect ratio, padding
+2. **Color system**: per-series CSS variables, light/dark palettes
+3. **Tooltip**: background, border, shadow, padding, content formatter
+4. **Legend**: position, spacing, icon shape, text style
+5. **Axis styling**: tick label font-size, color, grid line color/dash
+6. **Empty state**: what renders when data is empty or loading
+
 
 ---
 

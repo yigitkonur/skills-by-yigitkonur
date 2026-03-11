@@ -30,6 +30,21 @@ find src -name "*.svg" -type f | head -20
 
 ---
 
+
+### Modern SVG Import Patterns
+
+| Pattern | Framework | Example |
+|---------|-----------|---------|
+| Named component import | Lucide (shadcn default) | `import { ChevronRight } from "lucide-react"` |
+| Default import as component | Vite + svgr | `import Logo from "./logo.svg?react"` |
+| Next.js Image | Next.js | `import Image from "next/image"` with SVG `src` |
+
+### Icon Color Inheritance
+
+Most icon libraries use `currentColor` for stroke/fill, meaning icons inherit the text color of their parent. When documenting icon colors, document the **parent** color, not the icon.
+
+---
+
 ## Step 2: Icon Sizing Convention
 
 ```bash
