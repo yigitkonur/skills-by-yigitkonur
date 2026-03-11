@@ -1,20 +1,11 @@
 ---
-name: test-skill-by-derailment
-description: >-
-  Use skill if you are testing, auditing, or improving a Claude skill's
-  instructions by running a Derailment Test — following the skill's own
-  workflow literally on a real task, documenting every friction point where
-  the instructions fail to specify the next action, and fixing the root
-  causes. Triggers on skill testing, skill quality audit, instruction
-  validation, dogfooding a skill, finding friction in a skill, or
-  improving a skill's clarity. Do NOT use for writing a new skill from
-  scratch (use build-skills), evaluating skill output quality (use evals),
-  or general code review (use review-pr).
+name: test-skill-quality
+description: Use skill if you are testing a skill's instructional quality by following its workflow literally on a real task, documenting friction points, and fixing ambiguities.
 ---
 
-# Test Skill by Derailment
+# Test Skill Quality
 
-Test any Claude skill's instructions by following them literally, documenting every moment they fail to guide the next action, and fixing the root causes.
+Test any skill's instructions by following them literally, documenting every moment they fail to guide the next action, and fixing the root causes.
 
 ## Trigger boundary
 
