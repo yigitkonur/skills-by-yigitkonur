@@ -11,8 +11,8 @@ Use this skill when you need to change or extend a Supastarter-based Next.js Saa
 
 - the **actual monorepo structure** used by this project
 - the **real App Router layout and provider chain**
-- the **exact oRPC + Better Auth + Prisma patterns** used in production code
-- grounded references for **payments, organizations, settings, onboarding, marketing, mail, storage, analytics, and deployment**
+- the **exact oRPC + Better Auth + Prisma/Drizzle patterns** used in production code
+- grounded references for **payments (Stripe, Polar, Creem, Dodo Payments), organizations, settings, onboarding, marketing, mail, storage, analytics, and deployment**
 - task-specific guides for **adding endpoints, pages, models, and billing flows**
 
 ## How to use this skill
@@ -56,7 +56,7 @@ That gives you the repo shape, imports, config switches, TS/component convention
 - `packages/api` — Hono + oRPC API surface
 - `packages/auth` — Better Auth setup
 - `packages/database` — Prisma schema, client, queries, generated artifacts
-- `packages/payments` — billing config, provider abstraction, Stripe implementation
+- `packages/payments` — billing config, provider abstraction (Stripe, Polar, Creem, Dodo Payments)
 - `packages/mail` — email rendering and delivery
 - `packages/storage` — S3-compatible signed URLs
 - `packages/ui` — reusable UI components
@@ -139,7 +139,7 @@ Read these when changing login, signup, session access, org invitations, or auth
 
 ### Database and query layer
 
-Read these before touching schema, Prisma client usage, or shared queries:
+Read these before touching schema, ORM client usage, or shared queries. Supastarter defaults to Prisma but also supports Drizzle as an alternative ORM:
 
 - `references/database/schema-overview.md`
 - `references/database/prisma-client.md`
@@ -149,7 +149,7 @@ Read these before touching schema, Prisma client usage, or shared queries:
 
 ### Payments and billing
 
-Read these when changing plans, checkout flows, customer IDs, Stripe logic, or purchase resolution:
+Read these when changing plans, checkout flows, customer IDs, payment provider logic, or purchase resolution. The provider abstraction supports Stripe, Polar, Creem, and Dodo Payments:
 
 - `references/payments/plans-config.md`
 - `references/payments/provider-abstraction.md`
@@ -158,9 +158,9 @@ Read these when changing plans, checkout flows, customer IDs, Stripe logic, or p
 - `references/payments/checkout-and-portal-flow.md`
 - `references/payments/webhook-flow.md`
 
-### Organizations, onboarding, and settings
+### Organizations, onboarding, settings, and admin
 
-Read these for multi-tenant UX and post-signup flows:
+Read these for multi-tenant UX, post-signup flows, and admin management:
 
 - `references/organizations/active-organization-context.md`
 - `references/organizations/organization-select.md`
@@ -173,6 +173,8 @@ Read these for multi-tenant UX and post-signup flows:
 - `references/hooks/auth-hooks.md`
 - `references/hooks/organization-hooks.md`
 - `references/hooks/consent-hooks.md`
+- `references/admin/users-admin.md`
+- `references/admin/organizations-admin.md`
 
 ### UI, forms, analytics, and client patterns
 
@@ -274,9 +276,9 @@ Read:
 
 ### When changing data or billing
 
-- schema changes start in `schema.prisma`
+- schema changes start in `schema.prisma` (or your Drizzle schema if using Drizzle)
 - query helpers belong in `packages/database/prisma/queries`
-- billing behavior flows through payments config, provider abstraction, and API procedures
+- billing behavior flows through payments config, provider abstraction (Stripe/Polar/Creem/Dodo), and API procedures
 
 Read:
 
@@ -344,10 +346,20 @@ Read:
 Read:
 
 - `references/payments/plans-config.md`
+- `references/payments/provider-abstraction.md`
 - `references/payments/customer-ids.md`
 - `references/payments/stripe-provider.md`
 - `references/payments/webhook-flow.md`
 - `references/settings/billing-security-and-avatar.md`
+
+### "I need to manage users or organizations as admin"
+
+Read:
+
+- `references/admin/users-admin.md`
+- `references/admin/organizations-admin.md`
+- `references/auth/better-auth-config.md`
+- `references/organizations/members-and-invitations.md`
 
 ## Final reminder
 
