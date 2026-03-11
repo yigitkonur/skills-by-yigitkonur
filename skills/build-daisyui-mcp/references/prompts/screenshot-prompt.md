@@ -331,3 +331,48 @@ If the screenshot shows hover states, modals open, or dropdowns expanded:
 | Toggle switch | `toggle` |
 | Bottom mobile nav | `dock` |
 | Browser/phone frame | `mockup-browser` / `mockup-phone` |
+
+
+## Steering experiences — learned from real agent usage
+
+### Non-UI elements in screenshots
+
+**Problem:** Agent encounters charts, code blocks, or media players in a screenshot and tries to identify them as daisyUI components.
+
+**Fix:** During the top-to-bottom scan, explicitly categorize each visible element:
+
+1. **daisyUI component** — has a direct mapping (navbar, card, table, button, etc.)
+2. **Tailwind utility element** — simple styled div/span with no component equivalent
+3. **External element** — requires a third-party library (chart, map, code editor, video player)
+
+For category 3, output: `[EXTERNAL: chart/graph - use Recharts/Chart.js]` in your component catalog, and wrap the area in a `card` placeholder in the final output.
+
+### Component ambiguity resolution
+
+**Problem:** Agent can't decide if a UI element is a `card` or a `stat`, or a `badge` vs a `status indicator`.
+
+**Fix:** Use these disambiguation rules:
+
+| If you see... | It's probably... | Not... |
+|---|---|---|
+| Large number + label + optional change indicator | `stat` | `card` |
+| Image + title + description + action button | `card` | `stat` |
+| Small colored dot next to text | `status` | `badge` |
+| Small colored label/tag | `badge` | `status` |
+| Horizontal row of numbers/labels | `stats` (horizontal) | multiple `card`s |
+| Grid of equal-sized info blocks | `stat` in a CSS grid | `card` grid |
+
+### Template matching priority
+
+**Problem:** Agent builds a login page from scratch using individual input, button, and card components when a `login-form` template exists.
+
+**Fix:** Before composing any full page, check if a template matches:
+
+| Page type | Check template | Check layout |
+|---|---|---|
+| Login / signup / auth | `login-form` | — |
+| Dashboard | `dashboard` | `responsive-collapsible-drawer-sidebar` |
+| Landing page | — | `top-navbar` |
+| Settings page | — | `responsive-offcanvas-drawer-sidebar` |
+
+If a template matches, use it as the starting point — don't build from scratch.

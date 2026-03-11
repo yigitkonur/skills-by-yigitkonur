@@ -575,3 +575,61 @@ Occasionally useful when the design starts from desktop (Figma files are usually
 - [ ] Spacing feels proportional at each breakpoint
 - [ ] Modals fit within viewport on mobile
 - [ ] Bottom dock visible only on mobile (if used)
+
+
+## Steering experiences — learned from real agent usage
+
+### Grid vs. flexbox decision
+
+**Problem:** Agent defaults to flexbox for everything, causing uneven column widths in card grids and stat rows.
+
+**Fix:** Use this decision rule:
+
+| Layout need | Use | Why |
+|---|---|---|
+| Equal-width columns (stats, cards, features) | `grid grid-cols-N` | Grid enforces equal widths regardless of content |
+| Variable-width items (tags, badges, nav items) | `flex flex-wrap` | Flexbox lets items size to content |
+| Two-column with fixed sidebar | `grid grid-cols-[280px_1fr]` or drawer | Fixed + fluid split |
+| Centered single column | `max-w-* mx-auto` | No grid/flex needed |
+| Stack that reflows | `flex flex-col md:flex-row` | Responsive direction change |
+
+### Drawer responsive patterns
+
+**Problem:** Agent uses `hidden lg:block` to show/hide the sidebar instead of daisyUI's built-in responsive drawer pattern.
+
+**Fix:** Use daisyUI's `lg:drawer-open` class:
+
+```html
+<!-- ✅ daisyUI responsive drawer -->
+<div class="drawer lg:drawer-open">
+  <input id="drawer" type="checkbox" class="drawer-toggle" />
+  <div class="drawer-content">
+    <!-- Always visible: hamburger only on mobile -->
+    <label for="drawer" class="btn btn-ghost lg:hidden">☰</label>
+    <main class="p-6"><!-- content --></main>
+  </div>
+  <div class="drawer-side">
+    <label for="drawer" class="drawer-overlay"></label>
+    <aside class="bg-base-200 min-h-full w-80 p-4">
+      <ul class="menu"><!-- nav items --></ul>
+    </aside>
+  </div>
+</div>
+
+<!-- ❌ Don't manually hide/show -->
+<aside class="hidden lg:block w-80"><!-- breaks mobile toggle --></aside>
+```
+
+### Breakpoint consistency
+
+**Problem:** Agent mixes breakpoint prefixes inconsistently: some elements use `sm:`, others jump to `lg:`, creating layout breakage at medium widths.
+
+**Fix:** Pick a consistent breakpoint strategy per page:
+
+| Pattern | Breakpoints | Use case |
+|---|---|---|
+| Mobile-first two-step | `md:` and `lg:` | Most dashboards and apps |
+| Mobile-first three-step | `sm:`, `md:`, `lg:` | Content-heavy pages with many columns |
+| Single breakpoint | `lg:` only | Simple layouts (sidebar + content) |
+
+Verify by scanning all responsive classes in the output — every `sm:` should have a corresponding flow at default size, every `lg:` should have a `md:` or default fallback.
