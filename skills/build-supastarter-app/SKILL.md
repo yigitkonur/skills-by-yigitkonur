@@ -128,7 +128,7 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Keep reusable data access in `packages/database` query helpers instead of spreading raw ORM calls through pages.
 - For org-scoped procedures, add a membership check in the handler — `protectedProcedure` only verifies a session exists, not that the user belongs to a specific organization.
 
-> ⚠️ **Steering:** There is no `organizationProcedure`. Use `protectedProcedure` and add `db.membership.findFirst({ where: { userId: ctx.user.id, organizationId } })` in the handler to verify org access. See `references/api/procedure-tiers.md` for the complete guard pattern.
+> ⚠️ **Steering:** There is no `organizationProcedure`. Use `protectedProcedure` and add `db.member.findFirst({ where: { userId: ctx.user.id, organizationId } })` in the handler to verify org access. See `references/api/procedure-tiers.md` for the complete guard pattern.
 
 **Do this, not that:**
 - Extend the oRPC surface and consume it through existing query patterns; do not bypass it with one-off handlers unless the task explicitly requires a route handler.
@@ -180,7 +180,7 @@ These errors were found during literal execution of this skill on a real org-sco
 | Omit `(organizations)` route group from org-scoped page path | Page silently never renders — no error, no redirect, just blank | Always use `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/...` |
 | Skip `pnpm generate && pnpm db:push` after schema change | Prisma client doesn't know about new models; type errors cascade through API and page layers | Run immediately after any `schema.prisma` edit, before writing query helpers |
 | Use a non-existent `organizationProcedure` tier | Procedure fails to compile or falls back to unprotected | Only three tiers exist: `publicProcedure`, `protectedProcedure`, `adminProcedure` |
-| Forget org-membership guard on org-scoped procedures | Any authenticated user can access any org's data by guessing a slug | Add `db.membership.findFirst(...)` check in handler for org-scoped data |
+| Forget org-membership guard on org-scoped procedures | Any authenticated user can access any org's data by guessing a slug | Add `db.member.findFirst(...)` check in handler for org-scoped data |
 | Create query helper file without `import { db }` | File doesn't compile — missing database client reference | New query files need `import { db } from "../client"` at the top |
 | Add nav item to wrong file or skip it entirely | Navigation item doesn't appear in SaaS sidebar | Nav items go in `apps/web/modules/saas/shared/components/AppWrapper.tsx` with shape `{ label, href, icon }` |
 

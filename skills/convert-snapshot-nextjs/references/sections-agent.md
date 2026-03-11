@@ -67,11 +67,11 @@ From all Wave 0 `exploration.md` and `deobfuscated.css` files in this group, uni
 
 ```bash
 # Cross-reference all font values from Wave 0 deobfuscated CSS files
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'font-family:[^;}]+' | sort | uniq -c | sort -rn
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'font-size:[^;}]+' | sort | uniq -c | sort -rn
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'font-weight:[^;}]+' | sort | uniq -c | sort -rn
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'line-height:[^;}]+' | sort | uniq -c | sort -rn
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'letter-spacing:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'font-family:[^;]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'font-size:[^;]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'font-weight:[^;]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'line-height:[^;]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'letter-spacing:[^;]+' | sort | uniq -c | sort -rn
 ```
 
 ### What to Extract
@@ -115,7 +115,7 @@ cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'rgba\([^)]+\)' | sort | un
 cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'hsl\([^)]+\)' | sort | uniq -c | sort -rn
 
 # Extract CSS custom properties (design tokens)
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE -e '--[a-zA-Z0-9-]+:\s*[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE '--[a-zA-Z0-9-]+:\s*[^;]+' | sort | uniq -c | sort -rn
 
 # Check for dark mode
 cat .design-soul/wave0/*/deobfuscated.css | grep -c 'data-theme\|prefers-color-scheme\|\.dark\|\.light'
@@ -156,12 +156,12 @@ Identify the mathematical system behind all spacing decisions.
 
 ```bash
 # Extract all padding and margin values
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'padding[^;]*:[^;}]+' | sort | uniq -c | sort -rn
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'margin[^;]*:[^;}]+' | sort | uniq -c | sort -rn
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'gap:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'padding[^;]*:[^;]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'margin[^;]*:[^;]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'gap:[^;]+' | sort | uniq -c | sort -rn
 
 # Extract max-width values (container system)
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'max-width:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'max-width:[^;]+' | sort | uniq -c | sort -rn
 ```
 
 ### What to Extract
@@ -389,10 +389,10 @@ From Wave 0 `behavior-spec.md` and `deobfuscated.css` files, extract the complet
 
 ```bash
 # Extract all transition properties
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'transition:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'transition:[^;]+' | sort | uniq -c | sort -rn
 
 # Extract all animation properties
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'animation:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'animation:[^;]+' | sort | uniq -c | sort -rn
 
 # Extract all @keyframes definitions
 cat .design-soul/wave0/*/deobfuscated.css | grep -oE '@keyframes [a-zA-Z0-9_-]+' | sort | uniq
@@ -401,7 +401,7 @@ cat .design-soul/wave0/*/deobfuscated.css | grep -oE '@keyframes [a-zA-Z0-9_-]+'
 cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'cubic-bezier\([^)]+\)' | sort | uniq -c | sort -rn
 
 # Extract transform values (for animation targets)
-cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'transform:[^;}]+' | sort | uniq -c | sort -rn
+cat .design-soul/wave0/*/deobfuscated.css | grep -oE 'transform:[^;]+' | sort | uniq -c | sort -rn
 ```
 
 ### Easing Functions Catalog

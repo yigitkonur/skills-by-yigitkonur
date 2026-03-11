@@ -103,7 +103,7 @@ Every stub MUST use tokens from the design system so `npm run build` validates t
   },
   "devDependencies": {
     "typescript": "latest",
-    "tailwindcss": "^3",
+    "tailwindcss": "latest",
     "@types/react": "latest",
     "@types/node": "latest",
     "postcss": "latest",

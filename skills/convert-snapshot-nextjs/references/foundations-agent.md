@@ -115,7 +115,7 @@ Custom properties (CSS variables) are the design token system. Extract every sin
 
 ```bash
 cat $(find {page}_files/ -name "*.css" | sort -u) | \
-  grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+' | sort -u
+  grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;]+' | sort -u
 ```
 
 ### Group by Prefix
@@ -124,25 +124,25 @@ Organized extraction reveals the token taxonomy:
 
 ```bash
 # Colors
-grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 
 # Fonts
-grep -ohE '\-\-font-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-font-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 
 # Radius
-grep -ohE '\-\-radius-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-radius-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 
 # Shadows
-grep -ohE '\-\-shadow-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-shadow-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 
 # Easing
-grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 
 # Layers (z-index)
-grep -ohE '\-\-layer-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-layer-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 
 # Spacing
-grep -ohE '\-\-spacing-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-spacing-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 ```
 
 ### Resolve Variable Chains
@@ -159,15 +159,15 @@ If `--color-x: var(--color-y)`, you must follow `--color-y` to its final compute
 Variables live in multiple selectors. Check each:
 
 ```bash
-# :root (light theme defaults) — block extraction for minified CSS
-grep -oE ':root\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
+# :root (light theme defaults)
+grep -A1 ':root' {page}_files/*.css | grep -ohE '\-\-[a-z0-9_-]+\s*:\s*[^;]+'
 
-# Dark theme overrides — block extraction
-grep -oE '\[data-theme="dark"\]\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
-grep -oE 'prefers-color-scheme:\s*dark[^{]*\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
+# Dark theme overrides
+grep -A5 '\[data-theme="dark"\]' {page}_files/*.css | grep -ohE '\-\-[a-z0-9_-]+\s*:\s*[^;]+'
+grep -A5 'prefers-color-scheme:\s*dark' {page}_files/*.css | grep -ohE '\-\-[a-z0-9_-]+\s*:\s*[^;]+'
 
-# :host (web components) — block extraction
-grep -oE ':host\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
+# :host (web components)
+grep -A3 ':host' {page}_files/*.css | grep -ohE '\-\-[a-z0-9_-]+\s*:\s*[^;]+'
 ```
 
 ### Extract Variable Usage from HTML Inline Styles
@@ -306,7 +306,7 @@ grep -oE '@font-face\{[^}]+\}' {page}_files/*.css
 ### Font-Family Usage Frequency
 
 ```bash
-grep -ohE 'font-family:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
+grep -ohE 'font-family:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn
 ```
 
 ### Google Fonts Links
@@ -361,7 +361,7 @@ grep -ohE 'hsla?\([^)]+\)' {page}_files/*.css | sort | uniq -c | sort -rn | head
 ### Color Custom Properties
 
 ```bash
-grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 ```
 
 ### Gradient Values
@@ -402,19 +402,19 @@ grep -ohE '[0-9.]+rem' {page}_files/*.css | sort -n | uniq -c | sort -rn | head 
 ### Font Sizes
 
 ```bash
-grep -ohE 'font-size:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
+grep -ohE 'font-size:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn
 ```
 
 ### Line Heights
 
 ```bash
-grep -ohE 'line-height:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
+grep -ohE 'line-height:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn
 ```
 
 ### Letter Spacing
 
 ```bash
-grep -ohE 'letter-spacing:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
+grep -ohE 'letter-spacing:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn
 ```
 
 ### Base Unit Detection
@@ -424,7 +424,7 @@ Look for a base unit. If multiples of 4px dominate (`4, 8, 12, 16, 20, 24, 32, 4
 ### Container and Max-Width Values
 
 ```bash
-grep -ohE 'max-width:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
+grep -ohE 'max-width:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn
 ```
 
 ---
@@ -480,25 +480,25 @@ grep -ohE '@keyframes [a-zA-Z0-9_-]+' {page}_files/*.css | sort -u
 ### Transition Properties
 
 ```bash
-grep -ohE 'transition:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
+grep -ohE 'transition:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
 ```
 
 ### Animation Properties
 
 ```bash
-grep -ohE 'animation:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
+grep -ohE 'animation:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
 ```
 
 ### Easing Custom Properties
 
 ```bash
-grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;]+' {page}_files/*.css | sort -u
 ```
 
 ### Transform Values
 
 ```bash
-grep -ohE 'transform:[^;}]+' {page}_files/*.css | grep -v 'uppercase\|capitalize\|lowercase' | sort | uniq -c | sort -rn | head -15
+grep -ohE 'transform:[^;]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -15
 ```
 
 ### Duration Tier Classification

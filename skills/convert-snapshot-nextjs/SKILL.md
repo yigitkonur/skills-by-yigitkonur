@@ -19,14 +19,6 @@ Convert saved HTML snapshots into grounded Next.js App Router builds. Treat the 
 - The task is general Next.js UI coding with no offline snapshot to parse.
 - The goal is a redesign, simplification, or "same vibe" rewrite instead of faithful reconstruction.
 
-## Setup
-
-| Key | Value |
-|---|---|
-| **Output location** | `{page}-nextjs/` sibling to snapshot dir |
-| **Naming** | kebab-case everywhere (files, CSS classes, variables) |
-| **Minified CSS warning** | Snapshot CSS may be minified (no trailing `;` before `}`). All grep patterns in references use `[^;}]+` to handle this — do not simplify to `[^;]+`. |
-
 ## Start with these decisions
 
 | Situation | Action |
@@ -87,29 +79,9 @@ If the user only asked for extraction or documentation, stop after the appropria
 
 - **Missing `_files/` folder:** treat as SingleFile mode if inline CSS exists; otherwise full reconstruction may be blocked.
 - **Missing assets or remote-only assets:** download them during extraction and record original → local path mapping.
-- **Missing fonts:** Check `<link>` tags for Google Fonts / Typekit URLs. Download font files to `public/fonts/` and create `@font-face` declarations. If URL is unreachable, substitute with a system font stack and add `/* TODO: replace with original font */`.
-- **External JS (analytics, chat widgets):** Do NOT embed third-party scripts. Add a `<!-- TODO: re-add [service] script -->` comment in `layout.tsx`.
 - **Missing CSS or JS evidence for a value or behavior:** mark it `UNVERIFIED` and avoid inventing the implementation.
 - **Incomplete snapshot:** continue extraction where possible, but do not claim a pixel-perfect rebuild if core layout, type, or asset data is missing.
 - **Shared headers, footers, or components across pages:** deduplicate them intentionally; note page-specific overrides rather than re-documenting the whole component each time.
-
-## CLI-verifiable acceptance criteria
-
-Every conversion must pass these checks before declaring success:
-
-```bash
-# Type-check passes
-npx tsc --noEmit
-
-# Production build succeeds
-npm run build
-
-# No UNVERIFIED comments remain
-grep -r 'UNVERIFIED' src/ && echo "FAIL: unverified values" || echo "PASS"
-
-# No external URLs leak into components
-grep -rE 'https?://' src/components/ | grep -v '// original:' && echo "FAIL: external URLs" || echo "PASS"
-```
 
 ## Verification before claiming completion
 
