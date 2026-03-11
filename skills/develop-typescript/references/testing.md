@@ -426,3 +426,98 @@ export default defineConfig({
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }
 ```
+
+
+---
+
+## Testing generic constraints
+
+When testing that a generic function correctly constrains its type parameter, use both positive and negative test cases:
+
+```typescript
+// Function under test
+function merge<T extends Record<string, unknown>>(a: T, b: Partial<T>): T {
+  return { ...a, ...b };
+}
+
+// Positive — should compile
+const result = merge({ a: 1, b: "hello" }, { a: 2 });
+
+// Negative — should NOT compile
+// @ts-expect-error: number does not extend Record<string, unknown>
+merge(42, {});
+
+// @ts-expect-error: string does not extend Record<string, unknown>
+merge("hello", {});
+
+// Verify the constraint propagates
+const merged = merge({ x: 1 }, { x: 2 });
+//    ^? const merged: { x: number }
+```
+
+### Testing conditional types
+
+```typescript
+type IsString<T> = T extends string ? true : false;
+
+// Positive cases — use satisfies for inline assertions
+const _t1: IsString<"hello"> = true satisfies true;
+const _t2: IsString<42> = false satisfies false;
+
+// Distribution behavior
+type Distributed = IsString<string | number>; // true | false (distributes)
+const _t3: Distributed = true;  // OK
+const _t4: Distributed = false; // OK
+```
+
+---
+
+## Edge case testing checklist
+
+When testing types, always include these edge cases:
+
+| Category | Test cases |
+|---|---|
+| **Falsy values** | `null`, `undefined`, `""`, `0`, `false`, `NaN` |
+| **Empty containers** | `[]`, `{}`, `new Map()`, `new Set()` |
+| **Union boundaries** | Each member individually, all members together |
+| **Optional properties** | Present, missing, explicitly `undefined` |
+| **Generic limits** | `never`, `unknown`, `any` as type arguments |
+| **Recursive types** | Shallow (1 level), medium (3-5), at recursion limit |
+| **Branded types** | Base type without brand, correct brand, wrong brand |
+
+```typescript
+// Example: testing a type guard with edge cases
+function isNonEmpty(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+// Edge cases to test at runtime AND type level:
+expect(isNonEmpty("hello")).toBe(true);
+expect(isNonEmpty("")).toBe(false);        // falsy string
+expect(isNonEmpty(null)).toBe(false);      // null
+expect(isNonEmpty(undefined)).toBe(false); // undefined
+expect(isNonEmpty(0)).toBe(false);         // wrong type
+expect(isNonEmpty([])).toBe(false);        // wrong type
+```
+
+---
+
+## Type testing strategy selection guide
+
+| Strategy | Best for | Drawbacks | Example |
+|---|---|---|---|
+| `@ts-expect-error` | Quick negative tests in source | Only tests "has error", not *which* error | See above |
+| `// ^?` (twoslash) | Hover-type verification in docs/tests | Requires tooling support (e.g., Vitest) | `const x = fn(); //  ^? const x: string` |
+| `expectTypeOf` (vitest) | Full type assertion API | Requires vitest | `expectTypeOf(fn).returns.toEqualTypeOf<string>()` |
+| `expect-type` (package) | Standalone type testing | Separate dependency | `expectTypeOf<Actual>().toEqualTypeOf<Expected>()` |
+| `tsd` | Testing `.d.ts` files of published packages | Separate test runner | `expectType<string>(fn())` |
+| `satisfies` | Inline constraint checking | TS 4.9+ only | `const x = value satisfies Schema` |
+| `as const satisfies` | Inline constraint + literal preservation | TS 4.9+ only | `const x = [1, 2] as const satisfies number[]` |
+
+**Decision flow:**
+1. Testing a published package's types? -> **tsd**
+2. Using Vitest? -> **expectTypeOf** (built-in)
+3. Quick negative test? -> **@ts-expect-error**
+4. Inline constraint in production code? -> **satisfies**
+5. Type tests in a test file? -> **expect-type** package

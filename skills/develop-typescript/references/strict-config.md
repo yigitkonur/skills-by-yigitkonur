@@ -527,3 +527,60 @@ Requires `"type": "module"` in package.json.
   }
 }
 ```
+
+
+---
+
+## Common tsconfig.json mistakes
+
+| Mistake | Symptom | Fix |
+|---|---|---|
+| `moduleResolution: "node"` with ESM | Import extensions not required, runtime crashes | Use `"node16"` or `"bundler"` |
+| `target: "ES5"` for modern runtimes | Unnecessary downlevel transforms, larger bundles | Use `"ES2022"` or later |
+| Missing `"type": "module"` in package.json | `.ts` files treated as CJS despite ESM syntax | Add to package.json |
+| `paths` aliases without bundler support | TypeScript resolves, runtime crashes | Configure bundler/loader aliases to match |
+| `strict: false` with individual strict flags | Confusing — some strict checks on, `strict` says off | Set `strict: true`, disable specific flags |
+| `skipLibCheck: true` hiding real errors | Catches nothing from `@types/*` packages | Enable periodically; always on in CI |
+
+### Legacy `moduleResolution` — only `"node"` is legacy
+
+Only bare `"node"` is legacy. `"node16"` and `"nodenext"` are modern and correct for Node.js ESM. `"bundler"` is correct for bundled applications. Do NOT flag `"node16"` as legacy.
+
+```json
+// LEGACY — avoid
+{ "moduleResolution": "node" }
+
+// MODERN — correct for different contexts
+{ "moduleResolution": "node16" }    // Node.js ESM packages
+{ "moduleResolution": "nodenext" }  // Node.js, tracks latest
+{ "moduleResolution": "bundler" }   // Bundled applications (Vite, webpack, esbuild)
+```
+
+---
+
+## Flag availability by TypeScript version
+
+| Flag | Introduced | Notes |
+|---|---|---|
+| `strict` | 2.3 | Umbrella for all strict checks |
+| `noUncheckedIndexedAccess` | 4.1 | Adds `undefined` to index signatures |
+| `exactOptionalPropertyTypes` | 4.4 | Distinguishes `undefined` from missing |
+| `moduleResolution: "node16"` | 4.7 | ESM-aware resolution for Node.js |
+| `moduleResolution: "bundler"` | 5.0 | For bundled applications |
+| `verbatimModuleSyntax` | 5.0 | Replaces `isolatedModules` + `preserveValueImports` |
+| `allowImportingTsExtensions` | 5.0 | Allows `.ts` in import specifiers |
+| `rewriteRelativeImportExtensions` | 5.7 | Rewrites `.ts` to `.js` in output |
+| `erasableSyntaxOnly` | 5.8 | Blocks enums, namespaces, parameter properties |
+
+---
+
+## When lint rules conflict with strict TypeScript
+
+Projects may have ESLint/xo/Biome configs that disable safety rules the skill recommends. Resolution:
+
+1. **Do NOT unilaterally re-enable rules** — the project may have valid reasons for disabling them
+2. **Note the conflict** in your findings: "The project disables `@typescript-eslint/no-unsafe-assignment` — consider re-enabling"
+3. **Classify as recommendation**, not blocking issue
+4. **Explain the trade-off** — what the rule catches vs why it might be disabled (e.g., gradual migration from `any`)
+
+The skill blocklist (no `any`, no `@ts-ignore`) takes precedence over lint config for *new* code. For *existing* code under review, follow the project lint config and flag conflicts as informational.

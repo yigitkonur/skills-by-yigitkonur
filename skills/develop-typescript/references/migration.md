@@ -346,3 +346,96 @@ declare module '*.png' {
 □ Set up ESLint with typescript-eslint
 □ Add tsc --noEmit to CI pipeline
 ```
+
+
+---
+
+## Handling circular dependencies during migration
+
+### Detection
+
+```bash
+# Install detection tools
+npx madge --circular --extensions ts src/
+# or
+npx dpdm --circular --extensions ts src/
+```
+
+### Resolution patterns
+
+1. **Extract shared types** — move shared interfaces to a separate `types.ts` file imported by both modules
+2. **Dependency inversion** — depend on interfaces, not concrete implementations
+3. **Barrel file splitting** — replace `index.ts` re-exports with direct imports to break cycles
+4. **Lazy imports** — use dynamic `import()` for runtime-only dependencies
+
+```typescript
+// BEFORE — circular: a.ts imports b.ts, b.ts imports a.ts
+// a.ts
+import { B } from "./b";
+export class A { constructor(public b: B) {} }
+
+// AFTER — extract shared interface
+// types.ts
+export interface IB { name: string; }
+// a.ts
+import type { IB } from "./types";
+export class A { constructor(public b: IB) {} }
+```
+
+---
+
+## Automation tools for migration
+
+| Tool | Purpose | Use when |
+|---|---|---|
+| `ts-migrate` (Airbnb) | Bulk JS-to-TS conversion | Large JS codebase, want automated first pass |
+| `jscodeshift` | AST-based code transforms | Need custom codemods (rename, restructure) |
+| `tsc --allowJs --checkJs` | Incremental type checking | Want to type-check JS files before renaming |
+| `@ts-check` comment | Per-file JS type checking | Gradual migration, file by file |
+
+```bash
+# ts-migrate: automated first pass
+npx ts-migrate-full ./src
+
+# jscodeshift: custom transform
+npx jscodeshift -t transform.ts --extensions=ts src/
+```
+
+---
+
+## Test file migration
+
+### Rename patterns
+
+```bash
+# Rename test files from .js to .ts
+find test/ -name "*.test.js" -exec bash -c 'mv "$0" "${0%.js}.ts"' {} \;
+find test/ -name "*.spec.js" -exec bash -c 'mv "$0" "${0%.js}.ts"' {} \;
+```
+
+### Mock typing
+
+```typescript
+// BEFORE — untyped mock
+jest.mock("./api");
+const mockFetch = api.fetch as jest.Mock;
+
+// AFTER — typed mock with jest.Mocked
+jest.mock("./api");
+const mockedApi = jest.mocked(api); // fully typed
+mockedApi.fetch.mockResolvedValue({ data: [] });
+```
+
+### Test utility typing
+
+```typescript
+// Type-safe test fixtures
+function createTestUser(overrides?: Partial<User>): User {
+  return {
+    id: "test-1",
+    name: "Test User",
+    email: "test@example.com",
+    ...overrides,
+  };
+}
+```
