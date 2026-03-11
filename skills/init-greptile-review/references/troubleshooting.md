@@ -395,7 +395,6 @@ Focus on security implications in all code changes.
 **Critical**: Delete `greptile.json` after migration. If both exist, `.greptile/` silently wins and `greptile.json` is ignored.
 
 ---
----
 
 ## Agent-Specific Troubleshooting
 

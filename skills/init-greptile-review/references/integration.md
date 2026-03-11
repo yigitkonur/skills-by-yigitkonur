@@ -311,8 +311,6 @@ curl -X POST "https://api.greptile.com/v1/repos/acme/backend/reviews" \
 
 ---
 
----
-
 ## Review Output Best Practices
 
 ### Recommended defaults for most repositories

@@ -18,8 +18,6 @@ Every scenario below follows this output structure. Your output must match:
 
 ---
 
----
-
 ## Scenario A: TypeScript Backend API
 
 ### `.greptile/config.json`
