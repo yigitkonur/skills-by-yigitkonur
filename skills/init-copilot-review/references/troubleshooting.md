@@ -475,7 +475,7 @@ find . -path "./src/**/*.ts" -type f -o -path "./src/**/*.tsx" -type f | head -2
 ```bash
 # Find files NOT covered by any instruction file's applyTo
 # Step 1: List all source files
-find . -type f -name "*.ts" -o -name "*.tsx" | sort > /tmp/all-files.txt
+find . \( -type f -name "*.ts" \) -o \( -type f -name "*.tsx" \) | sort > /tmp/all-files.txt
 
 # Step 2: List files covered by each instruction file's applyTo
 find . -path "./src/api/**/*.ts" -type f | sort > /tmp/covered.txt

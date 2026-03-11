@@ -43,7 +43,7 @@ Inspect the actual repository first. Quick repo scan recipe:
 find . -maxdepth 3 -type f -name "*.md" | head -20       # doc landscape
 ls .github/ .github/instructions/ 2>/dev/null             # existing Copilot config
 cat .eslintrc* .prettierrc* biome.json 2>/dev/null | head  # enforced style rules
-find . -name "*.test.*" -o -name "*.spec.*" | head -10     # test conventions
+find . \( -name "*.test.*" \) -o \( -name "*.spec.*" \) | head -10  # test conventions
 ```
 
 Gather:
