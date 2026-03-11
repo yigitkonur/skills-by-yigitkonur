@@ -17,7 +17,7 @@ These commands can modify system state, execute arbitrary code, or persist secre
 
 | Command | Risk | Reason |
 |---------|------|--------|
-| `eval` | High | Arbitrary JavaScript execution in page context |
+| `eval` | High | Arbitrary JavaScript execution in page context. Read-only DOM queries (e.g. `document.querySelectorAll('.title').map(...)`) are lower risk but still require approval since they run in the page context and could be affected by malicious page scripts. Scope approval to specific pages and prefer read-only queries over mutations. |
 | `download` | Medium | Writes files to disk |
 | `set credentials` | High | Stores secrets in browser credential store |
 | `cookies set` | Medium | Sets cookies (session hijacking risk) |
@@ -37,6 +37,32 @@ For AI agent workflows:
 2. **Require human approval** before using any sensitive command. Record the reason, scope (which URLs), and action being approved.
 3. **Scope approvals narrowly.** "Approve `eval` on `app.example.com/api`" — not "approve all eval."
 4. **Log sensitive operations.** Capture screenshots before and after destructive actions.
+
+### Agent Steering Notes for eval
+
+The `eval` command has a blanket "High" risk label, but actual risk varies:
+
+| Usage Pattern | Real Risk | Example |
+|---|---|---|
+| Read-only DOM query | Low | `document.querySelectorAll('.title')` |
+| Read-only property | Low | `document.title`, `window.location.href` |
+| DOM mutation | Medium | `element.remove()` |
+| Navigation trigger | High | `window.location = ...`, `form.submit()` |
+| External API call | High | `fetch('https://...')` |
+| Credential access | Critical | `document.cookie` |
+
+**Prefer built-in commands over eval:**
+
+```bash
+agent-browser get text "h1"
+agent-browser get title
+agent-browser get url
+agent-browser get value @e1
+agent-browser get attr @e1 href
+agent-browser get count ".items"
+```
+
+Use eval only when built-in commands cannot do it. Scope approval narrowly.
 
 ## Safe Mode Checklist
 
@@ -100,3 +126,21 @@ agent-browser open https://malicious.example.org  # ❌ Blocked
 - **Review upgrades:** check changelogs before updating
 - **Keep state ephemeral:** delete session data after use unless persistence is explicitly needed
 - **Audit extensions:** only load trusted browser extensions
+
+## Common Pitfalls
+
+### Do not classify all eval as equally dangerous
+
+Read-only DOM queries are far safer than mutations or network calls. Specify exact scope when requesting eval approval.
+
+### Do not forget page scripts can affect eval
+
+Even read-only eval runs in the page context. For sensitive sites, prefer built-in commands.
+
+### Do not persist credentials without encryption
+
+Use `AGENT_BROWSER_ENCRYPTION_KEY` when saving state with auth tokens.
+
+### Do not approve broad domain allowlists
+
+Use specific domains, not wildcards that include untrusted subdomains.

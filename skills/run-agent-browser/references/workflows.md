@@ -36,8 +36,8 @@ agent-browser snapshot -i --json
 # JSON element data
 agent-browser get text @e1 --json
 
-# Pipe to downstream tools
-agent-browser snapshot -i --json | jq '.elements[] | select(.role == "button")'
+# Pipe to downstream tools — the JSON schema is {success, data: {origin, refs, snapshot}, error}
+agent-browser snapshot -i --json | jq '.data.refs | to_entries[] | select(.value.role == "button")'
 ```
 
 ### Selector Priority (for AI agents)
@@ -216,21 +216,91 @@ agent-browser open https://example.com/products
 agent-browser wait --load networkidle
 
 # Extract data from listing page
-agent-browser snapshot -i --json | jq -r '.elements[] | select(.role == "link") | .text' > products.txt
+agent-browser snapshot -i --json | jq -r '.data.refs | to_entries[] | select(.value.role == "link") | .value.name' > products.txt
 
 # Follow each link and extract detail
 while IFS= read -r product; do
-  agent-browser click "a:has-text('$product')"
+  # Use find text for safer matching (handles special chars)
+  agent-browser find text "$product" click
   agent-browser wait --load networkidle
   
   PRICE=$(agent-browser get text ".price")
   DESC=$(agent-browser get text ".description")
   echo "$product|$PRICE|$DESC" >> product-details.csv
   
-  agent-browser go back
+  agent-browser back
   agent-browser wait --load networkidle
   agent-browser snapshot -i
 done < products.txt
 
 agent-browser close
 ```
+
+## 9. Multi-Element Data Extraction (AI Agent Pattern)
+
+When `get text` fails due to strict mode (multiple matches), use `eval --stdin`:
+
+```bash
+# Step 1: Scope the snapshot
+agent-browser snapshot -i -s "article"
+
+# Step 2: Extract via eval heredoc
+agent-browser eval --stdin <<'EVALEOF'
+const items = document.querySelectorAll('article.story h2 a');
+JSON.stringify(
+  Array.from(items).slice(0, 10).map(el => ({
+    title: el.textContent.trim(),
+    url: el.href
+  })),
+  null, 2
+);
+EVALEOF
+
+# Step 3: Verify count
+agent-browser get count "article.story h2 a"
+```
+
+**Key rule:** `eval --stdin` with a heredoc is the reliable JS execution pattern. Inline `eval "..."` breaks on complex JS due to shell escaping.
+
+## 10. Hidden UI Component Discovery
+
+Custom UI components (dropdowns, popovers, accordions) hide children until activated:
+
+```bash
+# 1. Initial snapshot -- dropdown content is hidden
+agent-browser snapshot -i
+# Shows: button "Language" [ref=e5] -- options hidden
+
+# 2. Click the trigger
+agent-browser click @e5
+agent-browser wait 500
+agent-browser snapshot -i
+# Now shows: link "Python" [ref=e12], link "JavaScript" [ref=e13]
+
+# 3. Interact with revealed options
+agent-browser click @e13
+```
+
+Signs of hidden components: expected UI elements missing from snapshot, buttons with arrows/chevrons, interactive widgets.
+
+## Agent Steering Notes
+
+### Snapshot output is not the full page
+
+`snapshot -i` omits non-interactive text to save tokens. Use `get text` or `eval` for page content extraction.
+
+### Refs are ephemeral
+
+After navigation, SPA route changes, tab switches, or dynamic content loads, all refs are invalid. Always re-snapshot.
+
+### CSS selectors have strict mode
+
+`get text`, `get value`, `is visible` require exactly ONE element match. Use `eval --stdin` for multiple elements.
+
+### diff requires a subcommand
+
+`agent-browser diff` alone fails. Valid: `diff snapshot`, `diff screenshot --baseline`, `diff url url1 url2`.
+
+### back works, go back does not
+
+Use `agent-browser back` (not `go back`).
