@@ -32,6 +32,10 @@ Do not use this skill for:
 6. **Keep progressive disclosure clean.** Put trigger logic in frontmatter, workflow and decisions in `SKILL.md`, and bulky detail in `references/`.
 7. **Test before shipping.** Run trigger tests and at least one functional test before declaring done.
 
+## Artifact output
+
+Intermediate artifacts (workspace scan, comparison table, success criteria) appear in conversation output as they are produced — show each one at the step that generates it. Persistent artifacts (`skills.markdown`, final SKILL.md, reference files) are written to disk in the target skill directory.
+
 ## Required workflow
 
 ### 1. Classify the job
@@ -62,16 +66,21 @@ If the skill enhances an MCP, also read `references/patterns/mcp-enhancement.md`
 - Note the reference file naming scheme, nesting depth, and whether routing in `SKILL.md` matches what actually exists on disk.
 - Note repo conventions, existing reference coverage, and obvious gaps before widening scope.
 
+> ⚠️ **Steering (from derailment testing):** Steps 3–4a concentrate 44% of all execution friction. Use the reference routing table to load only 3–5 relevant files per step, not all 22. See `references/steering/derailment-lessons.md` for common traps.
+
 ### 4. Run remote research when the job is non-trivial
 
-Only execute this step if step 1 classified the job as **Full research path**. Skip to step 7 for local-only work.
+Only execute this step if step 1 classified the job as **Full research path**. Skip to step 7 for local-only work (Steps 4–6 produce research artifacts that local-only changes don’t need).
+
+> ⚠️ **Steering:** Downloaded skills frequently violate this skill’s own quality standards (line counts >1000, templates inline, no references). Treat quality problems as signal for your “avoid” column—see `references/research/source-verification.md`.
 
 - Read `references/research-workflow.md` for the complete research protocol.
-- Use `skill-dl search` (3–20 keywords) to discover candidates — it outputs a prioritized markdown table to stdout.
-- Use `skill-dl` to download selected candidates, or run `references/skill-research.sh` for end-to-end parallel discovery and download in one command.
-- See `references/remote-sources.md` for `skill-dl search` usage patterns and download options.
+- Verify `skill-dl` is available: `skill-dl --version`. If missing, see `references/remote-sources.md` for installation. If unavailable and installation is not possible, use the `skills-as-context-search-skills` and `skills-as-context-get-skill-details` tools (requires the skills.sh MCP server), or search GitHub manually for repositories containing SKILL.md files.
+- Use `skill-dl search` with 3–20 space-separated keywords to discover candidates: `skill-dl search mcp server typescript sdk --top 20`. It outputs a prioritized markdown table to stdout.
+- Use `skill-dl` to download selected candidates, or run `bash references/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
+- See `references/remote-sources.md` for more `skill-dl` usage patterns and download options.
 - Prefer a few diverse, relevant sources over many near-duplicates.
-- Emit `skills.markdown` before moving on.
+- Create `skills.markdown` in the workspace root summarizing what was downloaded, what was shortlisted, and why, before moving on.
 
 ### 4a. Read the downloaded corpus thoroughly
 
@@ -83,14 +92,15 @@ For each downloaded skill that made the shortlist:
 - **Tree its `references/` directory** — see what files exist, how they are named, and how deeply they are nested. This reveals the skill's structural philosophy.
 - **Read the 2–3 most relevant reference files** in full — pick based on filenames and the skill's routing logic.
 - **Check `scripts/` if present** — scripts surface automation patterns and validation logic that prose cannot fully convey.
-- **Capture notes per skill**: overall structure, workflow style, reference organization, what it does well, what it does poorly, and 1–2 patterns worth inheriting (with exact relative paths).
+- **Capture notes per skill** (a heading per skill with bullets mapping to comparison table columns): overall structure, workflow style, reference organization, what it does well, what it does poorly, and 1–2 patterns worth inheriting (with exact relative paths).
+
+Downloaded sources may not follow the quality standards this skill enforces (e.g., SKILL.md over 500 lines, missing reference routing). Note these issues — they inform the "avoid" column of your comparison table.
 
 The notes you capture here are the raw material for the comparison table in step 5. If you skip reading, the comparison table will be fabricated from memory rather than evidence.
 
 ### 5. Compare before synthesizing
 
-- Read the selected local and remote sources that actually matter.
-- Build a markdown comparison table with at least: `Source`, `Focus`, `Strengths`, `Gaps`, `Relevant paths or sections`, and `Inherit / avoid`.
+- Using your notes from Step 4a, build a markdown comparison table with at least: `Source`, `Focus`, `Strengths`, `Gaps`, `Relevant paths or sections`, and `Inherit / avoid`.
 - Every row ends with a decision, not just an observation.
 
 ### 6. Define success criteria
@@ -108,13 +118,15 @@ Before drafting, write down what success looks like:
 - Reuse existing references instead of duplicating them.
 - Add new files only when clearly necessary and explicitly routed.
 - Read `references/authoring/description-engineering.md` to craft the description field.
-- Read `references/checklists/master-checklist.md` for the full quality checklist.
+- During drafting, focus on the key constraints: SKILL.md under 500 lines, every reference file routed, description follows the formula. Run the full `references/checklists/master-checklist.md` audit in Step 9.
 
 ### 8. Test the skill
 
-- **Trigger tests:** Write 5+ should-trigger queries and 5+ should-NOT-trigger queries. Run each one by pasting it as a new message in Claude.ai (with only this skill enabled) or Claude Code, and record whether the skill loaded. See `references/authoring/testing-methodology.md` for the full testing guide.
+- **Trigger tests:** Write 5+ should-trigger queries and 5+ should-NOT-trigger queries. For revisions, run each one by pasting it as a new message in Claude.ai (with only this skill enabled) or Claude Code, and record whether the skill loaded. For new skills, verify the description against your test queries manually; run live trigger tests after installation. See `references/authoring/testing-methodology.md` for the full testing guide.
 - **Functional test:** Run at least one complete functional test of the primary workflow end-to-end.
 - **Self-check:** Ask Claude "When would you use [skill-name]?" and verify the answer matches your intent.
+
+> ⚠️ **Steering:** For a NEW skill, install the draft to `~/.claude/skills/[name]/` before testing triggers. Trigger tests fail silently if the skill isn’t loaded. For REVISIONS, test against the currently installed version.
 
 ### 9. Finish with repo-fit and cleanup checks
 
@@ -141,7 +153,7 @@ Before drafting, write down what success looks like:
 | Do this | Not that |
 |---|---|
 | inventory the workspace and read local source files first | start from remote search results or a remembered template |
-| emit `skills.markdown` for non-trivial research | claim research happened because you skimmed URLs |
+| create `skills.markdown` for non-trivial research | claim research happened because you skimmed URLs |
 | build a comparison table before drafting | mentally blend sources and jump to the final `SKILL.md` |
 | route detailed guidance to existing references | stuff `SKILL.md` with tutorials, examples, or duplicated checklists |
 | inherit patterns selectively with repo-fit reasoning | copy the most detailed source and rename it |
@@ -149,19 +161,23 @@ Before drafting, write down what success looks like:
 | add negative triggers when scope is broad | let the skill fire on every tangentially related query |
 | use validation scripts for deterministic checks | rely on prose like "validate properly" |
 | read each downloaded skill's SKILL.md fully, tree its references/, and read the 2–3 most relevant reference files | skim titles and match counts, then fabricate a comparison from memory |
+| verify tool prerequisites before using them (`skill-dl --version`) | assume tools are installed because the skill mentions them |
+| show intermediate artifacts at the step that produces them | batch all output to the end or leave output location ambiguous |
+| distinguish creation vs. revision paths in testing | write test instructions that only work for one path |
 
 ## Output contract
 
 Unless the user wants a different format, show work in this order:
 
-1. workspace scan summary
-2. skill type classification (Document/Asset, Workflow, MCP Enhancement)
-3. research summary with `skills.markdown` or an explicit reason research was not required
-4. markdown comparison table (required for the full research path)
-5. selection and synthesis strategy
-6. generated or revised skill artifacts
-7. trigger test results
-8. final repo-fit and cleanup checks
+1. skill type classification (after Step 2)
+2. workspace scan summary (after Step 3)
+3. research summary with `skills.markdown` or explicit skip reason (after Step 4)
+4. markdown comparison table (after Step 5, required for the full research path)
+5. success criteria (after Step 6)
+6. selection and synthesis strategy (after Step 7)
+7. generated or revised skill artifacts (after Step 7)
+8. trigger test results (after Step 8)
+9. final repo-fit and cleanup checks (after Step 9)
 
 ## Reference routing
 
@@ -213,6 +229,12 @@ Load the smallest relevant set for the branch of work you are in.
 | `references/iteration/feedback-signals.md` | Interpreting under/over-triggering signals or planning post-ship iteration. |
 | `references/iteration/troubleshooting.md` | Diagnosing upload failures, trigger issues, MCP problems, or instruction-following issues. |
 
+### Steering
+
+| File | Read when |
+|---|---|
+| `references/steering/derailment-lessons.md` | Starting any skill build or revision, or when hitting friction during execution. Contains learned pitfalls from real testing. |
+
 ### Distribution
 
 | File | Read when |
@@ -250,9 +272,16 @@ Before you finish, confirm all of the following:
 - [ ] `SKILL.md` body is under 500 lines
 - [ ] `SKILL.md` contains decisions and routing, not bulky reference content
 - [ ] every reference file is explicitly routed
-- [ ] no orphaned files in `references/`
+- [ ] routing verification: `for f in $(find references -name '*.md' -type f); do grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"; done`
 - [ ] the final result is clearly synthesized from evidence and comparison
 - [ ] no dead weight was added just because another skill had it
 - [ ] at least 3 trigger tests passed (should-trigger and should-NOT-trigger)
 - [ ] primary workflow completes without error in at least one test
 - [ ] for full quality: ran `references/checklists/master-checklist.md`
+
+Quick routing verification:
+
+```bash
+# Check for orphaned reference files (not mentioned in SKILL.md)
+for f in $(find references -name '*.md' -type f); do grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"; done
+```

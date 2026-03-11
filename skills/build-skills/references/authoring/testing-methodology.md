@@ -224,3 +224,55 @@ Before shipping, verify all of the following:
 - [ ] Error handling works for at least one failure case
 - [ ] Results are consistent across 3+ runs
 - [ ] Token usage is reasonable for the task
+
+
+---
+
+## Creation vs. revision testing paths
+
+Testing differs significantly between creating a new skill and revising an existing one. Use the appropriate path:
+
+### Path A: Testing a NEW skill
+
+**Setup required before testing:**
+1. Create the skill directory: `mkdir -p ~/.claude/skills/[skill-name]/`
+2. Copy your draft: `cp SKILL.md ~/.claude/skills/[skill-name]/`
+3. Copy references: `cp -r references/ ~/.claude/skills/[skill-name]/`
+4. Restart Claude or reload skills
+
+**Trigger testing (new skill):**
+- Open a fresh Claude conversation with only this skill enabled
+- Paste each should-trigger query as a new message
+- Record whether the skill actually loaded (check for skill-specific behavior)
+- **Critical:** Trigger tests fail silently if the skill isn't installed. A "pass" with an uninstalled skill is a false positive.
+
+**Functional testing (new skill):**
+- Run the complete primary workflow end-to-end
+- Verify all output contract items are produced
+- Check that reference routing loads the correct files
+
+### Path B: Testing a REVISION
+
+**Setup:**
+- The skill is already installed — test against the current version first
+- Then install the revision and re-test
+
+**Trigger testing (revision):**
+- Run the same trigger queries against both old and new versions
+- Verify the revision doesn't break existing triggers
+- If scope changed, add new should-trigger and should-NOT-trigger queries
+
+**Functional testing (revision):**
+- Focus on the changed functionality
+- Verify unchanged workflows still work
+- Run at least one full end-to-end test
+
+### Common testing mistakes
+
+| Mistake | Impact | Fix |
+|---|---|---|
+| Testing triggers without installing | False positives | Always install before trigger testing |
+| Only testing the happy path | Misses edge cases | Include at least 2 edge cases |
+| Testing only creation OR revision | Other path untested | Document which path you tested |
+| No should-NOT-trigger queries | Over-triggering undetected | Always include 5+ negative queries |
+| Skipping functional test | Workflow bugs ship | Run at least one end-to-end |

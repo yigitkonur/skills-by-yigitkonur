@@ -312,3 +312,8 @@ Skill problem?
     ├── Disable unused skills
     └── Use progressive disclosure (references/)
 ```
+
+
+---
+
+> **Steering tip:** When diagnosing trigger issues, distinguish between "skill not loaded" (installation problem) and "skill loaded but didn't activate" (description problem). For new skills, verify installation first — see `references/steering/derailment-lessons.md` Trap 5.

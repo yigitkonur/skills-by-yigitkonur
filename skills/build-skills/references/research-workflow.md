@@ -139,3 +139,83 @@ Avoid these mistakes:
 - copying downloaded skills instead of distilling them
 - packaging the transient research corpus into the final skill by default
 - skipping the downloaded corpus scan and pretending the research already happened
+
+
+---
+
+## Phase gates
+
+Research has three phases. Complete each gate before advancing:
+
+### Phase 1: Discovery (budget: 10 minutes)
+**Goal:** Find candidate skills to compare.
+**Gate:** Have 5-15 candidate names/URLs identified.
+**Tools:** `skill-dl search`, `skills-as-context-search-skills`, GitHub search.
+
+### Phase 2: Download and triage (budget: 15 minutes)
+**Goal:** Download candidates and quick-assess quality.
+**Gate:** Have 3-8 downloaded skills with size/tier noted.
+**Actions:**
+1. Download top candidates: `skill-dl download <id>`
+2. For each: `wc -l SKILL.md` and `tree references/ 2>/dev/null`
+3. Assign quality tier (see `source-patterns.md`)
+4. Drop Tier 3 sources unless needed as anti-pattern examples
+
+### Phase 3: Deep read (budget: 20 minutes)
+**Goal:** Read the best candidates thoroughly for comparison.
+**Gate:** Per-skill notes completed for 3-5 top candidates.
+**Actions:**
+1. Read SKILL.md fully for each selected candidate
+2. Read 2-3 most relevant reference files per candidate
+3. Fill out per-skill notes template (see `comparison-workflow.md`)
+4. Write comparison table
+
+**Total research budget: 45 minutes maximum.** If you haven't reached Phase 3 after 30 minutes, stop discovery and work with what you have.
+
+## Scoping guidance
+
+### When to do full research
+- Building a new skill from scratch
+- Major revision changing the skill's scope or type
+- User explicitly requests competitive analysis
+
+### When to do minimal research (Phase 1 only)
+- Adding a single reference file
+- Fixing bugs in existing content
+- Updating for API/tool changes
+- User says "just fix X"
+
+### When to skip research entirely
+- Typo fixes, formatting changes
+- Adding content the user has already written
+- Reorganizing existing content without changing substance
+
+## Prerequisite verification
+
+Before starting research, verify your tools are available:
+
+```bash
+# Required for research
+skill-dl --version 2>/dev/null || echo "skill-dl not available - use MCP fallback"
+
+# Optional but helpful
+which jq 2>/dev/null || echo "jq not available - JSON parsing will be manual"
+```
+
+**If skill-dl is unavailable:**
+1. Try the MCP tools: `skills-as-context-search-skills` and `skills-as-context-get-skill-details`
+2. If MCP tools are also unavailable: search GitHub manually for repos with SKILL.md files
+3. Document which method you used in your research summary
+
+## Time budget enforcement
+
+Track your research time against these limits:
+
+| Phase | Budget | Stop signal |
+|---|---|---|
+| Discovery | 10 min | Found 5+ candidates OR exhausted 3 search strategies |
+| Download + triage | 15 min | Have 3+ triaged candidates OR downloaded 10 candidates |
+| Deep read | 20 min | Have 3+ per-skill notes OR read 5 skills in detail |
+| **Total** | **45 min** | Move to comparison regardless of completeness |
+
+If you exceed a phase budget, move to the next phase with what you have. Incomplete research with honest documentation is better than exhaustive research that delays synthesis.
