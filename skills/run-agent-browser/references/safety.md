@@ -49,7 +49,7 @@ The `eval` command has a blanket "High" risk label, but actual risk varies:
 | DOM mutation | Medium | `element.remove()` |
 | Navigation trigger | High | `window.location = ...`, `form.submit()` |
 | External API call | High | `fetch('https://...')` |
-| Credential access | Critical | `document.cookie` |
+| Credential access | High | `document.cookie`, `localStorage` |
 
 **Prefer built-in commands over eval:**
 

@@ -224,8 +224,9 @@ while IFS= read -r product; do
   agent-browser find text "$product" click
   agent-browser wait --load networkidle
   
-  PRICE=$(agent-browser get text ".price")
-  DESC=$(agent-browser get text ".description")
+  # get text requires exactly 1 match — use specific selectors
+  PRICE=$(agent-browser get text ".product-detail .price")
+  DESC=$(agent-browser get text ".product-detail .description")
   echo "$product|$PRICE|$DESC" >> product-details.csv
   
   agent-browser back

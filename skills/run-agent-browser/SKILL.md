@@ -35,7 +35,7 @@ Do not use this skill for:
 
 ### 1) Establish session and baseline
 
-- Verify agent-browser is available before your first command. Run `agent-browser --version` (or `npx agent-browser --version`). If the command is not found, install with `npm install -g agent-browser`.
+- Verify agent-browser is available before your first command. Run `agent-browser --version` (or `npx agent-browser --version`). If the command is not found, install with `npm install -g agent-browser` (pin a specific version in production — see `references/safety.md`).
 - If you may be joining an existing browser context, inspect it first:
 
 ```bash
@@ -82,8 +82,7 @@ agent-browser snapshot -i
 - Chain commands only when you do not need intermediate output.
 - After any action that can change DOM or focus, wait and re-snapshot before reusing refs.
 - Refs are invalid after navigation, SPA route changes, modal expansion, dynamic loading, tab switching, and many form submissions.
-- Use `agent-browser back` (not `go back`) to return to the previous page. Treat it like a navigation event: re-snapshot after.
-- Use `agent-browser back` to return to the previous page (browser back button). Prefer `back` over re-navigating with `open URL` when you need to preserve history or avoid redundant loads.
+- Use `agent-browser back` (not `go back`) to return to the previous page. Prefer `back` over re-navigating with `open URL` to preserve history. Treat it like a navigation event: re-snapshot after.
 - Note: `check` and `uncheck` return the new checked state (`true`/`false`) rather than `✓ Done`. This is expected.
 
 ### 5) Verify the result before moving on
