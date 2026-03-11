@@ -777,20 +777,20 @@ daisyUI v5 uses OKLCH color format internally. When defining custom themes:
 
 ```css
 @plugin "daisyui/theme" {
-  --name: "brand";
-  --default: true;
+  name: "brand";
+  default: true;
 
   /* OKLCH format: lightness chroma hue */
-  --color-primary: oklch(0.65 0.24 265);      /* vibrant blue */
-  --color-primary-content: oklch(0.98 0.01 265); /* near-white on primary */
-  --color-secondary: oklch(0.55 0.18 150);     /* teal */
-  --color-accent: oklch(0.75 0.20 50);         /* warm orange */
+  --color-primary: oklch(65% 0.24 265);      /* vibrant blue */
+  --color-primary-content: oklch(98% 0.01 265); /* near-white on primary */
+  --color-secondary: oklch(55% 0.18 150);     /* teal */
+  --color-accent: oklch(75% 0.20 50);         /* warm orange */
 
   /* Base colors */
-  --color-base-100: oklch(0.98 0.005 265);     /* page background */
-  --color-base-200: oklch(0.95 0.008 265);     /* slightly darker */
-  --color-base-300: oklch(0.90 0.012 265);     /* cards, sidebars */
-  --color-base-content: oklch(0.25 0.02 265);  /* main text */
+  --color-base-100: oklch(98% 0.005 265);     /* page background */
+  --color-base-200: oklch(95% 0.008 265);     /* slightly darker */
+  --color-base-300: oklch(90% 0.012 265);     /* cards, sidebars */
+  --color-base-content: oklch(25% 0.02 265);  /* main text */
 }
 ```
 

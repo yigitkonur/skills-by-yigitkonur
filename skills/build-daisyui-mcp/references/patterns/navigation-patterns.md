@@ -463,7 +463,7 @@ CSS-only dropdown using `<details>`:
   <div class="drawer-side">
     <label for="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
     <ul class="menu bg-base-200 min-h-full w-80 p-4">
-      <li><a class="active">Dashboard</a></li>
+      <li><a class="menu-active">Dashboard</a></li>
       <li><a>Analytics</a></li>
     </ul>
   </div>
@@ -501,7 +501,7 @@ CSS-only dropdown using `<details>`:
 ```html
 <!-- ✅ Use daisyUI's active class -->
 <ul class="menu">
-  <li><a class="active">Dashboard</a></li>
+  <li><a class="menu-active">Dashboard</a></li>
   <li><a>Settings</a></li>
 </ul>
 
@@ -541,7 +541,7 @@ CSS-only dropdown using `<details>`:
     <label for="app-drawer" class="drawer-overlay"></label>
     <aside class="bg-base-200 min-h-full w-80">
       <ul class="menu p-4">
-        <li><a class="active">Dashboard</a></li>
+        <li><a class="menu-active">Dashboard</a></li>
         <li><a>Reports</a></li>
       </ul>
     </aside>

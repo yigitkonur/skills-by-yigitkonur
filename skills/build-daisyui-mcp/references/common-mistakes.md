@@ -476,8 +476,8 @@ Using deprecated v4 patterns instead of current v5 syntax.
 <!-- v5 inputs have borders by default -->
 <input class="input" />
 
-<!-- v5 tab-lift (not tab-lifted) -->
-<div class="tabs tab-lift">...</div>
+<!-- v5 tabs-lift (not tab-lifted or tab-lift) -->
+<div class="tabs tabs-lift">...</div>
 
 <!-- v5 card-border (not bordered) -->
 <div class="card card-border">...</div>
@@ -493,7 +493,7 @@ Using deprecated v4 patterns instead of current v5 syntax.
 | `input-bordered` | `input` | Borders are default in v5 |
 | `select-bordered` | `select` | Borders are default in v5 |
 | `textarea-bordered` | `textarea` | Borders are default in v5 |
-| `tab-lifted` | `tab-lift` | Renamed |
+| `tab-lifted` | `tabs-lift` | Renamed |
 | `bordered` (on card) | `card-border` | Renamed |
 | HSL theme colors | oklch theme colors | Format change |
 | `tailwind.config.js` themes | `@plugin "daisyui"` in CSS | Configuration moved to CSS |
