@@ -28,8 +28,13 @@ The local scan prevents you from importing outside patterns that conflict with t
 
 After the local scan:
 
-1. **Discover** — search Playbooks (multiple query variants in parallel) and/or `skills-as-context` MCP tool
-2. **Select** — pick high-signal candidates; record title, source, URL, install count, rationale
+1. **Discover** — run `skill-dl search` with 3–20 keyword arguments covering the topic from multiple angles
+   - `skill-dl search` outputs a prioritized markdown table: rank, skill name, owner/repo, keywords matched, match count, URL
+   - Skills appearing across more keywords rank higher — cross-keyword overlap is the primary signal
+   - Run multiple keyword sets in parallel for broader coverage; deduplicate by URL before proceeding
+   - Example: `skill-dl search "agent browser" "headless automation" "browser testing" "playwright"`
+   - Requires at least 3 keywords; use varied phrasing to surface different result clusters
+2. **Select** — from the markdown table output, pick high-signal candidates; record skill name, source, URL, match count, rationale
 3. **Write URL file** — one Playbooks URL per line, grouped with `#` comments by tier (high-install, community, niche)
 4. **Download** — `skill-dl urls.txt -o ./research-corpus --no-auto-category -f`
    - Large batches: split by repo and run parallel (see `references/remote-sources.md`)
@@ -54,16 +59,32 @@ At minimum it should record:
 
 If `skills.markdown` is missing, the research phase is incomplete.
 
-## Phase 4 — read before you compare
+## Phase 4 — read the downloaded corpus thoroughly
 
-Do not move directly from search results to a final design.
+Do not move directly from search results to a final design. Reading the corpus is a distinct, mandatory step — not a footnote.
 
-Before comparison:
+**For each downloaded skill that made the shortlist:**
 
-- read the downloaded skills that matter
-- capture relative paths and section pointers
-- note what each source is strong at
-- note what each source should not contribute
+1. **Read `SKILL.md` fully** — understand the trigger boundary, workflow structure, decision rules, and output contract before anything else. Do not skim.
+2. **Tree the `references/` directory** — run `tree <skill-dir>/references/` or equivalent listing to see what reference files exist, how they are named, and how deeply they are nested. This reveals the skill's structural philosophy.
+3. **Read the 2–3 most relevant reference files** — pick based on the file names and the skill's stated routing logic. Read them fully, not just the headings.
+4. **Check `scripts/` if present** — script files reveal automation patterns, validation logic, and tooling choices that prose cannot fully convey.
+5. **Capture notes per skill** — record: overall structure (flat vs. layered), workflow style (sequential, branching, iterative), reference organization, what it does well, what it does poorly, and 1–2 direct quotes or patterns worth inheriting.
+
+**What "reading" means here:**
+
+- Load the file contents, not just the filenames.
+- Note section headings, decision rules, and anti-patterns sections specifically.
+- Record exact relative paths when citing evidence in `skills.markdown`.
+
+**What to capture in your notes:**
+
+- structural patterns that differ from your current approach
+- reference file organization choices (flat file per topic vs. nested by phase)
+- trigger boundary phrasing that is notably precise or notably weak
+- any reusable logic, scripts, or validation patterns
+
+This phase produces the raw material for Phase 5 (comparison table). If you skip it, the comparison table will be fabricated from memory rather than evidence.
 
 ## Selection heuristics
 

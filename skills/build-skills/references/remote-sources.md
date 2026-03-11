@@ -2,31 +2,39 @@
 
 ## Discovery
 
-### Playbooks search
+### skill-dl search
 
-- URL pattern: `https://playbooks.com/skills?search=<query>&page=<n>`
-- Detail page: `https://playbooks.com/skills/{owner}/{repo}/{skill}`
+`skill-dl search` is the primary discovery method. It queries Playbooks and returns a prioritized markdown table directly to stdout.
 
-### Parallel discovery
-
-When researching a topic, search multiple query variants simultaneously to maximize coverage:
+Tool home: https://github.com/yigitkonur/cli-skill-downloader
 
 ```bash
-# Parallel search — run multiple curl/scrape calls concurrently
-queries=("agent browser" "agent-browser" "browser automation" "headless browser")
-for q in "${queries[@]}"; do
-  curl -s "https://playbooks.com/skills?search=${q// /+}" &
-done | sort -u
-wait
+# Basic search — pass 3–20 keywords
+skill-dl search "agent browser" "headless automation" "browser testing"
+
+# Broader coverage — more keywords surface different result clusters
+skill-dl search "typescript" "type safety" "strict mode" "ts config" "compilation"
+
+# Minimum required: at least 3 keywords
+# Maximum: 20 keywords per invocation
 ```
 
-Or via the `skills-as-context` MCP tool (if available):
-- Call `search-skills` with multiple query variants in parallel
-- Deduplicate results by skill ID before proceeding
+**Output format:** a markdown table with columns: rank, skill name, owner/repo, keywords matched, match count, URL. Skills are ranked by how many of your keywords they matched — cross-keyword overlap is the primary signal.
+
+**Usage pattern:**
+
+1. Run `skill-dl search` with 3–20 keywords covering the topic from multiple angles
+2. Review the markdown table output — higher keyword match count = higher priority
+3. Run a second search with different phrasing if the first result set looks narrow
+4. Deduplicate by URL across multiple search runs before building the URL file
+
+### Playbooks URL pattern
+
+- Detail page: `https://playbooks.com/skills/{owner}/{repo}/{skill}`
 
 ### What to collect
 
-For each candidate, capture: title, owner/repo, detail URL, description, install count, and selection rationale.
+For each candidate, capture: skill name, owner/repo, detail URL, keywords matched, match count, and selection rationale.
 
 ## Downloading with skill-dl
 
@@ -119,7 +127,7 @@ Downloaded skills are evidence for comparison, not templates to clone.
 
 After download:
 1. `tree` the corpus
-2. Read high-signal skills (by install count or unique approach)
+2. Read high-signal skills (by keyword match count or unique approach)
 3. Cite relative paths in comparison table
 4. Inherit patterns selectively
 5. Rewrite the final result to be original and repo-fit
