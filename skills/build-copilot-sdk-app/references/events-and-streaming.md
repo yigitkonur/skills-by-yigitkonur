@@ -94,6 +94,24 @@ await session.send({ prompt: "Follow up" });
 await idle;
 ```
 
+### Parallel tool calls
+
+When the model invokes multiple tools simultaneously, `tool.execution_start` and `tool.execution_complete` events interleave. Use `toolCallId` to correlate start/complete pairs:
+
+```typescript
+const activeTools = new Map<string, string>(); // toolCallId → toolName
+
+session.on("tool.execution_start", (event) => {
+  activeTools.set(event.data.toolCallId, event.data.toolName);
+  console.log(`Started [${activeTools.size} active]: ${event.data.toolName}`);
+});
+
+session.on("tool.execution_complete", (event) => {
+  activeTools.delete(event.data.toolCallId);
+  console.log(`Completed: ${event.data.toolCallId} (${activeTools.size} still active)`);
+});
+```
+
 ## All event types by category
 
 ### Session lifecycle

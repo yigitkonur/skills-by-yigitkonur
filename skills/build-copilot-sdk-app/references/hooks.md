@@ -338,4 +338,4 @@ session.on("hook.end", (event) => {
 | `onSessionEnd` | `"sessionEnd"` |
 | `onErrorOccurred` | `"errorOccurred"` |
 
-Hooks that throw are silently caught — the hook returns `undefined` and execution continues.
+All hooks can return `void` (no return statement) — the hook is treated as a no-op and execution continues normally. If a hook throws, the error is silently caught and execution continues.

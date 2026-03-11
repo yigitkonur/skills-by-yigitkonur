@@ -66,11 +66,23 @@ What do you need?
 
 ## Quick start
 
+### Prerequisites
+
+Verify your environment:
 ```bash
-npm install @github/copilot-sdk tsx
+node --version   # must be >= 20
+copilot --version # Copilot CLI must be installed
 ```
 
-Requires Node.js >= 20 and Copilot CLI installed (`copilot --version`).
+### Project setup
+
+```bash
+npm init -y
+npm pkg set type=module   # SDK is ESM-only
+npm install @github/copilot-sdk tsx zod
+```
+
+> **ESM required.** The SDK only ships ESM exports. Your `package.json` must have `"type": "module"`.
 
 ### Minimal example
 
@@ -104,7 +116,11 @@ session.on("assistant.message_delta", (event) => {
   process.stdout.write(event.data.deltaContent);
 });
 
-session.on("session.idle", () => console.log("\n--- done ---"));
+session.on("session.idle", async () => {
+  console.log("\n--- done ---");
+  await session.disconnect();
+  await client.stop();
+});
 
 await session.send({ prompt: "Explain TypeScript generics" });
 ```
@@ -194,6 +210,25 @@ const resumed = await client.resumeSession("user-123-conversation", {
 });
 ```
 
+### Create-or-resume pattern
+
+`createSession` always starts fresh — only `resumeSession` restores conversation context. In applications that may revisit a session:
+
+```typescript
+let session;
+try {
+  session = await client.resumeSession(sessionId, {
+    onPermissionRequest: approveAll,
+  });
+} catch {
+  session = await client.createSession({
+    sessionId,
+    model: "gpt-4.1",
+    onPermissionRequest: approveAll,
+  });
+}
+```
+
 ### Handling askUser programmatically
 
 ```typescript
@@ -236,5 +271,5 @@ await session.abort(); // cancels current work; session remains usable
 | `cliUrl` + `useStdio` | Mutually exclusive. `cliUrl` connects to external server; `useStdio` spawns child process. |
 | `console.log` in extensions | stdout is reserved for JSON-RPC. Use `session.log()` instead. |
 | Tool name collision in extensions | Tool names must be globally unique across all extensions. |
-| BYOK without `model` | `model` is required when using `provider` config. |
+| BYOK without `model` | `model` is required when using `provider` config. Session creation succeeds silently, but `sendAndWait` will fail. |
 | Race condition on event registration | Register `session.on()` before calling `session.send()`. |
