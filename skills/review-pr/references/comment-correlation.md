@@ -273,7 +273,7 @@ Map these to your own severity scale when building the already-reviewed map. A �
 
 ## Including Existing Review State in Your Output
 
-In Phase 7 (synthesize), always include a section summarizing the existing review state. This is not optional — it is part of a complete review.
+In the synthesis and output phase, always include a section summarizing the existing review state. This is not optional — it is part of a complete review.
 
 ```markdown
 ### Existing Review Threads
@@ -318,3 +318,35 @@ For each finding you are about to report:
 ```
 
 This flow ensures every comment you post adds genuine value to the review conversation.
+
+---
+
+## Conversation-Level Review State
+
+Not all review feedback is inline code comments. Some PRs have strategic discussion in general PR comments — team disagreements about approach, design-level feedback, or scope questions that do not attach to any specific line.
+
+### Classification
+
+| Category | Location | Example | How to handle |
+|---|---|---|---|
+| **Inline threads** | Attached to specific file + line | "This null check is missing on line 42" | Map to your clusters; deduplicate against your findings |
+| **Conversation-level** | General PR comments (not attached to code) | "I disagree with the deprecation approach" | Classify as strategic discussion; summarize in output |
+
+### Handling conversation-level feedback
+
+1. **Read all general PR comments** via `gh api repos/{owner}/{repo}/issues/{N}/comments` or MCP `issue_read` with `get_comments` method
+2. **Identify strategic disagreements** — these are approach/design concerns, not code bugs
+3. **Do not try to resolve team disagreements** — note both sides in your review state summary
+4. **Do not map conversation comments to code lines** — they represent positions, not code issues
+5. **Reflect conversation state in your output** using a dedicated section:
+
+```markdown
+### Team Discussion State
+
+- **Active debate:** [topic]. @alice argues [position A]; @bob argues [position B].
+- **Your observation (if any):** [technical evidence, or "No additional technical evidence to add."]
+```
+
+### Steering note
+
+A common mistake is treating conversation-level comments as inline review threads. If a reviewer posts a general comment saying "I think we should use a different approach," that is strategic discussion, not a code-level finding. Summarize it; do not anchor it to a file and line number.

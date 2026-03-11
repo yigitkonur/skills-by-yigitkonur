@@ -41,7 +41,7 @@ skimmed for obvious issues only.
 
 ### Strategy 1: Cluster-Based Chunking
 
-The default approach from Phase 2. Group files by concern, review each cluster as a unit.
+The default approach from the scoping phase. Group files by concern, review each cluster as a unit.
 
 ```
 Cluster 1: Database Migrations    → Review first (highest risk)

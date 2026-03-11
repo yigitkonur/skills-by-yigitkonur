@@ -1,6 +1,6 @@
 # Review Dimensions Checklist
 
-This checklist is ordered by priority. Apply each dimension to every file cluster during Phase 5 review. Not every dimension applies to every file — use judgment to skip irrelevant checks.
+This checklist is ordered by priority. Apply each dimension to every file cluster during the cluster review phase. Not every dimension applies to every file — use judgment to skip irrelevant checks.
 
 ---
 
@@ -103,6 +103,9 @@ Don't just ask "is this handled?" — ask "what *specifically* happens?" Trace t
 ---
 
 ## 3. Data Integrity (Priority: HIGH)
+
+For deprecation PRs, also check: deprecated APIs still function (backwards compatibility), emit runtime warnings, and all call sites in the diff have been migrated to the new API.
+
 
 Data corruption is worse than downtime. Downtime ends; corrupted data persists. Apply this dimension rigorously to any PR that touches database schemas, migrations, or state management.
 

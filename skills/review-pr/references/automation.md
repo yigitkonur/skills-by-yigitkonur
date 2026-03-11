@@ -35,7 +35,7 @@ PR Opened
   │
   └── Layer 6: Human Review (manual, final decision)
       └── Focus on: correctness, security, design, intent, context
-          → This is where the skill's Phase 1-7 workflow applies
+          → This is where the skill's review workflow applies
 ```
 
 ### What to Skip in Manual Review

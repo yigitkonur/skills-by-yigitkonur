@@ -93,3 +93,13 @@ Compare the two versions to understand:
 3. Read those file diffs carefully
 4. For files with <10 line changes, do a quick scan only
 5. Note in your review which files you deeply reviewed vs skimmed
+
+## Steering note: Deprecation and refactor diffs
+
+Deprecation diffs are deceptive: they often look like small, safe changes. The real review target is not the changed lines but the **unchanged call sites** that still use the old API.
+
+When reviewing a deprecation diff:
+1. **Search beyond the diff** — use grep or code search to find all call sites of the deprecated API
+2. **Check semantic equivalence** — does the new API return the same value/type as the old one?
+3. **Verify runtime warnings** — are callers notified they are using a deprecated path?
+4. **Check test coverage** — do tests exercise both the old (deprecated) and new paths?

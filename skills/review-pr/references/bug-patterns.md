@@ -1,6 +1,6 @@
 # Common Bug Patterns in PRs
 
-The most frequently missed bugs in code review, organized by category. Use this as a mental checklist when reviewing code in Phase 5.
+The most frequently missed bugs in code review, organized by category. Use this as a mental checklist when reviewing code in the cluster review phase.
 
 ---
 
@@ -333,7 +333,7 @@ const page = parseInt(req.query.page, 10) || 1;
 
 ## Checklist: Bug Pattern Quick Scan
 
-Before concluding Phase 5 review on any file, do this 30-second scan:
+Before concluding cluster review on any file, do this 30-second scan:
 
 ```
 □ Race conditions: Any read-then-write without atomicity?
@@ -345,3 +345,22 @@ Before concluding Phase 5 review on any file, do this 30-second scan:
 □ Stale closure: Any React hooks with missing dependencies?
 □ Mutation: Any array/object mutation where immutability is expected?
 ```
+
+## Deprecation and Refactor Patterns
+
+When the PR deprecates APIs, renames methods, or restructures interfaces, check these additional patterns:
+
+### Incomplete migration
+The old API is still called in consumer code while the PR marks it deprecated. Search for all call sites of the deprecated API. If any remain unchanged, flag as 🟡 Important.
+
+### Deprecation without warning
+Method is marked deprecated via JSDoc/annotation but no runtime warning is emitted. Callers will not discover the deprecation until they read docs. Better: emit `process.emitWarning()` or equivalent on first call.
+
+### Semantic change hidden behind same signature
+The return value semantics change (e.g., hostname with port → hostname without port) but the method signature stays the same. This is a **breaking change** disguised as a deprecation. Flag as 🔴 Blocker if not documented.
+
+### Missing test updates for deprecated paths
+If the PR deprecates an API but does not add tests verifying: (1) deprecated path still works, (2) deprecation warning is emitted, (3) new path produces equivalent results — flag as 🟡 Important.
+
+### Steering note
+Deprecation PRs are easy to under-review because "nothing is really changing." The real risk is call-site impact and semantic drift. Shift review weight from "is this new code correct?" to "are all consumers aware and updated?"

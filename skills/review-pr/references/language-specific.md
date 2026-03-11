@@ -90,4 +90,4 @@ Common patterns and pitfalls by language. Reference this when reviewing code in 
 - Missing indexes on foreign keys or frequently queried columns
 - Large table alterations without considering lock time
 
-For each language, apply the relevant checks during Phase 5 review based on the file extensions in the cluster being reviewed.
+For each language, apply the relevant checks during cluster review based on the file extensions in the cluster being reviewed.

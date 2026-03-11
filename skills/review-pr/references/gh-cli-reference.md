@@ -10,7 +10,7 @@
 ```bash
 gh pr view <N> --repo owner/repo --json title,body,state,author,labels,baseRefName,headRefName,reviewDecision,statusCheckRollup,files,commits,reviewRequests,milestone,number,url
 ```
-Use when: Phase 1 — understanding what the PR is about.
+Use when: gathering PR metadata — understanding what the PR is about.
 
 Available JSON fields: title, body, state, number, url, author, baseRefName, headRefName, labels, milestone, reviewDecision, reviewRequests, statusCheckRollup, files, commits, additions, deletions, changedFiles, createdAt, updatedAt, mergedAt, mergeable, isDraft
 
@@ -18,7 +18,7 @@ Available JSON fields: title, body, state, number, url, author, baseRefName, hea
 ```bash
 gh pr diff <N> --repo owner/repo
 ```
-Use when: Phase 4 (goal validation) and Phase 5 (systematic review).
+Use when: goal validation and systematic cluster review.
 Note: For large PRs, prefer file-by-file review using checkout + git diff.
 
 ### Get changed files with stats
@@ -26,7 +26,7 @@ Note: For large PRs, prefer file-by-file review using checkout + git diff.
 gh api repos/{owner}/{repo}/pulls/{N}/files --paginate
 ```
 Returns: Array of objects with filename, status (added/modified/removed/renamed), additions, deletions, changes, patch.
-Use when: Phase 2 — clustering files by concern.
+Use when: scoping the diff — clustering files by concern.
 
 ### Checkout PR locally
 ```bash
@@ -44,14 +44,14 @@ After checkout: `git diff main...HEAD` to see all changes.
 gh api repos/{owner}/{repo}/pulls/{N}/reviews
 ```
 Returns: Array of reviews with state (APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED), user, body, submitted_at.
-Use when: Phase 3 — understanding who reviewed and their stance.
+Use when: reading existing review state — understanding who reviewed and their stance.
 
 ### Get review comment threads
 ```bash
 gh api repos/{owner}/{repo}/pulls/{N}/comments --paginate
 ```
 Returns: Inline review comments with path, line, body, user, created_at, in_reply_to_id, pull_request_review_id.
-Use when: Phase 3 — building the already-reviewed map.
+Use when: reading existing review state — building the already-reviewed map.
 Note: Thread structure is determined by in_reply_to_id. Comments with no in_reply_to_id are thread starters.
 
 ### Get general PR conversation
@@ -59,7 +59,7 @@ Note: Thread structure is determined by in_reply_to_id. Comments with no in_repl
 gh api repos/{owner}/{repo}/issues/{N}/comments
 ```
 Returns: Non-inline PR conversation comments (discussion, status updates, bot comments).
-Use when: Phase 3 — reading PR discussion for context.
+Use when: reading existing review state — reading PR discussion for context.
 Note: PRs are issues in GitHub's API, so issue comments endpoint works for PR conversations.
 
 ### Get PR comments (simple view)
@@ -80,7 +80,7 @@ gh api repos/{owner}/{repo}/contents/{path}?ref={branch}
 # Via local checkout (simpler, requires checkout)
 git show {branch}:{path}
 ```
-Use when: Phase 5 — reading full file for context around diff hunks, comparing head vs base.
+Use when: cluster review — reading full file for context around diff hunks, comparing head vs base.
 
 ### Search code in repo
 ```bash
@@ -90,7 +90,7 @@ gh search code "query repo:owner/repo"
 # Via local checkout (faster, more flexible)
 grep -rn "pattern" .
 ```
-Use when: Phase 5 — tracing blast radius (who calls this function?).
+Use when: cluster review — tracing blast radius (who calls this function?).
 
 ---
 
@@ -101,7 +101,7 @@ Use when: Phase 5 — tracing blast radius (who calls this function?).
 gh api repos/{owner}/{repo}/pulls/{N}/commits
 ```
 Returns: Array of commits with sha, message, author, date.
-Use when: Phase 1 — reading commit messages to understand PR evolution.
+Use when: gathering context — reading commit messages to understand PR evolution.
 
 ### Get specific commit details
 ```bash
@@ -118,7 +118,7 @@ Use when: Understanding individual commits.
 ```bash
 gh pr checks <N> --repo owner/repo
 ```
-Use when: Phase 1 — checking CI status.
+Use when: gathering context — checking CI status.
 
 ### Get failed CI logs
 ```bash
@@ -138,7 +138,7 @@ Use when: CI is failing — read the logs to understand what's broken.
 ```bash
 gh issue view <N> --repo owner/repo --json title,body,state,labels,comments
 ```
-Use when: Phase 1 — understanding linked issues referenced in PR body.
+Use when: gathering context — understanding linked issues referenced in PR body.
 
 ---
 
@@ -245,3 +245,29 @@ git diff main...HEAD -- src/auth/       # Diff for specific directory
 git log main..HEAD --oneline           # Commit messages
 grep -rn "pattern" src/                 # Search locally
 ```
+
+---
+
+## MCP Server Tool Equivalents
+
+If GitHub MCP server tools are available, prefer them over `gh` CLI commands. They return the same data without requiring shell access.
+
+| gh CLI command | MCP tool | Method/parameters |
+|---|---|---|
+| `gh pr view N --json ...` | `pull_request_read` | `method: "get"`, `pullNumber: N` |
+| `gh pr diff N` | `pull_request_read` | `method: "get_diff"`, `pullNumber: N` |
+| `gh pr view N --json files` | `pull_request_read` | `method: "get_files"`, `pullNumber: N` |
+| `gh pr checks N` | `pull_request_read` | `method: "get_check_runs"`, `pullNumber: N` |
+| `gh pr status` | `pull_request_read` | `method: "get_status"`, `pullNumber: N` |
+| `gh api repos/.../pulls/N/reviews` | `pull_request_read` | `method: "get_reviews"`, `pullNumber: N` |
+| `gh api repos/.../pulls/N/comments` | `pull_request_read` | `method: "get_review_comments"`, `pullNumber: N` |
+| `gh api repos/.../issues/N/comments` | `issue_read` | `method: "get_comments"`, `issue_number: N` |
+| `gh api repos/.../contents/PATH` | `get_file_contents` | `owner`, `repo`, `path` |
+| `gh api repos/.../commits` | `list_commits` | `owner`, `repo` |
+| `gh api repos/.../commits/SHA` | `get_commit` | `owner`, `repo`, `sha` |
+| `gh issue view N` | `issue_read` | `method: "get"`, `issue_number: N` |
+| `gh api search/code?q=...` | `search_code` | `query: "..."` |
+
+### Steering note
+
+Use whichever tool access you have. The review quality depends on the data gathered, not the tool used to gather it. If both are available, MCP tools are slightly preferred because they avoid shell escaping issues and work in sandboxed environments.

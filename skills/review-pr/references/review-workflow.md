@@ -6,6 +6,23 @@ This is the primary reference for `SKILL.md`. Follow phases in order; do not ski
 > **Prerequisites:** You need `gh` (GitHub CLI) authenticated. Run `gh auth status` to confirm.
 > If the repository is cloned locally, many commands can be replaced with faster local equivalents noted throughout.
 
+### Navigation — SKILL.md phase mapping
+
+SKILL.md defines 8 phases; this file covers phases 2-8 as its internal phases 1-7. Use this table to navigate:
+
+| SKILL.md phase | This file's section |
+|---|---|
+| Phase 1 — Triage | Handled in SKILL.md directly (not in this file) |
+| Phase 2 — Gather context | Phase 1 — Gather Context |
+| Phase 3 — Scope the diff | Phase 2 — Scope and Cluster |
+| Phase 4 — Read existing review state | Phase 3 — Read Existing Review State |
+| Phase 5 — Validate goals | Phase 4 — Goal Validation |
+| Phase 6 — Review by cluster | Phase 5 — Systematic Review by Cluster |
+| Phase 7 — Cross-cutting sweep | Phase 6 — Cross-cutting Analysis |
+| Phase 8 — Synthesize and output | Phase 7 — Synthesize and Output |
+
+> The offset is intentional: SKILL.md Phase 1 (Triage) has no counterpart here.
+
 ---
 
 ## Phase 1 — Gather Context

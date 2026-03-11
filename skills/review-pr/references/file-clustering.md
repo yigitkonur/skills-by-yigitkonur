@@ -41,13 +41,14 @@ Match files to clusters using these rules, evaluated in order. If a file matches
 | **Infrastructure** | `Dockerfile*`, `docker-compose*`, `.github/**`, `**/ci/**`, `**/deploy/**`, `*.yml`/`*.yaml` (CI/CD), `terraform/**`, `k8s/**`, `helm/**` | 6 |
 | **Configuration** | `*.config.*`, `*.env*`, `package.json`, `tsconfig*`, `*.toml`, `pyproject.toml`, `Cargo.toml`, `go.mod` | 7 |
 | **Documentation** | `*.md`, `**/docs/**`, `CHANGELOG*`, `LICENSE*`, `*.txt` (documentation) | 8 |
+| **Types/Interfaces** | `**/types/**`, `**/interfaces/**`, `**/*.d.ts`, `**/schemas/**`, files with primarily type exports | Paired with consuming cluster |
 | **Tests** | `**/__tests__/**`, `**/test/**`, `**/tests/**`, `**/spec/**`, `*_test.*`, `*.test.*`, `*.spec.*`, `test_*.*` | Paired with source |
 
 Note on priority: the number indicates review order, not pattern-matching precedence. A file in `src/auth/middleware.ts` matches Security/Auth (priority 2) even though it could loosely match the middleware pattern. The most specific directory match wins.
 
 ### Step 3: Pair tests with source clusters
 
-Tests are not their own review silo. They should be reviewed alongside the code they validate. For each test file:
+Tests are not their own review silo. The same applies to type definition files — pair types.ts, *.d.ts, and schema files with the cluster that imports those types. They should be reviewed alongside the code they validate. For each test file:
 
 1. **Strip the test indicator** from the filename to get the implied source name:
    - `user.test.ts` → `user.ts`

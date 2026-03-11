@@ -24,6 +24,7 @@ After reviewing all clusters individually, run through this matrix. For each row
 | Shared utility function | All callers | Changed behavior breaks assumptions |
 | Configuration schema | Config loading, validation, defaults | App starts with invalid config |
 | Event/message format | All subscribers/consumers | Subscribers crash on unexpected shape |
+| Deprecated accessor/method | All call sites consuming the old API | Deprecation warnings cascade at runtime; callers silently use stale data if accessor semantics changed |
 
 ---
 
