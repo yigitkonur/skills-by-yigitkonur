@@ -1,290 +1,136 @@
 ---
 name: init-devin-review
-description: Use skill if you are setting up Devin Bug Catcher review behavior with REVIEW.md, AGENTS.md, or repo-specific pull request review instructions.
+description: Use skill if you are creating or refining REVIEW.md, AGENTS.md, or repo-scoped Devin Bug Catcher review instructions.
 ---
 
 # Init Devin Review
 
-Generate optimal `REVIEW.md` and optionally `AGENTS.md` files by analyzing the actual repository — its structure, tech stack, patterns, documentation, and team conventions — then producing tailored review instruction files that make Devin's Bug Catcher catch real issues.
+Generate Devin review configuration from repository evidence. `REVIEW.md` controls what Bug Catcher flags in diffs. `AGENTS.md` controls how Devin should behave while working in the repo. Default to the smallest configuration that meaningfully improves review quality.
 
-## Decision tree
+## Use this skill when
 
-```
-What does the user need?
-│
-├── First-time setup
-│   ├── Install GitHub App & enroll ──────────► references/setup/getting-started.md
-│   ├── Understand REVIEW.md format ──────────► references/review-md/format-and-directives.md
-│   └── Enable auto-review / auto-fix ────────► references/setup/getting-started.md
-│
-├── Write REVIEW.md
-│   ├── Format spec & section order ──────────► references/review-md/format-and-directives.md
-│   ├── Security scanning rules ──────────────► references/patterns/common-configurations.md
-│   ├── Performance check patterns ───────────► references/patterns/common-configurations.md
-│   ├── Framework-specific conventions ───────► references/patterns/common-configurations.md
-│   ├── Monorepo scoping ─────────────────────► references/review-md/format-and-directives.md
-│   └── Full stack-specific examples ─────────► references/scenarios.md
-│
-├── Write AGENTS.md
-│   ├── Format & section reference ───────────► references/agents-md/configuration.md
-│   ├── AGENTS.md vs REVIEW.md split ─────────► references/agents-md/configuration.md
-│   └── Framework-specific examples ──────────► references/agents-md/configuration.md
-│
-├── Customize review behavior
-│   ├── Severity tuning & phrasing ───────────► references/customization/rules-and-exclusions.md
-│   ├── File exclusions & ignore patterns ────► references/customization/rules-and-exclusions.md
-│   ├── Custom review rule file paths ────────► references/customization/rules-and-exclusions.md
-│   ├── Auto-fix configuration ───────────────► references/customization/rules-and-exclusions.md
-│   └── Reducing noise / improving accuracy ──► references/customization/rules-and-exclusions.md
-│
-├── Troubleshoot
-│   ├── Reviews not triggering ───────────────► references/troubleshooting/common-issues.md
-│   ├── Too many findings (noisy) ────────────► references/troubleshooting/common-issues.md
-│   ├── Missing real bugs ────────────────────► references/troubleshooting/common-issues.md
-│   ├── Auto-fix not working ─────────────────► references/troubleshooting/common-issues.md
-│   ├── CLI issues ───────────────────────────► references/troubleshooting/common-issues.md
-│   └── Monorepo scoping issues ──────────────► references/troubleshooting/common-issues.md
-│
-└── Understand the system
-    ├── Bug Catcher classification ────────────► references/review-spec.md
-    ├── All instruction files Devin reads ─────► references/review-spec.md
-    ├── Auto-review triggers & events ─────────► references/review-spec.md
-    └── Permissions & enrollment ──────────────► references/setup/getting-started.md
-```
+- setting up Devin Bug Catcher for a repository
+- fixing noisy or weak `REVIEW.md` guidance
+- deciding whether the repo needs only `REVIEW.md` or both `REVIEW.md` and `AGENTS.md`
+- scoping review rules across packages or services in a monorepo
 
-## What Devin Review is
+## Core working rules
 
-Devin Review is an AI code review platform that hooks into GitHub PRs. It:
+- Start with the repository, not the scenario library.
+- Inspect existing instruction files before writing anything: `REVIEW.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.cursorrules`, `.windsurfrules`, `*.rules`, `*.mdc`.
+- Reuse the repo's real paths, libraries, commands, docs, and pain points. Never copy reference text verbatim.
+- `REVIEW.md` can live at the root or in scoped subdirectories. `AGENTS.md` should stay root-only.
+- Keep `REVIEW.md` focused on reviewable diff issues. Put coding workflow, architecture, and task-execution behavior in `AGENTS.md` only when needed.
+- Prefer one strong root `REVIEW.md` over many weak files. Add scoped `REVIEW.md` files only where review concerns truly diverge.
+- Do not encode formatter, linter, or CI rules unless Devin adds value beyond existing automation.
 
-1. **Reads instruction files** in the repo (`REVIEW.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.cursorrules`, `.windsurfrules`, `*.rules`, `*.mdc`)
-2. **Analyzes diffs** with the Bug Catcher, classifying findings as **Bugs** (severe/non-severe) or **Flags** (investigate/informational)
-3. **Posts reviews** with smart diff organization, copy/move detection, and inline comments synced to GitHub
-4. **Supports auto-review** on PR open, push, and ready-for-review events
-5. **Offers auto-fix** that proposes code changes alongside bug findings (requires human approval)
+## Required workflow
 
-The critical insight: `REVIEW.md` is the primary mechanism for customizing what Devin's Bug Catcher looks for. Well-written review guidelines make the difference between noise and catching real bugs. Devin reads `REVIEW.md` at any directory level (`**/REVIEW.md`), so you can scope guidelines to subdirectories in monorepos.
+### 1. Scan the repo
 
-## Quick start
+Collect only the evidence needed to write grounded rules:
 
-Minimal `REVIEW.md` for a TypeScript project — create this at repo root:
+- structure: single-service repo or monorepo; top-level apps, packages, or services
+- stack: languages, frameworks, ORM or database layer, transport/runtime, test tooling
+- existing instructions: Devin, Claude, editor, and project guidance files
+- contracts and docs: OpenAPI, Prisma schema, ADRs, architecture docs, security docs
+- enforcement already present: ESLint, Prettier, CI, pre-commit, clippy, mypy, etc.
+- recurring risk areas: auth, billing, IPC, migrations, permissions, secrets, data integrity, generated code
 
-```markdown
-# Review Guidelines
+### 2. Choose the file plan
 
-## Critical Areas
-- All changes to `src/auth/` must be reviewed for security implications.
-- Database migration files should be checked for backward compatibility.
+| Situation | Output |
+| --- | --- |
+| Single service or one shared review model | Root `REVIEW.md` |
+| Monorepo with cross-cutting rules plus package-specific risks | Root `REVIEW.md` + scoped `REVIEW.md` only in divergent directories |
+| User asks for Devin coding or task behavior too | Root `REVIEW.md` + root `AGENTS.md` |
+| Existing `AGENTS.md` or `CLAUDE.md` already covers coding behavior | Usually `REVIEW.md` only; extend or align instead of duplicating |
 
-## Security
-- Never interpolate user input into SQL queries. Use parameterized queries.
-- API keys and secrets must never appear in source code.
-- All API routes must verify authentication via middleware.
+Default to `REVIEW.md` only unless the request or repo evidence clearly calls for `AGENTS.md`.
 
-## Conventions
-- API endpoints must validate request bodies using Zod schemas.
-- All public functions require explicit TypeScript return types.
-- Use the structured logger — never `console.log` in production.
+### 3. Split concerns correctly
 
-## Ignore
-- Auto-generated files in `src/generated/` do not need review.
-- Lock files can be skipped unless dependencies changed.
-- Build output in `dist/` should never be committed.
-```
+| Concern | `REVIEW.md` | `AGENTS.md` |
+| --- | --- | --- |
+| What Bug Catcher should flag in diffs | ✅ | ❌ |
+| What files or changes to ignore | ✅ | ❌ |
+| Coding standards, architecture, workflow, dependency choices | ❌ | ✅ |
+| Test, run, or commit expectations for Devin | ❌ | ✅ |
 
-Three ways to verify it works:
+Rule of thumb: if the statement is about **reviewing a diff**, it belongs in `REVIEW.md`. If it is about **how Devin or contributors should work**, it belongs in `AGENTS.md`.
 
-1. **Dashboard**: Open `https://app.devin.ai/review` and check your PR
-2. **URL swap**: Replace `github.com` with `devinreview.com` in any PR URL
-3. **CLI**: `npx devin-review https://github.com/owner/repo/pull/123`
+### 4. Draft from evidence
 
-## Workflow
+When writing `REVIEW.md`:
 
-Follow these four phases in order.
+1. Put high-signal sections near the top. Preferred order: `Critical Areas` → `Security` → `Conventions` → `Performance` → `Patterns` → `Ignore` → `Testing`.
+2. Reference real repo details in every important section: paths, middleware, libraries, commands, docs, or contracts.
+3. Use severity intentionally:
+   - severe bug language: `must never`, `always required`, `prohibited`
+   - important but not always severe: `use X instead of Y`, `do not`
+   - lower-priority guidance: `prefer`, `consider`, `watch for`
+4. Include Good/Bad examples only for patterns the repo actually uses.
+5. Add an `Ignore` section so generated files, lockfiles, build output, snapshots, and similar noise do not consume review bandwidth.
 
-### Phase 1: Explore the repository
+When writing `AGENTS.md`:
 
-Before writing anything, map the territory. Use tools to answer:
+- keep it root-scoped
+- focus on architecture, workflow, dependencies, file organization, testing, and communication expectations
+- do not restate bug-finding rules that already belong in `REVIEW.md`
 
-1. **Structure** — Monorepo or single-service? What are the top-level directories?
-   ```
-   Run: ls -la at root, look for packages/, apps/, services/, src/
-   ```
-2. **Tech stack** — Languages, frameworks, ORMs, testing tools?
-   ```
-   Check: package.json, requirements.txt, go.mod, Cargo.toml, pyproject.toml
-   Look at: tsconfig.json, .eslintrc, prettier config, Dockerfile
-   ```
-3. **Existing instruction files** — Does the repo already have REVIEW.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md, .cursorrules?
-   ```
-   Search for: REVIEW.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md, .cursorrules, .windsurfrules
-   If they exist, read them — you'll extend rather than replace
-   ```
-4. **Documentation** — What context files exist?
-   ```
-   Search for: docs/, architecture.md, ADRs, openapi/, swagger/, prisma/schema.prisma
-   ```
-5. **Existing linting & CI** — What does the toolchain already catch?
-   ```
-   Check: .eslintrc, .prettierrc, CI configs, pre-commit hooks
-   Don't duplicate what linters already enforce
-   ```
-6. **Pain points** — Look at recent PRs, issues, and git history for patterns
-   ```
-   Check: common bug patterns, frequently reverted commits, security incidents
-   ```
+## Do this, not that
 
-### Phase 2: Decide file strategy
+| Do | Don't |
+| --- | --- |
+| Extend or align with existing instruction files | Overwrite or contradict them blindly |
+| Reference actual paths and libraries like `src/auth/`, `openapi.yaml`, `portable-pty`, `rusqlite`, `NextAuth`, or `select_related()` | Write generic advice like "validate inputs" or "be secure" |
+| Use scoped `REVIEW.md` only for real package or service differences | Copy the same root rules into every subdirectory |
+| Remove rules already enforced by linters, formatters, or CI | Turn `REVIEW.md` into a duplicate style guide |
+| Keep `REVIEW.md` compact, usually 100-300 lines and under 500 max | Cram every possible rule into one file |
+| Use scenario and pattern references as raw material | Paste scenario text verbatim |
 
-**Which files to generate:**
+## Validation checklist
 
-| Situation | Files |
-|---|---|
-| Single-service repo | Root `REVIEW.md` |
-| Monorepo with different review needs per package | Root `REVIEW.md` + scoped `REVIEW.md` in subdirectories |
-| Team using Devin for task execution too | Root `REVIEW.md` + `AGENTS.md` |
-| Repo already has CLAUDE.md or .cursorrules | Root `REVIEW.md` (complement, don't duplicate existing files) |
+Before returning any configuration, verify:
 
-**REVIEW.md vs AGENTS.md:**
+- the front-loaded sections match the repo's highest-risk areas
+- rules are specific enough to test against a diff
+- no obvious overlap with ESLint, Prettier, CI, clippy, mypy, or similar tooling
+- ignore patterns match actual generated and build files in the repo
+- monorepo scoped files add new package-specific guidance instead of duplicating root rules
+- `AGENTS.md` is only included when agent-behavior guidance is truly needed
+- no contradictions with `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or editor rule files
+- `REVIEW.md` stays lean enough for Bug Catcher to focus
 
-- `REVIEW.md` — Review-specific guidelines: what to check, what to flag, what to ignore. Read by Bug Catcher during PR analysis.
-- `AGENTS.md` — Agent behavior instructions: coding style, architecture decisions, workflow patterns. Read by Devin during task execution (not just reviews).
+## Output requirements
 
-If the user only mentions review/PR setup, generate `REVIEW.md` only. If they mention Devin task execution or agent behavior, also generate `AGENTS.md`.
+When asked to generate files, return:
 
-### Phase 3: Write the files
+1. a short file plan or tree
+2. each file as a complete markdown block
+3. brief notes tying major sections to repository evidence
+4. a simple verification path, such as a test PR, `devinreview.com` URL swap, or `npx devin-review`
 
-Structure `REVIEW.md` using this section order (Bug Catcher weights top content higher):
+## Recovery loops
 
-1. **Critical Areas** — path-specific areas needing extra scrutiny with reasoning
-2. **Security** — rules flagged as severe bugs; use absolute language ("must never", "always required")
-3. **Conventions** — specific, measurable coding standards; reference actual paths/libraries
-4. **Performance** — anti-patterns to flag; describe the problem and the correct alternative
-5. **Patterns** — Good/Bad code examples in fenced blocks for pattern matching
-6. **Ignore** — files to skip (generated code, lock files, build output)
-7. **Testing** — test requirements and conventions
+- **Too much noise:** shorten the file, add or expand `Ignore`, delete vague rules, and remove rules already enforced elsewhere. See `references/customization/rules-and-exclusions.md` and `references/troubleshooting/common-issues.md`.
+- **Missing real bugs:** move critical rules higher, add path-specific critical areas, tighten phrasing, and add repo-accurate examples. See `references/review-md/format-and-directives.md` and `references/troubleshooting/common-issues.md`.
+- **Monorepo confusion:** keep root rules cross-cutting; put only package-specific risks in scoped files. See `references/patterns/common-configurations.md`.
+- **`REVIEW.md` vs `AGENTS.md` overlap:** move diff-catching rules back to `REVIEW.md`; keep coding workflow in `AGENTS.md`. See `references/agents-md/configuration.md`.
+- **Need a starting pattern for a known stack:** use the closest scenario as inspiration, then rewrite it against the repo. `references/scenarios.md` covers TypeScript backends, Next.js sites and dashboards, Django APIs, Tauri apps, MCP servers, Python `mcp-use`, and monorepos.
 
-For detailed format specification, see `references/review-md/format-and-directives.md`. For stack-specific examples, see `references/scenarios.md`. For AGENTS.md format, see `references/agents-md/configuration.md`.
+## Reference routing
 
-### Phase 4: Validate and output
-
-**Before outputting, verify:**
-
-- [ ] `REVIEW.md` is under 500 lines (ideally 100-300)
-- [ ] No duplicate rules that existing linters already catch
-- [ ] Rules are specific and measurable, not vague platitudes
-- [ ] Critical/security sections are near the top
-- [ ] Code examples use the repo's actual language and framework patterns
-- [ ] Ignore patterns match the repo's actual generated/build directories
-- [ ] If CLAUDE.md or .cursorrules exist, REVIEW.md doesn't repeat their content
-- [ ] Monorepo subdirectory REVIEW.md files don't repeat root-level rules
-
-**Output format:**
-
-For every configuration you produce, include:
-
-1. **File tree** showing exactly which files go where and what each is for
-2. **Each file** as a complete markdown code block
-3. **Reasoning annotations** after each file explaining WHY each major section was included, referencing specific repo context
-4. **Verification step** — how to test the config works (open a test PR, use the URL swap `devinreview.com`, or run `npx devin-review`)
-
-## Common pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-| REVIEW.md over 500 lines | Keep under 300 lines; split into scoped files for monorepos |
-| Duplicating linter rules | Check `.eslintrc`, CI configs first; only add rules linters can't catch |
-| Vague rules ("write clean code") | Every rule must be specific enough to test against a diff |
-| All rules at same severity | Vary phrasing: "must never" (severe) vs "consider" (investigate) |
-| Missing Ignore section | Always add one — generated files, lock files, build output create noise |
-| Copying scenario examples verbatim | Adapt every rule to reference real repo paths and libraries |
-| Deep header nesting (H4+) | Stick to H2/H3 with flat bullet lists — deep nesting reduces parsing accuracy |
-| Repeating root rules in subdirectory REVIEW.md | Subdirectory files complement root — don't duplicate |
-| Generic security rules | Reference specific attack vectors: "to prevent XSS", "to avoid SQL injection" |
-| REVIEW.md and AGENTS.md overlap | Review criteria → REVIEW.md; coding behavior → AGENTS.md |
-| No code examples for anti-patterns | Add Good/Bad pattern blocks — the Bug Catcher uses them for matching |
-| Ignoring existing instruction files | Check for CLAUDE.md, .cursorrules, CONTRIBUTING.md first — complement them |
-
-## Minimal reading sets
-
-### "I need to set up Devin Review from scratch"
-
-- `references/setup/getting-started.md`
-- `references/review-md/format-and-directives.md`
-- `references/scenarios.md`
-
-### "I need to write a REVIEW.md for my stack"
-
-- `references/review-md/format-and-directives.md`
-- `references/patterns/common-configurations.md`
-- `references/scenarios.md`
-
-### "I need both REVIEW.md and AGENTS.md"
-
-- `references/review-md/format-and-directives.md`
-- `references/agents-md/configuration.md`
-- `references/patterns/common-configurations.md`
-
-### "I need to reduce noisy reviews"
-
-- `references/customization/rules-and-exclusions.md`
-- `references/troubleshooting/common-issues.md`
-
-### "I need to configure a monorepo"
-
-- `references/review-md/format-and-directives.md`
-- `references/patterns/common-configurations.md`
-- `references/troubleshooting/common-issues.md`
-
-### "I need to understand how Devin Review works"
-
-- `references/review-spec.md`
-- `references/setup/getting-started.md`
-
-### "I need to troubleshoot review issues"
-
-- `references/troubleshooting/common-issues.md`
-- `references/customization/rules-and-exclusions.md`
-- `references/setup/getting-started.md`
-
-## What makes a good REVIEW.md
-
-Six principles that determine whether the Bug Catcher catches real bugs or generates noise:
-
-1. **Specific over vague** — "All API endpoints must validate request body with Zod" beats "validate inputs"
-2. **Actionable** — The developer reading a flag should know exactly what to fix
-3. **Prioritized** — Lead with critical areas (security, auth, data integrity) so the Bug Catcher weighs them higher
-4. **Code examples help** — Good/bad patterns in fenced code blocks let the Bug Catcher match against actual anti-patterns
-5. **Keep it under 300 lines** — Overly verbose files dilute signal and slow AI parsing; use monorepo scoping for large repos
-6. **Flat structure** — Use H2/H3 headers and bullet lists; deep nesting reduces parsing accuracy
-
-## Reference files
-
-Read these when you need detailed specifications or examples:
-
-| Reference | What it covers | When to read |
-|-----------|---------------|--------------|
-| `references/setup/getting-started.md` | GitHub App install, enrollment, auto-review/fix config, CLI, permissions | First-time setup |
-| `references/review-md/format-and-directives.md` | REVIEW.md format spec, sections, weighting, monorepo scoping, phrasing guide | Writing any REVIEW.md |
-| `references/agents-md/configuration.md` | AGENTS.md format, sections, REVIEW.md vs AGENTS.md split, framework examples | Writing AGENTS.md |
-| `references/patterns/common-configurations.md` | Security, performance, framework-specific patterns (Next.js, React, Django, Go, Rust) | Building rule sets |
-| `references/customization/rules-and-exclusions.md` | Severity tuning, file exclusions, auto-fix config, noise reduction, accuracy improvement | Tuning review quality |
-| `references/troubleshooting/common-issues.md` | Reviews not triggering, noisy reviews, missing bugs, CLI issues, monorepo problems | Debugging issues |
-| `references/review-spec.md` | Bug Catcher classification, instruction files list, auto-review triggers, permissions | Understanding the system |
-| `references/scenarios.md` | Complete REVIEW.md examples for TypeScript, Next.js, Django, Tauri, MCP, monorepo | Stack-specific inspiration |
-
-## Key gotchas
-
-- `REVIEW.md` is read from **any directory level** (`**/REVIEW.md`) — use this for monorepo scoping
-- Devin also reads `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.cursorrules`, `.windsurfrules`, `*.rules`, `*.mdc` — check for conflicts
-- Auto-review triggers on PR open, push to PR, and when a draft is marked ready
-- The Bug Catcher classifies findings as: **Bugs** (severe, non-severe) and **Flags** (investigate, informational)
-- Keep REVIEW.md focused on review concerns — put coding/architecture standards in AGENTS.md or CLAUDE.md instead
-- Custom review rule file paths can be configured in Settings > Review, but `**/REVIEW.md` is always read by default
-- Auto-Fix requires human approval — Devin never merges fixes automatically
-- Content near the top of REVIEW.md gets higher weighting — put critical/security rules first
-- Phrasing matters: "must never" → severe bug; "consider" → investigate flag
-- Draft PRs are skipped — auto-review only triggers when marked ready
+| Need | Read |
+| --- | --- |
+| section order, phrasing, weighting, monorepo `REVIEW.md` behavior | `references/review-md/format-and-directives.md` |
+| `AGENTS.md` structure and file-split decisions | `references/agents-md/configuration.md` |
+| noise reduction, exclusions, severity tuning | `references/customization/rules-and-exclusions.md` |
+| reusable security, performance, framework, and monorepo patterns | `references/patterns/common-configurations.md` |
+| full stack examples to adapt, not copy | `references/scenarios.md` |
+| noisy reviews, missed bugs, and triggering/debug issues | `references/troubleshooting/common-issues.md` |
+| install, enrollment, and system behavior | `references/setup/getting-started.md`, `references/review-spec.md` |
 
 ## Final reminder
 
-This skill is split into focused reference files organized by domain. Do not load everything at once. Start with the smallest relevant reading set above, then expand into neighboring references only when the task actually requires them. Every reference file in `references/` is explicitly routed from the decision tree above.
+The best Devin review config is not the longest one. It is the smallest repo-grounded set of instructions that makes Bug Catcher focus on the bugs your team actually cares about.

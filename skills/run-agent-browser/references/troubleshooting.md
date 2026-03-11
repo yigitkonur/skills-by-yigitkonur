@@ -135,6 +135,21 @@ agent-browser --executable-path $(node -e "console.log(require('@sparticuz/chrom
 agent-browser --executable-path /usr/bin/google-chrome open https://example.com
 ```
 
+## Debug Logging
+
+When commands behave unexpectedly, enable debug output:
+
+```bash
+# Via flag
+agent-browser --debug open https://example.com
+
+# Via environment variable
+export AGENT_BROWSER_DEBUG=1
+agent-browser open https://example.com
+```
+
+Debug output goes to stderr. Combine with `--json` for machine-parseable stdout + human debug on stderr.
+
 ## Common Environment Variables
 
 | Variable | Purpose |
@@ -147,3 +162,19 @@ agent-browser --executable-path /usr/bin/google-chrome open https://example.com
 | `AGENT_BROWSER_ACTION_POLICY` | Path to action policy JSON |
 | `AGENT_BROWSER_EXTENSIONS` | Comma-separated extension paths |
 | `AGENT_BROWSER_PROVIDER` | Cloud browser provider name |
+| `AGENT_BROWSER_SESSION` | Default session name |
+| `AGENT_BROWSER_SESSION_NAME` | Auto-save/restore session name |
+| `AGENT_BROWSER_STATE` | Storage state JSON path |
+| `AGENT_BROWSER_NATIVE` | Use native Rust daemon (0/1) |
+| `AGENT_BROWSER_ENGINE` | Browser engine (chrome, lightpanda) |
+| `AGENT_BROWSER_COLOR_SCHEME` | Color scheme (dark/light/no-preference) |
+| `AGENT_BROWSER_PROFILE` | Persistent browser profile directory |
+| `AGENT_BROWSER_CONFIG` | Config file path |
+| `AGENT_BROWSER_USER_AGENT` | Custom user agent string |
+| `AGENT_BROWSER_ARGS` | Extra Chromium launch flags |
+| `AGENT_BROWSER_DEBUG` | Enable debug logging (0/1) |
+| `AGENT_BROWSER_PROXY_BYPASS` | Hosts to bypass proxy |
+| `AGENT_BROWSER_CONFIRM_ACTIONS` | Actions requiring confirmation |
+| `AGENT_BROWSER_CONFIRM_INTERACTIVE` | Interactive cmds requiring confirmation |
+| `AGENT_BROWSER_ENCRYPTION_KEY` | Encryption key for saved state |
+| `AGENT_BROWSER_STATE_EXPIRE_DAYS` | Auto-expire saved state after N days |

@@ -5,239 +5,103 @@ description: Use skill if you are converting saved HTML snapshots into buildable
 
 # Snapshot to Next.js
 
-Convert saved HTML pages — produced by browser "Save As", wget, HTTrack, SingleFile, or any offline capture tool — into pixel-perfect Next.js App Router projects with zero third-party dependencies. This is a forensic CSS parser: it reads every minified rule, decodes every CSS Module class name, resolves every custom property chain, and builds production-ready code from real extracted values. No approximations. No invented tokens.
+Convert saved HTML snapshots into grounded Next.js App Router builds. Treat the snapshot as source code, not inspiration: extract first, rebuild from extracted values, then prove the rebuilt page matches.
 
-## Decision tree
+## Use this skill when
 
-```
-What do you need?
-│
-├── Full conversion (HTML → Next.js)
-│   ├── Understand the 5-wave pipeline ──────► references/wave-pipeline.md
-│   ├── Input formats & auto-detection ──────► references/input-output-spec.md
-│   ├── Output structure (both trees) ───────► references/input-output-spec.md
-│   ├── Core principles & constraints ───────► references/principles-and-rules.md
-│   └── Request interpretation table ────────► references/input-output-spec.md
-│
-├── Wave 0 — Per-page exploration
-│   ├── Agent prompt & methodology ──────────► references/foundations-agent.md
-│   ├── Section identification rules ────────► references/principles-and-rules.md
-│   ├── CSS Module decoding ─────────────────► Key patterns (below)
-│   └── Pattern catalog ─────────────────────► references/website-patterns.md
-│
-├── Wave 1 — Design soul extraction
-│   ├── Agent prompt & methodology ──────────► references/sections-agent.md
-│   ├── Page-type grouping rules ────────────► references/wave-pipeline.md
-│   └── Quality gates ──────────────────────► references/quality-checklist.md
-│
-├── Wave 2 — Build brief manufacturing
-│   ├── Brief template & format ─────────────► references/section-template.md
-│   ├── Completeness requirements ───────────► references/wave-pipeline.md
-│   └── Quality gates ──────────────────────► references/quality-checklist.md
-│
-├── Wave 3 — Next.js scaffold & design system
-│   ├── Scaffold template & structure ───────► references/system-template.md
-│   ├── Foundation quality gate ─────────────► references/wave-pipeline.md
-│   ├── Output project structure ────────────► references/input-output-spec.md
-│   └── Quality gates ──────────────────────► references/quality-checklist.md
-│
-├── Wave 4 — Pixel-perfect page build
-│   ├── Agent spawning & acceptance ─────────► references/wave-pipeline.md
-│   └── Quality gates ──────────────────────► references/quality-checklist.md
-│
-├── CSS parsing & extraction
-│   ├── CSS Module decoding ─────────────────► Key patterns (below)
-│   ├── Minified CSS strategies ─────────────► references/foundations-agent.md
-│   ├── Token extraction ───────────────────► references/principles-and-rules.md
-│   └── Section identification ─────────────► references/principles-and-rules.md
-│
-└── Pattern identification
-    ├── Website anatomy patterns ────────────► references/website-patterns.md
-    └── Section-type mapping ───────────────► references/website-patterns.md
-```
+- Input is a saved snapshot: `.html` + companion `_files/` folders, SingleFile export, or an unpacked offline site capture.
+- The user wants to rebuild, recreate, convert, clone, scaffold, or extract a saved site into Next.js.
+- Fidelity matters more than speed or creative redesign.
 
-## Quick start
+## Do not use this skill when
 
-### Step 1: Detect input
+- The only source is a live URL, screenshot, PDF export, Figma design, or loose design idea.
+- The task is general Next.js UI coding with no offline snapshot to parse.
+- The goal is a redesign, simplification, or "same vibe" rewrite instead of faithful reconstruction.
 
-```bash
-for f in source-pages/*.html; do
-  base="${f%.html}"
-  if [ -d "${base}_files" ]; then
-    echo "SNAPSHOT: $f → $(ls ${base}_files/*.css 2>/dev/null | wc -l) CSS files"
-  else
-    echo "SINGLEFILE: $f ($(grep -c '<style' "$f") style blocks)"
-  fi
-done
-```
+## Start with these decisions
 
-| Signal | Mode | What happens |
-|--------|------|-------------|
-| `.html` + `_files/` dirs | Saved snapshot | Grep minified CSS, decode CSS Module names, extract from companion folders |
-| `.html` with `<style>` only | SingleFile export | Extract from inline `<style>` tags |
-| `package.json` + `src/` | Source repository | Fallback — read components directly |
+| Situation | Action |
+|---|---|
+| `.html` + `_files/` folders present | Primary mode. Extract from external CSS, JS, and assets. |
+| `.html` with inline `<style>` blocks but no `_files/` | SingleFile fallback. Extract from inline styles and document any reduced confidence. |
+| `package.json` + source repo but no saved snapshot | Fallback mode only. Read source directly, but keep the same grounding rules. |
+| Request says "extract", "document", "design system", or "tokens" | Stop at Waves 0–2 unless the user explicitly asks for a build. |
+| Request says "rebuild", "recreate", "convert", "clone", or "pixel-perfect" | Run Waves 0–4. |
+| Snapshot is very large or spans many page types | Group pages by type, finish each wave completely, then expand scope. |
+| Request is ambiguous | Default to extraction-first (Waves 0–2). Do not assume a full rebuild. |
 
-### Step 2: Run the pipeline
+Read `references/input-output-spec.md` for full input detection, output trees, and ambiguity handling.
 
-```
-Wave 0 ──► Wave 1 ──► Wave 2 ──► Wave 3 ──► Wave 4
-(explore)  (soul)     (briefs)   (scaffold)  (build)
- 1/page    1/group    1/page     1 total     1/page
- parallel  parallel   parallel   single      parallel
-```
+## Operating contract
 
-Each wave has a completion gate (`done.signal` files). No wave N+1 starts until ALL wave N signals exist.
+1. **Extract before build.** No Wave N+1 starts until all Wave N signals exist. Read `references/wave-pipeline.md`.
+2. **Parse, don't guess.** Every value must trace to snapshot CSS, HTML, or documented behavior. Read `references/principles-and-rules.md`.
+3. **Build from extracted values only.** `tokens.ts`, `tailwind.config.ts`, `globals.css`, and components must trace to Wave 0/1 extraction; mark incomplete values `UNVERIFIED` instead of substituting Tailwind defaults.
+4. **Self-host everything.** Fonts, images, icons, and other assets must end up local. No CDN fonts. No remote image URLs.
+5. **Write signals last.** `done.signal` and `foundation-ready.signal` are written only after verification passes.
+6. **If something cannot be grounded, mark it `UNVERIFIED`.** Honest gaps are allowed. Invented values are not.
 
-| User intent | Waves | Output |
-|------------|-------|--------|
-| "Extract the design" / "Document this site" | 0 → 1 → 2 | `.design-soul/` only |
-| "Rebuild" / "Recreate" / "Clone" / "Pixel-perfect" | 0 → 1 → 2 → 3 → 4 | `.design-soul/` + `nextjs-project/` |
-| "Just the tokens" / "Just the design system" | 0 → 1 | `wave0/` + `wave1/` only |
-| "Extract and scaffold" | 0 → 1 → 2 → 3 | `.design-soul/` + scaffold (no page builds) |
+## Do this / not that
 
-If intent is unclear, default to Waves 0–2 (extraction only), then ask.
+| Do this | Not that |
+|---|---|
+| Use CSS Module prefixes, semantic tags, and real selector boundaries to identify sections | Infer sections from generic `<div>` nesting alone |
+| Search across all `_files/*.css` together and deduplicate shared files | Read minified CSS by eye or treat each hashed CSS file as an isolated system |
+| Carry exact source values through Wave 0 → Wave 4 | Round, normalize, or replace values because they look "close enough" |
+| Download remote assets during Wave 0 and map them to local paths | Leave Google Fonts or CDN assets in the final build |
+| Implement only documented hover, focus, animation, and responsive behavior | Invent motion, states, or breakpoint behavior not found in source |
+| Keep the build dependency set limited to the scaffold rules in `references/system-template.md` | Add UI, icon, animation, or font packages for convenience |
 
-### Step 3: Assign agents per wave
+## Required sequence
 
-- **Wave 0 agents** MUST read `references/foundations-agent.md` before starting
-- **Wave 1 agents** MUST read `references/sections-agent.md` before starting
-- **Wave 2 agents** MUST read `references/section-template.md` before writing briefs
-- **Wave 3 orchestrator** MUST read `references/system-template.md` before scaffolding
-- **All agents** SHOULD consult `references/website-patterns.md` for section-type identification
-- **All agents** SHOULD consult `references/quality-checklist.md` before writing `done.signal`
+| Phase | Goal | Required reference | Primary outputs | Gate |
+|---|---|---|---|---|
+| Wave 0 | Per-page exploration and deobfuscation | `references/foundations-agent.md` | `wave0/{page}/exploration.md`, `deobfuscated.css`, `behavior-spec.md`, `assets/` | `wave0/{page}/done.signal` |
+| Wave 1 | Unified design soul by page type | `references/sections-agent.md` | `wave1/{group}/design-soul.md`, `token-values.json`, `responsive-map.md` | `wave1/{group}/done.signal` |
+| Wave 2 | Self-contained page build briefs | `references/section-template.md` | `wave2/{page}/agent-brief.md` | `wave2/{page}/done.signal` |
+| Wave 3 | Next.js scaffold and design-system foundation | `references/system-template.md` | `nextjs-project/`, `wave3/foundation-brief.md`, `traceability-matrix.md` | `wave3/foundation-ready.signal` |
+| Wave 4 | Page builds and fidelity checks | `references/wave-pipeline.md` + `references/quality-checklist.md` | route files, page components, copied public assets | final verification passes |
 
-## Key patterns
+If the user only asked for extraction or documentation, stop after the appropriate wave instead of pushing to build.
 
-### CSS Module decoding
+## Asset and style handling rules
 
-The naming convention `ComponentName_propertyName__hashCode` is the primary section identifier:
+- Extract CSS custom properties, `@font-face`, `@media`, `@keyframes`, and transition values before touching the build.
+- Treat Wave 1 `token-values.json` as the source of truth for tokens; Wave 3 only re-expresses those exact values in `tokens.ts`, Tailwind config, and `globals.css`.
+- Copy fonts to `public/assets/fonts/`, images to `public/assets/images/...`, and icons to `public/assets/icons/` or inline them only when the source uses inline SVG.
+- Preserve exact typography, spacing, gradients, shadows, radii, z-index, and breakpoint values.
+- Preserve responsive behavior from real source media queries; do not substitute Tailwind defaults if the snapshot uses different breakpoints.
+- Preserve extracted interaction behavior, but only if it can be grounded from CSS or documented JS behavior specs.
+- For inline `style=""` attributes or JS-driven states, extract the base CSS and the trigger separately; do not freeze computed runtime values into guessed static styles.
 
-```
-Header_root__x8J2p          → Component: Header,    Element: root
-Plans_card__SCfoV            → Component: Plans,     Element: card
-CTA_sectionPrefooter__kW_wF → Component: CTA,       Element: sectionPrefooter
-CustomerMarquee_logos__abc   → Component: CustomerMarquee, Element: logos
-```
+## Recovery rules
 
-Extract the prefix map from any page:
+- **Missing `_files/` folder:** treat as SingleFile mode if inline CSS exists; otherwise full reconstruction may be blocked.
+- **Missing assets or remote-only assets:** download them during extraction and record original → local path mapping.
+- **Missing CSS or JS evidence for a value or behavior:** mark it `UNVERIFIED` and avoid inventing the implementation.
+- **Incomplete snapshot:** continue extraction where possible, but do not claim a pixel-perfect rebuild if core layout, type, or asset data is missing.
+- **Shared headers, footers, or components across pages:** deduplicate them intentionally; note page-specific overrides rather than re-documenting the whole component each time.
 
-```bash
-grep -oE '[A-Z][a-zA-Z]+_[a-zA-Z]+__[a-zA-Z0-9]+' page.html | sed 's/_[a-zA-Z]*__[a-zA-Z0-9]*$//' | sort -u
-```
+## Verification before claiming completion
 
-**Filter out utility prefixes** (`Flex_`, `Grid_`, `Container_`, `Spacer_`, `Text_`, `Icon_`) — these appear inside sections but don't define boundaries.
+- **After extraction (before Wave 3):** run the grounding test and cross-reference checks from `references/quality-checklist.md`.
+- **Before `foundation-ready.signal`:** verify extracted CSS custom properties and shared tokens are accounted for, allowed dependency set, self-hosted fonts/assets, traceability matrix, and clean TypeScript/build checks.
+- **Before final completion:** compare source vs build at 1280px, 768px, and 375px; confirm zero external network requests; run clean install/build verification.
+- If any verification fails, fix it before writing the completion signal or calling the build done.
 
-### The grounding rule
+## Reference map
 
-Every value must trace to one of these sources — no exceptions:
+| Need | Read |
+|---|---|
+| Input detection, output trees, ambiguous requests | `references/input-output-spec.md` |
+| Hard rules: grounding, section identification, zero invention | `references/principles-and-rules.md` |
+| Wave 0 extraction method | `references/foundations-agent.md` |
+| Wave 1 design-soul extraction | `references/sections-agent.md` |
+| Wave 2 build-brief format | `references/section-template.md` |
+| Wave 3 scaffold, token wiring, allowed deps | `references/system-template.md` |
+| Full wave orchestration and gates | `references/wave-pipeline.md` |
+| Acceptance criteria, fidelity tests, and failure modes | `references/quality-checklist.md` |
+| Section-type and anatomy heuristics | `references/website-patterns.md` |
 
-1. A CSS rule in `_files/*.css` — cite filename + selector
-2. A CSS custom property in `:root` or `[data-theme]` — cite filename + selector
-3. An inline `style=""` attribute — cite element + attribute
-4. A `<style>` block in HTML — cite block context
-5. A `@keyframes` or `@media` rule — cite filename + rule name
-
-If a value can't be found: mark it `UNVERIFIED — not found in snapshot CSS/HTML`. Never round, never assume, never invent. The downstream builder implements values **literally**.
-
-### Section identification priority
-
-1. **Semantic HTML tags** — `<header>`, `<section>`, `<footer>`, `<nav>` (most reliable)
-2. **CSS Module prefixes** — unique prefix = distinct visual section
-3. **Structure heuristics** (fallback) — background color changes, padding shifts, full-width dividers
-
-### Zero dependencies constraint
-
-`package.json` may ONLY contain: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@types/react`, `@types/node`, `postcss`, `autoprefixer`. No component libraries, no animation libraries, no icon packages, no CDN fonts. Everything built from scratch.
-
-### Output trees
-
-The pipeline produces two output trees — see `references/input-output-spec.md` for complete structures:
-
-1. **`.design-soul/`** — Intermediate extraction documentation (Waves 0–3)
-2. **`nextjs-project/`** — Buildable Next.js App Router project (Waves 3–4)
-
-## Common pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-| Trying to "read" minified CSS visually | Use `grep -oE` with regex. Never scroll through 100KB+ single-line blobs. |
-| Ignoring CSS custom properties | `--color-*`, `--font-*`, `--ease-*` ARE the design system. Extract them FIRST. |
-| Treating each CSS file independently | 12+ files are one system. Always grep across ALL `_files/*.css` simultaneously. |
-| Not decoding CSS Module names | `Plans_card__SCfoV` = "Plans component, card element". The prefix IS the section identifier. |
-| Documenting only inline styles | Inline `style=""` is the tip. The vast majority lives in external CSS matched by class names. |
-| Assuming section boundaries from `<div>` | Use semantic tags + CSS Module prefix transitions, not `<div>` nesting. |
-| Skipping shared section dedup | Document Header/Footer ONCE. Note page-specific variations as overrides. |
-| Not deduplicating CSS files | Same hashed file appears in multiple `_files/` folders. Without dedup, counts inflate 2×. |
-| Using Tailwind defaults instead of extracted values | Use ONLY values from the source snapshot in `tailwind.config.ts`. Never `bg-blue-500`. |
-| Adding component libraries | No `shadcn/ui`, Material UI, Chakra, Radix. The extracted spec IS the component library. |
-| Using Google Fonts CDN | Self-host ALL fonts. Download during Wave 0, load via `@font-face`. Zero CDN requests. |
-| Guessing mobile layout | Source CSS has explicit `@media` queries. Extract and implement those exact rules. |
-| Skipping animation extraction | Every `@keyframes`, `transition`, `IntersectionObserver` pattern is visual DNA. Extract all. |
-
-## Minimal reading sets
-
-### "I need to convert a saved HTML snapshot to Next.js"
-
-- `references/input-output-spec.md`
-- `references/wave-pipeline.md`
-- `references/principles-and-rules.md`
-- `references/foundations-agent.md`
-
-### "I need to extract the design system only (no build)"
-
-- `references/input-output-spec.md`
-- `references/foundations-agent.md`
-- `references/sections-agent.md`
-- `references/quality-checklist.md`
-
-### "I need to understand Wave 0 (per-page exploration)"
-
-- `references/foundations-agent.md`
-- `references/principles-and-rules.md`
-- `references/website-patterns.md`
-
-### "I need to write build briefs (Wave 2)"
-
-- `references/section-template.md`
-- `references/wave-pipeline.md`
-- `references/quality-checklist.md`
-
-### "I need to scaffold the Next.js project (Wave 3)"
-
-- `references/system-template.md`
-- `references/wave-pipeline.md`
-- `references/input-output-spec.md`
-
-### "I need to build pages pixel-perfect (Wave 4)"
-
-- `references/wave-pipeline.md`
-- `references/system-template.md`
-- `references/quality-checklist.md`
-
-### "I need the full quality checklist"
-
-- `references/quality-checklist.md`
-- `references/wave-pipeline.md`
-
-### "I need to identify website patterns and section types"
-
-- `references/website-patterns.md`
-- `references/principles-and-rules.md`
-
-## Reference index
-
-| File | Purpose |
-|------|---------|
-| `references/input-output-spec.md` | Input formats, auto-detection, output tree structures, request interpretation |
-| `references/wave-pipeline.md` | Wave 0–4 orchestration, agent spawning, gates, fleet rules |
-| `references/principles-and-rules.md` | 7 principles, grounding rule, CSS Module decoding, section identification |
-| `references/foundations-agent.md` | Wave 0 agent prompt — CSS parsing, token extraction, deobfuscation methodology |
-| `references/sections-agent.md` | Wave 1 agent prompt — unified design soul extraction across pages |
-| `references/section-template.md` | Wave 2 template — self-contained page build brief format |
-| `references/system-template.md` | Wave 3 template — Next.js scaffold structure, quality gate spec |
-| `references/website-patterns.md` | Pattern catalog — CSS Module prefix → section type mapping, website anatomy |
-| `references/quality-checklist.md` | Quality gates — extraction completeness, build verification, signal prerequisites |
-
-## Final reminder
-
-This skill is split into focused reference files organized by concern. Do not load everything at once. Start with the smallest relevant reading set above, then expand only when the task requires it. Every reference file is explicitly routed from the decision tree above. Agents that skip their assigned reference file will produce incomplete or incorrectly formatted output, breaking downstream waves.
+Read only the references needed for the current wave. Keep the top-level skill focused on decisions, sequencing, and guardrails; keep implementation detail in the reference files.
