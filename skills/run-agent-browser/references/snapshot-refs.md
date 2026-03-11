@@ -162,6 +162,128 @@ agent-browser snapshot @e9
 @e10 [radio] selected                    # Selected radio
 ```
 
+## snapshot -i Limitations
+
+`snapshot -i` filters out non-interactive elements to minimize token usage.
+
+### What snapshot -i shows
+
+| Element Type | Shown | Examples |
+|---|---|---|
+| Links (a) | Yes | Navigation links, clickable text |
+| Buttons (button) | Yes | Submit, toggle, action buttons |
+| Inputs (input) | Yes | Text fields, checkboxes, radios |
+| Textareas | Yes | Multi-line text inputs |
+| Selects (select) | Yes | Dropdown menus |
+| Headings (h1-h6) | No | Page titles, section headers |
+| Paragraphs (p) | No | Body text, descriptions |
+| Spans, divs (no role) | No | Labels, badges, status text |
+| Table cells (td) | No | Data cells without links |
+| Images (img) | No | Unless they have alt text |
+
+### Alternatives for data extraction
+
+```bash
+# Full accessibility tree (shows everything, but more tokens)
+agent-browser snapshot
+
+# Get specific text by CSS selector (must match exactly 1 element)
+agent-browser get text "h1"
+
+# Scoped snapshot (reduces noise on complex pages)
+agent-browser snapshot -i -s "#main-content"
+```
+
+For batch multi-element extraction, use `eval --stdin` with a heredoc. See `workflows.md` section 9.
+
+## Hidden UI Components
+
+Some page elements only appear in the DOM after a user action. They will NOT appear in `snapshot -i` until triggered.
+
+### Common hidden component patterns
+
+| Pattern | Trigger | What appears |
+|---|---|---|
+| Dropdown menu | Click toggle button | Menu items, options |
+| Modal dialog | Click button | Form fields, action buttons |
+| Accordion/collapse | Click header | Body content, nested elements |
+| Popover/tooltip | Hover or click trigger | Info text, action links |
+| Autocomplete | Type in search field | Suggestion list items |
+| Tab panel | Click tab header | Panel content |
+
+### Discovery workflow
+
+```bash
+# 1. Snapshot shows a button but no child options
+agent-browser snapshot -i
+# Shows: button "Language" [ref=e5] -- Likely a dropdown trigger
+
+# 2. Click the trigger
+agent-browser click @e5
+agent-browser wait 500
+
+# 3. Re-snapshot to see revealed elements
+agent-browser snapshot -i
+
+# 4. If clicking does not work, try hover or full snapshot
+agent-browser hover @e5
+agent-browser wait 500
+agent-browser snapshot -i
+```
+
+## JSON Output Schema
+
+When using `snapshot -i --json`, the output follows this schema:
+
+```json
+{
+  "success": true,
+  "data": {
+    "origin": "https://example.com",
+    "refs": {
+      "e1": { "name": "Submit", "role": "button" },
+      "e2": { "name": "Email", "role": "textbox" }
+    },
+    "snapshot": "- button Submit [ref=e1]..."
+  },
+  "error": null
+}
+```
+
+### Key paths for jq
+
+```bash
+# Get all refs
+agent-browser snapshot -i --json | jq '.data.refs'
+
+# Filter by role
+agent-browser snapshot -i --json | jq '.data.refs | to_entries[] | select(.value.role == "button")'
+
+# Get ref list with names
+agent-browser snapshot -i --json | jq '[.data.refs | to_entries[] | {ref: .key, name: .value.name, role: .value.role}]'
+```
+
+**Important:** The schema is `{success, data: {origin, refs, snapshot}, error}`. There is no `.elements[]` array -- use `.data.refs`. This is the canonical schema reference.
+
+## Agent Steering Notes
+
+### On content-heavy pages, scope your snapshot
+
+When `snapshot -i` returns 50+ elements, scope to reduce noise:
+
+```bash
+agent-browser snapshot -i -s "main"     # Just the main content
+agent-browser snapshot -i -s "form"     # Just the form
+```
+
+### Refs from different snapshots are incompatible
+
+Each `snapshot -i` generates fresh refs. Never mix refs from different snapshots.
+
+### The flat ref list does not show DOM hierarchy
+
+A link labeled "JavaScript" could be in the nav, sidebar, or content. Use scoped snapshots or `get attr @eN href` to disambiguate.
+
 ## Troubleshooting
 
 ### "Ref not found" Error
