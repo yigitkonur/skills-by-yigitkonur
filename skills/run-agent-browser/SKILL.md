@@ -901,4 +901,5 @@ Lightpanda does not support `--extension`, `--profile`, `--state`, or `--allow-f
 ./templates/capture-workflow.sh https://example.com ./output
 ./templates/ai-agent-workflow.sh https://example.com "explore page"
 ./templates/e2e-test-workflow.sh http://localhost:3000
+./templates/data-extraction.sh https://example.com/products ./output
 ```

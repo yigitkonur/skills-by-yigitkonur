@@ -105,7 +105,7 @@ EVALEOF
     HAS_NEXT=$(agent-browser eval --stdin <<'EVALEOF' 2>/dev/null || echo "false"
 (() => {
   const next = document.querySelector(
-    'a[rel="next"], .next a, .pagination .next, [aria-label="Next"], button:has(> .next-icon), a:contains("Next")'
+    'a[rel="next"], .next a, .pagination .next, [aria-label="Next"], button:has(> .next-icon)'
   );
   return next && !next.disabled && next.offsetParent !== null ? 'true' : 'false';
 })()
