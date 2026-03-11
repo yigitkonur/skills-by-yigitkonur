@@ -5,303 +5,220 @@ description: Use skill if you are building UI with daisyUI components, convertin
 
 # build-daisyui-mcp
 
-Build production-quality daisyUI 5 interfaces from natural language, Figma designs, screenshots, or existing code using two MCP tools.
+Use this skill as the operating layer for daisyUI 5 work with the `daisyui-blueprint` MCP tools. Keep `SKILL.md` lean: choose the correct workflow, fetch only the references you need, and keep bulky detail in `references/`.
 
-## Core rules — never violate
+## Use this skill for
 
-1. **Nested object syntax only** — `{"components": {"button": true}}` — never arrays, never string paths.
-2. **Semantic colors always** — `btn-primary`, not `bg-blue-500`. No `dark:` prefix on daisyUI colors.
-3. **Batch MCP calls** — one call with all needed snippets. Never one-component-per-call.
-4. **Fetch before guessing** — get the component reference to see valid class names and example keys before writing HTML.
-5. **CSS-only interactions** — drawers use checkbox toggle, modals use `<dialog>`, dropdowns use `<details>`, tabs use radio inputs. No JavaScript unless explicitly requested.
-6. **daisyUI v5 syntax** — `fieldset`/`fieldset-legend` (not `form-control`/`label-text`), `input` (not `input-bordered`), oklch colors.
+- Building or refactoring UI with daisyUI 5 + Tailwind v4
+- Converting a Figma frame or screenshot into daisyUI code
+- Choosing the right snippet category: `components`, `component-examples`, `layouts`, `templates`, or `themes`
+- Generating or adapting a custom daisyUI theme from brand colors, images, or existing UI
 
-## Two MCP tools
+## Do not use this skill for
 
-| Tool | Purpose | When to use |
-|------|---------|-------------|
-| `daisyui-blueprint-daisyUI-Snippets` | Retrieve component code, layouts, templates, themes | Every daisyUI task |
-| `daisyui-blueprint-Figma-to-daisyUI` | Extract Figma design structure | When user provides a Figma URL |
+- Pure Tailwind work with no daisyUI goal
+- UI libraries other than daisyUI
+- Generic design discussion that does not need daisyUI code, snippets, or themes
 
-Read `references/tool-api-reference.md` for complete parameter docs, output formats, and token budgets.
+## Non-negotiable rules
 
-## Decision tree — which workflow to use
+1. **Nested object syntax only** for `daisyui-blueprint-daisyUI-Snippets`. Arrays fail.
+2. **Fetch before guessing.** If you do not know a valid class or example key, fetch the component reference first.
+3. **Batch requests.** Get all needed snippets in one call; do not fetch one component at a time.
+4. **Use the right category.** `components` is reference data, not copy-paste HTML. `component-examples` is working markup. `themes` returns CSS, not HTML.
+5. **Start page work from `layouts` or `templates`** when possible. Do not assemble full pages from many isolated component guesses.
+6. **For Figma, always follow** `FETCH → ANALYZE → GET SNIPPETS → BUILD`. Never skip analysis.
+7. **Use semantic daisyUI colors** (`primary`, `secondary`, `accent`, `neutral`, `base-*`, `info`, `success`, `warning`, `error`) and `*-content` variants on themed surfaces.
+8. **Do not use `dark:` for daisyUI semantic colors.** Themes already adapt them.
+9. **Prefer CSS-only daisyUI interaction patterns** unless app-specific behavior truly requires custom JS:
+   - drawer → checkbox toggle
+   - modal → `<dialog>`
+   - dropdown → `<details>`
+   - tabs/steppers → daisyUI radio/tab patterns
+10. **Stay on daisyUI v5 syntax** (`fieldset`, `dock`, `tabs-lift`, `card-border`, no `input-bordered`, no `form-control`).
+11. **Load only the 1–3 references needed for the active task.** Do not dump the entire skill into context.
 
-```
-User request arrives →
-│
-├─ Contains a Figma URL?
-│  YES → Figma workflow
-│         Read references/workflows/figma-to-code.md
-│
-├─ Contains a screenshot / image?
-│  YES → Screenshot workflow
-│         Read references/workflows/screenshot-to-code.md
-│
-├─ Contains Bootstrap / other framework code?
-│  YES → Migration workflow
-│         Read references/workflows/bootstrap-conversion.md
-│
-├─ Contains verbose Tailwind (raw utility classes for a standard component)?
-│  YES → Optimization workflow
-│         Read references/workflows/tailwind-optimization.md
-│
-├─ Asks about theming / custom colors / dark mode?
-│  YES → Theme workflow
-│         Read references/workflows/theme-generation.md
-│
-├─ Needs a full page (dashboard, login, landing)?
-│  YES → Template-first workflow
-│         Read references/workflows/component-composition.md
-│
-├─ Needs a page layout (sidebar, bento grid)?
-│  YES → Layout-first workflow
-│         Read references/workflows/responsive-layouts.md
-│
-├─ Needs a specific component or example?
-│  YES → Component workflow (see "Component / page building" below)
-│
-└─ General daisyUI question?
-    → Fetch relevant component snippets → compose answer
+```jsonc
+// ✅ Correct
+{
+  "components": { "button": true, "card": true },
+  "component-examples": { "card.card": true }
+}
+
+// ❌ Wrong
+{ "components": ["button", "card"] }
+{ "snippets": ["components/button"] }
 ```
 
-## Workflow 1: Figma → daisyUI code
+## Choose the right tool or snippet category first
 
-**Trigger**: User provides a Figma URL.
+| Need | Use | Key rule |
+|---|---|---|
+| Validate classes, parts, modifiers, or discover example names | `components` | Start here when unsure |
+| Copy-paste markup for a known pattern | `component-examples` | Fetch only the 1–3 best matches |
+| Get a page shell with placeholders | `layouts` | Best starting point for dashboards, sidebars, app shells |
+| Start from a full page | `templates` | Use for login/dashboard/full-page acceleration |
+| Get theme variables or color-system reference | `themes` | Returns CSS/config, not component HTML |
+| Extract structure from a Figma design | `daisyui-blueprint-Figma-to-daisyUI` | Returns a node tree only; always follow with snippets |
 
-```
-Step 1: FETCH    → Call Figma-to-daisyUI(url, depth=10)
-Step 2: ANALYZE  → Identify layout, components, colors, typography, spacing
-Step 3: SNIPPETS → Single batched Snippets call with ALL identified components + layout
-Step 4: BUILD    → Compose HTML from snippets, map colors to semantic, apply responsive
-```
-
-**Do not skip any step.** The Figma tool returns design structure; the Snippets tool returns component code. Both are needed.
-
-Read `references/workflows/figma-to-code.md` for detailed Figma-to-daisyUI mapping tables.
-
-## Workflow 2: Screenshot → daisyUI code
-
-**Trigger**: User provides a screenshot or image of a UI.
-
-```
-Step 1: Visually analyze the image — identify grid structure, components, colors
-Step 2: Map visual elements to daisyUI components
-Step 3: Fetch matching snippets in a single batched call
-Step 4: Compose HTML matching the visual layout
-Step 5: Add responsive variants (mobile → desktop)
-```
-
-Read `references/workflows/screenshot-to-code.md` for full workflow detail.
-
-## Workflow 3: Bootstrap / Tailwind migration
-
-**Trigger**: User provides Bootstrap or raw Tailwind code to convert.
-
-```
-Step 1: Identify framework components in source code
-Step 2: Map to daisyUI equivalents (see mapping table below)
-Step 3: Fetch daisyUI component references to verify class names
-Step 4: Replace markup — keep content, replace classes and structure
-Step 5: Verify no Bootstrap/Tailwind remnants on semantic elements
-```
-
-### Quick migration map
-
-| Bootstrap / Tailwind | daisyUI |
-|---------------------|---------|
-| `btn btn-outline-primary` | `btn btn-outline btn-primary` |
-| `alert alert-danger` | `alert alert-error` |
-| `form-control` / `form-group` | `fieldset` + `input` |
-| `d-none d-lg-block` | `max-lg:hidden` |
-| `table-striped` | `table-zebra` |
-| `bg-blue-500 text-white px-4 py-2 rounded` | `btn btn-primary` |
-| `rounded-lg shadow-md p-6 bg-white` | `card bg-base-100 shadow-sm` + `card-body` |
-
-Read `references/workflows/bootstrap-conversion.md` and `references/workflows/tailwind-optimization.md` for complete mapping tables.
-
-## Workflow 4: Theme generation
-
-**Trigger**: User asks about custom theme, brand colors, dark mode, or color customization.
-
-```
-Step 1: Fetch theme reference → {"themes": {"custom-theme": true, "colors": true}}
-Step 2: Map brand colors to 20 semantic variables (oklch format)
-Step 3: Generate -content colors with WCAG AA contrast
-Step 4: Set shape variables (radius, size, border, depth, noise)
-Step 5: Output complete @plugin "daisyui/theme" { ... } CSS block
-```
-
-26 required CSS variables: 20 colors + 3 radii + 2 sizes + border + depth + noise.
-
-Read `references/theme-and-colors.md` for oklch conversion reference, all 35 built-in themes, dark theme tips, and design pattern presets.
-
-## Workflow 5: Component / page building
-
-**Trigger**: User wants a specific component, page layout, or full page.
-
-### For a full page — start with template or layout:
+**Mix categories in one call** when you already know what you need:
 
 ```json
-{"templates": {"dashboard": true}}
-```
-or
-```json
-{"layouts": {"responsive-collapsible-drawer-sidebar": true}}
-```
-
-### For specific components — fetch reference first, then examples:
-
-```
-Step 1: {"components": {"card": true, "button": true}}
-        → See all valid classes and available example names
-Step 2: {"component-examples": {"card.pricing-card": true, "button.button-with-icon": true}}
-        → Get copy-paste HTML
+{
+  "layouts": { "responsive-collapsible-drawer-sidebar": true },
+  "components": { "navbar": true, "card": true, "table": true },
+  "component-examples": {
+    "navbar.responsive-dropdown-menu-on-small-screen-center-menu-on-large-screen": true,
+    "table.table-with-visual-elements": true
+  },
+  "themes": { "colors": true }
+}
 ```
 
-Read `references/workflows/component-composition.md` for 6 full page patterns (dashboard, e-commerce, blog, settings, chat, landing).
-Read `references/workflows/responsive-layouts.md` for 5 built-in layouts and 9 responsive patterns.
+## Route to the correct workflow
 
-## Snippets tool — category guide
+| Request shape | Do this first | Then load |
+|---|---|---|
+| Setup or install daisyUI / Tailwind v4 | Read setup docs | `references/integration/tailwind-v4-setup.md` |
+| MCP server missing or Figma auth/setup issue | Fix tool setup before composing UI | `references/tool-api-reference.md` |
+| Migrating from daisyUI v4 | Read migration docs before writing code | `references/integration/v4-to-v5-migration.md` |
+| Single component or section | Fetch `components` first, then targeted `component-examples` | `references/component-catalog.md`, `references/common-mistakes.md` |
+| Full page, dashboard, auth screen, landing page | Start from `layouts` or `templates` | `references/workflows/component-composition.md`, `references/workflows/responsive-layouts.md` |
+| Figma URL present | Run the Figma workflow below | `references/workflows/figma-to-code.md`, `references/tool-api-reference.md` |
+| Screenshot or image mockup | Run the screenshot workflow below | `references/workflows/screenshot-to-code.md`, `references/common-mistakes.md` |
+| Brand colors, image-to-theme, dark mode, theme request | Run the theme workflow below | `references/workflows/theme-generation.md`, `references/theming/custom-themes.md` |
+| Form-heavy UI | Load form patterns before composing | `references/patterns/form-patterns.md` |
+| Navbar, menu, drawer, tabs, dock, breadcrumbs | Load navigation patterns before composing | `references/patterns/navigation-patterns.md` |
+| Bootstrap or raw Tailwind conversion | Use the relevant conversion workflow | `references/workflows/bootstrap-conversion.md`, `references/workflows/tailwind-optimization.md` |
 
-| Category | Returns | When to use |
-|----------|---------|-------------|
-| `components` | Class reference + syntax skeleton + example list | To **understand** a component before coding |
-| `component-examples` | Ready-to-use HTML code | To **get working code** for a specific variation |
-| `layouts` | Full page structure with placeholders | To **start a page layout** (sidebar, bento grid, navbar) |
-| `templates` | Complete multi-component page | To **get a full working page** (dashboard, login) |
-| `themes` | CSS configuration (not HTML) | To **set up theming** (colors, built-in themes, custom themes) |
+## Workflow — component or page composition
 
-### Available layouts
+1. **Decide scope first.**
+   - Single component/section → fetch component reference, then examples.
+   - Full page/app shell → fetch a layout or template first.
+2. **Fetch reference data before markup** for any component whose valid classes you do not know.
+3. **Fetch only targeted examples** for complex pieces like responsive navbars, drawers, tables, pricing cards, or form patterns.
+4. **Compose from the outside in**:
+   - page shell
+   - navigation
+   - main content blocks
+   - detail components
+5. **Apply semantic colors and responsive utilities** after structure is correct.
+6. **If the page is branded**, do theme work before final polish so semantic colors resolve correctly.
 
-| Key | Use case |
-|-----|----------|
-| `responsive-collapsible-drawer-sidebar` | Sidebar collapses to icon-only |
-| `responsive-offcanvas-drawer-sidebar` | Sidebar slides off-screen on mobile |
-| `top-navbar` | Simple navbar + content + footer |
-| `bento-grid-5-sections` | 5-area asymmetric grid |
-| `bento-grid-8-sections` | 8-area complex grid |
+Load only what you need:
 
-### Available templates
+- `references/workflows/component-composition.md`
+- `references/workflows/responsive-layouts.md`
+- `references/component-catalog.md`
 
-| Key | Contains |
-|-----|----------|
-| `dashboard` | Drawer sidebar + navbar + stats + cards + CSS-only toggle |
-| `login-form` | Side image + floating labels + validation + social auth |
+## Workflow — Figma to daisyUI
 
-## Calling patterns — performance rules
+This sequence is mandatory.
 
-| Pattern | Calls | Do this? |
-|---------|-------|----------|
-| Batch multiple components in one call | 1 | ✅ Always |
-| Mix categories (components + examples + themes) | 1 | ✅ Excellent |
-| Components first → then targeted examples | 2 | ✅ When unsure of example names |
-| Layout first → fill with component examples | 2-3 | ✅ For full pages |
-| Theme first → then build with semantic colors | 2-3 | ✅ For branded UIs |
-| Figma → analyze → snippets → build | 2 | ✅ Always for Figma |
-| One component per call | N | ❌ Never |
-| All examples for one component | 1 | ❌ Wasteful |
+1. **FETCH**
+   - Call `daisyui-blueprint-Figma-to-daisyUI`
+   - Prefer a node-specific Figma URL
+   - Start with `depth: 3-5`
+   - Use `includeImages: false` unless image references are required
+2. **ANALYZE**
+   - layout direction and alignment
+   - spacing and padding
+   - component candidates
+   - typography scale
+   - corner radius, shadows, and color roles
+3. **GET SNIPPETS**
+   - Batch all identified components in one call
+   - If example names are unknown, fetch `components` first, then the exact `component-examples`
+4. **BUILD**
+   - Map Figma structure to daisyUI components + Tailwind layout classes
+   - Use semantic colors instead of hardcoded hex on UI surfaces
+   - Add responsive breakpoints explicitly
+5. **RECOVER IF NEEDED**
+   - If the node tree is too shallow, re-fetch with higher depth
+   - If the file is large/noisy, switch to a more specific node URL
 
-## Required component parts — do not forget
+Load only what you need:
 
-| Component | Required children |
-|-----------|-------------------|
-| `card` | `card-body` |
-| `modal` | `modal-box`, `modal-action` |
-| `drawer` | `drawer-toggle` (checkbox), `drawer-content`, `drawer-side`, `drawer-overlay` |
-| `navbar` | `navbar-start`, `navbar-center`, `navbar-end` |
-| `fieldset` | `fieldset-legend` |
-| `collapse` | `collapse-title`, `collapse-content` |
-| `stat` | `stat-title`, `stat-value` |
+- `references/workflows/figma-to-code.md`
+- `references/tool-api-reference.md`
+- `references/component-catalog.md` when class lookup is needed
 
-## CSS-only component patterns
+## Workflow — screenshot or mockup to daisyUI
 
-| Component | Mechanism | Key pattern |
-|-----------|-----------|-------------|
-| Drawer | Hidden checkbox | `<input type="checkbox" class="drawer-toggle" />` + `<label for="id">` |
-| Modal | Dialog element | `<dialog class="modal">` + `onclick="id.showModal()"` |
-| Dropdown | Details element | `<details class="dropdown">` + `<summary>` |
-| Tabs | Radio inputs | `<input type="radio" class="tab">` + sibling `.tab-content` |
-| Accordion | Radio inputs | `<input type="radio" class="accordion">` + `.accordion-content` |
-| Collapse | Checkbox/focus | `<input type="checkbox">` or `<details>` |
-| Theme switch | Input + data-theme | `<input class="toggle" data-toggle-theme="dark">` |
-| Swap | Checkbox | `<input type="checkbox">` with `.swap-on` / `.swap-off` |
+1. **Scan top-to-bottom**: navbar/header, hero, sidebar, main content, footer/dock.
+2. **Identify the page shell first** before individual components.
+3. **Catalog visible patterns**:
+   - component type
+   - likely variant
+   - size
+   - semantic color role
+   - visible state
+4. **Fetch components and only the best-matching examples.**
+5. **Assemble the shell first**, then fill details and tune spacing/color.
+6. **If an interaction is not visible**, choose the most likely CSS-only daisyUI pattern and state the assumption.
 
-## Responsive patterns — always apply
+Load only what you need:
 
-| Pattern | Classes |
-|---------|---------|
-| Persistent desktop sidebar | `drawer lg:drawer-open` |
-| Hamburger menu (mobile only) | `btn lg:hidden` |
-| Desktop-only nav | `hidden lg:flex` |
-| Stats: stack → row | `stats-vertical lg:stats-horizontal` |
-| Menu: vertical → horizontal | `menu-vertical lg:menu-horizontal` |
-| Card: stack → side | `card sm:card-side` |
-| Grid progression | `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` |
-| Mobile bottom nav | `dock lg:hidden` |
-| Collapsible sidebar | `is-drawer-close:w-14 is-drawer-open:w-64` |
+- `references/workflows/screenshot-to-code.md`
+- `references/component-catalog.md`
+- `references/common-mistakes.md`
 
-## daisyUI v4 → v5 migration — critical changes
+## Workflow — theme generation
 
-| v4 pattern | v5 replacement |
-|-----------|----------------|
-| `form-control` | `fieldset` |
-| `label` + `label-text` | `fieldset-legend` |
-| `label-text-alt` | `fieldset-label` |
-| `input-bordered` | `input` (borders default) |
-| `select-bordered` | `select` (borders default) |
-| `tab-lifted` | `tab-lift` |
-| `bordered` (card) | `card-border` |
-| HSL theme colors | oklch theme colors |
-| `tailwind.config.js` themes | `@plugin "daisyui"` in CSS |
-| N/A | New: `fieldset`, `validator`, `filter`, `dock`, `list`, `floating-label`, `hover-3d`, `hover-gallery`, `text-rotate` |
-| N/A | New variants: `is-drawer-open:`, `is-drawer-close:`, `user-invalid:` |
+1. **Determine the source**: brand palette, image, existing website, or Figma tokens.
+2. **Map source colors to daisyUI semantics**:
+   - `primary`, `secondary`, `accent`
+   - `neutral`
+   - `base-100`, `base-200`, `base-300`, `base-content`
+   - `info`, `success`, `warning`, `error`
+3. **Generate matching `*-content` colors** with accessible contrast.
+4. **Output `@plugin "daisyui/theme"` CSS in OKLCH.**
+5. **Validate with semantic component usage**; do not leave UI surfaces on raw Tailwind colors.
+6. **If building branded UI**, theme first, then fetch templates/components so the markup stays semantic.
 
-## Multi-turn conversation patterns
+Load only what you need:
 
-### Turn 1: Establish structure
-Fetch layout/template + relevant component references. Return complete initial HTML.
+- `references/workflows/theme-generation.md`
+- `references/theming/custom-themes.md`
+- `references/tool-api-reference.md` for `themes` usage
 
-### Turn 2+: Modify content
-If the user asks to change text, colors (within semantic system), or layout adjustments — modify existing code directly. **No MCP call needed.**
+## Recovery rules — if the agent starts drifting
 
-### New component needed
-If the user requests a component not yet fetched, make a targeted Snippets call for that component only.
+- **Snippets tool returns nothing** → check nested object syntax first.
+- **You do not know an example key** → fetch the component reference before guessing.
+- **Generated classes look plausible but unverified** → check `references/component-catalog.md` or the component response.
+- **You are making too many MCP calls** → batch them and mix categories.
+- **A full page is forming from unrelated snippets** → restart from a `layout` or `template`.
+- **The MCP server or Figma tool errors on setup/auth** → check `references/tool-api-reference.md`, especially MCP config and `FIGMA` requirements.
+- **Markup uses `bg-blue-500`, `text-white`, or `dark:` on themed UI** → replace with semantic color classes or a theme.
+- **You added JS for a standard drawer/modal/dropdown** → switch back to the CSS-only daisyUI mechanism.
+- **You see v4 terms** like `form-control`, `input-bordered`, `label-text`, `tabs-lifted`, or `btm-nav` → convert to v5 and load migration docs if needed.
+- **You start copying bulky examples into this skill** → stop and route to the relevant reference instead.
 
-### Key principle
-Only call MCP tools when you need **new component patterns** you haven't seen. For content/style changes within the existing component set, modify directly.
+## Minimal reference packs
 
-## Quality checklist — verify before returning code
+| Task | Load |
+|---|---|
+| Single component/section | `references/component-catalog.md`, `references/common-mistakes.md` |
+| Full page/layout | `references/workflows/component-composition.md`, `references/workflows/responsive-layouts.md` |
+| Figma conversion | `references/workflows/figma-to-code.md`, `references/tool-api-reference.md` |
+| Screenshot conversion | `references/workflows/screenshot-to-code.md`, `references/common-mistakes.md` |
+| Theme generation | `references/workflows/theme-generation.md`, `references/theming/custom-themes.md` |
+| Forms | `references/patterns/form-patterns.md`, `references/component-catalog.md` |
+| Navigation | `references/patterns/navigation-patterns.md`, `references/component-catalog.md` |
+| Setup or migration | `references/integration/tailwind-v4-setup.md`, `references/integration/v4-to-v5-migration.md` |
+| Bootstrap/Tailwind conversion | `references/workflows/bootstrap-conversion.md`, `references/workflows/tailwind-optimization.md` |
 
-- [ ] All HTML uses valid daisyUI v5 class names (no invented classes)
-- [ ] Semantic colors used everywhere (no `bg-blue-500` on interactive elements)
-- [ ] No `dark:` prefix on daisyUI semantic colors
-- [ ] All cards have `card-body`
-- [ ] All modals use `<dialog>` with `modal-box`
-- [ ] All drawers have complete structure (toggle + content + side + overlay)
-- [ ] Forms use `fieldset` + `fieldset-legend` (not `form-control`)
-- [ ] Responsive breakpoints on layout components (`lg:drawer-open`, etc.)
-- [ ] No JavaScript for CSS-only components
-- [ ] `input` not `input-bordered` (v5 default)
+## Exit checklist
 
-## Reference routing
+Before finishing, confirm:
 
-| Need | Read |
-|------|------|
-| Tool parameters, output formats, token budgets | `references/tool-api-reference.md` |
-| Component classes, parts, colors, sizes | `references/component-catalog.md` |
-| Theme CSS template, oklch, built-in themes | `references/theme-and-colors.md` |
-| Common agent mistakes and fixes | `references/common-mistakes.md` |
-| Figma → daisyUI code workflow | `references/workflows/figma-to-code.md` |
-| Screenshot → daisyUI code workflow | `references/workflows/screenshot-to-code.md` |
-| Bootstrap → daisyUI migration | `references/workflows/bootstrap-conversion.md` |
-| Tailwind → daisyUI optimization | `references/workflows/tailwind-optimization.md` |
-| Custom theme generation | `references/workflows/theme-generation.md` |
-| Full page composition patterns | `references/workflows/component-composition.md` |
-| Responsive layout patterns | `references/workflows/responsive-layouts.md` |
-| Screenshot conversion prompt | `references/prompts/screenshot-prompt.md` |
-| Bootstrap conversion prompt | `references/prompts/bootstrap-prompt.md` |
-| Tailwind conversion prompt | `references/prompts/tailwind-prompt.md` |
-| Image-to-theme extraction prompt | `references/prompts/image-to-theme-prompt.md` |
-| Prompt engineering patterns | `references/prompts/prompt-engineering.md` |
-| Multi-step prompt chaining | `references/prompts/prompt-chaining.md` |
+- correct snippets syntax
+- correct category choice
+- batched MCP calls
+- valid daisyUI v5 classes
+- semantic colors or a proper theme
+- layout/template used for page-level work when appropriate
+- mandatory Figma sequence followed for Figma tasks
+- only necessary references were loaded

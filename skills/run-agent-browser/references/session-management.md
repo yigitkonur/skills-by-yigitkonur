@@ -30,6 +30,33 @@ agent-browser --session auth fill @e1 "user@example.com"
 agent-browser --session public get text body
 ```
 
+## Auto-Persist Sessions (`--session-name`)
+
+`--session-name` (v0.17+) is different from `--session`. It automatically saves and restores full browser state (cookies, storage, scroll position) across runs:
+
+```bash
+# First run: opens fresh, saves state on close
+agent-browser --session-name myapp open https://app.example.com
+agent-browser --session-name myapp fill @e1 "user@test.com"
+agent-browser --session-name myapp close
+
+# Later run: state is auto-restored (logged in, same storage)
+agent-browser --session-name myapp open https://app.example.com
+# → page loads with previous cookies/storage intact
+```
+
+**`--session` vs `--session-name`:**
+
+| Feature | `--session` | `--session-name` |
+|---------|------------|-----------------|
+| Session isolation | ✓ | ✓ |
+| Auto-save state on close | ✗ | ✓ |
+| Auto-restore state on open | ✗ | ✓ |
+| State persists across runs | ✗ (manual `state save/load`) | ✓ (automatic) |
+| Env var | `AGENT_BROWSER_SESSION` | `AGENT_BROWSER_SESSION_NAME` |
+
+Use `--session` when you need parallel isolated sessions within one run. Use `--session-name` when you need persistent state across multiple runs (e.g., staying logged in).
+
 ## Session Isolation Properties
 
 Each session has independent:

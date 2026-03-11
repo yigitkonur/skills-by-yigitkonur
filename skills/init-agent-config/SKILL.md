@@ -1,284 +1,229 @@
 ---
 name: init-agent-config
-description: Use skill if you are creating or auditing CLAUDE.md and AGENTS.md files that configure AI coding agents for your project.
+description: Use skill if you are generating, auditing, or migrating repo-grounded AGENTS.md and CLAUDE.md files, especially for dual-file setups, multi-agent compatibility, or converting existing agent config.
 ---
 
 # Init Agent Config
 
-Generate, audit, or migrate AGENTS.md and/or CLAUDE.md files that configure AI coding agents for a repository. AGENTS.md is the cross-agent standard (Codex, Cursor, VS Code, Devin, Jules, Amp, Gemini CLI, 20+ agents). CLAUDE.md is Claude Code–specific, supporting `@import`, path-scoped rules, hooks, commands, named agents, and progressive disclosure via `agent_docs/`. When both are needed, AGENTS.md is the source of truth and CLAUDE.md is a thin wrapper that imports it.
+Generate agent configuration that reflects the actual repository, not a generic template. Use `AGENTS.md` for universal cross-agent guidance. Use `CLAUDE.md` for Claude Code memory and Claude-only features. When both are needed, `AGENTS.md` is the shared source of truth and `CLAUDE.md` stays thin.
 
-## Decision tree
+## Use this skill for
 
-```
-What do you need?
-│
-├── Create new agent config
-│   ├── Which agents does the team use?
-│   │   ├── Multiple AI agents ──────────────► AGENTS.md + thin CLAUDE.md wrapper
-│   │   ├── Claude Code only ────────────────► CLAUDE.md standalone
-│   │   └── Single non-Claude agent only ────► AGENTS.md only
-│   │
-│   ├── What type of project?
-│   │   ├── Minimal / script / CLI ──────────► references/project-templates.md §1
-│   │   ├── Node.js / TypeScript ────────────► references/project-templates.md §2
-│   │   ├── Python ──────────────────────────► references/project-templates.md §3
-│   │   ├── Go ──────────────────────────────► references/project-templates.md §4
-│   │   ├── Rust ────────────────────────────► references/project-templates.md §5
-│   │   ├── React / Next.js ─────────────────► references/project-templates.md §6
-│   │   ├── Monorepo ────────────────────────► references/project-templates.md §7
-│   │   └── Django ──────────────────────────► references/project-templates.md §8
-│   │
-│   ├── How to write effective instructions
-│   │   ├── WHAT/WHY/HOW framework ──────────► references/writing-guidelines.md
-│   │   ├── Context window economics ────────► references/writing-guidelines.md
-│   │   ├── Progressive disclosure ──────────► references/writing-guidelines.md
-│   │   └── Dual-file strategy ──────────────► references/writing-guidelines.md
-│   │
-│   └── Need CLAUDE.md features?
-│       ├── @import syntax ──────────────────► references/claude-md-format.md
-│       ├── Path-scoped rules (.claude/rules/) ► references/claude-md-format.md
-│       ├── Memory hierarchy ────────────────► references/claude-md-format.md
-│       ├── Commands / hooks / agents ───────► references/claude-md-format.md
-│       └── Settings and exclusions ─────────► references/claude-md-format.md
-│
-├── Audit existing config
-│   ├── Quality scoring rubric ──────────────► references/audit-and-migration.md
-│   ├── Audit checklist (6 phases) ──────────► references/audit-and-migration.md
-│   └── Audit output template ───────────────► references/audit-and-migration.md
-│
-├── Migrate between formats
-│   ├── .cursorrules → AGENTS.md ────────────► references/audit-and-migration.md
-│   ├── Standalone CLAUDE.md → dual-file ────► references/audit-and-migration.md
-│   ├── copilot-instructions.md → AGENTS.md ─► references/audit-and-migration.md
-│   └── No config → new setup ───────────────► references/audit-and-migration.md
-│
-├── AGENTS.md specifics
-│   ├── Format specification ────────────────► references/agents-md-format.md
-│   ├── Discovery algorithm (Codex CLI) ─────► references/agents-md-format.md
-│   ├── Override mechanism ──────────────────► references/agents-md-format.md
-│   ├── Monorepo nesting ───────────────────► references/agents-md-format.md
-│   └── Size limits & troubleshooting ───────► references/agents-md-format.md
-│
-└── Cross-agent compatibility
-    ├── Agent support matrix (15+ agents) ───► references/cross-agent-compat.md
-    ├── Universal vs agent-specific features ► references/cross-agent-compat.md
-    ├── Multi-agent repository layout ───────► references/cross-agent-compat.md
-    └── Per-agent config snippets ───────────► references/cross-agent-compat.md
-```
+- creating new `AGENTS.md` and/or `CLAUDE.md` from repo evidence
+- tightening noisy or stale agent config
+- migrating standalone `CLAUDE.md` into a dual-file setup
+- extracting universal project rules from `.cursorrules`, `copilot-instructions.md`, or other agent config
+- designing repo-level plus monorepo/package-level instruction boundaries
 
-## Quick start
+## Do not use this skill for
 
-### Fastest path: single-agent CLAUDE.md
+- `.github/copilot-instructions.md` or `*.instructions.md` review config → use `init-copilot-review`
+- `REVIEW.md` or Devin-specific review setup → use `init-devin-review`
+- Greptile config setup → use `init-greptile-review`
+- writing generic "AI coding guidelines" without inspecting a real repository
 
-```markdown
-# My Project
+## Non-negotiables
 
-TypeScript API using Fastify + Drizzle ORM + PostgreSQL.
+- Inspect the repository before drafting anything.
+- Verify commands and paths against real files; never invent them.
+- Keep universal guidance in `AGENTS.md`. Keep Claude-only syntax and features out of `AGENTS.md`.
+- Complement existing config; do not blindly replace it.
+- Preserve existing `Always`, `Ask`, `Never`, `WARNING`, `CRITICAL`, and `DO NOT` rules unless the repo proves they are obsolete.
+- Prefer high-signal directives over long prose. If a line would not prevent a mistake, cut it.
 
-## Commands
-- Dev: `pnpm dev`
-- Test: `pnpm test`
-- Build: `pnpm build`
-- Lint: `pnpm lint`
+## Anti-derail guardrails
 
-## Conventions
-- Strict TypeScript (no `any` without justification comment)
-- Named exports only, no default exports
-- Validate inputs with Zod schemas
-
-## Boundaries
-- Always: Run `pnpm typecheck && pnpm test` before committing
-- Ask: Before adding production dependencies
-- Never: Modify migration files directly
-```
-
-### Fastest path: multi-agent (AGENTS.md + thin CLAUDE.md)
-
-**AGENTS.md** — same content as above (universal, plain markdown)
-
-**CLAUDE.md** — thin wrapper:
-
-```markdown
-@AGENTS.md
-
-## Claude-Specific
-- Path-scoped rules in `.claude/rules/`
-- Use `/compact` when context grows large
-```
+- If the draft starts to read like a generic style guide, stop and replace broad advice with repo-specific facts or remove it.
+- Do not create shared defaults in `AGENTS.override.md` or `CLAUDE.local.md`; those are override/personal layers.
+- Do not invent `.claude/`, `agent_docs/`, or nested `AGENTS.md` structure without a concrete repo need.
+- If the correct agent surface is unclear, default to the smallest verified setup and explain the tradeoff instead of emitting speculative extra files.
+- If existing config is already mostly correct, switch from rewrite mode to audit/tighten mode.
 
 ## Workflow
 
-### Phase 1: Explore the Repository
+### 1) Scope the request first
 
-Map the codebase before writing anything.
+Classify the job before reading deeply:
 
-**Tech stack** — scan config files:
-- `package.json`, `tsconfig.json` → TypeScript/JavaScript
-- `pyproject.toml`, `requirements.txt` → Python
-- `Cargo.toml` → Rust; `go.mod` → Go
-- `docker-compose.yml`, `.github/workflows/` → Infrastructure/CI
+| Request type | What to produce |
+|-------------|-----------------|
+| New setup | Fresh `AGENTS.md`, `CLAUDE.md`, or both |
+| Audit | Findings + targeted edits, not a full rewrite by default |
+| Migration | Preserve valid rules, convert format, remove duplication |
+| Extension | Add missing file(s) or Claude-specific structure without rewriting universal content |
 
-**Existing agent config** — check for:
-- `AGENTS.md`, `AGENTS.override.md`
-- `CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`
-- `.cursorrules`, `.windsurfrules`, `GEMINI.md`
-- `.github/copilot-instructions.md`
-- `CONTRIBUTING.md`, `README.md`
+Then determine the agent surface actually in use:
 
-If files exist, read them. Complement — do not blindly overwrite.
+| Team/tool reality | Default output |
+|------------------|----------------|
+| Claude Code only | Standalone `CLAUDE.md` |
+| One non-Claude agent, or future portability matters | `AGENTS.md` |
+| Claude Code + any other agent | `AGENTS.md` + thin `CLAUDE.md` wrapper |
+| Existing `AGENTS.md`, now adding Claude-only features | Keep `AGENTS.md` authoritative; add `CLAUDE.md` and `.claude/` only if needed |
+| Existing standalone `CLAUDE.md`, now adding other agents | Extract universal content into `AGENTS.md`, reduce `CLAUDE.md` to a thin wrapper |
 
-**Linting & formatting** — critical check:
-- ESLint, Prettier, Biome → skip JS/TS formatting rules
-- Black, Ruff → skip Python formatting
-- rustfmt, clippy → skip Rust formatting
+If the user mentions another agent-specific file (`.cursorrules`, `GEMINI.md`, `.github/copilot-instructions.md`, etc.), treat it as input to mine rules from unless they explicitly want that format as output.
 
-Never document what linters enforce. Agent instructions cover semantic intent, not syntax.
+### 2) Inspect the repository before drafting
 
-**Catalog verified commands** — scan and record only commands that exist:
-- `package.json` scripts
-- `Makefile` / `Justfile` targets
-- `.github/workflows/` CI steps
-- `pyproject.toml` scripts
-- `Cargo.toml` aliases
+Read only enough to ground the config, in this order:
 
-NEVER invent commands. If uncertain, write `See [file]` instead of guessing.
+1. **Existing agent and contributor docs**
+   - `AGENTS.md`, `AGENTS.override.md`
+   - `CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`, `.claude/settings.json`
+   - `.cursorrules`, `.windsurfrules`, `GEMINI.md`
+   - `.github/copilot-instructions.md`
+   - `README.md`, `CONTRIBUTING.md`
 
-### Phase 2: Choose Output Strategy
+2. **Command sources**
+   - `package.json` scripts
+   - `Makefile` / `Justfile`
+   - `pyproject.toml`
+   - `Cargo.toml`, `.cargo/config.toml`
+   - CI workflows in `.github/workflows/`
 
-| Scenario | Generate |
-|----------|----------|
-| Team uses multiple AI agents | AGENTS.md (primary) + CLAUDE.md (thin wrapper with `@AGENTS.md`) |
-| Claude Code only | CLAUDE.md standalone |
-| Single non-Claude agent only | AGENTS.md only |
-| Existing CLAUDE.md, adding cross-agent | AGENTS.md + refactor CLAUDE.md to thin wrapper |
-| Existing AGENTS.md, adding Claude features | CLAUDE.md with `@AGENTS.md` import |
+3. **Repo structure and tech-stack anchors**
+   - framework/tool configs (`tsconfig.json`, `next.config.*`, `go.mod`, `docker-compose.yml`, workspace manifests)
+   - monorepo layout, package/service boundaries, non-standard directories
 
-### Phase 3: Write Using WHAT/WHY/HOW
+4. **Code-level evidence for non-obvious rules**
+   - validate only conventions agents would not reliably infer on their own
+   - capture WHY when the repo encodes an intentional trade-off
 
-Every instruction answers one of three questions:
+**Recovery rules**
+- If a command is not verified, write `See [file]` or `Test: [not configured]`.
+- If an existing config file is mostly good, switch from rewrite mode to audit/tighten mode.
+- If repo facts conflict across files, prefer the stricter or more current source and call out the conflict.
 
-| Layer | Content | Example |
-|-------|---------|---------|
-| **WHAT** | Technical reality agents cannot infer from code | "Next.js App Router, NOT Pages" |
-| **WHY** | Reasoning behind non-obvious decisions | "Sessions not JWT because SSR needs server-readable auth" |
-| **HOW** | Commands that must be exact | "`pnpm dev` (NOT npm — pnpm workspaces required)" |
+### 3) Choose the file strategy deliberately
 
-Exclude anything an agent can infer by reading the code.
+Use the simplest setup that matches the repo:
 
-### Phase 4: Right-Size the Files
+- **Standalone `CLAUDE.md`** when the team uses Claude Code only, or Claude-specific imports/rules are the real center of gravity.
+- **`AGENTS.md` only** when shared, agent-agnostic instructions are enough.
+- **Dual-file pattern** when the repo needs both portability and Claude-specific features.
 
-| File | Ideal | Good | Maximum |
-|------|-------|------|---------|
-| AGENTS.md (root) | <80 lines | <150 lines | 200 lines |
-| AGENTS.md (nested) | <40 lines | <60 lines | 80 lines |
-| CLAUDE.md (standalone) | <60 lines | <100 lines | 200 lines |
-| CLAUDE.md (thin wrapper) | <20 lines | <30 lines | 50 lines |
-| Combined total (Codex limit) | — | — | 32 KiB |
+Dual-file rule:
 
-**Litmus test:** "Would removing this cause the agent to make a mistake?" If no → cut it.
+1. Put all universal instructions in `AGENTS.md`.
+2. Keep `CLAUDE.md` thin:
+   ```markdown
+   @AGENTS.md
 
-### Phase 5: Structure the Content
+   ## Claude-Specific
+   - See `.claude/rules/` for path-scoped rules
+   - Add only Claude-only features or memory notes here
+   ```
+3. Do not copy `AGENTS.md` content into `CLAUDE.md`.
 
-**AGENTS.md sections:** Project description → Commands → Structure → Conventions → Boundaries → Troubleshooting
+Monorepo rule:
 
-**CLAUDE.md standalone sections:** Project description → Stack → Commands → Architecture → Non-obvious patterns → Conventions
+- Root file = universal repo-wide guidance
+- Nested `AGENTS.md` or `.claude/rules/` = package/path-specific rules
+- Never dump every package-specific rule into the root file
 
-**CLAUDE.md thin wrapper:** `@AGENTS.md` → Claude-specific additions only
+### 4) Draft only high-signal instructions
 
-For advanced organization (monorepos, progressive disclosure, path-scoped rules), see the references routed from the decision tree.
+Use the **WHAT / WHY / HOW** filter:
 
-### Phase 6: Validate
+| Layer | Include |
+|------|---------|
+| WHAT | Non-obvious tech choices, architecture boundaries, unusual paths |
+| WHY | Reasoning that stops agents from "fixing" intentional decisions |
+| HOW | Verified commands and exact workflows that must be followed |
 
-- [ ] All commands verified against package.json / Makefile / CI
-- [ ] No instructions for things linters enforce
-- [ ] No obvious facts agents can infer from code
-- [ ] File sizes within targets
-- [ ] No secrets or credentials
-- [ ] No stale paths or outdated versions
-- [ ] Instructions are specific and measurable
+Every generated file should strongly prefer:
 
-### Phase 7: Output
+- imperative voice: `Use pnpm`, `Run tests before commit`
+- measurable rules: `Never edit existing migrations`
+- project-specific boundaries: `Always`, `Ask`, `Never`
+- non-obvious context over generic advice
 
-Present generated files as:
-1. **File tree** showing all generated files
-2. **Each file** in a fenced code block with path as heading
-3. **Agent compatibility note** per file — which agents read it
-4. **Quality score** (if auditing) — before/after comparison
+Cut aggressively:
 
-## Common pitfalls
+- linter/formatter rules already enforced by tooling
+- obvious facts the agent can infer from code
+- copied `README.md` content
+- exhaustive file trees or dependency lists
+- motivational filler like `write clean code`
 
-| Pitfall | Fix |
-|---------|-----|
-| Documenting what linters enforce | Linters are deterministic and cheaper. Never duplicate lint rules in agent config. |
-| Using `@import` in AGENTS.md | Claude-only feature. AGENTS.md is plain markdown — inline everything. |
-| Adding YAML frontmatter to AGENTS.md | Not supported. Plain markdown only. |
-| Exceeding 32 KiB combined | Codex truncates beyond this. Trim or split into nested files. |
-| Duplicating content between AGENTS.md and CLAUDE.md | Use thin wrapper pattern. CLAUDE.md imports AGENTS.md and adds only Claude-specific features. |
-| Inventing commands | Every command must be verified against package.json, Makefile, or CI. If uncertain: `See [file]`. |
-| Documenting the obvious | If the code shows it, agents already know it. "This is a React app" adds nothing. |
-| Generic advice not specific to the project | "Write clean code" helps no one. "Use Zod for all API input validation" helps. |
-| Mixing human docs with agent docs | AGENTS.md and CLAUDE.md complement README.md. Do not merge them. |
-| Embedding stale code snippets | Reference files by path instead of pasting code that gets outdated. |
-| Auto-generating without review | `/init` output is a starting point, not a final product. Always curate. |
-| Missing Boundaries section | The most impactful section. Always include Always/Ask/Never rules. |
+### 5) Control scope and disclosure
 
-## Minimal reading sets
+Root config files should contain only instructions needed in most sessions.
 
-### "I need to create a CLAUDE.md for a Claude-only team"
+Use progressive disclosure only when it improves signal:
 
-- `references/claude-md-format.md`
-- `references/writing-guidelines.md`
-- `references/project-templates.md`
+- `AGENTS.md` → universal shared guidance, with pointer references only
+- `CLAUDE.md` → may use `@import` or `.claude/rules/`
+- nested `AGENTS.md` → package/service-specific rules
+- `.claude/rules/` → path-scoped Claude-only rules
 
-### "I need AGENTS.md for a multi-agent team"
+Do not create extra support files just because the platform allows them. Add `@import` files, `.claude/rules/`, or `agent_docs/` only when the repo is complex enough to justify them and the content can stay lean.
 
-- `references/agents-md-format.md`
-- `references/cross-agent-compat.md`
-- `references/project-templates.md`
+### 6) Audit or migrate without losing signal
 
-### "I need to audit an existing config file"
+When auditing or migrating:
 
-- `references/audit-and-migration.md`
-- `references/writing-guidelines.md`
+- preserve valid warning/boundary rules from the current files
+- separate **universal** content from **agent-specific** content
+- rewrite vague suggestions as direct instructions or remove them
+- remove duplication between `AGENTS.md` and `CLAUDE.md`
+- keep format rules strict:
+  - `AGENTS.md` = plain markdown only, no frontmatter, no `@import`
+  - `CLAUDE.md` = Claude-only memory, imports, `.claude/` references allowed
 
-### "I need to migrate from .cursorrules or another format"
+If the input is noisy, extract only the lines that would cause a real mistake if missing.
 
-- `references/audit-and-migration.md`
-- `references/cross-agent-compat.md`
+### 7) Validate before finalizing
 
-### "I need both AGENTS.md and CLAUDE.md (dual-file pattern)"
+Check all of the following:
 
-- `references/agents-md-format.md`
-- `references/claude-md-format.md`
-- `references/writing-guidelines.md`
-- `references/project-templates.md`
+- commands and paths are verified against repo files
+- instructions document non-obvious repo reality, not framework defaults
+- `AGENTS.md` contains only universal content
+- `CLAUDE.md` contains only Claude-specific additions beyond shared guidance
+- no duplicated content across both files
+- file sizes stay lean
+  - root `AGENTS.md`: ideally <80 lines
+  - thin `CLAUDE.md`: ideally <20 lines
+  - standalone `CLAUDE.md`: ideally <60 lines
+- unresolved unknowns are explicitly called out instead of guessed away
 
-### "I need a monorepo configuration with path-scoped rules"
+## Do this, not that
 
-- `references/claude-md-format.md`
-- `references/agents-md-format.md`
-- `references/project-templates.md` (§7 Monorepo + §Monorepo with Path-Scoped Rules)
+| Do this | Not that |
+|--------|----------|
+| Ground every rule in repo evidence | Paste a generic best-practices template |
+| Verify commands in manifests, makefiles, or CI | Invent `test`, `lint`, or `build` commands |
+| Put shared rules in `AGENTS.md` | Put Claude-only `@import` or `.claude` syntax in `AGENTS.md` |
+| Use `CLAUDE.md` as a thin wrapper when both files exist | Duplicate the same content in both files |
+| Preserve existing warning/boundary rules during migration | Drop `Never` / `CRITICAL` rules because they feel repetitive |
+| Use nested files or scoped rules for monorepos | Stuff every package-specific rule into the root file |
+| Point to existing docs for bulky detail | Copy `README.md` or API docs into agent config |
+| Use templates only after repo inspection | Fill a template before you know the repo shape |
+| Route tool-specific review setup to the matching `init-*` skill | Force this skill to own Copilot/Devin/Greptile review configs |
 
-### "I need the complete reference for all features"
+## Reference routing
 
-- `references/claude-md-format.md`
-- `references/agents-md-format.md`
-- `references/cross-agent-compat.md`
-- `references/writing-guidelines.md`
-- `references/project-templates.md`
-- `references/audit-and-migration.md`
+Read the smallest reference set that unblocks the current decision:
 
-## Reference files
+| Need | Reference |
+|-----|-----------|
+| High-signal writing, WHAT/WHY/HOW, dual-file guidance | `references/writing-guidelines.md` |
+| `AGENTS.md` format, nesting, size limits, compatibility with non-Claude agents | `references/agents-md-format.md` |
+| `CLAUDE.md` imports, memory hierarchy, path-scoped rules, `.claude/` structure | `references/claude-md-format.md` |
+| Cross-agent support matrix and wrapper strategy | `references/cross-agent-compat.md` |
+| Auditing existing files or migrating from another format | `references/audit-and-migration.md` |
+| Project-type starter structures after repo inspection | `references/project-templates.md` |
 
-| File | When to read |
-|------|--------------|
-| `references/claude-md-format.md` | Creating or modifying CLAUDE.md files. Covers @import syntax, .claude/rules/ path-scoped rules, memory hierarchy, settings, hooks, commands, and auto memory. |
-| `references/agents-md-format.md` | Creating or modifying AGENTS.md files. Covers format spec, Codex CLI discovery algorithm, override mechanism, monorepo nesting, size limits, and per-agent config snippets. |
-| `references/cross-agent-compat.md` | Team uses multiple AI agents. Covers the 15+ agent support matrix, universal vs agent-specific features, multi-agent repository layout, and migration guides between formats. |
-| `references/writing-guidelines.md` | Writing any agent config file. Covers WHAT/WHY/HOW framework, context window economics, signal quality checks, progressive disclosure, safety gates, and writing style guide. |
-| `references/project-templates.md` | Starting from a template. Contains AGENTS.md + CLAUDE.md templates for 8 project types: minimal, Node.js/TypeScript, Python, Go, Rust, React/Next.js, monorepo, and Django. |
-| `references/audit-and-migration.md` | Auditing existing configs or migrating between formats. Covers quality scoring rubric (5 dimensions), 6-phase audit checklist, audit output template, and step-by-step migration guides from .cursorrules, CLAUDE.md, and copilot-instructions.md. |
+Start with one or two references. Expand only if the current task truly needs more detail.
 
-## Final reminder
+## Final output expectations
 
-This skill is split into focused, atomic reference files organized by topic. Do not load everything at once. Start with the smallest relevant reading set above, then expand into neighboring references only when the task requires them. Every reference file is explicitly routed from the decision tree.
+When you generate or revise files, provide:
+
+1. the chosen file strategy and why it fits this repo
+2. a file tree of created/updated files
+3. the actual file contents or precise edits
+4. any remaining unknowns or follow-up checks
+5. for audits, a concise score or findings summary

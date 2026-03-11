@@ -1,219 +1,170 @@
 ---
 name: init-copilot-review
-description: Use skill if you are setting up GitHub Copilot review behavior with copilot-instructions.md or scoped *.instructions.md files for repo-specific pull request review.
+description: Use skill if you are creating or refining GitHub Copilot code review instruction files such as .github/copilot-instructions.md and scoped *.instructions.md for repository-specific PR reviews.
 ---
 
 # Copilot Review Init
 
-Generate a complete set of GitHub Copilot code review instruction files tailored to a specific repository.
+Create or refine GitHub Copilot review instruction files for a specific repository. Focus on repo-grounded `copilot-instructions.md` and scoped `*.instructions.md` files that improve pull request review quality without wasting character budget.
 
-## What This Produces
+## Trigger boundaries
 
-GitHub Copilot code review reads instruction files from a PR's repository to guide its analysis. This skill generates:
+Use this skill when you need to:
+- Create or revise `.github/copilot-instructions.md`
+- Create, split, or tighten `.github/instructions/*.instructions.md`
+- Decide root vs scoped review rules, monorepo/package scoping, `applyTo`, or `excludeAgent`
+- Debug why Copilot review ignores, misroutes, or weakly follows instruction files
 
-1. **`.github/copilot-instructions.md`** — Repository-wide review standards applied to every file
-2. **Multiple `.github/instructions/*.instructions.md`** — Focused micro-files, each scoped to specific file types via `applyTo` frontmatter
+Do not use this skill when:
+- You are reviewing a PR directly instead of authoring Copilot review instructions
+- You are creating non-Copilot agent files such as `CLAUDE.md`, `AGENTS.md`, or generic review docs
+- You want generic best-practice prose without grounding it in the target repository
 
-### Why Micro-Files
+## Start with the smallest relevant reference set
 
-The micro-file architecture is the core design philosophy. Instead of cramming everything into one file:
+| Need | Read |
+| --- | --- |
+| File locations, root vs scoped format, base-branch behavior, character limits | `references/setup-and-format.md` |
+| Rule-writing quality, root vs scoped content decisions, character budgeting, iteration | `references/writing-instructions.md` |
+| `applyTo`, `excludeAgent`, precedence, monorepo layout, overlapping scopes | `references/scoping-and-targeting.md` |
+| Ignored instructions, wrong file scope, debugging order, verification | `references/troubleshooting.md` |
+| Full-stack examples after the file architecture is chosen | `references/scenarios.md` |
+| Small starter patterns after repo grounding | `references/micro-library.md` |
 
-- Each file stays within Copilot's **4,000-character processing window** (content beyond this is silently ignored)
-- Language-specific rules never bleed into unrelated files
-- Teams can own and iterate on their relevant instruction files independently
-- Adding a new concern means adding a new file, not editing a monolith
-
-A well-configured repository typically produces 5-12 instruction files.
+Do not read every reference by default. Start with the minimum set that fits the task, then expand only if a real uncertainty remains.
 
 ## Workflow
 
-### Phase 1: Explore the Repository
+### 1. Ground on the repository before drafting
 
-Before writing a single instruction, map the codebase.
+Inspect the actual repository first:
+- Structure: single app, multi-service, or monorepo
+- Dominant languages, frameworks, and path boundaries
+- Existing `.github/copilot-instructions.md`, `.github/instructions/`, `CONTRIBUTING.md`, `CLAUDE.md`, and similar repo guidance
+- Linter, formatter, test, and CI configuration so you do not waste rule budget on enforced style rules
+- Representative files in each scope you may target
+- Recurring review themes from existing conventions, risk areas, or repeated code patterns
 
-**Structure**
-- Monorepo vs single-service
-- Directory layout, package boundaries
-- Build output directories to ignore
+Repo evidence is the source of truth. If the repository does not clearly support a stack-specific rule, do not invent it.
 
-**Tech Stack** — Scan config files:
-- `package.json`, `tsconfig.json` → TypeScript/JavaScript ecosystem
-- `requirements.txt`, `pyproject.toml` → Python ecosystem
-- `Cargo.toml` → Rust; `tauri.conf.json` → Tauri desktop
-- `go.mod` → Go; `*.csproj` → C#/.NET
-- `docker-compose.yml`, `.github/workflows/` → Infrastructure/CI
+### 2. Choose the instruction architecture before writing prose
 
-**Existing Instruction Files** — Check for:
-- `.github/copilot-instructions.md` and `.github/instructions/*.instructions.md`
-- `.cursorrules`, `.windsurfrules`, `CLAUDE.md`, `AGENTS.md`, `REVIEW.md`
-- `CONTRIBUTING.md`
+Start from this default shape:
 
-If instruction files already exist, read them. The goal is to complement and improve, not overwrite blindly.
-
-**Existing Linting & Formatting** — This is critical:
-- ESLint, Prettier, Biome → Skip formatting and style rules
-- Black, Ruff, isort → Skip Python formatting
-- rustfmt, clippy → Skip Rust formatting
-- golangci-lint → Skip Go style rules
-
-Never write instructions for things linters already enforce. Copilot's value is in semantic rules that require understanding intent — not syntactic rules a linter handles better.
-
-**Pain Points**
-- Recent PRs and issues for recurring themes
-- Git history for common bug patterns
-- TODO/FIXME/HACK comments indicating tech debt
-
-### Phase 2: Plan Instruction Architecture
-
-Decide which files to generate based on what you found.
-
-**Always generate:**
-
-| File | Purpose |
-|---|---|
-| `.github/copilot-instructions.md` | Universal rules for all files: security, quality, cross-cutting concerns |
-
-**Generate per language detected:**
-
-| Stack | File | `applyTo` |
-|---|---|---|
-| TypeScript/JS | `typescript.instructions.md` | `**/*.{ts,tsx,js,jsx}` |
-| Python | `python.instructions.md` | `**/*.py` |
-| Rust | `rust.instructions.md` | `**/*.rs` |
-| Go | `go.instructions.md` | `**/*.go` |
-| C# | `csharp.instructions.md` | `**/*.cs` |
-
-**Generate per framework/domain detected:**
-
-| Concern | File | `applyTo` |
-|---|---|---|
-| React components | `react.instructions.md` | `**/*.{tsx,jsx}` |
-| Next.js App Router | `nextjs.instructions.md` | `**/app/**/*.{ts,tsx}` |
-| API routes | `api.instructions.md` | `**/api/**/*.{ts,js}` or `**/routes/**/*.py` |
-| Database/ORM | `database.instructions.md` | Scoped to model/migration dirs |
-| Tauri commands | `tauri.instructions.md` | `**/src-tauri/**/*.rs` |
-| MCP server | `mcp.instructions.md` | `**/src/**/*.ts` |
-| Tests | `testing.instructions.md` | `**/*.{test,spec}.{ts,tsx,js,jsx}` |
-| Docker/infra | `docker.instructions.md` | `**/Dockerfile*` |
-| CI/CD | `ci.instructions.md` | `**/.github/workflows/**/*.yml` |
-| Security-critical paths | `security.instructions.md` | Scoped to auth/payment/admin dirs |
-| Accessibility | `a11y.instructions.md` | `**/*.{tsx,jsx,html}` |
-
-**Monorepo strategy:**
-Create package-scoped files when packages have meaningfully different review needs:
-- `packages-api.instructions.md` with `applyTo: "packages/api/**/*"`
-- `packages-web.instructions.md` with `applyTo: "packages/web/**/*"`
-
-**Character budget:**
-Aim for 2,500–3,500 characters per file. If a concern needs more, split into two files with narrower scopes rather than exceeding 4,000 characters.
-
-### Phase 3: Write Instruction Files
-
-**Rule Quality — Every rule must be:**
-1. **Specific** — "All API endpoints must validate request bodies with Zod" not "validate inputs"
-2. **Measurable** — Unambiguous pass/fail when reviewing code
-3. **Actionable** — Developer knows exactly what to fix
-4. **Semantic** — Requires understanding intent, not just pattern matching
-
-**Section Ordering** — Content near the top of each file carries more weight:
-1. Security-critical rules
-2. Architecture/structural requirements
-3. Error handling patterns
-4. Code quality conventions
-5. Performance considerations
-6. Testing expectations
-
-**Code Examples** — Include before/after using the repo's actual patterns:
-````markdown
-```typescript
-// Avoid
-const result = await db.query(userInput);
-
-// Prefer
-const result = await prisma.user.findUnique({ where: { id: validated.id } });
-```
-````
-
-**Writing `copilot-instructions.md`:**
-Include ONLY rules that genuinely apply to ALL code:
-- Security fundamentals (no hardcoded secrets, input validation)
-- Cross-cutting quality (error handling philosophy, logging conventions)
-- Universal naming conventions (if consistent across languages)
-- Performance red flags (N+1 queries, missing pagination)
-- Testing philosophy
-
-Do NOT put language-specific rules here.
-
-**Writing `*.instructions.md` micro-files:**
-- Valid YAML frontmatter with `applyTo` glob string (required)
-- Under 4,000 characters (aim for 2,500–3,500)
-- H2 headers for sections, bullet points for rules
-- 1-2 code examples per file
-- Highest-priority rules first
-
-**Frontmatter format:**
-```yaml
----
-applyTo: "**/*.{ts,tsx}"
----
-```
-
-### Phase 4: Validate
-
-Run through this checklist before outputting:
-
-- [ ] Every `*.instructions.md` has valid YAML frontmatter with `applyTo`
-- [ ] No file exceeds 4,000 characters (verify with character count)
-- [ ] `applyTo` glob patterns are syntactically valid
-- [ ] No rule overlap between `copilot-instructions.md` and micro-files
-- [ ] No rules duplicating what existing linters enforce
-- [ ] Rules are specific and measurable, not vague
-- [ ] Code examples use the repo's actual patterns
-- [ ] Security rules near top of each relevant file
-- [ ] No attempts to modify Copilot UX, formatting, or PR overview
-- [ ] No external links (Copilot cannot follow them)
-- [ ] File naming: `kebab-case.instructions.md`
-- [ ] Monorepo files don't repeat rules already in more-general files
-- [ ] `copilot-instructions.md` is in `.github/` root, micro-files in `.github/instructions/`
-
-### Phase 5: Output
-
-Present generated files as:
-
-1. **File tree** — Complete `.github/` structure
-2. **Each file** — Full content in fenced code block with path as heading
-3. **Reasoning** — Brief note per micro-file explaining what it targets and why
-
-```
+```text
 .github/
 ├── copilot-instructions.md
 └── instructions/
-    ├── typescript.instructions.md
-    ├── react.instructions.md
-    ├── api.instructions.md
-    ├── database.instructions.md
-    ├── security.instructions.md
-    └── testing.instructions.md
+    ├── <language>.instructions.md
+    └── <domain-or-package>.instructions.md
 ```
 
-## Reference Files
+Use this placement logic:
 
-- **`references/instruction-spec.md`** — Complete format specification: frontmatter syntax, glob patterns, character limits, what Copilot supports and doesn't. Read when you need format details.
+| Put it in | When |
+| --- | --- |
+| `.github/copilot-instructions.md` | The rule is truly universal across the repo: security fundamentals, shared error-handling philosophy, shared performance red flags, or repo-wide testing expectations |
+| `.github/instructions/<language>.instructions.md` | The rule applies to one language or ecosystem and is not just a linter concern |
+| `.github/instructions/<framework-or-path>.instructions.md` | The rule applies only to a framework, directory, layer, or critical path such as `api`, `auth`, `migrations`, or `components` |
+| Package/service-scoped `*.instructions.md` | A monorepo package or service has unique review needs not already covered by repo-wide rules |
+| `excludeAgent` | A rule should guide code review but would confuse the coding agent, or vice versa |
 
-- **`references/anti-patterns.md`** — Common mistakes and how to avoid them. Includes a debugging sequence for when rules aren't followed. Read before validation.
+Steering rules:
+- Start minimal: most repos should begin with **1 repo-wide file plus 2-4 scoped files**
+- Grow toward **5-12 total files** only when repo breadth justifies it
+- Do **not** create a file just because you detected a language or framework; create it only if you have **2-3 high-signal rules unique to that scope**
+- Do **not** dump everything into `copilot-instructions.md`; that causes scope bleed and usually wastes the 4,000-character limit
+- Monorepo package files must contain only package-unique rules, not repeated root rules
 
-- **`references/scenarios.md`** — 8 complete example instruction sets for different tech stacks (TS API, Next.js Dashboard, Django, Go, Tauri, MCP Server, Monorepo, Marketing site). Each shows the full file tree and all generated files. Read the relevant scenario when working with a matching stack.
+### 3. Select rules with evidence and reuse discipline
 
-- **`references/micro-library.md`** — Comprehensive library of 20+ individual `*.instructions.md` files organized by language, framework, and domain. Use as adaptation references — match to the actual codebase, don't copy verbatim.
+Every rule should be **Specific, Measurable, Actionable, and Semantic**.
 
-## Key Gotchas
+Use this filter:
 
-- Copilot reads only the first **4,000 characters** of any instruction file — the rest is silently ignored
-- `*.instructions.md` files must live in `.github/instructions/` directory
-- `copilot-instructions.md` must be in `.github/` root
-- `applyTo` is a **single glob string**, not an array — use `{ts,tsx}` syntax for multiple extensions
-- Copilot **cannot follow external links** — inline all content
-- Instructions **cannot** change comment format, PR overview, or merge behavior
-- Non-deterministic behavior is normal — Copilot won't follow every instruction every time
-- Missing or empty `applyTo` on a `*.instructions.md` means the file applies to **nothing**
-- Start with 10–20 focused rules across files and iterate based on real PR results
+| Keep | Drop |
+| --- | --- |
+| Rules backed by repo code, configs, docs, or repeated defects | Generic best practices with no repo evidence |
+| Semantic review guidance about security, architecture, data flow, error handling, performance, tests, or accessibility | Formatting, import order, spacing, quote style, or other linter territory |
+| Short imperative bullets that say what to flag and why | Narrative paragraphs, hedged advice, or vague slogans like "write clean code" |
+| Adapted examples using repo patterns | Copy-pasted templates or external-link references |
+
+Reusable categories are helpful only when the repository actually needs them:
+- Repo-wide candidates: security, shared error handling, shared performance risks, testing philosophy
+- Scoped candidates: language idioms, framework conventions, API validation, auth/payment paths, migrations, package boundaries, test-file rules
+
+If you use `references/scenarios.md` or `references/micro-library.md`, treat them as pattern libraries. Adapt them to the repo; never copy them verbatim.
+
+### 4. Draft files with scope-safe formatting
+
+When writing files:
+- `copilot-instructions.md` is plain Markdown in `.github/` and has **no frontmatter**
+- Every scoped file lives under `.github/instructions/`
+- Every scoped file starts at **line 1** with YAML frontmatter
+- `applyTo` is a **single quoted or double-quoted glob string** relative to repo root
+- `excludeAgent`, when used, should be either `"code-review"` or `"coding-agent"`
+- File names should use `kebab-case.instructions.md`
+- Highest-priority rules go first
+- Keep examples short and include them only when they clarify a semantic rule
+
+Overlapping scoped files are acceptable only when the rules are **additive**. If two matching files would disagree, narrow `applyTo` until they no longer conflict. Multiple matching scoped files are concatenated, so never rely on overlap to resolve contradictions for you.
+
+### 5. Validate before presenting anything
+
+Check all of these:
+- Each file stays under the **hard 4,000-character limit**; aim for **2,500-3,500**
+- Frontmatter counts toward the limit
+- No external links
+- No attempts to control Copilot's comment formatting, severity labels, approvals, or merge blocking
+- No rules duplicated from linter or formatter config
+- No contradictory rules across overlapping scopes
+- Root file contains only universal rules
+- Package/service files do not repeat root rules
+- Instruction changes are intended for the **base branch** of the PR, because feature-branch instruction changes do not affect the same PR's review
+
+Use `wc -c` for character counts and verify that representative files actually match each `applyTo` pattern.
+
+### 6. Present the result as an architecture, not just a dump
+
+Return:
+- The `.github/` file tree
+- Full contents of each generated instruction file
+- A brief per-file explanation covering:
+  - Why this file exists
+  - What scope it targets
+  - Which repo evidence justified its rules
+  - Why the rule set was kept out of other files
+
+If repo evidence is weak or mixed, say so explicitly and keep the instruction set conservative.
+
+## Do this, not that
+
+| Do this | Not that |
+| --- | --- |
+| Use repo code and configs as the primary evidence base | Write generic rules from memory |
+| Put universal semantic rules in `copilot-instructions.md` | Put framework- or path-specific rules in the root file |
+| Add a scoped file only when the scope has unique review value | Generate one file for every detected tool |
+| Use short, imperative, semantic bullets | Write long prose or vague quality slogans |
+| Adapt scenario and template references to the repo | Copy templates verbatim |
+| Split files when they near 4,000 characters | Assume trailing content will still be read |
+| Make overlapping files complementary | Rely on conflicting files and hope Copilot resolves them |
+| Plan for base-branch rollout and re-review | Assume feature-branch changes affect the current PR automatically |
+
+## Recovery paths
+
+If the task starts drifting, recover in this order:
+1. **Too broad or too many files** → collapse to the root file plus only the highest-signal scoped files
+2. **File near 4,000 characters** → remove low-priority rules, shorten examples, or split by narrower `applyTo`
+3. **Unclear scoping** → inspect representative repo files and choose the narrowest glob that still matches the intended scope
+4. **Conflicting rules** → make scopes non-overlapping or rewrite the rules to be additive
+5. **Weak or generic Copilot comments** → rewrite rules for specificity and remove linter-level noise
+6. **Instructions seem ignored** → follow `references/troubleshooting.md` in order: location → character count → frontmatter → base branch → glob match → conflicts → specificity → incremental retest → re-review
+
+## Reference routing
+
+- **`references/setup-and-format.md`** — file locations, root vs scoped formats, character limits, review modes, configuration levels, and base-branch behavior
+- **`references/writing-instructions.md`** — SMSA rule quality, section ordering, root vs scoped content decisions, character budgets, code examples, and iteration workflow
+- **`references/scoping-and-targeting.md`** — `applyTo`, `excludeAgent`, precedence, additive overlap, monorepo layout, and optimal file counts
+- **`references/troubleshooting.md`** — ignored instructions, scope mistakes, architecture mistakes, debugging order, verification, and non-determinism
+- **`references/scenarios.md`** — full-stack examples to adapt only after the file architecture is already chosen
+- **`references/micro-library.md`** — small templates to adapt only after repo grounding when you need a starter pattern for a specific scope

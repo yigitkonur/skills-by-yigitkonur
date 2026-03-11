@@ -1,366 +1,154 @@
 ---
 name: build-supastarter-app
-description: Use skill if you are building or extending a Supastarter app and need project-grounded patterns for routing, auth, API, billing, UI, storage, or deployment.
+description: Use skill if you are extending a Supastarter app with App Router pages, oRPC procedures, Better Auth flows, Prisma/Drizzle data work, billing, storage, or monorepo package changes.
 ---
 
 # Build Supastarter App
 
-Use this skill when you need to change or extend a Supastarter-based Next.js SaaS app and you want the implementation to match the real codebase instead of generic boilerplate patterns.
+Use this skill when the user is changing a real Supastarter monorepo and the answer must follow repo-specific patterns instead of generic Next.js or SaaS boilerplate.
 
-## What this skill gives you
+## Use this skill for
 
-- the **actual monorepo structure** used by this project
-- the **real App Router layout and provider chain**
-- the **exact oRPC + Better Auth + Prisma/Drizzle patterns** used in production code
-- grounded references for **payments (Stripe, Polar, Creem, Dodo Payments), organizations, settings, onboarding, marketing, mail, storage, analytics, and deployment**
-- task-specific guides for **adding endpoints, pages, models, and billing flows**
+- adding or moving marketing pages, SaaS pages, layouts, or redirects
+- creating or wiring oRPC procedures, routers, and client query usage
+- changing login, signup, onboarding, invitations, sessions, or organization flows
+- adding schema, query, billing, checkout, portal, webhook, or upload behavior
+- placing files in the right app, module, or package inside the monorepo
 
-## How to use this skill
+## Do not use this skill for
 
-Keep this file lean and use the reference docs on demand.
+- generic TypeScript quality work with no Supastarter-specific patterns; use `develop-typescript`
+- pull request review or audit-only work; use `review-pr`
+- framework-agnostic Next.js advice that ignores this repo's routing, guards, and package boundaries
 
-### Default workflow
+## Core operating rule
 
-1. Read the brief and classify the change:
-   - setup/config
-   - routing/layout
-   - API/backend
-   - auth/organizations
-   - database/payments
-   - UI/forms
-   - marketing/content
-   - deployment
-2. Open the matching reference files from the lists below.
-3. Copy the **existing pattern** instead of inventing a new one.
-4. Prefer the task guides in `references/tasks/` when the request is implementation-oriented.
-5. Use the cheatsheets for commands, imports, file locations, and env vars.
-
-## Start here first
-
-If you are new to the codebase, read these in order:
-
-1. `references/setup/monorepo-structure.md`
-2. `references/setup/import-conventions.md`
-3. `references/setup/config-feature-flags.md`
-4. `references/conventions/typescript-patterns.md`
-5. `references/conventions/component-patterns.md`
-6. `references/cheatsheets/file-locations.md`
+Classify the request first. Find the owning surface before editing. Read the smallest matching reference bundle. Copy the existing repo pattern. Expand only when the current reference cannot answer the next decision.
 
-That gives you the repo shape, imports, config switches, TS/component conventions, and where new files belong.
+## Default workflow
 
-## Quick architecture map
+1. **Classify the change before reading broadly.**
+   - routing or page placement
+   - API or backend procedure
+   - auth, session, onboarding, or organizations
+   - data model or shared query layer
+   - billing or payments
+   - storage or uploads
+   - repo placement, imports, config, or deployment
 
-### App structure
+2. **Locate the owning boundary before editing.**
+   - routes live in `apps/web/app`
+   - feature UI usually lives in `apps/web/modules`
+   - API procedures live in `packages/api/modules`
+   - auth config lives in `packages/auth`
+   - server auth reads should go through existing helpers in `apps/web/modules/saas/auth/lib/server.ts`
+   - schema and shared queries belong in `packages/database`
+   - billing logic belongs in `packages/payments`
+   - storage logic belongs in `packages/storage`
 
-- `apps/web` — Next.js App Router app
-- `packages/api` — Hono + oRPC API surface
-- `packages/auth` — Better Auth setup
-- `packages/database` — Prisma schema, client, queries, generated artifacts
-- `packages/payments` — billing config, provider abstraction (Stripe, Polar, Creem, Dodo Payments)
-- `packages/mail` — email rendering and delivery
-- `packages/storage` — S3-compatible signed URLs
-- `packages/ui` — reusable UI components
+3. **Start with the smallest relevant reference bundle.**
+   Begin with the task guide or hub below, then follow the related-reference links from that file instead of scanning the whole tree.
 
-### Route groups
+4. **Change the owner first, then wire outward.**
+   - data change: schema or query helper first, then API, then page
+   - API change: procedure, module router, root router, then client usage
+   - billing change: plan or provider layer, then API, then settings or checkout UI
+   - storage change: signed URL flow first, then client upload, then persistence on the owning entity
 
-- marketing pages live under `apps/web/app/(marketing)/[locale]`
-- protected product routes live under `apps/web/app/(saas)`
-- `/app/**` gets the full SaaS provider + guard chain
+5. **Check flags and guard behavior before calling the work done.**
+   Supastarter behavior is feature-flagged and redirect-heavy. Verify the relevant app, auth, and billing config before assuming a route, UI branch, or redirect is wrong.
 
-For the actual nesting and providers, read:
+6. **Validate boundaries and imports.**
+   Use aliases, preserve package ownership, default to server components, and add client behavior only when hooks or browser APIs require it.
 
-- `references/routing/routing-marketing.md`
-- `references/routing/routing-saas.md`
-- `references/routing/layout-chain.md`
-- `references/routing/access-guards.md`
-- `references/routing/providers-document.md`
-- `references/routing/middleware-proxy.md`
-
-## Reference map by task
-
-### Setup, repo shape, and conventions
-
-Read these when you need global orientation or project-wide rules:
+## Decision rules
 
-- `references/setup/environment-setup.md`
-- `references/setup/monorepo-structure.md`
-- `references/setup/import-conventions.md`
-- `references/setup/config-feature-flags.md`
-- `references/setup/next-config.md`
-- `references/setup/tooling-biome.md`
-- `references/conventions/naming.md`
-- `references/conventions/typescript-patterns.md`
-- `references/conventions/component-patterns.md`
-- `references/conventions/code-review-checklist.md`
-
-Use the cheatsheets when you need a fast answer:
-
-- `references/cheatsheets/commands.md`
-- `references/cheatsheets/imports.md`
-- `references/cheatsheets/file-locations.md`
-- `references/cheatsheets/env-vars.md`
-
-### Routing, layouts, guards, and shell
-
-Read these when the task involves pages, providers, redirects, auth gates, or dashboard chrome:
-
-- `references/routing/routing-marketing.md`
-- `references/routing/routing-saas.md`
-- `references/routing/layout-chain.md`
-- `references/routing/access-guards.md`
-- `references/routing/providers-document.md`
-- `references/routing/middleware-proxy.md`
-
-### API work
-
-Read these when adding or changing backend procedures or client integrations:
-
-- `references/api/overview.md`
-- `references/api/procedure-tiers.md`
-- `references/api/root-router.md`
-- `references/api/transport-handlers.md`
-- `references/api/next-route-bridge.md`
-- `references/api/client-integration.md`
-- `references/api/contact-module.md`
-- `references/api/payments-organizations-modules.md`
-
-### Authentication and session behavior
-
-Read these when changing login, signup, session access, org invitations, or auth feature flags:
-
-- `references/auth/overview.md`
-- `references/auth/better-auth-config.md`
-- `references/auth/feature-flags.md`
-- `references/auth/client-auth-client.md`
-- `references/auth/server-session-helpers.md`
-- `references/auth/session-hook-provider.md`
-- `references/auth/login-flow.md`
-- `references/auth/signup-invitations.md`
-
-### Database and query layer
-
-Read these before touching schema, ORM client usage, or shared queries. Supastarter defaults to Prisma but also supports Drizzle as an alternative ORM:
-
-- `references/database/schema-overview.md`
-- `references/database/prisma-client.md`
-- `references/database/query-patterns.md`
-- `references/database/users-organizations-purchases.md`
-- `references/database/generation-exports.md`
-
-### Payments and billing
-
-Read these when changing plans, checkout flows, customer IDs, payment provider logic, or purchase resolution. The provider abstraction supports Stripe, Polar, Creem, and Dodo Payments:
-
-- `references/payments/plans-config.md`
-- `references/payments/provider-abstraction.md`
-- `references/payments/stripe-provider.md`
-- `references/payments/customer-ids.md`
-- `references/payments/checkout-and-portal-flow.md`
-- `references/payments/webhook-flow.md`
-
-### Organizations, onboarding, settings, and admin
-
-Read these for multi-tenant UX, post-signup flows, and admin management:
-
-- `references/organizations/active-organization-context.md`
-- `references/organizations/organization-select.md`
-- `references/organizations/create-organization-form.md`
-- `references/organizations/members-and-invitations.md`
-- `references/onboarding/onboarding-flow.md`
-- `references/onboarding/onboarding-step-one.md`
-- `references/settings/account-settings.md`
-- `references/settings/billing-security-and-avatar.md`
-- `references/hooks/auth-hooks.md`
-- `references/hooks/organization-hooks.md`
-- `references/hooks/consent-hooks.md`
-- `references/admin/users-admin.md`
-- `references/admin/organizations-admin.md`
-
-### UI, forms, analytics, and client patterns
-
-Read these when building interactive client components:
-
-- `references/ui/components.md`
-- `references/ui/forms.md`
-- `references/ui/theme-tokens.md`
-- `references/ui/styling-patterns.md`
-- `references/ui/feedback-overlays.md`
-- `references/patterns/form-with-zod.md`
-- `references/patterns/react-query-orpc.md`
-- `references/patterns/server-prefetch.md`
-- `references/patterns/organization-scoped-page.md`
-- `references/patterns/direct-upload-s3.md`
-- `references/analytics/provider-overview.md`
-- `references/analytics/consent-flow.md`
-- `references/ai/models-and-exports.md`
-- `references/ai/prompt-helpers.md`
-
-### Mail, i18n, storage, marketing, and deployment
-
-Read these when the feature crosses user communication, localization, content, assets, or infra:
-
-- `references/mail/send-email.md`
-- `references/mail/template-rendering.md`
-- `references/mail/email-templates.md`
-- `references/mail/providers.md`
-- `references/i18n/setup.md`
-- `references/i18n/messages-loading.md`
-- `references/i18n/locale-routing.md`
-- `references/storage/bucket-config.md`
-- `references/storage/s3-provider.md`
-- `references/storage/signed-urls.md`
-- `references/marketing/home-page-components.md`
-- `references/marketing/content-collections.md`
-- `references/marketing/pages.md`
-- `references/deployment/environment-checklist.md`
-- `references/deployment/local-services.md`
-- `references/deployment/vercel.md`
-- `references/logging.md`
-- `references/utils.md`
-
-## Use the task guides for implementation requests
-
-If the user asks you to add something concrete, start here:
-
-- **Add an API endpoint:** `references/tasks/add-api-endpoint.md`
-- **Add a SaaS page:** `references/tasks/add-saas-page.md`
-- **Add a marketing page:** `references/tasks/add-marketing-page.md`
-- **Add a database model:** `references/tasks/add-database-model.md`
-- **Integrate billing:** `references/tasks/integrate-payments.md`
-
-These task guides point back to the underlying references and actual file locations.
-
-## Common decision rules
-
-### When changing UI
+### Routing and page placement
 
-- default to server components
-- add `"use client"` only when hooks/browser APIs are required
-- use the existing form stack: `react-hook-form` + `zod` + shared form components
-- use deep UI imports such as `@repo/ui/components/button`
-
-Read:
-
-- `references/conventions/component-patterns.md`
-- `references/ui/forms.md`
-- `references/ui/components.md`
-- `references/ui/styling-patterns.md`
+- Marketing pages belong under `apps/web/app/(marketing)/[locale]`.
+- Protected product pages belong under the SaaS surface in `apps/web/app/(saas)`.
+- Fully gated dashboard pages belong under `/app`, not beside helper flows.
+- Onboarding, organization creation, and plan selection are helper pages outside `/app` on purpose.
+- Organization-scoped pages must respect the `[organizationSlug]` branch and active-organization prefetch path.
 
-### When changing backend/API
+**Do this, not that:**
+- Put public pages in the marketing tree; do not drop them into the SaaS group because they need a session-aware navbar.
+- Put gated product pages under `/app`; do not place them next to `/onboarding`, `/new-organization`, or `/choose-plan` unless the page is itself a prerequisite helper.
 
-- procedures live in `packages/api/modules/*`
-- route them through the module router and then the root router
-- validate inputs with Zod
-- use `publicProcedure`, `protectedProcedure`, or `adminProcedure` deliberately
+### Auth, session, and organizations
 
-Read:
+- Check auth feature flags before changing login, signup, onboarding, or org flows.
+- Reuse cached server session and organization helpers for layouts and server components.
+- Treat account-scoped and organization-scoped flows as different surfaces.
+- Preserve the existing redirect chain instead of inventing new guard logic in random pages.
 
-- `references/api/procedure-tiers.md`
-- `references/api/root-router.md`
-- `references/api/transport-handlers.md`
-- `references/tasks/add-api-endpoint.md`
+**Do this, not that:**
+- Use the existing server helpers and providers; do not call `auth.api.*` directly from client code.
+- Adjust config and existing guards first; do not patch over redirect behavior with ad hoc page-level workarounds.
 
-### When changing auth or organizations
+### API and data layer
 
-- check auth feature flags first
-- match Better Auth plugin usage already in the repo
-- treat org-aware and account-aware routes differently
-- reuse session and active-organization helpers before inventing new hooks
+- Add procedures in `packages/api/modules/*/procedures`.
+- Choose `publicProcedure`, `protectedProcedure`, or `adminProcedure` deliberately.
+- Validate inputs with Zod and wire routers through the module router and root router.
+- Keep reusable data access in `packages/database` query helpers instead of spreading raw ORM calls through pages.
 
-Read:
+**Do this, not that:**
+- Extend the oRPC surface and consume it through existing query patterns; do not bypass it with one-off handlers unless the task explicitly requires a route handler.
+- Put shared Prisma or Drizzle access in package helpers; do not scatter direct database calls through app components.
 
-- `references/auth/feature-flags.md`
-- `references/auth/server-session-helpers.md`
-- `references/organizations/active-organization-context.md`
-- `references/routing/access-guards.md`
+### Billing and payments
 
-### When changing data or billing
+- Billing behavior flows through payments config, the provider abstraction, API procedures, and settings or organization UI.
+- Respect whether billing is attached to the `user` or the `organization`.
+- Plan gating affects `/app` redirects, so checkout work is never just a button change.
 
-- schema changes start in `schema.prisma` (or your Drizzle schema if using Drizzle)
-- query helpers belong in `packages/database/prisma/queries`
-- billing behavior flows through payments config, provider abstraction (Stripe/Polar/Creem/Dodo), and API procedures
-
-Read:
-
-- `references/database/schema-overview.md`
-- `references/database/query-patterns.md`
-- `references/payments/plans-config.md`
-- `references/payments/stripe-provider.md`
-- `references/tasks/add-database-model.md`
-- `references/tasks/integrate-payments.md`
-
-## High-signal pitfalls
-
-- Do **not** import shared packages through deep relative paths; use aliases from `references/setup/import-conventions.md`.
-- Do **not** invent a new form approach; match `references/ui/forms.md` and `references/patterns/form-with-zod.md`.
-- Do **not** bypass the oRPC layer with ad hoc handlers unless the task explicitly requires it.
-- Do **not** put Prisma calls directly into app components if a shared query helper pattern already exists.
-- Do **not** guess where files belong; check `references/cheatsheets/file-locations.md` first.
-- Do **not** hardcode env assumptions; check `references/setup/environment-setup.md` and `references/cheatsheets/env-vars.md`.
-
-## Minimal reading sets
-
-Use these smaller bundles when you need speed:
-
-### “I need to add one protected API procedure”
-
-Read:
-
-- `references/tasks/add-api-endpoint.md`
-- `references/api/procedure-tiers.md`
-- `references/api/root-router.md`
-- `references/auth/server-session-helpers.md`
-- `references/database/query-patterns.md`
-
-### “I need to add one new dashboard page”
-
-Read:
-
-- `references/tasks/add-saas-page.md`
-- `references/routing/routing-saas.md`
-- `references/routing/access-guards.md`
-- `references/routing/middleware-proxy.md`
-- `references/organizations/active-organization-context.md`
-
-### “I need to add one new marketing page or content page”
-
-Read:
-
-- `references/tasks/add-marketing-page.md`
-- `references/routing/routing-marketing.md`
-- `references/marketing/pages.md`
-- `references/marketing/content-collections.md`
-
-### “I need to change auth UI or signup/login behavior”
-
-Read:
-
-- `references/auth/overview.md`
-- `references/auth/login-flow.md`
-- `references/auth/signup-invitations.md`
-- `references/auth/feature-flags.md`
-- `references/mail/email-templates.md`
-
-### “I need to touch billing or subscriptions”
-
-Read:
-
-- `references/payments/plans-config.md`
-- `references/payments/provider-abstraction.md`
-- `references/payments/customer-ids.md`
-- `references/payments/stripe-provider.md`
-- `references/payments/webhook-flow.md`
-- `references/settings/billing-security-and-avatar.md`
-
-### "I need to manage users or organizations as admin"
-
-Read:
-
-- `references/admin/users-admin.md`
-- `references/admin/organizations-admin.md`
-- `references/auth/better-auth-config.md`
-- `references/organizations/members-and-invitations.md`
+**Do this, not that:**
+- Route provider behavior through `packages/payments`; do not import Stripe or another provider SDK directly into app pages.
+- Check active-plan and redirect behavior before editing billing UI; do not assume missing access is a component bug.
+
+### Storage and uploads
+
+- Use signed URLs for direct uploads and controlled reads.
+- Keep buckets private by default.
+- Persist the resulting object key on the owning entity after upload.
+
+**Do this, not that:**
+- Use the signed-URL pattern; do not add file-uploading server actions or proxy large files through the main app server unless the task explicitly demands it.
+
+### Monorepo boundaries
+
+- Use package aliases such as `@repo/api`, `@repo/database`, and `@repo/ui/components/*`.
+- Put code where the repo already expects it instead of creating new top-level structure.
+- Prefer shared packages or shared modules only when the feature is truly cross-cutting.
+
+**Do this, not that:**
+- Check file placement and imports first; do not cross package boundaries with deep relative paths.
+- Reuse an existing module or package boundary; do not create a new abstraction just because a task touches multiple files.
+
+## Start with these reference bundles
+
+| Task | Start here |
+|---|---|
+| Repo orientation, package ownership, file placement, config switches | `references/README.md`, `references/setup/monorepo-structure.md`, `references/cheatsheets/file-locations.md`, `references/setup/config-feature-flags.md` |
+| New protected SaaS page or dashboard route | `references/tasks/add-saas-page.md`, `references/routing/routing-saas.md`, `references/routing/access-guards.md` |
+| New marketing or content page | `references/tasks/add-marketing-page.md`, `references/routing/routing-marketing.md`, `references/i18n/locale-routing.md`, `references/marketing/pages.md` |
+| New API procedure or backend change | `references/tasks/add-api-endpoint.md`, `references/api/procedure-tiers.md`, `references/api/root-router.md`, `references/database/query-patterns.md` |
+| Auth, session, invitation, onboarding, or org flow | `references/auth/feature-flags.md`, `references/auth/server-session-helpers.md`, `references/routing/access-guards.md`, `references/auth/overview.md` |
+| Schema or shared data-layer work | `references/tasks/add-database-model.md`, `references/database/schema-overview.md`, `references/database/query-patterns.md` |
+| Billing, checkout, customer IDs, provider work | `references/tasks/integrate-payments.md`, `references/payments/provider-abstraction.md`, `references/payments/plans-config.md`, `references/routing/access-guards.md` |
+| Storage, avatars, logos, or uploads | `references/storage/signed-urls.md`, `references/patterns/direct-upload-s3.md`, `references/storage/s3-provider.md` |
+| Deployment or environment issues | `references/setup/environment-setup.md`, `references/deployment/environment-checklist.md`, `references/deployment/vercel.md` |
+
+## Recovery paths when the task starts to drift
+
+- **You are unsure where code belongs.** Re-read `references/setup/monorepo-structure.md` and `references/cheatsheets/file-locations.md` before editing.
+- **A route keeps redirecting somewhere unexpected.** Re-read `references/routing/access-guards.md`, then the matching routing doc, before touching the page component.
+- **Auth UI or onboarding behavior looks inconsistent.** Re-read `references/auth/feature-flags.md` and verify config before changing forms or providers.
+- **Billing changes do not affect access as expected.** Re-read `references/payments/provider-abstraction.md`, `references/payments/plans-config.md`, and the guard docs before editing settings UI.
+- **An upload flow starts looking like a server-action file proxy.** Stop and re-read `references/storage/signed-urls.md` and `references/patterns/direct-upload-s3.md`.
+- **You need more detail after the starter bundle.** Open `references/README.md`, then follow the related-reference links from the file you already loaded instead of loading every reference directory.
 
 ## Final reminder
 
-This skill is intentionally split into many small reference files. Do not load everything blindly. Start with the smallest relevant bundle above, then expand into neighboring references only when the task actually needs them.
+This skill should make you more repo-faithful, not more creative. Match Supastarter's existing route boundaries, helper flows, auth helpers, oRPC surface, package ownership, and signed-URL patterns before introducing anything new.

@@ -1,208 +1,198 @@
 ---
 name: plan-work
-description: Use skill if you are planning work, comparing options, prioritizing tasks, or framing root causes before acting.
+description: Use skill if you are framing a vague request, comparing approaches, prioritizing a backlog, or defining risks, checkpoints, and decision criteria before acting.
 ---
 
 # Plan Work
 
-Use this skill to create plans that are clear, testable, and adaptable.
+Use this skill to turn ambiguous or high-stakes work into a decision, sequence, or safe-to-learn experiment.
 
-## Core Promise
+## Trigger boundaries
 
-You are not writing a task list. You are building decision quality.
+Use it when the main deliverable is:
+- a clearer problem frame
+- a decision with trade-offs
+- a ranked or sequenced backlog
+- a risk-aware execution plan
+- a root-cause hypothesis for a recurring issue
 
-1. Frame the right problem.
-2. Use the right thinking method for the context.
-3. Deliver an execution path with verification and pivot signals.
+Do not use it as a substitute for:
+- external information gathering (`run-research`)
+- code writing or refactoring (`build-*`, `develop-*`)
+- PR review (`review-*`)
+- debugging or verification (`debug-*`, `test-*`)
 
-## Audience & Tone
+If another skill owns execution, use this skill to structure the decision first, then hand off.
 
-Write like you are guiding a smart junior teammate.
+## Operating stance
 
-- Start simple, then add depth.
-- Explain why each step exists.
-- Define specialized terms in one line.
-- Prefer concrete actions over abstract slogans.
+1. Frame before fix.
+2. Use the smallest method stack that improves clarity.
+3. Match analysis depth to reversibility, evidence quality, and blast radius.
+4. Prefer a concrete recommendation or next experiment over abstract discussion.
+5. Always separate facts, assumptions, unknowns, and preferences.
 
-## Operating Rules
+## Reference router
 
-1. Do not propose solutions before framing.
-2. Do not recommend architecture/process changes without evidence.
-3. If confidence is low and impact is high, research first.
-4. Separate facts, assumptions, and interpretations.
-5. Show trade-offs and alternatives.
-6. Every plan must contain a verification step.
-7. For technical work, explore current system behavior before structural recommendations.
+Start with one file. Add a second only when it answers a different question.
 
-## Reference routing
+| Need | Start with | Add only if |
+|---|---|---|
+| Vague, broad, or conflicting request | `references/01-intake-and-framing.md` | `references/09-thinking-methods-catalog.md` if method choice is unclear |
+| Recurring failure or root-cause dispute | `references/02-root-cause-and-problem-solving.md` | `references/05-systems-thinking.md` if system effects dominate |
+| Comparing options, technology, or architecture | `references/03-option-design-and-decision-quality.md` | `references/06-technical-strategy-and-architecture.md` for ADRs or technical strategy |
+| Backlog overload or sequencing | `references/04-prioritization-and-sequencing.md` | `references/08-execution-risk-and-learning.md` if changing conditions threaten delivery |
+| Side effects across teams or systems | `references/05-systems-thinking.md` | `references/07-communication-and-alignment.md` if alignment is the real bottleneck |
+| Stakeholder alignment or decision communication | `references/07-communication-and-alignment.md` | `references/01-intake-and-framing.md` if goals or scope are still fuzzy |
+| Execution risk, checkpoints, retros, or pivot triggers | `references/08-execution-risk-and-learning.md` | `references/04-prioritization-and-sequencing.md` if scope cuts or re-sequencing are needed |
+| Unsure which thinking method fits | `references/09-thinking-methods-catalog.md` | the single domain file that matches the actual planning job |
 
-Load only the files needed for the task.
+## Default workflow
 
-1. `references/01-intake-and-framing.md`
-   - Read when the request is vague, broad, or conflicting.
-   - Read when people are proposing solutions before defining the problem.
-   - Read when planning quality is low because goals are unclear.
+### 1. Classify the planning job
 
-2. `references/02-root-cause-and-problem-solving.md`
-   - Read when the same issue keeps recurring.
-   - Read when teams disagree on causes.
-   - Read when symptoms are repeatedly patched without durable improvement.
+Pick one dominant job first:
+- frame the problem
+- diagnose a cause
+- compare options
+- prioritize work
+- align people
+- de-risk execution
 
-3. `references/03-option-design-and-decision-quality.md`
-   - Read when multiple options exist.
-   - Read when trade-offs are unclear.
-   - Read when discussion is preference-driven instead of criteria-driven.
+State it explicitly: `This is primarily a ___ decision/problem.`
 
-4. `references/04-prioritization-and-sequencing.md`
-   - Read when there is more work than capacity.
-   - Read when deadlines create pressure and decision fatigue.
-   - Read when stakeholders want everything prioritized.
+Do not try to run every planning mode at once.
 
-5. `references/05-systems-thinking.md`
-   - Read when local fixes create side effects.
-   - Read when outcomes emerge from cross-team/tool interactions.
-   - Read when problems keep returning in different forms.
+### 2. Frame the mission before proposing solutions
 
-6. `references/06-technical-strategy-and-architecture.md`
-   - Read when choosing architecture for a new system or major feature.
-   - Read when considering structural changes in an existing system.
-   - Read when unsure whether complexity is justified.
-
-7. `references/07-communication-and-alignment.md`
-   - Read when decisions are made but not understood.
-   - Read when stakeholder buy-in is weak.
-   - Read when feedback triggers defensiveness.
-
-8. `references/08-execution-risk-and-learning.md`
-   - Read when delivery conditions are changing.
-   - Read when the plan includes high uncertainty.
-   - Read when controlled adaptation is needed instead of rigid execution.
-
-9. `references/09-thinking-methods-catalog.md`
-   - Read when methods need to be selected intentionally instead of guessing.
-   - Read when better planning quality is needed under uncertainty.
-   - Read when brief, use-case-driven guidance is needed for each method.
-
-## Default Workflow
-
-### Step 1) Clarify the mission
 Capture:
-- target outcome
-- constraints
-- non-negotiables
-- success criteria
+- mission sentence: `We need to ___ so that ___ within ___ constraints.`
+- success criteria and failure signals
+- constraints and non-negotiables
+- facts vs. assumptions
+- scope: in / out / unknown
 
-Mission sentence format:
-“We need to ___ so that ___ within ___ constraints.”
+Stop here and do not recommend a plan yet if any of these are true:
+- the decision-maker is unknown
+- success cannot be observed
+- 3+ core 5W2H questions are unanswered
+- critical unknowns have no owner or resolve-by date
 
-### Step 2) Frame before fix
-Use one framing method first:
-- First principles
-- Abstraction laddering
-- Issue trees
+If blocked, return a decision-ready gap list instead of pretending the plan is ready.
 
-Output: problem map, not solution map.
+### 3. Choose the smallest useful method
 
-### Step 3) Build evidence
-Use three evidence lanes:
+Use one primary method. Add one companion only if it closes a clear gap.
+
+| Situation | Use | Avoid |
+|---|---|---|
+| Several measurable options | Decision matrix | Hard choice model unless the real conflict is values |
+| Values or principles conflict | Hard choice model | Fake precision with weighted scores |
+| Single incident | 5 Whys | Full systems mapping unless evidence says the cause is systemic |
+| Recurring or multi-cause issue | Iceberg / Ishikawa / hypothesis-driven RCA | Stopping at `human error` or `bad communication` |
+| Backlog overload | RICE or Impact-Effort, then MoSCoW for scope | Heavy scoring when the list is small or the data is fictional |
+| Fast-changing execution | OODA + confidence-based pacing | Long upfront optimization loops |
+| Executive communication | Minto Pyramid | Leading with background instead of the recommendation |
+
+Method rule: if the first method already makes the choice clear, stop. Do not stack extra frameworks just to look rigorous.
+
+### 4. Build enough evidence, not maximum evidence
+
+Use evidence in this order:
 1. local context (artifacts, prior attempts, observed behavior)
-2. direct signals (current outcomes, bottlenecks, failure signatures)
-3. external references (when uncertainty is material)
+2. direct signals (current outcomes, constraints, failure signatures)
+3. external research only when it can change the decision
 
-For technical tasks, explore in this order:
-1. map current boundaries
-2. trace real flow end-to-end
-3. identify constraints and conventions
-4. propose changes only after evidence
+Depth rules:
+- **Type 2 / reversible / low-blast-radius decisions:** bias to action. Recommend the simplest safe experiment and a short feedback loop.
+- **Type 1 / hard-to-reverse / high-blast-radius decisions:** require 2-4 viable options, explicit criteria, risks, fallback, and a review date.
+- **Urgent but unclear situations:** make bounded assumptions, label them, and choose the smallest reversible step that will generate better evidence.
+- If new evidence is not changing the recommendation, stop researching.
 
-### Step 4) Diagnose root causes
-Use methods such as:
-- Ishikawa Diagram
-- Iceberg Model
-- Inversion
-- Ladder of Inference
+For technical work, understand current system behavior before recommending structural change.
 
-Output: top likely causes with confidence ratings.
+### 5. Decide, prioritize, or diagnose
 
-### Step 5) Design options
-Create 2-4 viable options.
-Use:
-- Zwicky box
-- Productive Thinking Model
-- Conflict Resolution Diagram
+Apply the output shape that matches the job:
+- **Decision:** include the selected option, why it wins, and why the others do not.
+- **Prioritization:** force trade-offs. If more than 60% of items are `Must`, rework the categories.
+- **Root cause:** trace to a system cause that can be changed, not just a symptom or person.
+- **Execution planning:** define phases, dependencies, owners, checkpoints, verification, and pivot triggers.
 
-Output: options with effort, impact, risk, reversibility.
+Always include a minimal or fallback option.
 
-### Step 6) Decide with trade-offs
-Pick decision methods by situation:
-- Decision matrix
-- Hard choice model
-- Second-order thinking
-- Cynefin framework
-- Six Thinking Hats
-- Confidence determines speed vs. quality
+### 6. Package the answer for action
 
-Output: chosen option + why alternatives were not selected.
+Deliver two layers unless the user asks otherwise:
+1. **Decision brief:** recommendation, why now, biggest trade-off, immediate next step.
+2. **Execution detail:** phases, owners, dependencies, verification, risk controls, and review cadence.
 
-### Step 7) Plan execution
-Include:
-- phases
-- dependencies
-- owners
-- checkpoints
-- verification criteria
-- pivot triggers
+Lead with the recommendation for decision-makers. Lead with sequence and ownership for executors.
 
-Use OODA loop when context is volatile.
+## Anti-derail guardrails
 
-### Step 8) Align stakeholders
-Use:
-- Minto Pyramid for decision narrative
-- Situation-Behavior-Impact for feedback
+| Do this | Not that |
+|---|---|
+| Start with one reference file and one method | Load all references or stack 4 methods up front |
+| Label assumptions and unknowns explicitly | Smuggle guesses in as facts |
+| Use reversibility to decide how much analysis is enough | Wait for certainty on a reversible decision |
+| Timebox framing and comparison work | Research forever because one more artifact might appear |
+| Switch to a simpler method when a framework adds no clarity | Keep a method running because you already started it |
+| End with checkpoints, pivot triggers, and verification | End with vague advice like `monitor progress` |
+| Hand off to the execution skill once the plan is decision-ready | Keep planning after the useful planning work is done |
 
-Deliver two layers:
-1. one-screen summary
-2. full execution details
+## Recovery paths
 
-### Step 9) Monitor and learn
-Track both:
-- balancing loops (stability forces)
-- reinforcing loops (amplifying forces)
+- If the request stays vague after framing, return:
+  - a mission draft
+  - the top missing inputs
+  - the next best questions
+  - the reference file to open first
+- If options remain tied, use reversibility as the tiebreaker and choose the easier-to-undo path.
+- If debate is really about values, stop scoring and switch to the hard choice model.
+- If conditions change faster than the plan, shift into OODA + checkpoint/pivot mode via `references/08-execution-risk-and-learning.md`.
+- If a plan depends on unknowns you cannot resolve yet, recommend a safe-to-learn experiment or an explicit research task instead of a fake commitment.
 
-Adapt scope or sequence when signals change.
+## Output contract
 
-## Method Triads by Use Case
-
-Use these quick stacks when speed matters:
-
-- **Ambiguous request** -> First principles + Abstraction laddering + Issue trees
-- **Recurring issue** -> Ishikawa + Iceberg + Inversion
-- **Hard decision** -> Decision matrix + Second-order thinking + Hard choice model
-- **Urgent delivery** -> Impact-Effort + OODA + Confidence determines speed vs. quality
-- **Cross-team tension** -> Six Thinking Hats + Conflict Resolution Diagram + SBI
-- **Complex ecosystem** -> Concept map + Connection circles + feedback loops
-
-## Output Contract
-
-Unless user asks otherwise, output this structure:
+Unless the user asks otherwise, respond in this order:
 
 1. Mission Snapshot
-2. Problem Framing
-3. Evidence and Assumptions
-4. Root Causes or Decision Context
-5. Options Considered
-6. Decision Rationale
+2. Planning Job + Chosen Method(s)
+3. Facts, Assumptions, and Unknowns
+4. Root Cause, Decision Frame, or Priority Logic
+5. Options or Ranked Work
+6. Recommendation and Why Not the Alternatives
 7. Execution Plan
-8. Risks, Triggers, Contingencies
-9. Immediate Next Actions
+8. Risks, Checkpoints, Pivot Triggers, and Verification
+9. Immediate Next Actions or Open Questions
 
-## Final Quality Gate (Always run before final answer)
+## Done conditions
 
-- Are we solving the right problem?
-- Are assumptions explicit?
-- Are method choices justified?
-- Are trade-offs visible?
-- Is verification concrete?
-- Can a junior teammate execute this plan?
+Planning is complete when:
+- the problem or decision is stated in one sentence
+- the chosen method is justified
+- the recommendation or next experiment is clear
+- trade-offs are visible
+- verification and revisit conditions exist
+- unresolved unknowns are explicit, owned, and time-bounded
 
-If any answer is “no,” revise before finalizing.
+If you cannot meet those conditions, stop with a decision-ready gap list instead of pretending the plan is complete.
+
+## Final quality gate
+
+Before finalizing, check:
+
+- [ ] Are we solving the right problem?
+- [ ] Did we choose the smallest useful method?
+- [ ] Are facts, assumptions, and unknowns clearly separated?
+- [ ] Did we match analysis depth to reversibility and risk?
+- [ ] Are trade-offs and rejected alternatives visible?
+- [ ] Does the answer include verification, checkpoints, and pivot triggers where needed?
+- [ ] Is the plan communicated in the right order for the audience?
+
+If any answer is `no`, revise before finalizing.
+
+## Final reminder
+
+Do not load every reference by default. Start with the single best-matching file above, add one more only if it answers a new question, and stop planning once the next action is decision-ready.

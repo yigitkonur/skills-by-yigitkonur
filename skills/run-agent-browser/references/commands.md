@@ -215,30 +215,58 @@ agent-browser state save auth.json    # Save cookies, storage, auth state
 agent-browser state load auth.json    # Restore saved state
 ```
 
+## Diff (Page Comparison)
+
+```bash
+agent-browser diff                         # Diff current page against last snapshot
+agent-browser diff --before open https://old.example.com \
+              --after open https://new.example.com  # Compare two page states
+agent-browser diff url1 url2               # Compare two URLs
+```
+
 ## Global Options
 
 ```bash
-agent-browser --session <name> ...    # Isolated browser session
-agent-browser --json ...              # JSON output for parsing
-agent-browser --headed ...            # Show browser window (not headless)
-agent-browser --full ...              # Full page screenshot (-f)
-agent-browser --cdp <port> ...        # Connect via Chrome DevTools Protocol
-agent-browser -p <provider> ...       # Cloud browser provider (--provider)
-agent-browser --proxy <url> ...       # Use proxy server
-agent-browser --proxy-bypass <hosts>  # Hosts to bypass proxy
-agent-browser --headers <json> ...    # HTTP headers scoped to URL's origin
-agent-browser --executable-path <p>   # Custom browser executable
-agent-browser --extension <path> ...  # Load browser extension (repeatable)
-agent-browser --ignore-https-errors   # Ignore SSL certificate errors
-agent-browser --help                  # Show help (-h)
-agent-browser --version               # Show version (-V)
-agent-browser <command> --help        # Show detailed help for a command
+agent-browser --session <name> ...        # Isolated browser session
+agent-browser --session-name <name> ...   # Auto-save/restore session state (persisted across runs)
+agent-browser --json ...                  # JSON output for parsing
+agent-browser --headed ...               # Show browser window (not headless)
+agent-browser --full ...                 # Full page screenshot (-f)
+agent-browser --cdp <port> ...           # Connect via Chrome DevTools Protocol
+agent-browser --auto-connect ...         # Auto-discover running Chrome instance
+agent-browser -p <provider> ...          # Cloud browser provider (--provider): browserbase, browseruse, kernel, ios
+agent-browser --proxy <url> ...          # Use proxy server
+agent-browser --proxy-bypass <hosts>     # Hosts to bypass proxy
+agent-browser --headers <json> ...       # HTTP headers scoped to URL's origin
+agent-browser --executable-path <p>      # Custom browser executable
+agent-browser --extension <path> ...     # Load browser extension (repeatable)
+agent-browser --ignore-https-errors      # Ignore SSL certificate errors
+agent-browser --allow-file-access        # Enable file:// URLs
+agent-browser --native                   # Use native Rust daemon (experimental)
+agent-browser --engine <name>            # Browser engine: chrome (default), lightpanda
+agent-browser --color-scheme <mode>      # dark / light / no-preference
+agent-browser --state <path>             # Load storage state from JSON file
+agent-browser --config <path>            # Custom config file
+agent-browser --download-path <dir>      # Default download directory
+agent-browser --content-boundaries       # Wrap output with LLM-safe markers
+agent-browser --max-output <chars>       # Truncate output at N characters
+agent-browser --allowed-domains <list>   # Domain allowlist (comma-separated)
+agent-browser --action-policy <path>     # Action policy JSON file
+agent-browser --confirm-actions <list>   # Actions requiring user confirmation
+agent-browser --confirm-interactive <l>  # Interactive commands requiring confirmation
+agent-browser --user-agent <string>      # Custom user agent string
+agent-browser --args <flags>             # Extra Chromium flags (e.g. "--disable-gpu")
+agent-browser --debug                    # Enable debug logging
+agent-browser --help                     # Show help (-h)
+agent-browser --version                  # Show version (-V)
+agent-browser <command> --help           # Show detailed help for a command
 ```
 
 ## Debugging
 
 ```bash
 agent-browser --headed open example.com   # Show browser window
+agent-browser --debug open example.com    # Debug logging to stderr
 agent-browser --cdp 9222 snapshot         # Connect via CDP port
 agent-browser connect 9222                # Alternative: connect command
 agent-browser console                     # View console messages
@@ -255,10 +283,30 @@ agent-browser profiler stop trace.json    # Stop and save profile
 ## Environment Variables
 
 ```bash
-AGENT_BROWSER_SESSION="mysession"            # Default session name
+AGENT_BROWSER_SESSION="mysession"            # --session default
+AGENT_BROWSER_SESSION_NAME="myapp"           # --session-name default (auto-save/restore)
+AGENT_BROWSER_STATE="/path/state.json"       # --state default
 AGENT_BROWSER_EXECUTABLE_PATH="/path/chrome" # Custom browser path
 AGENT_BROWSER_EXTENSIONS="/ext1,/ext2"       # Comma-separated extension paths
 AGENT_BROWSER_PROVIDER="browserbase"         # Cloud browser provider
 AGENT_BROWSER_STREAM_PORT="9223"             # WebSocket streaming port
 AGENT_BROWSER_HOME="/path/to/agent-browser"  # Custom install location
+AGENT_BROWSER_HEADED="1"                     # Always show browser UI
+AGENT_BROWSER_NATIVE="1"                     # Use native Rust daemon
+AGENT_BROWSER_ENGINE="lightpanda"            # Browser engine
+AGENT_BROWSER_COLOR_SCHEME="dark"            # Color scheme
+AGENT_BROWSER_PROFILE="/path/profile"        # Persistent profile directory
+AGENT_BROWSER_CONFIG="/path/config.json"     # Config file path
+AGENT_BROWSER_CONTENT_BOUNDARIES="1"         # LLM-safe output wrapping
+AGENT_BROWSER_MAX_OUTPUT="20000"             # Truncate output chars
+AGENT_BROWSER_ALLOWED_DOMAINS="a.com,b.com"  # Domain allowlist
+AGENT_BROWSER_ACTION_POLICY="policy.json"    # Action policy path
+AGENT_BROWSER_CONFIRM_ACTIONS="click,fill"   # Actions needing confirmation
+AGENT_BROWSER_CONFIRM_INTERACTIVE="close"    # Interactive cmds needing confirmation
+AGENT_BROWSER_USER_AGENT="MyBot/1.0"         # Custom user agent
+AGENT_BROWSER_ARGS="--disable-gpu"           # Extra Chromium flags
+AGENT_BROWSER_DEBUG="1"                      # Debug logging
+AGENT_BROWSER_PROXY_BYPASS="localhost,*.local"  # Proxy bypass hosts
+AGENT_BROWSER_ENCRYPTION_KEY="secret"        # Encryption key for saved state
+AGENT_BROWSER_STATE_EXPIRE_DAYS="30"         # Auto-expire saved state after N days
 ```

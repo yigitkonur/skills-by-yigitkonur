@@ -3,8 +3,15 @@
 ## Quick Install
 
 ```bash
-npm install -g agent-browser
-agent-browser install  # Downloads Chromium
+npm install -g agent-browser    # Global (recommended, native Rust binary)
+agent-browser install            # Downloads Chromium
+
+# Alternative: Homebrew (macOS)
+brew install agent-browser
+agent-browser install
+
+# Alternative: no install (slower, runs via Node.js)
+npx agent-browser open example.com
 ```
 
 ## Linux System Dependencies
@@ -35,7 +42,7 @@ The native Rust binary is preferred when available. The CLI automatically falls 
 
 ```bash
 # Pin to exact version for reproducibility
-npm install -g agent-browser@0.16.2
+npm install -g agent-browser@0.17.1
 
 # Verify
 agent-browser --version
@@ -44,13 +51,13 @@ agent-browser --version
 ## From Source
 
 ```bash
-git clone https://github.com/anthropics/agent-browser.git
+git clone https://github.com/vercel-labs/agent-browser.git
 cd agent-browser
 pnpm install
 pnpm build
-pnpm build:native  # Optional: compile Rust binary
-./bin/agent-browser install
+pnpm build:native  # Optional: compile Rust binary (requires Rust toolchain)
 pnpm link --global
+agent-browser install
 ```
 
 ## Container / Docker
@@ -66,7 +73,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install with pinned version
-RUN npm install -g agent-browser@0.16.2
+RUN npm install -g agent-browser@0.17.1
 RUN agent-browser install
 
 # Non-root user (recommended)
@@ -79,7 +86,7 @@ USER agent
 ```yaml
 - name: Install agent-browser
   run: |
-    npm install -g agent-browser@0.16.2
+    npm install -g agent-browser@0.17.1
     agent-browser install --with-deps
 
 - name: Run browser automation

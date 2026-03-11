@@ -1,184 +1,261 @@
 ---
 name: init-greptile-review
-description: Use skill if you are setting up Greptile review behavior with .greptile config files or repo-specific AI pull request review rules.
+description: Use skill if you are generating `.greptile/` review config, scoped rules, or context-file mappings for Greptile pull request reviews in a specific repository.
 ---
 
 # Init Greptile Review
 
-Generate optimal Greptile AI code review configuration by analyzing the actual repository — its structure, tech stack, patterns, documentation, and team conventions — then producing tailored `.greptile/` configuration files.
+Generate repo-specific Greptile configuration that makes Greptile catch meaningful bugs, security issues, architectural violations, and contract drift without wasting semantic review budget on lint-like trivia.
 
-## What Greptile Is
+## What good Greptile setup looks like
 
-Greptile is an AI code review agent that hooks into GitHub/GitLab PRs. It indexes the full codebase, reads configuration files on each PR (from the source branch), reviews changed files using LLM-powered semantic understanding, and posts inline comments, summaries, confidence scores, and status checks.
+Greptile is a semantic PR reviewer, not a linter.
 
-The critical insight: Greptile is **not a linter**. It uses LLMs to understand intent, architecture, and cross-file implications. Write rules that leverage semantic understanding — not rules a regex or ESLint could handle. "Service methods must not call HTTP endpoints directly — use the gateway client" is a great Greptile rule. "Use semicolons" is not.
+- Use Greptile for architecture boundaries, security invariants, API contracts, performance pitfalls, dependency misuse, compliance, and cross-file reasoning.
+- Leave semicolons, formatting, import sorting, and other linter/formatter work to ESLint, Prettier, Ruff, RuboCop, golangci-lint, and similar tools.
+- Greptile reads repo-local config from the **source branch** of the PR.
+- Changes apply on the **next PR or re-review**, not retroactively.
+- Prefer `.greptile/` over legacy `greptile.json`.
+
+## Decision tree
+
+```
+What are you doing?
+│
+├── First-time setup, permissions, or indexing ───────────────► references/setup.md
+├── Authoring or tuning .greptile/config.json / files.json ──► references/config-spec.md
+├── Designing repo-specific review rules ─────────────────────► references/rules-engineering.md
+├── Matching a common stack or monorepo layout ───────────────► references/patterns.md
+├── Needing full end-to-end examples ─────────────────────────► references/scenarios.md
+├── Wiring status checks, API triggers, or CI/CD ─────────────► references/integration.md
+└── Debugging ignored config, noisy reviews, or rollout checks ► references/troubleshooting.md + references/anti-patterns.md
+```
+
+## Quick start
+
+By default, generate only the files the repo actually needs:
+
+```
+.greptile/
+├── config.json      # always
+├── rules.md         # only when rules need examples, migration notes, or nuanced narrative
+└── files.json       # only when docs/specs/schemas materially improve review
+
+packages/payments/.greptile/config.json  # only when a subtree needs different strictness or extra rules
+```
+
+Start lean:
+
+- Default to `strictness: 2` and `commentTypes: ["logic", "syntax"]`
+- Add `"style"` only when the repo lacks strong formatting/linting
+- Start with **5-10 high-signal rules**, not 20 generic ones
+- If migrating from `greptile.json`, move to `.greptile/` and delete the legacy file
 
 ## Workflow
 
-Follow these five phases in order. Do not skip any phase.
+Follow these six phases in order.
 
-### Phase 1: Explore the Repository
+### Phase 1: Classify the request and current Greptile state
 
-Before writing a single line of config, map the territory. Use tools to answer:
+Before writing anything, determine what kind of job this is:
 
-1. **Structure** — Is this a monorepo or single-service? What are the top-level directories?
-   ```
-   Run: ls -la at root, look for packages/, apps/, services/, src/
-   ```
-2. **Tech stack** — What languages, frameworks, ORMs, and testing tools are in use?
-   ```
-   Check: package.json, requirements.txt, go.mod, Cargo.toml, build.gradle, etc.
-   Look at: tsconfig.json, .eslintrc, prettier config, Dockerfile
-   ```
-3. **Build artifacts & generated code** — What should be ignored?
-   ```
-   Look for: dist/, build/, .next/, out/, __generated__/, migrations/
-   Check .gitignore for patterns to mirror in ignorePatterns
-   ```
-4. **Existing documentation** — What context files can the reviewer use?
-   ```
-   Search for: docs/, architecture.md, ADRs, openapi/, swagger/, prisma/schema.prisma,
-   CONTRIBUTING.md, style guides, API specs
-   ```
-5. **Existing linting & formatting** — What does the toolchain already cover?
-   ```
-   Check: .eslintrc, .prettierrc, stylelint, rubocop, flake8, golangci-lint
-   If strong linting exists → drop "style" from commentTypes
-   ```
-6. **Team conventions** — Look at recent commits and PR patterns
-   ```
-   Check: branch naming, commit message style, test patterns, code organization
-   ```
+- **New setup** — no existing `.greptile/` or `greptile.json`
+- **Tune existing config** — root config exists and should be extended, not replaced
+- **Monorepo split** — different packages/services need different strictness or rules
+- **Troubleshooting** — existing config is ignored, noisy, or missing real issues
+- **Integration** — status checks, API triggers, CI/CD, or merge gating
 
-### Phase 2: Decide Configuration Strategy
+Inspect for:
 
-**Which config method?**
+- Existing `.greptile/` folders at root and child directories
+- Legacy `greptile.json`
+- Existing docs/specs/schemas that could become `files.json`
+- Existing linters/formatters so you do not duplicate them
 
-| Situation | Method |
-|---|---|
-| Monorepo with multiple packages/services | `.greptile/` folder with cascading per-directory overrides |
-| Single-service repo | `.greptile/` folder (recommended) |
-| Different directories need different strictness | Root `.greptile/` + child `.greptile/config.json` in subdirectories |
+If config already exists, preserve working pieces and tighten only what the repo evidence supports.
 
-Always prefer `.greptile/` folder over `greptile.json`. If a `greptile.json` already exists, plan to migrate and delete it (`.greptile/` silently overrides `greptile.json` when both exist).
+### Phase 2: Map the review surface
 
-**Strictness calibration:**
+Explore the repository before choosing rules:
 
-| Level | When to use |
-|---|---|
-| `1` (Verbose) | Security-critical code, junior-heavy teams, onboarding, early-stage projects |
-| `2` (Balanced) | Most production codebases, mixed-seniority teams — **start here** |
-| `3` (Critical only) | Senior teams, strong existing linting, pre-release hardening |
+1. **Structure** — monorepo vs single-service, top-level packages/apps/services, critical directories
+2. **Stack** — languages, frameworks, ORM, transport layers, testing stack
+3. **Risk zones** — auth, payments, PII, file system, shell execution, IPC, migrations, infra
+4. **Generated/noisy files** — build output, generated code, lockfiles, snapshots, vendored code
+5. **Useful context files** — architecture docs, ADRs, OpenAPI, schemas, shared types, contribution guides
+6. **Existing quality controls** — linters, formatters, CI, custom rules, security scanners
+7. **Recurring failure patterns** — user-stated pain points, incident history, review gaps, repeated bugs
 
-For monorepos: set `2` at root, override to `1` in critical paths (payments, auth), override to `3` in low-risk areas (internal tools, scripts).
+Treat file targeting as part of the design: the same repo map should drive `rules`, `files.json`, `ignorePatterns`, child configs, and any `patternRepositories`.
 
-**Comment types:**
+### Phase 3: Choose file topology and strictness
 
-Start with `["logic", "syntax"]`. Add `"style"` only if no Prettier/ESLint. Add `"info"` only if the team wants educational comments (onboarding, junior devs).
+**Always generate:** root `.greptile/config.json`
 
-### Phase 3: Engineer the Rules
+**Generate only when needed:**
 
-This is the highest-leverage step. Every rule must be:
+- `.greptile/rules.md` — rules need good/bad examples, nuanced reasoning, or migration guidance
+- `.greptile/files.json` — docs/specs/schemas genuinely improve review quality
+- Child `.greptile/config.json` — a subtree needs different strictness, extra rules, or `disabledRules`
 
-1. **Specific** — "Functions must not exceed 50 lines" not "Keep functions short"
-2. **Measurable** — Pass/fail criteria must be unambiguous
-3. **Scoped** — Every rule gets a `scope` array targeting relevant directories. A database rule should not fire on frontend components
-4. **Actionable** — The developer must know exactly what to change
-5. **Semantic** — Rules that require understanding, not pattern matching. If ESLint can catch it, ESLint should catch it
-6. **Identifiable** — Every rule gets a unique `id` so child directories can disable it
+**Monorepo rule:** prefer root defaults plus child overrides only where review needs truly diverge.
 
-**Rule categories to scan for** (check which apply to the repo):
+Inheritance that matters:
 
-| Category | Signal to look for |
-|---|---|
-| Security | SQL queries, user input handling, auth code, PII |
-| Architecture | Controller/service/repository layers, module boundaries |
-| Error handling | try-catch patterns, error logging, error response shapes |
-| API contracts | OpenAPI specs, shared API types, cross-service calls |
-| Dependencies | Shared libraries, internal packages, design systems |
-| Performance | Database queries in loops, N+1 patterns, unbounded fetches |
-| Naming | Component naming, hook prefixes, file naming conventions |
-| Migration | JS→TS migration, legacy patterns being phased out |
-| Compliance | PII handling, logging restrictions, audit requirements |
-| Tauri IPC | `#[tauri::command]` handlers, invoke calls, capability/permission scoping, state management with Mutex/RwLock |
-| Tauri Security | CSP config, shell plugin usage, filesystem scope, input validation in command handlers, no panics in commands |
-| MCP Protocol | Tool/resource/prompt handler compliance, input schema validation with Zod, structured error responses, transport correctness |
-| MCP Security | Command injection prevention in tool handlers, file system access controls, secrets not logged, timeout enforcement |
-| mcp-use Framework | MCPClient/MCPAgent session lifecycle, async context managers, tool call error handling, multi-server routing, connection cleanup |
-| Next.js Website | Server Component boundaries, metadata/SEO, ISR/revalidation, image optimization, Core Web Vitals, structured data |
-| Next.js Dashboard | Auth middleware on protected routes, server action input validation, role-based access, data table pagination, error boundaries |
-| Next.js Shared | Server vs client component misuse, environment variable exposure, route handler authentication, CSRF via server actions |
+- Child `rules` **extend** parent rules
+- Child `disabledRules` turns off parent rules by `id`
+- Child `strictness`, `commentTypes`, and `triggerOnUpdates` **override**
+- Child `ignorePatterns` **extend**
 
-**For each rule you write**, explain why it exists by referencing what you found in the repo. Generic rules without repo-specific justification are noise.
+Strictness guidance:
 
-### Phase 4: Map Context Files
+- `2` for most production code
+- `1` for payments, auth, security-critical, or compliance-heavy paths
+- `3` for internal tools, prototypes, or low-risk directories where noise must stay low
 
-Scan the repo for documentation that would help the reviewer:
+Only tune PR filters (`labels`, authors, branches, `fileChangeLimit`) or summary behavior when the user asks for it or the repo workflow clearly needs it.
 
-| File type | What it provides | Example scope |
+### Phase 4: Engineer semantic rules from architecture signals
+
+Every rule must be **repo-specific, specific, measurable, actionable, scoped, semantic, and identifiable**.
+
+Use the repo signals to decide which rule categories matter:
+
+| Repo signal you observe | Prefer rules about | Typical targeting move |
 |---|---|---|
-| Architecture docs | System boundaries, service topology | All files |
-| API specs (OpenAPI/Swagger) | Endpoint contracts | `src/api/**`, `src/routes/**` |
-| Database schemas (Prisma, migrations) | Model relationships | `src/db/**`, `src/models/**` |
-| ADRs | Decision rationale | All files |
-| Style/contribution guides | Team conventions | All files |
-| Type definitions / shared contracts | Cross-service types | Service-specific |
+| Auth, payments, PII, file system, shell, IPC, secrets | Security + compliance | High severity, scoped to the sensitive subtree; consider child strictness `1` |
+| Controllers/services/repositories, package boundaries, gateway clients, shared libraries | Architecture boundaries | Scope to the layers/packages where dependency direction matters |
+| OpenAPI specs, shared SDKs, backend repos, design systems | API contracts + dependencies | Scope to routes, client hooks, components, or integration code; use `files.json` or `patternRepositories` if they materially help |
+| ORM usage, query builders, background jobs, caching, async workflows | Performance + data integrity | Scope to DB, views, serializers, jobs, workers, or service paths |
+| Monorepo packages with different stacks or risk profiles | Cascading configs | Root defaults, then child configs only for packages that need different behavior |
 
-Scope context files to relevant directories. A Prisma schema is useless context when reviewing React components.
+Rule-writing heuristics:
 
-### Phase 5: Generate and Validate
+- Start with **5-10 rules max**
+- Tie each rule to an actual repo path, library, contract, or failure mode
+- Tell Greptile what the correct alternative is, not just what to avoid
+- Give every parent-level rule an `id` if a child config might disable it
+- If a rule would fire on almost every PR, narrow it or delete it
 
-Generate the configuration files, then run the validation checklist before outputting.
+### Phase 5: Scope rules, context, and file targeting precisely
 
-**Files to generate:**
+Use Greptile's semantic budget where it matters:
 
-1. `.greptile/config.json` — Primary configuration (review behavior, rules, filters, output format)
-2. `.greptile/rules.md` — Prose rules with code examples (only if rules need narrative context)
-3. `.greptile/files.json` — Context file mappings (only if documentation exists to reference)
-4. Child `.greptile/config.json` files — For monorepo subdirectories that need different settings
+- `scope` must be an **array** of globs, never a comma-separated string
+- `ignorePatterns` must be a **newline-separated string**, not an array
+- Scope context files to the code they inform; do not attach a Prisma schema to frontend components
+- Use `patternRepositories` only for real cross-repo contracts or design systems, in `org/repo` format
+- Exclude generated files, lockfiles, snapshots, build output, vendored code, and other high-noise surfaces
+- If strong linting/formatting already exists, do **not** add style-focused Greptile rules
 
-**Validation checklist — run before every output:**
+When deciding between JSON rules and prose rules:
 
-- [ ] All JSON is syntactically valid (no trailing commas, no comments)
-- [ ] Every `scope` is an **array** of strings, never a comma-separated string
-- [ ] `ignorePatterns` is a **newline-separated string** (`\n`), never an array
-- [ ] `strictness` is integer 1, 2, or 3
-- [ ] `commentTypes` only contains: `"logic"`, `"syntax"`, `"style"`, `"info"`
-- [ ] `severity` values only: `"high"`, `"medium"`, `"low"`
-- [ ] `patternRepositories` use `org/repo` format, never full URLs
-- [ ] Every disableable rule has a unique `id`
-- [ ] Every rule is specific and measurable — no vague platitudes
-- [ ] Every high-noise rule has a `scope`
-- [ ] `fileChangeLimit` is >= 1 (0 skips all PRs)
-- [ ] `files.json` paths point to files that actually exist in the repo
-- [ ] No `.greptile/` and `greptile.json` coexistence (if migrating, note to delete old)
+- Use `config.json` for crisp pass/fail rules
+- Use `rules.md` only when examples or narrative make the rule materially easier for Greptile to apply
 
-**Output format:**
+### Phase 6: Validate, output, and recover if needed
 
-For every configuration you produce, include:
+Before finalizing any output:
 
-1. **File tree** showing exactly which files go where
-2. **Each config file** as a complete, valid JSON (or markdown) code block
-3. **Reasoning annotations** after each file explaining WHY each major decision was made, referencing specific repo context
-4. **Canary test** — a simple verification step to confirm the config is working
-5. **Migration notes** if moving from `greptile.json` to `.greptile/`
+- [ ] JSON validates locally (for example: `python3 -m json.tool .greptile/config.json`)
+- [ ] `scope` values are arrays of strings
+- [ ] `ignorePatterns` is a newline-separated string
+- [ ] `strictness` is 1, 2, or 3
+- [ ] `commentTypes` only uses `"logic"`, `"syntax"`, `"style"`, `"info"`
+- [ ] `patternRepositories` uses `org/repo`, not full URLs
+- [ ] `files.json` only points to files that actually exist
+- [ ] No rule duplicates lint/format tooling
+- [ ] No `.greptile/` + `greptile.json` coexistence remains after migration
 
-## Reference Files
+Output every generated configuration with:
 
-Read these when you need detailed specifications:
+1. a file tree
+2. complete file contents
+3. short reasoning annotations tied to specific repo evidence
+4. a canary test or verification step
+5. migration notes if replacing `greptile.json`
 
-- **`references/config-spec.md`** — Complete parameter reference for all config files, data types, cascading behavior, and monorepo inheritance rules. Read this when you need to check a specific parameter's format or understand how child configs interact with parent configs.
+If Greptile still behaves incorrectly, recover in this order:
 
-- **`references/anti-patterns.md`** — Common mistakes, the troubleshooting reasoning chain, and the testing/verification protocol. Read this before finalizing any output to catch errors. Also useful when debugging why a Greptile config isn't working.
+1. Repo indexed?
+2. JSON valid?
+3. `.greptile/` conflicting with `greptile.json`?
+4. Config on the PR's **source branch**?
+5. `scope` actually matches changed files?
+6. `strictness` suppressing the severity you used?
+7. Author/branch/file-limit filters excluding the PR?
+8. Force a re-review, then remove any canary rule after verification
 
-- **`references/scenarios.md`** — Complete example configurations for TypeScript backend, React frontend, and monorepo setups. Read these for inspiration, but never copy them verbatim — every rule must be justified by the actual repository context.
+## Do this, not that
 
-## Key Gotchas (Keep in Mind)
+| Do this | Not that |
+|---|---|
+| Write rules that require semantic reasoning, architecture awareness, or cross-file understanding | Spend Greptile on semicolons, formatting, or other linter work |
+| Tie each rule to actual repo evidence: paths, libraries, contracts, incident patterns | Paste generic "best practices" or framework boilerplate |
+| Start lean with 5-10 high-signal rules | Dump 20-30 mediocre rules and hope strictness fixes the noise |
+| Scope rules and context files aggressively | Apply database, auth, or design-system rules to the whole repo |
+| Use child configs only where behavior truly differs | Create a child config for every package by default |
+| Use `rules.md` for nuanced examples and migrations | Put explanatory comments inside JSON |
+| Use `patternRepositories: ["org/repo"]` only when external code truly informs review | Use full GitHub URLs or add repos that do not affect review decisions |
+| Raise strictness only in critical paths | Set `strictness: 1` across the whole repo without evidence |
 
-- Config is read from the **source branch** of the PR, not the target branch
-- Changes take effect on the **next PR**, not retroactively
-- `ignorePatterns` skips **review** only — files are still **indexed**
-- `includeAuthors: []` means **all authors** (not none)
-- `fileChangeLimit: 0` means **skip all PRs** (minimum is 1)
-- To suppress "X files reviewed, no comments" messages, use `statusCheck: true` (not `statusCommentsEnabled: false`)
-- After ~10 PRs, Greptile auto-suggests rules — duplicates of existing rules may appear (this is normal)
+## Minimal reading sets
+
+### "I need to set up Greptile from scratch"
+
+- `references/setup.md`
+- `references/config-spec.md`
+- `references/troubleshooting.md`
+
+### "I need repo-specific rules that catch real issues"
+
+- `references/rules-engineering.md`
+- `references/patterns.md`
+- `references/anti-patterns.md`
+
+### "I need a monorepo design"
+
+- `references/config-spec.md`
+- `references/patterns.md`
+- `references/scenarios.md`
+
+### "I need CI/CD or status-check integration"
+
+- `references/integration.md`
+- `references/setup.md`
+- `references/config-spec.md`
+
+### "The config is noisy, ignored, or not firing"
+
+- `references/troubleshooting.md`
+- `references/anti-patterns.md`
+- `references/rules-engineering.md`
+
+## Reference files
+
+| Reference | What it covers | When to read |
+|---|---|---|
+| `references/setup.md` | GitHub/GitLab install, indexing, permissions, placement, first config | First-time setup or platform questions |
+| `references/config-spec.md` | Parameter formats, `.greptile/` file roles, cascading behavior, child overrides | Writing or editing `config.json`, `files.json`, or monorepo overrides |
+| `references/rules-engineering.md` | Rule quality bar, categories, severity, scoping, rule lifecycle | Designing repo-specific rules |
+| `references/patterns.md` | Stack patterns, ignore patterns, monorepo strategy, context-file patterns | Matching a detected architecture to a starting shape |
+| `references/scenarios.md` | Complete end-to-end examples for common stacks | You need a full output example to adapt |
+| `references/integration.md` | Status checks, API triggers, manual review triggers, CI/CD, notifications | Integrating Greptile into delivery workflows |
+| `references/troubleshooting.md` | Diagnostic flow, common failures, validation protocol, migration steps | Config is ignored, too noisy, or not triggering |
+| `references/anti-patterns.md` | Anti-pattern catalog, troubleshooting chain, canary verification | Final preflight before shipping |
+
+## Key gotchas
+
+- Greptile reads config from the **source branch**, not the target branch
+- Config changes affect the **next PR or re-review**, not past reviews
+- `ignorePatterns` skips **review**, not **indexing**
+- `includeAuthors: []` means **all authors**
+- `fileChangeLimit: 0` skips **all** PRs
+- `statusCheck: true` suppresses "X files reviewed" comment spam better than `statusCommentsEnabled: false`
+- `.greptile/` silently overrides `greptile.json`
+- `scope` is an array; `ignorePatterns` is a newline-separated string
+- Dashboard or org rules may still influence behavior outside repo-local files
+
+## Final reminder
+
+Start with the smallest relevant reading set, then expand only when the task requires it. The goal is not to write the most rules — it is to generate the smallest `.greptile/` configuration that helps Greptile catch the issues this specific repository actually misses.

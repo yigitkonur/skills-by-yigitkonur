@@ -6,6 +6,7 @@ Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 
 ## Contents
 
+- [Auth Vault (Recommended)](#auth-vault-recommended)
 - [Basic Login Flow](#basic-login-flow)
 - [Saving Authentication State](#saving-authentication-state)
 - [Restoring Authentication](#restoring-authentication)
@@ -15,6 +16,33 @@ Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 - [Cookie-Based Auth](#cookie-based-auth)
 - [Token Refresh Handling](#token-refresh-handling)
 - [Security Best Practices](#security-best-practices)
+
+## Auth Vault (Recommended)
+
+The Auth Vault stores credentials encrypted on disk and replays login flows automatically. The LLM agent never sees passwords — only vault profile names.
+
+```bash
+# Save credentials (password via stdin, never as CLI argument)
+echo "$PASSWORD" | agent-browser auth save github \
+  --url https://github.com/login \
+  --username user@example.com \
+  --password-stdin
+
+# Login using saved vault profile
+agent-browser auth login github
+# → Navigates to URL, fills credentials, submits form automatically
+
+# List saved profiles
+agent-browser auth list
+
+# Delete a profile
+agent-browser auth delete github
+```
+
+**Key details:**
+- Credentials are encrypted with `AGENT_BROWSER_ENCRYPTION_KEY` (set this env var before save/login)
+- After `auth login`, cookies and storage are active — proceed with normal browsing
+- Combine with `state save` to persist the logged-in session for future reuse without re-login
 
 ## Basic Login Flow
 

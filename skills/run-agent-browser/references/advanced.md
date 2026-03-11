@@ -79,10 +79,24 @@ View in Chrome DevTools Performance tab or [Perfetto UI](https://ui.perfetto.dev
 Connect to cloud-hosted browsers instead of local Chromium:
 
 ```bash
-# Via flag
+# Browserbase
 agent-browser -p browserbase open https://example.com
+# Requires: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
 
-# Via environment variables
+# BrowserUse
+agent-browser -p browseruse open https://example.com
+# Requires: BROWSERUSE_API_KEY
+
+# Kernel (by Browserbase — stealth-optimized)
+agent-browser -p kernel open https://example.com
+# Requires: BROWSERBASE_API_KEY
+
+# iOS Simulator (see iOS Simulator section below)
+agent-browser -p ios --device "iPhone 16 Pro" open https://example.com
+```
+
+```bash
+# Via environment variable (avoids passing -p every time)
 export AGENT_BROWSER_PROVIDER=browserbase
 export BROWSERBASE_API_KEY=your-api-key
 export BROWSERBASE_PROJECT_ID=your-project-id
@@ -168,25 +182,149 @@ agent-browser mouse wheel 0 -300       # Scroll (deltaX, deltaY)
 agent-browser drag @e1 @e2             # Drag element to target
 ```
 
+## JavaScript Evaluation
+
+Use `eval` to run JavaScript in the browser context. **Shell quoting can corrupt complex expressions** — use `--stdin` or `-b` to avoid issues.
+
+```bash
+# Simple expressions work with regular quoting
+agent-browser eval 'document.title'
+agent-browser eval 'document.querySelectorAll("img").length'
+
+# Complex JS: use --stdin with heredoc (RECOMMENDED)
+agent-browser eval --stdin <<'EVALEOF'
+JSON.stringify(
+  Array.from(document.querySelectorAll("img"))
+    .filter(i => !i.alt)
+    .map(i => ({ src: i.src.split("/").pop(), width: i.width }))
+)
+EVALEOF
+
+# Alternative: base64 encoding (avoids all shell escaping issues)
+agent-browser eval -b "$(echo -n 'Array.from(document.querySelectorAll("a")).map(a => a.href)' | base64)"
+```
+
+**Rules of thumb:**
+- Single-line, no nested quotes → regular `eval 'expression'` with single quotes
+- Nested quotes, arrow functions, template literals, or multiline → use `eval --stdin <<'EVALEOF'`
+- Programmatic/generated scripts → use `eval -b` with base64
+
+## iOS Simulator (Mobile Safari)
+
+Test on mobile Safari using iOS Simulator on macOS:
+
+```bash
+# List available iOS simulators
+agent-browser device list
+
+# Launch Safari on a specific device
+agent-browser -p ios --device "iPhone 16 Pro" open https://example.com
+
+# Same workflow as desktop — snapshot, interact, re-snapshot
+agent-browser -p ios snapshot -i
+agent-browser -p ios tap @e1          # Tap (alias for click)
+agent-browser -p ios fill @e2 "text"
+agent-browser -p ios swipe up         # Mobile-specific gesture
+
+# Take screenshot
+agent-browser -p ios screenshot mobile.png
+
+# Close session (shuts down simulator)
+agent-browser -p ios close
+```
+
+**Requirements:** macOS with Xcode, Appium (`npm install -g appium && appium driver install xcuitest`)
+
+**Real devices:** Works with physical iOS devices if pre-configured. Use `--device "<UDID>"` where UDID is from `xcrun xctrace list devices`.
+
+## Native Mode (Experimental)
+
+agent-browser has an experimental native Rust daemon that communicates with Chrome directly via CDP, bypassing Node.js and Playwright entirely:
+
+```bash
+# Enable via flag
+agent-browser --native open example.com
+
+# Enable via environment variable (avoids passing --native every time)
+export AGENT_BROWSER_NATIVE=1
+agent-browser open example.com
+```
+
+Supports Chromium and Safari (via WebDriver). Firefox and WebKit are not yet supported. All core commands work identically. Use `agent-browser close` before switching between native and default mode.
+
+## Engine Selection
+
+Use `--engine` to choose a local browser engine (default: `chrome`):
+
+```bash
+# Use Lightpanda (fast headless browser, requires separate install)
+agent-browser --engine lightpanda open example.com
+
+# Via environment variable
+export AGENT_BROWSER_ENGINE=lightpanda
+agent-browser open example.com
+```
+
+Supported engines:
+- `chrome` (default) — Chrome/Chromium via CDP
+- `lightpanda` — 10x faster, 10x less memory than Chrome (no `--extension`, `--profile`, `--state`, or `--allow-file-access`)
+
+Install Lightpanda from https://lightpanda.io/docs/open-source/installation.
+
+## Viewport & Device Emulation
+
+```bash
+# Set viewport size (default: 1280x720)
+agent-browser set viewport 1920 1080
+
+# Retina/HiDPI: same CSS layout at 2x pixel density
+agent-browser set viewport 1920 1080 2
+
+# Device emulation (sets viewport + user agent)
+agent-browser set device "iPhone 14"
+
+# Color scheme
+agent-browser --color-scheme dark open https://example.com
+agent-browser set media dark
+```
+
+The `scale` parameter (3rd argument to viewport) sets `window.devicePixelRatio` without changing CSS layout.
+
+## Local Files (PDFs, HTML)
+
+```bash
+agent-browser --allow-file-access open file:///path/to/document.pdf
+agent-browser --allow-file-access open file:///path/to/page.html
+agent-browser screenshot output.png
+```
+
 ## Global Options Reference
 
 | Option | Env Variable | Description |
 |--------|-------------|-------------|
-| `--session <name>` | — | Named session for isolation |
+| `--session <name>` | `AGENT_BROWSER_SESSION` | Named session for isolation |
+| `--session-name <name>` | `AGENT_BROWSER_SESSION_NAME` | Auto-save/restore session state |
 | `--profile <dir>` | `AGENT_BROWSER_PROFILE` | Persistent browser profile |
-| `-p, --provider <name>` | `AGENT_BROWSER_PROVIDER` | Cloud browser provider |
+| `--state <path>` | `AGENT_BROWSER_STATE` | Load storage state JSON |
+| `-p, --provider <name>` | `AGENT_BROWSER_PROVIDER` | Cloud provider (browserbase, browseruse, kernel, ios) |
 | `--cdp <port>` | — | Connect via Chrome DevTools Protocol |
 | `--auto-connect` | — | Auto-discover running Chrome |
 | `--headed` | `AGENT_BROWSER_HEADED` | Show browser UI |
 | `--native` | `AGENT_BROWSER_NATIVE` | Use native Rust daemon |
 | `--engine <name>` | `AGENT_BROWSER_ENGINE` | Browser engine (chrome, lightpanda) |
 | `--color-scheme <mode>` | `AGENT_BROWSER_COLOR_SCHEME` | dark / light / no-preference |
-| `--extension <path>` | `AGENT_BROWSER_EXTENSIONS` | Load browser extension |
-| `--executable-path <path>` | — | Custom browser binary path |
+| `--extension <path>` | `AGENT_BROWSER_EXTENSIONS` | Load browser extension (repeatable) |
+| `--executable-path <path>` | `AGENT_BROWSER_EXECUTABLE_PATH` | Custom browser binary path |
 | `--ignore-https-errors` | — | Bypass SSL certificate errors |
 | `--allow-file-access` | — | Enable file:// URLs |
 | `--config <path>` | `AGENT_BROWSER_CONFIG` | Custom config file path |
 | `--download-path <dir>` | — | Default download directory |
 | `--content-boundaries` | `AGENT_BROWSER_CONTENT_BOUNDARIES` | LLM-safe output wrapping |
-| `--args <flags>` | — | Extra Chromium flags |
-| `--user-agent <string>` | — | Custom user agent string |
+| `--max-output <chars>` | `AGENT_BROWSER_MAX_OUTPUT` | Truncate page output |
+| `--allowed-domains <list>` | `AGENT_BROWSER_ALLOWED_DOMAINS` | Domain allowlist (comma-separated) |
+| `--action-policy <path>` | `AGENT_BROWSER_ACTION_POLICY` | Path to action policy JSON |
+| `--confirm-actions <list>` | `AGENT_BROWSER_CONFIRM_ACTIONS` | Actions requiring confirmation |
+| `--args <flags>` | `AGENT_BROWSER_ARGS` | Extra Chromium flags |
+| `--user-agent <string>` | `AGENT_BROWSER_USER_AGENT` | Custom user agent string |
+| `--debug` | `AGENT_BROWSER_DEBUG` | Enable debug logging |
+| `--json` | — | Machine-readable JSON output |
