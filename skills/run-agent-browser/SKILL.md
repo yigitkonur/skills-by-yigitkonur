@@ -36,6 +36,31 @@ When targeting elements, prefer this order:
 3. **CSS selectors** — `click "button.submit-btn"`. When refs/semantic unavailable.
 4. **XPath** — last resort. Brittle across DOM changes.
 
+## Selector Stability Guide
+
+Different selector types vary in resilience to UI changes. Choose based on your use case:
+
+| Selector Type | Stability | Best For |
+|--------------|-----------|----------|
+| `find role --name "Submit"` | ⭐⭐⭐ Highest | Production scripts, CI/CD |
+| `find label "Email"` | ⭐⭐⭐ Highest | Form fields with labels |
+| `find testid "submit-btn"` | ⭐⭐⭐ Highest | Apps with data-testid attributes |
+| `find text "Sign In"` | ⭐⭐ High | Buttons, links with stable text |
+| CSS selectors | ⭐⭐ Medium | When semantic locators unavailable |
+| `@e` refs from snapshot | ⭐ Session-only | Exploration, one-off tasks |
+
+**Rule of thumb:** Use `@e` refs for interactive exploration and discovery. Switch to semantic locators (`find role`, `find label`, `find text`) for scripts you intend to reuse or run in CI.
+
+```bash
+# Discovery phase: use refs for speed
+agent-browser snapshot -i
+agent-browser click @e3
+
+# Production phase: use semantic locators for stability
+agent-browser find role button click --name "Submit"
+agent-browser find label "Email" fill "user@test.com"
+```
+
 ## DOM-Evidence Principle
 
 After performing actions, verify results via DOM assertions before relying on screenshots:
@@ -416,6 +441,42 @@ agent-browser wait 5000
 
 When dealing with consistently slow websites, use `wait --load networkidle` after `open` to ensure the page is fully loaded before taking a snapshot. If a specific element is slow to render, wait for it directly with `wait <selector>` or `wait @ref`.
 
+## Smart Wait Strategies
+
+Condition-based waits are more reliable and faster than fixed timeouts. Use the most specific wait available:
+
+```bash
+# BEST: Wait for specific element to appear
+agent-browser wait "#dashboard-loaded"
+agent-browser wait --text "Welcome back"
+
+# GOOD: Wait for URL change (after form submit or redirect)
+agent-browser wait --url "**/dashboard"
+agent-browser wait --url "**?success=true"
+
+# GOOD: Wait for network to settle (SPAs, lazy loading)
+agent-browser wait --load networkidle
+
+# GOOD: Wait for JavaScript condition
+agent-browser wait --fn "document.querySelector('.spinner') === null"
+agent-browser wait --fn "window.__APP_READY__ === true"
+
+# AVOID: Fixed waits (slow, fragile)
+agent-browser wait 5000  # Only as last resort
+```
+
+**Combining waits for reliability:**
+
+```bash
+# Navigate and wait for both network + specific element
+agent-browser open https://app.example.com/dashboard
+agent-browser wait --load networkidle
+agent-browser wait "#main-content"
+agent-browser snapshot -i
+```
+
+Smart waits can reduce automation execution time by 50%+ compared to fixed timeouts while also being more reliable.
+
 ## Session Management and Cleanup
 
 When running multiple agents or automations concurrently, always use named sessions to avoid conflicts:
@@ -470,6 +531,246 @@ Use annotated screenshots when:
 - You need to verify visual layout or styling
 - Canvas or chart elements are present (invisible to text snapshots)
 - You need spatial reasoning about element positions
+
+## Debugging
+
+### Console & Error Logs
+
+```bash
+# View browser console output (log, warn, error, info)
+agent-browser console
+
+# View only JavaScript errors
+agent-browser errors
+
+# Clear accumulated logs
+agent-browser console --clear
+agent-browser errors --clear
+```
+
+### Element Highlighting
+
+```bash
+# Highlight an element visually (use with --headed)
+agent-browser highlight @e1
+
+# Combine with headed mode for visual debugging
+agent-browser --headed open https://example.com
+agent-browser snapshot -i
+agent-browser highlight @e3   # See which element @e3 is
+```
+
+### Trace Recording (Playwright Trace)
+
+Traces capture a full timeline of actions, DOM snapshots, network requests, and console logs — viewable in Playwright Trace Viewer.
+
+```bash
+agent-browser trace start
+# ... perform automation steps ...
+agent-browser trace stop trace.zip
+
+# View trace: npx playwright show-trace trace.zip
+```
+
+### State Checks
+
+```bash
+# Check element state before interacting
+agent-browser is visible @e1   # true/false
+agent-browser is enabled @e1   # true/false (buttons, inputs)
+agent-browser is checked @e1   # true/false (checkboxes, radios)
+
+# Use with --json for programmatic checks
+VISIBLE=$(agent-browser is visible @e1 --json | jq -r '.visible')
+```
+
+### Headed Mode
+
+Run with a visible browser window to watch automation in real time:
+
+```bash
+agent-browser --headed open https://example.com
+# Or via environment variable
+AGENT_BROWSER_HEADED=1 agent-browser open https://example.com
+```
+
+### Debug Output
+
+```bash
+# Verbose logging for troubleshooting
+agent-browser --debug open https://example.com
+```
+
+## Network Interception
+
+Mock API responses, block resources, or modify requests for testing:
+
+```bash
+# Mock an API response
+agent-browser network route "https://api.example.com/users" \
+  --body '{"users": [{"id": 1, "name": "Test"}]}' \
+  --status 200 \
+  --content-type "application/json"
+
+# Block image loading (faster page loads)
+agent-browser network route "**/*.{png,jpg,gif,svg}" --abort
+
+# Block analytics/tracking scripts
+agent-browser network route "**/analytics**" --abort
+agent-browser network route "**/tracking**" --abort
+
+# Remove a route
+agent-browser network unroute "https://api.example.com/users"
+
+# View captured network requests
+agent-browser network requests
+agent-browser network requests --filter "api.example.com"
+```
+
+Use network interception for:
+- Testing error states (mock 500 responses)
+- Speeding up automation (block unnecessary resources)
+- Testing with controlled data (mock API responses)
+- Offline behavior testing
+
+## Tab & Window Management
+
+```bash
+# Open a new tab
+agent-browser tab new https://example.com
+
+# List open tabs
+agent-browser tab list
+
+# Switch to tab by index (0-based)
+agent-browser tab 1
+
+# Switch to tab by URL pattern
+agent-browser tab switch "**/settings"
+
+# Close current tab
+agent-browser tab close
+
+# Open a new browser window
+agent-browser window new https://example.com
+```
+
+### Click to Open in New Tab
+
+```bash
+agent-browser click @e1 --new-tab
+agent-browser tab 1              # Switch to new tab
+agent-browser snapshot -i        # Snapshot new tab content
+agent-browser tab 0              # Switch back
+```
+
+## Frame & iFrame Handling
+
+Many web apps embed content in iframes (payment forms, captchas, third-party widgets):
+
+```bash
+# Switch to an iframe by CSS selector
+agent-browser frame "#payment-iframe"
+
+# Snapshot and interact within the iframe
+agent-browser snapshot -i
+agent-browser fill @e1 "4242424242424242"
+
+# Return to the main page
+agent-browser frame main
+```
+
+For nested iframes, chain frame commands. For cross-origin iframes that resist automation, use JavaScript as a fallback:
+
+```bash
+agent-browser eval --stdin <<'EVALEOF'
+document.querySelector('#my-iframe').contentDocument.querySelector('input').value = 'test'
+EVALEOF
+```
+
+## Dialog Handling
+
+Handle JavaScript `alert()`, `confirm()`, and `prompt()` dialogs:
+
+```bash
+# Accept a dialog (clicks OK / confirms)
+agent-browser dialog accept
+
+# Accept with input text (for prompt() dialogs)
+agent-browser dialog accept "my input"
+
+# Dismiss a dialog (clicks Cancel)
+agent-browser dialog dismiss
+```
+
+**Tip:** Dialogs block the page. If your automation triggers a dialog (e.g., a delete confirmation), the next command will hang until the dialog is handled. Chain the dialog handler:
+
+```bash
+agent-browser click @e5 && agent-browser dialog accept
+```
+
+## Mouse Control
+
+For drag-and-drop, drawing, sliders, or other precise mouse interactions:
+
+```bash
+# Move mouse to coordinates
+agent-browser mouse move 100 200
+
+# Mouse button control
+agent-browser mouse down
+agent-browser mouse up
+
+# Scroll with mouse wheel
+agent-browser mouse wheel 0 500      # Scroll down 500px
+agent-browser mouse wheel 0 -500     # Scroll up 500px
+
+# Drag and drop
+agent-browser drag @e1 @e2           # Drag element to target
+
+# File upload
+agent-browser upload @e1 ./document.pdf
+agent-browser upload @e1 ./photo1.jpg ./photo2.jpg  # Multiple files
+```
+
+## Error Recovery Patterns
+
+### Retry with Backoff
+
+```bash
+# Retry a flaky action up to 3 times
+MAX_ATTEMPTS=3
+for i in $(seq 1 $MAX_ATTEMPTS); do
+  agent-browser click @e1 && break
+  echo "Attempt $i failed, retrying..."
+  agent-browser wait 1000
+  agent-browser snapshot -i  # Re-discover refs
+done
+```
+
+### Detect and Dismiss Error Modals
+
+```bash
+# Check for error modal after an action
+agent-browser snapshot -i
+ERROR=$(agent-browser get text ".error-modal" 2>/dev/null || echo "")
+if [ -n "$ERROR" ]; then
+  echo "Error detected: $ERROR"
+  agent-browser screenshot error-state.png
+  agent-browser click ".error-modal .close-btn"
+fi
+```
+
+### Graceful Navigation Recovery
+
+```bash
+# If page fails to load, retry with cache clear
+agent-browser open https://example.com || {
+  agent-browser cookies clear
+  agent-browser open https://example.com
+}
+agent-browser wait --load networkidle
+```
 
 ## Semantic Locators (Alternative to Refs)
 
@@ -542,6 +843,8 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 | [references/troubleshooting.md](references/troubleshooting.md) | Common issues: missing Chromium, stale daemon, invalid refs, SSL errors, CI setup |
 | [references/stealth-automation.md](references/stealth-automation.md) | Anti-bot techniques: headed mode, human-like typing, session reuse, region alignment |
 | [references/advanced.md](references/advanced.md) | Extensions, cloud browsers, WebSocket streaming, network interception, trace recording |
+| [references/debugging.md](references/debugging.md) | Console logs, traces, headed mode, common issue fixes |
+| [references/testing-patterns.md](references/testing-patterns.md) | E2E testing, visual regression, data-driven tests, accessibility |
 | [references/installation.md](references/installation.md) | Platform support, Linux deps, Docker, CI setup, version pinning, config precedence |
 
 ## Experimental: Native Mode
@@ -590,6 +893,7 @@ Lightpanda does not support `--extension`, `--profile`, `--state`, or `--allow-f
 | [templates/capture-workflow.sh](templates/capture-workflow.sh) | Content extraction with screenshots |
 | [templates/ai-agent-workflow.sh](templates/ai-agent-workflow.sh) | AI agent browser automation with safety boundaries |
 | [templates/e2e-test-workflow.sh](templates/e2e-test-workflow.sh) | PR-affected page E2E testing (requires `gh` CLI) |
+| [templates/data-extraction.sh](templates/data-extraction.sh) | Structured data extraction with pagination |
 
 ```bash
 ./templates/form-automation.sh https://example.com/form
