@@ -212,10 +212,16 @@ These are common mistakes observed during real-world execution. See `references/
 | S-01 | Phantom directory references | Only reference `.claude/rules/` if it exists or you are creating it |
 | S-02 | Over-inspection | Stop when no new actionable facts from the last tier |
 | S-03 | Template-first drafting | Inspect first (Steps 1-2), then match template |
+| S-04 | Monorepo false positive | Check for workspace config before applying monorepo rules |
 | S-05 | README content copying | Reference README, don't copy content into config |
 | S-06 | Missing WHY for non-obvious decisions | Pair every non-obvious WHAT with a brief WHY |
+| S-07 | Scope creep | Match file complexity to project complexity |
 | S-08 | Invented commands | Verify or mark `[unverified]` -- never guess |
 | S-09 | Generic best practices | Every convention must be specific, measurable, project-specific |
+| S-10 | Linter rule duplication | Don't document rules already enforced by project linters |
+| S-11 | Audit on new setup | Skip Step 6 entirely for greenfield projects |
+| S-12 | Unknowns in files | Call out unknowns in response text, not inside config files |
+| S-13 | Template conflicts | Step 3 thin wrapper is canonical — ignore conflicting examples |
 
 ## Do this, not that
 

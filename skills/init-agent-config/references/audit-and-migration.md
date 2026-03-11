@@ -316,11 +316,11 @@ Actionability:        3/5 (some suggestions instead of directives)
 ```
 
 **Score calculation:**
-- Commands: 4/5 x 25% x 20 = 20.0
-- Architecture: 3/5 x 25% x 20 = 15.0
-- Patterns: 2/5 x 20% x 20 = 8.0
-- Conciseness: 4/5 x 15% x 20 = 12.0
-- Actionability: 3/5 x 15% x 20 = 9.0
+- Commands: 4/5 x 25% x 100 = 20.0
+- Architecture: 3/5 x 25% x 100 = 15.0
+- Patterns: 2/5 x 20% x 100 = 8.0
+- Conciseness: 4/5 x 15% x 100 = 12.0
+- Actionability: 3/5 x 15% x 100 = 9.0
 - **Total: 64.0 / 100 = Grade C**
 
 **Findings summary:**
