@@ -312,6 +312,11 @@ screenshot --filename=fold-04.png
 Verify scroll direction works as expected with a small movement first if
 precision matters.
 
+> **Known quirk:** `mousewheel <deltaX> <deltaY>` parameter order may be swapped
+> internally by the CLI (e.g. `mousewheel 0 900` scrolls horizontally instead of
+> vertically). Always test with a small scroll first and verify with `eval "() =>
+> window.scrollY"` before committing to a sweep.
+
 ---
 
 ## Video recording
