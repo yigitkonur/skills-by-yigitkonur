@@ -56,6 +56,8 @@ eval "(el) => el.value" <email-ref>
 
 ### Fill and submit
 
+> **Steering experience:** `fill --submit` is a powerful shortcut that fills and submits in one command. It is especially useful for search fields. Prefer it over `fill` + `click <submit-ref>` when a single field drives the submission.
+
 ```bash
 fill <search-ref> "playwright testing" --submit
 snapshot
@@ -220,8 +222,9 @@ If the toggle is a custom component, use `click` instead.
 
 ## File upload
 
-Uploads are **modal-driven**, not ref-driven. The file chooser dialog
-must be active before calling `upload`.
+> **Steering experience:** Uploads are **modal-driven**, not ref-driven. The most common upload failure is calling `upload` before clicking the file chooser trigger. The file chooser dialog **must** be active before calling `upload`. If you call `upload` with no active chooser, the CLI will error with a modal-state message.
+
+The safe upload workflow is: click trigger → `upload` → verify with `eval`.
 
 ### Safe upload workflow
 
@@ -362,15 +365,20 @@ screenshot --filename=confirmation.png
 
 ## Form submission
 
+> **Steering experience:** After any form submission, refs are almost certainly dead. Always re-snapshot before continuing. If the submission triggers a page navigation, also verify the new URL with `eval "() => window.location.href"`.
+
 ```bash
 # Option 1: click submit
 click <submit-ref>
+snapshot     # refs are dead after submit — must re-snapshot
 
-# Option 2: fill with --submit
+# Option 2: fill with --submit (shortcut)
 fill <search-ref> "query" --submit
+snapshot
 
-# Option 3: press Enter
+# Option 3: press Enter (when field is focused)
 press Enter
+snapshot
 ```
 
 ---

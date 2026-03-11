@@ -72,6 +72,8 @@ screenshot
 The CLI generates a timestamped filename in the `.playwright-cli/` artifact area.
 Prefer explicit filenames for organized workflows.
 
+> **Steering experience:** All screenshot commands write files to disk and print the file path. The path is the artifact — save it in your notes if you need to reference the screenshot later.
+
 ---
 
 ## Naming conventions
@@ -297,20 +299,27 @@ eval "(el) => {
 ## Viewport sweep for lazy content
 
 Full-page screenshots may miss lazy-loaded or sticky UI behavior.
-Use manual fold capture instead:
+Use manual fold capture instead.
+
+> **Steering experience:** The `mousewheel <deltaX> <deltaY>` parameter order may be swapped in some CLI versions. **Always verify scroll direction first** with a small test scroll before using large values. If the page scrolls horizontally instead of vertically, swap the parameters.
 
 ```bash
+# Step 1: Verify scroll direction works correctly
+mousewheel 0 100
+eval "() => window.scrollY"
+# If scrollY increased, parameter order is correct (deltaX=0, deltaY=100)
+# If scrollY is still 0, try: mousewheel 100 0
+
+# Step 2: Capture folds with verified direction
 screenshot --filename=fold-01.png
 mousewheel 0 900
+eval "() => window.scrollY"   # verify scroll happened
 screenshot --filename=fold-02.png
 mousewheel 0 900
 screenshot --filename=fold-03.png
 mousewheel 0 900
 screenshot --filename=fold-04.png
 ```
-
-Verify scroll direction works as expected with a small movement first if
-precision matters.
 
 > **Known quirk:** `mousewheel <deltaX> <deltaY>` parameter order may be swapped
 > internally by the CLI (e.g. `mousewheel 0 900` scrolls horizontally instead of

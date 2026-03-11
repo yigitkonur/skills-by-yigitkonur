@@ -27,6 +27,8 @@ When you run `snapshot`, the CLI traverses the current page DOM and produces
 an accessibility-tree dump. Interactive elements get assigned **ref identifiers**
 like `e0`, `e1`, `e5`.
 
+> **Steering experience:** `snapshot` writes a YAML file to `.playwright-cli/page-<timestamp>.yml` and prints the file path. It does NOT print the tree to the terminal. You must `cat` the printed path to read refs. The format is YAML (role/name/ref), not HTML.
+
 ```yaml
 # Example from .playwright-cli/page-<timestamp>.yml
 - role: button
@@ -62,10 +64,14 @@ click e2
 
 ## Snapshot anatomy
 
-### Inline snapshot (YAML file)
+### Snapshot output (YAML file)
+
+> **Steering experience:** This is the single most important thing to understand about `snapshot`. It writes a file and prints the path. You must read the file to see the tree.
 
 ```bash
 snapshot
+# Output: Snapshot saved to .playwright-cli/page-1710456789.yml
+cat .playwright-cli/page-1710456789.yml
 ```
 
 Writes the accessibility tree to a YAML file at `.playwright-cli/page-<timestamp>.yml`
@@ -237,12 +243,23 @@ identified by their role, name, and position.
 
 ### How to read the tree
 
-```text
-- heading "Welcome" [level=1]
-- textbox "Email" [ref=e3]
-- textbox "Password" [ref=e4]
-- button "Sign In" [ref=e5]
-- link "Forgot password?" [ref=e6]
+```yaml
+# Example snapshot YAML for a login page
+- role: heading
+  name: "Welcome"
+  level: 1
+- role: textbox
+  name: "Email"
+  ref: e3
+- role: textbox
+  name: "Password"
+  ref: e4
+- role: button
+  name: "Sign In"
+  ref: e5
+- role: link
+  name: "Forgot password?"
+  ref: e6
 ```
 
 ### Matching strategy
@@ -301,6 +318,8 @@ snapshot
 ```
 
 ### Quoting rule
+
+> **Steering experience:** Quoting errors are one of the most common causes of `run-code` failures. Always use single quotes for the outer wrapper and double quotes inside JavaScript.
 
 Single quotes outside, double quotes inside:
 

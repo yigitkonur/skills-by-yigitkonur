@@ -7,7 +7,7 @@ description: Use skill if you are controlling a live browser with @anthropic-ai/
 
 Use `@anthropic-ai/playwright-cli` to drive a live browser from the terminal. Keep this file focused on trigger logic, workflow, guardrails, and reference routing. Use `references/` for detailed commands, edge cases, and larger patterns.
 
-> **Invocation model:** Every command listed below (e.g. `snapshot`, `click e0`, `fill e1 "text"`) is typed at the `playwright-cli` prompt after you launch the tool, **not** as standalone shell commands. Launch with `playwright-cli` first, then enter commands at its interactive prompt.
+> **Invocation model — read this first.** Every command below (`snapshot`, `click e0`, `fill e1 "text"`, etc.) is typed **at the `playwright-cli` interactive prompt**, not as standalone shell commands. You launch `playwright-cli` from bash, then enter commands at its `>` prompt. Do not prefix them with `playwright-cli` inside the session.
 
 ## Trigger boundary
 
@@ -43,8 +43,10 @@ Only bootstrap when the CLI or browser support is missing:
 
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
-playwright-cli install --browser=chrome   # always run to ensure browser binary exists
+playwright-cli install --browser=chrome   # always run — ensures browser binary exists
 ```
+
+> **Steering experience:** Always run `playwright-cli install --browser=chrome` even if the CLI is already installed. It is a no-op when the binary exists, but skipping it causes cryptic "browser not found" errors when the binary is missing. This is a one-second check that prevents a five-minute debug session.
 
 When you need an isolated session (parallel work, risky experiments), add to bootstrap:
 
@@ -61,17 +63,25 @@ playwright-cli config --isolated
 
 - Run `tab-list`.
 - Decide whether to reuse the current tab or open a temporary work tab.
-- When you need a new work surface, use `tab-new` first and `open <url>` second (`tab-new <url>` is unreliable and may not load the URL).
+- When you need a new work surface, use `tab-new` first and `open <url>` second.
+
+> **Steering experience:** Do NOT use `tab-new <url>`. It is documented but unreliable — in testing it frequently opens `about:blank` instead of the requested URL. The safe two-step pattern is `tab-new` then `open <url>`.
+
 - Record the tab map before you continue.
 - If a popup or forced new window is expected, route to `references/tabs.md` before acting.
 
 ### 3) Observe before touching the page
 
+> **Steering experience:** `snapshot` writes a YAML accessibility-tree file to `.playwright-cli/page-<timestamp>.yml` and prints the **file path**, not the tree content. You must `cat` the file to read the actual refs. Example flow:
+> ```bash
+> snapshot          # prints: Snapshot saved to .playwright-cli/page-1710456789.yml
+> cat .playwright-cli/page-1710456789.yml   # read the YAML to find refs like e0, e1, e5
+> ```
+
 Use the cheapest command that gives trustworthy state:
 
 ```bash
-snapshot          # writes YAML accessibility tree to .playwright-cli/page-<ts>.yml
-                  # CLI prints the file path; read with cat to see refs (e0, e1, ...)
+snapshot
 eval "() => window.location.href"
 ```
 
@@ -82,26 +92,30 @@ Add only the extra proof you need:
 
 ### 4) Act with the smallest direct command
 
-Prefer the direct CLI primitive over custom code:
-- navigation: `open`, `reload`, `go-back`, `go-forward`
-- inputs: `fill`, `type`, `select`, `check`, `uncheck`
-- clicks and hovers: `click`, `dblclick`, `hover`
-- keyboard: `press <key>` (e.g. `press Enter`, `press Tab`)
-- viewport: `resize <width> <height>`, `mousewheel <deltaX> <deltaY>`
-- uploads: trigger chooser first, then `upload /absolute/path`
-- dialogs: `dialog-accept`, `dialog-dismiss`
-- tabs: `tab-new`, `tab-list`, `tab-select`, `tab-close`
+The CLI has far more commands than just `click` and `fill`. Here is the complete reference:
 
-| Category | Commands |
-|---|---|
-| Navigate | `open`, `reload`, `go-back`, `go-forward` |
-| Input | `fill`, `type`, `select`, `check`, `uncheck` |
-| Interact | `click`, `dblclick`, `hover`, `press` |
-| Viewport | `resize`, `mousewheel` |
-| Files | `upload` |
-| Dialogs | `dialog-accept`, `dialog-dismiss` |
-| Tabs | `tab-new`, `tab-list`, `tab-select`, `tab-close` |
-| Observe | `snapshot`, `screenshot`, `eval`, `console`, `network` |
+| Category | Commands | Reference |
+|---|---|---|
+| Navigation | `open`, `reload`, `go-back`, `go-forward` | `references/navigation.md` |
+| Inputs | `fill`, `fill --submit`, `type`, `type --submit`, `select`, `check`, `uncheck` | `references/forms.md` |
+| Click / hover | `click`, `dblclick`, `hover` | `references/selectors.md` |
+| Keyboard | `press <Key>` (e.g., `press Enter`, `press Tab`, `press Escape`) | `references/forms.md` |
+| Viewport | `resize <w> <h>`, `mousewheel <deltaX> <deltaY>` | `references/screenshots.md` |
+| Files | `upload /absolute/path/to/file` (file chooser must be active first) | `references/forms.md` |
+| Tabs | `tab-new`, `tab-list`, `tab-select <i>`, `tab-close [i]` | `references/tabs.md` |
+| Dialogs | `dialog-accept [text]`, `dialog-dismiss` | `references/tabs.md` |
+| Screenshots | `screenshot [--full-page] [--filename=...]`, `screenshot <ref>` | `references/screenshots.md` |
+| PDF | `pdf --filename=...` | `references/screenshots.md` |
+| Video | `video-start`, `video-stop` | `references/screenshots.md` |
+| Observation | `snapshot`, `eval "() => ..."`, `eval "(el) => ..." <ref>` | `references/selectors.md` |
+| Debug | `console [error\|warning\|info]`, `console --clear`, `network [--static]`, `network --clear` | `references/debugging.md` |
+| Tracing | `tracing-start`, `tracing-stop` | `references/debugging.md` |
+| State | `state-save <file>`, `state-load <file>` | `references/patterns.md` |
+| Cookies | `cookie-list`, `cookie-get`, `cookie-set`, `cookie-delete`, `cookie-clear` | `references/patterns.md` |
+| Storage | `localstorage-list/get/set/delete`, `sessionstorage-list/get/set` | `references/patterns.md` |
+| Network mock | `route <url> --body=...`, `route-list`, `unroute <url>` | `references/patterns.md` |
+| Sessions | `session-list`, `session-stop [name]`, `session-stop-all`, `session-restart [name]` | `references/tabs.md` |
+| Code | `run-code 'async (page) => { ... }'` | `references/selectors.md` |
 
 Use direct commands with these rules:
 - use `check` for radios and checkboxes when possible; it is safer than blind `click`
@@ -109,7 +123,11 @@ Use direct commands with these rules:
 - for uploads, trigger the file chooser first, then call `upload`
 - if the page needs a wait, wait for a selector, URL, or response with `run-code`, then `snapshot`
 
+> **Steering experience:** The `mousewheel <deltaX> <deltaY>` parameter order may be swapped in some CLI versions (deltaY first, deltaX second). Always test with a small value first and verify with `eval "() => window.scrollY"` before relying on large scroll distances. See `references/screenshots.md` for details.
+
 ### 5) Verify immediately after each meaningful action
+
+> **Steering experience:** All artifact commands (`console`, `network`, `snapshot`, `screenshot`) write results to **files**, not to stdout. The CLI prints the file path; you must `cat` or inspect that file to see actual content. Never assume the page is clean or broken based on command output alone — always read the artifact file.
 
 Use the lightest proof that actually confirms success:
 
@@ -119,11 +137,9 @@ Use the lightest proof that actually confirms success:
 | Form field changed | `eval "(el) => el.value" <ref>` or `eval "(el) => el.checked" <ref>` |
 | Upload succeeded | `eval` file list + screenshot if the UI must show the file |
 | Visual state matters | screenshot with descriptive filename + state proof |
-| A bug or regression is suspected | `console --clear` / `network --clear`, reproduce, then `cat` the returned artifact files |
+| A bug or regression is suspected | `console --clear` / `network --clear`, reproduce, then `cat` returned artifact files |
 
-> **Note:** `--clear` flags produce no visible output (silent success). The artifact file is created after the next capture command.
-
-> **Artifact inspection:** Commands like `snapshot`, `console`, `network`, and `screenshot` write results to files and print the path. Read them with `cat <path>` to see content.
+> **Steering experience:** `console --clear` and `network --clear` produce **no visible output** — they succeed silently. This is expected behavior, not an error. Do not re-run them thinking they failed.
 
 Use progressively stronger evidence when risk increases:
 1. **State proof** — `snapshot` + `eval`
@@ -136,26 +152,30 @@ Use progressively stronger evidence when risk increases:
 | Do this | Not that |
 |---|---|
 | Reuse a good existing tab or session when it already has the right state | Reset or isolate by default |
-| `tab-new` then `open <url>` | `tab-new <url>` |
+| `tab-new` then `open <url>` | `tab-new <url>` (unreliable — may open about:blank) |
 | Keep a live tab map and confirm the active tab before each action | Assume tab indexes and URLs stayed the same |
-| `snapshot` before using refs, and again after page changes | Reuse old refs after navigation or rerender |
+| `snapshot` → `cat <file>` to read refs, and re-snapshot after page changes | Reuse old refs after navigation or rerender |
 | `eval` for URL, value, checked state, counts, and ready state | Trust headers or command echo alone |
 | `check` or `uncheck` for radios and checkboxes | Blind `click` on stateful inputs |
 | Click the upload trigger, then `upload /absolute/path/...` | Call `upload` before the chooser is active |
-| Inspect the file returned by `console` or `network` | Assume the command output alone proves anything |
+| `cat` the file returned by `console` or `network` to inspect artifacts | Assume the command output alone proves anything |
 | Use `run-code` only for waits or missing primitives, then `snapshot` | Stay in custom code longer than necessary |
 | Close transient tabs when finished | Leave disposable tabs or scratch sessions behind |
+| Run `playwright-cli install --browser=chrome` every time during bootstrap | Skip it and assume browser binary exists |
+| Test `mousewheel` with a small value + `eval "() => window.scrollY"` first | Assume parameter order is correct |
 
 ## Recovery rules
 
 If the workflow drifts, recover in this order:
 1. **Unsure which tab is active** — `tab-list`, `tab-select`, `eval "() => window.location.href"`, `snapshot`
-2. **Ref not found or action did nothing** — re-snapshot, then retry with fresh refs
+2. **Ref not found or action did nothing** — re-snapshot (`snapshot` → `cat <file>`), then retry with fresh refs
 3. **SPA or lazy UI did not settle** — use `run-code` to wait for a selector, URL, or response, then `snapshot`
 4. **Popup or new window appeared** — handle it via `references/tabs.md`, then re-verify the main tab before continuing
 5. **Form or upload state is unclear** — `eval` live values or files; do not infer from command success
-6. **Bug evidence is weak** — clear console/network, reproduce once, inspect artifact files, then capture a screenshot
+6. **Bug evidence is weak** — `console --clear` (silent), `network --clear` (silent), reproduce once, `cat` artifact files, then capture a screenshot
 7. **You used `run-code`** — assume refs are dead and rebuild state with `snapshot`
+8. **`mousewheel` scrolled wrong direction** — try swapping deltaX/deltaY parameters; verify with `eval "() => window.scrollY"`
+9. **`--clear` seemed to fail** — it didn't; `--clear` produces no output by design
 
 ## Reference routing
 
@@ -184,6 +204,6 @@ Read only what matches the current job:
 
 When browser work ends:
 - close transient tabs you opened for the task
-- stop or delete only the scratch named sessions you created
+- stop or delete only the scratch named sessions you created — use `session-stop <name>` for isolated sessions to avoid leaking browser processes
 - keep shared or preexisting sessions alive unless the user asked for teardown
 - if you collected evidence, preserve the returned artifact paths in your answer
