@@ -243,3 +243,287 @@ declare module 'untyped-lib' {
 ```
 
 **Prefer**: install `@types/package-name` from DefinitelyTyped when available. Write custom declarations only when no `@types` package exists.
+
+---
+
+## `verbatimModuleSyntax` (5.0+)
+
+Simple rule: what you write is what gets emitted.
+
+```json
+{
+  "compilerOptions": {
+    "verbatimModuleSyntax": true
+  }
+}
+```
+
+### Effect on imports
+
+```typescript
+// Type-only import — stripped from output
+import type { User } from './types';
+
+// Value import — preserved in output
+import { createUser } from './user';
+
+// Mixed — types stripped, values preserved
+import { createUser, type User } from './user';
+
+// ERROR — using a type import as a value
+import { User } from './types'; // Error if User is only a type
+```
+
+Replaces the older `importsNotUsedAsValues` and `preserveValueImports` options.
+
+---
+
+## `isolatedDeclarations` (5.5+)
+
+Requires explicit return types on exported functions so tools other than `tsc` can generate `.d.ts` files.
+
+```json
+{
+  "compilerOptions": {
+    "isolatedDeclarations": true,
+    "declaration": true
+  }
+}
+```
+
+```typescript
+// ERROR — return type must be explicit for exports
+export function add(a: number, b: number) {
+  return a + b;
+}
+
+// OK — explicit return type
+export function add(a: number, b: number): number {
+  return a + b;
+}
+
+// OK — non-exported functions can use inference
+function internal(x: number) {
+  return x * 2;
+}
+```
+
+**Why**: Enables `tsup`, `oxc`, and `swc` to generate declarations without running the full type checker. Useful for large monorepos where type-checking is slow.
+
+---
+
+## `isolatedModules`
+
+Ensures each file can be transpiled independently by tools like `esbuild` or `swc`.
+
+```json
+{
+  "compilerOptions": {
+    "isolatedModules": true
+  }
+}
+```
+
+### What it prohibits
+
+```typescript
+// ERROR — re-exporting types without 'type'
+export { User } from './types'; // Error if User is only a type
+export type { User } from './types'; // OK
+
+// ERROR — const enum (requires cross-file analysis)
+const enum Direction { Up, Down, Left, Right }
+// Use regular enum or as const object instead
+
+// ERROR — ambient module declarations with value exports
+declare module 'foo' {
+  export const bar: string; // Error in isolated modules
+}
+```
+
+**Why**: Required for all modern transpilers (esbuild, swc, tsx, Vite). Always enable.
+
+---
+
+## `erasableSyntaxOnly` (5.8+)
+
+Restricts TypeScript to syntax that can be erased (removed) to produce valid JavaScript, without requiring any transformation or code generation.
+
+```json
+{
+  "compilerOptions": {
+    "erasableSyntaxOnly": true
+  }
+}
+```
+
+### What it prohibits
+
+```typescript
+// ERROR — enums generate runtime code
+enum Status { Active, Inactive }
+
+// ERROR — namespaces generate runtime code
+namespace Utils {
+  export function helper() {}
+}
+
+// ERROR — parameter properties generate constructor assignments
+class User {
+  constructor(public name: string) {} // Error
+}
+
+// OK — these are all erased cleanly
+type Status = 'active' | 'inactive';
+interface User { name: string; }
+import type { Config } from './config';
+```
+
+**Why**: Aligns with the TC39 Type Annotations proposal. If you plan to use Node.js `--experimental-strip-types` or Deno's built-in TypeScript support, this flag ensures compatibility.
+
+---
+
+## Watch Options
+
+```json
+{
+  "watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "fallbackPolling": "dynamicPriorityPolling",
+    "excludeDirectories": ["node_modules", "dist", ".git"]
+  }
+}
+```
+
+| Option | Recommended | Why |
+|--------|-------------|-----|
+| `watchFile` | `useFsEvents` | Native file events, lower CPU |
+| `watchDirectory` | `useFsEvents` | Native directory events |
+| `fallbackPolling` | `dynamicPriorityPolling` | Adaptive frequency for non-native FS |
+| `excludeDirectories` | `["node_modules", "dist"]` | Reduces watched files |
+
+```bash
+# Watch with incremental (fastest recompilation)
+tsc --watch --incremental
+
+# Watch without clearing terminal
+tsc --watch --preserveWatchOutput
+```
+
+---
+
+## Complete tsconfig Templates
+
+### Node.js 20+ ESM Application
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+    "declaration": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+Requires `"type": "module"` in package.json.
+
+### Browser Application (Vite, Next.js)
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
+```
+
+### Library Publishing
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "isolatedDeclarations": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
+```
+
+### Monorepo Base Config
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "incremental": true,
+    "sourceMap": true
+  }
+}
+```
