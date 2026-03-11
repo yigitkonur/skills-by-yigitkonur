@@ -1,35 +1,33 @@
 # Cross-Agent Compatibility Guide
 
-AGENTS.md is supported by 20+ AI coding agents. This guide maps which features work everywhere, agent-specific configuration files, and strategies for multi-agent teams.
+Which features work across agents, agent-specific config files, and strategies for multi-agent teams.
 
-## Supported Agents
+## Agent Support Matrix
 
-| Agent | Reads AGENTS.md | Reads Nested | Native Config File | Notes |
-|-------|-----------------|--------------|-------------------|-------|
-| Codex CLI | ✅ | ✅ | `AGENTS.md` + `config.toml` | Full discovery chain, override support, 32 KiB limit |
-| Cursor | ✅ | ✅ | `.cursor/rules/*.mdc` | `.cursorrules` deprecated; auto-reads workspace root |
-| VS Code Copilot | ✅ | ✅ | `.github/copilot-instructions.md` | Workspace-wide, respects subdirectory files |
-| GitHub Copilot Chat | ✅ | — | `.github/copilot-instructions.md` | Root file only in most contexts |
-| Claude Code | ❌ | — | `CLAUDE.md` + `.claude/` | Reads CLAUDE.md; symlink AGENTS.md for compat |
-| Devin | ✅ | — | `REVIEW.md` + `AGENTS.md` | Root file only |
-| Jules | ✅ | — | `AGENTS.md` | Root file only |
-| Amp | ✅ | — | `AGENTS.md` | Root file only |
-| Gemini CLI | ✅ | — | `GEMINI.md` + `.gemini/settings.json` | Also reads AGENTS.md natively |
-| Windsurf | ✅ | — | `.windsurfrules` | Max ~12K chars; root file only |
-| Aider | ✅ | — | `.aider.conf.yml` | Requires `read: AGENTS.md` in config |
-| Continue | ✅ | — | `.continue/config.json` | Root file via config |
-| Cline | ✅ | — | `.clinerules` | Root file only |
-| Roo Code | ✅ | — | `.roo/rules/` | Root file with mode-scoped rules |
-| Amazon Q | ✅ | — | `.amazonq/rules/` | Root file only |
-| Tabnine | ✅ | — | `.tabnine/` | Root file only |
-
-**Legend:** ✅ = supported, — = not applicable / not supported, ❌ = uses different file
+| Agent | Reads AGENTS.md | Reads Nested | Native Config File | Size Limit | Notes |
+|-------|-----------------|--------------|-------------------|------------|-------|
+| Codex CLI | ✅ | ✅ | `AGENTS.md` + `config.toml` | 32 KiB | Full discovery chain, override support |
+| Cursor | ✅ | ✅ | `.cursor/rules/*.mdc` | — | `.cursorrules` deprecated; auto-reads workspace |
+| VS Code Copilot | ✅ | ✅ | `.github/copilot-instructions.md` | — | Workspace-wide, subdirectory support |
+| GitHub Copilot Chat | ✅ | — | `.github/copilot-instructions.md` | — | Root file only |
+| Claude Code | ❌ | — | `CLAUDE.md` + `.claude/` | ~50 KB | Symlink or thin wrapper for AGENTS.md compat |
+| Devin | ✅ | — | `REVIEW.md` + `AGENTS.md` | — | Root file only |
+| Jules | ✅ | — | `AGENTS.md` | — | Root file only |
+| Amp | ✅ | — | `AGENTS.md` | — | Root file only |
+| Gemini CLI | ✅ | — | `GEMINI.md` + `.gemini/settings.json` | — | Also reads AGENTS.md natively |
+| Windsurf | ✅ | — | `.windsurfrules` | ~12K chars | Root file only |
+| Aider | ✅ | — | `.aider.conf.yml` | — | Requires `read: AGENTS.md` in config |
+| Continue | ✅ | — | `.continue/config.json` | — | Root file via config |
+| Cline | ✅ | — | `.clinerules` | — | Root file only |
+| Roo Code | ✅ | — | `.roo/rules/` | — | Mode-scoped rules |
+| Amazon Q | ✅ | — | `.amazonq/rules/` | — | Root file only |
+| Tabnine | ✅ | — | `.tabnine/` | — | Root file only |
 
 ## Universal vs Agent-Specific Features
 
 ### Universal (Safe in Any AGENTS.md)
 
-Plain markdown that any agent reads as text:
+Plain markdown that every agent reads as text:
 
 | Feature | Example |
 |---------|---------|
@@ -50,14 +48,14 @@ Plain markdown that any agent reads as text:
 | `paths:` frontmatter rules | `.claude/rules/*.md` | Claude Code |
 | Hooks (pre-tool, post-tool) | `.claude/settings.json` | Claude Code |
 | Custom slash commands | `.claude/commands/*.md` | Claude Code |
-| Named agents | `.claude/agents/*.md` | Claude Code |
+| Named agents/subagents | `.claude/agents/*.md` | Claude Code |
 | `.mdc` files with frontmatter | `.cursor/rules/*.mdc` | Cursor |
 | `.windsurfrules` config | `.windsurfrules` | Windsurf |
 | `GEMINI.md` config | `GEMINI.md` | Gemini CLI |
 | `.aider.conf.yml` | `.aider.conf.yml` | Aider |
-| MCP server config | Agent-specific | Varies |
+| MCP server config | Agent-specific settings | Varies |
 
-## Agent-Specific Config Files Reference
+## Agent-Specific Config File Reference
 
 ### Claude Code
 
@@ -66,9 +64,10 @@ CLAUDE.md                    # Project memory (or .claude/CLAUDE.md)
 CLAUDE.local.md              # Personal overrides (gitignored)
 .claude/
 ├── settings.json            # Permissions, hooks, MCP servers
+├── settings.local.json      # Personal settings (gitignored)
 ├── commands/                # Custom slash commands (/project:*)
 │   └── deploy.md
-├── agents/                  # Named agent profiles
+├── agents/                  # Named agent profiles (subagents)
 │   └── reviewer.md
 └── rules/                   # Path-scoped rules with paths: frontmatter
     ├── api.md               # paths: ["src/api/**"]
@@ -107,13 +106,12 @@ Single file at project root. No nesting, no frontmatter. Keep concise.
 ### Gemini CLI
 
 ```
-GEMINI.md                    # Project instructions (Gemini-specific)
+GEMINI.md                    # Gemini-specific instructions
 .gemini/
-└── settings.json            # Configuration
+└── settings.json            # Configuration (can point to AGENTS.md)
 ```
 
 ```json
-// .gemini/settings.json
 {
   "contextFileName": "AGENTS.md"
 }
@@ -123,13 +121,11 @@ GEMINI.md                    # Project instructions (Gemini-specific)
 
 ```
 .github/
-├── copilot-instructions.md  # Global instructions for Copilot
+├── copilot-instructions.md  # Global Copilot instructions
 └── instructions/
-    ├── api.instructions.md  # Scoped to API work
+    ├── api.instructions.md  # Scoped instructions
     └── tests.instructions.md
 ```
-
-Additional scoped files use `*.instructions.md` naming convention.
 
 ### Aider
 
@@ -148,9 +144,7 @@ project_doc_max_bytes = 32768
 project_doc_fallback_filenames = ["TEAM_GUIDE.md"]
 ```
 
-Native AGENTS.md support with full discovery chain.
-
-## Cross-Agent Strategy
+## Cross-Agent Strategies
 
 ### Single-Agent Team
 
@@ -185,15 +179,13 @@ Use the agent's native config directly:
    CLAUDE.local.md
    ```
 
-### Multi-Agent Output Strategy
-
-Maintaining one source of truth while supporting 5+ agents:
+### Full Multi-Agent Repository Layout
 
 ```
 repo/
 ├── AGENTS.md                    # ← Source of truth (universal content)
 ├── CLAUDE.md                    # @AGENTS.md + Claude-specific additions
-├── GEMINI.md                    # Gemini-specific additions (refs AGENTS.md)
+├── GEMINI.md                    # Gemini-specific (refs AGENTS.md content)
 ├── .windsurfrules               # Condensed version for Windsurf's 12K limit
 ├── .github/
 │   └── copilot-instructions.md  # Copilot-specific (refs AGENTS.md content)
@@ -206,7 +198,7 @@ repo/
 └── .aider.conf.yml              # read: [AGENTS.md]
 ```
 
-**Maintenance rule:** When updating instructions, edit AGENTS.md first. Then propagate changes to agent-specific files only if they contain unique content beyond the pointer.
+**Maintenance rule:** Edit AGENTS.md first. Propagate to agent-specific files only if they contain unique content beyond the pointer.
 
 ### Monorepo Multi-Agent Strategy
 
@@ -214,7 +206,6 @@ repo/
 repo/
 ├── AGENTS.md                    # Universal root instructions
 ├── CLAUDE.md → AGENTS.md        # Symlink for Claude Code
-├── .cursorrules                 # Cursor-specific (deprecated but backwards compat)
 ├── packages/
 │   ├── api/
 │   │   └── AGENTS.md            # API-specific (Codex, Cursor, VS Code read this)
@@ -233,7 +224,7 @@ Agents that support nested files get richer context. Agents that only read root 
 ### From `.cursorrules` to AGENTS.md
 
 1. Copy content from `.cursorrules` to `AGENTS.md`
-2. Remove any Cursor-specific syntax
+2. Remove any Cursor-specific syntax (frontmatter, globs)
 3. Create `.cursor/rules/general.mdc` for Cursor-only settings
 4. Keep `.cursorrules` as a minimal pointer or remove it
 
@@ -242,19 +233,24 @@ Agents that support nested files get richer context. Agents that only read root 
 1. Copy non-Claude-specific content to `AGENTS.md`
 2. Remove `@import` lines (inline the referenced content)
 3. Remove references to `.claude/rules/` or hooks
-4. Replace `CLAUDE.md` with thin wrapper: `@AGENTS.md` + Claude-specific
+4. Replace `CLAUDE.md` with thin wrapper: `@AGENTS.md` + Claude-specific additions
 5. Keep Claude-specific features in `.claude/` directory
+
+### From `copilot-instructions.md` to AGENTS.md
+
+1. Copy content from `.github/copilot-instructions.md` to `AGENTS.md`
+2. Remove any Copilot-specific references
+3. Keep `.github/copilot-instructions.md` as a pointer: `"See AGENTS.md for project conventions"`
+4. Move Copilot-specific instructions to `.github/instructions/*.instructions.md`
 
 ### From No Agent Config
 
-1. Start with the appropriate template from `references/templates.md`
+1. Start with a template from `references/project-templates.md`
 2. Fill in project-specific details
-3. Run linters and tests to verify documented commands
+3. Verify every documented command against actual config
 4. Commit and test with your agent
 
 ## Testing Cross-Compatibility
-
-After creating AGENTS.md, verify it works with each agent:
 
 ```bash
 # Codex CLI
@@ -270,9 +266,6 @@ gemini "What project conventions should you follow?"
 
 # Aider
 aider --message "List the project conventions you know about"
-
-# Generic (any agent)
-[agent] "What project conventions should you follow?"
 ```
 
 The response should reflect your AGENTS.md content regardless of which agent reads it.
