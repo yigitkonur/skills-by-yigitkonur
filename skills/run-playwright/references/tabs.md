@@ -27,10 +27,11 @@ multiple agents sharing a single browser in `playwright-cli`.
 tab-new [url]
 ```
 
-Opens a new tab. The `[url]` argument is documented but **unreliable** — in
-testing it still opened `about:blank` when a URL was supplied inline.
+Opens a new tab. The `[url]` argument is documented but **unreliable**.
 
-**Safe pattern:**
+> **Steering experience:** In derailment testing, `tab-new <url>` opened `about:blank` instead of the requested URL in multiple tests. This is not a rare edge case — it is the common behavior. Always use the two-step pattern below. Never pass a URL to `tab-new`.
+
+**Safe pattern (always use this):**
 
 ```bash
 tab-new
@@ -147,9 +148,11 @@ snapshot
 
 ### Bootstrap (run once before browser work)
 
+> **Steering experience:** Always run `playwright-cli install --browser=chrome` even if the CLI is installed. It is a no-op when the binary exists but prevents cryptic errors when it is missing. For isolated sessions, remember to `session-stop <name>` at the end to avoid leaking browser processes.
+
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
-playwright-cli install --browser=chrome
+playwright-cli install --browser=chrome    # always run — ensures binary exists
 playwright-cli session-stop 2>/dev/null
 playwright-cli config --browser=chrome --isolated
 ```
@@ -211,6 +214,8 @@ playwright-cli session-delete research
 ## Session cleanup
 
 ### Stop specific session
+
+> **Steering experience:** When using isolated sessions (`config --isolated`), you MUST call `session-stop <name>` when done. Forgetting this leaks browser processes that consume memory until manually killed.
 
 ```bash
 playwright-cli session-stop my-session
@@ -279,6 +284,8 @@ screenshot --filename=after-popup.png
 ```
 
 ### Dialog handling
+
+> **Steering experience:** Dialog commands (`dialog-accept`, `dialog-dismiss`) are CLI prompt commands, not shell commands. Run them at the `playwright-cli` prompt when a dialog appears. They must be issued while the dialog is active — if the dialog auto-dismissed, these commands will error.
 
 For JavaScript `alert()`, `confirm()`, `prompt()` dialogs:
 
