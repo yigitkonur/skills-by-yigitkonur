@@ -254,3 +254,11 @@ keywords = ["GraphQL N+1 dataloader implementation TypeScript",
 ### Best Practices
 - **Separate schema design from security** -- different domains needing focused questions.
 - Attach your schema definition; search specific patterns ("dataloader", "cursor pagination").
+
+## Steering notes
+
+1. **Scrape official API docs always.** Blog posts have stale details. Verify endpoints/params with `scrape_pages`.
+2. **Pin to API version.** `"Stripe API v2024-12-18"`, `"GitHub API v4"`.
+3. **GitHub Issues for real problems:** `site:github.com [vendor SDK] [error]`.
+4. **Webhook verification** varies by vendor -- research vendor-specific flows.
+5. **Rate limits** are often inaccurate in docs. Reddit and GitHub Issues are best sources.

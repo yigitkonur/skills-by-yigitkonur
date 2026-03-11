@@ -219,3 +219,26 @@ YOUR SITUATION: Based on [known constraints], [X/Y] applies.
 ## Key Insight
 
 Synthesis is not summarization. Summarization condenses information; synthesis creates new understanding by connecting disparate pieces. The most valuable synthesis resolves contradictions, surfaces hidden consensus, and translates general advice into context-specific recommendations. A research output that lists sources without synthesis is a bibliography, not a recommendation.
+
+## Steering notes from production testing
+
+### Source reconciliation
+
+Before synthesis, map: all agree (high confidence), most agree (medium), conflict (needs resolution), single source (low).
+
+### When deep_research covers it
+
+If deep_research was final and covers all claims with sources, use it as synthesis core. Supplement with Reddit quotes and scraped facts it missed. Don't re-synthesize from scratch.
+
+### Confidence language
+
+| Agreement | Language |
+|---|---|
+| All agree + official docs | "Use X" |
+| 2+ agree, no contradictions | "X is likely best because..." |
+| Sources conflict | "Depends on [variable]. If A, use X. If B, use Y." |
+| Single source | "X appears suitable, verify [claims]" |
+
+### Consensus stability
+
+Fast-moving ecosystems: add shelf-life warning. Static domains (databases, crypto): no warning needed.

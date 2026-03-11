@@ -253,3 +253,11 @@ what_to_extract = "HTTP/2 directives | keep-alive timeout defaults | compression
 - Attach your **nginx/Envoy config** for infrastructure-specific recommendations.
 - Timeout chain ordering: app keepalive < pool idle < LB idle < server keepalive.
 - Compression: skip below ~860 bytes; Brotli quality 4 for static, gzip-6 for dynamic JSON above 1KB.
+
+## Steering notes
+
+1. **Performance claims are context-dependent.** Verify: benchmark methodology, environment match, vendor vs independent.
+2. **Set budget first.** Define targets (p99 <200ms, bundle <150KB) before researching.
+3. **Reddit has real production stories** benchmarks don't capture.
+4. **CPU-bound vs I/O-bound** need different research approaches.
+5. **Benchmark credibility:** Who published? What measured? What environment? When?

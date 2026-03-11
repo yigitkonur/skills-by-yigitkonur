@@ -165,3 +165,22 @@ When selecting URLs from search_reddit results:
 ## Key Insight
 
 fetch_reddit is your depth tool for community knowledge. The best insights on Reddit are never in the post title or the top comment — they're in the corrections, the dissenting replies, the "actually, after 6 months in production..." follow-ups, and the "EDIT: solved it by doing X" updates. Always keep use_llm=false unless you're processing 20+ posts, because the exact numbers, code snippets, and version strings are what make Reddit research actionable rather than anecdotal.
+
+## Steering notes from production testing
+
+### Comment budget distribution
+
+| Threads | Comments/thread | Quality |
+|---|---|---|
+| 2-3 | 330-500 | Very deep |
+| 5-8 | 125-200 | Rich (recommended) |
+| 10-15 | 67-100 | Moderate |
+| 20+ | <50 | Shallow |
+
+### Thread selection
+
+**Prioritize:** 10+ comments, high upvotes, recent (12-18 months). **Skip:** 1-3 comments, self-promotion, 2+ years old (for active tech).
+
+### Raw expert voices
+
+`use_llm=false` preserves exact quotes and authority signals (e.g., a library co-founder's comment). `use_llm=true` synthesizes patterns across 15+ threads.

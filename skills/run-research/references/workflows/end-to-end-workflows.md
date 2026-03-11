@@ -301,3 +301,22 @@ These workflows are starting points. Adapt based on intermediate results:
 ## Key Insight
 
 The best researchers don't follow templates rigidly — they use templates as starting points and adapt based on what each tool call reveals. The workflow tells you where to start and what order to try. The intermediate results tell you when to deviate, when to dig deeper, and when to stop. The most common mistake is over-researching a question that was answered in step 2.
+
+## Steering notes from production testing
+
+### Conflicting evidence handling
+
+1. Identify what specifically conflicts (pricing? performance? compatibility?)
+2. Credibility hierarchy: scraped official docs > Reddit practitioners > deep_research synthesis > blog posts
+3. If unclear: focused verification search targeting the specific conflicting claim
+
+### deep_research placement
+
+- Bug fix: ONLY after search->scrape->reddit, if fixes conflict or feel generic
+- Library comparison: LAST, after all search/scrape/Reddit. Populate KNOWN.
+- Architecture: FIRST (starts sequence). Verify with subsequent steps.
+- Fact checks: Usually not needed.
+
+### Tool "Next Steps" warning
+
+All tools may suggest follow-up calls. Follow the Workflow Selector sequence, not tool suggestions.
