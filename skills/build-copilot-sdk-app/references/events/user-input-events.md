@@ -194,4 +194,4 @@ Agent needs form   → elicitation.requested → user submits → elicitation.co
 
 ## Multi-client considerations
 
-In protocol v3, `user_input.requested` and `elicitation.requested` are broadcast to all connected clients. Only one client should respond — implement first-responder logic or designate a primary UI client.
+In the SDK's broadcast protocol, `user_input.requested` and `elicitation.requested` are broadcast to all connected clients. Only one client should respond — implement first-responder logic or designate a primary UI client.

@@ -62,11 +62,11 @@ session.on("hook.end", (event) => {
 }
 ```
 
-## External Tool Events (Protocol v3)
+## External Tool Events (Broadcast)
 
 ### `external_tool.requested`
 
-Broadcast to all connected clients when an external tool needs to be executed. This is a protocol v3 feature for multi-client architectures where tools may be handled by different clients.
+Broadcast to all connected clients when an external tool needs to be executed. This is a broadcast event feature for multi-client architectures where tools may be handled by different clients.
 
 ```typescript
 session.on("external_tool.requested", (event) => {

@@ -5,7 +5,7 @@ description: Use skill if you are building TypeScript applications with the GitH
 
 # Build Copilot SDK App
 
-Build applications powered by GitHub Copilot using the `@github/copilot-sdk` TypeScript/Node.js package (v0.1.32+, protocol v3). The SDK communicates with the Copilot CLI over JSON-RPC (stdio or TCP) and exposes a session-based API for sending prompts, receiving streamed responses, registering custom tools, handling permissions, and managing agent workflows.
+Build applications powered by GitHub Copilot using the `@github/copilot-sdk` TypeScript/Node.js package (protocol v2). The SDK communicates with the Copilot CLI over JSON-RPC (stdio or TCP) and exposes a session-based API for sending prompts, receiving streamed responses, registering custom tools, handling permissions, and managing agent workflows.
 
 ## Decision tree
 
@@ -37,7 +37,7 @@ What do you need?
 │   ├── Tool results & errors ────────────► references/tools/tool-results-and-errors.md
 │   └── Override built-in tools ──────────► references/tools/override-builtin-tools.md
 │
-├── Events (47 types)
+├── Events (46 core + 13 broadcast)
 │   ├── Session lifecycle events ──────────► references/events/session-lifecycle-events.md
 │   ├── Assistant events ─────────────────► references/events/assistant-events.md
 │   ├── Tool events ──────────────────────► references/events/tool-events.md
@@ -84,7 +84,7 @@ What do you need?
     ├── Client types ──────────────────► references/types/client-types.md
     ├── Session types ─────────────────► references/types/session-types.md
     ├── Tool types ────────────────────► references/types/tool-types.md
-    ├── Event types (all 47) ──────────► references/types/event-types.md
+    ├── Event types (all 59) ──────────► references/types/event-types.md
     ├── Hook types ────────────────────► references/types/hook-types.md
     └── RPC methods ───────────────────► references/types/rpc-methods.md
 ```

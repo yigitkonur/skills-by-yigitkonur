@@ -216,8 +216,8 @@ const client = new CopilotClient({
 - Node.js minimum: check `engines` in `package.json` of `@github/copilot-sdk`
 - The SDK uses `import.meta.resolve` — requires Node.js 20.6+ or 18.19+
 - Bun runtime: supported (SDK detects Bun and forces `node` executable path)
-- CLI binary: must match SDK protocol version range (MIN=2, MAX from `sdkProtocolVersion.js`)
-- Protocol mismatch throws: `"SDK protocol version mismatch: SDK supports versions 2-N, but server reports version M"`
+- CLI binary: must match SDK protocol version (currently `SDK_PROTOCOL_VERSION = 2`)
+- Protocol mismatch throws: `"SDK protocol version mismatch: SDK expects version 2, but server reports version M"`
 
 ## Bundled CLI Resolution
 

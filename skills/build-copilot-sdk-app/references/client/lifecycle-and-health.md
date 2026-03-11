@@ -60,7 +60,7 @@ try {
   // "Copilot CLI not found at /path/to/cli"
   // "Timeout waiting for CLI server to start"
   // "Failed to connect to CLI server: ECONNREFUSED"
-  // "SDK protocol version mismatch: SDK supports versions 2-N, but server reports version M"
+  // "SDK protocol version mismatch: SDK expects version 2, but server reports version M"
   // "CLI server exited with code 1\nstderr: ..."
 }
 ```
