@@ -16,6 +16,11 @@ driven by conventional commit messages.
 **Core philosophy:** No human decides what the next version number will be. Commits
 since the last release are analyzed, and the version bump is determined automatically.
 
+> **⚠️ Steering:** Only choose semantic-release for **single-package repos** with
+> strong conventional-commit discipline. It publishes automatically on every push —
+> there is no human gate. For monorepos, use **changesets** or **release-please**
+> instead (semantic-release has no native monorepo support).
+
 ---
 
 ## How It Works
@@ -296,7 +301,8 @@ Same as beta but with `alpha` channel. Typically:
 
 ## Dry-Run Testing
 
-Test the release pipeline without publishing:
+> **⚠️ Always dry-run first** before enabling semantic-release in CI.
+> This catches misconfigured tokens, missing tags, and commit-format issues.
 
 ```bash
 # Requires GH_TOKEN or GITHUB_TOKEN and NPM_TOKEN
@@ -426,6 +432,18 @@ git push origin v1.0.0
 
 Or set `"tagFormat": "v${version}"` and ensure the initial version in package.json
 matches the intended starting point.
+
+### Greenfield Setup (No Existing Tags)
+
+For a brand-new package that has never been published:
+
+1. Set `"version": "0.0.0"` (or `"0.0.0-semantically-released"`) in `package.json`
+2. **Do not** create any git tags — semantic-release will treat the first
+   releasable commit as the initial release
+3. Make sure your first commit is a `feat:` to get `1.0.0` (or `feat!:` for an
+   explicit major), or a `fix:` to get `1.0.1` if you prefer starting at `1.0.x`
+4. Run `npx semantic-release --dry-run` to verify the first release will be created
+   correctly before enabling the CI workflow
 
 ---
 

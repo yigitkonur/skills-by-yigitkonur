@@ -3,8 +3,22 @@
 Production-ready GitHub Actions workflows using OIDC for npm authentication.
 OIDC eliminates long-lived tokens — GitHub requests a short-lived token from npm at publish time.
 
-> **Prerequisite:** Link your npm package to your GitHub repo at
-> `https://www.npmjs.com/package/<pkg>/access` → Publishing access → Add GitHub Actions.
+> **⚠️ Steering:** OIDC workflows do **NOT** use `NPM_TOKEN` or `NODE_AUTH_TOKEN` — authentication is handled entirely by GitHub’s OIDC identity provider. If you need token-based auth, see `token-workflows.md`.
+
+> **⚠️ Steering — First-publish prerequisite:** OIDC authentication **only works for packages that already exist on npm**. You must publish the first version using a token (`npm publish --access public` with `NPM_TOKEN`) or the npm CLI locally, then link the package to your GitHub repo for OIDC. See `token-workflows.md` for the initial publish.
+
+> **⚠️ Steering — Config precedence:** These workflow templates are the **baseline**. The versioning tool reference (semantic-release, changesets, or release-please) is the **customization layer**. When in doubt, the versioning tool’s docs take priority for plugin config; the workflow template takes priority for CI/CD structure (permissions, concurrency, triggers).
+
+> **⚠️ Steering — SHA pinning:** Templates below use `@v4` tags for readability. For production, pin actions to full commit SHAs (e.g., `actions/checkout@<sha>`) to prevent supply-chain attacks. Use [pin-github-action](https://github.com/mheap/pin-github-action) or Dependabot to manage SHA updates.
+
+### OIDC Setup Prerequisite
+
+Link your npm package to your GitHub repo **before** using any workflow below:
+
+1. Go to `https://www.npmjs.com/package/<pkg>/access`
+2. Under **Publishing access**, select **Require two-factor authentication or an automation token or a linked GitHub repository**
+3. Click **Add GitHub Actions** and link your repo
+4. The package must already exist on npm (publish v0.0.1 with a token first if needed)
 
 ---
 
@@ -82,8 +96,16 @@ jobs:
 npm i -D semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
 ```
 
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/release.yml` | CI/CD workflow (template above) |
+| `.releaserc.json` | semantic-release plugin config |
+
 ### Checklist
 
+- [ ] Package already published to npm (first publish must use token)
 - [ ] npm package linked to GitHub repo (npmjs.com → package settings)
 - [ ] Repo uses Conventional Commits (`feat:`, `fix:`, `BREAKING CHANGE:`)
 - [ ] `package.json` has `name`, `version`, and `repository` fields
@@ -173,8 +195,17 @@ npx changeset init
 4. Merge PR → bot opens a **"Version Packages"** PR.
 5. Merge that PR → workflow publishes to npm.
 
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/release.yml` | CI/CD workflow (template above) |
+| `.changeset/config.json` | Changesets configuration |
+| `package.json` scripts | `version` and `release` scripts |
+
 ### Checklist
 
+- [ ] Package already published to npm (first publish must use token)
 - [ ] npm package linked to GitHub repo for OIDC
 - [ ] `"publishConfig": { "provenance": true }` in `package.json`
 - [ ] `.changeset/config.json` committed with `"access": "public"`
@@ -228,6 +259,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - run: npm ci
+      - run: npm run build --if-present
       - run: npm test
       - run: npm publish --provenance --access public
 ```
@@ -253,10 +285,19 @@ jobs:
 { ".": "0.0.0" }
 ```
 
-> Replace `"0.0.0"` with your current version.
+> Set to the version in `package.json`. For never-published packages, use the `package.json` version (typically `1.0.0` or `0.1.0`).
+
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/release.yml` | CI/CD workflow (template above) |
+| `.release-please-config.json` | Release-please package config |
+| `.release-please-manifest.json` | Current version tracker |
 
 ### Checklist
 
+- [ ] Package already published to npm (first publish must use token)
 - [ ] npm package linked to GitHub repo for OIDC
 - [ ] Both config files committed; manifest version matches `package.json`
 - [ ] Uses Conventional Commits
@@ -297,8 +338,15 @@ jobs:
 
       - run: npm ci
       - run: npm test
+      - run: npm run build --if-present
       - run: npm publish --provenance --access public
 ```
+
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/publish.yml` | CI/CD workflow (template above) |
 
 ### Developer workflow
 

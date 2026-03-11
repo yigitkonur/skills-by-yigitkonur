@@ -39,6 +39,12 @@ Short one-liner for npmjs.com search results. Keep under 120 characters:
 
 **Critical for provenance.** Must match the GitHub repo URL exactly — case-sensitive.
 
+> **⚠️ Steering (F-12):** The `repository.url` field must **exactly** match your
+> GitHub repository URL, including letter casing. `MyOrg/My-Package` ≠
+> `myorg/my-package`. A mismatch silently breaks provenance verification, and npm
+> will publish without provenance rather than failing — so you won't notice until
+> consumers check. Always copy the URL directly from your GitHub repo page.
+
 ```json
 {
   "repository": {
@@ -47,6 +53,10 @@ Short one-liner for npmjs.com search results. Keep under 120 characters:
   }
 }
 ```
+
+**Verification:** After publishing, check provenance on npmjs.com — the package
+page should show a green checkmark linking to the exact source commit. If the
+checkmark is missing, `repository.url` casing is the most likely cause.
 
 **Gotchas:** wrong casing (`MyOrg` vs `myorg`) breaks provenance verification. For monorepos add `"directory": "packages/my-package"`.
 
@@ -71,6 +81,11 @@ Declare supported Node.js versions (advisory by default):
 
 ### `publishConfig`
 
+> **⚠️ Steering:** Always set `publishConfig.provenance: true` and — for scoped
+> packages — `publishConfig.access: "public"` as defaults in your `package.json`.
+> This prevents the two most common first-publish failures: missing provenance
+> (silent) and `E403 Forbidden` on scoped packages (blocks publish entirely).
+
 Essential for scoped public packages and provenance:
 
 ```json
@@ -85,7 +100,7 @@ Essential for scoped public packages and provenance:
 ```
 
 - `access` — scoped packages default to `"restricted"` (paid); set `"public"` for free publishing
-- `provenance` — enables SLSA attestation when publishing from GitHub Actions with OIDC
+- `provenance` — enables SLSA attestation when publishing from GitHub Actions with OIDC. **Recommended for all packages** — there is no downside to enabling it
 - `tag` — use `"next"` or `"beta"` for pre-releases
 
 ---

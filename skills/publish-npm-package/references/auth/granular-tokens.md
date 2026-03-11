@@ -2,6 +2,8 @@
 
 Granular access tokens and automation tokens for npm publishing in GitHub Actions. Use when OIDC is not available (private packages, self-hosted runners, non-GitHub CI).
 
+> **⚠️ Steering:** Granular tokens are the **fallback** auth method, not the default. For public packages on GitHub Actions with GitHub-hosted runners, always prefer [OIDC trusted publishing](oidc-trusted-publishing.md) — it requires zero secrets and provides cryptographic provenance. Use granular tokens only when OIDC is unavailable (private packages, self-hosted runners, non-GitHub CI) or for the [first-publish bootstrap](#using-granular-tokens-for-first-publish-bootstrap) before switching to OIDC.
+
 ---
 
 ## Granular access tokens
@@ -119,6 +121,17 @@ jobs:
 
 ### Rotation best practices
 
+**Rotation timeline by risk profile:**
+
+| Expiry | Buffer | Use case | Risk level |
+|---|---|---|---|
+| **30 days** | Rotate at day 25 | High-security packages, packages with >10k weekly downloads | Low risk |
+| **90 days** | Rotate at day 85 | Standard CI publishing (recommended default) | Moderate risk |
+| **180 days** | Rotate at day 170 | Low-frequency publishing, internal tools | Higher risk |
+| **365 days** | Rotate at day 350 | Legacy projects with infrequent releases (avoid if possible) | Highest risk |
+
+> **⚠️ Steering:** Shorter expiry = less blast radius if leaked. If your package is public and on GitHub Actions, skip the rotation burden entirely — switch to [OIDC trusted publishing](oidc-trusted-publishing.md) which has zero secrets to rotate.
+
 **90-day rotation cycle** (recommended):
 
 | Day | Action |
@@ -139,6 +152,22 @@ gh secret set NPM_TOKEN --body "npm_NEW_TOKEN_VALUE" --repo owner/repo
 gh workflow run publish.yml -f dry-run=true
 # 4. Delete old token on npmjs.com (UI)
 ```
+
+---
+
+## Using Granular Tokens for First-Publish Bootstrap
+
+> **⚠️ Steering (F-11):** OIDC trusted publishing requires the package to already exist on npm. For brand-new (greenfield) packages, you must publish once with a granular token before OIDC can be configured.
+
+**Quick bootstrap flow:**
+
+1. Create a **short-lived** granular token (7-day expiry) on npmjs.com
+2. Publish the package: `npm publish --access public` (with `NODE_AUTH_TOKEN` set)
+3. Configure OIDC linking at `https://npmjs.com/package/<pkg>/access` → Add GitHub Actions
+4. Delete the granular token and remove the `NPM_TOKEN` secret
+5. Switch to the OIDC workflow — see [oidc-trusted-publishing.md](oidc-trusted-publishing.md) for the full guide
+
+See the detailed [First Publish Bootstrap](oidc-trusted-publishing.md#first-publish-bootstrap-greenfield-packages) section in the OIDC reference for step-by-step instructions.
 
 ---
 
@@ -251,6 +280,8 @@ If you need a project `.npmrc`, use environment variable substitution:
 ---
 
 ## Decision matrix: OIDC vs Granular vs Automation
+
+> **⚠️ Steering:** If you're choosing between these options for a **public package on GitHub Actions**, the answer is almost always OIDC. Use the matrix below only when OIDC is genuinely unavailable. After first-publish bootstrap, transition to OIDC by following [oidc-trusted-publishing.md](oidc-trusted-publishing.md).
 
 | Factor | OIDC | Granular Token | Automation Token |
 |---|---|---|---|
