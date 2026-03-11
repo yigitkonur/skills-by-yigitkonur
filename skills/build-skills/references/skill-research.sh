@@ -18,7 +18,11 @@ SEARCH_TERMS="${1:?Usage: skill-research.sh \"<keyword1>,<keyword2>,<keyword3>[,
 OUTPUT_DIR="${2:-./skill-research-corpus}"
 MAX_PARALLEL="${3:-4}"
 
-# Split comma-separated terms into array and trim whitespace
+# Split comma-separated terms into array and trim whitespace.
+# NOTE: This script accepts comma-separated keywords in a single string (e.g. "kw1,kw2,kw3")
+# because shell quoting makes it awkward to pass pre-quoted arguments through xargs/wrappers.
+# Internally, skill-dl search takes space-separated quoted arguments (e.g. skill-dl search "kw1" "kw2" "kw3").
+# The conversion happens automatically below — callers of this script should always use commas.
 IFS=',' read -ra KEYWORDS <<< "$SEARCH_TERMS"
 TRIMMED_KEYWORDS=()
 for kw in "${KEYWORDS[@]}"; do
