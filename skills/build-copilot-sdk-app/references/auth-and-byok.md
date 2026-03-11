@@ -241,7 +241,7 @@ const quota = await client.rpc.account.getQuota();
 - **BYOK requires BOTH `provider` and `model`** in `createSession`. Omitting `model` creates the session successfully but `sendAndWait` will fail with an unhelpful error. Always pair them:
   ```typescript
   const session = await client.createSession({
-    provider: { type: "openai", baseURL: "...", apiKey: "..." },
+    provider: { type: "openai", baseUrl: "...", apiKey: "..." },
     model: "gpt-4.1",  // REQUIRED with provider
     onPermissionRequest: approveAll,
   });

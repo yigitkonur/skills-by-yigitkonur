@@ -64,7 +64,7 @@ session.on("assistant.message", (event) => {
 
 session.on("session.idle", () => {
   console.log("--- turn complete ---");
-  idleResolve();
+  idleResolve(); // defined by waitForIdle() below
 });
 ```
 

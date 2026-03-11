@@ -171,7 +171,7 @@ const readFile = defineTool("read_file", {
   parameters: z.object({ path: z.string() }),
   handler: async ({ path }): Promise<ToolResultObject> => ({
     textResultForLlm: `Contents of ${path}:\n${fileContent}`,
-    resultType: "text",
+    resultType: "success",
     toolTelemetry: { bytesRead: fileContent.length },
   }),
 });
@@ -181,7 +181,7 @@ const readFile = defineTool("read_file", {
 | Field | Type | Purpose |
 |-------|------|---------|
 | `textResultForLlm` | `string` | The text the model sees as the tool result |
-| `resultType` | `string` | Hint for the model (e.g., "text", "json", "error") |
+| `resultType` | `string` | Result status: `"success"`, `"failure"`, `"rejected"`, or `"denied"` |
 | `toolTelemetry` | `Record<string, unknown>` | Metadata logged but not sent to model |
 
 ## Error handling in tools
