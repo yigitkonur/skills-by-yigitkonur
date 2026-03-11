@@ -266,9 +266,9 @@ identified by their role, name, and position.
 
 | What you see in snapshot | How to target it |
 |--------------------------|------------------|
-| `[ref=e5]` | `click e5` |
-| `button "Sign In"` | `click e5` (use the ref) |
-| `textbox "Email"` | `fill e3 "user@test.com"` |
+| `ref: e5` | `click e5` |
+| `role: button, name: "Sign In"` | `click e5` (use the ref) |
+| `role: textbox, name: "Email"` | `fill e3 "user@test.com"` |
 | No ref shown | Use `eval` with CSS selector |
 
 ### When refs are missing
