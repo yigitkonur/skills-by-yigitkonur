@@ -3,483 +3,298 @@ name: extract-saas-design
 description: Use skill if you are extracting the visual system of a SaaS dashboard, admin panel, or internal tool into structured design documentation.
 ---
 
-# Design Soul SaaS
+# Extract SaaS Design
 
-Forensic visual DNA extraction for dashboard codebases. Read every pixel, every state, every micro-interaction. Produce documentation so complete that someone can recreate the exact look-and-feel without copying a single line of source code.
+Forensic visual extraction for dashboard codebases. Read every pixel, every state, every micro-interaction. Produce documentation so complete that someone can recreate the exact look-and-feel without copying a single line of source code.
 
-## Scope
+**Use for:** SaaS dashboards, admin panels, internal tools, analytics platforms, CRM interfaces, developer tools, B2B products — any data-heavy application with persistent navigation and multi-state components.
 
-**Use for:** SaaS dashboards, admin panels, internal tools, settings interfaces, data-heavy apps, analytics platforms, CRM interfaces, developer tools, B2B products.
+**Not for:** Marketing sites, landing pages, e-commerce storefronts, blogs. Those have fundamentally different design DNA.
 
-**Not for:** Marketing sites, landing pages, e-commerce storefronts, blogs, portfolio sites. Those have fundamentally different design DNA — hero sections, testimonials, pricing tables. Dashboards live in a different world of density, navigation hierarchy, and persistent state.
+## Decision tree
 
-**Works with any stack:** Tailwind, CSS modules, styled-components, CSS-in-JS, plain CSS, MUI, Ant Design, Chakra — the extraction adapts. The reference files include Tailwind-to-CSS conversion tables because Tailwind is the most common case, but for non-Tailwind codebases, read the CSS directly and document the actual property values. The output format (pixel values, hex colors, CSS recreation blocks) is framework-agnostic.
+```
+What do you need?
+│
+├── Full design extraction ("extract everything")
+│   ├── Where to start ──────────────────────► Quick start (below)
+│   ├── Phase 1: Discovery ──────────────────► Discovery steps (below)
+│   ├── Phase 2: Foundations ────────────────► Foundation extraction (below)
+│   └── Phase 3: Components ─────────────────► Component extraction (below)
+│
+├── Extract foundations / tokens
+│   ├── Color tokens ────────────────────────► references/extraction/color-extraction.md
+│   ├── Typography scale ────────────────────► references/extraction/typography-extraction.md
+│   ├── Spacing scale ───────────────────────► references/extraction/spacing-extraction.md
+│   ├── Icons & assets ──────────────────────► references/extraction/icons-and-assets.md
+│   └── System template ────────────────────► references/system-template.md
+│
+├── Extract specific components
+│   ├── Component template ──────────────────► references/component-template.md
+│   ├── Component agent prompt ──────────────► references/components-agent.md
+│   └── Foundation agent prompt ─────────────► references/foundations-agent.md
+│
+├── Dashboard-specific patterns
+│   ├── Layout, metrics, tables, settings ──► references/dashboard-patterns.md
+│   └── Grid & responsive layout ───────────► references/layout/grid-and-responsive.md
+│
+├── Token formats & naming
+│   ├── W3C DTCG, Style Dictionary, CSS ────► references/tokens/token-formats.md
+│   └── Naming conventions ─────────────────► references/tokens/naming-conventions.md
+│
+├── Output & documentation
+│   ├── Output format & templates ──────────► references/documentation/output-format.md
+│   └── System template ────────────────────► references/system-template.md
+│
+└── Quality & audit
+    ├── Quality checklist ───────────────────► references/quality-checklist.md
+    ├── Consistency audit ───────────────────► references/audit/consistency-checklist.md
+    └── Accessibility review ────────────────► references/audit/accessibility-review.md
+```
 
----
+## Quick start
 
-## Philosophy
+### Interpreting the request
 
-Five principles govern this extraction. They exist because design systems lie — the stated system and the actual system diverge over time. Your job is to document what IS, not what was intended.
+| User says | What to produce | Phases |
+|-----------|----------------|--------|
+| "Extract everything" / "full design system" | system.md + ALL foundation docs + ALL component docs | 1→2→3→4 |
+| "Extract the button and card" | system.md (minimal) + detailed docs for EACH named component | 1→2→3(scoped) |
+| "Just the tokens" / "foundations only" | system.md + 7 foundation docs only | 1→2 |
+| "Audit the design consistency" | Run extraction verification against existing codebase | Audit only |
+| "Extract dark mode" | system.md with mode differences + per-component dark mode sections | 1→2→3 |
 
-### 1. Document What You SEE, Not What You THINK
+### First 5 minutes
 
-Never assume a class does what its name suggests. `text-primary` might resolve to any color depending on the theme configuration. Read the actual CSS variables. Resolve every token to its computed value. If you're not reading the source file, you're guessing — and guesses compound into a useless spec.
+1. **Identify the styling approach**: Tailwind? CSS Modules? styled-components? CSS-in-JS? Check `package.json` and the first 3 component files.
+2. **Find the token source**: `globals.css`, `tailwind.config.ts`, `theme.ts`, or `tokens.json`. This is ground truth for every value you'll extract.
+3. **Resolve one token chain end-to-end**: Pick `--primary` or `bg-primary`. Trace it from usage → CSS variable → HSL/hex value. If you can resolve one, you can resolve them all.
+4. **Count components**: `find src -name "*.tsx" -path "*/components/*" | wc -l`. This determines your parallelization strategy.
+5. **Create `.design-soul/` directory** and start `INDEX.md`.
 
-### 2. Frequency Reveals the Actual System
-
-The design system isn't what the docs say — it's what the code uses. When you grep for spacing values and find `8px` used 193 times but `10px` used 3 times, that tells you the real scale. The 10px instances are probably bugs or exceptions. Frequency counting separates the system from the noise.
-
-### 3. Absence Is Information
-
-If a button has no loading state, that's a design decision worth documenting. Write "Loading: not implemented" rather than skipping the section. The person recreating this design needs to know what's deliberately missing, not just what's present. Every blank section in your output is a spec that says "build this yourself."
-
-### 4. Recreation Is the Test
-
-After extraction, ask: "Could a developer who has never seen the original codebase recreate a pixel-perfect version using ONLY these documents?" If the answer is "mostly, but they'd need to guess at X" — document X. This is the only quality bar that matters.
-
-### 5. Dashboard DNA Lives in Density
-
-SaaS dashboards have a unique visual signature: information density, persistent navigation, data-forward layouts, multi-state components, and subtle hierarchy that guides attention without decoration. When extracting, pay special attention to how the app manages density — tight spacing in data tables vs. generous spacing in settings pages. This tension IS the design system.
-
----
-
-## What This Produces
+### Output structure
 
 ```
 .design-soul/
-├── INDEX.md                               # Master navigation: categories, reading path, coverage summary
-├── _summary.md                            # One-page snapshot: scope, key decisions, recreation estimate
-├── system.md                              # Foundations: tokens, scales, strategies
+├── INDEX.md                    # Master navigation
+├── _summary.md                 # One-page snapshot
+├── system.md                   # All foundation tokens
 └── components/
-    ├── foundations/
-    │   ├── 01-spacing-scale.md
-    │   ├── 02-color-tokens.md
-    │   ├── 03-typography-scale.md
-    │   ├── 04-shadow-depth.md
-    │   ├── 05-radius-scale.md
-    │   ├── 06-animation-system.md
-    │   └── 07-focus-and-states.md
-    ├── controls/
-    │   ├── 01-button.md
-    │   ├── 02-input.md
-    │   └── ...one file per component
-    ├── containers/
-    │   ├── 01-card.md
-    │   ├── 02-sidebar.md
-    │   └── ...
-    ├── navigation/
-    │   ├── 01-sidebar-nav.md
-    │   ├── 02-top-bar.md
-    │   ├── 03-breadcrumb.md
-    │   └── ...
-    ├── overlays/
-    │   ├── 01-dialog.md
-    │   ├── 02-command-palette.md
-    │   └── ...
-    ├── feedback/
-    │   ├── 01-badge.md
-    │   ├── 02-toast.md
-    │   └── ...
-    ├── data-display/
-    │   ├── 01-table.md
-    │   ├── 02-metric-card.md
-    │   ├── 03-chart.md
-    │   └── ...
-    └── [app-specific]/
-        └── ...custom patterns unique to this product
+    ├── foundations/             # 7 docs: spacing, colors, typography, shadows, radius, animations, states
+    ├── controls/               # Button, Input, Select, Checkbox, etc.
+    ├── containers/             # Card, Tabs, Accordion, Separator
+    ├── navigation/             # Sidebar, Breadcrumb, Top Bar
+    ├── overlays/               # Dialog, Popover, Tooltip, Dropdown
+    ├── feedback/               # Badge, Toast, Alert, Skeleton
+    ├── data-display/           # Table, Chart, Metric Card
+    └── [app-specific]/         # Product-unique components
 ```
 
-The output directory is `.design-soul/` (not `.interface-design/`). This distinguishes extraction output from a hand-authored design system.
-
----
-
-## Interpreting the Request
-
-Before starting, understand what scope the user is asking for:
-
-| User says | What to produce | Phases to run |
-|-----------|----------------|---------------|
-| "Extract everything" / "full design system" / "complete visual DNA" | system.md + ALL foundation docs + ALL component docs with CSS recreation | 1→2→3→4→5→6 |
-| "Extract the button and card" / specific components | system.md (minimal) + detailed docs for EACH named component | 1→2→3(scoped)→5 |
-| "Just the tokens" / "foundations only" / "design tokens" | system.md + foundation docs only | 1→2→5 |
-
-**Critical rule for focused extraction:** When the user names specific components (e.g., "button and card"), you MUST produce a separate document for EACH named component. Do not stop after the first one. If you can only go deep on some, go shallower on all rather than skipping any.
-
-**Critical rule for full extraction:** "Everything" means Phase 2 AND Phase 3. Don't stop after system.md — the component docs with CSS recreation blocks are what make the output actually recreatable. system.md alone is the foundation, not the finished product.
-
----
-
-## Execution: Six Phases
+## Key patterns
 
 ### Phase 1: Discovery
 
-Before extracting anything, map the codebase. Dashboards have specific architectural patterns — find them.
+Before extracting anything, map the codebase:
 
-**Step 1.1 — Identify the architecture:**
+```bash
+# Architecture
+find . -name "globals.css" -o -name "tailwind.config.*" -o -name "theme.*"
+find . -path "*/components/ui/*.tsx" | head -20
+grep -rn 'cva(\|cn(' --include="*.tsx" src/ | head -5
 
+# Count the work
+echo "UI files:"; find src -name "*.tsx" -path "*/components/*" | wc -l
+echo "CSS files:"; find src -name "*.css" | wc -l
 ```
-Answer these questions by searching the codebase:
-1. Monorepo or single app?
-2. Where is the component library? (packages/ui, src/components/ui, etc.)
-3. Styling system? (Tailwind, CSS modules, styled-components, CSS-in-JS)
-4. Component library? (shadcn/ui, Radix, Headless UI, Chakra, MUI, Ant Design, custom)
-5. Where are CSS/theme files? (globals.css, theme.ts, tailwind.config)
-6. Where is the dashboard-specific code? (app/dashboard, src/pages, etc.)
-7. Is there a sidebar? A top bar? Both? Neither?
-```
-
-Search for these:
-```
-Glob: **/globals.css, **/global.css, **/theme.*, **/tokens.*
-Glob: **/tailwind.config.*, **/postcss.config.*
-Glob: **/components/ui/*.tsx, **/components/ui/*.jsx
-Grep: "cva(" or "variants:" — CVA variant patterns
-Grep: "cn(" — className merge utility (indicates shadcn/ui-like patterns)
-Grep: "sidebar" — navigation architecture
-Grep: "command" or "cmdk" — command palette patterns
-Grep: "data-table" or "DataTable" — data display patterns
-```
-
-**Step 1.2 — Count the work:**
-
-```
-Total UI files: [count]
-Shared components: [count]
-Dashboard-specific components: [count]
-CSS/theme files: [count]
-```
-
-**Step 1.3 — Plan execution:**
 
 | Codebase size | Strategy |
 |---------------|----------|
 | < 20 components | Sequential: one agent does everything |
-| 20-50 components | 3-4 agents: foundations + 2-3 component groups |
-| 50-100 components | 6-8 agents: foundations + one per category |
-| 100+ components | 8-12 agents: foundations + category agents + app-specific agents |
+| 20–50 | 3–4 agents: foundations + 2–3 component groups |
+| 50–100 | 6–8 agents: foundations + one per category |
+| 100+ | 8–12 agents: foundations + category agents + app-specific |
 
----
+### Phase 2: Foundation extraction
 
-### Phase 2: Foundation Extraction
+The core technique is **frequency-based discovery**. For each visual property, grep all files, count occurrences, sort by frequency. The most-used values reveal the actual scale.
 
-This phase extracts the invisible system — the tokens, scales, and strategies that hold the visual identity together. It runs FIRST because component agents need the resolved token values.
+```bash
+# Spacing scale — find the actual system
+grep -roh 'p-[0-9.]*\|gap-[0-9.]*\|m-[0-9.]*' --include="*.tsx" src/ | sort | uniq -c | sort -rn
 
-Read `references/foundations-agent.md` for the detailed agent prompt.
+# Color tokens — map the full palette
+grep -rn 'var(--' --include="*.css" src/ | grep -oh '--[a-z-]*' | sort | uniq -c | sort -rn
 
-**What this phase produces:**
-- `.design-soul/system.md` — The master token reference
-- 7 foundation documents in `.design-soul/components/foundations/`
+# Typography — identify the type scale
+grep -roh 'text-\(xs\|sm\|base\|lg\|xl\)' --include="*.tsx" src/ | sort | uniq -c | sort -rn
 
-**The core technique: frequency-based discovery.**
+# Shadows — enumerate elevation levels
+grep -roh 'shadow-[a-z]*' --include="*.tsx" src/ | sort | uniq -c | sort -rn
 
-For every visual category (spacing, colors, typography, shadows, radius, animations), grep across ALL component files and count occurrences. Sort by frequency. The most-used values reveal the actual scale.
-
-```
-Example output:
-Spacing: 2px(42x), 4px(57x), 6px(67x), 8px(193x), 12px(60x), 16px(48x), 24px(26x), 32px(13x)
-  → Base: 4px. Scale: 0.5, 1, 1.5, 2, 3, 4, 6, 8
-
-Radius: 4px(51x), pill(49x), 6px(41x), 8px(26x), 12px(5x)
-  → Scale: 4, 6, 8, 12, pill
-
-Depth: borders(340x), shadow-xs(55x), shadow-sm(30x), shadow-md(15x), shadow-lg(8x)
-  → Strategy: Borders-first with hierarchical shadow escalation
+# Border radius — map the shape scale
+grep -roh 'rounded-[a-z]*' --include="*.tsx" src/ | sort | uniq -c | sort -rn
 ```
 
-**Critical for dashboards:** Pay special attention to:
-- Dense spacing patterns in data tables vs. generous spacing in settings
-- Sidebar-specific token overrides (many SaaS apps have sidebar-specific colors)
-- Chart/data visualization color palettes (separate from UI colors)
-- Monospace font usage for data display (tabular-nums, code blocks)
-
-See `references/system-template.md` for the exact output format.
-
-**Micro-interaction documentation goes beyond listing transitions.** For each interactive component:
-1. Document the **timing hierarchy**: micro (50-80ms for press feedback), standard (150ms for hover), slow (200-300ms for enter/exit)
-2. Document **easing strategy**: which easing for hover vs. focus vs. enter vs. exit and WHY
-3. Document **opacity scale semantics**: what does 0.5 mean (disabled)? What does 0.9 mean (hover darken)?
-4. Document **animation composition**: floating elements often compose fade + zoom + slide — document all three layers
-
-**Concrete output**: At the end of Phase 2, you should have created these actual files:
-- `.design-soul/system.md` (use template from `references/system-template.md`)
-- `.design-soul/components/foundations/01-spacing-scale.md`
-- `.design-soul/components/foundations/02-color-tokens.md`
-- `.design-soul/components/foundations/03-typography-scale.md`
-- `.design-soul/components/foundations/04-shadow-depth.md`
-- `.design-soul/components/foundations/05-radius-scale.md`
-- `.design-soul/components/foundations/06-animation-system.md`
-- `.design-soul/components/foundations/07-focus-and-states.md`
-
-Create these files using the Write tool. Do not just describe what should be in them — actually write them.
-
----
-
-### Phase 3: Component Extraction
-
-For every reusable component in the codebase, create a complete visual specification following the template in `references/component-template.md`.
-
-**Completeness is non-negotiable.** Every component gets its own `.md` file. Every file includes a CSS recreation block. If the user asked for specific components, document ALL of them — not just the first one you get to. Track what's been produced and verify nothing was missed before moving to Phase 5.
-
-**Dashboard-specific component categories:**
-
-| Category | Directory | What goes here |
-|----------|-----------|----------------|
-| Controls | `controls/` | Button, Input, Textarea, Select, Checkbox, Switch, Toggle, Radio, Slider, Date picker, Label, Form field |
-| Containers | `containers/` | Card, Separator, Resizable panels, Scroll area, Accordion, Collapsible, Tabs (content variant) |
-| Navigation | `navigation/` | Sidebar, Top bar, Breadcrumb, Tabs (nav variant), Workspace switcher, User menu, Mobile nav |
-| Overlays | `overlays/` | Dialog, Sheet/Drawer, Popover, Tooltip, Dropdown menu, Context menu, Command palette, Alert dialog |
-| Feedback | `feedback/` | Badge, Alert, Progress, Skeleton, Spinner, Toast/Notification, Empty state, Kbd |
-| Data Display | `data-display/` | Table, Pagination, Calendar, Chart, Metric card, KPI, Sparkline, Carousel, Avatar, Avatar group |
-| App-Specific | `[product-name]/` | AI elements (messages, tool calls, prompts), workflow builders, canvas editors, terminal UIs, or any components unique to this specific product. Identified in Phase 1 Discovery. |
-
-Launch one agent per category. Each agent:
-1. Reads EVERY source file in its assigned components
-2. Follows the component template exactly (see `references/component-template.md`)
-3. Writes one `.md` file per component
-4. Reports: component name, variants found, states found, animations found
-
-**State machine documentation is required for interactive components.** For every button, input, select, toggle, dialog, and sidebar menu item, document the state flow:
+**Token chain resolution** — the critical technique:
 
 ```
-IDLE → HOVER → ACTIVE → IDLE (mouse interaction)
-IDLE → FOCUS-VISIBLE → ACTIVE → IDLE (keyboard interaction)
-IDLE → DISABLED (programmatic)
-IDLE → LOADING → IDLE or ERROR (async interaction)
+Usage:        className="bg-primary"
+↓ Tailwind:   bg-primary → var(--primary)
+↓ CSS:        --primary: 222.2 47.4% 11.2%
+↓ Resolved:   hsl(222.2, 47.4%, 11.2%) = #0f172a
 ```
 
-For each transition, document: what CSS properties change, the duration, the easing, and any visual cues (color shift, opacity, shadow, ring).
+Always resolve to the final computed value. Never document an alias without its resolved value.
 
-**Provide each agent with:**
-- The resolved CSS variables from Phase 2
-- The list of source files to read
-- The component template
-- The output directory path
+**Seven foundation documents** to produce:
+1. **Spacing** — base unit, scale, density zones (compact/default/relaxed)
+2. **Colors** — primitives, semantic mapping, chart palette, dark mode overrides
+3. **Typography** — font families, size scale, weight scale, line-height rules
+4. **Shadows** — elevation levels with exact CSS values
+5. **Border radius** — shape scale with component mapping
+6. **Animations** — duration scale, easing functions, transition patterns
+7. **Interactive states** — hover/focus/active/disabled/loading conventions
 
-**Concrete output**: For each component, create a file at `.design-soul/components/{category}/{NN}-{component-name}.md`. Use the Write tool. Example: `.design-soul/components/controls/01-button.md`, `.design-soul/components/data-display/01-table.md`.
+Templates: `references/system-template.md` for system.md, `references/foundations-agent.md` for agent prompts.
 
-After all component docs are written, create:
-- `.design-soul/INDEX.md` — master navigation
-- `.design-soul/_summary.md` — one-page snapshot
+### Phase 3: Component extraction
 
----
+For every reusable component, create a visual spec following `references/component-template.md`. Each doc includes:
 
-### Phase 4: Dashboard-Specific Patterns
+1. **ASCII anatomy** — spatial layout with dimensions and slot names
+2. **Variants table** — background, text, border, shadow per variant (default, destructive, outline, ghost, link)
+3. **Sizes table** — height, padding-x, padding-y, font-size, icon-size, gap
+4. **States** — default, hover, focus-visible, active, disabled, loading, error
+5. **State transitions** — state machine diagram with exact CSS property changes and timing
+6. **CSS recreation block** — copy-pasteable CSS that produces pixel-perfect recreation
+7. **Dark mode differences** — property-by-property comparison table (light value → dark value)
+8. **Composition** — how the component appears inside other components (button in dialog footer, badge in table cell)
 
-After shared components are documented, extract patterns unique to this specific dashboard product. These are the patterns that make THIS product feel different from every other dashboard.
+**Component anatomy example:**
 
-Read `references/dashboard-patterns.md` for the full catalog of SaaS-specific patterns to look for.
-
-**Common dashboard-specific categories:**
-
-| Pattern | What to look for |
-|---------|-----------------|
-| Dashboard layout | Main grid structure, sidebar + content proportions, responsive breakpoints |
-| Metric displays | How KPIs are shown — hero numbers, sparklines, comparison deltas, trend badges |
-| Data tables | Column widths, row density, sort indicators, filter bars, bulk actions, pagination |
-| Settings pages | Form groups, section headers, save patterns, plan/billing display |
-| Onboarding | Empty states, first-run experience, feature tours |
-| Search/Command | Command palette (Cmd+K), search patterns, quick actions |
-| Multi-tenant | Workspace switcher, org selector, team context |
-| Loading | Skeleton patterns, progressive loading, optimistic updates |
-
-Create a `[product-name]-patterns/` directory for anything that doesn't fit the standard categories.
-
----
-
-### Phase 5: Verification
-
-After all agents complete, verify the extraction is complete and internally consistent.
-
-**Completeness check:**
 ```
-For each component in the codebase:
-  [ ] Has a documentation file?
-  [ ] All variants documented?
-  [ ] All states documented? (default, hover, focus, active, disabled, loading, error, selected)
-  [ ] CSS recreation block present?
-  [ ] ASCII anatomy diagram present?
+┌─ Button ─────────────────────────────────┐
+│  [Icon 16×16]  [Label]  [Icon 16×16]     │
+│  ├─ gap: 8px ──┤        ├─ gap: 8px ──┤  │
+│  ├──── padding: 16px ─────────────────┤  │
+└──────────────────────────────────────────┘
+height: 36px (sm) | 40px (default) | 44px (lg)
 ```
 
-**Cross-reference check:**
-```
-For each token referenced in component docs:
-  [ ] Token exists in the foundation docs?
-  [ ] Both light and dark values documented?
+**Multi-agent strategy for components:**
 
-For each animation in component docs:
-  [ ] Animation exists in 06-animation-system.md?
-  [ ] Duration and easing match?
-```
+| Agent | Scope | Reads |
+|-------|-------|-------|
+| Controls agent | Button, Input, Select, Toggle, Checkbox, Radio | `references/component-template.md` |
+| Container agent | Card, Tabs, Accordion, Sheet, Separator | `references/component-template.md` |
+| Navigation agent | Sidebar, Breadcrumb, Pagination, Top Bar | `references/component-template.md` + `references/dashboard-patterns.md` |
+| Overlay agent | Dialog, Popover, Tooltip, Dropdown, Command | `references/component-template.md` |
+| Feedback agent | Badge, Toast, Alert, Progress, Skeleton | `references/component-template.md` |
+| Data display agent | Table, Chart, Metric, List | `references/component-template.md` + `references/dashboard-patterns.md` |
 
-**The ultimate test:**
-> Could a developer who has NEVER seen the original codebase recreate a pixel-perfect version using ONLY these documents?
+### Phase 4: Dashboard-specific patterns
 
-If the answer is "yes, for every component" — the extraction is complete.
-If the answer is "mostly, but they'd need to guess at [X]" — document [X].
+After shared components, extract product-unique patterns (see `references/dashboard-patterns.md`):
 
-See `references/quality-checklist.md` for the full verification checklist.
+| Pattern | Key things to document |
+|---------|----------------------|
+| Dashboard layout | Sidebar width, collapse behavior, content area max-width |
+| Metric displays | Number formatting, trend indicators, sparklines |
+| Data tables | Column types, sort/filter/pagination, empty & loading states |
+| Settings pages | Form groups, save patterns, dangerous zone styling |
+| Command palette | Trigger, result grouping, keyboard hints |
+| Empty states | Icon style, CTA placement, first-run vs filtered-empty |
 
----
+### Five extraction principles
 
-### Phase 6: Summary Report
+1. **Document what you SEE, not what you THINK.** `text-primary` might be any color. Resolve every token to its computed value.
+2. **Frequency reveals the actual system.** 8px used 193 times vs 10px used 3 times. The 10px is probably a bug.
+3. **Absence is information.** No loading state on a button? Write "Loading: not implemented."
+4. **Recreation is the test.** Could someone recreate pixel-perfect UI from ONLY your docs?
+5. **Dashboard DNA lives in density.** Tight spacing in tables vs generous spacing in settings — document the tension.
 
-Write two meta-files to complete the extraction:
+## Common pitfalls
 
-**File 1: `.design-soul/_summary.md`** — One-page snapshot:
+| Pitfall | Fix |
+|---------|-----|
+| Guessing instead of reading | `rounded-md` might be 6px or 8px depending on `--radius`. Always resolve the variable chain. |
+| Skipping "boring" states | Disabled (opacity + pointer-events), loading, error/invalid — document ALL of them, even as "not implemented." |
+| Documenting components in isolation | A button spec without showing it in a card footer or dialog action bar is useless. Document composition. |
+| Flat CSS without state coverage | `.btn { background: blue }` is incomplete. Include `:hover`, `:focus-visible`, `:disabled`, `[data-loading]`. |
+| Ignoring mega-components | Sidebars have 15+ sub-components. Document the full hierarchy, not just the top-level wrapper. |
+| Missing animation composition | Floating elements compose fade + zoom + slide. Document all three layers, not just `transition: all 0.15s`. |
+| Dark mode only in system.md | Every component doc needs its own dark mode differences section. |
+| Spacing without semantics | Not just "gap: 8px" but "8px = dense table gap" vs "16px = card padding." Spacing is semantic. |
+| Missing opacity semantics | 0.5 = disabled, 0.9 = hover darken, 0.35 = muted text. Document the scale. |
+| Forgetting chart colors | Data visualization palette is separate from UI colors. Always extract it. |
 
-```markdown
-# Design Soul Extraction Summary
+## Minimal reading sets
 
-Extracted: [date]
-Source: [repo name/path]
-Files scanned: [N] UI files across [N] directories
+### "I need to extract just the design tokens"
 
-## Scope
+- `references/extraction/color-extraction.md`
+- `references/extraction/typography-extraction.md`
+- `references/extraction/spacing-extraction.md`
+- `references/system-template.md`
 
-| Category | Components | States | Animations | Variants |
-|----------|-----------|--------|------------|----------|
-| Foundations | 7 docs | - | N named | - |
-| Controls | N | N | N | N |
-| Containers | N | N | N | N |
-| Navigation | N | N | N | N |
-| Overlays | N | N | N | N |
-| Feedback | N | N | N | N |
-| Data Display | N | N | N | N |
-| [App-specific] | N | N | N | N |
-| **Total** | **N** | **N** | **N** | **N** |
+### "I need to extract a full design system"
 
-## Design Identity
+- `references/foundations-agent.md`
+- `references/components-agent.md`
+- `references/component-template.md`
+- `references/system-template.md`
+- `references/quality-checklist.md`
+- `references/documentation/output-format.md`
 
-1. Depth strategy: [borders-first / shadows / layered / surface-shifts]
-2. Spacing base: [N]px with scale [...]
-3. Radius personality: [sharp / medium / soft]
-4. Animation philosophy: [minimal / moderate / rich]
-5. Color architecture: [token-based / direct / hybrid]
-6. Dark mode approach: [.dark class / media query / JS-driven]
-7. Information density: [compact / balanced / spacious]
-8. Navigation pattern: [sidebar / top-bar / both / tabs]
+### "I need to document specific components"
 
-## Recreation Estimate
+- `references/component-template.md`
+- `references/components-agent.md`
+- `references/extraction/icons-and-assets.md`
 
-To recreate this design system from these docs:
-- Foundations (tokens, theme): ~[N] tokens to define
-- Core components: ~[N] components
-- Dashboard-specific: ~[N] unique patterns
-```
+### "I need dashboard-specific patterns"
 
-**File 2: `.design-soul/INDEX.md`** — Master navigation:
+- `references/dashboard-patterns.md`
+- `references/layout/grid-and-responsive.md`
 
-```markdown
-# Design Soul Index
+### "I need to understand token formats"
 
-## Coverage Summary
+- `references/tokens/token-formats.md`
+- `references/tokens/naming-conventions.md`
 
-| Category | Components | Files | Total Lines |
-|----------|-----------|-------|-------------|
-| Foundations | 7 | 7 | [N] |
-| Controls | [N] | [N] | [N] |
-| Containers | [N] | [N] | [N] |
-| Navigation | [N] | [N] | [N] |
-| Overlays | [N] | [N] | [N] |
-| Feedback | [N] | [N] | [N] |
-| Data Display | [N] | [N] | [N] |
-| [App-specific] | [N] | [N] | [N] |
+### "I need to audit the extraction quality"
 
-## Key Design Decisions
+- `references/quality-checklist.md`
+- `references/audit/consistency-checklist.md`
+- `references/audit/accessibility-review.md`
 
-1. [Decision about depth strategy — borders vs. shadows vs. layered approach]
-2. [Decision about spacing base unit and scale multipliers]
-3. [Decision about color architecture — CSS variables, semantic naming]
-4. [Decision about animation philosophy — when to animate, when not to]
-5. [Decision about dark mode implementation — class toggle, media query, or JS]
-6. [Decision about density — compact data tables vs. spacious settings pages]
-7. [Decision about typography — font stacks, scale, monospace usage]
-8. [Decision about responsive strategy — breakpoints, mobile nav behavior]
+### "I need to structure the output"
 
-## Distinctive Patterns
+- `references/documentation/output-format.md`
+- `references/system-template.md`
+- `references/component-template.md`
 
-Patterns unique to this product that distinguish it from generic dashboards:
-- [Pattern 1 — e.g., AI message bubbles with streaming indicators]
-- [Pattern 2 — e.g., sidebar with collapsible sub-groups and badge counts]
-- [Pattern 3 — e.g., command palette with contextual action categories]
+## All reference files
 
-## Recommended Reading Path
+| Directory | File | Purpose |
+|-----------|------|---------|
+| `references/` | `system-template.md` | Template for system.md (all foundation tokens) |
+| `references/` | `component-template.md` | Template for individual component documentation |
+| `references/` | `foundations-agent.md` | Agent prompt for foundation extraction |
+| `references/` | `components-agent.md` | Agent prompt for component extraction |
+| `references/` | `dashboard-patterns.md` | SaaS dashboard-specific patterns (metrics, tables, settings) |
+| `references/` | `quality-checklist.md` | Extraction quality verification checklist |
+| `references/extraction/` | `color-extraction.md` | Color extraction methodology with grep commands |
+| `references/extraction/` | `typography-extraction.md` | Typography scale extraction methodology |
+| `references/extraction/` | `spacing-extraction.md` | Spacing scale extraction with frequency analysis |
+| `references/extraction/` | `icons-and-assets.md` | Icon library, sizing, SVG patterns, avatars |
+| `references/tokens/` | `token-formats.md` | W3C DTCG, CSS variables, Tailwind, Style Dictionary |
+| `references/tokens/` | `naming-conventions.md` | Semantic, scale, and component token naming |
+| `references/layout/` | `grid-and-responsive.md` | Dashboard grid, sidebar, responsive breakpoints |
+| `references/documentation/` | `output-format.md` | .design-soul/ structure and document templates |
+| `references/audit/` | `consistency-checklist.md` | Token and component consistency audit |
+| `references/audit/` | `accessibility-review.md` | WCAG compliance, contrast, keyboard, ARIA |
 
-1. Start with `_summary.md` for the high-level picture
-2. Read `system.md` for all token values and scales
-3. Read `components/foundations/` for detailed token documentation
-4. Read the category most relevant to your work (usually `controls/` or `navigation/`)
-5. Read `[app-specific]/` for product-unique components
+## Final reminder
 
-## Recreation Envelope
-
-- **Tokens to define:** ~[N] CSS custom properties
-- **Components to build:** ~[N] total ([N] core + [N] app-specific)
-- **Estimated effort:** [S/M/L] — based on component count and interaction complexity
-```
-
-Create both files using the Write tool.
-
----
-
-## Extraction Tips for SaaS Dashboards
-
-**Sidebar is the signature.** In most SaaS products, the sidebar IS the product's personality. Document it thoroughly — width, collapse behavior, section grouping, active indicators, mobile behavior, keyboard shortcuts.
-
-**Data tables reveal the system.** Tables are where density, typography, spacing, and color all converge. A well-documented table specification tells you more about the design system than any other single component.
-
-**Empty states are design.** How the app looks when there's no data is as important as how it looks with data. Document empty state patterns — they reveal the product's personality.
-
-**Settings pages test consistency.** Settings pages are where design systems break down. They have unique layout needs (form groups, toggles, descriptions) that don't fit the main dashboard grid. Documenting settings patterns reveals how disciplined the system actually is.
-
-**Command palette is the power-user signature.** If the app has Cmd+K or similar, document it thoroughly — it's often the most polished component in a SaaS product.
-
----
-
-## Anti-Patterns: What Agents Get Wrong
-
-These are the most common ways extraction agents fail. Read this before starting.
-
-### 1. Guessing Instead of Reading
-The agent sees `rounded-md` and writes "8px" without checking the `--radius` variable. In this codebase, `rounded-md` might be `calc(0.625rem - 2px)` = 8px, or it might be `6px` with a different base. **Always resolve the variable chain.**
-
-### 2. Skipping "Boring" States
-Agents love documenting hover states and forget about:
-- **Disabled state** — opacity, pointer-events, cursor changes
-- **Loading state** — even if it's "not implemented", say so
-- **Error/invalid state** — `aria-invalid`, `data-[invalid]`, destructive ring
-- **Selected/active state** — `data-[state=active]`, `aria-selected`
-- **Empty state** — what does a table look like with no rows?
-
-### 3. Documenting Components in Isolation
-A button spec is useless if it doesn't show how the button sits inside a card footer, a dialog action bar, or a table row. **Document composition**: how this component typically pairs with others.
-
-### 4. Flat CSS Without State Coverage
-Writing `.btn { background: #171717; }` without `.btn:hover`, `.btn:focus-visible`, `.btn:disabled` is incomplete CSS. **Every CSS recreation block must include all interactive states.**
-
-### 5. Ignoring Mega-Components
-Sidebars often have 15-20 sub-components. Agents document the top-level sidebar and skip SidebarGroup, SidebarGroupLabel, SidebarMenuItem, SidebarMenuAction, SidebarMenuBadge. **Decompose mega-components into their full hierarchy.**
-
-### 6. Missing Animation Composition
-"Transition: all 0.15s ease" is not enough. Many floating elements compose multiple animations: fade-in + zoom-in + slide-in. Document the **composition**, not just individual properties.
-
-### 7. Forgetting Dark Mode in Component Docs
-Documenting tokens in system.md but not showing how each component LOOKS different in dark mode. Every component doc needs a dark mode differences section.
-
-### 8. No Spacing Rhythm Documentation
-Writing "gap: 8px" without explaining WHY 8px. Is it the standard control gap? The dense table gap? The spacious card gap? **Spacing is semantic, not arbitrary.**
-
----
-
-## Reference Files
-
-For detailed templates and checklists, read these as needed:
-
-| File | When to read | What it contains |
-|------|-------------|-----------------|
-| `references/system-template.md` | Phase 2 — writing system.md | Complete token template with all categories |
-| `references/component-template.md` | Phase 3 — documenting each component | Per-component structure: anatomy, variants, states, animations, CSS |
-| `references/foundations-agent.md` | Phase 2 — spawning foundation agent | Detailed instructions for token extraction with frequency counting |
-| `references/components-agent.md` | Phase 3 — spawning component agents | Instructions for component visual extraction, Tailwind-to-CSS tables |
-| `references/dashboard-patterns.md` | Phase 4 — dashboard-specific extraction | SaaS pattern catalog: metrics, tables, settings, onboarding, search |
-| `references/quality-checklist.md` | Phase 5 — verification | Full checklist: system-level, per-component, cross-reference, ultimate test |
+This skill is split into many focused reference files organized by domain. Do not load everything at once. Start with the smallest relevant reading set above, then expand into neighboring references only when the task actually requires them. Every reference file in `references/` is explicitly routed from the decision tree above.
