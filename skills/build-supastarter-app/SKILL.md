@@ -75,6 +75,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Put public pages in the marketing tree; do not drop them into the SaaS group because they need a session-aware navbar.
 - Put gated product pages under `/app`; do not place them next to `/onboarding`, `/new-organization`, or `/choose-plan` unless the page is itself a prerequisite helper.
 
+> **Deeper references:** `references/routing/layout-chain.md` · `references/routing/middleware-proxy.md` · `references/routing/providers-document.md`
+
 ### Auth, session, and organizations
 
 - Check auth feature flags before changing login, signup, onboarding, or org flows.
@@ -85,6 +87,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
 **Do this, not that:**
 - Use the existing server helpers and providers; do not call `auth.api.*` directly from client code.
 - Adjust config and existing guards first; do not patch over redirect behavior with ad hoc page-level workarounds.
+
+> **Deeper references:** `references/auth/better-auth-config.md` · `references/auth/client-auth-client.md` · `references/auth/login-flow.md` · `references/auth/session-hook-provider.md` · `references/auth/signup-invitations.md` · `references/hooks/auth-hooks.md` · `references/hooks/organization-hooks.md` · `references/onboarding/onboarding-flow.md` · `references/onboarding/onboarding-step-one.md` · `references/organizations/active-organization-context.md` · `references/organizations/create-organization-form.md` · `references/organizations/members-and-invitations.md` · `references/organizations/organization-select.md`
 
 ### API and data layer
 
@@ -97,6 +101,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Extend the oRPC surface and consume it through existing query patterns; do not bypass it with one-off handlers unless the task explicitly requires a route handler.
 - Put shared Prisma or Drizzle access in package helpers; do not scatter direct database calls through app components.
 
+> **Deeper references:** `references/api/overview.md` · `references/api/client-integration.md` · `references/api/transport-handlers.md` · `references/api/next-route-bridge.md` · `references/api/contact-module.md` · `references/api/payments-organizations-modules.md` · `references/patterns/react-query-orpc.md` · `references/patterns/server-prefetch.md` · `references/database/prisma-client.md` · `references/database/generation-exports.md` · `references/database/users-organizations-purchases.md`
+
 ### Billing and payments
 
 - Billing behavior flows through payments config, the provider abstraction, API procedures, and settings or organization UI.
@@ -107,6 +113,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Route provider behavior through `packages/payments`; do not import Stripe or another provider SDK directly into app pages.
 - Check active-plan and redirect behavior before editing billing UI; do not assume missing access is a component bug.
 
+> **Deeper references:** `references/payments/checkout-and-portal-flow.md` · `references/payments/customer-ids.md` · `references/payments/stripe-provider.md` · `references/payments/webhook-flow.md`
+
 ### Storage and uploads
 
 - Use signed URLs for direct uploads and controlled reads.
@@ -115,6 +123,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
 
 **Do this, not that:**
 - Use the signed-URL pattern; do not add file-uploading server actions or proxy large files through the main app server unless the task explicitly demands it.
+
+> **Deeper references:** `references/storage/bucket-config.md`
 
 ### Monorepo boundaries
 
@@ -126,19 +136,32 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Check file placement and imports first; do not cross package boundaries with deep relative paths.
 - Reuse an existing module or package boundary; do not create a new abstraction just because a task touches multiple files.
 
+> **Deeper references:** `references/setup/import-conventions.md` · `references/setup/next-config.md` · `references/setup/tooling-biome.md` · `references/conventions/naming.md` · `references/conventions/typescript-patterns.md` · `references/conventions/component-patterns.md` · `references/conventions/code-review-checklist.md`
+
 ## Start with these reference bundles
 
 | Task | Start here |
 |---|---|
 | Repo orientation, package ownership, file placement, config switches | `references/README.md`, `references/setup/monorepo-structure.md`, `references/cheatsheets/file-locations.md`, `references/setup/config-feature-flags.md` |
 | New protected SaaS page or dashboard route | `references/tasks/add-saas-page.md`, `references/routing/routing-saas.md`, `references/routing/access-guards.md` |
-| New marketing or content page | `references/tasks/add-marketing-page.md`, `references/routing/routing-marketing.md`, `references/i18n/locale-routing.md`, `references/marketing/pages.md` |
+| New marketing or content page | `references/tasks/add-marketing-page.md`, `references/routing/routing-marketing.md`, `references/i18n/locale-routing.md`, `references/marketing/pages.md`, `references/marketing/content-collections.md`, `references/marketing/home-page-components.md` |
 | New API procedure or backend change | `references/tasks/add-api-endpoint.md`, `references/api/procedure-tiers.md`, `references/api/root-router.md`, `references/database/query-patterns.md` |
 | Auth, session, invitation, onboarding, or org flow | `references/auth/feature-flags.md`, `references/auth/server-session-helpers.md`, `references/routing/access-guards.md`, `references/auth/overview.md` |
 | Schema or shared data-layer work | `references/tasks/add-database-model.md`, `references/database/schema-overview.md`, `references/database/query-patterns.md` |
 | Billing, checkout, customer IDs, provider work | `references/tasks/integrate-payments.md`, `references/payments/provider-abstraction.md`, `references/payments/plans-config.md`, `references/routing/access-guards.md` |
 | Storage, avatars, logos, or uploads | `references/storage/signed-urls.md`, `references/patterns/direct-upload-s3.md`, `references/storage/s3-provider.md` |
 | Deployment or environment issues | `references/setup/environment-setup.md`, `references/deployment/environment-checklist.md`, `references/deployment/vercel.md` |
+| Admin panel: user or org management | `references/admin/users-admin.md`, `references/admin/organizations-admin.md` |
+| AI features or model wiring | `references/ai/models-and-exports.md`, `references/ai/prompt-helpers.md` |
+| Analytics or cookie consent | `references/analytics/provider-overview.md`, `references/analytics/consent-flow.md`, `references/hooks/consent-hooks.md` |
+| Transactional email or mail templates | `references/mail/send-email.md`, `references/mail/email-templates.md`, `references/mail/providers.md`, `references/mail/template-rendering.md` |
+| Settings pages (account, billing, security) | `references/settings/account-settings.md`, `references/settings/billing-security-and-avatar.md` |
+| UI components, forms, or styling | `references/ui/components.md`, `references/ui/forms.md`, `references/ui/feedback-overlays.md`, `references/ui/styling-patterns.md`, `references/ui/theme-tokens.md` |
+| Form validation or org-scoped page patterns | `references/patterns/form-with-zod.md`, `references/patterns/organization-scoped-page.md` |
+| i18n setup or message loading | `references/i18n/setup.md`, `references/i18n/messages-loading.md` |
+| Logging or shared utilities | `references/logging.md`, `references/utils.md` |
+| Quick-reference cheatsheets | `references/cheatsheets/commands.md`, `references/cheatsheets/env-vars.md`, `references/cheatsheets/imports.md` |
+| Local dev services | `references/deployment/local-services.md`, `references/setup/environment-setup.md` |
 
 ## Recovery paths when the task starts to drift
 
@@ -148,6 +171,11 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - **Billing changes do not affect access as expected.** Re-read `references/payments/provider-abstraction.md`, `references/payments/plans-config.md`, and the guard docs before editing settings UI.
 - **An upload flow starts looking like a server-action file proxy.** Stop and re-read `references/storage/signed-urls.md` and `references/patterns/direct-upload-s3.md`.
 - **You need more detail after the starter bundle.** Open `references/README.md`, then follow the related-reference links from the file you already loaded instead of loading every reference directory.
+- **Admin action or user list behaves unexpectedly.** Re-read `references/admin/users-admin.md` and `references/admin/organizations-admin.md`.
+- **Email is not sending or template looks wrong.** Re-read `references/mail/send-email.md`, `references/mail/email-templates.md`, and `references/mail/template-rendering.md`.
+- **Onboarding wizard step is missing or skipped.** Re-read `references/onboarding/onboarding-flow.md` and `references/onboarding/onboarding-step-one.md`.
+- **UI component is missing or a feedback overlay is wrong.** Re-read `references/ui/components.md` and `references/ui/feedback-overlays.md`.
+- **Cookie consent or analytics is not firing.** Re-read `references/analytics/consent-flow.md` and `references/hooks/consent-hooks.md`.
 
 ## Final reminder
 

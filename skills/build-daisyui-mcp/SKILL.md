@@ -85,11 +85,11 @@ Use this skill as the operating layer for daisyUI 5 work with the `daisyui-bluep
 | Single component or section | Fetch `components` first, then targeted `component-examples` | `references/component-catalog.md`, `references/common-mistakes.md` |
 | Full page, dashboard, auth screen, landing page | Start from `layouts` or `templates` | `references/workflows/component-composition.md`, `references/workflows/responsive-layouts.md` |
 | Figma URL present | Run the Figma workflow below | `references/workflows/figma-to-code.md`, `references/tool-api-reference.md` |
-| Screenshot or image mockup | Run the screenshot workflow below | `references/workflows/screenshot-to-code.md`, `references/common-mistakes.md` |
-| Brand colors, image-to-theme, dark mode, theme request | Run the theme workflow below | `references/workflows/theme-generation.md`, `references/theming/custom-themes.md` |
+| Screenshot or image mockup | Run the screenshot workflow below | `references/workflows/screenshot-to-code.md`, `references/common-mistakes.md`, `references/prompts/screenshot-prompt.md` |
+| Brand colors, image-to-theme, dark mode, theme request | Run the theme workflow below | `references/workflows/theme-generation.md`, `references/theming/custom-themes.md`, `references/theme-and-colors.md`, `references/prompts/image-to-theme-prompt.md` |
 | Form-heavy UI | Load form patterns before composing | `references/patterns/form-patterns.md` |
 | Navbar, menu, drawer, tabs, dock, breadcrumbs | Load navigation patterns before composing | `references/patterns/navigation-patterns.md` |
-| Bootstrap or raw Tailwind conversion | Use the relevant conversion workflow | `references/workflows/bootstrap-conversion.md`, `references/workflows/tailwind-optimization.md` |
+| Bootstrap or raw Tailwind conversion | Use the relevant conversion workflow | `references/workflows/bootstrap-conversion.md`, `references/workflows/tailwind-optimization.md`, `references/prompts/bootstrap-prompt.md`, `references/prompts/tailwind-prompt.md` |
 
 ## Workflow — component or page composition
 
@@ -161,6 +161,7 @@ Load only what you need:
 Load only what you need:
 
 - `references/workflows/screenshot-to-code.md`
+- `references/prompts/screenshot-prompt.md`
 - `references/component-catalog.md`
 - `references/common-mistakes.md`
 
@@ -181,6 +182,8 @@ Load only what you need:
 
 - `references/workflows/theme-generation.md`
 - `references/theming/custom-themes.md`
+- `references/theme-and-colors.md`
+- `references/prompts/image-to-theme-prompt.md`
 - `references/tool-api-reference.md` for `themes` usage
 
 ## Recovery rules — if the agent starts drifting
@@ -208,7 +211,8 @@ Load only what you need:
 | Forms | `references/patterns/form-patterns.md`, `references/component-catalog.md` |
 | Navigation | `references/patterns/navigation-patterns.md`, `references/component-catalog.md` |
 | Setup or migration | `references/integration/tailwind-v4-setup.md`, `references/integration/v4-to-v5-migration.md` |
-| Bootstrap/Tailwind conversion | `references/workflows/bootstrap-conversion.md`, `references/workflows/tailwind-optimization.md` |
+| Bootstrap/Tailwind conversion | `references/workflows/bootstrap-conversion.md`, `references/workflows/tailwind-optimization.md`, `references/prompts/bootstrap-prompt.md`, `references/prompts/tailwind-prompt.md` |
+| Prompt crafting / chaining | `references/prompts/prompt-engineering.md`, `references/prompts/prompt-chaining.md` |
 
 ## Exit checklist
 

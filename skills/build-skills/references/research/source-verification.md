@@ -63,7 +63,7 @@ queries=(
 )
 ```
 
-Collect candidates with: title, source URL, install count, brief description.
+Collect candidates with: skill name, source URL, keyword match count, brief description.
 
 ### Phase 2: Triage
 

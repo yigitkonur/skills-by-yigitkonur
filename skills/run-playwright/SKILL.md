@@ -134,13 +134,13 @@ Read only what matches the current job:
 
 | Need | Reference |
 |---|---|
-| Page loads, redirects, waits, SPA navigation, URL verification | [references/navigation.md](references/navigation.md) |
-| Inputs, selects, radios, uploads, date pickers, multi-step forms, submission proof | [references/forms.md](references/forms.md) |
-| Screenshots, responsive checks, dark mode, before/after comparisons, layout integrity | [references/screenshots.md](references/screenshots.md) |
-| Tabs, named sessions, popups, shared-session work, cleanup boundaries | [references/tabs.md](references/tabs.md) |
-| Console/network artifacts, tracing, truth checks, diagnosis workflow, troubleshooting | [references/debugging.md](references/debugging.md) |
-| Refs, `eval` usage, extraction, CSS fallback, iframes, shadow DOM, `run-code` selectors | [references/selectors.md](references/selectors.md) |
-| Login, search and filter, downloads, storage, multi-step flows, E2E verification levels | [references/patterns.md](references/patterns.md) |
+| Page loads, redirects, waits, SPA navigation, URL verification | `references/navigation.md` |
+| Inputs, selects, radios, uploads, date pickers, multi-step forms, submission proof | `references/forms.md` |
+| Screenshots, responsive checks, dark mode, before/after comparisons, layout integrity | `references/screenshots.md` |
+| Tabs, named sessions, popups, shared-session work, cleanup boundaries | `references/tabs.md` |
+| Console/network artifacts, tracing, truth checks, diagnosis workflow, troubleshooting | `references/debugging.md` |
+| Refs, `eval` usage, extraction, CSS fallback, iframes, shadow DOM, `run-code` selectors | `references/selectors.md` |
+| Login, search and filter, downloads, storage, multi-step flows, E2E verification levels | `references/patterns.md` |
 
 ## Common starting points
 

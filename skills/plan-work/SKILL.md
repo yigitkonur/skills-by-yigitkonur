@@ -34,7 +34,7 @@ If another skill owns execution, use this skill to structure the decision first,
 
 ## Reference router
 
-Start with one file. Add a second only when it answers a different question.
+Start with one file. Add a second only when it answers a different question. For a full overview of the reference library structure, see `references/README.md`.
 
 | Need | Start with | Add only if |
 |---|---|---|

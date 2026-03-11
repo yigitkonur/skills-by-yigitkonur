@@ -55,15 +55,33 @@ If the skill enhances an MCP, also read `references/patterns/mcp-enhancement.md`
 ### 3. Capture local evidence first
 
 - Produce a tree-style inventory of the target workspace.
-- Read the current `SKILL.md` and the local files that define the workflow, references, and constraints.
+- Read the current `SKILL.md` fully — trigger boundary, workflow, decision rules, output contract, guardrails.
+- Read every file in `references/` that is relevant to the task: open each file, read the contents, and note what it covers and where it has gaps.
+- Note the reference file naming scheme, nesting depth, and whether routing in `SKILL.md` matches what actually exists on disk.
 - Note repo conventions, existing reference coverage, and obvious gaps before widening scope.
 
 ### 4. Run remote research when the job is non-trivial
 
 - Read `references/research-workflow.md`.
-- Use `references/remote-sources.md` and/or `references/skill-research.sh` to gather a small, high-signal corpus.
+- Use `skill-dl search` (3–20 keywords) to discover candidates — it outputs a prioritized markdown table to stdout.
+- Use `skill-dl` to download selected candidates, or run `references/skill-research.sh` for end-to-end parallel discovery and download in one command.
+- See `references/remote-sources.md` for `skill-dl search` usage patterns and download options.
 - Prefer a few diverse, relevant sources over many near-duplicates.
 - Emit `skills.markdown` before moving on.
+
+### 4a. Read the downloaded corpus thoroughly
+
+Do not skip from download to comparison. Reading is a distinct, mandatory step.
+
+For each downloaded skill that made the shortlist:
+
+- **Read its `SKILL.md` fully** — not just headings. Understand its trigger boundary, workflow structure, decision rules, and output contract.
+- **Tree its `references/` directory** — see what files exist, how they are named, and how deeply they are nested. This reveals the skill's structural philosophy.
+- **Read the 2–3 most relevant reference files** in full — pick based on filenames and the skill's routing logic.
+- **Check `scripts/` if present** — scripts surface automation patterns and validation logic that prose cannot fully convey.
+- **Capture notes per skill**: overall structure, workflow style, reference organization, what it does well, what it does poorly, and 1–2 patterns worth inheriting (with exact relative paths).
+
+The notes you capture here are the raw material for the comparison table in step 5. If you skip reading, the comparison table will be fabricated from memory rather than evidence.
 
 ### 5. Compare before synthesizing
 
@@ -127,6 +145,7 @@ Before drafting, write down what success looks like:
 | define success criteria before drafting | ship without any trigger or functional tests |
 | add negative triggers when scope is broad | let the skill fire on every tangentially related query |
 | use validation scripts for deterministic checks | rely on prose like "validate properly" |
+| read each downloaded skill's SKILL.md fully, tree its references/, and read the 2–3 most relevant reference files | skim titles and match counts, then fabricate a comparison from memory |
 
 ## Output contract
 
