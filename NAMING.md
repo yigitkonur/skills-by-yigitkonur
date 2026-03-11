@@ -14,7 +14,7 @@ Every skill directory, `SKILL.md` frontmatter `name`, and README label must:
 
 | Prefix | When to use | Examples |
 |---|---|---|
-| `build-` | Creation, scaffolding, authoring, extension | `build-mcp-sdk-server`, `build-mcp-use-apps`, `build-skills`, `build-supastarter-app` |
+| `build-` | Creation, scaffolding, authoring, extension | `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-skills`, `build-supastarter-app` |
 | `convert-` | Format transformation, migration, rebuild | `convert-snapshot-nextjs` |
 | `debug-` | Inspection, diagnosis, live troubleshooting | `debug-tauri-devtools` |
 | `develop-` | Language standards, implementation patterns, type systems | `develop-typescript` |
@@ -22,9 +22,8 @@ Every skill directory, `SKILL.md` frontmatter `name`, and README label must:
 | `init-` | First-run setup, config generation, review platform onboarding | `init-copilot-review`, `init-devin-review`, `init-greptile-review` |
 | `plan-` | Structured decision-making, prioritization, root-cause framing | `plan-work` |
 | `publish-` | CI/CD, package publishing, release automation | `publish-npm-package` |
-| `review-` | Code review execution, pattern checking, anti-pattern detection | `review-mcp-use-code` |
+| `review-` | Code review execution, pattern checking, anti-pattern detection | `review-pr` |
 | `run-` | Browser automation, playwright automation, research workflows, CLI-driven execution | `run-agent-browser`, `run-playwright`, `run-research` |
-| `test-` | Validation, verification, protocol checks, QA workflows | `test-mcp-server`, `test-mcp-by-cli` |
 
 ## Canonical Rules
 
@@ -93,8 +92,6 @@ When renaming a published skill:
 
 - `build-copilot-sdk-app`
 - `build-daisyui-mcp`
-- `build-mcp-sdk-server`
-- `build-mcp-use-apps`
 - `build-skills`
 - `build-supastarter-app`
 - `convert-snapshot-nextjs`
@@ -107,9 +104,7 @@ When renaming a published skill:
 - `init-greptile-review`
 - `plan-work`
 - `publish-npm-package`
-- `review-mcp-use-code`
+- `review-pr`
 - `run-agent-browser`
 - `run-playwright`
 - `run-research`
-- `test-mcp-by-cli`
-- `test-mcp-server`
