@@ -402,3 +402,116 @@ Copilot code review is non-deterministic. The same instruction may produce diffe
 4. **Evaluate over 10+ PRs** — single-PR results are not reliable indicators
 5. **Use branch protection rules** for hard requirements — Copilot's "Comment" reviews don't block merges
 6. **Iterate based on patterns** — if a rule is consistently ignored, it likely needs to be more specific
+
+
+---
+
+## Evaluating Existing Instruction Files
+
+When a repository already has instruction files, use this systematic evaluation before making changes. Do not discard existing files without assessment.
+
+### Evaluation checklist
+
+For each existing instruction file, run through this checklist:
+
+| # | Check | Command or method | Expected result |
+|---|---|---|---|
+| 1 | Character count | `wc -m < file` | Under 4,000 |
+| 2 | Frontmatter validity | Check first line is `---`, `applyTo` is quoted string | Valid YAML |
+| 3 | File location | File is under `.github/instructions/` (scoped) or `.github/` (root) | Correct directory |
+| 4 | Glob coverage | `find . -path "./<applyTo>" -type f \| wc -l` | Matches intended files |
+| 5 | SMSA per rule | Each rule is Specific, Measurable, Actionable, Semantic | All four criteria met |
+| 6 | Linter overlap | `grep -r "rule-keyword" .eslintrc* biome.json golangci*` | No matches (not duplicated) |
+| 7 | Cross-file conflicts | Compare rules across files with overlapping `applyTo` | No contradictions |
+
+### Rating scale
+
+| Rating | Meaning | Action |
+|---|---|---|
+| Good (5+ checks pass) | Architecture is sound, rules need tightening | Refine in place |
+| Fair (3-4 checks pass) | Structure is OK but content is weak | Rewrite rules, keep architecture |
+| Poor (0-2 checks pass) | Fundamentally broken architecture | Recreate with justification |
+
+### Common findings and fixes
+
+| Finding | Fix |
+|---|---|
+| Rules are too vague ("write clean code") | Rewrite with SMSA criteria |
+| Root file is bloated (> 3,500 chars) | Move framework-specific rules to scoped files |
+| Scoped files duplicate root rules | Remove duplicates from scoped files |
+| `applyTo` glob does not match any files | Fix glob or remove file |
+| Multiple files with contradicting rules | Narrow scopes or align guidance |
+
+---
+
+## Glob Verification Recipes
+
+Always verify glob patterns match the intended files before committing instruction files.
+
+### Basic verification
+
+```bash
+# Test a specific applyTo pattern
+find . -path "./src/api/**/*.ts" -type f | head -20
+
+# Count matches
+find . -path "./src/api/**/*.ts" -type f | wc -l
+```
+
+### Brace expansion verification
+
+```bash
+# Test brace expansion patterns
+find . -path "./src/**/*.ts" -type f -o -path "./src/**/*.tsx" -type f | head -20
+
+# Note: find does not support {ts,tsx} brace expansion natively.
+# Use -o (OR) to combine multiple -path patterns instead.
+```
+
+> **Important:** The `find` command does not support `{ts,tsx}` brace expansion. Use `-path "*.ts" -o -path "*.tsx"` to verify patterns that use brace expansion in `applyTo`. GitHub Copilot's glob engine does support brace expansion, but verification with `find` requires the expanded form.
+
+### Coverage analysis
+
+```bash
+# Find files NOT covered by any instruction file's applyTo
+# Step 1: List all source files
+find . -type f -name "*.ts" -o -name "*.tsx" | sort > /tmp/all-files.txt
+
+# Step 2: List files covered by each instruction file's applyTo
+find . -path "./src/api/**/*.ts" -type f | sort > /tmp/covered.txt
+
+# Step 3: Find uncovered files
+comm -23 /tmp/all-files.txt /tmp/covered.txt
+```
+
+---
+
+## Conflict Diagnosis Between Overlapping Scopes
+
+When two instruction files have overlapping `applyTo` patterns, their rules are concatenated for files that match both patterns. This can cause conflicts.
+
+### Diagnosis steps
+
+1. **Identify overlapping files**: Find files that match multiple `applyTo` patterns
+
+```bash
+# For each pair of instruction files, check for overlap
+find . -path "./pattern-A" -type f | sort > /tmp/scope-a.txt
+find . -path "./pattern-B" -type f | sort > /tmp/scope-b.txt
+comm -12 /tmp/scope-a.txt /tmp/scope-b.txt  # files in both scopes
+```
+
+2. **Compare rules for conflicts**: For each overlapping file, the rules from both instruction files apply. Check whether any rules in file A contradict rules in file B.
+
+3. **Classify the overlap**:
+   - **Additive**: Rules complement each other (acceptable)
+   - **Redundant**: Same rule in both files (remove from broader scope)
+   - **Contradictory**: Rules disagree (fix immediately)
+
+### Resolution strategies
+
+| Overlap type | Fix |
+|---|---|
+| Additive | No action needed — this is the intended design |
+| Redundant | Remove the rule from the broader-scoped file |
+| Contradictory | Narrow `applyTo` patterns until scopes no longer overlap, OR align the rules |
