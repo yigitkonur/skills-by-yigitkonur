@@ -205,6 +205,17 @@ grep -rn 'prefers-reduced-motion\|motion-reduce\|motion-safe' \
 
 ---
 
+
+---
+
+## Common Accessibility Gaps in SaaS Dashboards
+
+1. **Icon-only buttons without `aria-label`** -- Sidebar collapse, table row actions, close buttons.
+2. **Missing skip-to-content link** -- Dashboard layouts with sidebar + content rarely have a skip link.
+3. **Command palette keyboard trap** -- `cmdk` dialogs sometimes fail to return focus to the trigger.
+4. **Chart data not accessible** -- Recharts/D3 charts present data visually only. No aria-label or data table fallback.
+5. **Toast auto-dismiss too fast** -- Toasts that dismiss in < 5 seconds are insufficient for screen readers.
+
 ## Output Checklist
 
 - [ ] Color contrast ratios verified for all text/background pairs

@@ -1,5 +1,5 @@
----
-name: extract-saas-design
+| Full extraction / "visual DNA" / "document the design system" | "Extract the full design system", "Document the visual DNA" | `system.md`, foundation docs, relevant component docs, and meta-docs (`INDEX.md`, `_summary.md`) |
+| Full extraction / "visual DNA" / "document the design system" | "Extract the full design system", "Document the visual DNA" | `system.md`, foundation docs, relevant component docs, and meta-docs (`INDEX.md`, `_summary.md`) |
 description: Use skill if you are forensically documenting the visual system of an existing SaaS dashboard or admin UI into structured design docs, not rebuilding or redesigning it.
 ---
 
@@ -31,12 +31,12 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
 
 ## Scope routing
 
-| If the user asks for... | Deliver |
-|---|---|
-| Full extraction / “visual DNA” / “document the design system” | `system.md`, foundation docs, relevant component docs, and meta-docs (`INDEX.md`, `_summary.md`) |
-| Foundations / tokens / theme only | `system.md` plus foundation docs only; skip component docs unless requested |
-| Specific components or patterns | Minimal foundation context plus full docs for the named components or patterns only |
-| Consistency / quality / accessibility audit | Evidence-based findings grounded in extracted docs; do not drift into redesign proposals |
+| If the user asks for... | Example requests | Deliver |
+|---|---|---|
+| Full extraction / "visual DNA" / "document the design system" | "Extract the full design system", "Document the visual DNA" | `system.md`, foundation docs, relevant component docs, and meta-docs (`INDEX.md`, `_summary.md`) |
+| Foundations / tokens / theme only | "Extract the color tokens", "Document the spacing system" | `system.md` plus foundation docs only; skip component docs unless requested |
+| Specific components or patterns | "Document the sidebar", "Extract button specs" | Minimal foundation context plus full docs for the named components or patterns only |
+| Consistency / quality / accessibility audit | "Audit the color consistency", "Check accessibility" | Evidence-based findings grounded in extracted docs; do not drift into redesign proposals |
 
 ## Minimal workflow
 
@@ -45,10 +45,19 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
    - Prefer the smallest extraction that satisfies the request.
 
 2. **Build the evidence base**
-   - Identify the styling stack and token sources first: global CSS, theme files, Tailwind config, component source, Storybook, and supporting assets.
-   - Resolve representative token chains end-to-end before writing docs.
+   - **Detect the styling stack first** -- this determines everything else:
+     - Tailwind v4 uses `@import "tailwindcss"` in CSS and `@theme` blocks instead of `tailwind.config.js`. Check for both.
+     - shadcn/ui: look for `components/ui/` directory and `@/lib/utils` imports with `cn()`.
+     - CSS entry point: find `globals.css` or `app.css` -- this is where tokens live.
+   - Identify token sources: global CSS, theme files, Tailwind config (if v3), component source, Storybook.
+   - **Resolve representative token chains end-to-end** before writing docs:
+     ```
+     Tailwind class -> CSS variable -> final value
+     bg-primary -> var(--primary) -> oklch(0.21 0.006 285.88)
+     ```
+   - Detect the color space: modern shadcn uses `oklch()`, older uses `hsl()`.
+   - Check for variant systems: CVA (`class-variance-authority`) defines variant/size matrices.
    - Capture recurring values, mode switching, state styling, and composition patterns.
-
 3. **Extract foundations first when needed**
    - Spacing, colors, typography, shadows/depth, radius, animations, and shared state conventions.
    - For dashboard products, explicitly check sidebar overrides, chart palettes, density zones, and tabular/monospace usage.
@@ -58,14 +67,16 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
    - Treat sidebars, tables, command palettes, and form layouts as mega-components that must be decomposed.
 
 5. **Verify before handoff**
-   - Every important value should be resolved.
+   - Use `references/quality-checklist.md` as your verification checklist -- it has P0/P1/P2 priority tiers.
+   - Every important value should be resolved to a final computed value, not just a class name or alias.
    - Every relevant state should be explicit, including `not implemented`.
    - Pay special attention to disabled, focus-visible, loading, error/invalid, empty, and dark-mode behavior.
    - Document opacity semantics and animation composition when they carry design meaning.
    - If a recreator would still need to guess, the extraction is incomplete.
 
 6. **Package the output**
-   - Use the `.design-soul/` structure when producing extraction artifacts.
+   - Create all extraction artifacts in the `.design-soul/` directory at the **codebase root** (not inside the skills repo).
+   - Use the `.design-soul/` structure defined in `references/documentation/output-format.md`.
    - Follow the exact templates and file layout from the references instead of inventing new formats.
 
 ## Guardrails: do this, not that
@@ -103,14 +114,96 @@ Use the exact structure, naming, and content expectations in `references/documen
 
 Start with the smallest relevant set. Only expand if the task genuinely needs more depth.
 
-| Need | Read |
-|---|---|
-| Foundation extraction method | `references/foundations-agent.md`, `references/extraction/color-extraction.md`, `references/extraction/typography-extraction.md`, `references/extraction/spacing-extraction.md`, `references/system-template.md` |
-| Component extraction method | `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
-| Dashboard/admin-specific patterns | `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
-| Token translation and naming | `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
-| Packaging the docs | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
-| Verification and audit | `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
+| Need | What it contains | Read |
+|---|---|---|
+| Foundation extraction method | Agent prompts for scanning tokens + grep commands + output templates | `references/foundations-agent.md`, `references/extraction/color-extraction.md`, `references/extraction/typography-extraction.md`, `references/extraction/spacing-extraction.md`, `references/system-template.md` |
+| Component extraction method | Agent prompt for per-component visual specs + template with all required sections | `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
+| Dashboard/admin-specific patterns | Sidebar, metrics, tables, charts, cmdk, mega-component decomposition | `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
+| Token translation and naming | W3C DTCG, CSS custom properties, oklch format, shadcn naming pattern | `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
+| Packaging the docs | `.design-soul/` directory structure, INDEX.md and _summary.md templates | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
+| Verification and audit | P0/P1/P2 quality tiers, token/component consistency matrix, WCAG contrast checks | `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
+
+## Steering Notes for Agents
+
+These notes prevent the most common extraction failures. Read them before starting.
+
+### Tailwind v4 Detection
+
+Tailwind v4 does NOT use `tailwind.config.js`. It uses CSS-native configuration:
+
+```css
+/* Tailwind v4: tokens live in CSS, not JS config */
+@import "tailwindcss";
+
+@theme {
+  --color-primary: oklch(0.21 0.006 285.88);
+  --radius: 0.625rem;
+  --font-sans: "Inter", sans-serif;
+}
+```
+
+**Detection**: If `globals.css` or `app.css` contains `@import "tailwindcss"` or `@theme`, the project uses Tailwind v4. If `tailwind.config.ts` exists with `theme.extend`, it uses Tailwind v3. Grep for both before extracting tokens.
+
+### oklch Color Space
+
+Modern shadcn/ui (2024+) uses `oklch()` instead of `hsl()`:
+
+```css
+--primary: oklch(0.205 0.006 285.885);
+/*         L       C       H          */
+/*    lightness  chroma   hue         */
+```
+
+- **L** (0-1): 0 = black, 1 = white. Most UI colors are 0.2-0.95.
+- **C** (0-0.4): 0 = gray, higher = more saturated. UI grays have C < 0.01.
+- **H** (0-360): Hue angle. Irrelevant when C is near 0 (grays).
+
+When documenting oklch tokens, always note the lightness value -- it tells you if the color is "dark" or "light" at a glance.
+
+### CVA (class-variance-authority) Parsing
+
+shadcn components define variants with CVA. When you see this pattern, extract EVERY variant and size:
+
+```tsx
+const buttonVariants = cva("inline-flex items-center ...", {
+  variants: {
+    variant: { default: "bg-primary ...", destructive: "bg-destructive ...", ... },
+    size: { default: "h-9 px-4 py-2", sm: "h-8 px-3", lg: "h-10 px-6", icon: "size-9" }
+  },
+  defaultVariants: { variant: "default", size: "default" }
+})
+```
+
+The `cva()` call IS the component visual specification. Document every key-value pair.
+
+### cn() Utility and Class Merging
+
+shadcn uses `cn()` (wrapping `clsx` + `tailwind-merge`) to merge classes:
+
+```tsx
+className={cn("base-classes", variantClasses, className)}
+```
+
+When classes conflict, **the last one wins** (tailwind-merge handles this). User-provided `className` overrides variant classes, and variant classes override base classes.
+
+### Token Chain Resolution
+
+Never stop at the Tailwind class. Always resolve the full chain:
+
+```
+Tailwind class:  bg-primary
+  -> CSS variable: var(--primary)
+    -> Computed value: oklch(0.205 0.006 285.885)
+```
+
+Some tokens chain through multiple variables:
+```css
+--sidebar-background: var(--sidebar);  /* component token */
+--sidebar: var(--muted);               /* semantic token */
+--muted: oklch(0.965 0.001 286.375);   /* primitive value */
+```
+
+Resolve ALL the way to the literal value. Document each step in the chain.
 
 ## Final reminder
 

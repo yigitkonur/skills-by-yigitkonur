@@ -4,6 +4,13 @@ Extract every color from a codebase — CSS variables, Tailwind classes, hardcod
 
 ---
 
+> **Tailwind v4 Warning**: If the project uses Tailwind v4, color tokens are in `@theme` blocks in CSS -- NOT in `tailwind.config.js`. Detect first:
+> ```bash
+> grep -rl '@import.*tailwindcss' --include="*.css" src/ . 2>/dev/null && echo "Tailwind v4"
+> ls tailwind.config.* 2>/dev/null && echo "Tailwind v3"
+> ```
+> Also check the color space: modern shadcn (2024+) uses **oklch**, older uses **hsl**.
+
 ## Step 1: Locate All Color Sources
 
 ### CSS Custom Properties
@@ -55,6 +62,16 @@ Tailwind class → CSS variable → Computed value
 2. **Find the CSS variable** it maps to: check `tailwind.config` or `globals.css`
 3. **Resolve to computed value**: follow `var()` references until you reach a literal
 4. **Document both modes**: light value AND dark value
+
+### Multi-Level Variable Chains
+
+Some tokens reference other tokens. Always resolve to the final literal value:
+
+```css
+--sidebar-background: var(--sidebar);   /* component token */
+--sidebar: oklch(0.985 0 0);            /* final value (light) */
+.dark { --sidebar: oklch(0.145 0 0); }  /* final value (dark) */
+```
 
 ### Example Resolution
 
@@ -187,6 +204,31 @@ The color space matters for interpolation and manipulation:
 | rgb/rgba | rgb(26 26 26) | Alpha support | Perceptually non-uniform |
 | hsl/hsla | hsl(0 0% 10%) | Human-readable hue | Poor perceptual uniformity |
 | oklch | oklch(0.21 0.006 285) | Perceptually uniform, wide gamut | Newer, less tooling |
+
+### Reading oklch Values
+
+```
+oklch(0.205  0.006  285.885)
+      |      |      |
+      |      |      +- Hue (0-360) -- color wheel angle. Irrelevant when C near 0.
+      |      +-------- Chroma (0-0.4) -- 0 = gray, >0.1 = colored.
+      +--------------- Lightness (0-1) -- 0 = black, 1 = white.
+```
+
+**Quick reference:** L < 0.3 = dark, L > 0.9 = light, C < 0.01 = gray, C > 0.1 = colored.
+
+### shadcn/ui Color Architecture
+
+```
+Surface:     --background, --card, --popover, --sidebar-background
+Text:        --foreground, --card-foreground, --popover-foreground, --muted-foreground
+Interactive: --primary, --secondary, --accent, --destructive (each with -foreground pair)
+Control:     --border, --input, --ring
+Chart:       --chart-1 through --chart-5
+Sidebar:     --sidebar, --sidebar-foreground, --sidebar-accent, --sidebar-border, --sidebar-ring
+```
+
+Every interactive token has a `-foreground` pair for text-on-that-color.
 
 **Detection:**
 ```bash

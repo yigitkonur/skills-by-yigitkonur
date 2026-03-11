@@ -35,6 +35,8 @@ Depends on: [other components if composition-based]
 
 ### Elements
 - **Container**: [display, layout, overflow]
+
+> **How to Measure**: Use the Tailwind-to-CSS tables at the bottom of this template. `p-3` = 12px, `h-9` = 36px, `gap-2` = 8px. `size-4` on an icon = 16x16px. `text-sm` = 14px/20px.
 - **[Element 1]**: [what it is, optional?]
 - **[Element 2]**: [what it is, optional?]
 
@@ -45,7 +47,7 @@ Depends on: [other components if composition-based]
 ### default
 | Property | Value | Tailwind |
 |----------|-------|----------|
-| Background | [resolved CSS value] | [tailwind class] |
+| Background | [CSS var -> computed value, e.g. var(--primary) -> oklch(0.21 0.006 285.88)] | [tailwind class] |
 | Text | [resolved CSS value] | [tailwind class] |
 | Border | [width style color] | [tailwind class] |
 | Shadow | [shadow value or "none"] | [tailwind class] |
@@ -409,6 +411,52 @@ data-[side=bottom]:slide-in-from-top-2
 These drive animations. Document which animation fires on which state transition.
 
 ---
+
+
+---
+
+## Required vs Conditional Sections
+
+**REQUIRED** (must appear in every component doc):
+1. Header (name, source, library)
+2. Anatomy (ASCII diagram)
+3. Variants (every variant fully specified)
+4. States (all states, including "Not implemented")
+5. CSS Recreation (complete CSS block)
+
+**CONDITIONAL** (include when applicable):
+1. Sizes (when component has size variants)
+2. State Transitions (interactive components)
+3. Animations (when transitions/animations exist)
+4. Internal Spacing (complex layouts)
+5. Dark Mode Differences (when dark mode exists)
+
+---
+
+## CVA Extraction Checklist
+
+When a component uses `cva()` (class-variance-authority), extract ALL of these:
+
+1. **Base classes** -- the first argument to `cva()`. Apply to ALL variants.
+2. **Each variant key** -- e.g., `variant`, `size`, `color`.
+3. **Each variant value** -- e.g., `variant.default`, `variant.destructive`. Full class list.
+4. **Default variants** -- which variant/size applies when no props are passed.
+5. **Compound variants** -- overrides when two variant values combine.
+
+---
+
+## cn() Class Merging
+
+shadcn components merge classes with `cn()`:
+
+```tsx
+className={cn(buttonVariants({ variant, size }), className)}
+```
+
+**Resolution order** (last wins):
+1. Base classes from `cva()` first argument
+2. Variant-specific classes from the matched variant
+3. User-provided `className` (overrides everything above)
 
 ## Tailwind-to-CSS Conversion
 

@@ -6,7 +6,19 @@ You are a design foundations extraction agent. Your job is to scan an entire das
 
 ## Your Outputs
 
-Create `.design-soul/system.md` using the system template, and create these files in `.design-soul/components/foundations/`:
+Create `.design-soul/system.md` (at the **codebase root**, not inside the skills repo) using the system template, and create these files in `.design-soul/components/foundations/`:
+
+---
+
+> **Common Mistakes -- Read Before Extracting**
+>
+> 1. **Assuming `tailwind.config.js` exists.** Tailwind v4 uses `@theme` blocks in CSS files, not a JS config file. Always check for `@import "tailwindcss"` first.
+> 2. **Reading oklch values as hsl.** Modern shadcn uses `oklch(L C H)` where L=lightness (0-1), C=chroma (0-0.4), H=hue (0-360).
+> 3. **Stopping at CSS variable names.** Always resolve the full chain: `bg-primary` -> `var(--primary)` -> `oklch(0.205 ...)`.
+> 4. **Missing CSS `@layer` declarations.** Tailwind v4 uses `@layer base`. Tokens may be inside `:root` or `.dark` selectors within the layer.
+> 5. **Expecting `.dark` class on `<body>`.** Dark mode selector may be on `<html>` or `[data-theme="dark"]`.
+> 6. **Looking only in `globals.css`.** CSS entry point may be `app.css`, `index.css`, or split across files.
+> 7. **Ignoring `--sidebar-*` and `--chart-*` prefixed variables.** These are separate token scopes.
 
 ---
 
@@ -30,11 +42,18 @@ Also document:
 
 ### 02-color-tokens.md
 
-1. Read ALL CSS files (globals.css, theme files, tailwind config)
-2. Extract every CSS custom property (--variable-name: value)
-3. Document light and dark mode values side by side
-4. Identify the color space (hex, rgb, hsl, oklch)
-5. Group by semantic purpose
+1. **Detect the styling stack first:**
+   - Check for `@import "tailwindcss"` in CSS files (Tailwind v4: tokens in `@theme` blocks)
+   - Check for `tailwind.config.ts` (Tailwind v3: tokens in JS config)
+   - Check for `components/ui/` directory (likely shadcn/ui)
+2. Read ALL CSS files (globals.css, app.css, theme files, tailwind config if v3)
+3. Extract every CSS custom property (--variable-name: value)
+4. **Resolve token chains** -- follow `var()` references until you reach a literal value
+5. Document light and dark mode values side by side
+6. Identify the color space:
+   - **oklch** (modern shadcn 2024+): `oklch(L C H)` -- L is lightness 0-1, C is chroma 0-0.4, H is hue 0-360
+   - **hsl** (older shadcn): `hsl(H S% L%)` or bare `H S% L%` values
+7. Group by semantic purpose
 
 Also document:
 - Chart/data visualization color palette (critical for dashboards)

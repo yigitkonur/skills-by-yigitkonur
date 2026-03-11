@@ -131,6 +131,24 @@ grep -rn '@media.*min-width\|@media.*max-width' --include="*.css" src/ | \
   grep -oh '[0-9]*px' | sort -n | uniq
 ```
 
+
+### Tailwind Responsive Prefix Syntax
+
+Tailwind uses responsive prefixes that apply styles at a breakpoint AND above:
+
+```
+sm:grid-cols-2    -- applies at >=640px
+md:grid-cols-3    -- applies at >=768px
+lg:grid-cols-4    -- applies at >=1024px
+```
+
+**Detection:**
+```bash
+grep -roh 'sm:\|md:\|lg:\|xl:\|2xl:' --include="*.tsx" --include="*.jsx" src/ | sort | uniq -c | sort -rn
+```
+
+This tells you which breakpoints are actually used and how heavily.
+
 ### Standard Tailwind Breakpoints
 
 | Name | Width | Layout Changes |
