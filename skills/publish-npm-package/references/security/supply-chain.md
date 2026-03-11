@@ -2,6 +2,12 @@
 
 Guide to securing every link in the npm publishing supply chain—from source commit to published package.
 
+> **⚠️ Steering:** Supply-chain hardening applies to **ALL** publishing scenarios—not
+> just fully-automated pipelines. Whether you use OIDC or token auth, semantic-release
+> or manual `npm version`, provenance attestation and action pinning protect your
+> users from supply-chain attacks. Apply these practices from day one, including
+> your very first publish.
+
 ---
 
 ## 1. npm Provenance Attestation
@@ -64,6 +70,54 @@ Tags like `@v4` are mutable—a compromised maintainer account can move the tag 
 ```
 
 Find SHAs with `git ls-remote --tags https://github.com/actions/checkout.git refs/tags/v4.1.1`. Use Dependabot for GitHub Actions to get automated update PRs.
+
+### How to Find and Pin SHAs
+
+**Step 1 — Find the SHA for a specific tag:**
+
+```bash
+# Get the SHA for a specific version tag
+git ls-remote https://github.com/actions/checkout | grep 'refs/tags/v4$'
+# Output: b4ffde65f46336ab88eb53be808477a3936bae11  refs/tags/v4
+
+# For an exact patch version
+git ls-remote https://github.com/actions/setup-node | grep 'refs/tags/v4.2.0$'
+```
+
+**Step 2 — Use the format `owner/action@SHA # vX.Y.Z`:**
+
+```yaml
+- uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+- uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+- uses: changesets/action@c8bada60c408975afd1a20b3db81d6eee6789571 # v1.4.9
+```
+
+> The trailing comment (`# v4.1.1`) is critical for human readability and for
+> Dependabot/Renovate to propose SHA updates when new versions are released.
+
+**Step 3 — Automate pinning with tools:**
+
+```bash
+# pin-github-action — bulk-pin all actions in a workflow file
+npx pin-github-action .github/workflows/publish.yml
+
+# Or use Renovate with pinGitHubActionDigests enabled:
+# renovate.json: { "extends": ["helpers:pinGitHubActionDigests"] }
+```
+
+**Step 4 — Keep pinned SHAs updated:**
+
+Configure Dependabot for GitHub Actions to get automated update PRs:
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+```
 
 ### Dependency Review in PRs
 
@@ -269,7 +323,44 @@ Always use `auth-and-writes`, not `auth-only`. Org admins can enforce 2FA for al
 
 ---
 
-## 8. Incident Response
+## 8. First-Publish Security Considerations
+
+The first publish of a package has unique security implications:
+
+### Bootstrap Token Security
+
+When bootstrapping a new package (required before OIDC can work), use the
+most restricted token possible:
+
+```bash
+# Create a granular token scoped to ONLY the new package name
+# Set a short expiration (e.g., 1 day) — you only need it once
+# After bootstrap, switch to OIDC and revoke the bootstrap token
+```
+
+### Name Squatting Prevention
+
+Publish your package name early, even as `0.0.1`, to prevent typosquatting:
+
+```bash
+# Reserve the package name with a minimal publish
+npm publish --access public
+# Then deprecate if not ready for consumers
+npm deprecate @scope/pkg@0.0.1 "Initial placeholder — real release coming soon"
+```
+
+### First-Publish Checklist
+
+- [ ] Package name is not confusingly similar to popular packages
+- [ ] `repository.url` in `package.json` exactly matches your GitHub repo (case-sensitive)
+- [ ] Bootstrap token has minimal scope and short expiration
+- [ ] Provenance is enabled from the very first automated publish
+- [ ] 2FA is enabled on the npm account (`auth-and-writes`)
+- [ ] After bootstrap, revoke the bootstrap token immediately
+
+---
+
+## 9. Incident Response
 
 ### Token Leaked
 

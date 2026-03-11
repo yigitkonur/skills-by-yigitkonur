@@ -3,6 +3,102 @@
 Troubleshooting guide covering OIDC/provenance, token auth, version bumping,
 package publishing, and GitHub Actions workflow failures.
 
+> **⚠️ Steering:** First-publish failures are the #1 source of CI frustration.
+> If this is your package's **very first publish**, start with the "First Publish
+> Failures" section below — most OIDC/token errors have a different root cause
+> on first publish vs subsequent publishes.
+
+---
+
+## 0. First Publish Failures
+
+First-time publishing has unique failure modes that don't apply to subsequent
+publishes. These are the most common traps:
+
+### OIDC First Publish Fails with 404
+
+**Symptom:** `npm ERR! 404 Not Found - PUT https://registry.npmjs.org/@scope%2fpkg`
+
+**Cause:** npm's OIDC trusted publishing requires the package to already exist
+on the registry. On first publish, it doesn't exist yet, so the OIDC handshake
+has no package to authorize against.
+
+**Fix — bootstrap with a token:**
+
+```bash
+# 1. Create a granular access token on npmjs.com with publish scope
+# 2. Publish the initial version locally or via CI with token auth:
+npm publish --access public
+# 3. After the package exists, switch your workflow to OIDC
+```
+
+> See also: [auth/token-vs-oidc.md](../auth/token-vs-oidc.md) for full OIDC
+> setup and the bootstrap pattern.
+
+### E403 on Scoped Packages
+
+**Symptom:** `npm ERR! 403 Forbidden - PUT https://registry.npmjs.org/@scope%2fpkg`
+
+**Cause:** Scoped packages (`@scope/name`) default to `restricted` (paid npm
+Org feature). Free accounts cannot publish restricted packages.
+
+**Fix:**
+
+```bash
+npm publish --access public
+```
+
+Or set it permanently in `package.json`:
+
+```json
+{ "publishConfig": { "access": "public" } }
+```
+
+> See also: [packaging/package-config.md](../packaging/package-config.md) for
+> full `publishConfig` guidance.
+
+### ERR_SOCKET_TIMEOUT on First Publish with OIDC
+
+**Symptom:** `ERR_SOCKET_TIMEOUT` when contacting Fulcio for signing.
+
+**Cause:** Missing `id-token: write` permission in the workflow. Without it,
+GitHub cannot mint the OIDC token, and the Fulcio request hangs until timeout.
+
+**Fix:** Add permissions at the **job** level (not just workflow level):
+
+```yaml
+jobs:
+  publish:
+    permissions:
+      contents: read
+      id-token: write
+```
+
+### Quick Diagnosis Flowchart
+
+```
+First publish failing?
+├─ 404 on PUT?
+│  └─ Package doesn't exist yet → bootstrap with token auth first
+├─ 403 Forbidden?
+│  ├─ Scoped package? → add --access public or publishConfig.access
+│  └─ Token/OIDC? → check token scopes or trusted publishing config
+├─ ERR_SOCKET_TIMEOUT?
+│  └─ Missing id-token: write permission → add to job permissions
+├─ ENEEDAUTH?
+│  ├─ OIDC? → add registry-url to setup-node
+│  └─ Token? → verify NPM_TOKEN secret is set and not empty
+└─ 401 Unauthorized?
+   ├─ Token for wrong registry? → create token on npmjs.com
+   └─ OIDC audience mismatch? → check runner environment
+```
+
+> **Cross-references:**
+> - Auth setup: [auth/token-vs-oidc.md](../auth/token-vs-oidc.md)
+> - Version tool config: [versioning/tool-comparison.md](../versioning/tool-comparison.md)
+> - Package config: [packaging/package-config.md](../packaging/package-config.md)
+> - Supply chain security: [security/supply-chain.md](../security/supply-chain.md)
+
 ---
 
 ## 1. OIDC / Provenance Failures

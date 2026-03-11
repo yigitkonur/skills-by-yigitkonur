@@ -22,14 +22,29 @@ This skill assumes npmjs.org. For deep `package.json` / exports / files shaping,
 
 ## Always classify the repo first
 
-Before writing YAML, confirm:
-1. Is the package public or private?
-2. Is publishing happening on GitHub Actions, and is the publish job on a GitHub-hosted runner?
-3. Is this a single package or a monorepo/workspaces repo?
-4. Does the team already use reliable conventional commits?
-5. Should every releasable merge publish automatically, or should there be a human-reviewed Release/Version PR?
-6. Is this greenfield, or does the package already exist with tags/versions/releases?
-7. Is the target really npmjs.org?
+Before writing YAML, answer these questions and **record the answers** — they drive the auth (Step 1) and versioning (Step 2) decisions below:
+
+1. Is the package **public** or **private**?
+2. Is publishing on **GitHub Actions** with a **GitHub-hosted runner**?
+3. Is this a **single package** or a **monorepo/workspaces** repo?
+4. Does the team already use **conventional commits** (the majority of meaningful commits follow `type: description` format)?
+5. Should every releasable merge publish **automatically**, or should there be a **human-reviewed Release/Version PR**?
+6. Is this **greenfield** (never published), or does the package already exist with tags/versions/releases?
+7. Is the target really **npmjs.org**?
+
+> **⚠️ Steering (F-01):** Record answers explicitly (e.g., as inline comments or a checklist). Without a recorded classification, the auth and versioning decisions become guesswork. The table below maps answers directly to choices.
+
+### Quick-reference decision matrix
+
+| Q1: Public? | Q2: GH Actions + hosted runner? | Q3: Single/Mono? | Q4: Conv. commits? | Q5: Auto/Human gate? | → Auth | → Versioning |
+|---|---|---|---|---|---|---|
+| Yes | Yes | Single | Yes | Auto | OIDC | semantic-release |
+| Yes | Yes | Single | Yes | Human gate | OIDC | release-please |
+| Yes | Yes | Single | No | Human gate | OIDC | changesets |
+| Yes | Yes | Single | No (greenfield, will adopt) | Human gate | OIDC | release-please |
+| Yes | Yes | Monorepo | Any | Any | OIDC | changesets (default) |
+| No | Any | Any | Any | Any | Token | (any versioning) |
+| Any | No (self-hosted/GHES) | Any | Any | Any | Token | (any versioning) |
 
 ## Always follow this order
 
@@ -58,26 +73,51 @@ Before writing YAML, confirm:
 - Do not keep both OIDC and token auth just because an old workflow used both. The only valid mixed setup is when **token auth is still required** but you also grant `id-token: write` for provenance.
 - Avoid classic automation tokens for new work.
 
+> **⚠️ Steering (F-07):** OIDC auth means **zero npm secrets**. If your workflow has `NODE_AUTH_TOKEN` or `NPM_TOKEN` in the publish step, you are using token-based auth, **not** OIDC — even if `id-token: write` is set. Pure OIDC relies on GitHub's identity federation with npm; no token is exchanged via environment variables.
+
 ## 2) Choose the versioning model, not just a tool
 
 | Need | Choose | Choose when | Avoid when | Read next |
 |---|---|---|---|---|
 | Publish automatically on every releasable merge | **semantic-release** | Single package, strong conventional-commit discipline, no human release gate | Monorepos, weak commit discipline, teams that want a reviewable release PR | `references/versioning/semantic-release.md` |
 | Generate a reviewable Release PR, publish after merge | **release-please** | Conventional commits already exist, team wants a human merge gate, explicit release PR is desirable | Commit messages are not trustworthy, or the goal is zero human release handling | `references/versioning/release-please.md` |
-| Put version intent in each PR and batch releases deliberately | **changesets** | Monorepos, explicit version notes, teams without strict conventional commits | The repo wants publish-on-merge with no human-authored version data | `references/versioning/changesets.md` |
+| Put version intent in each PR and batch releases deliberately | **changesets** | Monorepos, single-package repos without strict conventional commits, explicit version notes, teams that want a human-reviewed Version PR without adopting conventional commits | The repo wants publish-on-merge with no human-authored version data | `references/versioning/changesets.md` |
 | Rare/simple releases | **manual trigger + `npm version`** | Automation would be heavier than the release frequency | The task explicitly asks for full release automation | matching workflow "Manual Trigger" section |
+
+> **⚠️ Steering (F-04):** changesets is **not** monorepo-only. It works perfectly for single-package repos and does not require conventional commits. If a single-package repo wants a human-reviewed Version PR without adopting conventional commits, changesets is the right choice.
+
+### Quick-decision flowchart
+
+```
+Is this a monorepo?
+  YES → changesets (default) — or release-please if conv. commits already drive the repo
+  NO (single package) →
+       Does the team use conventional commits?
+         YES →
+              Want fully automatic publish? → semantic-release
+              Want a human-reviewed Release PR? → release-please
+         NO →
+              Greenfield and willing to adopt? → release-please (commit to the format)
+              Existing repo, won't adopt? → changesets
+              Rare releases? → manual trigger
+```
 
 **Versioning rules**
 - **Monorepo default: changesets.** Use release-please only when conventional commits already drive the repo. Treat semantic-release in monorepos as a last resort, not the default.
-- If conventional commits are weak or absent, do **not** silently pick semantic-release or release-please.
+- **Single-package repo without conventional commits that wants a human release gate:** changesets is a viable choice — it is not monorepo-only. Alternatively, adopt conventional commits and choose release-please.
+- If conventional commits are weak or absent **in an existing repo**, do **not** silently pick semantic-release or release-please. For greenfield repos, adopting conventional commits is a valid starting choice — pick release-please if the team commits to the format going forward.
 - For existing published packages, bootstrap before the first automated run:
   - semantic-release: initial tag / baseline release state
   - release-please: config + manifest aligned to the current published version
   - changesets: initialized config and contributor workflow for changeset files
 
+> **⚠️ Steering (F-05):** Distinguish **greenfield** (team can choose to adopt conventional commits going forward) from **existing repo** (commit history already exists without them). For greenfield, picking release-please + committing to conventional commits is valid. For existing repos with inconsistent history, changesets avoids the commit-discipline prerequisite.
+
 ## 3) Route to the exact workflow template
 
 Do not hand-assemble publish YAML from memory if a matching reference already exists.
+
+> **⚠️ Steering (F-13):** Use the **workflow template's** configuration files as the starting point. If the versioning reference (e.g., `release-please.md`) shows different or additional config options, treat them as customization, **not** the baseline. The workflow template is the source of truth for the config file set.
 
 | Auth | Versioning | Workflow template |
 |---|---|---|
@@ -101,10 +141,11 @@ Do not hand-assemble publish YAML from memory if a matching reference already ex
 Before editing or validating the workflow, confirm:
 
 ### Package/repo prerequisites
-- `package.json.repository.url` exactly matches the GitHub repo URL, including casing.
+- The code is pushed to a **GitHub repository** (the workflow runs on GitHub Actions).
+- `package.json.repository.url` exactly matches the GitHub repo URL, **including casing**.
 - Scoped public packages set `publishConfig.access: "public"` or an equivalent publish flag.
 - Prefer `publishConfig.provenance: true` so provenance is not a human-memory step.
-- The repo's lockfile is committed and CI uses deterministic installs (`npm ci` or the repo's equivalent)
+- The repo's lockfile is committed and CI uses deterministic installs (`npm ci` or the repo's equivalent).
 - `npm pack --dry-run` shows the intended tarball contents.
 - Packaging details such as `files`, `exports`, types, and dual ESM/CJS output are correct. Use `references/packaging/package-config.md` for those details.
 
@@ -113,14 +154,27 @@ Before editing or validating the workflow, confirm:
 - publish jobs run build/test before publish
 - explicit `concurrency` is present to avoid publish races
 - permissions are least-privilege and set deliberately
-- production-hardening work pins GitHub Actions to full SHAs, not mutable tags
+- For production hardening, consider pinning GitHub Actions to full SHAs with a tag comment (e.g., `actions/checkout@<sha> # v4`). The reference templates use tags for readability — pin to SHAs before shipping to production. See `references/security/supply-chain.md` for SHA pinning guidance.
 
-### First-release / migration prerequisites
-- For a new OIDC setup, ensure npm is linked to the correct GitHub repo and the package/scope is allowed to publish from that repo.
-- If OIDC complains about repo/package linkage or first publish state, do the minimum bootstrap the auth reference describes before retrying.
-- For semantic-release, ensure full git history and baseline tags exist.
-- For release-please, ensure both config and manifest files exist and reflect current state.
+> **⚠️ Steering (F-17):** The workflow templates use `@v4` style tags for readability. For production, pin to full commit SHAs with a tag comment: `actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4`. This prevents supply-chain attacks via mutable tags.
+
+### First-publish / OIDC bootstrap (critical for greenfield)
+
+> **⚠️ Steering (F-11):** OIDC requires the package to **already exist** on npm. For a brand-new package, you hit a chicken-and-egg problem: you can't link a non-existent package to your GitHub repo.
+
+**Bootstrap steps for first publish with OIDC:**
+1. Create a **granular access token** on npmjs.com (see `references/auth/granular-tokens.md`).
+2. Add it as `NPM_TOKEN` in your repo's GitHub Actions secrets.
+3. Publish once manually: `npm publish --access public` (or use the token-based workflow template for the first release).
+4. Go to `https://www.npmjs.com/package/<your-package>/access` → **Publishing access** → **Add GitHub Actions** to link the package to your repo.
+5. Remove the `NPM_TOKEN` secret and switch the workflow to pure OIDC.
+
+### Migration prerequisites
+- For semantic-release, ensure full git history (`fetch-depth: 0`) and baseline tags exist.
+- For release-please, ensure both config and manifest files exist with the **manifest version matching `package.json`**. For never-published packages, use the `package.json` version (typically `1.0.0` or `0.1.0`).
 - For changesets, ensure contributors know when to add a changeset and how empty changesets are handled.
+
+> **⚠️ Steering (F-10/F-18):** "Current version" in the release-please manifest means the version in `package.json`. For greenfield packages that have never been published, set the manifest to match `package.json` exactly. Do not guess `"0.0.0"` unless `package.json` says `"0.0.0"`.
 
 ## Guardrails: avoid half-configured release automation
 
@@ -141,34 +195,29 @@ Before editing or validating the workflow, confirm:
 ## Verification before calling the setup done
 
 ### Always run
-- `npm pack --dry-run`
+- `npm pack --dry-run` — verify tarball contents
 - build/test in the same workflow that publishes
 - a check that the intended versioning tool is actually wired, not just installed
 
 ### Auth-specific checks
-- OIDC:
-  - publish job runs on a GitHub-hosted runner
-  - `permissions` include at least `contents: read` and `id-token: write`
-  - `actions/setup-node` points to npmjs
-  - after the first successful publish, verify provenance with `npm audit signatures`
-- Token:
-  - `NPM_TOKEN` exists in repo/org secrets
-  - publish step uses `NODE_AUTH_TOKEN`
-  - if debugging auth, verify with `npm whoami` in a safe CI/local diagnostic path
+
+| Check | OIDC | Token |
+|---|---|---|
+| Runner type | GitHub-hosted | Any |
+| Permissions | `contents: read`, `id-token: write` | N/A |
+| Registry config | `actions/setup-node` → `registry-url: https://registry.npmjs.org` | Same |
+| Secret wiring | None needed (no `NODE_AUTH_TOKEN`) | `NPM_TOKEN` in secrets, `NODE_AUTH_TOKEN` in publish step |
+| Post-publish verify | `npm audit signatures` | `npm whoami` (diagnostic only) |
 
 ### Tool-specific checks
-- semantic-release:
-  - `npx semantic-release --dry-run`
-  - full git history is available
-  - plugin order and baseline tags are sane
-- changesets:
-  - `npx changeset status`
-  - `.changeset/config.json` exists
-  - the release/version PR path matches the chosen template
-- release-please:
-  - config and manifest files both exist
-  - publish is gated on `release_created == 'true'`
-  - bootstrap state matches the current published version
+
+| Tool | Dry-run command | Key files | Critical check |
+|---|---|---|---|
+| semantic-release | `npx semantic-release --dry-run` | `.releaserc` or `release.config.js` | Full git history, baseline tags, plugin order |
+| changesets | `npx changeset status` | `.changeset/config.json` | Release/version PR path matches template |
+| release-please | `release-please release-pr --repo-url=<owner/repo> --token=TOKEN --dry-run` (optional, requires CLI install) | `.release-please-config.json`, `.release-please-manifest.json` | Manifest version matches `package.json`, publish gated on `release_created == 'true'` |
+
+> **⚠️ Steering (F-15):** release-please has no built-in dry-run equivalent to `npx semantic-release --dry-run`. Verify by confirming config + manifest files exist and the manifest version matches `package.json`. The CLI dry-run above is optional and requires `npm i -g release-please`.
 
 ## Recovery routing
 
@@ -194,13 +243,15 @@ If the task is about an existing failure, jump straight to the narrowest referen
 
 ### Public single-package repo, reviewable release gate
 - `references/auth/oidc-trusted-publishing.md`
-- `references/versioning/release-please.md`
-- `references/workflows/oidc-workflows.md` → **3. OIDC + release-please**
+- `references/versioning/release-please.md` or `references/versioning/changesets.md`
+- `references/workflows/oidc-workflows.md` → **3. OIDC + release-please** or **2. OIDC + changesets**
+- `references/security/supply-chain.md`
 
 ### Monorepo / workspaces
 - `references/monorepo/publishing-patterns.md`
 - `references/versioning/changesets.md` (default) or `references/versioning/release-please.md`
 - matching OIDC/token workflow section
+- `references/security/supply-chain.md`
 
 ### Private package, self-hosted runner, or non-GitHub CI
 - `references/auth/granular-tokens.md`
@@ -211,6 +262,21 @@ If the task is about an existing failure, jump straight to the narrowest referen
 - `references/troubleshooting/common-issues.md`
 - auth reference for the current auth mode
 - versioning reference for the current tool
+
+## Steering experiences — quick reference
+
+These are the highest-impact traps found during derailment testing. Each is documented in detail at the relevant decision point above and in the reference files.
+
+| Trap | Impact | What to do |
+|---|---|---|
+| Using `NODE_AUTH_TOKEN`/`NPM_TOKEN` and calling it "OIDC" | P0 — silent wrong auth | OIDC means zero npm secrets. If the publish step has `NODE_AUTH_TOKEN`, it is token auth. |
+| First-publish with OIDC on a package that does not exist on npm yet | P0 — 404 error | Bootstrap: publish once with a granular token, then switch to OIDC. |
+| Picking semantic-release/release-please without conventional commits | P0 compound — blocked | Use changesets if the team will not adopt conventional commits. |
+| Assuming changesets is monorepo-only | P1 — wrong tool choice | changesets works for single-package repos and does not require conventional commits. |
+| Confusing greenfield "will adopt" with existing "does not have" | P1 — wrong guidance | Greenfield can adopt conventional commits (design choice). Existing repos without them need changesets. |
+| Copying config from versioning reference instead of workflow template | P1 — config mismatch | Workflow template is baseline; versioning reference shows customization options. |
+| Using `@v4` action tags in production | P1 — supply-chain risk | Pin to full SHAs with tag comments for production workflows. |
+| Not verifying manifest version matches `package.json` | P1 — release-please misfire | Manifest must match `package.json`. For greenfield, use the `package.json` version exactly. |
 
 ## Final reminder
 
