@@ -46,7 +46,7 @@ echo "🔗 URL:  $PAGE_URL"
 
 # === 6. Example: Extract structured data ===
 # agent-browser get text "#main-content"
-# agent-browser snapshot -i --json | jq '.elements[] | select(.role == "heading")'
+# agent-browser snapshot -i --json | jq '.data.refs | to_entries[] | select(.value.role == "heading")'
 
 # === 7. Final capture ===
 agent-browser screenshot "$SCREENSHOT_DIR/final-${TIMESTAMP}.png"

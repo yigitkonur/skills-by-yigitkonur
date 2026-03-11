@@ -36,8 +36,8 @@ agent-browser snapshot -i --json
 # JSON element data
 agent-browser get text @e1 --json
 
-# Pipe to downstream tools
-agent-browser snapshot -i --json | jq '.elements[] | select(.role == "button")'
+# Pipe to downstream tools — the JSON schema is {success, data: {origin, refs, snapshot}, error}
+agent-browser snapshot -i --json | jq '.data.refs | to_entries[] | select(.value.role == "button")'
 ```
 
 ### Selector Priority (for AI agents)
@@ -216,7 +216,7 @@ agent-browser open https://example.com/products
 agent-browser wait --load networkidle
 
 # Extract data from listing page
-agent-browser snapshot -i --json | jq -r '.elements[] | select(.role == "link") | .text' > products.txt
+agent-browser snapshot -i --json | jq -r '.data.refs | to_entries[] | select(.value.role == "link") | .value.name' > products.txt
 
 # Follow each link and extract detail
 while IFS= read -r product; do
@@ -227,7 +227,7 @@ while IFS= read -r product; do
   DESC=$(agent-browser get text ".description")
   echo "$product|$PRICE|$DESC" >> product-details.csv
   
-  agent-browser go back
+  agent-browser back
   agent-browser wait --load networkidle
   agent-browser snapshot -i
 done < products.txt

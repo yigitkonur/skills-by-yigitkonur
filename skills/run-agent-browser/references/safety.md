@@ -17,7 +17,7 @@ These commands can modify system state, execute arbitrary code, or persist secre
 
 | Command | Risk | Reason |
 |---------|------|--------|
-| `eval` | High | Arbitrary JavaScript execution in page context |
+| `eval` | High | Arbitrary JavaScript execution in page context. Read-only DOM queries (e.g. `document.querySelectorAll('.title').map(...)`) are lower risk but still require approval since they run in the page context and could be affected by malicious page scripts. Scope approval to specific pages and prefer read-only queries over mutations. |
 | `download` | Medium | Writes files to disk |
 | `set credentials` | High | Stores secrets in browser credential store |
 | `cookies set` | Medium | Sets cookies (session hijacking risk) |

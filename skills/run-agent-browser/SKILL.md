@@ -35,6 +35,7 @@ Do not use this skill for:
 
 ### 1) Establish session and baseline
 
+- Verify agent-browser is available before your first command. Run `agent-browser --version` (or `npx agent-browser --version`). If the command is not found, install with `npm install -g agent-browser`.
 - If you may be joining an existing browser context, inspect it first:
 
 ```bash
@@ -64,8 +65,10 @@ agent-browser snapshot -i
 
 ### 3) Inspect before interacting
 
-- Use `snapshot -i` first.
-- Use `snapshot -i --json` when you need structured extraction or machine-readable branching logic.
+- Use `snapshot -i` first. Note: `snapshot -i` shows only interactive elements (links, buttons, inputs, checkboxes). Non-interactive text (headings, paragraphs, spans) is invisible in this view.
+- Use `snapshot -i --json` when you need structured extraction or machine-readable branching logic. The JSON schema is `{success, data: {origin, refs: {refId: {name, role, ...}}, snapshot: string}, error}` — access refs via `.data.refs`, not `.elements[]`.
+- For data extraction from non-interactive text, use `get text CSS_SELECTOR` (must match exactly one element) or `eval --stdin` with a heredoc for multi-element extraction.
+- If expected UI elements are missing from `snapshot -i`, the page may use custom components (dropdowns, popovers, accordions) whose children only appear after clicking the trigger. Click the likely trigger → re-snapshot → verify new elements appeared.
 - Use `screenshot --annotate` only when visual layout, canvas content, or element disambiguation matters.
 - Selector priority:
   1. `@refs` from `snapshot -i`
@@ -79,17 +82,21 @@ agent-browser snapshot -i
 - Chain commands only when you do not need intermediate output.
 - After any action that can change DOM or focus, wait and re-snapshot before reusing refs.
 - Refs are invalid after navigation, SPA route changes, modal expansion, dynamic loading, tab switching, and many form submissions.
+- Use `agent-browser back` to return to the previous page (browser back button). Prefer `back` over re-navigating with `open URL` when you need to preserve history or avoid redundant loads.
+- Note: `check` and `uncheck` return the new checked state (`true`/`false`) rather than `✓ Done`. This is expected.
 
 ### 5) Verify the result before moving on
 
 Use at least one deterministic check after each major interaction:
 - `agent-browser get url`
 - `agent-browser get title`
-- `agent-browser get text REF_OR_SELECTOR`
+- `agent-browser get text REF_OR_SELECTOR` — selector must match exactly one element; for multiple matches use `eval --stdin` with JS
 - `agent-browser get value REF_OR_SELECTOR`
 - `agent-browser is visible REF`
-- `agent-browser is checked REF`
+- `agent-browser is checked REF` — works for both checkboxes and radio buttons
 - `agent-browser diff snapshot`
+- If `snapshot -i` returns `(no interactive elements)` (e.g. after form submission to a raw response page), verify with `get text body` for page content or `get url` / `get title` for navigation confirmation.
+- For visual verification or archival: `agent-browser screenshot /tmp/descriptive-name.png`
 
 Capture screenshots only when you need:
 - visual evidence for a human
@@ -99,7 +106,7 @@ Capture screenshots only when you need:
 
 ### 6) Clean up deliberately
 
-- If you opened auxiliary tabs, close those tabs and return to the original tab.
+- If you opened auxiliary tabs, close them with `agent-browser tab close INDEX` (get the index from `tab` listing) and return to the original tab.
 - If you started isolated sessions, close those sessions when their work is done.
 - If you used persisted state or state files, secure them and avoid leaving secrets behind.
 - If you opened a fresh disposable default session for the task, close it at the end.
@@ -141,6 +148,12 @@ Capture screenshots only when you need:
 ## Recovery paths
 
 - **Ref not found or wrong element:** re-check focus, then `snapshot -i` again. If the page changed, old refs are stale. If the page is crowded, scope the snapshot or use `find`.
+- **Multiple elements match a CSS selector:** `get text CSS_SELECTOR` requires exactly one match (strict mode). For multi-element extraction, use `eval --stdin` with a heredoc to run a JS query:
+  ```bash
+  agent-browser eval --stdin <<'EVALEOF'
+  Array.from(document.querySelectorAll('.item-title')).map(el => el.textContent.trim()).slice(0, 10);
+  EVALEOF
+  ```
 - **Unexpected redirect or login screen:** verify URL and title first, then decide whether to load saved state, use auth vault, or continue with a login flow.
 - **Slow or flaky page:** use explicit waits, increase timeout if needed, then re-snapshot.
 - **Too much snapshot output:** use `snapshot -i`, `snapshot -i --json`, scoped snapshots, or targeted getters instead of full page dumps.
