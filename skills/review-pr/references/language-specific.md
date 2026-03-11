@@ -91,3 +91,14 @@ Common patterns and pitfalls by language. Reference this when reviewing code in 
 - Large table alterations without considering lock time
 
 For each language, apply the relevant checks during cluster review based on the file extensions in the cluster being reviewed.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Language-specific pitfalls are supplements, not replacements.** Always apply the general bug patterns from `references/bug-patterns.md` first, then layer on language-specific checks. Do not skip general review because the PR is "just TypeScript."
+2. **React-specific patterns only apply to React codebases.** Do not flag "missing dependency array" in a Vue or Svelte project. Check the framework before applying framework-specific rules.
+3. **Go error handling patterns differ from JavaScript patterns.** In Go, `if err != nil { return err }` is idiomatic, not a "swallowed error." Do not apply JavaScript error-handling expectations to Go code.
+4. **Python type hints are advisory, not enforced at runtime (unless using a runtime checker like pydantic).** Missing type hints are a suggestion, not a correctness bug. Only flag type issues when they would cause runtime failures.
+
+> **Cross-reference:** See `references/bug-patterns.md` for the framework-agnostic bug patterns to apply first.

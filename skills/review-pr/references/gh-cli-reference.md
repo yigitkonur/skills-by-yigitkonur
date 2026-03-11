@@ -271,3 +271,14 @@ If GitHub MCP server tools are available, prefer them over `gh` CLI commands. Th
 ### Steering note
 
 Use whichever tool access you have. The review quality depends on the data gathered, not the tool used to gather it. If both are available, MCP tools are slightly preferred because they avoid shell escaping issues and work in sandboxed environments.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **MCP tools and gh CLI return identical data -- choose based on environment.** If GitHub MCP server tools are available (e.g., `pull_request_read`, `get_file_contents`), prefer them -- they avoid shell access requirements. If only bash is available, use gh CLI.
+2. **Always use `--json` output for gh CLI commands.** Human-readable output is unparseable for automated review workflows. Every command in this reference has a `--json` variant -- use it.
+3. **Pagination matters for large PRs.** A PR with 100+ changed files or 50+ comments requires pagination parameters (`--per-page`, `--page`). Without pagination, you will miss files or comments and produce an incomplete review.
+4. **The MCP Server Tool Equivalents table at the bottom of this file maps every gh CLI command to its MCP equivalent.** Check there before constructing a new MCP tool call -- the mapping handles parameter name differences between the two interfaces.
+
+> **Cross-reference:** See SKILL.md "Tool access" note for when to prefer MCP tools over gh CLI.

@@ -350,3 +350,15 @@ Not all review feedback is inline code comments. Some PRs have strategic discuss
 ### Steering note
 
 A common mistake is treating conversation-level comments as inline review threads. If a reviewer posts a general comment saying "I think we should use a different approach," that is strategic discussion, not a code-level finding. Summarize it; do not anchor it to a file and line number.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **The most common correlation failure is ignoring bot comments.** Dependabot, CodeQL, and linter bots produce review findings that count as prior review state. Treat them identically to human comments for deduplication.
+2. **Resolved threads are not "gone."** A resolved thread means the participants agreed the issue was addressed. Before re-raising the same concern, re-read the current code to confirm the fix was actually implemented. Only re-raise if the bug is still present.
+3. **General PR comments (not attached to code lines) represent strategic discussion.** Do not try to map them to specific file:line references. Summarize the positions in your review output under a "Team Discussion" heading.
+4. **Thread classification must happen before per-cluster review.** Build the already-reviewed map in Phase 4, not during Phase 6. Skipping Phase 4 leads to duplicate findings -- the single most common review quality failure.
+5. **Mixed human-and-bot review state requires priority ordering.** When a human and a bot flagged the same issue, the human's conclusion takes precedence for deduplication purposes.
+
+> **Cross-reference:** See `references/automation.md` for interpreting bot findings and `references/communication.md` for phrasing when extending or referencing existing threads.

@@ -1067,3 +1067,14 @@ If any check is ⚠️, record it as a **🟡 important** finding and proceed.
 | Post comment | `gh pr comment <N> --repo owner/repo --body "text"` |
 | Post inline comment | `gh api repos/{owner}/{repo}/pulls/{N}/comments -f body="text" -f commit_id="sha" -f path="file" -F line=42 -f side="RIGHT"` |
 | Checkout PR locally | `gh pr checkout <N> --repo owner/repo` |
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Phase ordering is mandatory, not suggestive.** Skipping Phase 1 (Gather Context) and jumping straight to diff analysis is the most common workflow violation. Without context, you cannot validate goals or calibrate severity -- every subsequent finding is less reliable.
+2. **The phase numbering in this file is offset by 1 from SKILL.md.** SKILL.md Phase 1 (Triage) maps to pre-workflow setup. SKILL.md Phase 2 maps to this file's Phase 1 (Gather Context). Consult the Navigation table at the top of this file when cross-referencing.
+3. **Goal validation (this file's Phase 4) is the most frequently skipped phase.** Agents tend to jump from context-gathering to per-file review without confirming that the PR achieves its stated goal. This leads to reviews that are technically correct but miss the biggest risk: "the PR does not do what it claims."
+4. **The cross-cutting sweep (this file's Phase 6) catches issues invisible at the file level.** Schema-consumer mismatches, missing auth on new endpoints, and env-var additions without deploy config are all coordination failures that only appear when you look across clusters.
+
+> **Cross-reference:** See SKILL.md "Default workflow" section for the 8-phase overview and `references/file-clustering.md` for how to structure the cluster review in Phases 5-6.

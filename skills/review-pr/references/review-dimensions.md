@@ -266,3 +266,14 @@ Do NOT run through every checkbox mechanically. Instead:
 - Suggesting architectural refactors that are out of scope for the PR
 
 The goal is a review that the author respects and acts on — not a comprehensive audit of every possible improvement. Prioritize ruthlessly.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Security and correctness are always dimensions 1-2.** Do not reorder the dimensions based on PR type. Even in a "refactor-only" PR, check security and correctness first -- refactors can inadvertently change auth boundaries or error handling.
+2. **For deprecation PRs, dimension 3 (Data Integrity) expands to include backwards compatibility and migration completeness.** Check: are all callers updated? Is there a deprecation warning for callers that were not updated? Is the migration path documented?
+3. **Dimension 7 (Maintainability) is the most over-reported dimension.** Only flag maintainability when it materially affects safety, comprehension of critical paths, or onboarding difficulty. "This could be more readable" is not a review finding unless the current code is actively misleading.
+4. **Each dimension should produce at most 2-3 findings per cluster.** If you are generating more, you are likely being too granular. Batch related issues within a dimension into a single finding.
+
+> **Cross-reference:** See `references/severity-guide.md` for how to calibrate finding severity within each dimension.

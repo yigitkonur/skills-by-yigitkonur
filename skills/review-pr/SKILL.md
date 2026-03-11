@@ -184,7 +184,6 @@ Trace blast radius when the diff changes:
 - It is not just style, lint, or formatter output.
 - It is not already adequately covered by an existing thread.
 - It matches repo conventions rather than importing your own taste.
-- You can point to evidence in the code.
 - You can point to evidence in the code — a specific line, a missing guard, or a concrete failing input. If you cannot, phrase it as a 💡 question instead.
 
 Load if needed:
@@ -233,7 +232,7 @@ If you only have suggestions, do not escalate to request changes.
 - When a team disagreement on approach exists, note both sides and state your technical evidence if you have it, but do not override team consensus.
 - When PR scope judgment depends on context you do not have (product goals, team conventions), ask rather than assert.
 
-**Present the review to the user. Do not submit it to GitHub unless explicitly asked.** Use the compact template from `references/output-templates.md` for PRs under 500 changed lines; use the full template for larger reviews.
+**Present the review to the user. Do not submit it to GitHub unless explicitly asked.** Use the compact template from `references/output-templates.md` for PRs under 500 changed lines with 5 or fewer findings; use the full template for larger PRs or reviews with 6+ findings.
 
 Load if needed:
 - `references/severity-guide.md`

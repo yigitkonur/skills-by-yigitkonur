@@ -103,3 +103,14 @@ When reviewing a deprecation diff:
 2. **Check semantic equivalence** — does the new API return the same value/type as the old one?
 3. **Verify runtime warnings** — are callers notified they are using a deprecated path?
 4. **Check test coverage** — do tests exercise both the old (deprecated) and new paths?
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Reading only the diff without loading the full file is the #1 cause of false-positive findings.** When a diff shows a change inside a function but you cannot see the function signature, variable declarations, or error handling scope -- load the full file before concluding there is a bug.
+2. **Deprecation diffs look different from bug-fix diffs.** In deprecation PRs, the primary change is removal or replacement of API surface. Focus on: are all call sites updated? Is there a migration path? Is there a deprecation warning for call sites outside this PR?
+3. **Cosmetic-vs-behavioral classification must happen before deep review.** If a hunk is purely cosmetic (rename, format, comment), skip it immediately. Do not analyze renamed variables for behavioral impact -- that is wasted review budget.
+4. **Generated file diffs should be skipped entirely.** If the diff includes `*.generated.ts`, `*.pb.go`, or similar generated output, review the source definition file instead. Reviewing generated code line-by-line is anti-productive.
+
+> **Cross-reference:** See `references/file-clustering.md` for how to handle generated code in the clustering phase.

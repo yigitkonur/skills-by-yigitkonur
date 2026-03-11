@@ -194,3 +194,14 @@ Two options:
 ```
 
 Always include both sides of the coordination gap (the change and the unconverted consumer) so the author can see the full picture.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **The most missed cross-cutting issue is "schema changed but consumer did not."** When a database migration or API schema changes, trace every consumer of that schema. Grep for the table/field name across the codebase, not just in the changed files.
+2. **Deprecated accessor/method with live call sites is a cross-cutting concern, not a per-file bug.** When reviewing deprecation PRs, the finding belongs in the cross-cutting sweep (Phase 7), not in per-cluster review. Check for cascading deprecation warnings at runtime.
+3. **Auth boundary changes are invisible in file-level review.** A new endpoint or route may look correct in isolation but lack auth middleware. Always check that new routes go through the same auth pipeline as existing routes in the same service.
+4. **Environment variable additions require deploy-side verification.** A new `process.env.X` in code without a corresponding entry in `.env.example`, deployment config, or documentation is a coordination failure.
+
+> **Cross-reference:** Use `references/file-clustering.md` to identify which clusters need cross-cutting checks between them.
