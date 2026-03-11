@@ -37,37 +37,37 @@ Copy-paste these into any terminal pointed at the page's `_files/` directory.
 ### Custom Properties (Design Tokens)
 ```bash
 # All CSS custom properties
-grep -ohE '--[a-zA-Z0-9-]+' *.css | sort | uniq -c | sort -rn
+grep -ohE -e '--[a-zA-Z0-9-]+' *.css | sort | uniq -c | sort -rn
 
 # Custom property definitions with values
-grep -ohE '--[a-zA-Z0-9-]+:\s*[^;]+' *.css | sort -u
+grep -ohE -e '--[a-zA-Z0-9-]+:\s*[^;}]+' *.css | sort -u
 
 # Color variables specifically
-grep -ohE '--color-[a-zA-Z0-9-]+:\s*[^;]+' *.css | sort -u
+grep -ohE -e '--color-[a-zA-Z0-9-]+:\s*[^;}]+' *.css | sort -u
 
 # Font variables
-grep -ohE '--font-[a-zA-Z0-9-]+:\s*[^;]+' *.css | sort -u
+grep -ohE -e '--font-[a-zA-Z0-9-]+:\s*[^;}]+' *.css | sort -u
 
 # Spacing/size variables
-grep -ohE '--spacing-[a-zA-Z0-9-]+:\s*[^;]+' *.css | sort -u
+grep -ohE -e '--spacing-[a-zA-Z0-9-]+:\s*[^;}]+' *.css | sort -u
 ```
 
 ### Typography
 ```bash
 # All font-family declarations
-grep -ohE 'font-family:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'font-family:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All font-size values
-grep -ohE 'font-size:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'font-size:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All font-weight values
-grep -ohE 'font-weight:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'font-weight:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All line-height values
-grep -ohE 'line-height:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'line-height:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All letter-spacing values
-grep -ohE 'letter-spacing:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'letter-spacing:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 ```
 
 ### Colors
@@ -88,25 +88,25 @@ grep -ohE '(linear|radial|conic)-gradient\([^)]*\)' *.css | sort -u
 ### Spacing
 ```bash
 # All padding values
-grep -ohE 'padding[^:]*:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'padding[^:]*:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All margin values
-grep -ohE 'margin[^:]*:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'margin[^:]*:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All gap values
-grep -ohE 'gap:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'gap:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 ```
 
 ### Layout
 ```bash
 # All grid definitions
-grep -ohE 'grid-template-columns:\s*[^;]+' *.css | sort -u
+grep -ohE 'grid-template-columns:\s*[^;}]+' *.css | sort -u
 
 # All flex directions
-grep -ohE 'flex-direction:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'flex-direction:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All max-width values
-grep -ohE 'max-width:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'max-width:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 ```
 
 ### Responsive
@@ -121,16 +121,16 @@ grep -B0 -A5 '@media' *.css | head -100
 ### Animation
 ```bash
 # All transition properties
-grep -ohE 'transition:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'transition:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All animation properties
-grep -ohE 'animation:\s*[^;]+' *.css | sort -u
+grep -ohE 'animation:\s*[^;}]+' *.css | sort -u
 
 # All @keyframes definitions
 grep -ohE '@keyframes\s+[a-zA-Z0-9_-]+' *.css | sort -u
 
 # All transform values
-grep -ohE 'transform:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'transform:\s*[^;}]+' *.css | grep -v 'uppercase\|capitalize\|lowercase' | sort | uniq -c | sort -rn
 
 # All easing functions
 grep -ohE '(ease|ease-in|ease-out|ease-in-out|cubic-bezier\([^)]+\))' *.css | sort | uniq -c | sort -rn
@@ -139,16 +139,16 @@ grep -ohE '(ease|ease-in|ease-out|ease-in-out|cubic-bezier\([^)]+\))' *.css | so
 ### Other
 ```bash
 # All border-radius values
-grep -ohE 'border-radius:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'border-radius:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All box-shadow values
-grep -ohE 'box-shadow:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'box-shadow:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # All z-index values
-grep -ohE 'z-index:\s*[^;]+' *.css | sort -t: -k2 -n | uniq
+grep -ohE 'z-index:\s*[^;}]+' *.css | sort -t: -k2 -n | uniq
 
 # All opacity values
-grep -ohE 'opacity:\s*[^;]+' *.css | sort | uniq -c | sort -rn
+grep -ohE 'opacity:\s*[^;}]+' *.css | sort | uniq -c | sort -rn
 
 # CSS Module prefix map
 grep -ohE '[A-Z][a-zA-Z]+_[a-zA-Z]+__[a-zA-Z0-9]+' ../page.html | sed 's/_[a-zA-Z]*__[a-zA-Z0-9]*$//' | sort -u
