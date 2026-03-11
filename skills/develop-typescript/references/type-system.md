@@ -380,3 +380,273 @@ npx @typescript/analyze-trace trace
 # Check type coverage
 npx type-coverage --detail --strict
 ```
+
+---
+
+## Variance Annotations (5.0+)
+
+Explicitly declare whether a type parameter is covariant, contravariant, or invariant.
+
+```typescript
+// Covariant — T only in output positions (return types, readonly properties)
+interface Producer<out T> {
+  get(): T;
+  readonly value: T;
+}
+
+// Contravariant — T only in input positions (parameters)
+interface Consumer<in T> {
+  accept(value: T): void;
+}
+
+// Invariant — T in both positions
+interface Processor<in out T> {
+  process(input: T): T;
+}
+```
+
+### Why variance matters
+
+```typescript
+interface Animal { name: string }
+interface Dog extends Animal { breed: string }
+
+// Covariant: Producer<Dog> assignable to Producer<Animal> ✓
+declare const dogProducer: Producer<Dog>;
+const animalProducer: Producer<Animal> = dogProducer; // OK
+
+// Contravariant: Consumer<Animal> assignable to Consumer<Dog> ✓
+declare const animalConsumer: Consumer<Animal>;
+const dogConsumer: Consumer<Dog> = animalConsumer; // OK
+
+// Invariant: neither direction works
+declare const dogProcessor: Processor<Dog>;
+// const animalProcessor: Processor<Animal> = dogProcessor; // Error
+```
+
+**Benefits**: Catches errors at declaration site, documents intent, and can improve type-checking performance.
+
+---
+
+## `satisfies` Operator (5.0+)
+
+Validates an expression against a type without widening its inferred type.
+
+```typescript
+type ColorMap = Record<string, string | number[]>;
+
+// WITHOUT satisfies — widened to string | number[]
+const colors: ColorMap = {
+  red: [255, 0, 0],
+  green: '#00ff00',
+};
+colors.green.toUpperCase(); // Error: string | number[] has no toUpperCase
+
+// WITH satisfies — preserves narrow literal types
+const colors = {
+  red: [255, 0, 0],
+  green: '#00ff00',
+} satisfies ColorMap;
+colors.green.toUpperCase(); // OK — TypeScript knows it's string
+colors.red.map(x => x);    // OK — TypeScript knows it's number[]
+```
+
+### Exhaustive record validation
+
+```typescript
+type Theme = 'light' | 'dark' | 'system';
+
+const themeLabels = {
+  light: 'Light Mode',
+  dark: 'Dark Mode',
+  system: 'System Default',
+} satisfies Record<Theme, string>;
+// Compile error if a theme is missing
+
+type ThemeKey = keyof typeof themeLabels; // 'light' | 'dark' | 'system'
+```
+
+---
+
+## Const Type Parameters (5.0+)
+
+Infer literal types in generic functions without `as const` at the call site.
+
+```typescript
+// WITHOUT const — infers wide types
+function createConfig<T extends Record<string, unknown>>(config: T): T {
+  return config;
+}
+const c1 = createConfig({ mode: 'production', port: 3000 });
+// typeof c1 = { mode: string; port: number }
+
+// WITH const — infers literal types
+function createConfig<const T extends Record<string, unknown>>(config: T): T {
+  return config;
+}
+const c2 = createConfig({ mode: 'production', port: 3000 });
+// typeof c2 = { readonly mode: 'production'; readonly port: 3000 }
+```
+
+---
+
+## `NoInfer<T>` Utility (5.4+)
+
+Prevents a type parameter from being inferred from a specific argument.
+
+```typescript
+function createSignal<T>(value: T, fallback: NoInfer<T>): T {
+  return value ?? fallback;
+}
+
+// T inferred from 'value' only, not 'fallback'
+createSignal('hello', 42);
+// Error: Argument of type 'number' is not assignable to parameter of type 'string'
+```
+
+**Use case**: When multiple parameters share a generic type but you want inference to come from only one of them.
+
+---
+
+## `using` and Disposable Types (5.2+)
+
+Automatic resource cleanup via `Symbol.dispose`.
+
+```typescript
+class TempFile implements Disposable {
+  constructor(public path: string) {}
+
+  [Symbol.dispose]() {
+    fs.unlinkSync(this.path);
+  }
+}
+
+function processData() {
+  using file = new TempFile('/tmp/data.json');
+  // file automatically cleaned up at scope end
+}
+
+// Async version
+class DbConnection implements AsyncDisposable {
+  async [Symbol.asyncDispose]() {
+    await this.close();
+  }
+}
+
+async function query() {
+  await using db = new DbConnection();
+  return db.execute('SELECT 1');
+}
+```
+
+---
+
+## Advanced Template Literal Patterns
+
+### Type-safe event emitter
+
+```typescript
+type EventMap = {
+  userCreated: { userId: string; name: string };
+  orderPlaced: { orderId: string; total: number };
+  error: { code: string; message: string };
+};
+
+type EventHandler<T> = (data: T) => void;
+
+class TypedEmitter<Events extends Record<string, unknown>> {
+  private handlers = new Map<string, Set<Function>>();
+
+  on<K extends keyof Events & string>(
+    event: K,
+    handler: EventHandler<Events[K]>,
+  ): () => void {
+    if (!this.handlers.has(event)) {
+      this.handlers.set(event, new Set());
+    }
+    this.handlers.get(event)!.add(handler);
+    return () => this.handlers.get(event)?.delete(handler);
+  }
+
+  emit<K extends keyof Events & string>(event: K, data: Events[K]): void {
+    this.handlers.get(event)?.forEach(fn => fn(data));
+  }
+}
+
+const emitter = new TypedEmitter<EventMap>();
+emitter.on('userCreated', (data) => {
+  console.log(data.userId); // Typed: { userId: string; name: string }
+});
+```
+
+### Path-based type access
+
+```typescript
+type DeepValue<T, P extends string> =
+  P extends `${infer Head}.${infer Tail}`
+    ? Head extends keyof T
+      ? DeepValue<T[Head], Tail>
+      : never
+    : P extends keyof T
+      ? T[P]
+      : never;
+
+interface AppConfig {
+  server: { host: string; port: number };
+  database: { url: string; pool: { min: number; max: number } };
+}
+
+type DbUrl = DeepValue<AppConfig, 'database.url'>; // string
+type PoolMax = DeepValue<AppConfig, 'database.pool.max'>; // number
+```
+
+---
+
+## Discriminated Union Patterns
+
+### State machines with exhaustive checking
+
+```typescript
+type AuthState =
+  | { status: 'anonymous' }
+  | { status: 'authenticating'; provider: string }
+  | { status: 'authenticated'; user: User; token: string }
+  | { status: 'error'; error: Error; retryCount: number };
+
+function getAuthMessage(state: AuthState): string {
+  switch (state.status) {
+    case 'anonymous':
+      return 'Please log in';
+    case 'authenticating':
+      return `Signing in with ${state.provider}...`;
+    case 'authenticated':
+      return `Welcome, ${state.user.name}`;
+    case 'error':
+      return `Error: ${state.error.message} (attempt ${state.retryCount})`;
+    default: {
+      const _exhaustive: never = state;
+      throw new Error(`Unhandled state: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+}
+```
+
+### Tagged API responses
+
+```typescript
+type ApiResponse<T> =
+  | { status: 'success'; data: T; meta: { total: number; page: number } }
+  | { status: 'error'; code: number; message: string }
+  | { status: 'loading' };
+
+function renderResponse<T>(response: ApiResponse<T>): string {
+  switch (response.status) {
+    case 'success':
+      return `Got ${response.meta.total} results`;
+    case 'error':
+      return `Error ${response.code}: ${response.message}`;
+    case 'loading':
+      return 'Loading...';
+  }
+}
+```

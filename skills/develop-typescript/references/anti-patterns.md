@@ -558,3 +558,331 @@ getUser('post-123' as PostId);     // Error!
 ```
 
 **Why**: TypeScript is structurally typed. Two types with the same shape are interchangeable. Use branded types when you need nominal distinction.
+
+---
+
+## Configuration
+
+### Using `moduleResolution: "node"` with modern bundlers
+
+```typescript
+// BAD — tsconfig.json
+{
+  "compilerOptions": {
+    "moduleResolution": "node"  // Legacy Node.js CJS resolution
+  }
+}
+
+// GOOD — for Vite, webpack, esbuild, Bun
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "module": "ESNext"
+  }
+}
+
+// GOOD — for Node.js ESM
+{
+  "compilerOptions": {
+    "moduleResolution": "node16",
+    "module": "node16"
+  }
+}
+```
+
+**Why**: `"node"` is the legacy CJS-only resolution. It doesn't understand `package.json` `"exports"`, `import` conditions, or ESM features. Use `"bundler"` for bundled apps or `"node16"` for Node.js.
+
+---
+
+### Targeting ES5 when unnecessary
+
+```typescript
+// BAD — generating legacy code for modern environments
+{
+  "compilerOptions": {
+    "target": "ES5",
+    "lib": ["ES5", "DOM"]
+  }
+}
+
+// GOOD — match your deployment target
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  }
+}
+```
+
+**Why**: ES5 output is 2-3x larger, slower, and includes unnecessary polyfill-like code for features natively available in all modern browsers and Node.js 18+.
+
+---
+
+### Not using `verbatimModuleSyntax`
+
+```typescript
+// BAD — ambiguous imports survive compilation
+import { User } from './types'; // Is this a type or a value?
+
+// GOOD — with verbatimModuleSyntax: true
+import type { User } from './types'; // Explicitly type-only
+import { UserService } from './user'; // Explicitly a value
+```
+
+**Why**: Without `verbatimModuleSyntax`, TypeScript silently drops unused imports. With it, you must use `import type` for types, making intent explicit and bundles predictable.
+
+---
+
+## Generics
+
+### Unnecessary generic parameters
+
+```typescript
+// BAD — T adds complexity without value
+function wrap<T>(value: T): { value: T } {
+  return { value };
+}
+// T just flows through — this is correct, but watch for:
+
+// BAD — generic parameter unused in return or relation
+function log<T extends string>(message: T): void {
+  console.log(message);
+}
+
+// GOOD — just use the concrete type
+function log(message: string): void {
+  console.log(message);
+}
+```
+
+**Why**: If the generic parameter only appears once and doesn't relate multiple parameters or the return type, it adds complexity without type safety.
+
+---
+
+### Missing generic constraints
+
+```typescript
+// BAD — T is unconstrained, unsafe property access
+function getName<T>(obj: T): string {
+  return obj.name; // Error: Property 'name' does not exist on type 'T'
+}
+
+// GOOD — constrain T to types with a name property
+function getName<T extends { name: string }>(obj: T): string {
+  return obj.name;
+}
+```
+
+**Why**: Unconstrained generics default to `unknown`. Always constrain with `extends` to document and enforce what T must support.
+
+---
+
+### Overusing generics for simple wrappers
+
+```typescript
+// BAD — generic overkill for a trivial operation
+async function fetchAndParse<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  return res.json() as T; // Unsafe cast!
+}
+
+// GOOD — validate at the boundary
+import { z, type ZodType } from 'zod';
+
+async function fetchAndParse<T>(url: string, schema: ZodType<T>): Promise<T> {
+  const res = await fetch(url);
+  const data: unknown = await res.json();
+  return schema.parse(data); // Runtime-validated
+}
+```
+
+**Why**: `return res.json() as T` is an unsafe type assertion. Pairing generics with runtime validation ensures the type matches reality.
+
+---
+
+## Unsafe Type Narrowing
+
+### Trusting `in` operator without further checks
+
+```typescript
+// BAD — 'name' could exist but be a different type
+function greet(obj: unknown) {
+  if ('name' in (obj as object)) {
+    console.log(obj.name.toUpperCase()); // Runtime error if name is a number
+  }
+}
+
+// GOOD — check both existence and type
+function greet(obj: unknown) {
+  if (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'name' in obj &&
+    typeof (obj as { name: unknown }).name === 'string'
+  ) {
+    console.log((obj as { name: string }).name.toUpperCase());
+  }
+}
+
+// BEST — use a type guard function
+function hasName(obj: unknown): obj is { name: string } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'name' in obj &&
+    typeof (obj as { name: unknown }).name === 'string'
+  );
+}
+```
+
+**Why**: The `in` operator only checks property existence, not its type. Always verify the property type after confirming it exists.
+
+---
+
+### Non-null assertion (`!`) without proof
+
+```typescript
+// BAD — asserting non-null when it might be null
+function getFirstUser(users: User[]): User {
+  return users[0]!; // Might be undefined for empty array
+}
+
+// GOOD — handle the case
+function getFirstUser(users: User[]): User | undefined {
+  return users[0];
+}
+
+// OR — assert with a runtime check
+function getFirstUser(users: User[]): User {
+  const first = users[0];
+  if (!first) throw new Error('No users found');
+  return first;
+}
+```
+
+**Why**: `!` tells TypeScript "trust me, this isn't null." If you're wrong, you get a runtime crash with no type error to warn you.
+
+---
+
+## Promises and Async
+
+### Floating promises (no await, no void)
+
+```typescript
+// BAD — promise result is silently ignored
+async function main() {
+  riskyOperation(); // No await! Errors swallowed silently
+}
+
+// GOOD — await the result
+async function main() {
+  await riskyOperation();
+}
+
+// OR — explicitly ignore with void
+async function main() {
+  void logAnalytics(event); // Intentionally fire-and-forget
+}
+```
+
+**Why**: A floating promise means unhandled rejections crash silently. ESLint rule `@typescript-eslint/no-floating-promises` catches this.
+
+---
+
+### `async` function returning explicit `new Promise()`
+
+```typescript
+// BAD — unnecessary Promise constructor
+async function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// GOOD — just return the Promise (no async needed)
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+```
+
+**Why**: An `async` function already wraps its return in a Promise. Wrapping a `new Promise()` inside `async` creates a redundant extra promise.
+
+---
+
+## Objects and Types
+
+### Using `{}` as a type
+
+```typescript
+// BAD — {} matches any non-null/non-undefined value
+function process(data: {}) {
+  console.log(data); // Accepts strings, numbers, arrays — not just objects
+}
+
+process('hello'); // No error!
+process(42);      // No error!
+
+// GOOD — be explicit
+function process(data: Record<string, unknown>) {
+  console.log(data); // Only accepts objects
+}
+
+// OR — use the specific shape
+function process(data: { name: string; value: number }) {
+  console.log(data);
+}
+```
+
+**Why**: `{}` in TypeScript means "anything that isn't `null` or `undefined`" — not "empty object." Use `Record<string, unknown>` for objects with unknown keys, or a specific interface.
+
+---
+
+### Using `Object.keys()` unsafely
+
+```typescript
+// BAD — Object.keys returns string[], not (keyof T)[]
+interface User { name: string; email: string }
+const user: User = { name: 'Alice', email: 'alice@test.com' };
+
+Object.keys(user).forEach(key => {
+  console.log(user[key]); // Error: No index signature
+});
+
+// GOOD — typed helper or explicit cast
+function typedKeys<T extends object>(obj: T): (keyof T)[] {
+  return Object.keys(obj) as (keyof T)[];
+}
+
+typedKeys(user).forEach(key => {
+  console.log(user[key]); // OK
+});
+
+// OR — use Object.entries
+Object.entries(user).forEach(([key, value]) => {
+  console.log(`${key}: ${value}`);
+});
+```
+
+**Why**: TypeScript deliberately types `Object.keys()` as `string[]` because objects can have extra properties at runtime due to structural typing.
+
+---
+
+### Confusing `interface` and `type` usage
+
+```typescript
+// BAD — using interface for a union or utility
+interface Status {} // Can't be a union!
+
+// GOOD — use type for unions, intersections, utilities
+type Status = 'active' | 'inactive' | 'pending';
+type Nullable<T> = T | null;
+type UserUpdate = Partial<Pick<User, 'name' | 'email'>>;
+
+// BAD — using type for an extendable object shape
+type Animal = { name: string };
+type Dog = Animal & { breed: string }; // Works but slower
+
+// GOOD — use interface for extendable shapes
+interface Animal { name: string }
+interface Dog extends Animal { breed: string } // Faster, cacheable
+```
+
+**Why**: `interface` is cached by the type checker and supports `extends` and declaration merging. `type` is required for unions, intersections, mapped types, and conditional types.

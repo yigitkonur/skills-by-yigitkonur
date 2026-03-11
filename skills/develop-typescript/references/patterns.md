@@ -395,3 +395,280 @@ expectTypeOf<User['id']>().toBeString();
 type SuccessResult = Extract<Result<User>, { success: true }>;
 expectTypeOf<SuccessResult>().toHaveProperty('data');
 ```
+
+---
+
+## `satisfies` Patterns
+
+### Exhaustive config validation
+
+```typescript
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+const logColors = {
+  debug: '\x1b[36m',
+  info: '\x1b[32m',
+  warn: '\x1b[33m',
+  error: '\x1b[31m',
+} satisfies Record<LogLevel, string>;
+// Compile error if a log level is missing
+// Each value is typed as its literal string, not just 'string'
+```
+
+### Preserving literal types in maps
+
+```typescript
+const apiEndpoints = {
+  getUser: { method: 'GET', path: '/users/:id' },
+  createUser: { method: 'POST', path: '/users' },
+  deleteUser: { method: 'DELETE', path: '/users/:id' },
+} satisfies Record<string, { method: string; path: string }>;
+
+// apiEndpoints.getUser.method is 'GET' (literal), not string
+type GetUserMethod = typeof apiEndpoints.getUser.method; // 'GET'
+```
+
+---
+
+## Pipe and Compose
+
+Type-safe function composition.
+
+```typescript
+// Type-safe pipe — each function's input must match the previous output
+function pipe<A, B>(fn1: (a: A) => B): (a: A) => B;
+function pipe<A, B, C>(fn1: (a: A) => B, fn2: (b: B) => C): (a: A) => C;
+function pipe<A, B, C, D>(
+  fn1: (a: A) => B,
+  fn2: (b: B) => C,
+  fn3: (c: C) => D,
+): (a: A) => D;
+function pipe(...fns: Function[]) {
+  return (input: unknown) => fns.reduce((acc, fn) => fn(acc), input);
+}
+
+// Usage
+const processUser = pipe(
+  (id: string) => ({ id, name: 'Unknown' }),
+  (user) => ({ ...user, name: user.name.toUpperCase() }),
+  (user) => `User: ${user.name} (${user.id})`,
+);
+
+const result = processUser('123'); // string
+```
+
+### Async pipe
+
+```typescript
+type AsyncFn<A, B> = (a: A) => Promise<B>;
+
+async function asyncPipe<A, B, C>(
+  input: A,
+  fn1: AsyncFn<A, B>,
+  fn2: AsyncFn<B, C>,
+): Promise<C> {
+  const b = await fn1(input);
+  return fn2(b);
+}
+
+const result = await asyncPipe(
+  'user-123',
+  async (id) => fetchUser(id),
+  async (user) => enrichWithPermissions(user),
+);
+```
+
+---
+
+## State Machine Pattern
+
+Model valid state transitions at the type level.
+
+```typescript
+type OrderState =
+  | { status: 'draft'; items: Item[] }
+  | { status: 'submitted'; items: Item[]; submittedAt: Date }
+  | { status: 'paid'; items: Item[]; submittedAt: Date; paidAt: Date; amount: number }
+  | { status: 'shipped'; items: Item[]; trackingNumber: string }
+  | { status: 'cancelled'; reason: string };
+
+// Only valid transitions
+function submitOrder(order: Extract<OrderState, { status: 'draft' }>):
+  Extract<OrderState, { status: 'submitted' }> {
+  return {
+    status: 'submitted',
+    items: order.items,
+    submittedAt: new Date(),
+  };
+}
+
+function payOrder(
+  order: Extract<OrderState, { status: 'submitted' }>,
+  amount: number,
+): Extract<OrderState, { status: 'paid' }> {
+  return {
+    status: 'paid',
+    items: order.items,
+    submittedAt: order.submittedAt,
+    paidAt: new Date(),
+    amount,
+  };
+}
+
+// Invalid transitions are compile errors
+// payOrder(draftOrder, 100); // Error: 'draft' not assignable to 'submitted'
+```
+
+---
+
+## Type-Safe API Client
+
+Build type-safe HTTP clients from route definitions.
+
+```typescript
+interface ApiRoutes {
+  'GET /users': { response: User[]; query: { page?: number; limit?: number } };
+  'GET /users/:id': { response: User; params: { id: string } };
+  'POST /users': { response: User; body: { name: string; email: string } };
+  'PUT /users/:id': { response: User; params: { id: string }; body: Partial<User> };
+  'DELETE /users/:id': { response: void; params: { id: string } };
+}
+
+type RouteConfig<R extends keyof ApiRoutes> = ApiRoutes[R];
+
+type ExtractMethod<R extends string> = R extends `${infer M} ${string}` ? M : never;
+type ExtractPath<R extends string> = R extends `${string} ${infer P}` ? P : never;
+
+async function apiCall<R extends keyof ApiRoutes>(
+  route: R,
+  ...args: 'params' extends keyof RouteConfig<R>
+    ? ['body' extends keyof RouteConfig<R>
+        ? { params: RouteConfig<R>['params']; body: RouteConfig<R>['body'] }
+        : { params: RouteConfig<R>['params'] }]
+    : 'body' extends keyof RouteConfig<R>
+      ? [{ body: RouteConfig<R>['body'] }]
+      : []
+): Promise<RouteConfig<R>['response']> {
+  // implementation
+  return {} as any;
+}
+
+// Usage — fully typed
+const users = await apiCall('GET /users');                    // User[]
+const user = await apiCall('GET /users/:id', { params: { id: '1' } }); // User
+const newUser = await apiCall('POST /users', { body: { name: 'A', email: 'a@b.com' } });
+```
+
+---
+
+## Type-Safe Event Emitter
+
+```typescript
+type EventMap = Record<string, unknown>;
+
+class Emitter<Events extends EventMap> {
+  private listeners = new Map<string, Set<Function>>();
+
+  on<K extends keyof Events & string>(
+    event: K,
+    listener: (data: Events[K]) => void,
+  ): () => void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(listener);
+    return () => { this.listeners.get(event)?.delete(listener); };
+  }
+
+  emit<K extends keyof Events & string>(event: K, data: Events[K]): void {
+    this.listeners.get(event)?.forEach(fn => fn(data));
+  }
+}
+
+// Usage
+interface AppEvents {
+  login: { userId: string; timestamp: Date };
+  logout: { userId: string };
+  error: { code: number; message: string };
+}
+
+const bus = new Emitter<AppEvents>();
+bus.on('login', (data) => console.log(data.userId)); // Typed
+bus.emit('error', { code: 500, message: 'Server error' }); // Typed
+```
+
+---
+
+## Branded Types for Domain Modeling
+
+```typescript
+declare const __brand: unique symbol;
+type Brand<T, B extends string> = T & { readonly [__brand]: B };
+
+// Domain types
+type UserId = Brand<string, 'UserId'>;
+type OrderId = Brand<string, 'OrderId'>;
+type Email = Brand<string, 'Email'>;
+type PositiveInt = Brand<number, 'PositiveInt'>;
+
+// Smart constructors with validation
+function UserId(raw: string): UserId {
+  if (!raw.startsWith('usr_')) throw new Error('Invalid UserId format');
+  return raw as UserId;
+}
+
+function Email(raw: string): Email {
+  if (!raw.includes('@')) throw new Error('Invalid email');
+  return raw as Email;
+}
+
+function PositiveInt(raw: number): PositiveInt {
+  if (!Number.isInteger(raw) || raw <= 0) throw new Error('Must be positive integer');
+  return raw as PositiveInt;
+}
+
+// Can't accidentally swap branded types
+function sendEmail(to: Email, userId: UserId): void {}
+sendEmail(Email('a@b.com'), UserId('usr_123')); // OK
+// sendEmail(UserId('usr_123'), Email('a@b.com')); // Error!
+```
+
+---
+
+## Mapped Type Transformations
+
+### Make all methods async
+
+```typescript
+type Asyncify<T> = {
+  [K in keyof T]: T[K] extends (...args: infer A) => infer R
+    ? (...args: A) => Promise<Awaited<R>>
+    : T[K];
+};
+
+interface SyncService {
+  getUser(id: string): User;
+  deleteUser(id: string): void;
+  name: string;
+}
+
+type AsyncService = Asyncify<SyncService>;
+// {
+//   getUser(id: string): Promise<User>;
+//   deleteUser(id: string): Promise<void>;
+//   name: string;
+// }
+```
+
+### Get only methods from an interface
+
+```typescript
+type MethodKeys<T> = {
+  [K in keyof T]: T[K] extends Function ? K : never;
+}[keyof T];
+
+type Methods<T> = Pick<T, MethodKeys<T>>;
+
+type UserMethods = Methods<UserService>;
+// Only the method signatures, no properties
+```
