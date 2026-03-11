@@ -363,3 +363,26 @@ Systems thinking is powerful but not always appropriate. Use simpler methods whe
 - Leverage points (ranked by Meadows' hierarchy)
 - Recommended intervention sequence (quick wins first, paradigm shifts last)
 - System-level risks and mitigations
+
+
+## Steering experiences
+
+### SE-01: Full systems map built for a local problem
+**What happens:** Agent draws a complete causal loop diagram with 15 variables for a problem that involves 3 components. The map is accurate but the effort was disproportionate.
+**Why it happens:** Systems thinking tools are powerful and engaging. Agents enjoy building comprehensive maps even when the problem is simple.
+**Prevention:** Start with the smallest system boundary that contains the problem. If the causal chain has fewer than 4 nodes, a simple dependency list is enough -- skip the full CLD.
+
+### SE-02: Feedback loops identified but not classified
+**What happens:** Agent identifies 3 feedback loops in the system but does not label them as reinforcing (R) or balancing (B). Without classification, the leverage analysis is guesswork.
+**Why it happens:** Identifying loops feels like the hard part. Classification feels like bookkeeping.
+**Prevention:** Every loop must be labeled R (reinforcing -- amplifies change) or B (balancing -- resists change). The label determines whether intervention should amplify, dampen, or break the loop.
+
+### SE-03: Interventions target low-leverage points
+**What happens:** Agent recommends fixing a parameter (e.g., increase the timeout) instead of changing the feedback structure that causes the timeout to be insufficient.
+**Why it happens:** Parameter changes are easy to implement and easy to recommend. Structural changes feel risky.
+**Prevention:** Use Meadows leverage hierarchy: parameters < buffers < feedback loops < rules < goals < paradigms. If the recommended intervention is a parameter change, ask: "Is there a higher-leverage point that would make this parameter irrelevant?"
+
+### SE-04: Overcomplexity -- the map becomes the deliverable
+**What happens:** The systems map grows to 20+ nodes with detailed annotations. The agent spends most of the time maintaining the map rather than extracting actionable insights.
+**Why it happens:** Map-building feels productive. There is no stopping rule in the template.
+**Prevention:** The deliverable is the intervention recommendation, not the map. The map is a tool. If the map has more than 12 nodes, you are probably mapping more system than the problem requires. Prune to the boundary of influence.

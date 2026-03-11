@@ -20,16 +20,20 @@ Load only what your current task needs. Start with 1-2 files, not all.
 
 | File | Lines | Use when | Key additions |
 |---|---|---|---|
-| `01-intake-and-framing.md` | 308 | Request is vague or overloaded | 5W2H, intake questionnaire, SMART goals, stakeholder mapping, worked example |
-| `02-root-cause-and-problem-solving.md` | 422 | Recurring failures or disagreement on causes | 5 Whys, fishbone template, fault tree analysis, hypothesis-driven RCA, blameless postmortem |
-| `03-option-design-and-decision-quality.md` | 396 | Multiple options and trade-offs | Weighted decision matrix, ADR template, pros/cons framework, tech comparison, reversibility classification |
-| `04-prioritization-and-sequencing.md` | 381 | Too much work, limited time | RICE scoring, MoSCoW, ICE scoring, WIP limits, dependency mapping, estimation guidance |
-| `05-systems-thinking.md` | 365 | Side effects and dependencies dominate | Causal loop diagrams, stock/flow models, Meadows leverage points, system archetypes |
-| `06-technical-strategy-and-architecture.md` | 328 | Technical direction or architecture uncertainty | ADR format, fitness functions, technical debt quadrant, build/buy/OSS, migration patterns |
-| `07-communication-and-alignment.md` | 364 | Stakeholder alignment and feedback quality | RACI matrix, communication plan, decision log, meeting templates, RFC structure |
-| `08-execution-risk-and-learning.md` | 298 | Delivery uncertainty and adaptation needed | Risk register, pre-mortem, retrospective formats, pivot triggers, incident response |
-| `09-thinking-methods-catalog.md` | 320 | Need method evaluation and chooser guidance | Selection flowchart, anti-patterns table, quick-reference card, 28 methods |
+| `01-intake-and-framing.md` | 336 | Request is vague or overloaded | 5W2H, intake questionnaire, SMART goals, stakeholder mapping, worked example, steering experiences |
+| `02-root-cause-and-problem-solving.md` | 445 | Recurring failures or disagreement on causes | 5 Whys, fishbone template, fault tree analysis, hypothesis-driven RCA, blameless postmortem, steering experiences |
+| `03-option-design-and-decision-quality.md` | 424 | Multiple options and trade-offs | Weighted decision matrix, ADR template, pros/cons framework, tech comparison, reversibility classification, steering experiences |
+| `04-prioritization-and-sequencing.md` | 404 | Too much work, limited time | RICE scoring, MoSCoW, ICE scoring, WIP limits, dependency mapping, estimation guidance, steering experiences |
+| `05-systems-thinking.md` | 388 | Side effects and dependencies dominate | Causal loop diagrams, stock/flow models, Meadows leverage points, system archetypes, steering experiences |
+| `06-technical-strategy-and-architecture.md` | 356 | Technical direction or architecture uncertainty | ADR format, fitness functions, technical debt quadrant, build/buy/OSS, migration patterns, steering experiences |
+| `07-communication-and-alignment.md` | 387 | Stakeholder alignment and feedback quality | RACI matrix, communication plan, decision log, meeting templates, RFC structure, steering experiences |
+| `08-execution-risk-and-learning.md` | 326 | Delivery uncertainty and adaptation needed | Risk register, pre-mortem, retrospective formats, pivot triggers, incident response, steering experiences |
+| `09-thinking-methods-catalog.md` | 348 | Need method evaluation and chooser guidance | Selection flowchart, anti-patterns table, quick-reference card, 28 methods, steering experiences |
+
+## Steering experiences
+
+Every reference file now includes a "Steering experiences" section at the end. These are real execution mistakes discovered through derailment testing -- common traps agents fall into when using the templates and methods in each file. Read them when you load a reference file.
 
 ## Total reference content
 
-~3,182 lines across 9 domain files. Average ~354 lines per file.
+~3,414 lines across 9 domain files. Average ~379 lines per file.
