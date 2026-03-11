@@ -1,5 +1,7 @@
 # Integration Patterns — CrabNebula DevTools
 
+> ⚠️ **Steering:** This reference covers advanced integration scenarios. Most projects need Pattern 1 (basic) from installation-and-config.md. Only load this reference if you're dealing with: (a) `tauri-plugin-log` coexistence, (b) custom tracing subscribers, (c) conditional compilation beyond `#[cfg(debug_assertions)]`, or (d) multi-subscriber architectures.
+
 ## Using DevTools with tauri-plugin-log
 
 ### The Problem
@@ -7,6 +9,8 @@
 `tauri-plugin-log` and CrabNebula DevTools both want to be the tracing/log subscriber. If you naively register both, they conflict — events may go to one subscriber but not the other. The solution is the **split pattern**.
 
 ### The split() Pattern (Recommended)
+
+> ⚠️ **Steering:** The `split()/attach_logger()` pattern is MANDATORY when `tauri-plugin-log` is present. There is no alternative. Agents in testing tried to: (a) remove tauri-plugin-log (broke existing features), (b) initialize both independently (got PluginInitialization error), (c) use a custom subscriber bridge (unnecessary complexity). The split pattern is the only supported approach.
 
 The `tauri-plugin-log::Builder::new().split()` method separates the log plugin into three components:
 1. The Tauri plugin instance (handles webview-side log display)
@@ -130,6 +134,8 @@ There is no `#[cfg(dev)]` in standard Rust. Don't use it. If you see it in other
 
 ### Feature Flags — Use for Optional Debug Dependencies
 
+> ⚠️ **Steering:** Use `#[cfg(debug_assertions)]` as the default gate, not `#[cfg(feature = "devtools")]`. Feature flags add complexity that most projects don't need. Only use feature flags when you need DevTools in specific non-debug builds (e.g., CI profiling runs). In testing, agents defaulted to feature flags, which caused "DevTools not found" errors when users forgot to enable the feature.
+
 ```toml
 # Cargo.toml
 [features]
@@ -207,6 +213,8 @@ async fn create_user(name: &str) -> Result<User, Error> {
 ```
 
 ### Manual Spans (without attribute macro)
+
+> ⚠️ **Steering:** When adding custom spans to inline code (not a separate function), use manual spans: `let _guard = tracing::info_span!("section_name").entered();`. The `_guard` variable name with underscore prefix is intentional — it prevents Clippy warnings while keeping the span alive for the duration of the scope. Without the guard binding, the span is immediately dropped.
 
 For more control, create spans manually:
 

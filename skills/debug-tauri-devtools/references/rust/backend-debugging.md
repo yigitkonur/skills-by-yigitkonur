@@ -1,8 +1,12 @@
 # Rust Backend Debugging — Tauri DevTools
 
+> ⚠️ **Steering:** This reference is loaded when the problem is in Rust command handlers — state management, serialization, async, or panics. Before diving into handler code, always check the Calls tab first (or terminal tracing output for AI agents). The Calls tab shows the exact Arguments and Response, which eliminates 60% of serde-related hypotheses without reading source code.
+
 ## Debugging Command Handlers
 
 ### Adding Instrumentation to Commands
+
+> ⚠️ **Steering:** Before adding `#[tracing::instrument]`, verify `tracing = "0.1"` is in `[dependencies]` in `Cargo.toml`. In derailment testing, agents added instrument attributes without the dependency, causing compile errors that were misdiagnosed as Tauri issues. Also add `use tracing::Instrument;` if using `.instrument()` on async blocks.
 
 Every `#[tauri::command]` function automatically gets an IPC span in DevTools. To see what happens inside the handler, add `#[tracing::instrument]`:
 
@@ -95,6 +99,8 @@ tauri::Builder::default()
 
 ### Debugging Deadlocks
 
+> ⚠️ **Steering:** When diagnosing state issues, check if the handler uses `State<Mutex<T>>` — this is the #1 deadlock pattern in Tauri apps. If two commands lock the same mutex, one will hang. The Calls tab will show the second command with an ever-increasing Duration and no Response.
+
 ```rust
 // BAD: Potential deadlock — locking two mutexes in different order
 #[tauri::command]
@@ -152,6 +158,8 @@ async fn debug_locks(state: tauri::State<'_, Arc<Mutex<Data>>>) -> Result<(), St
 
 ### Diagnosing Serialization Issues with DevTools
 
+> ⚠️ **Steering:** The Calls tab Arguments column shows the EXACT JSON the frontend sent. Compare this directly with the Rust struct's `Deserialize` implementation. In testing, agents tried to debug serde from source code alone when the answer was visible in the Calls tab — the frontend was sending `camelCase` but the struct expected `snake_case`.
+
 1. Open the **Calls tab** in DevTools
 2. Find the failing command invocation
 3. Examine the **Arguments** column — this shows the raw JSON the frontend sent
@@ -187,6 +195,8 @@ cargo expand --lib -- UserInput
 ## Debugging Async Issues
 
 ### Blocking the Async Runtime
+
+> ⚠️ **Steering:** ANY synchronous call >1ms inside an async handler blocks the ENTIRE Tokio runtime. This affects ALL concurrent commands, not just the blocking one. The Calls tab will show multiple commands with inflated durations. Use `tokio::task::spawn_blocking()` to move sync work off the runtime thread.
 
 ```rust
 // BAD: std::fs blocks the tokio runtime thread
