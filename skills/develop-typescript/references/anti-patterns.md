@@ -886,3 +886,163 @@ interface Dog extends Animal { breed: string } // Faster, cacheable
 ```
 
 **Why**: `interface` is cached by the type checker and supports `extends` and declaration merging. `type` is required for unions, intersections, mapped types, and conditional types.
+
+
+---
+
+## Checked vs unchecked `as` — the critical distinction
+
+### Unchecked `as` (almost always wrong)
+
+An unchecked `as` is a type assertion with no runtime validation before it. The compiler trusts you blindly.
+
+```typescript
+// BAD — unchecked as
+const user = data as User; // No proof that data is actually a User
+user.name.toUpperCase();   // Runtime crash if data has no .name
+```
+
+### Checked `as` (acceptable)
+
+A checked `as` follows a runtime guard that proves the type. The `as` just tells the compiler what you already verified.
+
+```typescript
+// GOOD — checked as (runtime guard precedes the cast)
+if (data !== null && typeof data === "object" && "name" in data && typeof data.name === "string") {
+  const user = data as User; // checked — runtime proves shape
+  user.name.toUpperCase();   // safe
+}
+```
+
+### Decision rule
+
+| Situation | What to do |
+|---|---|
+| No runtime check before `as` | Replace with `unknown` + type guard |
+| Runtime check exists before `as` | Acceptable — add `// checked` comment |
+| `as unknown as X` (double assertion) | Almost always a design error — refactor the types |
+| `as const` | Always fine — not a type assertion, it narrows to literal |
+
+---
+
+## `@ts-ignore` vs `@ts-expect-error`
+
+Both suppress TypeScript errors on the next line. The critical difference:
+
+| Directive | Behavior when error disappears | Use when |
+|---|---|---|
+| `@ts-ignore` | **Silently does nothing** — suppression stays forever, hiding future bugs | **Never** — there is no valid use case in new code |
+| `@ts-expect-error` | **Reports an error** — tells you the suppression is no longer needed | Temporarily suppressing a known issue with a tracking comment |
+
+```typescript
+// BAD — @ts-ignore hides the problem forever
+// @ts-ignore
+const x: number = "hello"; // silently wrong
+
+// GOOD — @ts-expect-error alerts when fix lands
+// @ts-expect-error — upstream type is wrong, tracked in issue #123
+const x: number = upstreamFn(); // will error when upstream fixes their types
+```
+
+**In review mode:** Flag every `@ts-ignore` as P0. Suggest replacing with `@ts-expect-error` plus a tracking comment (issue link or explanation).
+
+---
+
+## Cross-realm `instanceof` — when it legitimately fails
+
+`instanceof` checks the prototype chain. Objects from different JavaScript realms (iframes, Web Workers, `vm.runInNewContext`, structuredClone) have different prototype chains, so `instanceof` returns `false` even for "correct" types.
+
+```typescript
+// This fails across realms:
+if (error instanceof Error) { /* may be false for errors from iframes */ }
+
+// GOOD — structural check (works across realms)
+function isError(value: unknown): value is Error {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "message" in value &&
+    typeof (value as Record<string, unknown>).message === "string"
+  );
+}
+
+// GOOD — brand check pattern
+const ERROR_BRAND = Symbol.for("app.Error");
+interface BrandedError {
+  [ERROR_BRAND]: true;
+  message: string;
+  code: string;
+}
+
+function isBrandedError(value: unknown): value is BrandedError {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ERROR_BRAND in value
+  );
+}
+```
+
+**When to use structural checks vs instanceof:**
+
+| Context | Recommendation |
+|---|---|
+| Single-realm application (most apps) | `instanceof` is fine |
+| Library code (consumed by unknown contexts) | Use structural checks |
+| Worker/iframe communication | Use structural or brand checks |
+| `structuredClone` results | Use structural checks (prototype lost) |
+
+---
+
+## Lint config conflict resolution
+
+When the project's lint config contradicts type-safety rules:
+
+### Discovery
+
+```bash
+# Check if strict type rules are disabled
+grep -n "no-explicit-any\|no-unsafe\|no-floating-promises" .eslintrc* eslint.config* biome.json 2>/dev/null
+```
+
+### Resolution matrix
+
+| Conflict | Project disables rule | Skill recommends rule | Action |
+|---|---|---|---|
+| `no-explicit-any: off` | Gradual migration | Always on | Flag as informational, enable for new files only |
+| `no-unsafe-assignment: off` | Too many existing violations | Always on | Respect for existing code, enforce in new code |
+| `no-floating-promises: off` | Not using async heavily | Always on | Recommend enabling — floating promises are bugs |
+| Custom rule conflicts | Project-specific needs | Skill defaults | Respect project config, document deviation |
+
+### Key principle
+
+The skill's anti-pattern blocklist (`any`, `@ts-ignore`, unchecked `as`) applies to **new code** regardless of lint config. For **existing code** under review, respect the project's configuration and flag deviations as informational recommendations.
+
+---
+
+## Review-mode scanning checklist
+
+When reviewing TypeScript code, scan for these items in order:
+
+### P0 — Must block approval
+
+- [ ] Bare `any` in new or modified code (not in unchanged existing code)
+- [ ] `@ts-ignore` anywhere (should be `@ts-expect-error`)
+- [ ] Unchecked `as` — type assertion without preceding runtime guard
+- [ ] Missing error narrowing in `catch` blocks (bare `catch(e)` using `e.message` without check)
+- [ ] `!` (non-null assertion) on values that could legitimately be null
+
+### P1 — Should fix before merge
+
+- [ ] Missing return type on exported functions
+- [ ] `as unknown as X` (double assertion — usually indicates a design problem)
+- [ ] Implicit `any` from untyped imports (missing `@types/*` package)
+- [ ] `Function` type used instead of specific signature
+- [ ] `object` type used instead of `Record<string, unknown>` or specific shape
+
+### P2 — Nit (mention but don't block)
+
+- [ ] `satisfies` opportunity missed on config objects
+- [ ] Type annotation where inference would suffice (over-annotation)
+- [ ] Verbose type guard where `in` operator would suffice
+- [ ] Missing `readonly` on properties that are never reassigned

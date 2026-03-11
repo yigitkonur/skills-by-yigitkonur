@@ -1,150 +1,176 @@
 ---
 name: develop-typescript
-description: Use skill if you are writing or reviewing framework-agnostic TypeScript and need strict typing, tsconfig/lint decisions, safer refactors, or guidance on generics, unions, and typed boundaries.
+description: >-
+  Use skill if you are writing or reviewing framework-agnostic TypeScript and need strict typing,
+  tsconfig/lint decisions, safer refactors, or guidance on generics, unions, and typed boundaries.
 ---
 
 # Develop TypeScript
 
-Language-level steering for TypeScript work. Use this skill to decide how code should be typed, modeled, configured, and reviewed. Keep framework-specific architecture out of this skill.
+Write, review, or refactor framework-agnostic TypeScript with strict type safety, correct tsconfig,
+and idiomatic patterns.
 
 ## Trigger boundary
 
-### Activate when
+Use this skill when:
 
-- Writing, refactoring, or reviewing `.ts`, `.tsx`, `.mts`, `.cts`, or `.d.ts`
-- Debugging compiler errors, inference failures, overload problems, or module-resolution mismatches
-- Tightening `tsconfig.json`, TypeScript-aware linting, or library type-check/build setup
-- Migrating JavaScript or loose TypeScript toward strict mode
-- Choosing between unions, overloads, generics, branded types, type guards, schema validation, or newer TS 5.x features
+- writing new TypeScript code that must be strictly typed
+- reviewing existing TypeScript for type safety, anti-patterns, or missing narrowing
+- configuring or auditing tsconfig.json and linting rules
+- migrating JavaScript to TypeScript (or upgrading TS versions)
+- diagnosing and resolving type errors, inference failures, or performance issues
 
-### Do not activate when
+Do not use this skill when:
 
-- The main task is framework-specific app structure, routing, server actions, or component architecture
-- The main task is broad PR review across many languages or files
-- The main task is runtime debugging without a TypeScript typing or configuration question
-- The task only needs formatting, naming, or style cleanup
+- the task is primarily React/Vue/Angular component work (use framework-specific skills)
+- the task is exclusively about Node.js runtime APIs (use a Node.js skill)
+- the task is about build tooling only (use tooling-specific skills)
 
-## Default workflow
+## Definitions
 
-1. **Classify the job first and load the smallest relevant reference set.**
-   - Type modeling, inference, advanced types → `references/type-system.md`
-   - Unsafe code, brittle review findings, common mistakes → `references/anti-patterns.md`
-   - Result/state/validation patterns → `references/patterns.md`
-   - Error hierarchy, safe catch, boundary validation → `references/error-handling.md`
-   - `tsconfig.json`, strict flags, module settings → `references/strict-config.md`
-   - Build, lint, runtime, library packaging → `references/tooling.md`
-   - JS to TS or CJS to ESM migration → `references/migration.md`
-   - Slow type checking, circular deps, watch performance → `references/performance.md`
-   - Type tests and `@ts-expect-error` usage → `references/testing.md`
-   - TS 5.x feature selection → `references/modern-features.md`
+- **Load** — read the file into working context so you can reference its content
+- **Checked `as`** — a cast following a runtime guard that proves the type (safe)
+- **Unchecked `as`** — a cast with no runtime proof; hides bugs (almost always wrong)
+- **Block** — in review mode, flag the issue and stop approving; do not auto-fix
 
-2. **Establish the safe baseline before changing code.**
-   - Treat external input, JSON, DOM data, env vars, and API responses as `unknown`
-   - Keep strictness on; do not fix errors by weakening compiler settings first
-   - Annotate exported function parameters and return types
-   - Let TypeScript infer local variables unless an annotation communicates an invariant
-   - Prefer the repo's existing toolchain; when choosing defaults, follow this skill
+## Mode detection
 
-3. **Choose the simplest type mechanism that preserves the invariant.**
-   - Reach for concrete types before generics
-   - Reach for built-in utility types before custom mapped/conditional types
-   - Reach for discriminated unions before boolean flags or optional-property bags
-   - Reach for `satisfies` before whole-object annotations that widen literals
-   - Reach for branded types only when structural typing is causing accidental compatibility
+Before starting, determine your mode:
 
-4. **Remove unsafe shortcuts before polishing.**
-   - Block `any`, unchecked `as`, `@ts-ignore`, bare `!`, floating promises, numeric enums, and legacy `moduleResolution: "node"` in modern bundled apps
-   - In review mode, prioritize correctness, boundary safety, async behavior, and config mismatches before style notes
+| Signal | Mode | Behavior |
+|---|---|---|
+| "Write", "implement", "create", "add" | **Authoring** | Write code, apply fixes, output files |
+| "Review", "audit", "check", "look at" | **Review** | Report findings, never auto-fix, block on P0 |
+| Ambiguous | **Ask** | Clarify with the user before proceeding |
 
-5. **Verify with the actual type system.**
-   - If the repo already has TypeScript or lint commands, run them
-   - Always separate type checking from transpilation: `tsx`, `tsup`, `esbuild`, and `swc` do not replace `tsc --noEmit`
-   - If the first pass still feels uncertain, read one adjacent reference, not the whole folder
+## Required workflow
 
-## Do this, not that
+### Step 1 — Classify the task
 
-| Need | Do this | Not that | Route |
-|---|---|---|---|
-| Unknown boundary data | `unknown` plus a type guard or schema validator | `data as Foo` | `references/patterns.md`, `references/error-handling.md`, `references/anti-patterns.md` |
-| Shared object contract or declaration merging | `interface` | Using `interface` for unions, mapped types, or conditional transforms | `references/type-system.md`, `references/anti-patterns.md` |
-| Union, mapped, conditional, or template-literal transform | `type` alias | Forcing `interface` to model non-object logic | `references/type-system.md` |
-| Finite states or API variants | Discriminated union with an explicit `type` or `status` field | Boolean flags or bags of optional props | `references/patterns.md`, `references/type-system.md` |
-| Same primitive, different domain meaning | Branded types plus validated constructors | Plain `string` aliases for IDs or validated values | `references/type-system.md`, `references/patterns.md` |
-| Exhaustive keyed object without widening | `satisfies Record<Union, ...>` | Annotating the whole object and losing literal inference | `references/type-system.md`, `references/modern-features.md`, `references/patterns.md` |
-| Literal inference inside a generic helper | `const` type parameters | Repeated call-site `as const` or wide generic helpers | `references/type-system.md`, `references/modern-features.md` |
-| Inference should come from one argument only | `NoInfer<T>` | Duplicate generics or cleanup casts after the fact | `references/type-system.md`, `references/modern-features.md` |
-| Multiple call shapes with distinct outputs | Specific-first overloads or a discriminated union | Boolean switches or overly abstract generic wrappers | `references/anti-patterns.md`, `references/patterns.md` |
-| Recoverable internal failure | `Result` or another tagged outcome type | String throws or catch-all exceptions | `references/error-handling.md`, `references/patterns.md` |
-| Broken invariant or impossible state | Throw an `Error` subclass | Throwing strings, objects, or silent `undefined` | `references/error-handling.md`, `references/anti-patterns.md` |
+Identify the primary category and optionally one adjacent category:
 
-## Strictness and tooling defaults
+| Category | Reference to load |
+|---|---|
+| Type system (generics, narrowing, inference) | type-system.md |
+| Patterns (result types, branded types, builders) | patterns.md |
+| Anti-patterns (any, ts-ignore, unsafe casts) | anti-patterns.md |
+| Error handling (Result, retry, aggregation) | error-handling.md |
+| Strict config (tsconfig, strict flags) | strict-config.md |
+| Tooling (ESLint, Biome, Prettier, CI) | tooling.md |
+| Migration (JS-to-TS, version upgrades) | migration.md |
+| Performance (compilation speed, traces) | performance.md |
+| Testing (type tests, expect-type, tsd) | testing.md |
+| Modern features (decorators, using, satisfies) | modern-features.md |
 
-### Compiler baseline
+> **Steering note:** Most tasks span two categories. Load the primary reference plus one adjacent.
+> If uncertain which category fits, scan the table above for keywords that match the user request.
 
-Start from `strict: true`, then prefer these defaults unless the repo has a deliberate reason otherwise:
+### Step 2 — Load references
 
-- `noUncheckedIndexedAccess`
-- `noImplicitReturns`
-- `noFallthroughCasesInSwitch`
-- `noImplicitOverride`
-- `forceConsistentCasingInFileNames`
-- `verbatimModuleSyntax`
-- `isolatedModules`
-- `skipLibCheck`
+Load the reference file(s) identified in Step 1. Read the full file — do not skim.
 
-Add these deliberately rather than blindly:
+If the task involves existing code, also load:
+- The project's tsconfig.json (compare against strict-config.md baseline)
+- The project's ESLint/Biome config (check for rule conflicts)
 
-- `exactOptionalPropertyTypes` when “absent” and “present but undefined” mean different things
-- `isolatedDeclarations` for libraries that emit `.d.ts`
-- `erasableSyntaxOnly` only when targeting strip-types runtimes or erasable-only syntax
+> **Steering note:** When reviewing tsconfig.json, only flag `moduleResolution: "node"` as legacy.
+> `"node16"`, `"nodenext"`, and `"bundler"` are all modern and correct for their contexts.
 
-### Module and output choices
+### Step 3 — Execute the task
 
-| Situation | Choose | Notes | Route |
-|---|---|---|---|
-| Bundled app (Vite, webpack, esbuild, Bun) | `moduleResolution: "bundler"`, `module: "ESNext"` | Often paired with `noEmit: true` | `references/strict-config.md` |
-| Node.js ESM app | `moduleResolution: "node16"`, `module: "node16"` | Requires `"type": "module"` in `package.json` | `references/strict-config.md`, `references/migration.md` |
-| Published library | `moduleResolution: "bundler"` plus declarations | Prefer `isolatedDeclarations` for fast `.d.ts` workflows | `references/strict-config.md`, `references/tooling.md` |
-| Modern transpiler (`esbuild`, `swc`, `tsx`, `tsup`) | `isolatedModules: true` and `verbatimModuleSyntax: true` | Keep `tsc --noEmit` as the separate type-check step | `references/strict-config.md`, `references/tooling.md` |
-| Path aliases | Only if bundler/runtime also resolves them | `tsc` alone does not make aliases work at runtime | `references/strict-config.md` |
+Apply the patterns and rules from the loaded references.
 
-### Tool defaults
+**In authoring mode:**
+- Write code that follows the patterns in the reference files
+- Use `satisfies` for config objects, explicit return types for public functions
+- Never use bare `any`, `@ts-ignore`, or unchecked `as`
+- Prefer `unknown` + narrowing over `any` for dynamic data
 
-- `tsc` is the source of truth for type errors and diagnostics
-- `tsup` is a strong default for simple library bundling
-- `tsx` is for execution and dev scripts, not for type checking
-- Type-aware ESLint should catch `no-explicit-any`, `no-floating-promises`, `consistent-type-imports`, and exhaustive switch gaps
-- If the repo already uses Biome or another formatter/linter stack, extend it instead of layering redundant tooling
+**In review mode:**
+- Scan for every item in the anti-patterns.md review-mode checklist (Section: Review-Mode Scanning Checklist)
+- For each finding, classify as P0 (blocks approval) or P1 (should fix) or P2 (nit)
+- **Block** on: bare `any` in new code, `@ts-ignore` (should be `@ts-expect-error`), unchecked `as`, missing error narrowing
+- Flag but don't block on: style preferences, minor naming issues
 
-## Anti-derail guardrails
+> **Steering note:** Distinguish lint warnings from type errors. Lint warnings are project-specific
+> (respect the project's config). Type errors from `tsc` are universal and always blocking.
 
-- Do not cargo-cult advanced type tricks. If a concrete type or built-in utility solves it, use that.
-- Do not add a generic parameter unless it relates multiple values or affects the return type.
-- Do not silence errors with `as`, `!`, `@ts-ignore`, or looser compiler flags before asking what invariant is missing.
-- Do not use classes for plain data shapes when interfaces plus objects are simpler.
-- Do not use `enum`, namespaces, or value-bearing type imports when `as const`, modules, and `import type` are clearer.
-- Do not load every reference file; route narrowly and expand only when the task still needs more detail.
-- Do not drift into framework rules, API design style, or testing strategy unless there is a TypeScript reason to do so.
+### Step 4 — Audit and verify
 
-## Recovery paths
+Run these checks:
 
-- **Inference is too wide** → add explicit export return types, use `satisfies`, or switch to `const` type parameters. Start with `references/type-system.md`, then `references/modern-features.md`.
-- **Boundary data is untrusted** → replace unchecked `as` with `unknown` plus a type guard or Zod schema. Read `references/patterns.md`, `references/error-handling.md`, and `references/anti-patterns.md`.
-- **Strict flags surface too much at once** → tighten in order: `noImplicitAny` → `strictNullChecks` → `strict` → `noUncheckedIndexedAccess` → `exactOptionalPropertyTypes`. Read `references/migration.md` and `references/strict-config.md`.
-- **Build works but imports or emitted code behave oddly** → inspect `verbatimModuleSyntax`, `import type`, `isolatedModules`, and `moduleResolution`. Read `references/strict-config.md` and `references/anti-patterns.md`.
-- **Type checking is slow** → simplify intersections and conditional chains, group large unions, generate diagnostics or traces, and check for circular deps. Read `references/type-system.md` and `references/performance.md`.
-- **Async code feels unsafe** → eliminate floating promises, choose `Result` versus exceptions deliberately, and narrow caught errors explicitly. Read `references/anti-patterns.md`, `references/error-handling.md`, and `references/testing.md`.
+```bash
+# Find unannotated exported functions (authoring mode)
+grep -rn "^export function" --include="*.ts" | grep -v ": " | head -20
 
-## Smallest useful reading sets
+# Find bare 'any' usage
+grep -rn ": any\b" --include="*.ts" --include="*.tsx" | grep -v node_modules | head -20
 
-- **Make this code strict and safe** → `references/anti-patterns.md` + `references/type-system.md`
-- **Choose between union, overload, generic, brand, or `satisfies`** → `references/type-system.md` + `references/patterns.md` + `references/modern-features.md`
-- **Set up or audit `tsconfig.json`** → `references/strict-config.md` + `references/tooling.md`
-- **Migrate JS or CJS safely** → `references/migration.md` + `references/strict-config.md` + `references/anti-patterns.md`
-- **Speed up type checking or builds** → `references/performance.md` + `references/strict-config.md` + `references/tooling.md`
-- **Validate boundary data or design error flow** → `references/error-handling.md` + `references/patterns.md`
-- **Write or review type tests** → `references/testing.md` + `references/patterns.md`
+# Find @ts-ignore (should be @ts-expect-error)
+grep -rn "@ts-ignore" --include="*.ts" --include="*.tsx" | grep -v node_modules
 
-## Final reminder
+# Find unchecked type assertions
+grep -rn " as [A-Z]" --include="*.ts" | grep -v "// checked" | head -20
 
-This skill should steer decisions, not dump tutorials. Start with one small reading set, make the smallest safe change, verify with the compiler and existing lint/test workflow, then expand only if the task still needs more detail.
+# Search for satisfies opportunities (config objects typed with annotation)
+grep -rn "^const .* : Record<" --include="*.ts" | head -10
+grep -rn "^const .* : {" --include="*.ts" | head -10
+```
+
+> **Steering note:** The `satisfies` audit catches config objects that use type annotations
+> where `satisfies` would preserve literal types. This is a common missed opportunity.
+
+### Step 5 — Handle conflicts
+
+If the project's lint config contradicts skill recommendations:
+
+1. For **new code** you're writing: follow the skill's stricter rules
+2. For **existing code** under review: respect the project's config, flag conflicts as informational
+3. Document the conflict: "Project disables X — consider re-enabling for new code"
+
+> **Steering note:** Do not unilaterally re-enable lint rules. The project may have valid reasons
+> for disabling them (e.g., gradual migration from JavaScript, third-party type issues).
+
+### Step 6 — Deliver
+
+**In authoring mode:** Output the complete, compilable code. Ensure every exported function has an explicit return type annotation.
+
+**In review mode:** Output findings as a structured list with severity levels. Include specific line references and fix suggestions for each P0 and P1 finding.
+
+> **Steering note:** Always produce a deliverable — code or findings list. Never end with only
+> commentary or advice. The user expects actionable output.
+
+## Common mistakes to avoid
+
+| Mistake | Why it's wrong | What to do instead |
+|---|---|---|
+| Flagging `node16` moduleResolution as legacy | Only bare `"node"` is legacy | Check strict-config.md flag table |
+| Using `any` for "I'll fix it later" | `any` disables all checking downstream | Use `unknown` and narrow |
+| Ignoring cross-realm instanceof issues | Objects from iframes/workers fail instanceof | Use brand checks or Symbol.hasInstance |
+| Auto-fixing code in review mode | Review should report, not modify | Block and describe; let the author fix |
+| Skipping the deliverable step | User gets advice but no output | Always output code or structured findings |
+| Treating `@ts-ignore` and `@ts-expect-error` as equivalent | `@ts-ignore` suppresses silently forever | Always prefer `@ts-expect-error` — it alerts when the error is fixed |
+
+## Reference routing
+
+| File | Load when |
+|---|---|
+| [type-system.md](references/type-system.md) | Working with generics, conditional types, type guards, narrowing, variance |
+| [patterns.md](references/patterns.md) | Implementing Result types, branded types, builders, middleware, retry logic |
+| [anti-patterns.md](references/anti-patterns.md) | Reviewing code for unsafe patterns or scanning for anti-pattern violations |
+| [error-handling.md](references/error-handling.md) | Implementing error handling, retry logic, error aggregation, or Result types |
+| [strict-config.md](references/strict-config.md) | Configuring or auditing tsconfig.json and strict mode flags |
+| [tooling.md](references/tooling.md) | Setting up or choosing between ESLint, Biome, Prettier, CI pipelines |
+| [migration.md](references/migration.md) | Migrating JS to TS, upgrading TS versions, handling circular dependencies |
+| [performance.md](references/performance.md) | Diagnosing slow compilation, reading traces, optimizing type-check speed |
+| [testing.md](references/testing.md) | Writing type-level tests, choosing test strategies, testing generics |
+| [modern-features.md](references/modern-features.md) | Using decorators, `using`/`Symbol.dispose`, `satisfies`, inferred predicates |
+
+## Guardrails
+
+- Never introduce `any` — use `unknown` and narrow
+- Never use `@ts-ignore` — use `@ts-expect-error` with explanation
+- Never use unchecked `as` — always guard first, then cast
+- Always add explicit return types to exported functions
+- Always verify tsconfig against strict-config.md baseline before suggesting config changes
+- In review mode: report findings, never silently modify code
