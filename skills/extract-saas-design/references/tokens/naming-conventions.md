@@ -95,6 +95,25 @@ Pattern: `{category}-{scale-position}`
 
 ---
 
+
+### shadcn/ui Naming Convention (Dominant in Modern React)
+
+| Pattern | Example | Rule |
+|---------|---------|------|
+| `--{purpose}` | `--background`, `--foreground` | Single-word semantic name |
+| `--{purpose}-{variant}` | `--primary-foreground`, `--card-foreground` | Purpose + variant suffix |
+| `--{scope}-{purpose}` | `--sidebar-background`, `--sidebar-ring` | Scoped tokens for sub-systems |
+| `--chart-{N}` | `--chart-1`, `--chart-2` | Indexed series for data visualization |
+
+**Key rules:**
+1. Every `--{color}` token has a matching `--{color}-foreground` for text-on-that-color
+2. Sidebar tokens are prefixed `--sidebar-*` (separate scope)
+3. Chart tokens are indexed `--chart-1` through `--chart-5`
+4. `--radius` is the base; derived radii use `calc(var(--radius) - Npx)`
+5. Token names describe PURPOSE not APPEARANCE
+
+---
+
 ## Naming Rules for Extraction Output
 
 When documenting tokens from any codebase, follow these rules:
