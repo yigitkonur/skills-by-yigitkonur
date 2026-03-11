@@ -5,7 +5,7 @@
 ## Choose the correct route
 
 - Account-scoped page: `apps/web/app/(saas)/app/<page>/page.tsx`
-- Organization-scoped page: `apps/web/app/(saas)/app/[organizationSlug]/<page>/page.tsx`
+- Organization-scoped page: `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/<page>/page.tsx`
 
 ## What you get automatically
 
@@ -20,7 +20,7 @@ Pages under this tree inherit:
 1. Place the page in the right route segment
 2. Use server components by default
 3. Read session/org data from the existing auth and organization helpers
-4. Add navigation in the shared SaaS nav if the page should be discoverable
+4. Add navigation in `apps/web/modules/saas/shared/components/AppWrapper.tsx` if the page should be discoverable. Nav items use shape: `{ label: string, href: string, icon: LucideIcon }`.
 
 ---
 

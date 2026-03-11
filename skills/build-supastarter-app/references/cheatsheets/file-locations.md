@@ -5,7 +5,7 @@
 ## New SaaS Page
 
 ```
-apps/web/app/(saas)/app/[organizationSlug]/your-page/page.tsx
+apps/web/app/(saas)/app/(organizations)/[organizationSlug]/your-page/page.tsx
 ```
 
 If it doesn't need org scoping:

@@ -19,6 +19,34 @@ export async function getUserById(id: string) {
 }
 ```
 
+## New file template
+
+When creating a new query file (e.g., `packages/database/prisma/queries/projects.ts`):
+
+```ts
+import { db } from "../client";
+
+export async function getProjectsByOrganization(organizationId: string) {
+  return await db.project.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getProjectById(id: string) {
+  return await db.project.findFirst({
+    where: { id },
+  });
+}
+```
+
+Then re-export from `packages/database/prisma/queries/index.ts`.
+
+## When to use query helpers vs direct db calls
+
+- **Use query helpers** when the same query is reused across multiple procedures, server components, or auth checks. Put these in `packages/database/prisma/queries/`.
+- **Use direct `db` calls** for one-off queries scoped to a single procedure handler where reuse is unlikely.
+
 ## Implementation notes
 
 - Queries are grouped by domain (`users`, `organizations`, `purchases`).

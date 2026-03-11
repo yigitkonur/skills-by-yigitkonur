@@ -36,6 +36,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
    - storage or uploads
    - repo placement, imports, config, or deployment
 
+   If the task spans multiple categories, list all that apply. Use the ordering from step 4 to determine which owner to change first (data → API → page → config).
+
 2. **Locate the owning boundary before editing.**
    - routes live in `apps/web/app`
    - feature UI usually lives in `apps/web/modules`
@@ -46,17 +48,24 @@ Classify the request first. Find the owning surface before editing. Read the sma
    - billing logic belongs in `packages/payments`
    - storage logic belongs in `packages/storage`
 
+   For composite tasks, identify the primary owner (the layer other layers depend on) and the secondary wiring points. Change the primary owner first per step 4.
+
 3. **Start with the smallest relevant reference bundle.**
-   Begin with the task guide or hub below, then follow the related-reference links from that file instead of scanning the whole tree.
+   Begin with the task guide or hub below, then follow the related-reference links from that file instead of scanning the whole tree. If your task spans multiple rows in the table, read task guides in the order step 4 dictates: data files first, then API, then page or config.
 
 4. **Change the owner first, then wire outward.**
-   - data change: schema or query helper first, then API, then page
+   - data change: schema or query helper first, then run `pnpm generate && pnpm db:push`, then API, then page
    - API change: procedure, module router, root router, then client usage
    - billing change: plan or provider layer, then API, then settings or checkout UI
    - storage change: signed URL flow first, then client upload, then persistence on the owning entity
 
 5. **Check flags and guard behavior before calling the work done.**
-   Supastarter behavior is feature-flagged and redirect-heavy. Verify the relevant app, auth, and billing config before assuming a route, UI branch, or redirect is wrong.
+   - New page → verify i18n keys added, confirm layout inherits auth guard
+   - New API procedure → verify procedure uses correct tier (`public` / `protected` / `organization`)
+   - New feature → consider feature flag in `apps/web/config.ts` if feature is experimental
+   - Data change → verify migration is reversible, generation ran
+   - Billing-gated feature → verify plan check in both API and UI layers
+   - Organization-scoped → verify org-membership guard if needed
 
 6. **Validate boundaries and imports.**
    Use aliases, preserve package ownership, default to server components, and add client behavior only when hooks or browser APIs require it.

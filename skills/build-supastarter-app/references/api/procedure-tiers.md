@@ -71,6 +71,27 @@ publicProcedure
 
 That keeps authentication logic out of individual handlers unless a module needs extra business-specific authorization, such as organization membership or purchase ownership.
 
+## Organization-membership guard
+
+For organization-scoped procedures that need to verify the user actually belongs to the target organization (not just that they are authenticated), add a membership check inside the handler:
+
+```ts
+import { db } from "@repo/database";
+
+// Inside an organization-scoped procedure handler:
+const membership = await db.membership.findFirst({
+  where: {
+    userId: ctx.user.id,
+    organizationId: organizationId,
+  },
+});
+if (!membership) {
+  throw new ORPCError("FORBIDDEN");
+}
+```
+
+Use this pattern when the procedure operates on a specific organization's data and the caller might pass an `organizationId` they don't belong to.
+
 ---
 
 **Related references:**
