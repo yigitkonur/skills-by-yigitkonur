@@ -316,3 +316,28 @@ When `/compact` runs (manually or auto at ~10k tokens):
 | Session-specific instructions | ❌ No — lost on compaction |
 
 **Implication:** Critical rules must live in files, not conversation. Anything said in chat that must persist should be added to CLAUDE.md or a rule file.
+
+## When to Use Each Feature
+
+Use this decision table to pick the right CLAUDE.md feature for a given need:
+
+| Need | Feature | Why |
+|------|---------|-----|
+| Universal instructions shared across agents | Put in AGENTS.md, import via `@AGENTS.md` | CLAUDE.md imports it; other agents read it natively |
+| Claude-only coding conventions | CLAUDE.md `## Claude-Specific` section | Stays thin, does not pollute AGENTS.md |
+| Path-specific rules (e.g., "in tests/, always mock DB") | `.claude/rules/` with `paths:` filter | Only injected when Claude works in matching paths |
+| One-off memory for current session | `/memory add "note"` -> CLAUDE.md edit | Persists through compaction |
+| Complex domain knowledge for specific tasks | `.claude/agents/` with YAML config | Agent-specific context loaded on demand |
+| Pre/post-command automation | `.claude/hooks/` | Runs shell scripts at lifecycle points |
+| Personal preferences not shared with team | `CLAUDE.local.md` | Gitignored, personal overrides |
+
+## Common Gotchas
+
+| Gotcha | Why it bites | Prevention |
+|--------|-------------|------------|
+| `@import` in AGENTS.md | AGENTS.md does not support imports -- content silently ignored | Only use `@import` in CLAUDE.md |
+| Huge CLAUDE.md (100+ lines) | Wastes context budget, agents de-prioritize late content | Keep under 60 lines standalone, 20 lines for thin wrapper |
+| `.claude/rules/` without `paths:` filter | Rule applies globally, like putting it in CLAUDE.md directly | Always add `paths:` unless truly global |
+| Referencing `.claude/rules/` that do not exist | Agents look for a directory that is not there | Only reference if directory exists or you are creating files |
+| Putting universal rules in CLAUDE.md instead of AGENTS.md | Other agents (Cursor, Codex, Copilot) never see them | Universal rules go in AGENTS.md |
+| CLAUDE.local.md committed to git | Personal overrides shared with team | Add to `.gitignore` |

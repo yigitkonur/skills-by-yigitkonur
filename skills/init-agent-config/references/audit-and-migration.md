@@ -291,3 +291,42 @@ After any migration:
    ```
 6. **Check file sizes** against targets
 7. **Confirm no content duplication** between AGENTS.md and agent-specific files
+
+## Common Audit Pitfalls
+
+| Pitfall | What happens | Prevention |
+|---------|-------------|------------|
+| Rewriting a mostly-good config from scratch | Loses existing signal, introduces new errors | Switch to audit/tighten mode -- edit, don't replace |
+| Auditing a greenfield project | Wastes time looking for nonexistent config | Skip audit step (Step 6) for new setups |
+| Fixing style without fixing substance | Config looks better but still has wrong commands | Always verify commands first -- style is secondary |
+| Scoring without evidence | "Looks good" is not a score | Use the rubric dimensions with specific examples |
+| Missing AGENTS.md vs CLAUDE.md separation | Universal content stuck in CLAUDE.md | Check every line: is this Claude-specific or universal? |
+| Preserving stale boundary rules | `Never` rules that no longer apply to the codebase | Verify each boundary rule against current code |
+
+## Example Audit Score Calculation
+
+Given a project with this existing AGENTS.md:
+
+```
+Commands accuracy:    4/5 (one command uses wrong flag)
+Architecture docs:    3/5 (key boundaries documented but missing WHY)
+Non-obvious patterns: 2/5 (mostly restates what is obvious from code)
+Conciseness:          4/5 (short, but includes a few linter-duplicated rules)
+Actionability:        3/5 (some suggestions instead of directives)
+```
+
+**Score calculation:**
+- Commands: 4/5 x 25% x 20 = 20.0
+- Architecture: 3/5 x 25% x 20 = 15.0
+- Patterns: 2/5 x 20% x 20 = 8.0
+- Conciseness: 4/5 x 15% x 20 = 12.0
+- Actionability: 3/5 x 15% x 20 = 9.0
+- **Total: 64.0 / 100 = Grade C**
+
+**Findings summary:**
+- Fix the wrong command flag (Commands -> 5)
+- Add WHY context for architecture decisions (Architecture -> 4)
+- Remove obvious patterns, add non-obvious ones (Patterns -> 3)
+- Remove linter-duplicated rules (Conciseness -> 5)
+- Convert suggestions to directives (Actionability -> 4)
+- **Projected score after fixes: 84 = Grade B**

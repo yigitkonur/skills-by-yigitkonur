@@ -272,6 +272,51 @@ aider --message "List the project conventions you know about"
 | Agent ignores AGENTS.md | Agent uses different filename | Check cross-agent-compat.md for agent-specific config |
 | Symlink not followed | OS or tool limitation | Use thin wrapper file instead of symlink |
 | Monorepo loads wrong file | Working directory mismatch | Verify `pwd` matches expected discovery path |
+| Sections feel like a generic template | Content not grounded in repo evidence | Every section needs 3+ repo-specific facts to justify its existence |
+| Commands fail when run | Commands were guessed, not verified | Re-verify every command against package.json/Makefile/CI |
+| Config file is 200+ lines | Too much noise, agents de-prioritize | Cut to <80 lines -- if that is not possible, use progressive disclosure |
+
+## Good vs Bad Content Examples
+
+### Commands Section
+
+**Bad -- invented commands:**
+```markdown
+## Commands
+- Dev: `npm run dev`
+- Test: `npm test`
+- Build: `npm run build`
+```
+*(These look plausible but were never verified. The project actually uses pnpm and has different script names.)*
+
+**Good -- verified commands:**
+```markdown
+## Commands
+- Dev: `pnpm dev` (runs Next.js dev server on port 3000)
+- Test: `pnpm test:unit` (Jest, no watch mode in CI)
+- Build: `pnpm build` (outputs to .next/)
+- Lint: `pnpm lint` (ESLint + Prettier check)
+```
+
+### Conventions Section
+
+**Bad -- generic advice:**
+```markdown
+## Conventions
+- Write clean, readable code
+- Follow best practices
+- Use meaningful variable names
+- Handle errors properly
+```
+
+**Good -- project-specific rules:**
+```markdown
+## Conventions
+- Named exports only, no default exports
+- Use `Result<T, E>` for error handling, not try/catch
+- Route handlers in `src/app/api/` -- one file per endpoint
+- Database queries go through `src/lib/db.ts`, never direct SQL
+```
 
 ## AGENTS.md vs CLAUDE.md Feature Comparison
 
