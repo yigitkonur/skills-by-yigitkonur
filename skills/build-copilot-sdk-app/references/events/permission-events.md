@@ -1,12 +1,12 @@
 # Permission Events
 
-Events related to permission requests and their resolution. Protocol v3 broadcasts these to all connected clients.
+Events related to permission requests and their resolution. The SDK broadcasts these to all connected clients.
 
 ## Events
 
 ### `permission.requested`
 
-Broadcast when the agent needs permission to perform an action. In multi-client setups (protocol v3), all connected clients receive this event simultaneously.
+Broadcast when the agent needs permission to perform an action. In multi-client setups, all connected clients receive this event simultaneously.
 
 ```typescript
 session.on("permission.requested", (event) => {
@@ -41,7 +41,7 @@ session.on("permission.requested", (event) => {
 | `url` | `url` |
 | `memory` | `operation` |
 
-**Multi-client behavior:** When multiple clients are connected via TCP (protocol v3), `permission.requested` is broadcast to all clients. The first client to respond wins — other clients should dismiss their UI when they receive `permission.completed`.
+**Multi-client behavior:** When multiple clients are connected via TCP, `permission.requested` is broadcast to all clients. The first client to respond wins — other clients should dismiss their UI when they receive `permission.completed`.
 
 ```typescript
 // Multi-client permission handler
@@ -97,14 +97,12 @@ session.on("permission.completed", (event) => {
 - `denied-interactively-by-user` — the user explicitly rejected it
 - `denied-by-content-exclusion-policy` — content policy blocked the action
 
-## Protocol v2 vs v3
+## Protocol Details
 
-In protocol v2 (SDK < 0.1.30), permissions arrive as JSON-RPC requests via the `onPermissionRequest` handler in SessionConfig. In protocol v3, they arrive as broadcast session events AND are handled by `onPermissionRequest`.
-
-The SDK handles this automatically. Always set `onPermissionRequest` on `createSession()` — it works in both protocol versions.
+Permissions arrive as broadcast session events and are handled by `onPermissionRequest`. The SDK handles this automatically. Always set `onPermissionRequest` on `createSession()`.
 
 ```typescript
-// This handles permissions in both v2 and v3
+// This handles permissions via the onPermissionRequest callback
 const session = await client.createSession({
   model: "gpt-4.1",
   onPermissionRequest: async (request) => {

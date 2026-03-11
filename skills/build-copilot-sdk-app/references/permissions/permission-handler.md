@@ -85,9 +85,9 @@ const resumed = await client.resumeSession(sessionId, {
 
 The handler is bound per `CopilotSession` instance. Different sessions may use different handlers — use `invocation.sessionId` to look up per-session state when multiplexing.
 
-## Protocol v3 Broadcast Behavior
+## Protocol v2 Broadcast Behavior
 
-In protocol v3, permission requests arrive as ephemeral `permission.requested` events broadcast to all connected clients for the same session. The SDK listens for this event inside `_handleBroadcastEvent` and dispatches it to the registered handler:
+In protocol v2, permission requests arrive as ephemeral `permission.requested` events broadcast to all connected clients for the same session. The SDK listens for this event inside `_handleBroadcastEvent` and dispatches it to the registered handler:
 
 ```typescript
 // Internally, the SDK handles this pattern:

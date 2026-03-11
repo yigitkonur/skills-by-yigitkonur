@@ -186,16 +186,15 @@ When multiple `CopilotClient` instances connect to the same external CLI server 
 
 - Each client maintains its own TCP socket connection
 - JSON-RPC messages are multiplexed per connection, not globally
-- Protocol v3 servers use broadcast events (`external_tool.requested`, `permission.requested`) scoped by `sessionId`
-- Protocol v2 servers use request/response RPC (`tool.call`, `permission.request`) — client registers handlers at connection setup
-- Both protocol versions are supported simultaneously — the SDK registers v2 handlers at startup and a v3 server simply never sends v2-style requests
+- Protocol v2 servers use broadcast events (`external_tool.requested`, `permission.requested`) scoped by `sessionId`
+- The SDK registers broadcast event handlers at startup
 - Session IDs must be globally unique across all clients when sharing one CLI server
 
 Protocol version negotiation happens at `start()` via `ping()` response:
 
 ```typescript
-// Throws if server version is outside [MIN=2, MAX=sdkProtocolVersion]:
-// "SDK protocol version mismatch: SDK supports versions 2-N, but server reports version M"
+// Throws if server version doesn't match SDK_PROTOCOL_VERSION (currently 2):
+// "SDK protocol version mismatch: SDK expects version 2, but server reports version M"
 await client.start();
 ```
 

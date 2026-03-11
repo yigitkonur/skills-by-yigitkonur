@@ -16,7 +16,7 @@ import type {
 
 ## `SessionEvent` Union Type
 
-`SessionEvent` is a discriminated union of 47 event shapes. Every variant shares these base fields:
+`SessionEvent` is a discriminated union of 46 core event shapes (defined in `session-events.ts`), plus 13 broadcast event types handled by the SDK's internal broadcast dispatcher. Every variant shares these base fields:
 
 ```typescript
 // Common fields on every event variant:
@@ -32,16 +32,16 @@ import type {
 
 ---
 
-## All 47 Event Variants
+## All 59 Event Variants
 
 ### Session Lifecycle Events
 
 | `type` | `ephemeral` | Key `data` fields |
 |--------|-------------|-------------------|
-| `session.start` | optional | `sessionId`, `version`, `producer`, `copilotVersion`, `startTime`, `selectedModel?`, `context?{cwd,gitRoot?,repository?,branch?}`, `alreadyInUse?` |
-| `session.resume` | optional | `resumeTime`, `eventCount`, `context?`, `alreadyInUse?` |
+| `session.start` | optional | `sessionId`, `version`, `producer`, `copilotVersion`, `startTime`, `selectedModel?`, `context?{cwd,gitRoot?,repository?,branch?}` |
+| `session.resume` | optional | `resumeTime`, `eventCount`, `context?` |
 | `session.error` | optional | `errorType`, `message`, `stack?`, `statusCode?`, `providerCallId?` |
-| `session.idle` | `true` | `backgroundTasks?{agents[{agentId,agentType,description?}], shells[{shellId,description?}]}` |
+| `session.idle` | `true` | `{}` (empty data object) |
 | `session.title_changed` | `true` | `title` |
 | `session.info` | optional | `infoType`, `message` |
 | `session.warning` | optional | `warningType`, `message` |
@@ -52,7 +52,7 @@ import type {
 | `session.handoff` | optional | `handoffTime`, `sourceType: "remote" \| "local"`, `repository?{owner,name,branch?}`, `context?`, `summary?`, `remoteSessionId?` |
 | `session.truncation` | optional | `tokenLimit`, `preTruncationTokensInMessages`, `preTruncationMessagesLength`, `postTruncationTokensInMessages`, `postTruncationMessagesLength`, `tokensRemovedDuringTruncation`, `messagesRemovedDuringTruncation`, `performedBy` |
 | `session.snapshot_rewind` | `true` | `upToEventId`, `eventsRemoved` |
-| `session.shutdown` | optional | `shutdownType: "routine" \| "error"`, `errorReason?`, `totalPremiumRequests`, `totalApiDurationMs`, `sessionStartTime`, `codeChanges{linesAdded,linesRemoved,filesModified}`, `modelMetrics{[modelId]:{requests:{count,cost},usage:{inputTokens,outputTokens,cacheReadTokens,cacheWriteTokens}}}`, `currentModel?` |
+| `session.shutdown` | `true` | `shutdownType: "routine" \| "error"`, `errorReason?`, `totalPremiumRequests`, `totalApiDurationMs`, `sessionStartTime`, `codeChanges{linesAdded,linesRemoved,filesModified}`, `modelMetrics{[modelId]:{requests:{count,cost},usage:{inputTokens,outputTokens,cacheReadTokens,cacheWriteTokens}}}`, `currentModel?` |
 | `session.context_changed` | optional | `cwd`, `gitRoot?`, `repository?`, `branch?` |
 | `session.usage_info` | `true` | `tokenLimit`, `currentTokens`, `messagesLength` |
 | `session.compaction_start` | optional | `{}` (empty) |
@@ -75,7 +75,7 @@ import type {
 | `assistant.reasoning` | optional | `reasoningId`, `content` |
 | `assistant.reasoning_delta` | `true` | `reasoningId`, `deltaContent` |
 | `assistant.streaming_delta` | `true` | `totalResponseSizeBytes` |
-| `assistant.message` | optional | `messageId`, `content`, `toolRequests?[{toolCallId,name,arguments?,type?}]`, `reasoningOpaque?`, `reasoningText?`, `encryptedContent?`, `phase?`, `outputTokens?`, `interactionId?`, `parentToolCallId?` |
+| `assistant.message` | optional | `messageId`, `content`, `toolRequests?[{toolCallId,name,arguments?,type?}]`, `reasoningOpaque?`, `reasoningText?`, `encryptedContent?`, `phase?`, `interactionId?`, `parentToolCallId?` |
 | `assistant.message_delta` | `true` | `messageId`, `deltaContent`, `parentToolCallId?` |
 | `assistant.turn_end` | optional | `turnId` |
 | `assistant.usage` | `true` | `model`, `inputTokens?`, `outputTokens?`, `cacheReadTokens?`, `cacheWriteTokens?`, `cost?`, `duration?`, `initiator?`, `apiCallId?`, `providerCallId?`, `parentToolCallId?`, `quotaSnapshots?`, `copilotUsage?` |

@@ -1,8 +1,8 @@
 # Multi-Client Architecture
 
-## Protocol v3 Broadcast Behavior
+## Broadcast Behavior
 
-Protocol v3 broadcasts session events to all connected clients. When multiple `CopilotClient` instances connect to the same CLI server and join the same session, every client receives every event: `external_tool.requested`, `permission.requested`, `permission.completed`, `external_tool.completed`, `assistant.message`, `session.idle`, and all other session event types.
+The SDK broadcasts session events to all connected clients. When multiple `CopilotClient` instances connect to the same CLI server and join the same session, every client receives every event: `external_tool.requested`, `permission.requested`, `permission.completed`, `external_tool.completed`, `assistant.message`, `session.idle`, and all other session event types.
 
 This is not a subscription model — all clients see everything. Design your client logic to handle receiving events you did not initiate.
 
