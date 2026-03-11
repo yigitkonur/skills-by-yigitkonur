@@ -440,3 +440,45 @@ templates: dashboard
 ```
 
 **Step 7:** Responsive — drawer is off-canvas on mobile (`lg:drawer-open`), stats reflow from 4 columns to 1.
+
+
+## Steering experiences — learned from real agent usage
+
+### Depth strategy
+
+**Problem:** Agent uses default depth and gets either too little detail (depth 1-2) or too much noise (depth 10+) from Figma files.
+
+**Fix:** Use this depth guide based on what you're extracting:
+
+| Figma content | Recommended depth | Why |
+|---|---|---|
+| Single component (button, card) | 3–4 | Components are shallow |
+| Section (hero, footer, nav) | 5–6 | Sections have nested content |
+| Full page | 7–8 | Pages have deep nesting |
+| Design system / component library | 3–4 per component | Iterate, don't go deep on everything |
+
+### Node-specific URLs
+
+**Problem:** Agent fetches an entire Figma file when only one frame is needed, resulting in massive response data.
+
+**Fix:** Always use node-specific URLs when possible:
+- Full file: `https://www.figma.com/design/abc123/My-Design` → returns everything
+- Specific frame: `https://www.figma.com/design/abc123/My-Design?node-id=1-2` → returns just that node
+
+Ask the user for the specific frame URL if they provide a full-file URL.
+
+### Property mapping — Figma to daisyUI
+
+When analyzing the Figma node tree, map properties like this:
+
+| Figma property | daisyUI equivalent |
+|---|---|
+| `fills` with solid color | Semantic color class or theme variable |
+| `cornerRadius: 8-16` | `rounded-lg` or `rounded-xl` (daisyUI components have built-in radius) |
+| `layoutMode: "HORIZONTAL"` | `flex` (or daisyUI component with horizontal layout) |
+| `layoutMode: "VERTICAL"` | `flex flex-col` (or card, stat, etc.) |
+| `itemSpacing` | `gap-*` utility |
+| `padding` | `p-*` utility (or component's built-in padding) |
+| Component with "Button" in name | `btn` + appropriate variant |
+| Component with "Input"/"Field" | `input` + `fieldset` wrapper |
+| Component with "Card" | `card` + `card-body` |

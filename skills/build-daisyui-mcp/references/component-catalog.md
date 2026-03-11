@@ -1139,3 +1139,32 @@ Every daisyUI class belongs to exactly one type:
 | Skip `card-body` in a card | Always include `card-body` |
 | `loading` without a style class | Always add `loading-spinner`, `loading-dots`, etc. |
 | `loading-primary` | Use `text-primary` for loading color |
+
+
+## Steering experiences — learned from real agent usage
+
+### When to use this file vs. MCP tool
+
+**Problem:** Agent reads the full component-catalog.md (1100+ lines) into context when a quick MCP call to `components` would suffice.
+
+**Fix:** Use this decision guide:
+
+| Situation | Use | Why |
+|---|---|---|
+| Need to validate 1–3 class names | MCP `components` tool | Faster, lighter, always current |
+| Need to browse all available components | This file (component-catalog.md) | Full inventory in one read |
+| Need to find the right example key | MCP `components` tool | Example keys are listed in the response |
+| Need to compare modifier options | MCP `components` tool | Structured response with all options |
+| Offline or MCP server unavailable | This file (component-catalog.md) | Static reference that's always available |
+| Need cross-component pattern guidance | This file + relevant pattern reference | Patterns span multiple components |
+
+### Component-to-category mapping
+
+Quick lookup for which MCP category to use:
+
+| Component | `components` (reference) | `component-examples` (markup) |
+|---|---|---|
+| Simple (badge, divider, loading) | Usually sufficient | Only if specific variant needed |
+| Medium (card, alert, stat) | For class validation | For complex variants |
+| Complex (drawer, navbar, table) | For class validation | Almost always needed |
+| Layout (hero, footer) | For modifier check | For responsive patterns |

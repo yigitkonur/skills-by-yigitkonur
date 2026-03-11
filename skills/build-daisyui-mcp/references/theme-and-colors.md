@@ -715,3 +715,83 @@ Before finalizing any custom theme, verify:
 // Just the color system reference
 { "themes": { "colors": true } }
 ```
+
+
+## Steering experiences — learned from real agent usage
+
+### The `dark:` trap with semantic colors
+
+**Problem:** Agent adds `dark:bg-base-300` or `dark:text-primary-content` to elements. daisyUI themes already define what `base-300` and `primary-content` resolve to in dark mode — using `dark:` creates conflicts and makes theme switching unreliable.
+
+**Rule:** NEVER use `dark:` prefix with daisyUI semantic color classes.
+
+```html
+<!-- ❌ WRONG — dark: on semantic colors -->
+<div class="bg-base-100 dark:bg-base-300">
+<span class="text-primary dark:text-primary-content">
+<button class="btn btn-primary dark:btn-secondary">
+
+<!-- ✅ CORRECT — semantic colors auto-adapt via theme -->
+<div class="bg-base-100">
+<span class="text-primary">
+<button class="btn btn-primary">
+
+<!-- ✅ OK — dark: on NON-semantic utilities (shadows, borders, custom stuff) -->
+<div class="shadow-md dark:shadow-lg">
+<div class="border border-gray-200 dark:border-gray-700">
+<div class="ring-1 ring-black/5 dark:ring-white/10">
+```
+
+### Content color pairing
+
+**Problem:** Agent sets `bg-primary` on a surface but leaves text as `text-base-content`, making text invisible or low-contrast.
+
+**Fix:** Every semantic background has a matching content color:
+
+| Background | Text color | Example |
+|---|---|---|
+| `bg-primary` | `text-primary-content` | Primary buttons, highlighted cards |
+| `bg-secondary` | `text-secondary-content` | Secondary surfaces |
+| `bg-accent` | `text-accent-content` | Accent highlights |
+| `bg-neutral` | `text-neutral-content` | Dark surfaces |
+| `bg-base-100` | `text-base-content` | Default page background |
+| `bg-base-200` | `text-base-content` | Slightly darker sections |
+| `bg-base-300` | `text-base-content` | Sidebar, card backgrounds |
+| `bg-info` | `text-info-content` | Info alerts |
+| `bg-success` | `text-success-content` | Success messages |
+| `bg-warning` | `text-warning-content` | Warning alerts |
+| `bg-error` | `text-error-content` | Error states |
+
+### Theme-first workflow
+
+**Problem:** Agent builds the entire UI with hardcoded Tailwind colors (`bg-blue-500`, `text-gray-800`), then tries to convert to daisyUI semantic colors afterward — requiring a complete rewrite.
+
+**Fix:** If the page needs brand colors:
+1. Define the theme FIRST (`@plugin "daisyui/theme" { ... }`)
+2. Then build all UI using semantic color classes from the start
+3. Colors resolve correctly immediately — no rewrite needed
+
+### OKLCH format for custom themes
+
+daisyUI v5 uses OKLCH color format internally. When defining custom themes:
+
+```css
+@plugin "daisyui/theme" {
+  --name: "brand";
+  --default: true;
+
+  /* OKLCH format: lightness chroma hue */
+  --color-primary: oklch(0.65 0.24 265);      /* vibrant blue */
+  --color-primary-content: oklch(0.98 0.01 265); /* near-white on primary */
+  --color-secondary: oklch(0.55 0.18 150);     /* teal */
+  --color-accent: oklch(0.75 0.20 50);         /* warm orange */
+
+  /* Base colors */
+  --color-base-100: oklch(0.98 0.005 265);     /* page background */
+  --color-base-200: oklch(0.95 0.008 265);     /* slightly darker */
+  --color-base-300: oklch(0.90 0.012 265);     /* cards, sidebars */
+  --color-base-content: oklch(0.25 0.02 265);  /* main text */
+}
+```
+
+**Tip:** Use an OKLCH color picker (oklch.com) to find values. The format is more perceptually uniform than HSL — equal lightness values look equally bright across different hues.
