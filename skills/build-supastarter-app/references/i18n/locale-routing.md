@@ -38,3 +38,4 @@ export default getRequestConfig(async ({ requestLocale }) => {
 - `references/i18n/setup.md` — Shared config and locale definitions
 - `references/routing/routing-marketing.md` — Marketing locale route group
 - `references/api/contact-module.md` — Locale resolution flowing into email side effects
+- `references/i18n/messages-loading.md` — How translations are loaded

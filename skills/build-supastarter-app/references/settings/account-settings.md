@@ -2,6 +2,8 @@
 
 > Documents the core user-account settings patterns. Consult this when changing profile forms, session refresh behavior, or account-level settings pages.
 
+> ⚠️ **Always call `reloadSession()` after profile mutations.** Without it, the navbar and other session-consuming components will show stale user data.
+
 ## Representative file
 
 - `apps/web/modules/saas/settings/components/ChangeEmailForm.tsx`
@@ -37,3 +39,5 @@ This same shape appears across change-name, change-email, password, and related 
 - `references/auth/session-hook-provider.md` — Hook used to access `reloadSession`
 - `references/ui/forms.md` — Shared form primitives
 - `references/settings/billing-security-and-avatar.md` — Other settings-related components
+- `references/auth/session-hook-provider.md` — reloadSession hook
+- `references/patterns/form-with-zod.md` — Form pattern

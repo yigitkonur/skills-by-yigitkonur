@@ -76,9 +76,17 @@
 - [ ] `pnpm type-check` passes
 - [ ] No `console.log` in production code (use `logger` from `@repo/logs`)
 
+## SaaS Pages
+
+- [ ] Org-scoped pages placed in `(organizations)/[organizationSlug]/` route group
+- [ ] Nav item added in `AppWrapper.tsx` for new pages
+- [ ] Server component resolves org, client component handles interactivity
+
 ---
 
 **Related references:**
 - `references/conventions/naming.md` — Naming standards
 - `references/conventions/typescript-patterns.md` — TypeScript patterns
 - `references/conventions/component-patterns.md` — Component patterns
+- `references/api/procedure-tiers.md` — Procedure tiers
+- `references/cheatsheets/commands.md` — Pre-commit commands

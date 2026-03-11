@@ -44,3 +44,4 @@ return (
 - `references/routing/providers-document.md` — Global client-provider stack
 - `references/analytics/provider-overview.md` — Analytics provider entry-point selection
 - `references/routing/layout-chain.md` — Where consent state enters the route tree
+- `references/hooks/consent-hooks.md` — Consent hooks

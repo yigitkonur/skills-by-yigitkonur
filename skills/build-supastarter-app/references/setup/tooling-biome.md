@@ -110,3 +110,4 @@ Biome respects `.gitignore` — files ignored by git are also ignored by the lin
 **Related references:**
 - `references/conventions/typescript-patterns.md` — TypeScript patterns that complement Biome
 - `references/conventions/code-review-checklist.md` — Pre-commit quality checks
+- `references/cheatsheets/commands.md` — CLI commands

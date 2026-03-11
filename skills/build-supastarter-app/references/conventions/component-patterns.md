@@ -190,3 +190,5 @@ export function Card({ active, className }: CardProps) {
 - `references/conventions/naming.md` — Naming conventions
 - `references/ui/forms.md` — Full form pattern reference
 - `references/ui/components.md` — Available UI components
+- `references/cheatsheets/imports.md` — Common import patterns
+- `references/patterns/organization-scoped-page.md` — Org-scoped page pattern

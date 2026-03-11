@@ -34,3 +34,4 @@ export const mailTemplates = {
 - `references/mail/send-email.md` — Public API that renders and dispatches templates
 - `references/mail/template-rendering.md` — How props and translations become HTML/text/subject
 - `references/auth/signup-invitations.md` — Signup and invitation flows that trigger these templates
+- `references/i18n/messages-loading.md` — Locale message loading

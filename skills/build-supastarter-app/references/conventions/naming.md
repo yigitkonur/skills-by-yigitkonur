@@ -97,3 +97,5 @@ export async function createPurchase(data: PurchaseInput) { ... }
 **Related references:**
 - `references/conventions/typescript-patterns.md` — TypeScript patterns
 - `references/conventions/component-patterns.md` — Component structure patterns
+- `references/cheatsheets/file-locations.md` — File placement guide
+- `references/conventions/code-review-checklist.md` — Pre-commit quality checks

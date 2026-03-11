@@ -33,3 +33,4 @@ If you add a new email template, you need more than a new `.tsx` file — it als
 - `references/mail/email-templates.md` — Template inventory
 - `references/i18n/messages-loading.md` — Locale message loading behavior
 - `references/mail/send-email.md` — Public caller-facing API
+- `references/mail/providers.md` — Provider dispatch layer

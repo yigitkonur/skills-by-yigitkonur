@@ -20,6 +20,8 @@ import type { User, Organization, Purchase } from "@repo/database";
 
 ## @repo/api (procedures)
 
+> ⚠️ **Steering:** Only three procedure tiers exist. Do not try to use `organizationProcedure` — it does not exist.
+
 ```typescript
 import { publicProcedure, protectedProcedure, adminProcedure } from "../../../orpc/procedures";
 import { ORPCError } from "@orpc/server";
@@ -123,6 +125,14 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+```
+
+## Common oRPC + toast pattern
+
+```tsx
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { toast } from "sonner";
 ```
 
 ---
