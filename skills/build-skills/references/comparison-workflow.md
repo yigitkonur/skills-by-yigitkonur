@@ -76,3 +76,55 @@ Avoid these failure modes:
 - inheriting everything from the most detailed source
 - using the comparison section as a hidden draft of the final skill
 - deciding on the final structure before the evidence is compared
+
+
+---
+
+## Per-skill notes template
+
+Use this template when examining each downloaded skill. Fill it out before writing your comparison table row:
+
+```markdown
+### [Skill Name]
+- **Source:** [GitHub URL or skill-dl ID]
+- **SKILL.md lines:** [count]
+- **Has references/?:** [yes/no, file count]
+- **Tier:** [1/2/3 per source-patterns.md quality spectrum]
+
+#### Strengths (inherit)
+- [specific pattern with file reference]
+
+#### Weaknesses (avoid)
+- [specific anti-pattern with evidence]
+
+#### Adaptable ideas
+- [pattern that needs structural adjustment]
+```
+
+## Comparison table columns
+
+Your markdown comparison table should include these columns:
+
+| Column | Purpose | Example |
+|---|---|---|
+| Skill name | Identifier | `build-mcp-server` |
+| Source | Where found | `skill-dl` / GitHub / skills.sh |
+| Tier | Quality level | 1 / 2 / 3 |
+| Lines (SKILL.md) | Size indicator | 287 |
+| Ref files | Decomposition quality | 12 |
+| Key strength | Best inherit candidate | "Clean MCP tool routing" |
+| Key weakness | Primary avoid signal | "No output contract" |
+| Verdict | Use decision | Inherit routing / Avoid structure |
+
+## Completeness gate
+
+Before moving from comparison (Step 5) to synthesis (Step 7), verify:
+
+- [ ] At least 3 skills compared in detail (not just listed)
+- [ ] Every comparison row has both "strength" and "weakness" entries
+- [ ] At least one Tier 1 reference identified (or documented why none exist)
+- [ ] At least 2 "avoid" patterns documented across all sources
+- [ ] Per-skill notes exist for every skill in the comparison table
+- [ ] Quality tiers assigned using the spectrum from `source-patterns.md`
+
+If fewer than 3 skills are available, document the search terms used and why more weren't found. A thin comparison is acceptable when justified; a fabricated one never is.

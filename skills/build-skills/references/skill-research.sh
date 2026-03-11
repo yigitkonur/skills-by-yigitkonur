@@ -1,4 +1,32 @@
 #!/usr/bin/env bash
+
+# ============================================================================
+# USAGE
+# ============================================================================
+# This script automates the research phase of skill building.
+#
+# Prerequisites:
+#   - skill-dl must be installed and available in PATH
+#   - Verify with: skill-dl --version
+#   - If not available, see references/remote-sources.md for alternatives
+#
+# Basic usage:
+#   bash references/skill-research.sh <keyword1> <keyword2> [keyword3...]
+#
+# Examples:
+#   bash references/skill-research.sh typescript mcp server
+#   bash references/skill-research.sh react testing components hooks
+#   bash references/skill-research.sh python fastapi authentication
+#
+# What it does:
+#   1. Searches for skills matching your keywords using skill-dl
+#   2. Downloads the top candidates in parallel
+#   3. Outputs a summary of what was found
+#
+# Output:
+#   Downloaded skills are saved to the current directory.
+#   Review them using the quality assessment from source-patterns.md.
+# ============================================================================
 # skill-research.sh — Skill discovery, download, and corpus inspection
 # Usage: bash skill-research.sh "<keyword1>,<keyword2>,<keyword3>[,...]" [output-dir] [max-parallel]
 #
