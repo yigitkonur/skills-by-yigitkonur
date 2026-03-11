@@ -181,3 +181,11 @@
 5. **Use fetch_reddit** (fetch_comments=True, use_llm=False) on promising threads for full fix sequences.
 6. **Use deep_research** for complex bugs involving multiple systems. Attach code files and describe what you tried.
 7. **Iterate**: if research narrows but does not resolve, run a second pass with more specific queries.
+
+## Steering notes
+
+1. **Exact error in quotes is #1 query.** `"ERR_HTTP_HEADERS_SENT" fastify v5` -- always start here.
+2. **Grep for error message** to find files to attach to `deep_research`.
+3. **Cascading failures:** research each service independently, then search for interaction patterns.
+4. **Timing bugs** (race conditions): search general pattern, not specific error.
+5. **Log correlation:** `"[framework] structured logging" debug` for log-based diagnosis.

@@ -201,3 +201,22 @@ scrape_pages(
 ## Key Insight
 
 scrape_pages is your reading tool. It transforms raw web pages into structured, relevant data. The quality of your extraction depends entirely on the specificity of your `what_to_extract` targets. Pipe-separated targets with 4–6 specific categories consistently outperform vague requests.
+
+## Steering notes from production testing
+
+### Pipe-separated extraction targets
+
+**Good:** `"pricing|features|limitations|compatibility"` -- produces structured tables.
+**Bad:** `"tell me about this page"` -- produces unstructured prose.
+
+### Token budget: ~32K total
+
+| URLs | Tokens/URL | Best for |
+|---|---|---|
+| 1-2 | 16K-32K | Deep single-page analysis |
+| 3-5 | 6.4K-10K | Standard verification (recommended) |
+| 10+ | <3.2K | Too shallow for most needs |
+
+### Source credibility hierarchy
+
+1. Official docs 2. Changelogs 3. GitHub Issues/PRs 4. Stack Overflow 5. Expert blogs 6. AI summaries (avoid for verification)
