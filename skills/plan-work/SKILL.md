@@ -17,7 +17,7 @@ Use it when the main deliverable is:
 - a root-cause hypothesis for a recurring issue
 
 Do not use it as a substitute for:
-- external information gathering (`run-research`)
+- external information gathering (`run-research`) — use plan-work for reasoning over available context; hand off to run-research when the decision requires external data, benchmarks, or literature you do not have
 - code writing or refactoring (`build-*`, `develop-*`)
 - PR review (`review-*`)
 - debugging or verification (`debug-*`, `test-*`)
@@ -30,7 +30,7 @@ If another skill owns execution, use this skill to structure the decision first,
 2. Use the smallest method stack that improves clarity.
 3. Match analysis depth to reversibility, evidence quality, and blast radius.
 4. Prefer a concrete recommendation or next experiment over abstract discussion.
-5. Always separate facts, assumptions, unknowns, and preferences.
+5. Always separate facts, assumptions, unknowns, and preferences (surface user preferences in step 2 framing).
 
 ## Reference router
 
@@ -51,7 +51,8 @@ Start with one file. Add a second only when it answers a different question. For
 
 ### 1. Classify the planning job
 
-Pick one dominant job first:
+Pick one dominant job first. Precedence when tied: diagnose > compare > forecast > frame > align > explore. When still tied, choose the job whose output the next decision-maker needs first.
+
 - frame the problem
 - diagnose a cause
 - compare options
@@ -59,30 +60,33 @@ Pick one dominant job first:
 - align people
 - de-risk execution
 
-State it explicitly: `This is primarily a ___ decision/problem.`
+State it explicitly in the output: `This is primarily a ___ decision/problem.`
 
-Do not try to run every planning mode at once.
+Do not try to run every planning mode at once. If a second job emerges mid-workflow, complete the first fully, then start a second pass.
 
 ### 2. Frame the mission before proposing solutions
 
 Capture:
 - mission sentence: `We need to ___ so that ___ within ___ constraints.`
-- success criteria and failure signals
+- success criteria and failure signals (success is observable when there is a metric, test, or outcome you could check)
 - constraints and non-negotiables
-- facts vs. assumptions
+- facts vs. assumptions (a fact has observable evidence you can point to; an assumption is an unverified belief — label each)
+- preferences: stakeholder or user priorities that are not hard constraints
 - scope: in / out / unknown
 
 Stop here and do not recommend a plan yet if any of these are true:
 - the decision-maker is unknown
-- success cannot be observed
-- 3+ core 5W2H questions are unanswered
-- critical unknowns have no owner or resolve-by date
+- success cannot be observed (no metric, test, or outcome you could check)
+- 3+ core 5W2H questions are unanswered (5W2H = Who, What, Where, When, Why, How, How-much)
+- critical unknowns have no owner or resolve-by date (for AI agents: owner = who can answer; resolve-by = can planning proceed without it?)
 
-If blocked, return a decision-ready gap list instead of pretending the plan is ready.
+If blocked, return a decision-ready gap list instead of pretending the plan is ready. Format each gap as: (a) what is missing, (b) who can provide it, (c) what it blocks, (d) suggested default if no answer comes. If framing stays blocked, consult recovery paths below.
 
 ### 3. Choose the smallest useful method
 
-Use one primary method. Add one companion only if it closes a clear gap.
+Consult the reference router above to load the reference file matching your chosen method. The reference file contains templates, worked examples, and edge-case guidance.
+
+Use one primary method. Add one companion only if the primary method cannot answer a question the user explicitly asked.
 
 | Situation | Use | Avoid |
 |---|---|---|
@@ -94,40 +98,42 @@ Use one primary method. Add one companion only if it closes a clear gap.
 | Fast-changing execution | OODA + confidence-based pacing | Long upfront optimization loops |
 | Executive communication | Minto Pyramid | Leading with background instead of the recommendation |
 
-Method rule: if the first method already makes the choice clear, stop. Do not stack extra frameworks just to look rigorous.
+Method rule: if the first method already makes the choice clear, stop. Do not stack extra frameworks just to look rigorous. If the method table does not clearly match, consult recovery paths below.
 
-### 4. Build enough evidence, not maximum evidence
+### 4. Build evidence and apply the method
 
 Use evidence in this order:
-1. local context (artifacts, prior attempts, observed behavior)
+1. local context (artifacts, prior attempts, observed behavior — for codebases: config files, test results, git history, error logs)
 2. direct signals (current outcomes, constraints, failure signatures)
 3. external research only when it can change the decision
 
+Execute the chosen method on gathered evidence. If the method has a template (matrix rows, root cause tree, priority scores), fill it now using the reference file loaded in step 3.
+
 Depth rules:
-- **Type 2 / reversible / low-blast-radius decisions:** bias to action. Recommend the simplest safe experiment and a short feedback loop.
-- **Type 1 / hard-to-reverse / high-blast-radius decisions:** require 2-4 viable options, explicit criteria, risks, fallback, and a review date.
+- **Type 2 (reversible, low blast radius):** bias to action. Recommend the simplest safe experiment and a short feedback loop.
+- **Type 1 (hard to reverse, high blast radius):** require 2-4 viable options, explicit criteria, risks, fallback, and a review date.
 - **Urgent but unclear situations:** make bounded assumptions, label them, and choose the smallest reversible step that will generate better evidence.
 - If new evidence is not changing the recommendation, stop researching.
 
-For technical work, understand current system behavior before recommending structural change.
+Evidence is enough when you can fill every cell of the method template and articulate why the leading option wins.
+
+For technical work, document current architecture, failure modes, and performance characteristics before recommending structural change.
 
 ### 5. Decide, prioritize, or diagnose
 
-Apply the output shape that matches the job:
+Generate 2-4 distinct options (including a minimal/fallback option) before selecting one. Then apply the output shape that matches the job:
 - **Decision:** include the selected option, why it wins, and why the others do not.
 - **Prioritization:** force trade-offs. If more than 60% of items are `Must`, rework the categories.
 - **Root cause:** trace to a system cause that can be changed, not just a symptom or person.
 - **Execution planning:** define phases, dependencies, owners, checkpoints, verification, and pivot triggers.
-
-Always include a minimal or fallback option.
+- **Frame the problem:** deliver mission sentence, gap list, and recommended next step to close the biggest gap.
+- **Align people:** deliver shared understanding document with points of agreement, open disputes, and proposed resolution process.
 
 ### 6. Package the answer for action
 
-Deliver two layers unless the user asks otherwise:
-1. **Decision brief:** recommendation, why now, biggest trade-off, immediate next step.
-2. **Execution detail:** phases, owners, dependencies, verification, risk controls, and review cadence.
+Follow the 9-section output contract below. The first four sections serve as the decision brief (recommendation, framing, and core logic); the remaining sections provide execution detail.
 
-Lead with the recommendation for decision-makers. Lead with sequence and ownership for executors.
+If audience is known, lead with the recommendation for decision-makers and lead with sequence and ownership for executors. If audience is unknown, use the output contract section order as-is.
 
 ## Anti-derail guardrails
 
@@ -160,7 +166,7 @@ Unless the user asks otherwise, respond in this order:
 1. Mission Snapshot
 2. Planning Job + Chosen Method(s)
 3. Facts, Assumptions, and Unknowns
-4. Root Cause, Decision Frame, or Priority Logic
+4. Decision Frame (the decision to be made, who decides, constraints, and deadline), Root Cause, or Priority Logic
 5. Options or Ranked Work
 6. Recommendation and Why Not the Alternatives
 7. Execution Plan
@@ -169,7 +175,7 @@ Unless the user asks otherwise, respond in this order:
 
 ## Done conditions
 
-Planning is complete when:
+Planning is complete (substantive completeness) when:
 - the problem or decision is stated in one sentence
 - the chosen method is justified
 - the recommendation or next experiment is clear
@@ -181,11 +187,11 @@ If you cannot meet those conditions, stop with a decision-ready gap list instead
 
 ## Final quality gate
 
-Before finalizing, check:
+Before finalizing, check communication quality:
 
 - [ ] Are we solving the right problem?
 - [ ] Did we choose the smallest useful method?
-- [ ] Are facts, assumptions, and unknowns clearly separated?
+- [ ] Are facts, assumptions, unknowns, and preferences clearly separated?
 - [ ] Did we match analysis depth to reversibility and risk?
 - [ ] Are trade-offs and rejected alternatives visible?
 - [ ] Does the answer include verification, checkpoints, and pivot triggers where needed?
@@ -195,4 +201,4 @@ If any answer is `no`, revise before finalizing.
 
 ## Final reminder
 
-Do not load every reference by default. Start with the single best-matching file above, add one more only if it answers a new question, and stop planning once the next action is decision-ready.
+Before delivering, verify you loaded only the reference files you actually used. If any reference was opened but not cited in the output, drop it. Stop planning once the next action is decision-ready.
