@@ -36,7 +36,7 @@ Skills that generate project-level instruction files (`CLAUDE.md`, `AGENTS.md`) 
 
 | Skill | What it does |
 |---|---|
-| **[init-agent-config](skills/init-agent-config/)** | Generates AGENTS.md (cross-agent standard, 20+ tools) and/or CLAUDE.md (Claude Code–specific) using the WHAT/WHY/HOW framework, dual-file architecture, progressive disclosure, and quality scoring. Includes 5 reference docs: best practices with scoring rubric, Claude memory hierarchy, AGENTS.md discovery spec, cross-agent compatibility matrix for 16 agents, and unified templates for 8 project types. |
+| **[init-agent-config](skills/init-agent-config/)** | Generates AGENTS.md (cross-agent standard, 20+ tools) and/or CLAUDE.md (Claude Code–specific) using the WHAT/WHY/HOW framework, dual-file architecture, progressive disclosure, and quality scoring. Includes 7 reference docs: best practices with scoring rubric, Claude memory hierarchy, AGENTS.md discovery spec, cross-agent compatibility matrix for 16 agents, unified templates for 10 project types, and steering experiences from derailment testing. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-agent-config
