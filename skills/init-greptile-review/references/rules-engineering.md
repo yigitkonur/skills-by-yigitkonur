@@ -149,6 +149,26 @@ Every disableable rule gets a unique `id` so child directories can disable it:
 { "disabledRules": ["no-console-log"] }
 ```
 
+### 7. Not Too Broad
+
+A rule that fires on the majority of files in a repository is either a linter rule or unscoped. Apply this litmus test:
+
+| Question | If YES |
+|---|---|
+| Could ESLint, Pylint, RuboCop, or a regex catch this? | Remove it — it's linter work |
+| Does it apply to >60% of files in the repo? | Narrow the scope to the relevant subsystem |
+| Would it fire on every PR? | Either the rule is too general or it should be a team-wide linter rule |
+| Does it require understanding intent, architecture, or cross-file context? | Keep it — this is what Greptile is for |
+
+**Example — too broad:**
+```json
+{ "rule": "All functions must have error handling", "scope": ["**/*.ts"] }
+```
+This fires on every TypeScript file. Narrow to the subsystem where error handling actually matters:
+```json
+{ "rule": "All API route handlers must have try-catch with structured error logging", "scope": ["src/api/**/*.ts"] }
+```
+
 ---
 
 ## Rule Categories
@@ -272,6 +292,12 @@ strictness: 2 (Balanced)  → Reports high + medium
 strictness: 3 (Critical)  → Reports high only
 ```
 
+**Decision method for severity assignment:**
+- If the rule violation could cause a **security breach, data loss, or system crash** → `high`
+- If the rule violation creates **technical debt, breaks architecture, or degrades maintainability** → `medium`
+- If the rule violation is a **preference, suggestion, or minor improvement** → `low`
+- When in doubt, start with `medium` and adjust after observing signal-to-noise on real PRs
+
 ---
 
 ## Scoping Patterns
@@ -332,3 +358,32 @@ After approximately 10 PRs, Greptile auto-suggests rules based on patterns it ob
 3. **Scope aggressively** — every high-volume rule needs a scope
 4. **Review quarterly** — remove rules that no longer apply, add rules for new patterns
 5. **Check "Last Applied"** — rules that never trigger may have scope/syntax issues
+
+---
+
+## Lint Duplication Verification
+
+Before finalizing rules, verify none duplicate existing linter coverage:
+
+**Step 1:** List the repo's linters
+```bash
+# Check for config files
+ls .eslintrc* prettier.config* biome.* .stylelintrc* pyproject.toml .rubocop.yml 2>/dev/null
+
+# Check devDependencies
+cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin).get('devDependencies',{}); print('\n'.join(k for k in d if any(x in k for x in ['eslint','prettier','biome','stylelint','lint'])))"
+```
+
+**Step 2:** For each Greptile rule, ask:
+1. Is this about formatting, naming, or syntax? → Remove (linter territory)
+2. Is this about import ordering, unused variables, or code style? → Remove
+3. Does this require understanding the *purpose* of the code, not just its syntax? → Keep
+4. Does this require reading multiple files to evaluate? → Keep (Greptile's strength)
+
+**Step 3:** Cross-reference common false positives:
+| Rule that looks semantic but isn't | Why it's actually a linter rule |
+|---|---|
+| "Use async/await instead of callbacks" | ESLint `prefer-async-await` catches this |
+| "No console.log in production" | ESLint `no-console` catches this |
+| "Prefer const over let" | ESLint `prefer-const` catches this |
+| "Add return types to functions" | TypeScript strict mode catches this |

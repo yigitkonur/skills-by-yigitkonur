@@ -284,17 +284,40 @@ print('Validation complete')
 "
 ```
 
-### Step 2: Deploy Canary Rule
+### Step 2 — Deploy Canary Rule
 
-Add a trivially triggerable rule:
+A canary rule is a deliberately trivial rule designed to verify Greptile is reading your config. It should trigger on any test PR.
+
+**Recommended canary rule:**
 ```json
 {
   "id": "canary",
-  "rule": "No TODO comments allowed in production code.",
-  "scope": ["**/*.ts"],
+  "rule": "Comment 'canary active' on any PR modifying a README.",
+  "scope": ["**/README.md"],
   "severity": "low"
 }
 ```
+
+**Alternative canary rules** (if no README changes are convenient):
+```json
+// Fires on any TypeScript file change
+{
+  "id": "canary",
+  "rule": "Flag any file that contains a TODO comment.",
+  "scope": ["**/*.ts"],
+  "severity": "low"
+}
+
+// Fires on any file change (broadest trigger)
+{
+  "id": "canary",
+  "rule": "Confirm Greptile config is active by commenting on this PR.",
+  "scope": ["**/*"],
+  "severity": "low"
+}
+```
+
+**Important:** Add the canary rule to your config BEFORE opening the test PR. Greptile reads config from the PR's source branch, so the canary must be committed to that branch.
 
 ### Step 3: Create Test PR
 
@@ -372,6 +395,92 @@ Focus on security implications in all code changes.
 **Critical**: Delete `greptile.json` after migration. If both exist, `.greptile/` silently wins and `greptile.json` is ignored.
 
 ---
+
+## Agent-Specific Troubleshooting
+
+Common issues when AI agents generate Greptile configuration:
+
+### Config generates but doesn't seem to apply
+1. **Check branch:** Did you commit the config to the PR's source branch? Greptile reads from source, not target.
+2. **Check JSON validity:** Run `python3 -m json.tool .greptile/config.json`. A single syntax error silently disables the entire config.
+3. **Check coexistence:** If both `.greptile/` and `greptile.json` exist, `.greptile/` wins silently. Delete one.
+
+### Rules fire on unexpected files
+1. **Check scope arrays:** `"scope": "src/**"` (string) silently fails. Must be `"scope": ["src/**"]` (array).
+2. **Check glob depth:** `"scope": ["src/*.ts"]` only matches `src/file.ts`, not `src/sub/file.ts`. Use `"src/**/*.ts"` for recursive matching.
+3. **Check ignorePatterns format:** Must be a newline-separated string, not an array.
+
+### Too many or too few comments
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| 20+ comments per PR | `strictness: 1` + broad scopes | Raise to `strictness: 2`, narrow scopes |
+| 0 comments on any PR | Config not on source branch, or JSON invalid | Validate JSON, check branch, deploy canary |
+| Comments on generated files | Missing ignore patterns | Add `"*.generated.*\n*.min.js\ndist/**"` |
+| Only getting high-severity | `strictness: 3` active | Lower to `strictness: 2` if needed |
+
+### Config validation script
+Run this after generating any config to catch common agent mistakes:
+
+```bash
+python3 -c "
+import json, sys, os
+
+path = '.greptile/config.json'
+if not os.path.exists(path):
+    print('ERROR: .greptile/config.json not found')
+    sys.exit(1)
+
+with open(path) as f:
+    try:
+        config = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f'ERROR: Invalid JSON at line {e.lineno}: {e.msg}')
+        sys.exit(1)
+
+errors = []
+warnings = []
+
+# Check scope arrays
+for r in config.get('rules', []):
+    scope = r.get('scope')
+    if isinstance(scope, str):
+        errors.append(f'Rule \"{ r.get(\"id\", \"unnamed\") }\": scope must be array, got string')
+    if not r.get('id'):
+        warnings.append(f'Rule \"{ r.get(\"rule\", \"\")[:40] }...\": missing id (child configs cannot disable it)')
+
+# Check ignorePatterns
+ip = config.get('ignorePatterns')
+if isinstance(ip, list):
+    errors.append('ignorePatterns must be newline-separated string, not array')
+
+# Check strictness
+s = config.get('strictness')
+if s is not None and s not in [1, 2, 3]:
+    errors.append(f'strictness must be 1, 2, or 3 (got {s})')
+
+# Check commentTypes
+for t in config.get('commentTypes', []):
+    if t not in ('logic', 'syntax', 'style', 'info'):
+        errors.append(f'Invalid commentType: {t}')
+
+# Check fileChangeLimit
+fcl = config.get('fileChangeLimit')
+if fcl is not None and fcl < 1:
+    errors.append(f'fileChangeLimit must be >= 1 (got {fcl}). 0 = skip ALL PRs')
+
+# Check patternRepositories
+for pr in config.get('patternRepositories', []):
+    if pr.startswith('http'):
+        errors.append(f'patternRepositories must use org/repo format, not URL: {pr}')
+
+# Report
+for e in errors: print(f'❌ ERROR: {e}')
+for w in warnings: print(f'⚠️  WARNING: {w}')
+if not errors and not warnings: print('✅ Config looks valid')
+elif errors: print(f'\n{len(errors)} error(s) found — config will silently fail')
+"
+```
+
 
 ## When to Contact Support
 
