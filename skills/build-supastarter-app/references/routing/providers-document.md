@@ -2,6 +2,8 @@
 
 > `Document` is the shared server wrapper for the entire app, while `ClientProviders` is the shared client-only context stack mounted inside it. Use this reference when adding a global provider, debugging hydration order, or deciding whether logic belongs in the HTML shell, a server component, or a client provider.
 
+> ⚠️ **Session provider scope.** `ClientProviders` mounts session context for the entire app. Do not add a second `SessionProvider` in nested layouts.
+
 ## `Document` is the server-side root shell
 
 `apps/web/modules/shared/components/Document.tsx` is an async server component. It owns the real `<html>` and `<body>` tags, sets `lang`, applies the font CSS variables, adds `suppressHydrationWarning`, and reads the `consent` cookie before any client provider is mounted.
@@ -57,6 +59,10 @@ Use this rule when deciding where something belongs:
 ## Where these providers sit in the app
 
 Neither marketing nor SaaS defines its own HTML shell from scratch. Both top-level layouts call `Document`, which means both trees inherit the same `NuqsAdapter`, `ConsentProvider`, and `ClientProviders` chain before their route-specific providers are added.
+
+## Adding a new provider
+
+New providers should be added to `ClientProviders.tsx`. If the provider needs session data, place it inside the session provider. If it's analytics or consent related, place it alongside `ConsentBanner` and `AnalyticsScript`.
 
 ---
 

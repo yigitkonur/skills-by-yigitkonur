@@ -2,6 +2,8 @@
 
 > Documents the `packages/auth/config.ts` toggles that control signup, magic links, passkeys, onboarding, and organizations. Consult this when a UI branch or redirect path seems inconsistent with the auth setup.
 
+> ⚠️ **Config location.** Feature flags live in `packages/auth/config.ts`, not env vars. Changing them requires a rebuild.
+
 ## Key files
 
 - `packages/auth/config.ts`

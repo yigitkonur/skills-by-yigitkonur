@@ -2,6 +2,8 @@
 
 > Explains the adaptive sign-in UI that supports password, magic link, OAuth, and passkey flows in one component. Consult this when changing login UX, redirect behavior, or two-factor handling.
 
+> ⚠️ **Redirect after login.** The post-login redirect chain is: invitation URL → `redirectTo` param → `config.saas.redirectAfterSignIn`. Onboarding guard may intercept.
+
 ## Key files
 
 - `apps/web/modules/saas/auth/components/LoginForm.tsx`
@@ -50,9 +52,20 @@ const onSubmit = form.handleSubmit(async (values) => {
 - Feature flags in `packages/auth/config.ts` decide which auth methods are actually rendered.
 - Invitation-aware redirects preserve the `invitationId` and related search params through the flow.
 
+## Redirect flow
+
+```text
+/auth/login → Better Auth → callback → /app
+                                        ↓
+                                  onboarding incomplete?
+                                  → /onboarding
+                                  otherwise → /app/[orgSlug]
+```
+
 ---
 
 **Related references:**
 - `references/auth/client-auth-client.md` — Auth client methods used by the form
 - `references/auth/feature-flags.md` — Flags that toggle login modes
 - `references/auth/signup-invitations.md` — Invitation-aware behavior shared with signup
+- `references/routing/access-guards.md` — Guard sequence that drives redirects

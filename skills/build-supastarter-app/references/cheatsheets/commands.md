@@ -89,6 +89,27 @@ pnpm add <pkg> -w                        # Add to root workspace
 pnpm clean                  # Clean all build outputs (dist, .next, etc.)
 ```
 
+## Common workflows
+
+**Starting from scratch:**
+```bash
+docker compose up -d
+cp .env.example .env.local
+pnpm install
+pnpm generate && pnpm db:push
+pnpm dev
+```
+
+**After pulling changes:**
+```bash
+pnpm install && pnpm generate && pnpm db:push
+```
+
+**After adding/changing a Prisma model:**
+```bash
+pnpm generate && pnpm db:push
+```
+
 ---
 
 **Related references:**

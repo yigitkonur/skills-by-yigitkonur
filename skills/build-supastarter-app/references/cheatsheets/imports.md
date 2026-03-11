@@ -127,6 +127,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 ```
 
+## Common oRPC + toast pattern
+
+```tsx
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { orpc } from "@shared/lib/orpc-query-utils";
+import { toast } from "sonner";
+```
+
 ---
 
 **Related references:**

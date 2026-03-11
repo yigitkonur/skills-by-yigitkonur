@@ -2,6 +2,8 @@
 
 > Documents the default Stripe implementation used by the starter. Consult this when changing webhook handling, checkout metadata, portal behavior, or seat updates.
 
+> ⚠️ **Provider abstraction.** The payment provider interface is generic. Stripe-specific code lives in `packages/payments/stripe/`. Other providers implement the same interface.
+
 ## Key files
 
 - `packages/payments/provider/stripe/index.ts`

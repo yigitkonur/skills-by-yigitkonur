@@ -2,6 +2,8 @@
 
 > Documents the request-time proxy in `apps/web/proxy.ts`. Consult this when a request is redirected before React renders, when locale handling behaves unexpectedly, or when feature flags change how `/app`, `/auth`, or marketing routes are reached.
 
+> ⚠️ **Middleware matcher.** If `/api/orpc/...` calls fail with 404, check the middleware matcher config in `middleware.ts`. The proxy must pass API routes through.
+
 ## Key file
 
 - `apps/web/proxy.ts`
@@ -71,6 +73,14 @@ The matcher excludes API routes, image/font assets, and well-known static files 
 - when `marketing.enabled` is `false`, non-SaaS traffic is funneled into `/app`
 - next-intl locale detection only runs after the earlier SaaS and marketing checks pass
 - proxy logic should stay coarse-grained; feature-specific access rules belong in layouts and pages
+
+## Debugging checklist
+
+1. Check `/api/orpc/...` reaches Next.js (check middleware matcher)
+2. Verify env vars for any proxy target
+3. Check middleware matcher patterns in `middleware.ts`
+4. Ensure no auth guard interferes with API routes
+5. Check CORS headers if calling from a different origin
 
 ---
 
