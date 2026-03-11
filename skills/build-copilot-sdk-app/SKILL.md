@@ -147,7 +147,7 @@ const getWeather = defineTool("get_weather", {
   }),
   handler: async ({ city }) => ({
     city,
-    temperature: "62F",
+    temperature: "62°F",
     condition: "cloudy",
   }),
 });

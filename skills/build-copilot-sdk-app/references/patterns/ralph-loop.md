@@ -33,8 +33,10 @@ async function ralphLoop(promptFile: string, maxIterations = 50): Promise<void> 
         // 10-minute timeout per iteration
         await session.sendAndWait({ prompt }, 600_000);
       } finally {
-        // Destroy — not disconnect — to discard session state completely
-        await session.destroy();
+        // Disconnect — releases in-memory resources, preserves disk state.
+        // Since Ralph loops create fresh sessions each iteration,
+        // disk state from prior iterations is not reused.
+        await session.disconnect();
       }
 
       console.log(`Iteration ${i} complete.`);
@@ -47,7 +49,7 @@ async function ralphLoop(promptFile: string, maxIterations = 50): Promise<void> 
 ralphLoop("PROMPT.md", 20);
 ```
 
-Use `session.destroy()` not `session.disconnect()`. Disconnect preserves session state for resumption; destroy discards it. For Ralph loops, you want a clean slate.
+Use `session.disconnect()` to release in-memory resources after each iteration. Each iteration creates a fresh session, so prior session state is not needed.
 
 ## Full Implementation with Plan/Build Modes
 
@@ -74,7 +76,7 @@ async function ralphLoop(mode: Mode, maxIterations: number): Promise<void> {
       const session = await client.createSession({
         model: "gpt-5.1-codex-mini",
         workingDirectory: process.cwd(),        // Pin to project root
-        onPermissionRequest: async () => ({ allow: true }), // Auto-approve
+        onPermissionRequest: async () => ({ kind: "approved" }), // Auto-approve
       });
 
       // Log tool usage for observability
@@ -87,7 +89,7 @@ async function ralphLoop(mode: Mode, maxIterations: number): Promise<void> {
       try {
         await session.sendAndWait({ prompt }, 600_000);
       } finally {
-        await session.destroy();
+        await session.disconnect();
       }
 
       console.log(`Iteration ${i} complete.`);
@@ -201,7 +203,7 @@ for (let i = 1; i <= maxIterations; i++) {
   const session = await client.createSession({
     model: "gpt-5.1-codex-mini",
     workingDirectory: process.cwd(),
-    onPermissionRequest: async () => ({ allow: true }),
+    onPermissionRequest: async () => ({ kind: "approved" }),
   });
 
   try {
@@ -210,8 +212,8 @@ for (let i = 1; i <= maxIterations; i++) {
     console.error(`Iteration ${i} failed:`, err);
     // Log but continue — next iteration starts fresh
   } finally {
-    // Always destroy, even on error
-    await session.destroy().catch(() => {});
+    // Always disconnect, even on error
+    await session.disconnect().catch(() => {});
   }
 }
 ```
@@ -231,6 +233,6 @@ Never use Ralph loops for one-shot operations — the overhead of create/destroy
 ## Settings
 
 - `workingDirectory`: Always set to `process.cwd()` or your project root. Without it, the agent's file operations resolve relative to the CLI's working directory, not your project.
-- `onPermissionRequest`: Use `async () => ({ allow: true })` for unattended operation. Never use this in interactive contexts.
+- `onPermissionRequest`: Use `async () => ({ kind: "approved" })` for unattended operation. Never use this in interactive contexts.
 - Timeout on `sendAndWait`: Set to 600_000 (10 minutes) or longer for complex builds. The default may be too short for tasks with many tool calls.
 - Model: `gpt-5.1-codex-mini` is the canonical choice for build tasks — strong coding performance, efficient for repeated use.

@@ -78,7 +78,7 @@ session.on((event) => {
     case "tool.execution_start":
       console.log("Tool executing:", event.data.toolName);
       break;
-    case "tool.execution_end":
+    case "tool.execution_complete":
       console.log("Tool complete:", event.data.toolName);
       break;
     case "assistant.message":
@@ -95,7 +95,9 @@ await session.rpc.fleet.start({
 });
 
 // Wait for all fleet work to complete
-await session.waitForIdle();
+await new Promise<void>((resolve) => {
+  session.on("session.idle", () => resolve());
+});
 ```
 
 ## Fleet Mode vs. Single Session
@@ -143,7 +145,9 @@ const fleetResult = await session.rpc.fleet.start({
   prompt: "Execute the plan with parallel sub-agents for each component",
 });
 
-await session.waitForIdle();
+await new Promise<void>((resolve) => {
+  session.on("session.idle", () => resolve());
+});
 ```
 
 ## Limitations and Requirements
@@ -151,5 +155,5 @@ await session.waitForIdle();
 - Fleet mode requires the CLI to support parallel agent orchestration — check `result.started` to confirm activation.
 - Fleet sub-agents share the session's permission handler; all sub-agent permission requests route through the same `onPermissionRequest` callback.
 - The `prompt` parameter is optional but recommended for complex tasks to guide the parallelization strategy.
-- Fleet mode is not appropriate for tasks where sub-tasks must execute in strict sequence — use chained `send()` calls with `waitForIdle()` instead.
+- Fleet mode is not appropriate for tasks where sub-tasks must execute in strict sequence — use chained `send()` calls and listen for `"session.idle"` events instead.
 - External tools registered via `defineTool` are available to all fleet sub-agents; tool handlers may be called concurrently from multiple sub-agents, so make them thread-safe.

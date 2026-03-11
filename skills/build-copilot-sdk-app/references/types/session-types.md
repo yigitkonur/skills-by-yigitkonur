@@ -223,13 +223,14 @@ interface MessageOptions {
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `send` | `(options: MessageOptions \| string): Promise<void>` | Sends a message to the session. String shorthand sets prompt only. |
-| `sendAndWait` | `(options: MessageOptions \| string): Promise<AssistantMessageEvent>` | Sends and waits for the assistant's complete response. |
+| `send` | `(options: MessageOptions): Promise<string>` | Sends a message to the session. Returns the message ID. |
+| `sendAndWait` | `(options: MessageOptions, timeout?: number): Promise<AssistantMessageEvent \| undefined>` | Sends and waits for the assistant's complete response. Returns `undefined` if no assistant message was produced. |
 | `abort` | `(): Promise<void>` | Aborts the current turn. |
 | `on` | `(handler: SessionEventHandler): () => void` | Subscribes to all session events. Returns unsubscribe function. |
 | `on<T>` | `(type: T, handler: TypedSessionEventHandler<T>): () => void` | Subscribes to a specific event type. |
-| `waitForIdle` | `(): Promise<void>` | Resolves when the session emits `session.idle`. |
-| `dispose` | `(): Promise<void>` | Closes the session and cleans up resources. |
+| `disconnect` | `(): Promise<void>` | Releases in-memory resources and preserves session state on disk. |
+| `setModel` | `(modelId: string): Promise<void>` | Switches the model for subsequent messages. |
+| `log` | `(message: string, options?: { level?: string; ephemeral?: boolean }): Promise<void>` | Emits a log entry into the session event stream. |
 
 ---
 
@@ -282,19 +283,21 @@ const session = await client.createSession({
 const unsub = session.on("assistant.message_delta", (e) => {
   process.stdout.write(e.data.deltaContent);
 });
-await session.send("Refactor this function");
-await session.waitForIdle();
-unsub();
+await session.send({ prompt: "Refactor this function" });
+// Listen for idle to know when done
+session.on("session.idle", () => {
+  unsub();
+});
 
 // Send and wait for complete response
-const reply = await session.sendAndWait("List the files in the repo");
-console.log(reply.data.content);
+const reply = await session.sendAndWait({ prompt: "List the files in the repo" });
+console.log(reply?.data.content);
 
 // Typed event subscription
 session.on("tool.execution_start", (e) => {
   console.log("Running tool:", e.data.toolName, e.data.arguments);
 });
 
-// Always dispose when done
-await session.dispose();
+// Always disconnect when done
+await session.disconnect();
 ```

@@ -19,7 +19,6 @@ import type {
   SessionLifecycleEventType,
   SessionLifecycleHandler,
   TypedSessionLifecycleHandler,
-  ForegroundSessionInfo,
   ResumeSessionConfig,
   SessionConfig,
 } from "@github/copilot-sdk";
@@ -177,7 +176,7 @@ type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 | `deleteSession` | `(sessionId: string): Promise<void>` | Deletes a session permanently. |
 | `on` | `(handler: SessionLifecycleHandler): () => void` | Subscribes to all session lifecycle events. Returns unsubscribe function. |
 | `on<K>` | `(type: K, handler: TypedSessionLifecycleHandler<K>): () => void` | Subscribes to a specific lifecycle event type. |
-| `getForegroundSession` | `(): Promise<ForegroundSessionInfo>` | Returns the foreground session in TUI+server mode. |
+| `getForegroundSessionId` | `(): Promise<string \| undefined>` | Returns the foreground session ID in TUI+server mode. |
 
 ---
 
@@ -241,17 +240,6 @@ type SessionLifecycleHandler = (event: SessionLifecycleEvent) => void;
 type TypedSessionLifecycleHandler<K extends SessionLifecycleEventType> = (
   event: SessionLifecycleEvent & { type: K }
 ) => void;
-```
-
----
-
-## `ForegroundSessionInfo` Interface
-
-```typescript
-interface ForegroundSessionInfo {
-  sessionId?: string;
-  workspacePath?: string;
-}
 ```
 
 ---

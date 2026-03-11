@@ -174,7 +174,14 @@ const client = new CopilotClient({
 
   // Models: custom BYOK model list
   onListModels: async () => [
-    { id: "gpt-4o", name: "GPT-4o", vendor: "openai" },
+    {
+      id: "gpt-4o",
+      name: "GPT-4o",
+      capabilities: {
+        supports: { vision: true, reasoningEffort: false },
+        limits: { max_context_window_tokens: 128000 },
+      },
+    },
   ],
 });
 ```
@@ -263,7 +270,10 @@ const client = new CopilotClient({
     return data.data.map((m: { id: string }) => ({
       id: m.id,
       name: m.id,
-      vendor: "openai",
+      capabilities: {
+        supports: { vision: false, reasoningEffort: false },
+        limits: { max_context_window_tokens: 128000 },
+      },
     }));
   },
 });

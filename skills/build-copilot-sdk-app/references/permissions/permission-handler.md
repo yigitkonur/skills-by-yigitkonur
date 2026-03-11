@@ -19,13 +19,15 @@ type PermissionHandler = (
 
 ```typescript
 interface PermissionRequest {
-    kind: "shell" | "write" | "mcp" | "read" | "url" | "memory" | "custom-tool";
+    kind: "shell" | "write" | "mcp" | "read" | "url" | "custom-tool";
     toolCallId?: string;  // ID of the tool call that triggered this request
     [key: string]: unknown;  // kind-specific fields (see permission-kinds.md)
 }
 ```
 
 Always narrow on `request.kind` before accessing kind-specific metadata. Never rely on extra fields without narrowing — the index signature `[key: string]: unknown` exists to allow future extensions.
+
+> **Note:** The `"memory"` kind exists in the wire protocol (`permission.requested` event) but is not part of the TypeScript `PermissionRequest` type. If you encounter it at runtime, handle it in the `default` branch of your switch statement.
 
 ## Result Kinds
 

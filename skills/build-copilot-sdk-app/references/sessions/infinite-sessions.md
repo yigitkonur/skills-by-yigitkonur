@@ -57,7 +57,7 @@ When context utilization reaches 0.95:
 - If background compaction has not yet completed, the session blocks the current LLM call until compaction finishes
 - This prevents context overflow (which would cause an API error)
 - Once compaction completes, the blocked call proceeds with the freed context
-- The session emits a `session.compacted` event
+- The session emits a `session.compaction_complete` event
 
 Do not set `bufferExhaustionThreshold` below `backgroundCompactionThreshold`. The gap between them determines how much time compaction has to run before the session must block.
 
@@ -84,44 +84,38 @@ console.log(session.workspacePath);
 
 `session.workspacePath` is `undefined` when infinite sessions are disabled.
 
-## Compaction RPC — getSummary()
+## Compaction RPC — compact()
 
-Inspect the compaction summary after it runs via the session's typed RPC:
+Manually trigger compaction or inspect compaction state via the session's typed RPC:
 
 ```typescript
-const summary = await session.rpc.compaction.getSummary();
-// Returns the summary text that replaced the compacted portion of history
-console.log("Compaction summary:", summary);
+const result = await session.rpc.compaction.compact();
+// Returns: { success: boolean; tokensRemoved: number; messagesRemoved: number }
+console.log(`Compaction freed ${result.tokensRemoved} tokens`);
 ```
 
 Use this to:
-- Log what was summarized for audit purposes
-- Feed the summary to another system for tracking
-- Detect that compaction occurred and adjust downstream logic
+- Proactively free context before a large task
+- Log compaction metrics for monitoring
+- Verify that compaction ran after a threshold was crossed
 
-The `session.rpc` accessor is lazily initialized and scoped to the current session via `sessionId`.
+## session.compaction_complete Event
 
-## session.compacted Event
-
-Listen for the `session.compacted` event to react when compaction completes:
+Listen for the `session.compaction_complete` event to react when compaction completes:
 
 ```typescript
-session.on("session.compacted", async (event) => {
+session.on("session.compaction_complete", async (event) => {
   console.log("Context compacted — session continues with freed context");
 
-  // Optionally fetch the compaction summary
-  const summary = await session.rpc.compaction.getSummary();
-  console.log("Summary of compacted history:", summary);
-
   // Optionally checkpoint application state here
-  await saveCompactionRecord(session.sessionId, summary);
+  await saveCompactionRecord(session.sessionId, new Date());
 });
 ```
 
-Typed subscription (if `"session.compacted"` is in the `SessionEventType` union):
+Typed subscription (if `"session.compaction_complete"` is in the `SessionEventType` union):
 
 ```typescript
-const unsubscribe = session.on("session.compacted", (event) => {
+const unsubscribe = session.on("session.compaction_complete", (event) => {
   // handle compaction
   unsubscribe();  // one-shot if desired
 });
@@ -168,10 +162,9 @@ const session = await client.createSession({
 
 let compactionCount = 0;
 
-session.on("session.compacted", async () => {
+session.on("session.compaction_complete", async () => {
   compactionCount++;
-  const summary = await session.rpc.compaction.getSummary();
-  console.log(`Compaction #${compactionCount}:`, summary.slice(0, 200));
+  console.log(`Compaction #${compactionCount} completed`);
 });
 
 session.on("session.error", (event) => {
@@ -210,7 +203,7 @@ async function runPhase(sessionId: string, phase: number, prompt: string) {
     ? await client.resumeSession(sessionId, { onPermissionRequest: approveAll })
     : await client.createSession({ sessionId, onPermissionRequest: approveAll });
 
-  session.on("session.compacted", () => {
+  session.on("session.compaction_complete", () => {
     console.log(`Phase ${phase}: compaction ran, continuing`);
   });
 
@@ -227,17 +220,18 @@ await runPhase(sessionId, 2, "Implement the refactoring for the top 3 targets");
 await runPhase(sessionId, 3, "Write regression tests for all changes");
 ```
 
-### Pattern 3: Compaction-Triggered Summarization
+### Pattern 3: Compaction-Triggered Logging
 
 Use compaction events to build an external activity log:
 
 ```typescript
-const activityLog: { timestamp: Date; summary: string }[] = [];
+const compactionLog: { timestamp: Date; iteration: number }[] = [];
+let compactionCount = 0;
 
-session.on("session.compacted", async () => {
-  const summary = await session.rpc.compaction.getSummary();
-  activityLog.push({ timestamp: new Date(), summary });
-  await writeActivityLog(session.sessionId, activityLog);
+session.on("session.compaction_complete", async () => {
+  compactionCount++;
+  compactionLog.push({ timestamp: new Date(), iteration: compactionCount });
+  await writeCompactionLog(session.sessionId, compactionLog);
 });
 ```
 
@@ -249,7 +243,7 @@ session.on("session.compacted", async () => {
 | 0.80 – 0.94 | Background compaction running | Session processes normally |
 | 0.95+ (compaction done) | Context freed | Session continues normally |
 | 0.95+ (compaction still running) | Buffer exhaustion | Next LLM call blocks until done |
-| Compaction complete | — | `session.compacted` event fired |
+| Compaction complete | — | `session.compaction_complete` event fired |
 
 ## Disabling Infinite Sessions
 

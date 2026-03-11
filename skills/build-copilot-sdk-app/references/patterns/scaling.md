@@ -235,7 +235,7 @@ class SessionManager {
 async function cleanupSessions(client: CopilotClient, maxAgeMs: number): Promise<void> {
   const sessions = await client.listSessions();
   const now = Date.now();
-  const stale = sessions.filter(s => now - new Date(s.createdAt).getTime() > maxAgeMs);
+  const stale = sessions.filter(s => now - s.modifiedTime.getTime() > maxAgeMs);
   await Promise.all(stale.map(s => client.deleteSession(s.sessionId)));
   console.log(`Cleaned up ${stale.length} stale sessions`);
 }

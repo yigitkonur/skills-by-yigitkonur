@@ -228,7 +228,7 @@ async function purgeOldSessions(client: CopilotClient, maxAgeMs: number) {
   const sessions = await client.listSessions();
   const cutoff = Date.now() - maxAgeMs;
   for (const s of sessions) {
-    if (new Date(s.modifiedTime).getTime() < cutoff) {
+    if (s.modifiedTime.getTime() < cutoff) {
       await client.deleteSession(s.sessionId);
     }
   }

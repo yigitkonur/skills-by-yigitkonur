@@ -234,80 +234,22 @@ const session = await client.createSession({
 
 ## Elicitation (MCP Forms) — Structured Form Input
 
-Elicitation is a separate protocol mechanism for MCP servers to request structured form input. It arrives as an `elicitation.requested` event, not via `onUserInputRequest`. Handle it by listening to session events:
+Elicitation is a separate protocol mechanism for MCP servers to request structured form input. It arrives as an `elicitation.requested` event. Handle it by listening to session events and responding via the permissions RPC:
 
 ```typescript
 session.on("elicitation.requested", (event) => {
-    const { requestId, message, requestedSchema, mode } = event.data;
-    // mode is "form" (the only supported mode)
+    const { requestId, message, requestedSchema } = event.data;
     // requestedSchema is a JSON Schema object describing form fields
 
     console.log(`Elicitation request: ${message}`);
     console.log(`Schema fields:`, requestedSchema.properties);
 
-    // Respond by calling the elicitation RPC
-    session.rpc.elicitation.respond({
-        requestId,
-        result: {
-            action: "submit",
-            content: {
-                // Provide values for all required fields
-                field_name: "field_value",
-            },
-        },
-    });
+    // Respond via the permissions RPC with the requestId
+    // The elicitation response flows through the same pending request mechanism
 });
 ```
 
-### Elicitation Schema Structure
-
-```typescript
-// event.data.requestedSchema shape:
-{
-    type: "object";
-    properties: {
-        [fieldName: string]: {
-            type: string;          // JSON Schema type: "string", "number", "boolean", etc.
-            description?: string;  // Field label or description
-            enum?: string[];       // Allowed values (for dropdown fields)
-            default?: unknown;     // Default value
-        };
-    };
-    required?: string[];  // Required field names
-}
-```
-
-### Automated Elicitation Handler
-
-```typescript
-session.on("elicitation.requested", async (event) => {
-    const { requestId, requestedSchema } = event.data;
-    const content: Record<string, unknown> = {};
-
-    // Auto-fill fields from defaults or enum first values
-    for (const [name, field] of Object.entries(requestedSchema.properties)) {
-        const schema = field as { type: string; enum?: string[]; default?: unknown };
-        if (schema.default !== undefined) {
-            content[name] = schema.default;
-        } else if (schema.enum && schema.enum.length > 0) {
-            content[name] = schema.enum[0];
-        } else if (schema.type === "boolean") {
-            content[name] = false;
-        } else if (schema.type === "number") {
-            content[name] = 0;
-        } else {
-            content[name] = "";
-        }
-    }
-
-    await session.rpc.elicitation.respond({
-        requestId,
-        result: { action: "submit", content },
-    });
-});
-```
-
-Elicitation requests also emit `elicitation.completed` when resolved.
+> **Note:** There is no `session.rpc.elicitation` namespace. Elicitation is event-driven — listen for `elicitation.requested` events and respond through the appropriate RPC mechanism for your protocol version.
 
 ---
 
