@@ -7,6 +7,8 @@ description: Use skill if you are controlling a live browser with @anthropic-ai/
 
 Use `@anthropic-ai/playwright-cli` to drive a live browser from the terminal. Keep this file focused on trigger logic, workflow, guardrails, and reference routing. Use `references/` for detailed commands, edge cases, and larger patterns.
 
+> **Invocation model:** Every command listed below (e.g. `snapshot`, `click e0`, `fill e1 "text"`) is typed at the `playwright-cli` prompt after you launch the tool, **not** as standalone shell commands. Launch with `playwright-cli` first, then enter commands at its interactive prompt.
+
 ## Trigger boundary
 
 Use this skill when the task requires a real browser session and interactive CLI control:
@@ -41,18 +43,25 @@ Only bootstrap when the CLI or browser support is missing:
 
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
-playwright-cli install --browser=chrome
+playwright-cli install --browser=chrome   # always run to ensure browser binary exists
+```
+
+When you need an isolated session (parallel work, risky experiments), add to bootstrap:
+
+```bash
+playwright-cli config --isolated
 ```
 
 - If an existing session or tab already contains the needed login or state, inspect it first instead of resetting everything.
 - Start a named session or isolated browser only when you need clean-room state, parallel isolation, or risky experimentation; use `references/tabs.md` for the exact bootstrap patterns.
+- For isolated sessions, also add `session-stop <name>` at the end of your cleanup to avoid leaking browser processes.
 - Do not begin with `session-stop-all` unless you intentionally want to discard every active browser.
 
 ### 2) Establish tab and session ground truth
 
 - Run `tab-list`.
 - Decide whether to reuse the current tab or open a temporary work tab.
-- When you need a new work surface, use `tab-new` first and `open <url>` second.
+- When you need a new work surface, use `tab-new` first and `open <url>` second (`tab-new <url>` is unreliable and may not load the URL).
 - Record the tab map before you continue.
 - If a popup or forced new window is expected, route to `references/tabs.md` before acting.
 
@@ -61,7 +70,8 @@ playwright-cli install --browser=chrome
 Use the cheapest command that gives trustworthy state:
 
 ```bash
-snapshot
+snapshot          # writes YAML accessibility tree to .playwright-cli/page-<ts>.yml
+                  # CLI prints the file path; read with cat to see refs (e0, e1, ...)
 eval "() => window.location.href"
 ```
 
@@ -76,7 +86,22 @@ Prefer the direct CLI primitive over custom code:
 - navigation: `open`, `reload`, `go-back`, `go-forward`
 - inputs: `fill`, `type`, `select`, `check`, `uncheck`
 - clicks and hovers: `click`, `dblclick`, `hover`
+- keyboard: `press <key>` (e.g. `press Enter`, `press Tab`)
+- viewport: `resize <width> <height>`, `mousewheel <deltaX> <deltaY>`
+- uploads: trigger chooser first, then `upload /absolute/path`
+- dialogs: `dialog-accept`, `dialog-dismiss`
 - tabs: `tab-new`, `tab-list`, `tab-select`, `tab-close`
+
+| Category | Commands |
+|---|---|
+| Navigate | `open`, `reload`, `go-back`, `go-forward` |
+| Input | `fill`, `type`, `select`, `check`, `uncheck` |
+| Interact | `click`, `dblclick`, `hover`, `press` |
+| Viewport | `resize`, `mousewheel` |
+| Files | `upload` |
+| Dialogs | `dialog-accept`, `dialog-dismiss` |
+| Tabs | `tab-new`, `tab-list`, `tab-select`, `tab-close` |
+| Observe | `snapshot`, `screenshot`, `eval`, `console`, `network` |
 
 Use direct commands with these rules:
 - use `check` for radios and checkboxes when possible; it is safer than blind `click`
@@ -94,7 +119,11 @@ Use the lightest proof that actually confirms success:
 | Form field changed | `eval "(el) => el.value" <ref>` or `eval "(el) => el.checked" <ref>` |
 | Upload succeeded | `eval` file list + screenshot if the UI must show the file |
 | Visual state matters | screenshot with descriptive filename + state proof |
-| A bug or regression is suspected | `console --clear` / `network --clear`, reproduce, then inspect returned artifact files |
+| A bug or regression is suspected | `console --clear` / `network --clear`, reproduce, then `cat` the returned artifact files |
+
+> **Note:** `--clear` flags produce no visible output (silent success). The artifact file is created after the next capture command.
+
+> **Artifact inspection:** Commands like `snapshot`, `console`, `network`, and `screenshot` write results to files and print the path. Read them with `cat <path>` to see content.
 
 Use progressively stronger evidence when risk increases:
 1. **State proof** — `snapshot` + `eval`

@@ -69,11 +69,15 @@ Then open the returned file path and inspect its content.
 ### Clear and re-capture
 
 ```bash
-console --clear
+console --clear          # silent success, produces no output
 # Perform actions
-console error
-# Inspect the artifact file
+console error            # captures errors to a file, prints the file path
+cat <returned-path>      # read the artifact to see actual console output
 ```
+
+> **Note:** `--clear` flags produce no visible output. This is normal.
+> The next capture command (`console error`, `network`, etc.) writes to a new
+> artifact file whose path is printed.
 
 ### What console logs look like
 

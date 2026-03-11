@@ -27,12 +27,17 @@ When you run `snapshot`, the CLI traverses the current page DOM and produces
 an accessibility-tree dump. Interactive elements get assigned **ref identifiers**
 like `e0`, `e1`, `e5`.
 
-```text
-<html>
-├─ <body>
-   ├─ [e0] <button>Submit</button>
-   ├─ [e1] <input type="text" placeholder="Name">
-   └─ [e2] <a href="/login">Login</a>
+```yaml
+# Example from .playwright-cli/page-<timestamp>.yml
+- role: button
+  name: "Submit"
+  ref: e0
+- role: textbox
+  name: "Name"
+  ref: e1
+- role: link
+  name: "Login"
+  ref: e2
 ```
 
 These refs are the primary way to target elements in CLI commands:
@@ -57,14 +62,15 @@ click e2
 
 ## Snapshot anatomy
 
-### Inline snapshot (printed to terminal)
+### Inline snapshot (YAML file)
 
 ```bash
 snapshot
 ```
 
-Prints the accessibility-tree directly. You read refs from the output
-and use them immediately.
+Writes the accessibility tree to a YAML file at `.playwright-cli/page-<timestamp>.yml`
+and prints the file path. Read it with `cat <path>` to see the refs (e0, e1, ...).
+Use those refs immediately in subsequent commands.
 
 ### Saved snapshot (file)
 
