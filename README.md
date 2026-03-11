@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-20 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, language standards, UI component libraries, and CI/CD.
+21 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -186,6 +186,20 @@ Deep reference skills for specific frameworks and tools.
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-supastarter-app
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/debug-tauri-devtools
+```
+
+---
+
+## SDK Guides
+
+Deep reference skills for building applications with AI platform SDKs.
+
+| Skill | What it does |
+|---|---|
+| **[build-copilot-sdk-app](skills/build-copilot-sdk-app/)** | Complete developer guide for the GitHub Copilot SDK (`@github/copilot-sdk`) in TypeScript/Node.js — client setup, sessions, custom tools with Zod schemas, streaming events (47 event types), permissions, hooks, custom agents, MCP servers, skills, BYOK providers, plan/autopilot/fleet modes, multi-client architectures, and Ralph loop autonomous dev patterns. Includes 10 reference docs: client/transport, sessions, tools/schemas, events/streaming, permissions/user-input, hooks, agents/MCP/skills, auth/BYOK, advanced patterns, and complete type reference. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-copilot-sdk-app
 ```
 
 ---
