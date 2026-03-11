@@ -24,9 +24,10 @@ skill-dl search "typescript" "type safety" "strict mode" "ts config" "compilatio
 **Usage pattern:**
 
 1. Run `skill-dl search` with 3–20 keywords covering the topic from multiple angles
-2. Review the markdown table output — higher keyword match count = higher priority
-3. Run a second search with different phrasing if the first result set looks narrow
-4. Deduplicate by URL across multiple search runs before building the URL file
+2. **Triage**: if results exceed 50 rows, use `--min-match 2` to focus on cross-keyword hits, or `--top 20` to cap output. For niche topics where the max match count is ≤2, broaden keyword variety or manually curate from the full list
+3. Review the table — higher keyword match count = higher priority
+4. Run a second search with different phrasing if the first result set looks narrow
+5. Deduplicate by URL across multiple search runs before building the URL file
 
 ### Playbooks URL pattern
 
@@ -117,7 +118,7 @@ Fallback: full-repo search for SKILL.md with matching parent dir name, then root
 |---|---|
 | `skill-dl: command not found` | Install: `curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh \| bash` |
 | `[ERR] Could not clone` | Repo is private, renamed, or deleted. Check URL manually. |
-| `[ERR] Not found in repo` | Skill name doesn't match any path in repo. Run with `-v` to see available skills. |
+| `[ERR] Not found in repo` | Skill name doesn't match any path in repo. Run with `-v` to see available skills. The skill may use a non-standard directory layout. |
 | Slow on many repos | Use parallel download (Option A above). |
 | Need to retry failures | Pipe failed URLs from summary into a new file, re-run. |
 
