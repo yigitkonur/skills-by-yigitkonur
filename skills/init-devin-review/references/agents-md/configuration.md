@@ -20,6 +20,14 @@ Complete reference for writing `AGENTS.md` files that guide Devin's behavior dur
 - User asks to configure Devin for coding tasks → generate `AGENTS.md` only
 - User asks for both review and task execution → generate both, without duplicating content
 
+**Quick decision tree — where does a rule belong?**
+
+| Rule about… | Put it in |
+|---|---|
+| What to flag during review | `REVIEW.md` |
+| How the agent should write code | `AGENTS.md` |
+| Both review + coding behavior | `AGENTS.md` (Bug Catcher reads it too) |
+
 ---
 
 ## File Basics
@@ -28,6 +36,30 @@ Complete reference for writing `AGENTS.md` files that guide Devin's behavior dur
 - **Location**: Repository root only (not directory-scoped like REVIEW.md)
 - **Encoding**: UTF-8
 - **Recommended length**: 100–300 lines
+
+---
+
+## Monorepo Coordination
+
+In monorepos, you can place scoped `AGENTS.md` files at package or service level alongside the root file.
+
+**Precedence**: closest-scope-wins — a rule in `packages/api/AGENTS.md` overrides the root `AGENTS.md` for code under `packages/api/`.
+
+```
+repo-root/
+├── AGENTS.md              ← global: shared conventions, commit style, CI
+├── packages/
+│   ├── api/
+│   │   └── AGENTS.md      ← scoped: API-specific architecture, error handling
+│   └── web/
+│       └── AGENTS.md      ← scoped: frontend framework rules, component patterns
+```
+
+**Rules:**
+- Root `AGENTS.md` holds cross-cutting concerns (commit format, branch policy, shared linting).
+- Scoped files hold package-specific architecture, dependencies, and testing.
+- **Don't repeat root rules in scoped files** — Devin reads both; duplication adds noise.
+- If a scoped rule intentionally contradicts the root, add a brief comment explaining why.
 
 ---
 
@@ -95,12 +127,14 @@ Language-specific conventions for Devin to follow when writing or modifying code
 
 Steps Devin should follow when executing tasks. These are instructions for task execution, not review criteria.
 
+> **Note:** Adapt commands below to your project's build system (npm, yarn, make, go, pytest, etc.).
+
 ```markdown
 ## Workflow
-- Run `pnpm test` before committing any changes.
-- Run `pnpm lint` and fix all errors before creating a PR.
+- Run tests before committing any changes.
+- Run the linter and fix all errors before creating a PR.
 - New API endpoints require both unit tests and integration tests.
-- Database schema changes must include a migration file generated with `pnpm prisma migrate dev`.
+- Database schema changes must include a migration file.
 - Always create a feature branch — never commit directly to `main`.
 - Write descriptive commit messages: `<type>(<scope>): <description>` format.
 - If changing a public API, update the OpenAPI spec in `docs/openapi.yaml`.
@@ -141,12 +175,12 @@ How and when Devin should run tests, and what testing patterns to follow.
 
 ```markdown
 ## Testing
-- Run `pnpm test` before every commit.
+- Run tests before every commit.
 - Unit tests mock external dependencies (database, HTTP clients, file system).
-- Integration tests use a test database seeded with `prisma/seed.ts`.
+- Integration tests use a dedicated test database with seed data.
 - Test naming: `describe('<FunctionName>', () => { it('should <behavior>', ...) })`.
 - Minimum coverage: 80% line coverage for new code.
-- Never use `test.skip` or `describe.skip` without a tracking issue number.
+- Never skip tests without a tracking issue number.
 ```
 
 ### Communication
@@ -194,9 +228,9 @@ However, review-specific rules (severity, ignore patterns, what to flag vs skip)
 - Maximum function length: 50 lines.
 
 ## Workflow
-- Run `pnpm test && pnpm lint` before committing.
+- Run `npm test && npm run lint` before committing.
 - New API endpoints require integration tests in `tests/integration/`.
-- Database changes require: schema update → `pnpm prisma migrate dev` → test migration.
+- Database changes require: schema update → generate migration → test migration.
 - Create feature branches from `main`. Never commit directly.
 
 ## Dependencies
@@ -249,6 +283,44 @@ However, review-specific rules (severity, ignore patterns, what to flag vs skip)
 
 ---
 
+## Complete Example: Go Service
+
+```markdown
+# Agent Guidelines
+
+## Architecture
+- Follow `cmd/` + `internal/` layout: entry points in `cmd/<svcname>/main.go`, all other code under `internal/`.
+- Public API surface lives in `internal/api/`; domain logic in `internal/domain/`; storage in `internal/store/`.
+- Wire dependencies in `main.go` — no global state or `init()` side effects.
+
+## Coding Standards
+- Wrap errors with `fmt.Errorf("operation: %w", err)` — never discard context.
+- Export only what other packages need. Unexported by default.
+- Use `slog` (structured logging) — no `log.Println` or `fmt.Printf` for observability.
+- Doc comments on all exported types and functions (`// FuncName does …`).
+- No `interface{}` / `any` unless required by a library boundary.
+
+## Workflow
+- Run `go test -race ./...` and `golangci-lint run` before committing.
+- New endpoints require table-driven tests covering success, 4xx, and 5xx cases.
+- Proto/OpenAPI changes require regenerating code before committing.
+- Adapt commands to the project's build system (make, task, mage, etc.).
+
+## Dependencies
+- Prefer stdlib. Use `net/http` + a lightweight router (chi / echo) over heavy frameworks.
+- Use `golang.org/x/sync/errgroup` for bounded concurrent work — no bare `go func()`.
+- Pin dependency versions with `go.sum`. Run `go mod tidy` before committing.
+
+## File Organization
+- Entry points: `cmd/<svcname>/main.go`
+- HTTP handlers: `internal/api/handler_<resource>.go`
+- Domain logic: `internal/domain/<resource>.go`
+- Storage: `internal/store/<resource>.go`
+- Tests: co-located as `<filename>_test.go`
+```
+
+---
+
 ## Complete Example: Next.js Full-Stack
 
 ```markdown
@@ -267,9 +339,9 @@ However, review-specific rules (severity, ignore patterns, what to flag vs skip)
 - Multiple independent data fetches must use `Promise.all()` or separate Suspense boundaries.
 
 ## Workflow
-- Run `pnpm build` (not just `dev`) to catch SSR errors before committing.
+- Run a production build (not just `dev`) to catch SSR errors before committing.
 - New pages must export `generateMetadata()` or a `metadata` object.
-- Test with `pnpm test` and verify no TypeScript errors with `pnpm tsc --noEmit`.
+- Run tests and verify no TypeScript errors with `tsc --noEmit`.
 
 ## Dependencies
 - Use `@tanstack/react-query` for client-side data, `server-only` for server utilities.

@@ -126,6 +126,9 @@ Reusable REVIEW.md patterns organized by concern. Adapt these to your repository
 - Use `logging` module with structured formatters. No `print()` statements in production code.
 - Serializers must validate all input fields. Never pass `validated_data` to model methods without checking required fields.
 - New URL patterns must follow RESTful conventions: plural nouns, no verbs in paths.
+- Strawberry/Graphene resolvers must use DataLoader for batched queries. Direct ORM access in resolvers causes N+1.
+- Celery tasks must be idempotent. Use `acks_late=True` and handle `TaskRevokedError` for safe retries.
+- Celery tasks must not reference Django request objects. Pass only serializable arguments (IDs, strings).
 ```
 
 ### Go
@@ -133,11 +136,24 @@ Reusable REVIEW.md patterns organized by concern. Adapt these to your repository
 ```markdown
 ## Conventions — Go
 - All errors must be handled explicitly. Never use `_` to discard errors.
+- Wrap errors with context using `fmt.Errorf("operation: %w", err)`. Never discard the original error.
 - Use `context.Context` as the first parameter for functions that may block or need cancellation.
 - Goroutines must have clear ownership and shutdown mechanisms. No fire-and-forget goroutines.
+- Use `errgroup.Group` for managing concurrent goroutines that return errors.
 - Use `slog` for structured logging. No `fmt.Println` or `log.Println` in production.
 - Prefer returning errors over panicking. Reserve `panic` for truly unrecoverable states.
 - Interfaces should be defined by the consumer, not the implementor.
+- `defer` must not be used inside loops — it defers until function exit, not loop iteration.
+- Tests that touch shared state or goroutines must pass `go test -race`.
+
+Good:
+  if err := doWork(ctx); err != nil {
+      return fmt.Errorf("processing order %d: %w", id, err)
+  }
+
+Bad:
+  err := doWork(ctx)
+  // ignored or returned without context
 ```
 
 ### Rust
@@ -149,6 +165,34 @@ Reusable REVIEW.md patterns organized by concern. Adapt these to your repository
 - Use `clippy` lints as the baseline. Only suppress with explicit justification.
 - Prefer `&str` over `String` for function parameters when ownership is not needed.
 - Async functions must use `tokio` runtime. No mixing async runtimes.
+```
+
+---
+
+## GraphQL Patterns
+
+```markdown
+## Conventions — GraphQL
+- All list-returning resolvers must use DataLoader to batch database access. Direct ORM calls per-node cause N+1.
+- Enforce query depth limiting (max depth 10–15) to prevent recursive query abuse.
+- Mutations must validate inputs with a schema validator (Zod, Joi, or framework equivalent) before execution.
+- Subscription resolvers must authenticate on connection init, not per-message. Reject unauthenticated upgrades.
+- Schema snapshots (`schema.graphql`) must be committed and diffed in CI. Breaking changes require explicit review.
+- Never expose internal IDs directly. Use opaque, globally unique IDs (Relay-style) for client-facing nodes.
+```
+
+---
+
+## Event-Driven / Queue Patterns
+
+```markdown
+## Conventions — Event-Driven
+- All message handlers must be idempotent. Use idempotency keys (message ID or business key) to deduplicate.
+- Failed messages must route to a dead-letter queue (DLQ) after a bounded retry count (typically 3–5).
+- Retries must use exponential backoff with jitter. Fixed-interval retries cause thundering herd on recovery.
+- Message schemas must be backward-compatible. Use schema evolution (additive fields, optional new fields) — never remove or rename fields without a migration period.
+- Messages must include an authentication signature (HMAC or equivalent) to prevent spoofing from untrusted producers.
+- Producers must not perform database writes and message publishes without transactional outbox or equivalent guarantee.
 ```
 
 ---
@@ -224,6 +268,39 @@ Reusable REVIEW.md patterns organized by concern. Adapt these to your repository
 - `*_test.go` — only if test changes are routine (usually should be reviewed)
 - `go.sum` — unless dependencies changed
 - `*.pb.go` — auto-generated protobuf files
+```
+
+### Rust
+
+```markdown
+## Ignore
+- `target/` — build output
+- `Cargo.lock` — unless it is a binary crate (libraries should not commit lock files)
+- `*.expanded.rs` — macro-expanded output
+```
+
+### Java / Kotlin
+
+```markdown
+## Ignore
+- `build/`, `out/` — build output
+- `*.class` — compiled bytecode
+- `.gradle/` — Gradle caches
+- `generated/` — annotation-processor or protobuf output
+```
+
+---
+
+## Compliance Stub
+
+> **Only add if the project has compliance requirements** (SOC 2, HIPAA, GDPR, PCI-DSS, etc.).
+
+```markdown
+## Compliance
+- PII fields must be encrypted at rest and masked in logs. Never log raw emails, phone numbers, or addresses.
+- Data retention policies must be enforced programmatically. Hard-deletes or TTL-based expiry required for regulated data.
+- All state-changing operations on sensitive resources must emit an audit log entry with actor, action, resource, and timestamp.
+- Source files in regulated modules must include the project license header. CI should enforce header presence.
 ```
 
 ---
