@@ -1,12 +1,17 @@
 # Master Skill Checklist
 
+> **Phase routing:** Not every checklist item applies at every stage. Items marked "DRAFT ESSENTIAL" (Phases 0-3) should be checked before sharing any draft. Items marked "FINAL AUDIT ONLY" (Phases 4+) are for comprehensive quality passes before publishing.
+>
+> **Quick start for drafts:** Search this file for "DRAFT ESSENTIAL" to find the minimum viable checks.
+
+
 Comprehensive checklist covering every phase of skill development. 90+ items organized by phase. Every item is binary (yes/no), specific, and verifiable.
 
 Use the full checklist for published skills. Use Phase 0-3 for personal skills. Skip Phase 6-7 for non-published skills.
 
 ---
 
-## Phase 0: Before You Start
+## Phase 0 — ✅ DRAFT ESSENTIAL: Before You Start
 
 Planning and preparation before writing any files.
 
@@ -26,7 +31,7 @@ Planning and preparation before writing any files.
 
 ---
 
-## Phase 1: Frontmatter Quality
+## Phase 1 — ✅ DRAFT ESSENTIAL: Frontmatter Quality
 
 The frontmatter determines whether Claude ever loads your skill.
 
@@ -68,7 +73,7 @@ The frontmatter determines whether Claude ever loads your skill.
 
 ---
 
-## Phase 2: Body Structure
+## Phase 2 — ✅ DRAFT ESSENTIAL: Body Structure
 
 The SKILL.md body is the core instruction set.
 
@@ -104,7 +109,7 @@ The SKILL.md body is the core instruction set.
 
 ---
 
-## Phase 3: Reference Files
+## Phase 3 — ✅ DRAFT ESSENTIAL: Reference Files
 
 Reference files provide depth without bloating SKILL.md.
 
@@ -132,7 +137,7 @@ Reference files provide depth without bloating SKILL.md.
 
 ---
 
-## Phase 4: Content Quality
+## Phase 4 — 🔍 FINAL AUDIT ONLY: Content Quality
 
 The content must be accurate, current, and synthesized — not copied.
 
@@ -163,7 +168,7 @@ The content must be accurate, current, and synthesized — not copied.
 
 ---
 
-## Phase 5: Testing
+## Phase 5 — 🔍 FINAL AUDIT ONLY: Testing
 
 Testing validates that the skill works correctly in practice.
 
@@ -189,7 +194,7 @@ Testing validates that the skill works correctly in practice.
 
 ---
 
-## Phase 6: Publishing
+## Phase 6 — 🔍 FINAL AUDIT ONLY: Publishing
 
 Preparing the skill for public distribution.
 
@@ -214,7 +219,7 @@ Preparing the skill for public distribution.
 
 ---
 
-## Phase 7: Post-Ship Monitoring
+## Phase 7 — 🔍 FINAL AUDIT ONLY: Post-Ship Monitoring
 
 Ongoing maintenance after the skill is live.
 

@@ -238,3 +238,8 @@ Why: `<` and `>` can inject instructions into the agent's system prompt.
 - No "claude" or "anthropic" in the skill name (reserved by Anthropic)
 - Descriptions appear in the system prompt — treat them as security-sensitive
 - YAML safe parsing prevents code execution in frontmatter
+
+
+---
+
+> **Steering tip:** Test your description against both should-trigger and should-NOT-trigger queries before finalizing. A description that triggers too broadly is worse than one that triggers too narrowly.

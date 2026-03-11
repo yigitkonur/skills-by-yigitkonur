@@ -212,3 +212,8 @@ skill-name/
 | Assuming auth never expires | Token expiry causes silent failures | Add auth verification step |
 | Ignoring rate limits | Bulk operations hit API limits | Add pagination and throttling guidance |
 | No fallback for MCP-down scenarios | Skill is useless without MCP | Provide manual alternative steps |
+
+
+---
+
+> **Steering tip:** MCP tool availability varies by environment. Always document fallback approaches when your skill depends on specific MCP servers.
