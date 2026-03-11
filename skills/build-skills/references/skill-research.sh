@@ -11,12 +11,12 @@
 #   - If not available, see references/remote-sources.md for alternatives
 #
 # Basic usage:
-#   bash references/skill-research.sh <keyword1> <keyword2> [keyword3...]
+#   bash references/skill-research.sh "keyword1,keyword2,keyword3" [output-dir] [max-parallel]
 #
 # Examples:
-#   bash references/skill-research.sh typescript mcp server
-#   bash references/skill-research.sh react testing components hooks
-#   bash references/skill-research.sh python fastapi authentication
+#   bash references/skill-research.sh "typescript,mcp,server"
+#   bash references/skill-research.sh "react,testing,components,hooks" ./corpus
+#   bash references/skill-research.sh "python,fastapi,authentication" ./corpus 6
 #
 # What it does:
 #   1. Searches for skills matching your keywords using skill-dl

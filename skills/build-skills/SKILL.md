@@ -77,7 +77,7 @@ Only execute this step if step 1 classified the job as **Full research path**. S
 - Read `references/research-workflow.md` for the complete research protocol.
 - Verify `skill-dl` is available: `skill-dl --version`. If missing, see `references/remote-sources.md` for installation. If unavailable and installation is not possible, use the `skills-as-context-search-skills` and `skills-as-context-get-skill-details` tools (requires the skills.sh MCP server), or search GitHub manually for repositories containing SKILL.md files.
 - Use `skill-dl search` with 3–20 space-separated keywords to discover candidates: `skill-dl search mcp server typescript sdk --top 20`. It outputs a prioritized markdown table to stdout.
-- Use `skill-dl` to download selected candidates, or run `bash references/skill-research.sh <keyword1> <keyword2> ...` for end-to-end parallel discovery and download in one command.
+- Use `skill-dl` to download selected candidates, or run `bash references/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
 - See `references/remote-sources.md` for more `skill-dl` usage patterns and download options.
 - Prefer a few diverse, relevant sources over many near-duplicates.
 - Create `skills.markdown` in the workspace root summarizing what was downloaded, what was shortlisted, and why, before moving on.
@@ -283,5 +283,5 @@ Quick routing verification:
 
 ```bash
 # Check for orphaned reference files (not mentioned in SKILL.md)
-for f in references/**/*.md; do grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"; done
+for f in $(find references -name '*.md' -type f); do grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"; done
 ```
