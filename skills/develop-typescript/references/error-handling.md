@@ -412,3 +412,193 @@ Error handling decision:
 | Returning `null` for errors | Return `Result<T>` discriminated union |
 | Generic `Error` for everything | Use typed error hierarchy with codes |
 | `try/catch` around every function | Use error boundaries at layer boundaries |
+
+
+---
+
+> **Cross-reference:** For the retry/backoff pattern implementation, see also [patterns.md](patterns.md) → "Pattern 20 — Retry with exponential backoff".
+
+## Retry and timeout patterns
+
+### Timeout wrapper
+
+```typescript
+class TimeoutError extends Error {
+  constructor(ms: number) {
+    super(`Operation timed out after ${ms}ms`);
+    this.name = "TimeoutError";
+  }
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+): Promise<T> {
+  const timeout = new Promise<never>((_, reject) => {
+    const id = setTimeout(() => {
+      clearTimeout(id);
+      reject(new TimeoutError(ms));
+    }, ms);
+  });
+
+  return Promise.race([promise, timeout]);
+}
+
+// Usage
+try {
+  const data = await withTimeout(fetchData(), 5000);
+} catch (error) {
+  if (error instanceof TimeoutError) {
+    console.error("Request timed out");
+  }
+  throw error;
+}
+```
+
+### Combining retry + timeout
+
+```typescript
+const data = await withRetry(
+  () => withTimeout(fetchData(), 5000),
+  { maxAttempts: 3, baseDelay: 1000 },
+);
+```
+
+---
+
+## Error aggregation
+
+When running multiple operations that may independently fail, collect all errors rather than stopping at the first one.
+
+### AggregateError pattern
+
+```typescript
+async function processAll<T>(
+  items: T[],
+  processor: (item: T) => Promise<void>,
+): Promise<void> {
+  const errors: Array<{ item: T; error: unknown }> = [];
+
+  await Promise.allSettled(
+    items.map(async (item) => {
+      try {
+        await processor(item);
+      } catch (error) {
+        errors.push({ item, error });
+      }
+    }),
+  );
+
+  if (errors.length > 0) {
+    throw new AggregateError(
+      errors.map((e) => e.error),
+      `${errors.length} of ${items.length} operations failed`,
+    );
+  }
+}
+
+// Handling AggregateError
+try {
+  await processAll(users, sendNotification);
+} catch (error) {
+  if (error instanceof AggregateError) {
+    for (const individualError of error.errors) {
+      console.error("Individual failure:", individualError);
+    }
+  }
+}
+```
+
+### Result collection pattern
+
+```typescript
+type Result<T, E = Error> =
+  | { success: true; value: T }
+  | { success: false; error: E };
+
+async function collectResults<T, R>(
+  items: T[],
+  processor: (item: T) => Promise<R>,
+): Promise<{ successes: R[]; failures: Array<{ item: T; error: unknown }> }> {
+  const successes: R[] = [];
+  const failures: Array<{ item: T; error: unknown }> = [];
+
+  const results = await Promise.allSettled(items.map(processor));
+
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === "fulfilled") {
+      successes.push(result.value);
+    } else {
+      failures.push({ item: items[i], error: result.reason });
+    }
+  }
+
+  return { successes, failures };
+}
+```
+
+---
+
+## Error context and wrapping
+
+### Adding context without losing the original error
+
+```typescript
+class ContextualError extends Error {
+  constructor(
+    message: string,
+    public readonly context: Record<string, unknown>,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "ContextualError";
+  }
+}
+
+// Usage — wrap with context, preserve cause chain
+async function getUser(id: string): Promise<User> {
+  try {
+    const response = await fetch(`/api/users/${id}`);
+    if (!response.ok) {
+      throw new ContextualError(
+        `Failed to fetch user ${id}`,
+        { statusCode: response.status, userId: id },
+      );
+    }
+    return await response.json() as User;
+  } catch (error) {
+    throw new ContextualError(
+      `getUser failed`,
+      { userId: id, operation: "fetch" },
+      { cause: error },
+    );
+  }
+}
+```
+
+### Narrowing caught errors safely
+
+```typescript
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  ) {
+    return (error as Record<string, unknown>).message as string;
+  }
+  return String(error);
+}
+
+// Usage in catch blocks
+try {
+  await riskyOperation();
+} catch (error) {
+  const message = getErrorMessage(error);
+  logger.error(`Operation failed: ${message}`, { error });
+}
+```

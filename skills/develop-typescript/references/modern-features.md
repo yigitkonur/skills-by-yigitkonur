@@ -463,3 +463,217 @@ const re3 = /^[a-z]+$/i;
 | Inferred predicates | 5.5 | Auto type guards for `.filter()` |
 | Regex checking | 5.5 | Compile-time regex validation |
 | `isolatedDeclarations` | 5.5 | Fast `.d.ts` without full type check |
+
+
+---
+
+## Expanded decorator patterns (TS 5.0+)
+
+### Method decorator — logging
+
+```typescript
+function logged<This, Args extends unknown[], Return>(
+  target: (this: This, ...args: Args) => Return,
+  context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
+) {
+  const methodName = String(context.name);
+  return function (this: This, ...args: Args): Return {
+    console.log(`Entering ${methodName}`, args);
+    const result = target.call(this, ...args);
+    console.log(`Exiting ${methodName}`, result);
+    return result;
+  };
+}
+
+class Calculator {
+  @logged
+  add(a: number, b: number): number {
+    return a + b;
+  }
+}
+```
+
+### Class decorator — sealed
+
+```typescript
+function sealed<T extends new (...args: any[]) => any>(
+  target: T,
+  _context: ClassDecoratorContext<T>,
+) {
+  Object.seal(target);
+  Object.seal(target.prototype);
+  return target;
+}
+
+@sealed
+class Immutable {
+  readonly value: number;
+  constructor(value: number) {
+    this.value = value;
+  }
+}
+```
+
+### Field decorator — validation
+
+```typescript
+function positive<This, Value extends number>(
+  _target: undefined,
+  context: ClassFieldDecoratorContext<This, Value>,
+) {
+  return function (this: This, initialValue: Value): Value {
+    if (initialValue < 0) {
+      throw new RangeError(`${String(context.name)} must be positive, got ${initialValue}`);
+    }
+    return initialValue;
+  };
+}
+
+class Product {
+  @positive
+  price: number;
+
+  constructor(price: number) {
+    this.price = price;
+  }
+}
+```
+
+---
+
+## Real-world `using` (Explicit Resource Management)
+
+### Database connection pool
+
+```typescript
+class PooledConnection implements Disposable {
+  #pool: ConnectionPool;
+  #connection: Connection;
+
+  constructor(pool: ConnectionPool, connection: Connection) {
+    this.#pool = pool;
+    this.#connection = connection;
+  }
+
+  query(sql: string, params?: unknown[]): Promise<Row[]> {
+    return this.#connection.query(sql, params);
+  }
+
+  [Symbol.dispose](): void {
+    this.#pool.release(this.#connection);
+  }
+}
+
+// Usage — connection always returned to pool
+async function getUser(id: string): Promise<User> {
+  using conn = await pool.acquire();
+  const [user] = await conn.query("SELECT * FROM users WHERE id = $1", [id]);
+  return user as User;
+  // conn is released here, even if query throws
+}
+```
+
+### File handle
+
+```typescript
+function openFile(path: string): Disposable & { read(): string } {
+  const fd = fs.openSync(path, "r");
+  return {
+    read() {
+      return fs.readFileSync(fd, "utf-8");
+    },
+    [Symbol.dispose]() {
+      fs.closeSync(fd);
+    },
+  };
+}
+
+// Usage
+{
+  using file = openFile("./config.json");
+  const config = JSON.parse(file.read());
+  // file handle closed here
+}
+```
+
+### Async variant — `await using`
+
+```typescript
+class TempDirectory implements AsyncDisposable {
+  readonly path: string;
+  constructor() {
+    this.path = fs.mkdtempSync(path.join(os.tmpdir(), "app-"));
+  }
+  async [Symbol.asyncDispose](): Promise<void> {
+    await fs.promises.rm(this.path, { recursive: true, force: true });
+  }
+}
+
+async function runInTempDir(): Promise<void> {
+  await using tmpDir = new TempDirectory();
+  // ... use tmpDir.path ...
+  // directory deleted when scope exits
+}
+```
+
+---
+
+## `satisfies` vs type annotation — decision table
+
+| Scenario | Use `satisfies` | Use annotation | Why |
+|---|---|---|---|
+| Config objects with known keys | Yes | No | Preserves literal types for autocomplete |
+| Function return types | No | Yes | Documents contract, catches drift |
+| Inline validation of shape | Yes | No | Does not widen the type |
+| Variable that must be exact type | No | Yes | Annotation enforces exact match |
+| `as const` with constraint | Yes (`as const satisfies T`) | No | Keeps literals + validates shape |
+| Generic type parameter | No | N/A | Use constraint `<T extends X>` |
+
+```typescript
+// satisfies — preserves literal types
+const routes = {
+  home: "/",
+  about: "/about",
+  contact: "/contact",
+} satisfies Record<string, string>;
+// typeof routes.home is "/" (literal), not string
+
+// annotation — widens to type
+const routes2: Record<string, string> = {
+  home: "/",
+  about: "/about",
+  contact: "/contact",
+};
+// typeof routes2.home is string (widened)
+```
+
+---
+
+## Inferred type predicates (TS 5.5+) — edge cases
+
+```typescript
+// Works — simple truthiness narrowing is inferred
+const strings = [1, "hello", null, "world"].filter((x) => typeof x === "string");
+//    ^? const strings: string[]
+
+// Does NOT work — complex logic prevents inference
+const items = mixed.filter((x) => {
+  if (typeof x === "string") return x.length > 0;
+  return false;
+});
+// Type is still (string | number | null)[] — inference failed
+// Fix: add explicit predicate
+const items2 = mixed.filter((x): x is string => {
+  if (typeof x === "string") return x.length > 0;
+  return false;
+});
+
+// Edge case — Boolean constructor
+const defined = [1, null, 2, undefined, 3].filter(Boolean);
+//    ^? const defined: number[]  // TS 5.5+ infers this correctly
+```
+
+**When to add explicit predicates despite TS 5.5:**
+- Multi-step narrowing logic (reduces to `boolean` without annotation)
+- Narrowing to branded/tagged types (inference cannot discover brands)
+- When the inferred predicate is correct but not specific enough (e.g., infers `object` but you need `User`)
