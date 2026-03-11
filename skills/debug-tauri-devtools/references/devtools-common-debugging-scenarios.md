@@ -45,11 +45,11 @@ Each scenario follows the same structure:
 
 **Which tab:** Config, then Console
 
-**What to look for:** In Config tab, navigate to the Security section. Look for the capabilities list. Verify the required permission identifier is present (e.g., `"fs:read"`, `"dialog:open"`). In Console, filter by ERROR to find the exact permission error message.
+**What to look for:** In Config tab, navigate to the Security section. Look for the capabilities list. Verify the required permission identifier is present (e.g., `"fs:allow-read-text-file"`, `"dialog:default"`). In Console, filter by ERROR to find the exact permission error message.
 
-**Root cause pattern:** The `tauri.conf.json` or capability files don't include the permission required by the plugin command being invoked. Tauri v2 requires explicit capability grants for all plugin operations.
+**Root cause pattern:** The `tauri.conf.json` or capability files don't include the permission required by the plugin command being invoked. Tauri v2 requires explicit capability grants for all plugin operations. Note: distinguish between Tauri ACL errors ("not allowed", "capability") and OS-level errors ("os error 13", "Permission denied" from `std::io`) — these are different root causes requiring different fixes.
 
-**Agent action:** Add the missing permission to the appropriate capability file in `src-tauri/capabilities/`. The error message in Console usually specifies exactly which permission is needed.
+**Agent action:** Add the missing permission to the appropriate capability file in `src-tauri/capabilities/`. The error message in Console often specifies the needed permission. If it doesn't name the specific permission, use the Common Plugin Permission Identifiers table in `references/plugins/capabilities-and-permissions.md` to find the correct identifier for the failing operation.
 
 ---
 
@@ -195,7 +195,7 @@ Focus on functions that perform I/O, database queries, or heavy computation. Don
 
 **What to look for:** In Console, filter by ERROR. Look for messages containing "permission", "denied", or "not allowed". In Config, check Security section for `fs` scope permissions and asset protocol scope.
 
-**Root cause pattern:** Tauri v2 requires explicit filesystem scope permissions. The command needs `"fs:read"` or `"fs:write"` capabilities, AND the paths must fall within the allowed scope (typically `$APPDATA`, `$RESOURCE`, etc.).
+**Root cause pattern:** Tauri v2 requires explicit filesystem scope permissions. The command needs `"fs:allow-read-text-file"`, `"fs:allow-write-text-file"`, or `"fs:default"` capabilities, AND the paths must fall within the allowed scope (typically `$APPDATA`, `$RESOURCE`, etc.).
 
 **Agent action:** Add the required `fs` permissions to the capability file. Ensure the path scope includes the directories the app needs to access. Use `app.path().app_data_dir()` for app-specific storage instead of arbitrary system paths.
 
