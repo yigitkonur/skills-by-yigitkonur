@@ -128,6 +128,27 @@ The Ignore section tells the Bug Catcher to skip specific files and directories:
 - `go.sum` — unless dependencies changed
 ```
 
+**Rust:**
+```markdown
+- `target/` — build output
+- `Cargo.lock` — unless dependencies changed
+- `*.rs.bk` — backup files from rustfmt
+```
+
+**Java / Kotlin:**
+```markdown
+- `build/`, `out/` — build output
+- `*.class`, `*.jar` — compiled artifacts
+- `.gradle/` — Gradle cache
+```
+
+**Ruby:**
+```markdown
+- `vendor/bundle/` — bundled gems
+- `tmp/` — temporary files
+- `log/` — log output
+```
+
 ---
 
 ## Auto-Fix Configuration
@@ -159,6 +180,18 @@ When global mode is set to "Respond to all bot comments", the per-PR toggle appe
 - Human approval is always required — Devin never merges auto-fixes automatically
 - Only org admins can change the global Auto-Fix mode
 
+### What Auto-Fix Can and Cannot Do
+
+| Rule Type | Auto-Fix? | Reason |
+|-----------|-----------|--------|
+| Import ordering | ✅ Yes | Deterministic rewrite |
+| Missing error wrapping | ✅ Yes | Mechanical transformation |
+| Architecture violation | ❌ Flag only | Requires design judgment |
+| Security concern | ❌ Flag only | Needs human risk assessment |
+| Style preference | ✅ If deterministic | Must have one unambiguous fix |
+
+> **Warning:** Vague rules ("write cleaner code", "improve readability") produce unpredictable auto-fixes. Every auto-fixable rule must describe a single, unambiguous transformation.
+
 ---
 
 ## Avoiding Duplicate Rules
@@ -177,6 +210,29 @@ Devin reads multiple instruction files. Duplicating rules across files creates n
 | **.cursorrules** | Root | Editor-specific rules already defined |
 | **AGENTS.md** | Root | Agent behavior instructions already defined |
 
+### Discovering Existing Enforcement
+
+Before adding any rule, walk through this checklist:
+
+1. **Linter configs** — scan `.eslintrc*`, `pyproject.toml [tool.ruff]`, `.rubocop.yml`, `Cargo.toml [lints]` for rules already enforced
+2. **CI workflows** — check `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` for automated checks (type-check, lint, test)
+3. **Pre-commit hooks** — inspect `.pre-commit-config.yaml`, `.husky/`, `lefthook.yml` for commit-time gates
+4. **Editor / agent configs** — read `.cursor/rules/*.mdc`, `agents/rules/*.md`, `.editorconfig`
+5. **List enforced rules** — write down every rule already caught automatically
+
+> **Duplicating linter rules = noise.** Only add rules to REVIEW.md that linters CAN'T check — architecture patterns, business-logic invariants, security context that requires human judgment.
+
+### `.rules` and `.mdc` Files
+
+Some repos contain rule files for editors and coding agents:
+
+| Path Pattern | Purpose |
+|-------------|---------|
+| `.cursor/rules/*.mdc` | Cursor editor rules (MDC format) — loaded automatically by Cursor |
+| `agents/rules/*.md` | Agent-specific rules — consumed by coding agents (Copilot, Devin, etc.) |
+
+**Read these before writing REVIEW.md.** They often contain style, naming, and architecture rules that overlap. If a rule is already in `.mdc` or agent rules, don't repeat it in REVIEW.md unless you need different severity or Devin-specific behavior.
+
 ### Division of Concerns
 
 | Rule Type | Where It Belongs |
@@ -187,6 +243,20 @@ Devin reads multiple instruction files. Duplicating rules across files creates n
 | "Flag SQL injection in diffs" | `REVIEW.md` |
 | "Use service layer for business logic" | `AGENTS.md` |
 | "How to submit a PR" | `CONTRIBUTING.md` |
+
+### Python Linter Overlap
+
+If your Python project uses standard linters, skip these categories in REVIEW.md:
+
+| Rule Category | Ruff | mypy | Bandit | Skip in REVIEW.md? |
+|---------------|------|------|--------|---------------------|
+| Import ordering | ✅ `I` rules | — | — | Yes — Ruff handles it |
+| Unused variables | ✅ `F841` | — | — | Yes |
+| Type mismatches | — | ✅ | — | Yes — mypy catches these |
+| Hardcoded secrets | — | — | ✅ `B105` | Yes — Bandit flags them |
+| SQL injection | — | — | ✅ `B608` | Partial — add context-specific rules only |
+| Architecture patterns | — | — | — | **No** — only REVIEW.md can enforce these |
+| Business-logic invariants | — | — | — | **No** — not checkable by linters |
 
 ---
 

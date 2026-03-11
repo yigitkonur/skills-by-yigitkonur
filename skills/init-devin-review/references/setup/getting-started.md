@@ -23,6 +23,7 @@ Three ways to access Devin Review:
 1. **GitHub account** with access to the repositories you want to review
 2. **Devin account** at `https://app.devin.ai` — sign up and connect your GitHub identity
 3. **Organization admin access** (for org-wide auto-review and auto-fix configuration)
+4. **Private dependency access** — if your project uses private npm registries, pip indexes, or Go module proxies, ensure Devin has the necessary credentials or network access to resolve them during analysis
 
 ---
 
@@ -128,6 +129,64 @@ Open a test PR (or push a commit to an existing PR) and confirm:
 2. Findings are classified as Bugs or Flags
 3. Inline comments appear on the correct diff lines
 4. If Auto-Fix is enabled, code suggestions appear alongside bug findings
+
+> Having issues? See `references/troubleshooting/common-issues.md`
+
+### First PR Checklist
+
+After setup, open a real (or canary) PR and verify:
+
+- [ ] Devin posts inline comments on the PR diff
+- [ ] Comments reference specific `REVIEW.md` sections (not generic advice)
+- [ ] Critical violations (e.g., security, data loss) are flagged as **Bugs**
+- [ ] Ignore patterns work — no comments on generated/excluded files
+- [ ] No false positives on auto-generated code (protobuf, OpenAPI, etc.)
+
+**Expected results:** 2–5 minute review latency, findings classified as Bug or Flag, comments on correct diff lines.
+
+**Tip:** Keep a dedicated "canary PR" branch with known issues to re-test after any `REVIEW.md` change.
+
+---
+
+## Setting Up for Teams
+
+**Rollout strategy:**
+
+1. Start with one developer self-enrolled — validate signal quality
+2. After ~5 reviewed PRs, assess findings accuracy
+3. Hold a 15-minute team review of Devin's findings — calibrate expectations
+4. Expand enrollment incrementally (more users → more repos)
+
+**Common pitfalls:**
+
+- **Too many rules at once** — start with 3–5 critical rules, add more after validation
+- **Not explaining to the team** — share what Devin checks and what it ignores
+- **Ignoring false positives** — add ignore patterns promptly or the team loses trust
+
+---
+
+## Upgrading Your Configuration
+
+Revisit `REVIEW.md` when:
+
+- **Monthly audit** — prune stale rules, adjust severity based on real findings
+- **Post-incident** — add rules that would have caught the issue
+- **Post-tool-adoption** — update for new linters, formatters, or frameworks
+- **Post-refactor** — update file paths, module names, and ignore patterns
+
+**Upgrade workflow:**
+
+1. Branch → edit `REVIEW.md` → open a test PR against the branch
+2. Verify Devin applies updated rules correctly
+3. Merge to main
+
+---
+
+## Reviewing PRs from Forks
+
+- The base repository's `REVIEW.md` applies to all fork PRs — fork contributors cannot override it
+- Consider this when writing rules: fork authors may not know your internal conventions
+- Link your `REVIEW.md` in `CONTRIBUTING.md` so external contributors understand review expectations
 
 ---
 
