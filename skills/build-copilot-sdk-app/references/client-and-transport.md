@@ -247,3 +247,15 @@ try {
   await client.forceStop();
 }
 ```
+
+## Steering notes
+
+> Common mistakes agents make with the client and transport.
+
+- **`useStdio: true` is the default and simplest option**. It spawns the Copilot CLI as a child process. Use this for CLIs, scripts, and local tools.
+- **`cliUrl` and `useStdio` are mutually exclusive**. Setting both causes a runtime error. Use `cliUrl` only when connecting to an already-running Copilot CLI server.
+- **Always call `client.stop()`** when your application exits. Without this, the child process (if using stdio) stays alive as an orphan. In streaming apps, call `session.disconnect()` first, then `client.stop()`.
+- **`client.start()` is called implicitly** by `createSession` if the client hasn't started yet. You don't need to call it manually.
+- **Protocol version negotiation** happens automatically. The SDK negotiates with the CLI and will throw if the CLI version is too old. Keep the Copilot CLI updated.
+- **For Docker**: Use `cliPath` to specify the CLI binary location. The SDK won't auto-detect it inside containers.
+- **Graceful shutdown pattern**: Listen for `SIGINT`/`SIGTERM`, call `session.disconnect()` then `client.stop()`. The SDK handles in-flight RPC cleanup.

@@ -36,6 +36,37 @@ function defineTool<T>(
 
 The SDK detects Zod v4 schemas and calls `toJSONSchema()` before sending to CLI.
 
+### Complex parameter schemas
+
+```typescript
+// Nested objects
+const searchTool = defineTool("search_code", {
+  description: "Search codebase for patterns",
+  parameters: z.object({
+    query: z.string().describe("Search pattern or regex"),
+    fileTypes: z.array(z.string()).optional().describe("File extensions to filter, e.g. ['.ts', '.js']"),
+    maxResults: z.number().int().min(1).max(100).default(10).describe("Maximum results to return"),
+    options: z.object({
+      caseSensitive: z.boolean().default(false),
+      includeTests: z.boolean().default(false),
+    }).optional().describe("Search options"),
+  }),
+  handler: async ({ query, fileTypes, maxResults, options }) => {
+    // SDK converts Zod schema to JSON Schema via toJSONSchema()
+    return { results: [], total: 0 };
+  },
+});
+
+// Enum parameters
+const setMode = defineTool("set_mode", {
+  description: "Set the operation mode",
+  parameters: z.object({
+    mode: z.enum(["plan", "autopilot", "interactive"]).describe("Operation mode"),
+  }),
+  handler: async ({ mode }) => ({ mode, applied: true }),
+});
+```
+
 ## Tool with raw JSON Schema
 
 ```typescript
@@ -128,6 +159,31 @@ type ToolBinaryResult = {
 };
 ```
 
+### Structured tool results
+
+For fine-grained control over what the model sees:
+
+```typescript
+import type { ToolResultObject } from "@github/copilot-sdk";
+
+const readFile = defineTool("read_file", {
+  description: "Read a file's contents",
+  parameters: z.object({ path: z.string() }),
+  handler: async ({ path }): Promise<ToolResultObject> => ({
+    textResultForLlm: `Contents of ${path}:\n${fileContent}`,
+    resultType: "success",
+    toolTelemetry: { bytesRead: fileContent.length },
+  }),
+});
+```
+
+`ToolResultObject` fields:
+| Field | Type | Purpose |
+|-------|------|---------|
+| `textResultForLlm` | `string` | The text the model sees as the tool result |
+| `resultType` | `string` | Result status: `"success"`, `"failure"`, `"rejected"`, or `"denied"` |
+| `toolTelemetry` | `Record<string, unknown>` | Metadata logged but not sent to model |
+
 ## Error handling in tools
 
 If the handler throws, the SDK catches the error and sends a sanitized error to the model. The raw exception message is NOT exposed.
@@ -214,3 +270,13 @@ const session2 = await client2.resumeSession(session1.sessionId, {
 
 // If client1 disconnects, toolA is removed; toolB persists
 ```
+
+## Steering notes
+
+> Common mistakes agents make with custom tools.
+
+- **Zod is required but not bundled**. Install it separately: `npm install zod`. The SDK auto-detects Zod v4+ and calls `toJSONSchema()`.
+- **Tool handler errors don't crash your process**. They're caught and sent to the model as error results. But prefer returning structured error objects over throwing.
+- **Tool names must be globally unique** across all extensions loaded in the session.
+- **Return plain objects** from handlers for simple cases. The SDK auto-wraps them into `ToolResultObject` with `JSON.stringify()` for `textResultForLlm`.
+- **`.describe()` matters**. The description strings on Zod fields become the parameter descriptions the model sees. Be specific — "City name (e.g., 'San Francisco')" not just "city".
