@@ -280,7 +280,7 @@ session.rpc.log({
 | Send a prompt | `session.send()` or `session.sendAndWait()` |
 | Abort the current turn | `session.abort()` |
 | Subscribe to events | `session.on()` |
-| Wait for the agent to finish | `session.waitForIdle()` |
+| Wait for the agent to finish | `session.sendAndWait()` or listen for `"session.idle"` event |
 | Switch the active model | `session.rpc.model.switchTo()` |
 | Switch agent mode | `session.rpc.mode.set()` |
 | Read/write the plan file | `session.rpc.plan.*` |
@@ -301,8 +301,11 @@ session.rpc.log({
 ```typescript
 // Switch to plan mode before a complex task
 await session.rpc.mode.set({ mode: "plan" });
-await session.send("Refactor the auth module");
-await session.waitForIdle();
+await session.send({ prompt: "Refactor the auth module" });
+// Wait for plan to be ready
+await new Promise<void>((resolve) => {
+  session.on("exit_plan_mode.requested", () => resolve());
+});
 
 // Read the generated plan
 const plan = await session.rpc.plan.read();
@@ -314,8 +317,8 @@ if (plan.exists) {
 
 // Use a custom agent
 await session.rpc.agent.select({ name: "code-reviewer" });
-await session.send("Review the latest PR changes");
-await session.waitForIdle();
+const response = await session.sendAndWait({ prompt: "Review the latest PR changes" });
+console.log(response?.data.content);
 await session.rpc.agent.deselect();
 
 // Handle external tool events manually

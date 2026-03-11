@@ -318,7 +318,9 @@ onPermissionRequest: (request) => {
 
 ---
 
-## `memory` — Memory Operations
+## `memory` — Memory Operations (Wire Protocol Only)
+
+> **Note:** The `"memory"` kind appears in the wire protocol (`permission.requested` events) but is **not** part of the TypeScript `PermissionRequest.kind` union type. Your handler's `switch` statement will not type-check against `"memory"` — handle it in the `default` branch or with a type assertion if needed.
 
 Triggered when the agent stores a fact to its long-term memory.
 
@@ -464,7 +466,7 @@ function handlePermission(request: PermissionRequest): PermissionRequestResult {
             const r = request as { kind: "url"; url: string };
             return r.url.startsWith("https://") ? { kind: "approved" } : { kind: "denied-interactively-by-user" };
         }
-        case "memory":
+        case "memory" as any:  // wire protocol only — not in TS type, handled here for runtime safety
             return { kind: "approved" };
         case "custom-tool":
             return { kind: "denied-no-approval-rule-and-could-not-request-from-user" };

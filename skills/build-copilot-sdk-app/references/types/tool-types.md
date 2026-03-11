@@ -79,12 +79,12 @@ Return a plain `string` for simple text results. Return a `ToolResultObject` to 
 
 ---
 
-## `ToolResultObject` Interface
+## `ToolResultObject` Type
 
 ```typescript
 type ToolResultType = "success" | "failure" | "rejected" | "denied";
 
-interface ToolResultObject {
+type ToolResultObject = {
   // Text result sent to the LLM for chat completion.
   textResultForLlm: string;
   // Optional binary content (images, audio, etc.) for the LLM.
@@ -97,7 +97,7 @@ interface ToolResultObject {
   sessionLog?: string;
   // Tool-specific telemetry data (e.g., grep match counts, CodeQL results).
   toolTelemetry?: Record<string, unknown>;
-}
+};
 
 interface ToolBinaryResult {
   data: string;       // Base64-encoded binary content

@@ -94,7 +94,9 @@ After reviewing the plan, switch to autopilot and let the agent execute.
 await session.rpc.mode.set({ mode: "autopilot" });
 
 // 6. Wait for execution to complete
-await session.waitForIdle();
+await new Promise<void>((resolve) => {
+  session.on("session.idle", () => resolve());
+});
 
 // Optionally monitor progress
 session.on((event) => {
@@ -157,7 +159,7 @@ async function planAndExecute(task: string): Promise<void> {
 
     console.log("Execution complete");
   } finally {
-    await session.destroy();
+    await session.disconnect();
     await client.stop();
   }
 }

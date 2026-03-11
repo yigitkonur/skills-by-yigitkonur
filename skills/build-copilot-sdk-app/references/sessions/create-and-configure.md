@@ -186,6 +186,8 @@ import type { PermissionHandler } from "@github/copilot-sdk";
 
 const onPermissionRequest: PermissionHandler = async (request, { sessionId }) => {
   // request.kind: "shell" | "write" | "mcp" | "read" | "url" | "custom-tool"
+  // Note: "memory" kind exists in the wire protocol but is not part of the TypeScript type.
+  // Handle it in the default branch if encountered at runtime.
   switch (request.kind) {
     case "shell":
       // Auto-approve read-only shell commands; prompt user for destructive ones
