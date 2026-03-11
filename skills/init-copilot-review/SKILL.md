@@ -37,29 +37,13 @@ Do not read every reference by default. Start with the minimum set that fits the
 
 ### 1. Ground on the repository before drafting
 
-Inspect the actual repository first. Quick repo scan recipe:
-
-```bash
-find . -maxdepth 3 -type f -name "*.md" | head -20       # doc landscape
-ls .github/ .github/instructions/ 2>/dev/null             # existing Copilot config
-cat .eslintrc* .prettierrc* biome.json 2>/dev/null | head  # enforced style rules
-find . -name "*.test.*" -o -name "*.spec.*" | head -10     # test conventions
-```
-
-Gather:
+Inspect the actual repository first:
 - Structure: single app, multi-service, or monorepo
 - Dominant languages, frameworks, and path boundaries
 - Existing `.github/copilot-instructions.md`, `.github/instructions/`, `CONTRIBUTING.md`, `CLAUDE.md`, and similar repo guidance
 - Linter, formatter, test, and CI configuration so you do not waste rule budget on enforced style rules
-- Representative files in each scope (examine 2–3 files per scope: one typical, one complex, one boundary-case)
-- Recurring review themes: look for repeated patterns in recent PRs, open issues, code comments, and CONTRIBUTING.md that point to risk areas or repeated defects
-
-**If the repository already has copilot instruction files**, evaluate them against the rules in Step 3. Note gaps, redundancies, and linter-duplicated rules. Then decide: refine in place if the architecture is sound, or recreate if the structure needs rearchitecting.
-
-**Stopping test — move on when you can answer all three:**
-1. What are the 2–4 highest-risk areas where review catches real bugs?
-2. Which linter/formatter rules already enforce style, so you can skip them?
-3. What is the narrowest directory structure that separates review scopes?
+- Representative files in each scope you may target
+- Recurring review themes from existing conventions, risk areas, or repeated code patterns
 
 Repo evidence is the source of truth. If the repository does not clearly support a stack-specific rule, do not invent it.
 
@@ -81,20 +65,20 @@ Use this placement logic:
 | --- | --- |
 | `.github/copilot-instructions.md` | The rule is truly universal across the repo: security fundamentals, shared error-handling philosophy, shared performance red flags, or repo-wide testing expectations |
 | `.github/instructions/<language>.instructions.md` | The rule applies to one language or ecosystem and is not just a linter concern |
-| `.github/instructions/<framework-or-path>.instructions.md` | The rule applies only to a framework, directory, layer, or critical path such as `api`, `auth`, `migrations`, or `components`. For frameworks with route groups (e.g. Next.js `(admin)`, `(marketing)`), scope to the parent directory rather than each group |
-| Package/service-scoped `*.instructions.md` | A monorepo package or service has unique review needs not already covered by repo-wide rules. A package qualifies for its own file only when it has 2+ rules that do not apply to any other package |
+| `.github/instructions/<framework-or-path>.instructions.md` | The rule applies only to a framework, directory, layer, or critical path such as `api`, `auth`, `migrations`, or `components` |
+| Package/service-scoped `*.instructions.md` | A monorepo package or service has unique review needs not already covered by repo-wide rules |
 | `excludeAgent` | A rule should guide code review but would confuse the coding agent, or vice versa |
 
 Steering rules:
 - Start minimal: most repos should begin with **1 repo-wide file plus 2-4 scoped files**
 - Grow toward **5-12 total files** only when repo breadth justifies it
-- Do **not** create a file just because you detected a language or framework; create it only if you have **2–3 high-signal rules** (rules that catch bugs, security issues, or architectural mistakes a linter cannot) **unique to that scope**
+- Do **not** create a file just because you detected a language or framework; create it only if you have **2-3 high-signal rules unique to that scope**
 - Do **not** dump everything into `copilot-instructions.md`; that causes scope bleed and usually wastes the 4,000-character limit
 - Monorepo package files must contain only package-unique rules, not repeated root rules
 
 ### 3. Select rules with evidence and reuse discipline
 
-Every rule should be **Specific, Measurable, Actionable, and Semantic** (SMSA).
+Every rule should be **Specific, Measurable, Actionable, and Semantic**.
 
 Use this filter:
 
@@ -109,28 +93,21 @@ Reusable categories are helpful only when the repository actually needs them:
 - Repo-wide candidates: security, shared error handling, shared performance risks, testing philosophy
 - Scoped candidates: language idioms, framework conventions, API validation, auth/payment paths, migrations, package boundaries, test-file rules
 
-If you use `references/scenarios.md` (consult when you need a full-stack example for an architecture you have already chosen) or `references/micro-library.md` (consult when you need a starter pattern for a specific scope after grounding), treat them as pattern libraries. Adapt them to the repo; never copy them verbatim.
+If you use `references/scenarios.md` or `references/micro-library.md`, treat them as pattern libraries. Adapt them to the repo; never copy them verbatim.
 
 ### 4. Draft files with scope-safe formatting
 
 When writing files:
 - `copilot-instructions.md` is plain Markdown in `.github/` and has **no frontmatter**
 - Every scoped file lives under `.github/instructions/`
-- Every scoped file starts at **line 1** with YAML frontmatter:
-
-```yaml
----
-applyTo: "src/api/**/*.ts"
----
-```
-
-- `applyTo` is a **single quoted or double-quoted glob string** relative to repo root. GitHub Copilot uses standard glob patterns including `**`, `*`, and brace expansion `{a,b}`. Glob syntax: `*` matches within a directory, `**` matches across directories, `{ts,tsx}` matches alternatives. When a logical domain spans multiple directories, prefer a broader wildcard like `src/**/*.ts` over listing each subdirectory
+- Every scoped file starts at **line 1** with YAML frontmatter
+- `applyTo` is a **single quoted or double-quoted glob string** relative to repo root
 - `excludeAgent`, when used, should be either `"code-review"` or `"coding-agent"`
 - File names should use `kebab-case.instructions.md`
 - Highest-priority rules go first
 - Keep examples short and include them only when they clarify a semantic rule
 
-Overlapping scoped files are acceptable only when the rules are **additive** — two files may mention the same concept if the rules target different contexts. Flag duplication only when the same instruction is copy-pasted or when rules could conflict. If two matching files would disagree, narrow `applyTo` until they no longer conflict. Multiple matching scoped files are concatenated, so never rely on overlap to resolve contradictions for you.
+Overlapping scoped files are acceptable only when the rules are **additive**. If two matching files would disagree, narrow `applyTo` until they no longer conflict. Multiple matching scoped files are concatenated, so never rely on overlap to resolve contradictions for you.
 
 ### 5. Validate before presenting anything
 
@@ -139,25 +116,20 @@ Check all of these:
 - Frontmatter counts toward the limit
 - No external links
 - No attempts to control Copilot's comment formatting, severity labels, approvals, or merge blocking
-- No rules duplicated from linter or formatter config (grep linter configs to confirm: `grep -r "rule-name" .eslintrc* biome.json golangci* 2>/dev/null`)
+- No rules duplicated from linter or formatter config
 - No contradictory rules across overlapping scopes
 - Root file contains only universal rules
 - Package/service files do not repeat root rules
 - Instruction changes are intended for the **base branch** of the PR, because feature-branch instruction changes do not affect the same PR's review
 
-Use `wc -c` (or `wc -m` for true character count on multi-byte files) and verify that representative files actually match each `applyTo` pattern:
-
-```bash
-# Verify a glob pattern matches intended files
-find . -path "./<applyTo-pattern>" -type f | head -20
-```
+Use `wc -c` for character counts and verify that representative files actually match each `applyTo` pattern.
 
 ### 6. Present the result as an architecture, not just a dump
 
 Return:
 - The `.github/` file tree
 - Full contents of each generated instruction file
-- A 1–3 sentence per-file explanation covering:
+- A brief per-file explanation covering:
   - Why this file exists
   - What scope it targets
   - Which repo evidence justified its rules
@@ -191,7 +163,7 @@ If the task starts drifting, recover in this order:
 ## Reference routing
 
 - **`references/setup-and-format.md`** — file locations, root vs scoped formats, character limits, review modes, configuration levels, and base-branch behavior
-- **`references/writing-instructions.md`** — rule quality (SMSA criteria), section ordering, root vs scoped content decisions, character budgets, code examples, and iteration workflow
+- **`references/writing-instructions.md`** — SMSA rule quality, section ordering, root vs scoped content decisions, character budgets, code examples, and iteration workflow
 - **`references/scoping-and-targeting.md`** — `applyTo`, `excludeAgent`, precedence, additive overlap, monorepo layout, and optimal file counts
 - **`references/troubleshooting.md`** — ignored instructions, scope mistakes, architecture mistakes, debugging order, verification, and non-determinism
 - **`references/scenarios.md`** — full-stack examples to adapt only after the file architecture is already chosen
