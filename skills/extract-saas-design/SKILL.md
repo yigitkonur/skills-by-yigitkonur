@@ -1,5 +1,5 @@
-| Full extraction / "visual DNA" / "document the design system" | "Extract the full design system", "Document the visual DNA" | `system.md`, foundation docs, relevant component docs, and meta-docs (`INDEX.md`, `_summary.md`) |
-| Full extraction / "visual DNA" / "document the design system" | "Extract the full design system", "Document the visual DNA" | `system.md`, foundation docs, relevant component docs, and meta-docs (`INDEX.md`, `_summary.md`) |
+---
+name: extract-saas-design
 description: Use skill if you are forensically documenting the visual system of an existing SaaS dashboard or admin UI into structured design docs, not rebuilding or redesigning it.
 ---
 
@@ -67,7 +67,7 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
    - Treat sidebars, tables, command palettes, and form layouts as mega-components that must be decomposed.
 
 5. **Verify before handoff**
-   - Use `references/quality-checklist.md` as your verification checklist -- it has P0/P1/P2 priority tiers.
+   - Use `references/quality-checklist.md` as your verification checklist.
    - Every important value should be resolved to a final computed value, not just a class name or alias.
    - Every relevant state should be explicit, including `not implemented`.
    - Pay special attention to disabled, focus-visible, loading, error/invalid, empty, and dark-mode behavior.
@@ -121,89 +121,27 @@ Start with the smallest relevant set. Only expand if the task genuinely needs mo
 | Dashboard/admin-specific patterns | Sidebar, metrics, tables, charts, cmdk, mega-component decomposition | `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
 | Token translation and naming | W3C DTCG, CSS custom properties, oklch format, shadcn naming pattern | `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
 | Packaging the docs | `.design-soul/` directory structure, INDEX.md and _summary.md templates | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
-| Verification and audit | P0/P1/P2 quality tiers, token/component consistency matrix, WCAG contrast checks | `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
+| Verification and audit | Extraction completeness checklist, token/component consistency matrix, WCAG contrast checks | `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
 
 ## Steering Notes for Agents
 
-These notes prevent the most common extraction failures. Read them before starting.
+These notes prevent the most common extraction failures. Read the linked references for full detail.
 
 ### Tailwind v4 Detection
 
-Tailwind v4 does NOT use `tailwind.config.js`. It uses CSS-native configuration:
-
-```css
-/* Tailwind v4: tokens live in CSS, not JS config */
-@import "tailwindcss";
-
-@theme {
-  --color-primary: oklch(0.21 0.006 285.88);
-  --radius: 0.625rem;
-  --font-sans: "Inter", sans-serif;
-}
-```
-
-**Detection**: If `globals.css` or `app.css` contains `@import "tailwindcss"` or `@theme`, the project uses Tailwind v4. If `tailwind.config.ts` exists with `theme.extend`, it uses Tailwind v3. Grep for both before extracting tokens.
+Grep for `@import "tailwindcss"` or `@theme` in CSS files — if found, the project uses Tailwind v4 (CSS-native config, no `tailwind.config.js`). If `tailwind.config.ts` exists with `theme.extend`, it uses Tailwind v3. Always check before extracting tokens. See `references/foundations-agent.md` for detection commands.
 
 ### oklch Color Space
 
-Modern shadcn/ui (2024+) uses `oklch()` instead of `hsl()`:
+Modern shadcn/ui (2024+) uses `oklch(L C H)` instead of `hsl()`. L=lightness (0-1), C=chroma (0-0.4), H=hue (0-360). Grays have C < 0.01. Always note lightness to distinguish dark/light colors. See `references/extraction/color-extraction.md` and `references/tokens/token-formats.md` for reading guides.
 
-```css
---primary: oklch(0.205 0.006 285.885);
-/*         L       C       H          */
-/*    lightness  chroma   hue         */
-```
+### CVA and cn() Patterns
 
-- **L** (0-1): 0 = black, 1 = white. Most UI colors are 0.2-0.95.
-- **C** (0-0.4): 0 = gray, higher = more saturated. UI grays have C < 0.01.
-- **H** (0-360): Hue angle. Irrelevant when C is near 0 (grays).
-
-When documenting oklch tokens, always note the lightness value -- it tells you if the color is "dark" or "light" at a glance.
-
-### CVA (class-variance-authority) Parsing
-
-shadcn components define variants with CVA. When you see this pattern, extract EVERY variant and size:
-
-```tsx
-const buttonVariants = cva("inline-flex items-center ...", {
-  variants: {
-    variant: { default: "bg-primary ...", destructive: "bg-destructive ...", ... },
-    size: { default: "h-9 px-4 py-2", sm: "h-8 px-3", lg: "h-10 px-6", icon: "size-9" }
-  },
-  defaultVariants: { variant: "default", size: "default" }
-})
-```
-
-The `cva()` call IS the component visual specification. Document every key-value pair.
-
-### cn() Utility and Class Merging
-
-shadcn uses `cn()` (wrapping `clsx` + `tailwind-merge`) to merge classes:
-
-```tsx
-className={cn("base-classes", variantClasses, className)}
-```
-
-When classes conflict, **the last one wins** (tailwind-merge handles this). User-provided `className` overrides variant classes, and variant classes override base classes.
+The `cva()` call IS the component's visual spec — extract every variant/size key-value pair. The `cn()` utility merges classes via tailwind-merge where the last class wins. See `references/component-template.md` for the CVA extraction checklist and cn() merging guide.
 
 ### Token Chain Resolution
 
-Never stop at the Tailwind class. Always resolve the full chain:
-
-```
-Tailwind class:  bg-primary
-  -> CSS variable: var(--primary)
-    -> Computed value: oklch(0.205 0.006 285.885)
-```
-
-Some tokens chain through multiple variables:
-```css
---sidebar-background: var(--sidebar);  /* component token */
---sidebar: var(--muted);               /* semantic token */
---muted: oklch(0.965 0.001 286.375);   /* primitive value */
-```
-
-Resolve ALL the way to the literal value. Document each step in the chain.
+Never stop at the Tailwind class. Resolve the full chain: `bg-primary` → `var(--primary)` → `oklch(0.205 ...)`. Some tokens chain through multiple variables. Resolve ALL the way to the literal value. See `references/extraction/color-extraction.md` for variable chain resolution.
 
 ## Final reminder
 

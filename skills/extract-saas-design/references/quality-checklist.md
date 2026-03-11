@@ -1,4 +1,4 @@
-# Quality Checklist
+# Quality Checklist: Verify Extraction Completeness
 
 Use this checklist to verify that a design soul extraction captured everything needed to recreate the visual identity of a SaaS dashboard.
 
