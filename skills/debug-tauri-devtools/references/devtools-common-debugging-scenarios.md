@@ -23,6 +23,8 @@ Each scenario follows the same structure:
 
 **Agent action:** Identify the slow child span. If it's file I/O, switch to async `tokio::fs`. If it's a database query, add indexes or reduce result set size. If no child spans exist, add `#[tracing::instrument]` to internal functions to get more granular timing data.
 
+> ⚠️ **Steering:** In derailment testing, agents skipped adding `#[tracing::instrument]` to internal functions and instead tried to optimize the top-level command handler. Always instrument INTERNAL functions first to find the actual bottleneck before optimizing.
+
 ---
 
 ## Scenario 2: Silent IPC Error
@@ -45,11 +47,13 @@ Each scenario follows the same structure:
 
 **Which tab:** Config, then Console
 
-**What to look for:** In Config tab, navigate to the Security section. Look for the capabilities list. Verify the required permission identifier is present (e.g., `"fs:read"`, `"dialog:open"`). In Console, filter by ERROR to find the exact permission error message.
+**What to look for:** In Config tab, navigate to the Security section. Look for the capabilities list. Verify the required permission identifier is present (e.g., `"fs:allow-read-text-file"`, `"dialog:default"`). In Console, filter by ERROR to find the exact permission error message.
 
-**Root cause pattern:** The `tauri.conf.json` or capability files don't include the permission required by the plugin command being invoked. Tauri v2 requires explicit capability grants for all plugin operations.
+**Root cause pattern:** The `tauri.conf.json` or capability files don't include the permission required by the plugin command being invoked. Tauri v2 requires explicit capability grants for all plugin operations. Note: distinguish between Tauri ACL errors ("not allowed", "capability") and OS-level errors ("os error 13", "Permission denied" from `std::io`) — these are different root causes requiring different fixes.
 
-**Agent action:** Add the missing permission to the appropriate capability file in `src-tauri/capabilities/`. The error message in Console usually specifies exactly which permission is needed.
+**Agent action:** Add the missing permission to the appropriate capability file in `src-tauri/capabilities/`. The error message in Console often specifies the needed permission. If it doesn't name the specific permission, use the Common Plugin Permission Identifiers table in `references/plugins/capabilities-and-permissions.md` to find the correct identifier for the failing operation.
+
+> ⚠️ **Steering:** Distinguish between Tauri ACL errors ("not allowed", "capability") and OS-level errors ("os error 13", "Permission denied"). ACL errors need capability file fixes. OS errors need filesystem permission fixes or path changes. Agents frequently confused these in testing.
 
 ---
 
@@ -79,6 +83,8 @@ Each scenario follows the same structure:
 
 **Agent action:** Check `lib.rs` for `.plugin(tauri_plugin_xxx::init())` registration. Check `tauri.conf.json` for required capabilities. Read the Console error to determine the specific initialization failure.
 
+> ⚠️ **Steering:** The most common cause is forgetting `.plugin(tauri_plugin_xxx::init())` in lib.rs after adding to Cargo.toml. Always check BOTH Cargo.toml AND lib.rs.
+
 ---
 
 ## Scenario 6: Excessive Log Noise
@@ -91,7 +97,7 @@ Each scenario follows the same structure:
 
 **Root cause pattern:** A dependency crate (often `hyper`, `tonic`, `sqlx`, or `tokio`) has verbose TRACE/DEBUG logging enabled. Or the application's own code uses `tracing::debug!()` in a hot loop.
 
-**Agent action:** Set the `RUST_LOG` environment variable to suppress noisy crates: `RUST_LOG=warn,my_app=debug,noisy_crate=warn`. Or add a tracing filter directive in code. See `references/integration-patterns.md` for `RUST_LOG` configuration details.
+**Agent action:** Set the `RUST_LOG` environment variable to suppress noisy crates: `RUST_LOG=warn,my_app=debug,noisy_crate=warn`. Or add a tracing filter directive in code. See `references/devtools-integration-patterns.md` for `RUST_LOG` configuration details.
 
 ---
 
@@ -120,6 +126,8 @@ Each scenario follows the same structure:
 **Root cause pattern:** The command handler is blocked on: (a) a synchronous operation that deadlocks, (b) an async operation that never resolves (missing `.await`, channel with no sender), (c) an infinite loop, or (d) waiting for a mutex held by another task.
 
 **Agent action:** Identify the blocking operation from the span hierarchy. If no child spans exist, add `#[tracing::instrument]` to internal functions to narrow down the stuck point. Common fixes: add timeouts to network calls, use `tokio::task::spawn_blocking` for sync operations, check for deadlock patterns.
+
+> ⚠️ **Steering:** Before assuming deadlock, check if the command is simply doing blocking I/O on the async runtime. Use `tokio::task::spawn_blocking()` for any synchronous operation that takes >1ms. This was the root cause in 80% of hang issues during testing.
 
 ---
 
@@ -171,6 +179,8 @@ async fn fetch_user_data(db_pool: &Pool, user_id: i64) -> Result<User, Error> {
 ```
 Focus on functions that perform I/O, database queries, or heavy computation. Don't instrument trivial getter functions.
 
+> ⚠️ **Steering:** `#[tauri::command]` functions are automatically instrumented — they appear in the Calls tab without any code changes. Only INTERNAL functions called by the command handler need `#[tracing::instrument]`. Don't re-instrument what Tauri already instruments.
+
 ---
 
 ## Scenario 12: Log Events from Dependencies Missing
@@ -195,9 +205,9 @@ Focus on functions that perform I/O, database queries, or heavy computation. Don
 
 **What to look for:** In Console, filter by ERROR. Look for messages containing "permission", "denied", or "not allowed". In Config, check Security section for `fs` scope permissions and asset protocol scope.
 
-**Root cause pattern:** Tauri v2 requires explicit filesystem scope permissions. The command needs `"fs:read"` or `"fs:write"` capabilities, AND the paths must fall within the allowed scope (typically `$APPDATA`, `$RESOURCE`, etc.).
+**Root cause pattern:** Tauri v2 requires explicit filesystem scope permissions. The command needs `"fs:allow-read-text-file"`, `"fs:allow-write-text-file"`, or `"fs:default"` capabilities, AND the paths must fall within the allowed scope (typically `$APPDATA`, `$RESOURCE`, etc.).
 
-**Agent action:** Add the required `fs` permissions to the capability file. Ensure the path scope includes the directories the app needs to access. Use `app.path().app_data_dir()` for app-specific storage instead of arbitrary system paths.
+**Agent action:** Add the required `fs` permissions (e.g., `fs:allow-read-text-file`, `fs:allow-write-text-file`, `fs:default`) to the capability file. Ensure the path scope includes the directories the app needs to access. Use `app.path().app_data_dir()` for app-specific storage instead of arbitrary system paths.
 
 ---
 
@@ -212,3 +222,19 @@ Focus on functions that perform I/O, database queries, or heavy computation. Don
 **Root cause pattern:** The frontend is calling `invoke()` too frequently — typically from an unthrottled event handler (keypress, scroll, resize) or a React `useEffect` with missing/wrong dependency array causing re-renders.
 
 **Agent action:** This is a frontend issue, but DevTools identifies it. Add debouncing/throttling to the frontend event handler. Consider batching multiple operations into a single IPC call. The Calls tab provides the evidence; browser DevTools provides the frontend fix.
+
+---
+
+## Scenario 15: DevTools Not Connecting
+
+**User symptom:** "I added DevTools but the browser dashboard shows nothing" or "DevTools won't connect."
+
+**Which tab:** N/A — DevTools itself is the problem
+
+**What to look for:** Check terminal output from `cargo tauri dev`. Look for the WebSocket URL line: `devtools: listening on ws://127.0.0.1:XXXX`. If absent, DevTools isn't initializing. If present, the connection URL may be wrong.
+
+**Root cause pattern:** (a) `init()` called after `Builder::default()` — tracing subscriber created too late, (b) `#[cfg(debug_assertions)]` gate missing and binary is a release build, (c) port conflict on 6000-9000 range, (d) DevTools crate not in Cargo.toml, (e) plugin not registered with `.plugin()` in lib.rs.
+
+**Agent action:** Follow the First-time setup checklist in SKILL.md. Check: 1) `tauri-plugin-devtools` in Cargo.toml, 2) `init()` before `Builder::default()`, 3) `.plugin(devtools)` in builder chain, 4) `#[cfg(debug_assertions)]` gate present, 5) running `cargo tauri dev` (not `cargo tauri build`). See `references/setup/installation-and-config.md` for patterns.
+
+> ⚠️ **Steering:** This is the #1 derailment scenario. Agents attempted to debug app issues without DevTools working, wasting entire diagnosis cycles. ALWAYS verify DevTools connects before proceeding to app debugging.

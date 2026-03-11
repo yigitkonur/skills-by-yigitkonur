@@ -1,6 +1,10 @@
 # Plugin Debugging & Capabilities — Tauri DevTools
 
+> ⚠️ **Steering:** Permission errors are one of the fastest debugging paths — often fixable in 2 minutes by adding the right permission identifier. Before loading DevTools, check if the error message names the missing permission. If it does, add it to the capability file and restart. DevTools is only needed for complex multi-scope or cross-plugin permission issues.
+
 ## Tauri v2 Capability System
+
+> ⚠️ **Steering:** Tauri v2 uses granular permission identifiers like `fs:allow-read-text-file`, NOT the v1-style `fs:read`. In derailment testing, agents used `fs:read` and `fs:write` (invalid v2 identifiers) from outdated documentation. Always use the full `plugin:action-scope` format. When in doubt, check the plugin's auto-generated permission list with `cargo tauri permission list`.
 
 Tauri v2 uses an ACL (Access Control List) system. Every plugin command requires explicit permission grants through capability files.
 
@@ -123,6 +127,19 @@ src-tauri/
 | `$DOCUMENT` | User documents |
 | `$DOWNLOAD` | User downloads |
 | `$HOME` | User home directory |
+
+> ⚠️ **Steering:** Always use Tauri path API (`app.path().app_data_dir()`, `app.path().resource_dir()`) instead of hardcoded paths in Rust code. Hardcoded paths work on one platform but fail on others (especially mobile). The scope variables (`$APPDATA`, `$RESOURCE`) in capability files must match the paths used in code.
+
+## ACL vs OS Permission Errors
+
+These are frequently confused but have completely different fixes:
+
+| Error Type | Error Message Contains | Root Cause | Fix |
+|---|---|---|---|
+| Tauri ACL | "not allowed", "capability", "permission denied by ACL" | Missing permission in capability file | Add permission identifier to `src-tauri/capabilities/*.json` |
+| OS-level | "os error 13", "Permission denied", "access denied" | File system permissions or path outside allowed scope | Fix file permissions, use `app.path()` for safe paths, or expand scope |
+
+> ⚠️ **Steering:** In testing, agents saw "Permission denied" and immediately edited capability files. But `os error 13` is an OS filesystem error, not a Tauri ACL error. Check the FULL error message to determine which type before applying a fix.
 
 ## Debugging Plugin Initialization
 

@@ -1,8 +1,12 @@
 # Mobile Debugging — Android & iOS with Tauri DevTools
 
+> ⚠️ **Steering:** Mobile debugging adds a connection step that desktop doesn't need. For Android: `adb forward tcp:PORT tcp:PORT`. For iOS: copy the URL from Xcode console. If DevTools won't connect on mobile, check port forwarding FIRST — this resolves 90% of mobile connection issues.
+
 ## Android Debugging
 
 ### Connecting DevTools on Android
+
+> ⚠️ **Steering:** `cargo tauri dev` for Android targets builds and installs the APK. The DevTools port is printed to logcat, NOT the terminal. Use `adb logcat | grep devtools` to find it. Agents in testing looked at the terminal for the port number, which only works for desktop.
 
 The DevTools gRPC server runs inside the app on the device/emulator. To connect from your desktop browser:
 
@@ -87,6 +91,8 @@ adb logcat -v time | grep -E "tauri|RustStdoutStderr"
 
 ### Connecting DevTools on iOS
 
+> ⚠️ **Steering:** iOS DevTools URL appears in the Xcode console after ~3 seconds of app launch. If you don't see it, ensure: (a) the debug scheme is selected (not Release), (b) `#[cfg(debug_assertions)]` is active, (c) the app has fully launched before checking.
+
 DevTools prints the connection URL to the Xcode console after ~3 seconds:
 
 1. Run `cargo tauri ios dev` (or open in Xcode)
@@ -132,6 +138,8 @@ xcrun simctl spawn booted log stream --predicate 'processImagePath contains "you
    - Performance characteristics differ
 
 ## Cross-Platform Mobile Debugging Strategy
+
+> ⚠️ **Steering:** The #1 mobile-only failure is hardcoded file paths. Desktop uses `/home/user/...` or `C:\Users\...`, but mobile uses app-specific sandboxed directories. Always use `app.path().app_data_dir()` instead of hardcoded paths. In testing, agents fixed a "file not found" error by hardcoding the desktop path, which broke mobile.
 
 ### When to Use What
 
@@ -200,6 +208,19 @@ Not all Tauri plugins support mobile. Check the plugin's README for platform sup
 ```
 
 Use the DevTools **Console tab** to check for plugin init errors on mobile — they often show platform-specific messages explaining what's not supported.
+
+## Common Mobile Mistakes
+
+> ⚠️ **Steering:** This table captures the most frequent mobile-specific failures from derailment testing. When debugging a mobile issue, check this table FIRST before investigating deeper — most mobile failures match one of these patterns.
+
+| Mistake | Platform | Impact | Fix |
+|---|---|---|---|
+| Hardcoded file paths | Both | Works on desktop, fails on mobile | Use `app.path()` API |
+| Looking for DevTools port in terminal | Android | Port is in logcat, not terminal | `adb logcat \| grep devtools` |
+| Not forwarding port | Android | DevTools can't connect | `adb forward tcp:PORT tcp:PORT` |
+| Using Release scheme | iOS | No DevTools (debug_assertions off) | Switch to Debug scheme in Xcode |
+| Not waiting for URL | iOS | Missing connection URL | Wait 3+ seconds after launch, check Xcode console |
+| Assuming desktop permissions | Both | Mobile has different permission models | Check platform-specific requirements |
 
 ## Mobile Performance Debugging
 
