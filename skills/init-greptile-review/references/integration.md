@@ -1,5 +1,7 @@
 # Integration & API Reference
 
+> **When to read this file:** You are setting up CI/CD integration, status checks, merge gating, or programmatic review triggers. For basic setup (install, indexing, permissions), see `setup.md`. For config format, see `config-spec.md`.
+
 CI/CD integration, programmatic review triggers, dashboard API, and webhook configuration.
 
 ---
@@ -308,6 +310,39 @@ curl -X POST "https://api.greptile.com/v1/repos/acme/backend/reviews" \
 3. Configure notification filters
 
 ---
+
+---
+
+## Review Output Best Practices
+
+### Recommended defaults for most repositories
+
+```json
+{
+  "statusCheck": true,
+  "updateExistingSummaryComment": true,
+  "summarySection": { "included": true, "collapsible": false, "defaultOpen": true },
+  "issuesTableSection": { "included": true, "collapsible": true, "defaultOpen": false },
+  "fixWithAI": true
+}
+```
+
+**Why these defaults:**
+- `statusCheck: true` — suppresses noisy "X files reviewed, no comments" messages and provides a merge-gatable check
+- `updateExistingSummaryComment: true` — prevents comment spam on force-pushes
+- Summary always open — the most important section should be immediately visible
+- Issues table collapsed — available on demand, doesn't clutter clean PRs
+- `fixWithAI: true` — provides actionable fix suggestions alongside comments
+
+### When to override
+
+| Scenario | Override |
+|---|---|
+| Team doesn't want AI fix suggestions | `"fixWithAI": false` |
+| Want sequence diagrams for architecture PRs | `"includeSequenceDiagram": true` |
+| PR description should be auto-updated | `"shouldUpdateDescription": true` |
+| Only want summary, no inline comments | `"updateSummaryOnly": true` |
+| White-label / hide branding | `"hideFooter": true` |
 
 ## Review Output Configuration
 

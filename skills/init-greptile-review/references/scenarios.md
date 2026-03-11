@@ -2,6 +2,22 @@
 
 Complete example configurations for common repository types. Use as inspiration, but adapt every rule to the actual repository context — never copy verbatim.
 
+> **When to read this file:** You are in Phase 6 (output) or need a complete end-to-end example to model your output format. Each scenario below shows the full deliverable: file tree, config files, reasoning annotations, and canary test. Use these as templates — adapt to your repo's specific evidence, never copy verbatim.
+
+---
+
+## Output Format Reference
+
+Every scenario below follows this output structure. Your output must match:
+
+1. **File tree** — shows the `.greptile/` directory layout
+2. **Complete file contents** — each config file in full, in fenced code blocks
+3. **Reasoning annotations** — markdown list with `**rule-id**: reason (see path:line)` format
+4. **Canary test** — temporary rule for verification
+5. **Migration notes** — only when replacing `greptile.json`
+
+---
+
 ---
 
 ## Scenario A: TypeScript Backend API
@@ -92,6 +108,16 @@ Complete example configurations for common repository types. Use as inspiration,
 }
 ```
 
+
+### Reasoning Annotations
+
+- **no-raw-sql**: SQL injection is the #1 web vulnerability. The `src/db/` and `src/repositories/` directories handle all database access — raw SQL here bypasses ORM protections.
+- **api-rate-limiting**: Public API endpoints without rate limiting are vulnerable to abuse. Scope to `src/api/**` and `src/routes/**` where HTTP handlers live.
+- **structured-logging**: Production debugging requires structured logs. The existing logger at `src/lib/logger.ts` (or equivalent) provides this — `console.log` bypasses it.
+- **async-error-handling**: Unhandled promise rejections crash Node.js processes. Every async function in production code needs try-catch with logging.
+- **no-business-logic-in-controllers**: MVC separation keeps controllers thin. Business logic in controllers makes testing, reuse, and maintenance harder.
+- **api-response-shape**: Consistent error responses let frontend code handle errors uniformly. Without this, each endpoint returns errors differently.
+
 ---
 
 ## Scenario B: React Frontend (with backend pattern repo)
@@ -133,6 +159,14 @@ Complete example configurations for common repository types. Use as inspiration,
   "statusCheck": true
 }
 ```
+
+
+### Reasoning Annotations
+
+- **design-system-usage**: Custom UI primitives duplicate existing design system components, creating visual inconsistency and maintenance burden.
+- **no-direct-dom**: Direct DOM manipulation bypasses React's reconciliation, causing state bugs and hydration mismatches.
+- **hooks-rules**: Conditional hook calls cause React to crash with "Rendered fewer hooks than expected." The `src/hooks/` directory enforces co-location.
+- **api-contract-match**: Typed API client functions provide compile-time contract validation. Raw `fetch()` bypasses this safety net.
 
 ---
 
@@ -239,6 +273,13 @@ Complete example configurations for common repository types. Use as inspiration,
   "updateExistingSummaryComment": true
 }
 ```
+
+
+### Reasoning Annotations
+
+- **no-raw-sql**: Django ORM with parameterized queries prevents SQL injection. String-formatted SQL in views/models is the most common Django security vulnerability.
+- **no-n-plus-one**: N+1 queries are the #1 Django performance issue. `select_related()` (FK) and `prefetch_related()` (M2M) must be used in views and serializers that access related models.
+- **view-permission-classes**: DRF views without explicit `permission_classes` default to the global setting, which may be `AllowAny`. Every view must declare its own permissions.
 
 ---
 
@@ -917,3 +958,26 @@ async function fetchData(url: string) {
 }
 \`\`\`
 ```
+
+---
+
+## Canary Test Template
+
+Include this in every configuration output. The canary rule verifies Greptile is reading the config:
+
+```json
+{
+  "id": "canary",
+  "rule": "Comment 'canary active' on any PR modifying a README.",
+  "scope": ["**/README.md"],
+  "severity": "low"
+}
+```
+
+**Verification steps:**
+1. Commit the config (including canary rule) to a feature branch
+2. Open a PR from that branch that modifies any README
+3. Wait 2-3 minutes for Greptile to review
+4. Confirm the canary rule fires
+5. Remove the canary rule from config
+6. Update the PR or merge

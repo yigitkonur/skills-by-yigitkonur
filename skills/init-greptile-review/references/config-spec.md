@@ -54,6 +54,8 @@ Every parameter is optional. Only include what you need.
 *.generated.*\n*.min.js\n*.min.css\ndist/**\nbuild/**\nout/**\n.next/**\nnode_modules/**\n**/vendor/**\n**/__snapshots__/**\npackage-lock.json\nyarn.lock\npnpm-lock.yaml\n*.lock\n**/*.d.ts\n**/migrations/**
 ```
 
+> **⚠ Format trap:** `scope` is an **array** of strings: `["src/**"]`. `ignorePatterns` is a **newline-separated string**: `"dist/**\nnode_modules/**"`. Mixing these up causes silent failures — no error, just no matching.
+
 ### Cross-Repo Context
 
 | Parameter | Type | Format | Description |
@@ -190,6 +192,26 @@ Point the reviewer to architecture docs, schemas, API specs:
 | `description` | string | Yes | What the document provides and how to use it |
 | `scope` | string[] | No | Glob patterns for when this context is relevant |
 
+### Qualifying Criteria for Context Files
+
+Not every document should be in `files.json`. A context file qualifies when it provides information a reviewer **needs** to validate correctness — not just background reading.
+
+**Include:**
+| File type | Why it qualifies | Example scope |
+|---|---|---|
+| Database schemas (Prisma, Drizzle, SQLAlchemy) | Validates model field usage, relationships, migrations | `src/db/**`, `src/repositories/**` |
+| API specs (OpenAPI, GraphQL SDL) | Validates endpoint contracts, request/response shapes | `src/api/**`, `src/routes/**` |
+| Shared type definitions | Validates interface conformance across packages | Package-specific |
+| Architecture Decision Records (ADRs) | Explains *why* the code is structured a certain way | All files |
+| Architecture diagrams/docs | Provides system boundaries for dependency reviews | All files |
+
+**Exclude:**
+- READMEs (too generic, rarely inform review decisions)
+- Changelogs (historical, not prescriptive)
+- Contributing guides (process, not code quality)
+- Config files (tsconfig, package.json) — the reviewer already sees these
+- Test fixtures and sample data
+
 ---
 
 ## `greptile.json` — Legacy Single-File Alternative
@@ -267,6 +289,29 @@ repo-root/
   ]
 }
 ```
+
+---
+
+## Output Format Template
+
+When generating Greptile configuration, present it in this exact order:
+
+1. **File tree** — markdown code block showing `.greptile/` directory structure
+2. **Complete file contents** — each file in a fenced code block with the filename as header
+3. **Reasoning annotations** — markdown list tying each rule to repo evidence:
+   ```markdown
+   - **rule-id**: Added because [specific repo observation] (see `path/to/file:line`)
+   ```
+4. **Canary test** — a temporary low-severity rule to verify config is being read:
+   ```json
+   {
+     "id": "canary",
+     "rule": "Comment 'canary active' on any PR modifying a README.",
+     "scope": ["**/README.md"],
+     "severity": "low"
+   }
+   ```
+5. **Migration notes** — only if replacing `greptile.json` with `.greptile/`
 
 ---
 
