@@ -1,12 +1,12 @@
-# Agent Configuration Templates
+# Project Templates
 
-For each project type: an AGENTS.md template, a CLAUDE.md thin wrapper, and a CLAUDE.md standalone. Copy, adapt, trim.
+Copy-paste templates for AGENTS.md and CLAUDE.md organized by project type. Each template includes AGENTS.md, CLAUDE.md thin wrapper, and CLAUDE.md standalone variants.
 
-Every AGENTS.md template includes a **Boundaries** section (Always/Ask/Never pattern). Every template assumes commands are verified against actual project config before committing.
+Every AGENTS.md template includes a **Boundaries** section. Every template assumes commands are verified against actual project config before committing. **Strip sections you don't need — shorter is better.**
 
 ---
 
-## 1. Minimal
+## 1. Minimal (Any Project)
 
 ### AGENTS.md
 
@@ -117,17 +117,10 @@ TypeScript application using [framework].
 One-line description.
 
 ## Stack
-- Node.js 20 LTS with TypeScript 5.x
+- Node.js 20+ with TypeScript 5.x
 - [Framework: Express/Fastify/Hono]
 - [Database: Prisma/Drizzle + Postgres/SQLite]
 - [Package manager: pnpm/npm/bun]
-
-## Structure
-- `src/` — Application code
-- `src/routes/` — API endpoints
-- `src/services/` — Business logic
-- `src/lib/` — Shared utilities
-- `tests/` — Test suites
 
 ## Commands
 - Dev: `pnpm dev`
@@ -137,14 +130,12 @@ One-line description.
 
 ## Conventions
 - Strict TypeScript (no `any`)
-- Functional style, avoid classes
+- Named exports, no default exports
 - Errors via Result types, not exceptions
-- Tests required for new features
 
 ## Git
 - Branch: `feat/description` or `fix/description`
-- Commits: Conventional format
-- Squash merge to main
+- Conventional Commits
 ```
 
 ---
@@ -213,12 +204,6 @@ One-line description.
 - [ORM: SQLAlchemy/Django ORM]
 - uv for dependency management
 
-## Structure
-- `src/` — Application code
-- `src/api/` — API endpoints
-- `src/models/` — Data models
-- `tests/` — Pytest suites
-
 ## Commands
 - Dev: `uv run uvicorn src.main:app --reload`
 - Test: `uv run pytest`
@@ -230,11 +215,6 @@ One-line description.
 - Pydantic for validation
 - Async by default
 - Docstrings for public APIs
-
-## Git
-- Branch: `feature/description`
-- Conventional Commits
-- Rebase before merge
 ```
 
 ---
@@ -274,12 +254,6 @@ Go service using [framework/stdlib].
 - Never: Use global mutable state
 ```
 
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-```
-
 ### CLAUDE.md (Standalone)
 
 ```markdown
@@ -292,12 +266,6 @@ One-line description.
 - [Framework: stdlib/chi/gin/echo]
 - [Database: pgx/sqlc/ent]
 
-## Structure
-- `cmd/` — Entry points
-- `internal/` — Private packages
-- `pkg/` — Public packages
-- `api/` — OpenAPI specs
-
 ## Commands
 - Dev: `go run ./cmd/server`
 - Test: `go test ./...`
@@ -309,10 +277,6 @@ One-line description.
 - Errors are values — wrap with context
 - Table-driven tests
 - No global state
-
-## Git
-- Branch: `feat/description`
-- Conventional Commits
 ```
 
 ---
@@ -338,7 +302,6 @@ Rust application using [framework].
 - `src/` — Source code
 - `src/main.rs` or `src/lib.rs` — Entry point
 - `tests/` — Integration tests
-- `benches/` — Benchmarks (if any)
 
 ## Conventions
 - Use `Result<T, E>` for fallible operations
@@ -353,49 +316,6 @@ Rust application using [framework].
 - Ask: Before using `unsafe`
 - Never: Use `.unwrap()` in library code without comment
 - Never: Ignore compiler warnings
-```
-
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Project Name
-
-One-line description.
-
-## Stack
-- Rust (stable channel)
-- [Framework: Axum/Actix/Rocket]
-- [Async: Tokio]
-
-## Structure
-- `src/` — Library and binary code
-- `src/lib.rs` — Library root
-- `src/main.rs` — Binary entry point
-- `tests/` — Integration tests
-- `benches/` — Benchmarks
-
-## Commands
-- Dev: `cargo run`
-- Test: `cargo test`
-- Lint: `cargo clippy -- -D warnings`
-- Format: `cargo fmt`
-- Build: `cargo build --release`
-
-## Conventions
-- No `unwrap()` in production code — use `?` or explicit error handling
-- Derive Debug for all public types
-- Document public items with `///`
-- Prefer owned types in APIs over references when lifetime complexity grows
-
-## Git
-- Branch: `feat/description`
-- Conventional Commits
 ```
 
 ---
@@ -420,20 +340,17 @@ Next.js application with App Router.
 - `src/app/api/` — API routes
 - `src/components/` — React components
 - `src/lib/` — Shared utilities
-- `public/` — Static assets
 
 ## Conventions
 - App Router only, NOT Pages Router
 - Server Components by default; add `'use client'` only when needed
 - Component files: PascalCase (`UserProfile.tsx`)
 - Use `next/image` for images, `next/link` for navigation
-- CSS: [Tailwind / CSS Modules / styled-components]
 
 ## Boundaries
 - Always: Run `pnpm build` before opening a PR (catches SSR errors)
 - Always: Use Server Components unless client interactivity is needed
 - Ask: Before adding client-side state management libraries
-- Ask: Before creating new API routes
 - Never: Use `useEffect` for data fetching (use Server Components or SWR)
 - Never: Import server-only code in client components
 ```
@@ -447,44 +364,6 @@ Next.js application with App Router.
 - Path rules: `.claude/rules/frontend.md` for component conventions
 - No barrel exports (no `index.ts` re-exports)
 - Data fetching in Server Components, not client-side
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Project Name
-
-One-line description.
-
-## Stack
-- Next.js 14+ (App Router, NOT Pages)
-- React 18+ with TypeScript
-- [CSS: Tailwind/CSS Modules]
-- [State: Zustand/React Query]
-
-## Structure
-- `app/` — App Router pages and layouts
-- `components/` — Reusable UI components
-- `lib/` — Utilities and helpers
-- `hooks/` — Custom React hooks
-- `types/` — TypeScript type definitions
-
-## Commands
-- Dev: `pnpm dev`
-- Test: `pnpm test`
-- Build: `pnpm build`
-- Lint: `pnpm lint`
-
-## Conventions
-- Server Components by default, `'use client'` only when needed
-- Colocate files: component + test + styles in same directory
-- No barrel exports (no `index.ts` re-exports)
-- Data fetching in Server Components, not client-side
-
-## Git
-- Branch: `feat/description`
-- Conventional Commits
-- Squash merge to main
 ```
 
 ---
@@ -509,13 +388,11 @@ Monorepo managed with [pnpm workspaces / Turborepo / Nx].
 ## Structure
 - `packages/` — Shared libraries
 - `apps/` or `services/` — Deployable applications
-- `tooling/` — Build and dev tooling (if applicable)
 
 ## Conventions
 - Internal packages use workspace protocol: `"@repo/shared": "workspace:*"`
 - Changes to shared packages require testing all dependents
 - Each package has its own tsconfig extending root
-- Shared types live in `packages/types/`
 
 ## Boundaries
 - Always: Run affected tests when changing shared packages
@@ -527,7 +404,7 @@ Monorepo managed with [pnpm workspaces / Turborepo / Nx].
 
 ## Per-Package Instructions
 
-Each package may have its own AGENTS.md with specific conventions. See:
+Each package may have its own AGENTS.md:
 - `apps/web/AGENTS.md` — Web application specifics
 - `apps/api/AGENTS.md` — API service specifics
 - `packages/shared/AGENTS.md` — Shared library rules
@@ -543,55 +420,16 @@ Each package may have its own AGENTS.md with specific conventions. See:
 - Use `claudeMdExcludes` in settings to skip irrelevant packages
 
 ## Supplemental Docs
-- `agent_docs/building.md` — Per-app build instructions
-- `agent_docs/testing.md` — Test runner and coverage
-- `agent_docs/service-architecture.md` — Service boundaries and data flow
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Project Name
-
-One-line description.
-
-## Stack
-- [Monorepo tool: Turborepo/Nx/pnpm workspaces]
-- [Primary language]
-- [Key shared dependencies]
-
-## Structure
-- `apps/web/` — Web application
-- `apps/api/` — API server
-- `packages/shared/` — Shared utilities
-- `packages/ui/` — Component library
-- `packages/db/` — Database client
-
-## Commands
-- Dev (all): `pnpm dev`
-- Dev (specific): `pnpm --filter @scope/web dev`
-- Test: `pnpm test`
-- Build: `pnpm build`
-- Lint: `pnpm lint`
-
-## Conventions
-- Changes to `packages/` require running affected app tests
-- Shared types live in `packages/shared/types`
-- No cross-app imports — use packages
-
-## Supplemental Docs
-- `agent_docs/building.md` — Per-app build instructions
-- `agent_docs/testing.md` — Test runner and coverage
-- `agent_docs/service-architecture.md` — Service boundaries and data flow
-
-## Git
-- Branch: `feat/app-name/description`
-- Conventional Commits with scope
+| Area | File | Load When |
+|------|------|-----------|
+| Building | `agent_docs/building.md` | Build/deploy tasks |
+| Testing | `agent_docs/testing.md` | Test runner, coverage |
+| Architecture | `agent_docs/service-architecture.md` | Cross-service changes |
 ```
 
 ---
 
-## 8. Django / Full-Stack Python
+## 8. Django
 
 ### AGENTS.md
 
@@ -610,14 +448,13 @@ Django application with [DRF / HTMX / GraphQL].
 
 ## Structure
 - `apps/` — Django applications
-- `config/` or `project/` — Settings and root URL config
+- `config/` — Settings and root URL config
 - `templates/` — HTML templates
 - `static/` — Static assets
-- `tests/` — Test suites (or per-app `tests/`)
 
 ## Conventions
 - Fat models, thin views
-- Use class-based views for CRUD, function views for custom logic
+- Class-based views for CRUD, function views for custom logic
 - Settings split: `base.py`, `local.py`, `production.py`
 - Use `get_user_model()`, never import User directly
 
@@ -631,56 +468,9 @@ Django application with [DRF / HTMX / GraphQL].
 - Never: Use raw SQL when ORM queries suffice
 ```
 
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-
-## Claude-Specific
-- Use `python manage.py shell_plus` for interactive exploration
-- Path rules: `.claude/rules/models.md` for model conventions
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Project Name
-
-Django application with [DRF / HTMX / GraphQL].
-
-## Stack
-- Python 3.11+ with Django 5.x
-- [API: DRF / Ninja / GraphQL]
-- [Database: PostgreSQL]
-- uv for dependency management
-
-## Structure
-- `apps/` — Django applications
-- `config/` — Settings and root URL config
-- `templates/` — HTML templates
-- `static/` — Static assets
-
-## Commands
-- Dev: `python manage.py runserver`
-- Test: `python manage.py test`
-- Migrate: `python manage.py migrate`
-- Make migrations: `python manage.py makemigrations`
-- Shell: `python manage.py shell_plus`
-
-## Conventions
-- Fat models, thin views
-- Class-based views for CRUD, function views for custom logic
-- Settings: `base.py`, `local.py`, `production.py`
-- `get_user_model()`, never import User directly
-
-## Git
-- Branch: `feature/description`
-- Conventional Commits
-```
-
 ---
 
-## Bonus: Monorepo with Path-Scoped Rules
+## Monorepo with Path-Scoped Rules (Claude Code)
 
 For monorepos using Claude Code's `.claude/rules/` for per-package instructions:
 
@@ -690,10 +480,9 @@ project/
 ├── CLAUDE.md                    # @AGENTS.md + Claude-specific
 ├── .claude/
 │   └── rules/
-│       ├── shared.md            # No paths → universal rules (always loads)
+│       ├── shared.md            # No paths → universal (always loads)
 │       ├── api.md               # paths: ["apps/api/**"]
 │       ├── web.md               # paths: ["apps/web/**"]
-│       ├── ui-library.md        # paths: ["packages/ui/**"]
 │       └── database.md          # paths: ["packages/db/**"]
 ├── apps/
 │   ├── api/
@@ -701,8 +490,6 @@ project/
 │   └── web/
 │       └── AGENTS.md            # Web-specific
 └── packages/
-    ├── ui/
-    │   └── AGENTS.md
     └── db/
         └── AGENTS.md
 ```
@@ -711,16 +498,15 @@ project/
 - All agents read root `AGENTS.md` (universal)
 - Codex, Cursor, VS Code also read nested `AGENTS.md` files
 - Claude Code additionally loads path-scoped `.claude/rules/` files
-- Root CLAUDE.md stays under 60 lines — all detail lives in rules and nested files
+- Root CLAUDE.md stays under 60 lines — detail lives in rules and nested files
 
 ---
 
 ## Customization Notes
 
-- **Strip sections** you do not need. Shorter is better.
-- **Merge sections** if the project is simple enough.
-- **Add sections** for project-specific concerns (e.g., "Database", "Deployment", "API Design").
-- **Boundaries** should reflect real project risks, not hypothetical ones.
-- **Commands** must be verified against actual project config before committing.
-- **AGENTS.md Boundaries section** is the most impactful section — invest time here.
-- **Thin wrappers** are preferred when the team uses multiple agents. Only use standalone CLAUDE.md for Claude-only teams.
+- **Strip sections** you don't need — shorter is better
+- **Merge sections** if the project is simple enough
+- **Add sections** for project-specific concerns (Database, Deployment, API Design)
+- **Boundaries** should reflect real project risks, not hypothetical ones
+- **Commands** must be verified against actual project config
+- **Thin wrappers** are preferred when the team uses multiple agents

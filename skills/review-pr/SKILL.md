@@ -5,18 +5,60 @@ description: Use skill if you are reviewing a GitHub pull request with a systema
 
 # Review PR
 
-Systematic pull request review grounded in the `gh` CLI and GitHub API.
+Systematic pull request review grounded in the `gh` CLI and GitHub API. Uses a 7-phase evidence-based workflow: gather context → cluster files → read existing reviews → validate goals → review by cluster → cross-cutting analysis → synthesize findings. Every finding must pass an actionability filter and include `file:line` evidence.
 
 ## Trigger
 
-Activate when the user asks to review a pull request, PR, or merge request on GitHub — whether by number, URL, or branch name.
+Activate when the user asks to review a pull request, PR, or merge request on GitHub — whether by number, URL, or branch name. Also activate when asked to check code changes, evaluate a diff, or assess merge readiness.
+
+## Decision tree
+
+```
+What kind of review?
+│
+├── Standard PR review (most common)
+│   ├── Full 7-phase workflow ───────────────► Workflow (below)
+│   ├── Phase-by-phase CLI commands ─────────► references/review-workflow.md
+│   ├── gh CLI syntax reference ─────────────► references/gh-cli-reference.md
+│   └── Output format and templates ─────────► references/output-templates.md
+│
+├── What to check in the code
+│   ├── Security vulnerabilities ────────────► references/security-review.md
+│   ├── Performance anti-patterns ───────────► references/performance-review.md
+│   ├── Common bug patterns ─────────────────► references/bug-patterns.md
+│   ├── Full review dimensions checklist ────► references/review-dimensions.md
+│   ├── Language-specific patterns ──────────► references/language-specific.md
+│   └── Cross-file coordination gaps ────────► references/cross-cutting.md
+│
+├── How to organize the review
+│   ├── Grouping files into clusters ────────► references/file-clustering.md
+│   ├── Handling large PRs (500+ lines) ─────► references/large-pr-strategy.md
+│   └── Reading and understanding diffs ─────► references/diff-analysis.md
+│
+├── Working with existing reviews
+│   ├── Correlating with prior comments ─────► references/comment-correlation.md
+│   └── Avoiding duplicate findings ─────────► references/comment-correlation.md § Rule 1
+│
+├── Writing good review comments
+│   ├── Actionable comment structure ────────► references/communication.md
+│   ├── Tone and phrasing guide ─────────────► references/communication.md § Language and Tone
+│   └── Severity classification ─────────────► references/severity-guide.md
+│
+├── Working with automation
+│   ├── CI/CD integration ───────────────────► references/automation.md
+│   ├── Static analysis tools ───────────────► references/automation.md § Static Analysis
+│   └── AI review tool integration ──────────► references/automation.md § AI Review Tools
+│
+└── Anti-patterns to avoid
+    └── Full anti-pattern reference ─────────► references/anti-patterns.md
+```
 
 ## Core principles
 
 1. **Goal-first** — verify the PR solves its stated problem before any quality check.
 2. **Context before code** — read PR description, linked issues, commit messages, and CI status before touching diffs.
 3. **Comment-aware** — read existing review comments and threads; never duplicate issues already flagged.
-4. **Cluster then review** — group changed files by concern; review each cluster holistically, not file-by-file in isolation.
+4. **Cluster then review** — group changed files by concern; review each cluster holistically.
 5. **Signal over noise** — every finding must pass the actionability filter before being reported.
 6. **Evidence-based** — every claim needs `file:line` proof and a confidence assessment.
 
@@ -26,244 +68,145 @@ Follow these phases in order. Do not skip phases. Read `references/review-workfl
 
 ### Phase 1 — Gather context
 
-Read the PR metadata, description, linked issues, and CI status. Build a mental model of **what the PR is trying to do and why** before looking at any code.
+Read PR metadata, description, linked issues, and CI status. Build a mental model of **what the PR is trying to do and why** before looking at any code.
 
 | Action | Command |
 |--------|---------|
-| Get PR title, body, author, base/head branches, labels | `gh pr view <N> --repo owner/repo --json title,body,state,author,labels,baseRefName,headRefName,reviewDecision` |
-| Get linked issues from PR body (extract `#NNN` references) | `gh issue view <N> --repo owner/repo --json title,body,state,labels` for each linked issue |
-| Get CI/check status | `gh pr checks <N> --repo owner/repo` |
-| Get commit list and messages | `gh api repos/{owner}/{repo}/pulls/{N}/commits` |
+| PR metadata | `gh pr view <N> --repo owner/repo --json title,body,state,author,labels,baseRefName,headRefName,reviewDecision` |
+| Linked issues | `gh issue view <N> --repo owner/repo --json title,body,state,labels` |
+| CI status | `gh pr checks <N> --repo owner/repo` |
+| Commit messages | `gh api repos/{owner}/{repo}/pulls/{N}/commits` |
 
 **What to look for:**
 - Does the PR body clearly state the problem and solution approach?
-- Are there linked issues? If not, is the intent still unambiguous from the title/body?
-- Commit history: is it a clean sequence of logical changes, or a messy squash-candidate with "fix typo" commits?
+- Are there linked issues? If not, is the intent unambiguous from the title/body?
+- Commit history: clean logical sequence or messy fixup commits?
 - CI status: any failing checks? Flaky tests vs. real failures?
 
-**Red flags:**
-- Empty PR body or generic "fix stuff" title → demand clarification before reviewing code.
-- CI red with no acknowledgement in the PR body → likely the author hasn't verified the change works.
-- PR targets the wrong base branch (e.g., `main` instead of `release/x.y`).
-- Extremely large PR (>50 files or >1000 lines changed) with no breakdown in the description.
+**Red flags:** Empty PR body, failing CI, wrong base branch, extremely large scope (>50 files), draft state without explicit review request.
 
-**Output of this phase:** A one-paragraph summary of PR intent, the problem it solves, and any red flags from CI.
+**Output:** One-paragraph summary of PR intent, the problem it solves, and any red flags.
 
-### Phase 2 — Understand scope and cluster files
+### Phase 2 — Cluster files
 
-Get the list of changed files and group them into logical clusters before reviewing any diffs.
+Get changed files, group by concern, and set review priority order. Read `references/file-clustering.md` for the clustering algorithm.
 
-| Action | Command |
-|--------|---------|
-| Get changed file list with stats | `gh api repos/{owner}/{repo}/pulls/{N}/files` |
+| Cluster | Priority | Focus |
+|---------|----------|-------|
+| Data/Migration | 🔴 Highest | Rollback safety, backward compatibility, data loss |
+| Security/Auth | 🔴 Highest | Auth bypass, permission escalation, secrets |
+| API/Routes | 🟡 High | Input validation, breaking changes, error handling |
+| Core Logic | 🟡 High | Correctness, race conditions, edge cases |
+| Frontend | 🟢 Medium | State management, XSS, accessibility |
+| Infrastructure | 🟢 Medium | Deploy safety, secret management |
+| Config/Docs | ⚪ Low | Quick scan for accuracy |
 
-Read `references/file-clustering.md` for the clustering algorithm. Typical clusters:
-
-- **API/Backend** — routes, controllers, services, middleware
-- **Data** — models, schemas, migrations, seeds
-- **Frontend** — components, pages, styles, assets
-- **Infrastructure** — CI/CD, Docker, config, deployment
-- **Tests** — test files corresponding to changed source files
-- **Documentation** — README, docs, comments, changelog
-
-For each cluster, note:
-- Number of files and total lines changed
-- Whether test files exist for the changed source files
-- Which cluster is highest risk (largest blast radius)
-
-**What to look for:**
-- Ratio of test changes to source changes — low ratio signals potential coverage gaps.
-- Files that don't belong in any cluster — could be accidental inclusions or scope creep.
-- Generated files (lockfiles, compiled output, snapshots) — verify they're expected, not noise.
-
-**Red flags:**
-- Migration files with no rollback strategy or irreversible `DROP` statements.
-- Config/infra changes buried among feature code — easy to miss, high blast radius.
-- Renamed/moved files mixed with logic changes — makes diffs misleading.
-- Test files deleted without explanation.
-
-**Output of this phase:** A cluster map with file assignments and review priority order.
+For large PRs (>500 lines), read `references/large-pr-strategy.md` for chunking strategies and depth tiers.
 
 ### Phase 3 — Read existing review state
 
-Read all existing reviews and review comment threads on the PR. This prevents duplicating feedback and lets you build on prior reviewer work.
+Fetch reviews, comment threads, and conversation. Build an already-reviewed map. Read `references/comment-correlation.md` for the full procedure.
 
-| Action | Command |
-|--------|---------|
-| Get all reviews (approvals, change requests, comments) | `gh api repos/{owner}/{repo}/pulls/{N}/reviews` |
-| Get all review comment threads with resolution status | `gh pr view <N> --repo owner/repo --comments` and `gh api repos/{owner}/{repo}/pulls/{N}/comments` |
-| Get general PR conversation comments | `gh api repos/{owner}/{repo}/issues/{N}/comments` |
-
-Read `references/comment-correlation.md` for the correlation procedure.
-
-For each existing review thread:
-- Note the file and line range it covers
-- Note whether it is resolved, outdated, or active
-- Note the severity and type of issue raised
-- Mark these locations as **already-reviewed** — do not raise the same issue unless you have additional evidence the reviewer missed
-
-**What to look for:**
-- Unresolved threads that the author dismissed without addressing — these need follow-up.
-- Patterns in reviewer feedback: are multiple reviewers flagging the same concern?
-- Outdated comments on lines that have since changed — verify the fix actually addressed the concern.
-
-**Red flags:**
-- Author force-pushed after receiving reviews without responding to comments — prior context may be lost.
-- "LGTM" approvals with no substantive review on a complex PR.
-- Unresolved security or correctness threads that have been open for multiple review rounds.
-
-**Output of this phase:** A map of already-reviewed locations and a summary of unresolved threads.
+**Rules:** Do not duplicate resolved threads. Acknowledge active threads. Recheck outdated threads.
 
 ### Phase 4 — Goal validation
 
-Before any code quality review, verify the PR achieves its stated goal. Read `references/review-workflow.md` § Goal Validation for details.
+Verify the PR achieves its stated purpose. Read `references/review-workflow.md` § Goal Validation.
 
-| Action | Command |
-|--------|---------|
-| Get the full diff | `gh pr diff <N> --repo owner/repo` |
-| Read key files in highest-priority cluster | `gh api repos/{owner}/{repo}/contents/{path}?ref={branch}` or `git show {branch}:{path}` |
+1. Form hypothesis: "This PR should [accomplish X] by [changing Y]"
+2. Verify happy paths are implemented
+3. Verify failure/error paths are handled
+4. Check for described-but-not-implemented (🔴 blocker)
+5. Check for implemented-but-not-described (scope creep)
+6. Assess completeness
 
-Ask:
-1. Does the diff address the problem described in the PR body and linked issues?
-2. Are there happy-path and failure-path changes?
-3. Is anything described in the PR body but not implemented in the diff?
-4. Is anything implemented in the diff but not described in the PR body?
-
-**What to look for:**
-- Verify the fix actually covers the root cause, not just the symptom.
-- Check for partial implementations — feature flags half-wired, API endpoints added but not routed.
-- Confirm error/edge cases are handled, not just the golden path.
-
-**Red flags:**
-- Diff doesn't touch the files you'd expect given the PR description → possible wrong branch or incomplete work.
-- PR says "fixes #123" but the linked issue describes a different problem than what the code addresses.
-- New feature with zero error handling or input validation.
-- Database/schema changes with no data migration for existing records.
-
-If the PR fails goal validation, report this as a **🔴 blocker** before proceeding. A PR that passes every quality check but misses its goal is still a failed PR.
+A PR that passes every quality check but misses its goal is still a failed PR.
 
 ### Phase 5 — Systematic review by cluster
 
-Review each file cluster in priority order. For each cluster, read the diff and relevant full files, then evaluate against the review dimensions.
+Review each cluster in priority order against the review dimensions. Read `references/review-dimensions.md` for the full checklist.
 
-Read `references/review-dimensions.md` for the full checklist. The dimensions in priority order:
-
-1. **Security** — injection, auth bypass, secrets exposure, SSRF, XSS, unsafe deserialization
-2. **Correctness** — logic errors, off-by-one, null/undefined handling, race conditions, error handling
-3. **Data integrity** — migration safety, backward compatibility, data loss risk
-4. **Performance** — N+1 queries, unbounded loops, missing pagination, memory leaks
+**Dimensions in priority order:**
+1. **Security** — injection, auth bypass, secrets exposure → `references/security-review.md`
+2. **Correctness** — logic errors, null handling, race conditions → `references/bug-patterns.md`
+3. **Data integrity** — migration safety, backward compatibility, data loss
+4. **Performance** — N+1 queries, unbounded loops, missing pagination → `references/performance-review.md`
 5. **API contract** — breaking changes, missing validation, incorrect status codes
-6. **Maintainability** — dead code, naming, excessive complexity, missing abstractions (only when egregious)
-7. **Testing** — are the changes tested? are edge cases covered? are tests actually asserting the right things?
+6. **Maintainability** — dead code, naming, complexity (only flag egregious issues)
+7. **Testing** — are changes tested? are edge cases covered? are assertions meaningful?
 
 For each file in the cluster:
 
 | Action | Command |
 |--------|---------|
-| Read the file diff (already from Phase 4) | Use the diff from `gh pr diff` |
-| Read the full current file for context when needed | `gh api repos/{owner}/{repo}/contents/{path}?ref={branch}` or `git show {branch}:{path}` |
-| Read the base version when comparing behavior changes | `gh api repos/{owner}/{repo}/contents/{path}?ref={base_branch}` or `git show {base_branch}:{path}` |
-| Trace callers/references when evaluating blast radius | `gh search code "query repo:owner/repo"` or `grep -rn` in local checkout |
+| Read the file diff | Use the diff from `gh pr diff` (already fetched in Phase 4) |
+| Read full file for context | `gh api repos/{owner}/{repo}/contents/{path}?ref={branch}` |
+| Read base version for comparison | `gh api repos/{owner}/{repo}/contents/{path}?ref={base_branch}` |
+| Trace callers/blast radius | `gh search code "query repo:owner/repo"` or `grep -rn` locally |
 
-**What to look for per dimension:**
-- **Security:** User input flowing into SQL/shell/template without sanitization. Auth checks missing on new endpoints. Secrets or tokens in code or logs. CORS/CSP changes that widen attack surface.
-- **Correctness:** Boundary conditions (empty arrays, null, zero, max int). Async code missing `await`. Error paths that swallow exceptions silently. State mutations with no rollback on failure.
-- **Performance:** Queries inside loops. Unbounded `SELECT *` without `LIMIT`. Large objects cloned unnecessarily. Missing indexes on new query patterns.
-- **API contract:** Changed response shapes without versioning. Removed fields that consumers depend on. New required fields on existing endpoints.
-
-**Red flags per dimension:**
-- `eval()`, `dangerouslySetInnerHTML`, raw SQL concatenation, `chmod 777`, hardcoded credentials.
-- `catch (e) {}` — empty catch blocks that silently swallow errors.
-- `TODO` or `FIXME` comments added in the diff — indicates known incomplete work.
-- Commented-out code submitted as part of the PR.
-
-**Actionability filter** — before recording any finding, verify it passes ALL of these:
-1. Is it in scope of this PR? (not pre-existing tech debt)
-2. Is it worth the churn? (the fix is simpler than the problem)
-3. Does it match codebase conventions? (don't impose external standards)
-4. Is it intentional? (maybe the author made a deliberate tradeoff)
-5. Does it have concrete impact? (not hypothetical)
-6. Would a senior engineer on this team flag this? (calibration check)
-7. Is the confidence ≥ 70%? (if not, phrase as a question instead of a finding)
+**Actionability filter** — before recording any finding, verify it passes ALL:
+1. In scope of this PR? (not pre-existing tech debt)
+2. Worth the churn? (fix simpler than the problem)
+3. Matches codebase conventions? (don't impose external standards)
+4. Could be intentional? (if so, phrase as question)
+5. Concrete impact? (not hypothetical)
+6. Would a senior on this team flag it? (calibration)
+7. Confidence ≥ 70%? (if not, use 💡 question)
 
 ### Phase 6 — Cross-cutting analysis
 
-After reviewing all clusters, look for patterns that span multiple files:
+Detect patterns spanning clusters. Read `references/cross-cutting.md` for the full coordination checklist.
 
-- **Inconsistency** — same pattern handled differently in two places
-- **Missing coordination** — API changed but consumer not updated
-- **Test gaps** — source changed but no corresponding test changes
-- **Documentation drift** — behavior changed but docs not updated
-- **Dependency risks** — new dependencies added without justification
-
-**What to look for:**
-- A function signature changed in one file but callers in other files still pass old arguments.
-- New environment variables referenced in code but not added to `.env.example` or deployment configs.
-- Feature flags introduced but never checked in all relevant code paths.
-- Error types defined but not handled by the global error handler.
-
-**Red flags:**
-- Import cycles created by the new changes.
-- Shared utility functions modified without checking all consumers.
-- Version bumps in `package.json` / `requirements.txt` without corresponding lockfile updates.
+Key checks: API changed but consumer not updated, new env var not in deploy config, shared type changed without updating importers, test gaps for changed source files.
 
 ### Phase 7 — Synthesize and output
 
-Compile findings into the output format. Read `references/output-templates.md` for the templates.
-
-**Structure:**
-
-```
-## PR Review: <PR title>
-
-### Summary
-<1-2 sentence verdict: what the PR does, whether it achieves its goal>
-
-### Verdict: <✅ Approve | 💬 Comment | 🔄 Request Changes>
-
-### Findings
-
-#### 🔴 Blockers (must fix before merge)
-<findings that prevent merge>
-
-#### 🟡 Important (should fix, may not block)
-<findings that should be addressed but could ship>
-
-#### 🟢 Suggestions (non-blocking improvements)
-<optional improvements>
-
-#### 💡 Questions (need author clarification)
-<things that are unclear — use this instead of low-confidence findings>
-
-#### 🎯 Positive observations
-<things done well — always include at least one>
-
-### Already-reviewed threads
-<summary of existing review threads and their status>
-
-### Test coverage assessment
-<are changes adequately tested?>
-```
+Compile findings into structured output. Read `references/output-templates.md` for templates.
 
 **Each finding must include:**
 ```
-**[severity] Title** — `path/to/file.ts:42`
-<description of the issue>
-<evidence: what the code does vs what it should do>
-<suggested fix or question>
+**[🟡 Important] Title** — `path/to/file.ts:42`
+Description of the issue.
+Evidence: what the code does vs what it should do.
+Suggested fix or question.
 ```
+
+**Output structure:**
+```
+## PR Review: <title> (#<number>)
+### Summary — 1-2 sentence verdict
+### Verdict: ✅ Approve | 💬 Comment | 🔄 Request Changes
+### 🔴 Blockers (must fix) / 🟡 Important (should fix) / 🟢 Suggestions
+### 💡 Questions (need author clarification)
+### 🎯 Positive observations (always include at least one)
+### Existing review threads summary
+### File clusters reviewed (with review depth per cluster)
+### Test coverage assessment
+```
+
+## Verdict decision matrix
+
+| Condition | Verdict |
+|-----------|---------|
+| No blockers, ≤2 important, goal achieved | ✅ Approve |
+| No blockers, has questions needing answers | 💬 Comment |
+| No blockers, >2 important findings | 💬 Comment (lean toward Request Changes) |
+| Any blockers | 🔄 Request Changes |
+| Goal validation failed | 🔄 Request Changes |
+| CI failing on critical checks | 🔄 Request Changes |
+| All findings are 🟢 suggestions only | ✅ Approve (with notes) |
 
 ## Severity system
 
 | Label | Icon | Meaning | Merge impact |
 |-------|------|---------|-------------|
-| Blocker | 🔴 | Security vulnerability, data loss, crash, goal failure | Blocks merge |
-| Important | 🟡 | Bug, performance issue, missing error handling | Should fix; author decides if it blocks |
+| Blocker | 🔴 | Security vuln, data loss, crash, goal failure | Blocks merge |
+| Important | 🟡 | Bug, performance issue, missing error handling | Should fix |
 | Suggestion | 🟢 | Code improvement, better naming, simpler approach | Non-blocking |
-| Question | 💡 | Unclear intent, possible issue pending clarification | Non-blocking; needs author response |
-| Praise | 🎯 | Good pattern, clever solution, clean code | N/A — always include |
+| Question | 💡 | Unclear intent, needs clarification | Non-blocking |
+| Praise | 🎯 | Good pattern, clever solution, clean code | Always include |
 
-**Calibration rule:** If you have more than 3 blockers, re-examine each one. True blockers are rare. If you have more than 10 total findings, you are likely being too noisy — reapply the actionability filter.
+**Calibration:** >3 blockers → re-examine. >10 findings total → re-apply actionability filter. 0 positive observations → add at least one.
 
 ## Anti-patterns
 
@@ -278,22 +221,100 @@ Read `references/anti-patterns.md` for the full list. The critical ones:
 - **Never** review a draft PR unless explicitly asked.
 - **Never** approve without reading the full diff.
 
+## Common pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| Reviewing without reading PR description | Always complete Phase 1 before looking at code. |
+| Duplicating issues from existing review threads | Complete Phase 3 and check already-reviewed map before every finding. |
+| Flagging style/formatting issues | If a linter should catch it, skip it. Read `references/automation.md`. |
+| Too many findings (>15) | Re-apply actionability filter. Consider PR is too large, not too buggy. |
+| No positive feedback | Always include ≥1 praise. Read `references/communication.md`. |
+| "You should" language | Use "This could" or ask questions. Never directive. |
+| Suggesting out-of-scope architecture changes | Note as 💡 Question for separate discussion, not a finding. |
+| Low-confidence findings stated as facts | If confidence <70%, phrase as 💡 Question instead. |
+| Reviewing draft PRs uninvited | Only review drafts when explicitly asked. |
+| Approving without reading full diff | Always state what you reviewed vs skimmed. |
+| Missing cross-file coordination bugs | Always run Phase 6 cross-cutting checks. |
+| Ignoring AI/bot review comments | Read existing AI reviews in Phase 3; don't duplicate. |
+
 ## Reference files
 
 Load only the files needed for the current review phase.
 
 | File | When to read |
 |------|-------------|
-| `references/review-workflow.md` | Read at the start of every review for the full phase-by-phase procedure with exact command syntax. |
-| `references/gh-cli-reference.md` | Read when you need the exact syntax for any `gh` CLI command. |
-| `references/file-clustering.md` | Read in Phase 2 when grouping changed files into review clusters. |
-| `references/comment-correlation.md` | Read in Phase 3 when processing existing review comments and threads. |
-| `references/review-dimensions.md` | Read in Phase 5 when doing the systematic review against the checklist. |
-| `references/diff-analysis.md` | Read in Phase 5 when you need techniques for reading and understanding complex diffs. |
-| `references/output-templates.md` | Read in Phase 7 when formatting the final review output. |
-| `references/anti-patterns.md` | Read when you need to calibrate — especially if finding count is high. |
-| `references/severity-guide.md` | Read when deciding between severity levels for a finding. |
-| `references/language-specific.md` | Read when reviewing code in a specific language for language-specific patterns. |
+| `references/review-workflow.md` | Start of every review — full phase-by-phase procedure with CLI commands. |
+| `references/gh-cli-reference.md` | When you need exact `gh` CLI syntax for any operation. |
+| `references/file-clustering.md` | Phase 2 — grouping changed files into review clusters. |
+| `references/comment-correlation.md` | Phase 3 — processing existing review comments and threads. |
+| `references/review-dimensions.md` | Phase 5 — systematic review against the quality checklist. |
+| `references/security-review.md` | Phase 5 — security-focused review with STRIDE and vulnerability patterns. |
+| `references/performance-review.md` | Phase 5 — performance review with N+1, memory, and complexity patterns. |
+| `references/bug-patterns.md` | Phase 5 — common bugs: race conditions, error handling, off-by-one. |
+| `references/cross-cutting.md` | Phase 6 — cross-file coordination gaps and missing updates. |
+| `references/large-pr-strategy.md` | Phase 2 — chunking and depth tiers for large PRs (500+ lines). |
+| `references/diff-analysis.md` | Phase 5 — techniques for reading complex diffs. |
+| `references/output-templates.md` | Phase 7 — formatting the final review output. |
+| `references/communication.md` | Phase 7 — writing actionable comments with good tone. |
+| `references/anti-patterns.md` | Calibration — when finding count is high or quality is uncertain. |
+| `references/severity-guide.md` | When deciding between severity levels for a finding. |
+| `references/language-specific.md` | When reviewing code in a specific language for language-specific patterns. |
+| `references/automation.md` | When working with CI, static analysis, or AI review tools. |
+
+## Minimal reading sets
+
+### "I need to review a standard PR"
+
+- `references/review-workflow.md`
+- `references/file-clustering.md`
+- `references/comment-correlation.md`
+- `references/output-templates.md`
+
+### "I need to do a security-focused review"
+
+- `references/security-review.md`
+- `references/review-dimensions.md` § Security
+- `references/review-workflow.md`
+- `references/severity-guide.md`
+
+### "I need to review a large PR (500+ lines)"
+
+- `references/large-pr-strategy.md`
+- `references/file-clustering.md`
+- `references/review-workflow.md`
+- `references/cross-cutting.md`
+
+### "I need help writing good review comments"
+
+- `references/communication.md`
+- `references/severity-guide.md`
+- `references/anti-patterns.md`
+
+### "I need to review for performance issues"
+
+- `references/performance-review.md`
+- `references/review-dimensions.md` § Performance
+- `references/bug-patterns.md`
+
+### "I need to check for common bugs"
+
+- `references/bug-patterns.md`
+- `references/review-dimensions.md` § Correctness
+- `references/language-specific.md`
+
+### "I need to work with CI and automated tools"
+
+- `references/automation.md`
+- `references/gh-cli-reference.md`
+
+### "I need the complete review dimensions checklist"
+
+- `references/review-dimensions.md`
+- `references/security-review.md`
+- `references/performance-review.md`
+- `references/bug-patterns.md`
+- `references/language-specific.md`
 
 ## Guardrails
 
@@ -303,3 +324,7 @@ Load only the files needed for the current review phase.
 - Do mark the review as blocked if CI is failing — note which checks fail.
 - Do always include at least one positive observation.
 - Do always report the existing review thread summary so the author sees continuity.
+
+## Final reminder
+
+This skill is split into many focused reference files organized by domain. Do not load everything at once. Start with the smallest relevant reading set above, then expand into neighboring references only when the task actually requires them. Every reference file in `references/` is explicitly routed from the decision tree above.
