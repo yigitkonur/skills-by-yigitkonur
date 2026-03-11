@@ -470,6 +470,84 @@ Django application with [DRF / HTMX / GraphQL].
 
 ---
 
+## 9. Library / Open-Source Package
+
+### AGENTS.md
+
+```markdown
+# Package Name
+
+Brief description of the package/library.
+
+## Commands
+- Test: `npm test`
+- Lint: `npm run lint`
+- Build: `npm run build` (if applicable — omit if source ships directly)
+
+## Structure
+- `src/` or `lib/` — Library source
+- `test/` or `tests/` — Test suites
+- `index.js` or `src/index.ts` — Entry point
+
+## Conventions
+- Key coding conventions specific to the project
+- Module format: CommonJS / ESM / dual
+- Language: JavaScript / TypeScript
+
+## Testing
+- Test framework and assertion library
+- Special test configurations or environment setup
+
+## Dependencies
+- Package manager: npm / yarn / pnpm
+- Node.js version requirement
+- Lock file policy (present or disabled)
+
+## Boundaries
+- Always: Run tests before committing
+- Always: Run linter before committing
+- Ask: Before adding or upgrading production dependencies
+- Ask: Before changing minimum supported Node.js version
+- Never: Break public API without a major version bump
+- Never: Modify test infrastructure without understanding impact
+```
+
+### CLAUDE.md (Thin Wrapper)
+
+```markdown
+@AGENTS.md
+
+## Claude-Specific
+- This is an open-source package — changes must maintain backward compatibility
+```
+
+### CLAUDE.md (Standalone)
+
+```markdown
+# Package Name
+
+Brief description.
+
+## Stack
+- Language: JavaScript / TypeScript
+- Runtime: Node.js [version]+
+- Test framework: [Mocha/Jest/Vitest]
+
+## Commands
+- Test: `npm test`
+- Lint: `npm run lint`
+
+## Conventions
+- Module format and key coding patterns
+- Backward compatibility requirements
+
+## Publishing
+- Published to npm / PyPI / crates.io
+- Release process: [manual / CI-automated]
+```
+
+---
+
 ## Monorepo with Path-Scoped Rules (Claude Code)
 
 For monorepos using Claude Code's `.claude/rules/` for per-package instructions:
@@ -509,4 +587,5 @@ project/
 - **Add sections** for project-specific concerns (Database, Deployment, API Design)
 - **Boundaries** should reflect real project risks, not hypothetical ones
 - **Commands** must be verified against actual project config
+- **Package manager** — templates show npm/pnpm/yarn as placeholders; use whatever the project actually uses
 - **Thin wrappers** are preferred when the team uses multiple agents

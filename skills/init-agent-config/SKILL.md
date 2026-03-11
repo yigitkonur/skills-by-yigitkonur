@@ -52,7 +52,7 @@ Classify the job before reading deeply:
 | Migration | Preserve valid rules, convert format, remove duplication |
 | Extension | Add missing file(s) or Claude-specific structure without rewriting universal content |
 
-Then determine the agent surface actually in use:
+Then determine the agent surface actually in use. Quick existence checks (`ls` for `AGENTS.md`, `CLAUDE.md`, `.cursorrules`) count as scoping, not deep reading — do these before consulting the table below.
 
 | Team/tool reality | Default output |
 |------------------|----------------|
@@ -61,6 +61,9 @@ Then determine the agent surface actually in use:
 | Claude Code + any other agent | `AGENTS.md` + thin `CLAUDE.md` wrapper |
 | Existing `AGENTS.md`, now adding Claude-only features | Keep `AGENTS.md` authoritative; add `CLAUDE.md` and `.claude/` only if needed |
 | Existing standalone `CLAUDE.md`, now adding other agents | Extract universal content into `AGENTS.md`, reduce `CLAUDE.md` to a thin wrapper |
+| Unknown / open-source project | `AGENTS.md` + thin `CLAUDE.md` wrapper (maximum portability) |
+
+If you cannot determine which agents the team uses (common for open-source repos), default to maximum portability with the dual-file pattern.
 
 If the user mentions another agent-specific file (`.cursorrules`, `GEMINI.md`, `.github/copilot-instructions.md`, etc.), treat it as input to mine rules from unless they explicitly want that format as output.
 
@@ -68,27 +71,29 @@ If the user mentions another agent-specific file (`.cursorrules`, `GEMINI.md`, `
 
 Read only enough to ground the config, in this order:
 
-1. **Existing agent and contributor docs**
+1. **Existing agent and contributor docs** — extract rules to preserve
    - `AGENTS.md`, `AGENTS.override.md`
    - `CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`, `.claude/settings.json`
    - `.cursorrules`, `.windsurfrules`, `GEMINI.md`
    - `.github/copilot-instructions.md`
    - `README.md`, `CONTRIBUTING.md`
 
-2. **Command sources**
+2. **Command sources** — extract dev/test/build/lint commands
    - `package.json` scripts
    - `Makefile` / `Justfile`
    - `pyproject.toml`
    - `Cargo.toml`, `.cargo/config.toml`
    - CI workflows in `.github/workflows/`
 
-3. **Repo structure and tech-stack anchors**
+3. **Repo structure and tech-stack anchors** — identify non-obvious layout and tech choices
    - framework/tool configs (`tsconfig.json`, `next.config.*`, `go.mod`, `docker-compose.yml`, workspace manifests)
    - monorepo layout, package/service boundaries, non-standard directories
 
-4. **Code-level evidence for non-obvious rules**
+4. **Code-level evidence for non-obvious rules** — verify conventions agents cannot infer
    - validate only conventions agents would not reliably infer on their own
    - capture WHY when the repo encodes an intentional trade-off
+
+**When to stop inspecting:** Once you can fill in all Commands entries, identify non-obvious conventions agents would get wrong, and note architecture boundaries (if any). If uncertain whether a convention is "non-obvious," include it and trim in step 7.
 
 **Recovery rules**
 - If a command is not verified, write `See [file]` or `Test: [not configured]`.
@@ -111,12 +116,12 @@ Dual-file rule:
    @AGENTS.md
 
    ## Claude-Specific
-   - See `.claude/rules/` for path-scoped rules
    - Add only Claude-only features or memory notes here
+   - (If path-scoped rules are needed) See `.claude/rules/`
    ```
 3. Do not copy `AGENTS.md` content into `CLAUDE.md`.
 
-Monorepo rule:
+Monorepo rule (skip for single-package projects):
 
 - Root file = universal repo-wide guidance
 - Nested `AGENTS.md` or `.claude/rules/` = package/path-specific rules
@@ -147,6 +152,10 @@ Cut aggressively:
 - exhaustive file trees or dependency lists
 - motivational filler like `write clean code`
 
+**When to add sections beyond templates:** add a dedicated section when 3+ related non-obvious facts need grouping. If only 1–2 facts, merge them into Conventions instead.
+
+Cutting means removing from the root config file. If cut content is occasionally useful, reference it as a supplemental doc pointer instead of inlining.
+
 ### 5) Control scope and disclosure
 
 Root config files should contain only instructions needed in most sessions.
@@ -161,6 +170,8 @@ Use progressive disclosure only when it improves signal:
 Do not create extra support files just because the platform allows them. Add `@import` files, `.claude/rules/`, or `agent_docs/` only when the repo is complex enough to justify them and the content can stay lean.
 
 ### 6) Audit or migrate without losing signal
+
+> For new setups, verify the format rules below apply to your draft, then proceed to step 7.
 
 When auditing or migrating:
 
@@ -187,7 +198,12 @@ Check all of the following:
   - root `AGENTS.md`: ideally <80 lines
   - thin `CLAUDE.md`: ideally <20 lines
   - standalone `CLAUDE.md`: ideally <60 lines
-- unresolved unknowns are explicitly called out instead of guessed away
+- unresolved unknowns are called out in your response to the user (not in the generated files)
+
+**If a check fails:**
+- Over target size → trim low-signal lines, or split into nested files for monorepos
+- Commands unverified → use `See [file]` or `Test: [not configured]` syntax
+- Content duplicated → move it to `AGENTS.md` and keep `CLAUDE.md` as a thin wrapper
 
 ## Do this, not that
 
@@ -216,7 +232,7 @@ Read the smallest reference set that unblocks the current decision:
 | Auditing existing files or migrating from another format | `references/audit-and-migration.md` |
 | Project-type starter structures after repo inspection | `references/project-templates.md` |
 
-Start with one or two references. Expand only if the current task truly needs more detail.
+Start with one or two references. Suggested starting points: **new setups** → writing-guidelines.md + project-templates.md; **audits** → audit-and-migration.md; **dual-file decisions** → agents-md-format.md + claude-md-format.md. Expand only if the current task truly needs more detail.
 
 ## Final output expectations
 

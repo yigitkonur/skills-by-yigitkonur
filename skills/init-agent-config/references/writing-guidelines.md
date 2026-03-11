@@ -196,6 +196,8 @@ Write all universal instructions in AGENTS.md. This file is read by 20+ agents.
 
 ### CLAUDE.md as Thin Wrapper
 
+> The canonical thin wrapper template is in SKILL.md Step 3. The example below is an **extended** version — include only the sections your project needs.
+
 ```markdown
 @AGENTS.md
 
