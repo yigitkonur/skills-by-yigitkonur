@@ -46,6 +46,11 @@ The Bug Catcher treats content near the top of the file with **higher priority**
 | **Testing** | Flag | Informational |
 | **Ignore** | Skipped | N/A |
 
+> **Critical vs Security distinction:**
+> Critical = repo-specific paths (migration safety, auth flows, payment processing).
+> Security = general practices (input validation, secret handling, XSS prevention).
+> Place both near the top, but separate them — Critical rules reference *your* codebase paths; Security rules apply universally.
+
 ---
 
 ## Section Reference
@@ -122,6 +127,8 @@ Patterns to flag as investigate-level warnings.
 
 Good/bad code examples that the Bug Catcher can match against. Use fenced code blocks with language tags.
 
+Use the repo's dominant language for code blocks. Match ecosystem idioms — if the project is Django, write Django examples, not generic Python. If the project is Go with `slog`, show `slog` patterns, not `log.Printf`.
+
 ```markdown
 ## Patterns
 
@@ -154,6 +161,111 @@ async function getUser(id: string) {
 - Keep examples focused on one concept — don't mix error handling with validation
 - Tag code blocks with the correct language for syntax highlighting
 
+#### Python Examples
+
+**N+1 Queries:**
+
+**Good:**
+```python
+# Use select_related / prefetch_related to batch queries
+users = User.objects.select_related("profile").filter(active=True)
+```
+
+**Bad:**
+```python
+# Bare .all() in a loop causes N+1 queries
+for user in User.objects.all():
+    print(user.profile.name)  # hits DB every iteration
+```
+
+**Bare Except:**
+
+**Good:**
+```python
+try:
+    result = process(data)
+except Exception as e:
+    logger.error("processing failed", exc_info=e)
+    raise
+```
+
+**Bad:**
+```python
+try:
+    result = process(data)
+except:  # catches KeyboardInterrupt, SystemExit — hides real bugs
+    pass
+```
+
+**Type Hints:**
+
+**Good:**
+```python
+def get_user(user_id: int) -> User | None:
+    return User.objects.filter(id=user_id).first()
+```
+
+**Bad:**
+```python
+def get_user(user_id):  # no type hints — unclear contract
+    return User.objects.filter(id=user_id).first()
+```
+
+#### Go Examples
+
+**Error Handling:**
+
+**Good:**
+```go
+val, err := doSomething()
+if err != nil {
+    return fmt.Errorf("doSomething context: %w", err)
+}
+```
+
+**Bad:**
+```go
+val, _ := doSomething() // error silently ignored
+```
+
+**Goroutine Safety:**
+
+**Good:**
+```go
+g, ctx := errgroup.WithContext(ctx)
+for _, item := range items {
+    g.Go(func() error {
+        return process(ctx, item)
+    })
+}
+if err := g.Wait(); err != nil {
+    return err
+}
+```
+
+**Bad:**
+```go
+for _, item := range items {
+    go func() {
+        process(item) // no error handling, no synchronization
+    }()
+}
+```
+
+**Structured Logging:**
+
+**Good:**
+```go
+slog.Info("request handled", "method", r.Method, "path", r.URL.Path, "status", code)
+```
+
+**Bad:**
+```go
+log.Printf("handled %s %s %d", r.Method, r.URL.Path, code) // unstructured, hard to query
+```
+
+> **Steering note:** Focus Good/Bad examples on the top 2–3 risks in your codebase. Don't exhaustively example every rule. If a linter already enforces it, skip the example — the Bug Catcher adds more value on patterns linters can't catch.
+
 ### Ignore
 
 Files and patterns the Bug Catcher should skip. Reduces noise from generated files, lock files, and test artifacts.
@@ -166,6 +278,18 @@ Files and patterns the Bug Catcher should skip. Reduces noise from generated fil
 - Test snapshots in `__snapshots__/` don't need review.
 - Build output in `dist/` and `.next/` should never be committed.
 ```
+
+#### Ignore Format
+
+Patterns use **glob-style** syntax, one per line, relative to the repo root:
+
+| Pattern | What it excludes |
+|---------|------------------|
+| `*.generated.*` | Generated files (e.g. `types.generated.ts`) |
+| `**/migrations/` | Migration directories at any depth |
+| `*_test.go` | Go test files |
+| `**/__pycache__/` | Python bytecode cache directories |
+| `vendor/`, `node_modules/` | Vendored dependencies |
 
 **Writing tips:**
 - List actual paths from your repo, not generic patterns
@@ -227,10 +351,12 @@ repo/
 
 ### How Scoping Works
 
-- Subdirectory `REVIEW.md` files **complement** the root file — they don't replace it
-- Devin reads **all applicable** `REVIEW.md` files for a given changed file
-- If a PR changes `packages/api/src/auth.ts`, both the root `REVIEW.md` and `packages/api/REVIEW.md` apply
-- Avoid duplicating rules between root and subdirectory files
+- **Root applies everywhere**: The root `REVIEW.md` applies to every PR in the repository, regardless of which files changed.
+- **Scoped applies to subtree**: A `REVIEW.md` in `packages/api/` only activates for changes under `packages/api/`.
+- **Scoped is self-contained**: Subdirectory `REVIEW.md` files do **not** inherit from the root file. Write each scoped file as a standalone document with its own sections.
+- **Closest-scope-wins**: When multiple scoped files could match, the `REVIEW.md` nearest to the changed file takes precedence.
+- If a PR changes `packages/api/src/auth.ts`, both the root `REVIEW.md` and `packages/api/REVIEW.md` apply — but scoped rules from `packages/api/REVIEW.md` take priority if they conflict.
+- Avoid duplicating rules between root and subdirectory files.
 
 ### Scoping Best Practices
 
