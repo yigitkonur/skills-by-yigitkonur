@@ -23,3 +23,4 @@ If a prompt is meant to be reused across routes or features, move it into `packa
 **Related references:**
 - `references/ai/models-and-exports.md` — Model package entry point
 - `references/setup/import-conventions.md` — Package import patterns
+- `references/conventions/naming.md` — Naming conventions

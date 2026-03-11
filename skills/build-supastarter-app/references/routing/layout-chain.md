@@ -2,6 +2,8 @@
 
 > The app has two top-level layout chains: a locale-aware marketing chain and a SaaS chain that adds hydration, session, organization, and confirmation contexts before any dashboard shell appears. Use this reference when inserting a new provider or when debugging which layout layer owns a redirect, context, or visual wrapper.
 
+> ⚠️ **Provider order matters.** Layouts nest Document → ClientProviders → (marketing OR saas). Moving a provider out of order breaks context for all child routes.
+
 ## Marketing layout chain
 
 Marketing routes inherit a single layout from `apps/web/app/(marketing)/[locale]/layout.tsx`:
@@ -70,6 +72,23 @@ It also prefetches the active organization query and, when organization billing 
 - **Need SaaS-wide session or organization context?** That belongs in `apps/web/app/(saas)/layout.tsx`.
 - **Need a redirect before any dashboard page renders?** That belongs in `apps/web/app/(saas)/app/layout.tsx`.
 - **Need dashboard chrome such as navigation and sidebar spacing?** That belongs in `AppWrapper`, which is mounted by both `/app/(account)` and `/app/(organizations)/[organizationSlug]` layouts.
+
+## Full layout tree
+
+```text
+Document (app/layout.tsx)
+└── ClientProviders (providers + session)
+    ├── (marketing) ← public pages, locale routing
+    │   └── [locale]/page.tsx
+    └── (saas) ← auth guard + onboarding check
+        └── app/
+            ├── (account) ← personal settings
+            │   └── settings/page.tsx
+            └── (organizations) ← ActiveOrganizationProvider
+                └── [organizationSlug]/
+                    └── AppWrapper.tsx (nav + shell)
+                        └── <page>/page.tsx
+```
 
 ---
 

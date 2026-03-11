@@ -27,3 +27,4 @@ This gives the web app a local database plus S3-compatible object storage for av
 - `references/setup/environment-setup.md` — Full local setup walkthrough
 - `references/storage/bucket-config.md` — The `avatars` bucket configuration
 - `references/cheatsheets/commands.md` — Common local-dev commands
+- `references/storage/s3-provider.md` — S3 provider configuration

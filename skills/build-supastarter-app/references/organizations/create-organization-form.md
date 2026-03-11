@@ -2,6 +2,8 @@
 
 > Documents the standalone form used on `/new-organization` to create an org, set it active, and redirect into the new dashboard. Consult this when changing org creation UX or tracing how slug generation and post-create navigation work.
 
+> ⚠️ **Slug generation.** Organization slugs are auto-generated from the name. The slug becomes the URL path segment `[organizationSlug]`.
+
 ## Key files
 
 - `apps/web/modules/saas/organizations/components/CreateOrganizationForm.tsx`

@@ -4,6 +4,8 @@
 >
 > Better Auth lives in `packages/auth`, but the day-to-day consumption points are spread across SaaS server helpers, the session context provider, and the auth form components in `apps/web/modules/saas/auth`.
 
+> ⚠️ **Server vs client.** Server session helpers use React `cache()` and MUST only be called in server components. Use `useSession()` for client components.
+
 ## Moving pieces
 
 - `packages/auth/auth.ts` — central Better Auth instance, plugins, hooks, emails, OpenAPI

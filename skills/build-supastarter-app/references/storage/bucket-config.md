@@ -2,6 +2,8 @@
 
 > Documents the logical-to-physical bucket mapping used by the storage package. Consult this when adding a new bucket or checking which environment variable controls an existing one.
 
+> ⚠️ **Bucket keys are typed.** Adding a new bucket requires updating the `StorageBucket` type in `packages/storage/`.
+
 ## Key files
 
 - `packages/storage/config.ts`
@@ -29,3 +31,4 @@ export const config = {
 - `references/storage/signed-urls.md` — How bucket keys are consumed
 - `references/cheatsheets/env-vars.md` — Bucket-related env vars
 - `references/storage/s3-provider.md` — Provider implementation
+- `references/patterns/direct-upload-s3.md` — Upload pattern

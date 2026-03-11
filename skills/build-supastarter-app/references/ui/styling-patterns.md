@@ -33,3 +33,4 @@ Prefer extending the existing token-driven styles over introducing one-off utili
 - `references/ui/theme-tokens.md` — Source of semantic color/radius values
 - `references/conventions/component-patterns.md` — How styling appears inside component files
 - `references/marketing/home-page-components.md` — Marketing-side composition examples
+- `references/ui/components.md` — Shared component inventory

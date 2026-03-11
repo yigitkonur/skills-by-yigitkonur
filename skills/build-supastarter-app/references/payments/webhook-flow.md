@@ -2,6 +2,8 @@
 
 > Documents the provider webhook pipeline that creates, updates, and deletes purchase rows. Consult this when debugging payment state drift between Stripe and the application database.
 
+> ⚠️ **Webhook secret.** The `STRIPE_WEBHOOK_SECRET` must match the webhook endpoint registered in Stripe Dashboard. Mismatches cause silent signature verification failures.
+
 ## Key file
 
 - `packages/payments/provider/stripe/index.ts`

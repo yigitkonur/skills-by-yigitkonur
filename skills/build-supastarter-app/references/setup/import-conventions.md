@@ -2,6 +2,8 @@
 
 > Path alias reference and import patterns. Consult this when importing across packages, adding new modules, or encountering module resolution errors.
 
+> ⚠️ **Never use `@repo/database/prisma/client` or raw `@prisma/client`.** Always import from `@repo/database`.
+
 ## Path Aliases
 
 Configured in `apps/web/tsconfig.json`:
@@ -105,3 +107,4 @@ When adding new exports to a package, always wire them through the barrel `index
 **Related references:**
 - `references/setup/monorepo-structure.md` — Full directory tree
 - `references/cheatsheets/imports.md` — Most common imports cheatsheet
+- `references/conventions/typescript-patterns.md` — Type export patterns

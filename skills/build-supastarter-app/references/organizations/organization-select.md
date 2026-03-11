@@ -2,6 +2,8 @@
 
 > Documents the navbar organization switcher that lets users jump between organizations or their personal account. Consult this when changing org-switch UX, collapsed-sidebar behavior, or plan badges in the dashboard shell.
 
+> ⚠️ **Redirect on switch.** Switching organizations navigates to the new org's slug URL. Ensure your page handles the new `organizationSlug` param.
+
 ## Key files
 
 - `apps/web/modules/saas/organizations/components/OrganizationSelect.tsx`

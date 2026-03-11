@@ -2,6 +2,8 @@
 
 > Documents the admin-facing user-management table. Consult this when changing search, pagination, or user-level admin actions.
 
+> ⚠️ **Only `adminProcedure` endpoints should back admin pages.** Do not use `protectedProcedure` for admin routes.
+
 ## Key file
 
 - `apps/web/modules/saas/admin/component/users/UserList.tsx`
@@ -23,3 +25,4 @@ The table is built with TanStack Table and nuqs-style URL state patterns, so adm
 - `references/admin/organizations-admin.md` — Parallel admin list for organizations
 - `references/routing/routing-saas.md` — Where `/app/admin` lives
 - `references/auth/better-auth-config.md` — Admin-related auth capabilities
+- `references/auth/server-session-helpers.md` — Server-side session helpers

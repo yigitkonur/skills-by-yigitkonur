@@ -23,3 +23,5 @@ This means public pages still know about session state, which is why the navbar 
 - `references/routing/routing-marketing.md` — Full marketing route group
 - `references/i18n/setup.md` — Locale config source of truth
 - `references/marketing/home-page-components.md` — Main landing-page sections
+- `references/marketing/content-collections.md` — MDX-backed public content
+- `references/hooks/auth-hooks.md` — Auth hooks for session-aware UI

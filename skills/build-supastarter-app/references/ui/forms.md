@@ -51,3 +51,4 @@ That is why feature forms like login, signup, onboarding, and settings all follo
 - `references/ui/components.md` — Broader shared component library context
 - `references/auth/login-flow.md` — Real auth form using these primitives
 - `references/onboarding/onboarding-flow.md` — Multi-step form usage in onboarding
+- `references/patterns/form-with-zod.md` — Form pattern reference

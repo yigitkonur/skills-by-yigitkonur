@@ -2,6 +2,8 @@
 
 > Documents the end-to-end billing flow from pricing-table selection to provider checkout, then back into the customer portal and purchase-derived UI state. Consult this when changing checkout redirects, billing CTA behavior, or how active purchases affect the product experience.
 
+> ⚠️ **`billingAttachedTo` setting.** This config value determines whether checkout is tied to the User or Organization model. It affects which ID is passed as the customer reference.
+
 ## Key files
 
 - `apps/web/modules/saas/payments/components/PricingTable.tsx`

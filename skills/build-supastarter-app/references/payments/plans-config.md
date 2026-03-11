@@ -2,6 +2,8 @@
 
 > Documents the billing plan map in `packages/payments/config.ts`. Consult this when changing prices, switching between user- and organization-level billing, or adding a new free / recurring / lifetime / enterprise plan.
 
+> ⚠️ **Price IDs are env-specific.** Stripe price IDs differ between test and live modes. Store them in env vars, not hardcoded.
+
 ## Key files
 
 - `packages/payments/config.ts`

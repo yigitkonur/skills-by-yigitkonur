@@ -26,3 +26,4 @@ The app should import the analytics module through its shared entry point rather
 - `references/analytics/consent-flow.md` — Consent gate around analytics behavior
 - `references/routing/providers-document.md` — Where analytics script wiring lives
 - `references/setup/environment-setup.md` — Analytics env vars
+- `references/cheatsheets/env-vars.md` — Environment variable reference

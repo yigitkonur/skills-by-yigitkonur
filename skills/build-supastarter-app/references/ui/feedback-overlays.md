@@ -30,3 +30,4 @@ Choose the lightest-weight feedback primitive that matches the action:
 - `references/ui/components.md` — Shared component inventory
 - `references/onboarding/onboarding-flow.md` — Progress bar usage
 - `references/settings/account-settings.md` — Toast-based form feedback
+- `references/patterns/react-query-orpc.md` — React Query + oRPC patterns

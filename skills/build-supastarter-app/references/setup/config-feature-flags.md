@@ -2,6 +2,8 @@
 
 > Documents the three main config files that control application behavior. Consult this when enabling/disabling features, changing app behavior, or understanding what config options are available.
 
+> ⚠️ **`config.organizations.enable` is the master org switch.** When `false`, org-related UI, routes, and API procedures are disabled.
+
 ## 1. App Config (`apps/web/config.ts`)
 
 Controls UI behavior, feature toggles, and routing:
@@ -139,3 +141,4 @@ Plan keys (`"free"`, `"pro"`, `"lifetime"`, `"enterprise"`) become the `PlanId` 
 - `references/auth/feature-flags.md` — Deep dive into auth feature flags
 - `references/payments/plans-config.md` — Full plans config documentation
 - `references/routing/access-guards.md` — How guards use config
+- `references/cheatsheets/env-vars.md` — Env var reference

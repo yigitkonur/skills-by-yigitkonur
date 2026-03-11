@@ -2,6 +2,8 @@
 
 > Documents how translation messages are loaded for pages and emails. Consult this when a locale exists in config but strings are missing at runtime.
 
+> ⚠️ **Message files are per-locale JSON.** A missing key won’t error at build time — it shows the key string at runtime. Add keys to ALL locale files.
+
 ## Key files
 
 - `packages/i18n/index.ts`
@@ -26,3 +28,4 @@
 - `references/i18n/setup.md` — Locale definitions and config
 - `references/i18n/locale-routing.md` — How the active locale is chosen
 - `references/mail/template-rendering.md` — Localized subject/body rendering for emails
+- `references/cheatsheets/file-locations.md` — File placement guide

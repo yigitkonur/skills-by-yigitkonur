@@ -127,3 +127,4 @@ Order matters: Content Collections wraps the outermost layer.
 - `references/setup/monorepo-structure.md` — Package layout
 - `references/i18n/setup.md` — next-intl configuration details
 - `references/marketing/content-collections.md` — MDX content setup
+- `references/deployment/vercel.md` — Deployment config

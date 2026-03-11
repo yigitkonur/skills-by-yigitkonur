@@ -2,6 +2,8 @@
 
 > Documents the main organization membership management components. Consult this when changing invite flows, role assignment, or the members/invitations settings UI.
 
+> ⚠️ **No `organizationProcedure`.** There is no org-scoped procedure tier. Use `protectedProcedure` and manually check membership via `auth.api.getFullOrganization()`.
+
 ## Key files
 
 - `apps/web/modules/saas/organizations/components/InviteMemberForm.tsx`
@@ -30,6 +32,21 @@ await authClient.organization.inviteMember({
 - **OrganizationRoleSelect** renders translated role values from `useOrganizationMemberRoles()`
 
 This entire cluster is role-sensitive and assumes the active organization context is already available.
+
+## API membership check (for org-scoped procedures)
+
+```typescript
+// In a protectedProcedure handler:
+const org = await auth.api.getFullOrganization({
+  headers: await headers(),
+  query: { organizationId: input.organizationId },
+});
+
+if (!org) throw new Error("Organization not found");
+
+const membership = org.members.find((m) => m.userId === session.user.id);
+if (!membership) throw new Error("Not a member");
+```
 
 ---
 

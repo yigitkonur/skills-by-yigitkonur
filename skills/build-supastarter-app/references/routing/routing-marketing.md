@@ -2,6 +2,8 @@
 
 > Marketing pages live under the locale-aware `/(marketing)/[locale]` route group and share a single public shell. Use this reference when adding a public page, debugging locale handling, or tracing how the marketing layout composes document, i18n, auth session state, and chrome.
 
+> ⚠️ **Locale required.** Marketing pages live under `[locale]`. Missing the locale segment causes a 404.
+
 ## Locale-scoped route shape
 
 The marketing surface is anchored at `apps/web/app/(marketing)/[locale]/layout.tsx`, so public pages inherit a locale segment in the URL rather than using plain root-level routes. The layout resolves the dynamic `locale` param, validates it, and loads the locale message bundle before rendering children.
@@ -47,6 +49,14 @@ Even though marketing routes are public, `SessionProvider` is still mounted in t
 ## Relationship to middleware and locale routing
 
 Marketing routes are the requests that eventually fall through to `next-intl` middleware in `apps/web/proxy.ts`. Paths such as `/onboarding` and `/choose-plan` explicitly bypass locale handling, but marketing pages remain locale-driven and therefore rely on the `[locale]` route group plus `next-intl` request routing.
+
+## Adding a new marketing page
+
+```text
+apps/web/app/(marketing)/[locale]/<page>/page.tsx
+```
+
+Create a new directory under `[locale]` with a `page.tsx`. The marketing layout provides the navbar, footer, and locale context automatically.
 
 ---
 
