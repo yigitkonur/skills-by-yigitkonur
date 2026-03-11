@@ -1,100 +1,39 @@
 #!/usr/bin/env bash
-# e2e-test-workflow.sh — PR-affected page E2E testing
-# Usage: ./e2e-test-workflow.sh [base-url]
-# Requires: gh CLI (for PR file detection)
+# E2E test workflow using agent-browser
+# Source: official agent-browser documentation
+
 set -euo pipefail
 
-BASE_URL="${1:-http://localhost:3000}"
-RESULTS_DIR="./e2e-results"
-PASS=0
-FAIL=0
+URL="${1:?Usage: $0 <url>}"
+RESULTS_DIR="${2:-./test-results}"
 
 mkdir -p "$RESULTS_DIR"
 
-# === Detect affected routes from PR ===
-echo "🔍 Detecting changed files from PR..."
-if ! CHANGED_FILES=$(gh pr view --json files -q '.files[].path' 2>/dev/null); then
-  echo "⚠️  No PR context found. Testing default routes."
-  CHANGED_FILES=""
+echo "Starting E2E test: $URL"
+
+# Navigate
+agent-browser open "$URL"
+agent-browser wait --load networkidle
+
+# Capture initial state
+agent-browser snapshot -i > "$RESULTS_DIR/initial-snapshot.txt"
+agent-browser screenshot "$RESULTS_DIR/initial.png"
+
+# Check for errors
+ERRORS=$(agent-browser errors 2>&1 || true)
+if [ -n "$ERRORS" ] && [ "$ERRORS" != "No errors" ]; then
+  echo "⚠ Console errors detected:"
+  echo "$ERRORS"
+  echo "$ERRORS" > "$RESULTS_DIR/errors.txt"
 fi
 
-# === Map files to routes (customize for your framework) ===
-declare -a ROUTES
-if [[ -n "$CHANGED_FILES" ]]; then
-  while IFS= read -r file; do
-    case "$file" in
-      src/pages/*.tsx|src/pages/*.jsx)
-        route="${file#src/pages/}"
-        route="${route%.tsx}"
-        route="${route%.jsx}"
-        route="${route%/index}"
-        ROUTES+=("/${route}")
-        ;;
-      src/app/*/page.tsx|src/app/*/page.jsx)
-        route="${file#src/app/}"
-        route="${route%/page.tsx}"
-        route="${route%/page.jsx}"
-        ROUTES+=("/${route}")
-        ;;
-      src/components/*|src/lib/*|src/utils/*)
-        ROUTES+=("/")  # Shared code — test home page
-        ;;
-    esac
-  done <<< "$CHANGED_FILES"
-fi
+# Check page title
+TITLE=$(agent-browser get title)
+echo "Page title: $TITLE"
 
-# Fallback: test home page if no routes detected
-if [[ ${#ROUTES[@]} -eq 0 ]]; then
-  ROUTES=("/")
-fi
+# Check interactive elements
+echo "Interactive elements:"
+agent-browser snapshot -i -c
 
-# Deduplicate routes
-ROUTES=($(printf '%s\n' "${ROUTES[@]}" | sort -u))
-
-echo "🧪 Testing ${#ROUTES[@]} route(s) against ${BASE_URL}"
-echo ""
-
-# === Test each route ===
-for route in "${ROUTES[@]}"; do
-  full_url="${BASE_URL}${route}"
-  slug=$(echo "$route" | tr '/' '-' | sed 's/^-//')
-  slug="${slug:-home}"
-
-  echo "  Testing: ${full_url}"
-
-  # Navigate
-  if ! agent-browser open "$full_url" 2>/dev/null; then
-    echo "  ❌ FAIL: Could not open $full_url"
-    ((FAIL++))
-    continue
-  fi
-
-  agent-browser wait --load networkidle 2>/dev/null || true
-
-  # Snapshot and screenshot
-  agent-browser snapshot -i > "$RESULTS_DIR/${slug}-snapshot.txt" 2>/dev/null || true
-  agent-browser screenshot "$RESULTS_DIR/${slug}.png" 2>/dev/null || true
-
-  # Basic health check: page loaded with content
-  PAGE_TITLE=$(agent-browser get title 2>/dev/null || echo "")
-  if [[ -n "$PAGE_TITLE" ]]; then
-    echo "  ✅ PASS: ${PAGE_TITLE}"
-    ((PASS++))
-  else
-    echo "  ❌ FAIL: No page title (blank or error page)"
-    ((FAIL++))
-  fi
-done
-
-# === Cleanup ===
-agent-browser close 2>/dev/null || true
-
-# === Summary ===
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Results: ${PASS} passed, ${FAIL} failed"
-echo "  Screenshots: ${RESULTS_DIR}/"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Exit with failure if any tests failed
-[[ $FAIL -eq 0 ]] || exit 1
+agent-browser close
+echo "E2E test complete. Results in: $RESULTS_DIR"

@@ -1,0 +1,129 @@
+# CDP Mode
+
+Connect to an existing browser via Chrome DevTools Protocol.
+
+## Connecting
+
+```bash
+# Start Chrome with remote debugging
+google-chrome --remote-debugging-port=9222
+
+# Connect once, then run commands without --cdp
+agent-browser connect 9222
+agent-browser snapshot
+agent-browser tab
+agent-browser close
+
+# Or pass --cdp on each command
+agent-browser --cdp 9222 snapshot
+```
+
+## Remote WebSocket URLs
+
+Connect to remote browser services via WebSocket URL:
+
+```bash
+# Connect to remote browser service
+agent-browser --cdp "wss://browser-service.com/cdp?token=..." snapshot
+
+# Works with any CDP-compatible service
+agent-browser --cdp "ws://localhost:9222/devtools/browser/abc123" open example.com
+```
+
+The `--cdp` flag accepts either:
+- A **port number** (e.g., `9222`) for local connections via `http://localhost:{port}`
+- A **full WebSocket URL** (e.g., `wss://...` or `ws://...`) for remote browser services
+
+## Auto-Connect
+
+Use `--auto-connect` to automatically discover and connect to a running Chrome instance without specifying a port:
+
+```bash
+# Auto-discover running Chrome with remote debugging
+agent-browser --auto-connect open example.com
+agent-browser --auto-connect snapshot
+
+# Or via environment variable
+AGENT_BROWSER_AUTO_CONNECT=1 agent-browser snapshot
+```
+
+Auto-connect discovers Chrome by:
+1. Reading Chrome's `DevToolsActivePort` file from the default user data directory
+2. Falling back to probing common debugging ports (9222, 9229)
+
+This is useful when:
+- Chrome 144+ has remote debugging enabled via `chrome://inspect/#remote-debugging` (which uses a dynamic port)
+- You want a zero-configuration connection to your existing browser
+- You don't want to track which port Chrome is using
+
+## Color Scheme
+
+Playwright overrides the browser's color scheme to `light` by default when connecting via CDP. Use `--color-scheme` to set a persistent preference:
+
+```bash
+agent-browser --cdp 9222 --color-scheme dark open https://example.com
+agent-browser --cdp 9222 snapshot  # stays in dark mode
+```
+
+Or set it globally via config or environment variable:
+
+```bash
+AGENT_BROWSER_COLOR_SCHEME=dark agent-browser --cdp 9222 open https://example.com
+```
+
+## Cloud Providers
+
+Use cloud browser infrastructure when local browsers aren't available:
+
+```bash
+# Browserbase
+export BROWSERBASE_API_KEY="your-api-key"
+export BROWSERBASE_PROJECT_ID="your-project-id"
+agent-browser -p browserbase open https://example.com
+
+# Browser Use
+export BROWSER_USE_API_KEY="your-api-key"
+agent-browser -p browseruse open https://example.com
+
+# Kernel
+export KERNEL_API_KEY="your-api-key"
+agent-browser -p kernel open https://example.com
+
+# Or via environment variable
+export AGENT_BROWSER_PROVIDER=browserbase
+agent-browser open https://example.com
+```
+
+The `-p` flag takes precedence over `AGENT_BROWSER_PROVIDER`.
+
+## Use Cases
+
+CDP mode enables control of:
+- **Electron apps** — connect to the embedded Chromium
+- **Chrome/Chromium with remote debugging** — control existing browser sessions
+- **WebView2 applications** — automate embedded web views
+- **Remote browser services** — connect via WebSocket URL
+- **Any browser exposing a CDP endpoint**
+
+## Global Options
+
+| Option | Description |
+|--------|-------------|
+| `--session <name>` | Use isolated session |
+| `--profile <path>` | Persistent browser profile directory |
+| `-p <provider>` | Cloud browser provider (`browserbase`, `browseruse`, `kernel`) |
+| `--headers <json>` | HTTP headers scoped to origin |
+| `--executable-path` | Custom browser executable |
+| `--args <args>` | Browser launch args (comma-separated) |
+| `--user-agent <ua>` | Custom User-Agent string |
+| `--proxy <url>` | Proxy server URL |
+| `--proxy-bypass <hosts>` | Hosts to bypass proxy |
+| `--json` | JSON output for scripts |
+| `--full, -f` | Full page screenshot |
+| `--name, -n` | Locator name filter |
+| `--exact` | Exact text match |
+| `--headed` | Show browser window |
+| `--cdp <port\|url>` | CDP connection (port or WebSocket URL) |
+| `--auto-connect` | Auto-discover and connect to running Chrome |
+| `--color-scheme <scheme>` | Persistent color scheme (`dark`, `light`, `no-preference`) |
+| `--debug` | Debug output |

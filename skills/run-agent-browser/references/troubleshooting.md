@@ -2,67 +2,126 @@
 
 Common issues and resolution steps.
 
-## CLI runs but no browser opens
-
-Chromium is not installed. Run the install command:
+## Daemon Not Starting
 
 ```bash
-agent-browser install
+# Check for stale socket/PID files (v0.8.6+ auto-cleans these)
+ls -la ~/.agent-browser/daemon.sock ~/.agent-browser/daemon.pid
+
+# Close any existing session and restart
+agent-browser close
+agent-browser open example.com
+
+# Check for port conflicts if using --cdp-port
+lsof -i :9222
 ```
 
-On Linux, system libraries are also required:
+## Browser Not Found
 
 ```bash
-# Install Chromium + system dependencies
+# Install Chromium via agent-browser
+agent-browser install
+
+# Or specify a custom binary path
+agent-browser --executable-path /path/to/chromium open example.com
+# Environment variable alternative
+export AGENT_BROWSER_EXECUTABLE_PATH=/path/to/chromium
+```
+
+## Linux Dependencies
+
+```bash
+# Install Chromium + system libraries
 agent-browser install --with-deps
 
 # Or via Playwright
 npx playwright install-deps chromium
 ```
 
-## Daemon not responding / stale session
+## Container / CI Environments
 
 ```bash
-# Close any existing session
-agent-browser close
+# Disable sandbox for container environments
+agent-browser --args "--no-sandbox,--disable-gpu" open example.com
 
-# If close fails, the daemon may have a stale PID/socket file
-# v0.8.6+ auto-cleans stale files on next start
-# For older versions, manually remove:
-rm -f ~/.agent-browser/daemon.pid ~/.agent-browser/daemon.sock
+# agent-browser auto-adds --no-sandbox when running as root or in Docker/Podman
 ```
 
-## Native binary not available
-
-The CLI automatically falls back to the Node.js daemon when the native Rust binary isn't available for your platform. Ensure Node.js 18+ is installed.
-
-| Platform | Native Binary | Fallback |
-|----------|--------------|----------|
-| macOS ARM64 (Apple Silicon) | ✅ | Node.js daemon |
-| macOS x64 (Intel) | ✅ | Node.js daemon |
-| Linux ARM64 | ✅ | Node.js daemon |
-| Linux x64 | ✅ | Node.js daemon |
-| Windows x64 | ✅ | Node.js daemon |
-
-## Refs not working after page change
-
-Refs (`@e1`, `@e2`) are invalidated when the DOM changes. **Always re-snapshot after any action that changes the page:**
+## CDP Connection Issues
 
 ```bash
-agent-browser click @e5          # Triggers navigation
+# Verify Chrome DevTools port is accessible
+curl -s http://localhost:9222/json/version
+
+# Check Chrome's DevToolsActivePort file
+cat /tmp/DevToolsActivePort 2>/dev/null || echo "Not found"
+
+# Explicit CDP port
+agent-browser --cdp-port 9222 open example.com
+```
+
+## Session State
+
+```bash
+# List saved states
+agent-browser state list
+
+# Clear all states
+agent-browser state clear
+
+# State files are encrypted; manage encryption key via:
+export AGENT_BROWSER_STATE_KEY="your-encryption-key"
+```
+
+## iOS Automation Issues
+
+- Appium must be installed: `npm install -g appium`
+- Simulator runtimes: download via Xcode > Settings > Platforms
+- WebDriverAgent requires Apple Developer signing
+- Only Safari and WebViews are automatable on iOS
+
+## Lightpanda Engine Issues
+
+```bash
+# Ensure binary is in PATH
+which lightpanda || echo "Not found — install from github.com/lightpanda-io/browser"
+
+# Known limitations: no extensions, no persistent profiles,
+# no storage state, no headed mode, no screenshots (depends on CDP support)
+```
+
+## Native Mode Issues
+
+```bash
+# Must close existing daemon before switching modes
+agent-browser close
+export AGENT_BROWSER_NATIVE=1
+agent-browser open example.com
+
+# Known limitations: no Firefox/WebKit, no Playwright traces,
+# no HAR export, network interception uses CDP Fetch domain
+```
+
+## IPC Timeout
+
+```bash
+# Default timeout is 25000ms (25 seconds)
+# Keep below 30000ms to avoid daemon-level timeouts
+export AGENT_BROWSER_DEFAULT_TIMEOUT=25000
+```
+
+## Refs Not Working After Page Change
+
+Refs (`@e1`, `@e2`) are invalidated when the DOM changes. Always re-snapshot after any action that changes the page:
+
+```bash
+agent-browser click @e5          # triggers navigation
 agent-browser wait --load networkidle
 agent-browser snapshot -i        # MUST re-snapshot — old refs are stale
-agent-browser click @e1          # Now safe — uses fresh refs
+agent-browser click @e1          # now safe — uses fresh refs
 ```
 
-Common triggers that invalidate refs:
-- Page navigation (`open`, clicking links)
-- Form submissions
-- SPA route changes
-- Dynamic content loading (AJAX, infinite scroll)
-- Tab switching
-
-## Snapshot returns too many/few elements
+## Snapshot Returns Too Many/Few Elements
 
 ```bash
 # Interactive elements only (recommended default)
@@ -73,77 +132,33 @@ agent-browser snapshot -i -C
 
 # Scope to a specific section
 agent-browser snapshot -i -s "#main-content"
-
-# Full page (rarely needed — very verbose)
-agent-browser snapshot
 ```
 
-## Timeout errors on slow pages
+## Stale Daemon
+
+The CLI (v0.8.6+) automatically cleans up stale socket and PID files on next start. For older versions:
 
 ```bash
-# Increase default timeout (milliseconds)
-export AGENT_BROWSER_DEFAULT_TIMEOUT=60000
-
-# Use explicit waits for slow-loading pages
-agent-browser open https://slow-site.com
-agent-browser wait --load networkidle
-agent-browser snapshot -i
+rm -f ~/.agent-browser/daemon.pid ~/.agent-browser/daemon.sock
 ```
 
-## SSL / certificate errors
+## SSL / Certificate Errors
 
 ```bash
 # For self-signed certs or corporate SSL inspection proxies
 agent-browser --ignore-https-errors open https://self-signed.example.com
 ```
 
-## Trace recording for debugging
-
-Record a Playwright trace to debug complex automation failures:
-
-```bash
-agent-browser trace start
-# ... perform actions ...
-agent-browser trace stop trace.zip
-npx playwright show-trace trace.zip
-```
-
-Limitations: Chromium-only, ~5M event cap, 30-second timeout on stop.
-
-## Browser extensions not loading
-
-```bash
-# Single extension
-agent-browser --extension /path/to/extension open https://example.com
-
-# Multiple extensions
-agent-browser --extension ./ext1 --extension ./ext2 open https://example.com
-
-# Via environment variable (comma-separated)
-export AGENT_BROWSER_EXTENSIONS="/path/to/ext1,/path/to/ext2"
-```
-
-Extensions work in both headed and headless mode.
-
-## Serverless / CI environments
-
-```bash
-# Use lightweight Chromium for serverless (e.g., AWS Lambda)
-agent-browser --executable-path $(node -e "console.log(require('@sparticuz/chromium').executablePath())") open https://example.com
-
-# System Chrome in CI
-agent-browser --executable-path /usr/bin/google-chrome open https://example.com
-```
-
 ## Common Environment Variables
 
 | Variable | Purpose |
 |----------|---------|
-| `AGENT_BROWSER_DEFAULT_TIMEOUT` | Default timeout in ms (default: 30000) |
-| `AGENT_BROWSER_ALLOWED_DOMAINS` | Domain allowlist (comma-separated) |
-| `AGENT_BROWSER_CONTENT_BOUNDARIES` | Wrap output for LLM safety (0/1) |
-| `AGENT_BROWSER_MAX_OUTPUT` | Max output characters (default: 50000) |
+| `AGENT_BROWSER_DEFAULT_TIMEOUT` | Default timeout in ms (default: 25000, keep below 30000) |
+| `AGENT_BROWSER_EXECUTABLE_PATH` | Custom browser binary path |
+| `AGENT_BROWSER_NATIVE` | Enable native Rust daemon (0/1) |
+| `AGENT_BROWSER_ENGINE` | Browser engine: chrome, lightpanda |
 | `AGENT_BROWSER_HEADED` | Show browser UI (0/1) |
-| `AGENT_BROWSER_ACTION_POLICY` | Path to action policy JSON |
 | `AGENT_BROWSER_EXTENSIONS` | Comma-separated extension paths |
-| `AGENT_BROWSER_PROVIDER` | Cloud browser provider name |
+| `AGENT_BROWSER_STATE_KEY` | Encryption key for state files |
+| `AGENT_BROWSER_ALLOWED_DOMAINS` | Domain allowlist (comma-separated) |
+| `AGENT_BROWSER_MAX_OUTPUT` | Max output characters (default: 50000) |

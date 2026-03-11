@@ -1,133 +1,107 @@
 # Installation
 
-## Quick Install
+## Global Install (recommended)
 
 ```bash
 npm install -g agent-browser
-agent-browser install  # Downloads Chromium
+agent-browser install
 ```
 
-## Linux System Dependencies
-
-Chromium requires system libraries on Linux:
+## Quick Start with npx
 
 ```bash
-# Install Chromium + all required system dependencies
-agent-browser install --with-deps
-
-# Alternative: Playwright dependency installer
-npx playwright install-deps chromium
+npx agent-browser install
+npx agent-browser open example.com
 ```
 
-## Platform Support
+> Note: `npx` is slower than a global install due to package resolution on each run.
 
-| Platform | Architecture | Native Binary | Node.js Fallback |
-|----------|-------------|--------------|-----------------|
-| macOS | ARM64 (Apple Silicon) | ✅ | ✅ |
-| macOS | x64 (Intel) | ✅ | ✅ |
-| Linux | ARM64 | ✅ | ✅ |
-| Linux | x64 | ✅ | ✅ |
-| Windows | x64 | ✅ | ✅ |
-
-The native Rust binary is preferred when available. The CLI automatically falls back to the Node.js + Playwright daemon when it's not.
-
-## Version Pinning (CI / Production)
+## Project Install
 
 ```bash
-# Pin to exact version for reproducibility
-npm install -g agent-browser@0.16.2
+npm install agent-browser
+npx agent-browser install
+```
 
-# Verify
-agent-browser --version
+## Homebrew (macOS)
+
+```bash
+brew install agent-browser
+agent-browser install
 ```
 
 ## From Source
 
 ```bash
-git clone https://github.com/anthropics/agent-browser.git
+git clone https://github.com/vercel-labs/agent-browser.git
 cd agent-browser
 pnpm install
 pnpm build
-pnpm build:native  # Optional: compile Rust binary
+pnpm build:native
 ./bin/agent-browser install
 pnpm link --global
 ```
 
-## Container / Docker
+## Linux Dependencies
 
-```dockerfile
-FROM node:20-slim
-
-# System dependencies for Chromium
-RUN apt-get update && apt-get install -y \
-    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-    libdrm2 libxcomposite1 libxdamage1 libxrandr2 \
-    libgbm1 libasound2 libpangocairo-1.0-0 libgtk-3-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install with pinned version
-RUN npm install -g agent-browser@0.16.2
-RUN agent-browser install
-
-# Non-root user (recommended)
-RUN useradd -m agent
-USER agent
-```
-
-## GitHub Actions
-
-```yaml
-- name: Install agent-browser
-  run: |
-    npm install -g agent-browser@0.16.2
-    agent-browser install --with-deps
-
-- name: Run browser automation
-  run: |
-    agent-browser open https://localhost:3000
-    agent-browser snapshot -i
-    agent-browser screenshot ./results/home.png
-    agent-browser close
-```
-
-## Verify Installation
+Install system dependencies required by Chromium:
 
 ```bash
-agent-browser --version                        # Check CLI version
-agent-browser open https://example.com         # Test browser launch
-agent-browser snapshot -i                      # Test snapshot
-agent-browser close                            # Clean up
+# Via agent-browser
+agent-browser install --with-deps
+
+# Or via Playwright directly
+npx playwright install-deps chromium
 ```
 
-## Configuration Precedence
+## Custom Browser Executable
 
-Config is loaded from (lowest to highest priority):
-
-1. Built-in defaults
-2. `~/.agent-browser/config.json` — user-level defaults
-3. `./agent-browser.json` — project-level config
-4. Environment variables (`AGENT_BROWSER_*`)
-5. CLI flags
-
-```json
-{
-  "headed": false,
-  "defaultTimeout": 30000,
-  "proxy": "http://proxy.example.com:8080",
-  "colorScheme": "dark",
-  "viewport": { "width": 1280, "height": 720 }
-}
-```
-
-## Updating
+Use a specific browser binary instead of the bundled one:
 
 ```bash
-# Check current version
-agent-browser --version
+# Via CLI flag
+agent-browser --executable-path /path/to/chrome open example.com
 
-# Update to latest
-npm update -g agent-browser
+# Via environment variable
+export AGENT_BROWSER_EXECUTABLE_PATH=/path/to/chrome
+agent-browser open example.com
+```
 
-# Update Chromium after CLI update
-agent-browser install
+## Serverless Deployment
+
+Use `@sparticuz/chromium` with the BrowserManager API for serverless environments:
+
+```javascript
+import chromium from "@sparticuz/chromium";
+import { BrowserManager } from "agent-browser";
+
+const browser = await BrowserManager.launch({
+  executablePath: await chromium.executablePath(),
+  args: chromium.args,
+});
+```
+
+## AI Agent Setup
+
+Add agent-browser as a skill for AI coding agents:
+
+```bash
+npx skills add vercel-labs/agent-browser
+```
+
+Works with: Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, OpenCode, Windsurf.
+
+### AGENTS.md / CLAUDE.md Snippet
+
+Add to your project's agent instructions file:
+
+```markdown
+## Browser Automation
+
+Use `agent-browser` for browser tasks: navigation, form filling, screenshots, data extraction, and testing.
+
+- Run `agent-browser open <url>` to open a page and get its content
+- Run `agent-browser act "<instruction>" --url <url>` to perform actions
+- Run `agent-browser observe "<instruction>" --url <url>` to find interactive elements
+- Run `agent-browser extract "<instruction>" --url <url>` to extract structured data
 ```

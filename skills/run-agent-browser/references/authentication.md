@@ -1,202 +1,195 @@
 # Authentication Patterns
 
-Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
-
-**Related**: [session-management.md](session-management.md) for state persistence details, [SKILL.md](../SKILL.md) for quick start.
+> Sources: [agent-browser.dev/security](https://agent-browser.dev/security), [agent-browser.dev/sessions](https://agent-browser.dev/sessions)
 
 ## Contents
 
-- [Basic Login Flow](#basic-login-flow)
-- [Saving Authentication State](#saving-authentication-state)
-- [Restoring Authentication](#restoring-authentication)
-- [OAuth / SSO Flows](#oauth--sso-flows)
-- [Two-Factor Authentication](#two-factor-authentication)
+- [Auth Vault](#auth-vault)
+- [Header-Based Auth](#header-based-auth)
+- [State Persistence](#state-persistence)
 - [HTTP Basic Auth](#http-basic-auth)
-- [Cookie-Based Auth](#cookie-based-auth)
-- [Token Refresh Handling](#token-refresh-handling)
-- [Security Best Practices](#security-best-practices)
+- [Serverless Auth](#serverless-auth)
 
-## Basic Login Flow
+## Auth Vault
 
-```bash
-# Navigate to login page
-agent-browser open https://app.example.com/login
-agent-browser wait --load networkidle
+Store credentials locally and reference them by name. The LLM never sees passwords.
 
-# Get form elements
-agent-browser snapshot -i
-# Output: @e1 [input type="email"], @e2 [input type="password"], @e3 [button] "Sign In"
-
-# Fill credentials
-agent-browser fill @e1 "user@example.com"
-agent-browser fill @e2 "password123"
-
-# Submit
-agent-browser click @e3
-agent-browser wait --load networkidle
-
-# Verify login succeeded
-agent-browser get url  # Should be dashboard, not login
-```
-
-## Saving Authentication State
-
-After logging in, save state for reuse:
+### Commands
 
 ```bash
-# Login first (see above)
-agent-browser open https://app.example.com/login
-agent-browser snapshot -i
-agent-browser fill @e1 "user@example.com"
-agent-browser fill @e2 "password123"
-agent-browser click @e3
-agent-browser wait --url "**/dashboard"
+# Save credentials (--password-stdin recommended to avoid shell history)
+echo "pass" | agent-browser auth save github --url https://github.com/login --username user --password-stdin
 
-# Save authenticated state
-agent-browser state save ./auth-state.json
+# Or pass directly (a warning will be shown)
+agent-browser auth save github --url https://github.com/login --username user --password pass
+
+# Login using saved credentials
+agent-browser auth login github
+
+# List saved profiles (names and URLs only, no secrets)
+agent-browser auth list
+
+# Show profile metadata
+agent-browser auth show github
+
+# Delete a profile
+agent-browser auth delete github
 ```
 
-## Restoring Authentication
+### Custom Selectors
 
-Skip login by loading saved state:
+If auto-detection fails, specify custom selectors:
 
 ```bash
-# Load saved auth state
-agent-browser state load ./auth-state.json
-
-# Navigate directly to protected page
-agent-browser open https://app.example.com/dashboard
-
-# Verify authenticated
-agent-browser snapshot -i
+agent-browser auth save myapp \
+  --url https://app.example.com/login \
+  --username user --password pass \
+  --username-selector "#email" \
+  --password-selector "#password" \
+  --submit-selector "button.login"
 ```
 
-## OAuth / SSO Flows
+### Storage & Encryption
 
-For OAuth redirects:
+- Profiles stored in `~/.agent-browser/auth/`
+- Always encrypted with AES-256-GCM
+- If `AGENT_BROWSER_ENCRYPTION_KEY` is not set, a key is auto-generated at `~/.agent-browser/.encryption-key` on first use
+- Back up this file or set the environment variable explicitly for portability
+- File permissions enforced: Unix (`chmod 600`/`700`), Windows (`icacls` restricted to current user)
+
+## Header-Based Auth
+
+Use `--headers` to set HTTP headers scoped to a specific origin:
 
 ```bash
-# Start OAuth flow
-agent-browser open https://app.example.com/auth/google
+# Headers scoped to api.example.com only
+agent-browser open api.example.com --headers '{"Authorization": "Bearer <token>"}'
 
-# Handle redirects automatically
-agent-browser wait --url "**/accounts.google.com**"
-agent-browser snapshot -i
+# Requests to api.example.com include the auth header
+agent-browser snapshot -i --json
+agent-browser click @e2
 
-# Fill Google credentials
-agent-browser fill @e1 "user@gmail.com"
-agent-browser click @e2  # Next button
-agent-browser wait 2000
-agent-browser snapshot -i
-agent-browser fill @e3 "password"
-agent-browser click @e4  # Sign in
-
-# Wait for redirect back
-agent-browser wait --url "**/app.example.com**"
-agent-browser state save ./oauth-state.json
+# Navigate to another domain — headers NOT sent
+agent-browser open other-site.com
 ```
 
-## Two-Factor Authentication
-
-Handle 2FA with manual intervention:
+### Multiple Origins
 
 ```bash
-# Login with credentials
-agent-browser open https://app.example.com/login --headed  # Show browser
-agent-browser snapshot -i
-agent-browser fill @e1 "user@example.com"
-agent-browser fill @e2 "password123"
-agent-browser click @e3
-
-# Wait for user to complete 2FA manually
-echo "Complete 2FA in the browser window..."
-agent-browser wait --url "**/dashboard" --timeout 120000
-
-# Save state after 2FA
-agent-browser state save ./2fa-state.json
+agent-browser open api.example.com --headers '{"Authorization": "Bearer token1"}'
+agent-browser open api.acme.com --headers '{"Authorization": "Bearer token2"}'
 ```
+
+### Global Headers
+
+For headers on all domains:
+
+```bash
+agent-browser set headers '{"X-Custom-Header": "value"}'
+```
+
+### Use Cases
+
+- **Skipping login flows** — Authenticate via headers
+- **Switching users** — Different auth tokens per session
+- **API testing** — Access protected endpoints
+- **Security** — Headers scoped to origin, not leaked
+
+## State Persistence
+
+### Session Names (Auto Save/Restore)
+
+Use `--session-name` to automatically save and restore cookies and localStorage across browser restarts:
+
+```bash
+# Auto-save/load state for "twitter" session
+agent-browser --session-name twitter open twitter.com
+
+# Login once, then state persists automatically
+agent-browser --session-name twitter click "#login"
+
+# Or via environment variable
+export AGENT_BROWSER_SESSION_NAME=twitter
+agent-browser open twitter.com
+```
+
+State files stored in `~/.agent-browser/sessions/` and automatically loaded on daemon start.
+
+### Manual State Management
+
+```bash
+# Save state manually
+agent-browser state save ./backup.json
+
+# Load state from file
+agent-browser state load ./backup.json
+
+# List all saved states
+agent-browser state list
+
+# Show state summary (cookies, origins, domains)
+agent-browser state show my-session-default.json
+
+# Rename a state file
+agent-browser state rename old-name new-name
+
+# Clear states for a specific session name
+agent-browser state clear my-session
+
+# Clear all saved states
+agent-browser state clear --all
+```
+
+### State Encryption
+
+Encrypt saved state files (cookies, localStorage) using AES-256-GCM:
+
+```bash
+# Generate a 256-bit key (64 hex characters)
+openssl rand -hex 32
+
+# Set the encryption key
+export AGENT_BROWSER_ENCRYPTION_KEY=<your-64-char-hex-key>
+
+# State files are now encrypted automatically
+agent-browser --session-name secure-session open example.com
+```
+
+### Persistent Profiles
+
+Use `--profile` to persist full browser state across restarts:
+
+```bash
+# Use a persistent profile directory
+agent-browser --profile ~/.myapp-profile open myapp.com
+
+# Login once, then reuse the authenticated session
+agent-browser --profile ~/.myapp-profile open myapp.com/dashboard
+
+# Or via environment variable
+AGENT_BROWSER_PROFILE=~/.myapp-profile agent-browser open myapp.com
+```
+
+The profile directory stores cookies, localStorage, IndexedDB, service workers, browser cache, and login sessions.
 
 ## HTTP Basic Auth
 
 For sites using HTTP Basic Authentication:
 
 ```bash
-# Set credentials before navigation
-agent-browser set credentials username password
-
-# Navigate to protected resource
-agent-browser open https://protected.example.com/api
+agent-browser set credentials <username> <password>
 ```
 
-## Cookie-Based Auth
+## Serverless Auth
 
-Manually set authentication cookies:
+For serverless deployments (e.g., Vercel, AWS Lambda), use `@sparticuz/chromium` with agent-browser:
 
-```bash
-# Set auth cookie
-agent-browser cookies set session_token "abc123xyz"
+```javascript
+const chromium = require("@sparticuz/chromium");
 
-# Navigate to protected page
-agent-browser open https://app.example.com/dashboard
+// Launch with serverless-compatible Chromium
+const browser = await chromium.executablePath();
+// Then connect agent-browser via CDP to the launched browser
 ```
 
-## Token Refresh Handling
-
-For sessions with expiring tokens:
-
-```bash
-#!/bin/bash
-# Wrapper that handles token refresh
-
-STATE_FILE="./auth-state.json"
-
-# Try loading existing state
-if [[ -f "$STATE_FILE" ]]; then
-    agent-browser state load "$STATE_FILE"
-    agent-browser open https://app.example.com/dashboard
-
-    # Check if session is still valid
-    URL=$(agent-browser get url)
-    if [[ "$URL" == *"/login"* ]]; then
-        echo "Session expired, re-authenticating..."
-        # Perform fresh login
-        agent-browser snapshot -i
-        agent-browser fill @e1 "$USERNAME"
-        agent-browser fill @e2 "$PASSWORD"
-        agent-browser click @e3
-        agent-browser wait --url "**/dashboard"
-        agent-browser state save "$STATE_FILE"
-    fi
-else
-    # First-time login
-    agent-browser open https://app.example.com/login
-    # ... login flow ...
-fi
-```
-
-## Security Best Practices
-
-1. **Never commit state files** - They contain session tokens
-   ```bash
-   echo "*.auth-state.json" >> .gitignore
-   ```
-
-2. **Use environment variables for credentials**
-   ```bash
-   agent-browser fill @e1 "$APP_USERNAME"
-   agent-browser fill @e2 "$APP_PASSWORD"
-   ```
-
-3. **Clean up after automation**
-   ```bash
-   agent-browser cookies clear
-   rm -f ./auth-state.json
-   ```
-
-4. **Use short-lived sessions for CI/CD**
-   ```bash
-   # Don't persist state in CI
-   agent-browser open https://app.example.com/login
-   # ... login and perform actions ...
-   agent-browser close  # Session ends, nothing persisted
-   ```
+See [agent-browser.dev/next](https://agent-browser.dev/next) for full Next.js + Vercel deployment patterns.
