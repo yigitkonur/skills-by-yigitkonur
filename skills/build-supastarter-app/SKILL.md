@@ -36,39 +36,58 @@ Classify the request first. Find the owning surface before editing. Read the sma
    - storage or uploads
    - repo placement, imports, config, or deployment
 
-   If the task spans multiple categories, list all that apply. Use the ordering from step 4 to determine which owner to change first (data → API → page → config).
+   If the task spans multiple categories, list **all** that apply and note the primary category (the layer other layers depend on). Use the dependency order from step 4 to decide which to tackle first: data → API → page → config.
+
+   > ⚠️ **Steering:** Real features almost always span 3–4 categories. "Add org-scoped Projects CRUD" touches data model, API, routing, AND auth. Never force a single-category classification — list every category that applies.
 
 2. **Locate the owning boundary before editing.**
    - routes live in `apps/web/app`
    - feature UI usually lives in `apps/web/modules`
    - API procedures live in `packages/api/modules`
    - auth config lives in `packages/auth`
-   - server auth reads should go through existing helpers in `apps/web/modules/saas/auth/lib/server.ts`
+   - server auth reads go through helpers in `apps/web/modules/saas/auth/lib/server.ts`
    - schema and shared queries belong in `packages/database`
    - billing logic belongs in `packages/payments`
    - storage logic belongs in `packages/storage`
 
-   For composite tasks, identify the primary owner (the layer other layers depend on) and the secondary wiring points. Change the primary owner first per step 4.
+   For composite tasks, identify the **primary owner** (the package other packages import from) and the **secondary wiring points**. Example: for "add org-scoped CRUD," primary owner is `packages/database` (schema), secondary wiring goes through `packages/api/modules` (procedures) then `apps/web/app` (pages).
+
+   > ⚠️ **Steering:** Composite tasks touch 4+ boundaries. Always identify primary vs secondary so you change the primary owner first and avoid backtracking.
 
 3. **Start with the smallest relevant reference bundle.**
-   Begin with the task guide or hub below, then follow the related-reference links from that file instead of scanning the whole tree. If your task spans multiple rows in the table, read task guides in the order step 4 dictates: data files first, then API, then page or config.
+   Begin with the task guide or hub in the table below, then follow the related-reference links from that file instead of scanning the whole tree.
+
+   If your task spans multiple rows, read task guides in the dependency order from step 4: data files first → API second → page/config last. This ensures each bundle's context builds on the previous one.
+
+   > ⚠️ **Steering:** For a feature like "org-scoped CRUD," you need three bundles (database, API, SaaS page). Read them in dependency order — reading the page bundle first creates confusion because it references types and APIs not yet introduced.
 
 4. **Change the owner first, then wire outward.**
-   - data change: schema or query helper first, then run `pnpm generate && pnpm db:push`, then API, then page
-   - API change: procedure, module router, root router, then client usage
-   - billing change: plan or provider layer, then API, then settings or checkout UI
-   - storage change: signed URL flow first, then client upload, then persistence on the owning entity
+   - **Data change sequence:**
+     1. Add or modify the Prisma model in `packages/database/prisma/schema.prisma`
+     2. Run `pnpm generate && pnpm db:push` to regenerate the Prisma client and sync the database
+     3. Add query helpers in `packages/database/prisma/queries/`
+     4. Create API procedures that use those queries
+     5. Build the page that calls the API
+   - **API change:** procedure → module router → root router → client usage
+   - **Billing change:** plan or provider layer → API → settings or checkout UI
+   - **Storage change:** signed URL flow first → client upload → persistence on the owning entity
+
+   > ⚠️ **Steering:** Step 4.2 (`pnpm generate && pnpm db:push`) is **mandatory** after any `schema.prisma` change. Without it, the Prisma client won't know about new models and TypeScript will show type errors everywhere downstream.
 
 5. **Check flags and guard behavior before calling the work done.**
-   - New page → verify i18n keys added, confirm layout inherits auth guard
-   - New API procedure → verify procedure uses correct tier (`public` / `protected` / `organization`)
-   - New feature → consider feature flag in `apps/web/config.ts` if feature is experimental
-   - Data change → verify migration is reversible, generation ran
-   - Billing-gated feature → verify plan check in both API and UI layers
-   - Organization-scoped → verify org-membership guard if needed
+   Run through this per-change-type checklist:
+   - **New page** → verify i18n keys added, confirm layout inherits auth guard, add nav item to `AppWrapper.tsx`
+   - **New API procedure** → verify procedure uses correct tier (`publicProcedure` / `protectedProcedure` / `adminProcedure`)
+   - **Organization-scoped data** → verify org-membership guard present if the procedure operates on org-specific resources
+   - **New feature** → consider feature flag in `apps/web/config.ts` if experimental
+   - **Data change** → verify migration is reversible and `pnpm generate` was run
+   - **Billing-gated feature** → verify plan check in both API and UI layers
+   - **Auth flow change** → re-read `references/auth/feature-flags.md` before editing
+
+   > ⚠️ **Steering:** There is no `organizationProcedure` tier. The only procedure tiers are `publicProcedure`, `protectedProcedure`, and `adminProcedure`. For org-scoped data, use `protectedProcedure` and add an org-membership check in the handler body. See `references/api/procedure-tiers.md`.
 
 6. **Validate boundaries and imports.**
-   Use aliases, preserve package ownership, default to server components, and add client behavior only when hooks or browser APIs require it.
+   Use aliases (`@repo/api`, `@repo/database`, `@repo/ui/components/*`), preserve package ownership, default to server components, and add `"use client"` only when hooks or browser APIs require it.
 
 ## Decision rules
 
@@ -78,7 +97,9 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Protected product pages belong under the SaaS surface in `apps/web/app/(saas)`.
 - Fully gated dashboard pages belong under `/app`, not beside helper flows.
 - Onboarding, organization creation, and plan selection are helper pages outside `/app` on purpose.
-- Organization-scoped pages must respect the `[organizationSlug]` branch and active-organization prefetch path.
+- Organization-scoped pages live under `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/`.
+
+> ⚠️ **Steering:** Org-scoped pages use a `(organizations)` route group: `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/<page>/page.tsx`. Omitting `(organizations)` creates the file in a path that silently never renders — no error, no redirect, just blank. This was the single most critical bug found in testing.
 
 **Do this, not that:**
 - Put public pages in the marketing tree; do not drop them into the SaaS group because they need a session-aware navbar.
@@ -102,9 +123,12 @@ Classify the request first. Find the owning surface before editing. Read the sma
 ### API and data layer
 
 - Add procedures in `packages/api/modules/*/procedures`.
-- Choose `publicProcedure`, `protectedProcedure`, or `adminProcedure` deliberately.
+- Choose `publicProcedure`, `protectedProcedure`, or `adminProcedure` deliberately — these are the **only three tiers**.
 - Validate inputs with Zod and wire routers through the module router and root router.
 - Keep reusable data access in `packages/database` query helpers instead of spreading raw ORM calls through pages.
+- For org-scoped procedures, add a membership check in the handler — `protectedProcedure` only verifies a session exists, not that the user belongs to a specific organization.
+
+> ⚠️ **Steering:** There is no `organizationProcedure`. Use `protectedProcedure` and add `db.membership.findFirst({ where: { userId: ctx.user.id, organizationId } })` in the handler to verify org access. See `references/api/procedure-tiers.md` for the complete guard pattern.
 
 **Do this, not that:**
 - Extend the oRPC surface and consume it through existing query patterns; do not bypass it with one-off handlers unless the task explicitly requires a route handler.
@@ -147,6 +171,19 @@ Classify the request first. Find the owning surface before editing. Read the sma
 
 > **Deeper references:** `references/setup/import-conventions.md` · `references/setup/next-config.md` · `references/setup/tooling-biome.md` · `references/conventions/naming.md` · `references/conventions/typescript-patterns.md` · `references/conventions/component-patterns.md` · `references/conventions/code-review-checklist.md`
 
+## Common mistakes from real testing
+
+These errors were found during literal execution of this skill on a real org-scoped CRUD task. Each one caused time loss or silent failure.
+
+| Mistake | What happens | Fix |
+|---------|-------------|-----|
+| Omit `(organizations)` route group from org-scoped page path | Page silently never renders — no error, no redirect, just blank | Always use `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/...` |
+| Skip `pnpm generate && pnpm db:push` after schema change | Prisma client doesn't know about new models; type errors cascade through API and page layers | Run immediately after any `schema.prisma` edit, before writing query helpers |
+| Use a non-existent `organizationProcedure` tier | Procedure fails to compile or falls back to unprotected | Only three tiers exist: `publicProcedure`, `protectedProcedure`, `adminProcedure` |
+| Forget org-membership guard on org-scoped procedures | Any authenticated user can access any org's data by guessing a slug | Add `db.membership.findFirst(...)` check in handler for org-scoped data |
+| Create query helper file without `import { db }` | File doesn't compile — missing database client reference | New query files need `import { db } from "../client"` at the top |
+| Add nav item to wrong file or skip it entirely | Navigation item doesn't appear in SaaS sidebar | Nav items go in `apps/web/modules/saas/shared/components/AppWrapper.tsx` with shape `{ label, href, icon }` |
+
 ## Start with these reference bundles
 
 | Task | Start here |
@@ -185,6 +222,8 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - **Onboarding wizard step is missing or skipped.** Re-read `references/onboarding/onboarding-flow.md` and `references/onboarding/onboarding-step-one.md`.
 - **UI component is missing or a feedback overlay is wrong.** Re-read `references/ui/components.md` and `references/ui/feedback-overlays.md`.
 - **Cookie consent or analytics is not firing.** Re-read `references/analytics/consent-flow.md` and `references/hooks/consent-hooks.md`.
+- **Page under `[organizationSlug]` silently doesn't render.** Check the file path includes `(organizations)` route group. Correct path: `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/<page>/page.tsx`.
+- **Type errors after adding a new Prisma model.** Run `pnpm generate && pnpm db:push` — the Prisma client needs regeneration after schema changes.
 
 ## Final reminder
 

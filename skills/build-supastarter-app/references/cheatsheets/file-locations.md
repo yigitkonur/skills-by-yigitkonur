@@ -4,13 +4,30 @@
 
 ## New SaaS Page
 
+> ⚠️ **Steering:** Org-scoped pages MUST include the `(organizations)` route group. Omitting it creates a page that silently never renders.
+
+Organization-scoped:
 ```
 apps/web/app/(saas)/app/(organizations)/[organizationSlug]/your-page/page.tsx
 ```
 
-If it doesn't need org scoping:
+Account-scoped (no org):
 ```
-apps/web/app/(saas)/app/your-page/page.tsx
+apps/web/app/(saas)/app/(account)/your-page/page.tsx
+```
+
+## Navigation Items
+
+Nav items go in `apps/web/modules/saas/shared/components/AppWrapper.tsx` with shape:
+```ts
+{ label: "Your Page", href: `/${organizationSlug}/your-page`, icon: YourIcon }
+```
+
+## After Schema Changes
+
+Run immediately after editing `schema.prisma`:
+```bash
+pnpm generate && pnpm db:push
 ```
 
 ## New Marketing Page
@@ -30,9 +47,9 @@ packages/api/orpc/router.ts                                   # Wire into root r
 ## New Database Model
 
 ```
-packages/database/prisma/schema.prisma      # Add model
-packages/database/prisma/queries/your-model.ts  # Add queries
-packages/database/prisma/index.ts           # Export queries
+packages/database/prisma/schema.prisma          # Add model
+packages/database/prisma/queries/your-model.ts   # Add queries (import { db } from "../client")
+packages/database/prisma/queries/index.ts        # Export queries
 ```
 
 ## New React Component
@@ -136,3 +153,6 @@ apps/web/tests/your-feature.spec.ts
 **Related references:**
 - `references/setup/monorepo-structure.md` — Full directory tree
 - `references/setup/import-conventions.md` — How to import new files
+- `references/tasks/add-saas-page.md` — Complete SaaS page task guide
+- `references/tasks/add-api-endpoint.md` — Complete API endpoint task guide
+- `references/tasks/add-database-model.md` — Complete database model task guide

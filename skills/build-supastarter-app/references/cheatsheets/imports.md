@@ -20,6 +20,8 @@ import type { User, Organization, Purchase } from "@repo/database";
 
 ## @repo/api (procedures)
 
+> ⚠️ **Steering:** Only three procedure tiers exist. Do not try to use `organizationProcedure` — it does not exist.
+
 ```typescript
 import { publicProcedure, protectedProcedure, adminProcedure } from "../../../orpc/procedures";
 import { ORPCError } from "@orpc/server";

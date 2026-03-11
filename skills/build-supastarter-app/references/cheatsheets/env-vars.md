@@ -57,6 +57,8 @@
 
 ## Client vs Server
 
+> ⚠️ **Steering:** Never put secrets in `NEXT_PUBLIC_*` variables. These are bundled into client JavaScript and visible in the browser source.
+
 - **`NEXT_PUBLIC_*`** → Bundled in client JavaScript, visible in browser
 - **No prefix** → Server-only, never exposed to client
 
