@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-21 skills for AI coding agents — agent configuration, code review setup, design extraction, MCP tooling, browser automation, planning, research, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+18 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -44,17 +44,19 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-agent-config
 
 ---
 
-## Code Review Setup
+## Code Review
 
-Skills that analyze your repo and generate review configuration files for AI code review platforms.
+Skills for reviewing pull requests and setting up AI code review platform configuration.
 
 | Skill | What it does |
 |---|---|
+| **[review-pr](skills/review-pr/)** | Systematic PR review using the `gh` CLI — seven-phase workflow covering context gathering, file clustering, existing comment correlation, goal validation, per-cluster review across 7 dimensions (security, correctness, data integrity, performance, API contract, maintainability, testing), cross-cutting analysis, and structured output with severity calibration. Includes 10 reference docs: review workflow, gh CLI reference, file clustering, comment correlation, review dimensions, diff analysis, output templates, anti-patterns, severity guide, and language-specific patterns. |
 | **[init-greptile-review](skills/init-greptile-review/)** | Generates `.greptile/config.json`, `rules.md`, and `files.json` with semantic rules scoped to your repo's actual architecture — not linter-level checks, but cross-file implications that require LLM understanding. Includes 3 reference docs covering the full config spec, 11 example scenarios (TypeScript, Python, Go, Rust, Tauri, MCP, Next.js), and an anti-patterns/troubleshooting guide. |
 | **[init-devin-review](skills/init-devin-review/)** | Generates `REVIEW.md` and `AGENTS.md` for Devin's Bug Catcher by exploring your repo structure, tech stack, and pain points, then producing prioritized review rules with code examples. Includes 2 reference docs: the full instruction file spec and 8 complete scenario templates (API, dashboard, Tauri, MCP, monorepo). |
 | **[init-copilot-review](skills/init-copilot-review/)** | Generates a root `copilot-instructions.md` plus path-scoped `*.instructions.md` micro-files that stay within Copilot's 4,000-character processing limit. Includes 4 reference docs: instruction spec, micro-library of 50+ reusable rule blocks, 10 scenario templates, and an anti-patterns guide. |
 
 ```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/review-pr
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-greptile-review
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-devin-review
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-copilot-review
@@ -74,26 +76,6 @@ Skills that forensically parse real CSS/JS from existing sites and produce struc
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/extract-saas-design
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-snapshot-nextjs
-```
-
----
-
-## MCP Tooling
-
-Skills for building, testing, debugging, and reviewing MCP (Model Context Protocol) servers and clients.
-
-| Skill | What it does |
-|---|---|
-| **[test-mcp-server](skills/test-mcp-server/)** | Tests MCP servers through two modes: protocol-level verification across 19 checks (transport, schema, errors, timeouts), and LLM-powered end-to-end testing with domain-adaptive business case generation. Includes 6 reference docs: basic/LLM test guides, Inspector API reference, provider patterns, business cases, and troubleshooting. |
-| **[test-mcp-by-cli](skills/test-mcp-by-cli/)** | Behavior-verified guide for testing MCP servers with `philschmid/mcp-cli` v0.3.0 — 8-phase verification, config and JSON argument patterns, raw `call` response parsing with `jq`, and troubleshooting for daemon, auth, and argument failures. Includes 4 reference docs: testing flow, configuration and arguments, output/debugging/chaining, and errors/recovery. |
-| **[build-mcp-use-apps](skills/build-mcp-use-apps/)** | Reference for building MCP apps with the mcp-use framework — server creation, tool/resource/prompt handlers, widget system, authentication (Supabase/WorkOS/custom), and deployment. Includes 16 reference docs across foundations, server patterns, widget guides, and auth providers. |
-| **[build-mcp-sdk-server](skills/build-mcp-sdk-server/)** | TypeScript MCP server development with the official SDK — tool, resource, and prompt registration, transport selection, project scaffolding, sampling, elicitation, and v1-to-v2 migration guidance. Includes 9 reference docs. |
-
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-mcp-server
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-mcp-by-cli
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-apps
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-sdk-server
 ```
 
 ---
