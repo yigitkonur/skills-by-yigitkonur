@@ -2,6 +2,8 @@
 
 > The SaaS surface is split between a root `/(saas)` layout, an inner `/app` guard layout, and a few helper pages that live outside `/app` but still inside the SaaS route group. Use this reference when deciding where a new SaaS page belongs or when tracing why a user lands on onboarding, organization creation, or plan selection before reaching the dashboard.
 
+> ⚠️ **Route group matters.** Org-scoped pages go in `(organizations)/[organizationSlug]/`. The `(organizations)` group doesn't appear in the URL but provides the org layout and context.
+
 ## Route group layers
 
 `apps/web/app/(saas)` contains two different kinds of routes:
@@ -98,6 +100,15 @@ The helper pages exist outside `apps/web/app/(saas)/app` so they can be reached 
 - `apps/web/app/(saas)/choose-plan/page.tsx` requires a session, may redirect to `/new-organization` for org-level billing, and redirects to `/app` if an active plan already exists.
 
 These pages are still inside `/(saas)`, so they inherit the SaaS provider stack, but they intentionally avoid the `/app` redirect chain.
+
+## Route decision table
+
+| Page type | Path pattern | Example |
+|---|---|---|
+| Org dashboard | `(organizations)/[organizationSlug]/<page>` | Projects list |
+| Org settings | `(organizations)/[organizationSlug]/settings` | Org name, members |
+| Account settings | `(account)/settings` | Profile, password |
+| Admin | `admin/<page>` | User management |
 
 ---
 

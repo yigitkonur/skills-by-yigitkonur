@@ -199,3 +199,17 @@ All disagree → Context-dependent, report all views
 ## Key Insight
 
 Verification costs time but prevents costly mistakes. The 80/20 rule applies: verify the 20% of claims that will influence 80% of your decision. Don't verify obvious facts or low-stakes preferences. Do verify anything that touches production architecture, security, performance guarantees, or irreversible choices. When deep_research makes a claim that sounds too good or too specific, that's exactly when to verify.
+
+## Steering notes from production testing
+
+### Validation sufficiency
+
+Sufficient when: (1) 2+ independent sources confirm each key claim, (2) no unresolved contradictions, (3) version claims verified against official docs, (4) sources are actually independent. Stop when additional calls no longer change the conclusion.
+
+### Astroturfing detection
+
+Red flags: vendor blog self-comparisons, new Reddit accounts praising one product, vendor-only benchmarks, comparisons omitting weaknesses.
+
+### deep_research verification
+
+Always verify against scraped docs: version numbers, pricing, API signatures, deprecation status, benchmarks.

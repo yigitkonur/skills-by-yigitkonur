@@ -2,6 +2,8 @@
 
 > Documents the hook/context pair behind the cookie consent demo. Consult this when consuming consent state in client code.
 
+> ⚠️ **GDPR compliance.** Consent hooks gate analytics scripts. Disabling them without a replacement may violate data regulations.
+
 ## Source of truth
 
 `ConsentProvider` owns the state and cookie writes. Components consume that state through the shared consent hook in `@shared/hooks/cookie-consent`.

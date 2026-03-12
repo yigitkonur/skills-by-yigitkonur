@@ -186,3 +186,17 @@ This means release binaries have **zero** DevTools overhead — not even a no-op
 4. **Buffer limits exist** — if the application emits events faster than the UI can consume them, some events may be dropped. This is rare in normal usage but can happen during stress testing.
 
 5. **DevTools cannot capture `println!()`** — only events going through the `tracing` subscriber are captured. Standard `println!()` bypasses the subscriber entirely. Always use `tracing::info!()`, `tracing::debug!()`, etc.
+
+---
+
+## Why This Matters for Debugging
+
+Understanding the architecture helps avoid common diagnostic errors:
+
+1. **DevTools only captures tracing events** — `println!()` and raw `log::info!()` (without a bridge) are invisible to DevTools. Always use `tracing` macros.
+2. **The subscriber must be registered first** — events emitted before `init()` are lost forever. This is why init ordering matters.
+3. **Release builds strip everything** — if DevTools shows no data in a release build, this is by design (`#[cfg(debug_assertions)]`), not a bug.
+4. **Separate thread means no async interference** — DevTools won't cause your app to slow down or deadlock, even under heavy tracing load.
+5. **Memory is bounded** — the Aggregator buffers data. Very long-running sessions may lose oldest events. Restart the app for a fresh capture if needed.
+
+> ⚠️ **Steering:** Agents in testing assumed DevTools captured ALL output (including println). When debugging produced no DevTools evidence, they concluded the code wasn't executing — when in fact the output was going to stdout, not the tracing subscriber. Always verify output goes through `tracing` macros.

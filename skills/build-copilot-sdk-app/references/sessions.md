@@ -237,6 +237,16 @@ When infinite sessions are enabled, `session.workspacePath` returns a directory 
 - `plan.md` — the session plan file
 - `files/` — workspace files
 
+## Steering notes
+
+> Common mistakes agents make with sessions.
+
+- **`createSession` always starts fresh** — even if you pass an existing `sessionId`. It does NOT restore conversation history. Use `resumeSession(sessionId)` to restore context.
+- **`resumeSession` throws** if the session doesn't exist. Always wrap in try/catch with `createSession` fallback.
+- **Call `disconnect()` before `stop()`**. Disconnect preserves session state; stop terminates the client. Calling `stop()` without `disconnect()` may lose session state.
+- **`sendAndWait` timeout ≠ abort**. When `sendAndWait` times out, it stops waiting but the model keeps working. Call `session.abort()` explicitly to cancel in-flight work.
+- **`setModel` mid-session is supported** but resets any model-specific context. Use it for escalation patterns (start with fast model, escalate to capable model for complex tasks).
+
 ## System message configuration
 
 ```typescript

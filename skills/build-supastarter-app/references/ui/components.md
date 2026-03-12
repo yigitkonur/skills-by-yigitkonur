@@ -39,3 +39,4 @@ Use `@repo/ui` for utilities and broad re-exports, but the existing conventions 
 - `references/ui/styling-patterns.md` — Shared visual conventions and token usage
 - `references/ui/feedback-overlays.md` — Dialog and toast primitives
 - `references/setup/import-conventions.md` — Import rules for UI deep imports
+- `references/ui/theme-tokens.md` — Theme token system

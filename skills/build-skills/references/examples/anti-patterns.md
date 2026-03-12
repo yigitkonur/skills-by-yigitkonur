@@ -417,3 +417,80 @@ Before publishing, verify none of these apply:
 - [ ] No iteration plan after deployment (AP-22)
 - [ ] Using prose instead of scripts for deterministic checks (AP-23)
 - [ ] Reserved name containing "claude" or "anthropic" (AP-24)
+
+
+---
+
+## Derailment anti-patterns (AP-D1 through AP-D7)
+
+These anti-patterns were discovered through systematic derailment testing of the build-skills workflow.
+
+### AP-D1: Reference overload
+
+**Pattern:** Loading all 22+ reference files at once during Steps 3-4a.
+
+**Why it fails:** Exhausts context window, causes the agent to lose track of which file informed which decision, and produces outputs that blend information without attribution.
+
+**Fix:** Load only the 3-5 files relevant to the current step. Use the reference routing table in SKILL.md to select files.
+
+**Detection:** Agent has read more than 5 reference files before completing Step 4.
+
+### AP-D2: Output batching
+
+**Pattern:** Producing all output artifacts at the end instead of showing them at the step that produces them.
+
+**Why it fails:** Prevents intermediate review, makes errors harder to catch, and creates a wall of output that's difficult to validate.
+
+**Fix:** Show each artifact immediately after the step that produces it. Follow the timing hints in the output contract.
+
+**Detection:** Agent reaches Step 7 without having shown any intermediate output.
+
+### AP-D3: Tool assumption
+
+**Pattern:** Assuming `skill-dl` or other tools are installed because the skill mentions them.
+
+**Why it fails:** First command fails, requiring backtracking and context recovery. Often leads to the agent fabricating results instead of using fallback methods.
+
+**Fix:** Run `skill-dl --version` before first use. Have the fallback chain ready: skill-dl > MCP tools > manual GitHub search.
+
+**Detection:** A tool command fails with "command not found" during execution.
+
+### AP-D4: Quality blindness
+
+**Pattern:** Treating all downloaded skills as high-quality references regardless of their actual quality.
+
+**Why it fails:** Produces comparison tables with only positive entries, missing the critical "avoid" patterns that inform synthesis decisions.
+
+**Fix:** Apply the quality spectrum from `source-patterns.md`. Assign tiers. Document anti-patterns in the "avoid" column.
+
+**Detection:** Comparison table has no "avoid" entries or all skills are rated positively.
+
+### AP-D5: Path confusion
+
+**Pattern:** Writing test instructions that assume creation when the task is revision (or vice versa).
+
+**Why it fails:** For new skills, trigger tests silently pass because the skill isn't installed. For revisions, tests miss regression against the existing version.
+
+**Fix:** Explicitly identify which path you're on. Follow the creation vs. revision testing paths in `testing-methodology.md`.
+
+**Detection:** All trigger tests "pass" but the skill wasn't installed before testing.
+
+### AP-D6: Research scope creep
+
+**Pattern:** Downloading 20+ skills and reading all of them without a stopping criterion.
+
+**Why it fails:** Consumes the entire research budget on discovery, leaving no time for deep comparison. Produces broad but shallow analysis.
+
+**Fix:** Set a research budget before starting (see `research-workflow.md` phase gates). Stop when you have 3+ viable comparison entries.
+
+**Detection:** More than 10 skills downloaded or more than 3 steps spent on research alone.
+
+### AP-D7: Checklist as workflow
+
+**Pattern:** Treating the master checklist as a sequential todo list, working through all 100+ items for every task.
+
+**Why it fails:** Simple revisions take as long as full builds. Checklist fatigue leads to rubber-stamping later items.
+
+**Fix:** Use phase markers: "DRAFT ESSENTIAL" items (Phases 0-3) for every task, "FINAL AUDIT ONLY" items (Phases 4+) only for comprehensive quality passes.
+
+**Detection:** Running Phase 6+ checklist items before having a complete draft.

@@ -196,8 +196,6 @@ Write all universal instructions in AGENTS.md. This file is read by 20+ agents.
 
 ### CLAUDE.md as Thin Wrapper
 
-> The canonical thin wrapper template is in SKILL.md Step 3. The example below is an **extended** version — include only the sections your project needs.
-
 ```markdown
 @AGENTS.md
 
@@ -252,3 +250,37 @@ If AGENTS.md exceeds ~300 lines, a CLAUDE.md that does `@AGENTS.md` plus adds Cl
 - Use tables for structured data (boundaries, commands, conventions)
 - Keep lines under 100 characters when possible
 - No emojis, no decorative formatting
+
+## Canonical Thin Wrapper Note
+
+When writing a CLAUDE.md thin wrapper, always use the template from **Step 3 of SKILL.md** as the authoritative source. Other reference files (project-templates.md, this file) may show project-type-specific thin wrapper variations, but those are customizations on top of the canonical template -- not replacements.
+
+If you see conflicting thin wrapper examples across files, Step 3 of SKILL.md wins. See steering experience S-13 for details.
+
+## Common Drafting Mistakes
+
+| Mistake | Why it fails | Fix |
+|---------|-------------|-----|
+| Writing a "project overview" section | Duplicates README, wastes context slots | Reference README instead: `"See README.md for project overview"` |
+| Listing every file in the project tree | Agents can read the filesystem themselves | Only document non-obvious directory purposes |
+| Documenting linter-enforced rules | The linter already catches these | Only document if agents might disable the rule |
+| Writing "write clean code" or "follow best practices" | Too vague to act on -- agents ignore it | Use specific, measurable rules: `"No any types without justification"` |
+| Using passive voice throughout | Less clear, less followable | Use imperative: `"Use Zod"` not `"Zod should be used"` |
+| Including conditional language | Agents treat `"consider"` as optional | Use direct commands: `"Always"`, `"Never"`, `"Use"` |
+| Copying stack info from package.json | Agent can read package.json directly | Only document non-obvious stack choices or WHY context |
+
+## Section Ordering Guidance
+
+For AGENTS.md, order sections by decreasing importance to the agent:
+
+1. **Commands** -- most frequently needed, most likely to cause errors if wrong
+2. **Architecture** -- non-obvious structural decisions
+3. **Conventions** -- coding patterns specific to this project
+4. **Boundaries** -- Always/Ask/Never rules
+5. **Dependencies/Stack** -- only non-obvious choices
+
+For CLAUDE.md thin wrapper, the order is fixed:
+
+1. `@AGENTS.md` import (always first)
+2. `## Claude-Specific` header
+3. Claude-only features (rules, memory, imports)

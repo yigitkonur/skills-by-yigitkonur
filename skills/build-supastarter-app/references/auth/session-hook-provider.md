@@ -2,6 +2,8 @@
 
 > Documents the `SessionProvider` / `useSession()` pair that exposes authenticated user state to client components. Consult this when a client feature needs the current user, session metadata, or a `reloadSession()` hook after profile updates.
 
+> ⚠️ **Client only.** `useSession()` requires the `SessionProvider` mounted in `ClientProviders`. For server components, use `getSession()` from server helpers instead.
+
 ## Key files
 
 - `apps/web/modules/saas/auth/components/SessionProvider.tsx`

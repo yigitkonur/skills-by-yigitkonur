@@ -411,3 +411,127 @@ turbo build typecheck lint test
 ```
 
 Build: `tsc --build` respects dependency order and only rebuilds changed packages.
+
+
+---
+
+## Biome vs ESLint: decision matrix
+
+| Factor | Biome | ESLint |
+|---|---|---|
+| Speed | 10-50x faster (Rust-based) | Slower, but acceptable for most projects |
+| Configuration | Minimal, opinionated defaults | Highly configurable, many plugins |
+| TypeScript support | Built-in, no extra parser | Requires `@typescript-eslint/parser` |
+| Plugin ecosystem | Small but growing | Massive (1000+ plugins) |
+| Formatting | Built-in (replaces Prettier) | Separate tool (Prettier) |
+| Type-aware rules | Not supported | Supported via `@typescript-eslint` |
+| Custom rules | Not supported | Full API for custom rules |
+
+**Decision guide:**
+- **Choose Biome** when: speed matters, Prettier-compatible formatting is sufficient, no custom ESLint rules needed, type-aware linting not required
+- **Choose ESLint** when: type-aware rules needed (`no-floating-promises`, `no-unsafe-*`), custom rules exist, specific plugins required (React hooks, import sorting)
+- **Both is valid:** Biome for formatting + basic linting, ESLint for type-aware rules only
+
+---
+
+## CI/CD type checking
+
+### GitHub Actions — single job
+
+```yaml
+name: Type Check
+on: [push, pull_request]
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+```
+
+### GitHub Actions — parallel type check + lint + test
+
+```yaml
+name: CI
+on: [push, pull_request]
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+```
+
+**Key practices:**
+- Always use `npm ci` (not `npm install`) in CI for deterministic installs
+- Cache `node_modules` via `actions/setup-node` cache option
+- Run `tsc --noEmit` separately from build — catches type errors without producing output
+- Keep type check as a blocking check on PRs
+
+---
+
+## Pre-commit hooks (expanded)
+
+### Full setup with husky + lint-staged
+
+```bash
+npm install -D husky lint-staged
+npx husky init
+```
+
+**.husky/pre-commit:**
+```bash
+npx lint-staged
+```
+
+**package.json — ESLint + Prettier variant:**
+```json
+{
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{json,md,yml}": [
+      "prettier --write"
+    ]
+  }
+}
+```
+
+**package.json — Biome variant:**
+```json
+{
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  }
+}
+```
+
+**Tip:** Do NOT run `tsc` in pre-commit — it is too slow. Run it in CI instead.

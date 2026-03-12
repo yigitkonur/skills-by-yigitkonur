@@ -17,6 +17,10 @@ When Devin Review isn't working as expected, check these in order:
 | 5 | REVIEW.md syntax correct? | H2/H3 headers, bullet lists, fenced code blocks |
 | 6 | Conflicting instruction files? | Check for contradictions between REVIEW.md, AGENTS.md, CLAUDE.md |
 | 7 | Repo is private + connected? | Auto-review unavailable for unconnected public repos |
+| 8 | PR reviews too long? | >300 lines or >50 rules dilute focus → trim to essentials |
+| 9 | Syntax errors in REVIEW.md? | Malformed markdown (unclosed blocks, bad headers) → validate with linter |
+| 10 | Rules too vague? | Generic phrases like "follow best practices" → rewrite with specific, testable criteria |
+| 11 | Ignore patterns not working? | Malformed globs (missing `**/`, wrong separators) → fix glob format |
 
 ---
 
@@ -208,16 +212,30 @@ npx devin-review https://github.com/owner/repo/pull/123
 **Possible causes:**
 
 1. **File not named exactly `REVIEW.md`** — must be uppercase, no prefix/suffix
-2. **Nesting too deep** — avoid placing REVIEW.md more than 3-4 levels deep
+2. **Nesting too deep** — scoped REVIEW.md files should be max 2 levels deep from repo root (e.g., `packages/api/REVIEW.md` ✅, `packages/api/src/utils/REVIEW.md` ❌)
 3. **Changed files not in that directory** — the scoped REVIEW.md only applies to files within its directory tree
 
 ### Symptom: Duplicate findings from root + subdirectory REVIEW.md
 
-Subdirectory files **complement** root — they don't replace it. Both apply to files in the subdirectory.
+Subdirectory files **complement** root — they don't replace it. Both apply to files in the subdirectory. The **closest-scope-wins** principle applies: when root and subdirectory rules conflict, the closer (more specific) REVIEW.md takes precedence for files in its tree.
 
 **Fix:** Don't repeat root rules in subdirectory files:
 - **Root**: Cross-cutting concerns (security, general conventions)
 - **Subdirectory**: Package-specific rules only
+
+### Debugging Monorepo Scope
+
+To verify which REVIEW.md applies to a changed file:
+
+```bash
+# List all REVIEW.md files and their depth
+find . -name "REVIEW.md" -not -path "./.git/*" | awk -F/ '{print NF-1, $0}' | sort -n
+
+# For a changed file like packages/api/src/handler.ts, the applicable files are:
+#   ./REVIEW.md                    (root — always applies)
+#   ./packages/api/REVIEW.md       (closest scope — wins on conflicts)
+#   ./packages/api/src/REVIEW.md   (too deep — avoid this level)
+```
 
 ---
 
@@ -234,6 +252,67 @@ Devin reads multiple instruction files. If they contradict each other:
    - Coding standards → `AGENTS.md` or `CLAUDE.md`
    - Workflow → `CONTRIBUTING.md`
    - Editor config → `.cursorrules` / `.windsurfrules`
+
+### Detecting Rule Conflicts
+
+Common conflict patterns:
+
+| Conflict Type | Example |
+|---------------|---------|
+| REVIEW.md vs AGENTS.md | REVIEW.md bans `any` types, AGENTS.md allows them in test files |
+| Root vs scoped REVIEW.md | Root requires JSDoc, scoped file says "no doc comments needed" |
+| REVIEW.md vs linter config | REVIEW.md enforces 80-char lines but Prettier is set to 120 |
+
+**Detection:** scan for contradictions across instruction files:
+
+```bash
+# Find all instruction files
+grep -rn "must\|never\|always\|require\|prohibit" REVIEW.md AGENTS.md CLAUDE.md 2>/dev/null | sort
+```
+
+**Resolution priority:** AGENTS.md wins for coding tasks, REVIEW.md wins for review criteria, linter config wins for style/formatting.
+
+---
+
+## Validating REVIEW.md Syntax
+
+Common syntax errors that silently break rule parsing:
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| Missing H2/H3 headers | Rules not grouped, random findings | Ensure every section starts with `##` or `###` |
+| Unclosed code blocks | Everything after the block treated as code | Match every `` ``` `` open with a `` ``` `` close |
+| Tab indentation in lists | Bullets not recognized as list items | Use 2 or 4 spaces, never tabs |
+| Empty example blocks | Pattern matching disabled for that rule | Add at least one Good/Bad code example per block |
+| Duplicate rule names | Only one gets applied, other silently ignored | Use unique `###` heading names across entire file |
+
+---
+
+## Review Quality Metrics
+
+Track these metrics to measure review effectiveness:
+
+| Metric | Target | How to Measure |
+|--------|--------|----------------|
+| False positive rate | < 20% | Count findings you dismiss ÷ total findings |
+| Actionable rate | > 80% | Count findings that led to code changes ÷ total |
+| Critical area coverage | 100% of defined areas | Check that every `## Critical Areas` path gets reviewed |
+| Review turnaround | < 5 min after PR opened | Timestamp of first review comment minus PR creation |
+
+**Interpretation:** If false positives are high, tighten Ignore patterns and remove vague rules. If actionable rate is low, add more code examples and strengthen rule language. If critical areas are missed, verify file paths in rules match actual repo structure.
+
+## Auditing Rule Effectiveness
+
+After 10+ reviewed PRs, audit each rule individually:
+
+**Effectiveness score** = (findings that led to code changes) ÷ (total findings from that rule)
+
+| Score | Action |
+|-------|--------|
+| > 0.8 | Keep — rule is working well |
+| 0.5 – 0.8 | Refine — add examples or tighten language |
+| < 0.5 | Remove or rewrite — rule generates more noise than signal |
+| 0 hits | Check if rule is too specific or path references are outdated |
 
 ---
 

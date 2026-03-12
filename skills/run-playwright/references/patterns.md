@@ -22,6 +22,8 @@ in `playwright-cli`.
 
 ## Login flow
 
+> **Steering experience:** Login flows commonly involve redirects. Always verify the final URL with `eval "() => window.location.href"` after login, not just the page title. Some SPAs silently fail login without navigating.
+
 ### Standard email/password login
 
 ```bash
@@ -139,6 +141,8 @@ eval "() => [...document.querySelectorAll('.product')].map(p => p.textContent.tr
 ---
 
 ## Download handling
+
+> **Steering experience:** Downloads require `run-code` with `waitForEvent("download")` — there is no direct CLI command for downloads. After saving, verify the file exists from outside the browser using bash.
 
 ### Save a single file
 
@@ -273,7 +277,9 @@ click <next-page-ref>
 snapshot
 eval "() => document.querySelectorAll('.product').length"
 
-# Infinite scroll
+# Infinite scroll — verify scroll direction first
+mousewheel 0 100
+eval "() => window.scrollY"   # confirm scroll direction is correct
 mousewheel 0 2000
 run-code 'async (page) => {
   await page.waitForSelector(".feed-item:nth-child(20)", { state: "visible" })
@@ -285,6 +291,8 @@ snapshot
 ---
 
 ## State persistence
+
+> **Steering experience:** `state-save` and `state-load` are CLI prompt commands that save and restore cookies + storage. This is the fastest way to skip repeated login flows across multiple test runs.
 
 ```bash
 state-save logged-in.json       # save cookies + storage
@@ -336,3 +344,23 @@ screenshot --full-page --filename=mobile-dark.png
 ### Level 4 — Full regression
 
 Level 3 + user flow checks + `console error` + `network` + before/after screenshots.
+
+
+---
+
+## Steering experiences summary
+
+Key patterns discovered through real-world testing:
+
+| Pattern | Why it matters |
+|---|---|
+| Always `cat` artifact files | `console`, `network`, `snapshot` write files, not stdout |
+| Two-step tab: `tab-new` then `open` | `tab-new <url>` frequently opens `about:blank` |
+| Test `mousewheel` direction first | Parameter order may be swapped between CLI versions |
+| `--clear` is silent | `console --clear` / `network --clear` produce no output |
+| Always `install --browser=chrome` | No-op when binary exists, prevents cryptic errors when missing |
+| `eval` for truth, not headers | Command headers can show wrong URLs after tab switches |
+| Upload = click trigger first | `upload` only works when file chooser dialog is active |
+| `snapshot` = file, not inline | Must `cat` the printed file path to read the tree |
+| `fill --submit` shortcut | Fills and submits in one command — great for search fields |
+| `session-stop` for isolated | Forgetting cleanup leaks browser processes |

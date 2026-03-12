@@ -395,6 +395,16 @@ for (const s of sessions) {
 }
 ```
 
+## Steering notes
+
+> Common mistakes agents make with advanced patterns.
+
+- **The "Ralph loop" model** (plan → execute → evaluate → repeat) is the recommended pattern for multi-step autonomous agents. Don't implement your own loop — use `sendAndWait` in a while loop with an explicit termination condition.
+- **`sendAndWait` timeout does NOT abort work**. The model continues processing. Always call `session.abort()` if you need to actually stop work after timeout.
+- **Model switching mid-session** (`setModel`) preserves conversation history but may change behavior since different models interpret context differently.
+- **Parallel tool calls are initiated by the model**, not by your code. You cannot force parallel execution. The model decides based on the task.
+- **Fleet mode** (multiple sessions sharing work) requires external coordination. Sessions don't communicate with each other — use a shared data store or message queue.
+
 ## Health check
 
 ```typescript

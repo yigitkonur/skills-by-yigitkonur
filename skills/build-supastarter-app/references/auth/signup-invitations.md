@@ -2,6 +2,8 @@
 
 > Documents the registration flow, invitation-only behavior, email verification, and invitation acceptance. Consult this when changing how new users enter the app or when debugging invited-user edge cases.
 
+> ⚠️ **Invitation-only mode.** When `config.auth.invitationOnly` is true, the signup form rejects users without a valid `invitationId`.
+
 ## Key files
 
 - `apps/web/app/auth/signup/page.tsx`

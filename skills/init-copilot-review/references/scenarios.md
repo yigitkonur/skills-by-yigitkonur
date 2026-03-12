@@ -1426,3 +1426,76 @@ applyTo: "**/*.{tsx,jsx}"
 - Respect `prefers-reduced-motion` for animations
 - Minimum 44x44px touch targets for mobile
 ````
+
+
+---
+
+## How to Use These Scenarios
+
+These scenarios are **adaptation templates**, not copy-paste solutions. Follow this workflow:
+
+### Step 1: Select the closest scenario
+
+Choose based on your repository's primary architecture, not just its language:
+
+| Your repo looks like | Start with |
+|---|---|
+| TypeScript REST API (Express, Fastify, Hono) | Scenario A |
+| Next.js App Router with admin/dashboard features | Scenario B |
+| Python Django/DRF API | Scenario C |
+| Go backend service | Scenario D |
+| Tauri or Electron desktop app | Scenario E |
+| MCP server (any language) | Scenario F |
+| Monorepo with multiple packages | Scenario G |
+| Next.js marketing/content site | Scenario H |
+
+### Step 2: Adapt, do not copy
+
+For each file in the scenario:
+
+1. **Change all code references** to match your repo's actual imports, functions, classes, and patterns
+2. **Remove rules** that do not apply to your repo (check against Step 3 of the SKILL.md workflow)
+3. **Add rules** for patterns unique to your repo that the scenario does not cover
+4. **Verify glob patterns** match your repo's actual directory structure
+5. **Check character counts** — adapted files may be longer or shorter than the template
+
+### Step 3: Validate adaptation
+
+After adapting, every rule in every file must:
+- Reference something that actually exists in the target repository
+- Pass the SMSA quality check (see `writing-instructions.md`)
+- Not duplicate a linter or formatter rule
+
+> **Common mistake:** Copying a scenario verbatim and only changing the frontmatter glob. This produces generic rules that Copilot follows weakly or ignores. Rules grounded in the specific repo's code produce much stronger review comments.
+
+---
+
+## Why This Scenario and Not That One
+
+If your repository does not clearly match any single scenario, use this decision guide:
+
+### Mixed-stack repositories
+
+| Repo pattern | Strategy |
+|---|---|
+| Go backend + Svelte/React frontend | Use Scenario D for backend, add Scenario B/H patterns for frontend |
+| Python API + React SPA | Use Scenario C for backend, add React patterns from Scenario B |
+| Rust core + TypeScript CLI | Use Go scenario (D) as a structural template for Rust, Scenario A for TypeScript |
+| Monorepo with mixed languages | Start with Scenario G's structure, pull language rules from A/C/D |
+
+### When no scenario fits
+
+If your repo's architecture does not match any scenario:
+
+1. Use the **SKILL.md workflow** (Steps 1–6) without consulting scenarios
+2. Use `references/micro-library.md` for individual rule patterns instead
+3. Build the file architecture from the placement logic table in SKILL.md Step 2
+4. The scenarios exist to save time on common patterns — they are not required
+
+### Scenarios you probably do NOT need
+
+| Temptation | Why to avoid |
+|---|---|
+| Using Scenario G (monorepo) for a single-app repo | Monorepo patterns add complexity with no benefit for single apps |
+| Using Scenario A (TypeScript API) for a Next.js app | Next.js has server/client component boundaries that Scenario A ignores |
+| Using Scenario H (marketing) for an app with a marketing page | If marketing is a small section, add 1-2 rules to the main app's files |

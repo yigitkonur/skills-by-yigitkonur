@@ -218,10 +218,12 @@ agent-browser state load auth.json    # Restore saved state
 ## Diff (Page Comparison)
 
 ```bash
-agent-browser diff                         # Diff current page against last snapshot
-agent-browser diff --before open https://old.example.com \
-              --after open https://new.example.com  # Compare two page states
-agent-browser diff url1 url2               # Compare two URLs
+agent-browser diff snapshot                    # Compare current page against last snapshot
+agent-browser diff snapshot --baseline f.txt   # Compare against a saved snapshot file
+agent-browser diff snapshot -s "#main"         # Scope diff to CSS selector
+agent-browser diff screenshot --baseline f.png # Visual pixel diff against baseline image
+agent-browser diff url url1 url2               # Compare two URLs (snapshot diff)
+agent-browser diff url url1 url2 --screenshot  # Compare two URLs (visual diff)
 ```
 
 ## Global Options
@@ -310,3 +312,40 @@ AGENT_BROWSER_PROXY_BYPASS="localhost,*.local"  # Proxy bypass hosts
 AGENT_BROWSER_ENCRYPTION_KEY="secret"        # Encryption key for saved state
 AGENT_BROWSER_STATE_EXPIRE_DAYS="30"         # Auto-expire saved state after N days
 ```
+
+## Agent Steering Notes
+
+Hard-won lessons from real-world automation.
+
+### eval: prefer --stdin heredoc over inline quotes
+
+Shell escaping with nested quotes breaks constantly. Use the heredoc pattern:
+
+```bash
+agent-browser eval --stdin <<'EVALEOF'
+const items = document.querySelectorAll('.story-title');
+JSON.stringify(Array.from(items).map(el => el.textContent.trim()).slice(0, 10));
+EVALEOF
+```
+
+Do NOT use inline eval with complex JS -- shell escaping will break.
+
+### get text: strict mode requires exactly one match
+
+CSS selectors in `get text`, `get value`, `is visible` fail when multiple elements match. Use scoped selectors or `eval --stdin` for batch extraction.
+
+### check/uncheck return values differ from other commands
+
+Most commands return a Done message. But `check` and `uncheck` return the new checked state (`true` or `false`).
+
+### snapshot -i shows ONLY interactive elements
+
+Non-interactive text (headings, paragraphs, labels, spans) is invisible in `snapshot -i`. For data extraction, use `get text` or `eval --stdin`. See `snapshot-refs.md` for details.
+
+### diff requires a subcommand
+
+`agent-browser diff` alone fails. Always use: `diff snapshot`, `diff screenshot --baseline`, or `diff url url1 url2`.
+
+### back command exists but is easy to miss
+
+Use `agent-browser back` (browser back button). Do NOT use `go back` -- that is not a valid command.

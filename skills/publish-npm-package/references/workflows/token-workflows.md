@@ -3,6 +3,12 @@
 Production-ready GitHub Actions workflows using `NPM_TOKEN` for npm authentication.
 Use when OIDC is unavailable (private npm orgs, self-hosted runners, GHES, or custom registries).
 
+> **⚠️ Steering:** Use token workflows when OIDC is unavailable, when publishing to private registries, or for the **first publish** of a new package (OIDC requires the package to already exist on npm). Once the package exists, consider migrating to `oidc-workflows.md` for stronger security.
+
+> **⚠️ Steering — SHA pinning:** Templates below use `@v4` tags for readability. For production, pin actions to full commit SHAs (e.g., `actions/checkout@<sha>`) to prevent supply-chain attacks. Use [pin-github-action](https://github.com/mheap/pin-github-action) or Dependabot to manage SHA updates.
+
+> **⚠️ Steering — Config precedence:** These workflow templates are the **baseline**. The versioning tool reference (semantic-release, changesets, or release-please) is the **customization layer**. When in doubt, the versioning tool’s docs take priority for plugin config; the workflow template takes priority for CI/CD structure (permissions, concurrency, triggers).
+
 ---
 
 ## Creating and Storing the npm Token
@@ -103,6 +109,13 @@ jobs:
 npm i -D semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
 ```
 
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/release.yml` | CI/CD workflow (template above) |
+| `.releaserc.json` | semantic-release plugin config |
+
 ### Checklist
 
 - [ ] `NPM_TOKEN` secret added to GitHub repo
@@ -173,6 +186,15 @@ jobs:
 }
 ```
 
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/release.yml` | CI/CD workflow (template above) |
+| `.npmrc` | Token auth config (required for changesets) |
+| `.changeset/config.json` | Changesets configuration |
+| `package.json` scripts | `version` and `release` scripts |
+
 ### Checklist
 
 - [ ] `NPM_TOKEN` secret added
@@ -228,6 +250,7 @@ jobs:
 
       - run: npm ci
       - run: npm test
+      - run: npm run build --if-present
 
       - run: npm publish --access public
         env:
@@ -235,6 +258,14 @@ jobs:
 ```
 
 > **vs OIDC:** No `id-token: write`, no `--provenance`. Auth via `NODE_AUTH_TOKEN` env var.
+
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/release.yml` | CI/CD workflow (template above) |
+| `.release-please-config.json` | Release-please package config |
+| `.release-please-manifest.json` | Current version tracker |
 
 ### Checklist
 
@@ -275,6 +306,7 @@ jobs:
 
       - run: npm ci
       - run: npm test
+      - run: npm run build --if-present
 
       - run: npm publish --access public
         env:
@@ -282,6 +314,12 @@ jobs:
 ```
 
 > **vs OIDC:** No `id-token: write`, no `--provenance`.
+
+### Files to create
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/publish.yml` | CI/CD workflow (template above) |
 
 ---
 

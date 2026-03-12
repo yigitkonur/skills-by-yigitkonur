@@ -4,6 +4,8 @@
 
 ## Prerequisites
 
+> ⚠️ **Use `pnpm` — not npm or yarn.** The monorepo enforces pnpm via `packageManager` in root `package.json`.
+
 - **Node.js** ≥ 20
 - **pnpm** 10.28.2 (enforced via `packageManager` in root `package.json`)
 - **Docker** (for local PostgreSQL + MinIO)
@@ -160,3 +162,4 @@ Never put secrets (API keys, database URLs) in `NEXT_PUBLIC_*` variables.
 - `references/setup/monorepo-structure.md` — Project structure and Turbo pipeline
 - `references/cheatsheets/env-vars.md` — Condensed env var quick-reference
 - `references/deployment/vercel.md` — Vercel deployment and env var setup
+- `references/deployment/local-services.md` — Docker compose setup

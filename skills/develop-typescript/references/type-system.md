@@ -650,3 +650,168 @@ function renderResponse<T>(response: ApiResponse<T>): string {
   }
 }
 ```
+
+
+---
+
+## Type guard quality rubric
+
+Not all type guards are equal. Use this rubric to evaluate whether a type guard is production-quality:
+
+| Criterion | Good | Bad |
+|---|---|---|
+| **Checks all discriminating properties** | Checks `type`, `code`, and `message` | Only checks `type` |
+| **Handles `null`/`undefined`** | Starts with `!= null` check | Assumes non-null |
+| **Uses `in` operator for property existence** | `"name" in value` | `value.name !== undefined` (crashes if no `.name`) |
+| **Returns `value is T`** (not `boolean`) | `function isUser(v: unknown): v is User` | `function isUser(v: unknown): boolean` |
+| **Narrows to specific type** | `v is User` | `v is object` (too broad) |
+| **Works across realms** | Structural check | `instanceof` (fails across realms) |
+
+### Template for a production-quality type guard
+
+```typescript
+function isUser(value: unknown): value is User {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof (value as Record<string, unknown>).id === "string" &&
+    "name" in value &&
+    typeof (value as Record<string, unknown>).name === "string"
+  );
+}
+```
+
+---
+
+## Cross-realm `instanceof` safety
+
+See also: anti-patterns.md → "Cross-realm instanceof" section.
+
+When writing type guards for library code or code that handles messages from workers/iframes, never rely solely on `instanceof`. Use structural checks:
+
+```typescript
+// BAD — fails across realms
+function isDate(value: unknown): value is Date {
+  return value instanceof Date;
+}
+
+// GOOD — works across realms
+function isDate(value: unknown): value is Date {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).getTime === "function" &&
+    !isNaN((value as Date).getTime())
+  );
+}
+```
+
+---
+
+## Narrowing strategy decision tree
+
+Use this decision tree to choose the right narrowing approach:
+
+```
+Is the value `unknown`?
+├── Yes → Use type guard function (`value is T`)
+│   ├── Is it from an external source (API, message, file)?
+│   │   └── Yes → Use Zod/Valibot schema validation
+│   └── Is it from internal code?
+│       └── Yes → Use structural type guard (typeof/in checks)
+└── No → Is it a union type?
+    ├── Yes → Is it a discriminated union (common property)?
+    │   ├── Yes → Use switch/if on the discriminant property
+    │   └── No → Use `in` operator or type guard function
+    └── No → Is it `T | null | undefined`?
+        ├── Yes → Use `!= null` (covers both null and undefined)
+        └── No → Value is already narrowed; no action needed
+```
+
+### Common narrowing mistakes
+
+| Mistake | Why it fails | Fix |
+|---|---|---|
+| `typeof x === "object"` without null check | `typeof null === "object"` in JS | Add `x !== null` |
+| `if (x)` to narrow string | Empty string `""` is falsy | Use `typeof x === "string"` |
+| `in` operator on primitive | Runtime error | Guard with `typeof x === "object"` first |
+| Narrowing in callback loses narrowing | Control flow analysis resets in closures | Assign to local variable before callback |
+
+---
+
+## Variance — practical example
+
+Variance determines whether a generic type `G<A>` is assignable to `G<B>` when `A` is assignable to `B`.
+
+```typescript
+// Covariant (out) — read-only positions
+interface Reader<out T> {
+  read(): T;
+}
+// Reader<Dog> is assignable to Reader<Animal> ✓ (Dog extends Animal)
+
+// Contravariant (in) — write-only positions
+interface Writer<in T> {
+  write(value: T): void;
+}
+// Writer<Animal> is assignable to Writer<Dog> ✓ (reversed!)
+
+// Invariant (in out) — both read and write
+interface Container<in out T> {
+  get(): T;
+  set(value: T): void;
+}
+// Container<Dog> is NOT assignable to Container<Animal>
+// Container<Animal> is NOT assignable to Container<Dog>
+```
+
+### When to add explicit variance annotations
+
+- **Performance:** TS 5.0+ uses variance annotations to skip expensive structural comparisons
+- **Correctness:** Makes the intended variance explicit and catches violations
+- **Add `out`** when the type parameter only appears in return positions (read)
+- **Add `in`** when the type parameter only appears in parameter positions (write)
+- **Add `in out`** when it appears in both (or when you want to explicitly mark invariance)
+
+---
+
+## Finding `satisfies` opportunities
+
+`satisfies` (TS 4.9+) validates that an expression matches a type without widening it. This preserves literal types and enables better autocomplete.
+
+### Where to look
+
+```bash
+# Config objects with type annotations — candidates for satisfies
+grep -rn "^const .* : Record<" --include="*.ts" | head -10
+grep -rn "^const .* : {" --include="*.ts" | head -10
+
+# Enum-like objects — strong candidates
+grep -rn "^const .* = {" --include="*.ts" | grep -l "as const" | head -10
+```
+
+### Before/after
+
+```typescript
+// BEFORE — annotation widens literal types
+const routes: Record<string, string> = {
+  home: "/",
+  about: "/about",
+};
+// typeof routes.home is `string`
+
+// AFTER — satisfies preserves literals
+const routes = {
+  home: "/",
+  about: "/about",
+} satisfies Record<string, string>;
+// typeof routes.home is `"/"`
+
+// BEST — as const satisfies for full immutability + validation
+const routes = {
+  home: "/",
+  about: "/about",
+} as const satisfies Record<string, string>;
+// typeof routes.home is `"/"`; object is deeply readonly
+```

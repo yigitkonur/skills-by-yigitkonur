@@ -269,3 +269,59 @@ aider --message "List the project conventions you know about"
 ```
 
 The response should reflect your AGENTS.md content regardless of which agent reads it.
+
+## Real-World Setup Examples
+
+### Example 1: Small Team, Claude + Cursor
+
+```
+AGENTS.md              # Universal: commands, conventions, boundaries
+CLAUDE.md              # @AGENTS.md + Claude-specific (thin wrapper)
+.cursor/rules/api.mdc  # Cursor-specific: API route patterns
+```
+
+Both agents read AGENTS.md for shared instructions. Claude additionally reads CLAUDE.md. Cursor additionally reads `.cursor/rules/`. No content is duplicated.
+
+### Example 2: Open Source Project, Multi-Agent
+
+```
+AGENTS.md              # Universal: all instructions here
+```
+
+One file, maximum portability. No agent-specific files needed because the project does not use Claude-only or Cursor-only features. Contributors using any agent get the same instructions.
+
+### Example 3: Enterprise Monorepo, Claude + Copilot + Codex
+
+```
+AGENTS.md                           # Root: universal conventions, commands
+apps/web/AGENTS.md                  # Web app specific
+apps/api/AGENTS.md                  # API specific
+packages/shared/AGENTS.md           # Shared library specific
+CLAUDE.md                           # @AGENTS.md + Claude-specific (thin wrapper)
+.github/copilot-instructions.md     # Points to AGENTS.md or contains Copilot-specific
+```
+
+All agents read root AGENTS.md. Codex and Cursor also read nested AGENTS.md files. Claude reads CLAUDE.md which imports AGENTS.md. Copilot reads its own config. Content stays DRY because AGENTS.md is the single source of truth.
+
+## Agent-Specific Notes
+
+### Cursor
+
+- `.cursorrules` is deprecated -- use `.cursor/rules/*.mdc` instead
+- Cursor auto-reads AGENTS.md from workspace root
+- `.mdc` files support `description:` and `globs:` frontmatter for path-scoping (similar to `.claude/rules/`)
+- If migrating from `.cursorrules`, extract universal content to AGENTS.md and keep Cursor-specific patterns in `.cursor/rules/`
+
+### Gemini CLI
+
+- Reads both `GEMINI.md` and `AGENTS.md` natively
+- `GEMINI.md` is the Gemini-specific config (like CLAUDE.md is for Claude)
+- `.gemini/settings.json` for Gemini-specific settings
+- For dual-agent teams (Claude + Gemini), put shared rules in AGENTS.md and use both CLAUDE.md and GEMINI.md as thin wrappers
+
+### GitHub Copilot
+
+- Reads AGENTS.md from workspace root
+- `.github/copilot-instructions.md` is the Copilot-native config
+- Scoped instruction files: `.github/instructions/*.instructions.md` with `applyTo:` frontmatter
+- For review-specific config, use the `init-copilot-review` skill instead

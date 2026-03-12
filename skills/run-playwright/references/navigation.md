@@ -62,13 +62,15 @@ reload
 Reloads the current page. Useful when you need a fresh page state or suspect
 stale content.
 
-**After any navigation command, run `snapshot` before using refs.**
+**After any navigation command, run `snapshot` before using refs.** Then `cat` the snapshot file to read the actual tree.
 
 ---
 
 ## URL handling and quoting
 
 ### Quote URLs in zsh
+
+> **Steering experience:** URL quoting issues are subtle — the command may appear to work but navigate to a truncated URL. Always verify with `eval "() => window.location.href"` after `open` to confirm the full URL arrived correctly.
 
 URLs containing `?`, `&`, `#`, or other shell-sensitive characters must be quoted:
 
@@ -147,11 +149,15 @@ screenshot --filename=dashboard-loaded.png
 
 ### Lazy-loaded content
 
-Content below the fold may not load until scrolled:
+Content below the fold may not load until scrolled.
+
+> **Steering experience:** The `mousewheel <deltaX> <deltaY>` parameter order may be swapped in some CLI versions. Always test with a small scroll first: `mousewheel 0 100` then `eval "() => window.scrollY"`. If scrollY didn't increase, try `mousewheel 100 0`.
 
 ```bash
 open https://example.com/long-page
 snapshot
+mousewheel 0 100
+eval "() => window.scrollY"   # verify scroll direction first
 mousewheel 0 900
 run-code 'async (page) => {
   await page.waitForSelector(".lazy-section", { state: "visible" })

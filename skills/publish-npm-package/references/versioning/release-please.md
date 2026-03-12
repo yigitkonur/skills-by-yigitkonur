@@ -18,6 +18,11 @@ publishes releases when that PR is merged.
 Conventional commits flow into it automatically. Humans decide when to ship by
 merging the PR.
 
+> **⚠️ Steering:** release-please **requires** conventional commits. If the repo
+> doesn't use them and the team won't adopt them, use **changesets** instead —
+> it provides the same human-gated Release PR workflow without requiring any
+> commit convention.
+
 ---
 
 ## How It Works
@@ -68,9 +73,9 @@ This file lives in your repository root and controls release-please behavior.
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "release-type": "node",
   "packages": {
     ".": {
+      "release-type": "node",
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "include-v-in-tag": true
@@ -167,6 +172,10 @@ Whether to prefix tags with `v`.
 | `false` | `1.2.3` |
 
 #### `changelog-sections`
+
+> **Note:** This field is optional. The defaults (feat → Features, fix → Bug Fixes,
+> etc.) work for most projects. Only customize if you need different headings or
+> want to unhide types like `docs` or `chore`.
 
 Customize which commit types appear in the changelog and under what headings:
 
@@ -474,14 +483,32 @@ version before first run:
 2. Create `.release-please-config.json`:
    ```json
    {
-     "release-type": "node",
      "packages": {
-       ".": {}
+       ".": {
+         "release-type": "node"
+       }
      }
    }
    ```
 
 3. Commit both files to your main branch.
+
+### Greenfield Projects (No Prior Releases)
+
+For a brand-new package with no published versions and no git tags, set the
+manifest to `"0.0.0"` (or `"0.1.0"` if you prefer). release-please will compute
+the first version from commits after bootstrap:
+
+```json
+// .release-please-manifest.json
+{
+  ".": "0.0.0"
+}
+```
+
+The first Release PR will bump to `0.1.0` (for a `feat:` commit) or `0.0.1`
+(for a `fix:` commit). No git tag is needed — release-please treats the manifest
+version as the baseline when no matching tag exists.
 
 release-please will look for a git tag matching `v2.5.3` and analyze commits
 since that tag for the next release.
@@ -602,7 +629,9 @@ with release-please's tagging.
 
 ---
 
-## Complete Workflow with OIDC Provenance
+## Complete Workflow with Token Auth + Provenance
+
+> For pure OIDC auth (no NPM_TOKEN needed), use the template in `references/workflows/oidc-workflows.md` section 3.
 
 ```yaml
 name: Release
@@ -664,7 +693,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-### Without OIDC (Token-Based)
+### Token Auth Without Provenance
 
 ```yaml
   publish:

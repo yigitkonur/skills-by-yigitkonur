@@ -1,6 +1,6 @@
 # Common Bug Patterns in PRs
 
-The most frequently missed bugs in code review, organized by category. Use this as a mental checklist when reviewing code in Phase 5.
+The most frequently missed bugs in code review, organized by category. Use this as a mental checklist when reviewing code in the cluster review phase.
 
 ---
 
@@ -333,7 +333,7 @@ const page = parseInt(req.query.page, 10) || 1;
 
 ## Checklist: Bug Pattern Quick Scan
 
-Before concluding Phase 5 review on any file, do this 30-second scan:
+Before concluding cluster review on any file, do this 30-second scan:
 
 ```
 □ Race conditions: Any read-then-write without atomicity?
@@ -345,3 +345,33 @@ Before concluding Phase 5 review on any file, do this 30-second scan:
 □ Stale closure: Any React hooks with missing dependencies?
 □ Mutation: Any array/object mutation where immutability is expected?
 ```
+
+## Deprecation and Refactor Patterns
+
+When the PR deprecates APIs, renames methods, or restructures interfaces, check these additional patterns:
+
+### Incomplete migration
+The old API is still called in consumer code while the PR marks it deprecated. Search for all call sites of the deprecated API. If any remain unchanged, flag as 🟡 Important.
+
+### Deprecation without warning
+Method is marked deprecated via JSDoc/annotation but no runtime warning is emitted. Callers will not discover the deprecation until they read docs. Better: emit `process.emitWarning()` or equivalent on first call.
+
+### Semantic change hidden behind same signature
+The return value semantics change (e.g., hostname with port → hostname without port) but the method signature stays the same. This is a **breaking change** disguised as a deprecation. Flag as 🔴 Blocker if not documented.
+
+### Missing test updates for deprecated paths
+If the PR deprecates an API but does not add tests verifying: (1) deprecated path still works, (2) deprecation warning is emitted, (3) new path produces equivalent results — flag as 🟡 Important.
+
+### Steering note
+Deprecation PRs are easy to under-review because "nothing is really changing." The real risk is call-site impact and semantic drift. Shift review weight from "is this new code correct?" to "are all consumers aware and updated?"
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **The most over-reported bug pattern is "missing null check."** Before flagging a null/undefined risk, check whether the framework or caller guarantees non-null. In TypeScript strict mode, Express validated middleware, or Django's ORM, many "missing null checks" are false positives.
+2. **Race conditions are the hardest patterns to verify from a diff alone.** If you suspect a race condition, check whether the code uses locks, transactions, or atomic operations. If you cannot determine concurrency behavior from the diff, phrase it as a question rather than asserting a bug.
+3. **Error handling gaps are often intentional at the caller level.** Before flagging a missing try/catch, check whether the caller expects the function to throw (e.g., Express error middleware, React error boundaries). Not every function needs its own error handling.
+4. **The "Deprecation and Refactor Patterns" section applies specifically to PRs that remove or rename API surface.** For standard feature PRs, focus on the original bug patterns (race conditions, error handling, null handling, etc.) -- deprecation patterns are not relevant.
+
+> **Cross-reference:** See `references/language-specific.md` for language-specific variants of these patterns and `references/review-dimensions.md` dimension 2 (Correctness) for the priority checklist.

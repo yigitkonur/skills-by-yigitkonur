@@ -37,6 +37,27 @@ skill-dl search "typescript" "type safety" "strict mode" "ts config" "compilatio
 
 For each candidate, capture: skill name, owner/repo, detail URL, keywords matched, match count, and selection rationale.
 
+## Prerequisites
+
+Before using any remote source tools, verify availability:
+
+```bash
+# Primary tool
+skill-dl --version 2>/dev/null && echo "skill-dl ready" || echo "NOT AVAILABLE"
+
+# MCP fallback
+# skills-as-context-search-skills — available if skills.sh MCP server is configured
+# skills-as-context-get-skill-details — available if skills.sh MCP server is configured
+```
+
+**Fallback chain:**
+1. `skill-dl` (preferred) — CLI tool for searching and downloading skills
+2. `skills-as-context-search-skills` + `skills-as-context-get-skill-details` (MCP) — requires skills.sh MCP server
+3. Manual GitHub search — search for repositories containing SKILL.md files
+
+Use the first available option. Document which method you used in your research summary.
+
+
 ## Downloading with skill-dl
 
 `skill-dl` is the CLI tool for batch-downloading skills from Playbooks URLs.
@@ -132,3 +153,47 @@ After download:
 3. Cite relative paths in comparison table
 4. Inherit patterns selectively
 5. Rewrite the final result to be original and repo-fit
+
+---
+
+## Search usage examples
+
+### skill-dl search patterns
+```bash
+# Broad discovery
+skill-dl search typescript mcp server --top 20
+
+# Narrow by domain
+skill-dl search react testing component --top 10
+
+# Framework-specific
+skill-dl search nextjs app-router authentication --top 15
+```
+
+### MCP tool patterns
+When using `skills-as-context-search-skills`:
+- Use specific, descriptive queries (not single keywords)
+- Request enough results to compare: aim for 10-20 results
+- Follow up with `skills-as-context-get-skill-details` for the most promising candidates
+
+### Manual GitHub search patterns
+When both skill-dl and MCP tools are unavailable:
+- Search: `filename:SKILL.md [topic keywords]`
+- Filter by recently updated repositories
+- Look for repos with a `references/` directory structure
+- Prefer repos with multiple files (indicates decomposed content)
+
+## Quality assessment checklist
+
+For each downloaded skill, quickly assess:
+
+| Check | Command/Method | Pass criteria |
+|---|---|---|
+| SKILL.md size | `wc -l SKILL.md` | Under 500 lines |
+| Has references | `ls references/ 2>/dev/null` | Directory exists with files |
+| Frontmatter valid | Check first 5 lines | Has name + description |
+| Description length | Count characters | Under 1024 chars |
+| No angle brackets | `grep '[<>]' SKILL.md` | No matches in frontmatter |
+| Routing table | `grep '### ' SKILL.md` | Has section-based routing |
+
+Skills failing 3+ checks are Tier 3 — use only as anti-pattern examples.

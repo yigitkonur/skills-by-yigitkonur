@@ -326,3 +326,54 @@ Layout: top-navbar
 Components needed: drawer, navbar, chat, avatar, input, button, badge, menu, divider
 Layout: responsive-offcanvas-drawer-sidebar
 ```
+
+
+## Steering experiences — learned from real agent usage
+
+### Non-daisyUI elements in screenshots
+
+**Problem:** Agent sees a chart, map, or video player in a screenshot and tries to recreate it with daisyUI stat/progress/radial-progress components. The result looks nothing like the original.
+
+**Fix:** Identify non-daisyUI elements early in the scan phase:
+1. Charts/graphs → mark as `<!-- TODO: [Chart.js/Recharts] chart -->`
+2. Maps → mark as `<!-- TODO: [Leaflet/Mapbox] map -->`
+3. Code blocks → mark as `<!-- TODO: syntax-highlighted code block -->`
+4. Video/audio → mark as `<!-- TODO: HTML5 video/audio player -->`
+
+Wrap each in a `card` or sized `div` with `bg-base-200` placeholder:
+
+```html
+<div class="card bg-base-100 card-border">
+  <div class="card-body">
+    <h3 class="card-title">Monthly Revenue</h3>
+    <div class="h-64 w-full bg-base-200 rounded-lg flex items-center justify-center">
+      <!-- TODO: integrate Recharts area chart -->
+      <span class="text-base-content/40">Chart placeholder</span>
+    </div>
+  </div>
+</div>
+```
+
+### Shell identification before component catalog
+
+**Problem:** Agent jumps straight to cataloging individual components from a screenshot without first identifying the overall page structure. This leads to a bottom-up build that doesn't fit together.
+
+**Fix:** Always identify the page shell FIRST:
+1. Is there a sidebar? → drawer layout
+2. Is there a top navbar only? → top-navbar layout
+3. Is it a centered single-column? → likely a template (login, landing)
+4. Is it a dashboard with sidebar + top bar? → drawer + navbar
+
+Then check if a `template` or `layout` matches before building from scratch.
+
+### Batch strategy for screenshot conversion
+
+When converting a screenshot, batch MCP fetches by what you see:
+
+```
+Step 1: Identify shell → fetch matching template/layout (1 call)
+Step 2: List all visible components → fetch components reference for class validation (1 call, ~6-8 items)
+Step 3: Fetch examples for complex components only (1 call, ~4-6 items)
+```
+
+Target: ≤3 MCP calls total for a full-page screenshot conversion.

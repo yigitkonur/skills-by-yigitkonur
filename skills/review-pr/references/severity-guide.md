@@ -105,3 +105,14 @@ Did the author do something well?
 - Well-structured commits with clear messages
 
 **Rule:** Always include at least one. If the PR has blockers, praise is even more important to balance the feedback.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Blocker inflation is the most common severity calibration error.** More than 3 blockers in a single review almost always means some are actually Important. Re-check each blocker against the definition: does it make the PR *unsafe to merge*? If the PR could merge and the issue could be fixed in a follow-up, it is Important, not Blocker.
+2. **Suggestions should never be phrased imperatively.** If a finding uses "must", "should", or "need to", it is probably mis-classified as a suggestion. Suggestions are optional improvements -- phrase them as "consider", "one option would be", or "this could be simplified by".
+3. **Questions are under-used.** When you are unsure about intent, context, or whether something is a bug, a question is the correct severity. "Is it intentional that `maxRetries` defaults to 0?" is more useful than "Bug: maxRetries defaults to 0" when you do not know the intended behavior.
+4. **Praise must appear in every review.** If you cannot find something specific to praise, you have not read the PR carefully enough. Even a small PR has something worth acknowledging -- a well-named variable, a good error message, or a clean test structure.
+
+> **Cross-reference:** See SKILL.md "Severity calibration" section for the calibration checks that catch over-counting.

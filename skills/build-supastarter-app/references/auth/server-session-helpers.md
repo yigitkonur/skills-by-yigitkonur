@@ -2,6 +2,8 @@
 
 > Covers the cached server-only helpers used by layouts and server components to read session, organization, account, passkey, and invitation state. Consult this when a server page needs auth state without talking to Better Auth directly.
 
+> ⚠️ **Server only.** These helpers use React `cache()` and MUST only be called in server components or Route Handlers. Never import them in `"use client"` files.
+
 ## Key files
 
 - `apps/web/modules/saas/auth/lib/server.ts`

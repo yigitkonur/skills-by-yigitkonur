@@ -1,5 +1,11 @@
 # Monorepo Publishing Patterns
 
+> **⚠️ Steering:** Start with **changesets** for monorepo publishing unless your
+> team already has strong conventional-commit discipline. Changesets requires
+> explicit developer intent (running `npx changeset`) which prevents accidental
+> releases, while release-please and semantic-release depend on commit message
+> conventions that are easy to get wrong in a multi-package repo.
+
 ## 1. npm Workspaces Setup
 
 ### Root `package.json`
@@ -227,6 +233,21 @@ Each package needs its own `.releaserc.json`:
 ### When to Use Alternatives
 **Prefer changesets** for explicit developer-authored changelogs and native monorepo support. **Prefer release-please** for fully automated releases from conventional commits. Use `multi-semantic-release` only if already invested in the semantic-release plugin ecosystem.
 
+### Changesets vs Release-Please for Monorepos
+
+| Aspect | Changesets | Release-Please |
+|---|---|---|
+| **Trigger** | Explicit `npx changeset` files | Conventional commit parsing |
+| **Developer effort** | Must run `npx changeset` per PR | Must follow commit conventions |
+| **Changelog quality** | Hand-written, high quality | Auto-generated from commits |
+| **Cross-package bumps** | Automatic via `fixed`/`linked` config | Manual or grouped PRs |
+| **Monorepo support** | Native, first-class | Config-based (`release-please-config.json`) |
+| **PR flow** | "Version Packages" PR auto-created | Release PR per component or grouped |
+| **OIDC provenance** | Via `NPM_CONFIG_PROVENANCE=true` env | Via `--provenance` flag in publish step |
+| **Ecosystem** | Vercel, Turborepo, Radix, Chakra | Google Cloud SDKs, googleapis |
+| **Risk of accidental release** | Low — requires explicit changeset file | Medium — any `fix:`/`feat:` commit triggers |
+| **Best for** | Teams wanting explicit release control | Teams with strict commit conventions |
+
 ---
 
 ## 5. Turborepo Integration
@@ -398,3 +419,55 @@ Both `npm publish --workspaces` and `changeset publish` skip private packages. A
 ```json
 { "ignore": ["@myorg/internal-docs", "@myorg/playground"] }
 ```
+
+---
+
+## 10. First-Publish Considerations for Monorepo Packages
+
+> **⚠️ Steering (F-11):** Each package in a monorepo must be bootstrapped
+> independently on its first publish. OIDC trusted publishing requires the
+> package to already exist on the registry — so the very first version of each
+> new workspace package needs token-based auth.
+
+### Bootstrap Pattern for New Workspace Packages
+
+When adding a new package to an existing monorepo:
+
+```bash
+# 1. Publish the new package manually with token auth
+cd packages/new-package
+npm publish --access public
+# (uses NPM_TOKEN from environment or .npmrc)
+
+# 2. Subsequent publishes via CI will work with OIDC
+```
+
+### CI Workflow Considerations
+
+Your CI workflow should handle the case where some packages exist on the
+registry and some don't:
+
+```yaml
+- name: Publish with fallback for new packages
+  run: |
+    for pkg in packages/*/; do
+      if npm view "$(node -p "require('./$pkg/package.json').name")" 2>/dev/null; then
+        npm publish --workspace="$pkg" --provenance --access public
+      else
+        echo "First publish for $pkg — requires token auth bootstrap"
+        npm publish --workspace="$pkg" --access public
+      fi
+    done
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+### Per-Package Checklist (New Workspace Package)
+
+- [ ] `package.json` has correct `name`, `version`, `repository.url` (with `directory` field)
+- [ ] `publishConfig.access` is `"public"` for scoped packages
+- [ ] `publishConfig.provenance` is `true`
+- [ ] `files` field includes only intended files
+- [ ] Package is NOT in changesets `ignore` list
+- [ ] First version has been bootstrapped with token auth
+- [ ] `npm pack --dry-run` shows expected contents

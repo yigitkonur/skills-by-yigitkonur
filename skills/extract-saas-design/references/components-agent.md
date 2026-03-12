@@ -128,6 +128,30 @@ Before you start extracting, internalize these failure modes. They are the most 
 
 ---
 
+
+---
+
+## Modern SaaS Stack Patterns
+
+Identify the UI component library before extracting:
+
+| Library | Detection | Variant System |
+|---------|-----------|----------------|
+| **shadcn/ui** | `components/ui/` dir + `@/lib/utils` imports | CVA (`cva()`) + `cn()` |
+| **Radix Primitives** | `@radix-ui/react-*` in package.json | `data-[state=*]` attributes |
+| **MUI** | `@mui/material` in package.json | `sx` prop, `styled()`, theme overrides |
+| **Ant Design** | `antd` in package.json | CSS vars `--ant-*`, `ConfigProvider` |
+
+### Documenting Third-Party Components
+
+| Library | What to Document | Detection |
+|---------|-----------------|-----------|
+| **Recharts** | Chart container, tooltip, legend, axis styling, `--color-*` vars | `recharts` in package.json |
+| **cmdk** | Command palette: input, list, group, item, empty state, keyboard hints | `cmdk` in package.json |
+| **Vaul** | Drawer: handle bar, snap points, backdrop, slide animation | `vaul` in package.json |
+| **Sonner** | Toast: position, auto-dismiss, variants, close button | `sonner` in package.json |
+| **TanStack Table** | Column defs, sorting, filtering, pagination, row selection | `@tanstack/react-table` in package.json |
+
 ## Mega-Component Protocol
 
 Components with 5+ sub-parts require special documentation depth:

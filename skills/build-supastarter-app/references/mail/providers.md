@@ -28,3 +28,4 @@ Like payments and storage, the mail package exports one active provider through 
 - `references/mail/send-email.md` — Public API that delegates to providers
 - `references/setup/environment-setup.md` — Mail-related environment variables
 - `references/mail/template-rendering.md` — Provider-independent rendering step
+- `references/mail/email-templates.md` — Template inventory

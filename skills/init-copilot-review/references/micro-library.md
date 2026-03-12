@@ -939,3 +939,93 @@ applyTo: "**/store/**/*.{ts,tsx}"
 - Batch related state updates to prevent unnecessary re-renders
 - Clean up subscriptions when components unmount
 ````
+
+
+---
+
+## How to Use This Library
+
+This micro-library is a **pattern reference**, not a copy-paste source. Follow these rules:
+
+### When to consult this file
+
+- You have already completed Steps 1–3 of the SKILL.md workflow (grounding, architecture, rule selection)
+- You need a starter pattern for a specific scope (e.g., "what do Go review rules typically look like?")
+- You want to check whether you have missed a category of rules for your chosen scope
+
+### When NOT to consult this file
+
+- You have not yet grounded on the target repository (do Steps 1–3 first)
+- You are looking for a complete solution (use `scenarios.md` for full-stack examples)
+- You want to copy a template verbatim (never do this — always adapt)
+
+### Adaptation checklist
+
+Before using any pattern from this library, apply this checklist:
+
+| # | Check | Action |
+|---|---|---|
+| 1 | Change all code references | Replace generic function names, types, imports with the target repo's actual code |
+| 2 | Remove inapplicable rules | If the repo does not use a pattern mentioned in the template, remove that rule |
+| 3 | Add repo-specific rules | Add rules for patterns unique to the target repo that the template does not cover |
+| 4 | Verify against linter config | Remove any rule that the repo's linter already enforces |
+| 5 | Check SMSA quality | Every rule must be Specific, Measurable, Actionable, and Semantic |
+| 6 | Verify character count | Run `wc -m` to confirm under 4,000 characters |
+
+> **Warning:** The most common mistake is copying a template, changing only the `applyTo` frontmatter, and presenting it as repo-specific. This produces generic review comments that provide little value. Every rule must cite specific repo evidence.
+
+---
+
+## Go Patterns (Enhanced)
+
+The Go language section above covers basic error handling and concurrency. For Go repositories with more complex patterns, add these rules based on the specific repo's conventions:
+
+### Table-driven test patterns
+
+Many Go projects use table-driven tests. If the repo uses this pattern, add:
+
+```markdown
+## Test Quality
+
+- Table-driven tests must include both success and error cases
+- Each test case must have a descriptive name field, not just "test1", "test2"
+- Test helper functions that call t.Fatal must be marked with t.Helper()
+- Subtests (t.Run) must use the table case name for clear failure output
+```
+
+### Custom error types
+
+If the Go repo defines custom error types (e.g., `ApiError`, `ValidationError`):
+
+```markdown
+## Error Handling
+
+- Use the project's custom error types (e.g., ApiError) instead of generic errors.New()
+- Error messages must include context: wrap with fmt.Errorf("operation: %w", err)
+- Check error types with errors.Is() or errors.As(), not string comparison
+```
+
+### Goroutine safety
+
+If the repo has goroutine management patterns (e.g., `routine.FireAndForget()`, custom worker pools):
+
+```markdown
+## Concurrency
+
+- Use the project's goroutine wrapper (e.g., routine.FireAndForget) instead of bare go func()
+- Goroutines must have panic recovery — bare go func() without recover is a crash risk
+- Shared state must be protected with sync.Mutex or accessed through channels
+- Context must be propagated to all goroutines for cancellation support
+```
+
+### Dangerous parameter patterns
+
+Some Go projects use naming conventions to mark security-sensitive parameters (e.g., `dangerous*` prefix for raw SQL):
+
+```markdown
+## Security
+
+- Parameters prefixed with dangerous (e.g., dangerousRawSQL) bypass validation — flag any new usage for manual review
+- Raw SQL queries must only use parameterized placeholders, never string concatenation
+- User input must be validated before reaching any dangerous* parameter
+```

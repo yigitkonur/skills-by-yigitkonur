@@ -2,6 +2,8 @@
 
 Zero-secret npm publishing using GitHub Actions' built-in OIDC identity. The most secure method for public packages.
 
+> **⚠️ Steering (F-07):** OIDC means **zero secrets** — no `NPM_TOKEN`, no `NODE_AUTH_TOKEN`, no secrets of any kind. If your workflow has `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` in an `env:` block, **you are NOT using OIDC** — you are using token-based auth. See `granular-tokens.md` for that approach. A common mistake is copying a workflow from `release-please.md` or similar templates that use `NODE_AUTH_TOKEN` and assuming OIDC is active. OIDC authentication is handled entirely by the `id-token: write` permission — the npm CLI obtains a token from the GitHub Actions runtime automatically.
+
 ---
 
 ## How OIDC trusted publishing works
@@ -24,11 +26,14 @@ The result: a published package with a cryptographic provenance attestation link
 
 ### Prerequisites
 
+> **⚠️ Steering (F-12):** The GitHub repository must exist before you configure any auth. Create and push the repo first, then set up publishing.
+
 - npm CLI >= 9.5.0 (ships with Node.js >= 18.x)
 - GitHub-hosted runner (self-hosted runners cannot mint OIDC tokens)
 - Package must be public (private packages require npm Enterprise for OIDC)
 - npm account linked to the package scope (required for first publish only)
 - `package.json` `repository` field matching the GitHub repo URL exactly
+- **The package must already exist on npm** — see [First Publish Bootstrap](#first-publish-bootstrap-greenfield-packages) below
 
 ### Step 1 — Configure package.json
 
@@ -50,6 +55,8 @@ The result: a published package with a cryptographic provenance attestation link
 **Critical**: The `repository.url` must exactly match your GitHub repository URL, including casing. A mismatch like `YourOrg` vs `yourorg` will cause provenance verification to fail.
 
 ### Step 2 — Create the workflow file
+
+> **⚠️ Steering (F-17):** The template below uses `@v4` action tags for readability. For production workflows, **pin actions to full commit SHAs** instead of tags. Tags are mutable — a compromised tag can inject malicious code. Find the SHA on the action's releases page (e.g., `actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11` instead of `actions/checkout@v4`).
 
 Create `.github/workflows/publish.yml`:
 
@@ -87,7 +94,23 @@ jobs:
       - run: npm publish --provenance --access public
 ```
 
-### Step 3 — Verify before first publish
+> **⚠️ Steering (F-07):** Notice there is **no `env: NODE_AUTH_TOKEN`** anywhere in this workflow. That is correct. If you see `NODE_AUTH_TOKEN` or `NPM_TOKEN` in an OIDC workflow, something is wrong — remove it and rely on `id-token: write` instead.
+
+### Step 3 — Link your npm package to GitHub Actions
+
+> **⚠️ Steering (F-08):** This step is required and often missed. Without it, npm will reject OIDC-authenticated publishes with a `403 Forbidden`.
+
+1. Go to **`https://npmjs.com/package/<your-package-name>/access`** (replace `<your-package-name>` with your actual package name, e.g., `https://npmjs.com/package/@yourorg/your-package/access`)
+2. Scroll to **Publishing access**
+3. Click **Add GitHub Actions**
+4. Enter your GitHub repository owner and name (e.g., `yourorg/your-package`)
+5. Select the workflow file name (e.g., `publish.yml`)
+6. Optionally restrict to a specific branch or environment
+7. Click **Add**
+
+For scoped packages, the URL follows the pattern: `https://npmjs.com/package/@scope/name/access`
+
+### Step 4 — Verify before first publish
 
 ```bash
 # Check npm CLI version (must be >= 9.5.0)
@@ -100,11 +123,55 @@ cat package.json | jq '.repository'
 npm pack --dry-run
 ```
 
-### Step 4 — Create a GitHub Release
+### Step 5 — Create a GitHub Release
 
 ```bash
 gh release create v1.0.0 --title "v1.0.0" --notes "Initial release"
 ```
+
+---
+
+## First Publish Bootstrap (Greenfield Packages)
+
+> **⚠️ Steering (F-11, P0):** OIDC trusted publishing has a **chicken-and-egg problem**: you must link your npm package to GitHub Actions, but you can only link a package that **already exists on npm**. If you try to publish a brand-new package via OIDC, you will get a `404 Not Found` error because the package doesn't exist yet and therefore can't have OIDC configured.
+
+### Bootstrap steps for a new package
+
+1. **Create a granular access token** on npmjs.com:
+   - Go to npmjs.com → Profile → **Access Tokens** → **Generate New Token** → **Granular Access Token**
+   - Set expiry to 7 days (you only need it once)
+   - Scope it to your organization or leave broad (temporary)
+   - Set permissions to **Read and Write**
+
+2. **Add it as a GitHub Secret** (or use it locally):
+   ```bash
+   # Option A: Store as repo secret for CI bootstrap
+   gh secret set NPM_TOKEN --body "npm_YOUR_TOKEN_HERE" --repo yourorg/your-package
+
+   # Option B: Set locally for manual publish
+   export NODE_AUTH_TOKEN="npm_YOUR_TOKEN_HERE"
+   ```
+
+3. **Publish the package manually** to create it on npm:
+   ```bash
+   npm publish --access public
+   ```
+
+4. **Configure OIDC linking** on npmjs.com:
+   - Go to `https://npmjs.com/package/<your-package-name>/access`
+   - Under **Publishing access**, click **Add GitHub Actions**
+   - Enter your repository details and workflow file name
+
+5. **Remove the token and switch to OIDC**:
+   ```bash
+   # Delete the GitHub Secret — it's no longer needed
+   gh secret delete NPM_TOKEN --repo yourorg/your-package
+
+   # Delete the granular token on npmjs.com → Access Tokens
+   ```
+   Now use the OIDC workflow from [Step 2](#step-2--create-the-workflow-file) for all future publishes.
+
+> **⚠️ Steering:** After bootstrap, verify OIDC works by creating a pre-release: `gh release create v1.0.1-beta.1 --prerelease`. Check the Actions tab to confirm it publishes without any token secrets.
 
 ---
 
@@ -286,13 +353,16 @@ The attestation is cryptographically signed, recorded in an append-only log, lin
 |---|---|---|
 | `ERR_SOCKET_TIMEOUT` connecting to Fulcio | Missing `id-token: write` permission | Add `permissions: { id-token: write }` to the workflow or job |
 | `401 Unauthorized` from Sigstore/Fulcio | Wrong OIDC audience claim | Ensure `registry-url: 'https://registry.npmjs.org'` is set in `actions/setup-node` |
-| `403 Forbidden` from npm registry | Branch/ref not authorized or scope not linked | Verify publishing branch. Ensure npm account owns the package scope. |
+| `403 Forbidden` from npm registry | Branch/ref not authorized or scope not linked | Verify publishing branch. Ensure npm account owns the package scope. Check OIDC linking at `npmjs.com/package/<pkg>/access`. |
 | `EOTP` (OTP required) | Workflow not using OIDC correctly | Check `id-token: write` is set and no `NODE_AUTH_TOKEN` is overriding OIDC |
 | Empty `materials` in provenance | Missing `contents: read` permission | Add `permissions: { contents: read }` |
 | Provenance verification fails on npmjs.com | `repository.url` mismatch | Fix URL to exactly match GitHub repo (case-sensitive). Republish. |
-| `404 Not Found` on first publish | Package/scope not linked to npm account | Run `npm publish` manually once to create the package, then switch to OIDC |
+| **`404 Not Found` on first publish** | **Package doesn't exist on npm yet — OIDC can't work until the package is created** | **Follow [First Publish Bootstrap](#first-publish-bootstrap-greenfield-packages) above. You MUST publish once with a token before OIDC can be configured.** |
 | Token expired mid-publish | Large package or slow network | Ensure `npm ci` and `npm test` run before publish step, not in the same `run` block |
 | `ENEEDAUTH` | Missing `registry-url` in `setup-node` | Add `registry-url: 'https://registry.npmjs.org'` |
+| `NODE_AUTH_TOKEN` present in OIDC workflow | Copied from token-based template — conflicts with OIDC | Remove all `NODE_AUTH_TOKEN` and `NPM_TOKEN` references. OIDC needs only `id-token: write`. |
+
+> **⚠️ Steering (F-07):** If you see `EOTP` or `401` errors and your workflow has `NODE_AUTH_TOKEN`, the token may be overriding OIDC. Remove `NODE_AUTH_TOKEN` entirely — OIDC and token auth are mutually exclusive in a publish step.
 
 ### Debugging steps
 

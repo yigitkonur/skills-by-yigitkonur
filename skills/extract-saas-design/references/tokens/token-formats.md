@@ -172,6 +172,45 @@ The most common token format in web codebases:
 
 ---
 
+
+---
+
+## oklch Token Format
+
+Modern design systems (shadcn/ui 2024+) use oklch for perceptually uniform colors:
+
+```css
+:root {
+  --background: oklch(1 0 0);                    /* pure white */
+  --foreground: oklch(0.145 0 0);                /* near-black */
+  --primary: oklch(0.205 0.006 285.885);         /* very dark blue-gray */
+  --destructive: oklch(0.577 0.245 27.325);      /* vivid red */
+}
+```
+
+### Reading oklch values at a glance
+
+| Lightness (L) | Meaning |
+|----------------|---------|
+| 0.0-0.2 | Very dark (near-black) |
+| 0.2-0.5 | Dark |
+| 0.5-0.7 | Mid-tone |
+| 0.7-0.9 | Light |
+| 0.9-1.0 | Very light (near-white) |
+
+| Chroma (C) | Meaning |
+|------------|---------|
+| 0.000 | Pure gray |
+| 0.001-0.01 | Near-gray |
+| 0.01-0.1 | Tinted |
+| 0.1-0.4 | Saturated |
+
+```bash
+# Count oklch vs hsl usage
+grep -rc 'oklch(' --include="*.css" src/ . 2>/dev/null
+grep -rc 'hsl(' --include="*.css" src/ . 2>/dev/null
+```
+
 ## Tailwind CSS Token Format
 
 Tokens defined in `tailwind.config.ts`:

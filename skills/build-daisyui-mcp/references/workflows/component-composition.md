@@ -761,3 +761,80 @@ Layout (drawer/navbar)
                  └── Interactive (button, input, toggle)
                       └── Feedback (badge, alert, loading)
 ```
+
+
+## Steering experiences — learned from real agent usage
+
+### Stat grid layout
+
+**Problem:** Agent uses flexbox for stat grids, causing uneven column widths when stat values have different lengths.
+
+**Fix:** Always use CSS grid for stat/metric grids:
+
+```html
+<!-- ✅ Correct: CSS grid for even columns -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Revenue</div>
+    <div class="stat-value text-primary">$12.4K</div>
+  </div>
+  <!-- more stats... -->
+</div>
+
+<!-- ❌ Wrong: flexbox causes uneven widths -->
+<div class="flex flex-wrap gap-4">
+  <div class="stat flex-1"><!-- width depends on content --></div>
+</div>
+```
+
+### Composition order matters
+
+**Problem:** Agent builds detail components (modals, tooltips, badges) before the page shell exists, then struggles to integrate them.
+
+**Fix:** Follow outside-in order strictly:
+1. Page shell (template or layout) — establishes the grid/flex container
+2. Navigation (navbar, sidebar/drawer, breadcrumbs) — defines the content area
+3. Main content blocks (hero, stat grids, card grids, tables) — fills the content area
+4. Detail components (badges, tooltips, modals, toasts) — adds polish
+
+### Placeholder pattern for incremental builds
+
+When building a complex page, use placeholder containers to mark sections before filling them:
+
+```html
+<!-- Step 1: Shell with placeholders -->
+<div class="drawer lg:drawer-open">
+  <input id="sidebar" type="checkbox" class="drawer-toggle" />
+  <div class="drawer-content">
+    <div class="navbar bg-base-100"><!-- TODO: navbar content --></div>
+    <main class="p-6">
+      <div class="grid grid-cols-4 gap-4"><!-- TODO: stat cards --></div>
+      <div class="mt-6"><!-- TODO: data table --></div>
+    </main>
+  </div>
+  <div class="drawer-side"><!-- TODO: sidebar menu --></div>
+</div>
+
+<!-- Step 2: Fill each placeholder one at a time -->
+```
+
+### MCP batching for composition
+
+When composing a full page, you typically need 8-15 component types. Split MCP fetches by composition phase:
+
+```
+Phase 1 fetch: layout shell + navigation (~4 items)
+  → template/layout + navbar + drawer + menu
+
+Phase 2 fetch: main content components (~4 items)
+  → card + stat + table + badge
+
+Phase 3 fetch (if needed): detail components (~3 items)
+  → modal + tooltip + toast
+```
+
+### Theme-first for branded pages
+
+**Problem:** Agent builds the entire page with placeholder colors, then tries to apply a theme afterward, requiring a full rewrite of color classes.
+
+**Fix:** If the page has brand colors, generate the theme FIRST (using `references/workflows/theme-generation.md`), then compose the page using semantic colors from the start. This avoids the color-rewrite pass entirely.

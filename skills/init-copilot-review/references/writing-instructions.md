@@ -440,3 +440,105 @@ Add 2-3 rules per iteration. This lets you attribute changes in review quality t
 
 ### Step 5: Monitor over time
 Review comments across 10+ PRs before declaring instructions "stable." Copilot is non-deterministic — single-PR results are not reliable.
+
+
+---
+
+## SMSA Quality Checklist
+
+Use this checklist to evaluate every rule before including it in an instruction file. A rule must pass all four criteria.
+
+### Specific
+
+The rule names the exact pattern, function, or construct it applies to.
+
+| Pass | Fail |
+|---|---|
+| Flag any `useEffect` that calls a fetch function without AbortController cleanup | Avoid side effects in components |
+| When a Prisma `findMany` lacks a `take` or `where` clause, flag it as an unbounded query | Be careful with database queries |
+| If a Go function returns an error, the caller must check it before proceeding | Handle errors properly |
+
+### Measurable
+
+Copilot can decide yes or no for each diff hunk without subjective judgment.
+
+| Pass | Fail |
+|---|---|
+| Functions must not exceed 50 lines | Keep functions short |
+| Every API endpoint must validate input with a Zod schema | Validate inputs |
+| Test files must use `describe`/`it` blocks, not standalone `test()` calls | Write good tests |
+
+### Actionable
+
+The rule tells the reviewer what to do when the pattern is found.
+
+| Pass | Fail |
+|---|---|
+| Flag as a security issue: any SQL query built with string concatenation | SQL injection is bad |
+| Suggest wrapping with `ErrorBoundary` when a client component has no error handling | Components should handle errors |
+
+### Semantic
+
+The rule addresses architecture, security, correctness, or logic — not formatting or style.
+
+| Pass | Fail |
+|---|---|
+| When a route handler accesses user data, verify the request includes authentication middleware | Use auth middleware |
+| Never store secrets in environment variables prefixed with `NEXT_PUBLIC_` | Keep secrets safe |
+| Flag any `console.log` left in production code paths | Use consistent logging (linter territory — drop this) |
+| Use 2-space indentation | Formatting rule, not semantic (linter territory — drop this) |
+
+---
+
+## Recurring Theme Discovery Recipe
+
+To find recurring review themes in a repository, use this systematic approach rather than guessing:
+
+### Where to look
+
+1. **Recent PRs** (most valuable): Look at the last 10–20 merged PRs for reviewer comments that repeat
+2. **Open issues**: Search for labels like `bug`, `security`, `performance`, or `tech-debt`
+3. **Code comments**: grep for `TODO`, `FIXME`, `HACK`, `XXX` for known pain points
+4. **CONTRIBUTING.md**: Teams often document conventions they want enforced
+5. **CI failures**: Repeated test failures or lint issues point to common mistakes
+
+### Shell recipe for theme discovery
+
+```bash
+# Find TODO/FIXME/HACK comments as pain point signals
+grep -rn "TODO\|FIXME\|HACK\|XXX" src/ --include="*.ts" | head -30
+
+# Find error handling patterns (or lack thereof)
+grep -rn "catch" src/ --include="*.ts" | head -20
+
+# Find security-sensitive patterns
+grep -rn "dangerouslySetInnerHTML\|eval(\|innerHTML" src/ --include="*.ts" | head -10
+```
+
+### When to stop
+
+You have found enough themes when you can list 5–10 concrete patterns that a reviewer should flag. If you cannot find 5 after checking all sources above, the repository may not need many custom rules — keep the instruction set small.
+
+---
+
+## Concept Overlap vs Rule Duplication
+
+Two instruction files may reference the same concept (e.g., error handling, authentication) without being duplicates. Use this test:
+
+### It is additive overlap (acceptable)
+
+- Root file says: "Always return structured error responses with a code, message, and optional details field"
+- API file says: "Use the `ApiError` class from `src/errors.ts` for all API route error responses, with HTTP status codes matching the error type"
+- These are complementary: the root sets the principle, the scoped file specifies the implementation
+
+### It is duplication (fix it)
+
+- Root file says: "Always validate request input with Zod schemas"
+- API file says: "Validate all API inputs with Zod schemas before processing"
+- These say the same thing. Keep it in whichever file has the narrower scope and remove from the other.
+
+### It is a contradiction (fix immediately)
+
+- Root file says: "Use try-catch for all async operations"
+- Utility file says: "Prefer Result types over try-catch for error propagation"
+- These conflict. Narrow the scopes so they do not overlap, or align the guidance.

@@ -291,3 +291,73 @@ Weak results: Assembly, Fortran, niche languages
 □ Test PR opened and Copilot review requested
 □ Review comments verified against instruction rules
 ```
+
+
+---
+
+## Working with Existing Instruction Files
+
+When a repository already has copilot instruction files, follow this evaluation workflow before making changes:
+
+### Step 1: Inventory existing files
+
+```bash
+find .github -name "*.instructions.md" -o -name "copilot-instructions.md" | sort
+```
+
+### Step 2: Evaluate each file
+
+For each existing instruction file, check:
+
+| Check | Pass | Fail |
+|---|---|---|
+| File is under 4,000 characters | wc -m shows < 4,000 | File is truncated; split or trim |
+| Frontmatter is valid YAML | First line is --- with quoted applyTo | Missing or malformed frontmatter |
+| Rules pass SMSA (see writing-instructions.md) | Each rule is specific, measurable, actionable, semantic | Vague slogans, linter duplicates, or narrative prose |
+| No linter-duplicated rules | grep linter configs returns nothing for rule name | Rule is already enforced by a linter |
+| applyTo matches intended files | find with pattern returns expected files | Glob is too broad, too narrow, or broken |
+| No contradictions with other files | Manual review of overlapping scopes | Same topic, conflicting advice |
+
+### Step 3: Decide action
+
+- **Refine in place** (default): Fix specific issues found in Step 2. This preserves the team's intent and editorial voice.
+- **Recreate**: Only when the file architecture is fundamentally wrong (e.g., everything in one file, scopes misaligned with repo structure). Document why you are recreating.
+
+### Common mistakes when evaluating existing files
+
+| Mistake | Why it is wrong | Fix |
+|---|---|---|
+| Discarding all existing files | Loses team intent and domain knowledge | Evaluate first, refine in place |
+| Keeping linter-duplicated rules | Wastes character budget | Grep linter configs and remove duplicates |
+| Ignoring frontmatter errors | Silent scope failures | Validate YAML frontmatter for every scoped file |
+| Not checking character count | Truncated content is silently ignored | Always measure with wc -m |
+
+---
+
+## Character Count: Bytes vs Characters
+
+The 4,000-character limit is measured in **characters**, not bytes.
+
+- wc -c counts **bytes**. For ASCII-only files, bytes equal characters.
+- wc -m counts **characters**. For files with multi-byte UTF-8 content (emoji, CJK characters, accented letters), use wc -m.
+- **When in doubt, use wc -m** as it is always correct.
+
+```bash
+# Quick check for both
+wc -c -m .github/copilot-instructions.md
+# If byte count and char count differ, the file has multi-byte characters
+```
+
+---
+
+## Base Branch Deployment Warning
+
+Instruction file changes take effect only when they are on the **base branch** of a PR (typically main or develop).
+
+**This means:** If you add instruction files on a feature branch, they will NOT affect the review of that same PR. You must:
+
+1. Merge the instruction file changes to the base branch first
+2. Then open a new PR (or push a new commit to trigger re-review)
+3. Or use a two-PR strategy: PR 1 adds instructions (merge first), PR 2 is the actual code change
+
+> **Common pitfall:** An agent creates perfect instruction files on a feature branch, the user opens a PR, and wonders why Copilot review ignores them. The answer is always: the instructions are not on the base branch yet.

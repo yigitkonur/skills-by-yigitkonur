@@ -32,6 +32,35 @@ grep -rn 'next/font\|@next/font' --include="*.ts" --include="*.tsx" src/
 
 ---
 
+
+### Tailwind v4 Font Configuration
+
+In Tailwind v4, fonts are configured in `@theme` blocks, not `tailwind.config.js`:
+
+```bash
+grep -A 10 '@theme' --include="*.css" src/ . | grep -i 'font'
+```
+
+### Next.js Font Optimization
+
+Next.js projects use `next/font` for optimized font loading:
+
+```bash
+grep -rn 'from.*next/font' --include="*.ts" --include="*.tsx" src/ app/
+```
+
+Document: font name, CSS variable name (`--font-sans`), subsets loaded, where the variable is applied.
+
+### Font Smoothing
+
+Check for antialiased rendering (common in dashboards):
+
+```bash
+grep -rn 'antialiased' --include="*.css" --include="*.tsx" src/ app/
+```
+
+---
+
 ## Step 2: Size Scale
 
 ### Extract All Font Sizes

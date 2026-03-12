@@ -199,3 +199,8 @@ name: old-skill
 description: "[DEPRECATED] Use new-skill instead. This skill is no longer maintained."
 ---
 ```
+
+
+---
+
+> **Steering tip:** Under-triggering and over-triggering require different fixes. Check `references/iteration/troubleshooting.md` for diagnostic steps before adjusting the description.

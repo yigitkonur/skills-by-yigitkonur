@@ -403,3 +403,102 @@ Use `join` to combine inputs with buttons or other elements:
 | Missing `w-full` on inputs | v5 inputs have a default width of 20rem — add `w-full` for full-width |
 | Wrapping radio/checkbox in `form-control` | Use `<fieldset>` or flex layout directly |
 | Using JavaScript for validation display | `validator` + `validator-hint` is CSS-only |
+
+
+## Steering experiences — learned from real agent usage
+
+### JSX conversion table
+
+When producing forms for React/Next.js, apply these conversions:
+
+| HTML | JSX (React/Next.js) | Notes |
+|---|---|---|
+| `class="input"` | `className="input"` | All class attributes |
+| `for="email"` | `htmlFor="email"` | Label associations |
+| `tabindex="0"` | `tabIndex={0}` | Camelcase + numeric value |
+| `<input type="text">` | `<input type="text" />` | Self-closing |
+| `<textarea></textarea>` | `<textarea />` or `<textarea></textarea>` | Both valid in JSX |
+| `onchange="..."` | `onChange={handler}` | Event handlers camelCase |
+| `readonly` | `readOnly` | Boolean attributes camelCase |
+| `maxlength="100"` | `maxLength={100}` | Numeric attributes |
+| `autocomplete="off"` | `autoComplete="off"` | Camelcase |
+
+### v5 fieldset migration for forms
+
+daisyUI v5 replaces `form-control` with `fieldset`:
+
+```html
+<!-- ❌ v4 form pattern (deprecated) -->
+<div class="form-control">
+  <label class="label">
+    <span class="label-text">Email</span>
+  </label>
+  <input type="email" class="input input-bordered" />
+  <label class="label">
+    <span class="label-text-alt">Required</span>
+  </label>
+</div>
+
+<!-- ✅ v5 form pattern -->
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">Email</legend>
+  <input type="email" class="input" placeholder="you@example.com" />
+  <p class="fieldset-label">Required</p>
+</fieldset>
+```
+
+Key differences:
+- `form-control` → `fieldset` (HTML `<fieldset>` element)
+- `label > .label-text` → `<legend class="fieldset-legend">`
+- `label > .label-text-alt` → `<p class="fieldset-label">`
+- `input-bordered` → removed (default border style in v5)
+- `input-group` → use `join` component instead
+
+### Validator patterns in v5
+
+daisyUI v5 has built-in validator support:
+
+```html
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">Password</legend>
+  <input
+    type="password"
+    class="input validator"
+    required
+    minlength="8"
+    pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).+"
+    title="Must include uppercase, lowercase, and number"
+  />
+  <p class="validator-hint">
+    Must be at least 8 characters with uppercase, lowercase, and number
+  </p>
+</fieldset>
+```
+
+The `validator` class activates browser-native validation styling. The `validator-hint` shows on invalid state.
+
+### Multi-step forms
+
+For multi-step form wizards, use daisyUI `steps` + tab-like content switching:
+
+```html
+<!-- Progress indicator -->
+<ul class="steps w-full mb-8">
+  <li class="step step-primary">Account</li>
+  <li class="step step-primary">Profile</li>
+  <li class="step">Review</li>
+</ul>
+
+<!-- Form sections (show/hide with JS state) -->
+<div class="card bg-base-100 card-border">
+  <div class="card-body">
+    <!-- Step 1: Account fields -->
+    <!-- Step 2: Profile fields -->
+    <!-- Step 3: Review -->
+  </div>
+  <div class="card-actions justify-between p-6">
+    <button class="btn btn-ghost">Back</button>
+    <button class="btn btn-primary">Continue</button>
+  </div>
+</div>
+```

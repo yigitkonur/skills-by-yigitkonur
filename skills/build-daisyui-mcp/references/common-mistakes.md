@@ -476,8 +476,8 @@ Using deprecated v4 patterns instead of current v5 syntax.
 <!-- v5 inputs have borders by default -->
 <input class="input" />
 
-<!-- v5 tab-lift (not tab-lifted) -->
-<div class="tabs tab-lift">...</div>
+<!-- v5 tabs-lift (not tab-lifted or tab-lift) -->
+<div class="tabs tabs-lift">...</div>
 
 <!-- v5 card-border (not bordered) -->
 <div class="card card-border">...</div>
@@ -493,7 +493,7 @@ Using deprecated v4 patterns instead of current v5 syntax.
 | `input-bordered` | `input` | Borders are default in v5 |
 | `select-bordered` | `select` | Borders are default in v5 |
 | `textarea-bordered` | `textarea` | Borders are default in v5 |
-| `tab-lifted` | `tab-lift` | Renamed |
+| `tab-lifted` | `tabs-lift` | Renamed |
 | `bordered` (on card) | `card-border` | Renamed |
 | HSL theme colors | oklch theme colors | Format change |
 | `tailwind.config.js` themes | `@plugin "daisyui"` in CSS | Configuration moved to CSS |
@@ -507,3 +507,148 @@ Using deprecated v4 patterns instead of current v5 syntax.
 `is-drawer-open:`, `is-drawer-close:`, `user-invalid:`
 
 **How to prevent:** If you're unsure about a class name, fetch the component reference. v4 class names won't appear in the v5 reference.
+
+
+## Steering experiences — learned from real agent usage
+
+### MCP batch overflow
+
+**Problem:** Fetching 10+ component-examples in one call returns 15–26 KB of HTML, flooding context and causing the agent to lose track of the composition task.
+
+**Fix:** Cap each `daisyui-blueprint-daisyUI-Snippets` call at ~8 items. If you need more, split across two calls. Prioritize the most complex components first (drawers, navbars, tables) and fetch simple ones (badges, dividers) only if class names are uncertain.
+
+```jsonc
+// ❌ Too many — will overflow context
+{
+  "component-examples": {
+    "navbar.responsive-...": true,
+    "drawer.responsive-...": true,
+    "card.card": true,
+    "table.table-with-visual-elements": true,
+    "stat.stat": true,
+    "badge.badge": true,
+    "avatar.avatar": true,
+    "footer.footer-with-copyright-text": true,
+    "menu.menu-with-icons": true,
+    "breadcrumbs.breadcrumbs": true
+  }
+}
+
+// ✅ Split into two focused calls
+// Call 1: complex layout components
+{
+  "component-examples": {
+    "navbar.responsive-...": true,
+    "drawer.responsive-...": true,
+    "table.table-with-visual-elements": true,
+    "card.card": true
+  }
+}
+// Call 2: simpler components (only if needed)
+{
+  "component-examples": {
+    "stat.stat": true,
+    "footer.footer-with-copyright-text": true
+  }
+}
+```
+
+### Framework conversion omission
+
+**Problem:** Agent produces raw HTML (`class`, `for`, `tabindex`) when the target is React/Next.js, causing JSX compilation errors.
+
+**Fix:** Before writing any markup, check the target framework and apply these conversions:
+
+| HTML attribute | React/Next.js | Vue | Svelte |
+|---|---|---|---|
+| `class` | `className` | `:class` (dynamic) | `class` (same) |
+| `for` | `htmlFor` | `for` (same) | `for` (same) |
+| `tabindex` | `tabIndex` | `tabindex` (same) | `tabindex` (same) |
+| `<img>` | `<img />` (self-close) | `<img />` | `<img />` |
+| `<input>` | `<input />` (self-close) | `<input />` | `<input />` |
+| `onclick` | `onClick` | `@click` | `on:click` |
+| `style="color: red"` | `style={{ color: 'red' }}` | `:style` | `style="color: red"` |
+
+### Non-daisyUI elements treated as daisyUI
+
+**Problem:** Agent tries to build charts, maps, or code editors using daisyUI components, resulting in broken or meaningless markup.
+
+**Fix:** Identify elements that have no daisyUI equivalent:
+
+- Charts and graphs → use Chart.js, Recharts, or similar
+- Maps → use Leaflet, Mapbox, or Google Maps
+- Code editors → use Monaco, CodeMirror
+- Video/audio players → use native HTML5 or a player library
+- Rich text editors → use Tiptap, Quill, or similar
+
+Wrap these in a daisyUI container for consistent styling:
+
+```html
+<!-- ✅ Correct: chart in a card wrapper -->
+<div class="card bg-base-100 card-border">
+  <div class="card-body">
+    <h2 class="card-title">Revenue</h2>
+    <!-- TODO: integrate Recharts/Chart.js here -->
+    <div class="h-64 w-full bg-base-200 rounded-lg flex items-center justify-center text-base-content/50">
+      Chart placeholder
+    </div>
+  </div>
+</div>
+
+<!-- ❌ Wrong: trying to fake a chart with daisyUI -->
+<div class="stats shadow">
+  <div class="stat"><!-- this is not a chart --></div>
+</div>
+```
+
+### Drawer toggle structure
+
+**Problem:** Agent nests the drawer checkbox inside the content area, breaking the toggle mechanism. The checkbox must be a sibling of `.drawer-side`, not a descendant of `.drawer-content`.
+
+```html
+<!-- ✅ Correct structure -->
+<div class="drawer lg:drawer-open">
+  <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+  <div class="drawer-content">
+    <!-- page content here -->
+    <label for="my-drawer" class="btn btn-ghost drawer-button lg:hidden">☰</label>
+  </div>
+  <div class="drawer-side">
+    <label for="my-drawer" class="drawer-overlay"></label>
+    <ul class="menu bg-base-200 min-h-full w-80 p-4">
+      <li><a>Menu item</a></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ❌ Wrong: checkbox nested inside drawer-content -->
+<div class="drawer">
+  <div class="drawer-content">
+    <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+    <!-- broken: toggle won't work -->
+  </div>
+</div>
+```
+
+### Routing confusion — multiple workflow matches
+
+**Problem:** A request like "build a dashboard from this Figma file with forms" matches three routing rows (Figma, full page, forms). The agent stalls deciding which workflow to follow.
+
+**Fix:** The routing table uses "first match wins" priority. Walk top-to-bottom and stop at the first match:
+1. Figma URL present → Figma workflow is primary
+2. After Figma extraction, load secondary references: `component-composition.md` for page assembly, `form-patterns.md` for form sections
+
+### The `dark:` trap
+
+**Problem:** Agent uses `dark:bg-base-300` or `dark:text-primary` on themed surfaces. daisyUI themes already handle dark mode by swapping the entire color palette, so `dark:` on semantic colors creates conflicts.
+
+```css
+/* ❌ Wrong — conflicts with theme switching */
+<div class="bg-base-100 dark:bg-base-300 text-base-content dark:text-gray-100">
+
+/* ✅ Correct — semantic colors auto-adapt */
+<div class="bg-base-100 text-base-content">
+
+/* ✅ OK — dark: on non-theme custom utilities */
+<div class="shadow-md dark:shadow-lg border dark:border-gray-700">
+```

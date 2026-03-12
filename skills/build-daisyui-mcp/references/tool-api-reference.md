@@ -1,5 +1,56 @@
 # Tool API Reference
 
+
+## Quick reference — batch limits and syntax (read first)
+
+### Batch size limits
+
+| Call type | Max items | Why |
+|---|---|---|
+| `components` | ~8 per call | Reference data is compact (~500 bytes each) |
+| `component-examples` | ~6 per call | HTML examples are 1–4 KB each; 6 items ≈ 10 KB |
+| `layouts` / `templates` | 1–2 per call | Full page markup; single items can be 3–5 KB |
+| `themes` | 1–3 per call | CSS config blocks |
+| Mixed categories | ~8 total items | Count across all categories |
+
+### Syntax quick guide
+
+```jsonc
+// ✅ Always use nested objects
+{ "components": { "button": true, "card": true } }
+
+// ✅ Mix categories in one call
+{
+  "components": { "navbar": true },
+  "component-examples": { "navbar.responsive-dropdown-menu-on-small-screen-center-menu-on-large-screen": true }
+}
+
+// ❌ NEVER use arrays — fails silently
+{ "components": ["button", "card"] }
+{ "snippets": ["components/button"] }
+```
+
+### Category decision tree
+
+```
+Need to look up valid classes/parts/modifiers?
+  → components
+
+Need working copy-paste HTML for a specific pattern?
+  → component-examples
+
+Need a page shell or starting point?
+  → Is it a full page (login, dashboard)? → templates
+  → Is it just a layout structure? → layouts
+
+Need theme CSS variables or color reference?
+  → themes
+
+Have a Figma URL?
+  → daisyui-blueprint-Figma-to-daisyUI (then follow with snippets)
+```
+
+
 > **Definitive reference** for both daisyUI Blueprint MCP tools — parameters, syntax, every available key, output formats, calling patterns, and cross-tool workflows.
 >
 > See also: `references/component-catalog.md` for component class details.

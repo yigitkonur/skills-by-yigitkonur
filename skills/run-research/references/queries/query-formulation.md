@@ -274,3 +274,19 @@ More specific:        "PostgreSQL GIN index JSONB query performance"
 ## Key Insight
 
 Query formulation is a skill, not a template. The templates in this guide are starting points — adapt them to your specific context. The single most impactful habit: before writing a query, ask yourself "What kind of page would answer my question?" then write the query that would find that page. If you'd find the answer on Stack Overflow, use exact error messages. If you'd find it in official docs, use `site:` operators. If you'd find it on Reddit, search for experiences and opinions.
+
+## Steering notes from production testing
+
+### Good vs bad diversity
+
+**Bad (paraphrased):** "best websocket library node" / "top websocket library nodejs" / "websocket library recommendation"
+
+**Good (diverse angles):** `"Socket.io vs Pusher vs Ably 2025"` / `site:github.com websocket issues` / `"switched from socket.io" regret` / `websocket scaling 10000 connections`
+
+### Error message as #1 bug query
+
+Exact error in quotes: `"ERR_HTTP_HEADERS_SENT" fastify v5 2025` -- most effective pattern in testing.
+
+### Niche topic strategy
+
+Sparse coverage? (1) Broaden to parent concept, (2) `site:github.com` for Issues, (3) try adjacent subreddits, (4) `site:docs.[vendor].com`
