@@ -1,5 +1,7 @@
 # Logging & Tracing — CrabNebula DevTools
 
+> ⚠️ **Steering:** This is the most commonly needed reference during debugging. Key rule: NEVER use `println!()` for debugging in Tauri apps. `println!()` output goes to stdout and is INVISIBLE to DevTools. Always use `tracing::info!()`, `tracing::debug!()`, etc. In derailment testing, agents used `println!()` and then concluded their code wasn't executing because no output appeared in DevTools.
+
 ## How DevTools Captures Logs
 
 DevTools registers a `tracing` subscriber that intercepts all spans and events. Three types of log sources exist:
@@ -33,6 +35,8 @@ tracing::event!(tracing::Level::INFO, "Message at info level");
 ## RUST_LOG Environment Variable
 
 ### How RUST_LOG Affects DevTools
+
+> ⚠️ **Steering:** When debugging, use targeted `RUST_LOG` filters. `RUST_LOG=debug` enables ALL debug output including noisy dependencies like `hyper`, `tonic`, `h2`. Instead, use: `RUST_LOG=warn,my_app=debug,tauri=info`. This shows your app's debug logs while suppressing dependency noise.
 
 `RUST_LOG` acts as a pre-filter at the subscriber level. Events filtered out by `RUST_LOG` are never created, never transmitted to DevTools, and cannot be recovered.
 
@@ -93,6 +97,8 @@ async fn fetch_user(user_id: i64) -> Result<User, Error> {
 
 ### Manual Span Creation (Async)
 
+> ⚠️ **Steering:** For inline code that isn't in a separate function, use manual spans instead of trying to extract a function: `let _span = tracing::info_span!("process_item", item_id = %id).entered();`. The underscore prefix is critical — without it, the span is immediately dropped and records zero duration.
+
 ```rust
 use tracing::{info_span, Instrument};
 
@@ -150,6 +156,8 @@ logging system was already initialized")
 ```
 
 ### The Solution: split() Pattern
+
+> ⚠️ **Steering:** If your project uses `tauri-plugin-log`, you MUST use the `split()/attach_logger()` pattern (Pattern 2 in installation-and-config.md). Agents in testing tried to: (a) remove tauri-plugin-log (broke existing features), (b) initialize both independently (got PluginInitialization error), (c) use a custom subscriber bridge (unnecessary complexity). The split pattern is the only supported approach.
 
 ```rust
 tauri::Builder::default()
@@ -227,3 +235,17 @@ Use target filtering to isolate logs from specific modules or crates.
 ```
 
 DevTools manages its own subscriber. You cannot call `set_global_default()` when DevTools is active — only one global default is allowed.
+
+## Dependency Checklist
+
+Before adding any tracing instrumentation, verify these dependencies in `Cargo.toml`:
+
+| What you're doing | Required in Cargo.toml |
+|---|---|
+| Basic tracing events (`info!`, `debug!`, etc.) | `tracing = "0.1"` |
+| `#[tracing::instrument]` attribute | `tracing = "0.1"` |
+| `.instrument()` on async blocks | `tracing = "0.1"` + `use tracing::Instrument;` in code |
+| Custom subscriber layers | `tracing-subscriber = "0.3"` |
+| Log crate bridging | `tracing-log = "0.2"` (usually handled by DevTools) |
+
+> ⚠️ **Steering:** Missing the `tracing` dependency was the #2 most common agent error in derailment testing (after skipping DevTools installation check). Always verify before instrumenting.

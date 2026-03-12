@@ -20,3 +20,4 @@
 - `references/setup/next-config.md` — Content Collections plugin wiring
 - `references/marketing/pages.md` — Layout that wraps public content
 - `references/routing/routing-marketing.md` — Marketing route structure
+- `references/marketing/home-page-components.md` — Main landing-page sections

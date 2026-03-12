@@ -306,3 +306,14 @@ When reviewing caching changes:
 | Sequential requests (parallelizable) | 🟢 Suggestion | Unless latency-critical |
 
 **Calibration rule:** Only flag performance issues that are measurably impactful at current or near-future scale. "This could theoretically be slow" is not actionable. "This query scans 100k rows without an index" is actionable.
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Performance findings without realistic scale context are noise.** "This could be slow with large data" is not actionable. "This O(n^2) loop processes user-submitted arrays; with the documented 10K-item limit, this would take ~100ms on typical hardware" is actionable.
+2. **N+1 queries are the most common and most impactful performance bug in PRs.** In any PR that adds database access inside a loop or map/forEach, check for batch alternatives (e.g., `WHERE id IN (...)` instead of per-item queries).
+3. **Do not flag performance in code that runs once at startup or during deployment.** Initialization code, migration scripts, and build-time operations are not hot paths. Focus performance review on request-handling code.
+4. **Memory leak findings require evidence of retention.** Saying "this might leak" is speculation. Show: (a) what is allocated, (b) what reference prevents garbage collection, (c) under what usage pattern the retention grows unbounded.
+
+> **Cross-reference:** See `references/review-dimensions.md` dimension 5 (Performance) for the priority-ordered checklist of performance concerns.

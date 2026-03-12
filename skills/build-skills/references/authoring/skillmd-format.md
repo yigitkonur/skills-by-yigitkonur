@@ -285,3 +285,8 @@ export function UserCard({ name, email }: UserCardProps) {
   );
 }
 ```
+
+
+---
+
+> **Steering tip:** When this file's guidance conflicts with a downloaded skill's structure, this file wins. Downloaded skills are evidence, not templates. See `references/steering/derailment-lessons.md` Trap 4 for details.

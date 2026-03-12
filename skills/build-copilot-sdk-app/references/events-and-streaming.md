@@ -64,8 +64,11 @@ session.on("assistant.message", (event) => {
 
 session.on("session.idle", () => {
   console.log("--- turn complete ---");
+  idleResolve(); // defined by waitForIdle() below
 });
 ```
+
+> **Cleanup.** In single-run scripts, call `await session.disconnect(); await client.stop();` after the final `await idle`. In multi-turn REPLs, disconnect only when the user exits.
 
 ### Streaming pattern with waitForIdle
 
@@ -92,6 +95,24 @@ await idle;
 idle = waitForIdle();
 await session.send({ prompt: "Follow up" });
 await idle;
+```
+
+### Parallel tool calls
+
+When the model invokes multiple tools simultaneously, `tool.execution_start` and `tool.execution_complete` events interleave. Use `toolCallId` to correlate start/complete pairs:
+
+```typescript
+const activeTools = new Map<string, string>(); // toolCallId → toolName
+
+session.on("tool.execution_start", (event) => {
+  activeTools.set(event.data.toolCallId, event.data.toolName);
+  console.log(`Started [${activeTools.size} active]: ${event.data.toolName}`);
+});
+
+session.on("tool.execution_complete", (event) => {
+  activeTools.delete(event.data.toolCallId);
+  console.log(`Completed: ${event.data.toolCallId} (${activeTools.size} still active)`);
+});
 ```
 
 ## All event types by category
@@ -277,3 +298,13 @@ session.on("session.shutdown", (event) => {
   }
 });
 ```
+
+## Steering notes
+
+> Learned from real-world testing — common mistakes agents make with streaming.
+
+- **Register handlers before `send()`**. Handlers attached after `send()` may miss early events like the first `assistant.message_delta`.
+- **`deltaContent` is always defined** on `assistant.message_delta` events. No need for null checks.
+- **`session.idle` fires once per turn** — after all tool calls complete and the final assistant message is sent. It does NOT fire between individual tool calls.
+- **Parallel tools**: When the model invokes multiple tools at once, events for different tools interleave. Use `toolCallId` from the event data to correlate `tool.execution_start` with its `tool.execution_complete`.
+- **The wildcard handler fires for EVERY event** including internal ones. Filter by `event.type` when using it.

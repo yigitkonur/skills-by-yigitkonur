@@ -81,6 +81,52 @@ Read this before finalizing any Greptile configuration output.
 
 ---
 
+## Agent Steering — Common Execution Mistakes
+
+These are mistakes that AI agents commonly make when executing the init-greptile-review skill. Each entry describes the mistake, why it happens, and how to avoid it.
+
+### Mistake 1: Dumping 20+ generic rules
+**What happens:** Agent generates a long list of "best practice" rules copied from general coding guidelines, not tied to the specific repository.
+**Why:** The agent treats rule generation as a brainstorming exercise instead of an evidence-based process.
+**Prevention:** Every rule must reference a specific file path, library, or pattern observed in the repository. If you can't point to concrete evidence, don't write the rule.
+
+### Mistake 2: Duplicating linter coverage
+**What happens:** Rules like "use semicolons", "prefer const", "no console.log" that ESLint/Prettier already handle.
+**Why:** The agent doesn't check what linters exist before writing rules.
+**Prevention:** In Phase 1, inventory all linters/formatters. In Phase 4, for each rule ask: "Could ESLint/Pylint/RuboCop catch this?" If yes, delete the rule.
+
+### Mistake 3: Unscoped rules firing on everything
+**What happens:** Rules with `scope: ["**/*.ts"]` that fire on config files, test files, scripts, and everything else.
+**Why:** The agent defaults to broad globs instead of targeting the specific directories where the rule matters.
+**Prevention:** Every rule scope should target specific directories (e.g., `src/api/**/*.ts`), not the entire repo.
+
+### Mistake 4: Forgetting the output format
+**What happens:** Agent outputs raw JSON without the file tree, reasoning annotations, or canary test.
+**Why:** Phase 6 output requirements are easy to skip under pressure to "just ship the config."
+**Prevention:** Use the output checklist: file tree → file contents → reasoning annotations → canary rule → migration notes. If any is missing, you're not done.
+
+### Mistake 5: Using array format for ignorePatterns
+**What happens:** `"ignorePatterns": ["dist/**", "node_modules/**"]` — silently fails.
+**Why:** Most config systems use arrays. Greptile's ignorePatterns is a newline-separated string.
+**Prevention:** Always use `"ignorePatterns": "dist/**\nnode_modules/**"` (string with `\n`).
+
+### Mistake 6: Setting strictness:1 globally
+**What happens:** Agent sets the strictest level repo-wide, creating excessive noise on every PR.
+**Why:** Agent assumes "stricter is better" without considering the signal-to-noise tradeoff.
+**Prevention:** Use `strictness: 2` as default. Only use `1` for security/payments/compliance paths. Use `3` for internal tools.
+
+### Mistake 7: Including READMEs and changelogs in files.json
+**What happens:** Context files include `README.md` and `CHANGELOG.md` which provide no actionable review context.
+**Why:** Agent treats any markdown file as a potential context file.
+**Prevention:** Context files must provide information needed to validate correctness (schemas, API specs, architecture docs). READMEs describe the project; they don't help review code changes.
+
+### Mistake 8: Skipping the canary test
+**What happens:** Config is deployed but never verified. Silent failures go unnoticed.
+**Why:** Canary testing seems optional or tedious.
+**Prevention:** Always include a canary rule in the output. Explain to the user: add canary → open test PR → verify → remove canary.
+
+---
+
 ## Troubleshooting Chain
 
 When rules are not being applied, reason through this sequence:
@@ -146,3 +192,41 @@ Dashboard → Custom Context → Rules tab → "Last Applied" column.
 
 ### Step 4 — Remove canary rule
 Once verified, remove the canary rule to avoid noise.
+
+---
+
+## Preflight Checklist
+
+Run through this checklist before delivering any Greptile configuration:
+
+### JSON validity
+- [ ] `python3 -m json.tool .greptile/config.json` passes
+- [ ] No comments in JSON (invalid syntax, causes silent ignore)
+- [ ] No trailing commas (invalid JSON)
+
+### Format correctness  
+- [ ] Every `scope` is an array of strings: `["src/**"]`
+- [ ] `ignorePatterns` is a newline-separated string: `"dist/**\nnode_modules/**"`
+- [ ] `strictness` is exactly 1, 2, or 3
+- [ ] `commentTypes` only contains `"logic"`, `"syntax"`, `"style"`, `"info"`
+- [ ] `patternRepositories` uses `org/repo` format, never full URLs
+
+### Rule quality
+- [ ] 5-10 rules maximum (start lean)
+- [ ] Every rule is tied to specific repo evidence (file paths, libraries, patterns)
+- [ ] No rule duplicates what a linter can catch
+- [ ] Every rule has a `scope` array targeting relevant directories
+- [ ] Every disableable rule has a unique `id`
+- [ ] Rules tell the developer what TO DO, not just what to avoid
+
+### Context files
+- [ ] Every `files.json` path points to a file that actually exists
+- [ ] Context files are scoped to relevant directories
+- [ ] No READMEs, changelogs, or generic docs in context files
+
+### Output completeness
+- [ ] File tree showing `.greptile/` structure
+- [ ] Complete file contents for every generated file
+- [ ] Reasoning annotations tied to repo evidence
+- [ ] Canary test rule included
+- [ ] Migration notes (if replacing greptile.json)

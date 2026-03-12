@@ -175,3 +175,11 @@ keywords = ["property based testing patterns round trip invariant oracle",
   3. **Oracle**: compare with trusted reference implementation
   4. **Metamorphic**: related inputs produce related outputs
   5. **Idempotent**: applying operation twice equals applying once
+
+## Steering notes
+
+1. **Weight 6+ month experience** over new-project enthusiasm in framework comparisons.
+2. **GitHub for real configs:** `site:github.com jest.config` or `vitest.config`.
+3. **r/ExperiencedDevs** for senior testing philosophy.
+4. **"What not to test"** is valuable: `"over-testing"`, `"test maintenance burden"`.
+5. **Chaos/contract/mutation testing:** research these for resilience, API contracts, and test quality assessment.

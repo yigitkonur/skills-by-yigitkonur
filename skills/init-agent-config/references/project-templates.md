@@ -470,84 +470,6 @@ Django application with [DRF / HTMX / GraphQL].
 
 ---
 
-## 9. Library / Open-Source Package
-
-### AGENTS.md
-
-```markdown
-# Package Name
-
-Brief description of the package/library.
-
-## Commands
-- Test: `npm test`
-- Lint: `npm run lint`
-- Build: `npm run build` (if applicable — omit if source ships directly)
-
-## Structure
-- `src/` or `lib/` — Library source
-- `test/` or `tests/` — Test suites
-- `index.js` or `src/index.ts` — Entry point
-
-## Conventions
-- Key coding conventions specific to the project
-- Module format: CommonJS / ESM / dual
-- Language: JavaScript / TypeScript
-
-## Testing
-- Test framework and assertion library
-- Special test configurations or environment setup
-
-## Dependencies
-- Package manager: npm / yarn / pnpm
-- Node.js version requirement
-- Lock file policy (present or disabled)
-
-## Boundaries
-- Always: Run tests before committing
-- Always: Run linter before committing
-- Ask: Before adding or upgrading production dependencies
-- Ask: Before changing minimum supported Node.js version
-- Never: Break public API without a major version bump
-- Never: Modify test infrastructure without understanding impact
-```
-
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-
-## Claude-Specific
-- This is an open-source package — changes must maintain backward compatibility
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Package Name
-
-Brief description.
-
-## Stack
-- Language: JavaScript / TypeScript
-- Runtime: Node.js [version]+
-- Test framework: [Mocha/Jest/Vitest]
-
-## Commands
-- Test: `npm test`
-- Lint: `npm run lint`
-
-## Conventions
-- Module format and key coding patterns
-- Backward compatibility requirements
-
-## Publishing
-- Published to npm / PyPI / crates.io
-- Release process: [manual / CI-automated]
-```
-
----
-
 ## Monorepo with Path-Scoped Rules (Claude Code)
 
 For monorepos using Claude Code's `.claude/rules/` for per-package instructions:
@@ -580,12 +502,160 @@ project/
 
 ---
 
+## 9. Library / OSS Package
+
+Use this for published libraries, SDKs, or open-source packages. Language-agnostic -- replace `[placeholders]` with your actual values.
+
+### AGENTS.md
+
+```markdown
+# [Package Name]
+
+[One-line description of what this package does.]
+
+## Commands
+- Install: `[install command]`
+- Test: `[test command]`
+- Lint: `[lint command]`
+- Build: `[build command]`
+- Publish: `[publish command]` (maintainers only)
+
+## Architecture
+- Source: `[src/lib directory]`
+- Tests: `[test directory]`
+- Public API surface: `[entry point file]`
+
+## Conventions
+- [Key convention 1 -- e.g., "All exports must be named, no default exports"]
+- [Key convention 2 -- e.g., "Every public function needs a JSDoc/docstring"]
+- [Key convention 3 -- e.g., "Semver strictly -- breaking changes require major bump"]
+
+## Boundaries
+- Always: Run full test suite before opening a PR
+- Always: Update CHANGELOG for user-facing changes
+- Never: Add runtime dependencies without maintainer approval
+- Never: Change public API signatures without a deprecation path
+- Ask: Before adding a new dependency
+```
+
+### CLAUDE.md (Thin Wrapper)
+
+```markdown
+@AGENTS.md
+
+## Claude-Specific
+<!-- Only add the next line if .claude/rules/ exists or you are creating rule files -->
+- See `.claude/rules/` for path-scoped rules
+```
+
+### CLAUDE.md (Standalone)
+
+```markdown
+# [Package Name]
+
+[One-line description.]
+
+## Stack
+- Language: [language and version]
+- Build: [build tool]
+- Test: [test framework]
+- Package manager: [manager]
+
+## Commands
+- Test: `[test command]`
+- Build: `[build command]`
+- Lint: `[lint command]`
+
+## Conventions
+- [Convention 1]
+- [Convention 2]
+
+## Boundaries
+- Always: Run tests before committing
+- Never: Publish without CI green
+```
+
+---
+
+## 10. CLI Tool
+
+Use this for command-line applications, developer tools, or scripts.
+
+### AGENTS.md
+
+```markdown
+# [CLI Name]
+
+[One-line description -- what the CLI does and who uses it.]
+
+## Commands
+- Dev: `[run command]`
+- Test: `[test command]`
+- Build: `[build command]`
+- Install locally: `[local install command]`
+
+## Architecture
+- Entry point: `[main file or bin/]`
+- Commands: `[commands directory]`
+- Config parsing: `[config module]`
+- Output formatting: `[output module]`
+
+## Conventions
+- [Key convention 1 -- e.g., "All CLI output goes through the formatter module"]
+- [Key convention 2 -- e.g., "Exit codes: 0=success, 1=user error, 2=internal error"]
+- [Key convention 3 -- e.g., "Flags use --kebab-case, env vars use UPPER_SNAKE"]
+
+## Boundaries
+- Always: Test with --help and common subcommands before committing
+- Always: Handle stdin/stdout/stderr correctly -- never mix output and errors
+- Never: Add interactive prompts without a --yes/--no-input flag
+- Ask: Before adding a new subcommand
+```
+
+### CLAUDE.md (Thin Wrapper)
+
+```markdown
+@AGENTS.md
+
+## Claude-Specific
+- When testing CLI changes, run the binary directly, not through a test harness
+```
+
+---
+
+## Go Thin Wrapper Example
+
+For Go projects using the dual-file pattern:
+
+```markdown
+@AGENTS.md
+
+## Claude-Specific
+- Run `go vet ./...` before committing
+- Use `go test -race ./...` for concurrency tests
+```
+
+## Rust Thin Wrapper Example
+
+For Rust projects using the dual-file pattern:
+
+```markdown
+@AGENTS.md
+
+## Claude-Specific
+- Run `cargo clippy -- -D warnings` before committing
+- Use `cargo test` for all tests, `cargo test --doc` for doc tests
+```
+
+---
+
 ## Customization Notes
 
-- **Strip sections** you don't need — shorter is better
+- **Strip sections** you don't need -- shorter is better
 - **Merge sections** if the project is simple enough
 - **Add sections** for project-specific concerns (Database, Deployment, API Design)
 - **Boundaries** should reflect real project risks, not hypothetical ones
 - **Commands** must be verified against actual project config
-- **Package manager** — templates show npm/pnpm/yarn as placeholders; use whatever the project actually uses
 - **Thin wrappers** are preferred when the team uses multiple agents
+- **Canonical thin wrapper:** Step 3 of SKILL.md is the authoritative thin wrapper template. The thin wrappers in this file are project-type customizations -- adapt them, but defer to SKILL.md Step 3 for the base pattern
+- **Language-agnostic templates** (like Library/OSS) use `[placeholders]` -- replace every `[placeholder]` with actual project values

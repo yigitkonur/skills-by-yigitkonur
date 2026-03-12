@@ -35,3 +35,4 @@ Use this split when you need:
 - `references/ai/prompt-helpers.md` — Shared prompt helpers exported from the package
 - `references/setup/environment-setup.md` — `OPENAI_API_KEY` and other environment context
 - `references/api/root-router.md` — AI endpoints are mounted alongside other API modules
+- `references/cheatsheets/env-vars.md` — Environment variable reference

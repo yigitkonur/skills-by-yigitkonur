@@ -2,6 +2,8 @@
 
 > Access control is split between request-time middleware and server-side layout/page redirects. Use this reference when a user is bounced away from `/app`, `/onboarding`, `/new-organization`, or `/choose-plan` and you need to know whether the redirect happened before React rendered or inside the App Router tree.
 
+> ⚠️ **Guard order.** Guards run top-down: auth check → onboarding check → org resolution. A missing guard causes silent redirect loops.
+
 ## Middleware-time checks in `apps/web/proxy.ts`
 
 `apps/web/proxy.ts` runs before route rendering and handles broad routing decisions based on the path, session cookie, and feature flags from `apps/web/config.ts`.

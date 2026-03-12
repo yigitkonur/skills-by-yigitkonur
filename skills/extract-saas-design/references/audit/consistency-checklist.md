@@ -230,6 +230,17 @@ If "mostly, but they'd need to guess at X" → document X.
 
 ---
 
+
+---
+
+## Common Inconsistencies Found in Real Codebases
+
+1. **Hardcoded colors in legacy components** -- Older components use `#f0f0f0` while newer ones use CSS variables.
+2. **Mixed radius values** -- Buttons use `rounded-md` but some cards use `rounded-[7px]` (arbitrary value).
+3. **Inconsistent disabled opacity** -- Some use `opacity-50`, others `opacity-60`, some skip opacity entirely.
+4. **Transition duration mismatches** -- Buttons use `duration-150` but dropdowns use `duration-200`.
+5. **Border strategy conflicts** -- Some use `border border-input` while others rely on `shadow-xs` for depth.
+
 ## Output Checklist
 
 - [ ] Token consistency verified (colors, spacing, typography, radius, shadows)

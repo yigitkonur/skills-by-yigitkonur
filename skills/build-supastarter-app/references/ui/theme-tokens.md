@@ -46,3 +46,4 @@ UI components in `@repo/ui` consume these semantic tokens instead of raw colors,
 - `references/ui/components.md` — Components that consume these tokens
 - `references/setup/next-config.md` — App-level configuration that participates in shared UI behavior
 - `references/setup/config-feature-flags.md` — Theme-related app config flags
+- `references/ui/styling-patterns.md` — Styling conventions

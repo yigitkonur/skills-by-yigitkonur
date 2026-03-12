@@ -70,14 +70,18 @@ Custom file patterns can be added in Settings > Review > Review Rules.
 
 ### Section Weighting
 
-The Bug Catcher treats content near the top of the file with higher priority. Recommended order:
+The Bug Catcher assigns different weight to each section. Place highest-weight sections first.
 
-1. Critical Areas / Security (highest priority — flags these as severe bugs)
-2. Conventions (core rules — flags violations as non-severe bugs)
-3. Performance (medium priority — typically flagged as investigate)
-4. Patterns with code examples (used for pattern matching)
-5. Ignore (noise reduction)
-6. Testing (lower priority — informational flags)
+| Section | Weight | Merge Behavior | Classification |
+|---|---|---|---|
+| **Critical Areas** | Highest | Blocks merge if violated | Severe bug |
+| **Security** | High | Blocks merge if violated | Severe bug |
+| **Code Quality** | Medium | Reported, does not block | Non-severe bug |
+| **Testing** | Medium | Reported, does not block | Non-severe bug |
+| **Conventions** | Low | Reported as advisory | Informational flag |
+| **Performance** | Low | Flag only with evidence | Investigate flag |
+
+Explicit phrasing amplifies weight: "MUST" / "NEVER" → treated as higher severity than "prefer" / "consider".
 
 ### Directory-Scoped REVIEW.md
 
@@ -95,7 +99,24 @@ repo/
 │       └── REVIEW.md            # Frontend: accessibility, performance, component patterns
 ```
 
-Subdirectory REVIEW.md files **complement** the root file — they don't replace it. Devin reads all applicable REVIEW.md files for a given changed file.
+Subdirectory REVIEW.md files are **self-contained** — they replace the root file for their subtree. Devin uses the most specific REVIEW.md that matches a changed file's path.
+
+### Precedence & Merge Behavior
+
+When multiple instruction files exist, Devin resolves them by priority:
+
+| Priority | Source | Scope |
+|---|---|---|
+| 1 (highest) | Scoped `REVIEW.md` | Subtree where it lives |
+| 2 | Root `REVIEW.md` | Entire repo (unless scoped overrides) |
+| 3 | `AGENTS.md` | Separate channel — additive, never conflicts |
+| 4 (lowest) | Linter/IDE rules (`.cursorrules`, etc.) | Background signal only |
+
+**Merge rules:**
+- **Scoped is self-contained** — a subdirectory `REVIEW.md` fully replaces root for files in that subtree. No inheritance, no merging.
+- **Root applies everywhere else** — any file not under a scoped `REVIEW.md` uses root rules.
+- **AGENTS.md is separate** — it feeds behavioral context, not review rules. Never conflicts with `REVIEW.md`.
+- **Conflict resolution** — if two scoped files could apply (nested dirs), the deepest (most specific) wins.
 
 ---
 
@@ -160,6 +181,24 @@ The Bug Catcher organizes findings into:
 
 Explicit phrasing matters: "This MUST be fixed" vs "Consider doing this" affects severity classification.
 
+### How Rules Map to Findings
+
+Rules flow through a pipeline before becoming review comments:
+
+```
+Rule text → Pattern match against diff → Severity assignment → Finding generated
+```
+
+**Good rules** (high signal):
+- Specific: targets a concrete pattern ("Use `zod.parse()` not manual validation")
+- Observable: can be verified from the diff alone
+- Actionable: reviewer knows exactly what to change
+
+**Bad rules** (noise):
+- Vague: "Write clean code" — no observable pattern
+- Unverifiable: "Ensure good performance" — requires runtime data
+- Non-actionable: "Be careful with security" — no specific check
+
 ---
 
 ## Auto-Review Configuration
@@ -220,3 +259,32 @@ The CLI:
 | Add repos for auto-review | Org admins |
 | Enable auto-fix | Org admins |
 | Custom review rule file patterns | Settings > Review |
+
+---
+
+## Error Handling
+
+| Condition | Behavior |
+|---|---|
+| `REVIEW.md` not found | No custom rules applied; built-in checks only |
+| Syntax errors in markdown | Best-effort parsing; malformed sections skipped |
+| File exceeds 300 lines | Still parsed, but may reduce analysis quality |
+| Scoped conflicts with root | Scoped wins for its subtree; root ignored there |
+| References non-existent pattern | Rule applied as-is; no validation of referenced code |
+| Empty section (header, no bullets) | Section skipped silently |
+
+---
+
+## Review Quotas & Limits
+
+To keep reviews focused and avoid context overload:
+
+| Limit | Value |
+|---|---|
+| Max rules per section | 10 |
+| Max total rules | 50 |
+| Max examples per section | 2–3 |
+| Max ignore patterns | 20 |
+| Max `REVIEW.md` length | 300 lines |
+
+Exceeding these limits doesn't cause errors — content is still parsed — but signal quality degrades as volume increases. Prioritize high-weight sections first.

@@ -1,5 +1,7 @@
 # Performance Profiling & Optimization — Tauri DevTools
 
+> ⚠️ **Steering:** Follow this order strictly: IDENTIFY the slow command (Calls tab) → MEASURE baseline duration → LOCATE bottleneck (child spans) → ADD instrumentation if needed → ANALYZE root cause → FIX → VERIFY. Agents in testing jumped from "identify" to "fix" without locating the bottleneck, resulting in optimizations to the wrong code path.
+
 ## Using the Calls Tab for Performance Analysis
 
 The Calls tab is the primary performance analysis tool. Every IPC call shows wall-clock duration with nested span hierarchy.
@@ -113,6 +115,8 @@ async fn download_files(urls: Vec<String>) -> Vec<Result<Vec<u8>, Error>> {
 
 ### 1. Sequential I/O (Should Be Parallel)
 
+> ⚠️ **Steering:** Sequential I/O is the most common anti-pattern (40% of performance issues in testing). Look for: `for item in items { process(item).await; }` — this processes items one at a time. Fix with `futures::future::join_all()` for async or `rayon::par_iter()` for CPU-bound work.
+
 ```
 Calls tab shows:
 +-- sync_data [1250ms]
@@ -142,6 +146,8 @@ async fn download_all(urls: Vec<String>) -> Vec<Result<Bytes, Error>> {
 
 ### 2. Blocking the Async Runtime
 
+> ⚠️ **Steering:** ANY synchronous call >1ms inside an async handler blocks the ENTIRE Tokio runtime. This affects ALL concurrent commands, not just the blocking one. Use `tokio::task::spawn_blocking()` to move sync work off the runtime thread.
+
 ```
 Calls tab shows:
 +-- save_file [3200ms]    ◄── No child spans, single blocking operation
@@ -161,6 +167,8 @@ async fn save_file(path: String, data: Vec<u8>) -> Result<(), String> {
 ```
 
 ### 3. Redundant IPC Calls
+
+> ⚠️ **Steering:** Sort the Calls tab by timestamp to spot burst patterns — the same command called 50+ times in 1 second from an unthrottled frontend handler. This is a FRONTEND fix (debounce/throttle), but DevTools provides the evidence.
 
 ```
 Calls tab shows:
@@ -243,6 +251,8 @@ CrabNebula DevTools is designed for minimal impact:
 The gRPC server runs on a **separate OS thread** — not a Tokio task. It cannot compete with your app's async runtime for CPU time.
 
 ### When DevTools Itself Causes Issues
+
+> ⚠️ **Steering:** DevTools overhead is <1% for typical workloads. If you observe significant slowdown with DevTools enabled, the cause is almost certainly excessive tracing — too many spans at TRACE level in hot loops. Fix with targeted `RUST_LOG` filters, not by removing DevTools.
 
 Rare, but possible with extreme throughput (> 10,000 events/second):
 - The Aggregator buffer may drop events to prevent memory exhaustion

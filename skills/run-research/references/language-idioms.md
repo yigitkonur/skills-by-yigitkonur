@@ -195,3 +195,11 @@ SPECIFIC QUESTIONS:
 - On Reddit, search for the confusion/failure, not the concept
 - For scrape_pages, use pipe-separated targets: "rules | edge cases | limitations"
 - Keep `use_llm=False` for fetch_reddit when code syntax matters (lifetimes, macros, types)
+
+## Steering notes
+
+1. **GitHub > blogs** for idiom research. `site:github.com` finds real usage. Discussions/Issues have nuance.
+2. **Language subreddits:** r/rust, r/golang, r/typescript, r/python have deep expertise.
+3. **Error handling doesn't transfer.** Research target language's idiomatic approach specifically.
+4. **Official style guides** (Effective Go, Rust API Guidelines) > blog posts.
+5. **Authoritative sources:** Go=`site:go.dev`, Rust=`site:doc.rust-lang.org`, TS=`site:typescriptlang.org`.

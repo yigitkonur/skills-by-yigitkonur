@@ -39,3 +39,4 @@ export const getSignedUrl = async (path, { bucket, expiresIn }) => {
 - `references/storage/s3-provider.md` — S3 client initialization and env requirements
 - `references/storage/bucket-config.md` — Logical bucket-name mapping
 - `references/api/payments-organizations-modules.md` — Organization logo upload URL endpoint
+- `references/patterns/direct-upload-s3.md` — Full upload pattern

@@ -235,3 +235,17 @@ FOCUS: Implementation patterns with Express middleware
 - Search for failures/breaches -- they teach better than best practices
 - Specify compliance requirements upfront (HIPAA, SOC2, PCI-DSS)
 - Deploy controls with monitoring first (report-only CSP, alert-only limits) before enforcement
+
+## Steering notes
+
+1. **Extra verification required.** Single blog post could be wrong. Verify against OWASP + framework guide + independent analysis.
+2. **3-source rule strictly.** Official docs + practitioners (Reddit/GitHub) + independent (OWASP).
+3. **Security posts age rapidly.** Add year to all queries.
+4. **r/netsec for practitioner perspectives.**
+5. **Research attack pattern first** before researching defense.
+
+### SSRF, JWT, XXE research
+
+- SSRF: `SSRF prevention [framework]`, `site:owasp.org SSRF`. Key: URL allowlists, metadata blocking.
+- JWT: `JWT algorithm confusion [framework]`, `JWT "alg none"`. Verify: algorithm validated server-side.
+- XXE: `XXE prevention [language]`, `XML parser secure config [language]`.

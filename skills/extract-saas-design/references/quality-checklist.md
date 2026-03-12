@@ -1,4 +1,4 @@
-# Quality Checklist: Is the Extraction Complete?
+# Quality Checklist: Verify Extraction Completeness
 
 Use this checklist to verify that a design soul extraction captured everything needed to recreate the visual identity of a SaaS dashboard.
 
@@ -22,6 +22,17 @@ Before running through the detailed checklist, verify these high-failure-rate it
 - [ ] **_summary.md created** — one-page snapshot of the entire extraction
 - [ ] **Composition patterns** — every component shown in context with at least one other component
 - [ ] **Spacing rhythm WHY** — not just "8px" but "8px = dense/table gap, 16px = button padding"
+
+---
+
+### Steering Notes (Common Agent Failures)
+
+1. **Tailwind v4 missed**: Agent looked for `tailwind.config.js` but the project uses `@theme` blocks in CSS.
+2. **oklch values misread**: Agent treated oklch lightness as hsl lightness. In oklch, L=0.2 is dark; in hsl, L=20% is dark. Different scales.
+3. **CVA variants not extracted**: Agent documented "default" variant and skipped destructive, outline, ghost, secondary.
+4. **cn() class merging ignored**: With `cn()`, later classes override earlier ones via `tailwind-merge`.
+5. **Dark mode only in system.md**: Each component doc needs its own "Dark Mode Differences" table.
+6. **Sidebar tokens missed**: `--sidebar-background`, `--sidebar-foreground`, `--sidebar-ring` are a separate token scope.
 
 ---
 

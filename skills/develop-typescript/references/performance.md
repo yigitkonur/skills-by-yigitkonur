@@ -395,3 +395,72 @@ tsc --watch --preserveWatchOutput
 □ Exclude test files from main tsconfig
 □ Profile with --extendedDiagnostics and --generateTrace
 ```
+
+
+---
+
+## Interpreting `--generateTrace` output
+
+```bash
+# Generate trace
+tsc --generateTrace ./trace-output
+
+# Open in Chrome DevTools
+# 1. Open chrome://tracing
+# 2. Load trace-output/trace.json
+```
+
+### What to look for in the trace
+
+| Hotspot | Symptom | Fix |
+|---|---|---|
+| `checkExpression` taking >100ms | Complex conditional or mapped type | Simplify or pre-compute the type |
+| `structuredTypeRelatedTo` repeated | Deep structural comparison | Add explicit type annotations to break inference chain |
+| `getVariancesWorker` slow | Variance computation on large generic | Add explicit `in`/`out` variance annotations |
+| Many small `resolveModule` calls | Barrel file re-exports | Replace barrel imports with direct file imports |
+
+### Using `@typescript/analyze-trace`
+
+```bash
+npx @typescript/analyze-trace ./trace-output
+```
+
+This tool identifies the most expensive type operations and suggests specific files/lines to optimize.
+
+---
+
+## Third-party package impact on compilation
+
+### Common culprits
+
+| Package pattern | Impact | Mitigation |
+|---|---|---|
+| Large `@types/*` packages | 1-5s added per package | Use `skipLibCheck: true` for dev, full check in CI |
+| Barrel files (`index.ts` re-exports) | Forces TS to load entire package graph | Import from specific subpaths |
+| Overly generic library types | Expensive inference at every call site | Add explicit type annotations at usage |
+| Duplicate `@types` versions | Conflicting declarations, slow resolution | Deduplicate with `npm dedupe` |
+
+### Measuring package impact
+
+```bash
+# Time compilation with and without skipLibCheck
+time npx tsc --noEmit
+time npx tsc --noEmit --skipLibCheck
+
+# The difference is the cost of checking node_modules declarations
+```
+
+---
+
+## Concrete performance benchmarks
+
+These are approximate ranges from real-world projects (actual numbers vary by hardware and project):
+
+| Optimization | Typical improvement |
+|---|---|
+| `skipLibCheck: true` | 1-5s faster on large projects |
+| `incremental: true` | 2-10x faster rebuilds (first build unchanged) |
+| Replace barrel imports with direct imports | 10-30% faster in large monorepos |
+| Add explicit variance annotations | Up to 50% faster for heavy generic usage |
+| `isolatedDeclarations` | Enables parallel `.d.ts` generation |
+| Upgrade from TS 4.x to 5.x | 10-20% faster type checking (improved algorithms) |

@@ -160,3 +160,19 @@
 6. **Use fetch_reddit** (fetch_comments=True, use_llm=False) on 5-10 threads from r/ExperiencedDevs and r/softwarearchitecture.
 7. **Synthesize with a second deep_research pass** if new questions arose. Feed Reddit and scrape_pages findings into a targeted follow-up.
 8. **Build a decision matrix**: rows = criteria from authoritative sources, columns = options. Score using gathered data.
+
+## Steering notes
+
+1. **Start with `deep_research`**, not `search_google`. Architecture needs trade-off synthesis.
+2. **Specific GOAL/WHY/KNOWN/APPLY.** "Should a 4-person team at 500 req/s migrate from Rails monolith?" not "should I use microservices?"
+3. **Reddit reveals operational reality.** Search r/devops, r/microservices, r/softwarearchitecture.
+4. **3-source verification strictly** -- architecture is expensive to reverse.
+5. **Include cost forecasting** in queries.
+
+### Modular monolith
+
+Viable when: team <10, monolith with boundary issues, microservices overhead not justified. Queries: `"modular monolith" vs microservices [language]`.
+
+### Migration sequencing
+
+Strangler Fig (production, no downtime) vs Big Bang (greenfield, small) vs Branch by Abstraction (shared codebase, gradual).

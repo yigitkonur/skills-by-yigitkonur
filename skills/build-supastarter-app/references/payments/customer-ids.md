@@ -2,6 +2,8 @@
 
 > Documents how payment-provider customer IDs are persisted on users or organizations. Consult this when a portal link or checkout flow cannot find a customer, or when changing whether billing attaches to users or organizations.
 
+> ⚠️ **Customer ID scope.** Customer IDs are tied to either User or Organization based on `billingAttachedTo`. Changing this after launch requires data migration.
+
 ## Key files
 
 - `packages/payments/lib/customer.ts`

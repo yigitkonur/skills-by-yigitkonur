@@ -225,3 +225,33 @@ FOCUS: Diagnostic methodology, not generic advice""",
 ## Key Insight
 
 deep_research is your synthesis tool. It excels when the question has multiple dimensions, conflicting sources, or requires reasoning about trade-offs. The structured template isn't optional polish — it's the difference between a generic textbook answer and a specific, actionable analysis tailored to your situation. Always attach code when the question involves your codebase.
+
+## Steering notes from production testing
+
+### KNOWN field is the single biggest quality lever
+
+**Bad:** `KNOWN: I need to choose a WebSocket library.`
+
+**Good:** `KNOWN: Comparing Socket.io (14.2M npm downloads), Pusher ($49/mo starter), Ably (99.999% SLA). Next.js 15 App Router, Vercel hosting (serverless). Socket.io needs dedicated server (conflicts with serverless). Reddit reports Pusher rate limits at scale.`
+
+### Hallucination risk areas
+
+Verify these against scraped official docs: version numbers, pricing tiers, API signatures, deprecation status, performance benchmarks.
+
+### Output structure
+
+Typical sections: CURRENT STATE, KEY INSIGHTS, TRADE-OFFS, PRACTICAL IMPLICATIONS, WHAT'S CHANGING, Next Steps (tool suggestion -- follow skill workflow instead).
+
+### Question count guidance
+
+32K token budget split across questions. 1-2 focused questions with rich KNOWN produce better results than 5+ scattered questions.
+
+### File attachment by task type
+
+| Task type | Attach | Why |
+|---|---|---|
+| Bug fix | Error source file, stack trace, config | Code-specific diagnosis |
+| Library choice | `package.json`, framework config | Stack constraints |
+| Architecture | Design docs, deployment config | Constraint context |
+| Performance | Profiler output, benchmark code | Targeted analysis |
+| Security | Auth middleware, route handlers | Attack surface |

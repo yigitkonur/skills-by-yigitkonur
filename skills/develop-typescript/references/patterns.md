@@ -672,3 +672,165 @@ type Methods<T> = Pick<T, MethodKeys<T>>;
 type UserMethods = Methods<UserService>;
 // Only the method signatures, no properties
 ```
+
+
+---
+
+> **Cross-reference:** For retry/timeout patterns with error handling, see also [error-handling.md](error-handling.md) → "Retry and timeout patterns" section.
+
+## Pattern 18 — Typed middleware/interceptor chain
+
+Use when building HTTP clients, API routers, or plugin systems with typed middleware.
+
+```typescript
+type Middleware<TContext> = (
+  context: TContext,
+  next: () => Promise<TContext>,
+) => Promise<TContext>;
+
+function compose<TContext>(...middlewares: Middleware<TContext>[]): Middleware<TContext> {
+  return async (context, next) => {
+    let index = -1;
+
+    async function dispatch(i: number): Promise<TContext> {
+      if (i <= index) throw new Error("next() called multiple times");
+      index = i;
+
+      const fn = i === middlewares.length ? next : middlewares[i];
+      return fn(context, () => dispatch(i + 1));
+    }
+
+    return dispatch(0);
+  };
+}
+
+// Usage
+interface RequestContext {
+  url: string;
+  headers: Record<string, string>;
+  startTime?: number;
+}
+
+const timing: Middleware<RequestContext> = async (ctx, next) => {
+  ctx.startTime = Date.now();
+  const result = await next();
+  console.log(`${ctx.url} took ${Date.now() - ctx.startTime}ms`);
+  return result;
+};
+
+const auth: Middleware<RequestContext> = async (ctx, next) => {
+  ctx.headers["Authorization"] = `Bearer ${getToken()}`;
+  return next();
+};
+
+const pipeline = compose(timing, auth);
+```
+
+---
+
+## Pattern 19 — Type-safe factory function
+
+Use when creating instances of related types based on a discriminant, with full type narrowing.
+
+```typescript
+interface Circle {
+  kind: "circle";
+  radius: number;
+}
+
+interface Rectangle {
+  kind: "rectangle";
+  width: number;
+  height: number;
+}
+
+interface Triangle {
+  kind: "triangle";
+  base: number;
+  height: number;
+}
+
+type Shape = Circle | Rectangle | Triangle;
+
+type ShapeConfig = {
+  circle: { radius: number };
+  rectangle: { width: number; height: number };
+  triangle: { base: number; height: number };
+};
+
+function createShape<K extends keyof ShapeConfig>(
+  kind: K,
+  config: ShapeConfig[K],
+): Extract<Shape, { kind: K }> {
+  return { kind, ...config } as Extract<Shape, { kind: K }>;
+}
+
+// Fully typed — autocomplete works for config based on kind
+const circle = createShape("circle", { radius: 5 });
+//    ^? const circle: Circle
+const rect = createShape("rectangle", { width: 10, height: 20 });
+//    ^? const rect: Rectangle
+```
+
+---
+
+## Pattern 20 — Retry with exponential backoff
+
+Use for network requests, database operations, or any operation that may transiently fail.
+
+```typescript
+interface RetryOptions {
+  maxAttempts: number;
+  baseDelay: number;
+  maxDelay: number;
+  shouldRetry?: (error: unknown) => boolean;
+}
+
+const DEFAULT_RETRY: RetryOptions = {
+  maxAttempts: 3,
+  baseDelay: 1000,
+  maxDelay: 30_000,
+  shouldRetry: () => true,
+};
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: Partial<RetryOptions> = {},
+): Promise<T> {
+  const opts = { ...DEFAULT_RETRY, ...options };
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === opts.maxAttempts) break;
+      if (!opts.shouldRetry!(error)) break;
+
+      const delay = Math.min(
+        opts.baseDelay * Math.pow(2, attempt - 1),
+        opts.maxDelay,
+      );
+      const jitter = delay * (0.5 + Math.random() * 0.5);
+      await new Promise((resolve) => setTimeout(resolve, jitter));
+    }
+  }
+
+  throw lastError;
+}
+
+// Usage
+const data = await withRetry(
+  () => fetch("https://api.example.com/data").then((r) => r.json()),
+  {
+    maxAttempts: 3,
+    baseDelay: 1000,
+    shouldRetry: (error) => {
+      if (error instanceof Response) return error.status >= 500;
+      return true;
+    },
+  },
+);
+```

@@ -13,64 +13,90 @@ Build applications powered by GitHub Copilot using the `@github/copilot-sdk` Typ
 What do you need?
 │
 ├── New app from scratch
-│   ├── Install & basic example ──────────► Quick start (below)
-│   ├── Client options & transport ───────► references/client-and-transport.md
-│   └── Authentication ──────────────────► references/auth-and-byok.md
+│   ├── Install & basic example ──────────► Quick start (below) — npm init, ESM setup, first prompt
+│   ├── Client options & transport ───────► references/client-and-transport.md — stdio vs TCP, CopilotClient config
+│   └── Authentication ──────────────────► references/auth-and-byok.md — OAuth, tokens, BYOK with 5 providers
 │
 ├── Sessions
-│   ├── Create / resume / disconnect ────► references/sessions.md
-│   ├── Infinite sessions & compaction ──► references/sessions.md
-│   └── Persistence & resumption ────────► references/sessions.md
+│   ├── Create / resume / disconnect ────► references/sessions.md — lifecycle, create-or-resume pattern
+│   ├── Infinite sessions & compaction ──► references/sessions.md — long conversations, context window mgmt
+│   └── Persistence & resumption ────────► references/sessions.md — disk persistence, resumeSession semantics
 │
 ├── Messages & streaming
-│   ├── send / sendAndWait ──────────────► Quick start (below)
-│   ├── Streaming deltas ────────────────► references/events-and-streaming.md
-│   └── All 47 event types ─────────────► references/events-and-streaming.md
+│   ├── send / sendAndWait ──────────────► Quick start (below) — blocking vs fire-and-forget
+│   ├── Streaming deltas ────────────────► references/events-and-streaming.md — incremental content delivery
+│   └── All 47 event types ─────────────► references/events-and-streaming.md — full event catalog
 │
 ├── Custom tools
-│   ├── defineTool with Zod ─────────────► references/tools-and-schemas.md
-│   ├── JSON Schema tools ──────────────► references/tools-and-schemas.md
-│   └── Override built-in tools ────────► references/tools-and-schemas.md
+│   ├── defineTool with Zod ─────────────► references/tools-and-schemas.md — Zod schema, handler, auto-JSON-Schema
+│   ├── JSON Schema tools ──────────────► references/tools-and-schemas.md — raw schema without Zod
+│   └── Override built-in tools ────────► references/tools-and-schemas.md — replace default Copilot tools
 │
 ├── Permissions & user input
-│   ├── Permission handler ─────────────► references/permissions-and-user-input.md
-│   ├── askUser / onUserInputRequest ───► references/permissions-and-user-input.md
-│   └── Elicitation (MCP forms) ────────► references/permissions-and-user-input.md
+│   ├── Permission handler ─────────────► references/permissions-and-user-input.md — approveAll or custom logic
+│   ├── askUser / onUserInputRequest ───► references/permissions-and-user-input.md — programmatic user prompts
+│   └── Elicitation (MCP forms) ────────► references/permissions-and-user-input.md — structured input via MCP
 │
 ├── Hooks (lifecycle interceptors)
-│   ├── Pre/post tool use ──────────────► references/hooks.md
-│   ├── Prompt modification ────────────► references/hooks.md
-│   └── Session lifecycle & errors ─────► references/hooks.md
+│   ├── Pre/post tool use ──────────────► references/hooks.md — intercept tool calls, modify args/results
+│   ├── Prompt modification ────────────► references/hooks.md — rewrite prompts before send
+│   └── Session lifecycle & errors ─────► references/hooks.md — onError, onSessionStart, void return OK
 │
 ├── Agents, MCP & skills
-│   ├── Custom agents ──────────────────► references/agents-mcp-skills.md
-│   ├── MCP server config ─────────────► references/agents-mcp-skills.md
-│   ├── Skills system ─────────────────► references/agents-mcp-skills.md
-│   └── CLI extensions (.mjs) ─────────► references/agents-mcp-skills.md
+│   ├── Custom agents ──────────────────► references/agents-mcp-skills.md — agent registration & routing
+│   ├── MCP server config ─────────────► references/agents-mcp-skills.md — connect external MCP servers
+│   ├── Skills system ─────────────────► references/agents-mcp-skills.md — skill discovery & invocation
+│   └── CLI extensions (.mjs) ─────────► references/agents-mcp-skills.md — extend Copilot CLI via scripts
 │
 ├── Advanced patterns
-│   ├── Plan / autopilot / interactive ─► references/advanced-patterns.md
-│   ├── Fleet mode ─────────────────────► references/advanced-patterns.md
-│   ├── Multi-client architecture ──────► references/advanced-patterns.md
-│   ├── Ralph loop (autonomous dev) ───► references/advanced-patterns.md
-│   ├── Steering & queueing ───────────► references/advanced-patterns.md
-│   └── System message modes ──────────► references/advanced-patterns.md
+│   ├── Plan / autopilot / interactive ─► references/advanced-patterns.md — mode switching workflow
+│   ├── Fleet mode ─────────────────────► references/advanced-patterns.md — parallel session orchestration
+│   ├── Multi-client architecture ──────► references/advanced-patterns.md — multiple CopilotClient instances
+│   ├── Ralph loop (autonomous dev) ───► references/advanced-patterns.md — autonomous code generation loop
+│   ├── Steering & queueing ───────────► references/advanced-patterns.md — prompt queueing, backpressure
+│   └── System message modes ──────────► references/advanced-patterns.md — system prompt configuration
 │
 ├── Auth & BYOK
-│   ├── GitHub OAuth / tokens ──────────► references/auth-and-byok.md
-│   └── Bring Your Own Key ────────────► references/auth-and-byok.md
+│   ├── GitHub OAuth / tokens ──────────► references/auth-and-byok.md — token acquisition flow
+│   └── Bring Your Own Key ────────────► references/auth-and-byok.md — OpenAI/Anthropic/Azure/Gemini/Ollama
 │
 └── Type reference
-    └── All interfaces & RPC methods ──► references/types-reference.md
+    └── All interfaces & RPC methods ──► references/types-reference.md — TypeScript interfaces, RPC API
 ```
 
 ## Quick start
 
+### Prerequisites
+
+Verify your environment:
 ```bash
-npm install @github/copilot-sdk tsx
+node --version   # must be >= 20
+copilot --version # Copilot CLI must be installed
 ```
 
-Requires Node.js >= 20 and Copilot CLI installed (`copilot --version`).
+### Project setup
+
+```bash
+npm init -y
+npm pkg set type=module   # SDK is ESM-only
+npm install @github/copilot-sdk tsx zod
+```
+
+> **ESM required.** The SDK only ships ESM exports. Your `package.json` must have `"type": "module"`.
+
+### Common imports
+
+```typescript
+// Core
+import { CopilotClient, approveAll } from "@github/copilot-sdk";
+
+// Tools
+import { defineTool } from "@github/copilot-sdk";
+import { z } from "zod";
+
+// Advanced — hooks, resume, types
+import type { SessionConfig, ToolInvocation } from "@github/copilot-sdk";
+```
 
 ### Minimal example
 
@@ -104,7 +130,11 @@ session.on("assistant.message_delta", (event) => {
   process.stdout.write(event.data.deltaContent);
 });
 
-session.on("session.idle", () => console.log("\n--- done ---"));
+session.on("session.idle", async () => {
+  console.log("\n--- done ---");
+  await session.disconnect();
+  await client.stop();
+});
 
 await session.send({ prompt: "Explain TypeScript generics" });
 ```
@@ -194,6 +224,25 @@ const resumed = await client.resumeSession("user-123-conversation", {
 });
 ```
 
+### Create-or-resume pattern
+
+`createSession` always starts fresh — only `resumeSession` restores conversation context. In applications that may revisit a session:
+
+```typescript
+let session;
+try {
+  session = await client.resumeSession(sessionId, {
+    onPermissionRequest: approveAll,
+  });
+} catch {
+  session = await client.createSession({
+    sessionId,
+    model: "gpt-4.1",
+    onPermissionRequest: approveAll,
+  });
+}
+```
+
 ### Handling askUser programmatically
 
 ```typescript
@@ -236,5 +285,33 @@ await session.abort(); // cancels current work; session remains usable
 | `cliUrl` + `useStdio` | Mutually exclusive. `cliUrl` connects to external server; `useStdio` spawns child process. |
 | `console.log` in extensions | stdout is reserved for JSON-RPC. Use `session.log()` instead. |
 | Tool name collision in extensions | Tool names must be globally unique across all extensions. |
-| BYOK without `model` | `model` is required when using `provider` config. |
+| BYOK without `model` | `model` is required when using `provider` config. Session creation succeeds silently, but `sendAndWait` will fail. |
 | Race condition on event registration | Register `session.on()` before calling `session.send()`. |
+
+## Steering notes for AI agents
+
+> These notes are distilled from real-world testing. They address the exact points where an agent following these instructions literally will get stuck.
+
+### Project initialization
+- **Always** run `npm init -y` then `npm pkg set type=module` before installing. The SDK is ESM-only and will throw `ERR_PACKAGE_PATH_NOT_EXPORTED` without this.
+- **Always** install `zod` alongside the SDK if you plan to use `defineTool`. It's not bundled.
+- Verify `node --version` is >= 20 and `copilot --version` responds before writing any code.
+
+### Session lifecycle
+- `createSession` **always starts fresh** — even with the same `sessionId`. It does NOT restore previous messages.
+- To resume a conversation, use `resumeSession(sessionId)`. If the session doesn't exist, it throws — catch and fall back to `createSession`.
+- **Always** call `session.disconnect()` then `client.stop()` when done. Without this, streaming processes hang indefinitely because the RPC connection keeps the event loop alive.
+
+### Streaming
+- Register **all** event handlers (`session.on(...)`) **before** calling `session.send()`. Handlers registered after send may miss early events.
+- In the `session.idle` handler, always include cleanup (`disconnect` + `stop`) unless you're building a multi-turn REPL.
+- When the model calls multiple tools in parallel, `tool.execution_start` and `tool.execution_complete` events interleave. Use `toolCallId` to correlate them.
+
+### Tools
+- `defineTool` requires a Zod schema for parameters. The SDK auto-detects Zod and calls `toJSONSchema()`.
+- Tool handler errors are caught and surfaced to the model as error results — they don't crash your process.
+- Tool names must be globally unique across all extensions.
+
+### Timeouts and errors
+- `sendAndWait` timeout does **not** abort in-flight work. It only stops waiting. Call `session.abort()` explicitly if you need to cancel.
+- BYOK without `model` in provider config creates a session successfully but fails silently at send time. Always pair `provider` with `model`.

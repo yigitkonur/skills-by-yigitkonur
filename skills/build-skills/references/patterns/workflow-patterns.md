@@ -283,3 +283,8 @@ Primary: Sequential (overall workflow)
 ```
 
 Keep the primary pattern visible in SKILL.md. Move secondary pattern details to reference files.
+
+
+---
+
+> **Steering tip:** Workflow patterns should produce visible artifacts at each phase boundary. If your workflow produces output only at the end, add intermediate checkpoints. See the output contract timing hints in SKILL.md.

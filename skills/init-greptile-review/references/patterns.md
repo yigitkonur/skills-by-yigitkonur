@@ -4,6 +4,67 @@ Ready-to-adapt configuration templates for common repository types. Every rule m
 
 ---
 
+## Repository Exploration Method
+
+Before selecting a pattern, map the repository systematically. This section provides the HOW — the pattern sections below provide the WHAT.
+
+### Step-by-step exploration
+
+1. **Read workspace config** to determine repo structure:
+   ```bash
+   # Monorepo detection
+   cat pnpm-workspace.yaml 2>/dev/null || cat lerna.json 2>/dev/null || cat nx.json 2>/dev/null || cat turbo.json 2>/dev/null || cat Cargo.toml 2>/dev/null
+   ```
+
+2. **List top-level directories** to understand layout:
+   ```bash
+   ls -d */ 2>/dev/null | head -20
+   ```
+
+3. **Identify languages and frameworks** from dependency manifests:
+   ```bash
+   # JavaScript/TypeScript
+   cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('deps:', list(d.get('dependencies',{}).keys())[:15]); print('dev:', list(d.get('devDependencies',{}).keys())[:10])"
+   
+   # Python
+   cat pyproject.toml 2>/dev/null || cat requirements.txt 2>/dev/null | head -20
+   
+   # Go
+   head -20 go.mod 2>/dev/null
+   
+   # Rust
+   head -30 Cargo.toml 2>/dev/null
+   ```
+
+4. **Find risk-sensitive directories** by searching for keywords:
+   ```bash
+   find . -type d \( -name auth -o -name payment* -o -name billing -o -name webhook* -o -name middleware -o -name migration* -o -name security \) -not -path '*/node_modules/*' 2>/dev/null
+   ```
+
+5. **Find context-worthy files** (schemas, specs, architecture docs):
+   ```bash
+   find . -name '*.prisma' -o -name '*.graphql' -o -name 'openapi*' -o -name 'swagger*' -o -name '*.proto' 2>/dev/null | grep -v node_modules
+   ls docs/ architecture.md ADR* ARCHITECTURE* 2>/dev/null
+   ```
+
+6. **Detect existing linters/formatters**:
+   ```bash
+   ls .eslintrc* prettier.config* biome.* .stylelintrc* pyproject.toml .rubocop.yml .golangci.yml 2>/dev/null
+   ```
+
+### Depth guidance
+
+| Repo size | Exploration depth | When to stop |
+|---|---|---|
+| Small (<50 files) | Directory listing + dependency manifest | You can answer all 7 mapping items |
+| Medium (50-500 files) | + Read key config files, check 2-3 representative source files | You understand the architecture |
+| Large (500+ files) | + Check each top-level package purpose, key deps, risk dirs | You can confidently scope rules |
+| Monorepo (multiple packages) | + Read each package's package.json/deps, identify divergent risk profiles | You know which packages need child configs |
+
+**Stop signal:** You can confidently write the `scope` arrays for your rules and the `ignorePatterns` string without guessing.
+
+---
+
 ## Pattern Selection Guide
 
 | Repository Type | Strictness | Comment Types | Key Focus Areas |
@@ -49,6 +110,37 @@ pnpm-lock.yaml
 | Rust | `target/**`, `Cargo.lock` |
 | Java | `*.class`, `target/**`, `build/**`, `.gradle/**` |
 | Ruby | `vendor/bundle/**`, `coverage/**`, `tmp/**` |
+
+
+### Discovering Project-Specific Ignore Patterns
+
+Beyond universal patterns, every repo has unique noise. Discover it:
+
+```bash
+# Find generated files (often have 'generated', 'auto', or header comments)
+find . -name '*generated*' -o -name '*auto*' -o -name '*.gen.*' 2>/dev/null | grep -v node_modules | head -10
+
+# Find build output directories
+find . -type d \( -name dist -o -name build -o -name out -o -name .next -o -name target -o -name bin \) -not -path '*/node_modules/*' 2>/dev/null
+
+# Find large binary or data files
+find . -size +100k \( -name '*.json' -o -name '*.csv' -o -name '*.sql' \) -not -path '*/node_modules/*' 2>/dev/null | head -10
+
+# Find snapshot/fixture directories
+find . -type d \( -name __snapshots__ -o -name fixtures -o -name __mocks__ -o -name testdata \) 2>/dev/null | head -10
+```
+
+Common project-specific patterns to add:
+
+| Project type | Additional ignore patterns |
+|---|---|
+| Next.js | `.next/**`, `.vercel/**`, `out/**` |
+| Monorepo with build caching | `.turbo/**`, `.nx/**` |
+| Projects with code generation | `**/*.generated.ts`, `**/*_gen.go`, `**/*.pb.ts` |
+| Projects with bundled assets | `public/build/**`, `static/dist/**` |
+| Database projects | `**/migrations/**`, `**/seeds/**` |
+| Mobile apps | `android/app/build/**`, `ios/Pods/**`, `*.xcworkspace/**` |
+
 
 ---
 
@@ -319,6 +411,22 @@ Root config + per-package overrides:
 | Core application code | 2 (Balanced) | Standard production code |
 | Internal tools, scripts | 3 (Critical only) | Minimize noise on non-customer-facing code |
 | Prototypes, experiments | 3 or skip | Avoid blocking rapid iteration |
+
+
+### Monorepo Exploration Checklist
+
+Before deciding on child configs, answer these for each top-level package:
+
+| Question | Impact on config |
+|---|---|
+| Does this package handle payments, auth, or PII? | → Child config with `strictness: 1` |
+| Does this package have its own linters? | → May need different `commentTypes` |
+| Does this package have unique risk patterns? | → Needs package-specific rules |
+| Is this an internal tool or prototype? | → Child config with `strictness: 3` |
+| Does this package share types/contracts with others? | → May need `patternRepositories` or `files.json` |
+
+If fewer than 2 packages answer YES to any question, skip child configs entirely and use root-only configuration.
+
 
 ---
 

@@ -17,6 +17,11 @@ version changes by adding changeset files during development.
 **Core philosophy:** The person making the change is the best person to describe and
 classify that change. Version intent is captured at PR time, not release time.
 
+> **⚠️ Steering:** changesets works for **both monorepos AND single-package repos**.
+> It does **not** require conventional commits — developers describe changes in
+> plain English via changeset files. If the team wants a human-gated release
+> without adopting a commit convention, changesets is the right choice.
+
 ---
 
 ## How It Works
@@ -427,6 +432,45 @@ npm install your-package@latest  # installs 1.0.0 (stable)
 
 ---
 
+## Single-Package Configuration
+
+For repos with only one package, changesets works out of the box with minimal config:
+
+```json
+// .changeset/config.json
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/changelog-github",
+  "commit": false,
+  "access": "public",
+  "baseBranch": "main"
+}
+```
+
+The interactive `npx changeset` prompt will show only your single package.
+Everything else (Version PR, publishing, changelog) works identically to monorepos.
+
+---
+
+## Version Packages PR Workflow
+
+When the changesets GitHub Action runs on `main` and finds pending changeset files,
+it opens (or updates) a **"Version Packages" PR**. This PR:
+
+1. **Consumes** all `.changeset/*.md` files (deletes them)
+2. **Bumps** `version` in every affected `package.json`
+3. **Updates** `CHANGELOG.md` with entries from the changeset descriptions
+4. **Stays open** and auto-updates as more changesets are merged to `main`
+
+When the team decides to release, they **merge the Version Packages PR**. The
+action then runs the `publish` command (e.g., `npx changeset publish`), publishes
+to npm, and creates git tags.
+
+This two-phase flow (accumulate → merge PR → publish) gives explicit human control
+over release timing without requiring any commit convention.
+
+---
+
 ## Monorepo Patterns
 
 ### Fixed Versioning (All Packages Same Version)
@@ -657,17 +701,34 @@ If your npm org doesn't support OIDC provenance:
 
 ---
 
+## First Publish (Greenfield)
+
+For a brand-new package that has never been published to npm:
+
+1. Run `npx changeset init` to create `.changeset/config.json`
+2. Set `"version": "0.0.0"` in `package.json` (or your intended starting version)
+3. Create your first changeset: `npx changeset` → select your package → choose
+   `minor` for an initial feature release
+4. Run `npx changeset version` locally to verify it bumps to `0.1.0`
+5. Commit everything and push — the GitHub Action will open the first Version PR
+6. Merge the Version PR to trigger the first npm publish
+
+No git tags or prior history are needed. Changesets starts from whatever version
+is in `package.json`.
+
+---
+
 ## When to Use Changesets
 
 **Best for:**
 - Monorepos with multiple publishable packages
+- **Single-package repos** that want human-gated releases without commit conventions
 - Teams that want explicit control over version bumps
 - Projects that batch releases (weekly, milestone-based)
 - Teams where commit message discipline is inconsistent
 
 **Avoid when:**
-- You want fully automated releases on every merge
-- Single-package repos where semantic-release is simpler
+- You want fully automated releases on every merge (use semantic-release)
 - You prefer commit-driven versioning over manual changeset creation
 
 ---

@@ -30,3 +30,4 @@ At minimum, production needs:
 - `references/setup/environment-setup.md` — Full environment variable catalog
 - `references/utils.md` — Base URL helper behavior
 - `references/setup/next-config.md` — Image and plugin configuration that affects deploys
+- `references/deployment/environment-checklist.md` — Pre-deployment checklist

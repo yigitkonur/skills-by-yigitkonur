@@ -57,8 +57,19 @@
 
 ## Client vs Server
 
+> ⚠️ **Steering:** Never put secrets in `NEXT_PUBLIC_*` variables. These are bundled into client JavaScript and visible in the browser source.
+
 - **`NEXT_PUBLIC_*`** → Bundled in client JavaScript, visible in browser
 - **No prefix** → Server-only, never exposed to client
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `undefined` in browser | Missing `NEXT_PUBLIC_` prefix |
+| `undefined` on server | Not in `.env.local` or Vercel env vars |
+| Works locally, fails in prod | Env var not set in deployment platform |
+| Stale value after change | Restart `pnpm dev` or redeploy |
 
 ---
 

@@ -394,3 +394,31 @@ Watch for these — they silently degrade decision quality.
 - Fallback option and trigger ("If X happens, we switch to Y")
 - Review date (when to revisit the decision)
 - ADR reference (link to the full ADR in the repo)
+
+
+## Steering experiences
+
+### SE-01: Only one "real" option generated
+**What happens:** Agent generates 3 options but two are obviously terrible (do nothing, rewrite everything). The decision matrix is theater.
+**Why it happens:** Generating genuinely viable alternatives requires creative effort. Padding with strawmen is easier.
+**Prevention:** Each option must be one that a reasonable person could defend. If you cannot write a 2-sentence argument for why someone might choose it, it is not a real option. Replace it.
+
+### SE-02: Decision matrix scores are invented
+**What happens:** Agent fills the matrix with scores like 7/10, 8/10, 6/10 without explaining the basis. The scores feel precise but are arbitrary.
+**Why it happens:** The template has cells that demand numbers. Without evidence, agents fill them with guesses.
+**Prevention:** Every score must have a 1-line justification. "Performance: 8/10 because benchmark shows 200ms p99 vs. 500ms target" is valid. "Performance: 8/10" alone is not. If you cannot justify a score, use "?" and flag it as an unknown.
+
+### SE-03: Type 1 / Type 2 reversibility not checked
+**What happens:** Agent treats a reversible technology choice like a permanent architecture commitment, producing 3 pages of analysis for a decision that could be reversed in a sprint.
+**Why it happens:** The skill mentions reversibility but does not force a check early enough.
+**Prevention:** Before building options, classify the decision: Type 1 (hard to reverse, high blast radius) or Type 2 (easy to reverse, low blast radius). Type 2 decisions get a bias-to-action treatment: recommend the simplest option and a 2-week review.
+
+### SE-04: Multiple methods stacked for perceived rigor
+**What happens:** Agent uses a decision matrix, THEN a pros/cons list, THEN a SWOT analysis for the same decision. Each framework adds length but not clarity.
+**Why it happens:** Agents equate "more frameworks = more thorough." The skill says "use one primary method" but does not penalize stacking.
+**Prevention:** After completing the primary method, ask: "Did this answer the question?" If yes, stop. A companion method is justified ONLY when the primary method left a specific question unanswered. Name that question before adding the companion.
+
+### SE-05: Pros/cons list missing "Avoid" criteria
+**What happens:** All options look good because the comparison only lists positive attributes. The recommendation is based on which option has more pros, ignoring dealbreakers.
+**Why it happens:** Pros/cons framing is inherently optimistic. Agents list benefits first and risks as afterthoughts.
+**Prevention:** Add an "Avoid" column to every comparison: "What would make us reject this option regardless of its benefits?" Screen options against the Avoid list before scoring.

@@ -222,3 +222,45 @@ When evaluating any source, watch for:
 | No mention of trade-offs | One-sided view |
 | Broken links or missing files | Unmaintained |
 | Conflicting advice within the same source | Incoherent |
+
+
+---
+
+## Quick quality rubric
+
+Use this rubric for rapid assessment of downloaded skills. Score each criterion 0-2:
+
+| Criterion | 0 (Poor) | 1 (Acceptable) | 2 (Good) |
+|---|---|---|---|
+| **Structure** | No references/, everything in SKILL.md | Has references/ but poorly organized | Clean references/ with logical grouping |
+| **Size** | SKILL.md > 500 lines | 300-500 lines | Under 300 lines |
+| **Routing** | No routing table | File list without context | "Read when" routing with context |
+| **Frontmatter** | Missing or invalid | Present but incomplete | Complete with valid name + description |
+| **Decomposition** | Single monolithic file | Some splitting, inconsistent | Well-decomposed, no file > 500 lines |
+| **Actionability** | Vague instructions | Some concrete steps | Clear, testable instructions |
+
+**Scoring:**
+- **10-12:** Tier 1 - Production-ready reference
+- **6-9:** Tier 2 - Useful but flawed, extract ideas carefully
+- **0-5:** Tier 3 - Anti-pattern source, use only as negative example
+
+**Quick assessment command sequence:**
+```bash
+# Run these 4 commands for any downloaded skill:
+wc -l SKILL.md
+ls references/ 2>/dev/null | wc -l
+head -5 SKILL.md  # Check frontmatter
+grep -c '### ' SKILL.md  # Count routing sections
+```
+
+**Assessment output template:**
+```
+Skill: [name]
+SKILL.md lines: [n]
+Reference files: [n]
+Frontmatter: [valid/invalid]
+Routing sections: [n]
+Score: [0-12]
+Tier: [1/2/3]
+Decision: [inherit/adapt/avoid]
+```

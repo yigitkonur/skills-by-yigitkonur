@@ -396,3 +396,150 @@ Scoped instruction files can be placed in subdirectories under `.github/instruct
 Copilot reads `*.instructions.md` from `.github/instructions/` **and its subdirectories**. The directory structure is purely organizational — it does not affect which files are loaded or their precedence.
 
 **Tradeoff:** Subdirectories add organizational clarity but make it harder to see all files at a glance. For repositories with 10+ instruction files, subdirectories can help. For 5-10 files, a flat structure is usually cleaner.
+
+
+---
+
+## Framework-Specific Glob Patterns
+
+Some frameworks use directory conventions that need special glob handling.
+
+### Next.js App Router
+
+Next.js uses route groups like `(admin)`, `(marketing)`, `(auth)` that do not appear in the URL path. These are organizational directories, not functional boundaries.
+
+```yaml
+# Scope to the app directory including all route groups
+applyTo: "app/**/*.{ts,tsx}"
+
+# DO NOT create separate files for each route group unless they have
+# fundamentally different review needs. Route groups are URL organization,
+# not review scope boundaries.
+```
+
+**When route groups DO need separate files:** Only if one group (e.g., `(admin)`) has security-critical auth checks that the marketing group does not — and those rules would be noise in a broader scope.
+
+### Go packages
+
+Go uses flat package directories. Scope by package path, not by file extension alone:
+
+```yaml
+# Scope to a specific package
+applyTo: "internal/auth/**/*.go"
+
+# Scope to all handler packages
+applyTo: "**/handlers/**/*.go"
+
+# Scope to test files specifically
+applyTo: "**/*_test.go"
+```
+
+### Python Django
+
+Django has conventional directory names like `views/`, `models/`, `serializers/`:
+
+```yaml
+# All view files
+applyTo: "**/views/**/*.py"
+
+# All model files
+applyTo: "**/models/**/*.py"
+
+# Migration files specifically
+applyTo: "**/migrations/**/*.py"
+```
+
+---
+
+## Multi-Stack Repository Guidance
+
+Some repositories contain two or more fundamentally different technology stacks (e.g., Go backend + Svelte frontend, Python API + React SPA, Rust core + TypeScript CLI).
+
+### Assessment checklist
+
+Before creating instruction files, determine for each stack:
+
+1. **Is it actively developed source?** Check if the directory contains source files that developers modify in PRs.
+2. **Or is it bundled/generated output?** Check for `dist/`, `build/`, or `.gitignore` patterns that suggest the directory is build output.
+3. **Does it have its own linter/formatter config?** Separate configs suggest separate review needs.
+
+### Scoping strategy
+
+| Repository pattern | Approach |
+|---|---|
+| Two active stacks with separate linter configs | Treat as separate review scopes with separate instruction files |
+| One active stack + one bundled/generated UI | Create instructions only for the active stack |
+| Monorepo with multiple packages in different languages | Use package-scoped files (see Monorepo Strategies above) |
+
+### Example: Go backend + embedded frontend
+
+```
+repo/
+├── internal/          ← Go backend (active development)
+├── api/               ← Go API handlers (active development)
+├── ui/
+│   ├── src/           ← Svelte source (check if actively developed)
+│   └── dist/          ← Built output (skip)
+└── .golangci.yml      ← Go linter
+```
+
+If `ui/src/` is actively developed, create:
+- `.github/instructions/go-backend.instructions.md` with `applyTo: "**/*.go"`
+- `.github/instructions/frontend.instructions.md` with `applyTo: "ui/src/**/*.{svelte,ts}"`
+
+If `ui/` is only built and rarely touched, skip it.
+
+---
+
+## Gap Analysis Recipe
+
+After drafting your instruction architecture, verify you have not missed important scopes:
+
+### Step 1: List all file types in the repo
+
+```bash
+find . -type f -name "*.*" | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -20
+```
+
+### Step 2: Map each significant file type to an instruction file
+
+For each file type with more than 10 files, confirm one of:
+- It is covered by an existing instruction file's `applyTo` glob
+- It is intentionally excluded (e.g., generated code, vendored dependencies)
+- It does not need review instructions (e.g., configuration files with no review-worthy patterns)
+
+### Step 3: Verify coverage
+
+```bash
+# For each instruction file, count how many repo files match its glob
+find . -path "./<applyTo-pattern>" -type f | wc -l
+
+# Compare against total files of that type
+find . -name "*.ts" -type f | wc -l
+```
+
+If a file type has significant files but no matching instruction file, either expand an existing `applyTo` or add a new scoped file (only if the type has 2+ unique review rules).
+
+---
+
+## Additive Overlap Clarity
+
+When two scoped instruction files match the same repository file (e.g., a TypeScript file in `src/api/` matches both `typescript.instructions.md` and `api-routes.instructions.md`), Copilot concatenates both files' rules.
+
+### This is fine when
+
+- The rules are complementary: TypeScript file covers type safety, API file covers request validation
+- Each file adds unique context that the other does not provide
+- There are no conflicting instructions between the two files
+
+### This is a problem when
+
+- Both files say the same thing (wasted character budget)
+- The files give contradictory advice (Copilot may follow either one unpredictably)
+- The combined character count exceeds practical limits (Copilot processes more content, reducing attention per rule)
+
+### Fix strategy
+
+1. If rules duplicate: keep the rule in the narrower-scoped file, remove from the broader one
+2. If rules conflict: narrow `applyTo` until the files no longer overlap, or align the guidance
+3. If combined budget is too large: prioritize the narrower file's rules (they are more specific)

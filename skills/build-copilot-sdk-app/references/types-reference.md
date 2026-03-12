@@ -1,5 +1,7 @@
 # Complete Type Reference
 
+> **Reading guide.** This file is a type reference — scan it when you need the exact shape of a type. For usage examples, see the other reference files. The most commonly needed types are `SessionConfig`, `ToolInvocation`, `ToolResultObject`, and `CopilotClientOptions`.
+
 ## Package exports
 
 ```typescript

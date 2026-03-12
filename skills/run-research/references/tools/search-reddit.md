@@ -197,3 +197,32 @@ queries = [
 ## Key Insight
 
 Reddit is your reality-check tool. Official docs tell you how things should work. Blog posts tell you how things can work. Reddit tells you how things actually work in production — including the parts that break, the hidden costs, and the migration regrets. Always search for negative signal alongside positive. The developers who warn you away from a technology are often more useful than those who recommend it.
+
+## Steering notes from production testing
+
+### Negative signal queries are essential
+
+At least 25% of queries should be negative: `"regret switching to [X]"`, `"problems with [X] production"`, `"[X] not worth it"`, `"switched from [X] to"`.
+
+### Subreddit targeting
+
+| Domain | Subreddits |
+|---|---|
+| Node.js/backend | r/node, r/javascript |
+| React/Next.js | r/reactjs, r/nextjs |
+| DevOps | r/devops, r/sysadmin |
+| Security | r/netsec, r/cybersecurity |
+| Senior perspectives | r/ExperiencedDevs |
+
+### Real diversity example (8 queries, 68 posts)
+
+1. `"Socket.io vs Pusher vs Ably 2025"` -- comparison
+2. `r/node "real-time" library 2025` -- subreddit-targeted
+3. `"switched from socket.io" regret` -- negative signal
+4. `websocket scaling "10000 connections"` -- scale-specific
+5. `intitle:"Ably" r/javascript review` -- vendor opinions
+6. `"Pusher" pricing "not worth"` -- cost pain
+7. `r/nextjs websocket server component 2025` -- framework-specific
+8. `"managed websocket" vs "self-hosted"` -- architecture
+
+### Query count: 8-12 recommended (80-120 posts)

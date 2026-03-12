@@ -2,6 +2,8 @@
 
 > Documents the client-side provider and hook that resolve the active organization from the URL and keep session/billing caches in sync. Consult this when changing organization switching, org-aware navbar behavior, or org-scoped page state.
 
+> ⚠️ **Client-side only.** `useActiveOrganization()` only works in client components under the `(organizations)` route group where `ActiveOrganizationProvider` is mounted.
+
 ## Key files
 
 - `apps/web/modules/saas/organizations/components/ActiveOrganizationProvider.tsx`
@@ -29,6 +31,19 @@ const setActiveOrganization = async (organizationSlug: string | null) => {
 - The provider derives the active org from `params.organizationSlug`.
 - Switching organizations updates the session query cache and can prefetch org-level purchases.
 - `useActiveOrganization()` returns safe defaults when rendered outside the provider.
+
+## Hook return values
+
+```tsx
+const {
+  activeOrganization,          // full org object or null
+  activeOrganizationUserRole,  // "member" | "admin" | "owner"
+  isOrganizationAdmin,         // true for admin or owner
+  loaded,                      // whether data has been fetched
+  setActiveOrganization,       // switch to different org
+  refetchActiveOrganization,   // force refresh
+} = useActiveOrganization();
+```
 
 ---
 

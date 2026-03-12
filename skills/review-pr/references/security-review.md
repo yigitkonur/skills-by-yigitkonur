@@ -290,3 +290,14 @@ Cryptographic operation present?
 | Weak cryptography | 🟡 Important | 🔴 if protecting auth or encryption keys |
 | Missing CSP headers | 🟢 Suggestion | 🟡 if app renders user content |
 | Missing audit logging | 🟢 Suggestion | 🟡 on admin or financial operations |
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **The most missed security issue in PRs is "new endpoint without auth middleware."** When a PR adds a new route, controller, or API endpoint, verify it goes through the same authentication and authorization pipeline as existing endpoints. Check the router/middleware chain, not just the handler.
+2. **Secret detection is a machine job.** Do not manually scan for hardcoded secrets -- that is what tools like GitLeaks, TruffleHog, and GitHub secret scanning do. Focus your security review on logic flaws: broken access control, IDOR, mass assignment, and missing input validation.
+3. **STRIDE is a useful mental model but do not write out the full threat model in your review.** Use STRIDE internally to check categories, then report only the concrete findings. Reviewers do not need to see your threat modeling process.
+4. **SQL injection and XSS are rarer in modern frameworks but still appear in raw queries and `dangerouslySetInnerHTML`.** Check for parameterized queries and sanitized output specifically where raw string interpolation is used.
+
+> **Cross-reference:** See `references/review-dimensions.md` dimension 1 (Security) for the priority-ordered checklist of security concerns.

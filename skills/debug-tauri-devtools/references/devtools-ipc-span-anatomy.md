@@ -1,10 +1,14 @@
 # IPC Span Anatomy — CrabNebula DevTools
 
+> ⚠️ **Steering:** This is the most important reference for performance debugging. The key algorithm: find the slowest top-level span → examine child spans → recurse into the slowest child → the LEAF span is your optimization target. Agents in testing tried to optimize the parent span directly without looking at children, which is like optimizing a function call without knowing which line is slow.
+
 ## What Is an IPC Span?
 
 When a frontend JavaScript call like invoke('my_command', { key: 'value' }) reaches the Tauri backend, the DevTools plugin wraps the entire execution in a tracing span. This span captures the full lifecycle of the IPC call — from the moment the Rust handler begins executing to when it returns a response (or error) to the frontend.
 
 ## Span Fields
+
+> ⚠️ **Steering:** Tauri IPC commands (`#[tauri::command]`) create spans automatically — they appear in the Calls tab without any `#[tracing::instrument]` attribute. Only ADD instrumentation to internal functions called BY the command handler when you need deeper visibility.
 
 | Field | Type | Description |
 |---|---|---|
@@ -178,6 +182,8 @@ Timeline:
 
 ## Reading Span Duration Context
 
+> ⚠️ **Steering:** Duration classification: <10ms = fast, 10-100ms = normal, 100ms-1s = slow, >1s = very slow. But context matters — a 500ms file write to SSD is normal, while a 500ms in-memory sort is very slow. Always compare against expected duration for the operation type, not absolute thresholds.
+
 | Duration | Classification | Typical Cause | Agent Response |
 |---|---|---|---|
 | < 1ms | Instant | In-memory operations, simple calculations | No action needed |
@@ -202,7 +208,39 @@ Nested spans show the call hierarchy within a command handler. Read the waterfal
 - Serialization/deserialization overhead
 - Mutex/lock contention or task scheduling delays
 
+> ⚠️ **Steering:** Gap analysis formula: `gap = parent_duration - sum(child_durations)`. A large gap means uninstrumented code is consuming time. DO NOT optimize until you've added `#[tracing::instrument]` to internal functions and re-run — the gap will become visible child spans. In testing, agents guessed at the gap's cause instead of instrumenting to find it.
+
 If a span has many children of similar duration, the bottleneck is the NUMBER of operations, not any single one — consider batching or parallelizing.
+
+## Sequential vs Parallel Pattern
+
+A common performance anti-pattern visible in span waterfalls:
+
+**Sequential pattern** (bad for independent items):
+```
+command_handler: 2000ms
+  ├─ process_item_1: 200ms
+  ├─ process_item_2: 200ms  (starts AFTER item_1 ends)
+  ├─ process_item_3: 200ms
+  ...
+  └─ process_item_10: 200ms
+```
+Total = N × per_item_time. Duration scales linearly with input count.
+
+**Parallel pattern** (correct for independent items):
+```
+command_handler: 250ms
+  ├─ process_item_1: 200ms  (all start simultaneously)
+  ├─ process_item_2: 200ms
+  ├─ process_item_3: 200ms
+  ...
+  └─ process_item_10: 200ms
+```
+Total ≈ max(per_item_time) + overhead.
+
+**How to identify:** If child spans are sequential (each starts after the previous ends) AND items are independent, this is the sequential anti-pattern. Fix with `tokio::join!()`, `futures::join_all()`, or `rayon::par_iter()`.
+
+> ⚠️ **Steering:** In derailment testing, agents identified a sequential loop as slow but hesitated to parallelize it because SKILL.md says "avoid refactors." Parallelizing a proven-slow sequential loop IS a narrow fix, not a refactor. The guardrail prevents speculative changes, not evidence-based structural fixes.
 
 ## Custom Spans via #[tracing::instrument]
 

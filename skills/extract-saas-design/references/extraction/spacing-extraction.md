@@ -14,7 +14,7 @@ grep -roh 'p-[0-9.]*\|px-[0-9.]*\|py-[0-9.]*\|pt-[0-9.]*\|pb-[0-9.]*\|pl-[0-9.]*
   --include="*.tsx" --include="*.jsx" src/ | sort | uniq -c | sort -rn
 
 # Custom padding values
-grep -roh 'p-\[[0-9]*px\]\|px-\[[0-9]*px\]\|py-\[[0-9]*px\]' \
+grep -roh 'p-\[[0-9.]\+px\]\|px-\[[0-9.]\+px\]\|py-\[[0-9.]\+px\]' \
   --include="*.tsx" --include="*.jsx" src/ | sort | uniq -c | sort -rn
 ```
 
@@ -81,6 +81,27 @@ Spacing scale (combined padding + margin + gap):
   24px (6):     26 occurrences  — spacious: section padding
   32px (8):     13 occurrences  — major: section separation
   40px (10):     5 occurrences  — page-level spacing
+```
+
+---
+
+
+### Tailwind v4 Spacing
+
+If the project uses Tailwind v4 (detected by `@import "tailwindcss"` in CSS), spacing tokens may be in `@theme` blocks:
+
+```bash
+# Find Tailwind v4 spacing tokens
+grep -A 30 '@theme' --include="*.css" src/ . | grep -i 'spacing'
+```
+
+### Arbitrary Value Patterns
+
+Modern Tailwind projects use arbitrary values for precise spacing. Flag these as potential inconsistencies:
+
+```bash
+# Find arbitrary pixel values in spacing
+grep -roh '[pmg][xytblr]\?-\[[0-9.]\+px\]' --include="*.tsx" --include="*.jsx" src/ | sort | uniq -c | sort -rn
 ```
 
 ---

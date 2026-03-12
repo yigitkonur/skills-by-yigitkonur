@@ -2,6 +2,8 @@
 
 > High-level map of the server-side `betterAuth()` configuration: database adapter, sessions, account linking, lifecycle hooks, email flows, plugins, and OpenAPI. Consult this when changing the auth backend itself rather than a UI consumer.
 
+> ⚠️ **Plugin parity.** Server and client auth configs must enable the same plugins. If you add a plugin to `auth.ts`, also add it to `auth-client.ts`.
+
 ## Key files
 
 - `packages/auth/auth.ts`

@@ -2,6 +2,8 @@
 
 > Condensed pre-flight list for any hosted deployment. Consult this before shipping a new environment.
 
+> ⚠️ **Run `pnpm build` locally before deploying.** This catches missing env vars and type errors.
+
 ## Core checks
 
 - Database URL points to the correct environment
@@ -25,3 +27,4 @@
 - `references/deployment/vercel.md` — Vercel-specific notes
 - `references/cheatsheets/env-vars.md` — Short env-var cheat sheet
 - `references/deployment/local-services.md` — Local service parity during development
+- `references/cheatsheets/commands.md` — CLI commands

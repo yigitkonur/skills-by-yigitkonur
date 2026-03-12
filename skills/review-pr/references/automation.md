@@ -35,7 +35,7 @@ PR Opened
   │
   └── Layer 6: Human Review (manual, final decision)
       └── Focus on: correctness, security, design, intent, context
-          → This is where the skill's Phase 1-7 workflow applies
+          → This is where the skill's review workflow applies
 ```
 
 ### What to Skip in Manual Review
@@ -240,3 +240,14 @@ gh api repos/{owner}/{repo}/pulls/{N}/comments --paginate &
 gh pr checks <N> --repo owner/repo &
 wait
 ```
+
+## Steering notes
+
+> These notes capture real mistakes observed during derailment testing.
+
+1. **Bot review comments (Dependabot, CodeQL, Snyk, SonarQube) are prior review state.** Treat them the same as human comments for deduplication purposes. If a bot already flagged an issue, do not re-raise it -- reference the bot's finding instead.
+2. **CI status must be checked before deep review.** If CI is red, the review should focus on issues CI does not already prove. Do not pile style feedback on top of failing builds -- that is noise.
+3. **When CI passes but you find a potential bug, check whether existing tests cover the scenario.** If tests exist and pass, your finding needs stronger evidence -- explain why the tests are insufficient or how your scenario differs from what is tested.
+4. **Security scan results (CodeQL, Snyk) take precedence over manual security observations.** If a security scanner flagged an issue and it is unresolved, escalate it as a blocker. Do not downgrade machine-detected security findings.
+
+> **Cross-reference:** See `references/comment-correlation.md` for rules on deduplicating against bot findings and `references/review-workflow.md` Phase 1 for the CI-check step.
