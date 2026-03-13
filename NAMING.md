@@ -59,7 +59,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `convert-` vs `build-` — `convert-` requires an existing source artifact; `build-` starts from requirements or a blank slate
 - `convert-` vs `extract-` — `convert-` produces a *buildable project*; `extract-` produces *documentation or structured data*
 
-**Current skills:** `convert-snapshot-nextjs`
+**Current skills:** `convert-snapshot-nextjs`, `convert-vue-nextjs`
 
 ---
 
@@ -346,6 +346,7 @@ When renaming a published skill:
 - `build-skills`
 - `build-supastarter-app`
 - `convert-snapshot-nextjs`
+- `convert-vue-nextjs`
 - `debug-tauri-devtools`
 - `develop-typescript`
 - `extract-saas-design`
