@@ -26,10 +26,10 @@ Package your server as an installable npm module with a `bin` entry for CLI usag
     "prepublishOnly": "npm run build"
   },
   "files": ["dist/"],
-  "engines": { "node": ">=20" },
+  "engines": { "node": "^20.19.0 || >=22.12.0" },
   "dependencies": {
-    "mcp-use": "^0.5.0",
-    "zod": "^3.23.0"
+    "mcp-use": "^1.21.0",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
@@ -42,7 +42,7 @@ Add a shebang to your entrypoint:
 ```typescript
 #!/usr/bin/env node
 // dist/server.js — entrypoint
-import { MCPServer } from "mcp-use";
+import { MCPServer } from "mcp-use/server";
 // ...
 ```
 
@@ -78,7 +78,7 @@ Use `npx -y` so users do not need a global install. The package downloads and ca
 ### Dockerfile
 
 ```dockerfile
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -86,7 +86,7 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
-FROM node:20-slim
+FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
@@ -160,7 +160,8 @@ Deploy an MCP server as a Supabase Edge Function using Deno-compatible mcp-use.
 
 ```typescript
 // supabase/functions/mcp-server/index.ts
-import { MCPServer, text, object } from "mcp-use";
+import { MCPServer, text, object } from "mcp-use/server";
+import { z } from "zod";
 
 const server = new MCPServer({
   name: "supabase-mcp",
@@ -180,12 +181,12 @@ server.tool(
   }
 );
 
-export default server.handler({
-  transportType: "httpStream",
-});
+// Use getHandler() to get a fetch handler for the platform
+const handler = await server.getHandler({ provider: "supabase" });
+Deno.serve(handler);
 ```
 
-Deploy with the Supabase CLI:
+> **Note:** `MCPServer` does **not** extend Hono directly — it wraps a Hono app internally. Use `server.getHandler()` to obtain the fetch handler for serverless/edge platforms. Pass `{ provider: "supabase" }` to enable automatic Supabase path rewriting. For Cloudflare Workers and Deno Deploy, use `server.getHandler()` without a provider.
 
 ```bash
 supabase functions deploy mcp-server
@@ -247,22 +248,22 @@ Use stateless HTTP transport for serverless platforms that do not support persis
 
 ```typescript
 // api/mcp.ts (Vercel serverless function)
-import { MCPServer, text } from "mcp-use";
+import { MCPServer, text } from "mcp-use/server";
 
 const server = new MCPServer({
   name: "vercel-mcp",
   version: "1.0.0",
+  stateless: true,
 });
 
 // Register tools...
 
-export default server.handler({
-  transportType: "httpStream",
-  stateless: true,  // No session persistence
-});
+// Use getHandler() to obtain the fetch handler for serverless platforms
+const handler = await server.getHandler();
+export default { fetch: handler };
 ```
 
-**Warning:** Stateless mode means no session persistence between requests. Each request is independent. Do not use features that require session state (notifications, sampling, elicitation) in stateless mode.
+**Warning:** Stateless mode means no session persistence between requests. Each request is independent. Do not use features that require session state (notifications, sampling, elicitation) in stateless mode. Pass `stateless: true` in the server constructor to force stateless behavior on Node.js runtimes (Deno auto-detects stateless mode).
 
 ---
 
@@ -337,7 +338,19 @@ export default server.handler({
 
 ---
 
-## 6. Deployment Checklist
+## 6. CLI Deployment
+
+Use the built-in `mcp-use` CLI to deploy to supported platforms:
+
+```bash
+npx mcp-use deploy  # Deploy to supported platforms
+```
+
+The CLI auto-detects your project configuration and handles packaging, environment variable forwarding, and platform-specific setup.
+
+---
+
+## 7. Deployment Checklist
 
 Run through this checklist before every production deployment.
 
@@ -368,12 +381,18 @@ Run through this checklist before every production deployment.
 - [ ] Error responses tested with invalid inputs
 
 ### Scaling
-- [ ] Session store configured (Redis) for multi-process HTTP deployments
+- [ ] Session store configured (`RedisSessionStore`) for multi-process HTTP deployments
+- [ ] `RedisStreamManager` configured for distributed SSE across replicas
+- [ ] Persistent `sessionStore` configured for session recovery after restarts (replaces deprecated `autoCreateSessionOnInvalidId`)
 - [ ] Connection pooling for databases and HTTP clients
 - [ ] Memory-bounded caches (TTL + max size)
 
+### Compatibility
+- [ ] Zod 4 (`zod@^4.0.0`) compatibility verified — schemas use `z.object()` / `z.string()` etc.
+- [ ] All imports use `"mcp-use/server"` (not `"mcp-use"`)
+
 ### Validation
-- [ ] Server tested with MCP Inspector (`npx @anthropic/inspector`)
+- [ ] Server tested with MCP Inspector (`npx @modelcontextprotocol/inspector` or built-in `/inspector` route in dev mode)
 - [ ] All tools callable and returning expected shapes
 - [ ] Error paths tested (missing params, invalid input, upstream failures)
 - [ ] Claude Desktop config tested with target client
