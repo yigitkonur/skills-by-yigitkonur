@@ -1,13 +1,257 @@
-# MCP Server Project Templates
+# MCP Project Templates
 
-Starter project structures for building MCP servers with mcp-use.
+Starter project structures for building MCP servers and MCP Apps with mcp-use.
 
 ## Quick Start — `create-mcp-use-app`
 
 ```bash
 # Fastest way to start — scaffolds a complete project:
-npx create-mcp-use-app my-server
-cd my-server && npm install && npm run dev
+npx create-mcp-use-app my-app
+cd my-app && npm install && npm run dev
+```
+
+### Template Options
+
+```bash
+# Default starter — tools, resources, prompts, and widgets
+npx create-mcp-use-app my-app --template starter
+
+# MCP Apps — widget-focused for ChatGPT and MCP clients
+npx create-mcp-use-app my-app --template mcp-apps
+
+# MCP-UI — iframe, raw HTML, Remote DOM widget types
+npx create-mcp-use-app my-app --template mcp-ui
+```
+
+| Template | Includes | Best for |
+|----------|----------|----------|
+| `starter` (default) | Tools, resources, prompts, UI widgets | Full-featured servers, learning all MCP features |
+| `mcp-apps` | React widgets, useCallTool, ChatGPT compatibility | Interactive widget apps for chat clients |
+| `mcp-ui` | All three UIResource types (iframe, raw HTML, Remote DOM) | Complex UI requirements, MCP-UI spec compliance |
+
+---
+
+## Template: MCP Apps (Widget-Focused)
+
+The `mcp-apps` template creates a project optimized for building interactive widgets that work in ChatGPT, Claude, and other MCP clients.
+
+```bash
+npx create-mcp-use-app my-widget-app --template mcp-apps
+```
+
+### Project Structure
+
+```
+my-widget-app/
+├── package.json
+├── tsconfig.json
+├── index.ts                       # MCP server entry point
+├── resources/                     # Widget components
+│   └── product-search-result/
+│       ├── widget.tsx             # Widget entry (default export + widgetMetadata)
+│       ├── components/
+│       │   ├── ProductCard.tsx
+│       │   └── SearchFilters.tsx
+│       └── types.ts
+├── public/                        # Static assets
+│   ├── icon.svg
+│   └── favicon.ico
+└── .mcp-use/                      # Auto-generated
+    └── tool-registry.d.ts         # Type-safe useCallTool types
+```
+
+> **Note on entry point location:** This template uses `index.ts` at the project root, matching the `create-mcp-use-app` scaffolding. For manual setup, you can also organize your entry point as `src/server.ts` — both conventions work with `mcp-use dev`. See Template 5 below and the quick-start guide for the `src/` layout.
+
+### `package.json`
+
+```json
+{
+  "name": "my-widget-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "mcp-use dev",
+    "build": "mcp-use build",
+    "start": "mcp-use start"
+  },
+  "dependencies": {
+    "mcp-use": "^1.21.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@mcp-use/cli": "latest",
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0"
+  }
+}
+```
+
+### `tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "jsx": "react-jsx",
+    "strict": true,
+    "outDir": "dist",
+    "declaration": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "index.ts", "resources/**/*", ".mcp-use/**/*"]
+}
+```
+
+### `index.ts` — Server with Widget-Enabled Tool
+
+```typescript
+import { MCPServer, widget, text } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({
+  name: "my-widget-app",
+  version: "1.0.0",
+  description: "MCP App with interactive widgets",
+});
+
+server.tool(
+  {
+    name: "search-products",
+    description: "Search for products by query and display results as an interactive widget",
+    schema: z.object({
+      query: z.string().describe("Search query"),
+      category: z.string().optional().describe("Product category filter"),
+    }),
+    widget: {
+      name: "product-search-result",  // Matches resources/product-search-result/
+      invoking: "Searching products...",
+      invoked: "Products found",
+    },
+  },
+  async ({ query, category }) => {
+    // Replace with real product API
+    const products = [
+      { id: "1", name: `${query} Widget`, price: 29.99, rating: 4.5 },
+      { id: "2", name: `${query} Pro`, price: 49.99, rating: 4.8 },
+    ];
+
+    return widget({
+      props: { products, query, category: category ?? "all" },
+      output: text(`Found ${products.length} products for "${query}"`),
+    });
+  }
+);
+
+await server.listen();
+```
+
+### `resources/product-search-result/widget.tsx` — Widget Component
+
+```tsx
+import { McpUseProvider, useWidget, useCallTool, type WidgetMetadata } from "mcp-use/react";
+import { z } from "zod";
+
+export const widgetMetadata: WidgetMetadata = {
+  description: "Displays product search results with filtering and sorting",
+  props: z.object({
+    products: z.array(z.object({
+      id: z.string(), name: z.string(), price: z.number(), rating: z.number(),
+    })),
+    query: z.string(),
+    category: z.string(),
+  }),
+  metadata: { prefersBorder: true },
+};
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  rating: number;
+}
+
+function ProductSearchContent() {
+  const { props, isPending, theme } = useWidget<{
+    products: Product[];
+    query: string;
+    category: string;
+  }>();
+  const { callTool: refine, isPending: searching } = useCallTool("search-products");
+
+  if (isPending) {
+    return (
+      <div className="animate-pulse p-4 space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded" />
+        ))}
+      </div>
+    );
+  }
+
+  const isDark = theme === "dark";
+
+  return (
+    <div className={`p-4 ${isDark ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
+      <h2 className="text-lg font-bold mb-3">
+        Results for "{props.query}" ({props.products?.length ?? 0})
+      </h2>
+      <div className="space-y-3">
+        {props.products?.map((product) => (
+          <div
+            key={product.id}
+            className={`p-3 rounded border ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-gray-50"}`}
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="font-medium">{product.name}</h3>
+              <span className="font-bold">${product.price}</span>
+            </div>
+            <div className="text-yellow-500 text-sm mt-1">
+              {"★".repeat(Math.floor(product.rating))} {product.rating}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => refine({ query: props.query, category: "electronics" })}
+        disabled={searching}
+        className="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 text-sm"
+      >
+        {searching ? "Searching..." : "Refine Search"}
+      </button>
+    </div>
+  );
+}
+
+export default function Widget() {
+  return (
+    <McpUseProvider autoSize>
+      <ProductSearchContent />
+    </McpUseProvider>
+  );
+}
+```
+
+### What Each File Does
+
+| File | Purpose |
+|------|---------|
+| `index.ts` | MCP server entry — registers tools, starts HTTP server |
+| `resources/*/widget.tsx` | Widget entry — default export (React) + widgetMetadata |
+| `resources/*/components/` | Sub-components used by the widget |
+| `public/` | Static assets served at `/mcp-use/public/` |
+| `.mcp-use/tool-registry.d.ts` | Auto-generated types for type-safe `useCallTool` |
+| `tsconfig.json` | Must include `jsx: "react-jsx"` and `resources/**/*` |
+
+### Development
+
+```bash
+npm run dev     # HMR + Inspector at localhost:3000/inspector
+npm run build   # Production build
+npm run start   # Production server
 ```
 
 ---
@@ -265,6 +509,9 @@ await server.listen(); // Edge runtimes (Deno/Supabase) are auto-detected as sta
 > **Deno Deploy:** `server.listen()` auto-detects edge runtimes and runs in stateless mode — no special export needed.
 ---
 ## Template 5: Widget-Enabled Server (MCP Apps)
+
+> **Tip:** For a fully scaffolded version, use `npx create-mcp-use-app my-app --template mcp-apps` (see MCP Apps template above).
+
 ```
 widget-mcp-server/
 ├── package.json          ← scripts: "dev": "mcp-use dev", "build": "mcp-use build"
