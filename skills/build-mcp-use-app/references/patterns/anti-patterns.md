@@ -432,3 +432,221 @@ Test error cases too: missing params (validation error), non-existent IDs (isErr
 | 🟠 High | Using raw SDK, `z.any()`, no `error()`, god tools, no shutdown, unchecked capabilities |
 | 🟡 Medium | Manual JSON Schema, Winston logger, missing `.describe()`, raw API passthrough |
 | 🟢 Low | Single-file architecture, hardcoded config, no `.strict()`, manual transport |
+
+---
+
+## 8. Widget Anti-Patterns
+
+Common mistakes when building MCP Apps widgets.
+
+### Not Handling `isPending`
+
+```tsx
+// ❌ BAD — accesses props before they exist, crashes on undefined
+const Widget: React.FC = () => {
+  const { props } = useWidget<{ items: Item[] }>();
+  return <div>{props.items.map(/* ... */)}</div>; // TypeError: Cannot read property 'map' of undefined
+};
+
+// ✅ GOOD — always check isPending before accessing props
+const Widget: React.FC = () => {
+  const { props, isPending } = useWidget<{ items: Item[] }>();
+
+  if (isPending) {
+    return (
+      <div className="animate-pulse p-4 space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded" />
+        ))}
+      </div>
+    );
+  }
+
+  return <div>{props.items?.map(/* ... */)}</div>;
+};
+```
+
+### Hardcoded Theme Colors
+
+```tsx
+// ❌ BAD — always white background, invisible in dark mode
+const Widget: React.FC = () => {
+  return (
+    <div style={{ backgroundColor: "#ffffff", color: "#333333" }}>
+      <p>This is invisible in dark mode!</p>
+    </div>
+  );
+};
+
+// ✅ GOOD — use theme from useWidget()
+const Widget: React.FC = () => {
+  const { theme } = useWidget();
+  return (
+    <div className={theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}>
+      <p>Readable in both modes!</p>
+    </div>
+  );
+};
+
+// ✅ ALSO GOOD — use Tailwind dark: variant (ThemeProvider sets the class)
+const Widget: React.FC = () => (
+  <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+    <p>Readable in both modes!</p>
+  </div>
+);
+```
+
+### Using `fetch()` Instead of `useCallTool`
+
+```tsx
+// ❌ BAD — bypasses MCP protocol, no auth, breaks in sandboxed widgets
+const Widget: React.FC = () => {
+  const handleClick = async () => {
+    const res = await fetch("http://localhost:3000/api/search", {
+      method: "POST",
+      body: JSON.stringify({ query: "test" }),
+    });
+    const data = await res.json();
+  };
+  return <button onClick={handleClick}>Search</button>;
+};
+
+// ✅ GOOD — uses MCP protocol, works in all hosts, handles auth automatically
+import { useCallTool } from "mcp-use/react";
+
+const Widget: React.FC = () => {
+  const { callTool, data, isPending } = useCallTool("search");
+
+  return (
+    <button onClick={() => callTool({ query: "test" })} disabled={isPending}>
+      {isPending ? "Searching..." : "Search"}
+    </button>
+  );
+};
+```
+
+### Missing CSP Domains
+
+```tsx
+// ❌ BAD — widget tries to fetch from external API but CSP blocks it
+export const widgetMetadata: WidgetMetadata = {
+  description: "Weather widget",
+  props: z.object({ city: z.string() }),
+  // No CSP domains declared!
+};
+
+// Widget at runtime:
+const { callTool } = useWidget();
+// This fetch FAILS with CSP error because the domain isn't whitelisted
+await fetch("https://api.weather.com/v2/current?city=Paris");
+
+// ✅ GOOD — declare all external domains in metadata
+export const widgetMetadata: WidgetMetadata = {
+  description: "Weather widget",
+  props: z.object({ city: z.string() }),
+  metadata: {
+    csp: {
+      connectDomains: ["https://api.weather.com"],
+      resourceDomains: ["https://cdn.weather-icons.com"],
+    },
+  },
+};
+```
+
+### Not Wrapping in `McpUseProvider`
+
+```tsx
+// ❌ BAD — missing provider, useWidget() will not have theme, error boundary, or auto-sizing
+export default function Widget() {
+  return <MyWidgetContent />; // No McpUseProvider wrapper!
+}
+
+// ✅ GOOD — always wrap in McpUseProvider
+import { McpUseProvider } from "mcp-use/react";
+
+export default function Widget() {
+  return (
+    <McpUseProvider autoSize>
+      <MyWidgetContent />
+    </McpUseProvider>
+  );
+}
+```
+
+### Directly Accessing `window.openai`
+
+```tsx
+// ❌ BAD — only works in ChatGPT, crashes in Claude and other MCP clients
+const Widget: React.FC = () => {
+  const handleClick = () => {
+    window.openai.callTool("search", { query: "test" }); // ← undefined in non-ChatGPT clients
+  };
+  return <button onClick={handleClick}>Search</button>;
+};
+
+// ✅ GOOD — useWidget/useCallTool works in ALL host environments
+import { useCallTool } from "mcp-use/react";
+
+const Widget: React.FC = () => {
+  const { callTool } = useCallTool("search");
+  return <button onClick={() => callTool({ query: "test" })}>Search</button>;
+};
+```
+
+### Missing Widget Metadata Export
+
+```tsx
+// ❌ BAD — no widgetMetadata export, host cannot determine CSP or description
+export default function Widget() {
+  return <div>My widget</div>;
+}
+
+// ✅ GOOD — always export widgetMetadata alongside default component
+import { type WidgetMetadata } from "mcp-use/react";
+import { z } from "zod";
+
+export const widgetMetadata: WidgetMetadata = {
+  description: "Describes what this widget does for the LLM",
+  props: z.object({ data: z.string() }),
+  metadata: { prefersBorder: true },
+};
+
+export default function Widget() {
+  return <div>My widget</div>;
+}
+```
+
+### Ignoring Streaming State
+
+```tsx
+// ❌ BAD — shows nothing during streaming, then suddenly appears
+const Widget: React.FC = () => {
+  const { props, isPending } = useWidget<{ code: string }>();
+  if (isPending) return <div>Loading...</div>;
+  return <pre>{props.code}</pre>;
+};
+
+// ✅ GOOD — show progressive content during streaming
+const Widget: React.FC = () => {
+  const { props, isPending, isStreaming, partialToolInput } = useWidget<{ code: string }>();
+
+  if (isPending && !partialToolInput) return <div className="animate-pulse">Loading...</div>;
+
+  const displayCode = isStreaming ? (partialToolInput?.code ?? "") : (props.code ?? "");
+  return (
+    <pre>
+      {displayCode}
+      {isStreaming && <span className="animate-pulse text-blue-400">▌</span>}
+    </pre>
+  );
+};
+```
+
+### Widget Anti-Pattern Severity
+
+| Severity | Anti-pattern |
+|----------|-------------|
+| 🔴 Critical | Directly accessing `window.openai`, using `fetch()` instead of `useCallTool` |
+| 🟠 High | Not handling `isPending`, missing CSP domains, not wrapping in `McpUseProvider` |
+| 🟡 Medium | Hardcoded theme colors, missing `widgetMetadata` export, ignoring streaming state |
+| 🟢 Low | Not using `autoSize`, missing loading skeletons |
