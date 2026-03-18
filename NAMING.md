@@ -197,7 +197,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `run-` vs `init-` — `run-` is an ongoing session with the tool; `init-` is a one-time generation
 - `run-` vs `test-` — `run-` drives any external tool; `test-` specifically runs verification/validation suites
 
-**Current skills:** `run-agent-browser`, `run-playwright`, `run-research`
+**Current skills:** `run-agent-browser`, `run-playwright`, `run-research`, `run-seo-analysis`
 
 ---
 
@@ -360,4 +360,5 @@ When renaming a published skill:
 - `run-agent-browser`
 - `run-playwright`
 - `run-research`
+- `run-seo-analysis`
 - `test-skill-quality`

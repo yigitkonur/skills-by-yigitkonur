@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-21 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+22 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -112,6 +112,20 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-work
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-skill-quality
+```
+
+---
+
+## SEO & Marketing
+
+Skills for running SEO analysis workflows using MCP-powered marketing tool suites.
+
+| Skill | What it does |
+|---|---|
+| **[run-seo-analysis](skills/run-seo-analysis/)** | Operational workflow guide for the MCP Marketers server's 32 SEO tools — routes agents through site audits, keyword research, backlink analysis, competitor intelligence, SERP analysis, rank tracking, content optimization, AI presence monitoring, local SEO, ASO, e-commerce SEO, and trend analysis with cost-aware tool chaining. Includes 16 reference docs: 12 workflow guides (site-audit, keyword-research, competitor-analysis, backlink-analysis, serp-analysis, rank-tracking, content-optimization, ai-presence, local-seo, aso, ecommerce-seo, trends-analysis) and 4 guides (tool-selection-matrix, cost-optimization, seo-domain-knowledge, parameter-guide). |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-seo-analysis
 ```
 
 ---
