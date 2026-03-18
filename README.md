@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-22 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+24 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -106,12 +106,16 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 | **[run-research](skills/run-research/)** | Research methodology for coding agents using the Research Powerpack MCP server — turns single-query searches into multi-source validated workflows with Google, Reddit, and page scraping. Includes 10 domain-specific reference docs: architecture, API integration, bug fixing, frontend, performance, security, testing, DevOps, and language idioms. |
 | **[build-skills](skills/build-skills/)** | Skill creation methodology skill for building or redesigning Claude skills from workspace evidence, remote research, and comparison before synthesis. Use when a skill should be original, traceable, and repo-fit instead of improvised. Includes reference docs for research workflow, remote sources, comparison workflow, and source-pattern selection. |
 | **[test-skill-quality](skills/test-skill-quality/)** | Derailment Testing methodology — follow a skill's workflow literally on a real task, document every friction point (P0/P1/P2) where instructions fail to specify the next action, classify root causes, apply proven fix patterns, and verify with grep-based consistency checks. Includes 5 reference docs: friction classification, root cause taxonomy, 9 fix patterns, metrics/iteration tracking, and domain adaptation guide. |
+| **[plan-issue-tree](skills/plan-issue-tree/)** | Creates maximalist GitHub Issue trees with sub-issue nesting (up to 8 levels), wave-based execution order, labels, and agent-ready bodies following the subagent prompt protocol — asks brainstorming questions first, then generates bottom-up issue hierarchies with BSV Definition of Done criteria and dependency wiring via GraphQL. Includes 3 reference docs (question bank, issue body template, label schema) and 3 scripts (label setup, sub-issue linking, recursive tree reader). |
+| **[run-issue-plan](skills/run-issue-plan/)** | Executes project plans stored as GitHub Issue trees by recursively reading the hierarchy, dispatching subagents wave-by-wave via the Agent tool, verifying BSV completion criteria, and tracking progress with status labels and issue comments. Includes 2 reference docs (subagent dispatch template, wave execution patterns) and 1 script (recursive tree reader). |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-work
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-skill-quality
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-issue-tree
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-issue-plan
 ```
 
 ---

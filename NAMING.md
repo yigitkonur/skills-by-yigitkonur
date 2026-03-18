@@ -144,7 +144,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 **Disambiguation:**
 - `plan-` vs `run-` — `plan-` is internal reasoning with structured methods; `run-research` is external information gathering via APIs and web scraping
 
-**Current skills:** `plan-work`
+**Current skills:** `plan-work`, `plan-issue-tree`
 
 ---
 
@@ -197,7 +197,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `run-` vs `init-` — `run-` is an ongoing session with the tool; `init-` is a one-time generation
 - `run-` vs `test-` — `run-` drives any external tool; `test-` specifically runs verification/validation suites
 
-**Current skills:** `run-agent-browser`, `run-playwright`, `run-research`, `run-seo-analysis`
+**Current skills:** `run-agent-browser`, `run-issue-plan`, `run-playwright`, `run-research`, `run-seo-analysis`
 
 ---
 
@@ -354,10 +354,12 @@ When renaming a published skill:
 - `init-copilot-review`
 - `init-devin-review`
 - `init-greptile-review`
+- `plan-issue-tree`
 - `plan-work`
 - `publish-npm-package`
 - `review-pr`
 - `run-agent-browser`
+- `run-issue-plan`
 - `run-playwright`
 - `run-research`
 - `run-seo-analysis`
