@@ -148,15 +148,17 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/publish-npm-packa
 
 ---
 
-## Language Standards
+## Language Standards & Development Patterns
 
-Deep reference skills for language-level type safety, patterns, and anti-patterns.
+Deep reference skills for language-level type safety, patterns, anti-patterns, and framework-agnostic development standards.
 
 | Skill | What it does |
 |---|---|
+| **[develop-mcp-server](skills/develop-mcp-server/)** | 113 battle-tested optimization patterns across 15 quality dimensions for any MCP server — evaluates and improves tool design, schema design, error handling, security, context engineering, progressive discovery, agentic workflows, composition, testing, and deployment. Framework-agnostic (FastMCP, mcp-use, official SDK, any framework). Includes 7 decision trees and 15 pattern reference files. |
 | **[develop-typescript](skills/develop-typescript/)** | Strict TypeScript development guide covering type system patterns, anti-patterns with fixes, error handling strategies, and compiler configuration across application, library, CLI, and backend codebases. Includes 4 reference docs: anti-patterns, patterns, type-system, and strict-config. |
 
 ```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-mcp-server
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-typescript
 ```
 
@@ -185,13 +187,11 @@ Deep reference skills for specific frameworks and tools.
 | **[build-supastarter-app](skills/build-supastarter-app/)** | Comprehensive developer guide for the SupaStarter Next.js SaaS boilerplate — monorepo architecture, App Router layout chains, oRPC API patterns, Better Auth, Prisma, Stripe payments, organizations, mail, i18n, S3 storage, UI conventions, analytics, and deployment. Includes 93 reference docs organized across 20 domains with cheatsheets for commands, env vars, file locations, and imports. |
 | **[debug-tauri-devtools](skills/debug-tauri-devtools/)** | CrabNebula DevTools integration for debugging Tauri v2 apps — gives AI agents visibility into the Rust side with console logs, tracing spans, IPC call timings, live config inspection, and frontend source browsing. Includes 5 reference docs: architecture deep-dive, IPC span anatomy, integration patterns, tab reference, and common debugging scenarios. |
 | **[convert-vue-nextjs](skills/convert-vue-nextjs/)** | Converts Vue 2/3 and Nuxt codebases to Next.js App Router — component mapping (directives, slots, emits, v-model), state migration (Pinia/Vuex to Zustand/Context), routing conversion, SSR/data-fetching patterns, coexistence architectures (proxy/Web Components/micro-frontends), and testing strategy. Includes 12 reference docs: component mapping, state management, routing, SSR/data fetching, advanced patterns, migration workflow, package mapping, migration strategies, assessment checklist, coexistence patterns, testing strategy, and pitfalls. |
-| **[build-mcp-server](skills/build-mcp-server/)** | 113 battle-tested patterns across 15 categories for building production-grade MCP servers — tool design, schema design, error handling, security, context engineering, progressive discovery, agentic workflows, composition, testing, and deployment. Includes 7 decision trees and 15 pattern reference files. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-supastarter-app
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/debug-tauri-devtools
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-vue-nextjs
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server
 ```
 
 ---

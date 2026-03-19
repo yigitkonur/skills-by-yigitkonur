@@ -22,7 +22,7 @@ The verb is the most important word in the name. A user scanning a list of 50 sk
 
 - **Sortable** — `ls skills/` groups skills by action, not by technology
 - **Predictable** — a new contributor can guess the right prefix without reading this file
-- **Disambiguating** — the verb separates skills that touch the same technology but serve different purposes (e.g., `build-mcp-sdk-server` vs `test-mcp-server` vs `debug-mcp-server`)
+- **Disambiguating** — the verb separates skills that touch the same technology but serve different purposes (e.g., `build-mcp-use-server` vs `develop-mcp-server` vs `debug-mcp-server`)
 
 ## Prefix Registry
 
@@ -42,7 +42,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `build-` vs `convert-` — `build-` starts from requirements; `convert-` starts from an existing artifact in a different format
 - `build-` vs `develop-` — `build-` is framework-specific ("build a Supastarter app"); `develop-` is language-level ("write TypeScript correctly")
 
-**Current skills:** `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-mcp-server`, `build-mcp-use-server`, `build-skills`, `build-supastarter-app`
+**Current skills:** `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-mcp-use-server`, `build-skills`, `build-supastarter-app`
 
 ---
 
@@ -93,7 +93,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `develop-` vs `build-` — `develop-` is language-wide ("TypeScript strict mode everywhere"); `build-` is framework-specific ("build a Next.js app with Supastarter")
 - `develop-` vs `review-` — `develop-` provides standards to apply *while writing*; `review-` evaluates *already-written* code in a PR context
 
-**Current skills:** `develop-typescript`
+**Current skills:** `develop-mcp-server`, `develop-typescript`
 
 ---
 
@@ -342,13 +342,13 @@ When renaming a published skill:
 
 - `build-copilot-sdk-app`
 - `build-daisyui-mcp`
-- `build-mcp-server`
 - `build-mcp-use-server`
 - `build-skills`
 - `build-supastarter-app`
 - `convert-snapshot-nextjs`
 - `convert-vue-nextjs`
 - `debug-tauri-devtools`
+- `develop-mcp-server`
 - `develop-typescript`
 - `extract-saas-design`
 - `init-agent-config`
