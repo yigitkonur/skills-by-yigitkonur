@@ -178,9 +178,9 @@ Register custom routes before calling `listen()`.
 
 ---
 
-## 6. Logging with SimpleConsoleLogger
+## 6. Logging with Built-in Logger
 
-Use the built-in `Logger` (replaced Winston in v1.12.0). Works in Node.js and browser environments with zero dependencies.
+Use the built-in `Logger` (replaced Winston in v1.12.0). Works in Node.js and browser environments with zero dependencies. Since v1.21.5, `zod` is a peer dependency — declare it in your own `package.json`.
 
 ```typescript
 import { Logger } from "mcp-use/server";
@@ -251,7 +251,6 @@ const server = new MCPServer({
     prefix: "mcp:stream:",
     heartbeatInterval: 10,         // seconds
   }),
-  sessionIdleTimeoutMs: 3600000,   // 1 hour
 });
 ```
 
@@ -274,13 +273,21 @@ const server = new MCPServer({
 
 ## 8. Stateless Mode for Serverless/Edge
 
-Force stateless mode for edge functions, serverless, or simple request/response flows. No sessions, no SSE.
+For edge functions, serverless, or simple request/response flows, use the `stateless: true` constructor option or let the runtime be auto-detected.
 
 ```typescript
+// Force stateless mode (no sessions, no SSE)
 const server = new MCPServer({
   name: "edge-server",
   version: "1.0.0",
-  stateless: true,  // forces stateless (ignores Accept header)
+  stateless: true,
+});
+
+// Force stateful mode (always use sessions)
+const server = new MCPServer({
+  name: "stateful-server",
+  version: "1.0.0",
+  stateless: false,
 });
 ```
 
@@ -289,18 +296,15 @@ const server = new MCPServer({
 | **Stateful** (default) | Yes | Yes | Long-lived clients, notifications, sampling |
 | **Stateless** | No | No | Edge functions, serverless, request/response |
 
-**Auto-detection (default when `stateless` is unset):**
+**Auto-detection (when `stateless` is not set):**
 - Deno / edge runtimes → always stateless
 - Node.js → per-request from `Accept` header:
   - `Accept: application/json, text/event-stream` → stateful
   - `Accept: application/json` → stateless
 
-Leave `stateless` unset in most cases to let auto-detection handle both client types.
-
-For Supabase Edge Functions or Deno Deploy, export a handler instead of calling `listen()`:
+For Supabase Edge Functions, call `server.listen()` — it auto-detects the Deno runtime and runs stateless. For Cloudflare Workers or Deno Deploy, export the handler directly:
 
 ```typescript
-const server = new MCPServer({ name: "edge-mcp", version: "1.0.0", stateless: true });
 // register tools...
 export default { fetch: server.getHandler() };
 ```
@@ -468,17 +472,347 @@ server.tool(
 
 ## 13. Multi-Server Proxy (Gateway)
 
-Aggregate multiple downstream MCP servers behind a single gateway. Tools are namespaced by key (e.g. `search_find-docs`).
+Aggregate multiple downstream MCP servers behind a single gateway using `MCPServer.proxy()` (added in v1.21.0). Tools from each upstream server are namespaced by key (e.g. `search_find-docs`).
 
 ```typescript
-import { MCPServer } from "mcp-use/server";
+import { MCPServer, object } from "mcp-use/server";
 
 const gateway = new MCPServer({ name: "gateway", version: "1.0.0" });
 
+// Proxy HTTP-based servers
 await gateway.proxy({
   search: { url: "https://search-mcp.internal/mcp" },
   analytics: { url: "https://analytics-mcp.internal/mcp" },
 });
 
+// Or proxy stdio-based servers alongside HTTP
+await gateway.proxy({
+  github:     { command: "npx", args: ["-y", "@modelcontextprotocol/server-github"] },
+  filesystem: { command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", "./data"] },
+  db:         { url: "https://db-mcp.internal:3001/mcp" },
+});
+
+// Add gateway-level tools
+gateway.tool(
+  { name: "health", description: "Check all upstream servers" },
+  async () => object({ servers: ["search", "analytics"], status: "healthy" })
+);
+
 await gateway.listen(4000);
+```
+
+---
+
+## 14. Input Validation Patterns
+
+Go beyond basic types with Zod refinements and transformations. Validate data *structure* and *business rules* before your handler runs.
+
+### Semantic Validation
+Use `.refine()` to enforce logical constraints that types cannot capture.
+
+```typescript
+import { z } from "zod";
+
+const dateSchema = z.string().refine((val) => !isNaN(Date.parse(val)), {
+  message: "Invalid date format",
+});
+
+server.tool(
+  {
+    name: "schedule-meeting",
+    schema: z.object({
+      start: dateSchema,
+      end: dateSchema,
+      attendees: z.array(z.string().email()).min(1),
+    }).refine((data) => new Date(data.start) < new Date(data.end), {
+      message: "End time must be after start time",
+      path: ["end"], // Error attaches to 'end' field
+    }),
+  },
+  async ({ start, end, attendees }) => {
+    // Handler is guaranteed to have valid logical dates
+    return text(`Scheduled for ${attendees.length} people`);
+  }
+);
+```
+
+### Transformations
+Normalize input data automatically using `.transform()`.
+
+```typescript
+server.tool(
+  {
+    name: "search-products",
+    schema: z.object({
+      query: z.string().trim().toLowerCase(), // Auto-clean input
+      tags: z.string().transform((val) => val.split(",").map((t) => t.trim())), // "a,b" -> ["a", "b"]
+    }),
+  },
+  async ({ query, tags }) => {
+    // query is already trimmed/lowercased
+    // tags is already an array
+    return text(`Searching for ${query} with tags: ${tags.join(", ")}`);
+  }
+);
+```
+
+---
+
+## 15. Tool Timeouts & Cancellation
+
+Prevent hung processes from blocking your server. Enforce strict execution time limits.
+
+```typescript
+import { error } from "mcp-use/server";
+
+const TIMEOUT_MS = 5000;
+
+server.tool(
+  { name: "heavy-computation", schema: z.object({ input: z.string() }) },
+  async ({ input }, ctx) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      // Pass signal to async operations
+      const result = await longRunningTask(input, { signal: controller.signal });
+      return text(result);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return error("Tool execution timed out");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+);
+
+// Helper wrapper for timeouts
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Operation timed out")), ms)
+    ),
+  ]);
+}
+```
+
+---
+
+## 16. Circuit Breakers
+
+Fail fast when external dependencies (APIs, Databases) are struggling. Prevent cascading failures.
+
+```typescript
+import { error } from "mcp-use/server";
+
+enum CircuitState { CLOSED, OPEN, HALF_OPEN }
+
+class CircuitBreaker {
+  private state = CircuitState.CLOSED;
+  private failures = 0;
+  private lastFailure = 0;
+
+  constructor(
+    private threshold = 5,
+    private resetTimeout = 30000
+  ) {}
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === CircuitState.OPEN) {
+      if (Date.now() - this.lastFailure > this.resetTimeout) {
+        this.state = CircuitState.HALF_OPEN;
+      } else {
+        throw new Error("Circuit is OPEN");
+      }
+    }
+
+    try {
+      const result = await fn();
+      if (this.state === CircuitState.HALF_OPEN) {
+        this.reset();
+      }
+      return result;
+    } catch (err) {
+      this.recordFailure();
+      throw err;
+    }
+  }
+
+  private recordFailure() {
+    this.failures++;
+    this.lastFailure = Date.now();
+    if (this.failures >= this.threshold) {
+      this.state = CircuitState.OPEN;
+      console.error("[CircuitBreaker] Circuit opened due to failures");
+    }
+  }
+
+  private reset() {
+    this.state = CircuitState.CLOSED;
+    this.failures = 0;
+    console.info("[CircuitBreaker] Circuit closed (recovered)");
+  }
+}
+
+const apiBreaker = new CircuitBreaker();
+
+server.tool(
+  { name: "external-api-call", schema: z.object({}) },
+  async () => {
+    try {
+      const data = await apiBreaker.execute(() => fetch("https://unreliable-api.com"));
+      return text(await data.text());
+    } catch (err) {
+      return error("Service temporarily unavailable");
+    }
+  }
+);
+```
+
+---
+
+## 17. Memory Management & Streaming
+
+Handle large datasets without blowing up the heap. Use Node.js Streams or async generators.
+
+```typescript
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { createWriteStream } from "fs";
+
+server.tool(
+  { name: "process-large-file", schema: z.object({ url: z.string().url() }) },
+  async ({ url }, ctx) => {
+    // 1. Stream download instead of buffering
+    const response = await fetch(url);
+    if (!response.body) return error("No body");
+
+    const tempFile = `/tmp/${Date.now()}.dat`;
+    
+    // 2. Pipe to disk to keep memory low
+    await pipeline(
+      Readable.fromWeb(response.body as any),
+      createWriteStream(tempFile)
+    );
+
+    // 3. Process line-by-line using readline (not shown for brevity)
+    
+    return text(`Processed file to ${tempFile}`);
+  }
+);
+```
+
+For returning large data to the client, prefer pagination over massive payloads. MCP tool responses are JSON-RPC and must fit in memory.
+
+---
+
+## 18. Request Tracing & Correlation IDs
+
+Track requests across distributed systems. Attach a request ID to logs and downstream calls.
+
+```typescript
+import { AsyncLocalStorage } from "async_hooks";
+
+const traceContext = new AsyncLocalStorage<{ requestId: string }>();
+
+// Middleware to set context (conceptual, depends on transport)
+function wrapWithContext(fn: Function) {
+  return (...args: any[]) => {
+    const requestId = `req_${crypto.randomUUID().slice(0, 8)}`;
+    return traceContext.run({ requestId }, () => fn(...args));
+  };
+}
+
+function getLogger() {
+  const store = traceContext.getStore();
+  return {
+    info: (msg: string) => console.log(`[${store?.requestId || "sys"}] ${msg}`),
+    error: (msg: string) => console.error(`[${store?.requestId || "sys"}] ${msg}`),
+  };
+}
+
+server.tool(
+  { name: "trace-demo", schema: z.object({}) },
+  async () => {
+    const logger = getLogger();
+    logger.info("Handling request");
+    
+    // Pass ID to downstream API
+    const headers = { "X-Request-ID": traceContext.getStore()?.requestId || "" };
+    // await fetch(..., { headers })
+    
+    return text("Check logs for Request ID");
+  }
+);
+```
+
+---
+
+## 19. Background Jobs
+
+Offload long-running tasks to a background queue. Tools should return "Accepted" immediately.
+
+```typescript
+import { text } from "mcp-use/server";
+
+const queue: Array<{ id: string; data: any }> = [];
+
+server.tool(
+  { name: "generate-report", schema: z.object({ type: z.string() }) },
+  async ({ type }) => {
+    const jobId = `job_${Date.now()}`;
+    
+    // Push to queue (or Redis/BullMQ in production)
+    queue.push({ id: jobId, data: type });
+    
+    // Start processing asynchronously (fire and forget)
+    processQueue().catch(console.error);
+
+    return text(`Report generation started. Job ID: ${jobId}`);
+  }
+);
+
+async function processQueue() {
+  const job = queue.shift();
+  if (!job) return;
+  
+  console.log(`Processing ${job.id}...`);
+  await new Promise(r => setTimeout(r, 2000)); // Simulate work
+  console.log(`Job ${job.id} complete`);
+}
+```
+
+---
+
+## 20. Feature Flags
+
+Dynamically enable/disable tools without redeploying.
+
+```typescript
+const flags = {
+  EXPERIMENTAL_TOOLS: process.env.ENABLE_EXPERIMENTAL === "true",
+  BETA_Search: false,
+};
+
+// Conditional registration
+if (flags.EXPERIMENTAL_TOOLS) {
+  server.tool(
+    { name: "experimental-feature", schema: z.object({}) },
+    async () => text("This is experimental!")
+  );
+}
+
+// Runtime check
+server.tool(
+  { name: "search", schema: z.object({ q: z.string() }) },
+  async ({ q }) => {
+    if (flags.BETA_Search) {
+      return text("Using new beta search engine...");
+    }
+    return text("Using standard search...");
+  }
+);
 ```

@@ -6,7 +6,7 @@ Definitive guide to registering tools, writing Zod schemas, and handling tool ca
 
 ## Tool Registration API
 
-Register tools with `server.tool(definition, handler)`. The definition object describes the tool; the handler executes it.
+Register tools using the chainable `.tool(definition, handler)` method on your `MCPServer` instance.
 
 ### Minimal Tool
 
@@ -24,8 +24,17 @@ server.tool(
       name: z.string().describe("Person to greet"),
     }),
   },
-  async (args) => text(`Hello, ${args.name}!`)
+  async ({ name }) => text(`Hello, ${name}!`)
 );
+```
+
+### Chaining Multiple Tools
+
+```typescript
+server
+  .tool({ name: 'greet', ... }, async (params) => { ... })
+  .tool({ name: 'search', ... }, async (params) => { ... })
+  .tool({ name: 'update', ... }, async (params) => { ... });
 ```
 
 ### Full Tool Signature
@@ -66,19 +75,211 @@ server.tool(
 );
 ```
 
-### ToolDefinition Properties
+---
+
+## ToolDefinition Properties
 
 | Property | Type | Required | Purpose |
 |---|---|---|---|
 | `name` | `string` | Yes | Unique identifier (kebab-case) |
 | `title` | `string` | No | Human-readable name for UI; falls back to `name` |
 | `description` | `string` | No | LLM-facing description of what the tool does |
-| `schema` | `z.ZodObject` | No | Zod schema for input validation |
-| `outputSchema` | `z.ZodObject` | No | Zod schema for structured output; enables type inference in `useCallTool()` |
+| `schema` | `z.ZodTypeAny` | No | Zod schema for input validation |
+| `outputSchema` | `z.ZodTypeAny` | No | Zod schema for structured output; enables type inference in `useCallTool()` |
 | `annotations` | `ToolAnnotations` | No | Behavioral hints for clients (read-only, destructive, etc.) |
 | `cb` | `ToolCallback` | No | Inline handler (alternative to separate callback argument) |
-| `_meta` | `Record<string, unknown>` | No | Opaque metadata passed through to MCP protocol |
+| `_meta` | `Record<string, unknown>` | No | Opaque metadata passed through to MCP protocol (used for OpenAI Apps SDK integration) |
 | `widget` | `ToolWidgetConfig` | No | Widget config for tools returning `widget()` responses |
+| `inputs` | `InputDefinition[]` | No | **Deprecated.** Use `schema` (Zod) instead. |
+
+**`ToolWidgetConfig` fields** (used with `widget` property):
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | Yes | Widget name — must match a widget folder in `resources/` |
+| `invoking` | `string` | No | Status text shown while the tool is running (auto-defaulted to `"Loading <name>..."`) |
+| `invoked` | `string` | No | Status text shown after the tool completes (auto-defaulted to `"<name> ready"`) |
+| `widgetAccessible` | `boolean` | No | Whether the widget can initiate tool calls (e.g., via `useCallTool`). Defaults to `true`. |
+| `resultCanProduceWidget` | `boolean` | No | Whether this tool result can produce a widget. Defaults to `true`. |
+
+---
+
+## Complex Zod Patterns
+
+The `mcp-use` server relies on Zod for runtime validation and JSON Schema generation.
+
+### Discriminated Unions (Polymorphism)
+
+Use `z.discriminatedUnion` when a tool accepts different shapes of data based on a type field.
+
+```typescript
+const notificationSchema = z.discriminatedUnion("channel", [
+  z.object({
+    channel: z.literal("email"),
+    address: z.string().email(),
+    subject: z.string(),
+  }),
+  z.object({
+    channel: z.literal("slack"),
+    channelId: z.string(),
+    mrkdwn: z.boolean(),
+  }),
+]);
+
+server.tool(
+  {
+    name: "send-notification",
+    schema: z.object({
+      notification: notificationSchema,
+    }),
+  },
+  async ({ notification }) => {
+    if (notification.channel === "email") {
+      // notification.address is typed here
+    } else {
+      // notification.channelId is typed here
+    }
+    return text("Sent");
+  }
+);
+```
+
+### Recursive Schemas
+
+Use `z.lazy()` for recursive data structures like file trees.
+
+```typescript
+const nodeSchema: z.ZodType<Node> = z.lazy(() =>
+  z.object({
+    name: z.string(),
+    children: z.array(nodeSchema).optional(),
+  })
+);
+
+server.tool(
+  {
+    name: "process-tree",
+    schema: z.object({ root: nodeSchema }),
+  },
+  // ...
+);
+```
+
+### Records (Dynamic Keys)
+
+Use `z.record()` when keys are not known in advance.
+
+```typescript
+server.tool(
+  {
+    name: "update-env",
+    schema: z.object({
+      vars: z.record(z.string(), z.string()).describe("Environment variables to set"),
+    }),
+  },
+  async ({ vars }) => {
+    // vars is Record<string, string>
+    return text(`Updated ${Object.keys(vars).length} variables`);
+  }
+);
+```
+
+### Intersections
+
+Combine schemas with `.and()` or `z.intersection()`.
+
+```typescript
+const pagination = z.object({ page: z.number(), limit: z.number() });
+const filters = z.object({ status: z.string() });
+
+server.tool(
+  {
+    name: "list-items",
+    schema: pagination.and(filters),
+  },
+  async ({ page, limit, status }) => {
+    // All fields available
+    return text("Listing...");
+  }
+);
+```
+
+---
+
+## Context Object (`ctx`)
+
+The second argument to every handler provides session state and advanced capabilities.
+
+| Property | Type | Description |
+|---|---|---|
+| `ctx.session` | `Session` | Current session object (id, transport, etc.) |
+| `ctx.client` | `ClientInfo` | Client identity and capabilities |
+| `ctx.client.info()` | `Function` | Returns `{ name, version }` from the MCP `initialize` handshake |
+| `ctx.client.can(capability)` | `Function` | Returns `true`/`false` for a given capability (e.g., `'sampling'`) |
+| `ctx.client.supportsApps()` | `Function` | Returns `true` if client is MCP Apps / ChatGPT compatible |
+| `ctx.client.extension(id)` | `Function` | Returns extension metadata by ID (e.g., `'io.modelcontextprotocol/ui'`) |
+| `ctx.client.user()` | `Function` | Returns per-invocation `UserContext` from `params._meta`, or `undefined` |
+| `ctx.log(level, msg)` | `Function` | Send logs to the client (`debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`) |
+| `ctx.auth` | `AuthContext` | Authenticated user info (if OAuth enabled) |
+| `ctx.reportProgress` | `Function` | Report progress `(loaded, total, message)` |
+| `ctx.elicit` | `Function` | Request user input mid-execution |
+| `ctx.sample` | `Function` | Request LLM sampling from client |
+| `ctx.sendNotification` | `Function` | Send custom notification to client |
+
+### Example Usage
+
+```typescript
+async (args, ctx) => {
+  const { sessionId } = ctx.session;
+  const { name, version } = ctx.client.info();
+  
+  // Log to client console
+  await ctx.log("info", `Processing request in session ${sessionId}`);
+
+  // Check capabilities
+  if (ctx.client.can("sampling")) {
+    const summary = await ctx.sample("Summarize this...");
+  }
+
+  // Report progress
+  await ctx.reportProgress(50, 100, "Halfway there");
+  
+  return text("Done");
+}
+```
+
+---
+
+## Error Handling
+
+Proper error handling ensures the LLM understands *why* a tool failed rather than just seeing a crash.
+
+### Expected Errors
+
+Use the `error()` helper for logic failures (e.g., "User not found").
+
+```typescript
+import { error } from "mcp-use/server";
+
+if (!user) {
+  return error(`User ${id} not found`);
+}
+```
+
+This returns a result with `isError: true`, which the LLM interprets as a failure to correct.
+
+### Unexpected Errors
+
+Throwing an error will result in an Internal Server Error (500) unless caught.
+
+```typescript
+try {
+  await db.query();
+} catch (err) {
+  await ctx.log("error", `DB failed: ${err.message}`);
+  return error("Database unavailable");
+}
+```
 
 ---
 
@@ -113,6 +314,79 @@ annotations: {                                annotations: {
 ```
 
 > **Guideline:** Set `readOnlyHint: true` on every read/search/get tool. Set `destructiveHint: true` on delete/remove tools. Clients may use these to prompt for confirmation.
+
+---
+
+## Returning Widgets from Tools
+
+This is the recommended way to expose widgets to a model. Since `exposeAsTool` defaults to `false`, widgets are registered as MCP resources only. Defining a custom tool that calls `widget()` gives you full control over the tool's name, description, schema, and business logic.
+
+You must include the `widget: { name, ... }` config in your tool definition when returning widgets. This sets up all the registration-time metadata needed for proper widget rendering. The widget file must exist in your `resources/` folder but does **not** need `exposeAsTool: true`.
+
+```typescript
+import { widget, text } from 'mcp-use/server';
+import { z } from 'zod';
+
+server.tool({
+  name: 'get-weather',
+  description: 'Get current weather for a city',
+  schema: z.object({
+    city: z.string().describe('City name')
+  }),
+  // Widget config sets all registration-time metadata
+  widget: {
+    name: 'weather-display',  // Must match a widget in resources/
+    invoking: 'Fetching weather...',
+    invoked: 'Weather loaded'
+  }
+}, async ({ city }) => {
+  const weatherData = await fetchWeather(city);
+
+  // Return widget with runtime data only
+  return widget({
+    props: weatherData,              // Widget-only data passed to useWidget().props (hidden from model)
+    output: text(`Weather in ${city}: ${weatherData.temp}°C`),  // What the model sees
+    message: `Current weather in ${city}`  // Optional text message override
+  });
+});
+```
+
+See the [UI Widgets guide](./ui-widgets) for complete widget creation and registration documentation.
+
+---
+
+## OpenAI Apps SDK Integration (`_meta`)
+
+For ChatGPT and OpenAI-compatible clients, use `_meta` on the tool definition and in the handler return value to wire up widget rendering:
+
+```typescript
+server.tool({
+  name: 'show_chart',
+  description: 'Display a chart',
+  schema: z.object({
+    data: z.array(z.any()).describe('The chart data')
+  }),
+  _meta: {
+    'openai/outputTemplate': 'ui://widgets/chart',
+    'openai/toolInvocation/invoking': 'Generating chart...',
+    'openai/toolInvocation/invoked': 'Chart generated',
+    'openai/widgetAccessible': true
+  }
+}, async ({ data }) => {
+  return {
+    _meta: {
+      'openai/outputTemplate': 'ui://widgets/chart'
+    },
+    content: [{
+      type: 'text',
+      text: 'Chart displayed'
+    }],
+    structuredContent: { data }
+  };
+});
+```
+
+> **Note:** The recommended approach is to use the `widget` helper in a custom tool (see above) or set `exposeAsTool: true` in a widget's metadata. The `_meta` pattern is the lower-level mechanism used internally.
 
 ---
 
@@ -219,23 +493,42 @@ z.object({
 
 ### Completable Schemas
 
-Use `completable()` for autocomplete hints on string fields:
+`completable()` provides autocomplete hints for `server.prompt()` argument fields. It is **not supported** for `server.tool()` schemas. For resource template URI variable autocomplete, use `callbacks.complete` on the `resourceTemplate` definition instead.
 
 ```typescript
 import { completable } from "mcp-use/server";
 
-const language = completable(z.string().describe("Programming language"), [
-  "python", "typescript", "rust", "go", "java",
-]);
-const projectName = completable(
-  z.string().describe("Project name"),
-  async (value) => db.search(value).map((r) => r.name)  // dynamic callback
+// ✅ Valid: completable() in a prompt schema
+server.prompt(
+  {
+    name: "run-linter",
+    schema: z.object({
+      language: completable(z.string().describe("Programming language"), [
+        "python", "typescript", "rust", "go", "java",
+      ]),
+      project: completable(
+        z.string().describe("Project name"),
+        async (value) => db.search(value).map((r) => r.name)
+      ),
+    }),
+  },
+  async ({ project, language }) =>
+    `Lint ${project} as ${language}`
 );
 
-server.tool({
-  name: "run-linter",
-  schema: z.object({ project: projectName, language }),
-}, async (args) => text(`Linting ${args.project} as ${args.language}`));
+// ✅ Valid: autocomplete for resourceTemplate URI variables
+server.resourceTemplate(
+  {
+    name: "project-file",
+    uriTemplate: "project://{name}/files",
+    callbacks: {
+      complete: {
+        name: async (value) => db.search(value).map((r) => r.name),
+      },
+    },
+  },
+  async (uri, { name }) => object(await db.getProject(name))
+);
 ```
 
 ---
@@ -243,48 +536,6 @@ server.tool({
 ## Handler Callback
 
 The handler is `async (args, ctx) => result`. `args` is typed from the Zod schema; `ctx` provides session state, logging, and advanced MCP features. See `response-helpers.md` for the complete guide to response helpers (`text`, `object`, `error`, `mix`, `markdown`, `image`, etc.).
-
----
-
-## Context Object (`ctx`)
-
-The second argument to every handler. Provides session state, client info, logging, and advanced MCP capabilities.
-
-```typescript
-async (args, ctx) => {
-  ctx.session.sessionId;                     // Unique session identifier
-  const info = ctx.client.info();            // { name: "Claude", version: "3.5" }
-  const caps = ctx.client.capabilities();    // All advertised capabilities
-  ctx.client.can("sampling");                // true if client supports capability
-  ctx.client.supportsApps();                 // true if MCP Apps/widgets
-  ctx.client.extension("my-ext");            // Extension settings or undefined
-  ctx.client.user();                         // UserContext | undefined (ChatGPT)
-  ctx.log("info", "Processing...");          // Send log to client
-  ctx.auth.user.userId;                      // Authenticated user (requires OAuth)
-  ctx.auth.permissions;                      // Granted scopes
-  await ctx.reportProgress?.(3, 10, "Step 3 of 10");
-  await ctx.elicit("Target?", z.object({ env: z.enum(["staging","prod"]) }));
-  await ctx.sample({ messages: [...], maxTokens: 500 });
-  await ctx.sendNotification("custom/progress", { step: 3 });
-  await ctx.sendNotificationToSession(targetId, "custom/msg", { text: "Hi" });
-}
-```
-
-### Context Availability
-
-| Feature | Requires | Notes |
-|---|---|---|
-| `ctx.session.sessionId` | Any transport | Always available |
-| `ctx.client.info()` | Client `initialize` | `{ name, version }` |
-| `ctx.client.can(cap)` | Client `initialize` | `"sampling"`, `"elicitation"`, etc. |
-| `ctx.client.supportsApps()` | MCP Apps extension | SEP-1865 support |
-| `ctx.client.user()` | Client `_meta` | `undefined` for non-ChatGPT |
-| `ctx.log()` | Logging capability | Ignored if unsupported |
-| `ctx.auth` | OAuth configured | `undefined` without auth |
-| `ctx.elicit()` | Elicitation | Check `can("elicitation")` first |
-| `ctx.sample()` | Sampling | Check `can("sampling")` first |
-| `ctx.reportProgress()` | Progress token | Only if client requested |
-| `ctx.sendNotification()` | SSE/StreamableHTTP | Not over stdio |
 
 ---
 
@@ -299,6 +550,7 @@ server.tool({ name: "check-client", schema: z.object({}) }, async (_p, ctx) => {
   const { name, version } = ctx.client.info();      // "ChatGPT", "1.0.0"
   const hasSampling = ctx.client.can("sampling");    // true / false
   const isAppsClient = ctx.client.supportsApps();    // MCP Apps / ChatGPT
+  const uiExt = ctx.client.extension('io.modelcontextprotocol/ui');
   return text(`${name} ${version}, apps: ${isAppsClient}`);
 });
 ```
@@ -344,6 +596,8 @@ server.tool({
 ```
 
 **MCP Log Levels** (ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`
+
+> The third argument to `ctx.log()` is an optional logger name string. Example: `await ctx.log('info', 'Done', 'my-logger')`.
 
 ---
 
@@ -443,3 +697,210 @@ server.tool({
 | Giant catch-all tools | One tool doing 5 things via "mode" param | One tool per action |
 | Not using annotations | Clients can't warn before destructive actions | Set `readOnlyHint`, `destructiveHint` |
 | Schema without `.strict()` | LLM may send hallucinated extra fields | Add `.strict()` to top-level schemas |
+---
+
+## Zod Schema Cookbook
+
+A collection of common validation patterns for MCP tools.
+
+### Date Strings
+
+Validate ISO 8601 dates.
+
+```typescript
+const dateSchema = z.string().datetime({ offset: true });
+// "2023-01-01T00:00:00Z"
+```
+
+### JSON Strings
+
+Parse a string containing JSON.
+
+```typescript
+const jsonSchema = z.string().transform((str, ctx) => {
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid JSON" });
+    return z.NEVER;
+  }
+});
+```
+
+### File Paths (Safe)
+
+Prevent directory traversal attacks.
+
+```typescript
+const pathSchema = z.string().regex(/^[\w\-. /]+$/).refine((val) => !val.includes(".."), {
+  message: "Path cannot contain '..'",
+});
+```
+
+### SemVer
+
+Validate semantic versions.
+
+```typescript
+const semverSchema = z.string().regex(/^\d+\.\d+\.\d+(-[\w.]+)?$/);
+// "1.0.0", "2.0.0-beta.1"
+```
+
+### URL with Protocol
+
+Enforce HTTPS.
+
+```typescript
+const urlSchema = z.string().url().startsWith("https://");
+```
+
+---
+
+## Testing Tools
+
+Tools are just functions. You can unit test them directly by importing the handler or mocking the context.
+
+### Unit Testing
+
+```typescript
+// tool.ts
+export const addTool = {
+  name: "add",
+  schema: z.object({ a: z.number(), b: z.number() }),
+  handler: async ({ a, b }) => text(`${a + b}`),
+};
+
+// tool.test.ts
+import { addTool } from "./tool";
+import { describe, it, expect } from "vitest";
+
+describe("addTool", () => {
+  it("adds two numbers", async () => {
+    const result = await addTool.handler({ a: 1, b: 2 }, {} as any);
+    expect(result).toEqual({ 
+      content: [{ type: "text", text: "3" }],
+      isError: false 
+    });
+  });
+});
+```
+
+### Mocking Context
+
+Create a minimal mock context for tests requiring logs or auth.
+
+```typescript
+const mockCtx = {
+  session: { sessionId: "test-session" },
+  log: vi.fn(),
+  auth: { userId: "user-1" },
+  reportProgress: vi.fn(),
+};
+
+await myTool.handler(args, mockCtx);
+expect(mockCtx.log).toHaveBeenCalledWith("info", "Processing...");
+```
+
+---
+
+## Validation Errors
+
+When a tool call fails schema validation, `mcp-use` automatically returns a detailed error to the client (and thus the LLM).
+
+### Error Format
+
+The error message includes the path and issue for every failure:
+
+```
+Validation Error:
+- name: Required
+- age: Expected number, received string
+- email: Invalid email address
+```
+
+This helps the LLM self-correct and try again with valid arguments.
+
+### Custom Error Messages
+
+Customize Zod error messages to guide the LLM.
+
+```typescript
+z.string().min(10, { message: "Description must be at least 10 characters long to be useful." })
+```
+
+---
+
+## Performance Optimization
+
+Tool handlers run in the main event loop. Keep them fast to avoid blocking other requests.
+
+### Parallel Execution
+
+Use `Promise.all` for independent operations.
+
+```typescript
+// ❌ Sequential (slow)
+const user = await db.getUser(id);
+const posts = await db.getPosts(id);
+
+// ✅ Parallel (fast)
+const [user, posts] = await Promise.all([
+  db.getUser(id),
+  db.getPosts(id),
+]);
+```
+
+### Caching
+
+Cache expensive computations or API calls.
+
+```typescript
+import { LRUCache } from "lru-cache";
+
+const cache = new LRUCache({ max: 100, ttl: 60000 });
+
+async (args) => {
+  const key = JSON.stringify(args);
+  if (cache.has(key)) return cache.get(key);
+
+  const result = await computeExpensiveResult(args);
+  cache.set(key, result);
+  return result;
+};
+```
+
+### Offloading
+
+For CPU-intensive tasks (image processing, heavy parsing), use worker threads or offload to a separate service to keep the MCP server responsive.
+
+## Tool Design Patterns
+
+### Descriptions
+
+```typescript
+// ❌ BAD: Vague description
+description: "Get data"
+
+// ✅ GOOD: Specific for LLM
+description: "Retrieve user profile by email or ID. Use when asked about specific user details."
+```
+
+### Schemas
+
+```typescript
+// ❌ BAD: Any types
+z.any()
+
+// ✅ GOOD: Specific types
+z.object({ id: z.string().uuid() })
+```
+
+### Handlers
+
+```typescript
+// ❌ BAD: Throwing strings
+throw "Failed";
+
+// ✅ GOOD: Returning error objects
+return error("Operation failed: resource locked");
+```

@@ -14,10 +14,10 @@ These are the most common mistakes — using lower-level APIs when mcp-use provi
 
 ```typescript
 // ❌ BAD — raw SDK, manual transport wiring, no Zod
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { MCPServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-const server = new McpServer({ name: "my-server", version: "1.0.0" });
+const server = new MCPServer({ name: "my-server", version: "1.0.0" });
 server.tool("greet", { name: { type: "string" } }, async ({ name }) => ({
   content: [{ type: "text", text: `Hello ${name}` }],
 }));
@@ -82,7 +82,7 @@ await server.listen(3000);
 
 ### Using Winston Instead of Built-in Logger
 
-Winston was removed in mcp-use v1.12.0. The built-in `SimpleConsoleLogger` works in Node.js and browsers with zero dependencies.
+Winston was removed in mcp-use v1.12.0. The built-in `Logger` (powered by `SimpleConsoleLogger`) works in Node.js and browsers with zero dependencies.
 
 ```typescript
 // ❌ BAD — external dependency, Node.js only (removed in v1.12.0)
@@ -98,6 +98,27 @@ import { Logger } from "mcp-use/server";
 Logger.configure({ level: "info", format: "minimal" });
 const logger = Logger.get("my-component");
 logger.info("Server started");
+```
+
+### Not Declaring Zod as a Direct Dependency (v1.21.5+)
+
+Since v1.21.5, `zod` is a `peerDependency` in `mcp-use`. If you do not declare it yourself, npm may not install it and TypeScript will report errors.
+
+```json
+// ❌ BAD — relying on mcp-use to provide zod (no longer works since v1.21.5)
+{
+  "dependencies": {
+    "mcp-use": "^1.21.5"
+  }
+}
+
+// ✅ GOOD — declare zod explicitly
+{
+  "dependencies": {
+    "mcp-use": "^1.21.5",
+    "zod": "^4.0.0"
+  }
+}
 ```
 
 ---
@@ -300,17 +321,19 @@ const server = new MCPServer({
 
 Calling `ctx.elicit()` or `ctx.sample()` without verifying the client supports them causes runtime errors.
 
+Also note the open bug in v1.21.5 (GitHub #1215): `result.data` is `undefined` at runtime — user input lands in `result.content`. Use the workaround until a fix ships.
+
 ```typescript
-// ❌ BAD — assumes client supports elicitation
+// ❌ BAD — assumes client supports elicitation; also accesses result.data directly (bug #1215)
 server.tool({ name: "confirm", schema: z.object({}) }, async (_, ctx) => {
   const result = await ctx.elicit(
     "Do you want to continue?",
     z.object({ confirm: z.boolean().default(false) })
   ); // may throw if client doesn't support elicitation
-  return text(result.data.confirm ? "Confirmed" : "Declined");
+  return text(result.data.confirm ? "Confirmed" : "Declined"); // crashes — result.data is undefined
 });
 
-// ✅ GOOD — check capabilities first
+// ✅ GOOD — check capabilities first; use result.data ?? result.content workaround
 server.tool({ name: "confirm", schema: z.object({}) }, async (_, ctx) => {
   if (!ctx.client.can('elicitation')) {
     return text("Client does not support interactive confirmation.");
@@ -319,7 +342,9 @@ server.tool({ name: "confirm", schema: z.object({}) }, async (_, ctx) => {
     "Do you want to continue?",
     z.object({ confirm: z.boolean().default(false) })
   );
-  return text(result.action === "accept" && result.data.confirm ? "Confirmed" : "Declined");
+  // Workaround for bug #1215: result.data is undefined at runtime until fix ships
+  const data = (result.data ?? (result as any).content) as { confirm: boolean };
+  return text(result.action === "accept" && data.confirm ? "Confirmed" : "Declined");
 });
 ```
 
@@ -417,7 +442,7 @@ curl -X POST http://localhost:3000/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get-user","arguments":{"id":"test"}}}'
 
 # Run MCP Inspector
-npx @modelcontextprotocol/inspector node dist/index.js
+npx @mcp-use/inspector --url http://localhost:3000/mcp
 ```
 
 Test error cases too: missing params (validation error), non-existent IDs (isError), malformed input (rejection).
@@ -432,3 +457,181 @@ Test error cases too: missing params (validation error), non-existent IDs (isErr
 | 🟠 High | Using raw SDK, `z.any()`, no `error()`, god tools, no shutdown, unchecked capabilities |
 | 🟡 Medium | Manual JSON Schema, Winston logger, missing `.describe()`, raw API passthrough |
 | 🟢 Low | Single-file architecture, hardcoded config, no `.strict()`, manual transport |
+
+---
+
+## 8. State Management Anti-Patterns
+
+### Using Global Variables for User State
+
+Global variables are shared across ALL users in a process.
+
+```typescript
+// ❌ BAD — unintended data sharing between users
+let lastSearchQuery = ""; 
+
+server.tool({ name: "search", schema: z.object({ q: z.string() }) }, async ({ q }) => {
+  lastSearchQuery = q; // User A overwrites User B
+  return text(`Saved ${q}`);
+});
+
+// ✅ GOOD — use session store or stateless approach
+server.tool({ name: "search", schema: z.object({ q: z.string() }) }, async ({ q }, ctx) => {
+  await ctx.session.set("last_query", q); // Isolated per session
+  return text(`Saved ${q}`);
+});
+```
+
+### In-Memory Leaks
+
+Storing unbounded data in Maps/Arrays without cleanup.
+
+```typescript
+// ❌ BAD — grows indefinitely until OOM
+const cache = new Map();
+
+server.tool({ name: "cache", schema: z.object({ key: z.string(), val: z.string() }) }, async ({ key, val }) => {
+  cache.set(key, val); // Never deleted
+  return text("Cached");
+});
+
+// ✅ GOOD — use LRU cache or TTL
+import { LRUCache } from "lru-cache";
+const cache = new LRUCache({ max: 500 });
+```
+
+---
+
+## 9. Concurrency Anti-Patterns
+
+### Blocking the Event Loop
+
+Performing CPU-intensive work synchronously blocks all other requests.
+
+```typescript
+// ❌ BAD — blocks server for seconds
+server.tool({ name: "compute", schema: z.object({}) }, async () => {
+  const end = Date.now() + 5000;
+  while (Date.now() < end) {} // Busy wait
+  return text("Done");
+});
+
+// ✅ GOOD — use worker threads or yield
+import { Worker } from "worker_threads";
+// Offload to worker...
+```
+
+### `forEach` with Async
+
+`Array.forEach` does not wait for promises, leading to unhandled errors and race conditions.
+
+```typescript
+// ❌ BAD — fires off promises and returns immediately
+items.forEach(async (item) => {
+  await db.update(item); // Errors here are swallowed
+});
+return text("Done?");
+
+// ✅ GOOD — use Promise.all or for...of
+await Promise.all(items.map(item => db.update(item)));
+return text("Done");
+```
+
+---
+
+## 10. TypeScript Anti-Patterns
+
+### `as any` Casting
+
+Defeats the purpose of TypeScript and Zod.
+
+```typescript
+// ❌ BAD — blind cast
+const data = JSON.parse(str) as any;
+return text(data.user.name); // Runtime crash if undefined
+
+// ✅ GOOD — validate with Zod
+const schema = z.object({ user: z.object({ name: z.string() }) });
+const result = schema.safeParse(JSON.parse(str));
+if (!result.success) return error("Invalid data");
+return text(result.data.user.name);
+```
+
+### Ignoring Promise Errors
+
+Floating promises can crash the process or leave it in an undefined state.
+
+```typescript
+// ❌ BAD — no await, no catch
+db.save(data); 
+
+// ✅ GOOD — handle completion
+await db.save(data).catch(err => logger.error("Save failed", err));
+```
+
+---
+
+## 11. Deployment Anti-Patterns
+
+### Running as Root
+
+Security risk if the process is compromised.
+
+```dockerfile
+# ❌ BAD — runs as root by default
+FROM node:20
+CMD ["node", "server.js"]
+
+# ✅ GOOD — use non-privileged user
+USER node
+CMD ["node", "server.js"]
+```
+
+### Using `:latest` Docker Tag
+
+Unpredictable builds.
+
+```dockerfile
+# ❌ BAD — might break on next pull
+FROM node:latest
+
+# ✅ GOOD — pin version (and digest for max security)
+FROM node:20.11.0-alpine
+```
+
+---
+
+## 12. Observability Anti-Patterns
+
+### Console.log Debugging in Production
+
+Unstructured logs are hard to query.
+
+```typescript
+// ❌ BAD — hard to parse in Datadog/Splunk
+console.log("User logged in " + userId);
+
+// ✅ GOOD — structured JSON logging
+logger.info("User logged in", { userId, event: "auth_success" });
+```
+
+### Silent Failures
+
+Catching errors and doing nothing makes debugging impossible.
+
+```typescript
+// ❌ BAD — swallows error
+try {
+  await operation();
+} catch (e) {
+  return text("Something went wrong"); // What went wrong?
+}
+
+// ✅ GOOD — log and report
+try {
+  await operation();
+} catch (e) {
+  logger.error("Operation failed", e);
+  return error("Operation failed: " + (e as Error).message);
+}
+```

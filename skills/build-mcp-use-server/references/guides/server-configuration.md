@@ -1,6 +1,6 @@
 # Server Configuration
 
-Complete reference for configuring `MCPServer` from the `mcp-use` library — identity, networking, CORS, security, middleware, logging, and environment variables.
+Complete reference for configuring `MCPServer` from the `mcp-use` library — identity, networking, transport, session management, CORS, security, middleware, and environment variables.
 
 ---
 
@@ -12,78 +12,264 @@ Complete reference for configuring `MCPServer` from the `mcp-use` library — id
 |---|---|---|---|
 | `name` | `string` | — (required) | Server identifier used in MCP protocol handshake |
 | `version` | `string` | — (required) | Semantic version reported to clients |
-| `title` | `string` | value of `name` | Display name shown in Inspector / MCP clients |
+| `title` | `string` | `name` | Display name shown in Inspector / MCP clients |
 | `description` | `string` | `undefined` | Server description shown during discovery |
 | `websiteUrl` | `string` | `undefined` | Public website URL |
 | `favicon` | `string` | `undefined` | Favicon path relative to `public/` directory |
-| `icons` | `Array<{ src, mimeType, sizes }>` | `undefined` | Icon definitions for client UIs |
-| `host` | `string` | `'localhost'` | Bind hostname for the HTTP server |
+| `icons` | `Array<{ src: string; mimeType?: string; sizes?: string[]; theme?: "light" \| "dark" }>` | `undefined` | Icon definitions for client UIs; `theme` distinguishes light/dark variants |
+| `host` | `string` | `'localhost'` | Bind hostname |
 | `baseUrl` | `string` | `http://{host}:{port}` | Public URL for widget/asset URLs; also read from `MCP_URL` env var |
-| `cors` | `CorsConfig` | permissive (`origin: '*'`) | CORS configuration |
+| `cors` | `CorsConfig` | permissive (`origin: '*'`) | CORS configuration (replaces defaults entirely — no merge) |
 | `allowedOrigins` | `string[]` | `undefined` | Enables Host header validation (DNS rebinding protection) |
-| `stateless` | `boolean` | auto-detected | Force stateful (`false`) or stateless (`true`) transport mode |
-| `sessionIdleTimeoutMs` | `number` | `86400000` (1 day) | Idle session timeout in milliseconds |
+| `stateless` | `boolean` | auto-detected | Force stateless or stateful transport mode |
+| `sessionIdleTimeoutMs` | `number` | `86400000` (1 day) | How long idle sessions are kept in memory |
 | `sessionStore` | `SessionStore` | `InMemorySessionStore` | Pluggable session storage backend |
 | `streamManager` | `StreamManager` | `InMemoryStreamManager` | SSE stream manager for push notifications |
-| `oauth` | `OAuthProvider` | `undefined` | OAuth provider for authentication |
+| `oauth` | `OAuthProvider` | `undefined` | OAuth provider for authentication. Use factory functions: `oauthAuth0Provider`, `oauthSupabaseProvider`, `oauthKeycloakProvider`, `oauthCustomProvider` |
+| `autoCreateSessionOnInvalidId` | `boolean` | — | **Deprecated.** Server now returns 404 for invalid session IDs per MCP spec. Use `sessionStore` for persistence. |
+
+**Port resolution order:** `listen(port)` argument → `--port` CLI flag → `PORT` env var → `3000`
+
+**Base URL resolution order:** `baseUrl` config → `MCP_URL` env var → `http://{host}:{port}`
 
 ---
 
-## 2. Server Identity
-
-Identity fields control how your server appears in MCP clients and the Inspector UI.
+## 2. Basic Configuration Example
 
 ```typescript
 import { MCPServer } from 'mcp-use/server'
 
 const server = new MCPServer({
-  name: 'weather-api',
-  version: '2.1.0',
-  title: 'Weather API Server',
-  description: 'Real-time weather data for any location',
-  websiteUrl: 'https://weather-api.example.com',
-  favicon: 'favicon.ico',
-  icons: [{ src: 'icon.svg', mimeType: 'image/svg+xml', sizes: ['512x512'] }],
-})
-```
+  // ── Required ──────────────────────────────────────────────
+  name: 'my-server',
+  version: '1.0.0',
 
-- `title` defaults to `name` if omitted — set it for a friendlier display name.
-- `favicon` is resolved relative to the `public/` directory.
+  // ── Identity (shown in Inspector / MCP clients) ───────────
+  title: 'My Server',                   // Display name (defaults to name)
+  description: 'What this server does', // Shown during discovery
+  websiteUrl: 'https://myserver.com',
+  favicon: 'favicon.ico',               // Relative to public/ dir
+  icons: [
+    {
+      src: 'icon.svg',
+      mimeType: 'image/svg+xml',
+      sizes: ['512x512'],
+      theme: 'light',  // optional: "light" | "dark"
+    }
+  ],
+
+  // ── Network ────────────────────────────────────────────────
+  host: 'localhost',                    // Bind hostname (default: 'localhost')
+  baseUrl: 'https://mcp.example.com',   // Public URL for widget/asset URLs
+                                        // Overrides host:port; also read from MCP_URL env var
+
+  // ── CORS ───────────────────────────────────────────────────
+  cors: {
+    origin: ['https://myapp.com'],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+  },
+
+  // ── DNS Rebinding Protection ───────────────────────────────
+  allowedOrigins: ['https://myapp.com'],  // Enables Host header validation
+
+  // ── Transport ─────────────────────────────────────────────
+  stateless: false,                     // See "Stateless Mode" below
+
+  // ── Sessions ──────────────────────────────────────────────
+  sessionIdleTimeoutMs: 3600000,        // 1 hour (default: 86400000 = 1 day)
+  sessionStore: new InMemorySessionStore(),   // See "Session Storage" below
+  streamManager: new InMemoryStreamManager(), // See "Stream Manager" below
+
+  // ── Auth ─────────────────────────────────────────────────
+  // Use provider factory functions: oauthAuth0Provider, oauthSupabaseProvider,
+  // oauthKeycloakProvider, oauthCustomProvider — see Authentication guide
+  oauth: oauthAuth0Provider({ domain: 'my-tenant.auth0.com', audience: 'https://my-api.com' }),
+})
+
+await server.listen(3000)
+```
 
 ---
 
-## 3. Network Configuration
+## 3. Environment Variables
 
-### Port Resolution Order
+The server reads the following environment variables at runtime:
 
-The listening port uses this precedence (first match wins):
+| Variable | Effect | Default |
+|---|---|---|
+| `PORT` | HTTP server port | `3000` |
+| `HOST` | Bind hostname | `localhost` |
+| `MCP_URL` | Full public base URL (overrides `baseUrl` config; used for widget/asset URLs) | `http://{HOST}:{PORT}` |
+| `NODE_ENV` | `production` disables dev features (inspector, type generation) | — |
+| `DEBUG` | Enables verbose debug logging | — |
+| `CSP_URLS` | Comma-separated extra URLs added to widget CSP `resource_domains` | — |
+| `REDIS_URL` | URL for Redis client (used by `RedisSessionStore` and `RedisStreamManager`) | — |
+| `ALLOWED_ORIGINS` | Comma-separated list fed to the `allowedOrigins` config option | — |
 
-1. `server.listen(port)` argument → 2. `--port` CLI flag → 3. `PORT` env var → 4. `3000`
+OAuth providers also read zero-config env vars — see the OAuth docs for the full list.
 
-### Base URL Resolution Order
+---
 
-1. `baseUrl` config property → 2. `MCP_URL` env var → 3. `http://{host}:{port}`
+## 4. Transport & Sessions
+
+### Stateless Mode
+
+The server supports two transport modes:
+
+| Mode | Sessions | SSE | Best for |
+|---|---|---|---|
+| **Stateful** | Yes | Yes | Long-lived clients, notifications, sampling |
+| **Stateless** | No | No | Edge functions, serverless, simple request/response |
+
+**Auto-detection (default):**
+
+- **Deno / edge runtimes** → always stateless
+- **Node.js** → detected per-request from the `Accept` header:
+  - `Accept: application/json, text/event-stream` → stateful (SSE)
+  - `Accept: application/json` only → stateless
 
 ```typescript
-import { MCPServer } from 'mcp-use/server'
+// Force stateless mode (ignores Accept header)
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+  stateless: true,
+})
+
+// Force stateful mode
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+  stateless: false,
+})
+```
+
+Leave `stateless` unset in most cases. Auto-detection lets the same server handle both SSE-capable and HTTP-only clients transparently.
+
+### Session Storage
+
+Session metadata (client capabilities, log level, etc.) is stored in a pluggable `SessionStore`. Three backends are available:
+
+**In-memory (default)**
+
+```typescript
+import { MCPServer, InMemorySessionStore } from 'mcp-use/server'
 
 const server = new MCPServer({
   name: 'my-server',
   version: '1.0.0',
-  host: '0.0.0.0',                       // bind to all interfaces
-  baseUrl: 'https://mcp.example.com',     // public URL for widget assets
+  sessionStore: new InMemorySessionStore(), // default — no config needed
 })
+```
 
-await server.listen(8080)
+Sessions are lost on server restart. Suitable for single-instance production servers.
+
+**Filesystem (development)**
+
+```typescript
+import { MCPServer, FileSystemSessionStore } from 'mcp-use/server'
+
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+  sessionStore: new FileSystemSessionStore({
+    path: '.mcp-use/sessions.json', // default
+    debounceMs: 100,                // write debounce (default: 100ms)
+    maxAgeMs: 86400000,             // session TTL (default: 24h)
+  }),
+})
+```
+
+Sessions survive HMR reloads, so clients don't need to re-initialize when you save a file during development.
+
+`FileSystemSessionStore` is not designed for production or distributed deployments. Use Redis for those scenarios.
+
+**Redis (production)**
+
+```
+npm install redis
+```
+
+```typescript
+import { MCPServer, RedisSessionStore } from 'mcp-use/server'
+import { createClient } from 'redis'
+
+const redis = createClient({ url: process.env.REDIS_URL })
+await redis.connect()
+
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+  sessionStore: new RedisSessionStore({
+    client: redis,
+    prefix: 'mcp:session:',   // default
+    defaultTTL: 3600,         // seconds (default: 3600 = 1 hour)
+  }),
+})
+```
+
+Sessions persist across server restarts and are shared across all instances, enabling horizontal scaling.
+
+### Session Timeout
+
+Control how long idle sessions are kept in memory:
+
+```typescript
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+  sessionIdleTimeoutMs: 3600000, // 1 hour (default: 86400000 = 1 day)
+})
 ```
 
 ---
 
-## 4. CORS Configuration
+## 5. Distributed Stream Management
 
-By default, CORS is permissive (`origin: '*'`). The `cors` option **replaces** the default entirely — there is no merge. Include all headers your clients need.
+The `streamManager` controls active SSE connections and is responsible for routing server-to-client push notifications. By default, SSE streams are in-memory, meaning notifications only reach clients connected to the same server instance. For distributed deployments with multiple server instances behind a load balancer, use `RedisStreamManager` to fan-out notifications via Redis Pub/Sub:
 
-### Default CORS (when `cors` is not set)
+```
+npm install redis
+```
+
+```typescript
+import { MCPServer, RedisSessionStore, RedisStreamManager } from 'mcp-use/server'
+import { createClient } from 'redis'
+
+// Redis Pub/Sub requires a dedicated client — it cannot be shared
+const redis = createClient({ url: process.env.REDIS_URL })
+const pubSubRedis = redis.duplicate()
+
+await redis.connect()
+await pubSubRedis.connect()
+
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+  sessionStore: new RedisSessionStore({ client: redis }),
+  streamManager: new RedisStreamManager({
+    client: redis,             // for session availability checks
+    pubSubClient: pubSubRedis, // dedicated Pub/Sub client (required)
+    prefix: 'mcp:stream:',    // default
+    heartbeatInterval: 10,    // seconds (default: 10)
+  }),
+})
+```
+
+**How it works:**
+
+1. Client connects to Server A → SSE stream created, Server A subscribes to `mcp:stream:{sessionId}` in Redis
+2. Client's next request hits Server B (load balancer)
+3. Server B sends a notification → publishes to Redis channel
+4. Server A receives the Redis message → pushes to the SSE stream → client gets the notification
+
+---
+
+## 6. CORS Configuration
+
+The `cors` option takes a `CorsConfig` object. Setting `cors` **replaces** the default CORS configuration entirely — there is no merge. If you override `cors`, include all headers your clients need (e.g. `mcp-session-id` in `exposeHeaders`).
+
+Default CORS configuration:
 
 ```typescript
 {
@@ -98,16 +284,14 @@ By default, CORS is permissive (`origin: '*'`). The `cors` option **replaces** t
 }
 ```
 
-### Custom CORS
+Custom CORS example:
 
 ```typescript
-import { MCPServer } from 'mcp-use/server'
-
 const server = new MCPServer({
   name: 'my-server',
   version: '1.0.0',
   cors: {
-    origin: ['https://app.example.com', 'https://admin.example.com'],
+    origin: ['https://app.example.com'],
     allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'mcp-protocol-version'],
     exposeHeaders: ['mcp-session-id'],
@@ -117,21 +301,30 @@ const server = new MCPServer({
 
 ---
 
-## 5. DNS Rebinding Protection
+## 7. Security Configuration
 
-`allowedOrigins` enables Host header validation against DNS rebinding attacks.
+### DNS Rebinding Protection
 
-| `allowedOrigins` Value | Behavior |
-|---|---|
-| Not set / `undefined` | No host validation — all `Host` values accepted |
-| `[]` (empty array) | No host validation (same as not set) |
-| `['https://myapp.com']` | Host header must match a configured hostname |
+Use `allowedOrigins` to enable Host header validation and protect against DNS rebinding attacks.
+
+**Behavior:**
+
+- `allowedOrigins` not set (default) → no host validation, all `Host` values accepted
+- `allowedOrigins: []` → no host validation (same as not set)
+- `allowedOrigins: ['https://myapp.com']` → Host header must match one of the configured hostnames; applies globally to all routes
+
+`allowedOrigins` accepts full URLs (e.g. `"https://myapp.com"`) and normalizes them to hostnames for validation.
 
 ```typescript
-import { MCPServer } from 'mcp-use/server'
+// Default: no host validation (development)
+const devServer = new MCPServer({
+  name: 'dev-server',
+  version: '1.0.0',
+})
 
-const server = new MCPServer({
-  name: 'my-server',
+// Production: restrict to known hostnames
+const prodServer = new MCPServer({
+  name: 'prod-server',
   version: '1.0.0',
   allowedOrigins: [
     'https://myapp.com',
@@ -139,23 +332,135 @@ const server = new MCPServer({
   ],
 })
 
-// Or load from environment
-const flexServer = new MCPServer({
+// Load from environment
+const server = new MCPServer({
   name: 'my-server',
   version: '1.0.0',
   allowedOrigins: process.env.ALLOWED_ORIGINS?.split(','),
 })
 ```
 
-Accepts full URLs (e.g. `"https://myapp.com"`) and normalizes them to hostnames. Applies globally to all routes.
+### Input Validation
+
+Always validate tool inputs using Zod schemas. The schema is enforced automatically before your handler runs:
+
+```typescript
+import { error, text } from 'mcp-use/server'
+import { z } from 'zod'
+
+server.tool({
+  name: 'process_input',
+  schema: z.object({
+    email: z.string().email().describe('Email address'),
+    url: z.string().url().describe('URL to process'),
+  }),
+}, async ({ email, url }) => {
+  // Inputs are already validated by Zod at this point
+  return text(`Processing ${email} and ${url}`)
+})
+```
 
 ---
 
-## 6. Content Security Policy
+## 8. Middleware Configuration
+
+`MCPServer` supports both **Hono middleware** and **Express middleware**. Express middleware is automatically detected and adapted to work with Hono. You can add middleware using `server.use()` or `server.app.use()`.
+
+Express middleware is detected by function signature (3-4 parameters) and pattern matching for Express-specific code patterns (e.g., `res.send`, `req.body`). Hono middleware uses 2 parameters and Hono-specific patterns (e.g., `c.req`, `c.json`). Both types can be mixed in the same application.
+
+### Using Middleware
+
+```typescript
+import { MCPServer } from 'mcp-use/server'
+import morgan from 'morgan'
+import rateLimit from 'express-rate-limit'
+
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+})
+
+// Hono middleware
+server.use(async (c, next) => {
+  console.log(`${c.req.method} ${c.req.path}`)
+  await next()
+})
+
+// Express middleware (automatically adapted)
+server.use(morgan('combined'))
+server.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+}))
+
+// Mix both types
+server.use(morgan('dev'), async (c, next) => {
+  await next()
+})
+```
+
+### Route-Scoped Middleware
+
+```typescript
+import { MCPServer } from 'mcp-use/server'
+import rateLimit from 'express-rate-limit'
+
+const server = new MCPServer({
+  name: 'my-server',
+  version: '1.0.0',
+})
+
+// Hono middleware for specific routes
+server.use('/api/admin/*', async (c, next) => {
+  const apiKey = c.req.header('x-api-key')
+  if (!apiKey || apiKey !== process.env.API_KEY) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  await next()
+})
+
+// Express middleware for specific routes (automatically adapted)
+server.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+}))
+
+// Custom HTTP endpoint
+server.get('/health', (c) => c.json({ status: 'ok' }))
+```
+
+MCP protocol routes (`/mcp`, `/mcp-use/widgets/*`, `/inspector`) are registered by the server internally. Add your custom routes before calling `listen()` or `getHandler()`.
+
+---
+
+## 9. Custom HTTP Routes
+
+Add HTTP endpoints alongside your MCP protocol routes. Register before calling `listen()`.
+
+```typescript
+import { MCPServer } from 'mcp-use/server'
+
+const server = new MCPServer({ name: 'my-server', version: '1.0.0' })
+
+server.get('/health', (c) => c.json({ status: 'ok' }))
+
+server.post('/webhooks/github', async (c) => {
+  const body = await c.req.json()
+  return c.json({ received: true })
+})
+
+await server.listen()
+```
+
+MCP protocol routes (`/mcp`, `/mcp-use/widgets/*`, `/inspector`) are registered internally — do not overwrite them.
+
+---
+
+## 10. Content Security Policy (CSP)
 
 CSP controls which domains widgets can fetch from, load scripts/styles from, and embed. Widgets run in sandboxed iframes — CSP must explicitly allow external resources.
 
-When `baseUrl` is set, your server domain is auto-injected into each widget's `connectDomains`, `resourceDomains`, and `baseUriDomains`.
+Use the `CSP_URLS` env var to add extra domains globally without per-widget config.
 
 ### Per-Widget CSP
 
@@ -187,153 +492,39 @@ export const widgetMetadata: WidgetMetadata = {
 | `scriptDirectives` | Custom script CSP directives |
 | `styleDirectives` | Custom style CSP directives |
 
-Use the `CSP_URLS` env var to add extra domains globally without per-widget config.
-
 ---
 
-## 7. Middleware Integration
+## 11. Server Composition (`proxy`)
 
-`MCPServer` supports Hono and Express middleware. Express middleware is auto-detected by function signature and adapted.
-
-### Hono Middleware
+Added in **v1.21.0**. Use `MCPServer.proxy(target)` to aggregate tools, resources, and prompts from another server instance into the primary server. Useful for splitting a large server into logical modules or composing third-party servers.
 
 ```typescript
 import { MCPServer } from 'mcp-use/server'
 
-const server = new MCPServer({ name: 'my-server', version: '1.0.0' })
+// Sub-server module (no listen())
+const weatherServer = new MCPServer({ name: 'weather', version: '1.0.0' })
+weatherServer.tool({ name: 'get-weather', ... }, async ({ city }) => { ... })
 
-server.use(async (c, next) => {
-  const start = Date.now()
-  await next()
-  console.log(`${c.req.method} ${c.req.path} — ${Date.now() - start}ms`)
-})
-```
+const analyticsServer = new MCPServer({ name: 'analytics', version: '1.0.0' })
+analyticsServer.tool({ name: 'track-event', ... }, async (args) => { ... })
 
-### Express Middleware
+// Primary server composes both
+const server = new MCPServer({ name: 'main', version: '1.0.0' })
+server
+  .proxy(weatherServer)
+  .proxy(analyticsServer)
 
-```typescript
-import { MCPServer } from 'mcp-use/server'
-import morgan from 'morgan'
-import rateLimit from 'express-rate-limit'
-
-const server = new MCPServer({ name: 'my-server', version: '1.0.0' })
-server.use(morgan('combined'))
-server.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }))
-```
-
-### Route-Scoped Middleware
-
-```typescript
-server.use('/api/admin/*', async (c, next) => {
-  const apiKey = c.req.header('x-api-key')
-  if (!apiKey || apiKey !== process.env.API_KEY) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
-  await next()
-})
-```
-
-Both types can be mixed in the same `use()` call:
-
-```typescript
-server.use(morgan('dev'), async (c, next) => {
-  await next()
-})
+await server.listen(3000)
+// Clients see get-weather + track-event as if they were registered directly
 ```
 
 ---
 
-## 8. Custom HTTP Routes
-
-Add custom endpoints alongside MCP protocol routes. Register before calling `listen()`.
+## 12. Complete Production Config Example
 
 ```typescript
-import { MCPServer } from 'mcp-use/server'
-
-const server = new MCPServer({ name: 'my-server', version: '1.0.0' })
-
-server.get('/health', (c) => c.json({ status: 'ok' }))
-
-server.post('/webhooks/github', async (c) => {
-  const body = await c.req.json()
-  return c.json({ received: true })
-})
-
-await server.listen()
-```
-
-MCP protocol routes (`/mcp`, `/mcp-use/widgets/*`, `/inspector`) are registered internally — do not overwrite them.
-
----
-
-## 9. Logging Configuration
-
-mcp-use uses a built-in `SimpleConsoleLogger` (since v1.12.0) that works in both Node.js and browser environments.
-
-### Logger API
-
-```typescript
-import { Logger } from 'mcp-use/server'
-
-Logger.configure({ level: 'debug', format: 'detailed' })
-
-Logger.setDebug(0) // Production (info level)
-Logger.setDebug(1) // Debug mode
-Logger.setDebug(2) // Verbose (full JSON-RPC request/response logging)
-```
-
-### Log Levels
-
-| Level | Use Case |
-|---|---|
-| `error` | Error conditions needing attention |
-| `warn` | Potential issues |
-| `info` | General informational messages (default) |
-| `http` | HTTP request/response logging |
-| `verbose` | Verbose informational messages |
-| `debug` | Detailed debugging information |
-| `silly` | Very detailed debug information |
-
-### Log Formats
-
-- **Minimal** (default): `14:23:45 [mcp-use] info: Server mounted at /mcp`
-- **Detailed**: `14:23:45 [mcp-use] INFO: Server mounted at /mcp (Streamable HTTP Transport)`
-
-### Custom Logger Instances
-
-```typescript
-import { Logger } from 'mcp-use/server'
-
-const logger = Logger.get('my-component')
-logger.info('Component initialized')
-logger.debug('Processing request', { userId: 123 })
-logger.error('Operation failed', new Error('timeout'))
-```
-
----
-
-## 10. Environment Variables
-
-| Variable | Effect | Default |
-|---|---|---|
-| `PORT` | HTTP server port | `3000` |
-| `HOST` | Bind hostname | `localhost` |
-| `MCP_URL` | Full public base URL (widget/asset URLs, CSP) | `http://{HOST}:{PORT}` |
-| `NODE_ENV` | `production` disables dev features (inspector, type generation) | — |
-| `DEBUG` | Verbose debug logging (`1` = debug, `2` = verbose) | — |
-| `CSP_URLS` | Comma-separated extra URLs added to widget CSP | — |
-
-OAuth providers read additional zero-config env vars — see the OAuth documentation.
-
----
-
-## 11. Complete Production Config Example
-
-```typescript
-import { MCPServer, RedisSessionStore, RedisStreamManager, Logger } from 'mcp-use/server'
+import { MCPServer, RedisSessionStore, RedisStreamManager } from 'mcp-use/server'
 import { createClient } from 'redis'
-
-Logger.configure({ level: 'info', format: 'minimal' })
 
 const redis = createClient({ url: process.env.REDIS_URL })
 const pubSubRedis = redis.duplicate()
@@ -343,12 +534,7 @@ await pubSubRedis.connect()
 const server = new MCPServer({
   name: 'production-server',
   version: '1.0.0',
-  title: 'My Production Server',
   description: 'Production MCP server with full configuration',
-  websiteUrl: 'https://myapp.com',
-  favicon: 'favicon.ico',
-  host: '0.0.0.0',
-  baseUrl: process.env.MCP_URL,
   cors: {
     origin: ['https://myapp.com', 'https://admin.myapp.com'],
     allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
