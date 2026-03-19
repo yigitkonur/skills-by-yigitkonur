@@ -148,17 +148,17 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/publish-npm-packa
 
 ---
 
-## Language Standards & Development Patterns
+## Standards & Optimization
 
-Deep reference skills for language-level type safety, patterns, anti-patterns, and framework-agnostic development standards.
+Deep reference skills for language-level type safety, patterns, anti-patterns, and system-specific optimization.
 
 | Skill | What it does |
 |---|---|
-| **[develop-mcp-server](skills/develop-mcp-server/)** | 113 battle-tested optimization patterns across 15 quality dimensions for any MCP server — evaluates and improves tool design, schema design, error handling, security, context engineering, progressive discovery, agentic workflows, composition, testing, and deployment. Framework-agnostic (FastMCP, mcp-use, official SDK, any framework). Includes 7 decision trees and 15 pattern reference files. |
+| **[optimize-mcp-server](skills/optimize-mcp-server/)** | Exploration-first optimization skill for any MCP server — explores the codebase, diagnoses issues across 15 quality dimensions, presents findings with severity and options, and applies approved changes with verification steps. 113 patterns, 7 decision trees, framework-agnostic (FastMCP, mcp-use, official SDK, any framework). Includes 22 reference files. |
 | **[develop-typescript](skills/develop-typescript/)** | Strict TypeScript development guide covering type system patterns, anti-patterns with fixes, error handling strategies, and compiler configuration across application, library, CLI, and backend codebases. Includes 4 reference docs: anti-patterns, patterns, type-system, and strict-config. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-mcp-server
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/optimize-mcp-server
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-typescript
 ```
 

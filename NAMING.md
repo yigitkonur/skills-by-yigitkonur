@@ -22,7 +22,7 @@ The verb is the most important word in the name. A user scanning a list of 50 sk
 
 - **Sortable** — `ls skills/` groups skills by action, not by technology
 - **Predictable** — a new contributor can guess the right prefix without reading this file
-- **Disambiguating** — the verb separates skills that touch the same technology but serve different purposes (e.g., `build-mcp-use-server` vs `develop-mcp-server` vs `debug-mcp-server`)
+- **Disambiguating** — the verb separates skills that touch the same technology but serve different purposes (e.g., `build-mcp-use-server` vs `optimize-mcp-server` vs `debug-mcp-server`)
 
 ## Prefix Registry
 
@@ -93,7 +93,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `develop-` vs `build-` — `develop-` is language-wide ("TypeScript strict mode everywhere"); `build-` is framework-specific ("build a Next.js app with Supastarter")
 - `develop-` vs `review-` — `develop-` provides standards to apply *while writing*; `review-` evaluates *already-written* code in a PR context
 
-**Current skills:** `develop-mcp-server`, `develop-typescript`
+**Current skills:** `develop-typescript`
 
 ---
 
@@ -129,6 +129,24 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - Multiple `init-` skills can target the same *category* (code review) but different *platforms* (Greptile vs Devin vs Copilot)
 
 **Current skills:** `init-agent-config`, `init-copilot-review`, `init-devin-review`, `init-greptile-review`
+
+---
+
+### `optimize-`
+
+**Definition:** Evaluate and enhance an existing system's quality, performance, or adherence to best practices. The skill audits what exists and recommends specific improvements — it does not build from scratch.
+
+**Boundary:** The agent *evaluates and improves* an existing system. If the agent creates a new system, it's `build-`. If the agent applies language-level standards, it's `develop-`.
+
+**Use when:** The agent audits an existing server/application against quality patterns and recommends/applies specific optimizations.
+**Not when:** The agent builds from scratch (`build-`), applies language-level patterns (`develop-`), or reviews a PR (`review-`).
+
+**Disambiguation:**
+- `optimize-` vs `build-` — `optimize-` improves existing code; `build-` creates new code
+- `optimize-` vs `review-` — `optimize-` actively applies improvements; `review-` only evaluates
+- `optimize-` vs `develop-` — `optimize-` is system-specific (MCP servers); `develop-` is language-wide (TypeScript)
+
+**Current skills:** `optimize-mcp-server`
 
 ---
 
@@ -240,6 +258,9 @@ What does the skill primarily do?
 ├─ Generates config/instruction files for an external tool?
 │  └─► init-
 │
+├─ Evaluates and enhances an existing system's quality?
+│  └─► optimize-
+│
 ├─ Applies structured thinking methods to frame a decision?
 │  └─► plan-
 │
@@ -348,13 +369,13 @@ When renaming a published skill:
 - `convert-snapshot-nextjs`
 - `convert-vue-nextjs`
 - `debug-tauri-devtools`
-- `develop-mcp-server`
 - `develop-typescript`
 - `extract-saas-design`
 - `init-agent-config`
 - `init-copilot-review`
 - `init-devin-review`
 - `init-greptile-review`
+- `optimize-mcp-server`
 - `plan-issue-tree`
 - `plan-work`
 - `publish-npm-package`
