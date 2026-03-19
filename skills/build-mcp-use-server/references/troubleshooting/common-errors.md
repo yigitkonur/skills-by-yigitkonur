@@ -1,6 +1,10 @@
 # MCP Server Common Errors
 
-Diagnose and fix the most frequent errors encountered when building MCP servers with the `mcp-use` library (v1.21.4).
+Diagnose and fix the most frequent errors encountered when building MCP servers with the `mcp-use` library (current: v1.21.5).
+
+> **Known open bugs (as of v1.21.5):**
+> - `ctx.elicit()` result data lands in `result.content` at runtime instead of `result.data` (GitHub #1215 — fix in PR #1216). Workaround: `result.data ?? (result as any).content`.
+> - Zod is now a `peerDependency` — ensure `zod@^4.0.0` is in your own `package.json`.
 
 ---
 ### Error: Cannot find module 'mcp-use/server'
@@ -63,21 +67,33 @@ Rebuild: `npx tsc --build`. If using `"bundler"` resolution, ensure your bundler
 ### Error: CORS errors with HTTP transport
 
 **When**: Browser-based MCP clients fail to connect to an HTTP/SSE server.
-**Cause**: The server does not return `Access-Control-Allow-Origin` headers.
-**Fix**: Add CORS headers via Hono middleware:
+**Cause**: The server does not return `Access-Control-Allow-Origin` headers, or the `cors` config is too restrictive.
+**Fix**: Pass a `cors` config to the `MCPServer` constructor (replaces default `origin: "*"` entirely):
 ```typescript
 import { MCPServer } from "mcp-use/server";
-const server = new MCPServer({ name: "my-server", version: "1.0.0" });
-server.app.use("*", async (c, next) => {
+const server = new MCPServer({
+  name: "my-server",
+  version: "1.0.0",
+  cors: {
+    origin: ["https://your-client-origin.com"],
+    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "mcp-protocol-version", "mcp-session-id"],
+    exposeHeaders: ["mcp-session-id"],
+  },
+});
+await server.listen(3000);
+```
+Or add a Hono middleware via `server.use()`:
+```typescript
+server.use("*", async (c, next) => {
   c.header("Access-Control-Allow-Origin", "https://your-client-origin.com");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Mcp-Session-Id");
+  c.header("Access-Control-Allow-Headers", "Content-Type, mcp-session-id");
   if (c.req.method === "OPTIONS") return c.text("", 204);
   await next();
 });
-server.listen(3000);
 ```
 
-**Prevention**: Always configure CORS when using HTTP-based transports.
+**Prevention**: Always configure CORS when using HTTP-based transports. Include `mcp-session-id` in both `allowHeaders` and `exposeHeaders`.
 ---
 ### Error: Session lost between requests (Streamable HTTP)
 
@@ -116,13 +132,20 @@ server.listen(3000);
 
 **Prevention**: Always use `RedisSessionStore` in production. Per the MCP spec, clients must send a new `InitializeRequest` on 404 for stale sessions.
 ---
-### Error: `ctx.auth` is undefined in tool handler (v1.21.4)
+### Error: `ctx.auth` is undefined in tool handler
 
 **When**: Accessing `ctx.auth` inside a tool handler returns `undefined`, even though OAuth is configured.
-**Cause**: Before v1.21.4, `mountMcp()` did not propagate HTTP request context into the MCP tool handler.
+**Cause**: v1.21.1–v1.21.3 regression — `mountMcp()` stopped wrapping `transport.handleRequest()` in `runWithContext()`, so `AsyncLocalStorage` was never populated for the MCP request lifecycle. Fixed in v1.21.4 by wrapping all `handleRequest()` call sites in `runWithContext(c, ...)`.
 **Fix**:
-1. Upgrade: `npm install mcp-use@latest`
-2. Verify your handler receives `ctx` as the second argument:
+1. Upgrade: `npm install mcp-use@latest` (≥ v1.21.4)
+2. If you cannot upgrade immediately, apply the workaround:
+   ```typescript
+   import { runWithContext } from "mcp-use/server";
+   server.app.use("/mcp/*", async (c, next) => {
+     return runWithContext(c, () => next());
+   });
+   ```
+3. Verify your handler receives `ctx` as the second argument:
    ```typescript
    import { MCPServer, text, error } from "mcp-use/server";
    import { z } from "zod";
@@ -136,7 +159,7 @@ server.listen(3000);
    );
    ```
 
-**Prevention**: Always guard `ctx.auth` with a null check. Pin `mcp-use` to `^1.21.4` or later.
+**Prevention**: Always guard `ctx.auth` with a null check. Keep `mcp-use` at `^1.21.4` or later.
 ---
 ### Error: ENOSPC — System limit for number of file watchers reached
 
@@ -307,6 +330,26 @@ server.tool(
 
 **Prevention**: Enable `"noImplicitReturns": true` in `tsconfig.json`. Review handlers for missing returns.
 ---
+### Error: `result.data` is undefined after `ctx.elicit()` — open bug in v1.21.5
+
+**When**: Accessing `result.data` inside `if (result.action === 'accept')` after `ctx.elicit()` with a Zod schema returns `undefined`, causing a runtime crash.
+**Cause**: Open bug (GitHub #1215, fix tracked in #1216). `createElicitMethod` checks `result.data` as the source but the MCP SDK places user input in `result.content`. The Zod validation step is therefore never reached, so `result.data` stays `undefined` despite TypeScript reporting no type error.
+**Workaround** (until a patched release ships):
+```typescript
+const result = await ctx.elicit(
+  "Please provide your information",
+  z.object({ firstName: z.string(), lastName: z.string() })
+);
+if (result.action === 'accept') {
+  // Workaround: fall back to result.content when result.data is undefined
+  const data = (result.data ?? (result as any).content) as { firstName: string; lastName: string };
+  return text(`Hi ${data.firstName} ${data.lastName}`);
+}
+```
+**Fix**: Upgrade `mcp-use` once PR #1216 is merged and released (maps `result.content` to `result.data` for Zod validation).
+
+**Prevention**: Always use the workaround pattern until the bug is confirmed fixed. Watch the GitHub issue for a patched version.
+---
 ### Error: ElicitationDeclinedError — User declined prompt
 
 **When**: User explicitly declines an elicitation request (cancels or rejects the prompt).
@@ -321,7 +364,9 @@ try {
     "Are you sure you want to delete this item?",
     z.object({ confirm: z.boolean() }),
   );
-  if (result.action !== 'accept' || !result.data.confirm) return text("Deletion cancelled.");
+  if (result.action !== 'accept') return text("Deletion cancelled.");
+  const data = (result.data ?? (result as any).content) as { confirm: boolean };
+  if (!data.confirm) return text("Deletion cancelled.");
   await db.delete(args.id);
   return text(`Deleted item ${args.id}`);
 } catch (e) {
@@ -429,6 +474,28 @@ server.app.use("*", async (c, next) => {
 
 **Prevention**: Add connection error handling with retries. Use `InMemorySessionStore` as a dev fallback.
 ---
+### Error: `mcp-use build` hangs after "Build complete"
+
+**When**: Running `mcp-use build` outputs "Build complete" but the process never exits.
+**Cause**: Bug fixed in v1.21.4 — the CLI was missing `process.exit(0)` after the build step completed.
+**Fix**:
+1. Upgrade: `npm install @mcp-use/cli@latest`
+2. If stuck: `Ctrl+C` and rerun after upgrading.
+
+**Prevention**: Keep `@mcp-use/cli` at the latest version.
+---
+### Error: Missing `zod` peer dependency after upgrading to v1.21.5
+
+**When**: After upgrading `mcp-use` to v1.21.5, TypeScript errors appear on `z.object(...)` or runtime errors about `zod` not being found.
+**Cause**: v1.21.5 moved `zod` from a direct dependency to a `peerDependency`. If `zod` is not in your own `package.json`, it may not be installed.
+**Fix**:
+```bash
+npm install zod@^4.0.0
+```
+Verify `package.json` includes `"zod": "^4.0.0"` in `dependencies`.
+
+**Prevention**: Explicitly declare `zod@^4.0.0` in every project that uses `mcp-use`. This also prevents duplicate Zod type trees when multiple packages depend on different Zod versions.
+---
 ### Error: Deploy failure — `mcp-use deploy` fails
 
 **When**: Running `mcp-use deploy` exits with an error.
@@ -456,6 +523,7 @@ server.app.use("*", async (c, next) => {
 | 404 after restart | Session store persistent? `autoCreateSessionOnInvalidId` (deprecated)? |
 | `ctx.auth` undefined | `mcp-use` ≥ v1.21.4? |
 | ENOSPC watchers | `node_modules` excluded from watcher? |
+| `result.data` undefined after `elicit()` | Open bug #1215 — use `result.data ?? (result as any).content` workaround |
 | Elicitation declined | User cancelled the prompt; catch `ElicitationDeclinedError` |
 | Elicitation timeout | No response; catch `ElicitationTimeoutError`, check `timeoutMs` |
 | Elicitation validation | Schema mismatch; catch `ElicitationValidationError`, check `cause` |
@@ -463,3 +531,158 @@ server.app.use("*", async (c, next) => {
 | CSP violations | Widget blocked; check CSP headers |
 | Session store failure | Redis/fs error; check connection URL and permissions |
 | Deploy failure | Build manifest missing; run `mcp-use build` first |
+| `mcp-use build` hangs | Upgrade `@mcp-use/cli` to ≥ v1.21.4 |
+| `zod` not found after upgrade | Add `"zod": "^4.0.0"` to your own `package.json` (peerDep since v1.21.5) |
+
+---
+
+### Error: Protocol Version Mismatch
+
+**When**: Client connects but immediately disconnects or errors with "unsupported version".
+**Cause**: The client speaks a newer or older MCP protocol version than the server supports.
+**Fix**:
+1. Check `mcp-use` version in `package.json`.
+2. Ensure client SDK is compatible.
+3. Use capability negotiation (handled automatically by `mcp-use`).
+
+**Prevention**: Keep `mcp-use` updated. The library maintains backward compatibility where possible.
+
+---
+
+### Error: Payload Too Large (413)
+
+**When**: Sending a large file or text block to a tool fails.
+**Cause**: The transport (HTTP/Stdio) or a proxy (Nginx) has a size limit.
+**Fix**:
+1. Increase body size limit in Nginx: `client_max_body_size 50M;`.
+2. In Node.js, `mcp-use` handles large JSON-RPC messages, but memory limits apply.
+3. Use `blob` or `resource` patterns for large data instead of inline arguments.
+
+**Prevention**: Avoid passing megabytes of data as tool arguments. Use references (URLs/paths) instead.
+
+---
+
+### Error: Rate Limit Exceeded (429)
+
+**When**: Client receives 429 errors when calling tools rapidly.
+**Cause**: The server or an upstream API (e.g., GitHub, OpenAI) is rate-limiting requests.
+**Fix**:
+1. Implement backoff/retry in the client.
+2. Add caching to the server to reduce upstream calls.
+3. Use a token bucket limiter on the server side.
+
+**Prevention**: Document rate limits in tool descriptions. Return `429` with `Retry-After` header.
+
+---
+
+### Error: Gateway Timeout (504)
+
+**When**: Request takes too long, and the load balancer kills it.
+**Cause**: Tool execution time exceeds the LB's `proxy_read_timeout`.
+**Fix**:
+1. Increase timeout in LB config (AWS ALB, Nginx).
+2. Optimize tool performance.
+3. Switch to async job pattern (return "Job Started", poll for results).
+
+**Prevention**: Keep synchronous tool execution under 30s.
+
+---
+
+### Error: Invalid Character in Header
+
+**When**: Server crashes with `TypeError: Invalid character in header content`.
+**Cause**: Passing unsanitized input (like newlines) into HTTP headers.
+**Fix**:
+1. Sanitize any user input before setting headers.
+2. `val.replace(/[\r\n]/g, '')`.
+
+**Prevention**: Never trust user input in headers.
+
+---
+
+### Error: Zombie Processes in Docker
+
+**When**: Container stops but Node.js process keeps running, or signals are ignored.
+**Cause**: PID 1 is not an init system, so it doesn't reap zombies or forward signals.
+**Fix**:
+1. Use `tini` in Dockerfile: `ENTRYPOINT ["/sbin/tini", "--"] CMD ["node", "server.js"]`.
+2. Or use `docker run --init`.
+
+**Prevention**: Always use an init process in Docker containers.
+
+---
+
+## Debugging with MCP Inspector
+
+The MCP Inspector is your best friend for diagnosing protocol-level issues.
+
+### 1. Start the Inspector
+
+```bash
+npx @mcp-use/inspector --url http://localhost:3000/mcp
+```
+
+### 2. Analyze the Traffic
+
+- **Transport Connection**: Green dot indicates successful stdio/http connection.
+- **Initialization**: Check `initialize` request/response. Verify `capabilities` and `protocolVersion`.
+- **Tool Listing**: Ensure `tools/list` returns what you expect. Check `schema` structures.
+- **Tool Execution**: Call a tool. Watch the JSON-RPC trace.
+  - **Request**: `tools/call`. Check `name` and `arguments`.
+  - **Response**: `content` array. Check `type` ("text", "image", "resource").
+  - **Error**: Check `code` and `message`.
+
+### 3. Common Traces
+
+**Success:**
+```json
+-> {"jsonrpc": "2.0", "method": "tools/call", "params": { ... }, "id": 1}
+<- {"jsonrpc": "2.0", "result": { "content": [{ "type": "text", "text": "OK" }] }, "id": 1}
+```
+
+**Failure (Application Error):**
+```json
+-> {"jsonrpc": "2.0", "method": "tools/call", ...}
+<- {"jsonrpc": "2.0", "result": { "content": [], "isError": true }, "id": 1}
+```
+*Note: `isError: true` inside `result` means the tool ran but returned a functional error.*
+
+**Failure (Protocol Error):**
+```json
+-> {"jsonrpc": "2.0", "method": "tools/call", ...}
+<- {"jsonrpc": "2.0", "error": { "code": -32602, "message": "Invalid params" }, "id": 1}
+```
+*Note: Top-level `error` object means the protocol request failed (e.g., schema validation).*
+
+---
+
+## Logging Strategies
+
+### 1. Minimal (Production)
+
+```typescript
+import { Logger } from "mcp-use/server";
+Logger.configure({ level: "info", format: "minimal" });
+// Output: [INFO] Server listening on port 3000
+```
+
+### 2. Detailed (Debugging)
+
+```typescript
+Logger.configure({ level: "debug", format: "detailed" });
+// Output: {"level":"debug","message":"Processing request","timestamp":"...","metadata":{...}}
+```
+
+### 3. JSON-RPC Tracing
+
+Set `DEBUG=mcp-use:*` env var to see raw protocol frames.
+
+```bash
+DEBUG=mcp-use:* node dist/server.js
+```
+
+**Output:**
+```
+mcp-use:transport Incoming message: {"jsonrpc":"2.0","method":"tools/list",...} +0ms
+mcp-use:server Sending response: {"jsonrpc":"2.0","result":{...}} +2ms
+```

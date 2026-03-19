@@ -1,6 +1,6 @@
 # MCP Server Recipes
 
-Complete, copy-pasteable server examples using the mcp-use TypeScript library (v1.21.4, zod ^4.0.0).
+Complete, copy-pasteable server examples using the mcp-use TypeScript server library. All examples use `mcp-use/server` imports and Zod for schema validation.
 
 ## Recipe 1: File System Server
 
@@ -200,7 +200,7 @@ server.tool(
     const id = `task-${Date.now().toString(36)}`;
     const task: Task = { id, title, status: "todo", priority, tags, createdAt: new Date().toISOString() };
     tasks.set(id, task);
-    await ctx.sendNotification("notifications/message", { data: `Task created: ${title}` });
+    await ctx.sendNotification("custom/task-created", { taskId: id, title, createdAt: task.createdAt });
     return object({ task });
   }
 );
@@ -213,7 +213,7 @@ server.tool(
     if (status) task.status = status;
     if (title) task.title = title;
     if (priority) task.priority = priority;
-    await ctx.sendNotification("notifications/message", { data: `Task updated: ${task.title} → ${task.status}` });
+    await ctx.sendNotification("custom/task-updated", { taskId: id, title: task.title, status: task.status });
     return object({ task });
   }
 );
@@ -299,13 +299,13 @@ server.tool(
 server.resource({ name: "monitored-cities", uri: "weather://monitored", title: "Monitored Cities",
   annotations: { audience: ["user", "assistant"], priority: 0.8 } },
   async () => object({ cities: ["New York", "London", "Tokyo"] }));
-server.resourceTemplate({ name: "city-weather", uriTemplate: "weather://city/{cityName}", title: "City Weather" },
+server.resourceTemplate({ name: "city-weather", uriTemplate: "weather://city/{cityName}", title: "City Weather", description: "Weather data for a specific city" },
   async (uri, { cityName }) => object(await getWeather(cityName as string)));
 server.prompt({ name: "weather-report", description: "Generate a weather report",
   schema: z.object({ city: z.string().describe("City name") }) },
   async ({ city }) => ({ messages: [{ role: "user" as const, content: `Weather report for ${city} using current data.` }] }));
-server.uiResource({ name: "weather-dashboard", title: "Weather Dashboard", type: "externalUrl", size: ["800px", "600px"],
-  schema: z.object({ city: z.string(), theme: z.string().optional().default("light") }) });
+// Register an MCP Apps widget (must have a matching widget.tsx in resources/)
+// server.uiResource({ name: "weather-dashboard", title: "Weather Dashboard", type: "mcpApps" });
 server.get("/api/weather/:city", async (c) => c.json(await getWeather(c.req.param("city"))));
 await server.listen();
 ```
@@ -374,7 +374,7 @@ server.tool(
     } catch (e) { return error((e as Error).message); }
   }
 );
-server.resourceTemplate({ name: "file-resource", uriTemplate: "file://{path}", title: "File Contents" },
+server.resourceTemplate({ name: "file-resource", uriTemplate: "file://{path}", title: "File Contents", description: "Access file contents" },
   async (uri, { path: p }) => {
     const fp = safe(p as string), mime = lookup(fp) || "application/octet-stream";
     if (mime.startsWith("text/") || mime === "application/json") return text(await fs.readFile(fp, "utf-8"));
@@ -400,3 +400,268 @@ schema: z.object({ query: z.string().min(1).describe("Search query"), limit: z.n
 **DNS Rebinding Protection** — restrict allowed origins via `allowedOrigins` config. Spoofed `Host` → 403. Test: `curl -H "Host: evil.com" http://localhost:3000/mcp`. See `examples/server/features/dns-rebinding`.
 
 **Streaming Tool Props** — `useWidget` hook exposes `partialToolInput` and `isStreaming` for live previews as the LLM streams tool arguments. See `examples/server/features/streaming-props`.
+
+---
+
+## Recipe 9: Webhook Handler Server
+
+Receive external webhooks (e.g., from Stripe or GitHub) and forward them to connected MCP clients via SSE notifications.
+
+```typescript
+import { MCPServer, text } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({
+  name: "webhook-server",
+  version: "1.0.0",
+});
+
+// 1. Define a tool to inspect received webhooks
+const recentWebhooks: any[] = [];
+
+server.tool(
+  { name: "list-webhooks", schema: z.object({ limit: z.number().default(10) }) },
+  async ({ limit }) => {
+    return text(JSON.stringify(recentWebhooks.slice(0, limit), null, 2));
+  }
+);
+
+// 2. Add a custom Hono route to receive POST requests
+server.post("/webhooks/:source", async (c) => {
+  const source = c.req.param("source");
+  const payload = await c.req.json();
+  
+  const event = {
+    id: crypto.randomUUID(),
+    source,
+    timestamp: new Date().toISOString(),
+    payload
+  };
+  
+  // Store for tool access
+  recentWebhooks.unshift(event);
+  if (recentWebhooks.length > 50) recentWebhooks.pop();
+  
+  // 3. Notify all connected MCP clients via custom namespaced notification
+  server.sendNotification("webhook/received", {
+    message: `New webhook from ${source}`,
+    data: event
+  });
+  
+  return c.json({ status: "received", id: event.id });
+});
+
+await server.listen(3000);
+```
+
+**Testing:**
+```bash
+curl -X POST http://localhost:3000/webhooks/stripe -d '{"event": "charge.succeeded"}'
+```
+Connected MCP clients will receive the notification immediately.
+
+---
+
+## Recipe 10: Sampling Server (LLM-in-the-Loop)
+
+Use `ctx.sample()` to ask the *client's* LLM to generate content. This allows the server to leverage the client's intelligence (e.g., summarizing data).
+
+```typescript
+import { MCPServer, text, error } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({ name: "sampling-server", version: "1.0.0" });
+
+server.tool(
+  {
+    name: "summarize-file",
+    description: "Read a file and ask the LLM to summarize it",
+    schema: z.object({
+      content: z.string().describe("Text content to summarize"),
+      style: z.enum(["brief", "detailed"]).default("brief"),
+    }),
+  },
+  async ({ content, style }, ctx) => {
+    // 1. Check if client supports sampling
+    if (!ctx.client.can("sampling")) {
+      return error("Client does not support sampling capabilities");
+    }
+
+    // 2. Request completion from the client's LLM
+    try {
+      const result = await ctx.sample({
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please summarize the following text in a ${style} style:\n\n${content}`,
+            },
+          },
+        ],
+        maxTokens: 500,
+        temperature: 0.7,
+      });
+
+      // 3. Return the generated summary
+      const summary = result.content?.type === 'text' ? (result.content.text ?? "No text returned") : "No text returned";
+      return text(summary);
+    } catch (err) {
+      return error(`Sampling failed: ${(err as Error).message}`);
+    }
+  }
+);
+
+await server.listen(3000);
+```
+
+---
+
+## Recipe 11: Elicitation Server (Human-in-the-Loop)
+
+Pause execution to ask the *user* for input or confirmation via the client UI.
+
+```typescript
+import { MCPServer, text, error } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({ name: "approval-server", version: "1.0.0" });
+
+server.tool(
+  {
+    name: "deploy-production",
+    description: "Deploy artifacts to production (requires approval)",
+    schema: z.object({ version: z.string() }),
+  },
+  async ({ version }, ctx) => {
+    // 1. Check capability
+    if (!ctx.client.can("elicitation")) {
+      return error("Client does not support user interaction (elicitation).");
+    }
+
+    // 2. Ask user for confirmation
+    const response = await ctx.elicit(
+      `⚠️ **Production Deployment**\n\nYou are about to deploy version **${version}**.\nAre you sure?`,
+      z.object({
+        confirmed: z.boolean().describe("Check to confirm deployment"),
+        reason: z.string().optional().describe("Reason for deployment"),
+      })
+    );
+
+    // 3. Handle user choice (action: "accept" | "cancel")
+    if (response.action === "cancel" || !response.data?.confirmed) {
+      return text("Deployment cancelled by user.");
+    }
+
+    // 4. Proceed if confirmed
+    await performDeploy(version);
+    return text(`Deployment of ${version} started. Reason: ${response.data.reason || "N/A"}`);
+  }
+);
+
+async function performDeploy(v: string) { /* ... */ }
+
+await server.listen(3000);
+```
+
+---
+
+## Recipe 12: Chainable API & Hono Routes
+
+Access the underlying Hono application for advanced routing, middleware, and authentication.
+
+```typescript
+import { MCPServer, text } from "mcp-use/server";
+import { z } from "zod";
+import { cors } from "hono/cors";
+import { logger } from "hono/logger";
+
+const server = new MCPServer({ name: "hybrid-server", version: "1.0.0" });
+
+// 1. Use Hono middleware directly
+server.use(logger());
+server.use("/api/*", cors());
+
+// 2. Add custom authentication middleware for specific routes
+server.use("/secure/*", async (c, next) => {
+  const token = c.req.header("Authorization");
+  if (token !== "Bearer secret") return c.text("Unauthorized", 401);
+  await next();
+});
+
+// 3. Define standard REST endpoints alongside MCP
+server.get("/api/status", (c) => c.json({ status: "ok", mcp: true }));
+
+server.post("/secure/trigger", async (c) => {
+  const body = await c.req.json();
+  return c.json({ triggered: true, data: body });
+});
+
+// 4. Define MCP Tools as usual
+server.tool(
+  { name: "echo", schema: z.object({ msg: z.string() }) },
+  async ({ msg }) => text(msg)
+);
+
+// 5. Mount a sub-app
+const adminApp = new MCPServer({ name: "admin", version: "1.0" });
+adminApp.get("/", (c) => c.text("Admin Area"));
+server.route("/admin", adminApp); // Mounts at /admin
+
+await server.listen(3000);
+```
+
+---
+
+## Recipe 13: Real-time Stock Ticker (SSE Push)
+
+Push live data updates to clients using `ctx.session` and timers.
+
+```typescript
+import { MCPServer, text } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({ name: "ticker-server", version: "1.0.0" });
+
+// Store active subscriptions: symbol -> Set<sessionId>
+const subs = new Map<string, Set<string>>();
+
+// Simulate price updates
+setInterval(() => {
+  subs.forEach((sessions, symbol) => {
+    const price = (Math.random() * 1000).toFixed(2);
+    const payload = { symbol, price, ts: Date.now() };
+    
+    // Notify all subscribers
+    for (const sessionId of sessions) {
+      server.sendNotificationToSession(sessionId, "price/update", payload);
+    }
+  });
+}, 1000);
+
+server.tool(
+  { name: "subscribe", schema: z.object({ symbol: z.string() }) },
+  async ({ symbol }, ctx) => {
+    if (!subs.has(symbol)) subs.set(symbol, new Set());
+    
+    // Track session ID
+    if (ctx.session?.sessionId) {
+      subs.get(symbol)!.add(ctx.session.sessionId);
+    }
+    
+    return text(`Subscribed to ${symbol}. Updates will arrive via 'price/update'.`);
+  }
+);
+
+server.tool(
+  { name: "unsubscribe", schema: z.object({ symbol: z.string() }) },
+  async ({ symbol }, ctx) => {
+    if (ctx.session?.sessionId && subs.has(symbol)) {
+      subs.get(symbol)!.delete(ctx.session.sessionId);
+    }
+    return text(`Unsubscribed from ${symbol}`);
+  }
+);
+
+await server.listen(3000);
+```

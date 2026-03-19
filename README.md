@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-25 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+29 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -204,10 +204,16 @@ Deep reference skills for building applications with AI platform SDKs.
 |---|---|
 | **[build-copilot-sdk-app](skills/build-copilot-sdk-app/)** | Complete developer guide for the GitHub Copilot SDK (`@github/copilot-sdk`) in TypeScript/Node.js — client setup, sessions, custom tools with Zod schemas, streaming events, permissions, hooks, custom agents, MCP servers, skills, BYOK providers, plan/autopilot/fleet modes, multi-client architectures, and Ralph loop autonomous dev patterns. Includes 17 reference docs: client/transport, sessions, tools/schemas, events/streaming, permissions, hooks, agents/MCP/skills, auth/BYOK, advanced patterns, and type reference. |
 | **[build-mcp-use-server](skills/build-mcp-use-server/)** | Production-grade MCP server development with the `mcp-use` TypeScript library — MCPServer constructor, tool registration with Zod schemas, response helpers (`text()`, `object()`, `error()`), resources, prompts, transport selection (stdio/httpStream/SSE), OAuth providers (Auth0, WorkOS, Supabase), session management, middleware, elicitation, sampling, notifications, and deployment. Includes 13 reference docs: quick-start, tools/schemas, resources/prompts, transports, authentication, advanced features, testing/debugging, production patterns, deployment, anti-patterns, server recipes, project templates, and common errors. |
+| **[build-mcp-use-client](skills/build-mcp-use-client/)** | Production-grade MCP client development with the `mcp-use` TypeScript library — MCPClient constructor, MCPSession for tool calling/resources/prompts, HTTP and STDIO transports, environment-specific entry points (Node/Browser/React/CLI), sampling callbacks, elicitation with form/URL modes and helpers, completion autocomplete, notifications, OAuth authentication, React hooks (useMcp/McpClientProvider/useMcpClient/useMcpServer), code mode with VM/E2B executors, and server manager configuration. Includes 20 reference docs: quick-start, client configuration, environments, tools, resources, prompts, CLI reference, sampling, elicitation, completion, notifications and logging, authentication, server manager, code mode, React integration, production patterns, anti-patterns, client recipes, project templates, and common errors. |
+| **[build-mcp-use-agent](skills/build-mcp-use-agent/)** | Production-grade AI agent development with the `mcp-use` TypeScript library — MCPAgent constructor, explicit and simplified initialization modes, LLM integration (OpenAI, Anthropic, Google, Groq), streaming (stream/streamEvents/prettyStreamEvents), structured output with Zod schemas, memory management, server manager for multi-server routing, Langfuse observability, and production deployment. Includes 14 reference docs: quick-start, agent configuration, LLM integration, streaming, memory management, server manager, structured output, observability, advanced patterns, production patterns, anti-patterns, agent recipes, integration recipes, and common errors. |
+| **[build-mcp-use-apps-widgets](skills/build-mcp-use-apps-widgets/)** | Interactive MCP App development with the `mcp-use` TypeScript library — widget-based applications that render UI inside ChatGPT, Claude, Goose, and other MCP hosts. Covers tool-to-widget binding, useWidget/useCallTool hooks, streaming preview, display modes, theming, CSP configuration, McpUseProvider, persistent widget state, follow-up messages, dual-protocol ChatGPT support, and deployment. Includes 25 reference docs: quick-start, widgets and UI, widget components, streaming preview, ChatGPT apps flow, tools/schemas, response helpers, authentication, session management, deployment, anti-patterns, MCP apps patterns, widget recipes, server recipes, project templates, and common errors. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-copilot-sdk-app
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-server
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-client
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-agent
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-apps-widgets
 ```
 
 ---

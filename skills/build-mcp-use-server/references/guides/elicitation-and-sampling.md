@@ -1,6 +1,6 @@
 # Elicitation and Sampling
 
-Guide to requesting user input (`ctx.elicit`) and LLM completions (`ctx.sample`) during tool execution with mcp-use.
+Guide to requesting user input (`ctx.elicit`) and LLM completions (`ctx.sample`) during tool execution with mcp-use TypeScript server library.
 
 ---
 
@@ -19,7 +19,7 @@ import { z } from "zod";
 const server = new MCPServer({ name: "my-server", version: "1.0.0" });
 
 server.tool(
-  { name: "collect-feedback", description: "Collect user feedback.", schema: z.object({}) },
+  { name: "collect-feedback", description: "Collect user feedback." },
   async (_args, ctx) => {
     const result = await ctx.elicit(
       "Please share your feedback",
@@ -133,35 +133,32 @@ const result = await ctx.elicit(
 
 ### Checking Client Support
 
+Use `ctx.client.can()` to check for a specific capability before calling:
+
 ```typescript
 if (!ctx.client.can("elicitation")) {
   return text("This tool requires a client that supports elicitation.");
 }
 ```
 
-### Error Types
-
-| Error | When | Extra Property |
-|---|---|---|
-| `ElicitationDeclinedError` | User explicitly declined | — |
-| `ElicitationTimeoutError` | No response within timeout | `.timeoutMs` |
-| `ElicitationValidationError` | Data failed Zod validation | `.cause` (Zod error) |
+You can also inspect all client capabilities at once:
 
 ```typescript
-import { ElicitationTimeoutError, ElicitationValidationError } from "mcp-use";
+const caps = ctx.client.capabilities();
+// e.g. { sampling: {}, roots: { listChanged: true }, elicitation: { form: {}, url: {} } }
+```
 
-// ...inside a tool handler:
+### Error Handling
+
+Wrap elicitation calls in `try/catch` to handle failures gracefully. Errors can arise from validation failures, unsupported clients, or network issues.
+
+```typescript
 try {
   const result = await ctx.elicit("Enter details", schema, { timeout: 30000 });
   if (result.action === "accept") { /* use result.data */ }
-} catch (err) {
-  if (err instanceof ElicitationTimeoutError) {
-    return text(`Timed out after ${err.timeoutMs}ms.`);
-  }
-  if (err instanceof ElicitationValidationError) {
-    return text(`Invalid input: ${err.message}`);
-  }
-  return text(`Elicitation failed: ${err instanceof Error ? err.message : String(err)}`);
+} catch (err: unknown) {
+  // Client doesn't support elicitation, timeout, or validation error
+  return text(`Elicitation failed: ${err instanceof Error ? err.message : String(err)}. Please ensure your client supports elicitation.`);
 }
 ```
 
@@ -227,7 +224,7 @@ server.tool(
     const response = await ctx.sample(
       `Classify the sentiment as positive, negative, or neutral. Output one word only.\n\nText: ${args.content}`
     );
-    return text(`Sentiment: ${response.content[0].text}`);
+    return text(`Sentiment: ${response.content.text}`);
   }
 );
 ```
@@ -257,7 +254,7 @@ const response = await ctx.sample({
     speedPriority: 0.5,
   },
 });
-return text(response.content[0].text);
+return text(response.content.text);
 ```
 
 ### Parameters
@@ -277,19 +274,60 @@ return text(response.content[0].text);
 ```typescript
 interface CreateMessageResult {
   role: "assistant";
-  content: { type: "text" | "image"; text?: string; data?: string; mimeType?: string };
+  content: {
+    type: "text" | "image";
+    text?: string;
+    data?: string;
+    mimeType?: string;
+  };
   model: string;
   stopReason?: "endTurn" | "maxTokens" | "stopSequence";
 }
 ```
 
+> **Note:** `content` is a single object (not an array). Access the text directly via `response.content.text` or guard with optional chaining: `response.content?.text ?? ''`.
+
 ### Checking Client Support
+
+Use `ctx.client.can("sampling")` to guard calls before attempting them:
 
 ```typescript
 if (!ctx.client.can("sampling")) {
   return text("Sampling not supported — returning basic analysis.");
 }
 ```
+
+You can also inspect all client capabilities, or combine capability checks:
+
+```typescript
+const caps = ctx.client.capabilities();
+// e.g. { sampling: {}, roots: { listChanged: true }, elicitation: { form: {}, url: {} } }
+
+if (ctx.client.can('sampling') && ctx.client.can('elicitation')) {
+  // Use both features
+}
+```
+
+### Identifying the Client
+
+Use `ctx.client.info()` to get the client's name and version from the MCP initialize handshake. Use `ctx.client.extension(id)` to access any MCP extension (SEP-1724). Use `ctx.client.supportsApps()` as a convenience check for MCP Apps support (SEP-1865):
+
+```typescript
+// Who is connecting?
+const { name, version } = ctx.client.info();
+// e.g. { name: "claude-desktop", version: "1.2.0" }
+
+// Access any MCP extension (SEP-1724)
+const uiExt = ctx.client.extension('io.modelcontextprotocol/ui');
+// { mimeTypes: ['text/html;profile=mcp-app'] } | undefined
+
+// Convenience check for MCP Apps support (SEP-1865)
+if (ctx.client.supportsApps()) {
+  // Return rich widget responses
+}
+```
+
+Note: `ctx.client.supportsApps()` is **per-connection** — different clients connecting to the same server may return different values.
 
 ### Progress Reporting
 
@@ -325,14 +363,14 @@ server.tool(
       ],
       maxTokens: 10, temperature: 0.0,
     });
-    const category = classification.content[0].text.trim().toLowerCase();
+    const category = classification.content.text.trim().toLowerCase();
 
     const summary = await ctx.sample(
       `Summarize this ${category} document in 2-3 sentences:\n\n${args.document}`,
       { maxTokens: 150, temperature: 0.3 }
     );
 
-    return object({ category, summary: summary.content[0].text.trim(), model: summary.model });
+    return object({ category, summary: summary.content.text.trim(), model: summary.model });
   }
 );
 ```
@@ -362,7 +400,7 @@ server.tool(
       `:\n\n${args.data}`;
 
     const report = await ctx.sample(prompt, { maxTokens: 1000, temperature: 0.4 });
-    return text(report.content[0].text);
+    return text(report.content.text);
   }
 );
 ```
@@ -379,3 +417,388 @@ server.tool(
 | No `try/catch` around elicit/sample | Timeouts and validation errors crash handler | Wrap in try/catch, return `error()` |
 | Unbounded sampling without `maxTokens` | Excessively long LLM responses | Always set `maxTokens` to a reasonable limit |
 | Calling `ctx.sample()` in a loop | Runaway LLM costs and latency | Cap iterations; consider batch prompts |
+
+
+---
+
+## Advanced Elicitation Patterns
+
+`ctx.elicit()` shines when the user needs to provide missing information before a tool can continue. The most reliable elicitation flows are **small, explicit, and validated**.
+
+### Form-based elicitation with Zod schemas
+
+```typescript
+import { MCPServer, text, object, error } from 'mcp-use/server'
+import { z } from 'zod'
+
+const deployForm = z.object({
+  environment: z.enum(['staging', 'production']).describe('Target environment'),
+  version: z.string().min(1).describe('Version to deploy'),
+  changelogSummary: z.string().max(500).describe('Short deployment summary'),
+  approved: z.boolean().default(false).describe('I confirm this deployment is approved'),
+})
+
+server.tool(
+  {
+    name: 'deploy-release',
+    description: 'Collect deployment information, then start a deployment.',
+  },
+  async (_args, ctx) => {
+    if (!ctx.client.can('elicitation')) return error('Elicitation is not supported by this client.')
+
+    const result = await ctx.elicit('Provide deployment details', deployForm)
+    if (result.action !== 'accept') return text('Deployment was not started.')
+    if (!result.data.approved) return text('Deployment approval was not confirmed.')
+
+    return object({
+      message: 'Deployment queued',
+      environment: result.data.environment,
+      version: result.data.version,
+    })
+  }
+)
+```
+
+### High-signal schema design tips
+
+| Practice | Why |
+|---|---|
+| Use `.describe()` on every field | Becomes the form label/help text |
+| Prefer enums over free text for known options | Prevents ambiguous input |
+| Keep forms short | Better completion rates |
+| Use validation constraints | Users get immediate feedback |
+| Make irreversible actions explicit | Reduces accidental approval |
+
+### Supported schema patterns
+
+| Zod pattern | UI effect |
+|---|---|
+| `z.enum([...])` | Dropdown, segmented control, or radio list |
+| `z.boolean().default(false)` | Checkbox/toggle |
+| `z.string().email()` | Email input |
+| `z.string().url()` | URL input |
+| `z.number().min().max()` | Numeric input with validation |
+| `z.array(z.string())` | Multi-value capture when supported by the client |
+
+### SEP-1330 Advanced Enum Patterns
+
+The simplified Zod API covers most cases. When you need advanced enum shapes — titled enum options, legacy `enumNames`, or multi-select arrays — use the verbose API with helpers exported from `mcp-use/server`:
+
+```typescript
+import {
+  enumSchema,
+  legacyEnum,
+  titledEnum,
+  titledMultiEnum,
+  untitledEnum,
+  untitledMultiEnum,
+} from 'mcp-use/server';
+
+const result = await ctx.elicit({
+  message: 'Choose your options',
+  requestedSchema: enumSchema({
+    untitledSingle: untitledEnum(['option1', 'option2', 'option3']),
+    titledSingle: titledEnum([
+      { value: 'value1', title: 'First Option' },
+      { value: 'value2', title: 'Second Option' },
+    ]),
+    legacyNamed: legacyEnum([
+      { value: 'opt1', name: 'Option One' },
+      { value: 'opt2', name: 'Option Two' },
+    ]),
+    untitledMulti: untitledMultiEnum(['option1', 'option2', 'option3']),
+    titledMulti: titledMultiEnum([
+      { value: 'value1', title: 'First Choice' },
+      { value: 'value2', title: 'Second Choice' },
+    ]),
+  }),
+});
+
+if (result.action === 'accept') {
+  return text(`Selected: ${JSON.stringify(result.data)}`);
+}
+```
+
+| SEP-1330 Variant | Helper | JSON Schema Shape |
+|---|---|---|
+| Untitled single-select | `untitledEnum` | `type: "string" + enum` |
+| Titled single-select | `titledEnum` | `type: "string" + oneOf[{ const, title }]` |
+| Legacy named enum | `legacyEnum` | `type: "string" + enum + enumNames` |
+| Untitled multi-select | `untitledMultiEnum` | `type: "array" + items.enum` |
+| Titled multi-select | `titledMultiEnum` | `type: "array" + items.anyOf[{ const, title }]` |
+
+Use `.default()` for straightforward Zod-based forms. Use the verbose `enumSchema` API when you need titled variants or multi-select arrays.
+
+---
+
+## URL Elicitation Mode
+
+Some flows should happen **outside** the MCP client form UI. The classic examples are OAuth handoffs, SSO consent, device pairing, payment approval, or other sensitive interactions that belong in the browser.
+
+### When to use URL mode
+
+| Use URL mode for... | Why |
+|---|---|
+| OAuth / SSO | The provider already owns the browser flow |
+| Password or sensitive secrets | Avoid collecting them in the client form |
+| External approvals | Human action belongs in a trusted web app |
+| Complex onboarding | Browser UI can explain more than a compact form |
+
+```typescript
+server.tool(
+  {
+    name: 'connect-github-account',
+    description: 'Send the user to a browser-based GitHub connection flow.',
+  },
+  async (_args, ctx) => {
+    if (!ctx.client.can('elicitation')) return error('Elicitation is not supported by this client.')
+
+    const result = await ctx.elicit(
+      'Open the secure browser flow to connect GitHub, then return here.',
+      'https://app.example.com/connect/github'
+    )
+
+    switch (result.action) {
+      case 'accept':
+        return text('GitHub connection completed.')
+      case 'decline':
+        return text('GitHub connection was declined.')
+      case 'cancel':
+        return text('GitHub connection was cancelled.')
+    }
+  }
+)
+```
+
+### Result handling language
+
+Docs often describe these outcomes as **accepted, declined, and cancelled**, while the programmatic `action` values are typically `accept`, `decline`, and `cancel`. Treat them as the same three states.
+
+| Human language | Programmatic value | Meaning |
+|---|---|---|
+| accepted | `accept` | User completed the step |
+| declined | `decline` | User refused to continue |
+| cancelled | `cancel` | User aborted mid-flow |
+
+❌ **BAD** — Put password collection in a standard elicitation form:
+
+```typescript
+z.object({ password: z.string().describe('Your password') })
+```
+
+✅ **GOOD** — Send the user to a secure browser flow instead:
+
+```typescript
+const result = await ctx.elicit('Complete sign-in in the browser.', 'https://app.example.com/login')
+```
+
+---
+
+## Multi-Step Elicitation Workflows
+
+For longer flows, split the conversation into small validated checkpoints instead of presenting a huge one-shot form.
+
+### Two-step example
+
+```typescript
+const basicInfo = await ctx.elicit(
+  'Step 1 of 2: Tell me which environment you want.',
+  z.object({
+    environment: z.enum(['staging', 'production']).describe('Target environment'),
+  })
+)
+if (basicInfo.action !== 'accept') return text('Cancelled at step 1.')
+
+const confirmation = await ctx.elicit(
+  `Step 2 of 2: Confirm deployment to ${basicInfo.data.environment}.`,
+  z.object({
+    confirm: z.boolean().default(false).describe('I understand this is irreversible'),
+  })
+)
+if (confirmation.action !== 'accept' || !confirmation.data.confirm) return text('Deployment not confirmed.')
+```
+
+### Multi-step rules
+
+1. Carry forward already-known values in the prompt.
+2. Validate and exit early after each step.
+3. Keep step count low — two or three is usually enough.
+4. Use URL mode for any step that needs a browser.
+
+---
+
+## `ctx.sample()` Model Preferences
+
+Sampling lets the server ask the client LLM to help with summarization, classification, rewriting, extraction, or other bounded reasoning tasks. The most important design choice is being explicit about **how much model control** you need.
+
+### Common sampling options
+
+| Option | Use for |
+|---|---|
+| `messages` | Multi-turn or role-structured prompts |
+| `systemPrompt` | Set LLM behavior and persona |
+| `maxTokens` | Bound output length |
+| `temperature` | Control determinism |
+| `modelPreferences` | Hint the kind of model you want |
+
+### Example with model preferences
+
+```typescript
+const result = await ctx.sample({
+  messages: [
+    {
+      role: 'user',
+      content: { type: 'text', text: 'Summarize this incident report in three bullets.' },
+    },
+  ],
+  maxTokens: 180,
+  temperature: 0.2,
+  modelPreferences: {
+    intelligencePriority: 0.5,
+    speedPriority: 0.8,
+  },
+})
+```
+
+### Model preference trade-offs
+
+`modelPreferences` values are numeric between `0.0` and `1.0`. Higher values express stronger preference.
+
+| Preference | Values | Good for |
+|---|---|---|
+| `speedPriority` | 0.0–1.0 | Lightweight classification, short summaries |
+| `intelligencePriority` | 0.0–1.0 | Complex extraction or nuanced rewriting |
+| Balanced (both ~0.5) | — | Most production tools |
+
+❌ **BAD** — Leave `maxTokens` unbounded for repetitive or user-provided prompts:
+
+```typescript
+const result = await ctx.sample({ messages })
+```
+
+✅ **GOOD** — Bound the output and tune the prompt to the task:
+
+```typescript
+const result = await ctx.sample({ messages, maxTokens: 200, temperature: 0.1 })
+```
+
+---
+
+## Sampling Callbacks and Progress Hooks
+
+Sampling can take time. If the client and library support progress callbacks, use them to keep the user informed without manually streaming every intermediate detail.
+
+### Callback pattern
+
+```typescript
+const result = await ctx.sample(
+  'Classify this changelog.',
+  {
+    maxTokens: 64,
+    timeout: 120000,
+    progressIntervalMs: 2000,
+    onProgress: ({ message }) => {
+      console.log(`[Sampling] ${message}`)
+    },
+  }
+)
+```
+
+### Callback guidance
+
+| Callback | Use for |
+|---|---|
+| `onProgress` | High-level stage updates during long completions |
+
+### Result handling
+
+After sampling completes, normalize the result before mixing it into business logic.
+
+```typescript
+const summaryText = result.content?.text?.trim() ?? ''
+if (!summaryText) return error('The model returned an empty summary.')
+return object({ summary: summaryText, model: result.model })
+```
+
+---
+
+## Elicitation + Sampling Together
+
+A powerful pattern is: **elicit missing user intent first, then sample with that structured input**.
+
+```typescript
+server.tool(
+  {
+    name: 'generate-release-brief',
+    description: 'Ask the user for brief settings, then have the client LLM draft it.',
+  },
+  async (_args, ctx) => {
+    const briefRequest = await ctx.elicit(
+      'Choose the release brief style.',
+      z.object({
+        audience: z.enum(['engineering', 'sales', 'customers']).describe('Audience'),
+        tone: z.enum(['concise', 'detailed']).describe('Tone'),
+      })
+    )
+
+    if (briefRequest.action !== 'accept') return text('Release brief cancelled.')
+
+    const sampled = await ctx.sample({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Write a ${briefRequest.data.tone} release brief for ${briefRequest.data.audience}.`,
+          },
+        },
+      ],
+      maxTokens: 250,
+      temperature: 0.3,
+    })
+
+    return text(sampled.content.text)
+  }
+)
+```
+
+---
+
+## Safety and UX Checklist
+
+| Question | Why |
+|---|---|
+| Does the client support elicitation/sampling? | Prevents runtime failures |
+| Are all form fields described clearly? | Improves completion quality |
+| Are sensitive steps moved to URL mode? | Better security posture |
+| Is every action state handled? | Avoids hung tools |
+| Are model outputs token-bounded? | Controls cost and latency |
+| Are callbacks used for longer operations? | Improves user trust |
+
+❌ **BAD** — Ignore `decline` and `cancel` because only success matters:
+
+```typescript
+const result = await ctx.elicit('Approve?', schema)
+return text(`Approved by ${result.data.name}`)
+```
+
+✅ **GOOD** — Handle all three outcome states explicitly:
+
+```typescript
+switch (result.action) {
+  case 'accept':
+    return text('Approved.')
+  case 'decline':
+    return text('The user declined.')
+  case 'cancel':
+    return text('The user cancelled.')
+}
+```
+
+## Recommended defaults
+
+1. Use **small Zod forms** for simple missing data.
+2. Use **URL mode** for auth, secrets, and external approvals.
+3. Treat `accept` / `decline` / `cancel` as **accepted / declined / cancelled** states.
+4. Use **model preferences + `maxTokens`** for predictable sampling.
+5. Add **progress callbacks** for longer sample operations.
