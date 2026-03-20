@@ -94,14 +94,32 @@ Wait for user approval before creating issues.
 
 Create issues **bottom-up** (leaves first) so child IDs exist when wiring parents.
 
+**Before every `gh issue create`**, validate the body:
+1. Character count must be under 60,000 (GitHub limit: 65,536; buffer for post-creation edits)
+2. All four required sections present (Context & Rationale, Strategic Intent, Definition of Done, Wave & Dependencies)
+3. No vague DoD criteria ("tests pass", "works correctly", "code is clean")
+4. All cross-referenced issue numbers exist
+
+Read `references/body-size-validation.md` for the full validation sequence. If a body exceeds 60,000 characters, split into parent-stub + child-detail pattern per `references/body-size-validation.md`.
+
 ```bash
+BODY="$(cat <<'BODY'
+[body following subagent protocol]
+BODY
+)"
+
+# Size check — hard rule
+BODY_LENGTH=$(echo -n "$BODY" | wc -c)
+if [ "$BODY_LENGTH" -gt 60000 ]; then
+  echo "SPLIT REQUIRED: $BODY_LENGTH chars exceeds threshold"
+  # Follow split protocol in body-size-validation.md
+  exit 1
+fi
+
 ISSUE_NUM=$(gh issue create \
   -t "Issue title" \
   -l "wave:1,type:task,priority:high" \
-  -b "$(cat <<'BODY'
-[body following subagent protocol]
-BODY
-)" --json number -q .number)
+  -b "$BODY" --json number -q .number)
 ```
 
 Read `references/issue-body-template.md` for the body format. Every body contains:
@@ -110,13 +128,27 @@ Read `references/issue-body-template.md` for the body format. Every body contain
 - **Definition of Done** — BSV checklist (Binary, Specific, Verifiable)
 - **Wave & Dependencies** — wave number, blocks/blocked-by
 
-### Phase 5: Sub-issue wiring
+### Phase 5: Sub-issue wiring and cross-linking
 
-After creating all issues, link parent-child relationships bottom-up:
+After creating all issues, wire relationships in two passes:
+
+**Pass 1 — Sub-issue hierarchy (bottom-up):**
 
 ```bash
 bash {baseDir}/scripts/link-sub-issue.sh "$REPO" PARENT_NUMBER CHILD_NUMBER
 ```
+
+**Pass 2 — Bidirectional cross-references:**
+
+After all issues exist with real numbers, update bodies that used placeholders:
+
+```bash
+gh issue view $ISSUE_NUM --json body -q .body | \
+  sed "s/PLACEHOLDER_AUTH/#$AUTH_ISSUE_NUM/g" | \
+  xargs -0 gh issue edit $ISSUE_NUM --body
+```
+
+Verify bidirectional linking — every "Blocks: #X" must have a corresponding "Blocked by: #Y" in issue #X. Read `references/cross-linking-patterns.md` for the full wiring protocol and verification commands.
 
 ### Phase 6: Verification
 
@@ -140,6 +172,8 @@ Verify all links, labels, and DoD sections. Present the final tree to the user.
 | `references/question-bank.md` | Before asking brainstorming questions |
 | `references/issue-body-template.md` | Before writing any issue body |
 | `references/label-schema.md` | When setting up or applying labels |
+| `references/body-size-validation.md` | Before every `gh issue create` — validation checklist and split decision tree |
+| `references/cross-linking-patterns.md` | During Phase 5 wiring — bidirectional linking, verification, scale patterns |
 
 ## Guardrails
 
