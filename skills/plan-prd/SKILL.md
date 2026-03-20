@@ -120,8 +120,19 @@ Write the finalized PRD to:
 - **File**: `docs/prd/{feature-name}.md` or the project's convention
 - **Both**: Create the file AND the GitHub issue linking to it
 
+**Before creating any GitHub issue**, check the body size:
+```bash
+BODY_LENGTH=$(echo -n "$BODY" | wc -c)
+if [ "$BODY_LENGTH" -gt 60000 ]; then
+  echo "SPLIT REQUIRED: Body exceeds 60,000 chars (GitHub limit: 65,536)"
+fi
+```
+If the PRD body exceeds 60,000 characters, split into a parent-stub issue (scope summary + child links) and child-detail issues. Read `references/templates/issue-size-management.md` for the split protocol.
+
 **Step 10 — Optional decomposition.**
 Break the PRD into vertical slices (tracer bullets) — thin end-to-end slices through ALL integration layers, NOT horizontal layer-by-layer slices. Classify each slice as HITL (needs human decision) or AFK (autonomous implementation). Read `references/templates/decomposition-guide.md`.
+
+When creating issues from decomposed slices, always validate body size before each `gh issue create`. The 60,000-character threshold applies to every issue, not just the PRD.
 
 ## Requirements quality standards
 
@@ -165,6 +176,7 @@ Write concrete, measurable requirements:
 |---|---|
 | `references/templates/prd-template.md` | Drafting Phase 3; need the full 10-section template with per-section guidance |
 | `references/templates/decomposition-guide.md` | Phase 5 decomposition into vertical slices and GitHub issues |
+| `references/templates/issue-size-management.md` | Body exceeds 60K chars; need split strategy, character budgets, traceability patterns |
 
 ### Quality
 | File | Read when |
@@ -194,6 +206,7 @@ Write concrete, measurable requirements:
 ### "I need to break a PRD into implementation tasks"
 - `references/templates/decomposition-guide.md`
 - `references/quality/acceptance-criteria-guide.md`
+- `references/templates/issue-size-management.md`
 
 ## Guardrails
 

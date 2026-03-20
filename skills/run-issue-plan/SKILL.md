@@ -72,6 +72,7 @@ Completed:
 ### Phase 3: Dispatch subagents
 
 Read `references/subagent-dispatch.md` for the prompt template.
+Read `references/generic-prompt-patterns.md` for tool-agnostic prompt writing rules.
 
 For each ready issue:
 
@@ -92,14 +93,20 @@ For each ready issue:
      --jq '.comments[-3:] | .[] | "[\(.author.login)]: \(.body)"'
    ```
 
-4. Mark in-progress:
+4. **Pre-dispatch validation:**
+   - Body contains all 4 protocol sections (Context & Rationale, Strategic Intent, Definition of Done, Wave & Dependencies)
+   - DoD criteria are BSV (Binary, Specific, Verifiable) — no vague language
+   - Body is under 60,000 characters
+   - All cross-references (#numbers) point to existing issues
+
+5. Mark in-progress:
    ```bash
    gh issue edit NUMBER --add-label "status:in-progress" --remove-label "status:ready"
    ```
 
-5. Generate the subagent prompt from the issue body — extract Context & Rationale, Strategic Intent, and Definition of Done sections verbatim.
+6. Generate the subagent prompt from the issue body — extract Context & Rationale, Strategic Intent, and Definition of Done sections verbatim. The prompt must be tool-agnostic: no mentions of specific editors, test runners, or build tools. See `references/generic-prompt-patterns.md`.
 
-6. Dispatch:
+7. Dispatch:
    ```
    Agent(
      description: "Execute #NUMBER: SHORT_TITLE",
@@ -110,7 +117,7 @@ For each ready issue:
    )
    ```
 
-7. For independent issues in the same wave, dispatch **multiple Agent calls in a single message**.
+8. For independent issues in the same wave, dispatch **multiple Agent calls in a single message**.
 
 ### Phase 4: Completion verification
 
@@ -137,6 +144,14 @@ When all wave issues are closed:
 4. **Ask user for confirmation** before proceeding
 5. Repeat from Phase 2
 
+**If the wave has partial failures** (some issues closed, some failed), read `references/partial-wave-handling.md` for recovery patterns:
+- Single failure with no downstream blocks → offer to advance while re-dispatching in parallel
+- Single failure blocking next wave → present options (fix, re-dispatch with context, manual investigation)
+- Multiple failures → present failure summary table, let user choose strategy
+- Never auto-advance past a failed wave without user confirmation
+
+**State recovery:** If the orchestrator session is interrupted, all state is recoverable from GitHub labels and issue states. Re-read the tree and reconstruct from `wave:*` and `status:*` labels. See `references/partial-wave-handling.md`.
+
 ## Decision rules
 
 - Execute leaf issues (task/subtask) first; parent issues close when all children close
@@ -152,6 +167,8 @@ When all wave issues are closed:
 |---|---|
 | `references/subagent-dispatch.md` | Before generating any subagent prompt |
 | `references/wave-execution.md` | When managing wave transitions, status labels, or blocked issues |
+| `references/generic-prompt-patterns.md` | When writing or reviewing subagent prompts for tool-agnosticism |
+| `references/partial-wave-handling.md` | When a wave has failures — recovery patterns, re-dispatch with context, state reconstruction |
 
 ## Guardrails
 
