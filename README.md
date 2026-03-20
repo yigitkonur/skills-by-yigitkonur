@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-29 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+30 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
 
 ## Install the full pack
 
@@ -108,6 +108,7 @@ Skills that provide structured methodologies for decision-making and multi-sourc
 | **[test-skill-quality](skills/test-skill-quality/)** | Derailment Testing methodology — follow a skill's workflow literally on a real task, document every friction point (P0/P1/P2) where instructions fail to specify the next action, classify root causes, apply proven fix patterns, and verify with grep-based consistency checks. Includes 5 reference docs: friction classification, root cause taxonomy, 9 fix patterns, metrics/iteration tracking, and domain adaptation guide. |
 | **[plan-issue-tree](skills/plan-issue-tree/)** | Creates maximalist GitHub Issue trees with sub-issue nesting (up to 8 levels), wave-based execution order, labels, and agent-ready bodies following the subagent prompt protocol — asks brainstorming questions first, then generates bottom-up issue hierarchies with BSV Definition of Done criteria and dependency wiring via GraphQL. Includes 3 reference docs (question bank, issue body template, label schema) and 3 scripts (label setup, sub-issue linking, recursive tree reader). |
 | **[run-issue-plan](skills/run-issue-plan/)** | Executes project plans stored as GitHub Issue trees by recursively reading the hierarchy, dispatching subagents wave-by-wave via the Agent tool, verifying BSV completion criteria, and tracking progress with status labels and issue comments. Includes 2 reference docs (subagent dispatch template, wave execution patterns) and 1 script (recursive tree reader). |
+| **[plan-prd](skills/plan-prd/)** | Structured PRD (Product Requirements Document) creation — five-phase workflow covering mandatory discovery with relentless interviewing, codebase-grounded analysis, 10-section AI-agent-actionable template with measurable acceptance criteria, quality validation, and optional vertical-slice decomposition. Includes 9 reference docs: elicitation questions, format decision guide, PRD template, decomposition guide, quality checklist, acceptance criteria guide, anti-patterns, worked example, and requirements quality calibration. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-work
@@ -116,6 +117,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-skill-quality
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-issue-tree
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-issue-plan
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/plan-prd
 ```
 
 ---
