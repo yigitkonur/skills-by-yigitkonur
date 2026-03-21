@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-31 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, and CI/CD.
+38 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, CI/CD, OpenClaw platform, and skill research.
 
 ## Install the full pack
 
@@ -218,6 +218,44 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-ser
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-client
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-agent
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-apps-widgets
+```
+
+---
+
+## OpenClaw Platform
+
+Skills for building on the OpenClaw open-source AI agent runtime — skill authoring, plugin development, agent configuration, multi-agent orchestration, workflow automation, and production deployment.
+
+| Skill | What it does |
+|---|---|
+| **[build-openclaw-skill](skills/build-openclaw-skill/)** | Creates custom OpenClaw skills — SKILL.md format, YAML frontmatter, metadata gating with bins/env/config requirements, reference file organization, skill testing, and ClawHub publishing. Includes 5 reference docs: format spec, metadata gating, reference organization, testing methodology, and ClawHub publishing. |
+| **[build-openclaw-plugin](skills/build-openclaw-plugin/)** | Builds OpenClaw plugins — plugin manifests (`openclaw.plugin.json`), tool registration with typed definitions, channel/model-provider/speech/image-generator setup, skill bundling, tool profiles (full/coding/messaging/minimal), and allow/deny restrictions. Includes 6 reference docs: plugin manifest, tool registration, channel/provider setup, plugin lifecycle, tool profiles, and plugin skills bundling. |
+| **[init-openclaw-agent](skills/init-openclaw-agent/)** | Configures OpenClaw agent workspaces — IDENTITY.md authoring, tool profile selection across 4 presets, allow/deny list rules with group shortcuts, skills loading with precedence and extra dirs, memory configuration, and security hardening with exec approvals and sandbox isolation. Includes 5 reference docs: agent identity, tool profiles, tool restrictions, skills loading, and security patterns. |
+| **[run-openclaw-agents](skills/run-openclaw-agents/)** | Orchestrates OpenClaw multi-agent systems — session lifecycle management, sub-agent spawning with scoped tool profiles, ACP routing for specialized coordination, cross-agent messaging, and risk classification across 11 orchestration tools. Includes 5 reference docs: session management, sub-agent patterns, ACP routing, messaging patterns, and risk/security. |
+| **[build-openclaw-workflow](skills/build-openclaw-workflow/)** | Builds OpenClaw automation workflows — Lobster typed workflows with resumable approvals, cron scheduled jobs with safety rules, LLM task chains for structured output, browser automation via built-in Chromium, and gateway/exec management. Includes 5 reference docs: Lobster workflows, cron scheduling, LLM task chains, browser automation, and gateway/exec. |
+| **[run-openclaw-deploy](skills/run-openclaw-deploy/)** | Deploys OpenClaw to production — Docker/Podman/Nix/Ansible container setup, VPS provisioning, security hardening (exec approvals, tool restrictions, sandbox isolation), gateway management with 5+ messaging channels, monitoring with health checks and cost tracking, and backup/restore. Includes 5 reference docs: container setup, security hardening, gateway management, monitoring/ops, and container patterns. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-openclaw-skill
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-openclaw-plugin
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/init-openclaw-agent
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-openclaw-agents
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-openclaw-workflow
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-openclaw-deploy
+```
+
+---
+
+## Skill Research & Discovery
+
+Skills for searching, discovering, and downloading AI coding skills from the playbooks.com registry.
+
+| Skill | What it does |
+|---|---|
+| **[run-skill-research](skills/run-skill-research/)** | Drives the skill-dl CLI (v1.3.0) for searching and downloading AI skills — Serper-powered Google search across playbooks.com, keyword ranking, batch downloads with repo-level parallelism, corpus inspection, and pipe-friendly workflows. Includes reference docs: search strategies, download patterns, and corpus inspection. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-skill-research
 ```
 
 ---
