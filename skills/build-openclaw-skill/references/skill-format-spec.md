@@ -25,9 +25,9 @@ Complete reference for the SKILL.md file format in the OpenClaw skill system.
 | `homepage` | string | Valid URL | Link to documentation or project page |
 | `user-invocable` | boolean | `true` / `false` | When `false`, hides from the `/` menu. For background-knowledge skills only. |
 | `disable-model-invocation` | boolean | `true` / `false` | When `true`, prevents auto-loading. Only manual `/name` works. Use for side-effect-heavy skills. |
-| `command-dispatch` | string | See dispatch modes | Controls how the skill processes command arguments |
-| `command-tool` | string | Tool identifier | Specifies which tool handles the command |
-| `command-arg-mode` | string | See arg modes | How arguments are passed to the command tool |
+| `command-dispatch` | string | `"tool"` | If set to `"tool"`, the slash command bypasses the model entirely and calls the specified tool directly. |
+| `command-tool` | string | Tool identifier | Required if `command-dispatch` is `"tool"`. Specifies which tool handles the command. |
+| `command-arg-mode` | string | `"raw"` | For direct dispatch, passes raw user arguments to the tool without parsing. |
 | `allowed-tools` | string | Comma-separated tool identifiers | Pre-approves tools without per-use confirmation. Supports wildcards. |
 | `model` | string | Model identifier or `inherit` | Override the model when skill is active. |
 | `context` | string | `fork` | Runs the skill in an isolated sub-agent context. |
@@ -130,7 +130,11 @@ Understanding how OpenClaw loads skills is critical for sizing decisions.
 
 At session start, the agent reads every skill's `name` + `description` from frontmatter.
 
-- Cost: ~195 chars base + 97 chars per skill + field lengths
+- Cost formula (exact):
+  ```
+  totalChars = 195 + Σ(97 + len(nameEsc) + len(descEsc) + len(locEsc))
+  ```
+  XML escaping expands `&` `<` `>` `"` `'` into entities, increasing length. This is why avoiding special characters in name and description matters beyond the injection risk — they inflate discovery cost.
 - Purpose: Decides which skills exist and when to invoke them
 - Implication: `description` must contain trigger phrases the user would naturally say
 
@@ -229,6 +233,24 @@ description: Helps with skills.
 description: A comprehensive tool for managing all aspects of skill development.
 # No "when" — doesn't tell the agent what task this serves
 ```
+
+## Security: realpath escaping
+
+If a skill folder's resolved realpath escapes the configured root directory (e.g., via symlinks pointing outside the skills root), the skill is silently ignored. This prevents directory traversal attacks where a symlink could cause the loader to read arbitrary files.
+
+## Error conditions
+
+The following conditions cause a skill to be excluded or partially ignored at load time:
+
+| Condition | Result |
+|---|---|
+| Missing required binary (from `requires.bins`) | Skill excluded at load time |
+| In sandbox mode, required binary missing inside container | Skill excluded (binary must exist inside the container) |
+| Missing required env var and no `skills.entries` override | Skill excluded |
+| Missing required config path | Skill excluded |
+| Invalid installer spec (e.g., `download` kind without `url`) | That installer entry is ignored (skill may still load) |
+| Skill folder realpath escapes configured root | Skill silently ignored for security |
+| YAML syntax error in frontmatter | Skill silently fails to load |
 
 ## Validation checklist
 

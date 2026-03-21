@@ -32,12 +32,15 @@ Deploy, secure, and operate self-hosted OpenClaw instances across Docker, Podman
 
 ## Non-negotiable rules
 
-1. **Never expose the gateway without authentication.** Every public-facing gateway must have auth configured before going live.
-2. **Never disable exec approvals in production** unless the operator explicitly accepts the risk and documents why.
-3. **Never store secrets in plain text in config files.** Use environment variables or a secrets manager.
-4. **Always verify container sandbox isolation** before running untrusted skills.
-5. **Always test health checks** after any deployment or configuration change.
-6. **Always back up configuration before making changes** to gateway, security, or provider settings.
+1. **Node.js v22 is required.** Not 18, not 20. OpenClaw will fail or behave unpredictably on older versions.
+2. **Never expose the gateway without authentication.** The gateway binds to `0.0.0.0` by default with no auth. Bind to `localhost` and put a reverse proxy with auth in front.
+3. **Set API spending caps BEFORE connecting messaging channels.** Retry loops on reconnecting channels cause $300-600 bills.
+4. **Never disable exec approvals in production** unless the operator explicitly accepts the risk and documents why.
+5. **Never store secrets in plain text in config files.** Use Docker secrets for the gateway token, environment variables for API keys.
+6. **Audit all installed skills.** 824 malicious skills (12% of ClawHub) were found in January 2026 (ClawHavoc). Pin versions, verify publishers.
+7. **Always verify container sandbox isolation** before running untrusted skills.
+8. **Always test health checks** after any deployment or configuration change.
+9. **Always back up configuration before making changes.** Updates are manual and config format changes between versions break things.
 
 ## Decision tree
 
@@ -135,26 +138,33 @@ For production deployments, ensure:
 
 | # | Pitfall | What goes wrong | Fix |
 |---|---------|-----------------|-----|
-| 1 | Skipping exec approvals in production | Agents execute destructive commands without human review | Enable exec approvals; see `references/guides/security-hardening.md` |
-| 2 | Missing binaries in sandbox containers | Skills fail silently when required tools are not installed | Use `agents.defaults.sandbox.docker.setupCommand`; see `references/patterns/container-patterns.md` |
-| 3 | Gateway exposed without auth | Unauthorized access to the OpenClaw instance | Configure gateway authentication before exposing; see `references/guides/security-hardening.md` |
-| 4 | No backup before config changes | Configuration corruption with no recovery path | Always back up before changes; see `references/guides/monitoring-and-ops.md` |
-| 5 | Using a single LLM provider without fallback | Full outage when provider has downtime | Configure at least one backup provider; see `references/guides/gateway-management.md` |
-| 6 | Ignoring tool-loop detection | Agents enter infinite loops consuming tokens and time | Enable tool-loop detection; see `references/guides/security-hardening.md` |
-| 7 | Not testing health checks after deployment | Silent failures go undetected | Run `healthcheck` skill after every change; see `references/guides/monitoring-and-ops.md` |
+| 1 | Using Node.js 18 or 20 | OpenClaw fails to start or behaves unpredictably | Install Node.js v22; see `references/guides/container-setup.md` |
+| 2 | Gateway bound to 0.0.0.0 (default) | Exposed to all network interfaces without auth | Bind to `127.0.0.1:8080`; see `references/guides/security-hardening.md` |
+| 3 | No API spending cap before connecting channels | $300-600 bills from retry loops | Set `limit_action: "stop"` before any channel; see `references/guides/monitoring-and-ops.md` |
+| 4 | Installing skills without auditing | ClawHavoc: 824 malicious skills found on ClawHub | Pin versions, audit code, verify publishers; see `references/guides/security-hardening.md` |
+| 5 | Skipping exec approvals in production | Agents execute destructive commands without review | Enable exec approvals + `tools.exec.security: "allowlist"`; see `references/guides/security-hardening.md` |
+| 6 | Gateway token in env vars instead of secrets | Token exposed in logs, process lists, container inspect | Use Docker secrets; see `references/guides/security-hardening.md` |
+| 7 | Missing binaries in sandbox containers | Skills fail silently | Use `setupCommand`; see `references/patterns/container-patterns.md` |
+| 8 | No reverse proxy (no HTTPS) | Traffic sent in plaintext | Use Caddy (easiest) or nginx; see `references/guides/container-setup.md` |
+| 9 | No backup before config changes | Config corruption with no recovery | Always back up; see `references/guides/monitoring-and-ops.md` |
+| 10 | No uptime monitoring | Slow failures go undetected for days | Set up external monitoring; see `references/guides/monitoring-and-ops.md` |
+| 11 | WhatsApp without keepalive | Session disconnects after days of inactivity | Schedule keepalive; see `references/guides/gateway-management.md` |
 
 ## Do this, not that
 
 | Do this | Not that |
 |---------|----------|
+| Verify Node.js v22 before deployment | Assume the system Node.js version is correct |
+| Bind gateway to `127.0.0.1:8080` with reverse proxy | Use default `0.0.0.0` binding |
+| Set API spending caps with `limit_action: "stop"` before channels | Connect channels first and configure costs later |
+| Use Docker secrets for the gateway token | Pass gateway token as a plain environment variable |
+| Pin skill versions and audit code before installing | Install popular skills without reviewing source |
+| Set `tools.exec.security: "allowlist"` with specific commands | Leave exec in permissive mode |
 | Enable exec approvals and test them before going live | Assume default settings are safe for production |
-| Install all skill-required binaries via setupCommand | Expect binaries to be available inside sandbox containers |
-| Configure gateway auth before exposing any endpoint | Open the gateway and plan to add auth later |
-| Use environment variables or secrets manager for credentials | Put API keys and tokens directly in config files |
-| Set up automated health checks and cost alerts | Wait for users to report that the instance is down |
-| Test messaging channel integration end-to-end | Trust that a channel is working because config looks correct |
-| Back up configuration before every change | Make changes and hope nothing breaks |
-| Use the `gateway` tool to restart after config changes | Restart the entire server for gateway changes |
+| Install skill-required binaries via setupCommand | Expect binaries to be available inside sandbox containers |
+| Use Caddy or nginx as reverse proxy for TLS | Expose the gateway directly without HTTPS |
+| Set up external uptime monitoring (UptimeRobot, etc.) | Rely only on internal health checks |
+| Back up configuration before every change and update | Make changes and hope nothing breaks |
 | Configure tool-loop detection for production workloads | Rely on agents to self-regulate their loop behavior |
 
 ## Reference routing
@@ -190,8 +200,11 @@ These community-maintained skills complement deployment operations. They are not
 ## Recovery paths
 
 - **Gateway unresponsive:** Use the `gateway` tool to restart. If the tool is unavailable, restart the OpenClaw process directly. See `references/guides/gateway-management.md`.
-- **Health check failing:** Run `healthcheck` skill for diagnostics. Check LLM provider connectivity, messaging channel status, and disk space. See `references/guides/monitoring-and-ops.md`.
+- **Health check failing:** Run `healthcheck` skill for diagnostics. Check LLM provider connectivity, messaging channel status, RAM (need 4 GB), and disk space. See `references/guides/monitoring-and-ops.md`.
+- **Unexpected API bill:** Immediately set `limit_action: "stop"` in cost config. Check for channel retry loops or runaway cron jobs. See `references/guides/monitoring-and-ops.md`.
+- **Suspected compromise (CVE):** Update OpenClaw immediately. Rotate gateway token. Audit installed skills. Check for CVE-2026-25253 (ClawJacked) exposure. See `references/guides/security-hardening.md`.
+- **WhatsApp disconnected:** Check session health. Set up keepalive cron. Monitor for message replay on reconnection. See `references/guides/gateway-management.md`.
 - **Exec approvals blocking legitimate operations:** Review and adjust the approval policy, not disable it. See `references/guides/security-hardening.md`.
-- **Container skills failing:** Verify required binaries are installed inside the container. Check `setupCommand` configuration. See `references/patterns/container-patterns.md`.
+- **Container skills failing:** Verify required binaries are installed inside the container. Check `setupCommand` configuration. Verify Node.js v22. See `references/patterns/container-patterns.md`.
 - **LLM provider outage:** Switch to a backup provider via gateway configuration. See `references/guides/gateway-management.md`.
-- **Configuration corrupted:** Restore from backup. If no backup exists, rebuild from the deployment guide. See `references/guides/monitoring-and-ops.md`.
+- **Configuration corrupted after update:** Restore from backup. Config format changes between versions. See `references/guides/monitoring-and-ops.md`.

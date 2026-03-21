@@ -2,6 +2,10 @@
 
 OpenClaw provides four preset tool profiles that define which tools an agent can access by default. Profiles are the starting point for tool configuration -- choose the closest match, then customize with allow/deny lists.
 
+## Default profile behavior
+
+When a new local config is created and `tools.profile` is not explicitly set, the default profile is `"coding"`. Existing configurations preserve their current profile -- the default only applies to newly created configs.
+
 ## Profile overview
 
 ### full
@@ -15,9 +19,9 @@ All 26 tools enabled. Both Layer 1 (core) and Layer 2 (advanced) tools are avail
 **Layer 1 (core):** read, write, edit, apply_patch, exec, process, web_search, web_fetch
 **Layer 2 (advanced):** browser, canvas, image, memory_search, memory_get, sessions, message, nodes, cron, gateway, tts, agents_list
 
-### coding
+### coding (default for new configs)
 
-All core tools plus code-relevant advanced tools. Focused on software development workflows.
+All core tools plus code-relevant advanced tools. Focused on software development workflows. This is the default profile when `tools.profile` is unset in a new local configuration.
 
 **Use when:** The agent assists developers with coding tasks -- writing, debugging, refactoring, testing, and documentation.
 

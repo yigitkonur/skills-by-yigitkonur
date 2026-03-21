@@ -2,13 +2,22 @@
 
 Patterns for customizing OpenClaw sandbox containers, managing skill dependencies, and configuring persistent storage.
 
+## Critical container requirements
+
+| Requirement | Value |
+|-------------|-------|
+| **Node.js** | v22 required (container image must include v22, not 18 or 20) |
+| **RAM** | 4 GB recommended, 1.5-2 GB absolute minimum |
+| **Port binding** | `127.0.0.1:8080:8080` -- never `0.0.0.0` |
+| **Recommended OS** | Ubuntu 24.04 LTS base image works out of box |
+
 ## Installing binaries in sandbox containers
 
 Skills that run inside Docker sandbox containers can only use binaries available inside that container. The host system's binaries are not accessible from within the sandbox.
 
 ### Using setupCommand
 
-The `agents.defaults.sandbox.docker.setupCommand` configuration runs when the sandbox container is initialized. Use it to install all binaries that skills require.
+The `agents.defaults.sandbox.docker.setupCommand` configuration runs when the sandbox container is initialized.
 
 ```yaml
 agents:
@@ -36,9 +45,9 @@ agents:
 | Pin package versions when stability matters | Reproducible builds across restarts |
 | Use `--no-install-recommends` | Smaller container, faster startup |
 | Clean up package cache | Reduces container size |
-| Test the command independently first | Catch failures before they affect production |
+| Test the command independently first | Catch failures before production |
 
-### Example: optimized setupCommand
+### Optimized setupCommand example
 
 ```yaml
 agents:
@@ -60,32 +69,23 @@ agents:
 
 ### Per-skill binary requirements
 
-When different skills need different binaries, document the requirements:
-
 | Skill | Required binaries | setupCommand addition |
 |-------|-------------------|----------------------|
-| Image processing skills | ImageMagick, ffmpeg | `apt-get install -y imagemagick ffmpeg` |
-| Web scraping skills | Chrome/Chromium, Puppeteer deps | `apt-get install -y chromium` |
-| Python-based skills | Python 3, pip, specific packages | `apt-get install -y python3 python3-pip && pip3 install <packages>` |
-| Node.js skills | Node.js, npm, specific packages | `apt-get install -y nodejs npm && npm install -g <packages>` |
-| Database skills | Client libraries (psql, mysql) | `apt-get install -y postgresql-client mysql-client` |
+| Image processing | ImageMagick, ffmpeg | `apt-get install -y imagemagick ffmpeg` |
+| Web scraping | Chrome/Chromium, Puppeteer deps | `apt-get install -y chromium` |
+| Python-based | Python 3, pip, specific packages | `apt-get install -y python3 python3-pip && pip3 install <packages>` |
+| Node.js | Node.js, npm, specific packages | `apt-get install -y nodejs npm && npm install -g <packages>` |
+| Database | Client libraries | `apt-get install -y postgresql-client mysql-client` |
 
 ### Diagnosing missing binary errors
 
-When a skill fails inside a container:
-
-1. Check the error message -- look for "command not found" or "No such file or directory"
-2. Identify the missing binary
-3. Add it to `setupCommand`
-4. Restart the sandbox container to apply
-5. Test the skill again
-
 ```bash
-# Debug: check what binaries are available inside the sandbox
+# Debug: check available binaries
 docker exec openclaw-sandbox which curl jq git python3
 
-# Debug: try running the missing command
-docker exec openclaw-sandbox command-that-failed --version
+# Debug: verify Node.js version
+docker exec openclaw-sandbox node --version
+# Must show v22.x.x
 ```
 
 ## Volume mounts and persistence
@@ -102,15 +102,12 @@ docker exec openclaw-sandbox command-that-failed --version
 ### Docker volume configuration
 
 ```yaml
-# docker-compose.yml
 services:
   openclaw:
     volumes:
-      # Named volumes for persistence
       - openclaw-data:/data
       - openclaw-config:/config
       - openclaw-skills:/skills
-      # tmpfs for temporary files
     tmpfs:
       - /tmp:size=512m
 
@@ -123,9 +120,7 @@ volumes:
     driver: local
 ```
 
-### Bind mounts for development
-
-During development, bind mounts let you edit files on the host and see changes inside the container:
+### Bind mounts for development only
 
 ```yaml
 services:
@@ -136,7 +131,72 @@ services:
       - openclaw-data:/data
 ```
 
-Do not use bind mounts in production. Named volumes are safer and do not depend on host directory structure.
+Do not use bind mounts in production. Named volumes are safer.
+
+## Production Docker Compose with security
+
+Complete example incorporating all security and operational requirements:
+
+```yaml
+version: "3.8"
+services:
+  openclaw:
+    image: openclaw/openclaw:latest
+    container_name: openclaw
+    restart: unless-stopped
+    volumes:
+      - openclaw-data:/data
+      - openclaw-config:/config
+      - openclaw-skills:/skills
+    tmpfs:
+      - /tmp:size=512m
+    environment:
+      - OPENCLAW_API_KEY=${OPENCLAW_API_KEY}
+    secrets:
+      - gateway_token
+    ports:
+      # CRITICAL: localhost only
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+volumes:
+  openclaw-data:
+  openclaw-config:
+  openclaw-skills:
+
+secrets:
+  gateway_token:
+    file: ./secrets/gateway_token.txt
+```
+
+## Tool execution security in containers
+
+Configure tool execution as an allowlist inside containers:
+
+```yaml
+tools:
+  exec:
+    security: "allowlist"
+    allowlist:
+      - "git status"
+      - "git diff"
+      - "ls"
+      - "cat"
+      - "curl"
+```
+
+**Never use `security: "any"` in production containers.** Even inside a sandbox, an agent with unrestricted exec can exfiltrate data or consume resources.
 
 ## Sandbox networking patterns
 
@@ -144,10 +204,10 @@ Do not use bind mounts in production. Named volumes are safer and do not depend 
 
 | Level | Configuration | Use case |
 |-------|---------------|----------|
-| No network | `network: none` | Maximum isolation, skills that only process local files |
-| Internal only | Custom bridge network with no external access | Skills that communicate between containers but not externally |
-| Restricted | Network with firewall rules limiting egress | Skills that need specific external endpoints (APIs) |
-| Full | Default Docker network | Development only, never in production |
+| No network | `network: none` | Maximum isolation, local-only processing |
+| Internal only | Custom bridge, no external access | Inter-container communication only |
+| Restricted | Firewall-limited egress | Skills needing specific API endpoints |
+| Full | Default Docker network | **Development only, never production** |
 
 ### Configuring restricted networking
 
@@ -156,30 +216,16 @@ agents:
   defaults:
     sandbox:
       docker:
-        # Allow only specific outbound connections
         network: "openclaw-restricted"
-        # DNS resolution restricted to internal
         dns:
           - "8.8.8.8"
 ```
-
-```yaml
-# docker-compose.yml network definition
-networks:
-  openclaw-restricted:
-    driver: bridge
-    internal: false
-    driver_opts:
-      com.docker.network.bridge.enable_ip_masquerade: "true"
-```
-
-Combine with host-level firewall rules (iptables/nftables) for egress filtering.
 
 ## Multi-container patterns
 
 ### Skill-specific containers
 
-For skills with heavy or conflicting dependencies, use separate containers:
+For skills with heavy or conflicting dependencies:
 
 ```yaml
 agents:
@@ -196,24 +242,16 @@ agents:
           setupCommand: "npm install -g puppeteer"
 ```
 
-### When to use skill-specific containers
-
-- Binary dependencies conflict between skills
-- A skill needs a specialized base image (GPU, specific OS libraries)
-- Resource limits differ significantly between skills
-- Isolation requirements differ (some skills need network, others do not)
-
 ## Container health and lifecycle
 
 ### Container restart policy
 
 ```yaml
-# docker-compose.yml
 services:
   openclaw:
     restart: unless-stopped
-    # Alternative policies:
-    # - "no" -- never restart (development)
+    # Alternatives:
+    # - "no" -- development only
     # - "always" -- restart even after manual stop
     # - "on-failure:5" -- restart up to 5 times on failure
 ```
@@ -221,27 +259,31 @@ services:
 ### Container resource monitoring
 
 ```bash
-# Check container resource usage
+# Check resource usage
 docker stats openclaw --no-stream
 
-# Check container health status
+# Verify idle memory is 1.5-2 GB (4 GB recommended available)
+# If memory exceeds 3 GB, investigate runaway skills or tool loops
+
+# Check health status
 docker inspect --format='{{.State.Health.Status}}' openclaw
 
-# View container events
+# View events
 docker events --filter container=openclaw --since 1h
 ```
 
 ### Container update procedure
 
 1. Pull the new image
-2. Back up current configuration and data (see monitoring-and-ops.md)
-3. Stop the current container
-4. Start the new container with the same volume mounts
-5. Run health checks
-6. Roll back if health checks fail
+2. **Read release notes for breaking config changes**
+3. Back up current configuration and data
+4. Stop the current container
+5. Start the new container with the same volume mounts
+6. Run health checks
+7. **Verify Node.js v22**: `docker exec openclaw node --version`
+8. Roll back if health checks fail
 
 ```bash
-# Update procedure
 docker pull openclaw/openclaw:latest
 docker stop openclaw
 docker rm openclaw
@@ -251,20 +293,24 @@ docker run -d \
   -v openclaw-data:/data \
   -v openclaw-config:/config \
   -e OPENCLAW_API_KEY="${OPENCLAW_API_KEY}" \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   openclaw/openclaw:latest
 
 # Verify
 curl -f http://localhost:8080/health
+docker exec openclaw node --version
 ```
 
 ## Steering experiences
 
 ### SE-01: setupCommand runs on every container restart
-If `setupCommand` runs on every restart, it adds startup latency. Consider building a custom image with pre-installed binaries for frequently used setups, or use Docker layer caching.
+If `setupCommand` runs on every restart, it adds startup latency. Consider building a custom image with pre-installed binaries, or use Docker layer caching.
 
 ### SE-02: Container runs out of disk space
-Temporary files from skill execution can fill up the container filesystem. Use tmpfs mounts for `/tmp` and set size limits. Monitor disk usage inside containers.
+Temporary files from skill execution can fill up the container filesystem. Use tmpfs mounts for `/tmp` with size limits.
 
 ### SE-03: Container networking conflicts with host services
-When the container's port mapping conflicts with host services, the container fails to start. Always check for port conflicts before deployment with `ss -tlnp` or `lsof -i :8080`.
+Port conflicts prevent container startup. Check with `ss -tlnp` or `lsof -i :8080` before deployment.
+
+### SE-04: Container uses wrong Node.js version
+Always verify `node --version` shows v22 inside the container after updates. Some base images may ship older versions.

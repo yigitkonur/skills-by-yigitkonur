@@ -2,11 +2,26 @@
 
 This guide covers health monitoring, cost tracking, backup strategies, and operational procedures for production OpenClaw instances.
 
+## Uptime monitoring (essential)
+
+**Uptime monitoring is essential for production.** Community reports consistently note that slow failure (degraded performance, partial outages) is worse than immediate failure because it goes undetected longer.
+
+### External uptime monitoring
+
+Set up external monitoring that checks from outside your network:
+
+| Service | How to configure | Notes |
+|---------|-----------------|-------|
+| UptimeRobot | HTTP check on `https://your-domain/health` | Free tier available |
+| Better Uptime | HTTP check + status page | Includes incident management |
+| Pingdom | HTTP check with response validation | Enterprise features |
+| Custom | Poll `/health?detail=true` and parse JSON | Most flexible |
+
+**Do not rely only on internal health checks.** If the host or network is down, internal checks cannot alert you.
+
 ## Health checks
 
 ### Built-in health monitoring
-
-OpenClaw provides the `healthcheck` skill for comprehensive instance health assessment.
 
 ```bash
 # Run health check
@@ -23,25 +38,20 @@ openclaw skill run healthcheck
 
 ### Automated health checks
 
-Configure automated health checks for continuous monitoring:
-
 ```yaml
 monitoring:
   health:
     enabled: true
-    interval_seconds: 300  # Check every 5 minutes
-    # Alert channels (uses configured messaging channels)
+    interval_seconds: 300
     alert_channels:
       - "slack:#ops-alerts"
       - "telegram:admin-chat"
-    # What to check
     checks:
       - gateway_status
       - llm_provider_health
       - channel_connectivity
       - disk_space
       - memory_usage
-    # Thresholds
     thresholds:
       disk_space_min_percent: 20
       memory_max_percent: 85
@@ -51,13 +61,11 @@ monitoring:
 
 ### HTTP health endpoint
 
-The gateway exposes a health endpoint for external monitoring:
-
 ```bash
 # Basic health check
 curl -f http://localhost:8080/health
 
-# Detailed health check (includes component status)
+# Detailed health check
 curl http://localhost:8080/health?detail=true
 
 # Expected response:
@@ -72,22 +80,49 @@ curl http://localhost:8080/health?detail=true
 # }
 ```
 
-### Integrating with external monitoring
+### RAM monitoring
 
-Use the HTTP health endpoint with external monitoring tools:
+OpenClaw uses 1.5-2 GB idle. Monitor memory to catch leaks early:
 
-- **Uptime monitoring** (UptimeRobot, Pingdom, Better Uptime): Point at `/health`
-- **Prometheus/Grafana**: Scrape the `/metrics` endpoint if available
-- **Custom alerting**: Poll `/health?detail=true` and parse the JSON response
+```yaml
+monitoring:
+  health:
+    thresholds:
+      # Warn when memory exceeds 85% of available
+      memory_max_percent: 85
+      # With 4 GB recommended RAM, this triggers at ~3.4 GB
+```
+
+If memory consistently exceeds 3 GB, investigate:
+- Runaway skills or tool loops consuming memory
+- Large conversation contexts not being cleaned up
+- Too many concurrent cron jobs
 
 ## LLM cost tracking
 
+### API spending caps (set BEFORE connecting channels)
+
+**This is the single most important operational configuration.** Real-world reports document $300-600 bills from retry loops caused by messaging channel reconnections.
+
+```yaml
+monitoring:
+  cost:
+    enabled: true
+    # CRITICAL: Set these BEFORE connecting any messaging channel
+    daily_limit_usd: 50
+    weekly_limit_usd: 250
+    monthly_limit_usd: 800
+    # Use "stop" not "alert" -- by the time you read an alert, the damage is done
+    limit_action: "stop"
+    alert_channels:
+      - "slack:#ops-alerts"
+    per_skill_tracking: true
+    per_channel_tracking: true
+```
+
 ### Using the model-usage skill
 
-The `model-usage` skill tracks LLM API consumption and costs:
-
 ```bash
-# View current usage
 openclaw skill run model-usage
 
 # Output includes:
@@ -99,36 +134,100 @@ openclaw skill run model-usage
 # - Projected monthly cost
 ```
 
-### Cost alert configuration
-
-```yaml
-monitoring:
-  cost:
-    enabled: true
-    # Alert thresholds
-    daily_limit_usd: 50
-    weekly_limit_usd: 250
-    monthly_limit_usd: 800
-    # Action when limit is reached: "alert", "throttle", "stop"
-    limit_action: "alert"
-    # Alert channels
-    alert_channels:
-      - "slack:#ops-alerts"
-    # Track per-skill costs
-    per_skill_tracking: true
-    # Track per-channel costs
-    per_channel_tracking: true
-```
-
 ### Cost optimization strategies
 
 | Strategy | When to use | How |
 |----------|-------------|-----|
-| Model routing | Different tasks need different capability levels | Route simple tasks to cheaper models via gateway-management.md |
-| Token limits per session | Prevent runaway sessions | Set `max_tokens_per_session` in agent defaults |
+| Model routing | Different tasks need different capability levels | Route simple tasks to cheaper models |
+| Token limits per session | Prevent runaway sessions | Set `max_tokens_per_session` |
 | Skill-level budgets | Some skills are disproportionately expensive | Set per-skill token limits |
 | Channel routing | Chat channels produce high volume | Route high-volume channels to cost-effective models |
-| Community skill: `openclaw-cost-guardian` | Comprehensive cost governance | Install and configure for automated cost management |
+| Spending caps with stop action | Always | Set `limit_action: "stop"` |
+
+## Maintenance operations
+
+### Updates are manual
+
+OpenClaw does not auto-update. You must manually pull new versions and restart.
+
+**Warning:** Config format changes between versions occasionally break things. Always:
+
+1. Back up the current configuration
+2. Read the release notes for breaking changes
+3. Update in a staging environment first
+4. Apply the update
+5. Run health checks
+6. Roll back if anything fails
+
+### Update procedure (Docker)
+
+```bash
+# Back up first
+docker exec openclaw tar -czf /data/backup-pre-update.tar.gz /config
+
+# Pull new version
+docker pull openclaw/openclaw:latest
+
+# Stop current container
+docker stop openclaw
+docker rm openclaw
+
+# Start with new version
+docker run -d \
+  --name openclaw \
+  --restart unless-stopped \
+  -v openclaw-data:/data \
+  -v openclaw-config:/config \
+  -e OPENCLAW_API_KEY="${OPENCLAW_API_KEY}" \
+  -p 127.0.0.1:8080:8080 \
+  openclaw/openclaw:latest
+
+# Verify
+curl -f http://localhost:8080/health
+docker exec openclaw node --version  # Must be v22.x.x
+```
+
+## Cron subsystem operations
+
+The cron subsystem has its own configuration that affects monitoring and operations:
+
+```yaml
+cron:
+  enabled: true
+  store: "sqlite"
+  maxConcurrentRuns: 1
+  retry:
+    maxAttempts: 3
+    backoffMs: 5000
+    retryOn: "failure"
+  sessionRetention: "24h"
+  runLog:
+    maxBytes: 1048576
+    keepLines: 1000
+```
+
+### Disabling cron
+
+Two methods for emergencies:
+
+```yaml
+# Method 1: config
+cron:
+  enabled: false
+```
+
+```bash
+# Method 2: environment variable (fastest for emergencies)
+OPENCLAW_SKIP_CRON=1
+```
+
+### Monitoring cron jobs
+
+Use `cron.runs` to review execution history. Watch for:
+- Jobs that consistently fail (investigate root cause)
+- Jobs that take longer than expected (add timeouts)
+- Jobs that overlap (increase interval or reduce `maxConcurrentRuns`)
+- Retry storms (reduce `maxAttempts` or increase `backoffMs`)
 
 ## Backup and disaster recovery
 
@@ -138,34 +237,24 @@ monitoring:
 |-----------|----------|-----------|----------|
 | Configuration files | `/config/` | After every change | Critical |
 | Agent data | `/data/` | Daily | High |
-| Skill definitions | `/skills/` (custom skills) | After changes | High |
+| Skill definitions | `/skills/` | After changes | High |
 | Environment variables | Secrets manager | After changes | Critical |
 | Gateway state | Gateway export | Daily | Medium |
 | Conversation history | `/data/conversations/` | Daily | Medium |
 
-### Backup methods
-
-#### Automated file backup
+### Automated file backup
 
 ```bash
 #!/bin/bash
-# backup-openclaw.sh
 BACKUP_DIR="/backups/openclaw/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-# Back up configuration
 cp -r /config "$BACKUP_DIR/config"
-
-# Back up data
 cp -r /data "$BACKUP_DIR/data"
-
-# Back up custom skills
 cp -r /skills "$BACKUP_DIR/skills"
 
-# Export gateway state
 openclaw gateway export > "$BACKUP_DIR/gateway-state.json"
 
-# Compress
 tar -czf "$BACKUP_DIR.tar.gz" -C "$(dirname $BACKUP_DIR)" "$(basename $BACKUP_DIR)"
 rm -rf "$BACKUP_DIR"
 
@@ -175,13 +264,11 @@ find /backups/openclaw/ -name "*.tar.gz" -mtime +30 -delete
 echo "Backup completed: $BACKUP_DIR.tar.gz"
 ```
 
-#### Docker volume backup
+### Docker volume backup
 
 ```bash
-# Stop the container for consistent backup
 docker stop openclaw
 
-# Back up volumes
 docker run --rm \
   -v openclaw-data:/source:ro \
   -v /backups:/backup \
@@ -192,17 +279,8 @@ docker run --rm \
   -v /backups:/backup \
   alpine tar -czf /backup/openclaw-config-$(date +%Y%m%d).tar.gz -C /source .
 
-# Restart
 docker start openclaw
 ```
-
-#### Community backup skill
-
-The `finn-openclaw-backup` community skill provides automated backup management:
-- Scheduled backups with configurable retention
-- Remote backup destinations (S3, GCS, SFTP)
-- Backup verification and integrity checks
-- One-command restore
 
 ### Restore procedure
 
@@ -214,34 +292,13 @@ The `finn-openclaw-backup` community skill provides automated backup management:
 6. Run `healthcheck` to verify restoration
 7. Test at least one messaging channel end-to-end
 
-```bash
-# Example restore
-docker stop openclaw
-
-# Restore volumes
-docker run --rm \
-  -v openclaw-config:/target \
-  -v /backups:/backup:ro \
-  alpine sh -c "rm -rf /target/* && tar -xzf /backup/openclaw-config-20240115.tar.gz -C /target"
-
-docker run --rm \
-  -v openclaw-data:/target \
-  -v /backups:/backup:ro \
-  alpine sh -c "rm -rf /target/* && tar -xzf /backup/openclaw-data-20240115.tar.gz -C /target"
-
-docker start openclaw
-
-# Verify
-openclaw skill run healthcheck
-```
-
 ### Disaster recovery planning
 
-- **RTO (Recovery Time Objective):** How fast must the instance be back? Size backups and restore procedures accordingly.
+- **RTO (Recovery Time Objective):** How fast must the instance be back? Size backup/restore accordingly.
 - **RPO (Recovery Point Objective):** How much data loss is acceptable? Set backup frequency accordingly.
 - **Test restores regularly.** A backup that has never been tested is not a backup.
 - **Store backups off-site.** Local-only backups do not survive disk failure or host compromise.
-- **Document the restore procedure** and keep it accessible outside the OpenClaw instance itself.
+- **Document the restore procedure** and keep it accessible outside the OpenClaw instance.
 
 ## Log management
 
@@ -254,21 +311,18 @@ docker logs openclaw --tail 100 --follow
 # Systemd logs (bare VPS)
 journalctl -u openclaw --since "1 hour ago"
 
-# Application logs (inside container or on host)
+# Application logs (inside container)
 tail -f /data/logs/openclaw.log
 ```
 
-### Log levels
+### Log configuration
 
 ```yaml
 logging:
-  level: "info"  # debug, info, warn, error
-  # Structured JSON logging for machine parsing
+  level: "info"
   format: "json"
-  # Log rotation
   max_size_mb: 100
   max_files: 10
-  # Separate security audit log
   audit:
     enabled: true
     file: "/data/logs/audit.log"
@@ -282,8 +336,10 @@ logging:
 | LLM provider errors | Provider instability | Check failover configuration |
 | Exec approval timeouts | Operator not responding | Adjust timeout or alert routing |
 | Tool-loop detection triggers | Agent in infinite loop | Review the triggering skill |
-| High memory or CPU warnings | Resource exhaustion | Scale up or optimize skill workloads |
-| Channel disconnect events | Messaging platform issues | Check credentials and network |
+| High memory or CPU warnings | Resource exhaustion (need 4 GB RAM) | Scale up or optimize |
+| Channel disconnect events | Messaging platform issues | Check credentials, WhatsApp keepalive |
+| Cost limit reached | Spending cap triggered | Review what caused the spike |
+| Cron retry storms | Jobs failing repeatedly | Reduce maxAttempts, fix root cause |
 
 ## Operational runbook
 
@@ -292,29 +348,38 @@ logging:
 - Review health check status (automated alerts should cover this)
 - Check cost tracking dashboard
 - Review audit logs for security anomalies
+- Verify WhatsApp session is still connected (if using WhatsApp)
 
 ### Weekly operations
 
-- Verify backup integrity (test restore on a staging instance)
+- Verify backup integrity (test restore on staging)
 - Review tool-loop detection triggers
 - Check LLM provider usage trends
 - Review and prune old conversation history if needed
+- Check for OpenClaw updates and CVE patches
 
 ### Monthly operations
 
 - Rotate OAuth2 secrets and API keys
-- Update OpenClaw to the latest version
+- Update OpenClaw to the latest version (back up first, check release notes)
 - Review and update security posture
 - Test full disaster recovery procedure
 - Review cost trends and adjust provider routing
+- Audit installed skills against ClawHub advisories
 
 ## Steering experiences
 
 ### SE-01: Health checks pass but the instance is degraded
-Health checks verify connectivity, not quality. An LLM provider may be responding slowly or producing poor results without triggering health alerts. Use `model-usage` skill to track latency trends.
+Health checks verify connectivity, not quality. An LLM provider may be responding slowly without triggering alerts. Use `model-usage` skill to track latency trends. Set up external uptime monitoring.
 
 ### SE-02: Backups exist but have never been tested
 Schedule quarterly restore tests. An untested backup is unreliable.
 
 ### SE-03: Cost alerts arrive after the budget is already spent
-Set daily limits, not just monthly ones. A runaway agent can exhaust a monthly budget in hours.
+Use `limit_action: "stop"`, not `"alert"`. Set daily limits, not just monthly ones. A runaway agent can exhaust a monthly budget in hours.
+
+### SE-04: Slow failure goes undetected for days
+Internal health checks cannot alert if the host is down. Always use external uptime monitoring (UptimeRobot, Better Uptime, etc.) that checks from outside your network.
+
+### SE-05: Update breaks config format
+OpenClaw config format changes between versions without migration tooling. Always back up config, read release notes, and update on staging first.
