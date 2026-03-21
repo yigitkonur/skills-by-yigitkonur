@@ -67,7 +67,7 @@ What aspect of OpenClaw agent config needs work?
 |   +-- Adding external skill directories --- skills.load.extraDirs
 |   +-- Configuring skill env/API keys ------ skills.entries.{key}.env, skills.entries.{key}.apiKey
 |   +-- Skill not loading? ----------------- Check precedence: workspace > managed/local > bundled > extra
-|   +-- Tuning watcher -------------------- watchDebounceMs
+|   +-- Tuning watcher -------------------- skills.load.watchDebounceMs (default 250ms)
 |   +-- Read references/skills-loading.md
 |
 +-- "Configure memory"

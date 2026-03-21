@@ -1,6 +1,40 @@
 # Security Hardening
 
-This guide covers all security features available in OpenClaw for production environments.
+This guide covers all security features available in OpenClaw for production environments, including real-world threat intelligence from community reports and CVE disclosures.
+
+## Known threats and CVEs
+
+OpenClaw has a documented history of security vulnerabilities. These are not theoretical -- they have affected real deployments.
+
+### CVE summary
+
+| Metric | Value |
+|--------|-------|
+| Total CVEs since launch | 14 |
+| Critical CVEs | 8 |
+| Most severe | CVE-2026-25253 (ClawJacked) -- CVSS 8.8 |
+| Instances affected by ClawJacked | 135,000+ |
+
+### ClawJacked (CVE-2026-25253)
+
+- **CVSS:** 8.8 (High)
+- **Impact:** Remote exploitation of OpenClaw instances
+- **Affected:** 135,000+ instances worldwide
+- **Mitigation:** Update to latest version immediately, enable gateway authentication, bind gateway to localhost
+
+### ClawHavoc malicious skills (January 2026)
+
+- **824 malicious skills** discovered on ClawHub (12% of total skills at the time)
+- **Impact:** Data exfiltration, credential theft, crypto mining
+- **Mitigation:** Pin skill versions, audit all installed skills, never install from unverified publishers, use tool allowlists
+
+### Key lessons from real-world incidents
+
+1. **The gateway binds to 0.0.0.0 by default** -- it is accessible from any network interface unless explicitly bound to localhost
+2. **No authentication is enabled by default** -- you must configure it manually
+3. **No HTTPS by default** -- a reverse proxy is required for encrypted connections
+4. **Updates are manual** -- there is no auto-update mechanism; config format changes occasionally break things
+5. **Malicious skills are a real threat** -- ClawHub has had verified malicious content
 
 ## Security posture assessment
 
@@ -8,49 +42,140 @@ Before hardening, assess the current posture:
 
 | Check | Status | Action if missing |
 |-------|--------|-------------------|
+| Gateway bound to localhost | **Critical** | Change port binding to `127.0.0.1:8080` immediately |
+| Gateway authentication active | **Critical** | Configure before exposing any endpoint |
+| Reverse proxy with TLS | **Critical** | Set up Caddy or nginx before going live |
+| API spending caps set | **Critical** | Set BEFORE connecting messaging channels |
 | Exec approvals enabled | Required for production | Enable immediately |
+| Tool exec security set to allowlist | Required | Set `tools.exec.security: "allowlist"` |
+| Gateway token secured | Required | Use Docker secrets, not env vars |
+| Skills audited | Required | Pin versions, verify publishers |
 | Tool allow/deny lists configured | Recommended | Define based on use case |
-| Gateway authentication active | Required if exposed | Configure before exposing |
 | Sandbox isolation verified | Required for untrusted skills | Test container boundary |
 | Tool-loop detection enabled | Recommended | Enable to prevent runaway agents |
 | Elevated mode policy defined | Recommended | Restrict to specific skills |
-| OAuth2 configured for integrations | When applicable | Set up per-integration |
 | Secrets in environment variables | Required | Migrate from config files |
 
-## Exec approvals
+## Gateway security (highest priority)
 
-Exec approvals require human confirmation before agents execute potentially destructive commands. This is the single most important security control for production OpenClaw.
+The gateway is the most critical attack surface. Three default behaviors make it dangerous out of the box:
 
-### How exec approvals work
+### 1. Gateway binds to 0.0.0.0 by default
 
-When enabled, any agent command that would modify the system (file writes, shell commands, API calls with side effects) is paused and presented to the operator for approval before execution.
+**Fix:** Always bind to localhost in your deployment configuration.
 
-### Configuration
+Docker/Docker Compose:
+```yaml
+ports:
+  - "127.0.0.1:8080:8080"  # NOT "8080:8080"
+```
+
+### 2. No authentication by default
+
+**Fix:** Enable authentication before exposing the gateway to any network.
+
+### 3. No HTTPS by default
+
+**Fix:** Place a reverse proxy (Caddy or nginx) in front of the gateway for TLS termination. See container-setup.md for examples.
+
+### Gateway control UI security flags
+
+When configuring a reverse proxy, these gateway flags may be needed but are dangerous:
 
 ```yaml
-# In OpenClaw configuration
+gateway:
+  controlUi:
+    dangerouslyAllowHostHeaderOriginFallback: false  # Only enable if proxy strips Origin header
+    allowInsecureAuth: false                          # Only enable for local development
+    dangerouslyDisableDeviceAuth: false               # Never enable in production
+```
+
+**Treat these flags as landmines.** Only enable them if you fully understand the implications and have compensating controls.
+
+### Gateway token
+
+The gateway token is the master credential for your OpenClaw instance.
+
+- **Treat it as a crown jewel** -- compromise of this token means full instance takeover
+- **Use Docker secrets** to pass it to the container, not plain environment variables
+- **Rotate regularly** and after any suspected compromise
+- **Never log it** or include it in error reports
+
+```yaml
+# Docker Compose with secrets
+services:
+  openclaw:
+    secrets:
+      - gateway_token
+    environment:
+      - OPENCLAW_GATEWAY_TOKEN_FILE=/run/secrets/gateway_token
+
+secrets:
+  gateway_token:
+    file: ./secrets/gateway_token.txt
+```
+
+## API spending caps
+
+**Set API spending caps BEFORE connecting any messaging channels.**
+
+Real-world reports from Reddit document $300-600 bills caused by retry loops on messaging channels. When a channel disconnects and reconnects, pending messages can trigger a flood of API calls.
+
+```yaml
+monitoring:
+  cost:
+    enabled: true
+    daily_limit_usd: 50
+    weekly_limit_usd: 250
+    monthly_limit_usd: 800
+    limit_action: "stop"  # Use "stop", not "alert", for spending caps
+```
+
+See monitoring-and-ops.md for full cost tracking configuration.
+
+## Tool execution security
+
+### Exec allowlist (required for production)
+
+Set tool execution to allowlist mode with specific commands only:
+
+```yaml
+tools:
+  exec:
+    security: "allowlist"
+    allowlist:
+      - "git status"
+      - "git diff"
+      - "git log"
+      - "ls"
+      - "cat"
+      - "curl"
+      # Add only commands your workflows actually need
+```
+
+**Never use `security: "any"` in production.** An allowlist prevents agents from executing arbitrary commands even if compromised.
+
+### Exec approvals
+
+Exec approvals require human confirmation before agents execute potentially destructive commands.
+
+```yaml
 security:
   exec_approvals:
     enabled: true
-    # Approval modes:
-    # - "all" -- every command requires approval
-    # - "destructive" -- only commands classified as destructive
-    # - "custom" -- use rules below
     mode: "destructive"
     rules:
-      # Always require approval for these patterns
       always_approve:
         - "rm -rf"
         - "git push --force"
         - "docker rm"
         - "DROP TABLE"
-      # Auto-approve these safe patterns (use sparingly)
       auto_approve:
         - "git status"
         - "git diff"
         - "ls"
         - "cat"
-    timeout_seconds: 300  # Auto-deny if no response in 5 minutes
+    timeout_seconds: 300
 ```
 
 ### When to adjust exec approval mode
@@ -58,22 +183,41 @@ security:
 - **Development/testing:** `destructive` mode is usually sufficient
 - **Production with trusted skills:** `destructive` mode with custom rules
 - **Production with untrusted or community skills:** `all` mode
-- **Never in production:** disabled entirely (unless operating in a fully isolated, ephemeral sandbox where destruction has zero impact)
+- **Never in production:** disabled entirely
 
-### Approval channels
+## Skills security
 
-Exec approval requests can be routed to:
-- The OpenClaw web interface
-- Messaging channels (Slack, Discord, Telegram)
-- Custom webhook endpoints
+### The ClawHavoc threat
+
+824 malicious skills were found on ClawHub in January 2026, representing 12% of all published skills. These performed:
+
+- Data exfiltration (sending config/secrets to external servers)
+- Credential harvesting
+- Cryptocurrency mining
+- Backdoor installation
+
+### Skills security requirements
+
+1. **Pin skill versions** -- never use `latest` or unpinned versions in production
+2. **Audit installed skills** -- review the code of every skill before installation
+3. **Verify publishers** -- only install from publishers you trust and can verify
+4. **Use tool allowlists per skill** -- restrict what tools each skill can access
+5. **Monitor skill behavior** -- watch for unexpected network calls or file access
+
+```yaml
+skills:
+  my-trusted-skill:
+    version: "1.2.3"  # Pinned, not "latest"
+    tools:
+      mode: "allow"
+      allow:
+        - "read_file"
+        - "web_search"
+```
 
 ## Tool allow/deny lists
 
-Control which tools agents can access.
-
 ### Allow list (whitelist) approach
-
-Only explicitly permitted tools are available to agents:
 
 ```yaml
 security:
@@ -84,17 +228,9 @@ security:
       - "search_code"
       - "web_search"
       - "healthcheck"
-      # Add tools as needed
 ```
 
-Use allow lists when:
-- Running untrusted or community skills
-- Compliance requirements restrict agent capabilities
-- You want maximum control over agent actions
-
 ### Deny list (blacklist) approach
-
-All tools available except explicitly blocked ones:
 
 ```yaml
 security:
@@ -106,13 +242,7 @@ security:
       - "modify_system"
 ```
 
-Use deny lists when:
-- Running trusted skills that need broad tool access
-- You want to block specific dangerous tools while keeping flexibility
-
 ### Per-skill tool restrictions
-
-Override global tool lists for specific skills:
 
 ```yaml
 skills:
@@ -126,73 +256,29 @@ skills:
 
 ## Elevated mode
 
-Elevated mode grants expanded permissions for specific operations that require higher privileges.
-
-### Configuration
-
 ```yaml
 security:
   elevated_mode:
     enabled: true
-    # Which skills can request elevation
     allowed_skills:
       - "deploy-infrastructure"
       - "database-migration"
-    # Elevated mode always requires exec approval
     requires_approval: true
-    # Maximum duration before auto-revocation
     max_duration_seconds: 600
 ```
 
-### Rules for elevated mode
-
-- Always require exec approval for elevated operations
-- Limit which skills can request elevation
-- Set a maximum duration to prevent indefinite elevated sessions
-- Log all actions taken during elevated mode
-- Revoke immediately when the task completes
-
 ## Tool-loop detection
-
-Prevents agents from entering infinite loops that consume tokens and time.
-
-### Configuration
 
 ```yaml
 security:
   tool_loop_detection:
     enabled: true
-    # Maximum consecutive identical tool calls
     max_identical_calls: 5
-    # Maximum total tool calls per session
     max_calls_per_session: 200
-    # Action when loop detected: "warn", "pause", "terminate"
     action: "pause"
 ```
 
-### When loop detection triggers
-
-- The agent calls the same tool with identical parameters repeatedly
-- Total tool calls exceed the session limit
-- A circular pattern of tool calls is detected
-
-When triggered in `pause` mode, the session is suspended and the operator is notified. In `terminate` mode, the session ends immediately.
-
 ## Sandbox isolation
-
-OpenClaw uses Docker containers as sandboxes for isolated execution.
-
-### Verifying sandbox isolation
-
-```bash
-# From inside the container, verify isolation
-# These should all fail or return restricted results:
-docker exec openclaw-sandbox whoami        # Should NOT be root
-docker exec openclaw-sandbox mount         # Should show minimal mounts
-docker exec openclaw-sandbox ip addr       # Should show isolated network
-```
-
-### Sandbox configuration
 
 ```yaml
 agents:
@@ -200,40 +286,24 @@ agents:
     sandbox:
       docker:
         enabled: true
-        # Command to run when setting up the sandbox container
         setupCommand: "apt-get update && apt-get install -y curl jq"
-        # Resource limits
         memory: "512m"
         cpus: "1.0"
-        # Network isolation
-        network: "none"  # or a restricted network
-        # Read-only root filesystem
+        network: "none"
         read_only: true
-        # Temporary writable directories
         tmpfs:
           - "/tmp"
           - "/var/tmp"
 ```
 
-### Key sandbox rules
-
+Key sandbox rules:
 - Never run sandbox containers as root
 - Always set resource limits (memory, CPU)
 - Use `network: none` unless the skill genuinely needs network access
 - Mount only the minimum required volumes
 - Use read-only root filesystem with explicit tmpfs exceptions
-- Install required binaries via `setupCommand`, not at runtime
 
 ## OAuth2 integration
-
-Some OpenClaw integrations require OAuth2 authentication.
-
-### Setup flow
-
-1. Register an OAuth2 application with the service provider
-2. Configure the client ID and secret in OpenClaw (via environment variables)
-3. Set the callback URL to your OpenClaw gateway
-4. Configure scopes based on minimum required permissions
 
 ```yaml
 integrations:
@@ -247,31 +317,27 @@ integrations:
       callback_url: "https://your-openclaw.example.com/oauth/callback/slack"
 ```
 
-### OAuth2 security rules
-
+OAuth2 security rules:
 - Store client secrets in environment variables, never in config files
 - Request minimum required scopes
 - Rotate secrets on a regular schedule
 - Monitor OAuth token usage for anomalies
 
-## Gateway security
+## Reverse proxy configuration
 
-The gateway is the entry point to your OpenClaw instance. See openclaw.ai/gateway/security for the latest official documentation.
+### Caddy (easiest, recommended)
 
-### Essential gateway security measures
+```
+openclaw.example.com {
+    reverse_proxy localhost:8080
+}
+```
 
-1. **Authentication:** Always require authentication for gateway access
-2. **TLS:** Terminate TLS at the gateway or reverse proxy level
-3. **Rate limiting:** Prevent abuse and brute-force attempts
-4. **IP restrictions:** Limit access to known IP ranges when possible
-5. **Audit logging:** Log all gateway access attempts
+Caddy automatically handles TLS certificate provisioning and renewal.
 
-### Reverse proxy configuration
-
-For production, place a reverse proxy (nginx, Caddy, Traefik) in front of the gateway:
+### nginx
 
 ```nginx
-# Example nginx reverse proxy with TLS and rate limiting
 server {
     listen 443 ssl;
     server_name openclaw.example.com;
@@ -279,12 +345,11 @@ server {
     ssl_certificate /etc/ssl/certs/openclaw.pem;
     ssl_certificate_key /etc/ssl/private/openclaw.key;
 
-    # Rate limiting
     limit_req_zone $binary_remote_addr zone=openclaw:10m rate=10r/s;
 
     location / {
         limit_req zone=openclaw burst=20 nodelay;
-        proxy_pass http://localhost:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -297,18 +362,25 @@ server {
 
 Before going live:
 
+- [ ] Gateway bound to `127.0.0.1`, not `0.0.0.0`
+- [ ] Gateway authentication enabled
+- [ ] API spending caps configured and set to "stop" mode
+- [ ] Reverse proxy with TLS in front of gateway
+- [ ] `tools.exec.security: "allowlist"` with specific commands only
+- [ ] Gateway token stored in Docker secrets, not env vars
+- [ ] All skills version-pinned and audited
+- [ ] No skills from unverified publishers
 - [ ] Exec approvals enabled and tested
 - [ ] Tool allow/deny lists match the deployment's threat model
-- [ ] Gateway authentication configured
-- [ ] TLS enabled for all external connections
 - [ ] Sandbox containers run as non-root with resource limits
 - [ ] Tool-loop detection enabled
 - [ ] Elevated mode restricted to specific skills
 - [ ] OAuth2 secrets stored in environment variables
-- [ ] Rate limiting configured at the gateway or reverse proxy
+- [ ] Rate limiting configured at the reverse proxy
 - [ ] Audit logging enabled for security events
 - [ ] IP restrictions applied where feasible
-- [ ] Secrets rotated on a regular schedule
+- [ ] Node.js v22 confirmed (older versions may have unpatched vulnerabilities)
+- [ ] OpenClaw updated to latest version (check for CVE patches)
 
 ## Steering experiences
 
@@ -320,3 +392,9 @@ Starting with "allow all" and planning to restrict later. Start restrictive and 
 
 ### SE-03: Sandbox network access left open
 Skills that do not need network access should use `network: none`. Leaving the default network open exposes the container to outbound data exfiltration.
+
+### SE-04: Gateway exposed without auth because "it's on a private network"
+Private networks get compromised. Lateral movement from any host on the network gives full access. Always enable auth regardless of network trust level.
+
+### SE-05: Installing popular skills without auditing
+The ClawHavoc incident proved that popular skills can be malicious. Always audit code before installation, even for highly-starred skills.

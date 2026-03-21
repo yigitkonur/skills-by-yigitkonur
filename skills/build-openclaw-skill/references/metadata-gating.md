@@ -19,12 +19,17 @@ metadata: {"openclaw": {"requires": {"bins": ["node", "npm"], "env": ["GITHUB_TO
 ```json
 {
   "openclaw": {
+    "always": false,
+    "emoji": "🔧",
+    "os": ["darwin", "linux"],
     "requires": {
       "bins": ["binary1", "binary2"],
+      "anyBins": ["alt-tool-a", "alt-tool-b"],
       "env": ["ENV_VAR_1", "ENV_VAR_2"],
       "config": ["config-file.json"]
     },
-    "primaryEnv": "ENV_VAR_1"
+    "primaryEnv": "ENV_VAR_1",
+    "install": []
   }
 }
 ```
@@ -32,17 +37,21 @@ metadata: {"openclaw": {"requires": {"bins": ["node", "npm"], "env": ["GITHUB_TO
 | Key | Type | Purpose |
 |---|---|---|
 | `openclaw` | object | Top-level namespace for OpenClaw-specific metadata |
+| `openclaw.always` | boolean | If `true`, skill is included in every session regardless of other gates. Use sparingly for foundational skills. |
+| `openclaw.emoji` | string | UI decoration displayed in the macOS Skills UI (e.g., `"🚀"`). Cosmetic only. |
+| `openclaw.os` | string[] | Platform filter. Array of `"darwin"`, `"linux"`, `"win32"`. Skill is only eligible on listed platforms. Omit to allow all. |
 | `requires` | object | Environment requirements that must be met |
-| `requires.bins` | string[] | Binary executables that must exist in PATH |
+| `requires.bins` | string[] | Binary executables that must ALL exist in PATH |
+| `requires.anyBins` | string[] | At least ONE of the listed binaries must exist in PATH (logical OR, unlike `bins` which is logical AND) |
 | `requires.env` | string[] | Environment variables that must be set |
 | `requires.config` | string[] | Config files that must exist in the project |
 | `primaryEnv` | string | The most important env var (shown in setup instructions) |
 
 ## Requirement types
 
-### Binary requirements (`bins`)
+### Binary requirements (`bins` — all required)
 
-Check that executables exist in the system PATH.
+Check that ALL listed executables exist in the system PATH.
 
 ```yaml
 metadata: {"openclaw": {"requires": {"bins": ["docker", "docker-compose"]}}}
@@ -54,6 +63,18 @@ Use cases:
 - Build tools (`make`, `cmake`, `gcc`)
 
 The agent checks `which <binary>` or equivalent before offering the skill.
+
+### Binary requirements (`anyBins` — at least one required)
+
+Check that AT LEAST ONE of the listed executables exists in the system PATH. Use this when a skill can work with alternative tools.
+
+```yaml
+metadata: {"openclaw": {"requires": {"anyBins": ["pnpm", "npm", "yarn", "bun"]}}}
+```
+
+Use cases:
+- Multiple package managers that serve the same purpose
+- Alternative CLI tools (`vim` or `nvim`, `podman` or `docker`)
 
 ### Environment variable requirements (`env`)
 
@@ -92,31 +113,66 @@ metadata: {"openclaw": {"requires": {"env": ["API_KEY", "API_SECRET"]}, "primary
 
 When a required binary is missing, OpenClaw can suggest or run installation commands. Installer specs define how to install each dependency.
 
-### Installer types
+### Installer entry fields
 
-| Type | Command | Use for |
+Each installer entry is an object with the following fields:
+
+| Field | Type | Required | Purpose |
+|---|---|---|---|
+| `id` | string | Yes | Unique identifier for this installer entry |
+| `kind` | string | Yes | One of `"brew"`, `"node"`, `"go"`, `"download"` |
+| `formula` | string | If kind=brew | Homebrew formula name (e.g., `"node"`) |
+| `bins` | string[] | No | Binary names this installer provides (for verification after install) |
+| `label` | string | No | Human-readable label shown in the UI (e.g., `"Node.js via Homebrew"`) |
+| `os` | string[] | No | Platform filter per installer entry. Array of `"darwin"`, `"linux"`, `"win32"`. |
+| `url` | string | If kind=download | Download URL. Required when kind is `"download"`. |
+| `archive` | string | No | Archive format: `"tar.gz"`, `"tar.bz2"`, or `"zip"` |
+| `extract` | boolean | No | Force extraction of the downloaded archive |
+| `stripComponents` | integer | No | Number of leading path components to strip during extraction (like `tar --strip-components`) |
+| `targetDir` | string | No | Installation directory. Default: `~/.openclaw/tools/<skillKey>` |
+
+### Installer kinds
+
+| Kind | Command | Use for |
 |---|---|---|
-| `brew` | `brew install <package>` | macOS packages |
-| `node` | `npm install -g <package>` | Node.js CLI tools |
+| `brew` | `brew install <formula>` | macOS packages (requires `formula` field) |
+| `node` | `npm install -g <package>` | Node.js CLI tools (respects `skills.install.nodeManager` config) |
 | `go` | `go install <package>@latest` | Go binaries |
-| `download` | Custom URL-based download | Platform-specific binaries |
+| `download` | Custom URL-based download | Platform-specific binaries (requires `url` field) |
 
-### Installer spec format
+### Installer example
 
-Installer specs are defined alongside the metadata, typically in the skill's documentation or setup instructions:
-
-```
-Required: node (>= 18.0.0)
-  Install: brew install node
-  Install (alternative): download from https://nodejs.org
-
-Required: openclaw-cli
-  Install: npm install -g @openclaw/cli
+```json
+{
+  "openclaw": {
+    "requires": { "bins": ["mytool"] },
+    "install": [
+      {
+        "id": "mytool-brew",
+        "kind": "brew",
+        "formula": "mytool",
+        "bins": ["mytool"],
+        "label": "mytool via Homebrew",
+        "os": ["darwin"]
+      },
+      {
+        "id": "mytool-download",
+        "kind": "download",
+        "url": "https://example.com/mytool-linux-amd64.tar.gz",
+        "archive": "tar.gz",
+        "stripComponents": 1,
+        "bins": ["mytool"],
+        "label": "mytool binary (Linux)",
+        "os": ["linux"]
+      }
+    ]
+  }
+}
 ```
 
 ### OS filtering
 
-Installer specs can be filtered by operating system:
+Installer specs and the top-level `openclaw.os` field use the same platform values:
 
 | OS | Value |
 |---|---|
@@ -124,7 +180,7 @@ Installer specs can be filtered by operating system:
 | Linux | `linux` |
 | Windows | `win32` |
 
-Example: a dependency only needed on macOS would include `os: darwin` in its installer spec.
+The top-level `openclaw.os` gates the entire skill by platform. Per-installer `os` filters which installer entry is offered on each platform.
 
 ## Sandbox considerations
 
@@ -205,6 +261,62 @@ No `metadata` field needed — the skill works with built-in agent capabilities 
 | Missing `primaryEnv` | Setup instructions lack focus | Set it to the most important env var |
 | Requiring config files that are generated | Skill won't load until build runs | Require source files, not build artifacts |
 | Not testing in sandbox | Works locally, fails in container | Test with `agents.defaults.sandbox.docker` enabled |
+
+## Configuration fields
+
+These settings control skill behavior at the OpenClaw configuration level (not inside frontmatter).
+
+| Config key | Type | Default | Purpose |
+|---|---|---|---|
+| `skills.install.nodeManager` | string | `"npm"` | Package manager used for `kind: "node"` installers. One of `"npm"`, `"pnpm"`, `"yarn"`, `"bun"`. |
+| `skills.entries.<key>.config` | object | — | Arbitrary per-skill configuration. This is an opaque object passed to the skill at runtime; OpenClaw core does not inspect it. |
+| `allowBundled` | string[] | — | When present, only the listed bundled skill names are eligible. All other bundled skills are excluded. Omit to allow all bundled skills. |
+
+### Example: overriding per-skill config
+
+```json
+{
+  "skills": {
+    "entries": {
+      "deploy-staging": {
+        "config": {
+          "region": "us-east-1",
+          "dryRun": true
+        }
+      }
+    }
+  }
+}
+```
+
+The skill can read these values at runtime. Core passes them through without validation.
+
+### Example: restricting bundled skills
+
+```json
+{
+  "allowBundled": ["commit", "review-pr", "create-pr"]
+}
+```
+
+Only the three listed bundled skills are eligible. All others are excluded.
+
+## Error conditions
+
+These conditions cause a skill or installer to be excluded:
+
+| Condition | Result |
+|---|---|
+| Missing required binary (from `requires.bins`) | Skill excluded at load time |
+| In sandbox mode, required binary missing inside container | Skill excluded (binary must also exist inside the container) |
+| Missing required env var and no `skills.entries` override | Skill excluded |
+| Missing required config path | Skill excluded |
+| Invalid installer spec (e.g., `kind: "download"` without `url`) | That installer entry is ignored |
+| Skill folder realpath escapes configured root | Skill silently ignored for security |
+
+## Security: realpath escaping
+
+If a skill folder's resolved realpath escapes the configured skills root directory (e.g., through symlinks pointing outside), the skill is silently ignored. This prevents directory traversal attacks.
 
 ## Debugging gating issues
 

@@ -2,12 +2,12 @@
 
 Fine-grained control over which tools an agent can use. Tool restrictions layer on top of profiles: the profile sets the baseline, and allow/deny lists adjust it.
 
-## Core rule: deny always wins
+## Core rule: deny ALWAYS wins over allow
 
-If a tool appears in both `tools.allow` and `tools.deny`, it is denied. This is non-negotiable and cannot be overridden. Design your config with this in mind.
+If a tool appears in both `tools.allow` and `tools.deny`, it is **always denied**. This is non-negotiable and cannot be overridden. The deny list has absolute priority regardless of where the allow originates (profile, explicit allow, or provider config). Design your config with this in mind.
 
 ```yaml
-# Result: web_search is DENIED (deny wins)
+# Result: web_search is DENIED (deny wins, always)
 tools:
   allow:
     - web_search
@@ -19,9 +19,9 @@ tools:
 
 Restrictions are evaluated in this order:
 
-1. **Profile** sets the default allow list
+1. **Profile** sets the default allow list (default: `"coding"` for new local configs when unset)
 2. **tools.allow** adds specific tools beyond the profile
-3. **tools.deny** removes specific tools regardless of profile or allow list
+3. **tools.deny** removes specific tools regardless of profile or allow list (deny ALWAYS wins)
 4. **tools.byProvider** applies provider-scoped restrictions on top of everything
 
 ## tools.allow

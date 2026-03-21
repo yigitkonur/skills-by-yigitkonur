@@ -27,11 +27,22 @@ This means:
 | Skill only in extra dirs | Loads normally (no shadowing) |
 | Skill removed from workspace but exists in bundled | Bundled version loads (workspace no longer shadows) |
 
-## Configuration options
+## Configuration options -- verified defaults
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `skills.load.watch` | boolean | `true` | Watch for skill file changes and auto-reload |
+| `skills.load.watchDebounceMs` | integer | `250` | Debounce interval for the file watcher |
+| `skills.load.extraDirs` | array | `[]` | Additional directories to scan for skills |
+| `skills.entries.<key>.enabled` | boolean | -- | Enable/disable a specific skill |
+| `skills.entries.<key>.apiKey` | string | -- | API key for the skill |
+| `skills.entries.<key>.env` | object | -- | Environment variables for the skill |
+| `skills.entries.<key>.config` | object | -- | Additional config for the skill |
+| `skills.allowBundled` | array | -- | Whitelist of bundled skills to allow |
 
 ### skills.load.extraDirs
 
-Add external directories that contain skills. Each directory is scanned for valid skill folders (directories containing a SKILL.md file).
+Add external directories that contain skills. Each directory is scanned for valid skill folders (directories containing a SKILL.md file). Default: `[]` (empty array).
 
 ```yaml
 skills:
@@ -83,14 +94,16 @@ A dedicated field for API keys. Functionally equivalent to putting the key in `e
 
 ### watchDebounceMs
 
-Controls how quickly the skill watcher reacts to file changes.
+Controls how quickly the skill watcher reacts to file changes. The watcher is enabled by default (`skills.load.watch: true`).
 
 ```yaml
 skills:
-  watchDebounceMs: 1000    # Wait 1 second after last change before reloading
+  load:
+    watch: true              # Default: true
+    watchDebounceMs: 1000    # Wait 1 second after last change before reloading
 ```
 
-**Default:** Varies by runtime. Typically 300-500ms.
+**Default:** 250ms.
 
 **When to adjust:**
 - **Increase (1000-2000ms):** During active skill development when rapid file saves cause reload storms
