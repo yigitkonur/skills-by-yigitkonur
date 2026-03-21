@@ -252,10 +252,10 @@ Skills for searching, discovering, and downloading AI coding skills from the pla
 
 | Skill | What it does |
 |---|---|
-| **[run-skill-research](skills/run-skill-research/)** | Drives the skill-dl CLI (v1.3.0) for searching and downloading AI skills — Serper-powered Google search across playbooks.com, keyword ranking, batch downloads with repo-level parallelism, corpus inspection, and pipe-friendly workflows. Includes reference docs: search strategies, download patterns, and corpus inspection. |
+| **[use-skill-dl-util](skills/use-skill-dl-util/)** | Drives the skill-dl CLI (v1.3.0) for searching and downloading AI skills — Serper-powered Google search across playbooks.com, keyword ranking, batch downloads with repo-level parallelism, corpus inspection, and pipe-friendly workflows. Includes reference docs: search strategies, download patterns, and corpus inspection. |
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-skill-research
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/use-skill-dl-util
 ```
 
 ---
