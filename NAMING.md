@@ -42,7 +42,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `build-` vs `convert-` — `build-` starts from requirements; `convert-` starts from an existing artifact in a different format
 - `build-` vs `develop-` — `build-` is framework-specific ("build a Supastarter app"); `develop-` is language-level ("write TypeScript correctly")
 
-**Current skills:** `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-mcp-use-agent`, `build-mcp-use-apps-widgets`, `build-mcp-use-client`, `build-mcp-use-server`, `build-skills`, `build-supastarter-app`
+**Current skills:** `build-chrome-extension`, `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-mcp-use-agent`, `build-mcp-use-apps-widgets`, `build-mcp-use-client`, `build-mcp-use-server`, `build-skills`, `build-supastarter-app`
 
 ---
 
@@ -361,6 +361,7 @@ When renaming a published skill:
 
 ## Current Canonical Skill Names
 
+- `build-chrome-extension`
 - `build-copilot-sdk-app`
 - `build-daisyui-mcp`
 - `build-mcp-use-agent`
