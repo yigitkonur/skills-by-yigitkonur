@@ -93,7 +93,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `develop-` vs `build-` — `develop-` is language-wide ("TypeScript strict mode everywhere"); `build-` is framework-specific ("build a Next.js app with Supastarter")
 - `develop-` vs `review-` — `develop-` provides standards to apply *while writing*; `review-` evaluates *already-written* code in a PR context
 
-**Current skills:** `develop-typescript`
+**Current skills:** `develop-clean-architecture`, `develop-typescript`
 
 ---
 
@@ -374,6 +374,7 @@ When renaming a published skill:
 - `convert-snapshot-nextjs`
 - `convert-vue-nextjs`
 - `debug-tauri-devtools`
+- `develop-clean-architecture`
 - `develop-typescript`
 - `extract-saas-design`
 - `init-agent-config`
