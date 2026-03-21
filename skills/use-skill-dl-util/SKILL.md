@@ -1,5 +1,5 @@
 ---
-name: run-skill-research
+name: use-skill-dl-util
 description: Use skill if you are searching, discovering, and downloading AI coding skills using skill-dl with Serper-powered search and batch downloads.
 ---
 

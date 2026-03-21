@@ -43,6 +43,20 @@ Use when: Health checks, monitoring, status dashboards
 Risk: Lowest — read-only session status
 ```
 
+### Default behavior
+
+New local configurations default to `tools.profile: "coding"` when no profile is explicitly set. Existing explicit profiles are preserved on upgrade.
+
+### Exec security modes
+
+The `tools.exec.security` config controls command execution policy:
+
+| Mode | Behavior |
+|---|---|
+| `deny` | Block all host exec requests |
+| `allowlist` | Allow only allowlisted commands (recommended for production) |
+| `full` | Allow everything (equivalent to elevated mode) |
+
 ### Setting the active profile
 
 The profile is set in the OpenClaw configuration, not in the plugin. As a plugin author, you should:
@@ -73,9 +87,25 @@ const myTool: ToolDefinition = {
 
 Allow/deny lists provide fine-grained control on top of profiles.
 
-### tools.allow
+### tools.alsoAllow (recommended for optional tools)
 
-Whitelists specific tools or groups. Only listed tools (plus profile defaults) are available.
+Adds tools to the active profile without creating a restrictive allowlist. Use this to enable plugin-provided tools like `lobster` or `llm-task` alongside core tools.
+
+```json
+{
+  "tools": {
+    "alsoAllow": ["lobster", "llm-task"]
+  }
+}
+```
+
+**Do NOT use `tools.allow` unless you want a restrictive allowlist that excludes core tools.** `tools.alsoAllow` adds on top of the profile; `tools.allow` replaces the profile baseline.
+
+Per-agent: `agents.list[].tools.alsoAllow: ["lobster"]`
+
+### tools.allow (restrictive)
+
+Creates a restrictive allowlist. Only listed tools (plus profile defaults) are available. **Warning:** this excludes core tools not on the list.
 
 ```json
 {
