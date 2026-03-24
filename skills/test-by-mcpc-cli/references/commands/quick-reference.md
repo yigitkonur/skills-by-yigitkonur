@@ -71,6 +71,18 @@ All commands, flags, and options for the `mcpc` CLI.
 | `mcpc @s restart` | Restart session |
 | `mcpc @s close` | Close session |
 
+## Not supported by mcpc
+
+These MCP capabilities have no CLI command — do not attempt them:
+
+| MCP Capability | Why no command |
+|---|---|
+| `completion/complete` | Argument auto-completion — no `completions` command exists |
+| `sampling` | Server-initiated LLM requests — client-side only |
+| `roots` | Client root declarations — not applicable to CLI |
+
+If the server advertises these capabilities, they simply cannot be tested via mcpc.
+
 ## Global flags
 
 | Flag | Short | Description | Default |
@@ -132,14 +144,21 @@ mcpc clean all                # Remove everything
 
 ## Argument format (`key:=value`)
 
-| Example | Parsed as |
-|---|---|
-| `count:=10` | number `10` |
-| `enabled:=true` | boolean `true` |
-| `name:=hello` | string `"hello"` |
-| `id:='"123"'` | string `"123"` (forced) |
-| `'{"key":"val"}'` | inline JSON object |
-| (piped stdin) | JSON from stdin |
+`key:=value` only produces **scalar values**. For arrays/objects, use JSON literals or inline JSON.
+
+| Example | Parsed as | Notes |
+|---|---|---|
+| `count:=10` | number `10` | |
+| `enabled:=true` | boolean `true` | |
+| `name:=hello` | string `"hello"` | |
+| `id:='"123"'` | string `"123"` (forced) | |
+| `items:='[1,2,3]'` | array `[1,2,3]` | JSON literal with shell quoting |
+| `tags:='["a","b"]'` | array `["a","b"]` | JSON literal with shell quoting |
+| `config:='{"k":"v"}'` | object `{"k":"v"}` | JSON literal with shell quoting |
+| `'{"key":"val"}'` | inline JSON object | all-or-nothing, cannot mix with key:=value |
+| (piped stdin) | JSON from stdin | |
+
+**Common mistake:** `items:=hello` sends the string `"hello"`, NOT `["hello"]`. If the tool expects an array, this will fail with a validation error. Always check the tool schema first.
 
 ## Environment variables
 
@@ -162,13 +181,17 @@ debug < info < notice < warning < error < critical < alert < emergency
 
 ## Exit codes
 
-| Code | Meaning |
-|---|---|
-| 0 | Success |
-| 1 | Client error (invalid args, unknown command) |
-| 2 | Server error (tool failed, resource not found) |
-| 3 | Network error (connection failed, timeout) |
-| 4 | Auth error (invalid credentials, 401/403) |
+Exit codes reflect **mcpc CLI errors only**. MCP server errors return exit 0 with `isError: true` in JSON.
+
+| Code | Meaning | Covers |
+|---|---|---|
+| 0 | CLI success (but check `isError` in JSON!) | Includes server validation errors, tool-not-found |
+| 1 | Client error | Invalid CLI args, unknown mcpc command, session not found |
+| 2 | Server error | Rare transport-level failures |
+| 3 | Network error | Connection refused, timeout, DNS failure |
+| 4 | Auth error | 401/403, expired token |
+
+**In scripts, always check both:** `$?` for CLI errors AND `jq '.isError'` for server errors.
 
 ## Session status indicators
 
@@ -206,8 +229,8 @@ mcpc @s tools-list --json | jq 'length'
 # Call tool and extract text
 mcpc @s tools-call my-tool arg:=val --json | jq -r '.content[0].text'
 
-# Check if tool errored
-mcpc @s tools-call my-tool --json | jq '.isError // false'
+# Check if tool errored (MUST do this — exit code is 0 even for server errors)
+mcpc @s tools-call my-tool '{"arg":"val"}' --json | jq '.isError // false'
 
 # Verbose debugging
 MCPC_VERBOSE=1 mcpc @s tools-call my-tool arg:=val

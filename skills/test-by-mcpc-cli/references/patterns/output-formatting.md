@@ -94,7 +94,9 @@ Same shape as one element of tools-list.
 
 ### tools-call — raw MCP CallToolResult
 
-Single text result (most common):
+mcpc passes through the raw MCP response via `JSON.stringify`. The base MCP spec defines `content` and `isError`, but servers may include additional fields.
+
+**Base shape (MCP spec):**
 
 ```json
 {
@@ -102,6 +104,34 @@ Single text result (most common):
   "isError": false
 }
 ```
+
+**Real-world servers often include extra fields:**
+
+```json
+{
+  "_meta": { "mimeType": "text/markdown" },
+  "content": [{ "type": "text", "text": "result text" }],
+  "structuredContent": {
+    "content": "same text",
+    "metadata": { "execution_time_ms": 721, "total_results": 10 }
+  }
+}
+```
+
+- `_meta` — MIME type hint (server extension, not in base spec)
+- `structuredContent` — server-specific structured data with execution metadata
+- These extra fields are useful for monitoring (e.g., `jq '.structuredContent.metadata.execution_time_ms'`) but are not guaranteed across servers
+
+**Error responses have a different shape** — no `_meta`, no `structuredContent`:
+
+```json
+{
+  "content": [{ "type": "text", "text": "MCP error -32602: Tool not found" }],
+  "isError": true
+}
+```
+
+**Critical:** Error responses return **exit code 0**, not 2. Always check `isError` in JSON.
 
 Multi-content / image:
 
@@ -202,25 +232,39 @@ Failure (stderr): `{ "sessionName": "@apify", "closed": false, "error": "Session
 
 ## error formatting in JSON mode
 
+There are **two distinct error paths** with different JSON shapes:
+
+### CLI errors (exit code 1-4) — written to stderr
+
 `formatJsonError(error, code)` emits only two fields — the message string and the numeric code:
 
 ```json
 { "error": "Tool not found: search-actors", "code": 1 }
 ```
 
-The internal `McpError.toJSON()` method produces a richer shape (used elsewhere but not in CLI output):
-`{ "error": "ClientError", "message": "...", "code": 1, "details": {...} }`
-
-Exit codes:
+These are mcpc CLI-level errors, not MCP protocol errors.
 
 | Code | Class | Cause |
 |---|---|---|
-| 1 | `ClientError` | Bad args, unknown command, validation |
-| 2 | `ServerError` | Tool failed, resource not found |
+| 1 | `ClientError` | Bad CLI args, unknown mcpc command, session not found |
+| 2 | `ServerError` | Transport-level server failure (rare) |
 | 3 | `NetworkError` | Connection failed, timeout |
 | 4 | `AuthError` | Invalid credentials, 401/403 |
 
-All error output is written to **stderr**. Successful command output goes to **stdout**.
+### MCP server errors (exit code 0!) — written to stdout
+
+When the MCP server returns an error (validation failure, tool-not-found, tool execution error), mcpc treats the response as a successful CLI operation and writes it to **stdout** with **exit code 0**:
+
+```json
+{
+  "content": [{ "type": "text", "text": "MCP error -32602: Input validation error: ..." }],
+  "isError": true
+}
+```
+
+**This is the most common mistake in scripted tests.** Checking `$?` alone will miss these. Always check `jq '.isError // false'` on the JSON output.
+
+All CLI error output goes to **stderr**. All MCP responses (including MCP errors) go to **stdout**.
 
 ---
 
@@ -336,9 +380,14 @@ mcpc --json @apify tools-call search-actors query:=hello | jq -r '.content[0].te
 # session listing
 mcpc --json | jq '.sessions[] | select(.status == "live") | .name'
 
-# errors go to stderr; check exit code first, then parse
-result=$(mcpc --json @apify tools-call bad-tool 2>&1); ec=$?
-[ $ec -ne 0 ] && echo "error $(echo "$result" | jq -r '.error')"
+# CLI errors go to stderr (exit 1-4); MCP errors go to stdout (exit 0)
+# Must check BOTH exit code AND isError:
+result=$(mcpc --json @apify tools-call search-actors '{"query":"test"}' 2>/dev/null); ec=$?
+if [ $ec -ne 0 ]; then
+  echo "CLI error (exit $ec)"
+elif echo "$result" | jq -e '.isError // false' 2>/dev/null | grep -q true; then
+  echo "MCP error: $(echo "$result" | jq -r '.content[0].text')"
+fi
 
 # MCPC_JSON=1 is equivalent to --json on every invocation
 export MCPC_JSON=1
@@ -348,9 +397,9 @@ mcpc @apify tools-list | jq '.[].name'
 **Key facts:**
 
 1. `tools-list`, `resources-list`, `resources-templates-list`, `prompts-list` — bare arrays at root.
-2. `tools-call` returns `{content:[...], isError:bool}` — always `.content[0].text` for text.
-3. Errors are on **stderr**, success on **stdout**; check exit code before parsing stdout.
-4. Error JSON has exactly two fields: `{error: string, code: number}`.
+2. `tools-call` returns `{content:[...]}` with optional `isError`, `_meta`, `structuredContent` — always `.content[0].text` for text.
+3. **Two error paths:** CLI errors (exit 1-4) go to stderr as `{error, code}`. MCP server errors (exit 0) go to stdout as `{content, isError: true}`. Always check both.
+4. CLI error JSON has exactly two fields: `{error: string, code: number}`. MCP error JSON has `{content: [...], isError: true}`.
 5. Session info (`mcpc --json @session`) has `_mcpc` alongside MCP `InitializeResult` fields.
 6. Top-level listing (`mcpc --json`) has `{sessions:[], profiles:[]}`.
 7. `close` returns `{sessionName, closed: bool}` and optionally `error`.

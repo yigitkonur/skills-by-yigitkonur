@@ -198,23 +198,39 @@ mcpc @session resources-templates-list
 mcpc @session prompts
 ```
 
+### Before calling tools — check the schema first
+
+Before jumping to tool calls, inspect the schema for each tool you plan to test. This prevents wasted calls with wrong argument types.
+
+```bash
+# Check a tool's input schema — look at property types
+mcpc @session tools-get my-tool --json | jq '.inputSchema.properties | to_entries[] | {key, type: .value.type}'
+
+# If any property has "type": "array", you MUST use inline JSON (not key:=value)
+```
+
+**Critical rule:** `key:=value` syntax only produces **scalar values** (string, number, boolean, null). It **cannot** produce arrays or nested objects. Most real-world MCP tools take array arguments — always check the schema first.
+
 ### Step 3: Test tool calls
 
 ```bash
-# Call with key:=value arguments (auto-typed)
+# Call with key:=value arguments — ONLY for scalar params (string, number, boolean)
 mcpc @session tools-call my-tool count:=10 enabled:=true name:=hello
 
-# Call with inline JSON
-mcpc @session tools-call my-tool '{"count": 10, "enabled": true}'
+# Call with inline JSON — REQUIRED for arrays and nested objects
+mcpc @session tools-call my-tool '{"keywords": ["term1", "term2"], "limit": 10}'
+
+# key:=value CAN pass arrays via JSON literal (note shell quoting)
+mcpc @session tools-call my-tool keywords:='["term1","term2"]' limit:=10
 
 # Call with piped JSON input
-echo '{"count": 10}' | mcpc @session tools-call my-tool
+echo '{"keywords": ["term1", "term2"]}' | mcpc @session tools-call my-tool
 
 # Validate response against schema
-mcpc @session tools-call my-tool arg:=value --schema expected.json
+mcpc @session tools-call my-tool '{"arg": "value"}' --schema expected.json
 
 # Strict schema validation (fails on extra fields)
-mcpc @session tools-call my-tool arg:=value --schema expected.json --schema-mode strict
+mcpc @session tools-call my-tool '{"arg": "value"}' --schema expected.json --schema-mode strict
 ```
 
 **Argument auto-parsing rules:**
@@ -225,8 +241,17 @@ mcpc @session tools-call my-tool arg:=value --schema expected.json --schema-mode
 | `enabled:=true` | `true` | boolean |
 | `name:=hello` | `"hello"` | string |
 | `id:='"123"'` | `"123"` | string (forced) |
+| `items:='[1,2,3]'` | `[1,2,3]` | array (JSON literal) |
+| `config:='{"k":"v"}'` | `{"k":"v"}` | object (JSON literal) |
+| `'{"full":"json"}'` | full object | inline JSON (all-or-nothing) |
+
+**When to use which format:**
+- Tool params are all scalars → `key:=value` is fine
+- Tool has any array/object params → use inline JSON or `key:='[...]'` with quoting
+- Complex nested args → use inline JSON or pipe from stdin
 
 Read `references/guides/tool-resource-testing.md` for advanced patterns.
+Read `references/patterns/argument-parsing.md` for the full type coercion table and shell quoting rules.
 
 ### Step 4: Test resources and prompts
 
@@ -237,7 +262,9 @@ mcpc @session resources-read "file:///path/to/resource"
 # Save resource to file
 mcpc @session resources-read "https://example.com/data" -o output.json
 
-# Subscribe to resource updates (stays open)
+# Subscribe to resource updates (registers interest, returns immediately)
+# Returns: {"subscribed": true, "uri": "..."} — does NOT stream in CLI mode
+# To receive push notifications, use shell mode: mcpc @session shell
 mcpc @session resources-subscribe "file:///watched-path"
 
 # Get a prompt with arguments
@@ -249,7 +276,7 @@ mcpc @session prompts-get my-prompt arg1:=value1 arg2:=value2
 ```bash
 # All commands support --json for machine-readable output
 mcpc @session tools-list --json | jq '.[].name'
-mcpc @session tools-call my-tool arg:=val --json | jq '.content'
+mcpc @session tools-call my-tool '{"arg":"val"}' --json | jq '.content[0].text'
 mcpc @session resources-list --json | jq '.[].uri'
 
 # Check tool count
@@ -259,7 +286,30 @@ mcpc @session tools-list --json | jq 'length'
 mcpc @session tools-get my-tool --json | jq '.inputSchema'
 ```
 
+**JSON response shapes differ by command — know the envelope:**
+
+| Command | Success shape | Key fields |
+|---|---|---|
+| `tools-list` | bare array `[{name, inputSchema, ...}]` | `.[]` |
+| `tools-call` | `{content: [{type, text}]}` | `.content[0].text` |
+| `tools-call` (error) | `{content: [...], isError: true}` | `.isError` |
+| `resources-read` | `{contents: [{uri, mimeType, text}]}` | `.contents[0].text` (plural!) |
+| `resources-list` | bare array `[{uri, name}]` | `.[]` |
+
+Note: `tools-call` success has `content` (singular); `resources-read` has `contents` (plural). Servers may include additional fields like `_meta` or `structuredContent` — these are server-specific extensions, not part of the base MCP spec.
+
+**Always check `isError` when scripting — exit codes alone are not reliable:**
+
+```bash
+RESULT=$(mcpc @session tools-call my-tool '{"arg":"val"}' --json)
+if echo "$RESULT" | jq -e '.isError // false' 2>/dev/null | grep -q true; then
+  echo "TOOL ERROR: $(echo "$RESULT" | jq -r '.content[0].text')"
+  exit 1
+fi
+```
+
 Read `references/guides/scripting-automation.md` for full test scripts and CI integration.
+Read `references/patterns/output-formatting.md` for exact JSON shapes of every command.
 
 ### Step 6: Cleanup
 
@@ -337,6 +387,9 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | Stale sessions after crash | `mcpc clean sessions` |
 | Can't tell if stateful or stateless | Check `mcpc --json @session \| jq .protocolVersion` — 2025-11-25+ is streamable |
 | Tool args parsed wrong type | Force string with `id:='"123"'` (single-quote wrapped JSON string) |
+| `key:=value` fails for array params | Use inline JSON: `'{"items":["a","b"]}'` or `items:='["a","b"]'` |
+| Server error but exit code is 0 | Normal — check `jq '.isError'` in JSON, not exit code |
+| "unknown command: completions" | mcpc doesn't support completions/sampling/roots capabilities |
 | Bridge process orphaned | `mcpc clean sessions` clears PIDs and sockets |
 
 ## Reference routing
@@ -392,6 +445,16 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | `references/examples/testing-recipes.md` | 15 copy-paste assertion recipes: tool exists, schema check, exit codes, latency, cleanup verification |
 | `references/troubleshooting/common-errors.md` | Error codes (0-4), session states, transport debugging, auth failures, recovery |
 
+## What mcpc does NOT support
+
+mcpc does not expose CLI commands for every MCP capability. If the server advertises these, you cannot test them via mcpc:
+
+- **`completion/complete`** — argument auto-completion hints (no `completions` command exists)
+- **`sampling`** — server-initiated LLM sampling requests
+- **`roots`** — client root directory declarations
+
+Do not invent commands for these — they will fail with "unknown command" (exit code 1). Check `mcpc @session help` for the actual available commands.
+
 ## Guardrails
 
 - Always verify mcpc is installed before running commands
@@ -401,5 +464,6 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 - Never use `--insecure` in production — only for local dev with self-signed certs
 - Never hardcode tokens in scripts — use environment variables (`$MCP_TOKEN`)
 - Test stdio server commands manually before connecting via mcpc
-- Check exit codes in scripts: 0=success, 1=client error, 2=server error, 3=network, 4=auth
+- **Exit codes reflect CLI errors only, NOT MCP server errors.** Exit codes: 0=success or server-side error, 1=bad CLI args, 3=network, 4=auth. Server-side tool errors (validation failures, tool-not-found) return exit code 0 with `isError: true` in JSON. **Always check `isError` in JSON output for server errors — do not rely on exit codes alone.**
+- Before calling any tool, check its schema (`tools-get <name> --json | jq '.inputSchema'`) — if params are arrays, use inline JSON, not `key:=value`
 - Do not run `mcpc clean all` without confirming — it deletes saved OAuth profiles

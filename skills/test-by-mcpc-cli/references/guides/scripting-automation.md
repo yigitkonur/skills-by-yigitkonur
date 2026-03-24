@@ -51,25 +51,35 @@ Resource list:
 
 ## Exit codes
 
-| Code | Constant | Meaning | Script action |
+**Important:** Exit codes reflect **mcpc CLI errors only**. MCP server-side errors (tool validation failures, tool-not-found, tool execution errors) return **exit code 0** with `isError: true` in the JSON response. You must check both.
+
+| Code | Constant | What triggers it | Script action |
 |---|---|---|---|
-| 0 | Success | Command completed | Continue |
-| 1 | ClientError | Invalid args, unknown command | Fix command syntax |
-| 2 | ServerError | Tool execution failed, resource not found | Check server logs |
-| 3 | NetworkError | Connection failed, timeout, DNS | Check connectivity |
-| 4 | AuthError | Invalid credentials, 401/403, token expired | Re-authenticate |
+| 0 | Success | Command completed OR server returned an MCP error | Check `isError` in JSON |
+| 1 | ClientError | Invalid CLI args, unknown mcpc command, session not found | Fix command syntax |
+| 2 | ServerError | (Rare) transport-level server failure | Check server logs |
+| 3 | NetworkError | Connection refused, timeout, DNS failure | Check connectivity |
+| 4 | AuthError | 401/403, expired token | Re-authenticate |
 
 ```bash
+# WRONG — this misses server-side MCP errors (which return exit 0)
 mcpc @session tools-call my-tool arg:=value --json
+case $? in
+  0) echo "Success" ;;   # ← could actually be a server validation error!
+  *) echo "Failed" ;;
+esac
+
+# CORRECT — check both exit code AND isError field
+RESULT=$(mcpc @session tools-call my-tool '{"arg":"value"}' --json 2>&1)
 EXIT_CODE=$?
 
-case $EXIT_CODE in
-  0) echo "Success" ;;
-  1) echo "Client error: bad arguments" ;;
-  2) echo "Server error: tool failed" ;;
-  3) echo "Network error: cannot reach server" ;;
-  4) echo "Auth error: re-authenticate" ;;
-esac
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "CLI error (exit $EXIT_CODE): $RESULT"
+elif echo "$RESULT" | jq -e '.isError // false' 2>/dev/null | grep -q true; then
+  echo "Server error: $(echo "$RESULT" | jq -r '.content[0].text')"
+else
+  echo "Success: $(echo "$RESULT" | jq -r '.content[0].text')"
+fi
 ```
 
 ## Complete test script template
