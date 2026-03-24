@@ -341,13 +341,33 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 
 ## Reference routing
 
+### Core guides
+
 | File | Read when |
 |---|---|
 | `references/guides/installation.md` | Installing mcpc globally, locally, or with Bun; verifying installation |
 | `references/guides/stdio-testing.md` | Testing local stdio servers, config file format, env var substitution, process debugging |
 | `references/guides/http-testing.md` | Testing HTTP servers (stateless SSE vs stateful streamable), auth (bearer, OAuth), proxy, TLS |
 | `references/guides/tool-resource-testing.md` | Tool calling patterns, argument syntax, schema validation, resource reading, prompt testing |
-| `references/guides/scripting-automation.md` | JSON mode, automated test scripts, CI integration, exit codes, piped input |
+| `references/guides/scripting-automation.md` | JSON mode, automated test scripts, exit codes, piped input |
+
+### Deep-dive guides
+
+| File | Read when |
+|---|---|
+| `references/guides/session-management.md` | Session lifecycle, bridge architecture, IPC protocol, multi-session, auto-recovery, session states |
+| `references/guides/authentication.md` | OAuth 2.1 flow internals, profiles, keychain, token refresh, bearer tokens, CI headless auth |
+| `references/guides/architecture.md` | mcpc internals, transport layer, config system, error hierarchy, data directory layout |
+| `references/guides/proxy-testing.md` | Proxy mode for AI sandboxes, bearer auth, health endpoint, Docker integration |
+| `references/guides/ci-cd-integration.md` | GitHub Actions workflows, Docker testing, MCPC_HOME_DIR isolation, headless auth |
+| `references/guides/x402-payments.md` | x402 agentic payment testing, wallet setup, USDC on Base, proactive/reactive signing |
+
+### Patterns and reference
+
+| File | Read when |
+|---|---|
+| `references/patterns/jq-patterns.md` | 25+ jq patterns for filtering tools, extracting results, session management, data transformation |
+| `references/patterns/python-integration.md` | Python wrapper class, async patterns, FastAPI gateway, type-safe dataclasses, batch processing |
 | `references/commands/quick-reference.md` | All mcpc commands, flags, options, and environment variables at a glance |
 | `references/troubleshooting/common-errors.md` | Error codes (0-4), session states, transport debugging, auth failures, recovery |
 
