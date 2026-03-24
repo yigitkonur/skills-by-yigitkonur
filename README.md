@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-40 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, CI/CD, OpenClaw platform, and skill research.
+42 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, multi-agent orchestration, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, CI/CD, OpenClaw platform, and skill research.
 
 ## Install the full pack
 
@@ -92,6 +92,22 @@ Skills for automating browser interactions — navigation, form filling, screens
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-browser
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-playwright
+```
+
+---
+
+## Multi-Agent Orchestration
+
+Skills for coordinating multiple AI coding agents across terminals — launching, messaging, transcript sharing, and multi-agent workflow patterns.
+
+| Skill | What it does |
+|---|---|
+| **[run-hcom-agents](skills/run-hcom-agents/)** | Orchestrates multiple AI coding agents via hcom — launching headless Claude and Codex agents, messaging between them, reading transcripts, and applying tested multi-agent patterns (worker-reviewer loops, ensemble consensus, cascade pipelines, cross-tool collaboration). Includes 12 reference docs: delivery pipeline, CLI reference, 6 tested script patterns with real event JSON, advanced patterns from 35-repo research, cross-tool details, and gotchas. |
+| **[build-hcom-systems](skills/build-hcom-systems/)** | Builds applications and automation systems on top of hcom as the multi-agent communication backbone — designing agent topologies, understanding hcom internals (SQLite schema, hook system, PTY terminal management, MQTT relay, event subscriptions, bootstrap injection), creating custom workflow scripts, and integrating hcom into CI/CD pipelines. Includes 11 reference docs: core architecture, scripting engine, config system, TUI, hooks, relay, PTY, events, tool integration, bootstrap, and 35-repo multi-agent research. |
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-hcom-agents
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-hcom-systems
 ```
 
 ---
