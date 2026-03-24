@@ -220,9 +220,21 @@ Bearer tokens passed via `--header` are not affected — they were never stored 
     └── ...
 ```
 
+### Orphaned log file cleanup (`cleanupOrphanedLogFiles`)
+
+When `mcpc clean` or `mcpc clean logs` runs, the `cleanupOrphanedLogFiles()` function handles age-based cleanup:
+
+1. Scans `~/.mcpc/logs/` for files matching `bridge-@<session>.log` (and rotated variants `.log.1`, `.log.2`, etc.)
+2. For each log file, checks if the session still exists in `sessions.json`
+3. If the session is gone (orphaned log), checks file age against `maxAgeDays` (default: **7 days**)
+4. Only deletes files older than 7 days — recent debug logs are preserved even if the session is gone
+5. Skips logs for the `skipSession` (the current bridge session, if called from within a bridge)
+
+This means after a session crash, you have 7 days to inspect the logs before they're cleaned up.
+
 ### Log rotation
 
-Bridge logs are capped at 10 MB per file with 5 rotated copies retained. The logger handles rotation automatically — no manual intervention needed during normal operation.
+Bridge logs are capped at **10 MB per file** with **5 rotated copies** retained (`.log` → `.log.1` → `.log.2` → `.log.3` → `.log.4` → `.log.5`). Rotation is asynchronous and handled automatically — no manual intervention needed during normal operation.
 
 To check current log disk usage:
 

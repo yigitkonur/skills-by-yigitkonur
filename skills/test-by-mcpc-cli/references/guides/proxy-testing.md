@@ -359,3 +359,57 @@ echo "  OK: $TOOLS tool(s) visible through proxy"
 
 echo "=== Proxy test complete ==="
 ```
+
+---
+
+## Environment variable proxy support
+
+Separate from `--proxy` mode (which creates an MCP proxy server), mcpc also supports standard HTTP proxy environment variables for **outbound connections** to MCP servers. This is useful when mcpc runs behind a corporate proxy.
+
+### Supported variables
+
+| Variable | Purpose |
+|---|---|
+| `HTTPS_PROXY` | Proxy URL for HTTPS connections (most MCP servers) |
+| `HTTP_PROXY` | Proxy URL for HTTP connections |
+| `https_proxy` | Lowercase variant (also supported) |
+| `http_proxy` | Lowercase variant (also supported) |
+| `NO_PROXY` | Comma-separated list of hostnames to bypass proxy |
+| `no_proxy` | Lowercase variant |
+
+### How it works internally
+
+mcpc uses `undici.EnvHttpProxyAgent` to route outbound connections through the proxy:
+
+1. `initProxy()` is called at process startup (both CLI and bridge)
+2. Creates an `EnvHttpProxyAgent` that reads `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`
+3. Sets it as the global undici dispatcher via `setGlobalDispatcher()`
+4. Also exposes `proxyFetch()` — a fetch function that explicitly routes through the proxy agent
+
+The explicit `proxyFetch()` exists because some libraries (like the MCP SDK's `StreamableHTTPClientTransport`) manage their own HTTP connections and don't respect the global dispatcher. mcpc passes `proxyFetch` directly to the transport.
+
+### Usage
+
+```bash
+# Route all mcpc traffic through a corporate proxy
+export HTTPS_PROXY=http://proxy.corp.internal:8080
+mcpc mcp.example.com connect @test
+mcpc @test tools-list
+
+# Bypass proxy for local servers
+export NO_PROXY=localhost,127.0.0.1,.local
+mcpc localhost:3000 connect @local
+
+# Combine with --insecure for proxy with self-signed certs
+export HTTPS_PROXY=https://proxy.internal:8443
+mcpc mcp.example.com connect @test --insecure
+```
+
+### Key distinction
+
+| Feature | `--proxy` flag | `HTTP_PROXY` env var |
+|---|---|---|
+| **Purpose** | Create an MCP proxy server for downstream clients | Route mcpc's outbound connections through an HTTP proxy |
+| **Direction** | Inbound (clients connect to mcpc) | Outbound (mcpc connects through proxy) |
+| **Use case** | AI sandboxes, Docker containers | Corporate networks, firewalled environments |
+| **Scope** | Per-session | All connections |
