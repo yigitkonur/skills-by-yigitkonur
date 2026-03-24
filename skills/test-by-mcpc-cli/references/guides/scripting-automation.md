@@ -97,7 +97,7 @@ info() { echo "  $1"; }
 
 # Cleanup on exit
 cleanup() {
-  mcpc close "@$SESSION" 2>/dev/null || true
+  mcpc "@$SESSION" close 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -109,7 +109,7 @@ echo ""
 
 # === Phase 1: Connection ===
 echo "Phase 1: Connection"
-if mcpc connect "$SERVER" "@$SESSION" --timeout "$TIMEOUT" 2>/dev/null; then
+if mcpc "$SERVER" connect "@$SESSION" --timeout "$TIMEOUT" 2>/dev/null; then
   pass "Connected to server"
 else
   fail "Failed to connect"
@@ -249,7 +249,7 @@ jobs:
 
       - name: Run MCP tests
         run: |
-          mcpc connect localhost:3000 @ci-test
+          mcpc localhost:3000 connect @ci-test
 
           # Verify tools exist
           TOOL_COUNT=$(mcpc @ci-test tools-list --json | jq 'length')
@@ -261,7 +261,7 @@ jobs:
           # Run smoke test
           mcpc @ci-test tools-call health-check --json
 
-          mcpc close @ci-test
+          mcpc @ci-test close
         env:
           MCPC_JSON: 1
 ```
@@ -274,9 +274,9 @@ Use `MCPC_HOME_DIR` to isolate test sessions from your normal mcpc data:
 # Each test run gets its own home directory
 export MCPC_HOME_DIR="/tmp/mcpc-test-$(date +%s)"
 
-mcpc connect <server> @isolated
+mcpc <server> connect @isolated
 mcpc @isolated tools-list
-mcpc close @isolated
+mcpc @isolated close
 
 # Cleanup
 rm -rf "$MCPC_HOME_DIR"
@@ -291,8 +291,8 @@ rm -rf "$MCPC_HOME_DIR"
 SESSION_OLD="@compare-old"
 SESSION_NEW="@compare-new"
 
-mcpc connect "$OLD_SERVER" "$SESSION_OLD"
-mcpc connect "$NEW_SERVER" "$SESSION_NEW"
+mcpc "$OLD_SERVER" connect "$SESSION_OLD"
+mcpc "$NEW_SERVER" connect "$SESSION_NEW"
 
 # Compare tool lists
 OLD_TOOLS=$(mcpc "$SESSION_OLD" tools-list --json | jq -r '.[].name' | sort)
@@ -312,8 +312,8 @@ for tool in $(comm -12 <(echo "$OLD_TOOLS") <(echo "$NEW_TOOLS")); do
   fi
 done
 
-mcpc close "$SESSION_OLD"
-mcpc close "$SESSION_NEW"
+mcpc "$SESSION_OLD" close
+mcpc "$SESSION_NEW" close
 ```
 
 ## Parallel testing
@@ -325,9 +325,9 @@ SERVERS=("https://server1.com" "https://server2.com" "config.json:local")
 for server in "${SERVERS[@]}"; do
   (
     SESSION="@parallel-$(echo "$server" | md5sum | cut -c1-8)"
-    mcpc connect "$server" "$SESSION" && \
+    mcpc "$server" connect "$SESSION" && \
     mcpc "$SESSION" tools-list --json > "/tmp/results-$SESSION.json" && \
-    mcpc close "$SESSION"
+    mcpc "$SESSION" close
   ) &
 done
 
