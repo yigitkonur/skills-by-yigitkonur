@@ -157,11 +157,13 @@ Deep reference skills for language-level type safety, patterns, anti-patterns, a
 | Skill | What it does |
 |---|---|
 | **[optimize-mcp-server](skills/optimize-mcp-server/)** | Exploration-first optimization skill for any MCP server — explores the codebase, diagnoses issues across 15 quality dimensions, presents findings with severity and options, and applies approved changes with verification steps. 113 patterns, 7 decision trees, framework-agnostic (FastMCP, mcp-use, official SDK, any framework). Includes 22 reference files. |
+| **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** | Test and debug any MCP server using the Apify `mcpc` CLI — covers stdio, HTTP stateless (SSE), and HTTP stateful (streamable HTTP) transports with session management, tool discovery, schema validation, proxy sandboxing, and automated test scripts. Includes 7 reference docs: installation, stdio testing, HTTP testing, tool/resource/prompt testing, scripting/automation, command quick reference, and troubleshooting. |
 | **[develop-typescript](skills/develop-typescript/)** | Strict TypeScript development guide covering type system patterns, anti-patterns with fixes, error handling strategies, and compiler configuration across application, library, CLI, and backend codebases. Includes 4 reference docs: anti-patterns, patterns, type-system, and strict-config. |
 | **[develop-clean-architecture](skills/develop-clean-architecture/)** | Clean Architecture, DDD tactical patterns, and Hexagonal Architecture for TypeScript — dependency direction, entity design with `#` private fields and create/reconstitute factories, use case isolation, CQRS, domain events, composition roots, and strict TypeScript enforcement. 76 rules across 11 categories with mode-based workflow (designing, reviewing, implementing, refactoring). Includes 78 reference docs: dependency rules, entity/aggregate/value-object patterns, use case ports, clean code fundamentals, component cohesion, TypeScript strictness and LSP performance, architecture patterns (CQRS, events, vertical slices), boundary definitions, adapter patterns, framework isolation, testing pyramid, and decision tables. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/optimize-mcp-server
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/test-by-mcpc-cli
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-typescript
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/develop-clean-architecture
 ```
