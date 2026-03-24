@@ -358,17 +358,35 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | `references/guides/session-management.md` | Session lifecycle, bridge architecture, IPC protocol, multi-session, auto-recovery, session states |
 | `references/guides/authentication.md` | OAuth 2.1 flow internals, profiles, keychain, token refresh, bearer tokens, CI headless auth |
 | `references/guides/architecture.md` | mcpc internals, transport layer, config system, error hierarchy, data directory layout |
+| `references/guides/bridge-internals.md` | Bridge spawn sequence, BridgeClient IPC, SessionClient retry, health checks, crash recovery |
 | `references/guides/proxy-testing.md` | Proxy mode for AI sandboxes, bearer auth, health endpoint, Docker integration |
+| `references/guides/cleanup-maintenance.md` | Clean command categories, session consolidation, storage management, recovery |
 | `references/guides/ci-cd-integration.md` | GitHub Actions workflows, Docker testing, MCPC_HOME_DIR isolation, headless auth |
 | `references/guides/x402-payments.md` | x402 agentic payment testing, wallet setup, USDC on Base, proactive/reactive signing |
 
-### Patterns and reference
+### Patterns and internals
 
 | File | Read when |
 |---|---|
 | `references/patterns/jq-patterns.md` | 25+ jq patterns for filtering tools, extracting results, session management, data transformation |
 | `references/patterns/python-integration.md` | Python wrapper class, async patterns, FastAPI gateway, type-safe dataclasses, batch processing |
+| `references/patterns/output-formatting.md` | How formatOutput() routes human vs JSON, exact JSON shapes, TTY detection, color stripping |
+| `references/patterns/argument-parsing.md` | key:=value auto-parsing, inline JSON, stdin, type coercion table, shell quoting rules |
+| `references/patterns/schema-validation.md` | Schema validation modes (strict/compatible/ignore), saving schemas, regression testing |
+| `references/patterns/config-resolution.md` | Config file format, env var substitution, config entry syntax, ServerConfig validation |
+| `references/patterns/shell-advanced.md` | Interactive shell internals, readline, notifications, history, shell-only features |
+| `references/patterns/logging-debugging.md` | Verbose mode, bridge logs, log rotation, debugging workflows, diagnostic scripts |
+| `references/patterns/notification-handling.md` | Server push notifications, types, color coding, subscription, testing notification support |
+| `references/patterns/data-model.md` | Complete type definitions: SessionData, ServerConfig, AuthProfile, IpcMessage, constants |
+
+### Commands and examples
+
+| File | Read when |
+|---|---|
 | `references/commands/quick-reference.md` | All mcpc commands, flags, options, and environment variables at a glance |
+| `references/commands/grep-command.md` | The grep command for searching/filtering tools by name, description, or schema across servers |
+| `references/examples/real-world-workflows.md` | 10 complete runnable workflow scripts: smoke test, comparison, monitoring, regression, proxy, OAuth |
+| `references/examples/testing-recipes.md` | 15 copy-paste assertion recipes: tool exists, schema check, exit codes, latency, cleanup verification |
 | `references/troubleshooting/common-errors.md` | Error codes (0-4), session states, transport debugging, auth failures, recovery |
 
 ## Guardrails
