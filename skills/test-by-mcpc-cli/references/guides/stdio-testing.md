@@ -94,11 +94,11 @@ mcpc accepts any file path. Common locations:
 
 ```bash
 # Connect using config file:entry-name format
-mcpc connect /path/to/config.json:server-name @session-name
+mcpc /path/to/config.json:server-name connect @session-name
 
 # Examples
-mcpc connect ~/.vscode/mcp.json:filesystem @fs-test
-mcpc connect ./test-config.json:my-server @dev-test
+mcpc ~/.vscode/mcp.json:filesystem connect @fs-test
+mcpc ./test-config.json:my-server connect @dev-test
 ```
 
 ### Multiple servers from same config
@@ -121,8 +121,8 @@ mcpc connect ./test-config.json:my-server @dev-test
 
 ```bash
 # Connect to each independently
-mcpc connect ./config.json:filesystem @fs
-mcpc connect ./config.json:github @gh
+mcpc ./config.json:filesystem connect @fs
+mcpc ./config.json:github connect @gh
 ```
 
 ## Testing stdio servers step by step
@@ -143,7 +143,7 @@ npx @modelcontextprotocol/server-filesystem /tmp/test-dir
 ### 2. Connect via mcpc
 
 ```bash
-mcpc connect ./config.json:my-server @test
+mcpc ./config.json:my-server connect @test
 ```
 
 ### 3. Check server health
@@ -182,7 +182,7 @@ mcpc @test tools-call read_file path:=/tmp/test-dir/test.txt --json
 ### 6. Cleanup
 
 ```bash
-mcpc close @test
+mcpc @test close
 # This kills the child process
 ```
 
@@ -193,7 +193,7 @@ mcpc close @test
 By default, server stderr is suppressed. Enable verbose mode to see it:
 
 ```bash
-mcpc connect ./config.json:my-server @debug --verbose
+mcpc ./config.json:my-server connect @debug --verbose
 mcpc @debug tools-list --verbose
 ```
 
@@ -209,7 +209,7 @@ cat ~/.mcpc/logs/bridge-test.log
 |---|---|---|
 | "Failed to connect" on connect | Command not found or fails to start | Run command manually: `npx @package/name` |
 | Hangs on connect | Server not sending init response | Check server implements MCP handshake correctly |
-| "Not connected" errors | Bridge process crashed | `mcpc restart @session` or reconnect |
+| "Not connected" errors | Bridge process crashed | `mcpc @session restart` or reconnect |
 | Tool call timeout | Server processing slowly | `--timeout 600` or check server logs |
 | Empty tool list | Server not registering tools | Check server code, verify with `--verbose` |
 | Wrong Node.js version | Server requires specific Node | Use `nvm use 20` before connecting |
@@ -252,7 +252,7 @@ cat > /tmp/fs-config.json << 'EOF'
 EOF
 
 # 3. Connect
-mcpc connect /tmp/fs-config.json:filesystem @fs-test
+mcpc /tmp/fs-config.json:filesystem connect @fs-test
 
 # 4. Discover
 mcpc @fs-test tools
@@ -265,7 +265,7 @@ mcpc @fs-test tools-call read_file path:=/tmp/mcp-test/test.txt
 mcpc @fs-test tools-call read_file path:=/tmp/mcp-test/test.txt --json | jq '.content'
 
 # 7. Cleanup
-mcpc close @fs-test
+mcpc @fs-test close
 ```
 
 ## Example: Testing a Python MCP server
@@ -290,8 +290,8 @@ python -m my_mcp_server
 # Ctrl+C to stop
 
 # Connect via mcpc
-mcpc connect ./config.json:my-python-server @py-test
+mcpc ./config.json:my-python-server connect @py-test
 mcpc @py-test tools --full
 mcpc @py-test tools-call my-tool arg:=value
-mcpc close @py-test
+mcpc @py-test close
 ```

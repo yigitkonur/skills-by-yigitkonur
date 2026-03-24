@@ -7,10 +7,10 @@ All commands, flags, and options for the `mcpc` CLI.
 | Command | Description |
 |---|---|
 | `mcpc` | List active sessions and saved OAuth profiles |
-| `mcpc connect <server> @<session>` | Create a persistent session |
-| `mcpc close @<session>` | Close a session (kills bridge) |
-| `mcpc restart @<session>` | Restart session (new connection) |
-| `mcpc shell @<session>` | Open interactive shell |
+| `mcpc <server> connect @<session>` | Create a persistent session |
+| `mcpc @<session> close` | Close a session (kills bridge) |
+| `mcpc @<session> restart` | Restart session (new connection) |
+| `mcpc @<session> shell` | Open interactive shell |
 | `mcpc login <server>` | OAuth login and save profile |
 | `mcpc logout <server>` | Delete authentication profile |
 | `mcpc clean [resources...]` | Clean up mcpc data |
@@ -90,7 +90,7 @@ All commands, flags, and options for the `mcpc` CLI.
 |---|---|
 | `--header "Key: Value"` | Add HTTP header (repeatable) |
 | `--profile <name>` | OAuth profile name |
-| `--no-profile` | Connect anonymously |
+| *(omit --profile and --header)* | Connect anonymously (no flag needed) |
 | `--proxy [host:]port` | Start proxy MCP server |
 | `--proxy-bearer-token <token>` | Require token for proxy |
 | `--x402` | Enable x402 auto-payment |
@@ -195,7 +195,7 @@ debug < info < notice < warning < error < critical < alert < emergency
 
 ```bash
 # Quick smoke test
-mcpc connect <server> @smoke && mcpc @smoke ping && mcpc @smoke tools && mcpc close @smoke
+mcpc <server> connect @smoke && mcpc @smoke ping && mcpc @smoke tools-list && mcpc @smoke close
 
 # List all tool names
 mcpc @s tools-list --json | jq -r '.[].name'
@@ -213,5 +213,5 @@ mcpc @s tools-call my-tool --json | jq '.isError // false'
 MCPC_VERBOSE=1 mcpc @s tools-call my-tool arg:=val
 
 # Isolated test environment
-MCPC_HOME_DIR=/tmp/test mcpc connect <server> @isolated
+MCPC_HOME_DIR=/tmp/test mcpc <server> connect @isolated
 ```

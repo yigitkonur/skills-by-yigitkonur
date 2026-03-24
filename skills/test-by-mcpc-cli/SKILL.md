@@ -76,10 +76,10 @@ Stdio servers are local processes. Define them in a JSON config file, then conne
 
 ```bash
 # Connect using config file entry
-mcpc connect /path/to/config.json:my-server @test-stdio
+mcpc /path/to/config.json:my-server connect @test-stdio
 
 # Or reference VS Code config
-mcpc connect ~/.vscode/mcp.json:filesystem @test-stdio
+mcpc ~/.vscode/mcp.json:filesystem connect @test-stdio
 ```
 
 **Verify the server started:**
@@ -105,15 +105,15 @@ Stateless servers treat each connection independently. No session state persists
 
 ```bash
 # Connect to remote server
-mcpc connect https://mcp.example.com @test-sse
+mcpc https://mcp.example.com connect @test-sse
 
 # With authentication
-mcpc connect https://mcp.example.com @test-sse \
+mcpc https://mcp.example.com connect @test-sse \
   --header "Authorization: Bearer $MCP_TOKEN"
 
 # With OAuth (interactive login first)
 mcpc login https://mcp.example.com
-mcpc connect https://mcp.example.com @test-sse
+mcpc https://mcp.example.com connect @test-sse
 ```
 
 **Verify statelessness:**
@@ -122,13 +122,13 @@ mcpc connect https://mcp.example.com @test-sse
 # Session 1: perform an action
 mcpc @test-sse tools-list
 mcpc @test-sse tools-call create-item name:=test-item
-mcpc close @test-sse
+mcpc @test-sse close
 
 # Session 2: reconnect — no state from session 1
-mcpc connect https://mcp.example.com @test-sse-2
+mcpc https://mcp.example.com connect @test-sse-2
 mcpc @test-sse-2 tools-call list-items --json
 # If server is truly stateless, result should not depend on session 1
-mcpc close @test-sse-2
+mcpc @test-sse-2 close
 ```
 
 Read `references/guides/http-testing.md` for auth, proxy, and TLS details.
@@ -141,16 +141,16 @@ Stateful servers maintain session state via `MCP-Session-Id` header (protocol ve
 
 ```bash
 # Connect to stateful server
-mcpc connect https://mcp.example.com @test-stateful
+mcpc https://mcp.example.com connect @test-stateful
 ```
 
 **Verify statefulness:**
 
 ```bash
 # 1. Check session info — look for protocol version and session ID
-mcpc @test-stateful help --json | jq '{
+mcpc --json @test-stateful | jq '{
   protocolVersion: .protocolVersion,
-  sessionId: .sessionId,
+  mcpcSession: ._mcpc,
   serverInfo: .serverInfo
 }'
 
@@ -162,7 +162,7 @@ mcpc @test-stateful tools-call list-items --json
 # Should include the item created above
 
 # 4. Test session restart (drops session, creates new one)
-mcpc restart @test-stateful
+mcpc @test-stateful restart
 mcpc @test-stateful tools-call list-items --json
 # Server decides if state persists across sessions
 
@@ -264,7 +264,7 @@ Read `references/guides/scripting-automation.md` for full test scripts and CI in
 ### Step 6: Cleanup
 
 ```bash
-mcpc close @session          # Close one session
+mcpc @session close           # Close one session
 mcpc                         # List active sessions
 mcpc clean sessions          # Clean all sessions
 mcpc clean all               # Clean sessions + profiles + logs
@@ -290,27 +290,27 @@ mcpc clean all               # Clean sessions + profiles + logs
 ### Quick smoke test
 
 ```bash
-mcpc connect <server> @smoke && \
+mcpc <server> connect @smoke && \
 mcpc @smoke ping && \
-mcpc @smoke tools && \
+mcpc @smoke tools-list && \
 mcpc @smoke tools-call <first-tool> <minimal-args> && \
-mcpc close @smoke
+mcpc @smoke close
 ```
 
 ### Proxy for sandboxed testing
 
 ```bash
 # Human authenticates, then exposes via proxy
-mcpc connect https://mcp.example.com @relay --proxy 8080
+mcpc https://mcp.example.com connect @relay --proxy 8080
 # AI or untrusted client connects to proxy (no auth tokens exposed)
-mcpc connect localhost:8080 @sandboxed
+mcpc localhost:8080 connect @sandboxed
 mcpc @sandboxed tools-list
 ```
 
 ### Interactive debugging shell
 
 ```bash
-mcpc shell @session
+mcpc @session shell
 # Type commands interactively: tools, tools-call, resources, help, exit
 ```
 
@@ -318,7 +318,7 @@ mcpc shell @session
 
 ```bash
 # Enable debug logging for transport-level issues
-mcpc connect <server> @debug --verbose
+mcpc <server> connect @debug --verbose
 mcpc @debug tools-list --verbose
 # Or set environment variable
 MCPC_VERBOSE=1 mcpc @debug tools-list
@@ -335,7 +335,7 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | Timeout on tool call | Increase with `--timeout 600` (default: 300s) |
 | Self-signed cert rejected | Use `--insecure` (dev only, never production) |
 | Stale sessions after crash | `mcpc clean sessions` |
-| Can't tell if stateful or stateless | Check `mcpc @session help --json \| jq .protocolVersion` — 2025-11-25+ is streamable |
+| Can't tell if stateful or stateless | Check `mcpc --json @session \| jq .protocolVersion` — 2025-11-25+ is streamable |
 | Tool args parsed wrong type | Force string with `id:='"123"'` (single-quote wrapped JSON string) |
 | Bridge process orphaned | `mcpc clean sessions` clears PIDs and sockets |
 

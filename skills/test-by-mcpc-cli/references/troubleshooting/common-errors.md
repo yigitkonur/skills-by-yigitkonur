@@ -68,7 +68,7 @@ No error. Command completed normally.
 mcpc
 
 # Force restart
-mcpc restart @session
+mcpc @session restart
 
 # If server is down, wait for it to come back
 # mcpc auto-recovers when server responds (polls every 30s)
@@ -83,8 +83,8 @@ mcpc restart @session
 mcpc @session tools-list
 
 # If auto-restart fails, reconnect manually
-mcpc close @session
-mcpc connect <server> @session
+mcpc @session close
+mcpc <server> connect @session
 ```
 
 ### Session shows 🔴 unauthorized
@@ -96,7 +96,7 @@ mcpc connect <server> @session
 mcpc login <server>
 
 # Then restart session
-mcpc restart @session
+mcpc @session restart
 ```
 
 ### Session shows 🔴 expired
@@ -105,7 +105,7 @@ mcpc restart @session
 
 ```bash
 # Restart creates new session
-mcpc restart @session
+mcpc @session restart
 ```
 
 ### Orphaned sessions
@@ -144,7 +144,7 @@ npx @modelcontextprotocol/server-filesystem /tmp/test
 
 ```bash
 # Enable verbose to see protocol negotiation
-mcpc connect config.json:server @debug --verbose
+mcpc config.json:server connect @debug --verbose
 
 # Check bridge logs
 cat ~/.mcpc/logs/bridge-debug.log
@@ -160,7 +160,7 @@ echo $API_KEY
 # Missing vars resolve to empty string (no error)
 # Export before connecting:
 export API_KEY=my-key
-mcpc connect config.json:my-server @test
+mcpc config.json:my-server connect @test
 ```
 
 ## HTTP transport issues
@@ -169,11 +169,11 @@ mcpc connect config.json:my-server @test
 
 ```bash
 # For self-signed certs (dev only)
-mcpc connect https://dev.internal:3000 @dev --insecure
+mcpc https://dev.internal:3000 connect @dev --insecure
 
 # For corporate proxies with custom CAs
 export NODE_EXTRA_CA_CERTS=/path/to/ca.pem
-mcpc connect https://server.corp @test
+mcpc https://server.corp connect @test
 ```
 
 ### CORS-related issues
@@ -190,10 +190,10 @@ echo $NO_PROXY
 
 # Bypass proxy for local servers
 export NO_PROXY=localhost,127.0.0.1
-mcpc connect localhost:3000 @local
+mcpc localhost:3000 connect @local
 
 # Debug proxy
-mcpc connect https://server.com @test --verbose
+mcpc https://server.com connect @test --verbose
 # Look for "Using proxy: ..." in output
 ```
 

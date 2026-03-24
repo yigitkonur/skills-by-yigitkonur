@@ -91,9 +91,9 @@ mcpc
 # Expected: "No active sessions"
 
 # 4. Quick connectivity test (if you have a server URL)
-mcpc connect https://your-mcp-server.com @verify-test
+mcpc https://your-mcp-server.com connect @verify-test
 mcpc @verify-test ping
-mcpc close @verify-test
+mcpc @verify-test close
 ```
 
 ## Environment variables
@@ -137,5 +137,5 @@ For isolated testing, set a custom home directory:
 
 ```bash
 export MCPC_HOME_DIR=/tmp/mcpc-isolated-test
-mcpc connect <server> @isolated
+mcpc <server> connect @isolated
 ```
