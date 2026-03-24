@@ -4,13 +4,22 @@ Diagnosis and recovery for mcpc errors organized by error code and symptom.
 
 ## Error code reference
 
-### Exit code 0 — Success
+### Exit code 0 — Success OR server-side MCP error
 
-No error. Command completed normally.
+Command completed at the CLI level. **However, the MCP server may have returned an error.** In JSON mode, check for `isError: true` in the response:
+
+```bash
+RESULT=$(mcpc @session tools-call my-tool '{"arg":"val"}' --json)
+# Exit code is 0, but this could be a server validation error:
+# {"content": [{"type": "text", "text": "MCP error -32602: ..."}], "isError": true}
+echo "$RESULT" | jq '.isError // false'
+```
+
+Server-side errors that return exit code 0 include: tool validation errors (missing/wrong args), tool-not-found, tool execution failures. These are MCP protocol errors, not CLI errors.
 
 ### Exit code 1 — Client error
 
-**Cause:** Invalid arguments, unknown command, validation failure.
+**Cause:** Invalid arguments, unknown command, validation failure **at the mcpc CLI level** (not server-side).
 
 | Symptom | Diagnosis | Fix |
 |---|---|---|
