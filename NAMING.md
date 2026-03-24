@@ -233,7 +233,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `test-` vs `run-` — `test-` is specifically about verification; `run-` is about general tool execution
 - `test-` vs `review-` — `test-` runs the code and checks output; `review-` reads the code and checks quality
 
-**Current skills:** `test-skill-quality`
+**Current skills:** `test-by-mcpc-cli`, `test-skill-quality`
 
 ## Choosing a Prefix — Decision Tree
 
@@ -392,4 +392,5 @@ When renaming a published skill:
 - `run-playwright`
 - `run-research`
 - `run-seo-analysis`
+- `test-by-mcpc-cli`
 - `test-skill-quality`
