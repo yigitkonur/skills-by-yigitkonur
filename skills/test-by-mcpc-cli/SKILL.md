@@ -363,6 +363,7 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | `references/guides/cleanup-maintenance.md` | Clean command categories, session consolidation, storage management, recovery |
 | `references/guides/ci-cd-integration.md` | GitHub Actions workflows, Docker testing, MCPC_HOME_DIR isolation, headless auth |
 | `references/guides/x402-payments.md` | x402 agentic payment testing, wallet setup, USDC on Base, proactive/reactive signing |
+| `references/guides/async-tasks.md` | Async tool execution: `--task`, `--detach`, polling, cancel, crash recovery, task lifecycle |
 
 ### Patterns and internals
 
@@ -378,13 +379,15 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | `references/patterns/logging-debugging.md` | Verbose mode, bridge logs, log rotation, debugging workflows, diagnostic scripts |
 | `references/patterns/notification-handling.md` | Server push notifications, types, color coding, subscription, testing notification support |
 | `references/patterns/data-model.md` | Complete type definitions: SessionData, ServerConfig, AuthProfile, IpcMessage, constants |
+| `references/patterns/tool-filtering.md` | Filtering/searching tools by name, description, or schema using `tools-list --json` with jq |
+| `references/patterns/pagination-caching.md` | Auto-pagination with `nextCursor`, tool cache lifetime, cache invalidation via notifications |
+| `references/patterns/auth-precedence.md` | Auth method priority order, conflict rules, security properties, CI auth selection matrix |
 
 ### Commands and examples
 
 | File | Read when |
 |---|---|
 | `references/commands/quick-reference.md` | All mcpc commands, flags, options, and environment variables at a glance |
-| `references/commands/grep-command.md` | The grep command for searching/filtering tools by name, description, or schema across servers |
 | `references/examples/real-world-workflows.md` | 10 complete runnable workflow scripts: smoke test, comparison, monitoring, regression, proxy, OAuth |
 | `references/examples/testing-recipes.md` | 15 copy-paste assertion recipes: tool exists, schema check, exit codes, latency, cleanup verification |
 | `references/troubleshooting/common-errors.md` | Error codes (0-4), session states, transport debugging, auth failures, recovery |
