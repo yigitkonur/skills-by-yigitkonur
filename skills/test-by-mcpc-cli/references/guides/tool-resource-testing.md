@@ -29,6 +29,17 @@ mcpc @session tools-get tool-name
 mcpc @session tools-get tool-name --json
 mcpc @session tools-get tool-name --json | jq '.inputSchema'
 
+# Check array params for item types and cardinality constraints BEFORE calling:
+mcpc @session tools-get tool-name --json | jq '
+  .inputSchema.properties | to_entries[] | select(.value.type == "array") | {
+    param: .key,
+    items: (.value.items.type // .value.items),
+    min: .value.minItems,
+    max: .value.maxItems
+  }'
+# This tells you: is items a string or object? How many are required?
+# Without this, you'll guess wrong on the first call (e.g., pass strings when objects are expected, or pass 1 item when 3 are required).
+
 # Save schema for later validation
 mcpc @session tools-get tool-name --json > expected-schema.json
 ```

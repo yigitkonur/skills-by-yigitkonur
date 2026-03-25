@@ -58,8 +58,19 @@ mcpc --json @s tools-get my-tool | jq '.inputSchema.required'
 # Extract all parameter names
 mcpc --json @s tools-get my-tool | jq '.inputSchema.properties | keys'
 
-# Extract parameter names with their types
-mcpc --json @s tools-get my-tool | jq '.inputSchema.properties | to_entries | map({name: .key, type: .value.type})'
+# RECOMMENDED — parameter names, types, array item types, and cardinality constraints:
+mcpc --json @s tools-get my-tool | jq '
+  .inputSchema.properties | to_entries | map({
+    name: .key,
+    type: .value.type,
+    items: (if .value.type == "array" then (.value.items.type // .value.items) else null end),
+    min: .value.minItems,
+    max: .value.maxItems
+  })'
+
+# AVOID — this pattern only shows top-level type, hiding critical array details:
+# mcpc --json @s tools-get my-tool | jq '.inputSchema.properties | to_entries | map({name: .key, type: .value.type})'
+# It will show {"name":"urls","type":"array"} but NOT that items must be objects or that minItems is 3.
 
 # Generate parameter inventory across all tools (use --full)
 mcpc --json @s tools-list --full | jq '.[] | {name, params: [.inputSchema.properties | keys[]]}'
