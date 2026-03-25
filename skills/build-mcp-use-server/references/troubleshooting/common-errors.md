@@ -219,13 +219,14 @@ process.stdout.on("error", (err) => {
 ---
 ### Error: EADDRINUSE — Port already in use
 
-**When**: Server fails to start on the configured port.
-**Cause**: Another process is already listening on that port.
+**When**: Server fails to start with `Error: listen EADDRINUSE: address already in use :::3000`.
+**Cause**: Another process is already listening on that port. This commonly happens when a previous dev server was killed with `Ctrl+C` but a child process survived, or when a stale `node` process is still holding the port after a crash.
 **Fix**:
-1. Find the process: `lsof -i :3000`.
-2. Kill it or use a different port: `PORT=3001 node dist/index.js`.
+1. Find what owns the port: `lsof -i :3000`.
+2. Kill the stale process in one command: `lsof -ti:3000 | xargs kill`.
+3. Or use a different port: `PORT=3001 node dist/index.js`.
 
-**Prevention**: Configure port via environment variable. Add graceful shutdown handlers for `SIGINT`/`SIGTERM`.
+**Prevention**: Configure port via environment variable. Add graceful shutdown handlers for `SIGINT`/`SIGTERM` so the port is released on exit. If using `nodemon` or `tsx --watch`, ensure child processes are cleaned up on restart.
 ---
 ### Error: TypeScript compilation errors with mcp-use imports
 
@@ -578,6 +579,34 @@ Verify `package.json` includes `"zod": "^4.0.0"` in `dependencies`.
 
 **Prevention**: Be aware of OrbStack's port allocation when running local MCP development on macOS. Use `lsof` to diagnose unexpected connection failures.
 ---
+### Warning: "resourceCallbacks undefined" in stderr
+
+**When**: Server starts and prints a warning like `Cannot read properties of undefined (reading 'complete')` or `resourceCallbacks is undefined` to stderr.
+**Cause**: mcp-use internally references `callbacks.complete` on resource templates even when no `callbacks` object is provided. This is harmless noise — no resource functionality is broken.
+**Fix**: Ignore the warning. It does not affect tool execution or server behavior. If you want to silence it, provide an empty callbacks object when registering resource templates:
+```typescript
+server.resource({
+  name: "my-resource",
+  template: "res:///{id}",
+  callbacks: { complete: async () => ({ values: [] }) },
+}, handler);
+```
+
+**Prevention**: This is a known cosmetic issue in mcp-use. No action required unless you are actively using resource template completion.
+---
+### Warning: `GET /health` returns the Inspector HTML page
+
+**When**: Hitting `GET /health` returns a full HTML page (the MCP Inspector UI) instead of a JSON health response.
+**Cause**: mcp-use serves its built-in Inspector on all `GET` requests to the server's base path and sub-paths by default. If you do not explicitly register a `/health` route, the catch-all Inspector handler takes over.
+**Fix**: Register an explicit health endpoint using `server.get()` **before** calling `server.listen()`:
+```typescript
+server.get("/health", (c) => c.json({ status: "ok" }));
+await server.listen(3000);
+```
+Now `GET /health` returns `{"status":"ok"}` and the Inspector remains available at `GET /mcp` (or whichever path you configure).
+
+**Prevention**: Always register explicit `GET` routes for health checks and readiness probes before `listen()`.
+---
 ## Quick Diagnostic Checklist
 
 | Symptom | First check |
@@ -609,6 +638,8 @@ Verify `package.json` includes `"zod": "^4.0.0"` in `dependencies`.
 | "redirect_uri_mismatch" (Google) | Add `http://localhost:*/**` to Supabase redirect URLs; don't forward `client_id` |
 | Deploy missing changes | `mcp-use deploy` clones from git; commit + push first |
 | OrbStack port conflict | Check `lsof -i :<port>`; OrbStack may claim ports |
+| `resourceCallbacks undefined` warning | Harmless noise; provide empty `callbacks.complete` to silence |
+| `/health` returns HTML | Register explicit `server.get("/health", ...)` before `listen()` |
 
 ---
 

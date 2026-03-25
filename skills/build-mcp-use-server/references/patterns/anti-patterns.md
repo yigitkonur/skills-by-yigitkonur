@@ -428,20 +428,36 @@ process.on("SIGTERM", shutdown);
 
 ### No Testing at All
 
-At minimum, verify with curl and MCP Inspector:
+At minimum, verify with curl and MCP Inspector.
+
+**Important:** Streamable HTTP requires a full MCP handshake before any tool call. You must send `initialize`, then `notifications/initialized`, then your actual request. Skipping the initialized notification causes "Tool not found" errors.
 
 ```bash
-# List tools
-curl -X POST http://localhost:3000/mcp \
+# Step 1: Initialize — capture the session ID from the response header
+SESSION=$(curl -s -D - -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl-test","version":"1.0.0"}}}' \
+  | grep -i mcp-session-id | tr -d '\r' | cut -d' ' -f2)
 
-# Call a tool
-curl -X POST http://localhost:3000/mcp \
+# Step 2: Send initialized notification (required before any tools/list or tools/call)
+curl -s -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get-user","arguments":{"id":"test"}}}'
+  -H "mcp-session-id: $SESSION" \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 
-# Run MCP Inspector
+# Step 3: List tools
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "mcp-session-id: $SESSION" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+
+# Step 4: Call a tool
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "mcp-session-id: $SESSION" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get-user","arguments":{"id":"test"}}}'
+
+# Or skip the handshake and use MCP Inspector instead
 npx @mcp-use/inspector --url http://localhost:3000/mcp
 ```
 

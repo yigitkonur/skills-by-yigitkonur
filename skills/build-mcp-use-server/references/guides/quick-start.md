@@ -222,7 +222,7 @@ server.tool(
 );
 
 // Start the HTTP server (Streamable HTTP)
-server.listen(3000);
+server.listen(parseInt(process.env.PORT || "3000", 10));
 // Inspector available at http://localhost:3000/inspector
 ```
 
@@ -301,8 +301,8 @@ import {
 import { createClient } from "redis";
 
 const redis = createClient({ url: process.env.REDIS_URL });
-const redisPubSub = createClient({ url: process.env.REDIS_URL });
 await redis.connect();
+const redisPubSub = redis.duplicate();
 await redisPubSub.connect();
 
 const server = new MCPServer({
@@ -457,11 +457,8 @@ Use templates for dynamic data:
 server.resourceTemplate(
   {
     name: "user-profile",
-    resourceTemplate: {
-      uriTemplate: "users://{userId}/profile",
-      name: "user-profile",
-      description: "User profile data",
-    },
+    uriTemplate: "users://{userId}/profile",
+    description: "User profile data",
     title: "User Profile",
   },
   async (uri, { userId }) => {

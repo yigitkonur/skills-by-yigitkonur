@@ -368,8 +368,8 @@ server.resource(
 );
 
 // URI only — when you need the full resolved URI
-server.resource(
-  { name: 'echo', uri: 'echo://{path}' },
+server.resourceTemplate(
+  { name: 'echo', uriTemplate: 'echo://{path}' },
   async (uri) => text(`You requested: ${uri.toString()}`)
 );
 
