@@ -112,6 +112,16 @@ Deploy from GitHub repository your-org/your-repo? (y/n):
 
 GitHub deployment: deploys directly from your repo, auto-detects build/start commands, uses the latest commit — no manual source upload needed.
 
+> **CRITICAL: Commit and push first.** `mcp-use deploy` builds from the remote HEAD on GitHub. Uncommitted or unpushed local changes will NOT be deployed. Always `git add && git commit && git push` before running `mcp-use deploy`.
+
+> **`.mcp-use/project.json`** links your local project to a cloud deployment for stable URLs across redeployments.
+> - Created automatically on first deploy — do NOT pre-create it manually
+> - DO NOT delete it — you'll get a new URL on next deploy
+> - DO NOT commit it (`.mcp-use/` should be in `.gitignore`)
+> - If the server was deleted on the cloud side (FK constraint error on deploy), delete this file and redeploy to create a fresh link
+
+**Always use `--name`** to set a meaningful deployment name: `mcp-use deploy --name my-server`. The name controls the URL subdomain. Without it, you get random names like `empty-snowflake-cek9p`.
+
 **After deployment** you receive:
 
 ```
@@ -137,6 +147,15 @@ Claude Desktop configuration after deploy:
 ```
 
 Test locally first: `mcp-use build && mcp-use start`
+
+### Post-deploy verification
+
+After `mcp-use deploy` succeeds, always verify:
+
+1. `curl -s https://{url}/health | jq .status` — should return `"ok"`
+2. Open the Inspector URL from the deploy output — confirm all tools appear and are callable
+3. Test one tool call via Inspector or `mcp-cli call {server} {tool} '{}'`
+4. Update client configs (Claude Desktop, Codex, Claude Code) with the new MCP URL
 
 ---
 
