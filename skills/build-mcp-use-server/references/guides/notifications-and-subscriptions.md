@@ -740,7 +740,7 @@ ctx.log(level, message, logger?)
 The `Logger` class (introduced in v1.12.0, replacing `winston`) controls server process log output. It works in both Node.js and browser environments.
 
 ```typescript
-import { Logger } from "mcp-use/server";
+import { Logger } from "mcp-use";
 
 // Configure logging level and format
 Logger.configure({
@@ -800,7 +800,7 @@ const logger = winston.createLogger({ level: "info", transports: [new winston.tr
 logger.info("Server started");
 
 // After (SimpleConsoleLogger):
-import { Logger } from "mcp-use/server";
+import { Logger } from "mcp-use";
 Logger.configure({ level: "info", format: "minimal" });
 const logger = Logger.get();
 logger.info("Server started");

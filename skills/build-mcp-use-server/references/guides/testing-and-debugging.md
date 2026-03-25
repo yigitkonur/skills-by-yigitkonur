@@ -263,7 +263,7 @@ DEBUG=2 node dist/server.js   # Full JSON-RPC request/response bodies
 ### Logger API
 
 ```typescript
-import { Logger } from "mcp-use/server";
+import { Logger } from "mcp-use";
 
 Logger.configure({ level: "debug", format: "detailed" });
 // Levels: silent | error | warn | info | http | verbose | debug | silly

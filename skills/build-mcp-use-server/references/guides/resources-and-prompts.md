@@ -434,7 +434,7 @@ server.resource(
   },
   async () => {
     const buffer = await readFile("./public/logo.png");
-    return image(buffer, "image/png");
+    return image(buffer.toString("base64"), "image/png");
   }
 );
 ```
@@ -471,7 +471,7 @@ server.resource(
   },
   async () => {
     const buffer = await readFile("./assets/notification.mp3");
-    return audio(buffer, "audio/mpeg");
+    return audio(buffer.toString("base64"), "audio/mpeg");
   }
 );
 ```

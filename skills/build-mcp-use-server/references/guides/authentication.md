@@ -322,7 +322,7 @@ const data = await db.data.findMany({ where: { organizationId: orgId } })
 | Supabase | `MCP_USE_OAUTH_SUPABASE_JWT_SECRET` | ❌ | JWT secret (HS256 only) |
 | Keycloak | `MCP_USE_OAUTH_KEYCLOAK_SERVER_URL` | ✅ | Keycloak server URL |
 | Keycloak | `MCP_USE_OAUTH_KEYCLOAK_REALM` | ✅ | Realm name |
-| Keycloak | `MCP_USE_OAUTH_KEYCLOAK_CLIENT_ID` | ✅ | Client ID |
+| Keycloak | `MCP_USE_OAUTH_KEYCLOAK_CLIENT_ID` | ❌ | Client ID (optional) |
 | Custom | *(inline)* | — | Configured via `oauthCustomProvider()` options |
 
 ---
@@ -525,16 +525,18 @@ const server = new MCPServer({
   version: '1.0.0',
   oauth: oauthCustomProvider({
     issuer: 'https://acme.okta.com/oauth2/default',
-    authorizationEndpoint: 'https://acme.okta.com/oauth2/default/v1/authorize',
+    authEndpoint: 'https://acme.okta.com/oauth2/default/v1/authorize',
     tokenEndpoint: 'https://acme.okta.com/oauth2/default/v1/token',
-    jwksUri: 'https://acme.okta.com/oauth2/default/v1/keys',
-    scopes: ['openid', 'profile', 'email'],
+    jwksUrl: 'https://acme.okta.com/oauth2/default/v1/keys',
+    scopesSupported: ['openid', 'profile', 'email'],
+    async verifyToken(token) {
+      const { payload } = await jwtVerify(token, JWKS, { issuer: 'https://acme.okta.com/oauth2/default' });
+      return payload;
+    },
     getUserInfo: (payload) => ({
       userId: payload.sub,
       email: payload.email,
       name: payload.name,
-      roles: payload.groups ?? [],
-      permissions: payload.permissions ?? [],
     }),
   }),
 })
@@ -544,14 +546,14 @@ const server = new MCPServer({
 
 | Option | Required | Purpose |
 |---|---|---|
-| `issuer` | usually | Canonical issuer for token validation |
-| `authorizationEndpoint` | yes | Browser authorization URL |
+| `issuer` | yes | Canonical issuer for token validation |
+| `authEndpoint` | yes | Browser authorization URL |
 | `tokenEndpoint` | yes | Authorization code exchange |
-| `jwksUri` | recommended | JWT verification keys |
-| `clientId` | optional | Pre-registered client ID |
-| `clientSecret` | optional | Confidential client secret |
-| `scopes` | optional | Default requested scopes |
-| `getUserInfo` | highly recommended | Map provider claims to `ctx.auth` |
+| `jwksUrl` | recommended | JWT verification keys URL |
+| `verifyToken` | yes | Async function to verify JWT and return payload |
+| `scopesSupported` | optional | Supported OAuth scopes |
+| `grantTypesSupported` | optional | Supported grant types |
+| `getUserInfo` | optional | Map provider claims to `ctx.auth` |
 
 ### Choosing between built-in and custom providers
 
