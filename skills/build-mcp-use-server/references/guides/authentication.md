@@ -42,18 +42,7 @@ const server = new MCPServer({
     domain: process.env.MCP_USE_OAUTH_AUTH0_DOMAIN!,
     audience: process.env.MCP_USE_OAUTH_AUTH0_AUDIENCE!,
     // Optional
-    clientId: process.env.AUTH0_CLIENT_ID,
-    clientSecret: process.env.AUTH0_CLIENT_SECRET,
-    mode: 'proxy',       // 'proxy' (default) or 'direct'
     verifyJwt: true,     // recommended true in production
-    scopes: ['openid', 'profile', 'email', 'offline_access'],
-    getUserInfo: (payload) => ({
-      userId: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      roles: payload['https://myapp.com/roles'] || [],
-      permissions: payload.permissions || [],
-    })
   })
 })
 ```
@@ -87,18 +76,9 @@ const server = new MCPServer({
     // Required — full AuthKit domain
     subdomain: process.env.MCP_USE_OAUTH_WORKOS_SUBDOMAIN!,
     // Optional
-    apiKey: process.env.MCP_USE_OAUTH_WORKOS_API_KEY,     // for WorkOS API calls
-    clientId: process.env.MCP_USE_OAUTH_WORKOS_CLIENT_ID, // pre-registered OAuth client
+    clientId: process.env.MCP_USE_OAUTH_WORKOS_CLIENT_ID,
+    apiKey: process.env.MCP_USE_OAUTH_WORKOS_API_KEY,
     verifyJwt: true,
-    getUserInfo: (payload) => ({
-      userId: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      organizationId: payload.org_id,
-      organizationName: payload.org_name,
-      roles: payload.roles || [],
-      connectionId: payload.connection_id,
-    })
   })
 })
 ```
@@ -142,11 +122,16 @@ const server = new MCPServer({
     projectId: process.env.MCP_USE_OAUTH_SUPABASE_PROJECT_ID!,
     // Only for legacy HS256 tokens:
     // jwtSecret: process.env.MCP_USE_OAUTH_SUPABASE_JWT_SECRET!,
-    supabaseUrl: 'https://your-project-id.supabase.co', // auto-derived if omitted
-    mode: 'proxy',
-    verifyJwt: true,
-    getUserInfo: (payload) => ({
-      userId: payload.sub,
+    // skipVerification: false,  // default: verify JWT
+  })
+})
+```
+
+Supabase tokens include `sub` (user ID), `email`, and `role`. Access via `context.auth`:
+
+```typescript
+// Example: accessing Supabase user info from a tool handler
+// context.auth contains the verified JWT payload with userId: payload.sub,
       email: payload.email,
       name: payload.user_metadata?.name,
       roles: payload.app_metadata?.roles || [],
@@ -174,21 +159,12 @@ const server = new MCPServer({
   name: 'my-server',
   version: '1.0.0',
   oauth: oauthKeycloakProvider({
+    // Required
     serverUrl: process.env.MCP_USE_OAUTH_KEYCLOAK_SERVER_URL!,
     realm: process.env.MCP_USE_OAUTH_KEYCLOAK_REALM!,
-    clientId: process.env.MCP_USE_OAUTH_KEYCLOAK_CLIENT_ID!,
-    clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,  // optional
-    mode: 'proxy',
+    // Optional
+    clientId: process.env.MCP_USE_OAUTH_KEYCLOAK_CLIENT_ID,
     verifyJwt: true,
-    scopes: ['openid', 'profile', 'email', 'roles'],
-    getUserInfo: (payload) => ({
-      userId: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      username: payload.preferred_username,
-      roles: payload.realm_access?.roles || [],
-      clientRoles: payload.resource_access?.['my-mcp-server']?.roles || [],
-    })
   })
 })
 ```
@@ -196,7 +172,7 @@ const server = new MCPServer({
 ```bash
 MCP_USE_OAUTH_KEYCLOAK_SERVER_URL=https://keycloak.example.com  # required
 MCP_USE_OAUTH_KEYCLOAK_REALM=my-realm                           # required
-MCP_USE_OAUTH_KEYCLOAK_CLIENT_ID=my-mcp-server                  # required
+MCP_USE_OAUTH_KEYCLOAK_CLIENT_ID=my-mcp-server                  # optional
 ```
 
 ---
@@ -217,20 +193,11 @@ const server = new MCPServer({
   name: 'my-server',
   version: '1.0.0',
   oauth: oauthCustomProvider({
-    // Endpoints (required)
+    // Required
     issuer: 'https://auth.example.com',
-    authorizationEndpoint: 'https://auth.example.com/oauth/authorize',
+    authEndpoint: 'https://auth.example.com/oauth/authorize',  // NOT authorizationEndpoint
     tokenEndpoint: 'https://auth.example.com/oauth/token',
-    // Optional endpoints
-    userInfoEndpoint: 'https://auth.example.com/oauth/userinfo',
-    jwksUri: 'https://auth.example.com/.well-known/jwks.json',
-    // Client credentials (optional)
-    clientId: process.env.OAUTH_CLIENT_ID,
-    clientSecret: process.env.OAUTH_CLIENT_SECRET,
-    // Behavior
-    mode: 'proxy',
-    scopes: ['openid', 'profile', 'email'],
-    audience: 'your-api-identifier',
+    jwksUrl: 'https://auth.example.com/.well-known/jwks.json', // NOT jwksUri
     // Token verification (required)
     async verifyToken(token: string) {
       const { payload } = await jwtVerify(token, JWKS, {
@@ -239,12 +206,12 @@ const server = new MCPServer({
       })
       return payload
     },
-    // Claim extraction (optional)
+    // Optional
+    scopesSupported: ['openid', 'profile', 'email'],  // NOT scopes
     getUserInfo: (payload: any) => ({
       userId: payload.sub,
       email: payload.email,
       name: payload.name,
-      roles: payload.roles || [],
     })
   })
 })

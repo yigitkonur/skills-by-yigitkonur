@@ -93,10 +93,10 @@ Fastest path to production. The CLI builds and deploys from your GitHub repo. Av
 npm install -g @mcp-use/cli
 
 # Login to Manufact Cloud
-npm run mcp-use login
+mcp-use login
 
 # Deploy your server
-npm run mcp-use deploy
+mcp-use deploy --name my-server
 ```
 
 If your project is a GitHub repository, `mcp-use deploy` automatically detects it and offers GitHub-based deployment:
@@ -128,10 +128,10 @@ GitHub deployment: deploys directly from your repo, auto-detects build/start com
 ✓ Deployment successful!
 
 🌐 MCP Server URL:
-   https://your-deployment/id.deploy.mcp-use.com/mcp
+   https://your-subdomain.run.mcp-use.com/mcp
 
 🔍 Inspector URL:
-   https://inspector.mcp-use.com/inspect?autoConnect=https://your-deployment/id.deploy.mcp-use.com/mcp
+   https://inspector.manufact.com/inspector?autoConnect=https://your-subdomain.run.mcp-use.com/mcp
 ```
 
 Claude Desktop configuration after deploy:
@@ -140,7 +140,7 @@ Claude Desktop configuration after deploy:
 {
   "mcpServers": {
     "my-server": {
-      "url": "https://your-deployment/id.deploy.mcp-use.com/mcp"
+      "url": "https://your-subdomain.run.mcp-use.com/mcp"
     }
   }
 }
