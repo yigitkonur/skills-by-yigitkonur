@@ -661,7 +661,7 @@ npx @mcp-use/inspector --url http://localhost:3000/mcp
 ### 1. Minimal (Production)
 
 ```typescript
-import { Logger } from "mcp-use/server";
+import { Logger } from "mcp-use";  // Logger is from root package, NOT mcp-use/server
 Logger.configure({ level: "info", format: "minimal" });
 // Output: [INFO] Server listening on port 3000
 ```

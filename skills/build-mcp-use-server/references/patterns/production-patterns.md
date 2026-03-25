@@ -183,7 +183,7 @@ Register custom routes before calling `listen()`.
 Use the built-in `Logger` (replaced Winston in v1.12.0). Works in Node.js and browser environments with zero dependencies. Since v1.21.5, `zod` is a peer dependency — declare it in your own `package.json`.
 
 ```typescript
-import { Logger } from "mcp-use/server";
+import { Logger } from "mcp-use";  // Logger is from root package, NOT mcp-use/server
 
 // Configure at startup
 Logger.configure({
