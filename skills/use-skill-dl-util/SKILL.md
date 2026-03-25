@@ -20,7 +20,7 @@ Use this skill when:
 Do not use this skill for:
 
 - building or authoring a new skill from a corpus (use `build-skills`)
-- testing a skill's instructional quality (use `test-skill-quality`)
+- testing a skill's instructional quality (use `enhance-skill-by-derailment`)
 - general web research unrelated to skill discovery (use `run-research`)
 
 ## Prerequisites
