@@ -261,7 +261,7 @@ wc -l references/path/to/file.md
 
 If adding your content would push the file beyond 500 lines, split the new content into a separate file and add a routing entry in SKILL.md. Do not let files grow silently past the size limit — this is the most common cause of oversized reference files.
 
-To audit existing files:
+To inspect existing files:
 ```bash
 find references -name '*.md' -exec wc -l {} + | sort -rn | head -5
 ```

@@ -32,8 +32,8 @@ npm publish --access public
 # 3. After the package exists, switch your workflow to OIDC
 ```
 
-> See also: [auth/token-vs-oidc.md](../auth/token-vs-oidc.md) for full OIDC
-> setup and the bootstrap pattern.
+> See also: [auth/oidc-trusted-publishing.md](../auth/oidc-trusted-publishing.md)
+> and [auth/granular-tokens.md](../auth/granular-tokens.md) for the bootstrap pattern.
 
 ### E403 on Scoped Packages
 
@@ -94,8 +94,8 @@ First publish failing?
 ```
 
 > **Cross-references:**
-> - Auth setup: [auth/token-vs-oidc.md](../auth/token-vs-oidc.md)
-> - Version tool config: [versioning/tool-comparison.md](../versioning/tool-comparison.md)
+> - Auth setup: [auth/oidc-trusted-publishing.md](../auth/oidc-trusted-publishing.md) and [auth/granular-tokens.md](../auth/granular-tokens.md)
+> - Version tool config: [versioning/semantic-release.md](../versioning/semantic-release.md), [versioning/changesets.md](../versioning/changesets.md), and [versioning/release-please.md](../versioning/release-please.md)
 > - Package config: [packaging/package-config.md](../packaging/package-config.md)
 > - Supply chain security: [security/supply-chain.md](../security/supply-chain.md)
 

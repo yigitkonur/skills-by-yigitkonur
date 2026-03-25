@@ -27,7 +27,7 @@ SPECIFIC QUESTIONS:
 2) Real costs at 50 engineers running ~200 builds/day?
 3) Which handles matrix builds with least config overhead?
 4) Lock-in risks and migration escape hatches?
-FOCUS: Total cost including engineering time, not just compute
+PRIORITY INFO: Total cost including engineering time, not just compute
 ```
 
 **search_reddit**: `["GitHub Actions vs GitLab CI real experience", "CircleCI pricing increase alternative", "best CI/CD caching strategy monorepo", "r/devops CI pipeline slow build times"]`
@@ -43,7 +43,7 @@ FOCUS: Total cost including engineering time, not just compute
 **deep_research** -- include language runtime and current pain:
 ```
 WHAT I NEED: Docker optimization for Node.js/TypeScript monorepo (8 services).
-WHY: Images 800MB+, builds 12 min, 47 high/critical CVEs.
+WHY I'M RESEARCHING THIS: Images 800MB+, builds 12 min, 47 high/critical CVEs.
 SPECIFIC QUESTIONS:
 1) Optimal multi-stage pattern for Node.js TypeScript?
 2) node:slim vs alpine vs distroless: which for production?
@@ -67,7 +67,7 @@ SPECIFIC QUESTIONS:
 2) When is 'no service mesh' the right answer?
 3) How does Istio Ambient mode change the calculus?
 4) Team size/expertise needed to operate each?
-FOCUS: Operational complexity and failure modes, not feature comparison
+PRIORITY INFO: Operational complexity and failure modes, not feature comparison
 ```
 
 **search_google**: `["Kubernetes resource limits requests best practices 2025", "Istio vs Linkerd performance", "Kubernetes HPA custom metrics autoscaling guide", "nginx ingress vs traefik vs envoy gateway"]`
@@ -141,7 +141,7 @@ SPECIFIC QUESTIONS:
 2) Real costs at 10TB/month egress, 100M requests?
 3) Edge function comparison for auth validation and A/B testing?
 4) API response caching with Vary headers?
-FOCUS: API caching and edge compute, not just static delivery
+PRIORITY INFO: API caching and edge compute, not just static delivery
 ```
 
 **search_google**: `["Cloudflare vs Fastly vs CloudFront 2025", "Cloudflare Workers vs CloudFront Functions", "CDN origin shield reduce origin load", "CDN cache rules best practices"]`
@@ -178,7 +178,7 @@ SPECIFIC QUESTIONS:
 2) When to add PostgreSQL read replicas and handle replication lag?
 3) Is sharding necessary at 10K rps or are there alternatives (Citus, Aurora)?
 4) Caching strategies that defer database scaling?
-FOCUS: Sequenced investments with trigger points, avoiding premature complexity
+PRIORITY INFO: Sequenced investments with trigger points, avoiding premature complexity
 ```
 
 **search_google**: `["database read replica strategy PostgreSQL", "database sharding when how approaches", "PostgreSQL read replica lag handling", "distributed session management Redis vs JWT"]`
@@ -197,7 +197,7 @@ SPECIFIC QUESTIONS:
 2) Testing story for each (unit, integration, policy)?
 3) Module design and reuse comparison?
 4) Lock-in risks and escape hatches?
-FOCUS: Collaboration and maintainability, not feature lists
+PRIORITY INFO: Collaboration and maintainability, not feature lists
 ```
 
 **search_google**: `["Terraform vs Pulumi vs CDK 2025", "Terraform state management best practices", "infrastructure drift detection tools", "Terraform testing framework 2025"]`

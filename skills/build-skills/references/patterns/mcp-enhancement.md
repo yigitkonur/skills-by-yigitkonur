@@ -216,4 +216,4 @@ skill-name/
 
 ---
 
-> **Steering tip:** MCP tool availability varies by environment. Always document fallback approaches when your skill depends on specific MCP servers.
+> Tip: MCP tool availability varies by environment. Always document fallback approaches when your skill depends on specific MCP servers.

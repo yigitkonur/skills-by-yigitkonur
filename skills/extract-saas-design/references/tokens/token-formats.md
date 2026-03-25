@@ -170,6 +170,33 @@ The most common token format in web codebases:
 }
 ```
 
+## Plain HTML/CSS Snapshot Chain Resolution
+
+Offline snapshots often skip Tailwind entirely. In that case, resolve tokens through selectors and CSS variables directly:
+
+```css
+.metric-card {
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+:root {
+  --card-bg: #111827;
+  --card-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+```
+
+Document the chain as:
+
+- `.metric-card background` -> `var(--card-bg)` -> `#111827`
+- `.metric-card box-shadow` -> `var(--card-shadow)` -> `0 8px 24px rgba(15, 23, 42, 0.18)`
+
+If a declaration spans multiple lines (common with gradients), flatten the CSS before extracting:
+
+```bash
+cat styles.css | tr '\n' ' ' | grep -oE '(linear|radial|conic)-gradient\([^)]*\)'
+```
+
 ---
 
 

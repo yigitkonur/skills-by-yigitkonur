@@ -8,6 +8,7 @@ tags: pattern, repository, persistence, generics
 ## Implement Repository Pattern with TypeScript Generic Interfaces
 
 Define a generic `Repository<T, ID>` interface in the application layer. Implement it in infrastructure with ORM or database specifics. Use cases depend on the interface, never on the concrete implementation — making persistence swappable and testing trivial.
+Keep each repository port use-case-driven: start with only the operations the consuming use case needs. The generic base interface is illustrative, not mandatory.
 
 **Incorrect (use case directly importing and calling Prisma):**
 
@@ -36,11 +37,16 @@ class CreateOrderUseCase {
 **Correct (repository interface in application, implementation in infrastructure):**
 
 ```typescript
+type Result<T, E> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E };
+
+type CreateOrderError = 'EmptyOrder' | 'ExceedsMaxItems';
+
 // application/ports/Repository.ts
 interface Repository<T, ID> {
   findById(id: ID): Promise<T | null>;
   save(entity: T): Promise<void>;
-  delete(id: ID): Promise<void>;
 }
 
 // application/ports/IOrderRepository.ts
@@ -53,14 +59,18 @@ interface IOrderRepository extends Repository<Order, OrderId> {
 class CreateOrderUseCase {
   constructor(private readonly orderRepo: IOrderRepository) {}  // Depends on port
 
-  async execute(command: CreateOrderCommand): Promise<Result<OrderId>> {
-    const order = Order.create(
+  async execute(command: CreateOrderCommand): Promise<Result<OrderId, CreateOrderError>> {
+    const orderResult = Order.create(
       command.customerId,
       command.items.map(i => OrderItem.create(i.productId, i.quantity, i.price)),
     );
 
-    await this.orderRepo.save(order);  // Pure domain operation
-    return Result.ok(order.id);
+    if (!orderResult.ok) {
+      return orderResult;
+    }
+
+    await this.orderRepo.save(orderResult.value);  // Pure domain operation
+    return { ok: true, value: orderResult.value.id };
   }
 }
 
@@ -78,10 +88,6 @@ class PrismaOrderRepository implements IOrderRepository {
   async save(order: Order): Promise<void> {
     const data = this.toPersistence(order);
     await this.prisma.order.upsert({ where: { id: order.id.value }, create: data, update: data });
-  }
-
-  async delete(id: OrderId): Promise<void> {
-    await this.prisma.order.delete({ where: { id: id.value } });
   }
 
   async findByCustomer(cid: CustomerId): Promise<Order[]> {
@@ -104,7 +110,6 @@ class InMemoryOrderRepository implements IOrderRepository {
 
   async findById(id: OrderId): Promise<Order | null> { return this.store.get(id.value) ?? null; }
   async save(order: Order): Promise<void> { this.store.set(order.id.value, order); }
-  async delete(id: OrderId): Promise<void> { this.store.delete(id.value); }
   async findByCustomer(cid: CustomerId): Promise<Order[]> {
     return [...this.store.values()].filter(o => o.customerId.equals(cid));
   }

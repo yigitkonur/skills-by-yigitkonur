@@ -61,7 +61,8 @@ Three schedule formats are supported:
 {
   "kind": "cron",
   "expr": "0 9 * * 1-5",
-  "tz": "America/New_York"
+  "tz": "America/New_York",
+  "staggerMs": 30000
 }
 ```
 
@@ -69,11 +70,12 @@ Three schedule formats are supported:
 |-------|------|----------|-------------|
 | `kind` | string | Yes | Must be `"cron"` |
 | `expr` | string | Yes | 5 or 6-field cron expression |
-| `tz` | string | Yes | IANA timezone (e.g. `"America/New_York"`, `"Europe/London"`) |
+| `tz` | string | No | IANA timezone (e.g. `"America/New_York"`, `"Europe/London"`). If omitted, the gateway host timezone is used. |
+| `staggerMs` | int | No | Explicit stagger window in milliseconds. `0` keeps exact timing. |
 
 ### Stagger
 
-Top-of-hour and popular schedules automatically get staggered up to 5 minutes (300000ms) to avoid thundering-herd effects.
+Recurring top-of-hour cron expressions may get a stagger window of up to 5 minutes (300000ms) to avoid thundering-herd effects. Fixed wall-clock expressions such as `0 7 * * *` stay exact unless you set `staggerMs` explicitly.
 
 | Setting | Description |
 |---------|-------------|
@@ -81,6 +83,14 @@ Top-of-hour and popular schedules automatically get staggered up to 5 minutes (3
 | `staggerMs: 0-300000` | Random delay up to value |
 | CLI: `--stagger 30s` | Set stagger via CLI |
 | CLI: `--exact` | Sets `staggerMs: 0` |
+
+### Session and payload pairing
+
+Use the payload kind that matches where the job runs:
+
+- `sessionTarget: "main"` pairs with `payload.kind: "systemEvent"`
+- `sessionTarget: "isolated"` or `session:<id>` pairs with `payload.kind: "agentTurn"`
+- `sessionTarget: "current"` resolves to the current session when the job is created
 
 ### Payload kinds
 
@@ -263,7 +273,7 @@ Standard cron expressions use 5 fields (6-field with seconds is also supported):
 ### Mandatory safety constraints
 
 - Every cron job MUST have a corresponding disable/delete instruction provided to the user
-- Jobs that call exec MUST have `timeoutSeconds` limits in the payload
+- Jobs that trigger exec/process work MUST cap that downstream work with explicit timeouts
 - Jobs that call external APIs MUST have rate limiting awareness
 - Jobs that modify data MUST log what they changed
 - Jobs MUST NOT run unbounded loops (set max iterations)
@@ -300,11 +310,11 @@ Use cron to trigger LLM analysis on a schedule. Good for periodic reports, summa
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| Job does not run | Wrong schedule expression | Verify `expr` format, check `tz` is correct IANA timezone |
-| Job runs at wrong time | Missing or wrong `tz` field | Always specify `tz` with cron kind schedules |
+| Job does not run | Wrong schedule expression or wrong session/payload pairing | Verify `expr` format and make sure `systemEvent` uses `main` while `agentTurn` uses `isolated` or `session:<id>` |
+| Job runs at wrong time | Missing or wrong `tz` field | Specify `tz` when exact wall-clock timing matters; otherwise the gateway host timezone is used |
 | Job runs too often | Wrong `everyMs` value or cron expression | Check units (everyMs is milliseconds, not seconds) |
 | Job fails silently | No `delivery` configured | Add delivery with `mode: "announce"` to a monitoring channel |
-| Job conflicts with another | Overlapping schedules | Use `cron.list` to audit, stagger schedules |
+| Job conflicts with another | Overlapping schedules | Use `cron.list` to inspect existing jobs and stagger schedules |
 | Job runs but no output | Session ended before completion | Increase `timeoutSeconds`, check `sessionRetention` |
 | Stagger causes missed window | Auto-stagger pushed job past deadline | Set `staggerMs: 0` or use `--exact` CLI flag |
 | Too many concurrent runs | Default `maxConcurrentRuns: 1` | Increase `maxConcurrentRuns` in cron config if needed |

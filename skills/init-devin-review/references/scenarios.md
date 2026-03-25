@@ -18,6 +18,10 @@ Complete example REVIEW.md files for common repository types. Use as inspiration
 
 ---
 
+If no scenario matches exactly, choose the nearest one by primary language/runtime and keep only the section order and severity style. Rewrite every rule from repo evidence and delete stack-specific guidance that does not belong.
+
+---
+
 ## Scenario A: TypeScript Backend API (Express/Fastify + Prisma)
 
 ### `REVIEW.md`

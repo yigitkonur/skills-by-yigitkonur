@@ -560,7 +560,7 @@ const client = new MCPClient({
 // Load from config file — env vars are interpolated automatically
 import { MCPClient, loadConfigFile } from "mcp-use";
 
-const config = await loadConfigFile("./mcp-config.json");
+const config = loadConfigFile("./mcp-config.json");
 const client = new MCPClient(config);
 ```
 

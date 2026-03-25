@@ -1,12 +1,12 @@
 # Rust Backend Debugging — Tauri DevTools
 
-> ⚠️ **Steering:** This reference is loaded when the problem is in Rust command handlers — state management, serialization, async, or panics. Before diving into handler code, always check the Calls tab first (or terminal tracing output for AI agents). The Calls tab shows the exact Arguments and Response, which eliminates 60% of serde-related hypotheses without reading source code.
+> ⚠️ **Steering:** This reference is loaded when the problem is in Rust command handlers — state management, serialization, async, or panics. Before diving into handler code, always check the Calls tab first (or terminal tracing output for AI agents). The Calls tab often eliminates serde-related hypotheses without reading source code.
 
 ## Debugging Command Handlers
 
 ### Adding Instrumentation to Commands
 
-> ⚠️ **Steering:** Before adding `#[tracing::instrument]`, verify `tracing = "0.1"` is in `[dependencies]` in `Cargo.toml`. In derailment testing, agents added instrument attributes without the dependency, causing compile errors that were misdiagnosed as Tauri issues. Also add `use tracing::Instrument;` if using `.instrument()` on async blocks.
+> ⚠️ **Steering:** Before adding `#[tracing::instrument]`, verify `tracing = "0.1"` is in `[dependencies]` in `Cargo.toml`. Also add `use tracing::Instrument;` if using `.instrument()` on async blocks.
 
 Every `#[tauri::command]` function automatically gets an IPC span in DevTools. To see what happens inside the handler, add `#[tracing::instrument]`:
 
@@ -158,7 +158,7 @@ async fn debug_locks(state: tauri::State<'_, Arc<Mutex<Data>>>) -> Result<(), St
 
 ### Diagnosing Serialization Issues with DevTools
 
-> ⚠️ **Steering:** The Calls tab Arguments column shows the EXACT JSON the frontend sent. Compare this directly with the Rust struct's `Deserialize` implementation. In testing, agents tried to debug serde from source code alone when the answer was visible in the Calls tab — the frontend was sending `camelCase` but the struct expected `snake_case`.
+> ⚠️ **Steering:** The Calls tab Arguments column shows the EXACT JSON the frontend sent. Compare this directly with the Rust struct's `Deserialize` implementation before debugging serde from source alone.
 
 1. Open the **Calls tab** in DevTools
 2. Find the failing command invocation

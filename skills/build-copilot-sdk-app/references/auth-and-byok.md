@@ -11,11 +11,17 @@
 
 ## Default: signed-in user
 
-User runs `copilot` CLI and signs in. SDK uses stored credentials automatically.
+User signs in with the current Copilot CLI command. SDK uses stored credentials automatically.
+
+```bash
+copilot login
+```
 
 ```typescript
 const client = new CopilotClient(); // no config needed
 ```
+
+For a machine-readable preflight, call `await client.getAuthStatus()` before `createSession()`.
 
 ## GitHub OAuth
 
@@ -81,14 +87,15 @@ Priority order (checked automatically):
 
 No code changes needed — SDK auto-detects.
 
-### Full auth priority order
+Set the environment variable before you start the Node.js process. This is the safest path for CI, containers, and other non-interactive runs.
+
+### Practical auth order for app builders
 
 1. Explicit `githubToken` in constructor
-2. `CAPI_HMAC_KEY` or `COPILOT_HMAC_KEY` env vars
-3. `GITHUB_COPILOT_API_TOKEN` with `COPILOT_API_URL`
-4. Env var tokens (`COPILOT_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN`)
-5. Stored OAuth credentials from CLI login
-6. `gh auth` credentials
+2. Env var tokens (`COPILOT_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN`)
+3. Stored CLI credentials from `copilot login`
+
+If you are writing app code, rely on the public flows above instead of undocumented internal auth environment variables.
 
 ## BYOK (Bring Your Own Key)
 
@@ -226,6 +233,21 @@ const auth = await client.getAuthStatus();
 // }
 ```
 
+### Headless preflight
+
+Use this pattern before your first `createSession()` in automation:
+
+```typescript
+const client = new CopilotClient();
+const auth = await client.getAuthStatus();
+
+if (!auth.isAuthenticated) {
+  throw new Error(
+    "Authenticate with `copilot login` or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN before starting the process."
+  );
+}
+```
+
 ## Quota check
 
 ```typescript
@@ -237,7 +259,9 @@ const quota = await client.rpc.account.getQuota();
 
 > Common mistakes agents make with authentication and BYOK.
 
-- **Default auth (no config) works out of the box** if the user has the Copilot CLI installed and authenticated (`copilot auth login`). This is the simplest path for local development tools.
+- **Default auth (no config) works out of the box** if the user has the Copilot CLI installed and authenticated with `copilot login`. For a code-level preflight, call `await client.getAuthStatus()` before `createSession()`.
+- **For non-interactive runs, prefer env-var auth** (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`) over waiting for the CLI to prompt for login.
+- **Use `client.getAuthStatus()` for automation checks**. The current public CLI auth surface is `copilot login` plus env-var tokens, so use the SDK call for a machine-readable preflight instead of shelling out to a separate auth-status command.
 - **BYOK requires BOTH `provider` and `model`** in `createSession`. Omitting `model` creates the session successfully but `sendAndWait` will fail with an unhelpful error. Always pair them:
   ```typescript
   const session = await client.createSession({
@@ -248,4 +272,4 @@ const quota = await client.rpc.account.getQuota();
   ```
 - **BYOK tokens are static** — the SDK doesn't refresh them. If your token expires mid-session, requests fail. For long-running apps, implement token rotation at the application level.
 - **`GITHUB_TOKEN` env var** is checked automatically. You don't need to pass it in code. But if set, it takes priority over OAuth tokens.
-- **For GitHub App auth**: Use `authConfig.appAuth` with `appId`, `privateKey`, and `installationId`. This is for server-side apps, not CLIs.
+- **GitHub App user tokens still go through `githubToken`**. If you mint a `ghu_` user access token outside the SDK, pass it as `githubToken`; the public SDK surface shown here does not expose a separate `authConfig.appAuth` object.

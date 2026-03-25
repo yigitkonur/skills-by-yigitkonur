@@ -172,8 +172,9 @@ Reference the same resource from multiple points so the agent finds it regardles
 ### Command Verification
 
 - **Never invent commands.** Every command must be verified against `package.json` scripts, `Makefile` targets, CI config, or `pyproject.toml` scripts
-- If uncertain: `"Known commands: see package.json scripts"`
-- If no test command exists, state: `"Test: [not configured]"`
+- If command sources exist but the exact invocation is still uncertain: `"Known commands: see [manifest file]"`
+- If the repo has no executable command source at all, omit the Commands section or state `"Commands: [not configured]"` only when that absence would otherwise confuse the agent
+- If the repo has command sources but no dedicated test entrypoint, state: `"Test: [not configured]"`
 
 ### Rule Deduplication
 
@@ -206,6 +207,7 @@ Write all universal instructions in AGENTS.md. This file is read by 20+ agents.
 - CLAUDE.md survives compaction — re-read after `/compact`
 
 ### Path-Scoped Rules
+<!-- Only keep this subsection if .claude/rules/ exists or you are creating rule files -->
 - See `.claude/rules/` for file-specific instructions
 
 ### Imports

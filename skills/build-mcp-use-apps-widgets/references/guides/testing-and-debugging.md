@@ -370,4 +370,4 @@ curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" \
 - [ ] Server works via tunnel with ChatGPT or Goose
 - [ ] `mcp-use generate-types` succeeds and `useCallTool` is type-safe
 - [ ] `DEBUG=2` shows correct request/response logging
-- [ ] No `console.log()` in stdio server code; CORS/auth tested
+- [ ] Logging is deliberate (no noisy debug output or secret leaks); CORS/auth tested

@@ -77,6 +77,14 @@ analyze-serp(keyword: seed, dataType: "autocomplete", engine: "google", limit: 5
 
 **Why:** Autocomplete reveals actual user search behavior — long-tail variations that may have lower competition.
 
+### Phase 6: Compile SERP findings
+
+```
+compile-report(target: keyword_or_topic, tool_names: ["analyze-serp", "analyze-keywords", "analyze-domain"])
+```
+
+Use `keyword_or_topic` as the report target when there is no site/domain in scope. If you skipped the top-ranker domain lookup in Phase 4, omit `analyze-domain` from `tool_names`.
+
 ## Interpreting results: SERP opportunity signals
 
 | SERP characteristic | Opportunity |

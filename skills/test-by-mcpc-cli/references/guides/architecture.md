@@ -2,6 +2,8 @@
 
 System overview, source code map, transport layer, configuration system, error hierarchy, and data directory layout for mcpc v0.1.11.
 
+Use `mcpc --help` as the authority for the public CLI surface. Older task-related references in internal notes are not exposed as `tasks-*` commands or `tools-call --task` in `0.1.11`.
+
 ## System overview
 
 ```
@@ -14,7 +16,7 @@ System overview, source code map, transport layer, configuration system, error h
 │  mcpc CLI (short-lived process)                                         │
 │  ┌───────────┐  ┌──────────────┐  ┌──────────────────┐                 │
 │  │  Parser   │─▶│ Command      │─▶│  BridgeClient    │                 │
-│  │ (yargs)   │  │ Router       │  │  (socket IPC)    │                 │
+│  │           │  │ Router       │  │  (socket IPC)    │                 │
 │  └───────────┘  └──────────────┘  └────────┬─────────┘                 │
 └────────────────────────────────────────────┬────────────────────────────┘
                                              │ Unix socket
@@ -44,7 +46,7 @@ Key design principle: the CLI process is stateless and exits after each command.
 
 ```
 src/
-├── index.ts                    # CLI entry point, yargs setup, command registration
+├── index.ts                    # CLI entry point and command registration
 ├── commands/                   # One file per CLI command
 │   ├── connect.ts              # mcpc <target> connect @session
 │   ├── close.ts                # mcpc @session close
@@ -55,10 +57,10 @@ src/
 │   ├── tools.ts                # tools, tools-list, tools-get, tools-call
 │   ├── resources.ts            # resources, resources-list, resources-read, subscribe
 │   ├── prompts.ts              # prompts, prompts-list, prompts-get
-│   ├── tasks.ts                # tasks-list, tasks-get, tasks-cancel (experimental)
+│   ├── tasks.ts                # internal/older task plumbing; not a public 0.1.11 command surface
 │   ├── login.ts                # mcpc login <server> (OAuth flow)
 │   ├── logout.ts               # mcpc logout <server>
-│   ├── clean.ts                # mcpc clean [sessions|profiles|logs|all]
+│   ├── clean.ts                # mcpc --clean[=sessions|profiles|logs|all]
 │   ├── x402.ts                 # mcpc x402 (payment wallet, experimental)
 │   └── logging.ts              # mcpc @session logging-set-level
 ├── bridge/
@@ -172,10 +174,11 @@ mcpc uses a Claude Desktop / VS Code compatible JSON format for stdio server def
 ### Referencing config entries
 
 ```bash
-# Syntax: mcpc <path>:<entry-name> connect @session
-mcpc ~/.vscode/mcp.json:my-server connect @test
-mcpc ./config.json:filesystem connect @fs
-mcpc /absolute/path/config.json:entry connect @session
+# Current syntax: mcpc --config <path> <entry-name> connect @session
+# Older docs may show <path>:<entry-name>; treat that as stale.
+mcpc --config ~/.vscode/mcp.json my-server connect @test
+mcpc --config ./config.json filesystem connect @fs
+mcpc --config /absolute/path/config.json entry connect @session
 ```
 
 ### Environment variable substitution
@@ -206,7 +209,7 @@ Config files can also define HTTP servers (not just stdio):
 ```
 
 ```bash
-mcpc ./config.json:remote-server connect @remote
+mcpc --config ./config.json remote-server connect @remote
 ```
 
 ## Error hierarchy
@@ -271,7 +274,7 @@ fi
 # JSON error field approach
 RESULT=$(mcpc @session tools-call my-tool arg:=val --json 2>&1)
 if echo "$RESULT" | jq -e '.error' > /dev/null 2>&1; then
-  echo "Error: $(echo "$RESULT" | jq -r '.message')"
+  echo "Error: $(echo "$RESULT" | jq -r '.error // "unknown error"')"
 else
   echo "Success: $(echo "$RESULT" | jq -r '.content[0].text')"
 fi
@@ -295,11 +298,11 @@ Default location: `~/.mcpc/` (override with `MCPC_HOME_DIR` environment variable
 │                              #   Only created when OS keychain is unavailable
 │                              #   Contains actual tokens — protect this file
 │
-├── history                    # Interactive shell (mcpc @s shell) command history
+├── shell-history              # Interactive shell (mcpc @s shell) command history
 │                              #   readline-compatible format
 │
 ├── bridges/                   # Unix domain sockets for bridge IPC
-│   ├── my-session.sock        # One socket per active session
+│   ├── @my-session.sock       # One socket per active session
 │   ├── prod.sock              #   Created by bridge on startup
 │   └── staging.sock           #   Removed on graceful close or by clean command
 │
@@ -325,7 +328,7 @@ Default location: `~/.mcpc/` (override with `MCPC_HOME_DIR` environment variable
 - `credentials.json`: typically < 10 KB
 - Each bridge socket: 0 bytes on disk (Unix domain socket, kernel-managed)
 - Each bridge log: grows unbounded in verbose mode, typically < 1 MB in normal operation
-- Use `mcpc clean logs` to reclaim log space
+- Use `mcpc --clean=logs` to reclaim log space
 
 ### Custom home directory
 

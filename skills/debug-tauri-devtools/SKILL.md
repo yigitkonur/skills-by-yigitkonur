@@ -1,6 +1,6 @@
 ---
 name: debug-tauri-devtools
-description: Use skill if you are debugging a live Tauri app with CrabNebula DevTools to inspect Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets.
+description: Use skill if you are debugging a runnable Tauri app with CrabNebula DevTools, or need to install/connect DevTools to inspect Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets.
 ---
 
 # Debug Tauri DevTools
@@ -38,13 +38,18 @@ unknown lives behind the webview.
 If DevTools is not installed in the project, complete installation before
 entering the debugging workflow:
 
-1. **Check**: search `src-tauri/Cargo.toml` for `tauri-plugin-devtools`. If absent, or if `lib.rs` does not register the plugin with `.plugin(tauri_plugin_devtools::init())`, DevTools is not installed.
-2. **Install**: follow the steps in `references/setup/installation-and-config.md`. Use the "Which Pattern to Use" table to pick the right initialization pattern for your project.
-3. **Restart**: stop the running app and restart with `cargo tauri dev`. First run after adding DevTools triggers a longer compilation — wait for the WebSocket URL to appear in terminal output.
-4. **Verify**: confirm DevTools connects — Console tab should show initialization logs, Config → Plugins should list registered plugins, and invoking any `#[tauri::command]` should produce an entry in the Calls tab.
+1. **Check**: search `src-tauri/Cargo.toml` for `tauri-plugin-devtools`. If absent, or if the app entrypoint (`src-tauri/src/lib.rs`, `main.rs`, or equivalent) does not register the plugin via `tauri_plugin_devtools::init()` / `Builder::default().init()`, DevTools is not installed.
+2. **Install**: follow the steps in `references/setup/installation-and-config.md`. Before choosing a pattern, check `src-tauri/Cargo.toml` for `tauri-plugin-log` with `rg -n "tauri-plugin-log" src-tauri/Cargo.toml`.
+3. **Restart**: stop the running app and restart with `cargo tauri dev`. First run after adding DevTools triggers a longer compilation. Wait for either the raw listener URL (`ws://127.0.0.1:...`) or the CrabNebula dashboard URL (`https://devtools.crabnebula.dev/dash/...`) to appear in terminal output.
+4. **Verify**: confirm DevTools connects. UI mode: Console shows initialization logs, Config → Plugins lists registered plugins, and invoking any `#[tauri::command]` produces an entry in Calls. Terminal-only mode: confirm the startup banner/URL prints, trigger a command, and confirm matching tracing output reaches stderr.
 5. **Continue**: after verification, proceed to Phase 2 below.
 
 > **Note:** Tauri IPC commands (`#[tauri::command]`) are automatically instrumented by Tauri core. They appear in the Calls tab without any additional code.
+
+## If you do not have a live repro yet
+
+- If the task is **installation or connectivity only** and you already have a runnable Tauri project, use the smoke-test path in `references/setup/installation-and-config.md`: add a temporary `#[tauri::command]`, invoke it once from the frontend, and verify the DevTools banner plus one command trace.
+- If the task is a **real bug diagnosis** but no runnable Tauri project or failing user action exists yet, stop and ask for the app or a minimal repro. Do not invent a server/project just to keep the workflow moving.
 
 ## Rust-side visibility map
 
@@ -69,16 +74,16 @@ Follow this order. Do not skip from symptom straight to code edits.
 
 ### Phase 1 — Establish the failing path
 
-> ⚠️ **Steering:** Do NOT skip the DevTools detection check. In derailment testing, agents jumped straight to debugging without DevTools installed, wasting an entire diagnosis cycle. Always verify `tauri-plugin-devtools` in Cargo.toml first.
+> ⚠️ **Steering:** Do NOT skip the DevTools detection check. Confirm `tauri-plugin-devtools` in Cargo.toml before spending time on runtime diagnosis.
 
 - Name the exact action that reproduces the issue.
 - Note expected vs actual behavior.
 - Record environment: `cargo tauri dev`, debug build, release build, desktop platform, or mobile target.
-- **DevTools check**: search `src-tauri/Cargo.toml` for `tauri-plugin-devtools`. If absent, or if `lib.rs` does not call `.plugin(tauri_plugin_devtools::init())`, DevTools is not installed. Follow the First-time setup section above, then return here and continue to Phase 2.
+- **DevTools check**: search `src-tauri/Cargo.toml` for `tauri-plugin-devtools`. If absent, or if the app entrypoint does not register the plugin via `tauri_plugin_devtools::init()` / `Builder::default().init()`, DevTools is not installed. Follow the First-time setup section above, then return here and continue to Phase 2.
 
 ### Phase 2 — Observe before theorizing
 
-> ⚠️ **Steering:** If operating as an AI agent without visual DevTools UI, do NOT claim you "opened the Calls tab." Instead, use terminal output from `cargo tauri dev` (DevTools subscriber prints to stderr) or ask the user for screenshots. Fabricating visual evidence is a P0 failure.
+> ⚠️ **Steering:** If operating as an AI agent without visual DevTools UI, do NOT claim you "opened the Calls tab." Use terminal output from `cargo tauri dev` or ask the user for screenshots, and state clearly which evidence path you used.
 
 - Start in the single tab that matches the symptom (see visibility map).
 - Capture exact evidence before browsing other surfaces:
@@ -88,13 +93,21 @@ Follow this order. Do not skip from symptom straight to code edits.
   - **Sources**: bundled file presence, exact path, case-sensitive mismatches
 - Prefer built-in DevTools filters and sorting before changing code or `RUST_LOG`.
 
-**Agent-mode evidence gathering:** When operating without a visual DevTools UI (e.g., an AI agent in a terminal), evidence comes from: (1) terminal output from `cargo tauri dev` — DevTools subscriber prints tracing events to stderr, (2) adding `tracing_subscriber::fmt` as a secondary output layer for structured logs, (3) asking the user to share DevTools screenshots or tab exports. Use these sources in place of the visual tab instructions above.
+**Agent-mode evidence gathering:** When operating without a visual DevTools UI (e.g., an AI agent in a terminal), evidence comes from: (1) terminal output from `cargo tauri dev`, (2) targeted `tracing::info!()` or `#[tracing::instrument]` additions where evidence is missing, and (3) user-provided DevTools screenshots or tab exports. Use these sources in place of the visual tab instructions above.
+
+**Terminal-only minimum verification loop:** When you cannot see the UI, treat this as the minimum viable proof:
+1. `cargo tauri dev` prints the DevTools listener banner or dashboard URL
+2. stderr shows proof that the subscriber is live: either an existing startup trace/event, or the first invoked command span
+3. reproducing the command/action prints a matching trace or span to stderr
+4. if the app is otherwise quiet and you needed extra instrumentation, the added `tracing::info!` or `#[tracing::instrument]` event appears exactly where expected
+
+If any item is missing, stop and report which visibility layer is absent instead of claiming DevTools is working.
 
 > **Shortcut for capability/permission errors:** If the symptom is clearly a permission error and capability files are accessible, you may inspect `src-tauri/capabilities/*.json` directly to identify missing permission identifiers. Cross-reference with the error message and `references/plugins/capabilities-and-permissions.md`. If the fix is unambiguous (a specific permission string is missing), proceed directly to Phase 5. Use DevTools for verification in Phase 6 if available.
 
 ### Phase 3 — Form 1–3 falsifiable hypotheses
 
-> ⚠️ **Steering:** Every hypothesis MUST map to a Phase 4 routing entry. In testing, agents formed hypotheses about sequential processing but had no routing to investigate it — the diagnosis stalled. If your hypothesis does not match a routing entry, you likely need `references/performance/profiling-and-optimization.md`.
+> ⚠️ **Steering:** Every hypothesis MUST map to a Phase 4 routing entry. If it does not, you have not yet chosen an inspection surface. Use `references/performance/profiling-and-optimization.md` for throughput or sequencing hypotheses that do not fit the other branches.
 
 Each hypothesis must identify:
 
@@ -114,7 +127,7 @@ Good hypothesis shapes:
 
 ### Phase 4 — Inspect the hypothesis path
 
-> ⚠️ **Steering:** Before adding `#[tracing::instrument]`, verify that `tracing = "0.1"` is in Cargo.toml [dependencies]. Missing this dependency causes a compile error that agents misdiagnosed as a Tauri issue.
+> ⚠️ **Steering:** Before adding `#[tracing::instrument]`, verify that `tracing = "0.1"` is in Cargo.toml `[dependencies]`. Missing this dependency causes a compile error.
 
 > Before inspecting, review the Decision Rules section below — it contains
 > key conditional routing for common evidence patterns.
@@ -157,7 +170,7 @@ When you do change something:
 
 ### Phase 6 — Verify in the same surface
 
-> ⚠️ **Steering:** You MUST restart `cargo tauri dev` after code changes. Agents frequently forgot this step and verified against stale runtime state, declaring bugs "fixed" when the old binary was still running.
+> ⚠️ **Steering:** You MUST restart `cargo tauri dev` after code changes. Otherwise you risk verifying against stale runtime state.
 
 Rebuild the app (e.g., restart `cargo tauri dev`), reconnect DevTools, and
 reproduce the same user action or invoke call. Confirm the evidence changed
@@ -196,6 +209,7 @@ Remove DEBUG-ONLY temporary instrumentation (e.g., extra `tracing::debug!()` eve
 | Confusing ACL vs OS permission errors | Wrong fix applied (capability vs filesystem) | Check error message: "not allowed" = ACL, "os error" = OS |
 | Using `fs:read` instead of `fs:allow-read-text-file` | Invalid Tauri v2 permission identifier | Always use full v2 ACL identifiers |
 | Running `cargo tauri dev` from `src-tauri/` | `beforeDevCommand` fails (can't find package.json) | Run from project root where `package.json` lives |
+| `beforeDevCommand` points to a missing script | App exits before DevTools ever starts | Add the missing package-manager script or temporarily clear `beforeDevCommand` during the smoke test |
 
 ## Guardrails
 
@@ -226,6 +240,7 @@ Remove DEBUG-ONLY temporary instrumentation (e.g., extra `tracing::debug!()` eve
 - **Need field-by-field help with tabs, filters, or exports** → `references/devtools-tab-reference.md`
 - **Need performance or overhead guidance beyond one command** → `references/performance/profiling-and-optimization.md`
 - **Need to understand pipeline limitations or internal behavior** → `references/devtools-architecture-deep-dive.md`
+- **`cargo tauri dev` exits before any DevTools banner appears because the frontend dev script is missing** → inspect `src-tauri/tauri.conf.json` `beforeDevCommand`, add the missing script, or temporarily clear it for a smoke test before returning to the normal workflow
 - **Permission/capability error without DevTools** → Inspect `src-tauri/capabilities/*.json` directly. Compare with `references/plugins/capabilities-and-permissions.md` Common Plugin Permission Identifiers table. Add the missing permission identifier and restart the app.
 
 ## Minimal reading sets

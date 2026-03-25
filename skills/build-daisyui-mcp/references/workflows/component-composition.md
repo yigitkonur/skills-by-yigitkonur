@@ -75,7 +75,7 @@ Parameters:
       </div>
       <div class="navbar-end gap-2">
         <button class="btn btn-ghost btn-circle">🔔</button>
-        <div class="avatar placeholder">
+        <div class="avatar avatar-placeholder">
           <div class="bg-neutral text-neutral-content w-8 rounded-full">
             <span class="text-xs">JD</span>
           </div>
@@ -137,7 +137,7 @@ Parameters:
               <tbody>
                 <tr>
                   <td class="flex items-center gap-3">
-                    <div class="avatar placeholder">
+                    <div class="avatar avatar-placeholder">
                       <div class="bg-primary text-primary-content w-8 rounded-full">
                         <span class="text-xs">A</span>
                       </div>
@@ -150,7 +150,7 @@ Parameters:
                 </tr>
                 <tr>
                   <td class="flex items-center gap-3">
-                    <div class="avatar placeholder">
+                    <div class="avatar avatar-placeholder">
                       <div class="bg-secondary text-secondary-content w-8 rounded-full">
                         <span class="text-xs">B</span>
                       </div>
@@ -174,7 +174,7 @@ Parameters:
     <label for="sidebar" aria-label="close sidebar" class="drawer-overlay"></label>
     <ul class="menu bg-base-100 min-h-full w-64 p-4 gap-1">
       <li class="menu-title">Main</li>
-      <li><a class="active">📊 Dashboard</a></li>
+      <li><a class="menu-active">📊 Dashboard</a></li>
       <li><a>👥 Users</a></li>
       <li><a>📦 Products</a></li>
       <li><a>📋 Orders</a></li>
@@ -306,7 +306,7 @@ layouts:
       <div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-6">
         <!-- Chat component works great for reviews -->
         <div class="chat chat-start">
-          <div class="chat-image avatar placeholder">
+          <div class="chat-image avatar avatar-placeholder">
             <div class="bg-neutral text-neutral-content w-10 rounded-full"><span>A</span></div>
           </div>
           <div class="chat-header">Alice <time class="text-xs opacity-50">2 days ago</time></div>
@@ -393,7 +393,7 @@ layouts: top-navbar
     <p class="text-base-content/70 line-clamp-2">Article excerpt that gives a preview of the content...</p>
     <div class="card-actions items-center justify-between mt-2">
       <div class="flex items-center gap-2">
-        <div class="avatar placeholder">
+        <div class="avatar avatar-placeholder">
           <div class="bg-neutral text-neutral-content w-6 rounded-full"><span class="text-xs">J</span></div>
         </div>
         <span class="text-sm">Jane Doe</span>
@@ -473,7 +473,7 @@ components: navbar, drawer, menu, tab, fieldset, input, select, textarea,
       </select>
     </fieldset>
 
-    <divider></divider>
+    <div class="divider"></div>
 
     <fieldset class="fieldset">
       <label class="label justify-between w-full">
@@ -547,7 +547,7 @@ component-examples:
 <!-- Chat Messages Area -->
 <div class="flex-1 overflow-y-auto p-4 space-y-4">
   <div class="chat chat-start">
-    <div class="chat-image avatar online">
+    <div class="chat-image avatar avatar-online">
       <div class="w-10 rounded-full">
         <img src="alice.jpg" alt="Alice" />
       </div>

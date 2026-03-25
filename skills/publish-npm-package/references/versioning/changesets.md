@@ -358,9 +358,11 @@ jobs:
           commit: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
+
+> Pair this with the matching workflow template for auth wiring. Pure OIDC keeps
+> only `GITHUB_TOKEN` here; token auth adds the npm token env or `.npmrc`
+> placeholder from `references/workflows/token-workflows.md`.
 
 ### Action Options
 
@@ -527,13 +529,13 @@ This ensures consumers within the monorepo always reference compatible versions.
           publish: npx changeset publish --provenance --access public
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
 Requirements:
 - `id-token: write` permission in the workflow
 - npm account linked to the GitHub repository
 - `--access public` required for scoped packages with provenance
+- No `NPM_TOKEN` / `NODE_AUTH_TOKEN` in the OIDC variant
 
 ---
 
@@ -675,7 +677,6 @@ jobs:
           commit: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Report published packages
         if: steps.changesets.outputs.published == 'true'
@@ -686,7 +687,8 @@ jobs:
 
 ### Using NPM_TOKEN Instead of OIDC
 
-If your npm org doesn't support OIDC provenance:
+If your npm org doesn't support OIDC provenance, switch to the token workflow
+template and add token auth explicitly:
 
 ```yaml
       - name: Create Release PR or Publish
@@ -695,7 +697,6 @@ If your npm org doesn't support OIDC provenance:
           publish: npx changeset publish --access public
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
@@ -715,6 +716,10 @@ For a brand-new package that has never been published to npm:
 
 No git tags or prior history are needed. Changesets starts from whatever version
 is in `package.json`.
+
+If your long-term auth mode is OIDC, this section only covers the **versioning**
+baseline. The first publish still needs token bootstrap before you switch the
+workflow to pure OIDC.
 
 ---
 

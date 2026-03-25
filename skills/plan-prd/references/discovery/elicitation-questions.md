@@ -82,6 +82,7 @@ Structured interview questions for PRD discovery, organized by category. Use the
 - Walk down each branch of the design tree, resolving dependencies one by one
 - Capture direct quotes when users describe pain points — they make the PRD compelling
 - Label genuine unknowns as `TBD` with an owner and timeline
+- If synchronous answers are unavailable, ask the top 3 blocking questions once and carry the rest as a clearly labeled open-question appendix
 
 ### Do not
 - Ask all questions at once (overwhelming)

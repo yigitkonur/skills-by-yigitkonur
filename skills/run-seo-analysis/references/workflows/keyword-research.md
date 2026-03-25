@@ -89,7 +89,7 @@ research-trends(keywords: [top_5_candidates], source: "google_trends", dataType:
 ### Phase 6: Compile deliverable
 
 ```
-compile-report(target: domain, tool_names: ["research-keywords", "analyze-keywords", "analyze-serp", "find-keyword-gaps"])
+compile-report(target: domain_or_topic, tool_names: ["research-keywords", "analyze-keywords", "analyze-serp", "find-keyword-gaps"])
 ```
 
 ## Interpreting results: what to prioritize

@@ -10,7 +10,7 @@
 
 ### The split() Pattern (Recommended)
 
-> ⚠️ **Steering:** The `split()/attach_logger()` pattern is MANDATORY when `tauri-plugin-log` is present. There is no alternative. Agents in testing tried to: (a) remove tauri-plugin-log (broke existing features), (b) initialize both independently (got PluginInitialization error), (c) use a custom subscriber bridge (unnecessary complexity). The split pattern is the only supported approach.
+> ⚠️ **Steering:** The `split()/attach_logger()` pattern is MANDATORY when `tauri-plugin-log` is present. There is no alternative.
 
 The `tauri-plugin-log::Builder::new().split()` method separates the log plugin into three components:
 1. The Tauri plugin instance (handles webview-side log display)
@@ -134,7 +134,7 @@ There is no `#[cfg(dev)]` in standard Rust. Don't use it. If you see it in other
 
 ### Feature Flags — Use for Optional Debug Dependencies
 
-> ⚠️ **Steering:** Use `#[cfg(debug_assertions)]` as the default gate, not `#[cfg(feature = "devtools")]`. Feature flags add complexity that most projects don't need. Only use feature flags when you need DevTools in specific non-debug builds (e.g., CI profiling runs). In testing, agents defaulted to feature flags, which caused "DevTools not found" errors when users forgot to enable the feature.
+> ⚠️ **Steering:** Use `#[cfg(debug_assertions)]` as the default gate, not `#[cfg(feature = "devtools")]`. Feature flags add complexity that most projects don't need. Only use feature flags when you need DevTools in specific non-debug builds (e.g., CI profiling runs).
 
 ```toml
 # Cargo.toml

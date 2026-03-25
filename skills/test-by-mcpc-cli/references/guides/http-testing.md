@@ -70,15 +70,9 @@ mcpc https://mcp.example.com connect @test
 mcpc login https://mcp.example.com --profile work
 mcpc login https://mcp.example.com --profile personal
 mcpc https://mcp.example.com connect @work-session --profile work
-
-# Custom OAuth scopes
-mcpc login https://mcp.example.com --scope "read write admin"
-
-# Custom client credentials
-mcpc login https://mcp.example.com \
-  --client-id my-app \
-  --client-secret $CLIENT_SECRET
 ```
+
+`mcpc 0.1.11` exposes `--profile` for `login`, but not `--scope`, `--client-id`, or `--client-secret`. If the server requires custom scopes or client registration behavior, configure that server-side instead of assuming extra CLI flags exist.
 
 ### Anonymous connection
 
@@ -228,13 +222,12 @@ mcpc uses exponential backoff for reconnection:
 - Max retries: 10
 - Max queue wait: 3 minutes (fails after)
 
-## TLS and self-signed certificates
+## TLS and private CAs
 
 ```bash
-# Skip TLS verification (development only!)
-mcpc https://dev.internal:3000 connect @dev --insecure
-
-# Never use --insecure in production
+# Trust a private CA instead of trying to bypass TLS verification
+export NODE_EXTRA_CA_CERTS=/path/to/ca.pem
+mcpc https://dev.internal:3000 connect @dev
 ```
 
 ## Proxy testing

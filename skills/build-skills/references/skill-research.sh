@@ -24,7 +24,7 @@
 #   3. Outputs a summary of what was found
 #
 # Output:
-#   Downloaded skills are saved to the current directory.
+#   Downloaded skills are saved to the output directory.
 #   Review them using the quality assessment from source-patterns.md.
 # ============================================================================
 # skill-research.sh — Skill discovery, download, and corpus inspection
@@ -96,6 +96,7 @@ URL_FILE=$(mktemp)
 skill-dl search "${TRIMMED_KEYWORDS[@]}" 2>/dev/null | \
   grep -E '^\|[[:space:]]*[0-9]' | \
   grep -oE 'https://playbooks\.com/skills/[^|[:space:]]+' | \
+  sed 's/\\$//' | \
   sort -u > "$URL_FILE"
 
 URL_COUNT=$(wc -l < "$URL_FILE" | tr -d ' ')

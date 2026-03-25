@@ -71,9 +71,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 **Tip:** During development, open your popup as a full tab instead:
 
 ```typescript
-// Open popup in a tab for easier debugging
-const popupUrl = chrome.runtime.getURL("popup.html");
-chrome.tabs.create({ url: popupUrl });
+// Open the configured popup path in a tab for easier debugging
+const popupPath = chrome.runtime.getManifest().action?.default_popup;
+if (popupPath) {
+  const popupUrl = chrome.runtime.getURL(popupPath);
+  chrome.tabs.create({ url: popupUrl });
+}
 ```
 
 ---

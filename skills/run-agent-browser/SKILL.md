@@ -36,6 +36,7 @@ Do not use this skill for:
 ### 1) Establish session and baseline
 
 - Verify agent-browser is available before your first command. Run `agent-browser --version` (or `npx agent-browser --version`). If the command is not found, install with `npm install -g agent-browser` (pin a specific version in production — see `references/safety.md`).
+- If the first real browser command fails because Chromium is missing, run `agent-browser install` once, then retry the same command. Treat browser-binary installation as part of the happy path, not a troubleshooting detour.
 - If you may be joining an existing browser context, inspect it first:
 
 ```bash
@@ -52,6 +53,12 @@ agent-browser snapshot -i
 ### 2) Navigate or focus the correct page
 
 - Open the target URL or switch to the correct tab.
+- Local fixtures are valid targets. For local HTML or PDF files, use an absolute `file:///...` URL and add `--allow-file-access` when needed:
+
+```bash
+agent-browser --allow-file-access open "file:///absolute/path/to/fixture.html"
+```
+
 - After any focus change, verify focus immediately:
 
 ```bash

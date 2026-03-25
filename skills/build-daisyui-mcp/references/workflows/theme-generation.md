@@ -179,9 +179,9 @@ Follow the mapping process from Method 1.
 
 ## All Required CSS Variables
 
-Every custom theme **must** define all of these variables:
+Every custom theme should define all 20 color variables plus the 8 shape/effect variables below.
 
-### Color Variables (18 required)
+### Color Variables (20 required)
 
 | Variable | Description |
 |----------|-------------|

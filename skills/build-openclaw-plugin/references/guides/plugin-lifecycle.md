@@ -144,6 +144,26 @@ External plugins are standalone npm packages:
 4. Publish to npm: `npm publish`
 5. Users install with: `npm install openclaw-plugin-yourname`
 
+## Local install and verification
+
+During development, verify the plugin in a real OpenClaw runtime before publishing. If the target runtime exposes the plugin CLI, a typical loop is:
+
+```bash
+openclaw plugins install -l /abs/path/to/openclaw-plugin-yourname
+openclaw plugins enable your-plugin-id
+openclaw doctor
+openclaw status
+```
+
+Success signals:
+
+- the runtime stays healthy after `openclaw doctor`
+- the plugin appears in runtime status or logs under the manifest/runtime name
+- declared tools, providers, or skills are actually available
+- config gating disables the plugin when required keys are missing and re-enables it when they are present
+
+If the target environment does not expose the plugin CLI, use the runtime's local plugin configuration path instead and report runtime verification as blocked until the user provides a working load path. Do not guess the config file, key, or install location.
+
 ## Publishing checklist
 
 Before publishing an external plugin:
@@ -156,6 +176,7 @@ Before publishing an external plugin:
 - [ ] Config gating works: plugin disabled when keys are missing
 - [ ] Config gating works: plugin enables when keys are provided
 - [ ] All tools respond correctly to valid and invalid input
+- [ ] Tool handlers reject malformed input at runtime; manifest schema alone is not the final validator
 - [ ] `shutdown()` cleans up without errors
 - [ ] Package name follows convention: `openclaw-plugin-{name}`
 - [ ] Version follows semver

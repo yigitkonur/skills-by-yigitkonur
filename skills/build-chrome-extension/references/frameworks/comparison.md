@@ -329,6 +329,8 @@ export default defineConfig({
 }
 ```
 
+CRXJS treats those manifest paths as source entrypoints during the Vite build. Edit `src/...`, run the CRXJS/Vite build, and load only `dist/` in Chrome. Do not point Chrome at `src/` or expect the source paths in `manifest.json` to be loadable as-is.
+
 ### Project Structure
 
 ```
@@ -363,8 +365,13 @@ CRXJS provides HMR for popup and options pages out of the box. Content scripts g
 ```bash
 npm create vite@latest my-ext -- --template vanilla-ts
 cd my-ext
-npm install -D @anthropic-ai/chrome-types
+npm install -D @types/chrome
+npm run build
 ```
+
+Load `dist/` in `chrome://extensions` after the first successful build.
+
+If your `tsconfig.json` uses `compilerOptions.types`, add `"chrome"` so the global extension API types resolve.
 
 ### Vite Config for Multi-Entry Extension
 
@@ -396,6 +403,14 @@ export default defineConfig({
   publicDir: "public", // copies manifest.json and icons
 });
 ```
+
+`publicDir: "public"` is what makes the build loadable: Vite copies `public/manifest.json`, icons, and other static assets into `dist/` unchanged. Put popup HTML in the configured Rollup inputs and keep copied assets in `public/`.
+
+With this setup, `public/manifest.json` should reference built paths like `popup/index.html`, `background/index.js`, and `content/index.js`. Do not point a hand-written manifest at `src/...`.
+
+**Import-path rule:** with WXT/CRXJS/Vite bundling, write normal TypeScript source imports and let the bundler rewrite output paths. If you replace the bundler with plain `tsc`/Node ESM, add `.js` to relative runtime imports yourself or stay on a bundler-backed setup.
+
+**Shared-repo rule:** if this extension lives inside a larger TypeScript monorepo, keep a dedicated extension `tsconfig` or package boundary so unrelated app code does not break the extension build.
 
 ### Manual manifest.json
 
@@ -544,11 +559,21 @@ Start here:
 
 ## Build and Output Structure
 
+Treat the processed manifest inside the generated output directory as authoritative. The source tree varies by framework, but Chrome only loads the built output folder.
+
 ### WXT Output
 
 ```
 .output/
-├── chrome-mv3/              # Chrome build
+├── chrome-mv3-dev/          # Dev build used by `wxt dev`
+│   ├── manifest.json        # Auto-generated
+│   ├── background.js
+│   ├── content-scripts/
+│   │   └── content.js
+│   ├── popup.html
+│   ├── popup.js
+│   └── icons/
+├── chrome-mv3/              # Production build used by `wxt build`
 │   ├── manifest.json        # Auto-generated
 │   ├── background.js
 │   ├── content-scripts/

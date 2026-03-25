@@ -2,7 +2,7 @@
 
 > Documents the three main config files that control application behavior. Consult this when enabling/disabling features, changing app behavior, or understanding what config options are available.
 
-> ⚠️ **`config.organizations.enable` is the master org switch.** When `false`, org-related UI, routes, and API procedures are disabled.
+> ⚠️ **`organizations.enable` in `packages/auth/config.ts` is the master org switch.** When `false`, org-related UI, routes, and API procedures are disabled.
 
 ## 1. App Config (`apps/web/config.ts`)
 

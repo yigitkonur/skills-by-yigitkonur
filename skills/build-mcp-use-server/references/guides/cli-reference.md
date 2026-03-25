@@ -286,20 +286,18 @@ npx create-mcp-use-app my-server --template starter
 
 ```text
 my-server/
-├─ src/
-│  ├─ server.ts
-│  ├─ tools/
-│  ├─ resources/
-│  └─ prompts/
 ├─ resources/
 │  ├─ apps/
 │  ├─ panels/
 │  └─ cards/
 ├─ public/
+├─ index.ts
 ├─ package.json
 ├─ tsconfig.json
 └─ .mcp-use/
 ```
+
+For scaffolded projects, the default entry file is `index.ts` at the project root. Manual servers and side-car integrations may instead use `src/server.ts` or `src/mcp-server.ts`; match the entry file your `mcp-use dev` or `generate-types --server` command actually targets.
 
 ### ❌ BAD: Editing `dist/` Instead of Source
 
@@ -307,11 +305,13 @@ my-server/
 dist/server.js
 ```
 
-### ✅ GOOD: Edit `src/server.ts`
+### ✅ GOOD: Edit the actual source entry file
 
-```text
-src/server.ts
-```
+| Project type | Typical source file to edit |
+|---|---|
+| Scaffolded `create-mcp-use-app` project | `index.ts` |
+| Brand-new manual server | `src/server.ts` |
+| Existing app with an MCP side-car | `src/mcp-server.ts` |
 
 ---
 
@@ -767,4 +767,3 @@ mcp-use --help
 mcp-use dev --help
 npx @mcp-use/cli deploy --help
 ```
-

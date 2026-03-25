@@ -76,18 +76,24 @@ Devin also automatically reads these files when present:
 | File | Pattern | Purpose |
 |------|---------|---------|
 | `REVIEW.md` | `**/REVIEW.md` | Primary review guidelines (always read) |
-| `AGENTS.md` | Root only | Agent behavior instructions |
-| `CLAUDE.md` | Root only | Claude-specific coding standards |
-| `CONTRIBUTING.md` | Root only | Contribution workflow and standards |
+| `AGENTS.md` | `**/AGENTS.md` | Agent behavior instructions |
+| `CLAUDE.md` | `**/CLAUDE.md` (case-insensitive) | Claude-specific coding standards |
+| `CONTRIBUTING.md` | `**/CONTRIBUTING.md` (case-insensitive) | Contribution workflow and standards |
 | `.cursorrules` | Root only | Cursor IDE rules |
 | `.windsurfrules` | Root only | Windsurf IDE rules |
 | `.cursor/rules` | Directory | Cursor directory rules |
 | `*.rules` | Any level | Custom rule files |
 | `*.mdc` | Any level | Markdown configuration files |
+| `.coderabbit.yaml` / `.coderabbit.yml` | Root only | Existing review-tool configuration that may overlap with your guidance |
+| `greptile.json` | Root only | Existing review-tool configuration that may overlap with your guidance |
+
+Files inside agent-style subdirectories such as `.agents/`, `.devin/`, `.cursor/`, and `.github/` are treated as belonging to their parent directory for scoping purposes. For example, `src/.agents/REVIEW.md` scopes to `src/`.
 
 ### 4. Create Your REVIEW.md
 
 Create a `REVIEW.md` file at the root of your repository. This is the primary mechanism for customizing what the Bug Catcher looks for.
+
+Start with a root `REVIEW.md`. Add scoped `REVIEW.md` files later only when a subdirectory has materially different review risks that do not belong in the root file.
 
 ```markdown
 # Review Guidelines

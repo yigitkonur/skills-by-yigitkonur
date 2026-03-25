@@ -2,16 +2,18 @@
 
 The gateway manages the OpenClaw instance and serves as the control plane for all agent interactions, messaging channels, and LLM provider routing.
 
+When this guide shows `openclaw ...` commands, use the matching runtime-specific command path from `container-setup.md` if the host does not provide the CLI directly.
+
 ## Critical gateway facts
 
 | Fact | Detail |
 |------|--------|
-| **Default bind address** | `0.0.0.0` -- exposes to all interfaces. MUST bind to `localhost` |
-| **Default auth** | None -- must enable manually |
+| **Gateway reachability** | Native installs can use `gateway.bind: "loopback"`. Docker/Podman bridge installs should keep host publishing on `127.0.0.1:18789:18789`, but the container itself must use `gateway.bind: "lan"` or `custom` |
+| **Default auth** | Required by default. Onboarding usually generates a token. `gateway.auth.mode: "none"` is an explicit exception for trusted loopback-only setups |
 | **Default HTTPS** | None -- need reverse proxy (Caddy easiest) |
 | **Updates** | Manual only -- config format changes break things occasionally |
 
-See security-hardening.md for full gateway security configuration including the `dangerouslyAllowHostHeaderOriginFallback`, `allowInsecureAuth`, and `dangerouslyDisableDeviceAuth` flags.
+Use bind mode values (`loopback`, `lan`, `custom`, `tailnet`, `auto`), not host aliases like `127.0.0.1` or `0.0.0.0`. See security-hardening.md for full gateway security configuration including the `dangerouslyAllowHostHeaderOriginFallback`, `allowInsecureAuth`, and `dangerouslyDisableDeviceAuth` flags.
 
 ## Gateway lifecycle
 
@@ -20,10 +22,12 @@ See security-hardening.md for full gateway security configuration including the 
 The gateway starts automatically with the OpenClaw process. If it needs a manual restart:
 
 ```bash
-# Use the gateway tool (preferred method)
+# Use the CLI (preferred method)
 openclaw gateway restart
 
-# Or use the `gateway` tool from within an agent session
+# Container/native fallbacks
+docker compose restart openclaw-gateway
+systemctl --user restart openclaw
 ```
 
 ### When to restart the gateway
@@ -39,7 +43,14 @@ openclaw gateway restart
 ### Gateway status check
 
 ```bash
+# Host/native installs
 openclaw gateway status
+openclaw gateway status --json
+openclaw gateway status --require-rpc
+openclaw gateway probe --json
+
+# Official Docker Compose installs
+docker compose run --rm openclaw-cli gateway probe
 
 # Expected output includes:
 # - Gateway state (running, stopped, error)
@@ -188,8 +199,8 @@ llm:
 
 ### Gateway won't start
 
-1. Check logs for error messages: `openclaw logs --tail 50`
-2. **Verify Node.js v22** is installed: `node --version`
+1. Check logs for error messages: `openclaw logs --tail 50` on host installs, or `docker logs openclaw-gateway --tail 50` for container deployments
+2. Verify the actual runtime: `node --version` for host installs, or `docker exec openclaw-gateway node --version` for containers
 3. Verify LLM provider credentials are set in environment variables
 4. Check that required ports are not already in use
 5. Verify configuration file syntax (format changes between versions)
@@ -205,7 +216,7 @@ llm:
 
 ### Gateway is slow or timing out
 
-1. Check LLM provider latency via `model-usage` skill
+1. Check `openclaw status --usage` and `openclaw health --json`
 2. Review resource utilization (need 4 GB RAM recommended)
 3. Check if tool-loop detection has been triggered
 4. Consider switching to a faster LLM provider for latency-sensitive channels
@@ -219,7 +230,7 @@ llm:
 
 ## Gateway configuration best practices
 
-- **Always bind to localhost** -- never expose the gateway directly to the internet
+- **Native installs can stay on `gateway.bind: "loopback"`; bridge-networked containers must keep host publishing on loopback while the container listens on `lan` or `custom`**
 - Always configure at least one fallback LLM provider
 - **Set API spending caps before connecting channels** -- retry loops cause $300-600 bills
 - Use channel-specific agent profiles to match the right agent to the right audience

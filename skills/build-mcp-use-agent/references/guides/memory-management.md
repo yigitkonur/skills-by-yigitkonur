@@ -534,13 +534,12 @@ To improve determinism:
 
 Memory applies equally to `run`, `stream`, `streamEvents`, and `prettyStreamEvents`. Streaming does not bypass memory.
 
-All streaming methods accept an options object, not a plain string. Memory applies equally — history is updated after each complete run:
+All streaming methods accept the options-object form shown below, and the older plain-string overloads remain for compatibility. Prefer the options object so memory-sensitive code can pass `maxSteps`, `schema`, or `signal` without changing call shape.
 
 ```typescript
 // Step-by-step tool streaming — yields AgentStep { action: { tool, toolInput, log }, observation }
 for await (const step of agent.stream({ prompt: "Analyze the logs", maxSteps: 20 })) {
   console.log(`Tool: ${step.action.tool}`);
-  console.log(`Observation: ${step.observation}`);
 }
 
 // Pretty CLI streaming — auto-formatted, suitable for terminal output
@@ -757,4 +756,3 @@ await stateless.run("Summarize the final plan only");
 - Use `clearConversationHistory()` for resets.
 - Use `getConversationHistory()` for debugging only.
 - Use stateless mode for per‑request isolation.
-

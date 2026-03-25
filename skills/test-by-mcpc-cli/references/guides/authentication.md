@@ -37,9 +37,9 @@ Most users who complain about "re-authenticating every time" don't realize mcpc 
 | Bridge crashes | Yes (Keychain) | `mcpc @session <command>` auto-restarts bridge |
 | Computer reboots | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
 | `mcpc @session close` | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
-| `mcpc clean sessions` | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
+| `mcpc --clean=sessions` | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
 | `mcpc logout <server>` | **No** — deleted | `mcpc login <server>` required |
-| `mcpc clean all` | **No** — deleted | `mcpc login <server>` required |
+| `mcpc --clean=all` | **No** — deleted | `mcpc login <server>` required |
 | 60+ days without any use | Refresh token expires | `mcpc login <server>` required |
 
 ### Persisting session names across AI conversations
@@ -186,17 +186,17 @@ Step-by-step:
 
 10. **Callback server shutdown**: The temporary HTTP server closes after receiving the code.
 
-### OAuth with custom client credentials
+### Login flag boundary in `mcpc 0.1.11`
 
-```bash
-mcpc login https://mcp.example.com \
-  --profile work \
-  --client-id my-custom-app \
-  --client-secret "$CLIENT_SECRET" \
-  --scope "read write admin"
-```
+`mcpc 0.1.11` exposes `mcpc login <server> [--profile <name>]`.
 
-Custom client credentials are stored in the keychain under the `:client` key. If the server supports dynamic client registration and no custom credentials are provided, mcpc registers automatically.
+Do not assume support for:
+
+- `--scope`
+- `--client-id`
+- `--client-secret`
+
+If the server needs custom scopes or client credentials, handle that on the server side or upgrade to a CLI version that explicitly documents those flags.
 
 ## Profile resolution logic
 
@@ -295,7 +295,7 @@ Short form `-H` is equivalent to `--header`.
 
 2. **Keychain storage**: Stored in keychain under `session:<sessionName>:headers`. Retrieved by the bridge on startup and on auto-restart.
 
-3. **Redacted in sessions.json**: The sessions.json file shows `"headers": "<redacted>"` — never the actual token value.
+3. **Redacted in sessions.json**: Header values are redacted in session metadata — never the actual token value.
 
 4. **Per-session**: Bearer tokens are scoped to a specific session name, not shared across sessions.
 
@@ -408,10 +408,10 @@ mcpc --json | jq '.profiles["mcp.example.com"]["default"]'
 ### Verify session auth method
 
 ```bash
-# Check what auth a session is using
-mcpc --json @test | jq '._mcpc | {profile, headers}'
-# profile: "default" (OAuth) or null (bearer/anonymous)
-# headers: "<redacted>" (bearer provided) or null (OAuth or anonymous)
+# Check what auth a session is using from the session list view
+mcpc --json | jq '.sessions[] | select(.name == "@test") | {name, profileName, server}'
+# profileName: "default" (OAuth) or null (bearer/anonymous)
+# server.headers: "<redacted>" when a bearer header was stored for the session
 ```
 
 ### Test all three auth methods against the same server
@@ -457,10 +457,10 @@ mcpc logout https://mcp.example.com
 mcpc logout https://mcp.example.com --profile work
 
 # Remove all profiles (nuclear)
-mcpc clean profiles
+mcpc --clean=profiles
 
 # Remove everything including profiles
-mcpc clean all
+mcpc --clean=all
 ```
 
 Logout removes:
@@ -475,14 +475,14 @@ Active sessions using the deleted profile continue working until their current a
 | Symptom | Cause | Fix |
 |---|---|---|
 | 401 on connect | No auth or wrong token | Provide `--header` or `mcpc login` first |
-| 403 on tool call | Token lacks required scope | Re-login with `--scope "read write admin"` |
+| 403 on tool call | Token lacks required scope | Fix server-side scope policy or re-authenticate with the server's normal login flow; `mcpc 0.1.11` does not expose `--scope` |
 | "Profile not found" | Typo in `--profile` name | Check: `mcpc --json \| jq '.profiles'` |
 | "Cannot combine --profile with Authorization header" | Conflicting auth flags | Use one or the other, not both |
 | Token expired in CI | Static token has time limit | Rotate token in CI secrets |
 | OAuth login hangs | Port 8000-8099 all in use | Free a port or kill stale processes |
 | "Browser open failed" | Headless environment | Use `--header` auth instead of OAuth |
 | Keychain access denied | macOS Keychain prompt denied | Grant access in Keychain Access.app |
-| Credentials lost after `mcpc clean all` | Clean removes profiles | Re-run `mcpc login` after cleaning |
+| Credentials lost after `mcpc --clean=all` | Clean removes profiles | Re-run `mcpc login` after cleaning |
 | "Incompatible auth server: does not support dynamic client registration" | `registration_endpoint` missing from OAuth metadata | Server must implement a DCR endpoint and include it in `/.well-known/oauth-authorization-server` |
 | OAuth callback returns JSON `{"detail":"Not Found"}` | Another process (OrbStack, Docker, dev server) intercepted the callback port | Run `lsof -i :8000-8010 \| grep LISTEN` and stop conflicting listeners before `mcpc login` |
 | Browser redirects to production URL instead of localhost | Redirect URL not whitelisted in OAuth provider | Add `http://localhost:*/**` to provider's redirect URL allowlist |

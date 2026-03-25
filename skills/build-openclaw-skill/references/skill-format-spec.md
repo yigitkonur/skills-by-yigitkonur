@@ -160,7 +160,7 @@ OpenClaw discovers skills from these directories, in precedence order:
 
 | Priority | Location | Scope |
 |---|---|---|
-| 1 (highest) | `project/skills/` | Workspace (project-specific) |
+| 1 (highest) | `<workspace>/skills/` | Workspace (workspace-specific) |
 | 2 | `~/.openclaw/skills/` | Managed / personal |
 | 3 | Bundled (npm package) | Global (shipped with OpenClaw) |
 | 4 | Extra dirs (configurable) | Organization-managed |
@@ -169,7 +169,7 @@ When names conflict, higher-priority locations win.
 
 ## Skills watcher
 
-OpenClaw includes a hot-reload watcher for skill directories. When you save changes to a SKILL.md or reference file, the skill is automatically reloaded with configurable debounce. This enables rapid iteration during development.
+OpenClaw includes a hot-reload watcher for skill directories. When you save changes to a SKILL.md or reference file inside a watched location, the skill is automatically reloaded with configurable debounce. This enables rapid iteration during development, but it does not help if the skill was never copied into `<workspace>/skills/` or `~/.openclaw/skills/`.
 
 ## Complete minimal example
 

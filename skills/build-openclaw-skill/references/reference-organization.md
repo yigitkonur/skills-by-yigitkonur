@@ -191,12 +191,14 @@ Need error handling? --> references/patterns/error-handling.md
 Run this command from the skill directory to find orphaned reference files:
 
 ```bash
-for f in $(find references -name '*.md' -type f); do
-  grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"
-done
+if [ -d references ]; then
+  find references -name '*.md' -type f | while read -r f; do
+    grep -q "$(basename "$f")" SKILL.md || echo "ORPHAN: $f"
+  done
+fi
 ```
 
-Any file that appears as "ORPHAN" must either be added to SKILL.md routing or removed.
+If no `references/` directory exists, skip this check; a skill with zero reference files is still valid. Any file that appears as "ORPHAN" must either be added to SKILL.md routing or removed.
 
 ## Cross-referencing between files
 

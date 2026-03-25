@@ -21,8 +21,10 @@ Capture Chrome DevTools performance profiles during browser automation for perfo
 agent-browser profiler start
 
 # Perform actions
-agent-browser navigate https://example.com
-agent-browser click "#button"
+agent-browser open https://example.com
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+agent-browser click @e1
 agent-browser wait 1000
 
 # Stop and save
@@ -62,7 +64,7 @@ Several `disabled-by-default-*` categories are also included for detailed timeli
 
 ```bash
 agent-browser profiler start
-agent-browser navigate https://app.example.com
+agent-browser open https://app.example.com
 agent-browser wait --load networkidle
 agent-browser profiler stop ./page-load-profile.json
 ```
@@ -70,9 +72,11 @@ agent-browser profiler stop ./page-load-profile.json
 ### Profiling User Interactions
 
 ```bash
-agent-browser navigate https://app.example.com
+agent-browser open https://app.example.com
+agent-browser wait --load networkidle
+agent-browser snapshot -i
 agent-browser profiler start
-agent-browser click "#submit"
+agent-browser click @e1
 agent-browser wait 2000
 agent-browser profiler stop ./interaction-profile.json
 ```
@@ -82,7 +86,7 @@ agent-browser profiler stop ./interaction-profile.json
 ```bash
 #!/bin/bash
 agent-browser profiler start
-agent-browser navigate https://app.example.com
+agent-browser open https://app.example.com
 agent-browser wait --load networkidle
 agent-browser profiler stop "./profiles/build-${BUILD_ID}.json"
 ```

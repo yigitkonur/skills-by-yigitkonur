@@ -52,8 +52,11 @@ Vue templates compile to optimized render functions. JSX is JavaScript — no di
 ```js
 // Vue: auto-tracked
 const fullName = computed(() => `${firstName.value} ${lastName.value}`)
-// React: must list deps manually
-const fullName = useMemo(() => `${firstName} ${lastName}`, [firstName, lastName])
+// React: derive during render by default
+const fullName = `${firstName} ${lastName}`
+
+// If the derivation is expensive or identity-sensitive, memoize and list deps manually
+const sortedUsers = useMemo(() => sortUsers(users, sortOrder), [users, sortOrder])
 ```
 
 ---
@@ -373,11 +376,11 @@ function Dropdown({ open, onOpenChange }: Props) {
 |---|---|---|
 | `ref(0)` | `useState(0)` | Never mutate; always use setter |
 | `reactive({})` | `useState({})` | Must spread to create new reference |
-| `computed(() => ...)` | `useMemo(() => ..., [deps])` | Must specify deps manually |
+| `computed(() => ...)` | Derive during render; `useMemo(() => ..., [deps])` only when expensive | Memoize only when cost or identity matters |
 | `watch(source, cb)` | `useEffect(cb, [source])` | Needs cleanup; beware stale closures |
-| `watchEffect(cb)` | `useEffect(cb)` | Rarely correct — usually needs deps |
+| `watchEffect(cb)` | `useEffect(() => { ... }, [deps])` | Extract dependencies manually; keep it for true side effects |
 | `onMounted(cb)` | `useEffect(cb, [])` | Runs after paint, not before |
-| `onUnmounted(cb)` | Return cleanup from `useEffect` | `useEffect(() => () => cleanup, [])` |
+| `onUnmounted(cb)` | Return cleanup from `useEffect` | `useEffect(() => cleanup, [])` |
 | `nextTick()` | `flushSync()` or `useEffect` | Different timing semantics |
 | `$emit('event', data)` | `props.onEvent(data)` | No event system; explicit callbacks |
 | `v-model="x"` | `value={x} onChange={setX}` | Always controlled components |

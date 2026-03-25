@@ -41,7 +41,7 @@ Every documented value becomes runnable code. If it's in the design soul docs, i
 
 ### 7. Zero External Dependencies
 
-The final Next.js project uses ONLY these packages: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@types/react`, `@types/node`, `postcss`, `autoprefixer`. No CDN fonts — self-host them. No icon libraries — inline SVGs. No animation libraries — CSS transitions and @keyframes only. No component libraries — build from scratch using extracted specs. All assets self-hosted in `public/`.
+The final Next.js project uses ONLY these packages: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@types/react`, `@types/react-dom`, `@types/node`, `postcss`, `autoprefixer`. No CDN fonts — self-host them. No icon libraries — inline SVGs. No animation libraries — CSS transitions and @keyframes only. No component libraries — build from scratch using extracted specs. All assets self-hosted in `public/`.
 
 ---
 
@@ -49,7 +49,7 @@ The final Next.js project uses ONLY these packages: `next`, `react`, `react-dom`
 
 Every value documented in any wave must trace to exactly one of these sources:
 
-1. **A CSS rule** in a `_files/*.css` file — cite the filename and selector
+1. **A CSS rule** in the page's discovered CSS corpus (`_files/*.css`, adjacent local `.css`, or extracted inline CSS) — cite the filename/context and selector
 2. **A CSS custom property declaration** in `:root` or `[data-theme]` — cite the filename and selector
 3. **An inline `style=""` attribute** in the HTML — cite the element and attribute
 4. **A `<style>` block** in the HTML — cite the block context
@@ -132,6 +132,7 @@ The `nextjs-project/package.json` may contain ONLY:
 - `typescript`
 - `tailwindcss`
 - `@types/react`
+- `@types/react-dom`
 - `@types/node`
 - `postcss`
 - `autoprefixer`

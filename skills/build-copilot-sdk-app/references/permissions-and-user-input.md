@@ -187,7 +187,7 @@ const observerSession = await client2.resumeSession(sessionId, {
 });
 ```
 
-## User input (askUser)
+## User input (ask_user)
 
 When the model calls the `ask_user` tool, the SDK invokes `onUserInputRequest`.
 
@@ -278,8 +278,8 @@ session.on("user_input.completed", (event) => {
 > Common mistakes agents make with permissions.
 
 - **`onPermissionRequest` is required** on every `createSession` and `resumeSession` call. Omitting it causes a runtime error, not a type error. Use `approveAll` from the SDK for unattended/automated tools.
-- **`approveAll` approves EVERYTHING** — including file writes, command execution, and network access. For production apps, implement selective approval that checks `request.permissions[].kind`.
-- **Permission kinds to watch for**: `"fileWrite"` (modifying files), `"command"` (running shell commands), `"network"` (HTTP requests). Each has a `description` field explaining what the model wants to do.
+- **`approveAll` approves EVERYTHING** — including shell commands, file writes, MCP tool calls, URL access, and memory writes. For production apps, implement selective approval that checks `request.kind`.
+- **Permission kinds to watch for**: `"shell"`, `"write"`, `"read"`, `"mcp"`, `"url"`, `"memory"`, and `"custom-tool"`. Match on the kind first, then inspect the kind-specific fields shown above.
 - **Multi-client permission routing**: When using observer clients (read-only dashboards), their `onPermissionRequest` will receive requests but should never resolve them — only the primary client should. Return a never-resolving promise from observer handlers.
-- **`onUserInputRequest`** fires when the model calls `askUser`. If not handled, the SDK hangs waiting. For unattended tools, always provide this handler with sensible defaults.
-- **Elicitation (MCP forms)** requires `onElicitationRequest`. This is for structured input — the model sends a JSON schema and expects a validated response. It's separate from `askUser`.
+- **`onUserInputRequest`** fires when the model calls `ask_user`. If you omit it and the model asks a question, the SDK throws `User input requested but no handler registered`. For unattended tools, always provide this handler with sensible defaults.
+- **Elicitation (MCP forms)** is surfaced through `elicitation.requested` / `elicitation.completed` session events in this API. It is separate from `ask_user`, which uses `onUserInputRequest`.

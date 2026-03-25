@@ -2,19 +2,22 @@
 
 Complete example configurations for common repository types. Use as inspiration, but adapt every rule to the actual repository context — never copy verbatim.
 
-> **When to read this file:** You are in Phase 6 (output) or need a complete end-to-end example to model your output format. Each scenario below shows the full deliverable: file tree, config files, reasoning annotations, and canary test. Use these as templates — adapt to your repo's specific evidence, never copy verbatim.
+> **When to read this file:** You are in Phase 6 (output) or need a concrete example to model your config payloads and reasoning. The scenarios below focus on the generated file contents and the reasoning pattern. When you deliver the final result, wrap the adapted scenario in the full Phase 6 output order from `SKILL.md` / `config-spec.md`.
 
 ---
 
 ## Output Format Reference
 
-Every scenario below follows this output structure. Your output must match:
+Use the adapted scenario content inside this output structure:
 
 1. **File tree** — shows the `.greptile/` directory layout
-2. **Complete file contents** — each config file in full, in fenced code blocks
-3. **Reasoning annotations** — markdown list with `**rule-id**: reason (see path:line)` format
-4. **Canary test** — temporary rule for verification
-5. **Migration notes** — only when replacing `greptile.json`
+2. **Write/update the repo files first** — if filesystem access exists, create or update the `.greptile/` files in the target repo before printing them, unless the user explicitly asked for draft-only output
+3. **Complete file contents** — each config file in full, in fenced code blocks
+4. **Reasoning annotations** — markdown list with `**rule-id**: reason (see path:line)` format
+5. **Canary test** — temporary rule for verification
+6. **Migration notes** — only when replacing `greptile.json`
+
+The scenarios below usually omit the repeated wrapper sections to stay compact. Add those wrapper elements in the final user-facing output.
 
 ---
 

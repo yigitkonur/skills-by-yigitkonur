@@ -56,7 +56,7 @@ mcpc https://mcp.example.com connect @ci-test \
 # 3. Config file headers
 # In ~/.vscode/mcp.json:
 # { "mcpServers": { "server": { "url": "https://...", "headers": { "Authorization": "Bearer ${MCP_TOKEN}" }}}}
-mcpc ~/.vscode/mcp.json:server connect @config-test
+mcpc --config ~/.vscode/mcp.json server connect @config-test
 
 # 4. Default profile (auto-detected)
 mcpc login https://mcp.example.com  # saves as "default"
@@ -82,10 +82,10 @@ mcpc --json | jq '.sessions[] | {name, profileName}'
 mcpc --json | jq '.profiles'
 
 # Check if session is authenticated
-mcpc --json @session | jq '._mcpc.profileName // "anonymous"'
+mcpc --json | jq '.sessions[] | select(.name == "@session") | (.profileName // "anonymous")'
 
 # Inspect redacted headers stored for a session
-mcpc --json @session | jq '._mcpc.headers'
+mcpc --json | jq '.sessions[] | select(.name == "@session") | .server.headers'
 ```
 
 ## Common auth issues

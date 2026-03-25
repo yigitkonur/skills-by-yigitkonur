@@ -14,13 +14,13 @@ cd my-app && npm install && npm run dev
 
 ```bash
 # Default starter — tools, resources, prompts, and widgets
-npx create-mcp-use-app my-app --template starter
+npx create-mcp-use-app my-app --template starter --no-skills
 
 # MCP Apps — widget-focused for ChatGPT and MCP clients
-npx create-mcp-use-app my-app --template mcp-apps
+npx create-mcp-use-app my-app --template mcp-apps --no-skills
 
 # MCP-UI — iframe, raw HTML, Remote DOM widget types
-npx create-mcp-use-app my-app --template mcp-ui
+npx create-mcp-use-app my-app --template mcp-ui --no-skills
 ```
 
 | Template | Includes | Best for |
@@ -36,7 +36,7 @@ npx create-mcp-use-app my-app --template mcp-ui
 The `mcp-apps` template creates a project optimized for building interactive widgets that work in ChatGPT, Claude, and other MCP clients.
 
 ```bash
-npx create-mcp-use-app my-widget-app --template mcp-apps
+npx create-mcp-use-app my-widget-app --template mcp-apps --no-skills
 ```
 
 ### Project Structure
@@ -510,7 +510,7 @@ await server.listen(); // Edge runtimes (Deno/Supabase) are auto-detected as sta
 ---
 ## Template 5: Widget-Enabled Server (MCP Apps)
 
-> **Tip:** For a fully scaffolded version, use `npx create-mcp-use-app my-app --template mcp-apps` (see MCP Apps template above).
+> **Tip:** For a fully scaffolded version, use `npx create-mcp-use-app my-app --template mcp-apps --no-skills` (see MCP Apps template above).
 
 ```
 widget-mcp-server/

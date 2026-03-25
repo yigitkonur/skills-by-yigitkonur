@@ -1,6 +1,6 @@
 ---
-name: enhance-skill-by-derailment
-description: Use skill if you are testing a skill's instructional quality by following its workflow literally on a real task, identifying root causes of friction, and fixing the skill's SKILL.md and references/ directly.
+name: test-skill-quality
+description: Use skill if you are testing a skill's instructional quality by following its workflow literally on a real task, diagnosing friction root causes, and fixing SKILL.md and references/ directly.
 ---
 
 # Enhance Skill by Derailment Testing

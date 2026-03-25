@@ -1,12 +1,15 @@
 # PRD Template
 
-Complete 10-section template with guidance for each section. Copy this structure when drafting a PRD.
+Full 10-section PRD template plus lightweight variants and per-section guidance. Copy the block that matches your chosen format.
 
 ## Output format
 
 Write the PRD in Markdown. Output to one of:
 - GitHub Issue: `gh issue create --title "PRD: {feature-name}" --body "..."`
-- File: `docs/prd/{feature-name}.md` (or the project's existing convention)
+- File: follow an explicit user instruction if one exists; otherwise use the target repo's existing PRD/spec convention; otherwise use `docs/prd/{feature-name}.md`
+- Fallback when repo/GitHub writes are unavailable: `prd.md` in the current working context, with the intended final destination noted at the top
+
+The current working context is the root of the shipping repo selected during discovery. If no shipping repo exists yet, use the directory where you are storing task artifacts for this request.
 
 ## Template
 
@@ -179,7 +182,110 @@ We believe that {action} for {users} will {outcome} because {rationale}. We will
 - [ ] {Question} — Owner: {who} — Due: {when}
 ```
 
-## Section-by-section guidance
+If the user is unavailable and `TBD`s remain, keep the document factual and append an `Open Questions` section or appendix instead of inventing answers.
+
+## Additional format templates
+
+### Lightweight PRD Template
+
+Use this when `references/discovery/format-decision.md` routes you to the lightweight path.
+
+```markdown
+# PRD: {Feature Name}
+
+**Author:** {name}
+**Date:** {date}
+**Status:** Draft | In Review | Approved
+
+## 1. Problem Statement
+- Who is affected:
+- What hurts today:
+- Why this matters now:
+
+## 2. User Stories & Acceptance Criteria
+1. As a {persona}, I want to {action} so that {benefit}.
+   - [ ] {atomic, measurable acceptance criterion}
+   - [ ] {primary error/edge case criterion}
+
+## 3. Technical Constraints
+- Tech stack / integration constraints:
+- Performance / security / accessibility thresholds:
+
+## 4. Out of Scope
+- Explicitly not included in this version:
+
+## 5. Success Metric
+- Primary metric: {baseline} -> {target} within {timeframe}
+```
+
+If discovery surfaces hidden complexity, upgrade this document to the full 10-section template instead of stretching the lightweight version beyond recognition.
+
+If any `TBD`s remain in this non-full format, append `## 6. Open Questions` with owner or next step rather than guessing.
+
+### Eval-first PRD Template
+
+Use this when `references/discovery/format-decision.md` routes you to the eval-first path.
+
+```markdown
+# PRD: {Feature Name}
+
+**Author:** {name}
+**Date:** {date}
+**Status:** Draft | In Review | Approved
+
+## 1. Problem Statement
+- Who is affected:
+- What behavior or outcome needs to improve:
+- Why this matters now:
+- Evidence:
+
+## 2. Evaluation Criteria
+- Primary metric: {baseline} -> {target} within {timeframe}
+- Guardrails: {what must not get worse}
+- Pass/fail thresholds:
+- Review cadence / evaluator:
+
+## 3. Sample Input / Output Pairs
+| Scenario | Input | Expected Output | Notes |
+|---|---|---|---|
+| {name} | {prompt / event} | {expected behavior} | {edge condition if any} |
+
+## 4. Boundaries
+- MUST:
+- SHOULD:
+- MUST NOT:
+
+## 5. Human Escalation Rules
+- Escalate when:
+- Human approval required for:
+- Logging / review expectations:
+```
+
+If dependencies, rollout constraints, or open questions matter, append short sections after Section 5 instead of forcing the full 10-section template.
+
+If any `TBD`s remain in this non-full format, append `## 6. Open Questions` with owner or next step rather than guessing.
+
+### User Stories Only Template
+
+Use this when `references/discovery/format-decision.md` routes you to the stories-only path.
+
+```markdown
+# Feature Stories: {Feature Name}
+
+**Context:** {1-2 sentences on the already-understood problem or goal}
+
+## 1. User Stories & Acceptance Criteria
+1. As a {persona}, I want to {action} so that {benefit}.
+   - [ ] {atomic, measurable acceptance criterion}
+   - [ ] {primary error or edge case criterion}
+
+## 2. Out of Scope
+- Explicitly not included in this version:
+```
+
+If any `TBD`s remain in this non-full format, append `## 3. Open Questions` with owner or next step rather than guessing.
+
+## Full PRD section-by-section guidance
 
 ### Problem Statement
 Lead with evidence, not opinions. Include at least one data point (customer quote, metric, support ticket count). The "Who" should reference a named persona from Section 4.

@@ -2,6 +2,14 @@
 
 How to test a skill before shipping, at the right level of rigor for your audience.
 
+## Before you test live triggers
+
+Identify the active runtime before you install or test anything. New and revised skills must be tested in the runtime that will actually load them.
+
+- Use that runtime's skill directory, not a Claude-only default. Common personal-scope examples are `~/.claude/skills/[skill-name]/`, `~/.cursor/skills/[skill-name]/`, and `~/.codex/skills/[skill-name]/`. For project-scoped testing, use the runtime's project skill directory instead.
+- If you are unsure which directories a runtime supports, check `references/authoring/skillmd-format.md` for the location table.
+- If the current environment forbids writing to the installed skill directory, do manual trigger review plus a functional workflow test, state that live trigger coverage was blocked, and do not claim live trigger coverage.
+
 ## Testing tiers
 
 Choose the tier that matches your quality requirements and audience size.
@@ -235,10 +243,11 @@ Testing differs significantly between creating a new skill and revising an exist
 ### Path A: Testing a NEW skill
 
 **Setup required before testing:**
-1. Create the skill directory: `mkdir -p ~/.claude/skills/[skill-name]/`
-2. Copy your draft: `cp SKILL.md ~/.claude/skills/[skill-name]/`
-3. Copy references: `cp -r references/ ~/.claude/skills/[skill-name]/`
-4. Restart Claude or reload skills
+1. Determine the active runtime's skill directory.
+2. Create the skill directory there, for example: `mkdir -p ~/.claude/skills/[skill-name]/`, `mkdir -p ~/.cursor/skills/[skill-name]/`, or `mkdir -p ~/.codex/skills/[skill-name]/`
+3. Copy your draft `SKILL.md` into that directory.
+4. Copy `references/` and any required `scripts/` or `assets/` into the same directory.
+5. Restart or reload the runtime so it picks up the new skill.
 
 **Trigger testing (new skill):**
 - Open a fresh Claude conversation with only this skill enabled
@@ -254,8 +263,9 @@ Testing differs significantly between creating a new skill and revising an exist
 ### Path B: Testing a REVISION
 
 **Setup:**
-- The skill is already installed — test against the current version first
-- Then install the revision and re-test
+- Locate the currently installed copy in the active runtime
+- Test against the current installed version first
+- Then install the revision into that same runtime location and re-test
 
 **Trigger testing (revision):**
 - Run the same trigger queries against both old and new versions
@@ -269,9 +279,9 @@ Testing differs significantly between creating a new skill and revising an exist
 
 ### Key distinction: installation before testing
 
-New skills must be installed to `~/.claude/skills/[name]/` before trigger testing. Without installation, trigger tests produce false positives — the skill appears to "pass" because Claude never had the opportunity to load it. This is the most common source of silent test failures for new skills.
+New skills must be installed to the active runtime's skill directory before trigger testing. Without installation, trigger tests produce false positives — the skill appears to "pass" because the runtime never had the opportunity to load it. This is the most common source of silent test failures for new skills.
 
-Revisions test against the currently installed version. The skill is already in place, so trigger testing works immediately.
+Revisions test against the currently installed version in that same runtime. The skill is already in place, so trigger testing works immediately.
 
 ### Common testing mistakes
 

@@ -100,7 +100,8 @@ The second argument to `new MCPClient(config, options)` sets global callback def
 | `constructor` | `config: MCPClientConfigShape, options?: MCPClientOptions` | `MCPClient` | Instantiates the client with the supplied configuration and optional global callbacks. |
 | `createAllSessions()` | – | `Promise<void>` | Starts a session on every configured server. |
 | `createSession(serverName)` | `serverName: string` | `Promise<MCPSession>` | Creates and initializes a session for a single named server. |
-| `getSession(serverName)` | `serverName: string` | `MCPSession` | Returns the already-created session object for the given server. |
+| `getSession(serverName)` | `serverName: string` | `MCPSession \| null` | Returns the already-created session object for the given server, or `null` if it has not been created yet. |
+| `requireSession(serverName)` | `serverName: string` | `MCPSession` | Returns the active session for the given server or throws if it does not exist. |
 | `closeAllSessions()` | – | `Promise<void>` | Gracefully closes every active session and shuts down managed servers. |
 
 ### MCPSession API
@@ -112,6 +113,7 @@ Once you have a session via `getSession()` or `createSession()`, you can interac
 | `listTools(options?)` | `options?: RequestOptions` | `Promise<Tool[]>` | Retrieves available tools from the server. |
 | `callTool(name, args?, options?)` | `name: string, args?: Record<string, any>, options?: RequestOptions` | `Promise<CallToolResult>` | Invokes a tool with the given arguments and returns its result. |
 | `listResources(cursor?, options?)` | `cursor?: string, options?: RequestOptions` | `Promise<...>` | Lists available resources, with optional pagination cursor. |
+| `listAllResources(options?)` | `options?: RequestOptions` | `Promise<...>` | Lists the full resource catalog and handles pagination automatically. |
 | `readResource(uri, options?)` | `uri: string, options?: RequestOptions` | `Promise<...>` | Reads the content of a resource by URI. |
 | `listPrompts()` | – | `Promise<Prompt[]>` | Lists all prompts exposed by the server. |
 | `getPrompt(name, args)` | `name: string, args: Record<string, any>` | `Promise<PromptResult>` | Retrieves a prompt by name with the given arguments. |
@@ -140,7 +142,7 @@ const client = new MCPClient({
 await client.createAllSessions()
 
 // Work with a specific server session
-const session = client.getSession('my-local-server')
+const session = client.requireSession('my-local-server')
 
 // List tools
 const tools = await session.listTools()
@@ -213,7 +215,7 @@ import { MCPAgent, MCPClient, loadConfigFile } from 'mcp-use'
 
 async function main() {
     // Load multi-server configuration
-    const config = await loadConfigFile('multi_server_config.json')
+    const config = loadConfigFile('multi_server_config.json')
     const client = new MCPClient(config)
 
     // Create agent (all servers will be connected)
@@ -242,7 +244,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import { MCPAgent, MCPClient, loadConfigFile } from 'mcp-use'
 
 async function main() {
-    const config = await loadConfigFile('multi_server_config.json')
+    const config = loadConfigFile('multi_server_config.json')
     const client = new MCPClient(config)
     const llm = new ChatOpenAI({ model: 'gpt-4' })
 
@@ -453,7 +455,7 @@ import { logger } from 'mcp-use'
 
 // Enable detailed logging
 logger.level = 'debug'
-const config = await loadConfigFile('config.json')
+const config = loadConfigFile('config.json')
 const client = new MCPClient(config)
 ```
 
@@ -468,7 +470,7 @@ import { ChatOpenAI } from '@langchain/openai'
 // Enable debug logging
 logger.level = 'debug'
 
-const config = await loadConfigFile('multi_server_config.json')
+const config = loadConfigFile('multi_server_config.json')
 const client = new MCPClient(config)
 
 const llm = new ChatOpenAI({ model: 'gpt-4' })

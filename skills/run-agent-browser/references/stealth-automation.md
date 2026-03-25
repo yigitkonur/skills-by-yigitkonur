@@ -36,34 +36,36 @@ agent-browser --headed --session-name shop open https://shop.example.com
 
 ## Human-Like Typing
 
-Instant field population (< 1ms per character) is a strong bot signal. Add per-character delays:
+Instant field population is a strong bot signal. In `agent-browser 0.17.1`, use `type` or `keyboard type` for character-by-character input. The CLI does not expose a built-in `--delay` flag, so slower pacing has to come from your shell script:
 
 ```bash
-# 120ms per character — realistic typing speed (~50 WPM)
-agent-browser fill @e1 "search query" --delay 120
+# Character-by-character input for standard fields
+agent-browser type @e1 "search query"
 
-# Slower for sensitive fields (password, credit card)
-agent-browser fill @e2 "4242424242424242" --delay 150
+# Contenteditable / rich text editors
+agent-browser keyboard type "Hello world"
 
-# Keyboard mode for contenteditable / rich text editors
-agent-browser keyboard type "Hello world" --delay 90
+# If you need extra pacing, split long input into chunks and wait between them
+agent-browser type @e1 "search"
+agent-browser wait 300
+agent-browser type @e1 " query"
 ```
 
 ## Randomized Waits
 
-Fixed delays (always exactly 2000ms) are themselves a detection signal. Use range-based waits:
+Fixed delays (always exactly 2000ms) are themselves a detection signal. `agent-browser wait` accepts a single millisecond value, so generate jitter in your shell and pass the result in:
 
 ```bash
 # Random wait between 1.2s and 2.6s
-agent-browser wait 1200-2600
+agent-browser wait "$((1200 + RANDOM % 1401))"
 
 # Between actions — vary the range
 agent-browser click @e1
-agent-browser wait 800-1500
-agent-browser fill @e2 "text" --delay 100
-agent-browser wait 1000-2000
+agent-browser wait "$((800 + RANDOM % 701))"
+agent-browser type @e2 "text"
+agent-browser wait "$((1000 + RANDOM % 1001))"
 agent-browser click @e3
-agent-browser wait 1500-3500
+agent-browser wait "$((1500 + RANDOM % 2001))"
 ```
 
 ## Session Reuse
@@ -74,8 +76,9 @@ Each new browser session creates a fresh fingerprint — cold starts trigger ext
 # First visit — login and let state persist
 agent-browser --headed --session-name shop open https://shop.example.com/login
 agent-browser snapshot -i
-agent-browser fill @e1 "user@example.com" --delay 100
-agent-browser fill @e2 "password" --delay 120
+agent-browser type @e1 "user@example.com"
+agent-browser wait "$((200 + RANDOM % 401))"
+agent-browser type @e2 "password"
 agent-browser click @e3
 agent-browser wait --url "**/dashboard"
 agent-browser close  # State auto-saved with session name
@@ -114,15 +117,15 @@ SESSION="stealth-$(echo "$SITE_URL" | md5sum | cut -c1-8)"
 # Headed mode + persistent session + human pacing
 agent-browser --headed --session-name "$SESSION" open "$SITE_URL"
 agent-browser wait --load networkidle
-agent-browser wait 2000-4000  # Initial settling time
+agent-browser wait "$((2000 + RANDOM % 2001))"  # Initial settling time
 
 # Discover and interact
 agent-browser snapshot -i
-agent-browser fill @e1 "search query" --delay 110
-agent-browser wait 800-1500
+agent-browser type @e1 "search query"
+agent-browser wait "$((800 + RANDOM % 701))"
 agent-browser click @e2
 agent-browser wait --load networkidle
-agent-browser wait 1500-3000
+agent-browser wait "$((1500 + RANDOM % 1501))"
 
 # Capture results
 agent-browser snapshot -i
@@ -137,9 +140,9 @@ agent-browser close
 |-----------|---------------|
 | Headed mode | `--headed` or `AGENT_BROWSER_HEADED=1` |
 | Session persistence | `--session-name <name>` |
-| Typing delay | `--delay 100-150` on `fill`/`type` |
-| Random waits | `wait 1000-3000` between actions |
+| Human-paced typing | `type` / `keyboard type`; add shell-level waits between chunks if needed |
+| Random waits | `agent-browser wait "$((1000 + RANDOM % 2001))"` |
 | Geolocation | `set geo <lat> <lon>` |
 | Proxy | `AGENT_BROWSER_PROXY=http://...` |
 | Custom user agent | `--user-agent "Mozilla/5.0..."` |
-| Real viewport | `agent-browser viewport 1920 1080` |
+| Real viewport | `agent-browser set viewport 1920 1080` |

@@ -6,9 +6,9 @@ Patterns for customizing OpenClaw sandbox containers, managing skill dependencie
 
 | Requirement | Value |
 |-------------|-------|
-| **Node.js** | v22 required (container image must include v22, not 18 or 20) |
+| **Node.js** | Supported runtime `>=22`; current official Docker examples use Node 24 |
 | **RAM** | 4 GB recommended, 1.5-2 GB absolute minimum |
-| **Port binding** | `127.0.0.1:8080:8080` -- never `0.0.0.0` |
+| **Gateway reachability** | Keep host publishing on `127.0.0.1:18789:18789`, but set `gateway.bind` to `lan` or `custom` inside bridge-networked containers |
 | **Recommended OS** | Ubuntu 24.04 LTS base image works out of box |
 
 ## Installing binaries in sandbox containers
@@ -85,7 +85,7 @@ docker exec openclaw-sandbox which curl jq git python3
 
 # Debug: verify Node.js version
 docker exec openclaw-sandbox node --version
-# Must show v22.x.x
+# Must show a supported runtime
 ```
 
 ## Volume mounts and persistence
@@ -95,43 +95,39 @@ docker exec openclaw-sandbox node --version
 | Mount | Purpose | Recommended mode |
 |-------|---------|-----------------|
 | `/data` | Agent data, conversations, logs | Read-write, persistent named volume |
-| `/config` | OpenClaw configuration | Read-write, persistent named volume |
-| `/skills` | Custom skill definitions | Read-write, persistent named volume |
+| `/home/node/.openclaw` | OpenClaw config, credentials, sessions, workspace | Read-write, persistent named volume |
+| `/home/node/.openclaw/skills` | Custom skill definitions | Read-write, persistent named volume |
 | `/tmp` | Temporary skill working files | tmpfs (ephemeral, fast) |
 
 ### Docker volume configuration
 
 ```yaml
 services:
-  openclaw:
+  openclaw-gateway:
     volumes:
       - openclaw-data:/data
-      - openclaw-config:/config
-      - openclaw-skills:/skills
+      - openclaw-home:/home/node/.openclaw
     tmpfs:
       - /tmp:size=512m
 
 volumes:
   openclaw-data:
     driver: local
-  openclaw-config:
-    driver: local
-  openclaw-skills:
+  openclaw-home:
     driver: local
 ```
 
-### Bind mounts for development only
+### Bind mounts when host-visible state is required
 
 ```yaml
 services:
-  openclaw:
+  openclaw-gateway:
     volumes:
-      - ./config:/config
-      - ./custom-skills:/skills
+      - ./openclaw-home:/home/node/.openclaw
       - openclaw-data:/data
 ```
 
-Do not use bind mounts in production. Named volumes are safer.
+Named volumes are the safer default for opaque gateway data. Use bind mounts intentionally when you need host-visible `openclaw.json` or workspace state for backup, inspection, or GitOps, and then lock ownership/permissions on the host.
 
 ## Production Docker Compose with security
 
@@ -140,25 +136,24 @@ Complete example incorporating all security and operational requirements:
 ```yaml
 version: "3.8"
 services:
-  openclaw:
-    image: openclaw/openclaw:latest
-    container_name: openclaw
+  openclaw-gateway:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw-gateway
     restart: unless-stopped
     volumes:
       - openclaw-data:/data
-      - openclaw-config:/config
-      - openclaw-skills:/skills
+      - openclaw-home:/home/node/.openclaw
     tmpfs:
       - /tmp:size=512m
-    environment:
-      - OPENCLAW_API_KEY=${OPENCLAW_API_KEY}
+    env_file:
+      - .env
     secrets:
       - gateway_token
     ports:
       # CRITICAL: localhost only
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:18789:18789"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18789/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -172,13 +167,14 @@ services:
 
 volumes:
   openclaw-data:
-  openclaw-config:
-  openclaw-skills:
+  openclaw-home:
 
 secrets:
   gateway_token:
     file: ./secrets/gateway_token.txt
 ```
+
+The mounted `/home/node/.openclaw/openclaw.json` should set `gateway.bind` to `lan` or `custom` for bridge-published containers. Keep the host publish on `127.0.0.1:18789:18789`; do not confuse that with the in-container bind mode.
 
 ## Tool execution security in containers
 
@@ -248,7 +244,7 @@ agents:
 
 ```yaml
 services:
-  openclaw:
+  openclaw-gateway:
     restart: unless-stopped
     # Alternatives:
     # - "no" -- development only
@@ -260,16 +256,16 @@ services:
 
 ```bash
 # Check resource usage
-docker stats openclaw --no-stream
+docker stats openclaw-gateway --no-stream
 
 # Verify idle memory is 1.5-2 GB (4 GB recommended available)
 # If memory exceeds 3 GB, investigate runaway skills or tool loops
 
 # Check health status
-docker inspect --format='{{.State.Health.Status}}' openclaw
+docker inspect --format='{{.State.Health.Status}}' openclaw-gateway
 
 # View events
-docker events --filter container=openclaw --since 1h
+docker events --filter container=openclaw-gateway --since 1h
 ```
 
 ### Container update procedure
@@ -280,25 +276,26 @@ docker events --filter container=openclaw --since 1h
 4. Stop the current container
 5. Start the new container with the same volume mounts
 6. Run health checks
-7. **Verify Node.js v22**: `docker exec openclaw node --version`
+7. **Verify supported runtime**: `docker exec openclaw-gateway node --version`
 8. Roll back if health checks fail
 
 ```bash
-docker pull openclaw/openclaw:latest
-docker stop openclaw
-docker rm openclaw
+docker pull ghcr.io/openclaw/openclaw:latest
+docker stop openclaw-gateway
+docker rm openclaw-gateway
 docker run -d \
-  --name openclaw \
+  --name openclaw-gateway \
   --restart unless-stopped \
   -v openclaw-data:/data \
-  -v openclaw-config:/config \
-  -e OPENCLAW_API_KEY="${OPENCLAW_API_KEY}" \
-  -p 127.0.0.1:8080:8080 \
-  openclaw/openclaw:latest
+  -v openclaw-home:/home/node/.openclaw \
+  --env-file ./.env \
+  -p 127.0.0.1:18789:18789 \
+  ghcr.io/openclaw/openclaw:latest
 
 # Verify
-curl -f http://localhost:8080/health
-docker exec openclaw node --version
+curl -fsS http://127.0.0.1:18789/healthz
+docker exec openclaw-gateway node --version
+docker exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
 ```
 
 ## Steering experiences
@@ -310,7 +307,7 @@ If `setupCommand` runs on every restart, it adds startup latency. Consider build
 Temporary files from skill execution can fill up the container filesystem. Use tmpfs mounts for `/tmp` with size limits.
 
 ### SE-03: Container networking conflicts with host services
-Port conflicts prevent container startup. Check with `ss -tlnp` or `lsof -i :8080` before deployment.
+Port conflicts prevent container startup. Check with `ss -tlnp` or `lsof -i :18789` before deployment.
 
 ### SE-04: Container uses wrong Node.js version
-Always verify `node --version` shows v22 inside the container after updates. Some base images may ship older versions.
+Always verify `node --version` shows a supported runtime inside the container after updates. Some custom base images may drift below the supported floor.

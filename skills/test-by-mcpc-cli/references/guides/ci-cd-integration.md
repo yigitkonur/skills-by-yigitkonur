@@ -198,7 +198,7 @@ jobs:
 
       - name: Run MCP tests
         run: |
-          mcpc /tmp/mcp-ci-config.json:my-server connect @stdio-ci
+          mcpc --config /tmp/mcp-ci-config.json my-server connect @stdio-ci
           mcpc @stdio-ci ping
           mcpc @stdio-ci tools-list | jq '.[].name'
           mcpc @stdio-ci close

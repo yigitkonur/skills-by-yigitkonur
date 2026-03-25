@@ -7,7 +7,7 @@ description: Use skill if you are controlling a live browser with @anthropic-ai/
 
 Use `@anthropic-ai/playwright-cli` to drive a live browser from the terminal. Keep this file focused on trigger logic, workflow, guardrails, and reference routing. Use `references/` for detailed commands, edge cases, and larger patterns.
 
-> **Invocation model — read this first.** Every command below (`snapshot`, `click e0`, `fill e1 "text"`, etc.) is typed **at the `playwright-cli` interactive prompt**, not as standalone shell commands. You launch `playwright-cli` from bash, then enter commands at its `>` prompt. Do not prefix them with `playwright-cli` inside the session.
+> **Invocation model — read this first.** `playwright-cli` is a command-per-invocation CLI backed by persistent session state. Run each action from the shell as its own command, for example `playwright-cli tab-list`, `playwright-cli open https://example.com`, `playwright-cli snapshot`. There is no required `>` prompt workflow in the shipped CLI.
 
 ## Trigger boundary
 
@@ -52,18 +52,24 @@ When you need an isolated session (parallel work, risky experiments), add to boo
 
 ```bash
 playwright-cli config --isolated
+playwright-cli session-list
 ```
 
 - If an existing session or tab already contains the needed login or state, inspect it first instead of resetting everything.
 - Start a named session or isolated browser only when you need clean-room state, parallel isolation, or risky experimentation; use `references/tabs.md` for the exact bootstrap patterns.
-- For isolated sessions, also add `session-stop <name>` at the end of your cleanup to avoid leaking browser processes.
+- For isolated scratch work, stop the session you created at cleanup time: use `session-stop` for the current unnamed isolated session or `session-stop <name>` for a named one.
 - Do not begin with `session-stop-all` unless you intentionally want to discard every active browser.
+- Session state persists behind the CLI. Inspect it with `playwright-cli session-list`. Artifacts such as snapshots, console output, and screenshots are usually written under `.playwright-cli/` relative to the shell working directory; the printed path is the source of truth.
 
 ### 2) Establish tab and session ground truth
 
 - Run `tab-list`.
 - Decide whether to reuse the current tab or open a temporary work tab.
 - When you need a new work surface, use `tab-new` first and `open <url>` second.
+- For local fixtures, do **not** assume `file://`, `localhost`, or LAN URLs are reachable from the browser context. If `open file:///...` is blocked or `open http://127.0.0.1:...` fails from the session, switch to one of these paths:
+  - use a `data:` URL for a tiny self-contained fixture
+  - expose the page on a publicly reachable staging/tunnel URL
+  - stop and tell the user the current browser context cannot reach the local target
 
 > **Steering experience:** Do NOT use `tab-new <url>`. It is documented but unreliable — in testing it frequently opens `about:blank` instead of the requested URL. The safe two-step pattern is `tab-new` then `open <url>`.
 
@@ -74,25 +80,26 @@ playwright-cli config --isolated
 
 > **Steering experience:** `snapshot` writes a YAML accessibility-tree file to `.playwright-cli/page-<timestamp>.yml` and prints the **file path**, not the tree content. You must `cat` the file to read the actual refs. Example flow:
 > ```bash
-> snapshot          # prints: Snapshot saved to .playwright-cli/page-1710456789.yml
+> playwright-cli snapshot          # prints: Snapshot saved to .playwright-cli/page-1710456789.yml
 > cat .playwright-cli/page-1710456789.yml   # read the YAML to find refs like e0, e1, e5
 > ```
 
 Use the cheapest command that gives trustworthy state:
 
 ```bash
-snapshot
-eval "() => window.location.href"
+playwright-cli snapshot
+playwright-cli eval "() => window.location.href"
 ```
 
 Add only the extra proof you need:
-- `screenshot --filename=...` for layout, visual regressions, or before/after evidence
-- `eval "() => document.title"` or more specific `eval` checks when correctness matters
-- `console error` and `network` when diagnosing failures or proving backend behavior
+- `playwright-cli screenshot --filename=...` for layout, visual regressions, or before/after evidence
+- `playwright-cli eval "() => document.title"` or more specific `eval` checks when correctness matters
+- `playwright-cli console error` and `playwright-cli network` when diagnosing failures or proving backend behavior
+- Treat `playwright-cli eval "() => window.location.href"` as the URL source of truth. The CLI's printed page metadata can lag or report `about:blank` after odd tab/navigation flows.
 
 ### 4) Act with the smallest direct command
 
-The CLI has far more commands than just `click` and `fill`. Here is the complete reference:
+The CLI has far more commands than just `click` and `fill`. Here is the task-focused command surface for this skill:
 
 | Category | Commands | Reference |
 |---|---|---|
@@ -110,12 +117,10 @@ The CLI has far more commands than just `click` and `fill`. Here is the complete
 | Observation | `snapshot`, `eval "() => ..."`, `eval "(el) => ..." <ref>` | `references/selectors.md` |
 | Debug | `console [error\|warning\|info]`, `console --clear`, `network [--static]`, `network --clear` | `references/debugging.md` |
 | Tracing | `tracing-start`, `tracing-stop` | `references/debugging.md` |
-| State | `state-save <file>`, `state-load <file>` | `references/patterns.md` |
-| Cookies | `cookie-list`, `cookie-get`, `cookie-set`, `cookie-delete`, `cookie-clear` | `references/patterns.md` |
-| Storage | `localstorage-list/get/set/delete`, `sessionstorage-list/get/set` | `references/patterns.md` |
-| Network mock | `route <url> --body=...`, `route-list`, `unroute <url>` | `references/patterns.md` |
 | Sessions | `session-list`, `session-stop [name]`, `session-stop-all`, `session-restart [name]` | `references/tabs.md` |
 | Code | `run-code 'async (page) => { ... }'` | `references/selectors.md` |
+
+For session reuse, persisted auth, cookie/storage inspection, downloads, and route mocking, use `references/patterns.md`. The current CLI build handles those cases through named sessions, `eval`, and `run-code`, not dedicated `state-save`, `cookie-*`, `localstorage-*`, `sessionstorage-*`, or `route` shell subcommands.
 
 Use direct commands with these rules:
 - use `check` for radios and checkboxes when possible; it is safer than blind `click`
@@ -127,7 +132,7 @@ Use direct commands with these rules:
 
 ### 5) Verify immediately after each meaningful action
 
-> **Steering experience:** All artifact commands (`console`, `network`, `snapshot`, `screenshot`) write results to **files**, not to stdout. The CLI prints the file path; you must `cat` or inspect that file to see actual content. Never assume the page is clean or broken based on command output alone — always read the artifact file.
+> **Steering experience:** All artifact commands (`console`, `network`, `snapshot`, `screenshot`) write results to **files**, not to stdout. The CLI prints the file path; you must `cat` or inspect that file to see actual content. Never assume the page is clean or broken based on command output alone — always read the artifact file. Likewise, do not trust the header-style "Page URL" line over `eval "() => window.location.href"`.
 
 Use the lightest proof that actually confirms success:
 
@@ -204,6 +209,6 @@ Read only what matches the current job:
 
 When browser work ends:
 - close transient tabs you opened for the task
-- stop or delete only the scratch named sessions you created — use `session-stop <name>` for isolated sessions to avoid leaking browser processes
+- stop or delete only the scratch sessions you created — use `session-stop` for the current isolated session or `session-stop <name>` for a named one
 - keep shared or preexisting sessions alive unless the user asked for teardown
 - if you collected evidence, preserve the returned artifact paths in your answer

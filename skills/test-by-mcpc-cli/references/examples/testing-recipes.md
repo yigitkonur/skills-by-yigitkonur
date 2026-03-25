@@ -141,8 +141,8 @@ assert_tool_response "$SESSION" "add" "a:=3" "b:=4"
 
 ## Recipe 4: Assert exit codes
 
-Test each of mcpc's documented error categories. Exit codes:
-`0` success, `1` client error, `2` server error, `3` network error, `4` auth error.
+Test the documented CLI error categories. Exit codes:
+`0` success or tool-level MCP error, `1` client error, `2` rare bridge/server error, `3` network error, `4` auth error.
 
 ```bash
 assert_exit_codes() {
@@ -167,10 +167,11 @@ assert_exit_codes() {
   assert_exit_code 1
   test_pass
 
-  # Exit code 2 — server error (tool execution failed)
-  test_case "exit code 2 on server error (tool throws)"
-  run_xmcpc "$session" tools-call fail 'message:=intentional-failure'
-  assert_exit_code 2
+  # Exit code 0 — tool-level MCP error
+  test_case "exit code 0 with isError=true on tool-level failure"
+  run_xmcpc --json "$session" tools-call fail 'message:=intentional-failure'
+  assert_exit_code 0
+  assert_json "$STDOUT" '.isError == true' "tool failure must set isError=true"
   test_pass
 
   # Exit code 3 — network error (server unreachable)
@@ -202,24 +203,25 @@ the bridge socket file exists and is reachable.
 ```bash
 assert_session_live() {
   local session_name="$1"   # with or without leading @
+  local full_name="$session_name"
+  if [[ "$full_name" != @* ]]; then
+    full_name="@$full_name"
+  fi
 
-  # Normalize: strip leading @
-  local name="${session_name#@}"
-
-  test_case "session '$name' is live"
+  test_case "session '$full_name' is live"
   run_mcpc --json
   assert_success
 
   # Status must be "live"
   local status
   status=$(echo "$STDOUT" | jq -r \
-    --arg n "$name" '.sessions[] | select(.name == $n) | .status')
+    --arg n "$full_name" '.sessions[] | select(.name == $n) | .status')
   assert_eq "$status" "live" "session status must be 'live'"
 
   # Bridge PID must exist and be a running process
   local pid
   pid=$(echo "$STDOUT" | jq -r \
-    --arg n "$name" '.sessions[] | select(.name == $n) | .pid')
+    --arg n "$full_name" '.sessions[] | select(.name == $n) | .pid')
   assert_not_empty "$pid" "session must have a bridge PID"
 
   if ! kill -0 "$pid" 2>/dev/null; then
@@ -228,15 +230,12 @@ assert_session_live() {
   fi
 
   # Socket file must exist
-  local socket_path
-  socket_path=$(echo "$STDOUT" | jq -r \
-    --arg n "$name" '.sessions[] | select(.name == $n) | .socketPath')
-  if [[ -n "$socket_path" && "$socket_path" != "null" ]]; then
-    assert_file_exists "$socket_path" "bridge socket must exist at $socket_path"
-  fi
+  local bridges_dir="${MCPC_HOME_DIR:-$HOME/.mcpc}/bridges"
+  local socket_path="$bridges_dir/${full_name}.sock"
+  assert_file_exists "$socket_path" "bridge socket must exist at $socket_path"
 
   # Verify bridge responds: ping through the session
-  run_xmcpc "@$name" ping
+  run_xmcpc "$full_name" ping
   assert_success "ping must succeed on a live session"
 
   test_pass
@@ -882,8 +881,8 @@ assert_no_leaked_resources() {
     local name="${sname#@}"
     local found
     found=$(echo "$STDOUT" | jq -r \
-      --arg n "$name" '.sessions[] | select(.name == $n) | .name')
-    assert_empty "$found" "session '$name' must not appear in sessions list after close"
+      --arg n "$sname" '.sessions[] | select(.name == $n) | .name')
+    assert_empty "$found" "session '$sname' must not appear in sessions list after close"
   done
   test_pass
 
@@ -904,8 +903,7 @@ assert_no_leaked_resources() {
   test_case "no stale socket files for closed sessions"
   local bridges_dir="${MCPC_HOME_DIR:-$HOME/.mcpc}/bridges"
   for sname in "${session_names[@]}"; do
-    local name="${sname#@}"
-    local socket_path="$bridges_dir/${name}.sock"
+    local socket_path="$bridges_dir/${sname}.sock"
     if [[ -e "$socket_path" ]]; then
       test_fail "stale socket file found: $socket_path"
       exit 1
@@ -931,9 +929,8 @@ assert_clean_lifecycle() {
   run_mcpc --json
   local pid socket_path
   pid=$(echo "$STDOUT" | jq -r \
-    --arg n "${sname#@}" '.sessions[] | select(.name == $n) | .pid')
-  socket_path=$(echo "$STDOUT" | jq -r \
-    --arg n "${sname#@}" '.sessions[] | select(.name == $n) | .socketPath')
+    --arg n "$sname" '.sessions[] | select(.name == $n) | .pid')
+  socket_path="${MCPC_HOME_DIR:-$HOME/.mcpc}/bridges/${sname}.sock"
 
   run_mcpc "$sname" close
   assert_success

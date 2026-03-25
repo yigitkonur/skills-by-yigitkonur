@@ -34,6 +34,14 @@ Before writing YAML, answer these questions and **record the answers** — they 
 
 > **⚠️ Steering (F-01):** Record answers explicitly (e.g., as inline comments or a checklist). Without a recorded classification, the auth and versioning decisions become guesswork. The table below maps answers directly to choices.
 
+Derive those answers in this order:
+1. `package.json` and workspace manifests
+2. existing GitHub Actions workflows
+3. git remote, tags, and current versioning config files
+4. npm registry state for the package
+
+If the classification is still ambiguous after those checks, stop and ask instead of guessing.
+
 ### Quick-reference decision matrix
 
 | Q1: Public? | Q2: GH Actions + hosted runner? | Q3: Single/Mono? | Q4: Conv. commits? | Q5: Auto/Human gate? | → Auth | → Versioning |
@@ -68,6 +76,7 @@ Before writing YAML, answer these questions and **record the answers** — they 
 - Default to **OIDC** whenever it is supported.
 - OIDC requires **GitHub-hosted runners**, npm CLI **>= 9.5.0**, exact `package.json.repository.url`, `id-token: write`, `contents: read`, and public package visibility unless npm Enterprise support exists.
 - If the publish runner is self-hosted, do **not** choose OIDC and hope it works; use a granular token.
+- If this is the **first publish of a brand-new package**, bootstrap with a granular token even if the steady-state target is OIDC.
 - Token-based publishing should use `secrets.NPM_TOKEN` exposed as `NODE_AUTH_TOKEN` in the publish step. Do not use `npm login` in CI.
 - Use one granular token per repo or workflow surface, and rotate it on a regular schedule instead of treating it as permanent infrastructure.
 - Do not keep both OIDC and token auth just because an old workflow used both. The only valid mixed setup is when **token auth is still required** but you also grant `id-token: write` for provenance.
@@ -147,6 +156,7 @@ Before editing or validating the workflow, confirm:
 - Prefer `publishConfig.provenance: true` so provenance is not a human-memory step.
 - The repo's lockfile is committed and CI uses deterministic installs (`npm ci` or the repo's equivalent).
 - `npm pack --dry-run` shows the intended tarball contents.
+- If `npm pack --dry-run` includes `src/` files while `main`, `module`, `types`, or `exports` point at `dist/`, stop and fix packaging before touching CI/CD.
 - Packaging details such as `files`, `exports`, types, and dual ESM/CJS output are correct. Use `references/packaging/package-config.md` for those details.
 
 ### CI prerequisites
@@ -161,6 +171,8 @@ Before editing or validating the workflow, confirm:
 ### First-publish / OIDC bootstrap (critical for greenfield)
 
 > **⚠️ Steering (F-11):** OIDC requires the package to **already exist** on npm. For a brand-new package, you hit a chicken-and-egg problem: you can't link a non-existent package to your GitHub repo.
+
+Even when the long-term target is OIDC, the first release must use token-based auth to bootstrap the package on npm.
 
 **Bootstrap steps for first publish with OIDC:**
 1. Create a **granular access token** on npmjs.com (see `references/auth/granular-tokens.md`).

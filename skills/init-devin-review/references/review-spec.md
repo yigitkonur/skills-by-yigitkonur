@@ -11,16 +11,20 @@ Devin Review automatically ingests these files as context when analyzing PRs:
 | File | Pattern | Purpose |
 |---|---|---|
 | `REVIEW.md` | `**/REVIEW.md` | Dedicated review guidelines (primary) |
-| `AGENTS.md` | Root | Agent behavior instructions |
-| `CLAUDE.md` | Root | Claude-specific coding standards |
-| `CONTRIBUTING.md` | Root | Contribution workflow and standards |
+| `AGENTS.md` | `**/AGENTS.md` | Agent behavior instructions |
+| `CLAUDE.md` | `**/CLAUDE.md` (case-insensitive) | Claude-specific coding standards |
+| `CONTRIBUTING.md` | `**/CONTRIBUTING.md` (case-insensitive) | Contribution workflow and standards |
 | `.cursorrules` | Root | Cursor IDE rules (also read by Devin) |
 | `.windsurfrules` | Root | Windsurf IDE rules |
 | `.cursor/rules` | Directory | Cursor directory rules |
 | `*.rules` | Any | Custom rule files |
 | `*.mdc` | Any | Markdown configuration files |
+| `.coderabbit.yaml` / `.coderabbit.yml` | Root | Existing review-tool configuration that may influence guidance |
+| `greptile.json` | Root | Existing review-tool configuration that may influence guidance |
 
 Custom file patterns can be added in Settings > Review > Review Rules.
+
+Files inside agent-like subdirectories such as `.agents/`, `.devin/`, `.cursor/`, and `.github/` are treated as belonging to the parent directory for scoping purposes. For example, `src/.agents/REVIEW.md` scopes to `src/`.
 
 ---
 
@@ -99,30 +103,25 @@ repo/
 │       └── REVIEW.md            # Frontend: accessibility, performance, component patterns
 ```
 
-Subdirectory REVIEW.md files are **self-contained** — they replace the root file for their subtree. Devin uses the most specific REVIEW.md that matches a changed file's path.
+Subdirectory `REVIEW.md` files scope guidance to a subtree of the repo.
 
-### Precedence & Merge Behavior
+### Scoping Guidance
 
-When multiple instruction files exist, Devin resolves them by priority:
+Devin's docs guarantee the discovery patterns above and the directory scoping of matching files, but they do not document a deterministic "root replaced" versus "root merged" model for overlapping instruction files.
 
-| Priority | Source | Scope |
-|---|---|---|
-| 1 (highest) | Scoped `REVIEW.md` | Subtree where it lives |
-| 2 | Root `REVIEW.md` | Entire repo (unless scoped overrides) |
-| 3 | `AGENTS.md` | Separate channel — additive, never conflicts |
-| 4 (lowest) | Linter/IDE rules (`.cursorrules`, etc.) | Background signal only |
+Author and review your files accordingly:
 
-**Merge rules:**
-- **Scoped is self-contained** — a subdirectory `REVIEW.md` fully replaces root for files in that subtree. No inheritance, no merging.
-- **Root applies everywhere else** — any file not under a scoped `REVIEW.md` uses root rules.
-- **AGENTS.md is separate** — it feeds behavioral context, not review rules. Never conflicts with `REVIEW.md`.
-- **Conflict resolution** — if two scoped files could apply (nested dirs), the deepest (most specific) wins.
+- Keep the root `REVIEW.md` limited to cross-cutting rules that should stay true across the repo.
+- Use scoped `REVIEW.md` files only for directory-specific risks that would otherwise bloat or weaken the root file.
+- Write each scoped file so it stands on its own for that subtree's local concerns.
+- Do not rely on undocumented precedence to resolve contradictions. If root and scoped files disagree, rewrite them until both can be read together without conflict.
+- Keep nesting shallow and prefer package/service boundaries over deep `src/utils/REVIEW.md` placement.
 
 ---
 
 ## AGENTS.md Format
 
-`AGENTS.md` defines how Devin should behave when executing tasks (not just reviewing). Use for:
+`AGENTS.md` defines how Devin should behave when executing tasks (not just reviewing). Devin also ingests scoped `AGENTS.md` files, but default to one root file unless package-level execution guidance truly differs. Use `AGENTS.md` for:
 
 - Coding standards and architecture decisions
 - Preferred libraries and patterns
@@ -269,7 +268,7 @@ The CLI:
 | `REVIEW.md` not found | No custom rules applied; built-in checks only |
 | Syntax errors in markdown | Best-effort parsing; malformed sections skipped |
 | File exceeds 300 lines | Still parsed, but may reduce analysis quality |
-| Scoped conflicts with root | Scoped wins for its subtree; root ignored there |
+| Root and scoped files conflict | Do not rely on implicit precedence. Rewrite the files so the root stays cross-cutting and the scoped file stays local without contradiction |
 | References non-existent pattern | Rule applied as-is; no validation of referenced code |
 | Empty section (header, no bullets) | Section skipped silently |
 

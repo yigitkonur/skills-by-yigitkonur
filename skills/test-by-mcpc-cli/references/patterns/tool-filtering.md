@@ -256,11 +256,11 @@ mcpc --json @demo tools-list | jq '[.[] | select(.name | test("actor"))] | lengt
 #!/bin/bash
 PATTERN="${1:?Usage: $0 <pattern>}"
 for session in $(mcpc --json | jq -r '.sessions[] | select(.status == "live") | .name'); do
-  MATCHES=$(mcpc --json "@$session" tools-list 2>/dev/null | \
+  MATCHES=$(mcpc --json "$session" tools-list 2>/dev/null | \
     jq -r "[.[] | select(.name | test(\"$PATTERN\"; \"i\"))] | length")
   if [ "$MATCHES" -gt 0 ]; then
-    echo "@$session: $MATCHES match(es)"
-    mcpc --json "@$session" tools-list | \
+    echo "$session: $MATCHES match(es)"
+    mcpc --json "$session" tools-list | \
       jq -r "[.[] | select(.name | test(\"$PATTERN\"; \"i\"))] | .[].name" | \
       sed 's/^/  /'
   fi
@@ -274,7 +274,7 @@ done
 # Build a JSON map: {session: [tool_names]}
 mcpc --json | jq -r '.sessions[] | select(.status == "live") | .name' | \
 while read -r session; do
-  TOOLS=$(mcpc --json "@$session" tools-list 2>/dev/null | jq '[.[].name]')
+  TOOLS=$(mcpc --json "$session" tools-list 2>/dev/null | jq '[.[].name]')
   echo "{\"session\": \"$session\", \"tools\": $TOOLS}"
 done | jq -s 'map({(.session): .tools}) | add'
 ```
@@ -285,8 +285,8 @@ done | jq -s 'map({(.session): .tools}) | add'
 #!/bin/bash
 KEYWORD="${1:?Usage: $0 <keyword>}"
 for session in $(mcpc --json | jq -r '.sessions[] | select(.status == "live") | .name'); do
-  mcpc --json "@$session" tools-list 2>/dev/null | \
-    jq -r --arg kw "$KEYWORD" --arg s "@$session" '
+  mcpc --json "$session" tools-list 2>/dev/null | \
+    jq -r --arg kw "$KEYWORD" --arg s "$session" '
       [.[] | select((.description // "") | test($kw; "i"))] |
       .[] | "\($s)  \(.name)  \(.description // "—")"
     '

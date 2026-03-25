@@ -7,6 +7,17 @@ description: Use skill if you are orchestrating multiple AI coding agents via hc
 
 Write and run hcom scripts that launch, coordinate, and manage multiple AI coding agents.
 
+## Mandatory preflight
+
+Before using any reference script or launching a headless agent:
+
+1. Verify the CLI and target tool are installed.
+2. Run `hcom status` and confirm hooks are installed for every backend you plan to use (`claude`, `codex`, `gemini`, `opencode`).
+3. If hooks are missing, run `hcom hooks add <tool>`, restart that tool, then re-run `hcom status`.
+4. If `hcom hooks add <tool>` fails or `hcom status` still does not show installed hooks, stop. Capture `hcom status` output and do not proceed to launch scripts.
+5. After launching any headless agent, wait for a ready signal before sending messages. For Codex this usually means `hcom events --wait 30 --idle "$codex_name"`; for other tools, use the same check when launch/binding looks uncertain.
+6. If one agent's startup prompt sends to another agent, launch the recipient first. Examples: reviewer before worker, judge before contestants, Codex engineer before Claude architect.
+
 ## Decision tree
 
 1. **User wants to write a new hcom script** → Use the Script Template below
@@ -17,7 +28,7 @@ Write and run hcom scripts that launch, coordinate, and manage multiple AI codin
 6. **User wants to understand how hcom works** → Read `references/how-it-works.md`
 7. **User needs command syntax** → Read `references/cli-reference.md`
 
-## Script template (tested, production-ready)
+## Script template (baseline reference)
 
 Every hcom script must follow this exact structure:
 
@@ -35,6 +46,31 @@ cleanup() {
     hcom kill "$name" --go 2>/dev/null || true
   done
 }
+wait_for_match() {
+  local timeout="$1"
+  local sql="$2"
+  local result
+  result=$(hcom events --wait "$timeout" --sql "$sql" $name_arg 2>/dev/null || true)
+  if [[ -n "$result" ]]; then
+    echo "$result"
+    return 0
+  fi
+  echo "TIMEOUT: no matching event for thread ${thread}" >&2
+  hcom events --sql "msg_thread='${thread}'" --last 20 $name_arg 2>/dev/null || true
+  hcom status 2>/dev/null || true
+  return 1
+}
+wait_for_idle() {
+  local agent_name="$1"
+  local result
+  result=$(hcom events --wait 30 --idle "$agent_name" $name_arg 2>/dev/null || true)
+  if [[ -n "$result" ]]; then
+    return 0
+  fi
+  echo "WAIT FAILED: ${agent_name} never reached idle/listening state" >&2
+  hcom list 2>/dev/null || true
+  return 1
+}
 trap cleanup ERR
 
 name_flag=""
@@ -47,7 +83,7 @@ name_arg=""
 
 thread="workflow-$(date +%s)"
 
-# Launch, message, wait, cleanup — see patterns for specifics
+# Launch, wait_for_idle, message, wait_for_match, cleanup — see patterns for specifics
 ```
 
 ## Required flags (every launch must include these)
@@ -78,7 +114,8 @@ hcom send -- "broadcast to all"
 
 ### Wait (replaces sleep — never use sleep in hcom scripts)
 ```bash
-hcom events --wait 120 --sql "type='message' AND msg_thread='${thread}' AND msg_text LIKE '%DONE%'" $name_arg >/dev/null 2>&1
+result=$(wait_for_match 120 "type='message' AND msg_thread='${thread}' AND msg_text LIKE '%DONE%'")
+echo "PASS: $result"
 ```
 
 ### Read another agent's work
@@ -105,10 +142,14 @@ hcom kill all --go        # Kill everything
 | Pitfall | Fix |
 |---------|-----|
 | Script hangs forever | Missing `--go` on launch or kill |
+| Launch fails before the first message | Run the mandatory hook preflight with `hcom status` / `hcom hooks add <tool>` |
 | Agent not receiving messages | Check `hcom list` — agent may have stopped or not bound yet |
+| First targeted send fails at startup | Launch recipients before senders; for Codex also wait for `hcom events --wait 30 --idle "$codex_name"` |
 | Codex gets stale_cleanup | Wait: `hcom events --wait 30 --idle "$codex_name"` before sending |
 | Wrong agent targeted | Use `@tag-` prefix, not raw 4-letter name |
 | Messages leaking between workflows | Always use `--thread` for isolation |
+| PASS/FAIL logic is wrong | `hcom events --wait` returns 0 on timeout too — inspect output, not exit code |
+| Hidden orchestrator target | Baseline scripts should broadcast completion on the workflow thread; do not assume `@bigboss` exists |
 | LIKE matching surprises | `'%APPROVED%'` matches `"approved":true` in JSON — this is fine |
 
 ## Guardrails
@@ -118,6 +159,7 @@ hcom kill all --go        # Kill everything
 - Never skip `--go` — scripts hang waiting for confirmation
 - Never hardcode agent names — parse from `Names:` line in launch output
 - Never skip `--thread` — messages leak across workflows without it
+- Never treat `hcom events --wait` exit code as success/failure — capture its output
 - Always set `trap cleanup ERR` — orphan agents waste resources
 - Always use `hcom kill` (not `stop`) for script cleanup — kill closes the pane
 
@@ -127,13 +169,13 @@ hcom kill all --go        # Kill everything
 |------|-------------|
 | `references/how-it-works.md` | Understanding hcom delivery pipeline, hooks, identity, bootstrap, relay |
 | `references/cli-reference.md` | Complete hcom CLI command reference with all flags |
-| `references/patterns/tested-patterns.md` | 6 tested multi-agent patterns with full scripts and real event JSON |
+| `references/patterns/tested-patterns.md` | 6 reference patterns with working event shapes, readiness waits, and thread-based completion checks |
 | `references/patterns/cross-tool.md` | Claude + Codex + Gemini + OpenCode collaboration details |
 | `references/patterns/advanced-patterns.md` | 10 advanced patterns from 35-repo research (reflexion, MoA, red/blue team, etc.) |
 | `references/gotchas.md` | Debugging: timing, stale agents, Codex binding, message delivery |
-| `references/scripts/basic-messaging.sh` | Tested: two agents exchange messages |
-| `references/scripts/review-loop.sh` | Tested: worker-reviewer feedback loop |
-| `references/scripts/cross-tool-duo.sh` | Tested: Claude architect + Codex engineer |
-| `references/scripts/ensemble-consensus.sh` | Tested: 3 independent agents + judge |
-| `references/scripts/cascade-pipeline.sh` | Tested: sequential plan then execute |
-| `references/scripts/codex-worker.sh` | Tested: Codex codes, Claude reviews transcript |
+| `references/scripts/basic-messaging.sh` | Baseline: two agents exchange messages with diagnostics on timeout |
+| `references/scripts/review-loop.sh` | Baseline: worker-reviewer feedback loop |
+| `references/scripts/cross-tool-duo.sh` | Baseline: Claude architect + Codex engineer |
+| `references/scripts/ensemble-consensus.sh` | Baseline: 3 independent agents + judge |
+| `references/scripts/cascade-pipeline.sh` | Baseline: sequential plan then execute |
+| `references/scripts/codex-worker.sh` | Baseline: Codex codes, Claude reviews transcript |

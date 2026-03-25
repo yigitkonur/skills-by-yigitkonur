@@ -15,10 +15,13 @@ in `playwright-cli`.
 - [Cookie and storage management](#cookie-and-storage-management)
 - [Network interception](#network-interception)
 - [Dialog handling](#dialog-handling)
-- [Pagination and state persistence](#pagination-and-state-persistence)
+- [Pagination and infinite scroll](#pagination-and-infinite-scroll)
+- [Session persistence](#session-persistence)
 - [E2E verification workflow](#e2e-verification-workflow)
 
 ---
+
+All examples in this file are shell commands. Prefix bare examples with `playwright-cli` when copying from a short example that omits it for readability.
 
 ## Login flow
 
@@ -72,13 +75,19 @@ snapshot
 eval "() => window.location.href"
 ```
 
-### Save/restore authentication
+### Reuse authentication with a named session
+
+The current CLI build does not expose `state-save` or `state-load`. To keep an authenticated browser state, reuse the same named session instead of expecting export/import subcommands.
 
 ```bash
-state-save auth-state.json              # after login
-state-load auth-state.json              # before next run
-open https://app.example.com/dashboard
-eval "() => window.location.href"
+playwright-cli --session=auth open https://app.example.com/login
+playwright-cli --session=auth snapshot
+# complete the login flow in the same auth session
+playwright-cli --session=auth eval "() => window.location.href"
+
+# later, reuse the same session instead of logging in again
+playwright-cli --session=auth open https://app.example.com/dashboard
+playwright-cli --session=auth eval "() => window.location.href"
 ```
 
 ---
@@ -185,50 +194,43 @@ After downloading, verify the files exist on disk from outside the browser.
 
 ## Cookie and storage management
 
+> **Steering experience:** The current CLI build does not expose `cookie-*`, `localstorage-*`, or `sessionstorage-*` shell subcommands. Use `eval` for quick reads and `run-code` when you need richer cookie or storage mutation.
+
 ```bash
-cookie-list                              # list all cookies
-cookie-get session_id                    # get specific cookie
-cookie-set auth_token "abc123"           # set cookie
-cookie-delete session_id                 # delete cookie
-cookie-clear                             # clear all
-
-localstorage-list                        # list localStorage
-localstorage-get theme                   # get value
-localstorage-set theme "dark"            # set value
-localstorage-delete theme                # delete key
-
-sessionstorage-list                      # list sessionStorage
-sessionstorage-get cart_items            # get value
-sessionstorage-set cart_items "[]"       # set value
-
-# Alternative via eval
+# Quick reads
 eval "() => JSON.stringify(localStorage)"
+eval "() => JSON.stringify(sessionStorage)"
 eval "() => document.cookie"
+
+# Full cookie inspection
+run-code 'async (page) => {
+  return await page.context().cookies()
+}'
+
+# Set localStorage or sessionStorage in page context
+run-code 'async (page) => {
+  await page.evaluate(() => {
+    localStorage.setItem("theme", "dark")
+    sessionStorage.setItem("cart_items", "[]")
+  })
+  return "storage updated"
+}'
+snapshot
+
+# Clear cookies for the current browser context
+run-code 'async (page) => {
+  await page.context().clearCookies()
+  return "cookies cleared"
+}'
 ```
 
 ---
 
 ## Network interception
 
+> **Steering experience:** The current CLI build does not expose `route`, `route-list`, or `unroute` shell subcommands. Set up and remove network interception through `run-code`, and keep your own notes about which mocks are active.
+
 ### Set up a route (mock API)
-
-```bash
-route "https://api.example.com/users" --body='{"users":[]}'
-```
-
-### List active routes
-
-```bash
-route-list
-```
-
-### Remove a route
-
-```bash
-unroute "https://api.example.com/users"
-```
-
-### Advanced mocking via run-code
 
 ```bash
 run-code 'async (page) => {
@@ -240,6 +242,15 @@ run-code 'async (page) => {
     })
   })
   return "route set"
+}'
+```
+
+### Remove a route
+
+```bash
+run-code 'async (page) => {
+  await page.unroute("**/api/data")
+  return "route removed"
 }'
 ```
 
@@ -290,21 +301,25 @@ snapshot
 
 ---
 
-## State persistence
+## Session persistence
 
-> **Steering experience:** `state-save` and `state-load` are CLI prompt commands that save and restore cookies + storage. This is the fastest way to skip repeated login flows across multiple test runs.
+> **Steering experience:** The current CLI build keeps browser state in live sessions, not in `state-save` / `state-load` shell commands. For repeat work, reuse a named session or keep the existing session alive.
 
 ```bash
-state-save logged-in.json       # save cookies + storage
-state-load logged-in.json       # restore state
-open https://app.example.com    # resume authenticated
-snapshot
+playwright-cli --session=logged-in open https://app.example.com
+playwright-cli --session=logged-in snapshot
+
+# later, resume the same browser state
+playwright-cli --session=logged-in open https://app.example.com/account
+playwright-cli --session=logged-in eval "() => window.location.href"
+playwright-cli session-list
 ```
 
 | Use case | Pattern |
 |----------|---------|
-| Skip login across runs | `state-save` after login, `state-load` before next run |
-| Test with specific user state | Pre-build state files for different users |
+| Skip login across repeated local runs | Reuse the same named session with `--session=<name>` |
+| Test with fresh auth state | Start a new named or isolated session, then log in once inside it |
+| Inspect or tweak browser state | Use `eval` / `run-code` rather than expecting `state-save`, `cookie-*`, or storage subcommands |
 
 ---
 
@@ -364,3 +379,4 @@ Key patterns discovered through real-world testing:
 | `snapshot` = file, not inline | Must `cat` the printed file path to read the tree |
 | `fill --submit` shortcut | Fills and submits in one command — great for search fields |
 | `session-stop` for isolated | Forgetting cleanup leaks browser processes |
+| Reuse named sessions for persisted auth | Current CLI build does not expose `state-save` / `state-load` shell commands |

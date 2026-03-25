@@ -15,6 +15,8 @@
 
 ### Syntax quick guide
 
+These JSON objects are the literal input bodies you pass to `daisyui-blueprint-daisyUI-Snippets`.
+
 ```jsonc
 // ✅ Always use nested objects
 { "components": { "button": true, "card": true } }
@@ -51,9 +53,9 @@ Have a Figma URL?
 ```
 
 
-> **Definitive reference** for both daisyUI Blueprint MCP tools — parameters, syntax, every available key, output formats, calling patterns, and cross-tool workflows.
+> **Definitive reference** for both daisyUI Blueprint MCP tools — parameters, syntax, surfaced keys, output formats, calling patterns, and cross-tool workflows.
 >
-> See also: `references/component-catalog.md` for component class details.
+> See also: `references/component-catalog.md` for library-level class details when you need to compose markup directly or validate a component that is not obvious from the surfaced snippet tables.
 
 ---
 
@@ -1208,7 +1210,7 @@ validator.writing-an-invalid-email-address-applies-error-color-to-the-input-vali
 |-----|---------|
 | `builtin-themes` | List of all 35 built-in themes + how to enable them in CSS |
 | `colors` | Complete semantic color system: 20 color variables + usage with Tailwind utilities |
-| `custom-theme` | `@plugin "daisyui"` CSS directive template with all required variables |
+| `custom-theme` | `@plugin "daisyui/theme"` CSS block with all required variables |
 
 #### Output Structure — `builtin-themes`
 
@@ -1261,16 +1263,38 @@ abyss, silk
 ## Custom Theme
 
 ```css
-@plugin "daisyui" {
-  themes: light --default,
-  themes: dark --prefersdark,
-  themes: mytheme {
-    primary: oklch(65% 0.25 250);
-    secondary: oklch(70% 0.20 200);
-    accent: oklch(75% 0.15 150);
-    neutral: oklch(30% 0.02 250);
-    base-100: oklch(98% 0.01 250);
-  }
+@plugin "daisyui/theme" {
+  name: "mytheme";
+  default: true;
+  color-scheme: light;
+  --color-primary: oklch(65% 0.25 250);
+  --color-primary-content: oklch(98% 0.01 250);
+  --color-secondary: oklch(70% 0.20 200);
+  --color-secondary-content: oklch(98% 0.01 200);
+  --color-accent: oklch(75% 0.15 150);
+  --color-accent-content: oklch(20% 0.02 150);
+  --color-neutral: oklch(30% 0.02 250);
+  --color-neutral-content: oklch(95% 0.01 250);
+  --color-base-100: oklch(98% 0.01 250);
+  --color-base-200: oklch(95% 0.01 250);
+  --color-base-300: oklch(92% 0.02 250);
+  --color-base-content: oklch(20% 0.03 250);
+  --color-info: oklch(70% 0.15 220);
+  --color-info-content: oklch(98% 0.01 220);
+  --color-success: oklch(65% 0.18 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(80% 0.20 80);
+  --color-warning-content: oklch(20% 0.03 80);
+  --color-error: oklch(60% 0.22 25);
+  --color-error-content: oklch(98% 0.01 25);
+  --radius-selector: 1rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
 }
 ```
 ```

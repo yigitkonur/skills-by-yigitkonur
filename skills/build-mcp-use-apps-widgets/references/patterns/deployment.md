@@ -380,20 +380,6 @@ export default { fetch: handler };
 ## 8. Claude Desktop Configuration
 
 ```json
-// stdio — local dev (absolute paths required)
-{ "mcpServers": { "my-server": {
-  "command": "node",
-  "args": ["/absolute/path/to/dist/server.js"],
-  "env": { "API_KEY": "your-key" }
-}}}
-
-// stdio — via npx (published package, no global install)
-{ "mcpServers": { "my-server": {
-  "command": "npx",
-  "args": ["-y", "@yourorg/mcp-server-mytools@latest"],
-  "env": { "API_KEY": "your-key" }
-}}}
-
 // HTTP — local, remote, or mcp-use cloud
 { "mcpServers": { "my-server": {
   "url": "http://localhost:3000/mcp"
@@ -406,23 +392,23 @@ export default { fetch: handler };
 }}}
 ```
 
-- **stdio:** Claude Desktop manages process lifecycle. `env` passes environment variables. **HTTP:** Start server yourself; `headers` sends custom headers.
+- Start the HTTP server yourself (`npm run dev`, `mcp-use start`, or your deploy target), then point Claude Desktop at the `/mcp` URL. Use `headers` only when the remote endpoint requires them.
 
 ---
 
 ## 9. Deployment Decision Matrix
 
-| Criteria               | mcp-use Cloud | Cloud Run     | Supabase Edge | Fly.io        | Vercel/Netlify  | npm + stdio   |
-|------------------------|---------------|---------------|---------------|---------------|-----------------|---------------|
-| **Setup effort**       | Minimal       | Moderate      | Moderate      | Low           | Low             | Minimal       |
-| **Sessions**           | ✅ Full       | ✅ With Redis | ✅ Full       | ✅ Full       | ❌ Stateless    | ✅ In-process |
-| **Auto-scaling**       | ✅            | ✅            | ✅            | ✅            | ✅              | ❌            |
-| **Cold starts**        | Managed       | Configurable  | ~50ms         | Configurable  | Yes             | None          |
-| **Auth built-in**      | ✅            | ✅ IAM        | ✅ Anon key   | Manual        | Manual          | OS-level      |
-| **Widget support**     | ✅ Native     | ✅ Manual     | ✅ With CDN   | ✅ Manual     | ❌              | ❌            |
-| **Best for**           | Quick deploy  | GCP ecosystem | Deno/Supabase | Containers    | Simple stateless| Desktop only  |
+| Criteria               | mcp-use Cloud | Cloud Run     | Supabase Edge | Fly.io        | Vercel/Netlify  | Localhost HTTP |
+|------------------------|---------------|---------------|---------------|---------------|-----------------|----------------|
+| **Setup effort**       | Minimal       | Moderate      | Moderate      | Low           | Low             | Minimal        |
+| **Sessions**           | ✅ Full       | ✅ With Redis | ✅ Full       | ✅ Full       | ❌ Stateless    | ✅ In-process  |
+| **Auto-scaling**       | ✅            | ✅            | ✅            | ✅            | ✅              | ❌             |
+| **Cold starts**        | Managed       | Configurable  | ~50ms         | Configurable  | Yes             | None           |
+| **Auth built-in**      | ✅            | ✅ IAM        | ✅ Anon key   | Manual        | Manual          | Manual/local   |
+| **Widget support**     | ✅ Native     | ✅ Manual     | ✅ With CDN   | ✅ Manual     | ❌              | ✅             |
+| **Best for**           | Quick deploy  | GCP ecosystem | Deno/Supabase | Containers    | Simple stateless| Desktop and local testing |
 
-**Choose:** mcp-use Cloud for fastest path • Cloud Run for GCP/IAM • Supabase Edge for Deno/edge • Fly.io for persistent containers • Vercel/Netlify for stateless • npm+stdio for desktop.
+**Choose:** mcp-use Cloud for fastest path • Cloud Run for GCP/IAM • Supabase Edge for Deno/edge • Fly.io for persistent containers • Vercel/Netlify for stateless • localhost HTTP for desktop and local development.
 
 ---
 

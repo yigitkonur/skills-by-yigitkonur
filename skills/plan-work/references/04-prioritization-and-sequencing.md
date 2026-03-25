@@ -23,6 +23,29 @@ Every "yes" is an implicit "no" to something else. Make those trade-offs explici
 
 ---
 
+## Provisional sequencing fallback
+
+Use this when the user needs an ordering now, the work is still reversible, and the framing step still has open gaps.
+
+1. Return the gap list first.
+2. State the assumptions that make the ordering valid.
+3. Force-rank by:
+   - dependency and unblock value
+   - reversibility
+   - learning value
+   - time-sensitivity that is grounded in real constraints
+4. Name the signal that would move any item up or down.
+
+Do not use RICE, ICE, or weighted scores with invented inputs. If the evidence is thin, use a forced-rank or High/Medium/Low tiers and explain the basis.
+
+### Provisional sequence template
+
+| Rank | Item | Why now | Assumptions | What would move it |
+|---|---|---|---|---|
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
+
 ## Prioritization frameworks
 
 ### Eisenhower Matrix
@@ -373,32 +396,33 @@ Estimation exists to support prioritization, not to create commitments. Use the 
 ## Output template
 - Priority criteria (which framework, why)
 - Ranked list (Now / Next / Later)
-- Scoring table (RICE, ICE, or weighted — whichever was used)
+- Scoring table or provisional forced-rank rationale (depending on method)
 - WIP limit for current cycle
 - Dependencies and blockers (mapped and classified)
+- Assumptions and invalidation triggers (required in provisional mode)
 - Deferred items and why (Won't Have list)
 - Estimation summary (method and key estimates)
 - Review cadence (when to re-prioritize)
 
 
-## Steering experiences
+## Common traps
 
-### SE-01: MoSCoW inflation -- everything is "Must"
+### MoSCoW inflation -- everything is "Must"
 **What happens:** Agent categorizes 8 out of 10 items as "Must Have." The prioritization exercise produces no useful trade-offs.
 **Why it happens:** Without a forcing function, every item feels important. The requester's urgency language gets mapped directly to Must.
 **Prevention:** Apply the 60 percent rule: if more than 60 percent of items are Must, rework the categories. Ask for each Must: "If this slipped one sprint, would the release fail?" If no, it is a Should.
 
-### SE-02: RICE scores calculated with fictional data
+### RICE scores calculated with fictional data
 **What happens:** Agent scores Reach and Impact for items where no usage data exists. The scores look precise (Reach: 5000 users) but are made up.
 **Why it happens:** RICE requires quantitative inputs. When data does not exist, agents invent plausible numbers rather than flagging the gap.
 **Prevention:** If Reach or Impact cannot be grounded in real data (analytics, user counts, support tickets), use qualitative tiers (High/Med/Low) instead of fake numbers. Label the tier basis.
 
-### SE-03: Dependencies ignored in sequencing
+### Dependencies ignored in sequencing
 **What happens:** The priority list ranks items independently. Item 3 actually blocks items 1 and 2, but this is not visible until execution starts.
 **Why it happens:** Prioritization frameworks (RICE, ICE) score items in isolation. They do not model dependencies.
 **Prevention:** After scoring, draw a dependency graph. If any lower-ranked item blocks a higher-ranked one, promote it or note the dependency explicitly in the sequence.
 
-### SE-04: Heavy scoring applied to small lists
+### Heavy scoring applied to small lists
 **What happens:** Agent builds a full RICE scoring spreadsheet for a 4-item backlog. The overhead of scoring exceeds the value of the prioritization.
 **Why it happens:** The skill recommends RICE without qualifying when it is worth the effort.
 **Prevention:** For lists of 5 or fewer items, use a simple forced-rank instead of RICE. Ask: "If you could only do one, which?" Repeat until ranked. Reserve RICE for 10+ items where intuitive ranking breaks down.

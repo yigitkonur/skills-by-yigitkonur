@@ -1,6 +1,6 @@
 # Human-in-the-Loop (HITL) — LangGraph.js TypeScript Reference
 
-> LangGraph.js v0.2+. All examples are TypeScript.
+> LangChain.js v1 / LangGraph.js v1.2+. All examples are TypeScript.
 
 ---
 
@@ -282,16 +282,26 @@ await graph.invoke(null, config);
 ## HITL Middleware: interruptOn Config
 
 ```typescript
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent, humanInTheLoopMiddleware } from "langchain";
+import { ChatOpenAI } from "@langchain/openai";
+import { MemorySaver } from "@langchain/langgraph";
 
-const agent = createReactAgent({
-  llm, tools, checkpointer: new MemorySaver(),
-  interruptOn: {
-    send_email:     true,                                                        // approve | edit | reject
-    execute_sql:    { allowedDecisions: ["approve", "reject"], description: "Requires DBA" },
-    read_data:      false,                                                        // never interrupt
-    deploy_service: { allowedDecisions: ["approve"], description: "Engineer only" },
-  },
+const model = new ChatOpenAI({ model: "gpt-4.1" });
+
+const agent = createAgent({
+  model,
+  tools,
+  middleware: [
+    humanInTheLoopMiddleware({
+      interruptOn: {
+        send_email:     true,                                                      // approve | edit | reject
+        execute_sql:    { allowedDecisions: ["approve", "reject"], description: "Requires DBA" },
+        read_data:      false,                                                     // never interrupt
+        deploy_service: { allowedDecisions: ["approve"], description: "Engineer only" },
+      },
+    }),
+  ],
+  checkpointer: new MemorySaver(),
 });
 ```
 
@@ -853,7 +863,8 @@ import { MemorySaver } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import { tool } from "@langchain/core/tools";
-import { ToolNode, createReactAgent } from "@langchain/langgraph/prebuilt";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { createAgent, humanInTheLoopMiddleware } from "langchain";
 import { useStream } from "@langchain/langgraph-sdk/react";
 
 // interrupt(payload) — inside any node or tool

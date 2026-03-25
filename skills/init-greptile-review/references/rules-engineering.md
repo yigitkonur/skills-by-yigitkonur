@@ -368,10 +368,20 @@ Before finalizing rules, verify none duplicate existing linter coverage:
 **Step 1:** List the repo's linters
 ```bash
 # Check for config files
-ls .eslintrc* prettier.config* biome.* .stylelintrc* pyproject.toml .rubocop.yml 2>/dev/null
+find . -maxdepth 2 -type f \( -name '.eslintrc*' -o -name 'prettier.config*' -o -name '.prettierrc*' -o -name 'biome.*' -o -name '.stylelintrc*' -o -name 'pyproject.toml' -o -name '.rubocop.yml' -o -name '.rubocop_todo.yml' \) 2>/dev/null
 
 # Check devDependencies
-cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin).get('devDependencies',{}); print('\n'.join(k for k in d if any(x in k for x in ['eslint','prettier','biome','stylelint','lint'])))"
+python3 - <<'PY'
+from pathlib import Path
+import json
+
+package_json = Path("package.json")
+if not package_json.exists():
+    print("package.json not found")
+else:
+    dev = json.loads(package_json.read_text()).get("devDependencies", {})
+    print("\n".join(name for name in dev if any(tag in name.lower() for tag in ("eslint", "prettier", "biome", "stylelint", "lint", "oxlint"))))
+PY
 ```
 
 **Step 2:** For each Greptile rule, ask:

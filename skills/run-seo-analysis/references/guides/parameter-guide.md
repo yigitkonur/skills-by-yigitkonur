@@ -4,6 +4,16 @@ Key parameters across tools — defaults, recommended values, and when to change
 
 ## Universal parameters
 
+### Public crawl targets
+
+| Requirement | Rule | What to do if it fails |
+|-----------|------|------------------------|
+| `audit-site` or other crawl-based site/domain target | Must be a publicly reachable `http://` or `https://` URL/domain | Stop and ask for a public staging URL or tunnel |
+| Local fixture or `file://` page | Unsupported for external crawl analysis | Use a different local audit method outside this skill |
+| `localhost` or private preview | Usually unreachable by the external crawl provider | Expose it publicly first, then rerun |
+
+Other workflows can use non-crawl identifiers instead of a public site: plain domains for competitor/backlink/rank tracking, place IDs or business queries for local SEO, `appId` values for ASO, and ASIN/product IDs for e-commerce.
+
 ### Location and language
 
 | Parameter | Default | When to change |

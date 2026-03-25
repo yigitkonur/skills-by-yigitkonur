@@ -10,6 +10,8 @@ Every SaaS dashboard shares the same components — buttons, inputs, tables, car
 
 These patterns sit between "component" and "page." They're too complex to be a single component but too reusable to be a one-off page layout.
 
+If the target is an offline snapshot instead of a component repo, use the path rules in `references/extraction/target-modes.md`. Pattern evidence then comes from page-level HTML structure, repeated DOM fragments, and CSS selectors rather than package manifests or component source files.
+
 ---
 
 ## Pattern Categories
@@ -358,7 +360,7 @@ If the dashboard is a desktop app (Electron, Tauri) or has platform-specific fea
 
 ## Output Format
 
-Create a directory named after the product (e.g., `[product-name]-patterns/`) and write one `.md` file per pattern found. Use the component template structure but adapt it for patterns — patterns are compositions, so focus on:
+Write pattern docs to `.design-soul/components/[app-specific]/` using the same `NN-{pattern-name}.md` naming rule as other extraction docs. Use product-meaningful names such as `01-dashboard-layout.md`, `02-metric-grid.md`, or `03-settings-sections.md`. Adapt the component template for patterns — these files document compositions, so focus on:
 
 - Overall layout with ASCII diagram
 - Component composition (what shared components are used where)

@@ -6,13 +6,13 @@ Build a working MCP server in under 10 minutes using the `mcp-use` TypeScript fr
 
 ## 1. Prerequisites
 
-- **Node.js 18** (or higher) — [download](https://nodejs.org/)
+- **Node.js 18+ supported** — use Node 22 LTS when you want the closest match to current examples. [download](https://nodejs.org/)
 - **Package manager** — npm (bundled with Node), pnpm, or yarn
 
 Verify your setup:
 
 ```bash
-node --version   # v18.x.x or higher
+node --version   # v18.x.x or higher (Node 22 LTS recommended)
 npm --version    # 9.x.x or higher
 ```
 
@@ -65,12 +65,32 @@ If you used the scaffolder, skip to [Section 6](#6-development-workflow).
 
 ## 3. Manual Setup
 
+### Setup path matrix
+
+Choose the file layout before you start writing code:
+
+| Situation | Default entry file | Why |
+|---|---|---|
+| Fresh scaffold from `create-mcp-use-app` | `index.ts` at repo root | Matches generated scripts and HMR defaults |
+| Brand-new manual server | `src/server.ts` | Clean separation for a standalone server |
+| Existing app already using `src/index.ts` or another host entry | keep existing host entry, add `src/mcp-server.ts` | Avoids colliding with the app bootstrap while keeping MCP code isolated |
+
+### Dependency and script matrix
+
+Use one setup story and stick to it:
+
+| Situation | Install story | Typical dev script |
+|---|---|---|
+| Fresh scaffold from `create-mcp-use-app` | scaffold already includes `mcp-use`, `zod`, and CLI wiring | `npm run dev` |
+| Brand-new manual server | `npm install mcp-use zod` and `npm install -D @mcp-use/cli typescript @types/node tsx` | `mcp-use dev src/server.ts` |
+| Existing app adding MCP side-car | same dependencies as manual setup, then add `src/mcp-server.ts` and a dedicated MCP script | `mcp-use dev src/mcp-server.ts` |
+
 For existing projects or custom configurations, set up from scratch.
 
 ### Install the package
 
 ```bash
-npm install mcp-use
+npm install mcp-use zod
 ```
 
 Or, to initialize a brand-new project first:
@@ -78,8 +98,8 @@ Or, to initialize a brand-new project first:
 ```bash
 mkdir my-mcp-server && cd my-mcp-server
 npm init -y
-npm install mcp-use
-npm install -D typescript @types/node tsx
+npm install mcp-use zod
+npm install -D @mcp-use/cli typescript @types/node tsx
 ```
 
 ### Configure package.json
@@ -100,7 +120,8 @@ Update `package.json` with these fields:
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "mcp-use": "latest"
+    "mcp-use": "latest",
+    "zod": "^4.0.0"
   }
 }
 ```
@@ -110,6 +131,8 @@ Update `package.json` with these fields:
 - **`"build"`** — compiles TypeScript to `dist/`.
 - **`"start"`** — runs the compiled code in production mode.
 - **`"deploy"`** — deploys the server to Manufact Cloud.
+- **`zod`** — install explicitly; it is a peer dependency used by tool/resource schemas.
+- **`@mcp-use/cli`** — keep as a dev dependency for `mcp-use dev`, `build`, `deploy`, and `generate-types`.
 
 ### Configure tsconfig.json
 
@@ -172,13 +195,14 @@ my-mcp-server/
 │   └── favicon.ico
 ├── index.ts                       # MCP server entry point (scaffolded)
 ├── src/
-│   └── server.ts                  # Entry point (manual setup)
+│   ├── server.ts                  # Entry point (manual setup)
+│   └── mcp-server.ts              # Preferred MCP file when an existing app already owns src/index.ts
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
-The `resources/` and `public/` directories are optional. Scaffolded projects use `index.ts` at the root; manual projects typically use `src/server.ts`.
+The `resources/` and `public/` directories are optional. Scaffolded projects use `index.ts` at the root; manual projects typically use `src/server.ts`; existing apps with a pre-existing `src/index.ts` should usually add `src/mcp-server.ts` instead of replacing the app bootstrap.
 
 ---
 
@@ -227,6 +251,74 @@ server.listen(parseInt(process.env.PORT || "3000", 10));
 ```
 
 `listen()` starts an HTTP server using MCP Streamable HTTP transport on port 3000 by default. Override via the `PORT` env variable.
+
+### Minimal calculator server
+
+Use this when you need a tiny but real server for local testing:
+
+```typescript
+// src/server.ts
+import { MCPServer, text } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({
+  name: "calculator-server",
+  version: "1.0.0",
+});
+
+server.tool(
+  {
+    name: "add",
+    description: "Add two numbers",
+    schema: z.object({
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    }),
+  },
+  async ({ a, b }) => text(String(a + b))
+);
+
+server.tool(
+  {
+    name: "subtract",
+    description: "Subtract the second number from the first",
+    schema: z.object({
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    }),
+  },
+  async ({ a, b }) => text(String(a - b))
+);
+
+server.tool(
+  {
+    name: "multiply",
+    description: "Multiply two numbers",
+    schema: z.object({
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    }),
+  },
+  async ({ a, b }) => text(String(a * b))
+);
+
+server.tool(
+  {
+    name: "divide",
+    description: "Divide the first number by the second",
+    schema: z.object({
+      a: z.number().describe("Dividend"),
+      b: z.number().describe("Divisor"),
+    }),
+  },
+  async ({ a, b }) =>
+    b === 0 ? text("Cannot divide by zero") : text(String(a / b))
+);
+
+await server.listen(3000);
+```
+
+Run it with `npx tsx src/server.ts` or wire `npm run dev` to `mcp-use dev src/server.ts`.
 
 ### MCPServer Constructor Options
 
@@ -569,11 +661,13 @@ When your server is running (dev or prod), it exposes these endpoints:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/mcp` | POST | **Primary Endpoint.** Streamable HTTP transport for MCP clients. |
+| `/mcp` | `POST` | **Primary endpoint.** Send JSON-RPC requests. |
+| `/mcp` | `GET` | Open the server-initiated event stream for stateful clients. |
+| `/mcp` | `DELETE` | Terminate a session. |
+| `/mcp` | `HEAD` | Health check / keep-alive. |
 | `/mcp-use/widgets/*` | GET | Widget asset serving (React widget bundles and static files). |
 | `/inspector` | GET | Interactive web debugger (dev mode only). |
-| `/sse` | GET | **Deprecated.** Legacy Server-Sent Events endpoint. |
-| `/messages` | POST | **Deprecated.** Legacy message posting endpoint. |
+| `/sse` | Same behavior as `/mcp` | **Legacy alias.** Only for older clients that still expect SSE-era paths. |
 
 **Note:** Always direct clients to `/mcp`.
 
@@ -753,7 +847,7 @@ The official `@modelcontextprotocol/sdk` is low-level. `mcp-use` adds a producti
 | Feature | Raw SDK | `mcp-use` |
 |---|---|---|
 | **Schemas** | JSON Schema (manual) | Zod (type-safe, inferred) |
-| **Transport** | Manual setup | Auto-detected (HTTP/stdio) |
+| **Transport** | Manual setup | Auto-detected HTTP modes + serverless handler support |
 | **HMR** | No | Yes (`mcp-use dev`) |
 | **Inspector** | No | Built-in (auto-launched) |
 | **UI Widgets** | No | MCP Apps + ChatGPT Apps SDK |
@@ -786,7 +880,7 @@ const server = new MCPServer({ name: "my-server", version: "1.0.0" });
 // ... 500 lines of tools and resources ...
 
 // GOOD: Modular file structure
-// src/index.ts -> imports from tools/*
+// src/server.ts -> imports from tools/*
 import { userTool } from "./tools/user";
 import { configResource } from "./resources/config";
 

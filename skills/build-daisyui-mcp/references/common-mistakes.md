@@ -328,7 +328,7 @@ function toggleSidebar() {
 | Accordion | onclick toggle | Radio inputs |
 | Collapse | onclick toggle | Checkbox or `<details>` |
 | Swap | onclick toggle | Checkbox |
-| Theme switch | onclick set theme | Input with `data-toggle-theme` |
+| Theme switch | onclick set theme | Input with `class="theme-controller"` and `value="<theme-name>"` |
 
 **Note:** `<dialog>.showModal()` is the one acceptable minimal JS call — it's a native browser API, not custom JS.
 
@@ -456,7 +456,7 @@ Using deprecated v4 patterns instead of current v5 syntax.
 <!-- v4 bordered input -->
 <input class="input input-bordered" />
 
-<!-- v4 tab-lifted -->
+<!-- v4 tabs-lifted -->
 <div class="tabs tabs-lifted">...</div>
 
 <!-- v4 bordered card -->
@@ -493,7 +493,7 @@ Using deprecated v4 patterns instead of current v5 syntax.
 | `input-bordered` | `input` | Borders are default in v5 |
 | `select-bordered` | `select` | Borders are default in v5 |
 | `textarea-bordered` | `textarea` | Borders are default in v5 |
-| `tab-lifted` | `tabs-lift` | Renamed |
+| `tabs-lifted` | `tabs-lift` | Renamed |
 | `bordered` (on card) | `card-border` | Renamed |
 | HSL theme colors | oklch theme colors | Format change |
 | `tailwind.config.js` themes | `@plugin "daisyui"` in CSS | Configuration moved to CSS |

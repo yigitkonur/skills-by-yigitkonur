@@ -273,7 +273,15 @@ Map these to your own severity scale when building the already-reviewed map. A �
 
 ## Including Existing Review State in Your Output
 
-In the synthesis and output phase, always include a section summarizing the existing review state. This is not optional — it is part of a complete review.
+In the synthesis and output phase, always include a section summarizing the existing review state when that state exists. In local diff mode with no imported review history, include a one-line status instead of inventing threads:
+
+```markdown
+**Existing review state:** Unavailable in local diff mode
+```
+
+Do not fabricate reviewers, bot comments, or thread status.
+
+In GitHub PR mode, include the full review-state section. This is not optional — it is part of a complete review.
 
 ```markdown
 ### Existing Review Threads

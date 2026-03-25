@@ -219,7 +219,7 @@ Work through the codebase replacing verbose Tailwind with daisyUI classes.
       </tr>
     </thead>
     <tbody>
-      <tr class="hover">
+      <tr class="hover:bg-base-300">
         <td>Alice</td>
         <td><span class="badge badge-success">Active</span></td>
       </tr>
@@ -305,7 +305,7 @@ Work through the codebase replacing verbose Tailwind with daisyUI classes.
 </div>
 
 <!-- daisyUI optimized -->
-<div class="avatar online">
+<div class="avatar avatar-online">
   <div class="w-10 rounded-full">
     <img src="..." alt="User" />
   </div>

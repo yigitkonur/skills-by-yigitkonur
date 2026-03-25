@@ -31,6 +31,17 @@ Before every `message` call, present:
 
 Wait for the user to explicitly approve before executing.
 
+Reusable confirmation template:
+
+```text
+VERY HIGH-RISK ACTION
+Platform and target: Slack #engineering
+Exact content: "Deployment completed successfully."
+Why now: release workflow finished and the user asked for notification
+Irreversibility: this message cannot be unsent
+Reply YES to send.
+```
+
 **The only exception:** If the user has pre-authorized a specific messaging pattern at the start of the session (e.g., "send a Slack message to #deploys after every successful deployment"). In this case, follow the pre-authorized pattern exactly -- do not expand scope.
 
 ## Message composition guidelines
@@ -85,9 +96,11 @@ Do not use `message` as a workaround for inter-session communication. Do not use
 ### Sub-agent sends messages
 
 When a sub-agent needs to send external messages:
-- Spawn it with the `messaging` tool profile
+- Target an agent or child-policy configuration that actually exposes the messaging surface
 - Include the exact message content and target in the task description
 - The parent session should have already confirmed the message with the user
+
+Do not assume `sessions_spawn` can set `tool_profile=messaging` at call time. The child's messaging capability comes from runtime configuration.
 
 ### Supervisor-controlled messaging
 
@@ -97,7 +110,7 @@ Preferred pattern for most workflows:
 3. The supervisor composes the message based on results
 4. The supervisor confirms with the user and sends via `message`
 
-This keeps messaging authority centralized and auditable.
+This keeps messaging authority centralized and easier to inspect.
 
 ### Batch messaging
 

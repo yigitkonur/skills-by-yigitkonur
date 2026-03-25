@@ -328,29 +328,29 @@ When presenting architecture decisions, include these sections:
 - Review date for revisiting the decision
 
 
-## Steering experiences
+## Common traps
 
-### SE-01: Architecture recommendation without current-state description
+### Architecture recommendation without current-state description
 **What happens:** Agent recommends "migrate to event-driven architecture" without documenting the current architecture. Reviewers cannot evaluate the recommendation because they do not know the starting point.
 **Why it happens:** Agents focus on the target state because it is the exciting part. The current state feels obvious.
 **Prevention:** Every architecture recommendation must start with a current-state section: components, data flows, known pain points, and performance characteristics. If you cannot describe the current state, you do not understand it well enough to recommend changes.
 
-### SE-02: ADR written without "Rejected Alternatives" section
+### ADR written without "Rejected Alternatives" section
 **What happens:** The ADR has Status, Context, and Decision but no Rejected Alternatives. Readers cannot understand why this option was chosen over others.
 **Why it happens:** By the time the agent writes the ADR, the decision feels obvious. The alternatives seem not worth documenting.
 **Prevention:** The Rejected Alternatives section is required, not optional. For each rejected option, write one sentence: what it was and why it lost. This is the most valuable section for future readers.
 
-### SE-03: All technical debt treated as equal priority
+### All technical debt treated as equal priority
 **What happens:** Agent lists 8 technical debt items and recommends addressing them in order of discovery. Critical structural debt and minor code style issues get the same treatment.
 **Why it happens:** The debt list is flat -- no severity or risk classification.
 **Prevention:** Classify each debt item using the technical debt quadrant (deliberate/inadvertent x reckless/prudent). Prioritize inadvertent-reckless debt (we did not know it was debt) over deliberate-prudent debt (we chose this knowingly and have a plan).
 
-### SE-04: Migration plan has no rollback strategy
+### Migration plan has no rollback strategy
 **What happens:** Agent plans a database migration with 5 phases but no rollback path. When phase 3 fails in production, there is no documented recovery.
 **Why it happens:** Planning the forward path is optimistic work. Planning rollback feels like admitting failure.
 **Prevention:** Every migration phase must have a rollback trigger and rollback procedure. The trigger is a specific condition ("if error rate exceeds 2 percent for 5 minutes"). The procedure is a specific action ("revert the routing change and restore the read replica").
 
-### SE-05: Fitness functions not defined for architecture qualities
+### Fitness functions not defined for architecture qualities
 **What happens:** Agent recommends an architecture for "scalability and reliability" but defines no measurable thresholds. Six months later, no one knows if the architecture achieved its goals.
 **Why it happens:** Quality attributes feel self-evident. Measuring them feels like extra work.
 **Prevention:** For each quality attribute in the recommendation, define a fitness function: a measurable threshold with a measurement method. "Scalability: system handles 10x current peak load with p99 < 500ms, measured by load test in staging monthly."

@@ -601,7 +601,7 @@ main().catch((err) => {
 
 ## 7. Streaming CLI Agent
 
-Uses `agent.stream()` to display real-time step-by-step progress as the agent works. Each tool call and observation is printed as it happens. Also demonstrates the `agent.prettyStreamEvents()` variant for automatic ANSI-formatted output, and `agent.streamEvents()` for low-level LangChain event access.
+Uses `agent.stream()` to display real-time step-by-step progress as the agent works. The yielded step object is best used for tool names and arguments; tool-result payloads come from the final return value or `agent.streamEvents()`. Also demonstrates the `agent.prettyStreamEvents()` variant for automatic ANSI-formatted output, and `agent.streamEvents()` for low-level LangChain event access.
 
 ---
 
@@ -610,12 +610,12 @@ Uses `agent.stream()` to display real-time step-by-step progress as the agent wo
  * Recipe 7 — Streaming CLI Agent
  *
  * Three streaming modes:
- *   1. agent.stream(prompt)            — manual step iteration via AsyncGenerator
+ *   1. agent.stream(...)               — manual step iteration via AsyncGenerator
+ *                                        accepts plain string (deprecated) or options object { prompt, maxSteps?, schema?, signal? }
+ *   2. agent.streamEvents(...)         — low-level LangChain StreamEvents
+ *                                        accepts plain string (deprecated) or options object { prompt, schema?, maxSteps?, signal? }
+ *   3. agent.prettyStreamEvents(...)   — auto-formatted ANSI terminal output
  *                                        accepts plain string (deprecated) or options object { prompt, maxSteps?, schema? }
- *   2. agent.streamEvents(prompt)      — low-level LangChain StreamEvents
- *                                        accepts plain string (deprecated) or options object { prompt, schema?, maxSteps? }
- *   3. agent.prettyStreamEvents({...}) — auto-formatted ANSI terminal output
- *                                        always takes an options object { prompt, maxSteps?, schema? }
  *
  * Requirements:
  *   OPENAI_API_KEY in environment
@@ -650,10 +650,10 @@ async function manualStreaming(): Promise<void> {
   });
 
   try {
-    // agent.stream() takes a plain string prompt
-    const stream = agent.stream(
-      "List all available tools, then use the echo tool with 'Hello streaming world!'"
-    );
+    // Prefer the options-object form; the plain-string overload is deprecated.
+    const stream = agent.stream({
+      prompt: "List all available tools, then use the echo tool with 'Hello streaming world!'",
+    });
 
     let stepNumber = 1;
     let finalResult = "";
@@ -764,7 +764,7 @@ async function prettyStreaming(): Promise<void> {
       maxSteps: 10,
     })) {
       // Output is automatically printed — no manual formatting needed.
-      // The iterator yields raw LangChain StreamEvents if you need them.
+      // Keep the loop body empty unless you need to coordinate lifecycle around the stream.
     }
   } finally {
     await agent.close();
@@ -796,10 +796,10 @@ main().catch((err) => {
 
 **Key takeaways:**
 
-- `agent.stream("prompt")` — deprecated plain string form, still works. `agent.stream({ prompt, maxSteps?, schema? })` — preferred options object form. Returns an `AsyncGenerator<AgentStep, string | T, void>`. Each yielded `AgentStep` has `{ action: { tool, toolInput, log }, observation }`. When iterating with `.next()` and `done === true`, `value` is the final string result.
+- `agent.stream("prompt")` still works, but `agent.stream({ prompt, maxSteps?, schema?, signal? })` is the preferred form. It returns an `AsyncGenerator<AgentStep, string | T, void>`. Each yielded `AgentStep` has `{ action: { tool, toolInput, log }, observation }`, and `observation` is currently an empty placeholder while the stream is in flight. When iterating with `.next()` and `done === true`, `value` is the final string result.
 - `agent.streamEvents("prompt")` — deprecated plain string form. `agent.streamEvents({ prompt, schema? })` — preferred options object form. Yields low-level LangChain `StreamEvent` objects. Use `event.data?.chunk?.text || event.data?.chunk?.content` to extract tokens (`.text` for Anthropic, `.content` for OpenAI).
 - When using `agent.streamEvents({ prompt, schema })` with a schema, listen for `"on_structured_output_progress"`, `"on_structured_output"` (result at `event.data.output`), and `"on_structured_output_error"` events.
-- `agent.prettyStreamEvents({ prompt, maxSteps?, schema? })` — always takes an **options object** (no plain string form). Auto-formats everything with ANSI colors. Accepts an optional Zod `schema`.
+- `agent.prettyStreamEvents("prompt")` still works, but `agent.prettyStreamEvents({ prompt, maxSteps?, schema? })` is the preferred form. It auto-formats everything with ANSI colors and accepts an optional Zod `schema`.
 - Use `stream()` when you need per-step tool call visibility; use `streamEvents()` when you need token-level or raw LangChain event access.
 
 ---
@@ -1234,7 +1234,8 @@ agent.stream("prompt")                               // AsyncGenerator per step 
 agent.stream({ prompt, maxSteps?, schema?, signal? }) // preferred options object form
 agent.streamEvents("prompt")                          // LangChain StreamEvents — plain string (deprecated)
 agent.streamEvents({ prompt, schema?, maxSteps?, signal? }) // preferred options object form
-agent.prettyStreamEvents({ prompt, maxSteps?, schema? }) // ANSI formatted — options object ONLY
+agent.prettyStreamEvents("prompt")                       // ANSI formatted — plain string (deprecated)
+agent.prettyStreamEvents({ prompt, maxSteps?, schema? }) // ANSI formatted — preferred options object form
 
 // Memory & lifecycle
 agent.getConversationHistory()               // Returns BaseMessage[] of current history

@@ -203,4 +203,4 @@ description: "[DEPRECATED] Use new-skill instead. This skill is no longer mainta
 
 ---
 
-> **Steering tip:** Under-triggering and over-triggering require different fixes. Check `references/iteration/troubleshooting.md` for diagnostic steps before adjusting the description.
+> Tip: Under-triggering and over-triggering require different fixes. Check `references/iteration/troubleshooting.md` for diagnostic steps before adjusting the description.

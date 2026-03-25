@@ -4,9 +4,11 @@
 
 After downloading, get an immediate picture of the corpus:
 
+Default auto-categorization puts each downloaded `SKILL.md` at depth 3 (`<output>/<category>/<owner>--<repo>--<skill>/SKILL.md`). The `find ... -maxdepth 3` commands below also work when you used `--no-auto-category`. If `tree` is unavailable, use `find ./corpus -maxdepth 3 -type d | sort`.
+
 ```bash
 # Total skills downloaded
-find ./corpus -name "SKILL.md" -maxdepth 2 | wc -l
+find ./corpus -name "SKILL.md" -maxdepth 3 | wc -l
 
 # Corpus size
 du -sh ./corpus
@@ -20,7 +22,7 @@ tree -L 2 ./corpus
 For each downloaded skill, capture file counts and structure:
 
 ```bash
-find ./corpus -name "SKILL.md" -maxdepth 2 | sort | while read f; do
+find ./corpus -name "SKILL.md" -maxdepth 3 | sort | while read f; do
   d=$(dirname "$f")
   name=$(basename "$d")
   total=$(find "$d" -type f | wc -l)
@@ -57,7 +59,7 @@ For each Tier 1 skill:
 1. **Read SKILL.md fully.** Note: trigger boundary, workflow structure, decision rules, output contract, and guardrails.
 2. **Tree its `references/` directory.** Note: file count, naming scheme, nesting depth, organization philosophy.
 3. **Read the 2-3 most relevant reference files.** Pick by filename relevance and routing logic in SKILL.md.
-4. **Check `scripts/` if present.** Scripts reveal automation and validation patterns that prose does not convey.
+4. **Check `scripts/`, `rules/`, or `examples/` if present.** These folders often carry automation, constraints, or worked examples that SKILL.md alone does not show.
 
 ## Note-taking template
 
@@ -90,7 +92,7 @@ If the corpus will feed into a `build-skills` workflow:
 Run this one-liner to quickly flag quality issues across the entire corpus:
 
 ```bash
-find ./corpus -name "SKILL.md" -maxdepth 2 | sort | while read f; do
+find ./corpus -name "SKILL.md" -maxdepth 3 | sort | while read f; do
   d=$(dirname "$f")
   name=$(basename "$d")
   lines=$(wc -l < "$f")

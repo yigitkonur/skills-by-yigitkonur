@@ -17,6 +17,8 @@ multiple agents sharing a single browser in `playwright-cli`.
 - [Orchestrator guide](#orchestrator-guide)
 - [Known traps](#known-traps)
 
+All examples in this file are shell commands. Run them as `playwright-cli <command> ...`, not inside an interactive prompt.
+
 ---
 
 ## Tab commands
@@ -29,7 +31,7 @@ tab-new [url]
 
 Opens a new tab. The `[url]` argument is documented but **unreliable**.
 
-> **Steering experience:** In derailment testing, `tab-new <url>` opened `about:blank` instead of the requested URL in multiple tests. This is not a rare edge case — it is the common behavior. Always use the two-step pattern below. Never pass a URL to `tab-new`.
+> **Steering experience:** In repeated real runs, `tab-new <url>` opened `about:blank` instead of the requested URL. Treat that as the common behavior. Always use the two-step pattern below. Never pass a URL to `tab-new`.
 
 **Safe pattern (always use this):**
 
@@ -148,13 +150,14 @@ snapshot
 
 ### Bootstrap (run once before browser work)
 
-> **Steering experience:** Always run `playwright-cli install --browser=chrome` even if the CLI is installed. It is a no-op when the binary exists but prevents cryptic errors when it is missing. For isolated sessions, remember to `session-stop <name>` at the end to avoid leaking browser processes.
+> **Steering experience:** Always run `playwright-cli install --browser=chrome` even if the CLI is installed. It is a no-op when the binary exists but prevents cryptic errors when it is missing. If you are about to reconfigure the current scratch session, stop it first with `session-stop`; otherwise leave an already-useful session alone. For isolated cleanup, use `session-stop` for the current unnamed session or `session-stop <name>` for a named one.
 
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
 playwright-cli install --browser=chrome    # always run — ensures binary exists
-playwright-cli session-stop 2>/dev/null
+playwright-cli session-stop 2>/dev/null    # optional: only before reconfiguring the current scratch session
 playwright-cli config --browser=chrome --isolated
+playwright-cli session-list
 ```
 
 `--isolated` keeps the browser profile in memory, reducing cross-run residue.
@@ -172,10 +175,13 @@ playwright-cli config --browser=chrome --isolated
 | `session-delete` | Delete current session data |
 | `session-delete <name>` | Delete named session data |
 
+`session-stop-all` and `session-delete` are destructive. Use them only for scratch sessions you created and only when their data or browser lifetime should really be discarded.
+
 ### End of work cleanup
 
 ```bash
-playwright-cli session-stop-all
+playwright-cli session-stop           # current unnamed scratch session
+playwright-cli session-stop research  # named scratch session
 ```
 
 ---
@@ -197,7 +203,7 @@ playwright-cli --session=research screenshot --filename=research.png
 ```bash
 playwright-cli session-list
 playwright-cli session-stop research
-playwright-cli session-delete research
+playwright-cli session-delete research   # only if you also want to discard saved session data
 ```
 
 ### When to use named sessions
@@ -215,19 +221,24 @@ playwright-cli session-delete research
 
 ### Stop specific session
 
-> **Steering experience:** When using isolated sessions (`config --isolated`), you MUST call `session-stop <name>` when done. Forgetting this leaks browser processes that consume memory until manually killed.
+> **Steering experience:** When using isolated sessions (`config --isolated`), you MUST stop the one you created when done. Use `session-stop` for the current unnamed isolated session, or `session-stop <name>` for a named one. Forgetting cleanup leaks browser processes that consume memory until manually killed.
 
 ```bash
+playwright-cli session-stop
 playwright-cli session-stop my-session
 ```
 
 ### Stop all sessions
+
+Use this only when you intentionally own every active session and want a full teardown.
 
 ```bash
 playwright-cli session-stop-all
 ```
 
 ### Delete session data
+
+Delete only scratch sessions you created and no longer need.
 
 ```bash
 playwright-cli session-delete my-session
@@ -285,7 +296,7 @@ screenshot --filename=after-popup.png
 
 ### Dialog handling
 
-> **Steering experience:** Dialog commands (`dialog-accept`, `dialog-dismiss`) are CLI prompt commands, not shell commands. Run them at the `playwright-cli` prompt when a dialog appears. They must be issued while the dialog is active — if the dialog auto-dismissed, these commands will error.
+> **Steering experience:** Dialog commands (`dialog-accept`, `dialog-dismiss`) are normal shell invocations: `playwright-cli dialog-accept` or `playwright-cli dialog-dismiss`. They must be issued while the dialog is active — if the dialog auto-dismissed, these commands will error.
 
 For JavaScript `alert()`, `confirm()`, `prompt()` dialogs:
 
@@ -317,6 +328,7 @@ tab-new → open <url> → [work] → tab-close <index>
    may have changed tab order.
 5. **Avoid `close`** in shared runs — it affects the entire browser context.
 6. **Use `tab-new` then `open <url>`** — not `tab-new <url>`.
+7. **Never use `session-stop-all` in shared runs** — it tears down other agents' work.
 
 ### Agent brief template
 
@@ -333,6 +345,7 @@ Do not trust tab-new <url>. Use tab-new then open <url>.
 Use eval for truth checks (URLs, values, checked state).
 Uploads are modal-driven — trigger the file chooser first.
 Console and network return artifact files — inspect them.
+Do not use close or session-stop-all unless you own the whole browser.
 ```
 
 ---
@@ -353,14 +366,18 @@ Console and network return artifact files — inspect them.
 ```bash
 which playwright-cli || npm install -g @anthropic-ai/playwright-cli@latest
 playwright-cli install --browser=chrome
-playwright-cli session-stop 2>/dev/null
+playwright-cli session-stop 2>/dev/null   # optional: only before reconfiguring the current scratch session
 playwright-cli config --browser=chrome --isolated
+playwright-cli session-list
 ```
 
 ### After all agents complete
 
+Stop only the scratch session or sessions the orchestrator created. Reserve `session-stop-all` for cases where the orchestrator intentionally owns the whole active browser pool.
+
 ```bash
-playwright-cli session-stop-all
+playwright-cli session-stop
+playwright-cli session-stop orchestrator
 ```
 
 ---

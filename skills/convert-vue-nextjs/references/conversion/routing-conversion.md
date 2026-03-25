@@ -222,13 +222,13 @@ export const config = {
 };
 ```
 
-| Aspect | Vue Guards | Next.js Middleware |
+| Aspect | Vue Guards | Next.js boundary file |
 |---|---|---|
-| Runs on | Client-side | Edge/server (before page loads) |
+| Runs on | Client-side | Request/response boundary before the route renders |
 | Access to | Store, component | Request/response only |
 | Cancel | `return false` | `NextResponse.redirect()` |
 | Multiple | Chain guards | Single file, conditionals |
-| Runtime | Full Node.js | Edge Runtime (limited APIs) |
+| Runtime | Full Node.js | Constrained request runtime — no component/store access |
 
 ### beforeRouteLeave → Unsaved Changes
 
@@ -244,26 +244,38 @@ export function useUnsavedChanges(isDirty: boolean) {
 }
 ```
 
-### proxy.ts (Next 16+)
+### `proxy.ts` (Next.js 16+) or `middleware.ts` (older App Router projects)
 
-Next 16+ introduces `proxy.ts` as the explicit network boundary, replacing `middleware.ts` for request-time logic (redirects, rewrites, headers). Codemods are available (`npx @next/codemod@latest middleware-to-proxy`) for migration.
+Next.js 16 renames Middleware to Proxy. Keep request-time redirects, rewrites, and header logic in `proxy.ts` on Next.js 16+, or in `middleware.ts` on older App Router projects.
 
 ```ts
-// proxy.ts — runs at the network edge
-import { NextProxy } from 'next/proxy';
+// proxy.ts on Next.js 16+, middleware.ts on older App Router projects
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default function proxy(request: NextProxy) {
+export function proxy(request: NextRequest) {
   if (!request.cookies.get('auth-token')) {
-    return request.redirect('/login');
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', request.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
-  request.headers.set('x-custom', 'value');
-  return request.next();
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-custom', 'value');
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = { matcher: ['/dashboard/:path*'] };
 ```
 
-> ⚠️ **proxy.ts runs at the network edge** — don't rely on it for full authorization (use server-side checks too). Fetch caching options (`next.revalidate`, `cache`) have no effect inside proxy handlers.
+If your project still uses `middleware.ts`, keep the same logic and rename the exported function to `middleware`.
+
+> ⚠️ **This boundary file is for request-time decisions, not full authorization.** Keep real session or role checks on the server as well. Fetch caching options (`next.revalidate`, `cache`) have no effect inside `proxy.ts` / `middleware.ts`.
 
 ---
 
@@ -272,8 +284,8 @@ export const config = { matcher: ['/dashboard/:path*'] };
 | Vue `meta` Usage | Next.js Equivalent | Location |
 |---|---|---|
 | `meta.title` | `export const metadata` or `generateMetadata()` | `page.tsx` |
-| `meta.requiresAuth` | Pathname matching | `middleware.ts` |
-| `meta.roles` | Token/session check | `middleware.ts` |
+| `meta.requiresAuth` | Pathname matching | `proxy.ts` or `middleware.ts` |
+| `meta.roles` | Token/session check | `proxy.ts` or `middleware.ts` |
 | `meta.layout` | Folder structure | File system |
 | `meta.revalidate` | `export const revalidate = N` | `page.tsx` |
 

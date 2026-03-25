@@ -1,583 +1,232 @@
 ---
 name: build-mcp-use-server
-description: Use skill if you are building MCP servers with the mcp-use TypeScript library — tool registration, Zod schemas, resources, prompts, transports, OAuth, sessions, and deployment.
+description: Use skill if you are building or extending TypeScript MCP servers with the mcp-use library — tools, Zod schemas, resources, prompts, transports, OAuth, sessions, testing, and deployment.
 ---
 
 # Build MCP Use Server
 
-Build production-grade MCP servers with the `mcp-use` TypeScript library (v1.21+, Node 18+). The library wraps the official `@modelcontextprotocol/sdk` with a streamlined API: `MCPServer` constructor, object-first registration methods, Zod-based schemas, 15 response helpers (`text()`, `object()`, `markdown()`, `error()`, etc.), built-in OAuth, session stores, and HMR dev server.
+Use this skill for server-side `mcp-use` work. It covers building new MCP servers, extending existing ones, and tightening an existing server against `mcp-use` conventions. If the user's main task is a full widget or MCP App UI, use `build-mcp-use-apps-widgets` instead.
 
-All server-side imports come from `mcp-use/server`. Never import from `@modelcontextprotocol/sdk` directly. Exception: `Logger` is exported from `mcp-use` (root package), NOT from `mcp-use/server`.
+Core rules:
 
----
-
-## When this skill is invoked — behavioral decision flow
-
-Follow this flow every time the skill activates. Do not skip steps.
-
-### Step 1 — Detect what exists in the user's working directory
+- Import server APIs from `mcp-use/server`. The one common exception is `Logger`, which comes from `mcp-use`.
+- Declare `zod` in the project's own dependencies. Do not assume `mcp-use` provides it.
+- Use `mcp-use` HTTP or serverless patterns. Do not hand-wire raw SDK transports.
+- Work in the actual package, fixture, or subdirectory you will change. If the user named a monorepo package or fixture path, scan that path directly.
+- Never claim the server is scaffolded, installed, or runnable when the environment is read-only, notes-only, or missing prerequisites you cannot add in this run.
 
-Run `tree -L 3` (or `ls -R` if tree is unavailable) at the actual project root or package path you will edit. If the repo is a monorepo or the user named a fixture/subdirectory, scan that concrete path instead of the repo root. Scan the output for signs of an existing mcp-use server implementation:
+## Workflow
 
-- `package.json` with `"mcp-use"` as a dependency or devDependency
-- Files importing from `"mcp-use/server"`
-- `MCPServer` constructor calls (`new MCPServer(`)
-- `server.tool()` registrations
-- mcp-use config files (e.g., `mcp-use.config.ts`, `.mcp-use/`)
+### 1. Lock the target path and execution mode
 
-Based on what you find, proceed to Step 2A or Step 2B.
+Start by identifying the concrete path you will inspect and edit.
 
-### Step 2A — Existing mcp-use server found
+- If the user named a fixture, package, or subdirectory, use that path instead of the repo root.
+- Detect both project state and execution limits before choosing an implementation path:
+  - Is there already an `mcp-use` server here?
+  - Is this an implementation-capable run or a plan-only run?
 
-When the codebase already contains an mcp-use server implementation, do NOT start from scratch. Instead, explore and improve what exists.
+Treat the run as **plan-only** when any of these are true:
 
-**Skip subagent exploration if** the codebase was already explored earlier in this conversation (e.g., from a prior task, audit, or plan phase). In that case, summarize known state and proceed directly to improvements. Only launch subagents when the codebase is genuinely unknown.
+- the environment is read-only or notes-only
+- package installation is blocked
+- required prerequisites are missing and you cannot add them in this run
+- the user asked for analysis or a concrete implementation plan rather than code changes
 
-If the runtime cannot launch subagents, perform the same four investigations yourself in sequence and keep the same coverage.
+For plan-only runs, keep gathering enough context to produce an exact implementation plan. Do not fabricate edits, installs, or validation results.
 
-**Launch subagents to explore the codebase in parallel. Assign each subagent a focused investigation area:**
+### 2. Scan what already exists
 
-**Subagent 1 — Tool definitions audit:**
-- Read every `server.tool()` registration in the codebase
-- Catalog each tool's name, description, schema fields, response pattern
-- Check: Does every schema field have `.describe()`? Are tool names action-verb-noun? Are schemas specific (no `z.any()`)?
-- Read `references/guides/tools-and-schemas.md` for the exact ToolOptions interface, all ctx methods, and annotation patterns
-- Surface: what is working well, what violates best practices, what is missing
-
-**Subagent 2 — Server configuration and transport audit:**
-- Read the MCPServer constructor call and all configuration
-- Identify: transport mode, CORS setup, middleware, environment variable usage, port configuration
-- Check: Is graceful shutdown handled? Is CORS configured for HTTP servers? Are secrets in env vars?
-- Read `references/guides/server-configuration.md` for the full ServerConfig interface and env var precedence
-- Read `references/guides/transports.md` for transport decision matrix and serverless patterns
-- Surface: configuration gaps, security concerns, transport mismatches
+Inspect the target path for:
 
-**Subagent 3 — Resources, prompts, and notification setup:**
-- Read all `server.resource()`, `server.resourceTemplate()`, `server.prompt()` registrations
-- Check for notification usage, subscription patterns, elicitation, sampling
-- Read `references/guides/resources-and-prompts.md` for resource/prompt registration patterns
-- Read `references/guides/notifications-and-subscriptions.md` for broadcast and progress patterns
-- Read `references/guides/elicitation-and-sampling.md` for ctx.elicit() and ctx.sample() usage
-- Surface: missing primitives that would improve the server, incorrect patterns
+- `package.json` with `mcp-use`, `zod`, or `@mcp-use/cli`
+- imports from `mcp-use/server`
+- `new MCPServer(...)`
+- registered tools, resources, prompts, or widget responses
+- existing host entry files such as `index.ts`, `src/index.ts`, `src/server.ts`, or `src/mcp-server.ts`
+- deployment/runtime clues such as `.mcp-use/`, Docker, edge-function folders, auth config, env files, or existing health routes
 
-**Subagent 4 — Production readiness audit:**
-- Assess error handling (try/catch in handlers, error() helper usage)
-- Check for logging patterns (ctx.log vs console.log)
-- Look for deployment configuration (Dockerfile, deploy scripts, CI/CD)
-- Evaluate session management setup
-- Read `references/patterns/production-patterns.md` for hardening checklist
-- Read `references/patterns/anti-patterns.md` for the 6 categories of common mistakes
-- Read `references/patterns/deployment.md` for deploy verification list
-- Surface: production blockers, anti-patterns found, deployment readiness
+Summarize:
 
-**After all subagents report back:**
+- target path
+- existing server vs no server
+- implementation-capable vs plan-only
+- likely server shape
+- chosen entry file
 
-1. Synthesize findings into a prioritized improvement plan — most impactful fixes first
-2. Apply improvements directly — fix anti-patterns, fill gaps, align with best practices from reference files
-3. Only ask the user if a decision genuinely cannot be made without their domain-specific input (e.g., "Should this tool require authentication?" when there is no clear signal either way)
+### 3. Choose the right branch
 
-### Step 2B — No existing mcp-use server found
+#### Branch A — Existing `mcp-use` server
 
-Check whether there is enough context in the working directory to infer what to build:
+Do not rebuild from scratch. Audit and improve the live implementation yourself.
 
-- An existing REST API, Express/Fastify/Hono app that could be wrapped as an MCP server
-- A CLI tool whose commands map naturally to MCP tools
-- A database or data source that should be exposed as MCP resources
-- A README or spec describing desired functionality
-- A read-only audit fixture or notes-only environment where package install and file writes are intentionally unavailable
+Cover these areas in order:
 
-**If context exists:** Infer the right MCP server implementation from the existing codebase. Explain briefly what you plan to build and why, then build it. Read `references/guides/quick-start.md` and `references/examples/project-templates.md` to pick the right starting template.
+1. tools and schemas
+   - names, descriptions, `.describe()`, specificity, annotations, response helpers
+2. server configuration and transport
+   - `MCPServer` config, CORS, `allowedOrigins`, transport mode, middleware, `baseUrl`, env handling
+3. resources, prompts, notifications, sampling, elicitation, advanced features
+   - whether the server exposes the right primitives and guards client capabilities correctly
+4. production readiness
+   - error handling, logging, session strategy, shutdown, testing coverage, deployment shape
 
-**If the environment is observation-only** (for example: notes-only audit, read-only fixture, or packages/tools are unavailable): do not pretend to scaffold. Produce a concrete implementation plan with the exact entry file, install commands, and tool/resource list that would be added once write access or dependencies are available.
+Then either:
 
-**If no context exists AND the user hasn't already specified what to build:** Ask focused questions to determine what to build. Skip the questionnaire if the user's request already specifies tools, transport, and scope. Ask up to 10 questions, one at a time, each with 5+ numbered options:
+- implement the highest-value fixes, or
+- if the run is plan-only, produce a prioritized change plan with exact files, commands, and validation steps
 
-1. What kind of data or service will this server expose?
-   (1) Filesystem access, (2) Database queries, (3) External API wrapper, (4) Custom business logic, (5) Multi-source aggregator, (6) Other — describe it
-2. Which transport do you need?
-   (1) Localhost HTTP — for local Inspector and desktop testing, (2) Public HTTP — for remote/web access, (3) Both — localhost in dev + public HTTP in production, (4) Serverless — Supabase Edge / Cloudflare Workers / Deno Deploy, (5) Not sure — recommend based on use case
-3. Does it need authentication?
-   (1) None, (2) Bearer token (simple), (3) Auth0, (4) Supabase Auth, (5) WorkOS, (6) Keycloak, (7) Custom OAuth provider, (8) Not sure
-4. How many tools do you need initially?
-   (1) 1-3 tools, (2) 4-8 tools, (3) 9+ tools — consider modular file organization, (4) Not sure — help me figure it out
-5. Will it serve resources (data the LLM can read without calling a tool)?
-   (1) Yes — static config/docs, (2) Yes — dynamic data with URI templates, (3) No, (4) Not sure what resources are
-6. Will it need interactive widgets or UI?
-   (1) No — server only, (2) Yes — use the `build-mcp-use-apps-widgets` skill instead, (3) Maybe later
-7. Session management needs?
-   (1) In-memory (default, fine for single instance), (2) Redis (production, multi-instance), (3) Filesystem (dev only), (4) Not sure
-8. Deployment target?
-   (1) Local development only, (2) Docker, (3) Cloud (mcp-use deploy), (4) Serverless edge, (5) npm package distribution, (6) Not sure yet
-9. Will tools need to ask users for input mid-execution (elicitation)?
-   (1) No, (2) Yes — form-based input, (3) Yes — URL redirects (OAuth/payments), (4) Not sure
-10. Will tools need to call an LLM themselves (sampling)?
-    (1) No, (2) Yes — summarization/analysis within tools, (3) Not sure
-
-After gathering answers, build the full implementation following the build workflow below.
-
----
-
-## Quick start
-
-**Prerequisites:** `npm install mcp-use zod` (zod is a peer dependency since v1.21.5). Ensure `package.json` has `"type": "module"` — ESM imports fail without it.
-
-```typescript
-import { MCPServer, text } from "mcp-use/server";
-import { z } from "zod";
-
-const server = new MCPServer({
-  name: "my-server",
-  version: "1.0.0",
-});
-
-server.tool(
-  {
-    name: "greet",
-    description: "Greet someone by name",
-    schema: z.object({
-      name: z.string().describe("Name of the person to greet"),
-    }),
-  },
-  async ({ name }) => text(`Hello, ${name}!`)
-);
-
-await server.listen(3000);
-```
-
-Run: `npm run dev` (with HMR) or `npx tsx index.ts`
-
-For the full scaffolding walkthrough (create-mcp-use-app, project structure, package.json setup), read `references/guides/quick-start.md`. For ready-to-copy project templates (minimal CLI, production HTTP, OAuth-protected), read `references/examples/project-templates.md`.
-
----
-
-## Core API quick reference
-
-### MCPServer constructor
-
-Full `ServerConfig` interface — all fields except `name` and `version` are optional:
-
-```typescript
-const server = new MCPServer({
-  // Required
-  name: "server-name",
-  version: "1.0.0",
-
-  // Optional display metadata
-  title: "Human-readable title",
-  description: "What this server does",
-  websiteUrl: "https://example.com",
-  favicon: "favicon.ico",
-  icons: [{ src: "/icon.svg", mimeType: "image/svg+xml", sizes: ["512x512"] }],
-
-  // Optional networking
-  host: "localhost",                       // Default: 'localhost'
-  baseUrl: "https://api.example.com",     // Overrides host:port; also read from MCP_URL env
-  cors: { origin: ["https://myapp.com"] },
-  allowedOrigins: ["https://myapp.com"],  // DNS rebinding protection
-
-  // Optional transport
-  stateless: false,                        // Default: false; auto-detect on Deno/edge
-
-  // Optional sessions
-  sessionIdleTimeoutMs: 86_400_000,        // Default: 1 day
-  sessionStore: new RedisSessionStore({ client: redis }),
-  streamManager: new RedisStreamManager({ client: redis, pubSubClient: pubSub }),
-
-  // Optional auth
-  oauth: oauthAuth0Provider({ domain: "...", audience: "..." }),
-});
-```
-
-`baseUrl` resolution: `baseUrl` config > `MCP_URL` env > `http://{host}:{port}`.
-`listen(port)` priority: explicit param > `--port` CLI arg > `PORT` env > `3000`.
-
-For the complete ServerConfig interface with all CORS fields, CSP, middleware integration, and env var precedence, read `references/guides/server-configuration.md`.
-
-### MCPServer public methods
-
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `listen` | `listen(port?: number): Promise<void>` | Start HTTP server (default port 3000) |
-| `close` | `close(): Promise<void>` | Stop HTTP listener (graceful, waits for keep-alive drain) |
-| `forceClose` | `forceClose(): Promise<void>` | Force-close all connections immediately |
-| `getHandler` | `getHandler(options?): Promise<(req: Request) => Promise<Response>>` | Serverless handler (Supabase/CF/Deno) |
-| `use` | `use(pathOrMiddleware, ...middleware): void` | Add Hono middleware |
-| `get` / `post` / `put` / `delete` / `patch` / `all` | Standard Hono routing | Custom HTTP endpoints alongside MCP |
-| `tool` | `tool(options, handler): this` | Register a tool (chainable) |
-| `resource` | `resource(options, callback): this` | Register a static resource |
-| `resourceTemplate` | `resourceTemplate(options, callback): this` | Register a dynamic resource with URI template |
-| `uiResource` | `uiResource(options): this` | Register a UI resource |
-| `prompt` | `prompt(options, handler): this` | Register a prompt template |
-| `proxy` | `proxy(config, options?): Promise<void>` | Compose upstream MCP servers (`options: { namespace? }`) |
-| `sendNotification` | `sendNotification(method, params?): Promise<void>` | Broadcast to all clients |
-| `sendNotificationToSession` | `sendNotificationToSession(sessionId, method, params?): Promise<boolean>` | Notify one session |
-| `getActiveSessions` | `getActiveSessions(): string[]` | List live session IDs |
-| `sendToolsListChanged` | `sendToolsListChanged(): Promise<void>` | Notify clients tools changed |
-| `sendResourcesListChanged` | `sendResourcesListChanged(): Promise<void>` | Notify clients resources changed |
-| `sendPromptsListChanged` | `sendPromptsListChanged(): Promise<void>` | Notify clients prompts changed |
-| `onRootsChanged` | `onRootsChanged(cb): void` | React to client root changes |
-| `listRoots` | `listRoots(sessionId): Promise<{ uri: string; name?: string }[] \| null>` | Query client roots (null if unsupported) |
-
-> **Note:** `listen()` without a port defaults to `3000` (not stdio). There is no stdio mode in `listen()` — stdio transport is client-side only.
-
-### Tool registration
-
-```typescript
-server
-  .tool(
-    {
-      name: "action-verb-noun",
-      description: "Agent-facing description of what this tool does",
-      schema: z.object({
-        param: z.string().describe("What this parameter means"),
-      }),
-      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
-    },
-    async (args, ctx) => text("result")
-  )
-  .tool({ name: "tool-two", description: "...", schema: z.object({}) }, async () => text("ok"));
-```
-
-`ToolContext` (`ctx`) fields:
-
-```typescript
-interface ToolContext {
-  log(level: "debug"|"info"|"notice"|"warning"|"error"|"critical"|"alert"|"emergency", message: string, logger?: string): Promise<void>;
-  sendNotification(method: string, params?: Record<string, unknown>): Promise<void>;
-  sendNotificationToSession(sessionId: string, method: string, params?: Record<string, unknown>): Promise<boolean>;
-  reportProgress?(current: number, total?: number, message?: string): Promise<void>;  // optional
-  elicit(message: string, schemaOrUrl: ZodSchema | string, options?: ElicitOptions): Promise<ElicitResult>;
-  sample(promptOrParams: string | CreateMessageRequestParams, options?: SampleOptions): Promise<CreateMessageResult>;
-  session: { sessionId: string };
-  client: {
-    info(): { name?: string; version?: string };  // both fields optional
-    can(capability: string): boolean;
-    capabilities(): Record<string, any>;
-    supportsApps(): boolean;
-    extension(id: string): Record<string, any> | undefined;
-    user(): UserContext | undefined;
-  };
-}
-```
-
-> `reportProgress` is optional — check before calling. `auth` is NOT a formal ToolContext field; it's injected dynamically when OAuth is configured.
-
-For the full ToolOptions interface (including widget field, _meta, all annotation keys), all ctx method signatures, UserContext fields, and tool design best practices, read `references/guides/tools-and-schemas.md`.
-
-### Response helpers
-
-Import all from `mcp-use/server`:
-
-```typescript
-import {
-  text, markdown, html, xml, css, javascript,
-  object, array,
-  image, audio, binary,
-  resource, error,
-  mix, widget
-} from "mcp-use/server";
-```
-
-| Helper | Returns | Notes |
-|--------|---------|-------|
-| `text(content)` | `CallToolResult` | Plain text, `text/plain` |
-| `markdown(content)` | `CallToolResult` | Markdown, `text/markdown` |
-| `html(content)` | `CallToolResult` | HTML, `text/html` |
-| `xml(content)` | `CallToolResult` | XML, `text/xml` |
-| `css(content)` | `CallToolResult` | CSS, `text/css` |
-| `javascript(content)` | `CallToolResult` | JS, `text/javascript` |
-| `object(payload)` | `TypedCallToolResult<T>` | JSON with structuredContent, `application/json` |
-| `array(items)` | `TypedCallToolResult<{ data: T[] }>` | Wraps in `{ data: items }` |
-| `image(base64, mimeType?)` | `CallToolResult` | Base64 string (NOT Buffer). Default: `image/png` |
-| `audio(dataOrPath, mimeType?)` | `CallToolResult \| Promise` | Base64 string or file path. File path returns Promise |
-| `binary(base64, mimeType)` | `CallToolResult` | Any binary data |
-| `resource(uri, mimeType, text)` | `CallToolResult` | Embed a resource reference |
-| `error(message)` | `CallToolResult` | `isError: true` — for expected failures |
-| `mix(...parts)` | `CallToolResult` | Combine multiple helper results |
-| `widget(params)` | `CallToolResult` | Interactive UI (structuredContent hidden from LLM) |
-
-For all overloads, WidgetParams interface, TypedCallToolResult details, and MIME type handling, read `references/guides/response-helpers.md`.
-
-### Resources and prompts (pattern overview)
-
-```typescript
-server
-  .resource(
-    { name: "config", uri: "config://app", description: "App settings" },
-    async () => object({ env: "production" })
-  )
-  .resourceTemplate(
-    {
-      name: "users",
-      uriTemplate: "db://users/{id}",
-      callbacks: {
-        complete: {
-          id: async (value) => (await db.getIds()).filter(id => id.startsWith(value)),
-        },
-      },
-    },
-    async (uri, { id }) => text(JSON.stringify(await db.users.get(id)))
-  )
-  .prompt(
-    { name: "review", description: "Code review", schema: z.object({ code: z.string() }) },
-    async ({ code }) => text(`Review this code:\n${code}`)
-  );
-```
-
-For all resource callback overloads, annotation fields (audience, priority, lastModified), prompt message formats, and when-to-use-which-primitive guidance, read `references/guides/resources-and-prompts.md`.
-
-### Hono proxy methods
-
-`MCPServer` exposes Hono routing for custom HTTP endpoints alongside the MCP transport:
-
-```typescript
-server.get("/health", (c) => c.json({ status: "ok" }));
-server.post("/webhook", async (c) => c.json({ received: true }));
-server.use(async (c, next) => { console.error(`${c.req.method} ${c.req.url}`); await next(); });
-server.use("/api/admin/*", async (c, next) => {
-  if (c.req.header("x-api-key") !== process.env.API_KEY) return c.json({ error: "Unauthorized" }, 401);
-  await next();
-});
-```
-
----
-
-## Reference routing — read these when you need depth
-
-Each reference file below contains the full, fact-checked API documentation for its topic. The SKILL.md gives you enough to start; the references give you everything.
-
-### Guides
-
-- **`references/guides/quick-start.md`** — Starting a brand-new MCP server project? This has the full scaffolding walkthrough: `npx create-mcp-use-app`, project structure, package.json scripts, first tool registration, and running with HMR. Start here for any greenfield build.
-
-- **`references/guides/server-configuration.md`** — Need to configure CORS origins, CSP headers, custom middleware, or understand how `baseUrl`, `MCP_URL`, `PORT`, and `--port` interact? This file has the complete ServerConfig interface and environment variable precedence rules.
-
-- **`references/guides/cli-reference.md`** — Using the `@mcp-use/cli` for `mcp-use dev`, `mcp-use build`, `mcp-use start`, `mcp-use deploy`, or `mcp-use generate-types`? This file documents every command, flag, and behavior.
-
-- **`references/guides/tools-and-schemas.md`** — Registering tools, defining Zod schemas, or wondering what fields `ctx` exposes? This has the exact ToolOptions interface, all ctx methods (log, elicit, sample, reportProgress, sendNotification), UserContext fields, and annotation patterns. Read it any time you write a `server.tool()` call.
-
-- **`references/guides/resources-and-prompts.md`** — Adding resources or prompts to a server? This covers static resources, dynamic URI templates with autocomplete callbacks, prompt registration with multi-message returns, and the decision framework for when to use resources vs tools vs prompts.
-
-- **`references/guides/response-helpers.md`** — Using any of the 15 response helpers, combining them with `mix()`, returning typed structured data with `object()`, or building widget responses? This has every overload, every MIME type, and the TypedCallToolResult generic.
-
-- **`references/guides/session-management.md`** — Dealing with Redis sessions, distributed SSE, session idle timeouts, or scaling across multiple instances? This has the full store comparison (InMemory vs Redis vs FileSystem), constructor options for each store, RedisStreamManager setup, and session lifecycle methods.
-
-- **`references/guides/authentication.md`** — Setting up OAuth with Auth0, WorkOS, Supabase, Keycloak, or a custom provider? This documents every built-in provider function, the OAuthMode enum (Proxy vs Direct), ctx.auth shape, permission guards, and the OAuth endpoints the server auto-exposes.
-
-- **`references/guides/elicitation-and-sampling.md`** — Need a tool to pause and ask the user for structured input (ctx.elicit) or invoke an LLM completion within a tool (ctx.sample)? This covers Form mode, URL mode, enum schema helpers (SEP-1330), SampleOptions, model preferences, capability guards, and the full CreateMessageResult shape.
-
-- **`references/guides/notifications-and-subscriptions.md`** — Broadcasting to all clients, sending targeted notifications to a session, reporting progress from tools, or reacting to client root changes? This has sendNotification, sendNotificationToSession, ctx.reportProgress, onRootsChanged, listRoots, and all built-in notification method strings.
-
-- **`references/guides/widgets-and-ui.md`** — Building server-side widget responses with `widget()`, defining output schemas, or wiring up React hooks (`useMcp`, `useCallTool`, `McpClientProvider`)? This is the full widgets reference. If the user wants a full MCP App with client-side UI, suggest the `build-mcp-use-apps-widgets` skill instead.
-
-- **`references/guides/transports.md`** — Choosing between localhost HTTP, public HTTP, SSE compatibility, and serverless handlers? Deploying to serverless platforms (Supabase Edge, Cloudflare Workers, Deno Deploy)? Configuring DNS rebinding protection with `allowedOrigins`? This file has the transport decision matrix and all handler patterns.
-
-- **`references/guides/advanced-features.md`** — Composing multiple MCP servers with `server.proxy()`, extracting user context with `ctx.client.user()`, adding autocomplete with `completable()` (for prompts) or `callbacks.complete` (for resource templates), or detecting client capabilities? This covers all advanced API surface.
-
-- **`references/guides/testing-and-debugging.md`** — Testing with MCP Inspector, debugging with curl against the HTTP transport, configuring Claude Desktop for local testing, or diagnosing transport-level issues? This has the full testing toolkit and debugging strategies.
-
-### Patterns
-
-- **`references/patterns/production-patterns.md`** — Hardening a server for production? This covers graceful shutdown (SIGTERM/SIGINT handlers), response caching, retry strategies, connection pooling, modular file organization for large servers, and the full production readiness checklist.
-
-- **`references/patterns/deployment.md`** — Ready to deploy? This has npm package distribution, Docker multi-stage builds, `mcp-use deploy` to Manufact Cloud, Claude Desktop configuration, Supabase Edge functions, and a pre-deploy verification checklist.
-
-- **`references/patterns/anti-patterns.md`** — Reviewing a server design or doing a code audit? This catalogs the 6 categories of common mistakes: tool design, schema definition, response formatting, security, architecture, and error handling. Each anti-pattern includes the bad code, why it is wrong, and the fix.
-
-### Examples
-
-- **`references/examples/server-recipes.md`** — Need a complete working server example? This has filesystem server, database server, API wrapper, and multi-tool server recipes — each production-ready and safe to copy.
-
-- **`references/examples/project-templates.md`** — Need a full project template with directory structure, package.json, tsconfig, and all the scaffolding? This has minimal CLI template, production HTTP template, and OAuth-protected template.
-
-### Troubleshooting
-
-- **`references/troubleshooting/common-errors.md`** — Hit a specific error message or unexpected behavior? This catalogs 25+ errors with their exact message, root cause, and fix. Check here before debugging from scratch.
-
----
-
-## Build workflow
-
-Before scaffolding or wiring files, choose the entrypoint deliberately:
-
-- **Scaffolded project from `create-mcp-use-app`**: keep the root `index.ts` entry unless the repo already uses a different generated path.
-- **Brand-new manual server**: default to `src/server.ts`.
-- **Existing app that already has `src/index.ts` or another host entry**: keep the host entry and add a dedicated `src/mcp-server.ts` unless the user explicitly wants the existing entry replaced.
-
-If the environment is observation-only or package installation is blocked, stop after writing the implementation plan and exact commands/files. Do not claim the server was scaffolded or runnable.
-
-### New server (Step 2B path)
-
-1. **Scaffold** — `npx create-mcp-use-app` or manual setup. Read `references/guides/quick-start.md` and `references/examples/project-templates.md`.
-2. **Configure** — Set MCPServer options, CORS, env vars. Read `references/guides/server-configuration.md`.
-3. **Define tools** — Register actions with Zod schemas. Read `references/guides/tools-and-schemas.md`.
-4. **Add resources/prompts** — Expose data sources and templates. Read `references/guides/resources-and-prompts.md`.
-5. **Choose transport/runtime shape** — stateful HTTP for long-lived sessions, stateless/serverless handler for edge/request-response deployments. Read `references/guides/transports.md`.
-6. **Add auth** — OAuth if needed. Read `references/guides/authentication.md`.
-7. **Configure sessions** — Store + stream manager. Read `references/guides/session-management.md`.
-8. **Test** — MCP Inspector, curl, Claude Desktop. Read `references/guides/testing-and-debugging.md`.
-9. **Harden** — Error handling, shutdown, caching. Read `references/patterns/production-patterns.md`.
-10. **Deploy** — `mcp-use deploy` or Docker. Read `references/patterns/deployment.md`.
-
-### Extending an existing server (Step 2A path)
-
-1. Run the subagent exploration described in Step 2A
-2. Synthesize findings into a prioritized improvement plan
-3. Apply improvements — fix anti-patterns, add missing capabilities, align with best practices
-4. Validate against `references/patterns/anti-patterns.md`
-5. Test with MCP Inspector — read `references/guides/testing-and-debugging.md`
-
----
-
-## Rules
-
-1. Every Zod schema field must have `.describe()` — LLMs use descriptions to choose correct arguments.
-2. Use response helpers (`text()`, `object()`, `error()`, etc.), not raw `{ content: [...] }` objects.
-3. Use `error()` for expected failures, `throw` for unexpected — `error()` returns gracefully to the client.
-4. Name tools with action verbs — `search-users`, `create-file`, not `users`, `file`.
-5. Keep tools focused — one tool = one action. Split god-tools into multiple specific tools.
-6. Keep logging deliberate — HTTP servers can log normally, but avoid noisy startup spam and never leak secrets or raw credential material.
-7. Validate file paths against a root directory — prevent path traversal attacks.
-8. Return agent-optimized data — curated summaries, not raw 100KB API dumps.
-9. Handle graceful shutdown — register SIGTERM/SIGINT for HTTP servers.
-10. Never use `z.any()` or `z.unknown()` — always use specific Zod types with constraints.
-11. Always check `ctx.client.can("elicitation")` before calling `ctx.elicit()`.
-12. Always check `ctx.client.can("sampling")` before calling `ctx.sample()`.
-13. Always test with MCP Inspector before deploying.
-
----
-
-## Common pitfalls
-
-| Mistake | Fix |
-|---------|-----|
-| Missing `.describe()` on schema fields | Add `.describe()` to every field — LLMs need it to pick correct arguments |
-| Noisy or secret-bearing logs in HTTP handlers | Log deliberately and redact secrets; keep protocol/debug output readable |
-| Returning 100KB+ JSON responses | Paginate, summarize, return only relevant fields |
-| No error handling in tool handlers | Wrap in try/catch, return `error()` for expected failures |
-| `z.any()` or `z.unknown()` schemas | Use specific Zod types with constraints |
-| Hardcoded secrets in source | Use environment variables, never commit secrets |
-| Path traversal in file tools | Validate with `path.resolve()` + prefix check against allowed root |
-| `fs.readFileSync()` in handlers | Use `fs.promises` async API — sync I/O blocks the event loop |
-| No CORS config on HTTP servers | Set `cors: { origin: [...] }` or `allowedOrigins` in constructor |
-| Using raw SSE transport from old MCP spec | Use `server.listen(port)` — mcp-use mounts both `/mcp` and `/sse` as StreamableHTTP aliases |
-| Notifications in stateless mode | Notifications require persistent sessions (SSE/StreamableHTTP) |
-| Elicit without capability check | Guard with `ctx.client.can("elicitation")` before `ctx.elicit()` |
-| Using `ctx.log("warn", ...)` | Use `ctx.log("warning", ...)` — the correct level name is "warning" |
-| `completable()` on tool() schema | `completable()` works with `prompt()` and `resourceTemplate()` schemas — NOT with `tool()` schemas |
-| New subdomain on every deploy | `.mcp-use/project.json` is gitignored — track it with `!.mcp-use/project.json` in `.gitignore` so deploy reuses the same URL |
-| Custom domain breaks after redeploy | Same cause — `project.json` missing means new subdomain, CNAME points to dead URL |
-| `--name` doesn't control the URL | `--name` is a label only; the URL subdomain is auto-generated and tied to `project.json` |
-| Passing Buffer to `image()` | `image()` takes a base64 **string**, not a Buffer — convert with `.toString("base64")` first |
-| `audio()` used sync with file path | `audio(filePath)` returns a Promise when given a path — must be awaited |
-| Missing `description` on prompt | `description` is optional but strongly recommended — LLMs use it to select prompts |
-
----
-
-## Do this, not that
-
-| Do this | Not that |
-|---------|---------|
-| Import from `mcp-use/server` | Import from `@modelcontextprotocol/sdk` directly |
-| `server.tool()` with object-first form and Zod schema | Build JSON Schema objects manually |
-| Return `text()`, `object()`, `error()` | Return `{ content: [{ type: "text", text: "..." }] }` |
-| `server.listen(port)` for HTTP (default 3000 if omitted) | Create `StdioServerTransport` manually |
-| `oauthAuth0Provider()` / `oauthKeycloakProvider()` for auth | Build custom OAuth middleware from scratch |
-| `ctx.log("warning", ...)` for tool logging | `ctx.log("warn", ...)` — wrong level name |
-| `ctx.elicit()` for user input | Build custom input collection mechanisms |
-| `widget()` for interactive UI | Return raw HTML strings |
-| Split tools into separate files for large servers | Put everything in one 1000-line file |
-| `npm run dev` (calls `mcp-use dev` with HMR) | `node src/server.ts` directly (no HMR) |
-| `image(base64String, "image/png")` | `image(buffer, ...)` — wrong type |
-| `error("Not found")` for expected failures | `throw new Error("Not found")` in tool handlers |
-| `ctx.client.can("sampling")` then `ctx.sample()` | Call `ctx.sample()` without checking capability |
-
----
+#### Branch B — No `mcp-use` server, but the repo gives enough context
+
+Infer the server from the existing code or spec.
+
+Common signals:
+
+- REST or Hono/Express/Fastify endpoints that should become MCP tools
+- CLI commands that map naturally to tools
+- data sources that should become resources
+- a README, issue, or fixture that clearly defines the behavior
+
+Choose the entrypoint deliberately:
+
+- scaffolded `create-mcp-use-app` project: keep root `index.ts`
+- brand-new manual server: default to `src/server.ts`
+- existing app already using `src/index.ts` or another host entry: keep the host entry and add `src/mcp-server.ts`
+
+Use the canonical setup and example sources before writing code:
+
+- `references/guides/quick-start.md`
+- `references/examples/project-templates.md`
+- `references/examples/server-recipes.md`
+
+If the requested server is small and generic, start from the smallest matching example rather than inventing a new structure. The minimal calculator server in `references/guides/quick-start.md` is the default tiny-tool recipe.
+
+#### Branch C — No usable context and the request is underspecified
+
+Ask only the missing questions needed to proceed. Skip anything the user or repo already answered.
+
+Prioritize:
+
+- what data or service the server exposes
+- transport/runtime target
+- auth requirements
+- tools vs resources vs prompts
+- deployment target
+- whether sampling, elicitation, or widgets are required
+
+Ask one question at a time unless the user clearly wants a batch questionnaire.
+
+### 4. Preflight setup before implementation
+
+Use `references/guides/quick-start.md` as the canonical setup matrix.
+
+Make these prerequisites explicit instead of assuming them:
+
+- Node 18+ is available, with Node 22 LTS preferred when matching current examples
+- `package.json` uses `"type": "module"`
+- `mcp-use` and `zod` are installed in dependencies
+- `@mcp-use/cli` is present for CLI/HMR workflows unless the scaffold already included it
+- the chosen entry file matches the project type
+
+If prerequisites are missing and you cannot add them in this run, switch to plan-only output.
+
+### 5. Build or extend the server
+
+Default sequence:
+
+1. choose the entry file and runtime shape
+2. create or refine `MCPServer` config
+3. register tools with precise Zod schemas
+4. add resources or prompts only when they genuinely improve the interface
+5. add auth, session storage, notifications, sampling, elicitation, proxying, or widgets only when the use case requires them
+6. add health routes, deliberate logging, and graceful shutdown for HTTP servers
+
+### 6. Validate honestly
+
+For implementation-capable runs, validate with the smallest relevant set:
+
+- `mcp-use dev` and/or `mcp-use start`
+- MCP Inspector
+- curl initialize -> list -> call flow over `/mcp`
+- type generation or typecheck
+- build or deploy preflight when relevant
+
+For plan-only runs, provide:
+
+- exact entry file(s)
+- exact install commands
+- exact scripts or config changes
+- exact tools/resources/prompts to add
+- exact validation commands to run later
+
+## Decision rules
+
+- Prefer improving an existing server over replacing it.
+- Keep the host app's entrypoint when adding MCP to an existing app; use `src/mcp-server.ts` unless there is a strong reason not to.
+- Use `text()`, `object()`, `error()`, `mix()`, `widget()`, and the other helpers instead of hand-built MCP payloads.
+- Use `error()` for expected failures and `throw` for truly unexpected failures.
+- Treat notifications as stateful-only unless you have explicitly verified the transport model supports them.
+- Guard `ctx.elicit()` with `ctx.client.can("elicitation")`.
+- Guard `ctx.sample()` with `ctx.client.can("sampling")`.
+- Suggest `build-mcp-use-apps-widgets` when the user's real problem is a client-side MCP App or widget UI, not the server.
 
 ## Guardrails
 
-These are hard rules. Violating any of them produces broken or insecure servers:
+- Never import server primitives from `@modelcontextprotocol/sdk` directly.
+- Never omit `zod` from the project's own dependencies.
+- Never use `z.any()` or `z.unknown()` when a concrete schema is possible.
+- Never leave schema fields undocumented; use `.describe()` on every field the model must fill.
+- Never fall back to a repo-wide scan if the user named a narrower target path.
+- Never claim success in a blocked environment.
+- Never put secrets in source or logs.
+- Never skip `allowedOrigins` and CORS decisions for public HTTP servers.
 
-- Never import from `@modelcontextprotocol/sdk` directly — use `mcp-use/server` exports.
-- Never leak secrets or raw credential material in logs. Use deliberate logging and keep production output reviewable.
-- Never return raw API responses to the LLM — always curate for agent consumption.
-- Never skip `.describe()` on Zod schema fields — it is not optional for MCP tools.
-- Avoid `z.any()` or `z.unknown()` in tool schemas — LLMs need `.describe()` for argument selection. Use specific types. (Exception: generic passthrough tools where schema is truly unknown.)
-- Never hardcode secrets — use environment variables.
-- Never use synchronous I/O (`readFileSync`) in tool handlers — always use async.
-- Never skip graceful shutdown for HTTP servers — register SIGTERM/SIGINT signal handlers.
-- Always validate file paths against a root directory — prevent path traversal.
-- Always test with MCP Inspector before deploying.
-- Always check `ctx.client.can("elicitation")` before calling `ctx.elicit()`.
-- Always check `ctx.client.can("sampling")` before calling `ctx.sample()`.
+## Output contract
 
----
+Unless the user wants another format, report work in this order:
 
-## Deployment quick reference
+1. target path and scan summary
+2. chosen branch and entrypoint decision
+3. implementation or exact plan
+4. validation results or explicit blocker
+5. key reference files used
 
-**Before deploying:**
-1. Commit and push all changes to GitHub — `mcp-use deploy` builds from the remote HEAD, NOT your working directory
-2. Verify `pnpm typecheck` (or `npm run typecheck`) passes — broken code will fail the cloud build
-3. Use `--name` on first deploy for a meaningful label — but note `--name` is just a label, NOT the URL subdomain (the subdomain is auto-generated)
+## Reference routing
 
-```bash
-# Scaffold
-npx create-mcp-use-app my-server
+Use the smallest relevant set.
 
-# Develop with HMR
-npm run dev
+### Start here
 
-# Build and test locally
-mcp-use build
-mcp-use start
+- `references/guides/quick-start.md`
+  - canonical entrypoint, dependency, and script matrix
+  - minimal calculator server
+- `references/examples/project-templates.md`
+  - full scaffold, manual, and existing-app layouts
+- `references/examples/server-recipes.md`
+  - copyable working server patterns
 
-# Deploy to Manufact Cloud
-mcp-use login
-mcp-use deploy --name my-server
-mcp-use deploy --env API_KEY=secret --env-file .env.production  # pass env vars
-```
+### Core server design
 
-**URL stability and `.mcp-use/project.json`:** The first deploy creates `.mcp-use/project.json` which links your local project to a specific cloud deployment. This file is what keeps your URL stable across redeployments. **Track it in git** — add `!.mcp-use/project.json` to your `.gitignore` so the deployment link is available on every machine and CI runner. Without it, every deploy creates a new subdomain and any custom domain (CNAME) you configured breaks.
+- `references/guides/tools-and-schemas.md`
+- `references/guides/response-helpers.md`
+- `references/guides/resources-and-prompts.md`
+- `references/guides/server-configuration.md`
+- `references/guides/transports.md`
+- `references/guides/session-management.md`
 
-```gitignore
-# .gitignore — ignore mcp-use runtime files but track the deployment link
-.mcp-use/
-!.mcp-use/project.json
-```
+### Advanced capabilities
 
-**Naming:** `--name` sets a human-readable label (stored in `project.json` as `deploymentName`). The URL subdomain is auto-generated by Manufact Cloud (e.g., `black-silence-ot8sz.run.mcp-use.com`) and does NOT match `--name`. Version bumps in `package.json` do not affect the URL — the deployment link in `project.json` is what keeps it stable.
+- `references/guides/authentication.md`
+- `references/guides/elicitation-and-sampling.md`
+- `references/guides/notifications-and-subscriptions.md`
+- `references/guides/advanced-features.md`
+- `references/guides/widgets-and-ui.md`
 
-**Custom domains:** If you CNAME a domain (e.g., `api.example.com`) to your Manufact Cloud deployment, preserving `project.json` across deploys is critical. Losing it means a new subdomain, and your CNAME points to a dead URL.
+### Build, test, and ship
 
-**Post-deploy verification:**
-1. `curl -s https://{url}/health | jq .status` — should return `"ok"`
-2. Open the Inspector URL from the deploy output — confirm all tools appear
-3. Update client configs (Claude Desktop, Codex, etc.) with the new URL
-
-After deploy:
-- **MCP Server URL**: `https://<auto-subdomain>.run.mcp-use.com/mcp`
-- **Inspector URL**: `https://inspector.manufact.com/inspector?autoConnect=https://<auto-subdomain>.run.mcp-use.com/mcp`
-- **Dashboard**: `https://manufact.com/cloud/servers/<auto-subdomain>`
-
-Claude Desktop config:
-```json
-{
-  "mcpServers": {
-    "my-server": {
-      "url": "https://<auto-subdomain>.run.mcp-use.com/mcp"
-    }
-  }
-}
-```
-
-For Docker builds, Supabase Edge, Cloudflare Workers, npm distribution, and the full pre-deploy checklist, read `references/patterns/deployment.md`. For CLI command details, read `references/guides/cli-reference.md`.
-
----
-
-## Companion packages
-
-| Package | Purpose |
-|---------|---------|
-| `@mcp-use/cli` | Dev server with HMR, `generate-types`, `deploy` — see `references/guides/cli-reference.md` |
-| `@mcp-use/inspector` | Built-in web debugger served at `/inspector` on HTTP servers |
-| `create-mcp-use-app` | Project scaffolder — `npx create-mcp-use-app my-server` |
+- `references/guides/cli-reference.md`
+- `references/guides/testing-and-debugging.md`
+- `references/patterns/production-patterns.md`
+- `references/patterns/deployment.md`
+- `references/patterns/anti-patterns.md`
+- `references/troubleshooting/common-errors.md`

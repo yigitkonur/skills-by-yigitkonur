@@ -305,7 +305,9 @@ Same as beta but with `alpha` channel. Typically:
 > This catches misconfigured tokens, missing tags, and commit-format issues.
 
 ```bash
-# Requires GH_TOKEN or GITHUB_TOKEN and NPM_TOKEN
+# Requires GITHUB_TOKEN plus the publish auth for the mode you are testing.
+# Local dry-runs usually use token auth; pure OIDC can only be exercised on
+# GitHub-hosted runners.
 npx semantic-release --dry-run
 
 # With explicit branch
@@ -445,9 +447,12 @@ For a brand-new package that has never been published:
 4. Run `npx semantic-release --dry-run` to verify the first release will be created
    correctly before enabling the CI workflow
 
+If your steady-state auth mode is OIDC, the versioning setup above still needs a
+token-based first publish before you switch the workflow to pure OIDC.
+
 ---
 
-## Complete GitHub Actions Workflow
+## Complete GitHub Actions Workflow (Pure OIDC)
 
 ```yaml
 name: Release
@@ -490,8 +495,6 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
 ```
 
@@ -501,8 +504,6 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
         run: npx semantic-release
 ```
@@ -510,6 +511,9 @@ jobs:
 The `id-token: write` permission in the `permissions` block is required for OIDC
 provenance to work. npm will generate and attach a signed SLSA provenance statement
 to the published package.
+
+For token auth, start from `references/workflows/token-workflows.md` and only add
+`NPM_TOKEN` / `NODE_AUTH_TOKEN` in that token variant.
 
 ---
 

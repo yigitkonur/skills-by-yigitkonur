@@ -18,7 +18,7 @@ Complete reference for converting Vue 3 Single File Components to React/Next.js 
 | `v-model` (input) | `value` + `onChange` | Must wire both explicitly |
 | `v-model` (component) | `value` + `onChange` props | Parent owns state |
 | `v-bind:prop` / `:prop` | `prop={value}` | Direct mapping |
-| `v-on:event` / `@event` | `onEvent={handler}` | `@click` → `onClick` |
+| `v-on:event` / `@event` | `onEvent={handler}` | `@click` → `onClick`; inline mutations become explicit setter callbacks |
 | `v-bind:class` | `clsx()` or template literal | `clsx({ [styles.active]: isActive })` |
 | `v-bind:style` | `style={{ prop: value }}` | camelCase CSS properties |
 | Default `<slot>` | `{children}` | `PropsWithChildren<>` in TS |
@@ -129,6 +129,16 @@ function handleClick(e: React.MouseEvent) {
 <button onClick={handleClick}>Save</button>
 ```
 
+Inline Vue expressions need to become explicit React handlers. Example:
+
+```vue
+<button @click="count += 1">Increment</button>
+```
+
+```tsx
+<button onClick={() => setCount((current) => current + 1)}>Increment</button>
+```
+
 ---
 
 ## v-model → Controlled Components
@@ -208,9 +218,12 @@ function Layout({ header, footer, children }: LayoutProps) {
 
 **Scoped slots → render props:**
 ```tsx
-interface DataListProps<T> { items: T[]; renderItem: (item: T, index: number) => React.ReactNode }
-function DataList<T>({ items, renderItem }: DataListProps<T>) {
-  return <ul>{items.map((item, i) => <li key={i}>{renderItem(item, i)}</li>)}</ul>;
+interface DataListProps<T extends { id: string | number }> {
+  items: T[];
+  renderItem: (item: T, index: number) => React.ReactNode;
+}
+function DataList<T extends { id: string | number }>({ items, renderItem }: DataListProps<T>) {
+  return <ul>{items.map((item, i) => <li key={item.id}>{renderItem(item, i)}</li>)}</ul>;
 }
 <DataList items={users} renderItem={(item, i) => <span>{i}: {item.name}</span>} />
 ```
@@ -248,6 +261,8 @@ import styles from './Card.module.css';
 <div className={styles.card}><h2 className={styles.title}>Title</h2></div>
 ```
 
+- If the original Vue class name is not a valid JS identifier (`counter-card`, `is-active`), use bracket access: `className={styles['counter-card']}`.
+- Only rename a CSS Module class if you rename it in BOTH the `.module.css` file and every JSX reference. Otherwise preserve the original class token.
 - Vue `:deep(.child)` → CSS Modules `:global(.child)` or pass `className` as prop
 - SCSS supported via `.module.scss` (built-in Next.js support)
 

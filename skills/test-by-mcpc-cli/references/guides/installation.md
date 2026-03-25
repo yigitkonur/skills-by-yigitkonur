@@ -125,10 +125,10 @@ mcpc stores data in `~/.mcpc/` (overridable via `MCPC_HOME_DIR`):
 ~/.mcpc/
 ├── sessions.json          # Active session metadata
 ├── profiles.json          # OAuth profile metadata
-├── credentials            # Fallback credential storage (Linux headless)
-├── history                # Interactive shell history
+├── credentials.json       # Fallback credential storage (Linux headless)
+├── shell-history          # Interactive shell history
 ├── bridges/               # Unix sockets for bridge IPC
-│   └── <session-name>.sock
+│   └── @<session-name>.sock
 └── logs/                  # Bridge process logs
     └── bridge-<session-name>.log
 ```

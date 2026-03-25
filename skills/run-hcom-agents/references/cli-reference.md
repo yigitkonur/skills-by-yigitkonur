@@ -375,9 +375,22 @@ Control the relay background worker.
 
 Show hcom status: database, hooks, relay, active instances.
 
+| Flag | Description |
+|------|-------------|
+| `--logs` | Include recent warnings/errors and print the log path. Use this first when hook install or launch fails. |
+| `--json` | Machine-readable diagnostics including per-tool `hooks`, `installed`, and `settings_path` fields. |
+
+```bash
+hcom status
+hcom status --logs
+hcom status --json
+```
+
 ### `hcom hooks add <tool>`
 
 Install hooks for a tool: `claude`, `codex`, `gemini`, `opencode`.
+
+After adding hooks, restart the tool and verify with `hcom hooks` or `hcom status --json`. If hooks still do not show as installed, capture `hcom status --logs` before retrying.
 
 ### `hcom hooks remove <tool>`
 

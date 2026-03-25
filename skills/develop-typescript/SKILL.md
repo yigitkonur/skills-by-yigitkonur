@@ -26,6 +26,8 @@ Do not use this skill when:
 - the task is exclusively about Node.js runtime APIs (use a Node.js skill)
 - the task is about build tooling only (use tooling-specific skills)
 
+Repositories that happen to contain `.tsx` files are still in scope when the requested work is about TypeScript itself: tsconfig, safer typing, exported contracts, result/error patterns, or strictness audits.
+
 ## Definitions
 
 - **Load** — read the file into working context so you can reference its content
@@ -39,7 +41,7 @@ Before starting, determine your mode:
 
 | Signal | Mode | Behavior |
 |---|---|---|
-| "Write", "implement", "create", "add" | **Authoring** | Write code, apply fixes, output files |
+| "Write", "implement", "create", "add", "refactor", "tighten typing", "improve typing", "make TS stricter", "harden types" | **Authoring** | Write code, apply fixes, output files |
 | "Review", "audit", "check", "look at" | **Review** | Report findings, never auto-fix, block on P0 |
 | Ambiguous | **Ask** | Clarify with the user before proceeding |
 
@@ -75,6 +77,8 @@ If the task involves existing code, also load:
 
 > **Steering note:** When reviewing tsconfig.json, only flag `moduleResolution: "node"` as legacy.
 > `"node16"`, `"nodenext"`, and `"bundler"` are all modern and correct for their contexts.
+> Choose the baseline that matches the repo's runtime first; strictness flags are orthogonal to module mode. Do not "upgrade" `node16`/`nodenext` projects to `bundler` unless the user explicitly wants that runtime change.
+> If the repo has multiple tsconfig files, start with the config that governs the files you are touching, then follow its `extends` chain to shared base configs. If there is no ESLint/Biome config, record that absence and skip Step 5 conflict handling rather than inventing lint policy.
 
 ### Step 3 — Execute the task
 
@@ -101,24 +105,26 @@ Run these checks:
 
 ```bash
 # Find unannotated exported functions (authoring mode)
-grep -rn "^export function" --include="*.ts" | grep -v ": " | head -20
+grep -rnE --include="*.ts" --include="*.tsx" "^export (default )?function" . | grep -v node_modules | grep -v ": " | head -20
 
 # Find bare 'any' usage
-grep -rn ": any\b" --include="*.ts" --include="*.tsx" | grep -v node_modules | head -20
+grep -rnE --include="*.ts" --include="*.tsx" ": any\\b" . | grep -v node_modules | head -20
 
 # Find @ts-ignore (should be @ts-expect-error)
-grep -rn "@ts-ignore" --include="*.ts" --include="*.tsx" | grep -v node_modules
+grep -rn --include="*.ts" --include="*.tsx" "@ts-ignore" . | grep -v node_modules
 
 # Find unchecked type assertions
-grep -rn " as [A-Z]" --include="*.ts" | grep -v "// checked" | head -20
+grep -rn --include="*.ts" --include="*.tsx" " as [A-Z]" . | grep -v node_modules | grep -v "// checked" | head -20
 
 # Search for satisfies opportunities (config objects typed with annotation)
-grep -rn "^const .* : Record<" --include="*.ts" | head -10
-grep -rn "^const .* : {" --include="*.ts" | head -10
+grep -rnE --include="*.ts" --include="*.tsx" "^const .* : Record<" . | grep -v node_modules | head -10
+grep -rnE --include="*.ts" --include="*.tsx" "^const .* : {" . | grep -v node_modules | head -10
 ```
 
 > **Steering note:** The `satisfies` audit catches config objects that use type annotations
 > where `satisfies` would preserve literal types. This is a common missed opportunity.
+> Run these audits from the repository root, or replace `.` with the target package path in a monorepo.
+> If the repo contains TSX and `jsx` is `react-jsx`, verify the React runtime/types are actually installed before treating the typecheck result as meaningful.
 
 ### Step 5 — Handle conflicts
 
@@ -133,7 +139,7 @@ If the project's lint config contradicts skill recommendations:
 
 ### Step 6 — Deliver
 
-**In authoring mode:** Output the complete, compilable code. Ensure every exported function has an explicit return type annotation.
+**In authoring mode:** Output the complete, compilable code. Ensure every exported function has an explicit return type annotation. For exported TSX components, follow the repo's existing convention; if none exists, prefer `ReactElement` via `import type { ReactElement } from 'react'` over relying on the global `JSX.Element` namespace.
 
 **In review mode:** Output findings as a structured list with severity levels. Include specific line references and fix suggestions for each P0 and P1 finding.
 

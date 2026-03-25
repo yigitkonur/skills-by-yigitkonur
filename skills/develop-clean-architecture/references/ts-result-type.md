@@ -9,6 +9,8 @@ tags: ts, result, error-handling, functional
 
 Replace thrown exceptions in domain and application layers with explicit `Result<T, E>` return types. This makes error paths visible in the type signature, forces callers to handle failures, and enables composable error propagation without try/catch pyramids.
 
+**Repo convention:** The Result branch itself is discriminated with `ok: true | false`. When `E` is a union of rich error objects, those error variants should expose `_tag` so callers can switch exhaustively on `result.error._tag`.
+
 **Incorrect (thrown exceptions hide error paths):**
 
 ```typescript
@@ -129,7 +131,7 @@ if (!result.ok) {
 **Benefits:**
 - Error paths are part of the function signature — impossible to ignore
 - No try/catch pyramids — results compose with map/flatMap
-- Discriminated error types enable exhaustive handling in the caller
+- Discriminated result branches plus `_tag`-based error unions enable exhaustive handling in the caller
 - Domain layer stays pure — no side-effectful throw statements
 - Testing is straightforward — assert on `result.ok` and `result.error`
 

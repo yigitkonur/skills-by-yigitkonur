@@ -5,7 +5,7 @@ description: Use skill if you are building TypeScript applications with the GitH
 
 # Build Copilot SDK App
 
-Build applications powered by GitHub Copilot using the `@github/copilot-sdk` TypeScript/Node.js package (v0.1.32+, protocol v3). The SDK communicates with the Copilot CLI over JSON-RPC (stdio or TCP) and exposes a session-based API for sending prompts, receiving streamed responses, registering custom tools, handling permissions, and managing agent workflows.
+Build applications powered by GitHub Copilot using the `@github/copilot-sdk` TypeScript/Node.js package (protocol v3). The SDK communicates with the Copilot CLI over JSON-RPC (stdio or TCP) and exposes a session-based API for sending prompts, receiving streamed responses, registering custom tools, handling permissions, and managing agent workflows.
 
 ## Decision tree
 
@@ -34,7 +34,7 @@ What do you need?
 │
 ├── Permissions & user input
 │   ├── Permission handler ─────────────► references/permissions-and-user-input.md — approveAll or custom logic
-│   ├── askUser / onUserInputRequest ───► references/permissions-and-user-input.md — programmatic user prompts
+│   ├── ask_user / onUserInputRequest ──► references/permissions-and-user-input.md — programmatic user prompts
 │   └── Elicitation (MCP forms) ────────► references/permissions-and-user-input.md — structured input via MCP
 │
 ├── Hooks (lifecycle interceptors)
@@ -74,6 +74,26 @@ node --version   # must be >= 20
 copilot --version # Copilot CLI must be installed
 ```
 
+Authenticate before you run the examples:
+
+- Local interactive auth: `copilot login`
+- Headless auth: set one of `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN`
+- In CI or other non-interactive runs, export the token before `npm start`; do not expect the SDK process to complete browser login for you.
+
+### Default file layout and run command
+
+Use this layout unless the repo already has a better convention:
+
+```bash
+mkdir -p src/lib
+npm pkg set scripts.start="tsx src/index.ts"
+npm pkg set scripts.dev="tsx watch src/index.ts"
+```
+
+- Put the main SDK entrypoint in `src/index.ts`
+- Put reusable local business logic in `src/lib/*.ts`
+- Run the first build with `npm start`
+
 ### Project setup
 
 ```bash
@@ -104,6 +124,13 @@ import type { SessionConfig, ToolInvocation } from "@github/copilot-sdk";
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 
 const client = new CopilotClient();
+const auth = await client.getAuthStatus();
+
+if (!auth.isAuthenticated) {
+  throw new Error(
+    "Authenticate with `copilot login` or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN first."
+  );
+}
 
 const session = await client.createSession({
   model: "gpt-4.1",
@@ -116,6 +143,14 @@ console.log(response?.data.content);
 await session.disconnect();
 await client.stop();
 ```
+
+Save this as `src/index.ts`, then run `npm start`.
+
+If startup does not progress:
+
+- Check `auth.isAuthenticated` first and stop there if it is `false`
+- In headless environments, set `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` before launching Node
+- Re-run with `new CopilotClient({ logLevel: "debug" })` and follow `references/auth-and-byok.md` for auth preflight
 
 ### With streaming
 
@@ -141,37 +176,47 @@ await session.send({ prompt: "Explain TypeScript generics" });
 
 ### With a custom tool
 
+Create the imported helper first:
+
+```typescript
+// src/lib/math.ts
+export function add(a: number, b: number) {
+  return a + b;
+}
+```
+
 ```typescript
 import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";
 import { z } from "zod";
+import { add } from "./lib/math.ts";
 
-const getWeather = defineTool("get_weather", {
-  description: "Get current weather for a city",
+const addNumbers = defineTool("add_numbers", {
+  description: "Add two numbers using local business logic",
   parameters: z.object({
-    city: z.string().describe("City name"),
+    a: z.number().describe("First number"),
+    b: z.number().describe("Second number"),
   }),
-  handler: async ({ city }) => ({
-    city,
-    temperature: "62°F",
-    condition: "cloudy",
-  }),
+  handler: async ({ a, b }) => ({ result: add(a, b) }),
 });
 
 const client = new CopilotClient();
 const session = await client.createSession({
   model: "gpt-4.1",
-  tools: [getWeather],
+  tools: [addNumbers],
   onPermissionRequest: approveAll,
 });
 
 const response = await session.sendAndWait({
-  prompt: "What's the weather in San Francisco?",
+  prompt: "Use the add_numbers tool to add 19 and 23.",
 });
 console.log(response?.data.content);
 
 await session.disconnect();
 await client.stop();
 ```
+
+Default convention: keep imported domain helpers under `src/lib/` and wire them into tool handlers instead of hard-coding toy data inside the handler.
+If the real logic lives in another package, import a workspace dependency or package entrypoint that `tsx` can resolve at runtime instead of a source-only deep path.
 
 ## Key patterns
 
@@ -243,7 +288,7 @@ try {
 }
 ```
 
-### Handling askUser programmatically
+### Handling ask_user programmatically
 
 ```typescript
 const session = await client.createSession({

@@ -59,7 +59,9 @@ Follow these six phases in order.
 
 > **Read first:** `references/setup.md` for platform and placement questions; `references/config-spec.md` for parameter formats.
 
-Before writing anything, determine what kind of job this is:
+Before writing anything, change into the target repo root. If you are working from a shared fixture or sample repository, copy it to a scratch repo/worktree before writing `.greptile/` files so the source fixture stays unchanged.
+
+Then determine what kind of job this is:
 
 - **New setup** — no existing `.greptile/` or `greptile.json`
 - **Tune existing config** — root config exists and should be extended, not replaced
@@ -74,7 +76,40 @@ Search the repository for these items (e.g. `find . -name '.greptile' -type d`, 
 - Docs, specs, and schemas that could feed `files.json` — look for: Prisma/Drizzle schemas, OpenAPI/Swagger specs, ADR documents, architecture docs (`docs/`, `architecture.md`), shared type definition files. Exclude READMEs and changelogs. Note these for Phase 2 refinement.
 - Existing linters/formatters — check root config files (`.eslintrc*`, `prettier.config*`, `biome.*`, `.stylelintrc*`, `pyproject.toml`, `.rubocop.yml`) and `package.json` / `pyproject.toml` devDependencies for linter/formatter packages
 
-> **⚠ Steering:** When searching for docs/specs/schemas, look for file extensions and paths, not file contents. Use commands like: `find . -name '*.prisma' -o -name 'openapi*' -o -name '*.graphql'` and `ls docs/ architecture.md ADR* 2>/dev/null`. Exclude READMEs and changelogs — they rarely contain information a reviewer needs.
+Shell-safe detection recipe:
+
+```bash
+find . -type d -name '.greptile' -not -path '*/node_modules/*' 2>/dev/null
+find . -type f -name 'greptile.json' -not -path '*/node_modules/*' 2>/dev/null
+
+find . -maxdepth 2 -type f \( \
+  -name '.eslintrc*' -o -name 'eslint.config.*' -o \
+  -name 'prettier.config*' -o -name '.prettierrc*' -o \
+  -name 'biome.json' -o -name 'biome.jsonc' -o \
+  -name '.stylelintrc*' -o -name 'stylelint.config*' -o \
+  -name '.rubocop.yml' -o -name '.rubocop_todo.yml' -o \
+  -name '.golangci.yml' -o -name '.golangci.yaml' -o \
+  -name 'pyproject.toml' -o -name 'setup.cfg' -o -name '.flake8' -o -name '.pylintrc' \
+\) 2>/dev/null
+
+python3 - <<'PY'
+from pathlib import Path
+import json
+
+package_json = Path("package.json")
+if not package_json.exists():
+    print("package.json not found")
+else:
+    data = json.loads(package_json.read_text())
+    dev = data.get("devDependencies", {})
+    linters = [name for name in dev if any(tag in name.lower() for tag in ("eslint", "prettier", "biome", "stylelint", "lint", "oxlint"))]
+    print("Linters/formatters:", ", ".join(linters) if linters else "none found in devDependencies")
+PY
+```
+
+If none of these checks finds lint/format tooling, treat style coverage as absent only after confirming the repo is not delegating linting to another manifest or CI wrapper.
+
+> **⚠ Steering:** When searching for docs/specs/schemas, look for file extensions and paths, not file contents. Use shell-safe commands such as `find . -type f \( -name '*.prisma' -o -name 'openapi*' -o -name '*.graphql' -o -name '*.proto' \) -not -path '*/node_modules/*'` and `find . -maxdepth 3 -type f \( -path './docs/*' -o -name 'architecture.md' -o -name 'ARCHITECTURE*' -o -name 'ADR*' \) ! -name 'README*' ! -name 'CHANGELOG*' | head -20`. Exclude READMEs and changelogs — they rarely contain information a reviewer needs.
 
 If config already exists, preserve working pieces and tighten only what the repo evidence supports.
 
@@ -203,12 +238,13 @@ Before finalizing any output:
 Output every generated configuration in your response to the user with:
 
 1. A markdown code block showing the `.greptile/` directory structure (file tree)
-2. Complete file contents for each generated file
-3. Reasoning annotations as a markdown list tied to specific repo evidence, e.g.:
+2. If filesystem access exists, write/update the `.greptile/` files in the repo first unless the user explicitly asked for draft-only output
+3. Complete file contents for each generated file
+4. Reasoning annotations as a markdown list tied to specific repo evidence, e.g.:
    - **auth-wrapper-required**: Added because all API routes use `withWorkspace`/`withSession` wrappers (see `lib/auth/workspace.ts:58`)
    - **stripe-webhook-sig**: Stripe webhook handlers process financial events at `app/api/stripe/webhook/`; unverified payloads allow forged billing
-4. A canary test: a temporary rule to verify Greptile reads the config. Example: `{ "id": "canary", "rule": "Comment 'canary active' on any PR modifying a README.", "scope": ["**/README.md"], "severity": "low" }`. Open a test PR, confirm the canary fires, then remove the rule. See `references/troubleshooting.md` for the full canary protocol.
-5. Migration notes if replacing `greptile.json`
+5. A canary test: a temporary rule to verify Greptile reads the config. Example: `{ "id": "canary", "rule": "Comment 'canary active' on any PR modifying a README.", "scope": ["**/README.md"], "severity": "low" }`. Open a test PR, confirm the canary fires, then remove the rule. See `references/troubleshooting.md` for the full canary protocol.
+6. Migration notes if replacing `greptile.json`
 
 See `references/scenarios.md` for complete end-to-end output examples to model your output on.
 

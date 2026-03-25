@@ -83,7 +83,7 @@ On Windows, named pipes are global (no per-user isolation), so `getSocketPath` i
 ├── sessions.json          # Active sessions (0600 perms)
 ├── profiles.json          # OAuth auth profiles (0600 perms)
 ├── wallets.json           # x402 wallet data
-├── history                # Interactive shell command history (last 1000)
+├── shell-history          # Interactive shell command history (last 1000)
 ├── bridges/
 │   ├── @my-session.sock   # Unix domain socket per session (macOS/Linux)
 │   └── ...
@@ -155,17 +155,18 @@ interface ProxyConfig {
 ### `SessionStatus`
 
 ```typescript
-type SessionStatus = 'active' | 'unauthorized' | 'expired' | 'crashed';
+type SessionStatus = 'live' | 'disconnected' | 'unauthorized' | 'expired' | 'crashed';
 ```
 
 | Value | Meaning | Recovery |
 |---|---|---|
-| `'active'` | Session is healthy and responding | — |
+| `'live'` | Session is healthy and responding | — |
+| `'disconnected'` | Bridge is alive but the server is not currently responding | Usually automatic once the server returns |
 | `'unauthorized'` | Server rejected auth (401/403) or token refresh failed | `mcpc login <server>`, then `mcpc @session restart` |
 | `'expired'` | Server signalled session is no longer valid (typically 404) | `mcpc @session restart` |
 | `'crashed'` | Bridge process died; auto-restarts on next command | Automatic |
 
-Sessions with no `status` field are treated as `'active'`.
+Sessions with no `status` field are treated as `'live'`.
 
 A session in `sessions.json` with no live bridge PID and not already in `expired`/`unauthorized` is automatically set to `'crashed'` by `consolidateSessions()`.
 
@@ -195,7 +196,7 @@ Used for cache invalidation: if `listChangedAt` is newer than the local cache en
 
 ### `ActiveTaskEntry`
 
-An entry persisted in `SessionData.activeTasks` so that async tool calls can be recovered if the bridge crashes mid-flight.
+An internal task-related shape from older bridge code paths. `mcpc 0.1.11` does not expose public `--task`, `--detach`, or `tasks-*` commands.
 
 ```typescript
 interface ActiveTaskEntry {
@@ -217,7 +218,6 @@ interface SessionData {
   server: ServerConfig;                     // Transport config — header values replaced with "<redacted>"
   profileName?: string;                     // Auth profile name (OAuth sessions only)
   x402?: boolean;                           // x402 auto-payment enabled
-  insecure?: boolean;                       // Skip TLS certificate verification
   pid?: number;                             // Bridge process PID (absent if not running)
   protocolVersion?: string;                 // Negotiated MCP protocol version, e.g. "2025-11-25"
   mcpSessionId?: string;                    // Server-assigned session ID for Streamable HTTP resumption
@@ -225,10 +225,9 @@ interface SessionData {
     name: string;
     version: string;
   };
-  status?: SessionStatus;                   // Health status, defaults to "active" when absent
+  status?: SessionStatus;                   // Health status, defaults to "live" when absent
   proxy?: ProxyConfig;                      // Local proxy server config (if proxy mode enabled)
   notifications?: SessionNotifications;    // Last list-change notification timestamps
-  activeTasks?: Record<string, ActiveTaskEntry>; // taskId -> task entry for crash recovery
   createdAt: string;                        // ISO 8601 — when the session was first created
   lastSeenAt?: string;                      // ISO 8601 — last successful server response
 }
@@ -241,7 +240,7 @@ Field-by-field notes:
 - `pid` — present only while a bridge process is alive. Cleared by `consolidateSessions()` when `isProcessAlive(pid)` returns false.
 - `mcpSessionId` — the `MCP-Session-Id` header value provided by the server during initialization. Required by the client on all subsequent requests to that server.
 - `lastSeenAt` — compared against `DISCONNECTED_THRESHOLD_MS` to determine whether a session is "live" or "disconnected" in the status display.
-- `activeTasks` — keyed by `taskId`. Populated when a detached/async tool call is in progress so it can be polled after a bridge restart.
+- Task-related state, when present in older/internal code paths, is not part of the public `mcpc 0.1.11` command surface.
 
 ---
 
@@ -458,14 +457,12 @@ class McpError extends Error {
 
 ### JSON representation (in `--json` mode)
 
-When any `McpError` is caught and output mode is `--json`, `toJSON()` produces:
+The internal error class may carry richer fields, but the current CLI JSON surface is minimal:
 
 ```json
 {
   "error": "ClientError",
-  "message": "Session not found: @my-session",
-  "code": 1,
-  "details": null
+  "code": 1
 }
 ```
 
@@ -554,63 +551,67 @@ Examples: `https://mcp.apify.com` → `mcp.apify.com`, `http://localhost:3000` �
 
 ### `mcpc --json` (session list)
 
-The top-level array of session objects. Each entry mirrors `SessionData` with `sessionName` as the key field name.
+The top-level output is an object with `sessions` and `profiles`.
 
 ```json
-[
-  {
-    "sessionName": "@apify",
-    "server": {
-      "url": "https://mcp.apify.com",
-      "headers": { "Authorization": "<redacted>" }
-    },
-    "status": "active",
-    "pid": 12345,
-    "protocolVersion": "2025-11-25",
-    "mcpSessionId": "sess_abc123",
-    "serverInfo": { "name": "Apify MCP Server", "version": "1.0.0" },
-    "profileName": "default",
-    "createdAt": "2025-12-14T10:00:00.000Z",
-    "lastSeenAt": "2025-12-14T10:05:30.000Z"
-  }
-]
+{
+  "sessions": [
+    {
+      "name": "@apify",
+      "server": {
+        "url": "https://mcp.apify.com",
+        "headers": { "Authorization": "<redacted>" }
+      },
+      "status": "live",
+      "pid": 12345,
+      "protocolVersion": "2025-11-25",
+      "mcpSessionId": "sess_abc123",
+      "serverInfo": { "name": "Apify MCP Server", "version": "1.0.0" },
+      "profileName": "default",
+      "createdAt": "2025-12-14T10:00:00.000Z",
+      "lastSeenAt": "2025-12-14T10:05:30.000Z"
+    }
+  ],
+  "profiles": []
+}
 ```
 
 ### `mcpc --json @session` (single session info)
 
 ```json
 {
-  "sessionName": "@apify",
-  "server": {
-    "url": "https://mcp.apify.com"
+  "_mcpc": {
+    "sessionName": "@apify",
+    "server": {
+      "url": "https://mcp.apify.com"
+    }
   },
-  "status": "active",
-  "pid": 12345,
   "protocolVersion": "2025-11-25",
-  "serverInfo": { "name": "Apify MCP Server", "version": "1.0.0" },
-  "createdAt": "2025-12-14T10:00:00.000Z",
-  "lastSeenAt": "2025-12-14T10:05:30.000Z"
+  "capabilities": {
+    "tools": {}
+  },
+  "serverInfo": { "name": "Apify MCP Server", "version": "1.0.0" }
 }
 ```
+
+Use `mcpc --json` when you need session-health fields such as `status`, `pid`, `profileName`, `createdAt`, or `lastSeenAt`.
 
 ### `mcpc --json @session tools-list`
 
 ```json
-{
-  "tools": [
-    {
-      "name": "search-actors",
-      "description": "Search for Actors in Apify Store",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "query": { "type": "string", "description": "Search query" }
-        },
-        "required": ["query"]
-      }
+[
+  {
+    "name": "search-actors",
+    "description": "Search for Actors in Apify Store",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "Search query" }
+      },
+      "required": ["query"]
     }
-  ]
-}
+  }
+]
 ```
 
 ### `mcpc --json @session tools-call <tool-name> [args]`
@@ -629,7 +630,7 @@ Success:
 }
 ```
 
-Tool-level error (exit code 2):
+Tool-level error (exit code 0):
 
 ```json
 {
@@ -646,16 +647,14 @@ Tool-level error (exit code 2):
 ### `mcpc --json @session resources-list`
 
 ```json
-{
-  "resources": [
-    {
-      "uri": "file:///tmp/data.json",
-      "name": "data.json",
-      "mimeType": "application/json",
-      "description": "Runtime data file"
-    }
-  ]
-}
+[
+  {
+    "uri": "file:///tmp/data.json",
+    "name": "data.json",
+    "mimeType": "application/json",
+    "description": "Runtime data file"
+  }
+]
 ```
 
 ### `mcpc --json @session resources-read <uri>`
@@ -675,17 +674,15 @@ Tool-level error (exit code 2):
 ### `mcpc --json @session prompts-list`
 
 ```json
-{
-  "prompts": [
-    {
-      "name": "summarize",
-      "description": "Summarize a document",
-      "arguments": [
-        { "name": "document", "description": "Document text", "required": true }
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "summarize",
+    "description": "Summarize a document",
+    "arguments": [
+      { "name": "document", "description": "Document text", "required": true }
+    ]
+  }
+]
 ```
 
 ### `mcpc --json @session prompts-get <name> [args]`
@@ -710,9 +707,7 @@ Tool-level error (exit code 2):
 ```json
 {
   "error": "NetworkError",
-  "message": "Connection refused to https://mcp.apify.com",
-  "code": 3,
-  "details": null
+  "code": 3
 }
 ```
 
@@ -734,7 +729,7 @@ Full example with two sessions — one HTTP with OAuth, one stdio:
         "timeout": 300
       },
       "profileName": "default",
-      "status": "active",
+      "status": "live",
       "pid": 12345,
       "protocolVersion": "2025-11-25",
       "mcpSessionId": "sess_abc123xyz",
@@ -866,6 +861,7 @@ interface McpConfig {
 }
 ```
 
-Used with the `<file>:<entry>` server format: `mcpc ~/.vscode/mcp.json:filesystem connect @fs`
+Used with the config-file entry form: `mcpc --config ~/.vscode/mcp.json filesystem connect @fs`
+If you see `<file>:<entry>` in older examples, treat it as stale wording.
 
 Environment variable substitution is supported in config files: `${VAR_NAME}` is expanded at load time.

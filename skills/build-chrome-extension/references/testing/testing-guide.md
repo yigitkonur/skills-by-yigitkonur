@@ -267,7 +267,7 @@ const chrome = {
 vi.stubGlobal("chrome", chrome);
 ```
 
-### Using `@anthropic-ai/chrome-types` for Type-Safe Mocks
+### Using `@types/chrome` for Type-Safe Mocks
 
 ```typescript
 // test/helpers/mock-storage.ts
@@ -305,6 +305,8 @@ export function createMockStorage(initial: Record<string, unknown> = {}) {
 
 ## Integration Testing with Puppeteer
 
+Use the built manifest to derive the popup path in browser tests. WXT often emits `popup.html`; vanilla/CRXJS builds often emit `popup/index.html`.
+
 ```bash
 npm install -D puppeteer
 ```
@@ -312,10 +314,15 @@ npm install -D puppeteer
 ```typescript
 // test/integration/extension.test.ts
 import puppeteer, { Browser } from "puppeteer";
+import { readFileSync } from "fs";
 import path from "path";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 const EXTENSION_PATH = path.resolve(__dirname, "../../dist");
+const MANIFEST = JSON.parse(
+  readFileSync(path.join(EXTENSION_PATH, "manifest.json"), "utf-8")
+);
+const POPUP_PATH = MANIFEST.action?.default_popup ?? "popup.html";
 
 let browser: Browser;
 
@@ -348,7 +355,7 @@ describe("Extension popup", () => {
   it("loads and displays title", async () => {
     const extId = await getExtensionId();
     const page = await browser.newPage();
-    await page.goto(`chrome-extension://${extId}/popup.html`);
+    await page.goto(`chrome-extension://${extId}/${POPUP_PATH}`);
     const title = await page.$eval("h1", (el) => el.textContent);
     expect(title).toBe("My Extension");
     await page.close();
@@ -357,7 +364,7 @@ describe("Extension popup", () => {
   it("toggle switch persists state", async () => {
     const extId = await getExtensionId();
     const page = await browser.newPage();
-    await page.goto(`chrome-extension://${extId}/popup.html`);
+    await page.goto(`chrome-extension://${extId}/${POPUP_PATH}`);
     await page.click("#enable-toggle");
     // Reopen popup
     await page.reload();
@@ -379,9 +386,14 @@ npm install -D @playwright/test
 ```typescript
 // test/e2e/extension.spec.ts
 import { test, expect, chromium, BrowserContext } from "@playwright/test";
+import { readFileSync } from "fs";
 import path from "path";
 
 const EXTENSION_PATH = path.resolve(__dirname, "../../dist");
+const MANIFEST = JSON.parse(
+  readFileSync(path.join(EXTENSION_PATH, "manifest.json"), "utf-8")
+);
+const POPUP_PATH = MANIFEST.action?.default_popup ?? "popup.html";
 
 let context: BrowserContext;
 
@@ -414,7 +426,7 @@ test("popup renders correctly", async () => {
   }
   const extId = getExtensionId();
   const page = await context.newPage();
-  await page.goto(`chrome-extension://${extId}/popup.html`);
+  await page.goto(`chrome-extension://${extId}/${POPUP_PATH}`);
   await expect(page.locator("h1")).toHaveText("My Extension");
   await page.close();
 });
@@ -469,9 +481,14 @@ Service workers can terminate at any time. Test that your extension survives res
 ```typescript
 // test/e2e/sw-resilience.spec.ts
 import { test, expect, chromium, BrowserContext } from "@playwright/test";
+import { readFileSync } from "fs";
 import path from "path";
 
 const EXT_PATH = path.resolve(__dirname, "../../dist");
+const MANIFEST = JSON.parse(
+  readFileSync(path.join(EXT_PATH, "manifest.json"), "utf-8")
+);
+const POPUP_PATH = MANIFEST.action?.default_popup ?? "popup.html";
 
 test("state persists across service worker restarts", async () => {
   const context = await chromium.launchPersistentContext("", {
@@ -492,7 +509,7 @@ test("state persists across service worker restarts", async () => {
 
   // Set some state via popup
   const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${extId}/popup.html`);
+  await popup.goto(`chrome-extension://${extId}/${POPUP_PATH}`);
   await popup.click("#increment-btn");
   await popup.close();
 
@@ -507,7 +524,7 @@ test("state persists across service worker restarts", async () => {
 
   // Verify state survived
   const popup2 = await context.newPage();
-  await popup2.goto(`chrome-extension://${extId}/popup.html`);
+  await popup2.goto(`chrome-extension://${extId}/${POPUP_PATH}`);
   const count = await popup2.$eval("#count", (el) => el.textContent);
   expect(count).toBe("1");
 
@@ -644,9 +661,14 @@ export default defineConfig({
 ```typescript
 // test/visual/popup.spec.ts
 import { test, expect, chromium } from "@playwright/test";
+import { readFileSync } from "fs";
 import path from "path";
 
 const EXT_PATH = path.resolve(__dirname, "../../dist");
+const MANIFEST = JSON.parse(
+  readFileSync(path.join(EXT_PATH, "manifest.json"), "utf-8")
+);
+const POPUP_PATH = MANIFEST.action?.default_popup ?? "popup.html";
 
 test("popup visual snapshot - light theme", async () => {
   const context = await chromium.launchPersistentContext("", {
@@ -665,7 +687,7 @@ test("popup visual snapshot - light theme", async () => {
   const extId = sw.url().match(/chrome-extension:\/\/([^/]+)/)![1];
   const page = await context.newPage();
   await page.setViewportSize({ width: 400, height: 600 });
-  await page.goto(`chrome-extension://${extId}/popup.html`);
+  await page.goto(`chrome-extension://${extId}/${POPUP_PATH}`);
   await page.waitForLoadState("networkidle");
 
   await expect(page).toHaveScreenshot("popup-light.png", {

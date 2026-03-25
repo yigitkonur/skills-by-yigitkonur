@@ -242,4 +242,4 @@ Why: `<` and `>` can inject instructions into the agent's system prompt.
 
 ---
 
-> **Steering tip:** Test your description against both should-trigger and should-NOT-trigger queries before finalizing. A description that triggers too broadly is worse than one that triggers too narrowly.
+> Tip: Test your description against both should-trigger and should-NOT-trigger queries before finalizing. A description that triggers too broadly is worse than one that triggers too narrowly.

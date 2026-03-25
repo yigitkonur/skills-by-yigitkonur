@@ -83,6 +83,16 @@ Stop here and do not recommend a plan yet if any of these are true:
 
 If blocked, return a decision-ready gap list instead of pretending the plan is ready. Format each gap as: (a) what is missing, (b) who can provide it, (c) what it blocks, (d) suggested default if no answer comes. If framing stays blocked after gap list, consult recovery paths below.
 
+**Exception — provisional sequencing mode:** If the user explicitly asks for a sequence/ranking now and the work is still reversible, you may add a clearly labeled **Provisional Plan** after the gap list. Use the provisional sequencing fallback in `references/04-prioritization-and-sequencing.md` for the ranking shape. It must:
+- list the assumptions that make the sequence valid
+- prefer the smallest reversible steps and learning-rich tasks first
+- name the trigger that would invalidate the ordering
+- avoid sounding committed or decision-ready
+
+Examples:
+- **Blocked:** decision-maker, deadline, and success metric are all missing.
+- **Potentially provisional:** decision-maker and success metric are known, but budget and exact downstream owner are still TBD.
+
 ### 3. Choose the smallest useful method
 
 Consult the reference router above to load the reference file matching your chosen method. The reference file contains templates, worked examples, and edge-case guidance essential for correct execution.
@@ -127,6 +137,7 @@ For decision and prioritization jobs, generate 2-4 distinct options (including a
 Apply the output shape that matches the job:
 - **Decision:** include the selected option, why it wins, and why the others do not.
 - **Prioritization:** force trade-offs. If more than 60% of items are `Must`, rework the categories.
+- **Prioritization (provisional mode):** rank by dependency, reversibility, and learning value instead of fake precision.
 - **Root cause:** trace to a system cause that can be changed, not just a symptom or person.
 - **Execution planning:** define phases, dependencies, owners, checkpoints, verification, and pivot triggers.
 - **Frame the problem:** deliver a completed mission sentence, prioritized gap list (distinct from step 2's blocking gap list -- this is the finished deliverable, not a blocker signal), and recommended next step to close the biggest remaining gap.
@@ -138,7 +149,7 @@ Follow the 9-section output contract below. The first four sections serve as the
 
 If audience is known, lead with the recommendation for decision-makers and lead with sequence and ownership for executors. If audience is unknown, use the output contract section order as-is.
 
-## Anti-derail guardrails
+## Execution guardrails
 
 | Do this | Not that |
 |---|---|
@@ -162,29 +173,29 @@ If audience is known, lead with the recommendation for decision-makers and lead 
 - If conditions change faster than the plan, shift into OODA + checkpoint/pivot mode via `references/08-execution-risk-and-learning.md`.
 - If a plan depends on unknowns you cannot resolve yet, recommend a safe-to-learn experiment or an explicit research task instead of a fake commitment.
 
-## Steering experiences
+## Common traps
 
-Real execution mistakes discovered through derailment testing. Read these before your first run.
+These are recurring ways operators go wrong when they follow the skill too loosely or too mechanically. Read them before your first run.
 
-### SE-01: Reference files exist but agents never load them
+### Reference files exist but agents never load them
 The reference router table maps needs to files, but nothing in the workflow forces you to open them. Always consult the reference router in step 3 to load the file matching your chosen method. If you skip this, you will use method names without understanding their templates.
 
-### SE-02: Method execution falls into a gap
+### Method execution falls into a gap
 Steps go: choose method, gather evidence, decide. But actually executing the method (filling in the matrix, running 5 Whys) is part of step 4. If you gather evidence without applying it to the method template, you produce generic analysis instead of structured output.
 
-### SE-03: Two output structures both claim to be default
+### Two output structures both claim to be default
 Step 6 describes "decision brief + execution detail" and the output contract defines 9 sections. These are not competing. The first 4 output contract sections ARE the decision brief; sections 5-9 are execution detail. Follow the output contract.
 
-### SE-04: Domain terms used without definition
+### Domain terms used without definition
 5W2H, Type 1/Type 2, Decision Frame are defined inline in the workflow steps above. If you encounter a term you do not recognize, re-read the step definitions before consulting reference files.
 
-### SE-05: "Enough evidence" has no threshold
+### "Enough evidence" has no threshold
 Evidence is enough when you can fill every cell of the method template AND articulate why the leading option wins over the second-best. If you cannot do both, you need more evidence.
 
-### SE-06: AI agents lack organizational context
+### AI agents lack organizational context
 When the skill says "owner" or "audience," translate for your context: owner = who can answer this question. Audience = if unknown, use the output contract section order as-is. Resolve-by = can planning proceed without this answer?
 
-### SE-07: Agents stack methods for rigor theater
+### Agents stack methods for rigor theater
 The skill says "use one primary method." Agents add 2-3 companions "to be thorough." The companion rule is strict: add one ONLY if the primary cannot answer a question the user explicitly asked. If the primary already answers the question, stop.
 
 ## Output contract
@@ -231,4 +242,4 @@ If any answer is `no`, revise before finalizing.
 
 ## Final reminder
 
-Before delivering, verify you loaded only the reference files you actually used. If any reference was opened but not cited in the output, drop it. Stop planning once the next action is decision-ready. Every reference file contains a "Steering experiences" section at its end -- read it when you load the file.
+Before delivering, verify you loaded only the reference files you actually used. If any reference was opened but not cited in the output, drop it. Stop planning once the next action is decision-ready. Every reference file ends with a "Common traps" section -- read it when you load the file.

@@ -28,9 +28,9 @@ Before starting the full workflow, assess what format fits:
 | Situation | Format | Action |
 |---|---|---|
 | New feature or product with multiple stakeholders | Full PRD | Follow the complete workflow below |
-| Small enhancement with clear scope | Lightweight PRD | Skip Phase 2 edge case analysis, use abbreviated template |
-| AI/ML feature where behavior is hard to specify in prose | Eval-first PRD | Add evaluation criteria section, consider "demos before memos" |
-| Problem is already well-understood by the team | User stories only | Skip to Phase 3 and draft stories + acceptance criteria directly |
+| Small enhancement with clear scope | Lightweight PRD | Skip Phase 2 edge case analysis, use the explicit lightweight template in `references/templates/prd-template.md` |
+| AI/ML feature where behavior is hard to specify in prose | Eval-first PRD | Use the eval-first template in `references/templates/prd-template.md`; lead with evaluation criteria before implementation notes |
+| Problem is already well-understood by the team | User stories only | Use the user-stories-only template in `references/templates/prd-template.md`; keep the output focused on stories, criteria, and scope boundaries |
 
 Ask the user which format fits if unclear. Default to Full PRD. Read `references/discovery/format-decision.md` for detailed guidance.
 
@@ -56,8 +56,19 @@ Read the relevant parts of the existing codebase:
 - Note test patterns and prior art for testing
 - Understand data models, schemas, and integration points
 
+If the workspace contains multiple candidate codebases, choose the target that would actually ship the feature:
+- prefer the repo/module the user named explicitly
+- otherwise prefer the codebase whose product/module names match the request
+- if fixtures, copies, or archival snapshots are present alongside a real repo, treat them as reference material unless the user explicitly says they are the target
+
+If the target still is not clear, list the candidates and mark target selection as `TBD` before going deeper.
+
+If no shipping codebase exists yet, record that this is greenfield, note any repo or product conventions you do have, and continue without inventing prior art.
+
 **Step 3 — Interview relentlessly.**
 Walk down each branch of the design tree, resolving dependencies between decisions one by one. Do not move on until you reach a shared understanding with the user.
+
+If the user is unavailable synchronously, ask the 3 highest-leverage blocking questions once, then continue with explicit `TBD` placeholders and a question appendix. Do not invent answers just to keep drafting.
 
 Key areas: user flows, data requirements, integration points, permissions, performance expectations (with numeric thresholds), rollout strategy.
 
@@ -80,7 +91,14 @@ For significant architectural decisions, sketch 2-3 options with Pros / Cons / E
 ### Phase 3: Drafting
 
 **Step 6 — Write the PRD.**
-Use the template in `references/templates/prd-template.md`. The PRD has 10 sections:
+Use the format-specific template in `references/templates/prd-template.md`.
+
+- **Full PRD**: use the 10-section template below.
+- **Lightweight PRD**: use the 5-section lightweight template; if any `TBD`s remain, append `Open Questions` instead of inventing answers.
+- **Eval-first PRD**: use the eval-first template with evaluation criteria, sample cases, boundaries, and escalation rules.
+- **User stories only**: use the stories-only template with a short context line, numbered stories, acceptance criteria, and out-of-scope boundaries.
+
+Full PRD sections:
 
 1. **Problem Statement** — Who / What / Why / Evidence
 2. **Why Now?** — Strategic timing and urgency
@@ -96,7 +114,9 @@ Use the template in `references/templates/prd-template.md`. The PRD has 10 secti
 ### Phase 4: Validation
 
 **Step 7 — Quality review.**
-Validate against these checks before presenting:
+Run the validation checks that match the chosen format before presenting. Full PRDs should satisfy the inline checks below. Lightweight, eval-first, and user-stories-only outputs should satisfy the matching section in `references/quality/prd-checklist.md` rather than being forced to include omitted sections.
+
+For full PRDs, validate against these checks before presenting:
 
 - [ ] Every requirement is concrete and measurable (no "fast", "easy", "intuitive" without thresholds)
 - [ ] Acceptance criteria are atomic, binary (pass/fail), and verb-first
@@ -107,7 +127,7 @@ Validate against these checks before presenting:
 - [ ] Non-functional requirements have numeric thresholds
 - [ ] PRD can be decomposed into 5-15 minute execution blocks for an AI agent
 
-For the full checklist, read `references/quality/prd-checklist.md`.
+For format-specific validation checklists, read `references/quality/prd-checklist.md`.
 
 **Step 8 — Present and iterate.**
 Ask the user: Does the problem statement capture the pain? Are the success metrics right? Is anything missing from user stories? Are technical constraints accurate? Should anything move in/out of scope?
@@ -119,6 +139,13 @@ Write the finalized PRD to:
 - **GitHub Issue**: `gh issue create` with the PRD as body
 - **File**: `docs/prd/{feature-name}.md` or the project's convention
 - **Both**: Create the file AND the GitHub issue linking to it
+
+Choose the file destination in this order:
+- follow an explicit user instruction
+- otherwise follow an existing PRD/spec convention in the target repo if one exists
+- otherwise use `docs/prd/{feature-name}.md`
+
+If you cannot or should not write to the repo docs tree or GitHub in the current environment, write `prd.md` in the active working context and state the intended final location (`docs/prd/...`, GitHub issue, or both). The active working context is the root of the target repo selected in Step 2; if Step 2 established that there is no shipping repo yet, use the directory where you are keeping task artifacts.
 
 **Before creating any GitHub issue**, check the body size:
 ```bash
@@ -174,14 +201,14 @@ Write concrete, measurable requirements:
 ### Templates
 | File | Read when |
 |---|---|
-| `references/templates/prd-template.md` | Drafting Phase 3; need the full 10-section template with per-section guidance |
+| `references/templates/prd-template.md` | Drafting Phase 3; need the full, lightweight, eval-first, or stories-only template with per-section guidance |
 | `references/templates/decomposition-guide.md` | Phase 5 decomposition into vertical slices and GitHub issues |
 | `references/templates/issue-size-management.md` | Body exceeds 60K chars; need split strategy, character budgets, traceability patterns |
 
 ### Quality
 | File | Read when |
 |---|---|
-| `references/quality/prd-checklist.md` | Phase 4 validation; running the full quality audit |
+| `references/quality/prd-checklist.md` | Phase 4 validation; pick the checklist section that matches the chosen format |
 | `references/quality/acceptance-criteria-guide.md` | Writing acceptance criteria; need format guidance and examples |
 | `references/quality/anti-patterns.md` | Reviewing the PRD for common mistakes with symptom/fix patterns |
 
@@ -210,7 +237,7 @@ Write concrete, measurable requirements:
 
 ## Guardrails
 
-- Do not write the PRD before completing discovery. Ask at least 3 clarifying questions first.
+- Do not write the PRD before completing discovery. Ask at least 3 clarifying questions first when interaction is available; otherwise record at least 3 explicit open questions and carry them as `TBD`.
 - Do not include file paths or code snippets in the PRD. Use module/component names.
 - Do not use vague language without thresholds. Every "fast", "secure", "scalable" needs a number.
 - Do not prescribe architecture. Describe trade-offs; let the team decide.

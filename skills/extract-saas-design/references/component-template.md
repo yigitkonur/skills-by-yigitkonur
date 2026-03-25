@@ -3,6 +3,8 @@
 Every component document follows this structure. Skip sections that genuinely don't apply, but err on the side of including them — "Not implemented" is better than silence.
 
 > **Every section below matters.** Skip a section only if it genuinely does not apply (e.g., "Responsive Behavior" for a component that truly doesn't change at any breakpoint). When a feature is absent, write "Not implemented" — never leave a silent gap. The person recreating this needs to know what's missing, not just what's present.
+>
+> **Tailwind column rule:** If the source does not use Tailwind or an equivalent utility-class layer, write `N/A` in the Tailwind column instead of leaving it blank or reverse-engineering fake utility names.
 
 ---
 

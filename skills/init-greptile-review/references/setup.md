@@ -173,13 +173,13 @@ Before creating new config, check if Greptile is already set up. Run these comma
 
 ```bash
 # Check for .greptile/ directory (recommended format)
-find . -name '.greptile' -type d -not -path '*/node_modules/*' 2>/dev/null
+find . -type d -name '.greptile' -not -path '*/node_modules/*' 2>/dev/null
 
 # Check for legacy greptile.json
-find . -name 'greptile.json' -not -path '*/node_modules/*' 2>/dev/null
+find . -type f -name 'greptile.json' -not -path '*/node_modules/*' 2>/dev/null
 
 # Check for child configs in a monorepo
-find . -path '*/.greptile/config.json' -not -path '*/node_modules/*' 2>/dev/null
+find . -type f -path '*/.greptile/config.json' -not -path '*/node_modules/*' 2>/dev/null
 ```
 
 | Finding | Action |
@@ -197,26 +197,37 @@ find . -path '*/.greptile/config.json' -not -path '*/node_modules/*' 2>/dev/null
 Greptile should not duplicate what linters already cover. Inventory existing quality tools:
 
 ```bash
-# Config files at repo root
-ls .eslintrc* .eslintrc.js .eslintrc.json .eslintrc.yml eslint.config.* 2>/dev/null
-ls prettier.config* .prettierrc* 2>/dev/null
-ls biome.json biome.jsonc 2>/dev/null
-ls .stylelintrc* stylelint.config* 2>/dev/null
-ls .rubocop.yml .rubocop_todo.yml 2>/dev/null
-ls .golangci.yml .golangci.yaml 2>/dev/null
-ls pyproject.toml setup.cfg .flake8 .pylintrc 2>/dev/null
+# Config files near repo root
+find . -maxdepth 2 -type f \( \
+  -name '.eslintrc*' -o -name 'eslint.config.*' -o \
+  -name 'prettier.config*' -o -name '.prettierrc*' -o \
+  -name 'biome.json' -o -name 'biome.jsonc' -o \
+  -name '.stylelintrc*' -o -name 'stylelint.config*' -o \
+  -name '.rubocop.yml' -o -name '.rubocop_todo.yml' -o \
+  -name '.golangci.yml' -o -name '.golangci.yaml' -o \
+  -name 'pyproject.toml' -o -name 'setup.cfg' -o -name '.flake8' -o -name '.pylintrc' \
+\) 2>/dev/null
 
 # Check package.json devDependencies (JavaScript/TypeScript)
-cat package.json 2>/dev/null | python3 -c "
-import json, sys
-try:
-    d = json.load(sys.stdin).get('devDependencies', {})
-    linters = [k for k in d if any(x in k.lower() for x in ['eslint', 'prettier', 'biome', 'stylelint', 'lint', 'oxlint'])]
-    if linters: print('Linters/formatters:', ', '.join(linters))
-    else: print('No linters found in devDependencies')
-except: print('Could not parse package.json')
-"
+python3 - <<'PY'
+from pathlib import Path
+import json
+
+package_json = Path("package.json")
+if not package_json.exists():
+    print("package.json not found")
+else:
+    try:
+        dev = json.loads(package_json.read_text()).get("devDependencies", {})
+    except Exception as exc:
+        print(f"Could not parse package.json: {exc}")
+    else:
+        linters = [name for name in dev if any(tag in name.lower() for tag in ("eslint", "prettier", "biome", "stylelint", "lint", "oxlint"))]
+        print("Linters/formatters:", ", ".join(linters) if linters else "none found in devDependencies")
+PY
 ```
+
+If both the config-file scan and the manifest scan come up empty, treat the repo as lacking dedicated lint/format tooling until repo-specific evidence says otherwise.
 
 | Tools found | Impact on Greptile config |
 |---|---|
@@ -234,17 +245,17 @@ Context files (`files.json`) give the reviewer reference material. Search for ca
 
 ```bash
 # Database schemas
-find . -name '*.prisma' -o -name 'schema.rb' -o -name 'models.py' 2>/dev/null | grep -v node_modules
+find . -type f \( -name '*.prisma' -o -name 'schema.rb' -o -name 'models.py' \) -not -path '*/node_modules/*' 2>/dev/null
 
 # API specifications
-find . \( -name 'openapi*' -o -name 'swagger*' -o -name '*.graphql' -o -name '*.proto' \) 2>/dev/null | grep -v node_modules
+find . -type f \( -name 'openapi*' -o -name 'swagger*' -o -name '*.graphql' -o -name '*.proto' \) -not -path '*/node_modules/*' 2>/dev/null
 
-# Architecture documentation  
-ls docs/architecture* docs/ADR* architecture.md ARCHITECTURE* 2>/dev/null
-find . -path '*/docs/*.md' -not -name 'README*' -not -name 'CHANGELOG*' 2>/dev/null | head -10
+# Architecture documentation
+find . -maxdepth 3 -type f \( -path './docs/*' -o -name 'architecture.md' -o -name 'ARCHITECTURE*' -o -name 'ADR*' \) ! -name 'README*' ! -name 'CHANGELOG*' 2>/dev/null | head -20
+find . -type f -path '*/docs/*.md' -not -name 'README*' -not -name 'CHANGELOG*' 2>/dev/null | head -10
 
 # Shared type definitions
-find . -name 'types.ts' -o -name 'types.d.ts' -o -name 'shared-types*' 2>/dev/null | grep -v node_modules | head -10
+find . -type f \( -name 'types.ts' -o -name 'types.d.ts' -o -name 'shared-types*' \) -not -path '*/node_modules/*' 2>/dev/null | head -10
 ```
 
 **Only include files that help validate correctness.** A Prisma schema helps validate model field usage. A README does not help review code changes. See `config-spec.md` for qualifying criteria.
@@ -275,8 +286,8 @@ Minimal working config to verify the setup:
 
 ### Verification Steps
 
-1. Commit and push `.greptile/config.json` to your default branch
-2. Create a new PR from a feature branch that includes a `// TODO: test` comment
+1. Commit and push `.greptile/config.json` to the branch you will use as the PR's source branch. If you seed the default branch first, cut the test branch from that updated commit so the config is still present on the source branch.
+2. Create or update a PR from that source branch that includes a `// TODO: test` comment in a scoped file
 3. Wait 2-3 minutes for Greptile to review
 4. Verify the canary rule fires
 5. Check dashboard → Custom Context → Rules → "Last Applied" timestamp updates

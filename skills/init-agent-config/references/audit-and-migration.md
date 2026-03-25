@@ -240,9 +240,12 @@ For each line, apply these checks:
    @AGENTS.md
 
    ## Claude-Specific
-   - [Claude-only features]
+   <!-- Only add the next line if .claude/rules/ exists or you are creating rule files -->
    - See `.claude/rules/` for path-scoped rules
+   - [Any remaining Claude-only features]
    ```
+
+   If Claude has no extra requirements beyond shared instructions, `CLAUDE.md` may be just `@AGENTS.md`.
 
 5. **Verify** — no content duplication between files
 

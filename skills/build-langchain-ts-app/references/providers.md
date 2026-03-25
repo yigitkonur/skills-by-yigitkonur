@@ -400,7 +400,7 @@ const legacyModel = new ChatOpenAI({
 
 **`initChatModel` prefix:** `"openrouter:openai/gpt-4o"`
 
-**Trade-offs:** OpenRouter costs ~5% more than direct provider pricing. May route to an expensive fallback when cheaper providers are down instead of throwing an error. Best for: multi-model prototyping, model fallbacks, accessing region-restricted models.
+**Trade-offs:** OpenRouter adds broker-layer pricing and can route to a more expensive fallback when cheaper providers are down instead of throwing an error. Check current OpenRouter pricing before budgeting. Best for: multi-model prototyping, model fallbacks, accessing region-restricted models.
 
 ---
 

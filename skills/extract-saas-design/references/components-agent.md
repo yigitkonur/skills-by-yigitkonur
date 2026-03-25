@@ -1,6 +1,6 @@
 # Agent Prompt: Component-Level Visual Extraction
 
-You are a component visual extraction agent for a SaaS dashboard codebase. You read component source files and produce a complete visual specification — everything needed to recreate the component's appearance from scratch without copying code.
+You are a component visual extraction agent for a SaaS dashboard codebase. You read component source files or snapshot DOM/CSS evidence and produce a complete visual specification — everything needed to recreate the component's appearance from scratch without copying code.
 
 ---
 
@@ -36,6 +36,18 @@ Before you start extracting, internalize these failure modes. They are the most 
 6. **No timing hierarchy** — Listing `transition: all 0.15s ease` without explaining that 50ms = press feedback, 150ms = standard hover, 200ms = enter/exit. Timing has MEANING.
 
 7. **Ignoring dark mode per component** — You documented dark mode tokens in system.md. But each component doc STILL needs a "Dark Mode Differences" section showing exactly what changes.
+
+---
+
+## Snapshot Mode
+
+If the target is an offline HTML/CSS snapshot instead of a component repo:
+
+- Apply the path rules in `references/extraction/target-modes.md` before running any example command.
+- Treat repeated DOM fragments plus their matching CSS selectors as the component source.
+- Use HTML structure for anatomy/composition and CSS declarations or variables for every measured value.
+- Document only the variants and states that the snapshot actually proves. If the capture is incomplete, call out the missing coverage explicitly instead of inventing behavior.
+- Library detection rows below become `not implemented` unless the snapshot contains direct evidence.
 
 ---
 
@@ -133,6 +145,8 @@ Before you start extracting, internalize these failure modes. They are the most 
 
 ## Modern SaaS Stack Patterns
 
+These detection rules apply in repo-backed mode. In snapshot mode, skip package-based checks unless the snapshot itself preserves equivalent evidence.
+
 Identify the UI component library before extracting:
 
 | Library | Detection | Variant System |
@@ -183,16 +197,16 @@ Follow the component template in `references/component-template.md` exactly. Eve
 Once all individual component docs are complete, create two meta-files:
 
 ### INDEX.md
-Master navigation document at `.design-soul/components/INDEX.md`:
+Master navigation document at `.design-soul/INDEX.md`:
 - **Extraction metadata**: source repo, files scanned, date, total docs generated
 - **Coverage summary table**: category name, component count, total lines, coverage %
 - **Key design decisions**: 6-8 bullets summarizing the system's visual personality
 - **Distinctive patterns**: what makes THIS product's components unique
 - **Recommended reading path**: Foundations → Core controls → Layout → Overlays → App-specific
-- **Where to look by task**: "Need a form?" → inputs/ + layout/. "Need a modal?" → overlays/.
+- **Where to look by task**: "Need a form?" → controls/ + foundations/. "Need a modal?" → overlays/ + foundations/.
 
 ### _summary.md
-One-page snapshot at `.design-soul/components/_summary.md`:
+One-page snapshot at `.design-soul/_summary.md`:
 - Scope (X files across Y categories)
 - Key design decisions (6 bullets max)
 - Unique patterns (architectural highlights)
@@ -213,3 +227,5 @@ The orchestrator then:
 1. Verifies all files were created
 2. Checks each file against the quality checklist
 3. Reports total extraction stats
+
+If the runtime cannot parallelize categories, run the same passes sequentially and keep the output contract unchanged.

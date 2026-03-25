@@ -85,8 +85,15 @@ set -euo pipefail
 
 LAUNCHED_NAMES=()
 track_launch() {
-  local names=$(echo "$1" | grep '^Names: ' | sed 's/^Names: //')
-  for n in $names; do LAUNCHED_NAMES+=("$n"); done
+  local names_csv
+  names_csv="$(echo "$1" | sed -n 's/^Names: //p')"
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && LAUNCHED_NAMES+=("$name")
+  done < <(
+    printf '%s\n' "$names_csv" |
+      tr ',' '\n' |
+      sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  )
 }
 cleanup() {
   for name in "${LAUNCHED_NAMES[@]}"; do
@@ -114,7 +121,7 @@ thread="workflow-$(date +%s)"
 ```
 
 ### Key patterns:
-- Track launched names via `grep '^Names: '` from launch output
+- Track launched names via the `Names:` line, then normalize comma-separated output before iterating
 - `trap cleanup ERR` for agent cleanup on failure
 - Unique thread per workflow: `thread="name-$(date +%s)"`
 - `--batch-id` for coordinated multi-agent launches

@@ -17,7 +17,7 @@ Is the repo indexed?
   └── "Indexed" → Continue ↓
 
 Is the JSON valid?
-  Validate: python -m json.tool .greptile/config.json
+  Validate: python3 -m json.tool .greptile/config.json
   Or paste into jsonlint.com
   ├── Parse error → Fix syntax. Config is SILENTLY ignored on parse failure
   └── Valid → Continue ↓
@@ -32,8 +32,7 @@ Is the config on the correct branch?
   └── Config on source branch → Continue ↓
 
 Are the scope patterns correct?
-  Test globs: npx glob "src/api/**/*.ts"
-  Or: find . -path "./src/api/**/*.ts"
+  Test globs with the recursive glob snippet in Issue 2 below
   ├── No matches → Fix glob patterns
   └── Matches → Continue ↓
 
@@ -73,7 +72,7 @@ Force trigger:
 **Fix**:
 ```bash
 # Validate JSON syntax
-python -m json.tool .greptile/config.json
+python3 -m json.tool .greptile/config.json
 
 # Check for coexistence
 ls -la greptile.json .greptile/config.json 2>/dev/null
@@ -94,10 +93,15 @@ git log --oneline -1 -- .greptile/config.json
 **Fix**:
 ```bash
 # Test glob patterns locally
-npx glob "src/api/**/*.ts"
+python3 - <<'PY'
+from glob import glob
+
+matches = glob("src/api/**/*.ts", recursive=True)
+print("\n".join(matches[:20]) if matches else "no matches")
+PY
 
 # List actual file paths
-find . -name "*.ts" -path "*/api/*" | head -20
+find . -type f -path "*/api/*" | head -20
 ```
 
 **Common scope mistakes**:
@@ -245,10 +249,10 @@ After deploying any configuration change, run this verification:
 
 ```bash
 # Validate syntax
-python -m json.tool .greptile/config.json > /dev/null && echo "Valid" || echo "INVALID"
+python3 -m json.tool .greptile/config.json > /dev/null && echo "Valid" || echo "INVALID"
 
 # Check for common mistakes
-cat .greptile/config.json | python3 -c "
+python3 -c "
 import json, sys
 config = json.load(sys.stdin)
 
@@ -281,7 +285,7 @@ if fcl is not None and fcl < 1:
     print(f'ERROR: fileChangeLimit must be >= 1 (got {fcl})')
 
 print('Validation complete')
-"
+" < .greptile/config.json
 ```
 
 ### Step 2 — Deploy Canary Rule

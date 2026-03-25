@@ -12,7 +12,7 @@ Apply Clean Architecture (Robert C. Martin), DDD tactical patterns, Hexagonal/Ex
 
 - **Never** import outer layers from inner layers — domain imports nothing; application imports only domain
 - **Never** put ORM decorators or Prisma types on domain entities — use mappers in infrastructure
-- **Never** return `null` for domain errors — use `Result<T, E>` with `_tag` discriminant for exhaustive handling
+- **Never** return `null` for domain errors — use a discriminated `Result<T, E>` return. In this repo the result branch uses `ok: true | false`; if `E` is a rich error union, give each error variant an `_tag` for exhaustive handling.
 - **Never** use `as any` or `@ts-ignore` without a documented justification comment
 - **Never** dispatch domain events before persistence — pull events AFTER `save()`, dispatch AFTER commit
 - **Never** share one type across domain/API/DB layers — accept cross-layer duplication, each model serves a different master
@@ -75,6 +75,7 @@ Identify the primary category and one adjacent category:
 ### Step 2 — Load references
 
 Read the reference file(s) from `references/` identified in Step 1. Read the full file — do not skim.
+If a loaded reference example conflicts with the guardrails or repo conventions in this file, follow this file.
 
 If the task involves existing code, also read:
 - The project's `tsconfig.json` (compare against [ts-strict-config.md](references/ts-strict-config.md))
@@ -108,19 +109,22 @@ Apply patterns from loaded references. Follow mode-specific behavior:
 - Apply minimal changes. One refactoring at a time.
 - Preserve public API contracts. Preserve test behavior.
 - Load [decision-tables.md](references/decision-tables.md) for anti-pattern recognition table
+- For low-complexity requests, the smallest acceptable boundary split is: pure domain logic, one application entry point, boundary parsing in adapters, and one composition root.
 
 > **Steering note:** Never apply Clean Architecture to a simple CRUD app that doesn't need it.
-> Check domain complexity first. For LOW complexity, vertical slices + Zod + Result types are sufficient.
+> Check domain complexity first. For LOW complexity, vertical slices + Zod + Result types are sufficient. If the user explicitly asks for a refactor toward cleaner boundaries anyway, do the smallest useful version: isolate pure domain logic, keep one composition root, and move boundary parsing to adapters without forcing extra ceremony.
 
 ### Step 4 — Verify
 
 After making changes:
 
-1. Run `npx tsc --noEmit` to verify compilation
-2. Run tests (`npm test` or equivalent)
+1. Read the project's scripts or workspace docs first, then run the strongest project-native typecheck command available (`npm run typecheck`, `pnpm typecheck`, `tsc --noEmit -p tsconfig.json`, or `npx tsc --noEmit` only if the repo installs TypeScript locally and that command works here)
+2. Run tests if configured (`npm test`, `pnpm test`, or project equivalent). If no tests are configured, state that explicitly and fall back to build + typecheck instead of pretending a test step exists.
 3. Check imports: no outer-to-inner violations
 4. Check entities: `#` private fields, `create`/`reconstitute` separation
 5. Check boundaries: ports in consuming layer, implementations in infrastructure
+
+If the project contains TSX but the task is architecture-only, either install the required React runtime/types before typechecking or scope the verification command to the non-UI packages/modules you actually changed. State which path you took.
 
 ### Step 5 — Deliver
 
@@ -171,7 +175,7 @@ Additional supporting files:
 ## Guardrails — repeated for recall
 
 - Source dependencies point **inward only** — domain never imports outer layers
-- Entities use `#` private fields, `create()` + `reconstitute()` factories, `Result<T,E>` returns
+- Entities use `#` private fields, `create()` + `reconstitute()` factories, `Result<T,E>` returns using the repo's discriminated union convention
 - Parse at boundary with Zod — never validate inside domain
 - Events dispatched AFTER persistence — never before commit
 - Accept cross-layer DTO duplication — DRY ends at the layer boundary

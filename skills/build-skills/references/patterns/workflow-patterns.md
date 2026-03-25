@@ -236,10 +236,10 @@ Tell the user: "Stored in [location] because [reason]."
 1. Perform the action with domain constraints applied
 2. Apply domain-specific validations during execution
 
-### Audit Trail
+### Decision Log
 1. Log all domain checks performed
 2. Record decisions with rationale
-3. Generate compliance/audit report
+3. Generate a compliance report
 ```
 
 ### Key techniques
@@ -256,7 +256,7 @@ Tell the user: "Stored in [location] because [reason]."
 - Financial compliance (sanctions, risk assessment)
 - Healthcare workflows (HIPAA considerations)
 - Legal document review (clause analysis)
-- Security audits (vulnerability assessment)
+- Security reviews (vulnerability assessment)
 - Any domain where expertise matters more than tool access
 
 ## Pattern selection guide
@@ -303,10 +303,10 @@ Unexplained gaps make the output look incomplete and prevent reviewers from dist
 The master checklist is a quality gate, not a sequential todo list. Treat it accordingly:
 
 - **Phases 0-3** are draft essentials — always check these items, even for small changes.
-- **Phases 4+** are final audit items — only run these during a comprehensive quality pass before shipping.
+- **Phases 4+** are final pass items — only run these during a comprehensive quality pass before shipping.
 
 **Common mistake:** Working through all 100+ checklist items sequentially before having a draft. The checklist validates a draft; it does not replace the drafting process. If you find yourself running checklist items before any artifacts exist, stop and draft first.
 
 ---
 
-> **Steering tip:** Workflow patterns should produce visible artifacts at each phase boundary. If your workflow produces output only at the end, add intermediate checkpoints. See the output contract timing hints in SKILL.md.
+> Tip: Workflow patterns should produce visible artifacts at each phase boundary. If your workflow produces output only at the end, add intermediate checkpoints. See the output contract timing hints in SKILL.md.

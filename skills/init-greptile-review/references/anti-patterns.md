@@ -101,9 +101,9 @@ These are mistakes that AI agents commonly make when executing the init-greptile
 **Prevention:** Every rule scope should target specific directories (e.g., `src/api/**/*.ts`), not the entire repo.
 
 ### Mistake 4: Forgetting the output format
-**What happens:** Agent outputs raw JSON without the file tree, reasoning annotations, or canary test.
+**What happens:** Agent outputs raw JSON or code blocks only, without the file tree, local file writes, reasoning annotations, or canary test.
 **Why:** Phase 6 output requirements are easy to skip under pressure to "just ship the config."
-**Prevention:** Use the output checklist: file tree → file contents → reasoning annotations → canary rule → migration notes. If any is missing, you're not done.
+**Prevention:** Use the output checklist: file tree → write files in the repo when filesystem access exists (unless the user asked for draft-only output) → file contents → reasoning annotations → canary rule → migration notes. If any is missing, you're not done.
 
 ### Mistake 5: Using array format for ignorePatterns
 **What happens:** `"ignorePatterns": ["dist/**", "node_modules/**"]` — silently fails.
@@ -137,7 +137,7 @@ Is the repo indexed?
   NO → Wait for indexing, or re-trigger
   ↓
 Is the JSON valid?
-  Paste into jsonlint.com or run: python -m json.tool config.json
+  Paste into jsonlint.com or run: python3 -m json.tool config.json
   NO → Fix syntax errors — config is silently ignored on parse failure
   ↓
 Does .greptile/ coexist with greptile.json?
@@ -148,7 +148,7 @@ Is the config on the source branch of the PR?
   NO → Push config to the PR's source branch
   ↓
 Is the scope correct? Do the globs match the changed files?
-  Test with: npx glob "src/api/**/*.ts"
+  Test with a recursive glob check (see troubleshooting.md → Issue 2)
   NO → Fix glob patterns
   ↓
 Is strictness too high?
@@ -226,6 +226,7 @@ Run through this checklist before delivering any Greptile configuration:
 
 ### Output completeness
 - [ ] File tree showing `.greptile/` structure
+- [ ] If filesystem access exists, the `.greptile/` files were written or updated in the repo before printing them
 - [ ] Complete file contents for every generated file
 - [ ] Reasoning annotations tied to repo evidence
 - [ ] Canary test rule included

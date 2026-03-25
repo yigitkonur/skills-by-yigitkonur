@@ -84,7 +84,7 @@ mcpc accepts any file path. Common locations:
 ~/.vscode/mcp.json
 
 # Custom test config
-/tmp/mcp-test-config.json
+$TMPDIR/mcp-test-config.json
 
 # Project-local config
 ./mcp-servers.json
@@ -93,12 +93,12 @@ mcpc accepts any file path. Common locations:
 ## Connecting to stdio servers
 
 ```bash
-# Connect using config file:entry-name format
-mcpc /path/to/config.json:server-name connect @session-name
+# Connect using --config <file> <entry> format
+mcpc --config /path/to/config.json server-name connect @session-name
 
 # Examples
-mcpc ~/.vscode/mcp.json:filesystem connect @fs-test
-mcpc ./test-config.json:my-server connect @dev-test
+mcpc --config ~/.vscode/mcp.json filesystem connect @fs-test
+mcpc --config ./test-config.json my-server connect @dev-test
 ```
 
 ### Multiple servers from same config
@@ -108,7 +108,7 @@ mcpc ./test-config.json:my-server connect @dev-test
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"]
+      "args": ["@modelcontextprotocol/server-filesystem", "/ABSOLUTE/CANONICAL/PATH"]
     },
     "github": {
       "command": "npx",
@@ -119,10 +119,12 @@ mcpc ./test-config.json:my-server connect @dev-test
 }
 ```
 
+On macOS, replace `"/ABSOLUTE/CANONICAL/PATH"` with the output of `realpath` before saving the config. Avoid leaving `/tmp/...` aliases in the config file because filesystem servers typically allowlist the canonical `/private/tmp/...` path.
+
 ```bash
 # Connect to each independently
-mcpc ./config.json:filesystem connect @fs
-mcpc ./config.json:github connect @gh
+mcpc --config ./config.json filesystem connect @fs
+mcpc --config ./config.json github connect @gh
 ```
 
 ## Testing stdio servers step by step
@@ -132,8 +134,11 @@ mcpc ./config.json:github connect @gh
 Before using mcpc, run the server command directly to check for errors:
 
 ```bash
+# On macOS, canonicalize the allowlisted path first
+TEST_DIR="$(realpath /tmp/test-dir)"
+
 # Run the server command directly
-npx @modelcontextprotocol/server-filesystem /tmp/test-dir
+npx @modelcontextprotocol/server-filesystem "$TEST_DIR"
 
 # Expected: server starts and waits for JSON-RPC on stdin
 # If you see errors here, fix them before using mcpc
@@ -143,7 +148,7 @@ npx @modelcontextprotocol/server-filesystem /tmp/test-dir
 ### 2. Connect via mcpc
 
 ```bash
-mcpc ./config.json:my-server connect @test
+mcpc --config ./config.json my-server connect @test
 ```
 
 ### 3. Check server health
@@ -169,14 +174,16 @@ mcpc @test resources
 mcpc @test prompts
 ```
 
+If `resources`/`resources-list` or `prompts`/`prompts-list` returns `MCP error -32601: Method not found`, the server simply does not implement that capability. Continue testing the surfaces it does expose.
+
 ### 5. Test tool calls
 
 ```bash
 # Call a tool
-mcpc @test tools-call read_file path:=/tmp/test-dir/test.txt
+mcpc @test tools-call read_file path:="$TEST_DIR/test.txt"
 
 # With JSON output for verification
-mcpc @test tools-call read_file path:=/tmp/test-dir/test.txt --json
+mcpc @test tools-call read_file path:="$TEST_DIR/test.txt" --json
 ```
 
 ### 6. Cleanup
@@ -193,7 +200,7 @@ mcpc @test close
 By default, server stderr is suppressed. Enable verbose mode to see it:
 
 ```bash
-mcpc ./config.json:my-server connect @debug --verbose
+mcpc --config ./config.json my-server connect @debug --verbose
 mcpc @debug tools-list --verbose
 ```
 
@@ -212,7 +219,7 @@ cat ~/.mcpc/logs/bridge-test.log
 | "Not connected" errors | Bridge process crashed | `mcpc @session restart` or reconnect |
 | Tool call timeout | Server processing slowly | `--timeout 600` or check server logs |
 | Empty tool list | Server not registering tools | Check server code, verify with `--verbose` |
-| Wrong Node.js version | Server requires specific Node | Use `nvm use 20` before connecting |
+| Wrong Node.js version | Server requires specific Node | Use the matching runtime before connecting |
 | Missing env vars | `${VAR}` resolves to empty | Export vars before connecting: `export API_KEY=xxx` |
 
 ### Process inspection
@@ -238,31 +245,32 @@ ls -la ~/.mcpc/bridges/
 ```bash
 # 1. Create test directory with test files
 mkdir -p /tmp/mcp-test && echo "hello world" > /tmp/mcp-test/test.txt
+TEST_DIR="$(realpath /tmp/mcp-test)"
 
 # 2. Create config
-cat > /tmp/fs-config.json << 'EOF'
+cat > "$TMPDIR/fs-config.json" << EOF
 {
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["@modelcontextprotocol/server-filesystem", "/tmp/mcp-test"]
+      "args": ["@modelcontextprotocol/server-filesystem", "$TEST_DIR"]
     }
   }
 }
 EOF
 
 # 3. Connect
-mcpc /tmp/fs-config.json:filesystem connect @fs-test
+mcpc --config "$TMPDIR/fs-config.json" filesystem connect @fs-test
 
 # 4. Discover
 mcpc @fs-test tools
 mcpc @fs-test resources
 
 # 5. Test reading a file
-mcpc @fs-test tools-call read_file path:=/tmp/mcp-test/test.txt
+mcpc @fs-test tools-call read_file path:="$TEST_DIR/test.txt"
 
 # 6. Test with JSON output
-mcpc @fs-test tools-call read_file path:=/tmp/mcp-test/test.txt --json | jq '.content'
+mcpc @fs-test tools-call read_file path:="$TEST_DIR/test.txt" --json | jq '.content'
 
 # 7. Cleanup
 mcpc @fs-test close
@@ -290,7 +298,7 @@ python -m my_mcp_server
 # Ctrl+C to stop
 
 # Connect via mcpc
-mcpc ./config.json:my-python-server connect @py-test
+mcpc --config ./config.json my-python-server connect @py-test
 mcpc @py-test tools --full
 mcpc @py-test tools-call my-tool arg:=value
 mcpc @py-test close

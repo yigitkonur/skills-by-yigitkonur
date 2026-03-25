@@ -35,7 +35,7 @@ Quick reference: which tool for which task.
 
 | User asks... | Start with | Then |
 |-------------|------------|------|
-| "How's my site doing?" | analyze-domain (overview) | audit-site (instant), analyze-backlinks |
+| "How's my site doing?" | audit-site (instant) | analyze-domain (overview), analyze-backlinks |
 | "What keywords should I target?" | research-keywords (related) | analyze-keywords (difficulty + intent) |
 | "Who are my competitors?" | analyze-competitors (domain) | compare-domains, find-keyword-gaps |
 | "Are my backlinks healthy?" | analyze-backlinks (spam_scores) | analyze-backlinks (referring_domains) |
@@ -63,7 +63,7 @@ Quick reference: which tool for which task.
 
 ## Chaining rules
 
-1. **Always start with context:** `resolve-geo` (if non-US) → `analyze-domain` (if domain-focused) or `research-keywords` (if keyword-focused)
-2. **Follow nextSteps:** Every tool response includes suggested next tools — follow them
+1. **Start with the workflow's entry point:** run `resolve-geo` first for non-US markets, then use the starting tool for the chosen workflow. Add `analyze-domain` early only when the workflow or user goal explicitly calls for domain context.
+2. **Use nextSteps to refine, not replace, the workflow:** finish the chosen workflow branch first, then take high-priority `nextSteps` that continue the same branch
 3. **End with compilation:** `compile-report` gathers all tool outputs into a unified report
 4. **Large datasets:** If >50 rows returned, use `read-result-set` to paginate/filter/aggregate before showing to user

@@ -319,9 +319,9 @@ await client.createAllSessions();
 **Prevention:** Always use `createAllSessions()` for simplicity.
 
 ---
-### Error: No active session — getSession returns undefined
+### Error: No active session — getSession returns null
 
-**When:** `client.getSession("myServer")` returns `undefined`, and subsequent method calls fail.
+**When:** `client.getSession("myServer")` returns `null`, and subsequent method calls fail.
 
 **Cause:** The server name passed to `getSession` does not match any key in `mcpServers`, or sessions have not been created yet.
 
@@ -339,7 +339,7 @@ const client = new MCPClient({
 await client.createAllSessions();
 
 const session = client.getSession("my-server"); // ✅ exact match
-// const session = client.getSession("myServer"); // ❌ undefined
+// const session = client.getSession("myServer"); // ❌ null
 ```
 2. Check that `createAllSessions()` or `createSession()` completed without errors.
 
@@ -1313,7 +1313,7 @@ if (!existsSync(configPath)) {
   process.exit(1);
 }
 
-const config = await loadConfigFile(configPath);
+const config = loadConfigFile(configPath);
 const client = new MCPClient(config);
 ```
 

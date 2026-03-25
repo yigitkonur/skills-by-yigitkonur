@@ -24,6 +24,14 @@ Design and build applications that use hcom as the multi-agent communication bac
 
 ## Design workflow for new hcom-based systems
 
+Before you start, choose the output path. Default to `./design.md` in the current working directory unless the user gave a different target. If the user wants runnable orchestration, confirm `hcom` is available with `command -v hcom` before promising executable steps. If `hcom` is unavailable, stay at architecture/design level and state that the plan is not executable in the current environment. The design is not complete until that file contains:
+
+- target topology and agent responsibilities
+- communication primitives, thread model, and event/wait strategy
+- a minimal script skeleton or launch plan
+- external integration points
+- verification steps, cleanup plan, and open risks/assumptions
+
 ### Step 1: Define your agent topology
 
 | Topology | When to use | hcom primitives |
@@ -48,13 +56,54 @@ Design and build applications that use hcom as the multi-agent communication bac
 
 ### Step 3: Design the script
 
-Use the `run-hcom-agents` skill for script template and execution patterns. Key decisions:
+If the user only wants architecture/design, write the script skeleton directly in `design.md` and stop after the completion checklist below. If the user wants executable orchestration beyond the skeleton below, open `skills/run-hcom-agents/SKILL.md` and then read `skills/run-hcom-agents/references/cli-reference.md` plus `skills/run-hcom-agents/references/gotchas.md` for the exact launch and cleanup patterns.
+
+Treat launch grouping and message threading as separate design choices: `--batch-id` groups related launches, while `--thread` belongs on `hcom send` and `hcom events`.
+
+Minimal launch skeleton to include in the design when agent execution is part of the plan:
+
+```bash
+thread="workflow-$(date +%s)"
+batch_id="$thread"
+launch_output="$(hcom 2 claude --tag researcher --go --headless --batch-id "$batch_id" \
+  --hcom-prompt "Wait for work on thread $thread and report back on the same thread.")"
+names_csv="$(printf '%s\n' "$launch_output" | sed -n 's/^Names: //p')"
+
+if [ -z "$names_csv" ]; then
+  echo "Could not capture agent names from hcom launch output" >&2
+  exit 1
+fi
+
+mapfile -t agent_names < <(
+  printf '%s\n' "$names_csv" |
+    tr ',' '\n' |
+    sed 's/^[[:space:]]*//; s/[[:space:]]*$//' |
+    sed '/^$/d'
+)
+
+if [ "${#agent_names[@]}" -eq 0 ]; then
+  echo "Launch output did not contain any usable agent names" >&2
+  exit 1
+fi
+
+for name in "${agent_names[@]}"; do
+  hcom events --wait 30 --idle "$name" >/dev/null
+done
+
+echo "Thread: $thread"
+echo "Agents: ${agent_names[*]}"
+```
+
+Router-level launch flags such as `--go`, `--headless`, and `--batch-id` are valid even if `hcom 1 claude --help` does not list them. Use `references/internals/tool-integration.md` as the source of truth for launch mechanics.
+
+Key decisions:
 
 | Decision | Options |
 |----------|---------|
 | Agent tool | `claude` (better reasoning), `codex` (sandboxed execution), mixed |
 | Launch mode | `--headless` (scripts), interactive (user-facing) |
-| Coordination | Thread-based (simple), event subscription (reactive), transcript handoff (pipeline) |
+| Coordination | Thread-based messaging + `events --wait` (simple), event subscription (reactive), transcript handoff (pipeline) |
+| Launch grouping | Standalone launches, shared `--batch-id` for coordinated spawn |
 | Error handling | `trap cleanup ERR` + `hcom kill`, timeout-based fallbacks |
 | State management | Thread messages (ephemeral), bundles (structured), transcripts (persistent) |
 
@@ -69,6 +118,18 @@ hcom events --wait 300 --sql "msg_text LIKE '%ALL TESTS PASS%'"
 # External sender (non-agent)
 hcom send @worker- --from "github-actions" -- "PR #42 merged, deploy needed"
 ```
+
+### Completion checklist and stop condition
+
+Stop when `design.md` (or the user-specified output path) exists and includes:
+
+- the chosen topology and why it fits
+- the hcom primitives for launch, wait, transcript handoff, and cleanup
+- a concrete thread naming rule and a launch-output capture rule for agent names
+- either a minimal script skeleton or an explicit note that execution is out of scope
+- verification steps and a clear cleanup/termination plan
+
+If the user asked for design only, do not keep expanding into execution details after this point.
 
 ## hcom architecture overview
 
@@ -98,10 +159,12 @@ hcom send @worker- --from "github-actions" -- "PR #42 merged, deploy needed"
 | Pitfall | Fix |
 |---------|-----|
 | Codex stale_cleanup | Wait for idle: `hcom events --wait 30 --idle $name` |
-| No thread isolation | Use unique `--thread "workflow-$(date +%s)"` |
+| No thread isolation | Use a unique message thread like `thread="workflow-$(date +%s)"` and carry it through `hcom send`/`hcom events` |
 | Polling with sleep | Use `hcom events --wait --sql` |
-| Hardcoded agent names | Parse from `grep '^Names: '` in launch output |
-| Missing --go flag | Always include `--go` on launch and kill |
+| Putting `--thread` on launch | Keep `--thread` on `send`/`events`; use `--batch-id` only to group launches |
+| Hardcoded agent names | Capture the `Names:` line, normalize commas/whitespace, then wait for idle before follow-up messages |
+| Missing --go flag | Always include `--go` on scripted launch, kill, or stop |
+| Launch flags seem invalid | `--go`, `--headless`, and `--batch-id` are hcom-level launch flags even when tool-specific help omits them |
 | No cleanup trap | `trap cleanup ERR` with `hcom kill $name --go` |
 
 ## Guardrails
@@ -109,8 +172,10 @@ hcom send @worker- --from "github-actions" -- "PR #42 merged, deploy needed"
 - Do not build directly on the SQLite database — use hcom CLI as the interface
 - Do not assume agent names — always capture from launch output
 - Do not skip thread isolation — every workflow needs a unique thread ID
+- Do not put `--thread` on `hcom [N] <tool>` launch commands — threads belong to message and wait operations
 - Do not use sleep — hcom events --wait is the correct primitive
 - Do not send messages to agents that haven't bound yet — wait for idle
+- Do not trust tool-specific launch help alone for router-level flags — `--go`, `--headless`, and `--batch-id` are valid hcom launch flags
 - Do not forget cleanup — orphan headless agents consume resources indefinitely
 
 ## Reference files

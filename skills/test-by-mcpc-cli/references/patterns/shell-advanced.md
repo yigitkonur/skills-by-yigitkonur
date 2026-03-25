@@ -55,7 +55,7 @@ The shell is implemented in `src/cli/shell.ts` using Node.js `readline.createInt
 |--------------------------------------|----------------------------------------------------|
 | `tools` / `tools-list`               | List all tools from the server                     |
 | `tools-get <name>`                   | Show schema and description for a single tool      |
-| `tools-call <name> [key:=value ...]` | Call a tool; supports `--task` and `--detach` flags |
+| `tools-call <name> [key:=value ...]` | Call a tool                                        |
 | `resources` / `resources-list`       | List all resources                                 |
 | `resources-read <uri>`               | Fetch and print a resource by URI                  |
 | `resources-templates-list`           | List URI templates                                 |
@@ -63,15 +63,12 @@ The shell is implemented in `src/cli/shell.ts` using Node.js `readline.createInt
 | `prompts-get <name> [key:=value ...]`| Render a prompt with arguments                     |
 | `logging-set-level <level>`          | Set server-side log level (debug…emergency)        |
 | `ping`                               | Round-trip latency check                           |
-| `tasks-list`                         | List async tasks                                   |
-| `tasks-get <taskId>`                 | Get status/result of a task                        |
-| `tasks-cancel <taskId>`              | Cancel a running task                              |
 
 All MCP commands run in `outputMode: 'human'` and suppress the `[Using session: …]` prefix (`hideTarget: true`), keeping output compact.
 
 ### Command aliases
 
-`tools` and `tools-list` are identical. Same for `resources`/`resources-list` and `prompts`/`prompts-list`. These aliases exist only in the shell dispatcher; the CLI does not have them.
+`tools` and `tools-list` are identical. Same for `resources`/`resources-list` and `prompts`/`prompts-list`. These aliases work in both the shell and the normal CLI parser.
 
 ---
 
@@ -81,7 +78,7 @@ All MCP commands run in `outputMode: 'human'` and suppress the `[Using session: 
 2. **Built-in history navigation** — readline history across the entire session (and persisted across sessions). The CLI has no stateful history.
 3. **`clear`** — no equivalent CLI command.
 4. **`help` without a subcommand** — in CLI mode, `mcpc --help` is Commander.js-driven; inside the shell `help` shows a curated MCP-focused command table.
-5. **Short aliases** (`tools`, `resources`, `prompts`) — accepted only inside the shell dispatcher.
+5. **Curated shell help** — the shell keeps the useful MCP commands in one place while the normal CLI help is broader.
 6. **Easter egg** — typing `shell` inside the shell (see below).
 
 ---

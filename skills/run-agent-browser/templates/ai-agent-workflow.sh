@@ -9,8 +9,6 @@ TASK="${2:-explore and capture page content}"
 # === Configuration ===
 export AGENT_BROWSER_CONTENT_BOUNDARIES=1
 export AGENT_BROWSER_MAX_OUTPUT=50000
-SCREENSHOT_DIR="./agent-screenshots"
-mkdir -p "$SCREENSHOT_DIR"
 
 # === Safety boundaries (uncomment to restrict) ===
 # export AGENT_BROWSER_ALLOWED_DOMAINS="example.com,*.example.com"
@@ -27,9 +25,11 @@ agent-browser wait --load networkidle
 echo "📸 Taking initial snapshot..."
 agent-browser snapshot -i
 
-# === 3. Capture screenshot for visual context ===
+# === 3. Optional visual evidence ===
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-agent-browser screenshot "$SCREENSHOT_DIR/initial-${TIMESTAMP}.png"
+# SCREENSHOT_DIR="./agent-screenshots"
+# mkdir -p "$SCREENSHOT_DIR"
+# agent-browser screenshot "$SCREENSHOT_DIR/initial-${TIMESTAMP}.png"
 
 # === 4. Extract page metadata ===
 PAGE_URL=$(agent-browser get url)
@@ -43,13 +43,18 @@ echo "🔗 URL:  $PAGE_URL"
 # agent-browser click @e2
 # agent-browser wait --load networkidle
 # agent-browser snapshot -i
+# agent-browser diff snapshot
 
 # === 6. Example: Extract structured data ===
 # agent-browser get text "#main-content"
 # agent-browser snapshot -i --json | jq '.data.refs | to_entries[] | select(.value.role == "heading")'
 
-# === 7. Final capture ===
-agent-browser screenshot "$SCREENSHOT_DIR/final-${TIMESTAMP}.png"
+# === 7. Re-check state before cleanup ===
+agent-browser get url
+agent-browser get title
+
+# Optional final screenshot when visual proof matters
+# agent-browser screenshot "$SCREENSHOT_DIR/final-${TIMESTAMP}.png"
 
 # === 8. Cleanup ===
 agent-browser close

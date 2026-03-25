@@ -20,7 +20,7 @@ Not every feature needs a full PRD. Choose the right format based on the situati
 ## Format descriptions
 
 ### Full PRD (10 sections)
-The complete template from `references/templates/prd-template.md`. Use when multiple stakeholders need to align on what to build, why, and what success looks like. Expected effort: 2-4 hours of discovery + drafting.
+Use the full 10-section markdown block in `references/templates/prd-template.md`. Use when multiple stakeholders need to align on what to build, why, and what success looks like. Expected effort: 2-4 hours of discovery + drafting.
 
 ### Lightweight PRD (5 sections)
 An abbreviated version for smaller features:
@@ -30,7 +30,7 @@ An abbreviated version for smaller features:
 4. Out of Scope
 5. Success Metric (ONE metric)
 
-Skip personas, architectural options, and detailed risk analysis. Expected effort: 30-60 minutes.
+Skip personas, architectural options, and detailed risk analysis. Expected effort: 30-60 minutes. Use the concrete markdown block in `references/templates/prd-template.md` rather than inventing your own abbreviated structure.
 
 ### Eval-first PRD (for AI/ML features)
 When behavior is hard to specify in prose, lead with evaluation criteria:
@@ -40,13 +40,13 @@ When behavior is hard to specify in prose, lead with evaluation criteria:
 4. Boundaries (what the AI must/should/must-not do)
 5. Human Escalation Rules
 
-This follows the "evals as living PRDs" principle — executable evaluations are the truest form of requirements for AI features. Consider "demos before memos": a working prototype may communicate requirements better than documentation.
+This follows the "evals as living PRDs" principle — executable evaluations are the truest form of requirements for AI features. Consider "demos before memos": a working prototype may communicate requirements better than documentation. Use the concrete markdown block in `references/templates/prd-template.md` instead of retrofitting the full 10-section structure.
 
 ### User Stories Only
 When the problem is already well-understood, skip the formal document:
-1. Write numbered user stories with acceptance criteria
-2. Add one "Out of Scope" section
-3. Submit as a GitHub issue
+1. Use the user-stories-only markdown block in `references/templates/prd-template.md`
+2. Keep the output to a short context line, numbered user stories with acceptance criteria, and one "Out of Scope" section
+3. Submit as a GitHub issue or file output using the normal destination rules
 
 ## Decision signals from the user
 
@@ -69,3 +69,5 @@ Start lightweight and upgrade if:
 - The team disagrees on scope
 
 It is easier to add sections to a lightweight PRD than to strip a full PRD down.
+
+If unanswered `TBD`s remain in any non-full format, append an `Open Questions` section instead of guessing.

@@ -19,7 +19,7 @@
 |-------|-------|
 | **Page Name** | {e.g., Homepage} |
 | **Source File** | {e.g., linear-homepage.html} |
-| **Page Type** | {landing / pricing / features / blog / about / docs / custom} |
+| **Page Type** | {landing / pricing / features / blog / docs / about / dashboard / auth / legal / custom} |
 | **Route** | {e.g., `/` or `/pricing`} |
 | **Meta Title** | {extracted from `<title>` tag} |
 | **Meta Description** | {extracted from `<meta name="description">`} |
@@ -32,7 +32,11 @@
 
 ## Quick Reference — CSS Extraction Commands
 
-Copy-paste these into any terminal pointed at the page's `_files/` directory.
+Run these against the page's CSS corpus, not just `_files/`.
+
+- Primary mode: run inside `{page}_files/` and use the commands as written.
+- Adjacent-asset mode: run from the snapshot directory and replace `*.css` with the local CSS files referenced by the HTML.
+- Inline-only mode: extract the page's `<style>` blocks to a temporary CSS file first, or run the commands against Wave 0 `deobfuscated.css`.
 
 ### Custom Properties (Design Tokens)
 ```bash
@@ -394,7 +398,7 @@ Section Spacing Diagram:
 | `≤767px` | CTA layout | `flex-direction: column; width: 100%` | same media query |
 | `≤767px` | Gap | `64px` → `40px` | same media query |
 
-Breakpoint extraction (run in `_files/` directory):
+Breakpoint extraction (run against the page's CSS corpus):
 ```bash
 grep -ohE '@media[^{]+' *.css | grep -ohE '(min|max)-width:\s*[0-9]+px' | sort -t: -k2 -n | uniq
 ```
@@ -598,6 +602,8 @@ After documenting ALL sections, compile the component manifest.
 
 Components used across multiple pages or sections. Import from `/components/shared/`.
 
+Start with an empty table. Add rows only for components that already exist in the Wave 1 inventory or for explicitly allowed structural helpers that Wave 3 created on purpose. Delete any example row that is not grounded in the current page group.
+
 | Component | Props Interface | Used In Sections | Wave 1 Source |
 |-----------|----------------|-----------------|---------------|
 | `Button` | `variant: 'primary' \| 'secondary' \| 'ghost'`, `size: 'sm' \| 'md' \| 'lg'`, `href?: string`, `children: ReactNode` | Hero, CTA, Pricing | wave1/landing/component-inventory.md |
@@ -608,6 +614,8 @@ Components used across multiple pages or sections. Import from `/components/shar
 ### Page-Specific Components
 
 Components unique to this page. Create in `/components/pages/{page}/`.
+
+Again, start empty. Add a row only when the page actually needs that component. Do not copy example component names from this template into the brief unless the source page proves they exist.
 
 | Component | Props Interface | Used In Section | Purpose |
 |-----------|----------------|----------------|---------|
@@ -655,7 +663,7 @@ Document every user interaction on this page as a declarative spec.
 
 ## Acceptance Criteria
 
-A Wave 4 agent building this page MUST verify ALL of the following before writing `done.signal`.
+A Wave 4 agent building this page MUST verify ALL of the following before declaring the page build complete.
 
 ### Visual Fidelity — Desktop (≥1280px)
 
@@ -750,19 +758,7 @@ This file — the complete build brief for one page, following this template exa
 
 ### `wave2/{page}/done.signal`
 
-```json
-{
-  "page": "{page-name}",
-  "sections": {N},
-  "shared_components": ["Button", "Container", "SectionWrapper"],
-  "page_components": ["HeroIllustration", "FeatureCard"],
-  "assets": {M},
-  "interactions": {P},
-  "wave0_source": "wave0/{page}/exploration.md",
-  "wave1_source": "wave1/{group}/design-soul.md",
-  "timestamp": "{ISO 8601}"
-}
-```
+Empty file written only after `agent-brief.md` passes the coverage, grounding, and self-containment checks above. Keep any completion notes in the brief itself; the signal file remains empty so every wave can use simple existence checks consistently.
 
 ┌──────────────────────────────────────────────────────────────────┐
 │  A Wave 2 brief is ONLY complete when every section has:         │

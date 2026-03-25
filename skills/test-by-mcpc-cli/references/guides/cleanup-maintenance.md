@@ -2,24 +2,24 @@
 
 ## Overview
 
-`mcpc clean` manages the lifecycle of all persistent state that mcpc accumulates during normal use: session records, authentication profiles, and log files. Cleanup falls into two categories — safe (non-destructive, automatic) and destructive (explicit, irreversible). Understanding the distinction prevents accidental data loss and helps recover from broken states.
+`mcpc --clean` manages the lifecycle of all persistent state that mcpc accumulates during normal use: session records, authentication profiles, and log files. Cleanup falls into two categories — safe (non-destructive, automatic) and destructive (explicit, irreversible). Understanding the distinction prevents accidental data loss and helps recover from broken states.
 
 ---
 
 ## Command syntax
 
 ```
-mcpc clean [sessions|profiles|logs|all]
+mcpc --clean[=sessions|profiles|logs|all]
 ```
 
-Running `mcpc clean` with no subcommand performs safe cleanup only. Subcommands can be combined:
+Running `mcpc --clean` with no value performs safe cleanup only. Use one clean mode per invocation:
 
 ```bash
-mcpc clean                      # safe cleanup: stale PIDs, crashed bridges, orphaned logs
-mcpc clean sessions             # remove all sessions (stops bridges, deletes keychain data)
-mcpc clean profiles             # remove all authentication profiles + keychain credentials
-mcpc clean logs                 # delete all files in ~/.mcpc/logs/
-mcpc clean all                  # sessions + profiles + logs + remaining empty directories
+mcpc --clean                      # safe cleanup: stale PIDs, crashed bridges, orphaned logs
+mcpc --clean=sessions             # remove all sessions (stops bridges, deletes keychain data)
+mcpc --clean=profiles             # remove all authentication profiles + keychain credentials
+mcpc --clean=logs                 # delete all files in ~/.mcpc/logs/
+mcpc --clean=all                  # sessions + profiles + logs + remaining empty directories
 ```
 
 ---
@@ -64,13 +64,13 @@ Runs `cleanSessions()`, `deleteAuthProfiles()`, `cleanLogs()`, a final `cleanSta
 
 | Mode | What it removes | Reversible |
 |---|---|---|
-| `mcpc clean` (no args) | Crashed bridge records, stale PIDs, orphaned log files older than 7 days | Yes — sessions and credentials untouched |
-| `mcpc clean sessions` | All session records and per-session keychain tokens | No — must reconnect manually |
-| `mcpc clean profiles` | All OAuth profiles and keychain credential bundles | No — must `mcpc login` again |
-| `mcpc clean logs` | All log files in `~/.mcpc/logs/` | Yes — logs are regenerated on next bridge start |
-| `mcpc clean all` | Everything above plus empty directories | No |
+| `mcpc --clean` (no args) | Crashed bridge records, stale PIDs, orphaned log files older than 7 days | Yes — sessions and credentials untouched |
+| `mcpc --clean=sessions` | All session records and per-session keychain tokens | No — must reconnect manually |
+| `mcpc --clean=profiles` | All OAuth profiles and keychain credential bundles | No — must `mcpc login` again |
+| `mcpc --clean=logs` | All log files in `~/.mcpc/logs/` | Yes — logs are regenerated on next bridge start |
+| `mcpc --clean=all` | Everything above plus empty directories | No |
 
-The default `mcpc clean` invocation is always safe to run. It never removes sessions or profiles you created intentionally.
+The default `mcpc --clean` invocation is always safe to run. It never removes sessions or profiles you created intentionally.
 
 ---
 
@@ -82,7 +82,7 @@ The function:
 
 1. Reads `~/.mcpc/sessions.json` under a file lock.
 2. For each session, checks whether the recorded PID is still alive using `process.kill(pid, 0)` (a no-op signal that only tests existence).
-3. If the PID is gone, marks the session status as `crashed` and clears the `pid` and `socketPath` fields.
+3. If the PID is gone, marks the session status as `crashed` and clears the `pid` field.
 4. Removes sessions that have passed their expiry timestamp (`expiresAt` field, if set).
 5. Writes the updated sessions file atomically (write to temp file, then rename).
 6. Returns a result object with counts: `{ sessions, crashedBridges, expiredSessions }`.
@@ -100,7 +100,7 @@ When a bridge process is killed unexpectedly (OOM killer, `kill -9`, machine sle
 3. The CLI surface (`mcpc`) displays the session as crashed with a yellow indicator.
 4. On the next command that targets this session (e.g., `mcpc @name tools-list`), the CLI auto-restarts the bridge and retries.
 
-The `crashedBridges` counter returned by `consolidateSessions()` reflects how many sessions were transitioned to crashed state in this pass. During `mcpc clean`, this count is surfaced in the output:
+The `crashedBridges` counter returned by `consolidateSessions()` reflects how many sessions were transitioned to crashed state in this pass. During `mcpc --clean`, this count is surfaced in the output:
 
 ```
 Cleaned 1 crashed bridge(s), 0 expired session(s), 3 orphaned log(s)
@@ -110,7 +110,7 @@ Cleaned 1 crashed bridge(s), 0 expired session(s), 3 orphaned log(s)
 
 ## Orphaned log file cleanup
 
-`cleanupOrphanedLogFiles()` in `src/lib/cleanup.ts` handles log files for sessions that no longer exist. It is called by both `cleanStale()` (triggered by `mcpc clean` with no args) and the bridge process at startup.
+`cleanupOrphanedLogFiles()` in `src/lib/cleanup.ts` handles log files for sessions that no longer exist. It is called by both `cleanStale()` (triggered by `mcpc --clean` with no args) and the bridge process at startup.
 
 Rules:
 
@@ -121,7 +121,7 @@ Rules:
 - Files younger than 7 days are left intact even if the session is gone — this preserves recent crash diagnostics.
 - The `skipSession` option allows the current bridge to exclude its own log file from deletion.
 
-This means running `mcpc clean` immediately after a crash will not delete the crash log if it was written within the last week. To force-delete all logs regardless of age, use `mcpc clean logs`.
+This means running `mcpc --clean` immediately after a crash will not delete the crash log if it was written within the last week. To force-delete all logs regardless of age, use `mcpc --clean=logs`.
 
 ---
 
@@ -130,38 +130,38 @@ This means running `mcpc clean` immediately after a crash will not delete the cr
 ### After crashes
 
 ```bash
-mcpc clean          # removes stale PIDs and marks crashed sessions; safe to run anytime
+mcpc --clean          # removes stale PIDs and marks crashed sessions; safe to run anytime
 ```
 
 If sessions are stuck in `crashed` state and auto-restart is not working:
 
 ```bash
-mcpc clean sessions # tears down all sessions; start fresh with mcpc connect
+mcpc --clean=sessions # tears down all sessions; start fresh with mcpc connect
 ```
 
 ### During testing
 
 ```bash
-mcpc clean all      # full reset between test runs; equivalent to a fresh install
+mcpc --clean=all      # full reset between test runs; equivalent to a fresh install
 ```
 
-For CI pipelines, run `mcpc clean all` in a teardown step to avoid leaked sessions and credentials between jobs.
+For CI pipelines, run `mcpc --clean=all` in a teardown step to avoid leaked sessions and credentials between jobs.
 
 ### Before CI
 
 ```bash
-mcpc clean sessions # ensures no stale sessions interfere with test targets
-mcpc clean logs     # keeps log directory size bounded
+mcpc --clean=sessions # ensures no stale sessions interfere with test targets
+mcpc --clean=logs     # keeps log directory size bounded
 ```
 
 ### Routine disk space management
 
 ```bash
-mcpc clean logs     # removes all rotated and active log files
-mcpc clean          # removes orphaned logs older than 7 days without touching sessions
+mcpc --clean=logs     # removes all rotated and active log files
+mcpc --clean          # removes orphaned logs older than 7 days without touching sessions
 ```
 
-Bridge logs rotate at 10 MB with up to 5 files retained, so maximum per-session log usage is ~50 MB. With many sessions over time, `mcpc clean logs` can reclaim significant space.
+Bridge logs rotate at 10 MB with up to 5 files retained, so maximum per-session log usage is ~50 MB. With many sessions over time, `mcpc --clean=logs` can reclaim significant space.
 
 ---
 
@@ -175,7 +175,7 @@ Sessions themselves are cheap to recreate. Run:
 mcpc <server> connect @<name>
 ```
 
-If the session used OAuth authentication, the profile may still exist (unless you also ran `mcpc clean profiles`). Re-link it:
+If the session used OAuth authentication, the profile may still exist (unless you also ran `mcpc --clean=profiles`). Re-link it:
 
 ```bash
 mcpc <server> connect @<name> --profile <profile-name>
@@ -183,7 +183,7 @@ mcpc <server> connect @<name> --profile <profile-name>
 
 ### Accidentally cleaned profiles
 
-Profiles store OAuth tokens. After `mcpc clean profiles`, you must re-authenticate:
+Profiles store OAuth tokens. After `mcpc --clean=profiles`, you must re-authenticate:
 
 ```bash
 mcpc login <server>                          # recreates the default profile
@@ -193,7 +193,7 @@ mcpc <server> connect @<name> --profile <name>
 
 ### Accidentally cleaned all
 
-`mcpc clean all` is equivalent to removing `~/.mcpc/` entirely. Recovery steps:
+`mcpc --clean=all` is equivalent to removing `~/.mcpc/` entirely. Recovery steps:
 
 1. Run `mcpc login <server>` for each server you use with OAuth.
 2. Run `mcpc <server> connect @<name>` for each session you need.
@@ -222,7 +222,7 @@ Bearer tokens passed via `--header` are not affected — they were never stored 
 
 ### Orphaned log file cleanup (`cleanupOrphanedLogFiles`)
 
-When `mcpc clean` or `mcpc clean logs` runs, the `cleanupOrphanedLogFiles()` function handles age-based cleanup:
+When `mcpc --clean` or `mcpc --clean=logs` runs, the `cleanupOrphanedLogFiles()` function handles age-based cleanup:
 
 1. Scans `~/.mcpc/logs/` for files matching `bridge-@<session>.log` (and rotated variants `.log.1`, `.log.2`, etc.)
 2. For each log file, checks if the session still exists in `sessions.json`
@@ -244,8 +244,8 @@ du -sh ~/.mcpc/logs/
 
 ### Disk space recommendations
 
-- Run `mcpc clean logs` periodically on long-lived machines or CI systems.
-- Run `mcpc clean` (safe mode) in CI teardown to remove orphaned logs from failed runs.
+- Run `mcpc --clean=logs` periodically on long-lived machines or CI systems.
+- Run `mcpc --clean` (safe mode) in CI teardown to remove orphaned logs from failed runs.
 - The `~/.mcpc/bridges/` directory contains only socket files — these are tiny and cleaned automatically when bridges stop.
 
 ### JSON output for scripting
@@ -253,7 +253,7 @@ du -sh ~/.mcpc/logs/
 All clean operations support `--json` for scripting:
 
 ```bash
-mcpc --json clean all
+mcpc --json --clean=all
 ```
 
 Output fields: `crashedBridges`, `expiredSessions`, `orphanedBridgeLogs`, `sessions`, `profiles`, `logs`, `affectedSessions`.

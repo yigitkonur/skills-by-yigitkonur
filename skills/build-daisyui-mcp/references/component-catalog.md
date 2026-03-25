@@ -115,7 +115,7 @@ Every daisyUI class belongs to exactly one type:
 | **Modifiers** | `tab-active` (active state on link-based tabs) |
 | **Required children** | `<a class="tab">` or `<input type="radio" class="tab">` + `<div class="tab-content">` |
 | **CSS-only mechanism** | Radio inputs — `<input type="radio" class="tab">` paired with sibling `<div class="tab-content">` |
-| **Gotchas** | Radio-based tabs need `name` attribute shared across group + `checked="checked"` on default. Link-based tabs use `tab-active` class. v5 renamed `tab-lifted` → `tabs-lift`. Scrollable: wrap in `overflow-x-auto`. |
+| **Gotchas** | Radio-based tabs need `name` attribute shared across group + `checked="checked"` on default. Link-based tabs use `tab-active` class. v5 renamed `tabs-lifted` → `tabs-lift`. Scrollable: wrap in `overflow-x-auto`. |
 
 ---
 
@@ -257,10 +257,10 @@ Every daisyUI class belongs to exactly one type:
 | **Styles** | — |
 | **Colors** | — |
 | **Sizes** | — (use Tailwind `w-*` / `h-*` on the inner div) |
-| **Modifiers** | `avatar-group` (overlapping group), `avatar-placeholder` (text initials), `online` (green dot), `offline` (gray dot) |
+| **Modifiers** | `avatar-group` (overlapping group), `avatar-placeholder` (text initials), `avatar-online` (green dot), `avatar-offline` (gray dot) |
 | **Required children** | `<div class="avatar">` → inner `<div class="w-{size} rounded-full">` → `<img>` |
 | **CSS-only mechanism** | — |
-| **Gotchas** | Size is controlled by Tailwind width on the **inner** div, not the `.avatar` wrapper. Ring: add `ring ring-primary ring-offset-base-100 ring-offset-2` to the inner div. Shapes: use `rounded-full`, `rounded-xl`, or `mask mask-squircle`. Group: `<div class="avatar-group -space-x-6">`. |
+| **Gotchas** | Size is controlled by Tailwind width on the **inner** div, not the `.avatar` wrapper. Presence state goes on the wrapper: `<div class="avatar avatar-online">`. Placeholder state also lives on the wrapper: `<div class="avatar avatar-placeholder">`. Ring: add `ring ring-primary ring-offset-base-100 ring-offset-2` to the inner div. Shapes: use `rounded-full`, `rounded-xl`, or `mask mask-squircle`. Group: `<div class="avatar-group -space-x-6">`. |
 
 ---
 
@@ -749,6 +749,23 @@ Every daisyUI class belongs to exactly one type:
 
 ---
 
+### Tooltip
+
+| Property | Details |
+|----------|---------|
+| **Component class** | `tooltip` |
+| **Parts** | `tooltip-content` |
+| **Styles** | — |
+| **Colors** | `tooltip-primary`, `tooltip-secondary`, `tooltip-accent`, `tooltip-neutral`, `tooltip-info`, `tooltip-success`, `tooltip-warning`, `tooltip-error` |
+| **Sizes** | — |
+| **Placement** | `tooltip-top`, `tooltip-bottom`, `tooltip-left`, `tooltip-right` |
+| **Behavior** | `tooltip-open` (force visible) |
+| **Required children** | Wrapper element with trigger content inside |
+| **CSS-only mechanism** | Hover / focus visibility |
+| **Gotchas** | For simple text, use `data-tip="Message"` on the wrapper. For richer markup, add a child with `class="tooltip-content"`. Wrap the trigger element: `<div class="tooltip" data-tip="Copied"><button class="btn">Copy</button></div>`. Use placement classes on the wrapper, not the child. |
+
+---
+
 ### Status
 
 | Property | Details |
@@ -965,13 +982,13 @@ Every daisyUI class belongs to exactly one type:
 | Property | Details |
 |----------|---------|
 | **Component class** | `mockup-phone` |
-| **Parts** | `camera`, `display` |
+| **Parts** | `mockup-phone-camera`, `mockup-phone-display` |
 | **Styles** | — |
 | **Colors** | — |
 | **Sizes** | — |
-| **Required children** | `<div class="mockup-phone">` → `<div class="camera"></div>` + `<div class="display"><div class="artboard artboard-demo phone-1">content</div></div>` |
+| **Required children** | `<div class="mockup-phone">` → `<div class="mockup-phone-camera"></div>` + `<div class="mockup-phone-display">content</div>` |
 | **CSS-only mechanism** | — |
-| **Gotchas** | The `camera` div renders the notch. `artboard` + `phone-1` size the display area. Custom colors: apply `bg-*` to the mockup-phone container. |
+| **Gotchas** | The camera notch uses `mockup-phone-camera`. Put the visible screen content directly inside `mockup-phone-display`; `artboard`, `artboard-demo`, and `phone-*` classes are v4-era patterns and should not be used in v5. Custom colors can be applied to the `mockup-phone` container or the display content. |
 
 ---
 
@@ -1117,6 +1134,7 @@ Every daisyUI class belongs to exactly one type:
 | 61 | Hover Gallery | `hover-gallery` | — | — | — | Radio + CSS |
 | 62 | Text Rotate | `text-rotate` | — | — | — | CSS `--n` animation |
 | 63 | FAB | `fab` | ✅ | — | — | Checkbox |
+| 64 | Tooltip | `tooltip` | ✅ | ✅ | — | Hover / focus |
 
 ---
 
@@ -1134,7 +1152,7 @@ Every daisyUI class belongs to exactly one type:
 | `input-bordered` (v4) | Borders are default in v5 |
 | `label-text` (v4) | `fieldset-legend` (v5) |
 | `label-text-alt` (v4) | `fieldset-label` (v5) |
-| `tab-lifted` (v4) | `tabs-lift` (v5) |
+| `tabs-lifted` (v4) | `tabs-lift` (v5) |
 | `bordered` on card (v4) | `card-border` (v5) |
 | Skip `card-body` in a card | Always include `card-body` |
 | `loading` without a style class | Always add `loading-spinner`, `loading-dots`, etc. |

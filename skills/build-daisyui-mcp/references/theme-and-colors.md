@@ -2,7 +2,7 @@
 
 > Definitive reference for daisyUI 5 theming: semantic colors, oklch format, custom themes, shape variables, built-in themes, and design patterns.
 >
-> See also: `references/component-catalog.md` for components, `workflow/05-theme-generation-workflow.md` for creating themes from brand assets.
+> See also: `references/component-catalog.md` for components, `references/workflows/theme-generation.md` for creating themes from brand assets.
 
 ---
 
@@ -116,7 +116,7 @@ oklch(lightness% chroma hue)
 
 ## Complete Theme CSS Template
 
-Every custom theme must define **all 26 variables** (20 colors + 6 shape/effect). Below is the complete template with real oklch values and explanatory comments.
+Every custom theme must define **all 28 CSS variables** (20 colors + 8 shape/effect). Below is the complete template with real oklch values and explanatory comments.
 
 ```css
 @import "tailwindcss";

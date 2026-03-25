@@ -1,6 +1,6 @@
 # IPC Span Anatomy — CrabNebula DevTools
 
-> ⚠️ **Steering:** This is the most important reference for performance debugging. The key algorithm: find the slowest top-level span → examine child spans → recurse into the slowest child → the LEAF span is your optimization target. Agents in testing tried to optimize the parent span directly without looking at children, which is like optimizing a function call without knowing which line is slow.
+> ⚠️ **Steering:** This is the most important reference for performance debugging. The key algorithm: find the slowest top-level span → examine child spans → recurse into the slowest child → the LEAF span is your optimization target.
 
 ## What Is an IPC Span?
 
@@ -208,7 +208,7 @@ Nested spans show the call hierarchy within a command handler. Read the waterfal
 - Serialization/deserialization overhead
 - Mutex/lock contention or task scheduling delays
 
-> ⚠️ **Steering:** Gap analysis formula: `gap = parent_duration - sum(child_durations)`. A large gap means uninstrumented code is consuming time. DO NOT optimize until you've added `#[tracing::instrument]` to internal functions and re-run — the gap will become visible child spans. In testing, agents guessed at the gap's cause instead of instrumenting to find it.
+> ⚠️ **Steering:** Gap analysis formula: `gap = parent_duration - sum(child_durations)`. A large gap means uninstrumented code is consuming time. DO NOT optimize until you've added `#[tracing::instrument]` to internal functions and re-run — the gap will become visible child spans.
 
 If a span has many children of similar duration, the bottleneck is the NUMBER of operations, not any single one — consider batching or parallelizing.
 
@@ -240,7 +240,7 @@ Total ≈ max(per_item_time) + overhead.
 
 **How to identify:** If child spans are sequential (each starts after the previous ends) AND items are independent, this is the sequential anti-pattern. Fix with `tokio::join!()`, `futures::join_all()`, or `rayon::par_iter()`.
 
-> ⚠️ **Steering:** In derailment testing, agents identified a sequential loop as slow but hesitated to parallelize it because SKILL.md says "avoid refactors." Parallelizing a proven-slow sequential loop IS a narrow fix, not a refactor. The guardrail prevents speculative changes, not evidence-based structural fixes.
+> ⚠️ **Steering:** Parallelizing a proven-slow sequential loop IS a narrow fix, not a refactor. The guardrail prevents speculative changes, not evidence-based structural fixes.
 
 ## Custom Spans via #[tracing::instrument]
 

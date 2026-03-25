@@ -1,6 +1,6 @@
 # LLM Task Chains
 
-LLM Task is a plugin-provided tool that executes a single LLM reasoning step and forces structured JSON output. It is designed for use within larger workflows where AI reasoning is needed with deterministic, parseable results.
+`llm-task` is an optional plugin tool that executes a single LLM reasoning step and forces structured JSON output. It is designed for use within larger workflows where AI reasoning is needed with deterministic, parseable results.
 
 ## Core characteristics
 
@@ -10,6 +10,13 @@ LLM Task is a plugin-provided tool that executes a single LLM reasoning step and
 | Output format | JSON only (no freeform text) |
 | Use case | Structured AI reasoning within a pipeline |
 | Risk level | Low (produces data, does not execute actions) |
+
+## Runtime naming and preflight
+
+- Tool name in status and tool calls: `llm-task`
+- Plugin config key: `plugins.entries."llm-task"`
+- If the agent uses explicit allowlists, permit `llm-task` there as well
+- Success signal: `openclaw status --all` shows `llm-task` and a trivial schema-validated call returns JSON
 
 ## When to use LLM Task
 
@@ -25,6 +32,45 @@ Do NOT use LLM Task when:
 - You need freeform conversational response (use the agent's native response)
 - The task requires tool use or code execution within the reasoning step
 - A simple regex or string operation would accomplish the same goal
+
+## Tool arguments
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `prompt` | string | Yes | Instruction for the LLM |
+| `input` | any | No | Structured context passed to the prompt |
+| `schema` | object | No | JSON Schema used to validate the output |
+| `provider` | string | No | Override provider |
+| `model` | string | No | Override model |
+| `thinking` | string | No | OpenClaw reasoning preset such as `low`, `medium`, or `high` |
+| `authProfileId` | string | No | Override auth profile |
+| `temperature` | number | No | Sampling control |
+| `maxTokens` | number | No | Output token cap |
+| `timeoutMs` | number | No | Request timeout |
+
+Minimal call shape:
+
+```json
+{
+  "prompt": "Classify this support ticket by urgency and category.",
+  "thinking": "low",
+  "input": {
+    "ticket_text": "My production database is down and customers cannot log in.",
+    "ticket_id": "TICK-4521"
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "urgency": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+      "category": { "type": "string", "enum": ["infrastructure", "billing", "feature", "bug"] },
+      "summary": { "type": "string" }
+    },
+    "required": ["urgency", "category", "summary"],
+    "additionalProperties": false
+  },
+  "timeoutMs": 30000
+}
+```
 
 ## Defining an LLM Task
 
@@ -173,14 +219,15 @@ LLM Task can fail in several ways:
 
 ## Adjusting reasoning depth
 
-Use the `thinking_level` tool to control how much reasoning the LLM applies:
+Use the `thinking` field on the `llm-task` call for per-step reasoning. For interactive session-wide changes around a workflow, use `/think:<level>`.
 
 | Level | When to use |
 |---|---|
-| `fast` | Simple classification, entity extraction, format conversion |
-| `deep` | Complex analysis, multi-factor decisions, nuanced summarization |
+| `low` | Simple classification, entity extraction, format conversion |
+| `medium` | Multi-field extraction, structured summarization, light decision logic |
+| `high` | Complex analysis, multi-factor decisions, nuanced summarization |
 
-Set thinking level before the LLM Task call, not within it.
+Do not invent a separate `thinking_level` tool for this branch.
 
 ## Best practices
 
@@ -191,3 +238,4 @@ Set thinking level before the LLM Task call, not within it.
 5. **Include one example in the prompt.** A single example of the expected output dramatically improves schema compliance.
 6. **Test each task independently.** Before chaining, verify each LLM Task produces correct output for representative inputs.
 7. **Log intermediate outputs.** In a chain, log each step's output so failures can be diagnosed without re-running the entire chain.
+8. **Treat the JSON as untrusted until validated.** Use `schema` whenever the output will feed into `exec`, browser actions, or an external side effect.

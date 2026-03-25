@@ -52,10 +52,12 @@ echo ""
 echo "Result:"
 agent-browser get url
 agent-browser snapshot -i
+# If success text is non-interactive, verify it with a single-match selector:
+# agent-browser get text ".flash-success"
 
 # Optional: Capture evidence
-agent-browser screenshot /tmp/form-result.png
-echo "Screenshot saved: /tmp/form-result.png"
+# agent-browser screenshot /tmp/form-result.png
+# echo "Screenshot saved: /tmp/form-result.png"
 
 # Cleanup
 agent-browser close

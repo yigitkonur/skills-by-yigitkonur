@@ -226,12 +226,21 @@ Note: Runtime headers only work on `http`/`sse`/`streamable-http`. Not on `stdio
 **Stateful:** Reuse a persistent `Client` instance for servers that maintain context (e.g., DB transactions):
 
 ```typescript
+import { createAgent } from "langchain";
+import { ChatOpenAI } from "@langchain/openai";
+import { loadMcpTools } from "@langchain/mcp-adapters";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
 const transport = new StdioClientTransport({ command: "node", args: ["my-server.js"] });
 const client = new Client({ name: "stateful-client" });
 await client.connect(transport);
 
 const tools = await loadMcpTools("my-server", client);
-const agent = createReactAgent({ llm: model, tools });
+const agent = createAgent({
+  model: new ChatOpenAI({ model: "gpt-4o-mini" }),
+  tools,
+});
 
 await agent.invoke({ messages: [{ role: "user", content: "Start transaction" }] });
 await agent.invoke({ messages: [{ role: "user", content: "Commit transaction" }] });
@@ -323,7 +332,7 @@ async function robustAgent() {
       mcpServers: { math: { transport: "stdio", command: "npx", args: ["-y", "@modelcontextprotocol/server-math"] } },
     });
     const tools = await client.getTools();
-    const agent = createReactAgent({ llm: new ChatOpenAI({ model: "gpt-4o-mini" }), tools });
+    const agent = createAgent({ model: new ChatOpenAI({ model: "gpt-4o-mini" }), tools });
     return await agent.invoke({ messages: [{ role: "user", content: "What is 3 + 5?" }] });
   } catch (e: unknown) {
     if (e instanceof Error) {
@@ -345,7 +354,7 @@ async function robustAgent() {
 ### ReAct Agent with MCP Tools
 
 ```typescript
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 
@@ -358,7 +367,7 @@ const client = new MultiServerMCPClient({
 });
 
 const tools = await client.getTools();
-const agent = createReactAgent({ llm: new ChatAnthropic({ model: "claude-sonnet-4-6" }), tools });
+const agent = createAgent({ model: new ChatAnthropic({ model: "claude-sonnet-4-6" }), tools });
 
 try {
   const result = await agent.invoke({ messages: [{ role: "user", content: "List TS files and create a GitHub issue" }] });

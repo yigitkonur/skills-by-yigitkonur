@@ -400,9 +400,10 @@ mcpc @test tools-list
 export NO_PROXY=localhost,127.0.0.1,.local
 mcpc localhost:3000 connect @local
 
-# Combine with --insecure for proxy with self-signed certs
+# Trust the proxy's CA when it uses a private certificate
 export HTTPS_PROXY=https://proxy.internal:8443
-mcpc mcp.example.com connect @test --insecure
+export NODE_EXTRA_CA_CERTS=/path/to/proxy-ca.pem
+mcpc mcp.example.com connect @test
 ```
 
 ### Key distinction

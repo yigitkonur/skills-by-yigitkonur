@@ -46,7 +46,7 @@ Each entry in `mcpServers` is a `ServerConfig` object. All fields are optional e
 | `args` | string[] | stdio servers | Arguments passed to `command`. Each element is substituted independently. |
 | `env` | object | stdio servers | Additional environment variables injected into the child process. Values are substituted. |
 | `headers` | object | HTTP servers | HTTP headers sent on every request to the server. Values are substituted. |
-| `timeout` | number | both | Request timeout in milliseconds. Not substituted (must be a literal number). |
+| `timeout` | number | both | Request timeout in seconds. Not substituted (must be a literal number). |
 
 ---
 
@@ -133,47 +133,39 @@ Substitution is scoped to the specific server entry being extracted. Loading the
 
 ## Config file entry syntax
 
-To reference a specific entry from a config file, use the colon syntax:
+To reference a specific entry from a config file, use `--config` and pass the entry name as the positional target:
 
-```
-<file-path>:<entry-name>
+```bash
+mcpc --config <file-path> <entry-name> connect @<session>
 ```
 
 Examples:
 
 ```bash
-mcpc ~/.vscode/mcp.json:filesystem connect @fs
-mcpc ~/Library/Application\ Support/Claude/claude_desktop_config.json:apify connect @apify
-mcpc ./mcp.json:staging connect @staging
+mcpc --config ~/.vscode/mcp.json filesystem connect @fs
+mcpc --config ~/Library/Application\ Support/Claude/claude_desktop_config.json apify connect @apify
+mcpc --config ./mcp.json staging connect @staging
 ```
 
 The full session commands using this syntax:
 
 ```bash
-mcpc ~/.vscode/mcp.json:filesystem connect @fs
+mcpc --config ~/.vscode/mcp.json filesystem connect @fs
 mcpc @fs tools-list
 mcpc @fs close
 ```
 
 ---
 
-## How `parseServerArg()` detects config vs URL
+## How mcpc resolves config vs URL
 
-`parseServerArg()` must distinguish between:
+With current mcpc versions, config entry selection is explicit:
 
-- `mcp.apify.com` — a direct URL target (no config file involved)
-- `~/.vscode/mcp.json:filesystem` — a config file path with an entry name
+1. `--config <file>` tells mcpc to load a config file.
+2. The positional target is interpreted as an entry name inside that file.
+3. Without `--config`, the positional target is resolved as a URL/host target.
 
-The detection logic:
-
-1. Check if the argument contains a colon (`:`).
-2. If it does, split on the first colon to get a potential `[filePath, entryName]` pair.
-3. Check whether the portion before the colon is an existing file path (`fileExists(filePath)`). Tilde expansion is applied.
-4. If the file exists → treat the argument as a config file reference.
-5. If the file does not exist but a colon is present → treat the full string as a URL (the colon is part of the scheme, e.g., `https://mcp.apify.com`).
-6. If no colon → treat as a bare hostname, which gets normalized to `https://<hostname>`.
-
-This means a config path must refer to an actually-existing file at parse time. A path typo will cause the argument to be interpreted as a URL and fail with a connection error rather than a "file not found" error.
+This avoids the old ambiguity where a mistyped `file:entry` string could be misread as an HTTP target.
 
 ---
 
@@ -196,7 +188,7 @@ This means a config path must refer to an actually-existing file at parse time. 
 
 ```bash
 export APIFY_TOKEN=apify_api_xxxx
-mcpc ~/mcp.json:apify connect @apify
+mcpc --config ~/mcp.json apify connect @apify
 mcpc @apify tools-list
 ```
 
@@ -218,7 +210,7 @@ mcpc @apify tools-list
 
 ```bash
 export FS_ROOT=/Users/me/projects
-mcpc ~/mcp.json:filesystem connect @fs
+mcpc --config ~/mcp.json filesystem connect @fs
 mcpc @fs resources-list
 ```
 
@@ -229,13 +221,13 @@ mcpc @fs resources-list
   "mcpServers": {
     "slow-server": {
       "url": "https://internal.example.com/mcp",
-      "timeout": 600000
+      "timeout": 600
     }
   }
 }
 ```
 
-Timeout is in milliseconds. `600000` = 10 minutes.
+Timeout is in seconds. `600` = 10 minutes.
 
 ### Multiple servers in one file
 
@@ -262,8 +254,8 @@ Timeout is in milliseconds. `600000` = 10 minutes.
 ```
 
 ```bash
-mcpc ~/mcp.json:dev connect @dev
-mcpc ~/mcp.json:staging connect @staging
+mcpc --config ~/mcp.json dev connect @dev
+mcpc --config ~/mcp.json staging connect @staging
 ```
 
 ### Python stdio server
@@ -295,7 +287,7 @@ The config format is identical to what Claude Desktop and VS Code Copilot use, s
 To use your Claude Desktop config directly with mcpc:
 
 ```bash
-mcpc "~/Library/Application Support/Claude/claude_desktop_config.json":filesystem connect @fs
+mcpc --config "~/Library/Application Support/Claude/claude_desktop_config.json" filesystem connect @fs
 ```
 
 Note: quote the path if it contains spaces.

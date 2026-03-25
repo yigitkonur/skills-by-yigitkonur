@@ -28,7 +28,7 @@ async function main() {
     llm: new ChatOpenAI({ model: "gpt-4o" }),
     client,
     maxSteps: 25,
-    // autoInitialize defaults to false — agent initializes on first run() call
+    autoInitialize: true, // fail fast before the long-lived process starts serving work
   });
 
   // Track shutdown state to prevent double-cleanup
@@ -1569,9 +1569,10 @@ async function runWithTimeout(
   timeoutMs: number
 ): Promise<string> {
   const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
   const timeoutPromise = new Promise<never>((_, reject) => {
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       controller.abort();
       reject(new TimeoutError(timeoutMs));
     }, timeoutMs);
@@ -1582,7 +1583,7 @@ async function runWithTimeout(
 
   try {
     const result = await Promise.race([
-      agent.run({ prompt: prompt }),
+      agent.run({ prompt: prompt, signal: controller.signal }),
       timeoutPromise,
     ]);
     return result;
@@ -1593,6 +1594,8 @@ async function runWithTimeout(
       await agent.close();
     }
     throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

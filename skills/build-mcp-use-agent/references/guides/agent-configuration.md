@@ -164,7 +164,7 @@ const result = await agent.run({
 
 | Value | What happens | Good for |
 |---|---|---|
-| `false` | Initialization happens lazily or when you call `initialize()` manually | Advanced flows that adjust config after construction |
+| `false` | You control initialization manually before the first execution call | Advanced flows that adjust config after construction |
 | `true` | Sessions initialize immediately after construction | Predictable startup and early failure discovery |
 
 ### Use `autoInitialize: true` when
@@ -178,6 +178,7 @@ const result = await agent.run({
 - you need to mutate behavior before the first call
 - you want a deferred startup in short-lived tooling
 - you are intentionally staging initialization manually
+- you will call `await agent.initialize()` or pre-create sessions yourself before `run()` / `stream()`
 
 ```typescript
 const agent = new MCPAgent({
@@ -324,7 +325,7 @@ The `MCPAgent` exposes the following methods.
 | `close()` | `Promise<void>` | Closes all open sessions. Call when the agent is no longer needed to free resources. |
 | `run({ prompt, schema?, maxSteps?, signal? })` | `Promise<string \| T>` | Executes a single interaction and returns the final response. Pass a Zod `schema` for typed output. Pass a `signal` to support cancellation. |
 | `stream({ prompt, schema?, maxSteps?, signal? })` | `AsyncGenerator<AgentStep, string \| T>` | Yields each `AgentStep` (`{ action: { tool, toolInput, log }, observation }`) as the agent executes. Returns the final answer when exhausted. |
-| `prettyStreamEvents({ prompt, maxSteps? })` | async generator | Yields formatted events suitable for CLI-style output. |
+| `prettyStreamEvents(prompt: string)` or `prettyStreamEvents({ prompt, maxSteps?, schema? })` | async generator | Yields formatted events suitable for CLI-style output. Plain-string form is deprecated; prefer the options object. |
 | `streamEvents({ prompt, maxSteps? })` | async generator | Low-level async iterator yielding raw LangChain `StreamEvent` objects. |
 | `getConversationHistory()` | `BaseMessage[]` | Returns a copy of the internal conversation history. |
 | `clearConversationHistory()` | `void` | Clears conversation history. If `memoryEnabled` is `true` and a system message is present, it is preserved. |
@@ -342,13 +343,12 @@ await agent.close();   // clean up sessions
 
 ### Streaming example
 
-Each yielded `step` is an `AgentStep` with `action.tool`, `action.toolInput`, `action.log`, and `observation`.
+Each yielded `step` is an `AgentStep` with `action.tool`, `action.toolInput`, `action.log`, and `observation`. In the current published package, `observation` is an empty placeholder at yield time, so use the final generator return value or `streamEvents()` if you need actual tool output.
 
 ```typescript
 for await (const step of agent.stream({ prompt: "Write a report" })) {
   console.log(`Tool: ${step.action.tool}`);
   console.log(`Args: ${JSON.stringify(step.action.toolInput)}`);
-  console.log(`Observation: ${step.observation}`);
 }
 ```
 

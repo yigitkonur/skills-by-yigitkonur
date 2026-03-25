@@ -45,18 +45,10 @@ export function parseServerArg(
    On success, return `{ type: 'url', url: arg }` (url is the *original* arg,
    not the prefixed string — callers add the scheme themselves).
 
-4. **Config file entry** — look for a colon separating `file:entry`. The left
-   side must pass `looksLikeFilePath()`:
-   - starts with `/` or `~` (Unix absolute/home-relative)
-   - starts with `./` or `../` (explicit relative)
-   - matches `/^[A-Za-z]:[/\\]/` (Windows drive: `C:\`, `C:/`)
-   - contains `/` or `\`
-   - ends in `.json`, `.yaml`, or `.yml` (any case)
-
-   **Windows drive letter special case** — drive paths have a colon at position 1
-   (`C:`). To find the entry separator, the code uses `arg.lastIndexOf(':')` when
-   the arg matches `/^[A-Za-z]:[/\\]/`, skipping the drive colon:
-   `C:\Users\me\mcp.json:filesystem` → `file="C:\Users\me\mcp.json"`, `entry="filesystem"`.
+4. **Config file entry via `--config`** — when `--config <file>` is present,
+   the positional target is treated as the entry name inside that config file.
+   The current CLI contract does not require `file:entry` colon syntax in the
+   command line.
 
 5. **Return `null`** — unrecognised format; caller reports an error.
 
@@ -68,9 +60,9 @@ export function parseServerArg(
 | `mcp.apify.com` | `{ type: 'url', url: 'mcp.apify.com' }` |
 | `mcp.apify.com:8080` | `{ type: 'url', url: 'mcp.apify.com:8080' }` |
 | `localhost:3000` | `{ type: 'url', url: 'localhost:3000' }` |
-| `~/.vscode/mcp.json:filesystem` | `{ type: 'config', file: '~/.vscode/mcp.json', entry: 'filesystem' }` |
-| `./mcp.json:myserver` | `{ type: 'config', file: './mcp.json', entry: 'myserver' }` |
-| `C:\tools\mcp.json:server` | `{ type: 'config', file: 'C:\tools\mcp.json', entry: 'server' }` |
+| `--config ~/.vscode/mcp.json filesystem` | config file + entry target |
+| `--config ./mcp.json myserver` | config file + entry target |
+| `--config C:\tools\mcp.json server` | config file + entry target |
 | `https://bad:port` | `null` |
 | `bareword` | `null` |
 
@@ -96,6 +88,8 @@ before Commander parses the full command tree — for output formatting and auth
 profile selection. `extractOptions` does one linear scan of `process.argv`
 independently of Commander.
 
+`extractOptions` is an internal parser detail, not the public CLI contract. If an option appears here but not in `mcpc --help`, do not document it as user-facing. In `mcpc 0.1.11`, treat `--help` as authoritative.
+
 ### What it does
 
 - `verbose` — `args.includes('--verbose')` OR env `MCPC_VERBOSE` is truthy
@@ -104,7 +98,7 @@ independently of Commander.
 - `timeout` — finds index of `'--timeout'`, reads `args[index + 1]`, parses
   with `parseInt`. Absent → `undefined` (not included in return object).
 - `profile` — same index+1 pattern. Absent or empty → `undefined`.
-- `x402` / `insecure` — boolean presence flags; absent → key omitted from return object.
+- `x402` and any legacy internal flags are presence-based booleans. Do not infer public flag support from this internal scan alone.
 
 ### Env variables as defaults
 

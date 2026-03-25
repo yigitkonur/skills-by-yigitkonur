@@ -1,6 +1,6 @@
 # Cost Optimization Guide
 
-Every tool call hits a paid DataForSEO API. Minimize cost without sacrificing insight quality.
+Most analysis calls hit paid DataForSEO APIs. Setup, reference, stored-result, and report-session helpers do not. Minimize cost without sacrificing insight quality.
 
 ## Core principles
 
@@ -91,3 +91,5 @@ These don't hit paid APIs:
 - `select-tools` — tool menu configuration
 - `start-report-workflow` — report session setup
 - `compile-report` — compiles already-captured outputs
+
+Treat these free operations as normal setup work, not optional luxuries. Skipping them to "save cost" usually causes worse downstream analysis.

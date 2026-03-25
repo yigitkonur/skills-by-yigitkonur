@@ -351,19 +351,18 @@ repo/
 
 ### How Scoping Works
 
-- **Root applies everywhere**: The root `REVIEW.md` applies to every PR in the repository, regardless of which files changed.
-- **Scoped applies to subtree**: A `REVIEW.md` in `packages/api/` only activates for changes under `packages/api/`.
-- **Scoped is self-contained**: Subdirectory `REVIEW.md` files do **not** inherit from the root file. Write each scoped file as a standalone document with its own sections.
-- **Closest-scope-wins**: When multiple scoped files could match, the `REVIEW.md` nearest to the changed file takes precedence.
-- If a PR changes `packages/api/src/auth.ts`, both the root `REVIEW.md` and `packages/api/REVIEW.md` apply — but scoped rules from `packages/api/REVIEW.md` take priority if they conflict.
-- Avoid duplicating rules between root and subdirectory files.
+- Use the root `REVIEW.md` for cross-cutting concerns that stay true across the repo.
+- Use a scoped `REVIEW.md` in `packages/api/` or a similar subtree only for local risks that would otherwise bloat or weaken the root file.
+- Write each scoped file so it stands on its own for that subtree's local concerns.
+- Devin's docs guarantee directory scoping, but they do not document a deterministic override model for overlapping `REVIEW.md` files. Avoid contradictions and do not rely on precedence to resolve them.
+- Keep overlapping files complementary: trim the root if it overreaches, and keep scoped files tightly local.
 
 ### Scoping Best Practices
 
 1. **Root file**: Cross-cutting concerns (security basics, general conventions, ignore patterns)
 2. **Subdirectory files**: Domain-specific rules (API validation, frontend accessibility, payment compliance)
 3. **Keep nesting shallow** — avoid placing `REVIEW.md` more than 3 levels deep
-4. **Don't repeat root rules** in subdirectory files — they already apply
+4. **Don't rely on overrides** — if two files would disagree, rewrite them so both can be read together without conflict
 
 ---
 

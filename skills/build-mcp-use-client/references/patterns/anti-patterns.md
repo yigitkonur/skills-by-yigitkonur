@@ -118,7 +118,7 @@ const client = new MCPClient({
 
 // ✅ GOOD — or use config file with env var interpolation
 import { MCPClient, loadConfigFile } from "mcp-use";
-const config = await loadConfigFile("./mcp-config.json");
+const config = loadConfigFile("./mcp-config.json");
 const client = new MCPClient(config);
 // Config file uses ${MCP_API_KEY} syntax for secrets
 ```
@@ -465,7 +465,7 @@ const onElicitation: OnElicitationCallback = async (params) => {
 const client = new MCPClient({
   mcpServers: { api: { url: "http://localhost:3000/mcp" } },
 });
-const session = client.getSession("api"); // returns undefined or throws
+const session = client.getSession("api"); // returns null until a session is created
 const tools = await session.listTools();  // crashes
 
 // ✅ GOOD — create session first
@@ -473,7 +473,7 @@ const client = new MCPClient({
   mcpServers: { api: { url: "http://localhost:3000/mcp" } },
 });
 await client.createAllSessions();
-const session = client.getSession("api");
+const session = client.requireSession("api");
 const tools = await session.listTools();
 ```
 

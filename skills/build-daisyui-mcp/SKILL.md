@@ -20,6 +20,30 @@ Use this skill as the operating layer for daisyUI 5 work with the `daisyui-bluep
 - UI libraries other than daisyUI
 - Generic design discussion that does not need daisyUI code, snippets, or themes
 
+## Runtime prerequisites
+
+This skill has two operating modes. Choose one before composing UI:
+
+- **Snippet-driven mode (preferred):** `daisyui-blueprint-daisyUI-Snippets` is available, and `daisyui-blueprint-Figma-to-daisyUI` is available when the task starts from Figma.
+- **Reference-only fallback:** the MCP tools are unavailable, but the task is simple enough to build from `references/component-catalog.md` plus `references/integration/tailwind-v4-setup.md` without guessing snippet keys.
+
+Sanity-check snippet-driven mode before real work with one tiny fetch:
+
+```json
+{ "components": { "button": true } }
+```
+
+- Send that exact JSON object to `daisyui-blueprint-daisyUI-Snippets`.
+- If that succeeds, continue with snippet-driven workflows.
+- If it fails and the task depends on snippet discovery, templates, or Figma extraction, stop and ask the user to enable the MCP tools instead of guessing.
+- If it fails and the task is a small static page or component, switch to the reference-only fallback.
+
+**Reference-only fallback workflow**
+
+1. Confirm the target already has daisyUI 5 + Tailwind v4 wired up, or use the CDN/static setup in `references/integration/tailwind-v4-setup.md`.
+2. Build only from documented class names and markup patterns in `references/component-catalog.md` plus the smallest relevant workflow or pattern reference.
+3. Do not guess snippet keys, template names, or hidden component variants in fallback mode. If the task depends on those, stop and ask for MCP access.
+
 ## Non-negotiable rules
 
 1. **Nested object syntax only** for `daisyui-blueprint-daisyUI-Snippets`. Arrays fail silently.
@@ -38,6 +62,18 @@ Use this skill as the operating layer for daisyUI 5 work with the `daisyui-bluep
 10. **Stay on daisyUI v5 syntax** (`fieldset`, `dock`, `tabs-lift`, `card-border`, no `input-bordered`, no `form-control`).
 11. **Load only the 1–3 references needed for the active task.** Do not dump the entire skill into context.
 12. **Adapt output to the target framework.** For React/Next.js: `class` → `className`, self-close void elements (`<img />`, `<input />`), `for` → `htmlFor`, `tabindex` → `tabIndex`. For Vue: use `:class` bindings. For Svelte: use `class:` directives.
+
+**Positive v5 form baseline**
+
+```html
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">Profile</legend>
+  <input class="input" placeholder="Name" />
+  <select class="select"><option>Role</option></select>
+  <textarea class="textarea" placeholder="Notes"></textarea>
+  <p class="fieldset-label">Helper text or validation hint</p>
+</fieldset>
+```
 
 ```jsonc
 // ✅ Correct
@@ -75,6 +111,15 @@ Use this skill as the operating layer for daisyUI 5 work with the `daisyui-bluep
   "themes": { "colors": true }
 }
 ```
+
+## Common starting keys for page work
+
+| Request | Start here |
+|---|---|
+| Admin/dashboard page with complete content blocks | `templates.dashboard` |
+| Login or auth page | `templates.login-form` |
+| Persistent sidebar that can collapse to icon-only | `layouts.responsive-collapsible-drawer-sidebar` |
+| Standard responsive app shell with off-canvas sidebar on mobile | `layouts.responsive-offcanvas-drawer-sidebar` |
 
 ## Route to the correct workflow
 

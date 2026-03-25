@@ -46,14 +46,19 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
 
 2. **Build the evidence base**
    - **Detect the styling stack first** -- this determines everything else:
+     - Offline snapshot / plain HTML+CSS mode: if the input is just HTML/CSS files with no `package.json`, no `src/`, and no Tailwind/shadcn markers, treat the CSS files as the token source of truth. Skip framework-specific checks and write `not implemented` / `N/A` where those systems do not exist.
      - Tailwind v4 uses `@import "tailwindcss"` in CSS and `@theme` blocks instead of `tailwind.config.js`. Check for both.
      - shadcn/ui: look for `components/ui/` directory and `@/lib/utils` imports with `cn()`.
      - CSS entry point: find `globals.css` or `app.css` -- this is where tokens live.
+   - Normalize the target root before running any routed command. Reference snippets that mention `src/`, `app/`, or `package.json` are common repo examples, not fixed paths. In offline snapshot mode, search the snapshot root directly. See `references/extraction/target-modes.md`.
    - Identify token sources: global CSS, theme files, Tailwind config (if v3), component source, Storybook.
    - **Resolve representative token chains end-to-end** before writing docs:
      ```
      Tailwind class -> CSS variable -> final value
      bg-primary -> var(--primary) -> oklch(0.21 0.006 285.88)
+
+     Plain CSS snapshot chain
+     .metric-card -> var(--card-bg) -> #111827
      ```
    - Detect the color space: modern shadcn uses `oklch()`, older uses `hsl()`.
    - Check for variant systems: CVA (`class-variance-authority`) defines variant/size matrices.
@@ -64,6 +69,7 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
 
 4. **Extract components and patterns in scope**
    - For each component, document anatomy, variants, sizes, states, state transitions, dark-mode differences, and composition.
+   - In offline snapshot mode, treat repeated DOM fragments plus their matching selectors as the component evidence. Document only what the snapshot proves; if the capture does not expose a variant or state, call out the gap explicitly instead of inventing it.
    - Treat sidebars, tables, command palettes, and form layouts as mega-components that must be decomposed.
 
 5. **Verify before handoff**
@@ -76,6 +82,7 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
 
 6. **Package the output**
    - Create all extraction artifacts in the `.design-soul/` directory at the **codebase root** (not inside the skills repo).
+   - "Codebase root" may be the original repo root or a writable working copy of the target UI (for example a copied fixture under a work directory). The rule is about target ownership, not about the original location on disk.
    - Use the `.design-soul/` structure defined in `references/documentation/output-format.md`.
    - Follow the exact templates and file layout from the references instead of inventing new formats.
 
@@ -106,6 +113,7 @@ When you are asked to produce extraction files, keep the structure predictable:
 - `system.md` for foundations in scope
 - numbered foundation docs when doing system-level extraction
 - one numbered doc per extracted component
+- numbered pattern docs in `components/[app-specific]/` when the scope includes dashboard-level compositions or product-unique flows
 - `INDEX.md` and `_summary.md` for multi-document or full extractions
 
 Use the exact structure, naming, and content expectations in `references/documentation/output-format.md`, `references/system-template.md`, and `references/component-template.md`.
@@ -116,12 +124,13 @@ Start with the smallest relevant set. Only expand if the task genuinely needs mo
 
 | Need | What it contains | Read |
 |---|---|---|
-| Foundation extraction method | Agent prompts for scanning tokens + grep commands + output templates | `references/foundations-agent.md`, `references/extraction/color-extraction.md`, `references/extraction/typography-extraction.md`, `references/extraction/spacing-extraction.md`, `references/system-template.md` |
-| Component extraction method | Agent prompt for per-component visual specs + template with all required sections | `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
-| Dashboard/admin-specific patterns | Sidebar, metrics, tables, charts, cmdk, mega-component decomposition | `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
-| Token translation and naming | W3C DTCG, CSS custom properties, oklch format, shadcn naming pattern | `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
+| Target root and snapshot path handling | How to reinterpret repo-style example commands for repo-backed UIs vs copied HTML/CSS snapshots | `references/extraction/target-modes.md` |
+| Foundation extraction method | Agent prompts for scanning tokens + grep commands + output templates | `references/extraction/target-modes.md`, `references/foundations-agent.md`, `references/extraction/color-extraction.md`, `references/extraction/typography-extraction.md`, `references/extraction/spacing-extraction.md`, `references/system-template.md` |
+| Component extraction method | Agent prompt for per-component visual specs + template with all required sections | `references/extraction/target-modes.md`, `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
+| Dashboard/admin-specific patterns | Sidebar, metrics, tables, charts, cmdk, mega-component decomposition | `references/extraction/target-modes.md`, `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
+| Token translation and naming | W3C DTCG, CSS custom properties, oklch format, shadcn naming pattern | `references/extraction/target-modes.md`, `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
 | Packaging the docs | `.design-soul/` directory structure, INDEX.md and _summary.md templates | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
-| Verification and audit | Extraction completeness checklist, token/component consistency matrix, WCAG contrast checks | `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
+| Verification and audit | Extraction completeness checklist, token/component consistency matrix, WCAG contrast checks | `references/extraction/target-modes.md`, `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
 
 ## Steering Notes for Agents
 

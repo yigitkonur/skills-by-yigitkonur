@@ -34,9 +34,9 @@ Alternative package managers: `pnpm create mcp-use-app@latest my-server` / `yarn
 | **mcp-ui**  | `--template mcp-ui`        | All three MCP-UI UIResource types demonstrated.   |
 
 ```bash
-npx create-mcp-use-app my-server --template starter   # Default
-npx create-mcp-use-app my-server --template mcp-apps   # Apps SDK
-npx create-mcp-use-app my-server --template mcp-ui     # MCP-UI
+npx create-mcp-use-app my-server --template starter --no-skills    # Default
+npx create-mcp-use-app my-server --template mcp-apps --no-skills   # Apps SDK
+npx create-mcp-use-app my-server --template mcp-ui --no-skills     # MCP-UI
 ```
 
 > Run `npx create-mcp-use-app --help` for all options. Pass `--no-skills` to skip AI agent skill installation.
@@ -395,8 +395,8 @@ Skills provide AI helper prompts and workflows. Install them per project to avoi
 - `.cursor/skills/` (Cursor), `.claude/skills/` (Claude Code), `.agent/skills/` (Codex)
 
 ```bash
-mcp-use skills add build-mcp-use-app
-mcp-use skills install build-mcp-use-app
+mcp-use skills add build-mcp-use-apps-widgets
+mcp-use skills install build-mcp-use-apps-widgets
 ```
 
 ### `mcp-use skills add`
@@ -421,13 +421,13 @@ Alias for `skills add`. Identical behavior.
 ### ❌ BAD: Installing Skills in the Wrong Repo
 
 ```bash
-mcp-use skills add build-mcp-use-app -p ~/Downloads
+mcp-use skills add build-mcp-use-apps-widgets -p ~/Downloads
 ```
 
 ### ✅ GOOD: Target the Active Project
 
 ```bash
-mcp-use skills add build-mcp-use-app -p ./
+mcp-use skills add build-mcp-use-apps-widgets -p ./
 ```
 
 ---

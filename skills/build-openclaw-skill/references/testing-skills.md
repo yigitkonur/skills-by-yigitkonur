@@ -14,23 +14,58 @@ Choose the tier that matches your audience and quality requirements.
 
 Most skills should reach Tier 1. Published skills should reach Tier 2. High-visibility skills benefit from Tier 3.
 
-## Prerequisites: install before testing
+## Prerequisites: install before runtime testing
 
-Trigger tests fail silently if the skill is not installed. Before testing, install the skill:
+Trigger tests fail silently if the skill is not installed in a watched directory. Before counting any runtime result, make sure you have:
+
+1. A runnable OpenClaw runtime
+2. Write access to either `<workspace>/skills/<name>/` or `~/.openclaw/skills/<name>/`
+3. A way to confirm loaded skills via `openclaw status` or another runtime surface that lists them
+
+Before testing, install the skill:
 
 ```bash
 # For personal testing
 mkdir -p ~/.openclaw/skills/my-skill-name/
 cp SKILL.md ~/.openclaw/skills/my-skill-name/
-cp -r references/ ~/.openclaw/skills/my-skill-name/
+if [ -d references ]; then cp -r references/ ~/.openclaw/skills/my-skill-name/; fi
 
-# For project-specific testing
-mkdir -p project/skills/my-skill-name/
-cp SKILL.md project/skills/my-skill-name/
-cp -r references/ project/skills/my-skill-name/
+# For workspace-specific testing
+WORKSPACE_DIR=/path/to/workspace
+mkdir -p "$WORKSPACE_DIR/skills/my-skill-name/"
+cp SKILL.md "$WORKSPACE_DIR/skills/my-skill-name/"
+if [ -d references ]; then cp -r references/ "$WORKSPACE_DIR/skills/my-skill-name/"; fi
 ```
 
-Restart or reload the agent after installation. OpenClaw's skills watcher may auto-reload, but verify by checking that the skill appears in the available skills list.
+Restart or reload the agent after installation. OpenClaw's skills watcher may auto-reload, but verify with `openclaw status` or another loaded-skill view before trusting any trigger or functional test result.
+
+### If a real OpenClaw runtime is not available or not writable
+
+Do not pretend the skill passed end-to-end testing. Switch to a dry-run validation pass if any of the three prerequisites above is missing:
+
+1. Validate frontmatter and file structure
+2. Run the routing/orphan check
+3. Verify install paths and copy commands are correct
+4. Write down which runtime checks remain blocked (load confirmation, trigger behavior, functional run)
+
+Dry-run success means the package is structurally ready to install. It does not mean the runtime trigger behavior is proven.
+
+### Minimal runtime verification recipe
+
+Use this before broader testing, especially for tiny skills:
+
+1. Install the skill into `<workspace>/skills/<name>/` or `~/.openclaw/skills/<name>/`
+2. Reload or restart if the watcher does not pick it up
+3. Confirm the skill appears in `openclaw status` or another loaded-skill view
+4. Run one direct query that should trigger the skill
+5. Verify one observable skill-specific result
+
+For small skills, acceptable observable results include:
+- a new `SKILL.md` or reference file created in the expected location
+- metadata added or rewritten in the requested format
+- the agent routing to the correct reference file and acting on it
+
+If you cannot prove both "skill loaded" and "skill-specific result happened," do not count the run as runtime-verified.
 
 ## Test category 1: trigger tests
 
@@ -38,7 +73,13 @@ Restart or reload the agent after installation. OpenClaw's skills watcher may au
 
 ### Building a trigger test suite
 
-Create three lists for your skill:
+Create at least 10 queries for your skill:
+
+- 5+ should-trigger queries total
+- at least 3 paraphrased should-trigger variants
+- 5+ should-NOT-trigger queries
+
+Split them into these three lists:
 
 **Should trigger (direct)** — obvious requests that clearly match:
 
@@ -69,7 +110,7 @@ Create three lists for your skill:
 
 1. Enable only your skill (disable others to avoid interference)
 2. Run each query in a fresh conversation
-3. Record whether the skill loaded (check for skill-specific behavior in the response)
+3. Record whether the skill loaded (after confirming it is visible in the runtime) and whether the response followed the skill's specific workflow
 4. Targets:
    - 90%+ of should-trigger queries activate the skill
    - 0% of should-NOT-trigger queries activate the skill
@@ -117,6 +158,16 @@ Then:
 | Edge cases | Empty inputs, unusual project structures |
 | Error paths | Missing requirements handled gracefully |
 
+### Defining the primary workflow
+
+Use the smallest non-trivial request from the skill's direct trigger set.
+
+- Good: "Create a new OpenClaw skill called deploy-staging"
+- Good: "Add metadata gating for node and API_KEY to this existing skill"
+- Weak: "When would you use this skill?"
+
+The primary workflow should exercise the skill's real output contract, not just describe the skill. For a tiny skill, "real output contract" still means a concrete artifact, mutation, or routing decision, not a descriptive answer.
+
 ### Example functional test
 
 ```
@@ -134,10 +185,13 @@ Then:
 ### Running functional tests
 
 1. Set up the preconditions (project state, env vars, etc.)
-2. Invoke the skill with a representative query
-3. Walk through the entire workflow end-to-end
-4. Verify all output contract items are produced
-5. Check that reference routing loads the correct files
+2. Confirm the skill is loaded in the runtime (`openclaw status` or equivalent) before trusting the result
+3. Invoke the skill with a representative query
+4. Walk through the entire workflow end-to-end
+5. Verify all output contract items are produced
+6. Check that reference routing loads the correct files
+
+If runtime installation is blocked, stop after the dry-run checks and record the missing runtime verification explicitly.
 
 ## Test category 3: quality metrics
 
@@ -179,12 +233,14 @@ This leverages in-context learning and provides faster signal than broad testing
 
 Before declaring a skill tested:
 
-- [ ] Skill is installed to the correct location
+- [ ] Skill is installed to the correct location, or runtime testing is explicitly marked blocked
+- [ ] Runtime path is explicit: `<workspace>/skills/<name>/` or `~/.openclaw/skills/<name>/`, or runtime testing is explicitly marked blocked
+- [ ] Skill load is confirmed in the runtime (`openclaw status` or equivalent), or runtime testing is explicitly marked blocked
 - [ ] 5+ should-trigger queries tested (90%+ pass rate)
 - [ ] 5+ should-NOT-trigger queries tested (0% false positive)
 - [ ] 3+ paraphrased variants tested
 - [ ] Agent correctly describes when to use the skill (self-check)
-- [ ] Primary workflow completes without error (end-to-end)
+- [ ] Primary workflow completes without error (end-to-end), or runtime testing is explicitly marked blocked
 - [ ] At least one edge case tested
 - [ ] Routing verification shows 0 orphaned reference files
 - [ ] SKILL.md is under 500 lines after any test-driven fixes

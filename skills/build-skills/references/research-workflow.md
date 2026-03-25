@@ -47,7 +47,7 @@ After the local scan:
 1. **Discover** — run `skill-dl search` with 3–20 keyword arguments covering the topic from multiple angles
    - `skill-dl search` outputs a prioritized markdown table: rank, skill name, owner/repo, keywords matched, match count, URL
    - Skills appearing across more keywords rank higher — cross-keyword overlap is the primary signal
-   - Run multiple keyword sets in parallel for broader coverage; deduplicate by URL before proceeding
+   - Run multiple keyword sets in parallel for broader coverage; deduplicate by URL before proceeding because `skill-dl search` output can contain duplicate rows or formatting artifacts across overlapping queries
    - Example: `skill-dl search "agent browser" "headless automation" "browser testing" "playwright"`
    - Requires at least 3 keywords; use varied phrasing to surface different result clusters
 2. **Triage large result sets** — if results exceed 50 rows, use `--min-match 2` to focus on cross-keyword hits, or `--top 20` to cap results. If the max match count is ≤2 (niche topics), broaden keyword variety or switch to manual curation from the full list
@@ -62,7 +62,7 @@ Treat the downloaded corpus as a second source tree that deserves the same atten
 
 ## Phase 3 — write `skills.markdown`
 
-Before synthesis, write `skills.markdown` to disk in the target skill directory (next to `SKILL.md`). This is the durable research artifact.
+Before synthesis, write `skills.markdown` to disk next to the draft `SKILL.md` in the draft skill directory. Default to `skills/<skill-name>/`; if you are staging elsewhere, keep `skills.markdown` in that staging directory and move it with the skill folder later. This is the durable research artifact.
 
 At minimum it should record:
 
@@ -117,7 +117,7 @@ Build a markdown comparison table with at least these columns:
 | Relevant paths | Specific files or sections worth citing |
 | Inherit / Avoid | Decision — what to take vs. what to skip |
 
-Every row must end with a decision (Inherit / Avoid), not just an observation. The comparison table is the bridge between reading and synthesis — it makes your reasoning visible and auditable.
+Every row must end with a decision (Inherit / Avoid), not just an observation. The comparison table is the bridge between reading and synthesis — it makes your reasoning visible and traceable.
 
 ## Selection heuristics
 

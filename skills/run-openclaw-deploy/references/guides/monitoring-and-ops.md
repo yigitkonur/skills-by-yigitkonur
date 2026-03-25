@@ -2,6 +2,8 @@
 
 This guide covers health monitoring, cost tracking, backup strategies, and operational procedures for production OpenClaw instances.
 
+When this guide shows `openclaw ...` commands, use the matching runtime-specific command path from `container-setup.md` if the host does not provide the CLI directly.
+
 ## Uptime monitoring (essential)
 
 **Uptime monitoring is essential for production.** Community reports consistently note that slow failure (degraded performance, partial outages) is worse than immediate failure because it goes undetected longer.
@@ -12,10 +14,10 @@ Set up external monitoring that checks from outside your network:
 
 | Service | How to configure | Notes |
 |---------|-----------------|-------|
-| UptimeRobot | HTTP check on `https://your-domain/health` | Free tier available |
+| UptimeRobot | HTTP check on `https://your-domain/healthz` | Free tier available |
 | Better Uptime | HTTP check + status page | Includes incident management |
 | Pingdom | HTTP check with response validation | Enterprise features |
-| Custom | Poll `/health?detail=true` and parse JSON | Most flexible |
+| Custom | Poll `/healthz` and `/readyz`; use `openclaw health --json` for deeper checks | Most flexible |
 
 **Do not rely only on internal health checks.** If the host or network is down, internal checks cannot alert you.
 
@@ -24,10 +26,16 @@ Set up external monitoring that checks from outside your network:
 ### Built-in health monitoring
 
 ```bash
-# Run health check
-openclaw skill run healthcheck
+# Host/native install
+openclaw health --json
+openclaw gateway status --require-rpc
+openclaw doctor
 
-# The healthcheck skill verifies:
+# Official Docker Compose install
+docker compose run --rm openclaw-cli status --all
+docker compose exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
+
+# These commands verify:
 # - Gateway status and uptime
 # - LLM provider connectivity and latency
 # - Messaging channel status
@@ -63,21 +71,13 @@ monitoring:
 
 ```bash
 # Basic health check
-curl -f http://localhost:8080/health
+curl -fsS http://127.0.0.1:18789/healthz
 
-# Detailed health check
-curl http://localhost:8080/health?detail=true
+# Readiness check
+curl -fsS http://127.0.0.1:18789/readyz
 
-# Expected response:
-# {
-#   "status": "healthy",
-#   "gateway": "running",
-#   "uptime_seconds": 86400,
-#   "llm_provider": "connected",
-#   "channels": { "slack": "connected", "telegram": "connected" },
-#   "disk_space_percent": 65,
-#   "memory_percent": 42
-# }
+# For deeper diagnostics, prefer:
+# openclaw health --json
 ```
 
 ### RAM monitoring
@@ -104,6 +104,8 @@ If memory consistently exceeds 3 GB, investigate:
 
 **This is the single most important operational configuration.** Real-world reports document $300-600 bills from retry loops caused by messaging channel reconnections.
 
+Place this block in `~/.openclaw/openclaw.json` for host installs, or in the mounted `/home/node/.openclaw/openclaw.json` for container installs.
+
 ```yaml
 monitoring:
   cost:
@@ -120,18 +122,17 @@ monitoring:
     per_channel_tracking: true
 ```
 
-### Using the model-usage skill
+### Using the status usage view
+
+If the host does not have `openclaw`, use the runtime-specific CLI path from `container-setup.md` for the same `status --usage` check.
 
 ```bash
-openclaw skill run model-usage
+openclaw status --usage
 
 # Output includes:
-# - Total tokens used (input/output)
-# - Cost breakdown by provider
-# - Cost breakdown by skill
-# - Cost breakdown by channel
-# - Daily/weekly/monthly trends
-# - Projected monthly cost
+# - Provider usage windows and quota snapshots
+# - Current usage totals
+# - Recent trends suitable for ops review
 ```
 
 ### Cost optimization strategies
@@ -163,28 +164,28 @@ OpenClaw does not auto-update. You must manually pull new versions and restart.
 
 ```bash
 # Back up first
-docker exec openclaw tar -czf /data/backup-pre-update.tar.gz /config
+docker exec openclaw-gateway tar -czf /tmp/backup-pre-update.tar.gz /home/node/.openclaw
 
 # Pull new version
-docker pull openclaw/openclaw:latest
+docker pull ghcr.io/openclaw/openclaw:latest
 
 # Stop current container
-docker stop openclaw
-docker rm openclaw
+docker stop openclaw-gateway
+docker rm openclaw-gateway
 
 # Start with new version
 docker run -d \
-  --name openclaw \
+  --name openclaw-gateway \
   --restart unless-stopped \
-  -v openclaw-data:/data \
-  -v openclaw-config:/config \
-  -e OPENCLAW_API_KEY="${OPENCLAW_API_KEY}" \
-  -p 127.0.0.1:8080:8080 \
-  openclaw/openclaw:latest
+  --env-file ./.env \
+  -v openclaw-home:/home/node/.openclaw \
+  -p 127.0.0.1:18789:18789 \
+  ghcr.io/openclaw/openclaw:latest
 
 # Verify
-curl -f http://localhost:8080/health
-docker exec openclaw node --version  # Must be v22.x.x
+curl -fsS http://127.0.0.1:18789/healthz
+docker exec openclaw-gateway node --version
+docker exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
 ```
 
 ## Cron subsystem operations
@@ -235,12 +236,11 @@ Use `cron.runs` to review execution history. Watch for:
 
 | Component | Location | Frequency | Priority |
 |-----------|----------|-----------|----------|
-| Configuration files | `/config/` | After every change | Critical |
-| Agent data | `/data/` | Daily | High |
-| Skill definitions | `/skills/` | After changes | High |
-| Environment variables | Secrets manager | After changes | Critical |
-| Gateway state | Gateway export | Daily | Medium |
-| Conversation history | `/data/conversations/` | Daily | Medium |
+| Main config | `~/.openclaw/openclaw.json` | After every change | Critical |
+| OpenClaw home dir | `~/.openclaw/` | Daily | High |
+| Environment variables | `.env` / secrets manager | After changes | Critical |
+| Gateway state | `openclaw gateway export` output | Daily | Medium |
+| Workspace and conversation data | `~/.openclaw/workspace/` and related state under `~/.openclaw/` | Daily | Medium |
 
 ### Automated file backup
 
@@ -249,9 +249,8 @@ Use `cron.runs` to review execution history. Watch for:
 BACKUP_DIR="/backups/openclaw/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-cp -r /config "$BACKUP_DIR/config"
-cp -r /data "$BACKUP_DIR/data"
-cp -r /skills "$BACKUP_DIR/skills"
+cp -r ~/.openclaw "$BACKUP_DIR/openclaw-home"
+cp ./.env "$BACKUP_DIR/.env"
 
 openclaw gateway export > "$BACKUP_DIR/gateway-state.json"
 
@@ -267,19 +266,14 @@ echo "Backup completed: $BACKUP_DIR.tar.gz"
 ### Docker volume backup
 
 ```bash
-docker stop openclaw
+docker stop openclaw-gateway
 
 docker run --rm \
-  -v openclaw-data:/source:ro \
+  -v openclaw-home:/source:ro \
   -v /backups:/backup \
-  alpine tar -czf /backup/openclaw-data-$(date +%Y%m%d).tar.gz -C /source .
+  alpine tar -czf /backup/openclaw-home-$(date +%Y%m%d).tar.gz -C /source .
 
-docker run --rm \
-  -v openclaw-config:/source:ro \
-  -v /backups:/backup \
-  alpine tar -czf /backup/openclaw-config-$(date +%Y%m%d).tar.gz -C /source .
-
-docker start openclaw
+docker start openclaw-gateway
 ```
 
 ### Restore procedure
@@ -289,7 +283,7 @@ docker start openclaw
 3. Restore data from backup
 4. Verify environment variables are correct
 5. Start the OpenClaw instance
-6. Run `healthcheck` to verify restoration
+6. Run `openclaw health --json` to verify restoration
 7. Test at least one messaging channel end-to-end
 
 ### Disaster recovery planning
@@ -306,7 +300,8 @@ docker start openclaw
 
 ```bash
 # Docker logs
-docker logs openclaw --tail 100 --follow
+docker logs openclaw-gateway --tail 100 --follow
+docker compose logs --follow openclaw-gateway
 
 # Systemd logs (bare VPS)
 journalctl -u openclaw --since "1 hour ago"
@@ -365,12 +360,12 @@ logging:
 - Review and update security posture
 - Test full disaster recovery procedure
 - Review cost trends and adjust provider routing
-- Audit installed skills against ClawHub advisories
+- Audit installed skills against current publisher advisories and OpenClaw security advisories
 
 ## Steering experiences
 
 ### SE-01: Health checks pass but the instance is degraded
-Health checks verify connectivity, not quality. An LLM provider may be responding slowly without triggering alerts. Use `model-usage` skill to track latency trends. Set up external uptime monitoring.
+Health checks verify connectivity, not quality. An LLM provider may be responding slowly without triggering alerts. Use `openclaw status --usage` plus external uptime monitoring to watch trends.
 
 ### SE-02: Backups exist but have never been tested
 Schedule quarterly restore tests. An untested backup is unreliable.

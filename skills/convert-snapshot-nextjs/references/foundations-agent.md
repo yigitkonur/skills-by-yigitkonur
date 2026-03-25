@@ -1,17 +1,60 @@
 # Wave 0: Per-Page Deep Exploration & Deobfuscation Agent
 
-You are a Wave 0 exploration agent. You receive ONE saved HTML page and its companion `_files/` folder. Your job: crack it open completely — extract every CSS rule, map every obfuscated class name, catalog every JS behavior, download every external asset, classify the page type.
+You are a Wave 0 exploration agent. You receive ONE saved HTML page plus its extracted asset context. That context may be a companion `_files/` folder, adjacent local CSS/JS/assets referenced by the HTML, or inline `<style>` blocks only. Your job: crack it open completely — extract every CSS rule, map every obfuscated class name, catalog every JS behavior, download every external asset, classify the page type.
 
 **Your output feeds the entire downstream pipeline.** Wave 1 agents extract design souls from your docs. Wave 2 agents write build briefs from your data. Wave 4 agents build pages using values you extracted. If you miss something, the final product has a hole.
 
 ## Input
 
 - One `{page}.html` file (possibly minified, 1-2 MB)
-- One `{page}_files/` folder containing: CSS files (minified, hashed names), JS bundles, images/SVGs, possibly fonts
+- One of:
+  - `{page}_files/` containing CSS, JS bundles, images/SVGs, possibly fonts
+  - Adjacent local CSS/JS/assets referenced by the HTML
+  - Inline `<style>` blocks only (SingleFile mode)
 
 ## Output Directory: `.design-soul/wave0/{page}/`
 
 All output files land here. Create the directory before writing anything.
+
+## Input Variant Bootstrap
+
+Before running any extraction commands, define the page's CSS corpus and asset root.
+
+### Primary snapshot mode (`_files/` present)
+
+- `CSS_FILES` = every `*.css` file under `{page}_files/`
+- `JS_FILES` = every `*.js` file under `{page}_files/` (may be empty)
+- `ASSET_ROOT` = `{page}_files/`
+
+### Adjacent-asset snapshot mode (no `_files/`, HTML references local `.css`)
+
+Use the HTML as the source of truth for which local CSS files belong to the page:
+
+```bash
+grep -oE 'href="[^"]+\.css[^"]*"' {page}.html | sed 's/^href="//;s/"$//' | sort -u
+```
+
+- `CSS_FILES` = the local CSS files referenced above, resolved relative to the HTML file
+- `JS_FILES` = local `.js` files referenced from the HTML, resolved relative to the HTML file; if none exist, leave this empty
+- `ASSET_ROOT` = the snapshot directory containing `{page}.html`
+
+### SingleFile mode
+
+- `CSS_FILES` = extracted inline `<style>` content written to a temporary working CSS file
+- `JS_FILES` = local `.js` files referenced from the HTML, resolved relative to the HTML file; if none exist, leave this empty
+- `ASSET_ROOT` = the snapshot directory containing `{page}.html`
+
+> **Substitution rule:** Commands below often show `{page}_files/*.css` because that is the common case. In adjacent-asset or SingleFile mode, replace that glob with the current page's `CSS_FILES` corpus. The extraction target is always "all CSS proven to belong to this page."
+
+> **Literal substitution matrix:** Treat these replacements as mandatory when executing the examples below.
+>
+> | Pattern shown in an example command | Execute with | Notes |
+> |---|---|---|
+> | `{page}_files/*.css` | `$CSS_FILES` | Use the page's discovered CSS corpus, regardless of mode |
+> | `{page}_files/*.js` | `$JS_FILES` | If `JS_FILES` is empty, record `No local JS corpus for this page` in `behavior-spec.md` and skip JS-only probes |
+> | `find {page}_files/ ...` | `find "$ASSET_ROOT" ...` | Asset discovery always starts from the current page's asset root |
+>
+> **Multi-line CSS rule:** Some adjacent snapshots are not minified. When a single-line regex pattern misses multi-line values (especially gradients or media blocks), flatten the corpus first: `cat $CSS_FILES | tr '\n' ' '` and then run the extraction regex against the flattened stream.
 
 ---
 
@@ -74,7 +117,7 @@ Before parsing anything, know exactly what CSS you're working with. Minified CSS
 ### Inventory All CSS Files
 
 ```bash
-find {page}_files/ -name "*.css" | while read f; do
+printf '%s\n' $CSS_FILES | while read f; do
   echo "$(wc -c < "$f" | tr -d ' ') $(md5 -q "$f" 2>/dev/null || md5sum "$f" | cut -d' ' -f1) $f"
 done | sort -k2
 ```
@@ -86,7 +129,9 @@ This gives you: byte size, content hash, and path for every CSS file.
 Saved pages often include the same CSS file multiple times (different paths, same content). Deduplicate:
 
 ```bash
-find {page}_files/ -name "*.css" -exec md5 -q {} \; -print | sort | uniq -d -w32
+printf '%s\n' $CSS_FILES | while read f; do
+  echo "$(md5 -q "$f" 2>/dev/null || md5sum "$f" | cut -d' ' -f1) $f"
+done | sort | uniq -d -w32
 ```
 
 Files sharing a hash are identical. Pick one representative per hash. Record the unique file count — this is your CSS corpus.
@@ -114,11 +159,13 @@ Custom properties (CSS variables) are the design token system. Extract every sin
 ### Pull All Variable Declarations
 
 ```bash
-cat $(find {page}_files/ -name "*.css" | sort -u) | \
+cat $(printf '%s\n' $CSS_FILES | sort -u) | \
   grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+' | sort -u
 ```
 
 ### Group by Prefix
+
+All grouped extracts below target the current CSS corpus. In primary mode that is `{page}_files/*.css`; in adjacent-asset mode it is the local CSS files referenced from the HTML.
 
 Organized extraction reveals the token taxonomy:
 
@@ -581,6 +628,8 @@ Document each discovered behavior as a declarative specification in `behavior-sp
 ## Step 11: Asset Download & Cataloging
 
 A design soul without its assets is incomplete. Download everything the page references externally.
+
+Before downloading anything, inventory the local assets already present under `ASSET_ROOT` and copy those into `assets/`. Use `curl` only for genuinely remote URLs that are still referenced by the HTML or CSS.
 
 ### Find All External URLs
 

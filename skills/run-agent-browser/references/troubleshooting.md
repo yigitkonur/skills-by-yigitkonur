@@ -26,11 +26,21 @@ npx playwright install-deps chromium
 # Close any existing session
 agent-browser close
 
-# If close fails, the daemon may have a stale PID/socket file
-# v0.8.6+ auto-cleans stale files on next start
-# For older versions, manually remove:
+# If close fails with EADDRINUSE or a stale-socket error:
+# 1) confirm there is no live agent-browser process you care about
+ps aux | grep '[a]gent-browser'
+
+# 2) inspect the socket/pid files in ~/.agent-browser
+ls -la ~/.agent-browser
+
+# 3) remove only stale files for the affected session
+#    (common names: default.sock, daemon.sock, or <session>.sock)
+rm -f ~/.agent-browser/default.pid ~/.agent-browser/default.sock
 rm -f ~/.agent-browser/daemon.pid ~/.agent-browser/daemon.sock
+rm -f ~/.agent-browser/*.pid ~/.agent-browser/*.sock
 ```
+
+Use the targeted removal commands first. The wildcard cleanup is the last resort when you have confirmed there is no live browser state worth preserving.
 
 ## Native binary not available
 

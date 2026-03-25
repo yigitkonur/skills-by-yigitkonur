@@ -24,10 +24,16 @@ Complete reference for getting started with the mcp-use client — installation,
 
 ## Installation
 
-Install the `mcp-use` package from npm. This single package provides Node.js, browser, and React entry points. Node.js 18.0.0 or higher is required.
+Install the `mcp-use` package from npm. This single package provides Node.js, browser, and React entry points. Node.js 18+ is supported; Node 22 LTS is the best default when you want parity with current examples.
 
 ```bash
 npm install mcp-use
+```
+
+If you want to run the TypeScript examples directly with `tsx`, also add a TypeScript runner unless the repo already has one:
+
+```bash
+npm install -D tsx typescript
 ```
 
 For yarn or pnpm:
@@ -91,7 +97,7 @@ async function main(): Promise<void> {
   console.log('Available tools:', tools)
 
   // 5. Call a tool with parameters
-  const result = await session.callTool('tool_name', { param: 'value' })
+  const result = await session.callTool('greet-user', { name: 'Ada', formal: false })
   // result.content is an array of TextContent | ImageContent | EmbeddedResource
   console.log('Result:', result.content)
 
@@ -102,6 +108,8 @@ async function main(): Promise<void> {
 main().catch(console.error)
 ```
 
+Save the first Node example as `src/client.ts` or `src/mcp-client.ts`. Both are conventional; prefer the one that matches the repo's existing naming, then keep your `npm start` script and `tsx` command aligned with that filename.
+
 ### How It Works
 
 1. **`MCPClient` constructor** — accepts a configuration object (or a path to a JSON config file) with one or more named servers. Each STDIO server requires `command` and `args`. An optional second argument (`MCPClientOptions`) sets global defaults such as `clientInfo`, `onSampling`, `onElicitation`, and `onNotification`.
@@ -110,6 +118,8 @@ main().catch(console.error)
 4. **`listTools()`** — queries the server for its advertised tool definitions. Returns a `Promise<Tool[]>` where each element has `name`, `description`, and `inputSchema`.
 5. **`callTool(name, args)`** — invokes a tool by name with the provided arguments. Returns a `Promise<CallToolResult>` with `content` and `isError` fields.
 6. **`closeAllSessions()`** — terminates all server processes and cleans up resources. Always call this to avoid orphaned processes.
+
+> **Note:** Some environments print an anonymized telemetry banner the first time `mcp-use` runs. That message is informational and does not block the client.
 
 ### STDIO Server Configuration Parameters
 
@@ -519,7 +529,7 @@ Inside interactive mode, type tool names and provide arguments interactively. Us
 
 ## Loading Configuration
 
-There are two ways to load a JSON configuration file. The simplest is to pass the file path directly to the constructor. Alternatively, use the `loadConfigFile()` named export, which synchronously reads and parses the file, and then pass the result to `new MCPClient(config)`.
+There are three convenient ways to load a JSON configuration file. The simplest is to pass the file path directly to the constructor. You can also use `MCPClient.fromConfigFile()` as a convenience factory, or use the `loadConfigFile()` named export when you want to inspect or modify the parsed object before constructing the client.
 
 ### From a Config File (via constructor path string)
 
@@ -529,6 +539,17 @@ Pass the file path as a string directly to the `MCPClient` constructor:
 import { MCPClient } from 'mcp-use'
 
 const client = new MCPClient('path/to/config.json')
+await client.createAllSessions()
+```
+
+### From a Config File (via `MCPClient.fromConfigFile`)
+
+Use the convenience factory when you want explicit "load from file" intent without manually calling `loadConfigFile()`:
+
+```typescript
+import { MCPClient } from 'mcp-use'
+
+const client = MCPClient.fromConfigFile('path/to/config.json')
 await client.createAllSessions()
 ```
 
@@ -594,7 +615,7 @@ Organize a new mcp-use client project with this recommended layout:
 ```
 my-mcp-client/
 ├── src/
-│   └── index.ts          # Client entry point
+│   └── client.ts         # Client entry point
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -625,7 +646,7 @@ my-mcp-client/
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "tsx src/client.ts",
     "build": "tsc"
   },
   "dependencies": {
@@ -734,7 +755,7 @@ Reference table for `package.json` fields relevant to mcp-use client projects.
 | `"dependencies.mcp-use"`  | `"latest"`         | The mcp-use client library                        |
 | `"devDependencies.tsx"`   | `"latest"`         | TypeScript execution without compilation step     |
 | `"devDependencies.typescript"` | `"latest"`    | TypeScript compiler for type checking and builds  |
-| `"scripts.start"`         | `"tsx src/index.ts"` | Run the client directly during development      |
+| `"scripts.start"`         | `"tsx src/client.ts"` | Run the client directly during development      |
 | `"scripts.build"`         | `"tsc"`            | Compile TypeScript to JavaScript for production   |
 
 ---

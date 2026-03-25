@@ -6,13 +6,13 @@ Build a working MCP App with an interactive widget in under 10 minutes using the
 
 ## 1. Prerequisites
 
-- **Node.js 18** (or higher) — [download](https://nodejs.org/)
+- **Node.js 18+ supported** — use Node 22 LTS when you want the closest match to current docs and examples. [download](https://nodejs.org/)
 - **Package manager** — npm (bundled with Node), pnpm, or yarn
 
 Verify your setup:
 
 ```bash
-node --version   # v18.x.x or higher
+node --version   # v18.x.x or higher (Node 22 LTS recommended)
 npm --version    # 9.x.x or higher
 ```
 
@@ -23,7 +23,7 @@ npm --version    # 9.x.x or higher
 The fastest way to start is with `create-mcp-use-app` using the `mcp-apps` template:
 
 ```bash
-npx create-mcp-use-app my-app --template mcp-apps
+npx create-mcp-use-app my-app --template mcp-apps --no-skills
 cd my-app
 npm install
 npm run dev
@@ -44,13 +44,13 @@ The dev server launches at `http://localhost:3000` with:
 
 ```bash
 # MCP Apps — dual-protocol widget support (recommended for this guide)
-npx create-mcp-use-app my-app --template mcp-apps
+npx create-mcp-use-app my-app --template mcp-apps --no-skills
 
 # Starter — full-featured server with tools, resources, prompts, widgets (default)
-npx create-mcp-use-app my-app --template starter
+npx create-mcp-use-app my-app --template starter --no-skills
 
 # MCP-UI — all three MCP-UI UIResource types demonstrated
-npx create-mcp-use-app my-app --template mcp-ui
+npx create-mcp-use-app my-app --template mcp-ui --no-skills
 ```
 
 | Template | Includes | Best for |
@@ -59,7 +59,20 @@ npx create-mcp-use-app my-app --template mcp-ui
 | `starter` (default) | Tools, resources, prompts, widgets | Full-featured servers |
 | `mcp-ui` | iframe, raw HTML, Remote DOM UIResource types | Complex UI requirements |
 
-> Pass `--no-skills` to skip AI agent skill installation.
+Use `--no-skills` by default while scaffolding app work. It removes unrelated agent-skill installation noise and makes the first build easier to verify.
+
+### Verify the scaffold before custom work
+
+Run these checks immediately after the scaffold succeeds:
+
+```bash
+npm run build
+npx mcp-use generate-types
+```
+
+- Ensure `.mcp-use/**/*` is included in `tsconfig.json`; generated widget/tool types live there.
+- If the generated demo widget blocks your custom build, replace or remove that demo widget before adding new features.
+- `mcp-use build --no-typecheck` is only a temporary escape hatch. Use it only after `tsc --noEmit` or your normal typecheck command passes separately.
 
 If you used the scaffolder, skip to [Section 6](#6-development-workflow).
 
@@ -145,6 +158,8 @@ An MCP Apps project looks like this:
 
 ```
 my-mcp-app/
+├── src/
+│   └── lib/                      # Shared business logic used by tools and widgets
 ├── resources/                     # React widgets (MCP Apps + ChatGPT)
 │   └── greeting/
 │       ├── widget.tsx             # Widget entry point

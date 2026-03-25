@@ -28,6 +28,7 @@ Convert Vue/Nuxt applications and components to idiomatic Next.js App Router cod
 | Situation | Action |
 |---|---|
 | Converting a single Vue SFC | Quick start below — if complex: `references/conversion/component-mapping.md` |
+| Migrating a full page/route with many interactive descendants | Load `references/conversion/migration-workflow.md` and `references/conversion/ssr-data-fetching.md` — start with a route-local client component for parity, then split server/client boundaries afterward |
 | Migrating Pinia or Vuex stores | Load `references/conversion/state-management.md` |
 | Converting Vue Router config | Load `references/conversion/routing-conversion.md` |
 | Converting Nuxt SSR or data fetching | Load `references/conversion/ssr-data-fetching.md` |
@@ -45,9 +46,9 @@ Convert Vue/Nuxt applications and components to idiomatic Next.js App Router cod
 2. **Read Vue source before converting.** Identify all patterns (reactivity, state, routing, slots, emits) before writing any React code.
 3. **Immutable state updates only.** Never mutate. Always produce new references with spread, `map`, or `filter`.
 4. **Explicit dependency arrays.** Every `useEffect`, `useMemo`, `useCallback` must list dependencies. Vue auto-tracks; React does not.
-5. **Push `'use client'` as deep as possible.** Default to Server Components. Add `'use client'` only at the leaf components that need interactivity.
+5. **Choose the smallest client boundary that preserves parity.** For single components and refined routes, push `'use client'` as deep as possible. For first-pass page/route migrations, keep a route-local client island until parity is proven, then split it later.
 6. **Map emits to callback props.** Vue's `$emit('event', data)` becomes `onEvent(data)` prop calls.
-7. **Convert `<style scoped>` to CSS Modules.** Import as `styles` object, apply via `className={styles.name}`.
+7. **Convert `<style scoped>` to CSS Modules.** Import as `styles` object. Use dot access for identifier-safe class names and bracket access for names like `counter-card` (`styles['counter-card']`).
 
 ## Quick start — Single component conversion
 
@@ -64,6 +65,7 @@ Convert Vue/Nuxt applications and components to idiomatic Next.js App Router cod
 
 | Vue | JSX |
 |---|---|
+| `{{ label }}` | `{label}` |
 | `v-if="show"` | `{show && <El />}` |
 | `v-if` / `v-else` | `{show ? <A /> : <B />}` |
 | `v-show="visible"` | `<div style={{ display: visible ? undefined : 'none' }}>` |
@@ -72,6 +74,7 @@ Convert Vue/Nuxt applications and components to idiomatic Next.js App Router cod
 | `:class="{ active: isActive }"` | `className={isActive ? 'active' : ''}` |
 | `:style="{ color }"` | `style={{ color }}` |
 | `@click="handler"` | `onClick={handler}` |
+| `@click="count += 1"` | `onClick={() => setCount(c => c + 1)}` or extract a named handler first |
 | `@click.prevent` | `onClick={e => { e.preventDefault(); handler() }}` |
 | `@click.stop` | `onClick={e => { e.stopPropagation(); handler() }}` |
 | `@keyup.enter` | `onKeyUp={e => e.key === 'Enter' && handler()}` |
@@ -86,11 +89,11 @@ Convert Vue/Nuxt applications and components to idiomatic Next.js App Router cod
 |---|---|---|
 | `ref(0)` | `useState(0)` | Replace via setter, never mutate |
 | `reactive({})` | `useState({})` | Spread to update: `setState(p => ({...p, key: val}))` |
-| `computed(() => x)` | `useMemo(() => x, [deps])` | Must list deps manually |
+| `computed(() => x)` | Derive during render; use `useMemo(() => x, [deps])` only when expensive or identity-sensitive | React does not auto-track deps |
 | `watch(src, cb)` | `useEffect(() => { cb() }, [src])` | Add cleanup return if needed |
-| `watchEffect(cb)` | `useEffect(cb, [deps])` | Must specify deps explicitly |
+| `watchEffect(cb)` | `useEffect(() => { ... }, [explicitDeps])` | Extract every external value from the body into the deps array |
 | `onMounted(cb)` | `useEffect(cb, [])` | Empty deps = run once |
-| `onUnmounted(cb)` | `useEffect(() => () => cb, [])` | Return cleanup function |
+| `onUnmounted(cb)` | `useEffect(() => cb, [])` | Return the cleanup function from the effect |
 | `provide/inject` | `createContext` / `useContext` | Wrap tree with Provider |
 | `$emit('name', data)` | `props.onName(data)` | Callback prop pattern |
 | `defineProps<T>()` | Destructure from typed props | `function C({ title }: Props)` |
@@ -132,7 +135,7 @@ function increment() {
 
 ```tsx
 'use client';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import styles from './Counter.module.css';
 
 interface CounterProps {
@@ -143,7 +146,7 @@ interface CounterProps {
 
 export default function Counter({ initialCount = 0, onChange, footer }: CounterProps) {
   const [count, setCount] = useState(initialCount);
-  const doubled = useMemo(() => count * 2, [count]);
+  const doubled = count * 2;
 
   function increment() {
     const next = count + 1;
@@ -161,7 +164,7 @@ export default function Counter({ initialCount = 0, onChange, footer }: CounterP
 }
 ```
 
-**What changed:** `defineProps` → interface + destructured params. `defineEmits` → callback prop. `ref()` → `useState()`. `computed()` → `useMemo()` with explicit deps. `count.value++` → `setCount(next)`. Named slot → `footer` prop. `<style scoped>` → CSS Module.
+**What changed:** `defineProps` → interface + destructured params. `defineEmits` → callback prop. `ref()` → `useState()`. `computed()` → derived render value (reserve `useMemo()` for expensive or identity-sensitive work). `count.value++` → `setCount(next)`. Named slot → `footer` prop. `<style scoped>` → CSS Module.
 
 ## Key conversion patterns
 

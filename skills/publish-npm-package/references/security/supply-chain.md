@@ -407,7 +407,7 @@ npm deprecate <package>@"<1.2.4" "Versions before 1.2.4 have a security issue"
 
 ---
 
-## Quick Reference: Complete Secure Workflow
+## Quick Reference: Complete Secure OIDC Workflow
 
 ```yaml
 name: Publish
@@ -434,6 +434,7 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm test
       - run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
+
+For token auth, keep the same hardening but add `NODE_AUTH_TOKEN` only in the
+publish step of the matching token workflow.

@@ -25,7 +25,7 @@ Missing a single CSS file can cascade into missing tokens for the entire build.
 
 ### File Discovery
 - [ ] All `.html` / `.htm` files discovered and listed in the inventory
-- [ ] All `_files/` companion folders mapped to their parent HTML file
+- [ ] Each page's snapshot asset context documented and mapped to its parent HTML file (`_files/`, adjacent local assets, or inline-only mode)
 - [ ] All CSS files inventoried with file sizes and content-hash deduplication
 - [ ] All inline `<style>` blocks extracted from each HTML file
 - [ ] Input format detected and documented (browser snapshot / SingleFile / wget mirror / source export)

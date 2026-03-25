@@ -178,7 +178,7 @@ For MCP server setup, see the `build-mcp-sdk-server` skill.
 
 Always use the target skill's `name` field, not its directory path. The agent resolves the name to the correct location.
 
-## Canonical naming audit
+## Canonical naming review
 
 Before shipping, verify naming consistency across all artifacts:
 

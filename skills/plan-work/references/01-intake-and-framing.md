@@ -30,7 +30,9 @@ Use this as a rapid first-pass to surface gaps in understanding. Walk through ea
 | **How**      | How will we approach this? Any constraints?     |             |
 | **How much** | What resources/budget are available?            |             |
 
-**Rule of thumb:** If you cannot answer 3+ of these, you are not ready to plan. Go back to discovery.
+**Rule of thumb:** If you cannot answer 3+ of these, you are not ready to commit to a plan. Go back to discovery.
+
+If the user still needs a provisional sequence immediately, return the gap list first, then offer an assumption-driven Provisional Plan labeled as provisional and reversible. Do not present it as decision-ready.
 
 ## Practical Intake Questionnaire
 
@@ -308,29 +310,29 @@ Next step: Alice profiles /search by Aug 25 → team reviews results → plan sp
 | **Single-perspective framing**       | Only the requester's view is captured                | Interview at least 2 additional stakeholders before finalizing.    |
 
 
-## Steering experiences
+## Common traps
 
-### SE-01: 5W2H treated as optional brainstorming
+### 5W2H treated as optional brainstorming
 **What happens:** Agents skim the 5W2H list and answer 2-3 questions, calling it "good enough." Three steps later they discover a critical unknown that 5W2H would have surfaced.
 **Why it happens:** The template looks like a suggestion list, not a gate.
 **Prevention:** Treat 5W2H as a checklist gate. If 3+ questions are unanswered, stop and return a gap list instead of proceeding.
 
-### SE-02: Facts and assumptions quietly merged
+### Facts and assumptions quietly merged
 **What happens:** The framing section lists "facts" that are actually unverified beliefs. Downstream steps treat them as ground truth, producing confident but wrong recommendations.
 **Why it happens:** Distinguishing facts from assumptions requires explicit evidence. Without prompting, agents default to stating things as facts.
 **Prevention:** For each fact, require the evidence pointer (file, metric, URL). Anything without a pointer is an assumption. Label it.
 
-### SE-03: Stakeholder preferences not captured
+### Stakeholder preferences not captured
 **What happens:** The intake captures constraints and requirements but misses preferences. The recommendation later conflicts with unstated preferences.
 **Why it happens:** The intake questionnaire focuses on "what" and "when" but not "how do you feel about the options."
 **Prevention:** Add a preferences row to the intake: "What matters to you beyond the hard constraints?" Separate preferences from non-negotiables in the output.
 
-### SE-04: Problem is actually a solution in disguise
+### Problem is actually a solution in disguise
 **What happens:** User says "we need to migrate to microservices." Agent frames this as the problem and starts planning the migration. The actual problem was response latency, which had cheaper fixes.
 **Why it happens:** Users often arrive with a solution already chosen. The intake step does not force separation of problem from proposed solution.
 **Prevention:** Always ask "What happens if we do nothing?" and "What triggered this request?" If the answer reveals a different root problem, reframe before proceeding.
 
-### SE-05: Gap list returned without defaults
+### Gap list returned without defaults
 **What happens:** The framing step surfaces 4 unknowns and returns them as a gap list. But the list has no suggested defaults, so the user has to answer all 4 before planning can resume.
 **Why it happens:** The gap list format asks "what is missing" and "who can answer" but not "what should we assume if no answer comes."
 **Prevention:** Every gap must include a suggested default: "If we get no answer, we will assume X and revisit at checkpoint Y."

@@ -27,7 +27,7 @@ Repo → **Settings** → **Secrets and variables** → **Actions** → **New re
 ### 3. Verify locally
 
 ```bash
-npm whoami --registry https://registry.npmjs.org //registry.npmjs.org/:_authToken=<token>
+NODE_AUTH_TOKEN="<token>" npm whoami --registry https://registry.npmjs.org
 ```
 
 ---

@@ -58,8 +58,8 @@ Common issues with Copilot code review instructions, debugging sequences, anti-p
 **Fix:**
 ```bash
 # Check character count
-wc -c .github/copilot-instructions.md
-wc -c .github/instructions/*.instructions.md
+wc -m .github/copilot-instructions.md 2>/dev/null
+find .github/instructions -type f -name '*.instructions.md' -exec wc -m {} + 2>/dev/null
 ```
 
 Split files over 4,000 characters into two with narrower `applyTo` scopes.
@@ -282,17 +282,14 @@ When Copilot doesn't follow your instructions, work through these steps in order
 
 ### Step 1: Verify file locations
 ```bash
-ls -la .github/copilot-instructions.md
-ls -la .github/instructions/*.instructions.md
+find .github -maxdepth 2 \( -name 'copilot-instructions.md' -o -name '*.instructions.md' \) -print 2>/dev/null
 ```
-Confirm files are in the correct directories.
+Confirm files are in the correct directories. If this prints nothing, the files are missing or in the wrong location.
 
 ### Step 2: Check character counts
 ```bash
-wc -c .github/copilot-instructions.md
-for f in .github/instructions/*.instructions.md; do
-  echo "$f: $(wc -c < "$f") chars"
-done
+wc -m .github/copilot-instructions.md 2>/dev/null
+find .github/instructions -type f -name '*.instructions.md' -exec wc -m {} + 2>/dev/null
 ```
 Any file over 4,000 characters has content being silently dropped.
 
@@ -315,8 +312,12 @@ git log --oneline main -- .github/instructions/
 Verify your glob pattern matches the files being reviewed:
 ```bash
 # Find files matching a glob pattern
-find . -path "./src/components/*.tsx" -type f
-# Compare against your applyTo: "src/components/**/*.{tsx,jsx}"
+python3 - <<'PY'
+from glob import glob
+for path in sorted(glob("src/components/**/*.tsx", recursive=True))[:20]:
+    print(path)
+PY
+# Compare against your applyTo value
 ```
 
 ### Step 6: Check for rule conflicts
@@ -419,9 +420,9 @@ For each existing instruction file, run through this checklist:
 | 1 | Character count | `wc -m < file` | Under 4,000 |
 | 2 | Frontmatter validity | Check first line is `---`, `applyTo` is quoted string | Valid YAML |
 | 3 | File location | File is under `.github/instructions/` (scoped) or `.github/` (root) | Correct directory |
-| 4 | Glob coverage | `find . -path "./<applyTo>" -type f \| wc -l` | Matches intended files |
+| 4 | Glob coverage | `python3` glob count for `<applyTo>` | Matches intended files |
 | 5 | SMSA per rule | Each rule is Specific, Measurable, Actionable, Semantic | All four criteria met |
-| 6 | Linter overlap | `grep -r "rule-keyword" .eslintrc* biome.json golangci*` | No matches (not duplicated) |
+| 6 | Linter overlap | Grep the actual linter configs found in the repo scan for `rule-keyword` | No matches (not duplicated) |
 | 7 | Cross-file conflicts | Compare rules across files with overlapping `applyTo` | No contradictions |
 
 ### Rating scale
@@ -452,23 +453,32 @@ Always verify glob patterns match the intended files before committing instructi
 
 ```bash
 # Test a specific applyTo pattern
-find . -path "./src/api/**/*.ts" -type f | head -20
+python3 - <<'PY'
+from glob import glob
+for path in sorted(glob("src/api/**/*.ts", recursive=True))[:20]:
+    print(path)
+PY
 
 # Count matches
-find . -path "./src/api/**/*.ts" -type f | wc -l
+python3 - <<'PY'
+from glob import glob
+print(len(glob("src/api/**/*.ts", recursive=True)))
+PY
 ```
 
 ### Brace expansion verification
 
 ```bash
-# Test brace expansion patterns
-find . -path "./src/**/*.ts" -type f -o -path "./src/**/*.tsx" -type f | head -20
-
-# Note: find does not support {ts,tsx} brace expansion natively.
-# Use -o (OR) to combine multiple -path patterns instead.
+# Test brace-aware patterns with Python globbing
+python3 - <<'PY'
+from glob import glob
+paths = sorted(set(glob("src/**/*.ts", recursive=True) + glob("src/**/*.tsx", recursive=True)))
+for path in paths:
+    print(path)
+PY
 ```
 
-> **Important:** The `find` command does not support `{ts,tsx}` brace expansion. Use `-path "*.ts" -o -path "*.tsx"` to verify patterns that use brace expansion in `applyTo`. GitHub Copilot's glob engine does support brace expansion, but verification with `find` requires the expanded form.
+> **Important:** Prefer a brace-aware glob checker such as Python globbing for local verification. `find -path` is not a faithful validator for GitHub's `applyTo` syntax.
 
 ### Coverage analysis
 
@@ -478,7 +488,11 @@ find . -path "./src/**/*.ts" -type f -o -path "./src/**/*.tsx" -type f | head -2
 find . \( -type f -name "*.ts" \) -o \( -type f -name "*.tsx" \) | sort > /tmp/all-files.txt
 
 # Step 2: List files covered by each instruction file's applyTo
-find . -path "./src/api/**/*.ts" -type f | sort > /tmp/covered.txt
+python3 - <<'PY' | sort > /tmp/covered.txt
+from glob import glob
+for path in glob("src/api/**/*.ts", recursive=True):
+    print(path)
+PY
 
 # Step 3: Find uncovered files
 comm -23 /tmp/all-files.txt /tmp/covered.txt
@@ -496,8 +510,16 @@ When two instruction files have overlapping `applyTo` patterns, their rules are 
 
 ```bash
 # For each pair of instruction files, check for overlap
-find . -path "./pattern-A" -type f | sort > /tmp/scope-a.txt
-find . -path "./pattern-B" -type f | sort > /tmp/scope-b.txt
+python3 - <<'PY' | sort > /tmp/scope-a.txt
+from glob import glob
+for path in glob("pattern-A", recursive=True):
+    print(path)
+PY
+python3 - <<'PY' | sort > /tmp/scope-b.txt
+from glob import glob
+for path in glob("pattern-B", recursive=True):
+    print(path)
+PY
 comm -12 /tmp/scope-a.txt /tmp/scope-b.txt  # files in both scopes
 ```
 

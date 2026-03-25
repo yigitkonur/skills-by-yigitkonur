@@ -38,12 +38,12 @@ A single widget definition works with both ChatGPT (Apps SDK) and MCP Apps-compa
 ### Scaffold with create-mcp-use-app
 
 ```bash
-npx create-mcp-use-app my-app --template mcp-apps
+npx create-mcp-use-app my-app --template mcp-apps --no-skills
 cd my-app
-npm run dev
+npx mcp-use dev
 ```
 
-This creates a project pre-configured for widget development with React, Tailwind, and all necessary tooling.
+This creates a project pre-configured for widget development with React, Tailwind, and all necessary tooling. For the first verification pass, run `npm run build`, `npx mcp-use generate-types`, then `npx mcp-use dev`.
 
 ### Manual Setup
 

@@ -273,7 +273,7 @@ The behavior depends on which method you use:
 | Method | Signature | Returns | Description |
 |---|---|---|---|
 | `stream` | `agent.stream(prompt: string)` or `agent.stream({ prompt, maxSteps?, schema? })` | `AsyncGenerator<AgentStep, string, void>` | Step-by-step streaming; each yielded `AgentStep` has `action.tool` and `action.toolInput`. When done, the generator return value is the final string. |
-| `prettyStreamEvents` | `agent.prettyStreamEvents({ prompt, maxSteps?, schema? })` | `AsyncGenerator<void, string, void>` | CLI-friendly streaming with automatic syntax highlighting and formatting |
+| `prettyStreamEvents` | `agent.prettyStreamEvents(prompt: string)` or `agent.prettyStreamEvents({ prompt, maxSteps?, schema? })` | `AsyncGenerator<void, string, void>` | CLI-friendly streaming with automatic syntax highlighting and formatting. Plain-string form is deprecated; prefer the options object. |
 | `streamEvents` | `agent.streamEvents(prompt: string)` or `agent.streamEvents({ prompt, schema? })` | `AsyncGenerator<StreamEvent, void, void>` | Raw LangChain event stream; check `event.event` to handle structured output events |
 
 ### `streamEvents()` structured output events
@@ -697,4 +697,3 @@ await agent.run({ prompt: "List the items", schema });
 ```typescript
 await agent.run({ prompt: "Return JSON only with items[]", schema });
 ```
-

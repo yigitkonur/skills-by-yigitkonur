@@ -34,7 +34,7 @@ Do not use this skill for:
 
 ## Artifact output
 
-Intermediate artifacts (workspace scan, comparison table, success criteria) appear in conversation output as they are produced — show each one at the step that generates it. Persistent artifacts (`skills.markdown`, final SKILL.md, reference files) are written to disk in the target skill directory.
+Intermediate artifacts (workspace scan, comparison table, success criteria) appear in conversation output as they are produced — show each one at the step that generates it. Persistent artifacts (`skills.markdown`, final SKILL.md, reference files) live together in the draft skill directory. Default that directory to `skills/<skill-name>/`; if that path is not writable yet, stage the whole skill folder elsewhere and move it into `skills/<skill-name>/` before declaring done.
 
 ## Required workflow
 
@@ -61,18 +61,19 @@ If the skill enhances an MCP, also read `references/patterns/mcp-enhancement.md`
 ### 3. Capture local evidence first
 
 - Produce a tree-style inventory of the target workspace.
-- Read the current `SKILL.md` fully — trigger boundary, workflow, decision rules, output contract, guardrails.
+- If you are revising an existing skill, read the current `SKILL.md` fully — trigger boundary, workflow, decision rules, output contract, guardrails.
+- If you are creating a new skill, read the closest 1-2 local skills plus the naming/format references before drafting so you inherit repo conventions instead of inventing them.
 - Read every file in `references/` that is relevant to the task: open each file, read the contents, and note what it covers and where it has gaps.
 - Note the reference file naming scheme, nesting depth, and whether routing in `SKILL.md` matches what actually exists on disk.
 - Note repo conventions, existing reference coverage, and obvious gaps before widening scope.
 
-> ⚠️ **Known issue:** Steps 3–4a are the highest-risk portion of execution. Use the reference routing table to load only 3–5 relevant files per step, not all 22. See `references/authoring/reference-file-structure.md` for loading discipline guidelines.
+> Tip: Steps 3–4a are easy to overload. Use the reference routing table to load only 3–5 relevant files per step, not all 22. See `references/authoring/reference-file-structure.md` for loading discipline guidelines.
 
 ### 4. Run remote research when the job is non-trivial
 
 Only execute this step if step 1 classified the job as **Full research path**. Skip to step 7 for local-only work (Steps 4–6 produce research artifacts that local-only changes don’t need).
 
-> ⚠️ **Steering:** Downloaded skills frequently violate this skill’s own quality standards (line counts >1000, templates inline, no references). Treat quality problems as signal for your “avoid” column—see `references/research/source-verification.md`.
+> Tip: Downloaded skills frequently violate this skill’s own quality standards (line counts >1000, templates inline, no references). Treat quality problems as signal for your “avoid” column—see `references/research/source-verification.md`.
 
 - Read `references/research-workflow.md` for the complete research protocol.
 - Verify `skill-dl` is available: `skill-dl --version`. If missing, see `references/remote-sources.md` for installation. If unavailable and installation is not possible, use the `skills-as-context-search-skills` and `skills-as-context-get-skill-details` tools (requires the skills.sh MCP server), or search GitHub manually for repositories containing SKILL.md files.
@@ -80,7 +81,7 @@ Only execute this step if step 1 classified the job as **Full research path**. S
 - Use `skill-dl` to download selected candidates, or run `bash references/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
 - See `references/remote-sources.md` for more `skill-dl` usage patterns and download options.
 - Prefer a few diverse, relevant sources over many near-duplicates.
-- Create `skills.markdown` in the workspace root summarizing what was downloaded, what was shortlisted, and why, before moving on.
+- Create `skills.markdown` next to the draft `SKILL.md` in the draft skill directory, summarizing what was downloaded, what was shortlisted, and why, before moving on.
 
 ### 4a. Read the downloaded corpus thoroughly
 
@@ -114,11 +115,12 @@ Before drafting, write down what success looks like:
 ### 7. Synthesize the repo-fit result
 
 - Rewrite for the current repo and task.
+- Default final path: `skills/<skill-name>/`. If you staged the draft elsewhere, move the entire folder into `skills/<skill-name>/` before declaring done.
 - Keep `SKILL.md` lean: trigger boundary, workflow, decision rules, output contract, guardrails, and reference routing.
 - Reuse existing references instead of duplicating them.
 - Add new files only when clearly necessary and explicitly routed.
 - Read `references/authoring/description-engineering.md` to craft the description field.
-- During drafting, focus on the key constraints: SKILL.md under 500 lines, every reference file routed, description follows the formula. Run the full `references/checklists/master-checklist.md` audit in Step 9.
+- During drafting, focus on the key constraints: SKILL.md under 500 lines, every reference file routed, description follows the formula. Run the full `references/checklists/master-checklist.md` review in Step 9.
 
 ### 8. Test the skill
 
@@ -126,7 +128,7 @@ Before drafting, write down what success looks like:
 - **Functional test:** Run at least one complete functional test of the primary workflow end-to-end.
 - **Self-check:** Ask Claude "When would you use [skill-name]?" and verify the answer matches your intent.
 
-> ⚠️ **Steering:** For a NEW skill, install the draft to `~/.claude/skills/[name]/` before testing triggers. Trigger tests fail silently if the skill isn’t loaded. For REVISIONS, test against the currently installed version.
+> Tip: For a NEW skill, install the draft to the active runtime's skill directory before testing triggers. Trigger tests fail silently if the skill isn’t loaded. For REVISIONS, test against the currently installed version. If the runtime forbids writing to the installed skill directory, run manual trigger review plus a functional workflow test, report the installation block explicitly, and do not claim live trigger coverage.
 
 ### 9. Finish with repo-fit and cleanup checks
 
