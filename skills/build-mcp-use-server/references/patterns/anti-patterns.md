@@ -93,7 +93,7 @@ const logger = winston.createLogger({
 });
 
 // ✅ GOOD — built-in Logger, cross-environment
-import { Logger } from "mcp-use/server";
+import { Logger } from "mcp-use";  // Logger is from root package, NOT mcp-use/server
 
 Logger.configure({ level: "info", format: "minimal" });
 const logger = Logger.get("my-component");

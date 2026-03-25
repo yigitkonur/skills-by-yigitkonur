@@ -294,13 +294,7 @@ Annotations are behavioral hints that clients use to present confirmation dialog
 | `idempotentHint` | `boolean` | `false` | Repeated calls with same args produce same result (only meaningful when `readOnlyHint` is `false`) |
 | `openWorldHint` | `boolean` | `true` | Tool interacts with external/unbounded systems |
 
-Additional custom annotations supported by mcp-use:
-
-| Annotation | Type | Purpose |
-|---|---|---|
-| `requiresAuth` | `boolean` | Tool requires authenticated session |
-| `rateLimit` | `string` | Rate limit description (e.g., `"10/minute"`) |
-| `deprecated` | `boolean` | Tool is deprecated; clients may hide or warn |
+These are the only standard MCP annotation fields. Do NOT use `requiresAuth`, `rateLimit`, or `deprecated` — they are not part of the MCP SDK `ToolAnnotations` type.
 
 ```typescript
 // Read-only search tool                      // Destructive delete tool
@@ -309,8 +303,7 @@ annotations: {                                annotations: {
   destructiveHint: false,                       destructiveHint: true,
   idempotentHint: true,                         idempotentHint: false,
   openWorldHint: false,                         openWorldHint: false,
-}                                               requiresAuth: true,
-                                              }
+}                                             }
 ```
 
 > **Guideline:** Set `readOnlyHint: true` on every read/search/get tool. Set `destructiveHint: true` on delete/remove tools. Clients may use these to prompt for confirmation.

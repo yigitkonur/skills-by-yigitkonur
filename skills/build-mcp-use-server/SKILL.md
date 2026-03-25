@@ -7,7 +7,7 @@ description: Use skill if you are building MCP servers with the mcp-use TypeScri
 
 Build production-grade MCP servers with the `mcp-use` TypeScript library (v1.21+, Node 18+). The library wraps the official `@modelcontextprotocol/sdk` with a streamlined API: `MCPServer` constructor, object-first registration methods, Zod-based schemas, 15 response helpers (`text()`, `object()`, `markdown()`, `error()`, etc.), built-in OAuth, session stores, and HMR dev server.
 
-All imports come from `mcp-use/server`. Never import from `@modelcontextprotocol/sdk` directly.
+All server-side imports come from `mcp-use/server`. Never import from `@modelcontextprotocol/sdk` directly. Exception: `Logger` is exported from `mcp-use` (root package), NOT from `mcp-use/server`.
 
 ---
 
@@ -192,27 +192,28 @@ For the complete ServerConfig interface with all CORS fields, CSP, middleware in
 
 | Method | Signature | Purpose |
 |--------|-----------|---------|
-| `listen` | `listen(port?: number): Promise<void>` | Start server (port = HTTP, no port = stdio) |
+| `listen` | `listen(port?: number): Promise<void>` | Start HTTP server (default port 3000) |
 | `close` | `close(): Promise<void>` | Stop HTTP listener (graceful, waits for keep-alive drain) |
 | `forceClose` | `forceClose(): Promise<void>` | Force-close all connections immediately |
-| `terminate` | `terminate(sessionId: string): Promise<void>` | Kill a specific session |
-| `getHandler` | `getHandler(options?): RequestHandler` | Serverless handler (Supabase/CF/Deno) |
+| `getHandler` | `getHandler(options?): Promise<(req: Request) => Promise<Response>>` | Serverless handler (Supabase/CF/Deno) |
 | `use` | `use(pathOrMiddleware, ...middleware): void` | Add Hono middleware |
-| `get` / `post` / `route` | Standard Hono routing | Custom HTTP endpoints alongside MCP |
+| `get` / `post` / `put` / `delete` / `patch` / `all` | Standard Hono routing | Custom HTTP endpoints alongside MCP |
 | `tool` | `tool(options, handler): this` | Register a tool (chainable) |
 | `resource` | `resource(options, callback): this` | Register a static resource |
 | `resourceTemplate` | `resourceTemplate(options, callback): this` | Register a dynamic resource with URI template |
 | `uiResource` | `uiResource(options): this` | Register a UI resource |
 | `prompt` | `prompt(options, handler): this` | Register a prompt template |
-| `proxy` | `proxy(config): Promise<void>` | Compose upstream MCP servers |
-| `sendNotification` | `sendNotification(method, params): Promise<void>` | Broadcast to all clients |
-| `sendNotificationToSession` | `sendNotificationToSession(sessionId, method, params): Promise<boolean>` | Notify one session |
+| `proxy` | `proxy(config, options?): Promise<void>` | Compose upstream MCP servers (`options: { namespace? }`) |
+| `sendNotification` | `sendNotification(method, params?): Promise<void>` | Broadcast to all clients |
+| `sendNotificationToSession` | `sendNotificationToSession(sessionId, method, params?): Promise<boolean>` | Notify one session |
 | `getActiveSessions` | `getActiveSessions(): string[]` | List live session IDs |
 | `sendToolsListChanged` | `sendToolsListChanged(): Promise<void>` | Notify clients tools changed |
 | `sendResourcesListChanged` | `sendResourcesListChanged(): Promise<void>` | Notify clients resources changed |
 | `sendPromptsListChanged` | `sendPromptsListChanged(): Promise<void>` | Notify clients prompts changed |
 | `onRootsChanged` | `onRootsChanged(cb): void` | React to client root changes |
-| `listRoots` | `listRoots(sessionId): Promise<Root[] \| undefined>` | Query client roots |
+| `listRoots` | `listRoots(sessionId): Promise<{ uri: string; name?: string }[] \| null>` | Query client roots (null if unsupported) |
+
+> **Note:** `listen()` without a port defaults to `3000` (not stdio). There is no stdio mode in `listen()` — stdio transport is client-side only.
 
 ### Tool registration
 
@@ -225,7 +226,7 @@ server
       schema: z.object({
         param: z.string().describe("What this parameter means"),
       }),
-      annotations: { requiresAuth: true, rateLimit: "10/minute" },
+      annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
     },
     async (args, ctx) => text("result")
   )
@@ -236,23 +237,25 @@ server
 
 ```typescript
 interface ToolContext {
-  log(level: ToolLogLevel, message: string, loggerName?: string): Promise<void>;
-  sendNotification(method: string, params: any): Promise<void>;
-  reportProgress(current: number, total?: number, message?: string): Promise<void>;
+  log(level: "debug"|"info"|"notice"|"warning"|"error"|"critical"|"alert"|"emergency", message: string, logger?: string): Promise<void>;
+  sendNotification(method: string, params?: Record<string, unknown>): Promise<void>;
+  sendNotificationToSession(sessionId: string, method: string, params?: Record<string, unknown>): Promise<boolean>;
+  reportProgress?(current: number, total?: number, message?: string): Promise<void>;  // optional
   elicit(message: string, schemaOrUrl: ZodSchema | string, options?: ElicitOptions): Promise<ElicitResult>;
   sample(promptOrParams: string | CreateMessageRequestParams, options?: SampleOptions): Promise<CreateMessageResult>;
-  auth?: AuthUser;
   session: { sessionId: string };
   client: {
-    info(): { name: string; version: string };
+    info(): { name?: string; version?: string };  // both fields optional
     can(capability: string): boolean;
     capabilities(): Record<string, any>;
     supportsApps(): boolean;
-    extension(key: string): any;
+    extension(id: string): Record<string, any> | undefined;
     user(): UserContext | undefined;
   };
 }
 ```
+
+> `reportProgress` is optional — check before calling. `auth` is NOT a formal ToolContext field; it's injected dynamically when OAuth is configured.
 
 For the full ToolOptions interface (including widget field, _meta, all annotation keys), all ctx method signatures, UserContext fields, and tool design best practices, read `references/guides/tools-and-schemas.md`.
 
@@ -444,14 +447,14 @@ Each reference file below contains the full, fact-checked API documentation for 
 | Path traversal in file tools | Validate with `path.resolve()` + prefix check against allowed root |
 | `fs.readFileSync()` in handlers | Use `fs.promises` async API — sync I/O blocks the event loop |
 | No CORS config on HTTP servers | Set `cors: { origin: [...] }` or `allowedOrigins` in constructor |
-| Using SSE for new servers | Use httpStream (`server.listen(port)`) — SSE is legacy |
+| Using raw SSE transport from old MCP spec | Use `server.listen(port)` — mcp-use mounts both `/mcp` and `/sse` as StreamableHTTP aliases |
 | Notifications in stateless mode | Notifications require persistent sessions (SSE/StreamableHTTP) |
 | Elicit without capability check | Guard with `ctx.client.can("elicitation")` before `ctx.elicit()` |
 | Using `ctx.log("warn", ...)` | Use `ctx.log("warning", ...)` — the correct level name is "warning" |
-| `completable()` on tool() schema | `completable()` only works with `prompt()` — use `callbacks.complete` for `resourceTemplate()` |
+| `completable()` on tool() schema | `completable()` works with `prompt()` and `resourceTemplate()` schemas — NOT with `tool()` schemas |
 | Passing Buffer to `image()` | `image()` takes a base64 **string**, not a Buffer — convert with `.toString("base64")` first |
 | `audio()` used sync with file path | `audio(filePath)` returns a Promise when given a path — must be awaited |
-| Missing `description` on prompt | `description` is required in PromptOptions, not optional |
+| Missing `description` on prompt | `description` is optional but strongly recommended — LLMs use it to select prompts |
 
 ---
 
@@ -462,7 +465,7 @@ Each reference file below contains the full, fact-checked API documentation for 
 | Import from `mcp-use/server` | Import from `@modelcontextprotocol/sdk` directly |
 | `server.tool()` with object-first form and Zod schema | Build JSON Schema objects manually |
 | Return `text()`, `object()`, `error()` | Return `{ content: [{ type: "text", text: "..." }] }` |
-| `server.listen(port)` for HTTP, `server.listen()` for stdio | Create `StdioServerTransport` manually |
+| `server.listen(port)` for HTTP (default 3000 if omitted) | Create `StdioServerTransport` manually |
 | `oauthAuth0Provider()` / `oauthKeycloakProvider()` for auth | Build custom OAuth middleware from scratch |
 | `ctx.log("warning", ...)` for tool logging | `ctx.log("warn", ...)` — wrong level name |
 | `ctx.elicit()` for user input | Build custom input collection mechanisms |
@@ -480,10 +483,10 @@ Each reference file below contains the full, fact-checked API documentation for 
 These are hard rules. Violating any of them produces broken or insecure servers:
 
 - Never import from `@modelcontextprotocol/sdk` directly — use `mcp-use/server` exports.
-- Never use `console.log()` in stdio servers — it corrupts the protocol stream. Use `console.error()`.
+- Never use `console.log()` in stdio servers — it corrupts the protocol stream. Use `console.error()` or `ctx.log()`. (HTTP servers can use `console.log()` safely.)
 - Never return raw API responses to the LLM — always curate for agent consumption.
 - Never skip `.describe()` on Zod schema fields — it is not optional for MCP tools.
-- Never use `z.any()` or `z.unknown()` — always use specific types.
+- Avoid `z.any()` or `z.unknown()` in tool schemas — LLMs need `.describe()` for argument selection. Use specific types. (Exception: generic passthrough tools where schema is truly unknown.)
 - Never hardcode secrets — use environment variables.
 - Never use synchronous I/O (`readFileSync`) in tool handlers — always use async.
 - Never skip graceful shutdown for HTTP servers — register SIGTERM/SIGINT signal handlers.

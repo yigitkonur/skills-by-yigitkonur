@@ -67,9 +67,9 @@ import {
 | `javascript` | `javascript(content: string)` | JavaScript response |
 | `object` | `object(obj: any)` | JSON-serialised object |
 | `array` | `array(items: any[])` | JSON array |
-| `image` | `image(data: Buffer \| Uint8Array, mime: string)` | Binary image |
-| `audio` | `audio(data: Buffer \| Uint8Array, mime: string)` | Binary audio |
-| `binary` | `binary(data: Buffer \| Uint8Array, mime: string)` | Generic binary payload |
+| `image` | `image(data: string, mimeType?: string)` | Base64-encoded image (default: `image/png`) |
+| `audio` | `audio(dataOrPath: string, mimeType?: string)` | Base64 string or file path (path returns Promise) |
+| `binary` | `binary(base64Data: string, mimeType: string)` | Base64-encoded binary data |
 | `mix` | `mix(...responses: Response[])` | Composite response with multiple items |
 
 ### Resource Templates
@@ -452,7 +452,7 @@ server.resourceTemplate(
   },
   async (uri, { id }) => {
     const pdfBuffer = await generateInvoicePdf(id);
-    return binary(pdfBuffer, "application/pdf");
+    return binary(pdfBuffer.toString("base64"), "application/pdf");
   }
 );
 ```
@@ -922,9 +922,9 @@ v2.0 enforces stricter URI parsing. Ensure your URIs are valid URLs (e.g., must 
 
 ### Binary Helper Signatures
 
-`image()`, `audio()`, and `binary()` now accept `Buffer | Uint8Array` directly — **do not** call `.toString("base64")` before passing data.
-- ❌ `image(buffer.toString("base64"), "image/png")`
-- ✅ `image(buffer, "image/png")`
+`image()`, `audio()`, and `binary()` accept base64 **strings** — you MUST call `.toString("base64")` on Buffers before passing.
+- ❌ `image(buffer, "image/png")` — wrong type, Buffer is not accepted
+- ✅ `image(buffer.toString("base64"), "image/png")` — correct, base64 string
 
 ### Deprecated Notification Method
 
