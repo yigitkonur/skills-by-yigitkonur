@@ -24,7 +24,7 @@ Test and debug any MCP server using the `mcpc` CLI. Covers stdio, HTTP stateless
 - Building an MCP server from scratch (use `build-mcp-use-server`)
 - Building an MCP client application (use `build-mcp-use-client`)
 - Auditing MCP server code quality (use `optimize-mcp-server`)
-- Testing Claude skills (use `test-skill-quality`)
+- Testing Claude skills (use `enhance-skill-by-derailment`)
 
 ## Prerequisites
 
