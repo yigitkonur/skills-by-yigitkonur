@@ -13,6 +13,7 @@ Test and debug any MCP server using the `mcpc` CLI. Covers stdio, HTTP stateless
 
 - Testing an MCP server's tools, resources, or prompts via CLI
 - Debugging MCP transport issues (stdio, SSE, streamable HTTP)
+- Debugging OAuth login failures with `mcpc login` (port conflicts, DCR, Supabase traps)
 - Validating MCP server behavior before deployment
 - Inspecting what an MCP server exposes (capabilities, schemas)
 - Writing automated test scripts for MCP servers
@@ -374,6 +375,194 @@ mcpc @debug tools-list --verbose
 MCPC_VERBOSE=1 mcpc @debug tools-list
 ```
 
+## OAuth login deep dive
+
+`mcpc login <server>` triggers a multi-stage OAuth 2.1 flow. When it works, it is seamless. When any stage fails, you need to know which stage broke and why.
+
+### Full OAuth flow — what mcpc actually does
+
+```
+mcpc login https://mcp.example.com/mcp
+
+ 1. GET https://mcp.example.com/mcp/.well-known/oauth-protected-resource
+    → Response includes: { "authorization_servers": ["https://mcp.example.com"] }
+    → The authorization server MAY differ from the MCP server URL
+
+ 2. GET https://mcp.example.com/.well-known/oauth-authorization-server
+    → Response includes: authorization_endpoint, token_endpoint, registration_endpoint, ...
+    → FAILS HERE if registration_endpoint is missing (see F-03 below)
+
+ 3. POST registration_endpoint (Dynamic Client Registration — RFC 7591)
+    → Sends: { "client_name": "mcpc", "redirect_uris": ["http://127.0.0.1:PORT/callback"], ... }
+    → Receives: { "client_id": "...", "client_secret": "..." }
+
+ 4. Start local HTTP callback server
+    → Scans ports 8000–8099, binds 127.0.0.1:PORT
+    → Raw Node.js http.createServer() — NOT Hono, NOT Express
+    → Only handles /callback path; everything else returns plain text "Not found"
+
+ 5. Open browser to authorization_endpoint
+    → Includes: client_id, redirect_uri, code_challenge (PKCE S256), state, scope
+
+ 6. User authenticates in browser
+    → Provider login (Google, GitHub, etc.), consent screen, MFA
+
+ 7. Browser redirects to http://127.0.0.1:PORT/callback?code=AUTH_CODE&state=STATE
+    → mcpc validates state parameter
+    → If this redirect never arrives, check port conflicts (see F-02 below)
+
+ 8. POST token_endpoint (code exchange)
+    → Sends: grant_type=authorization_code, code, redirect_uri, code_verifier, client_id, client_secret
+    → Receives: access_token, refresh_token, id_token, expires_at
+
+ 9. Store credentials
+    → Tokens → OS keychain (auth-profile:HOST:PROFILE:tokens)
+    → Client info → OS keychain (auth-profile:HOST:PROFILE:client)
+    → Profile metadata → ~/.mcpc/profiles.json
+
+10. Shutdown callback server
+```
+
+### Identifying which stage failed
+
+| Symptom | Failed stage | Root cause |
+|---|---|---|
+| "Incompatible auth server: does not support dynamic client registration" | Stage 2-3 | `registration_endpoint` missing from OAuth metadata |
+| Browser opens but callback never arrives | Stage 7 | Port conflict — another process intercepted the callback |
+| `{"detail":"Not Found"}` in browser (JSON) | Stage 7 | OrbStack/Docker/other process on port 8000+ |
+| `Not found` in browser (plain text) | Stage 7 | mcpc received request but on wrong path (not `/callback`) |
+| "Token exchange failed" or 400 from token endpoint | Stage 8 | Token endpoint expects different body format (JSON vs form) or different parameter names |
+| Browser redirects to wrong URL (not localhost) | Stage 6-7 | Redirect URL not whitelisted in OAuth provider dashboard |
+
+### mcpc callback server internals
+
+Understanding the callback server helps distinguish mcpc errors from port conflict errors:
+
+- **Runtime:** Raw Node.js `http.createServer()` — not Hono, not Express, not Fastify
+- **Bind address:** `127.0.0.1` (IPv4 only, not `0.0.0.0`, not `::1`)
+- **Port scanning:** Tries 8000, then 8001, 8002, ... up to 8099
+- **Port test:** Attempts `bind('127.0.0.1', port)` — if bind succeeds, mcpc considers the port free
+- **Handled paths:** `/callback` only — returns HTML on success, error page on failure
+- **404 format:** Plain text `Not found` (NOT JSON)
+- **Lifetime:** Starts before browser opens, shuts down after receiving the callback code
+
+**Key diagnostic:** If you see JSON in the browser's callback response (e.g., `{"detail":"Not Found"}`), the response is NOT from mcpc. Something else is listening on that port.
+
+### Port conflict detection (CRITICAL)
+
+mcpc's port availability check binds `127.0.0.1:PORT`. This check can pass even when another process binds `0.0.0.0:PORT` (wildcard), because the kernel treats these as non-conflicting for `bind()`. However, when the browser resolves `localhost`, the wildcard binding captures the connection first.
+
+**Known conflicting software:**
+
+| Software | Ports used | Bind address | Why it conflicts |
+|---|---|---|---|
+| OrbStack (Docker for macOS) | 8000, 8001 | `0.0.0.0` (`vcom-tunnel`) | Wildcard bind grabs localhost traffic |
+| Docker Desktop | Varies | `0.0.0.0` (port-mapped containers) | Same wildcard bind issue |
+| Python dev servers | 8000, 8080 | `0.0.0.0` (default) | Django/Flask defaults |
+| PHP built-in server | 8000 | `0.0.0.0` or `localhost` | Common dev port |
+
+**Always check ports before `mcpc login`:**
+
+```bash
+# Check for anything listening on mcpc's port range
+lsof -i :8000-8010 | grep LISTEN
+
+# If OrbStack is running, expect output like:
+# com.docke  PID user  IPv4 ... TCP *:8000 (LISTEN)
+# com.docke  PID user  IPv4 ... TCP *:8001 (LISTEN)
+
+# Fix: stop OrbStack, or stop its vcom-tunnel, or kill the conflicting processes
+# Then retry mcpc login
+```
+
+If you cannot stop the conflicting process, mcpc will scan upward from 8000. Ensure at least one port in 8000-8099 is truly free (no wildcard listeners).
+
+### Supabase-specific OAuth traps
+
+When the MCP server uses mcp-use with Supabase as the OAuth provider, the following incompatibilities arise between standard OAuth 2.1 (which mcpc implements) and Supabase's auth API:
+
+**Trap 1: Missing `registration_endpoint`**
+Supabase does not implement Dynamic Client Registration (RFC 7591). If your MCP server's `oauth-protected-resource` metadata points to Supabase directly as the authorization server, mcpc will fail with "does not support dynamic client registration." The fix is server-side: the MCP server must host its own DCR endpoint and include it in its `/.well-known/oauth-authorization-server` metadata.
+
+**Trap 2: `provider` parameter required**
+Supabase's `/auth/v1/authorize` requires a `provider=google` (or other social provider) query parameter. Standard OAuth clients do not send this. The MCP server's authorize proxy must inject this parameter.
+
+**Trap 3: `redirect_uri` vs `redirect_to`**
+Supabase uses `redirect_to` instead of the standard `redirect_uri` parameter. Without mapping, Supabase ignores the redirect and falls back to the Dashboard's configured "Site URL." The MCP server's authorize proxy must rename this parameter.
+
+**Trap 4: Don't forward `client_id` to Supabase**
+If the MCP server's DCR-generated `client_id` is forwarded to Supabase's authorize endpoint, Supabase passes it through to Google, which rejects it as an unknown client. The MCP server should strip `client_id` before proxying to Supabase.
+
+**Trap 5: Token exchange needs JSON body + `apikey` header**
+Supabase's `/auth/v1/token?grant_type=pkce` expects:
+- Body: JSON (`{"auth_code": "...", "code_verifier": "..."}`) — NOT `application/x-www-form-urlencoded`
+- Header: `apikey: <supabase-anon-key>` — required on every Supabase API call
+- Parameter name: `auth_code` (not `code`)
+The MCP server's token endpoint proxy must handle all three transformations.
+
+**Trap 6: Redirect URL must be whitelisted**
+In Supabase Dashboard > Authentication > URL Configuration > Redirect URLs, add: `http://localhost:*/**`
+Without this, Supabase silently redirects to the Site URL instead of the mcpc callback.
+
+### mcp-use deploy trap
+
+`mcp-use deploy` clones the repository from GitHub — it does NOT upload local files. If you fix an OAuth endpoint in your MCP server code, you must `git commit && git push` before deploying. Uncommitted changes will not be deployed. This wastes deploy cycles when iterating on OAuth fixes.
+
+## OAuth debugging checklist
+
+Run through this checklist sequentially when `mcpc login` fails. Each step depends on the previous one succeeding.
+
+**Pre-flight:**
+
+- [ ] `mcpc --version` shows 0.1.10+ (OAuth support)
+- [ ] `lsof -i :8000-8010 | grep LISTEN` shows no conflicting listeners (especially OrbStack `vcom-tunnel`)
+- [ ] If OrbStack is running: stop it or free ports 8000-8001
+
+**Stage 1 — Metadata discovery:**
+
+- [ ] `curl -s https://YOUR-SERVER/.well-known/oauth-protected-resource | jq .` returns valid JSON with `authorization_servers` array
+- [ ] The authorization server URL in that response is correct (may be the same server or a different one)
+- [ ] `curl -s https://AUTH-SERVER/.well-known/oauth-authorization-server | jq .` returns valid JSON
+- [ ] Response includes `registration_endpoint` (required for mcpc's DCR)
+- [ ] Response includes `authorization_endpoint` and `token_endpoint`
+
+**Stage 2 — Dynamic Client Registration:**
+
+- [ ] `curl -s -X POST https://AUTH-SERVER/register -H 'Content-Type: application/json' -d '{"client_name":"test","redirect_uris":["http://127.0.0.1:8000/callback"]}' | jq .` returns `client_id`
+- [ ] If 404 or error: the server does not implement DCR — fix server-side
+
+**Stage 3 — Callback server:**
+
+- [ ] After running `mcpc login`, verify mcpc prints "Open browser" prompt (callback server is ready)
+- [ ] `lsof -i :8000-8010 | grep node` shows mcpc's Node process listening (not OrbStack or Docker)
+- [ ] `curl -s http://127.0.0.1:8000/test` returns plain text `Not found` (confirms mcpc is on that port, not another process)
+
+**Stage 4 — Browser authorization:**
+
+- [ ] Browser opens to the correct authorization URL
+- [ ] If using Supabase: URL includes `provider=google` (or appropriate provider)
+- [ ] After authentication, browser redirects to `http://127.0.0.1:PORT/callback?code=...`
+- [ ] If browser redirects to production URL instead of localhost: add `http://localhost:*/**` to Supabase Redirect URLs
+
+**Stage 5 — Token exchange:**
+
+- [ ] mcpc reports "Login successful" in terminal
+- [ ] If token exchange fails: check server logs for the token endpoint — common issues are JSON vs form-urlencoded body, missing `apikey` header (Supabase), wrong parameter names (`auth_code` vs `code`)
+- [ ] `mcpc --json | jq '.profiles'` shows the new profile
+
+**Stage 6 — Connection test:**
+
+- [ ] `mcpc https://YOUR-SERVER connect @test` succeeds
+- [ ] `mcpc @test tools-list` returns tools
+- [ ] `mcpc @test close`
+
+**If deploying server fixes during debugging:**
+
+- [ ] Changes are committed: `git status` shows clean working tree
+- [ ] Changes are pushed: `git push` succeeds
+- [ ] Deploy uses pushed code: `mcp-use deploy` (or equivalent) runs after push
+- [ ] Health check passes: `curl https://YOUR-SERVER/health/live`
+
 ## Common pitfalls
 
 | Pitfall | Fix |
@@ -391,6 +580,14 @@ MCPC_VERBOSE=1 mcpc @debug tools-list
 | Server error but exit code is 0 | Normal — check `jq '.isError'` in JSON, not exit code |
 | "unknown command: completions" | mcpc doesn't support completions/sampling/roots capabilities |
 | Bridge process orphaned | `mcpc clean sessions` clears PIDs and sockets |
+| OrbStack/Docker grabbing callback port | `lsof -i :8000-8010 \| grep LISTEN` before `mcpc login` — stop conflicting listeners |
+| `{"detail":"Not Found"}` JSON in browser callback | NOT mcpc — another process on the port (OrbStack, Docker, dev server). mcpc's 404 is plain text |
+| "Incompatible auth server: does not support dynamic client registration" | Server's OAuth metadata missing `registration_endpoint`. Fix server-side: implement a DCR endpoint |
+| OAuth callback redirects to production URL, not localhost | Add `http://localhost:*/**` to OAuth provider's redirect URL allowlist (Supabase Dashboard > Auth > URL Config) |
+| Supabase token exchange returns 400 | Server must proxy token endpoint: send JSON body (not form-urlencoded), include `apikey` header, map `code` to `auth_code` |
+| Supabase authorize returns "invalid client_id" | Server's authorize proxy must strip the DCR-generated `client_id` before forwarding to Supabase |
+| `mcp-use deploy` doesn't pick up local code changes | `mcp-use deploy` clones from git — commit and push first |
+| OAuth login succeeds but `mcpc connect` gets 401 | Token may have expired during debugging. Re-run `mcpc login` then `mcpc connect` |
 
 ## Reference routing
 
@@ -467,3 +664,4 @@ Do not invent commands for these — they will fail with "unknown command" (exit
 - **Exit codes reflect CLI errors only, NOT MCP server errors.** Exit codes: 0=success or server-side error, 1=bad CLI args, 3=network, 4=auth. Server-side tool errors (validation failures, tool-not-found) return exit code 0 with `isError: true` in JSON. **Always check `isError` in JSON output for server errors — do not rely on exit codes alone.**
 - Before calling any tool, check its schema (`tools-get <name> --json | jq '.inputSchema'`) — if params are arrays, use inline JSON, not `key:=value`
 - Do not run `mcpc clean all` without confirming — it deletes saved OAuth profiles
+- Before running `mcpc login`, always check `lsof -i :8000-8010 | grep LISTEN` for port conflicts — OrbStack, Docker, and dev servers silently intercept OAuth callbacks
