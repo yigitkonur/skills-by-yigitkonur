@@ -29,6 +29,7 @@ async function shutdown(signal: string) {
   }, 10_000);
 
   try {
+    await server.close();  // stop accepting new connections first
     if (dbPool) await dbPool.end();
     if (redisClient) await redisClient.quit();
     clearTimeout(forceExit);
