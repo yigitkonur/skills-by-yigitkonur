@@ -508,6 +508,76 @@ Verify `package.json` includes `"zod": "^4.0.0"` in `dependencies`.
 
 **Prevention**: Always run `mcp-use build` before `mcp-use deploy`. Keep the project in a git repository.
 ---
+### Error: "Incompatible auth server: does not support dynamic client registration"
+
+**When**: A third-party MCP client (mcpc, Claude Desktop) attempts to connect to a server using `oauthSupabaseProvider()`.
+**Cause**: `SupabaseOAuthProvider` defaults to proxy mode, which serves `/.well-known/oauth-authorization-server` metadata WITHOUT a `registration_endpoint`. Clients that require RFC 7591 Dynamic Client Registration (DCR) reject the server immediately. Additionally, `/.well-known/oauth-protected-resource` points to Supabase as the authorization server, and Supabase itself has no DCR endpoint.
+**Fix**:
+1. Add a `server.use("*", ...)` wildcard middleware that intercepts `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource`, returning metadata that points to your own server and includes a `registration_endpoint`.
+2. Add a custom `/oauth/register` POST handler that implements RFC 7591 DCR (can be a simple handler that returns a generated `client_id`).
+3. Add custom `/oauth/authorize` and `/oauth/token` handlers on custom paths (not `/authorize` or `/token` — those are claimed by mcp-use).
+4. See the "Supabase Proxy Mode Pitfalls" section in `authentication.md` for the complete implementation pattern.
+
+**Prevention**: Before choosing `oauthSupabaseProvider()`, verify whether your target MCP clients require DCR. If they do, plan for the custom middleware and handlers from the start.
+---
+### Error: "Unsupported provider: Provider could not be found" (Supabase)
+
+**When**: User is redirected to Supabase's `/auth/v1/authorize` endpoint during the OAuth flow.
+**Cause**: mcp-use's built-in proxy `/authorize` handler forwards the request to Supabase without injecting the `provider` query parameter. Supabase requires `provider=google` (or whichever social provider is configured) to know which OAuth flow to start.
+**Fix**:
+1. Create a custom authorize handler on a path like `/oauth/authorize` that adds `provider=google` to the Supabase redirect URL.
+2. Update your `/.well-known/oauth-authorization-server` metadata to point `authorization_endpoint` at your custom handler.
+3. Also map `redirect_uri` to `redirect_to` (Supabase's expected parameter name).
+
+**Prevention**: Never rely on mcp-use's default proxy authorize handler when using Supabase with a social provider. Always build a custom handler that injects the provider parameter.
+---
+### Error: "bad_json" from Supabase token exchange
+
+**When**: Token exchange (authorization code for access token) against Supabase's `/auth/v1/token` endpoint.
+**Cause**: mcp-use's proxy sends the token request with `Content-Type: application/x-www-form-urlencoded`. Supabase's token endpoint requires `Content-Type: application/json` with the request body as JSON, plus an `apikey` header set to the Supabase anon key.
+**Fix**:
+1. Create a custom `/oauth/token` POST handler.
+2. Send the request to Supabase with `Content-Type: application/json` and include the `apikey` header.
+3. Translate parameters: `code` to `auth_code`, use `grant_type=pkce`, and do NOT forward `client_id`.
+4. Update `/.well-known/oauth-authorization-server` metadata to point `token_endpoint` at your custom handler.
+
+**Prevention**: Always use a custom token handler when integrating with Supabase. The built-in proxy's form-urlencoded encoding is incompatible.
+---
+### Error: "redirect_uri_mismatch" from Google OAuth via Supabase
+
+**When**: Google OAuth callback fails after user authenticates, returning a redirect URI mismatch error.
+**Cause**: Two possible causes:
+1. The MCP client uses a dynamic localhost port for its callback (e.g., `http://localhost:54321/oauth/callback`) that is not listed in Supabase's allowed redirect URLs. Supabase falls back to the configured Site URL instead.
+2. The `client_id` parameter was forwarded to Supabase, which passed it to Google. Google rejects the unknown client ID.
+**Fix**:
+1. In Supabase Dashboard > Authentication > URL Configuration > Redirect URLs, add `http://localhost:*/**` to allow dynamic localhost ports.
+2. Ensure your custom token handler does NOT forward `client_id` to Supabase.
+3. Set the Site URL to your production MCP server URL.
+
+**Prevention**: Always configure Supabase redirect URLs to include localhost wildcards for development/testing. Never forward `client_id` from DCR clients to Supabase.
+---
+### Error: Deployed server missing recent changes (`mcp-use deploy`)
+
+**When**: After deploying, the production server does not reflect recent code changes.
+**Cause**: `mcp-use deploy` clones the repository from GitHub (remote HEAD), not from the local working directory. Uncommitted or unpushed changes are invisible to the deployment process.
+**Fix**:
+1. Commit all changes: `git add . && git commit -m "description"`
+2. Push to remote: `git push`
+3. Then deploy: `mcp-use deploy --name my-server --env-file .env`
+
+**Prevention**: Always run `git status` before deploying to verify all changes are committed and pushed. Add a pre-deploy script that checks for clean working tree.
+---
+### Error: OrbStack port conflict when testing with mcpc
+
+**When**: mcpc fails to start its local OAuth callback server, or connections to the MCP server fail on macOS with OrbStack.
+**Cause**: OrbStack (Docker Desktop alternative for macOS) can bind to ports that conflict with mcpc's dynamic localhost port allocation or with the MCP server's port.
+**Fix**:
+1. Check for port conflicts: `lsof -i :<port>`.
+2. Stop OrbStack temporarily, or configure it to avoid the conflicting port range.
+3. Use a specific port for the MCP server that does not overlap with OrbStack's allocated range.
+
+**Prevention**: Be aware of OrbStack's port allocation when running local MCP development on macOS. Use `lsof` to diagnose unexpected connection failures.
+---
 ## Quick Diagnostic Checklist
 
 | Symptom | First check |
@@ -533,6 +603,12 @@ Verify `package.json` includes `"zod": "^4.0.0"` in `dependencies`.
 | Deploy failure | Build manifest missing; run `mcp-use build` first |
 | `mcp-use build` hangs | Upgrade `@mcp-use/cli` to ≥ v1.21.4 |
 | `zod` not found after upgrade | Add `"zod": "^4.0.0"` to your own `package.json` (peerDep since v1.21.5) |
+| "Incompatible auth server" (DCR) | Supabase proxy mode has no `registration_endpoint`; add custom middleware |
+| "Unsupported provider" (Supabase) | Missing `provider=google` param; use custom authorize handler |
+| "bad_json" (Supabase token) | Supabase needs JSON body + `apikey` header, not form-urlencoded |
+| "redirect_uri_mismatch" (Google) | Add `http://localhost:*/**` to Supabase redirect URLs; don't forward `client_id` |
+| Deploy missing changes | `mcp-use deploy` clones from git; commit + push first |
+| OrbStack port conflict | Check `lsof -i :<port>`; OrbStack may claim ports |
 
 ---
 

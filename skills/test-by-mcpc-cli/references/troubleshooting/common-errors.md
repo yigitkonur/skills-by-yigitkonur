@@ -65,6 +65,11 @@ Server-side errors that return exit code 0 include: tool validation errors (miss
 | "Forbidden (403)" | Insufficient permissions | Check token scopes, contact admin |
 | "Token expired" | OAuth token no longer valid | `mcpc login <server>` to refresh |
 | "Invalid token" | Token malformed or revoked | Re-authenticate: `mcpc logout <server> && mcpc login <server>` |
+| "Incompatible auth server: does not support dynamic client registration" | OAuth metadata missing `registration_endpoint` | Server must implement a DCR endpoint. Common with Supabase-backed servers. |
+| OAuth callback never received (login hangs) | Port conflict: another process intercepted the callback | `lsof -i :8000-8010 \| grep LISTEN` — stop OrbStack, Docker, or dev servers on those ports |
+| Browser callback shows `{"detail":"Not Found"}` (JSON) | OrbStack or other process responded instead of mcpc | mcpc's 404 is plain text. JSON means a foreign process. Free the port and retry. |
+| Browser redirects to production URL, not localhost | Redirect URL not in OAuth provider's allowlist | Add `http://localhost:*/**` to provider (e.g., Supabase Dashboard > Auth > URL Config) |
+| Token exchange returns 400 | Body format or parameter name mismatch | Supabase needs JSON body + `apikey` header + `auth_code` param. Check server's token proxy. |
 
 ## Session state problems
 

@@ -412,3 +412,29 @@ Active sessions using the deleted profile continue working until their current a
 | "Browser open failed" | Headless environment | Use `--header` auth instead of OAuth |
 | Keychain access denied | macOS Keychain prompt denied | Grant access in Keychain Access.app |
 | Credentials lost after `mcpc clean all` | Clean removes profiles | Re-run `mcpc login` after cleaning |
+| "Incompatible auth server: does not support dynamic client registration" | `registration_endpoint` missing from OAuth metadata | Server must implement a DCR endpoint and include it in `/.well-known/oauth-authorization-server` |
+| OAuth callback returns JSON `{"detail":"Not Found"}` | Another process (OrbStack, Docker, dev server) intercepted the callback port | Run `lsof -i :8000-8010 \| grep LISTEN` and stop conflicting listeners before `mcpc login` |
+| Browser redirects to production URL instead of localhost | Redirect URL not whitelisted in OAuth provider | Add `http://localhost:*/**` to provider's redirect URL allowlist |
+| Token exchange returns 400 with Supabase backend | Supabase expects JSON body, `apikey` header, and `auth_code` (not `code`) | Fix server-side token endpoint proxy |
+
+## Port conflict detection for OAuth
+
+mcpc's OAuth callback server binds `127.0.0.1:PORT` (ports 8000-8099). Its port availability check can miss conflicts with processes binding `0.0.0.0:PORT` (wildcard). The most common offender on macOS is OrbStack, which binds `*:8000` and `*:8001` for its `vcom-tunnel` service.
+
+**Always run before `mcpc login`:**
+
+```bash
+lsof -i :8000-8010 | grep LISTEN
+```
+
+**Response format fingerprinting:** mcpc's callback server returns plain text `Not found` for unrecognized paths. If you see JSON responses like `{"detail":"Not Found"}`, the request was intercepted by another process (OrbStack uses FastAPI/Starlette internally).
+
+## Supabase OAuth notes
+
+When the MCP server uses Supabase as its OAuth identity provider (common with mcp-use servers), be aware of these non-standard behaviors:
+
+1. **No DCR support**: Supabase does not implement RFC 7591. The MCP server must host its own `/register` endpoint.
+2. **`provider` parameter**: Supabase's authorize endpoint requires `provider=google` (or other social provider). The MCP server must inject this.
+3. **`redirect_to` not `redirect_uri`**: Supabase uses a non-standard parameter name for the redirect. The MCP server must remap.
+4. **JSON token exchange**: Supabase's token endpoint expects JSON body (not form-urlencoded) with `auth_code` (not `code`) and requires an `apikey` header.
+5. **Redirect URL whitelist**: Add `http://localhost:*/**` in Supabase Dashboard > Authentication > URL Configuration > Redirect URLs.

@@ -364,6 +364,10 @@ const server = new MCPServer({
 | `context.auth` is `undefined` | No `oauth` option on server | Pass a provider to `MCPServer` constructor |
 | `permissions` is empty | Scopes not configured | Add permissions in provider settings or use `getUserInfo` |
 | `org_id` is `undefined` | Not using WorkOS or no org | Assign user to a WorkOS organization |
+| `"Incompatible auth server"` (DCR) | Supabase proxy mode has no `registration_endpoint` | See "Supabase Proxy Mode Pitfalls" section below |
+| `"Unsupported provider"` (Supabase) | Missing `provider=google` in authorize URL | Custom authorize handler with `provider` param |
+| `"bad_json"` on token exchange | Supabase needs JSON, not form-urlencoded | Custom token handler with JSON body + `apikey` header |
+| `"redirect_uri_mismatch"` (Google via Supabase) | Localhost port not in Supabase redirect URLs | Add `http://localhost:*/**` to Supabase Dashboard |
 
 ### Debugging Auth Locally
 
@@ -381,6 +385,162 @@ server.tool({
 
 ---
 
+## Supabase Proxy Mode Pitfalls
+
+> **Critical warning**: `oauthSupabaseProvider()` defaults to **proxy mode**, which hardcodes OAuth metadata without a `registration_endpoint`. Third-party MCP clients that require RFC 7591 Dynamic Client Registration (DCR) — including mcpc and Claude Desktop — **cannot authenticate** with the default Supabase proxy configuration. You must add custom middleware and handlers to make it work.
+
+### Why proxy mode breaks third-party clients
+
+When no `getMode()` or `getRegistrationEndpoint()` is implemented, `SupabaseOAuthProvider` defaults to proxy mode. In this mode:
+
+1. `/.well-known/oauth-authorization-server` is served with Supabase-derived metadata that has **no `registration_endpoint`**
+2. `/.well-known/oauth-protected-resource` points clients to Supabase as the authorization server
+3. Clients follow the Supabase URL, discover no DCR support, and reject the server immediately
+
+WorkOS and Auth0 providers implement `getRegistrationEndpoint()` and `getMode()` — Supabase does not (as of mcp-use v1.21.5).
+
+### Supabase parameter mapping
+
+Supabase uses non-standard parameter names that differ from the OAuth 2.0 spec. If you build custom authorize/token handlers, you must translate:
+
+| Standard OAuth parameter | Supabase equivalent | Notes |
+|---|---|---|
+| `redirect_uri` | `redirect_to` | Supabase ignores `redirect_uri` |
+| `code` (authorization code) | `auth_code` | Used in token exchange body |
+| `grant_type=authorization_code` | `grant_type=pkce` | Supabase PKCE flow |
+| `client_id` | **Do NOT forward** | Supabase passes it to the upstream provider (e.g., Google), which rejects unknown client IDs |
+| *(none)* | `provider=google` | Must be injected into the authorize URL; Supabase does not infer the provider |
+
+### Supabase token endpoint content type
+
+Supabase's `/auth/v1/token` endpoint requires:
+- `Content-Type: application/json` (NOT `application/x-www-form-urlencoded`)
+- `apikey` header set to the Supabase anon key
+
+mcp-use's built-in proxy sends form-urlencoded, which causes a `"bad_json"` error from Supabase.
+
+### Enabling Third-Party Client Access (DCR)
+
+To support clients that require DCR (mcpc, Claude Desktop), you need four pieces:
+
+**1. Wildcard middleware to override `.well-known` metadata**
+
+Hono's trie router gives specific routes priority over `app.all("*")` catch-all. Since `server.get()` goes through `_customRoutes` (which uses `app.all("*")`), you **cannot** override mcp-use's built-in `.well-known` routes with `server.get()`. You **must** use `server.use("*", middleware)` because middleware runs before route handlers.
+
+```typescript
+server.use("*", async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+
+  if (path === "/.well-known/oauth-authorization-server") {
+    return c.json({
+      issuer: MCP_URL,
+      authorization_endpoint: `${MCP_URL}/oauth/authorize`,
+      token_endpoint: `${MCP_URL}/oauth/token`,
+      registration_endpoint: `${MCP_URL}/oauth/register`,
+      response_types_supported: ["code"],
+      grant_types_supported: ["authorization_code"],
+      code_challenge_methods_supported: ["S256"],
+      scopes_supported: ["openid", "profile", "email"],
+    });
+  }
+
+  if (path === "/.well-known/oauth-protected-resource") {
+    return c.json({
+      resource: MCP_URL,
+      authorization_servers: [MCP_URL],
+    });
+  }
+
+  await next();
+});
+```
+
+**2. Custom authorize handler (use a custom path, not `/authorize`)**
+
+You cannot override `/authorize` because mcp-use registers it as a specific route. Use `/oauth/authorize`:
+
+```typescript
+server.get("/oauth/authorize", (c) => {
+  const url = new URL(c.req.url);
+  const redirectTo = url.searchParams.get("redirect_uri") ?? "";
+  const state = url.searchParams.get("state") ?? "";
+  const codeChallenge = url.searchParams.get("code_challenge") ?? "";
+  const codeChallengeMethod = url.searchParams.get("code_challenge_method") ?? "S256";
+
+  const supabaseAuthUrl = new URL(`${SUPABASE_URL}/auth/v1/authorize`);
+  supabaseAuthUrl.searchParams.set("provider", "google");
+  supabaseAuthUrl.searchParams.set("redirect_to", redirectTo);
+  supabaseAuthUrl.searchParams.set("state", state);
+  supabaseAuthUrl.searchParams.set("code_challenge", codeChallenge);
+  supabaseAuthUrl.searchParams.set("code_challenge_method", codeChallengeMethod);
+
+  return c.redirect(supabaseAuthUrl.toString());
+});
+```
+
+**3. Custom token handler (JSON body, apikey header, parameter translation)**
+
+```typescript
+server.post("/oauth/token", async (c) => {
+  const body = await c.req.parseBody();
+  const authCode = (body.code as string) ?? "";
+  const codeVerifier = (body.code_verifier as string) ?? "";
+
+  const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ auth_code: authCode, code_verifier: codeVerifier }),
+  });
+
+  const data = await resp.json();
+  return c.json(data, resp.status as any);
+});
+```
+
+**4. Custom DCR handler (RFC 7591)**
+
+```typescript
+server.post("/oauth/register", async (c) => {
+  const body = await c.req.json();
+  return c.json({
+    client_id: `mcp-client-${Date.now()}`,
+    client_name: body.client_name ?? "MCP Client",
+    redirect_uris: body.redirect_uris ?? [],
+    grant_types: ["authorization_code"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
+  });
+});
+```
+
+### Supabase Dashboard configuration
+
+For MCP clients that use dynamic localhost ports (like mcpc):
+
+1. Go to **Supabase Dashboard** > **Authentication** > **URL Configuration**
+2. Add `http://localhost:*/**` to **Redirect URLs**
+3. Set **Site URL** to your production MCP server URL
+
+Without the localhost wildcard, Supabase falls back to the Site URL, causing `redirect_uri_mismatch` from the upstream provider (Google).
+
+### Hono routing rules for mcp-use OAuth
+
+Understanding which routes you can and cannot override:
+
+| Route method | Registered via | Can override mcp-use built-in? | Why |
+|---|---|---|---|
+| `server.use("*", middleware)` | Hono middleware | Yes for `.well-known/*` | Middleware runs before route handlers |
+| `server.use("*", middleware)` | Hono middleware | No for `/authorize`, `/token` | mcp-use's specific routes still win after middleware |
+| `server.get("/path", handler)` | `_customRoutes` → `app.all("*")` | No | Trie router: specific routes beat wildcards |
+| `server.get("/custom-path", handler)` | `_customRoutes` → `app.all("*")` | N/A (new path) | Works fine on paths mcp-use doesn't claim |
+
+**Rule of thumb**: Use `server.use("*", ...)` middleware to intercept metadata paths. Use custom paths (e.g., `/oauth/authorize`) for handlers that would conflict with mcp-use's built-in routes.
+
+---
+
 ## Summary
 
 1. Pick a provider — `oauthAuth0Provider()`, `oauthWorkOSProvider()`, `oauthSupabaseProvider()`, `oauthKeycloakProvider()`, or `oauthCustomProvider()`.
@@ -388,6 +548,7 @@ server.tool({
 3. Access verified identity via `context.auth` (`UserInfo`) in tool handlers.
 4. Guard operations with `context.auth.permissions` / `context.auth.roles`.
 5. Use `getUserInfo` to extract custom claims from any provider.
+6. **If using Supabase with third-party clients**: read the "Supabase Proxy Mode Pitfalls" section above — the default proxy mode does not support DCR.
 
 
 ---

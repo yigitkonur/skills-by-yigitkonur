@@ -453,9 +453,9 @@ Test error cases too: missing params (validation error), non-existent IDs (isErr
 
 | Severity | Anti-patterns |
 |---|---|
-| 🔴 Critical | SQL injection, path traversal, eval(), logging secrets, missing `allowedOrigins` |
-| 🟠 High | Using raw SDK, `z.any()`, no `error()`, god tools, no shutdown, unchecked capabilities |
-| 🟡 Medium | Manual JSON Schema, Winston logger, missing `.describe()`, raw API passthrough |
+| 🔴 Critical | SQL injection, path traversal, eval(), logging secrets, missing `allowedOrigins`, forwarding DCR `client_id` to Supabase |
+| 🟠 High | Using raw SDK, `z.any()`, no `error()`, god tools, no shutdown, unchecked capabilities, form-urlencoded to Supabase token endpoint, deploying uncommitted changes |
+| 🟡 Medium | Manual JSON Schema, Winston logger, missing `.describe()`, raw API passthrough, using `server.get()` to override mcp-use OAuth routes |
 | 🟢 Low | Single-file architecture, hardcoded config, no `.strict()`, manual transport |
 
 ---
@@ -601,7 +601,114 @@ FROM node:20.11.0-alpine
 
 ---
 
-## 12. Observability Anti-Patterns
+## 12. OAuth & Supabase Anti-Patterns
+
+### Forwarding DCR `client_id` to Supabase
+
+When a third-party MCP client registers via DCR, it sends a generated `client_id` in the token exchange. Forwarding this to Supabase causes Supabase to pass it to the upstream provider (e.g., Google), which rejects the unknown ID.
+
+```typescript
+// ❌ BAD — forwards client_id from DCR to Supabase, Google rejects it
+server.post("/oauth/token", async (c) => {
+  const body = await c.req.parseBody();
+  const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY },
+    body: JSON.stringify({
+      auth_code: body.code,
+      code_verifier: body.code_verifier,
+      client_id: body.client_id,  // Google will reject this
+    }),
+  });
+  return c.json(await resp.json(), resp.status as any);
+});
+
+// ✅ GOOD — strip client_id before forwarding to Supabase
+server.post("/oauth/token", async (c) => {
+  const body = await c.req.parseBody();
+  const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY },
+    body: JSON.stringify({
+      auth_code: body.code,
+      code_verifier: body.code_verifier,
+      // No client_id — Supabase uses its own Google client config
+    }),
+  });
+  return c.json(await resp.json(), resp.status as any);
+});
+```
+
+### Using Form-Urlencoded for Supabase Token Exchange
+
+Supabase's `/auth/v1/token` requires JSON request bodies. Sending form-urlencoded data causes a `"bad_json"` error.
+
+```typescript
+// ❌ BAD — Supabase rejects form-urlencoded with "bad_json"
+const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+  method: "POST",
+  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ auth_code: code, code_verifier: verifier }),
+});
+
+// ✅ GOOD — send JSON with apikey header
+const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=pkce`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON_KEY,
+  },
+  body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
+});
+```
+
+### Deploying Without Committing and Pushing First
+
+`mcp-use deploy` clones from the GitHub remote HEAD, not from the local working directory. Uncommitted or unpushed changes are invisible to the deployment.
+
+```bash
+# ❌ BAD — deploy with uncommitted changes (they won't be deployed)
+# (you just fixed a critical bug but haven't committed)
+mcp-use deploy --name my-server --env-file .env
+# Result: production still has the old broken code
+
+# ✅ GOOD — commit, push, then deploy
+git add .
+git commit -m "fix: custom OAuth handlers for Supabase DCR"
+git push
+mcp-use deploy --name my-server --env-file .env
+```
+
+### Using `server.get()` to Override mcp-use Built-in OAuth Routes
+
+Hono's trie router gives specific routes (registered by mcp-use during `listen()`) priority over the wildcard `app.all("*")` catch-all that `server.get()` uses. Your custom handler silently never executes.
+
+```typescript
+// ❌ BAD — this handler is registered but NEVER runs (mcp-use's specific route wins)
+server.get("/.well-known/oauth-authorization-server", (c) => {
+  return c.json({ /* custom metadata */ });
+});
+
+// ❌ BAD — same problem for /authorize and /token
+server.get("/authorize", (c) => { /* never reached */ });
+server.post("/token", async (c) => { /* never reached */ });
+
+// ✅ GOOD — use middleware for .well-known paths (runs before route handlers)
+server.use("*", async (c, next) => {
+  if (new URL(c.req.url).pathname === "/.well-known/oauth-authorization-server") {
+    return c.json({ /* custom metadata */ });
+  }
+  await next();
+});
+
+// ✅ GOOD — use custom paths for authorize/token (no conflict with mcp-use)
+server.get("/oauth/authorize", (c) => { /* custom authorize */ });
+server.post("/oauth/token", async (c) => { /* custom token exchange */ });
+```
+
+---
+
+## 13. Observability Anti-Patterns
 
 ### Console.log Debugging in Production
 
