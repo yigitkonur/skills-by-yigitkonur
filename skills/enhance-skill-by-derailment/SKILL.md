@@ -139,6 +139,7 @@ This summary is conversational output only — do not write it to a file.
 | Create new reference docs in `references/` when needed | Write standalone docs outside the skill directory |
 | Keep fixes minimal — add what's missing | Rewrite entire sections that were working fine |
 | Report friction summary in conversation | Write synthetic report documents to disk |
+| Describe what was wrong and what you fixed | Label output as "derailment notes" — just explain the friction plainly |
 | Verify fixes with grep and routing checks | Assume fixes are correct without verification |
 
 ## Reference routing
@@ -170,3 +171,4 @@ Before declaring the test complete:
 - [ ] Routing integrity confirmed — no orphaned reference files
 - [ ] SKILL.md of tested skill is still under 500 lines after fixes
 - [ ] Friction summary delivered in conversation (not written to disk)
+- [ ] If a `derailment-notes/` or `derail-notes/` folder exists from prior runs, delete it — those artifacts are obsolete
