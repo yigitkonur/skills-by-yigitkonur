@@ -36,6 +36,83 @@ mcpc --version
 
 Node.js 20+ required. Install mcpc: `npm install -g @apify/mcpc`.
 
+## Persistent authenticated sessions (MUST READ for OAuth servers)
+
+**The #1 user complaint:** "I have to re-authenticate every time I test an OAuth MCP server."
+
+mcpc already solves this — OAuth tokens are stored in macOS Keychain and auto-refresh indefinitely. But you must follow this protocol to avoid forcing unnecessary re-logins.
+
+### Step 0: ALWAYS check for existing sessions before connecting
+
+Before running any `mcpc <server> connect` command, check existing state:
+
+```bash
+# 1. List all active sessions — look for a live session to the target server
+mcpc
+
+# 2. Check saved OAuth profiles — if a profile exists, login is NOT needed
+mcpc --json | jq '.profiles'
+```
+
+**Decision logic:**
+
+```
+Is there a live @session for this server?
+├── YES → Reuse it: `mcpc @session ping` to verify, then proceed to Step 2
+├── CRASHED → Reconnect (no re-login): `mcpc <server> connect @session`
+│   (mcpc re-injects tokens from Keychain automatically)
+└── NO session exists
+    ├── Does an OAuth profile exist for this server host?
+    │   ├── YES → Connect without login: `mcpc <server> connect @session`
+    │   └── NO → First-time setup: `mcpc login <server>` then connect
+    └── Bearer token? → `mcpc <server> connect @session -H "Authorization: Bearer $TOKEN"`
+```
+
+### Why you never need to re-login
+
+```
+Login once → mcpc saves access_token + refresh_token in macOS Keychain
+                ↓
+Token expires (~1h) → bridge auto-sends refresh_token to server
+                ↓
+Server returns NEW access_token + NEW refresh_token
+                ↓
+Keychain updated → session continues indefinitely
+                ↓
+Each refresh resets the refresh_token expiry clock
+(Supabase: 60 days, Google production: 6 months)
+→ Regular usage = never re-login
+```
+
+Bridge crash? mcpc auto-restarts and re-injects credentials from Keychain.
+Computer reboot? `mcpc <server> connect @session` — profile persists in Keychain, no login needed.
+
+Read `references/guides/authentication.md` § Login once, test forever for the full explanation.
+
+### Save session names for cross-conversation reuse
+
+After establishing an authenticated session, **always recommend** saving the session info to the project's `CLAUDE.md` or `AGENTS.md`:
+
+```markdown
+## MCP Testing Sessions (persistent — do not re-login)
+- Server: https://mcp.example.com/mcp → Session: `@my-mcp`
+- Auth: OAuth profile "default" (auto-refreshes via macOS Keychain)
+- Reconnect if crashed: `mcpc https://mcp.example.com/mcp connect @my-mcp`
+- Check status: `mcpc @my-mcp ping`
+```
+
+This way, the next AI conversation reads CLAUDE.md, finds the session name, runs `mcpc @my-mcp ping`, and continues testing — zero re-authentication.
+
+### When the user says "I don't want to authenticate again"
+
+Follow this exact sequence:
+
+1. Check if a profile already exists: `mcpc --json | jq '.profiles'`
+2. If yes: explain that tokens auto-refresh, connect using existing profile
+3. If no: run `mcpc login <server>` (one-time only), then connect
+4. Save session name to CLAUDE.md/AGENTS.md (see template above)
+5. Confirm: "This session will persist across conversations. You won't need to login again."
+
 ## Decision tree
 
 ```
@@ -371,6 +448,16 @@ mcpc @smoke close
 - **A structured error is not a pass.** If the server returns `isError: false` but the result says "0/2 successful," the tool's HTTP layer worked but the test failed. Count first-call successes separately from retries.
 - **Sequence tools with data dependencies.** If tool B needs output from tool A (e.g., `get-reddit-post` needs URLs from `search-reddit`), run A before B. Do not parallelize calls that have data dependencies just to save time — you'll end up with fabricated inputs or validation errors.
 
+### Persistent session reuse (cross-conversation)
+
+```bash
+# In a new conversation — check if session from last time is still alive
+mcpc @my-mcp ping
+# If live → skip all setup, go directly to tool testing
+# If crashed → reconnect (tokens still in Keychain, no login):
+mcpc https://mcp.example.com connect @my-mcp
+```
+
 ### Proxy for sandboxed testing
 
 ```bash
@@ -612,6 +699,7 @@ Run through this checklist sequentially when `mcpc login` fails. Each step depen
 | Supabase authorize returns "invalid client_id" | Server's authorize proxy must strip the DCR-generated `client_id` before forwarding to Supabase |
 | `mcp-use deploy` doesn't pick up local code changes | `mcp-use deploy` clones from git — commit and push first |
 | OAuth login succeeds but `mcpc connect` gets 401 | Token may have expired during debugging. Re-run `mcpc login` then `mcpc connect` |
+| "I have to login every time" | You don't — check Step 0 above. Run `mcpc` to see existing sessions, `mcpc --json \| jq '.profiles'` to see saved OAuth profiles. Tokens auto-refresh via Keychain. Save `@session` name to CLAUDE.md for cross-conversation reuse |
 
 ## Reference routing
 

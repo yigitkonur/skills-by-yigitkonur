@@ -2,6 +2,77 @@
 
 Credential storage, OAuth 2.1 flow, bearer token auth, profile resolution, token refresh, and CI/headless configuration for mcpc.
 
+## Login once, test forever
+
+Most users who complain about "re-authenticating every time" don't realize mcpc already handles persistent auth. This section explains how and what to do to never re-login.
+
+### How the refresh chain keeps you logged in
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  FIRST TIME ONLY:                                                    │
+│  mcpc login https://mcp.example.com                                  │
+│  → Browser opens, user authenticates                                 │
+│  → mcpc receives: access_token (1h) + refresh_token (60d/6mo)       │
+│  → Both saved to macOS Keychain (encrypted, per-server)              │
+│                                                                      │
+│  EVERY TIME AFTER (automatic, invisible):                            │
+│  access_token expires → bridge sends refresh_token to server         │
+│  → server returns NEW access_token + NEW refresh_token               │
+│  → Keychain updated → refresh_token expiry clock RESETS              │
+│  → As long as you use mcpc within the refresh window, loop forever   │
+│                                                                      │
+│  REFRESH TOKEN LIFETIMES:                                            │
+│  Supabase: 60 days │ Google (production): 6 months                   │
+│  Google (test mode): 7 days │ GitHub: no expiry                      │
+│  → Regular weekly usage = never re-login                             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### What survives what
+
+| Event | Tokens survive? | Action needed |
+|---|---|---|
+| CLI exits after command | Yes (Keychain) | None |
+| Bridge crashes | Yes (Keychain) | `mcpc @session <command>` auto-restarts bridge |
+| Computer reboots | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
+| `mcpc @session close` | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
+| `mcpc clean sessions` | Yes (Keychain) | `mcpc <server> connect @session` (no login) |
+| `mcpc logout <server>` | **No** — deleted | `mcpc login <server>` required |
+| `mcpc clean all` | **No** — deleted | `mcpc login <server>` required |
+| 60+ days without any use | Refresh token expires | `mcpc login <server>` required |
+
+### Persisting session names across AI conversations
+
+The biggest friction point: the AI doesn't know which `@session` name was used in the previous conversation. Save it to the project's `CLAUDE.md` or `AGENTS.md`:
+
+```markdown
+## MCP Testing Sessions (persistent — do not re-login)
+- Server: https://mcp.example.com/mcp → Session: `@my-mcp`
+- Auth: OAuth profile "default" (auto-refreshes via macOS Keychain)
+- Reconnect if crashed: `mcpc https://mcp.example.com/mcp connect @my-mcp`
+- Check status: `mcpc @my-mcp ping`
+```
+
+In the next conversation, the AI reads CLAUDE.md, finds `@my-mcp`, runs `mcpc @my-mcp ping`, and if live — continues testing immediately. No login, no connect, no setup.
+
+### Checking existing auth state before connecting
+
+```bash
+# List all saved OAuth profiles (login not needed if profile exists)
+mcpc --json | jq '.profiles'
+
+# List all active sessions (connect not needed if session is live)
+mcpc
+
+# Check specific session health
+mcpc @my-mcp ping
+
+# If session shows "crashed" — reconnect WITHOUT re-login:
+mcpc https://mcp.example.com/mcp connect @my-mcp
+# mcpc auto-injects tokens from Keychain into the new bridge
+```
+
 ## Three credential storage layers
 
 mcpc uses a layered credential system. Sensitive values never touch sessions.json.
