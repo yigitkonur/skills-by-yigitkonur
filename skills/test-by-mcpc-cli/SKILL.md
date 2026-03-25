@@ -175,6 +175,8 @@ mcpc @test-stateful ping
 
 Read `references/guides/http-testing.md` § Stateful Sessions for reconnection, expiry, and resumption.
 
+**Do not skip transport verification.** It is tempting to jump straight to tool testing, but transport-level issues (session drops, keepalive failures, protocol mismatches) are invisible from tool calls alone. If the ping output shows `MCP: 2025-11-25`, you are on a stateful streamable HTTP server — run the verification steps above before proceeding.
+
 Proceed to Step 2.
 
 ### Step 2: Discover server capabilities
@@ -204,11 +206,25 @@ mcpc @session prompts
 Before jumping to tool calls, inspect the schema for each tool you plan to test. This prevents wasted calls with wrong argument types.
 
 ```bash
-# Check a tool's input schema — look at property types
-mcpc @session tools-get my-tool --json | jq '.inputSchema.properties | to_entries[] | {key, type: .value.type}'
+# WRONG — too shallow, hides array item types and min/max constraints:
+# mcpc @session tools-get my-tool --json | jq '.inputSchema.properties | to_entries[] | {key, type: .value.type}'
+# This only shows {"key":"items","type":"array"} — useless for knowing what the array contains or how many items are required.
 
-# If any property has "type": "array", you MUST use inline JSON (not key:=value)
+# RIGHT — show array item types, minItems/maxItems, and required sub-fields:
+mcpc @session tools-get my-tool --json | jq '
+  .inputSchema.properties | to_entries[] | {
+    key,
+    type: .value.type,
+    items: (if .value.type == "array" then (.value.items.type // .value.items) else null end),
+    min: .value.minItems,
+    max: .value.maxItems
+  }'
+
+# Or just dump the full schema — it's rarely that long:
+mcpc @session tools-get my-tool --json | jq '.inputSchema'
 ```
+
+**Why this matters:** Most real-world MCP tools take array parameters with constraints like `minItems: 3` or items that are objects (not strings). A shallow type check shows `"type": "array"` and nothing else — you'll guess wrong, get a validation error, and waste a round trip. Always check what the array *contains* and how many items are required.
 
 **Critical rule:** `key:=value` syntax only produces **scalar values** (string, number, boolean, null). It **cannot** produce arrays or nested objects. Most real-world MCP tools take array arguments — always check the schema first.
 
@@ -274,10 +290,12 @@ mcpc @session prompts-get my-prompt arg1:=value1 arg2:=value2
 
 ### Step 5: Use JSON mode for scripted tests
 
+**Exploratory testing vs scripted testing:** When you are testing a server for the first time (exploratory), show full output — do not truncate with jq slicing like `.text[:300]`. You will lose critical information (e.g., whether comments were returned, what the error details said) and be forced to re-run calls. Save truncation for automated CI scripts where you only need pass/fail. During exploratory testing, use `jq -r '.content[0].text'` to see the full response, or pipe through `head -100` if it's truly huge.
+
 ```bash
 # All commands support --json for machine-readable output
 mcpc @session tools-list --json | jq '.[].name'
-mcpc @session tools-call my-tool '{"arg":"val"}' --json | jq '.content[0].text'
+mcpc @session tools-call my-tool '{"arg":"val"}' --json | jq -r '.content[0].text'
 mcpc @session resources-list --json | jq '.[].uri'
 
 # Check tool count
@@ -347,6 +365,11 @@ mcpc @smoke tools-list && \
 mcpc @smoke tools-call <first-tool> <minimal-args> && \
 mcpc @smoke close
 ```
+
+**Testing discipline:**
+- **Use real data, not fabricated inputs.** If a tool takes URLs, use URLs from a prior tool's output (e.g., search results), not made-up URLs. Fabricated inputs produce "not found" errors that you'll dismiss as "expected" — which means you never actually tested the happy path.
+- **A structured error is not a pass.** If the server returns `isError: false` but the result says "0/2 successful," the tool's HTTP layer worked but the test failed. Count first-call successes separately from retries.
+- **Sequence tools with data dependencies.** If tool B needs output from tool A (e.g., `get-reddit-post` needs URLs from `search-reddit`), run A before B. Do not parallelize calls that have data dependencies just to save time — you'll end up with fabricated inputs or validation errors.
 
 ### Proxy for sandboxed testing
 
@@ -580,6 +603,7 @@ Run through this checklist sequentially when `mcpc login` fails. Each step depen
 | Server error but exit code is 0 | Normal — check `jq '.isError'` in JSON, not exit code |
 | "unknown command: completions" | mcpc doesn't support completions/sampling/roots capabilities |
 | Bridge process orphaned | `mcpc clean sessions` clears PIDs and sockets |
+| `grep -oP` fails on macOS | macOS ships BSD grep which lacks `-P` (Perl regex). Use `grep -oE` (extended regex) instead, which works on both GNU and BSD grep |
 | OrbStack/Docker grabbing callback port | `lsof -i :8000-8010 \| grep LISTEN` before `mcpc login` — stop conflicting listeners |
 | `{"detail":"Not Found"}` JSON in browser callback | NOT mcpc — another process on the port (OrbStack, Docker, dev server). mcpc's 404 is plain text |
 | "Incompatible auth server: does not support dynamic client registration" | Server's OAuth metadata missing `registration_endpoint`. Fix server-side: implement a DCR endpoint |
