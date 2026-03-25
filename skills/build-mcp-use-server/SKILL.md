@@ -31,6 +31,8 @@ Based on what you find, proceed to Step 2A or Step 2B.
 
 When the codebase already contains an mcp-use server implementation, do NOT start from scratch. Instead, explore and improve what exists.
 
+**Skip subagent exploration if** the codebase was already explored earlier in this conversation (e.g., from a prior task, audit, or plan phase). In that case, summarize known state and proceed directly to improvements. Only launch subagents when the codebase is genuinely unknown.
+
 **Launch subagents to explore the codebase in parallel. Assign each subagent a focused investigation area:**
 
 **Subagent 1 — Tool definitions audit:**
@@ -191,7 +193,8 @@ For the complete ServerConfig interface with all CORS fields, CSP, middleware in
 | Method | Signature | Purpose |
 |--------|-----------|---------|
 | `listen` | `listen(port?: number): Promise<void>` | Start server (port = HTTP, no port = stdio) |
-| `stop` | `stop(): Promise<void>` | Graceful shutdown |
+| `close` | `close(): Promise<void>` | Stop HTTP listener (graceful, waits for keep-alive drain) |
+| `forceClose` | `forceClose(): Promise<void>` | Force-close all connections immediately |
 | `terminate` | `terminate(sessionId: string): Promise<void>` | Kill a specific session |
 | `getHandler` | `getHandler(options?): RequestHandler` | Serverless handler (Supabase/CF/Deno) |
 | `use` | `use(pathOrMiddleware, ...middleware): void` | Add Hono middleware |
@@ -493,6 +496,11 @@ These are hard rules. Violating any of them produces broken or insecure servers:
 
 ## Deployment quick reference
 
+**Before deploying:**
+1. Commit and push all changes to GitHub — `mcp-use deploy` builds from the remote HEAD, NOT your working directory
+2. Verify `pnpm typecheck` (or `npm run typecheck`) passes — broken code will fail the cloud build
+3. Always use `--name` to set a meaningful deployment name — it controls the URL subdomain
+
 ```bash
 # Scaffold
 npx create-mcp-use-app my-server
@@ -506,12 +514,19 @@ mcp-use start
 
 # Deploy to Manufact Cloud
 mcp-use login
-mcp-use deploy
+mcp-use deploy --name my-server   # ← always set --name; auto-generated names are random words
 ```
 
+**Naming:** `--name` controls your deployment's URL subdomain. `mcp-use deploy --name my-tool` → `https://my-tool-{hash}.run.mcp-use.com/mcp`. Always set `--name` explicitly — the auto-generated names are random words like `empty-snowflake-cek9p`.
+
+**Post-deploy verification:**
+1. `curl -s https://{url}/health | jq .status` — should return `"ok"`
+2. Open the Inspector URL from the deploy output — confirm all tools appear
+3. Update client configs (Claude Desktop, Codex, etc.) with the new URL
+
 After deploy:
-- **MCP Server URL**: `https://<id>.deploy.mcp-use.com/mcp`
-- **Inspector URL**: `https://inspector.mcp-use.com/inspect?autoConnect=https://<id>.deploy.mcp-use.com/mcp`
+- **MCP Server URL**: `https://<name>-<hash>.run.mcp-use.com/mcp`
+- **Inspector URL**: `https://inspector.manufact.com/inspector?autoConnect=https://<name>-<hash>.run.mcp-use.com/mcp`
 
 Claude Desktop config:
 ```json
