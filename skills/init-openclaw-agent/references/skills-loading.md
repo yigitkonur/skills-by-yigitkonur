@@ -1,216 +1,177 @@
 # Skills Loading Configuration
 
-OpenClaw agents load skills from multiple sources with a fixed precedence order. Understanding this order and the loading configuration is essential for predictable agent behavior.
+OpenClaw loads skills from a few well-defined locations, then applies config overrides from `openclaw.json`. This reference keeps the skill-loading path explicit so the executor does not guess where a missing skill should live or why an env var did not arrive.
 
-## Skill precedence
+All snippets in this reference are JSON5 fragments for the real `openclaw.json`.
 
-Skills are resolved in this order. The first match wins:
+## Locations and precedence
 
-```
-1. workspace skills     (highest priority)
-2. managed/local skills
+Skills can come from:
+
+1. bundled skills
+2. managed/local skills in `~/.openclaw/skills`
+3. workspace skills in `<workspace>/skills`
+4. extra skill directories from `skills.load.extraDirs`
+
+Precedence is:
+
+1. `<workspace>/skills`
+2. `~/.openclaw/skills`
 3. bundled skills
-4. extra dirs skills    (lowest priority)
+4. `skills.load.extraDirs`
+
+If the same skill name appears in more than one place, the highest-precedence copy wins.
+
+## Config keys that matter
+
+| Key | Meaning |
+|-----|---------|
+| `skills.allowBundled` | Optional allowlist for bundled skills only |
+| `skills.load.extraDirs` | Additional skill roots to scan |
+| `skills.load.watch` | Auto-refresh skills when files change |
+| `skills.load.watchDebounceMs` | Debounce interval for watcher events |
+| `skills.entries.<skillKey>.enabled` | Enable or disable one skill |
+| `skills.entries.<skillKey>.env` | Per-skill env vars for host runs |
+| `skills.entries.<skillKey>.apiKey` | Per-skill API key value or SecretRef |
+| `skills.entries.<skillKey>.config` | Custom per-skill config bag |
+
+## `skills.entries` key mapping
+
+The key under `skills.entries` is:
+
+- the skill name by default, or
+- `metadata.openclaw.skillKey` if the skill defines one
+
+If the key does not match, the skill can load but its env, apiKey, or enabled flag will not apply.
+
+## `extraDirs`
+
+Use `skills.load.extraDirs` for shared skill packs or other non-default roots:
+
+```json5
+{
+  skills: {
+    load: {
+      extraDirs: [
+        "/opt/team-skills",
+        "/Users/me/custom-skills",
+      ],
+    },
+  },
+}
 ```
 
-This means:
-- A workspace skill with the same name as a bundled skill will shadow the bundled one
-- You cannot override a workspace skill from extra dirs
-- If you need to override a bundled skill, place your version in the workspace
+Use absolute paths unless you have a strong reason not to. Workspace and extra-dir discovery only accepts skill roots and `SKILL.md` files whose resolved path stays inside the configured root.
 
-### Precedence implications
+## Per-skill overrides
 
-| Scenario | What happens |
-|----------|-------------|
-| Same skill name in workspace and bundled | Workspace version loads; bundled is ignored |
-| Same skill name in managed/local and extra dirs | Managed/local version loads; extra dirs is ignored |
-| Skill only in extra dirs | Loads normally (no shadowing) |
-| Skill removed from workspace but exists in bundled | Bundled version loads (workspace no longer shadows) |
-
-## Configuration options -- verified defaults
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `skills.load.watch` | boolean | `true` | Watch for skill file changes and auto-reload |
-| `skills.load.watchDebounceMs` | integer | `250` | Debounce interval for the file watcher |
-| `skills.load.extraDirs` | array | `[]` | Additional directories to scan for skills |
-| `skills.entries.<key>.enabled` | boolean | -- | Enable/disable a specific skill |
-| `skills.entries.<key>.apiKey` | string | -- | API key for the skill |
-| `skills.entries.<key>.env` | object | -- | Environment variables for the skill |
-| `skills.entries.<key>.config` | object | -- | Additional config for the skill |
-| `skills.allowBundled` | array | -- | Whitelist of bundled skills to allow |
-
-### skills.load.extraDirs
-
-Add external directories that contain skills. Each directory is scanned for valid skill folders (directories containing a SKILL.md file). Default: `[]` (empty array).
-
-```yaml
-skills:
-  load:
-    extraDirs:
-      - /home/user/my-custom-skills
-      - /opt/team-skills
-      - ./relative/path/to/skills    # Relative to workspace root
+```json5
+{
+  skills: {
+    entries: {
+      "image-lab": {
+        enabled: true,
+        apiKey: { source: "env", provider: "default", id: "GEMINI_API_KEY" },
+        env: {
+          GEMINI_API_KEY: "GEMINI_KEY_HERE",
+        },
+        config: {
+          endpoint: "https://example.invalid",
+        },
+      },
+    },
+  },
+}
 ```
 
-**Rules:**
-- Paths can be absolute or relative to the workspace root
-- Each directory is scanned non-recursively for immediate child directories containing SKILL.md
-- Invalid paths are silently skipped (no error, skill just will not load)
-- Duplicate skill names across extra dirs are resolved by directory order (first listed wins)
+Important behavior:
 
-### skills.entries
+- `env` is injected only if that variable is not already set in the host process
+- `apiKey` is mainly a convenience for skills that declare a primary env var
+- custom per-skill fields belong under `config`
 
-Per-skill configuration for environment variables, API keys, and other settings.
+## Host runs vs sandboxed runs
 
-```yaml
-skills:
-  entries:
-    my-skill:
-      env:
-        DATABASE_URL: "postgres://localhost:5432/mydb"
-        LOG_LEVEL: "debug"
-      apiKey: "sk-..."
-    another-skill:
-      env:
-        REGION: "us-east-1"
+This is the most common source of confusion:
+
+- `skills.entries.*.env` and `skills.entries.*.apiKey` apply to host runs
+- sandboxed skill processes do not inherit the host `process.env`
+
+For sandboxed agents, route needed env through one of:
+
+- `agents.defaults.sandbox.docker.env`
+- `agents.list[].sandbox.docker.env`
+- a custom sandbox image that already contains the needed runtime setup
+
+## Watcher tuning
+
+```json5
+{
+  skills: {
+    load: {
+      watch: true,
+      watchDebounceMs: 1000,
+    },
+  },
+}
 ```
 
-**The key in `skills.entries` must match the skill's directory name** (which must match the `name` field in its SKILL.md frontmatter).
+Guidance:
 
-#### env
-
-Key-value pairs injected as environment variables when the skill is loaded. Use for:
-- Database connection strings
-- Service endpoints
-- Feature flags
-- Log levels
-
-#### apiKey
-
-A dedicated field for API keys. Functionally equivalent to putting the key in `env`, but signals intent clearly and may be handled differently by secret management systems.
-
-**Security note:** Prefer environment variables or secret management over hardcoding values in config files. If the config file is version-controlled, API keys in plaintext are a security risk.
-
-### watchDebounceMs
-
-Controls how quickly the skill watcher reacts to file changes. The watcher is enabled by default (`skills.load.watch: true`).
-
-```yaml
-skills:
-  load:
-    watch: true              # Default: true
-    watchDebounceMs: 1000    # Wait 1 second after last change before reloading
-```
-
-**Default:** 250ms.
-
-**When to adjust:**
-- **Increase (1000-2000ms):** During active skill development when rapid file saves cause reload storms
-- **Decrease (100-200ms):** When you need skills to reload nearly instantly (e.g., automated testing pipelines)
-- **Leave default:** For production deployments where skills change infrequently
-
-## Skill directory structure
-
-A valid skill directory must contain at minimum a SKILL.md file:
-
-```
-my-skill/
-+-- SKILL.md              # Required: skill definition with frontmatter
-+-- references/            # Optional: reference files routed from SKILL.md
-|   +-- guide.md
-|   +-- patterns.md
-+-- scripts/               # Optional: automation scripts
-|   +-- validate.sh
-+-- evals/                 # Optional: evaluation definitions
-    +-- evals.json
-```
-
-The skill name is determined by:
-1. The `name` field in SKILL.md frontmatter (authoritative)
-2. The directory name (must match the `name` field)
-
-## Skill loading workflow
-
-When the OpenClaw runtime starts or the watcher detects changes:
-
-1. Scan workspace skill directories
-2. Scan managed/local skill directories
-3. Scan bundled skill directories
-4. Scan each path in `skills.load.extraDirs` (in order)
-5. For each skill found, check if a higher-precedence skill with the same name already loaded
-6. If no conflict, load the skill and apply any `skills.entries` configuration
-7. Inject env vars and apiKey from the matching `skills.entries` entry
+- leave the default `250` ms unless reload churn is a real problem
+- increase to `500-2000` ms during active skill development if repeated saves cause noisy reloads
+- reduce only when a faster feedback loop is clearly needed
 
 ## Common patterns
 
-### Team-shared skills
+### Shared team skills
 
-Place shared skills in a central directory and reference from each agent's config:
-
-```yaml
-skills:
-  load:
-    extraDirs:
-      - /opt/team-skills    # Shared across all agents
+```json5
+{
+  skills: {
+    load: {
+      extraDirs: ["/opt/team-skills"],
+    },
+  },
+}
 ```
 
-This lets you update team skills in one place without modifying individual agent workspaces.
+### Workspace-only override of a shared skill
 
-### Development vs production
+Put the replacement skill in:
 
-Use different extra dirs for different environments:
-
-```yaml
-# Development config
-skills:
-  load:
-    extraDirs:
-      - ./skills-dev       # Local development skills
-      - /opt/team-skills   # Team shared skills
-  watchDebounceMs: 500     # Fast reload during development
-
-# Production config
-skills:
-  load:
-    extraDirs:
-      - /opt/team-skills   # Team shared skills only
-  watchDebounceMs: 5000    # Infrequent reloads in production
+```text
+<workspace>/skills/<skill-name>/SKILL.md
 ```
 
-### Skill environment isolation
+That workspace copy will beat both `~/.openclaw/skills` and bundled copies.
 
-Different skills may need different configurations of the same service:
+### Bundled-skill allowlist
 
-```yaml
-skills:
-  entries:
-    data-fetcher:
-      env:
-        API_ENDPOINT: "https://api.production.example.com"
-        TIMEOUT_MS: "5000"
-    data-fetcher-staging:
-      env:
-        API_ENDPOINT: "https://api.staging.example.com"
-        TIMEOUT_MS: "30000"
+```json5
+{
+  skills: {
+    allowBundled: ["peekaboo", "gemini"],
+  },
+}
 ```
 
-## Troubleshooting skill loading
+This affects bundled skills only. Workspace and managed/local skills are unaffected.
+
+## Troubleshooting
 
 | Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| Skill not found by agent | Not in any scanned directory, or directory missing SKILL.md | Verify path in extraDirs and presence of SKILL.md |
-| Wrong version of skill loads | Higher-precedence copy exists | Check workspace and managed/local for shadowing copies |
-| Skill loads but env vars missing | `skills.entries` key does not match skill name | Verify the key matches the `name` in SKILL.md frontmatter exactly |
-| Skill reloads too frequently | watchDebounceMs too low during active development | Increase to 1000-2000ms |
-| Skill does not reload after changes | watchDebounceMs too high, or watcher not running | Decrease debounce or restart the runtime |
-| Extra dir skills not loading | Path is invalid or has no valid skill subdirectories | Check that the path exists and contains directories with SKILL.md |
+|---------|--------------|-----|
+| Skill does not appear | Wrong location or no valid `SKILL.md` under the configured root | Verify the directory and file path |
+| Wrong version loads | Higher-precedence copy shadows the intended one | Check workspace and managed/local copies first |
+| Env vars seem ignored | `skills.entries` key does not match the skill key | Match the skill name or `metadata.openclaw.skillKey` |
+| Skill works on host but fails in sandbox | Host env did not reach the sandbox | Use sandbox docker env or a custom image |
+| Bundled skill unexpectedly unavailable | `skills.allowBundled` excludes it | Add it to the allowlist or remove the allowlist |
 
 ## Validation checklist
 
-- [ ] All extraDirs paths are valid and accessible
-- [ ] No unintended shadowing between precedence levels
-- [ ] Every skill that needs env vars has a matching `skills.entries` key
-- [ ] API keys are not hardcoded in version-controlled config files
-- [ ] watchDebounceMs is appropriate for the deployment context
-- [ ] Skill names match between directory names and SKILL.md frontmatter
+- [ ] The active workspace path is known
+- [ ] The intended skill location matches the required precedence
+- [ ] Every `skills.entries` key matches the skill name or `skillKey`
+- [ ] Sandbox env needs are handled separately from host env
+- [ ] The runtime shows the expected skill set after reload

@@ -320,9 +320,7 @@ EXIT_CODE=$?
 
 echo "$RESULT" | jq '{
   error: .error,
-  message: .message,
-  code: .code,
-  details: .details
+  code: .code
 }'
 ```
 
@@ -337,10 +335,10 @@ RESULT=$(mcpc --json @s tools-call tool 2>&1)
 EXIT=$?
 case $EXIT in
   0) echo "$RESULT" | jq . ;;
-  1) echo "Client error: $(echo "$RESULT" | jq -r '.message')" ;;
-  2) echo "Server error: $(echo "$RESULT" | jq -r '.message')" ;;
-  3) echo "Network error: $(echo "$RESULT" | jq -r '.message')" ;;
-  4) echo "Auth error: $(echo "$RESULT" | jq -r '.message')" ;;
+  1) echo "Client error: $(echo "$RESULT" | jq -r '.error // "unknown client error"')" ;;
+  2) echo "Server error: $(echo "$RESULT" | jq -r '.error // "unknown server error"')" ;;
+  3) echo "Network error: $(echo "$RESULT" | jq -r '.error // "unknown network error"')" ;;
+  4) echo "Auth error: $(echo "$RESULT" | jq -r '.error // "unknown auth error"')" ;;
 esac
 ```
 
@@ -365,8 +363,8 @@ mcpc --json @paid tools-get my-tool | jq '._meta.x402.paymentRequired // false'
 #!/bin/bash
 # List tools from every live session
 for session in $(mcpc --json | jq -r '.sessions[] | select(.status == "live") | .name'); do
-  echo "=== @$session ==="
-  mcpc --json "@$session" tools-list | jq -r '.[].name' | sed 's/^/  /'
+  echo "=== $session ==="
+  mcpc --json "$session" tools-list | jq -r '.[].name' | sed 's/^/  /'
 done
 ```
 
@@ -377,8 +375,8 @@ done
 # Which session has a tool named "search"?
 TOOL_NAME="${1:?Usage: $0 <tool-name>}"
 for session in $(mcpc --json | jq -r '.sessions[] | select(.status == "live") | .name'); do
-  if mcpc --json "@$session" tools-list | jq -e ".[] | select(.name == \"$TOOL_NAME\")" > /dev/null 2>&1; then
-    echo "Found '$TOOL_NAME' in @$session"
+  if mcpc --json "$session" tools-list | jq -e ".[] | select(.name == \"$TOOL_NAME\")" > /dev/null 2>&1; then
+    echo "Found '$TOOL_NAME' in $session"
   fi
 done
 ```
@@ -388,7 +386,7 @@ done
 ```bash
 # Tool count per session as JSON
 mcpc --json | jq -r '.sessions[] | select(.status == "live") | .name' | while read -r session; do
-  COUNT=$(mcpc --json "@$session" tools-list 2>/dev/null | jq 'length')
+  COUNT=$(mcpc --json "$session" tools-list 2>/dev/null | jq 'length')
   echo "{\"session\": \"$session\", \"tools\": $COUNT}"
 done | jq -s '.'
 ```

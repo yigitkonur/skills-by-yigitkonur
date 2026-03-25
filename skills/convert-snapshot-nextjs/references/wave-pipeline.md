@@ -6,9 +6,9 @@ The 5-wave pipeline converts saved HTML snapshots into buildable Next.js project
 
 ## Wave 0 — Per-Page Deep Exploration & Deobfuscation
 
-**Trigger:** Orchestrator scans `source-pages/` and finds `.html` files with `_files/` companion directories
+**Trigger:** Orchestrator scans `source-pages/` and finds saved snapshot `.html` files plus usable CSS/asset context
 **Agents:** 1 per page (ALL run in parallel)
-**Input:** One `{page}.html` + its `{page}_files/` folder
+**Input:** One `{page}.html` + its discovered asset context (`{page}_files/`, adjacent local CSS/assets, or inline `<style>` blocks only)
 **Output:** `.design-soul/wave0/{page}/`
 
 ### Pre-Flight: Input Scan
@@ -19,27 +19,34 @@ Before spawning agents, the orchestrator must:
 # 1. Inventory all pages
 find source-pages/ -maxdepth 1 -name "*.html" | sort
 
-# 2. Verify companion folders exist
+# 2. Classify snapshot mode and discover each page's CSS corpus
 for f in source-pages/*.html; do
   base="${f%.html}"
   if [ -d "${base}_files" ]; then
     css_count=$(ls "${base}_files"/*.css 2>/dev/null | wc -l)
     js_count=$(ls "${base}_files"/*.js 2>/dev/null | wc -l)
-    echo "READY: $(basename $f) → ${css_count} CSS, ${js_count} JS"
+    echo "PRIMARY: $(basename $f) → ${base}_files/ (${css_count} CSS, ${js_count} JS)"
+  elif grep -qE 'href="[^"]+\.css' "$f"; then
+    css_refs=$(grep -oE 'href="[^"]+\.css[^"]*"' "$f" | sed 's/^href="//;s/"$//' | sort -u | wc -l | tr -d ' ')
+    echo "ADJACENT: $(basename $f) → ${css_refs} local CSS references"
   else
-    echo "WARNING: $(basename $f) has no _files/ companion"
+    style_count=$(grep -c '<style' "$f" 2>/dev/null)
+    echo "INLINE-ONLY: $(basename $f) → ${style_count} <style> blocks"
   fi
 done
 
-# 3. Deduplicate CSS across all _files/ folders
-find source-pages/ -name "*.css" -path "*_files*" -exec md5 -r {} \; | sort | uniq -d -w 32
+# 3. Deduplicate CSS across every discovered external CSS file
+find source-pages/ \( -path "*_files/*.css" -o -name "*.css" \) -type f -exec md5 -r {} \; | sort | uniq -d -w 32
 ```
+
+If a page has no `_files/` folder, no local CSS references, and no inline `<style>` blocks, stop and ask the user for a richer snapshot before Wave 0. There is not enough source data to ground the extraction.
 
 ### Agent Spawning
 
 For EACH `.html` file found, spawn one Wave 0 agent with:
 - Path to the `.html` file
-- Path to its `_files/` folder
+- The page's input mode and asset root (`{page}_files/`, snapshot directory, or inline-only)
+- The page's CSS corpus
 - Shared CSS dedup map (so agents don't re-process identical files)
 - Instruction: "Read `references/foundations-agent.md` and execute Wave 0 extraction for this page"
 
@@ -54,7 +61,7 @@ For EACH `.html` file found, spawn one Wave 0 agent with:
    - Font inventory: every `font-family` + `@font-face` source
    - Color inventory: every unique color value (hex, rgb, hsl, custom property)
 
-2. **`deobfuscated.css`** — ALL CSS from `_files/*.css` files:
+2. **`deobfuscated.css`** — ALL CSS from the page's discovered CSS corpus:
    - Concatenated into a single file
    - Deduplicated (identical rules removed)
    - Obfuscated class names mapped to semantic names via comment annotations
@@ -106,16 +113,19 @@ Before spawning Wave 1 agents, classify every page into a type group:
 | Hero + feature sections + CTA | `landing` | Homepage, product pages |
 | Plan cards + comparison tables | `pricing` | Pricing, plans |
 | Feature detail grids + demos | `features` | Features, integrations |
-| Blog post layout + article body | `content` | Blog, docs, changelog |
+| Blog post layout + article body | `blog` | Blog, articles, changelog |
+| Sidebar nav + content area + code blocks | `docs` | Docs, API reference, guides |
 | Team bios + company info | `about` | About, careers, team |
-| All sections in one HTML file | `single` | Single-page sites |
+| Sidebar shell + KPI cards + filters + dense data regions | `dashboard` | App, dashboard, settings, account |
+| Form fields + OAuth buttons + minimal chrome | `auth` | Login, signup, register |
+| Long-form policy text + table of contents | `legal` | Privacy, terms, legal pages |
 
 Grouping criteria (in priority order):
 1. **Shared navigation structure** — same nav items = same group
 2. **Section composition overlap** — >60% shared CSS Module prefixes = same group
 3. **Visual treatment similarity** — same background pattern, typography scale, spacing rhythm
 
-If only one page exists → group name is `single`.
+If only one page exists, still assign the best semantic group above. If no group fits cleanly, choose the closest overlap and document the ambiguity instead of inventing a new group.
 
 ### Agent Spawning
 
@@ -241,7 +251,7 @@ Wave 2 is complete when ALL `wave2/{page}/done.signal` files exist.
 
 | File/Directory | Contents | Source |
 |---------------|----------|--------|
-| `package.json` | Dependencies: ONLY next, react, react-dom, typescript, tailwindcss, @types/react, @types/node, postcss, autoprefixer | Wave 3 constraint |
+| `package.json` | Dependencies: ONLY next, react, react-dom, typescript, tailwindcss, @types/react, @types/react-dom, @types/node, postcss, autoprefixer | Wave 3 constraint |
 | `tsconfig.json` | `strict: true`, path aliases for `@/components`, `@/lib` | Standard Next.js |
 | `tailwind.config.ts` | Extended theme with REAL breakpoints, colors, fonts, spacing from Wave 1 tokens | `wave1/*/token-values.json` |
 | `postcss.config.js` | Standard PostCSS: tailwindcss + autoprefixer | Standard |

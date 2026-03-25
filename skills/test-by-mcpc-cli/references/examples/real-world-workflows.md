@@ -17,13 +17,14 @@ Tests any MCP server end-to-end: connect, verify capabilities, exercise every pr
 ```bash
 #!/usr/bin/env bash
 # smoke-test.sh — end-to-end smoke test for any MCP server
-# Usage: ./smoke-test.sh <server-url-or-config> [session-name]
+# Usage: ./smoke-test.sh <server-url-or-entry-name> [session-name]
 # Example: ./smoke-test.sh mcp.apify.com @smoke
-#          ./smoke-test.sh ~/.vscode/mcp.json:filesystem @smoke
+#          MCPC_CONFIG=~/.vscode/mcp.json ./smoke-test.sh filesystem @smoke
 
 set -euo pipefail
 
 SERVER="${1:?Usage: $0 <server> [session-name]}"
+MCPC_CONFIG="${MCPC_CONFIG:-}"
 SESSION="${2:-@smoke-$$}"
 PASS=0
 FAIL=0
@@ -65,7 +66,13 @@ trap cleanup EXIT
 # ── 1. connect ────────────────────────────────────────────────────────────────
 
 log "Connecting to $SERVER as $SESSION"
-if ! mcpc "$SERVER" connect "$SESSION" 2>&1; then
+if [ -n "$MCPC_CONFIG" ]; then
+  CONNECT_CMD=(mcpc --config "$MCPC_CONFIG" "$SERVER" connect "$SESSION")
+else
+  CONNECT_CMD=(mcpc "$SERVER" connect "$SESSION")
+fi
+
+if ! "${CONNECT_CMD[@]}" 2>&1; then
   fail "connect: could not establish session"
   echo "RESULT: 0 passed, 1 failed — aborting (no session)" >&2
   exit 3
@@ -689,8 +696,8 @@ ok "Authenticated tools-list succeeded ($TOOL_COUNT tools)"
 # ── step 5: inspect session to confirm profile is referenced ──────────────────
 
 log "Step 5: Verifying session references correct profile"
-SESSION_INFO=$(mcpc --json "$SESSION" 2>/dev/null)
-SESSION_PROFILE=$(printf '%s' "$SESSION_INFO" | jq -r '._mcpc.profileName // ""')
+SESSION_INFO=$(mcpc --json 2>/dev/null)
+SESSION_PROFILE=$(printf '%s' "$SESSION_INFO" | jq -r --arg s "$SESSION" '.sessions[] | select(.name == $s) | .profileName // ""')
 if [[ "$SESSION_PROFILE" != "$PROFILE" ]]; then
   fail "Session profile mismatch: expected '$PROFILE', got '$SESSION_PROFILE'"
 fi
@@ -735,15 +742,16 @@ Watch-mode workflow for local MCP server development. Builds, connects via confi
 ```bash
 #!/usr/bin/env bash
 # dev-loop.sh — watch-mode test loop for local stdio MCP server development
-# Usage: ./dev-loop.sh <config-file> <server-entry> <build-command>
-# Example: ./dev-loop.sh ./mcp.json:myserver "npm run build"
+# Usage: ./dev-loop.sh <config-file> <server-entry> [build-command]
+# Example: ./dev-loop.sh ./mcp.json myserver "npm run build"
 # Requires: inotifywait (Linux) or fswatch (macOS)
 
 set -euo pipefail
 
-CONFIG_ENTRY="${1:?Usage: $0 <config:entry> <build-cmd>}"
-BUILD_CMD="${2:-npm run build}"
-SRC_DIR="${3:-./src}"
+CONFIG_FILE="${1:?Usage: $0 <config-file> <entry> [build-cmd] [src-dir] }"
+ENTRY_NAME="${2:?Usage: $0 <config-file> <entry> [build-cmd] [src-dir] }"
+BUILD_CMD="${3:-npm run build}"
+SRC_DIR="${4:-./src}"
 SESSION="@devloop-$$"
 
 # Detect file watcher
@@ -774,8 +782,8 @@ run_test_cycle() {
   mcpc @"${SESSION#@}" close 2>/dev/null || true
 
   # 3. Connect
-  log "Connecting to $CONFIG_ENTRY"
-  if ! mcpc "$CONFIG_ENTRY" connect "$SESSION" 2>/dev/null; then
+  log "Connecting to $ENTRY_NAME via $CONFIG_FILE"
+  if ! mcpc --config "$CONFIG_FILE" "$ENTRY_NAME" connect "$SESSION" 2>/dev/null; then
     log "Connect failed"
     return 1
   fi

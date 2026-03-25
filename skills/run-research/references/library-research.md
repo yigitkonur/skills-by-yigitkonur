@@ -24,8 +24,8 @@
 **deep_research** -- The primary tool. Structure the question with exact constraints:
 ```
 "WHAT I NEED: A comprehensive comparison of Prisma, Drizzle, and Kysely for a TypeScript/PostgreSQL project.
-WHY: Starting a new production API and need to choose an ORM that will scale.
-WHAT I KNOW: Prisma has the largest community but reportedly slow cold starts. Drizzle is newer but claims better performance.
+WHY I'M RESEARCHING THIS: Starting a new production API and need to choose an ORM that will scale.
+WHAT I ALREADY KNOW: Prisma has the largest community but reportedly slow cold starts. Drizzle is newer but claims better performance.
 SPECIFIC QUESTIONS: 1) Cold-start times in serverless? 2) Type-safety for complex queries? 3) Migration tooling maturity? 4) Learning curve from raw SQL? 5) Maintenance activity?"
 ```
 **search_google** -- Search for benchmark comparisons, feature matrices, and "X vs Y" articles:

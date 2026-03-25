@@ -155,9 +155,9 @@ server.listen(3000);
 **Fix**:
 1. Confirm the server process is running: `ps aux | grep node`.
 2. Check the port: `lsof -i :3000`.
-3. For stdio: ensure the command path and binary are correct. For HTTP: verify host/port match.
+3. Verify the client is targeting the correct MCP URL, usually `http://localhost:3000/mcp` for local development.
 
-**Prevention**: Add startup logging to stderr. Use health-check endpoints for HTTP servers.
+**Prevention**: Add startup logging and a health check for HTTP servers.
 ---
 ### Error: Memory leaks with long-running servers
 
@@ -170,18 +170,16 @@ server.listen(3000);
 
 **Prevention**: Implement bounded caches from the start. Monitor `process.memoryUsage().heapUsed`.
 ---
-### Error: EPIPE errors with stdio transport
+### Error: Broken local connection after restart
 
-**When**: Server writes to stdout after the client has disconnected.
-**Cause**: The parent process closed its stdin/stdout pipe, but the server still tries to write.
+**When**: The client reconnects after a local server restart and sees socket reset / broken pipe style errors.
+**Cause**: The old HTTP connection died while the client still held stale session state.
 **Fix**:
-```typescript
-process.stdout.on("error", (err) => {
-  if (err.code === "EPIPE") process.exit(0);
-});
-```
+1. Restart the local client session after the server restart.
+2. Re-run `tools/list` or reconnect Inspector so a fresh session is established.
+3. If the port changed, update the client URL to the new `http://localhost:<port>/mcp` endpoint.
 
-**Prevention**: Listen for pipe errors on stdout/stderr. Use the transport `close` event for cleanup.
+**Prevention**: Keep the local dev port stable and restart clients after HMR crashes or full server restarts.
 ---
 ### Error: OAuth "Unauthorized" — 401 on protected endpoints
 
@@ -257,13 +255,13 @@ return text(JSON.stringify(safe));
 ### Error: Invalid JSON-RPC response
 
 **When**: Client receives a malformed response and fails to parse it.
-**Cause**: Something writes to stdout besides the MCP server (e.g., `console.log()`).
+**Cause**: The client hit the wrong endpoint, a proxy returned HTML, or middleware mutated the response unexpectedly.
 **Fix**:
-1. Replace all `console.log()` with `console.error()` — MCP stdio uses stdout for JSON-RPC.
-2. Redirect child process output: `spawn("cmd", args, { stdio: ["pipe", "pipe", "inherit"] })`.
-3. Suppress library debug output: set `DEBUG=""`.
+1. Confirm the client uses `/mcp`, not `/`, `/sse`, or a generic app route.
+2. Check the raw response body with `curl -i` and confirm it is JSON-RPC, not HTML or an auth redirect.
+3. Disable or narrow middleware/proxy rewrites until the MCP response is clean.
 
-**Prevention**: Never use `console.log()` in stdio MCP servers. Use ESLint `no-console` with `allow: ["error", "warn"]`.
+**Prevention**: Keep MCP mounted on a dedicated route and test it directly with `curl` before debugging through higher-level clients.
 ---
 ### Error: SSE connection drops after 60 seconds
 

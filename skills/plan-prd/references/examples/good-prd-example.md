@@ -153,7 +153,7 @@ Test external behavior: "given this query, does the system return relevant resul
 - **Search UI**: E2E tests for search flow, multi-turn, code copy, keyboard navigation
 
 ### Prior art
-Follow the existing API test pattern in `tests/api/` using Vitest + supertest. UI tests follow the Playwright patterns in `tests/e2e/`.
+Follow the existing backend API integration-test pattern used elsewhere in the codebase (Vitest + supertest). UI tests follow the existing Playwright end-to-end suite conventions.
 
 ### Benchmark
 Maintain a golden dataset of 50 common developer questions with expected top-3 results. Search success rate is measured against this dataset weekly.

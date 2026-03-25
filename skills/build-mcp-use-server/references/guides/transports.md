@@ -1,6 +1,6 @@
 # Transports
 
-Configure how MCP clients connect to your server — Streamable HTTP for networked services, stdio for local integrations, or serverless handlers for edge platforms.
+Configure how MCP clients connect to your server — local or remote Streamable HTTP for long-lived services, or serverless handlers for edge platforms.
 
 ---
 
@@ -8,12 +8,11 @@ Configure how MCP clients connect to your server — Streamable HTTP for network
 
 | Transport | How to start | Use When | Sessions | SSE | Scaling |
 |---|---|---|---|---|---|
-| **HTTP Streamable** | `server.listen(port)` | Networked servers, multi-client, production APIs | Yes (auto-detected) | Yes | Horizontal (with Redis) |
-| **stdio** | `server.listen()` (no port) | Local tools, desktop connectors, CLI integrations | N/A | No | Single process |
+| **HTTP Streamable** | `server.listen(port)` | Local desktop testing, networked servers, multi-client production APIs | Yes (auto-detected) | Yes | Horizontal (with Redis) |
 | **SSE `/sse` alias** | Automatic (same as HTTP Streamable) | Backward compatibility with older MCP clients only | Yes | Yes | Same as HTTP Streamable |
 | **Serverless** | `server.getHandler()` | Supabase Edge Functions, Cloudflare Workers, Deno Deploy, Vercel | Stateless | No | Platform-managed |
 
-**Quick rule:** Use `server.listen(port)` for HTTP, `server.listen()` (no port) for stdio, `server.getHandler()` for serverless.
+**Quick rule:** Use `server.listen(port)` for local or remote HTTP servers, and `server.getHandler()` for serverless.
 
 ---
 
@@ -40,7 +39,7 @@ The port is resolved in this priority:
 3. `PORT` environment variable
 4. Default: `3000`
 
-> **Note:** Prefer explicit transport configuration in examples. Use stdio for local desktop integrations and Streamable HTTP for remote/networked deployments.
+> **Note:** Prefer explicit transport configuration in examples. Use localhost HTTP for local desktop integrations and Streamable HTTP or serverless handlers for remote deployments.
 
 ### Host Configuration
 
@@ -489,66 +488,66 @@ server.tool(
   }
 )
 
-await server.listen()
+await server.listen(3000)
 ```
 
-### When to choose stdio
+### When to choose local HTTP
 
-| Choose stdio when... | Why |
+| Choose local HTTP when... | Why |
 |---|---|
-| The client launches your process directly | No network or reverse proxy needed |
-| You are shipping a local package or binary | Simplest install story for desktop users |
-| You want fewer moving parts during development | No ports, CORS, or TLS setup |
-| The tool should not be remotely reachable | Best default security posture |
+| The client and server run on the same machine | Simple localhost setup, still compatible with Inspector and desktop clients |
+| You are iterating on a new server | The same `/mcp` endpoint works for curl, Inspector, and desktop testing |
+| You want one transport story across dev and prod | No separate local-only transport to migrate away from later |
+| The tool should not be remotely reachable | Bind to `localhost` and keep the port private |
 
-### STDIO guardrails
+### Local HTTP guardrails
 
 | Rule | Reason |
 |---|---|
-| Never use `console.log()` | Stdout is reserved for protocol traffic |
-| Prefer `console.error()` or `ctx.log()` | Keeps diagnostics off the protocol stream |
-| Avoid interactive stdin reads | The MCP transport owns stdin |
-| Keep startup deterministic | Desktop clients expect the process to initialize quickly |
+| Bind to `localhost` unless remote access is intentional | Avoid accidental network exposure during development |
+| Set an explicit port or document the default | Makes client configuration reproducible |
+| Keep startup deterministic | Desktop clients and Inspector should connect immediately |
+| Add `allowedOrigins` before exposing browser access | Reduces local rebinding risk when a browser can reach the server |
 
-❌ **BAD** — Print debugging output to stdout:
-
-```typescript
-console.log('starting mcp server')
-await server.listen()
-```
-
-✅ **GOOD** — Use stderr-safe logging:
+❌ **BAD** — Bind publicly during local testing without meaning to:
 
 ```typescript
-console.error('starting mcp server')
-await server.listen()
+await server.listen(3000) // host implied elsewhere as 0.0.0.0
 ```
 
-### STDIO deployment pattern
+✅ **GOOD** — Keep local development on localhost:
+
+```typescript
+const server = new MCPServer({
+  name: 'inventory',
+  version: '1.0.0',
+  host: 'localhost',
+})
+
+await server.listen(3000)
+```
+
+### Local HTTP development pattern
 
 ```json
 {
   "mcpServers": {
     "inventory": {
-      "command": "node",
-      "args": ["/absolute/path/to/dist/server.js"],
-      "env": {
-        "NODE_ENV": "production"
-      }
+      "url": "http://localhost:3000/mcp"
     }
   }
 }
 ```
 
-### Choosing between stdio and HTTP
+### Choosing between local HTTP and remote HTTP/serverless
 
-| Question | Prefer stdio | Prefer Streamable HTTP |
+| Question | Prefer localhost HTTP | Prefer public HTTP / serverless |
 |---|---|---|
 | Is the client on the same machine? | ✅ | ❌ |
-| Do you need browser/OAuth redirects? | ❌ | ✅ |
+| Do you need browser/OAuth redirects? | ✅ | ✅ |
 | Do you need horizontal scaling? | ❌ | ✅ |
-| Do you want zero exposed ports? | ✅ | ❌ |
-| Do you need server-initiated notifications over the network? | ❌ | ✅ |
+| Do you want private, local-only access? | ✅ | ❌ |
+| Do you need internet-reachable notifications or callbacks? | ❌ | ✅ |
 
 ---
 
@@ -711,7 +710,7 @@ const server = new MCPServer({
 
 | Scenario | How to start | Session mode | Notes |
 |---|---|---|---|
-| Claude Desktop / local tool | `server.listen()` (no port) | N/A | No network exposure; client launches the process |
+| Claude Desktop / local tool | `server.listen(3000)` on `localhost` | Auto or stateful | Point the client at `http://localhost:3000/mcp` |
 | Public remote server | `server.listen(3000)` | Auto or stateful | `/mcp` endpoint; use `allowedOrigins` |
 | Legacy client compatibility | `server.listen(3000)` + `/sse` alias auto-mounted | Stateful | Transitional only; `/sse` is an automatic alias |
 | Supabase Edge / Workers / Deno Deploy | `server.getHandler()` | Stateless | Prefer no in-memory state |
@@ -719,7 +718,7 @@ const server = new MCPServer({
 
 ## Practical defaults
 
-1. Start with **stdio** for local-only tools.
+1. Start with **localhost HTTP** for local-only tools.
 2. Use **Streamable HTTP on `/mcp`** for anything remote.
 3. Keep **SSE only for backward compatibility**.
 4. Treat **serverless as stateless** unless you have a deliberate distributed session design.

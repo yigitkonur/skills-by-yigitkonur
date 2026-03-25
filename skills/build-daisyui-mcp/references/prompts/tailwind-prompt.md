@@ -415,7 +415,7 @@ Tailwind utilities for layout (`grid`, `flex`, `gap`), spacing (`p-*`, `m-*`), a
       </tr>
     </thead>
     <tbody>
-      <tr class="hover">
+      <tr class="hover:bg-base-300">
         <td>Alice</td>
         <td>Engineer</td>
       </tr>
@@ -544,7 +544,7 @@ Is there a daisyUI component that semantically matches this pattern?
       <span class="btn btn-ghost text-xl">Dashboard</span>
     </div>
     <div class="navbar-end">
-      <div class="avatar placeholder">
+      <div class="avatar avatar-placeholder">
         <div class="bg-primary text-primary-content w-8 rounded-full">
           <span class="text-sm">JD</span>
         </div>

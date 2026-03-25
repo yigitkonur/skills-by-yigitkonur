@@ -184,24 +184,24 @@ Choose subreddits based on the expertise level you need:
 ### The Structured Template
 
 ```
-GOAL: [Specific, measurable outcome]
-WHY: [Decision context — what problem triggers this research]
-KNOWN: [Your current understanding — skip basics]
-APPLY: [How you'll use the answer]
+WHAT I NEED: [Specific, measurable outcome]
+WHY I'M RESEARCHING THIS: [Decision context — what problem triggers this research]
+WHAT I ALREADY KNOW: [Your current understanding — skip basics]
+HOW I PLAN TO USE THIS: [How you'll use the answer]
 SPECIFIC QUESTIONS:
-1) [Question targeting dimension A]
-2) [Question targeting dimension B]
-3) [Question about failure modes / edge cases]
-PREFERRED SOURCES: [Optional — specific docs or standards]
-FOCUS: [Optional — performance, security, cost, simplicity]
+1. [Question targeting dimension A]
+2. [Question targeting dimension B]
+3. [Question about failure modes / edge cases]
+PRIORITY SOURCES: [Optional — specific docs or standards]
+PRIORITY INFO: [Optional — performance, security, cost, simplicity]
 ```
 
 ### Question Quality Checklist
 
 Before submitting a deep_research question, verify:
 
-- [ ] GOAL is specific (not "tell me about X")
-- [ ] KNOWN section prevents repeating basics
+- [ ] WHAT I NEED is specific (not "tell me about X")
+- [ ] WHAT I ALREADY KNOW prevents repeating basics
 - [ ] Each sub-question targets a different dimension
 - [ ] At least one sub-question asks about failure modes
 - [ ] Constraints are stated (stack, team size, scale)

@@ -212,12 +212,12 @@ npx devin-review https://github.com/owner/repo/pull/123
 **Possible causes:**
 
 1. **File not named exactly `REVIEW.md`** — must be uppercase, no prefix/suffix
-2. **Nesting too deep** — scoped REVIEW.md files should be max 2 levels deep from repo root (e.g., `packages/api/REVIEW.md` ✅, `packages/api/src/utils/REVIEW.md` ❌)
+2. **Nesting too deep** — prefer package/service-level files like `packages/api/REVIEW.md`; deep files such as `packages/api/src/utils/REVIEW.md` usually create more overlap and confusion than signal
 3. **Changed files not in that directory** — the scoped REVIEW.md only applies to files within its directory tree
 
 ### Symptom: Duplicate findings from root + subdirectory REVIEW.md
 
-Subdirectory files **complement** root — they don't replace it. Both apply to files in the subdirectory. The **closest-scope-wins** principle applies: when root and subdirectory rules conflict, the closer (more specific) REVIEW.md takes precedence for files in its tree.
+Treat root and subdirectory files as overlapping context. Keep the root file cross-cutting, keep subdirectory files local to that subtree, and do not rely on undocumented precedence to resolve contradictions between them.
 
 **Fix:** Don't repeat root rules in subdirectory files:
 - **Root**: Cross-cutting concerns (security, general conventions)
@@ -225,16 +225,15 @@ Subdirectory files **complement** root — they don't replace it. Both apply to 
 
 ### Debugging Monorepo Scope
 
-To verify which REVIEW.md applies to a changed file:
+To see which `REVIEW.md` files may influence a changed file:
 
 ```bash
 # List all REVIEW.md files and their depth
 find . -name "REVIEW.md" -not -path "./.git/*" | awk -F/ '{print NF-1, $0}' | sort -n
 
-# For a changed file like packages/api/src/handler.ts, the applicable files are:
-#   ./REVIEW.md                    (root — always applies)
-#   ./packages/api/REVIEW.md       (closest scope — wins on conflicts)
-#   ./packages/api/src/REVIEW.md   (too deep — avoid this level)
+# For a changed file like packages/api/src/handler.ts, inspect the root REVIEW.md
+# plus any REVIEW.md under parent directories of that file.
+# Keep the root cross-cutting and the scoped file package-specific.
 ```
 
 ---
@@ -245,7 +244,7 @@ find . -name "REVIEW.md" -not -path "./.git/*" | awk -F/ '{print NF-1, $0}' | so
 
 Devin reads multiple instruction files. If they contradict each other:
 
-1. **Check all instruction files**: `REVIEW.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.cursorrules`, `.windsurfrules`
+1. **Check all instruction files**: matching `**/REVIEW.md`, `**/AGENTS.md`, `**/CLAUDE.md`, `**/CONTRIBUTING.md`, `.cursorrules`, `.windsurfrules`, `.coderabbit.yaml`, `.coderabbit.yml`, `greptile.json`
 2. **Look for contradictions**: e.g., REVIEW.md says "use Moment.js" but AGENTS.md says "use date-fns"
 3. **Resolve**: Pick one source of truth per concern:
    - Review criteria → `REVIEW.md`
@@ -267,10 +266,10 @@ Common conflict patterns:
 
 ```bash
 # Find all instruction files
-grep -rn "must\|never\|always\|require\|prohibit" REVIEW.md AGENTS.md CLAUDE.md 2>/dev/null | sort
+find . \( -name "REVIEW.md" -o -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "CONTRIBUTING.md" -o -name ".cursorrules" -o -name ".windsurfrules" -o -name ".coderabbit.yaml" -o -name ".coderabbit.yml" -o -name "greptile.json" \) -type f -print0 | xargs -0 grep -nE "must|never|always|required|prohibit" 2>/dev/null | sort
 ```
 
-**Resolution priority:** AGENTS.md wins for coding tasks, REVIEW.md wins for review criteria, linter config wins for style/formatting.
+**Resolution rule:** resolve by concern, not guessed precedence. Keep review criteria in `REVIEW.md`, coding behavior in `AGENTS.md` or `CLAUDE.md`, workflow in `CONTRIBUTING.md`, and style/formatting in linter or editor config.
 
 ---
 

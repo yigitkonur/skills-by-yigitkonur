@@ -205,7 +205,7 @@ Figma Frame Analysis
 | Toggle switch | `toggle` | `toggle`, `toggle-primary` |
 | Expandable section | `collapse` / `accordion` | `collapse`, `collapse-title`, `collapse-content` |
 | Progress indicator | `progress` / `radial-progress` | `progress`, `progress-primary` |
-| Tooltip hover text | `tooltip` | — (use Tailwind or custom) |
+| Tooltip hover text | `tooltip` | `tooltip`, `tooltip-content`, placement modifiers |
 | Divider line | `divider` | `divider` |
 | Keyboard shortcut | `kbd` | `kbd` |
 | Timeline / history | `timeline` | `timeline` |
@@ -400,7 +400,7 @@ templates: dashboard
         <label for="sidebar" class="btn btn-ghost lg:hidden">☰</label>
       </div>
       <div class="navbar-end">
-        <div class="avatar placeholder">
+        <div class="avatar avatar-placeholder">
           <div class="bg-neutral text-neutral-content w-8 rounded-full">
             <span class="text-xs">JD</span>
           </div>
@@ -431,7 +431,7 @@ templates: dashboard
   <div class="drawer-side">
     <label for="sidebar" class="drawer-overlay"></label>
     <ul class="menu bg-base-200 min-h-full w-60 p-4">
-      <li><a class="active">Dashboard</a></li>
+      <li><a class="menu-active">Dashboard</a></li>
       <li><a>Analytics</a></li>
       <li><a>Settings</a></li>
     </ul>

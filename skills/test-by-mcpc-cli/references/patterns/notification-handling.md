@@ -20,7 +20,7 @@ The full set of `NotificationType` values recognised by mcpc (defined in `src/li
 | `prompts/list_changed` | Prompt catalog changed |
 | `progress` | Long-running operation progress update |
 | `logging/message` | Server emitted a log entry |
-| `tasks/status` | Async task status update |
+| `tasks/status` | Internal task-related status update; not a public `mcpc 0.1.11` command surface |
 
 ---
 
@@ -201,41 +201,15 @@ restarts. After a bridge restart you must re-subscribe.
 
 ---
 
-## Progress notifications during long tool calls
+## Progress notifications boundary
 
-When you call a tool with `--task`, the bridge returns `tasks/status` IPC messages (`task-update`
-type) instead of the raw `progress` MCP notification. The CLI translates these into a live ora
-spinner:
+The MCP protocol may still carry `progress` or `tasks/status` notifications internally, but `mcpc 0.1.11` does not expose a public `--task`, `--detach`, `tasks-get`, or `tasks-list` workflow.
 
-```bash
-mcpc @test tools-call long-running-tool input:=data --task
-# ⠋ Running tool long-running-tool... (0:12) Step 3 of 10
-# ✔ Tool long-running-tool executed successfully (1:04)
-```
+For operator-facing guidance:
 
-The `TaskUpdate` struct carries `progressMessage` (from `notifications/progress` params) and
-`statusMessage` (from `tasks/status` params). Both are shown in the spinner text, with
-`progressMessage` taking priority.
-
-Press ESC while a task runs to detach — the task continues in the background and you get the task
-ID back:
-
-```bash
-# Detach from running task
-# ESC key while spinner is active
-# Output: ℹ Detached. Task abc-123 continues in background
-
-# Poll it later
-mcpc @test tasks-get abc-123
-mcpc @test tasks-list
-```
-
-Start a task detached from the beginning:
-
-```bash
-mcpc @test tools-call slow-tool param:=value --detach
-# ✔ Task started: abc-123
-```
+- Do not instruct users to run `tools-call --task`
+- Do not instruct users to poll `tasks-*` commands
+- Use a higher `--timeout` for slow synchronous calls instead
 
 ---
 
@@ -302,4 +276,4 @@ mcpc $SESSION resources-unsubscribe "$URI"
 - `src/bridge/index.ts` — `broadcastNotification()`, `updateNotificationTimestamp()`, `connectToMcp()` (handler registration)
 - `src/cli/shell.ts` — `displayNotification()`, `setupNotificationListener()`
 - `src/lib/session-client.ts` — `setupNotificationForwarding()` (IPC → EventEmitter)
-- `src/cli/commands/tools.ts` — `callTool()` with `--task` / `--detach` spinner and `onUpdate` callback
+- `src/cli/commands/tools.ts` — tool-call handling and any notification/progress wiring that still exists internally

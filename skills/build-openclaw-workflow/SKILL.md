@@ -29,12 +29,35 @@ Do NOT use this skill when:
 
 ## Non-negotiable rules
 
-1. **Verify tool availability before using it.** Check that the required tool or plugin is loaded. Lobster and LLM Task are plugin-provided and may not be present.
+1. **Verify runtime and tool availability before using them.** `openclaw` must exist first. `lobster` and `llm-task` are optional plugin tools, and Lobster also requires the `lobster` CLI on the gateway host.
 2. **Respect risk levels.** `exec` is VERY HIGH risk. `browser` is HIGH risk. Never use these without confirming the user understands the implications.
 3. **Prefer structured output.** LLM Task forces JSON-only output. Lobster workflows produce typed results. Use these over freeform text whenever possible.
 4. **Guard cron jobs.** Every cron job must have a clear disable path and should not run unbounded loops. Read `references/cron-scheduling.md` before creating any scheduled job.
 5. **Test workflows incrementally.** Run each step individually before chaining them together.
 6. **Use approvals for destructive actions.** Lobster supports resumable approval gates. Use them before any step that modifies external state, deletes data, or spends money.
+
+## Runtime preflight
+
+Before choosing a workflow primitive, verify the runtime boundary:
+
+1. Confirm the runtime exists: `command -v openclaw`
+2. Check health and loaded tools: `openclaw doctor` then `openclaw status --all`
+3. Match the exact runtime names before choosing a branch:
+   - plugin tools: `lobster`, `llm-task`
+   - built-in tools: `cron`, `browser`, `canvas`, `gateway`
+   - core tools: `exec`, `process`
+4. If you choose Lobster, confirm the gateway host also has the Lobster CLI: `command -v lobster`
+5. If a required tool or host dependency is missing, draft the workflow/config files only and state the exact blocker instead of claiming execution coverage
+
+Success signal: the runtime is healthy, the chosen primitive is visible in status, and you can run a no-side-effect canary for that primitive. If you cannot run the canary, stop at file authoring and say why.
+
+## Standard confirmation wording for risky tools
+
+Before any side-effecting `exec`, `browser`, `gateway`, or `process` step, use an explicit confirmation message:
+
+`About to run <tool> for <action>. Side effects: <effect>. Verification: <check>. Reply approve to continue.`
+
+Do not replace this with vague warnings.
 
 ## Decision tree
 
@@ -73,7 +96,7 @@ What automation task are you building?
 |
 \-- Adjusting agent behavior
     +-- Change reasoning depth
-    |   \-- thinking_level tool (fast/deep)
+    |   \-- Use `/think:<level>` or a primitive's `thinking` field
     \-- Prevent infinite tool loops
         \-- tool-loop detection (built-in)
 ```
@@ -83,14 +106,15 @@ What automation task are you building?
 | Tool | Provider | Group | Risk | Purpose |
 |---|---|---|---|---|
 | `lobster` | Plugin | - | Medium | Typed workflow runtime with resumable approvals |
-| `llm_task` | Plugin | - | Low | JSON-only LLM step for structured output |
+| `llm-task` | Plugin | - | Low | JSON-only LLM step for structured output |
 | `cron` | Built-in | `group:automation` | Medium | Schedule and manage recurring jobs |
 | `gateway` | Built-in | `group:automation` | Medium | Restart OpenClaw instance |
 | `browser` | Built-in | `group:ui` | HIGH | Chromium automation (navigate, click, screenshot) |
 | `canvas` | Built-in | `group:ui` | Low | Node-Canvas visual output |
 | `exec` | Core | - | VERY HIGH | Run shell commands |
 | `process` | Core | - | High | Manage background processes |
-| `thinking_level` | Core | - | Low | Adjust reasoning depth (fast/deep) |
+
+Reasoning depth is not a separate tool. Use `/think:<level>` for interactive turns and the documented `thinking` field on primitives that support it.
 
 ## Combining primitives
 
@@ -128,6 +152,8 @@ Read `references/lobster-workflows.md` first for the orchestration layer.
 | Creating cron jobs without a disable path | Always include how to list, disable, and delete the job |
 | Skipping approval gates on destructive Lobster steps | Add explicit approval steps before delete, deploy, or payment actions |
 | Assuming Lobster/LLM Task plugins are always present | Check tool availability at workflow start; fall back to exec + manual JSON if missing |
+| Guessing whether a tool is loaded or misnaming it | Use `openclaw status --all` and the exact runtime names: `lobster`, `llm-task`, `cron`, `browser`, `gateway`, `exec`, `process` |
+| Treating browser actions like CSS-selector commands | Take a fresh browser snapshot and act on refs, not selectors |
 | Running browser automation without screenshots for verification | Capture screenshots after key actions to verify state |
 | Unbounded loops in cron + exec combinations | Set max iterations, timeout, and failure thresholds |
 | Passing secrets through exec command strings | Use environment variables or OpenClaw's secure config instead |

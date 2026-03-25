@@ -377,6 +377,17 @@ const config = loadConfigFile("path/to/config.json");
 const client = new MCPClient(config);
 ```
 
+### MCPClient.fromConfigFile
+
+Use the convenience factory when you want to construct directly from a config path without manually holding the parsed object:
+
+```typescript
+import { MCPClient } from "mcp-use";
+
+const client = MCPClient.fromConfigFile("path/to/config.json");
+await client.createAllSessions();
+```
+
 The JSON file must follow the `MCPClientConfig` schema:
 
 ```json

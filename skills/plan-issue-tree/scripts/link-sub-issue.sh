@@ -10,6 +10,9 @@ REPONAME="${REPO##*/}"
 PARENT="${2:?Parent issue number required}"
 CHILD="${3:?Child issue number required}"
 
+command -v gh >/dev/null || { echo "ERROR: gh CLI is required" >&2; exit 1; }
+command -v jq >/dev/null || { echo "ERROR: jq is required" >&2; exit 1; }
+
 PARENT_ID=$(gh api graphql -f query="
   query {
     repository(owner:\"$OWNER\", name:\"$REPONAME\") {

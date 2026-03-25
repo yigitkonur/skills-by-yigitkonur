@@ -956,11 +956,13 @@ async function dynamicServerDemo() {
       prompt: [
         "I need you to do the following:",
         "1. First, list the files in /tmp using the filesystem server.",
-        "2. Then, add a new MCP server for web search using this config:",
-        '   name: "brave-search"',
-        '   command: "npx"',
-        '   args: ["-y", "@anthropic/mcp-server-brave"]',
-        `   env: { "BRAVE_API_KEY": "${process.env.BRAVE_API_KEY}" }`,
+        "2. Then, call add_mcp_server_from_config for a web search server with:",
+        '   serverName: "brave-search"',
+        '   serverConfig: {',
+        '     command: "npx",',
+        '     args: ["-y", "@anthropic/mcp-server-brave"],',
+        `     env: { "BRAVE_API_KEY": "${process.env.BRAVE_API_KEY}" }`,
+        "   }",
         "3. Use the newly added brave-search server to look up",
         '   "latest Node.js release notes".',
         "4. Save a summary of the search results to /tmp/node-news.md",
@@ -987,7 +989,7 @@ dynamicServerDemo().catch(console.error);
    - `connect_to_mcp_server` — activates a server and loads its tools.
    - `get_active_mcp_server` — retrieves the currently active server identifier.
    - `disconnect_from_mcp_server` — deactivates the current server.
-   - `add_mcp_server_from_config` — adds a new server at runtime via `{ command, args }` config.
+   - `add_mcp_server_from_config` — adds a new server at runtime via `{ serverName, serverConfig }`, where `serverConfig` matches one `mcpServers` entry.
 2. The agent can invoke any of these tools to dynamically orchestrate which servers and tools it uses.
 3. The `ServerManager` spins up new MCP server processes on demand and registers their tools with the agent.
 4. From that point forward, the agent can use the new server's tools alongside the original ones.
@@ -1055,19 +1057,19 @@ async function streamStructuredOutput(): Promise<void> {
       }
 
       // Structured output in progress (fires approx every 2 seconds)
-      if (event.type === "on_structured_output_progress") {
+      if (event.event === "on_structured_output_progress") {
         console.log("\n[progress] Converting to structured format...");
       }
 
       // Structured output successfully produced and validated
-      if (event.type === "on_structured_output") {
-        finalWeather = event.payload as Weather;
+      if (event.event === "on_structured_output") {
+        finalWeather = WeatherSchema.parse(event.data?.output);
         console.log("\n[structured] Output ready:", finalWeather);
       }
 
       // Structured output failed after retries (default: 3 retries)
-      if (event.type === "on_structured_output_error") {
-        console.error("\n[error] Structured output failed:", event.error);
+      if (event.event === "on_structured_output_error") {
+        console.error("\n[error] Structured output failed:", event.data?.error);
       }
     }
 
@@ -1093,6 +1095,6 @@ streamStructuredOutput().catch((err) => {
 
 - `agent.streamEvents({ prompt, schema })` — preferred `RunOptions` object form. Pass a Zod `schema` to enable structured output streaming. The plain-string form `agent.streamEvents(prompt)` is deprecated; always use the `{ prompt, ... }` object form.
 - `on_structured_output_progress` — fires approximately every 2 seconds while the LLM response is being converted and validated.
-- `on_structured_output` — fires once when the output is successfully produced; `event.payload` is the typed, validated object.
+- `on_structured_output` — fires once when the output is successfully produced; the validated object is available at `event.data.output`.
 - `on_structured_output_error` — fires if conversion/validation fails after the retry limit (default: 3 retries).
 - Standard token events (`on_chat_model_stream`) continue to fire alongside the structured output events.

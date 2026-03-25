@@ -111,11 +111,11 @@ Route, mock, or abort network requests:
 
 ```bash
 # Block analytics/tracking
-agent-browser network route "**analytics**" abort
-agent-browser network route "**ads**" abort
+agent-browser network route "**analytics**" --abort
+agent-browser network route "**ads**" --abort
 
-# Mock API responses
-agent-browser network mock "https://api.example.com/data" '{"items":[]}'
+# Mock API responses with a custom body
+agent-browser network route "https://api.example.com/data" --body '{"items":[]}'
 
 # Remove routes
 agent-browser network unroute "**analytics**"
@@ -149,23 +149,25 @@ agent-browser dialog accept "response"  # Accept prompt with text
 
 ```bash
 # Cookies
-agent-browser cookies get                          # All cookies
-agent-browser cookies get --domain example.com     # Filter by domain
-agent-browser cookies set name=session value=abc domain=.example.com
+agent-browser cookies
+agent-browser cookies --json | jq '.[] | select(.domain == ".example.com")'
+agent-browser cookies set session "abc" --domain .example.com --path /
 agent-browser cookies clear
 
 # localStorage / sessionStorage
-agent-browser storage get localStorage
-agent-browser storage set localStorage key "value"
-agent-browser storage clear localStorage
+agent-browser storage local
+agent-browser storage local get key
+agent-browser storage local set key "value"
+agent-browser storage local clear
+agent-browser storage session get sessionKey
 ```
 
 ## Tab Management
 
 ```bash
-agent-browser tab list                    # List open tabs
+agent-browser tab                         # List open tabs
 agent-browser tab new https://example.com # Open new tab
-agent-browser tab switch 2                # Switch by index
+agent-browser tab 2                       # Switch by index
 agent-browser tab close                   # Close current tab
 agent-browser click @e1 --new-tab         # Open link in new tab
 ```
@@ -176,9 +178,9 @@ Low-level mouse operations for drag-and-drop, canvas, or custom interactions:
 
 ```bash
 agent-browser mouse move 100 200       # Move to coordinates
-agent-browser mouse down               # Press button
-agent-browser mouse up                 # Release button
-agent-browser mouse wheel 0 -300       # Scroll (deltaX, deltaY)
+agent-browser mouse down left          # Press button
+agent-browser mouse up left            # Release button
+agent-browser mouse wheel -300 0       # Scroll (dy, dx)
 agent-browser drag @e1 @e2             # Drag element to target
 ```
 

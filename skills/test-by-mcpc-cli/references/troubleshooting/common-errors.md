@@ -30,17 +30,15 @@ Server-side errors that return exit code 0 include: tool validation errors (miss
 | "Config entry not found" | Wrong entry name in config | Check config file: `cat config.json \| jq '.mcpServers \| keys'` |
 | "Invalid config file" | Malformed JSON | Validate: `jq . config.json` |
 
-### Exit code 2 — Server error
+### Exit code 2 — Server or bridge error
 
-**Cause:** Tool execution failed, resource not found, server-side error.
+**Cause:** Rare failure surfaced by the CLI after it reached the bridge or server. Normal MCP tool errors do **not** use exit code 2.
 
 | Symptom | Diagnosis | Fix |
 |---|---|---|
-| "Tool execution failed" | Tool threw an error | Check tool args, inspect error message |
-| "Resource not found" | Invalid resource URI | List resources: `mcpc @s resources` |
-| "Method not found" | Server doesn't support this capability | Check `mcpc @s help --json \| jq .capabilities` |
-| "Internal server error" | Server bug | Check server logs, report to server maintainer |
-| Tool returns `isError: true` | Tool-level error (not transport) | Inspect: `mcpc @s tools-call ... --json \| jq .` |
+| "Bridge for @session failed after restart" | Bridge restarted but MCP initialization still failed | Check the bridge log path included in the error |
+| "Internal server error" | Remote server returned a non-MCP failure | Check server logs, then retry with `--verbose` |
+| Tool returns `isError: true` | Tool-level MCP error, not exit code 2 | Inspect `mcpc @s tools-call ... --json \| jq .` and keep treating exit code as `0` |
 
 ### Exit code 3 — Network error
 
@@ -128,7 +126,7 @@ mcpc @session restart
 
 ```bash
 # Clean all sessions
-mcpc clean sessions
+mcpc --clean=sessions
 
 # Verify sockets are removed
 ls ~/.mcpc/bridges/
@@ -143,7 +141,8 @@ rm ~/.mcpc/bridges/*.sock
 
 ```bash
 # Run the command manually to see errors
-npx @modelcontextprotocol/server-filesystem /tmp/test
+TEST_DIR="$(realpath /tmp/test)"
+npx @modelcontextprotocol/server-filesystem "$TEST_DIR"
 
 # Common issues:
 # - Package not installed: npm install -g @package/name
@@ -158,7 +157,7 @@ npx @modelcontextprotocol/server-filesystem /tmp/test
 
 ```bash
 # Enable verbose to see protocol negotiation
-mcpc config.json:server connect @debug --verbose
+mcpc --config config.json server connect @debug --verbose
 
 # Check bridge logs
 cat ~/.mcpc/logs/bridge-debug.log
@@ -174,7 +173,17 @@ echo $API_KEY
 # Missing vars resolve to empty string (no error)
 # Export before connecting:
 export API_KEY=my-key
-mcpc config.json:my-server connect @test
+mcpc --config config.json my-server connect @test
+```
+
+### Filesystem path rejected on macOS
+
+**Cause:** `/tmp/...` is an alias for `/private/tmp/...`, and the server allowlist uses the canonical path.
+
+```bash
+TEST_DIR="$(realpath /tmp/test-dir)"
+mcpc @session tools-call list_allowed_directories --json
+# Use the returned canonical path verbatim in subsequent read/write calls
 ```
 
 ## HTTP transport issues
@@ -182,10 +191,7 @@ mcpc config.json:my-server connect @test
 ### TLS certificate errors
 
 ```bash
-# For self-signed certs (dev only)
-mcpc https://dev.internal:3000 connect @dev --insecure
-
-# For corporate proxies with custom CAs
+# Trust a private CA instead of trying to bypass TLS verification
 export NODE_EXTRA_CA_CERTS=/path/to/ca.pem
 mcpc https://server.corp connect @test
 ```
@@ -258,11 +264,8 @@ time mcpc @session tools-call slow-tool arg:=val --json
 ### Memory issues with large responses
 
 ```bash
-# Use resource reading with max-size limit
-mcpc @session resources-read "large-resource" --max-size 10485760
-
-# Save to file instead of stdout
-mcpc @session resources-read "large-resource" -o /tmp/output.bin
+# Save to file instead of printing a large resource to the terminal
+mcpc @session resources-read "large-resource" > /tmp/output.bin
 ```
 
 ## Debugging with verbose mode
@@ -288,7 +291,7 @@ tail -f ~/.mcpc/logs/bridge-<session-name>.log
 pkill -f mcpc-bridge
 
 # Remove all mcpc data
-mcpc clean all
+mcpc --clean=all
 
 # Remove data directory manually
 rm -rf ~/.mcpc
@@ -297,4 +300,4 @@ rm -rf ~/.mcpc
 npm uninstall -g @apify/mcpc && npm install -g @apify/mcpc
 ```
 
-**Warning:** `mcpc clean all` removes saved OAuth profiles. You will need to re-authenticate after cleaning.
+**Warning:** `mcpc --clean=all` removes saved OAuth profiles. You will need to re-authenticate after cleaning.

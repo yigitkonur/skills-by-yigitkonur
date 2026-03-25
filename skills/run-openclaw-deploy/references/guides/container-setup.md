@@ -2,27 +2,97 @@
 
 This guide covers deploying OpenClaw across all supported runtime environments.
 
-## Critical requirements (verified from official docs + community reports)
+## Critical requirements (verified from official OpenClaw docs)
 
 | Requirement | Value | Source |
 |-------------|-------|--------|
-| **Node.js version** | **v22 required** (not 18, not 20) | Reddit r/selfhosted, confirmed in docs |
-| **RAM (idle)** | 1.5-2 GB minimum | Reddit r/selfhosted |
-| **RAM (recommended)** | 4 GB | Reddit r/selfhosted |
-| **Best OS** | Ubuntu 24.04 LTS | Works out of box with Docker Compose |
+| **Node.js version** | **Supported: Node >=22**. Current official Docker examples build on `node:24-bookworm`. | `docs.openclaw.ai/`, `docs.openclaw.ai/install/docker` |
+| **Primary config path** | `~/.openclaw/openclaw.json` on host installs; `/home/node/.openclaw/openclaw.json` inside containers | `docs.openclaw.ai/agent-workspace`, `docs.openclaw.ai/install/docker` |
+| **Health endpoints** | `http://127.0.0.1:18789/healthz` and `/readyz` | `docs.openclaw.ai/install/docker` |
+| **RAM (recommended)** | 4 GB recommended, 1.5-2 GB idle baseline | operator guidance |
+| **Best OS** | Ubuntu 24.04 LTS remains a practical default | operator guidance |
 
-**Node.js v22 is non-negotiable.** OpenClaw will fail to start or exhibit undefined behavior on Node.js 18 or 20. If deploying bare-metal, verify with `node --version` before proceeding.
+**Compatibility rule:** host or source installs should run a supported Node major (`22.x` or `24.x`). Prebuilt containers already bundle the runtime, so verify **inside the container** with `docker exec ... node --version` instead of treating host Node as authoritative.
+
+## Docker daemon and socket preflight
+
+Before any Docker-based deployment:
+
+```bash
+docker info >/dev/null
+docker version
+docker context show
+```
+
+If `docker info` fails, stop and start the container runtime first. Common local setups:
+- Docker Desktop
+- OrbStack
+- Colima or rootless Docker
+
+Common socket paths to verify:
+- `/var/run/docker.sock`
+- `$HOME/.orbstack/run/docker.sock`
+- `/run/user/$UID/docker.sock`
+
+If OpenClaw sandboxing needs a non-default socket, set `OPENCLAW_DOCKER_SOCKET` before running the official Docker setup flow.
+
+## Command paths by deployment style
+
+Use the command path that matches how OpenClaw was installed. Do not assume the host has an `openclaw` binary just because the gateway is running.
+
+### Host or bare-metal install
+
+Use the host CLI directly:
+
+```bash
+openclaw --version
+openclaw status --all
+openclaw gateway status --json
+openclaw health --json
+```
+
+### Official Docker Compose flow from an OpenClaw checkout
+
+After `docker compose up -d openclaw-gateway`, use the dedicated CLI container for day-to-day commands:
+
+```bash
+docker compose run --rm openclaw-cli status --all
+docker compose run --rm openclaw-cli gateway probe
+docker compose exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
+```
+
+Before the gateway container exists, run onboarding and config writes through `openclaw-gateway` with `--no-deps --entrypoint node`:
+
+```bash
+docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+  dist/index.js config set gateway.mode local
+```
+
+### Generic image-only Docker / Podman deployment
+
+HTTP probes and config-file inspection are the reliable baseline:
+
+```bash
+docker ps --filter name=openclaw-gateway
+docker logs openclaw-gateway --tail 50
+curl -fsS http://127.0.0.1:18789/healthz
+docker exec openclaw-gateway node --version
+docker exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
+docker exec openclaw-gateway sh -lc 'sed -n "1,200p" /home/node/.openclaw/openclaw.json'
+```
+
+Only use `docker exec openclaw-gateway openclaw ...` after you confirm the binary exists with `docker exec openclaw-gateway which openclaw`.
 
 ## Runtime options
 
 | Runtime | Best for | Key consideration |
 |---------|----------|-------------------|
-| Docker Compose | Most deployments, safest route | Native sandbox support, easiest setup |
+| Docker Compose | Most deployments, safest route | Official setup flow, easiest path to sandbox support |
 | Docker | Single-container deployments | Same as Compose but manual orchestration |
 | Podman | Rootless container needs, security-sensitive | Drop-in Docker alternative, no daemon |
 | Nix | Reproducible deployments, declarative config | Exact dependency pinning, no container overhead |
 | Ansible | Multi-node fleet management | Automated provisioning across many hosts |
-| Bare VPS | Simple single-instance | Direct control, must manage Node.js v22 manually |
+| Bare VPS | Simple single-instance | Direct control, must manage supported Node runtime manually |
 
 ## Docker Compose deployment (recommended)
 
@@ -35,81 +105,133 @@ Docker Compose is the safest and most commonly successful deployment route based
 - Persistent storage for configuration and data
 - Ubuntu 24.04 LTS recommended (works out of box)
 
-### Production Docker Compose
+### Official repo-based flow (preferred when you have an OpenClaw checkout)
+
+The official Docker docs expect you to run from the OpenClaw repo root:
+
+```bash
+./scripts/docker/setup.sh
+```
+
+To use the published image instead of building locally:
+
+```bash
+export OPENCLAW_IMAGE="ghcr.io/openclaw/openclaw:latest"
+./scripts/docker/setup.sh
+```
+
+Key details from the official flow:
+- onboarding writes provider keys and the generated gateway token into `.env`
+- `OPENCLAW_GATEWAY_BIND=lan` is the default so `http://127.0.0.1:18789` on the host works with Docker port publishing
+- `openclaw-cli` is a post-start tool; use `openclaw-gateway` with `--no-deps --entrypoint node` for pre-start onboarding or config writes
+
+Manual equivalent:
+
+```bash
+docker build -t openclaw:local -f Dockerfile .
+docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+  dist/index.js onboard --mode local --no-install-daemon
+docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+  dist/index.js config set gateway.mode local
+docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+  dist/index.js config set gateway.bind lan
+docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
+  dist/index.js config set gateway.controlUi.allowedOrigins \
+  '["http://localhost:18789","http://127.0.0.1:18789"]' --strict-json
+docker compose up -d openclaw-gateway
+```
+
+### Generic image-only Docker Compose
 
 ```yaml
 version: "3.8"
 services:
-  openclaw:
-    image: openclaw/openclaw:latest
-    container_name: openclaw
+  openclaw-gateway:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw-gateway
     restart: unless-stopped
+    env_file:
+      - .env
     volumes:
-      - openclaw-data:/data
-      - openclaw-config:/config
-    environment:
-      - OPENCLAW_API_KEY=${OPENCLAW_API_KEY}
-      # CRITICAL: Set API spending caps BEFORE connecting any channels
-      # Retry loops on messaging channels can cause $300-600 bills
-      # See monitoring-and-ops.md for cost alert configuration
+      - ./openclaw-home:/home/node/.openclaw
     ports:
-      # CRITICAL: Bind to localhost only, NOT 0.0.0.0
-      # The gateway binds to 0.0.0.0 by default, exposing it to all interfaces
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:18789:18789"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18789/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-volumes:
-  openclaw-data:
-  openclaw-config:
 ```
 
-**CRITICAL port binding:** The default `-p 8080:8080` binds to `0.0.0.0`, exposing the gateway to all network interfaces. Always use `127.0.0.1:8080:8080` and place a reverse proxy in front. See security-hardening.md for reverse proxy setup.
+Place provider keys in `.env`, and put policy/config in `./openclaw-home/openclaw.json` so it is mounted into the container at `/home/node/.openclaw/openclaw.json`:
+
+```json
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    }
+  },
+  "monitoring": {
+    "cost": {
+      "enabled": true,
+      "daily_limit_usd": 50,
+      "weekly_limit_usd": 250,
+      "monthly_limit_usd": 800,
+      "limit_action": "stop"
+    }
+  }
+}
+```
+
+**CRITICAL Docker bridge rule:** keep the host publish on loopback with `127.0.0.1:18789:18789`, but do **not** leave `gateway.bind` at `loopback` inside the container. Use `lan` or `custom` there so the published port is reachable. Use bind mode values, not host aliases like `127.0.0.1` or `0.0.0.0`.
 
 ### Verifying Docker deployment
 
 ```bash
-# Check container is running
-docker ps --filter name=openclaw
+# Official Compose flow
+docker compose ps
+docker compose run --rm openclaw-cli status --all
+docker compose exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
 
-# View logs
-docker logs openclaw --tail 50
-
-# Check health endpoint (should return from localhost only)
-curl -f http://localhost:8080/health
-
-# Verify Node.js version inside container
-docker exec openclaw node --version
-# Must show v22.x.x
-
-# Check memory usage
-docker stats openclaw --no-stream
-# Idle should be 1.5-2 GB, warn if under 4 GB available
-
-# Test gateway connectivity
-docker exec openclaw openclaw gateway status
+# Generic container checks
+docker ps --filter name=openclaw-gateway
+docker logs openclaw-gateway --tail 50
+curl -fsS http://127.0.0.1:18789/healthz
+curl -fsS http://127.0.0.1:18789/readyz
+docker exec openclaw-gateway node --version
+docker exec openclaw-gateway node dist/index.js health --token "$OPENCLAW_GATEWAY_TOKEN"
+docker stats openclaw-gateway --no-stream
+docker exec openclaw-gateway sh -lc 'sed -n "1,200p" /home/node/.openclaw/openclaw.json'
 ```
 
 ## Docker single-container deployment
 
 ```bash
 # Pull the latest OpenClaw image
-docker pull openclaw/openclaw:latest
+docker pull ghcr.io/openclaw/openclaw:latest
 
 # Run with localhost-only port binding
 docker run -d \
-  --name openclaw \
+  --name openclaw-gateway \
   --restart unless-stopped \
-  -v openclaw-data:/data \
-  -v openclaw-config:/config \
-  -e OPENCLAW_API_KEY="${OPENCLAW_API_KEY}" \
-  -p 127.0.0.1:8080:8080 \
-  openclaw/openclaw:latest
+  --env-file ./.env \
+  -v openclaw-home:/home/node/.openclaw \
+  -p 127.0.0.1:18789:18789 \
+  ghcr.io/openclaw/openclaw:latest
 ```
+
+Create `/home/node/.openclaw/openclaw.json` in that volume before first start, and use the same `gateway.mode`, `gateway.bind`, `gateway.auth`, and `gateway.controlUi.allowedOrigins` pattern shown above.
 
 ## Reverse proxy setup (required for production)
 
@@ -119,7 +241,7 @@ OpenClaw has **no HTTPS by default**. A reverse proxy is required for TLS termin
 
 ```
 openclaw.example.com {
-    reverse_proxy localhost:8080
+    reverse_proxy localhost:18789
 }
 ```
 
@@ -139,7 +261,7 @@ server {
 
     location / {
         limit_req zone=openclaw burst=20 nodelay;
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:18789;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -153,17 +275,18 @@ server {
 Podman is a drop-in replacement for Docker with rootless container support.
 
 ```bash
-podman pull openclaw/openclaw:latest
+podman pull ghcr.io/openclaw/openclaw:latest
 
 podman run -d \
-  --name openclaw \
+  --name openclaw-gateway \
   --restart unless-stopped \
-  -v openclaw-data:/data \
-  -v openclaw-config:/config \
-  -e OPENCLAW_API_KEY="${OPENCLAW_API_KEY}" \
-  -p 127.0.0.1:8080:8080 \
-  openclaw/openclaw:latest
+  --env-file ./.env \
+  -v openclaw-home:/home/node/.openclaw \
+  -p 127.0.0.1:18789:18789 \
+  ghcr.io/openclaw/openclaw:latest
 ```
+
+The same bridge-network rule applies: host publishing stays on `127.0.0.1:18789:18789`, while the gateway inside the container should bind `lan` or `custom`.
 
 Key differences from Docker:
 - Runs rootless by default (no daemon, no root required)
@@ -220,7 +343,7 @@ For multi-node fleet management:
         openclaw_version: latest
         openclaw_api_key: "{{ vault_openclaw_api_key }}"
         openclaw_data_dir: /opt/openclaw/data
-        openclaw_config_dir: /opt/openclaw/config
+        openclaw_home_dir: /opt/openclaw/.openclaw
 ```
 
 ## VPS bare-metal deployment
@@ -228,17 +351,17 @@ For multi-node fleet management:
 For simple single-instance deployments without containers:
 
 1. Provision a VPS (Ubuntu 24.04 LTS recommended, minimum 4GB RAM)
-2. **Install Node.js v22** (not 18, not 20)
+2. **Install a supported Node runtime** (`22.x` or `24.x`)
 3. Install OpenClaw runtime dependencies
 4. Download and install OpenClaw
 5. Configure as a systemd service for auto-restart
 6. Set up a reverse proxy (Caddy or nginx) for TLS termination
 
 ```bash
-# Install Node.js v22
+# Install Node.js 22.x
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
-node --version  # Must show v22.x.x
+node --version  # Must show a supported runtime
 
 # Example systemd service file
 # /etc/systemd/system/openclaw.service
@@ -257,8 +380,8 @@ WorkingDirectory=/opt/openclaw
 ExecStart=/opt/openclaw/bin/openclaw serve
 Restart=always
 RestartSec=5
-Environment=OPENCLAW_API_KEY=<from-secrets-manager>
 EnvironmentFile=/etc/openclaw/env
+# Provider keys and gateway token come from the env file or a secrets manager
 
 [Install]
 WantedBy=multi-user.target
@@ -286,11 +409,12 @@ Some skills require macOS-specific tools (Xcode, macOS SDKs, platform-specific b
 
 After deploying by any method:
 
-- [ ] Node.js v22 confirmed (`node --version` shows v22.x.x)
+- [ ] Supported runtime confirmed (`node --version` or `docker exec ... node --version`)
 - [ ] OpenClaw process is running and restarting on failure
-- [ ] Gateway is bound to localhost only (not 0.0.0.0)
+- [ ] Native installs use `gateway.bind: "loopback"` unless a trusted proxy/access layer requires something else
+- [ ] Docker/Podman bridge installs publish `127.0.0.1:18789:18789` on the host and use `gateway.bind: "lan"` or `custom` inside the container
 - [ ] Reverse proxy with TLS is in front of the gateway
-- [ ] Gateway authentication is enabled (no auth by default -- see security-hardening.md)
+- [ ] Gateway auth mode is reviewed; non-loopback binds use a token/password, and `mode: "none"` is reserved for trusted loopback-only setups
 - [ ] API spending caps are set BEFORE connecting messaging channels
 - [ ] At least one LLM provider is configured and responding
 - [ ] Secrets are stored in environment variables or Docker secrets, not in config files
@@ -304,16 +428,16 @@ After deploying by any method:
 ## Steering experiences
 
 ### SE-01: Container starts but gateway is unreachable
-The container may be running but the gateway port is not exposed or is blocked by firewall rules. Always verify port mapping and check host-level firewall rules.
+The container may be running but `gateway.bind` is still `loopback` inside the container, so the published host port has nothing listening behind it. Verify host publishing with `127.0.0.1:18789:18789`, then confirm the mounted config uses `gateway.bind: "lan"` or `custom` and hit `/healthz`.
 
 ### SE-02: Persistent data lost after container restart
-If volumes are not configured, container data is ephemeral. Always mount named volumes for `/data` and `/config` directories.
+If the OpenClaw home directory is not persisted, config, credentials, and workspace state are ephemeral. Always persist `/home/node/.openclaw`.
 
 ### SE-03: Wrong architecture image on ARM hosts
 When deploying on ARM-based VPS (AWS Graviton, Apple Silicon), ensure you pull the correct architecture image. Use `--platform linux/arm64` if needed.
 
 ### SE-04: Node.js version mismatch on bare-metal
-OpenClaw requires Node.js v22. Ubuntu 22.04 and earlier ship Node.js 12-18 by default. Always install from NodeSource or use nvm to get v22.
+Ubuntu 22.04 and earlier ship Node.js 12-18 by default. Always install a supported runtime (`22.x` or `24.x`) from NodeSource or via `nvm`.
 
 ### SE-05: Gateway exposed to the internet without auth
-The gateway binds to 0.0.0.0 by default and has no authentication enabled by default. Bind to localhost and put a reverse proxy with auth in front before exposing any port.
+Do not publish the gateway broadly. Keep host publishing on loopback and put a reverse proxy with auth in front before exposing remote access.

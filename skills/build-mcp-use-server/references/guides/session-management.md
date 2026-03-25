@@ -757,7 +757,7 @@ If a request contains all the information needed to produce a result and you do 
 
 | Deployment | `sessionStore` | `streamManager` | Notes |
 |---|---|---|---|---|
-| Local stdio tool | none / default | none | Transport-dependent |
+| Localhost HTTP dev server | none / default | none | Fine for disposable local work |
 | Single HTTP node | `InMemorySessionStore` or `FileSystemSessionStore` | default | Choose store retention to match client behavior |
 | Single persistent VM | `FileSystemSessionStore` | default | Filesystem-backed retention |
 | Multi-node production | `RedisSessionStore` | `RedisStreamManager` | Tune Redis TTLs and stream retention explicitly |

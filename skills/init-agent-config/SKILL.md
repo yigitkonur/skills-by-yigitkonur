@@ -62,7 +62,7 @@ Then determine the agent surface actually in use:
 | Claude Code + any other agent | `AGENTS.md` + thin `CLAUDE.md` wrapper |
 | Existing `AGENTS.md`, now adding Claude-only features | Keep `AGENTS.md` authoritative; add `CLAUDE.md` and `.claude/` only if needed |
 | Existing standalone `CLAUDE.md`, now adding other agents | Extract universal content into `AGENTS.md`, reduce `CLAUDE.md` to a thin wrapper |
-| Unknown or open-source project (no stated agent preference) | `AGENTS.md` only -- maximizes portability; mention CLAUDE.md as optional next step |
+| Unknown or open-source project with no repo-local agent preference files (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.claude/`, similar) | `AGENTS.md` only -- maximizes portability; mention CLAUDE.md as optional next step |
 
 If the user mentions another agent-specific file (`.cursorrules`, `GEMINI.md`, `.github/copilot-instructions.md`, etc.), treat it as input to mine rules from unless they explicitly want that format as output.
 
@@ -96,6 +96,7 @@ Read only enough to ground the config. Work through tiers in order; stop when yo
 
 **Recovery rules**
 - If a command is not verified, write `See [file]` or mark it as `[unverified]`.
+- If the repo has no executable command source at all (for example a docs, standards, or skills catalog repo), do not invent a Commands section. Either omit it or state `Commands: [not configured]` only when that absence prevents confusion.
 - If an existing config file is mostly good, switch from rewrite mode to audit/tighten mode.
 - If repo facts conflict across files, prefer the stricter or more current source and call out the conflict.
 
@@ -135,7 +136,7 @@ Use the **WHAT / WHY / HOW** filter:
 |------|---------|
 | WHAT | Non-obvious tech choices, architecture boundaries, unusual paths |
 | WHY | Reasoning that stops agents from "fixing" intentional decisions |
-| HOW | Verified commands and exact workflows that must be followed |
+| HOW | Verified commands and exact workflows that must be followed; if the repo has no command manifest, say so instead of guessing |
 
 Create a section in the output file only when 3+ repo-specific facts justify it. Do not add a section for a single bullet point.
 
@@ -258,12 +259,13 @@ Read the smallest reference set that unblocks the current decision:
 
 | Project type | Start with template | Then read |
 |-------------|---------------------|-----------|
-| Next.js / React SPA | `project-templates.md` -> Web Frontend | `writing-guidelines.md` |
-| Express / FastAPI / Go API | `project-templates.md` -> API Server | `agents-md-format.md` |
+| Next.js / React SPA | `project-templates.md` -> React / Next.js | `writing-guidelines.md` |
+| Express / FastAPI / Go API | `project-templates.md` -> Node.js / TypeScript, Python, or Go (match the repo's actual stack) | `agents-md-format.md` |
 | Monorepo (Turborepo, Nx, pnpm workspaces) | `project-templates.md` -> Monorepo | `agents-md-format.md`, `claude-md-format.md` |
 | Library or OSS package | `project-templates.md` -> Library/OSS | `writing-guidelines.md`, `cross-agent-compat.md` |
+| Documentation / skills pack / standards repo | `project-templates.md` -> Docs / Skills Pack / Standards Repository | `writing-guidelines.md`, `cross-agent-compat.md` |
 | CLI tool | `project-templates.md` -> CLI Tool | `writing-guidelines.md` |
-| Mobile (React Native, Flutter) | `project-templates.md` -> Mobile App | `claude-md-format.md` |
+| Mobile (React Native, Flutter) | `project-templates.md` -> Minimal (Any Project) | `writing-guidelines.md`, `claude-md-format.md` |
 | Existing messy config | `audit-and-migration.md` | `writing-guidelines.md` |
 | Multi-agent team | `cross-agent-compat.md` | `agents-md-format.md` |
 

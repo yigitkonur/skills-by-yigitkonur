@@ -9,7 +9,7 @@
 | Category | Vue Package | React/Next.js Equivalent | Effort | Notes |
 |---|---|---|---|---|
 | **Core Framework** | Vue 3 (Composition API) | React 18/19 (Hooks) | 🔴 High | Fundamentally different reactivity models |
-| **Meta-Framework** | Nuxt 3 | Next.js 14/15 | 🔴 High | Full framework swap; similar concepts, different APIs |
+| **Meta-Framework** | Nuxt 3 | Next.js App Router | 🔴 High | Full framework swap; similar concepts, different APIs |
 | **Routing** | Vue Router 4 | Next.js App Router | 🔴 High | Config-based → file-system routing paradigm shift |
 | **State (Simple)** | Pinia | Zustand | 🟡 Medium | Closest API similarity; `defineStore()` → `create()` |
 | **State (Complex)** | Vuex | Redux Toolkit (RTK) | 🟡 Medium | Mutations → reducers, actions → thunks |

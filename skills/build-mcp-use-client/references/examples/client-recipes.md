@@ -989,7 +989,7 @@ try {
 ```typescript
 import { MCPClient, loadConfigFile } from "mcp-use";
 
-const config = await loadConfigFile("./mcp-config.json");
+const config = loadConfigFile("./mcp-config.json");
 const client = new MCPClient(config);
 await client.createAllSessions();
 ```

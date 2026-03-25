@@ -31,6 +31,10 @@ class Order {
 **Correct (domain events decouple side effects):**
 
 ```typescript
+type Result<T, E> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E };
+
 // domain/events/DomainEvent.ts
 interface DomainEvent {
   readonly eventType: string;
@@ -54,9 +58,9 @@ abstract class AggregateRoot {
 
 // domain/entities/Order.ts
 class Order extends AggregateRoot {
-  complete(): void {
+  complete(): Result<void, 'OrderAlreadyCompleted'> {
     if (this.status === OrderStatus.Completed) {
-      throw new OrderAlreadyCompletedError(this.id);
+      return { ok: false, error: 'OrderAlreadyCompleted' };
     }
 
     this.status = OrderStatus.Completed;
@@ -68,6 +72,8 @@ class Order extends AggregateRoot {
       aggregateId: this.id, orderId: this.id,
       customerId: this.customerId, totalAmount: this.totalAmount,
     });
+
+    return { ok: true, value: undefined };
   }
 }
 
@@ -88,16 +94,17 @@ class CompleteOrderUseCase {
     private readonly eventBus: IEventBus,
   ) {}
 
-  async execute(orderId: string): Promise<Result<void>> {
+  async execute(orderId: string): Promise<Result<void, 'OrderNotFound' | 'OrderAlreadyCompleted'>> {
     const order = await this.orderRepo.findById(orderId);
-    if (!order) return Result.fail('Order not found');
+    if (!order) return { ok: false, error: 'OrderNotFound' };
 
-    order.complete();
+    const completion = order.complete();
+    if (!completion.ok) return completion;
     await this.orderRepo.save(order);              // 1. Persist first
     const events = order.pullEvents();              // 2. Pull events after save
     await this.eventBus.publish(events);            // 3. Dispatch after commit
 
-    return Result.ok();
+    return { ok: true, value: undefined };
   }
 }
 

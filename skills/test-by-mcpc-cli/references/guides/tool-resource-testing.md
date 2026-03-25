@@ -187,11 +187,8 @@ mcpc @session resources-read "file:///path/to/resource"
 # Read with JSON wrapper
 mcpc @session resources-read "file:///path" --json | jq '.contents'
 
-# Save to file (binary-safe)
-mcpc @session resources-read "https://example.com/data.csv" -o data.csv
-
-# Set max size
-mcpc @session resources-read "https://example.com/large.bin" --max-size 10485760
+# Save to file
+mcpc @session resources-read "https://example.com/data.csv" > data.csv
 ```
 
 ### Resource subscriptions
@@ -223,27 +220,17 @@ mcpc @session prompts-get code-review language:=typescript file:=main.ts
 mcpc @session prompts-get code-review language:=typescript --json | jq '.messages'
 ```
 
-## Task testing (experimental)
+## Long-running work
 
-For servers that support long-running tasks:
+`mcpc 0.1.11` does not expose `--task`, `--detach`, or `tasks-*` commands.
+
+For slow tools, increase the timeout and keep the call synchronous:
 
 ```bash
-# Start task (blocking — waits for completion)
-mcpc @session tools-call long-process data:=input --task
-
-# Start task (detached — returns task ID immediately)
-mcpc @session tools-call long-process data:=input --task --detach
-# Returns: task ID
-
-# List active tasks
-mcpc @session tasks-list
-
-# Check task status
-mcpc @session tasks-get <task-id>
-
-# Cancel a task
-mcpc @session tasks-cancel <task-id>
+mcpc @session tools-call long-process data:=input --timeout 900
 ```
+
+If the server models background work through normal tools, follow that server-specific job workflow instead of assuming generic task commands exist.
 
 ## Logging level control
 

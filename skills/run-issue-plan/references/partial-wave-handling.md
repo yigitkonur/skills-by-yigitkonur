@@ -2,6 +2,8 @@
 
 How to manage waves where some issues succeed and others fail, and how to recover gracefully.
 
+Assumes `REPO` is already set and every `gh` command below uses `--repo "$REPO"`.
+
 ## Failure modes
 
 ### 1. Single issue failure in a wave
@@ -11,15 +13,15 @@ One issue fails while others in the same wave succeed.
 **Detection:**
 ```bash
 # Count open issues in the current wave
-OPEN=$(gh issue list -l "wave:$WAVE" --state open --json number --jq 'length')
-FAILED=$(gh issue list -l "wave:$WAVE" -l "status:failed" --json number --jq 'length')
-DONE=$(gh issue list -l "wave:$WAVE" --state closed --json number --jq 'length')
+OPEN=$(gh issue list --repo "$REPO" -l "wave:$WAVE" --state open --json number --jq 'length')
+FAILED=$(gh issue list --repo "$REPO" -l "wave:$WAVE" -l "status:failed" --json number --jq 'length')
+DONE=$(gh issue list --repo "$REPO" -l "wave:$WAVE" --state closed --json number --jq 'length')
 
 echo "Wave $WAVE: $DONE closed, $OPEN open ($FAILED failed)"
 ```
 
 **Response:**
-1. Mark failed issue with `status:failed` label
+1. Mark failed issue with `status:failed` and remove `status:in-progress` / `status:ready`
 2. Comment on the issue with failure details and unmet DoD criteria
 3. Check if any wave N+1 issues are blocked ONLY by this failed issue
 4. If yes — those N+1 issues stay blocked. Present to user.
@@ -30,7 +32,7 @@ echo "Wave $WAVE: $DONE closed, $OPEN open ($FAILED failed)"
 More than one issue fails in the same wave.
 
 **Response:**
-1. Mark each failed issue with `status:failed`
+1. Mark each failed issue with `status:failed` and remove `status:in-progress` / `status:ready`
 2. Present a failure summary table to the user:
 
 ```
@@ -60,7 +62,7 @@ A failed issue blocks multiple downstream issues across waves.
 ```bash
 # Find all issues that reference the failed issue in "Blocked by"
 FAILED_NUM=12
-gh issue list --state open --json number,body --jq \
+gh issue list --repo "$REPO" --state open --json number,body --jq \
   ".[] | select(.body | test(\"Blocked by:.*#$FAILED_NUM\")) | \"#\\(.number)\""
 ```
 
@@ -137,10 +139,10 @@ All state is stored in GitHub labels and issue comments. If the orchestrator cra
 # Reconstruct current state
 echo "=== Project State ==="
 for wave in "wave:0-foundation" "wave:1" "wave:2" "wave:3" "wave:4" "wave:5"; do
-  TOTAL=$(gh issue list -l "$wave" --state all --json number --jq 'length')
-  CLOSED=$(gh issue list -l "$wave" --state closed --json number --jq 'length')
-  FAILED=$(gh issue list -l "$wave" -l "status:failed" --json number --jq 'length')
-  IN_PROG=$(gh issue list -l "$wave" -l "status:in-progress" --json number --jq 'length')
+  TOTAL=$(gh issue list --repo "$REPO" -l "$wave" --state all --json number --jq 'length')
+  CLOSED=$(gh issue list --repo "$REPO" -l "$wave" --state closed --json number --jq 'length')
+  FAILED=$(gh issue list --repo "$REPO" -l "$wave" -l "status:failed" --json number --jq 'length')
+  IN_PROG=$(gh issue list --repo "$REPO" -l "$wave" -l "status:in-progress" --json number --jq 'length')
   [ "$TOTAL" -gt 0 ] && echo "$wave: $CLOSED/$TOTAL closed, $FAILED failed, $IN_PROG in-progress"
 done
 ```

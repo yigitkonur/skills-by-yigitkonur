@@ -1,5 +1,30 @@
 # Download Patterns
 
+## Verify `skill-dl` before downloading
+
+Always start with:
+
+```bash
+skill-dl --version
+```
+
+If `skill-dl` is missing, save the installer locally, inspect it, then run it and verify again. On macOS, if `bash --version` is 3.x, install a newer Bash first with `brew install bash`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh -o /tmp/install-skill-dl.sh
+sed -n '1,160p' /tmp/install-skill-dl.sh
+
+# Linux, or macOS where `bash --version` is already 4+:
+bash /tmp/install-skill-dl.sh
+
+# macOS if `bash --version` is 3.x (the default /bin/bash is 3.2):
+"$(brew --prefix)"/bin/bash /tmp/install-skill-dl.sh
+
+skill-dl --version
+```
+
+The installer needs `git` plus `curl` or `wget`. On macOS, the Bash 4+ requirement applies to the installer script; a preinstalled `skill-dl` can still be used directly once `skill-dl --version` succeeds.
+
 ## URL format
 
 All skill URLs follow: `https://playbooks.com/skills/{owner}/{repo}/{skill-name}`
@@ -15,6 +40,19 @@ Add `-f` to overwrite existing:
 ```bash
 skill-dl https://playbooks.com/skills/owner/repo/skill-name -o ./corpus -f
 ```
+
+## Multiple URLs inline
+
+For 2-4 ad hoc downloads, pass multiple URLs directly and skip the temporary URL file:
+
+```bash
+skill-dl \
+  https://playbooks.com/skills/owner/repo/skill-one \
+  https://playbooks.com/skills/owner/repo/skill-two \
+  -o ./corpus --no-auto-category
+```
+
+Use a URL file instead when you need comments, want to reuse the shortlist, or are downloading a larger corpus.
 
 ## Batch download from file
 
@@ -94,11 +132,13 @@ Use Option A for large corpora with many skills from the same repo. Use Option B
 
 ## Output naming
 
-Downloaded skills land in folders named `{owner}--{repo}--{skill}/` containing `SKILL.md` plus bundled references.
+Downloaded skills land in folders named `{owner}--{repo}--{skill}/` containing `SKILL.md` plus any bundled `references/`, `scripts/`, `rules/`, `examples/`, or other skill folders copied from the source repo.
 
 ## Auto-categorization
 
-By default, `skill-dl` sorts downloaded skills into subfolders based on name patterns (e.g., `react-typescript/`, `sdk-and-libraries/`). Use `--no-auto-category` to keep everything flat. Use `-c <name>` to force a single category.
+By default, `skill-dl` sorts downloaded skills into subfolders based on name patterns. The path shape is `<output>/<auto-category>/<owner>--<repo>--<skill>/`. Example: `./corpus/pro-and-review/mcollina--skills--typescript-magician/`.
+
+Use `--no-auto-category` to keep everything flat at `<output>/<owner>--<repo>--<skill>/`. Use `-c <name>` to force a single category such as `./corpus/my-typescript-skills/<owner>--<repo>--<skill>/`.
 
 ## Skill search paths (how skill-dl finds skills in repos)
 
@@ -120,7 +160,7 @@ Fallback: recursive search for SKILL.md with matching parent directory name, the
 
 | Problem | Diagnosis | Fix |
 |---|---|---|
-| `skill-dl: command not found` | Not installed | `curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh \| bash` |
+| `skill-dl: command not found` | Not installed or not on `PATH` | Use the saved-installer flow above. If the installer falls back to `~/.local/bin`, add that directory to `PATH` and rerun `skill-dl --version`. |
 | `[ERR] Could not clone` | Repo is private, renamed, or deleted | Check URL manually in a browser |
 | `[ERR] Not found in repo` | Skill name does not match any path | Run with `-v` to see available skills; the repo may use non-standard layout |
 | Slow on many repos | Sequential repo processing | Use parallel download (Option A above) |

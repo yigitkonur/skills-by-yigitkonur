@@ -33,6 +33,8 @@ resolve-geo(location: user's market, product: "rank_tracker")
 | 6-100 | `task` | Async, use `manage-tasks` to check |
 | 100-700 | `bulk` | Most efficient for large lists |
 
+If you choose `task` or `bulk`, wait for the async result to finish before any later phase that depends on the completed ranking data. Do not interpret partial status output as a ranking result.
+
 **Key parameters:**
 - `depth`: How deep to search (10-700). Use 100 for standard, 50 for quick
 - `include_serp_features: true`: Tracks featured snippets, PAA, local pack presence
@@ -51,7 +53,15 @@ track-rankings(
 
 **Why `changes`:** Compares current positions against the previous snapshot — shows gains, losses, and new entries.
 
-### Phase 3: Set up recurring tracking (if user wants ongoing monitoring)
+### Phase 3: Diagnose major movers with live SERP context
+
+```
+analyze-serp(keyword: significant_mover, dataType: "organic", engine: "google", limit: 20)
+```
+
+**Why:** Use SERP snapshots only for the biggest gainers and losers from Phase 2. This explains whether a ranking swing came from new competitors, SERP-feature changes, or intent mismatch.
+
+### Phase 4: Set up recurring tracking (if user wants ongoing monitoring)
 
 ```
 track-rankings(
@@ -69,7 +79,7 @@ track-rankings(
 | `daily` | Active campaigns, volatile keywords | Highest |
 | `weekly` | Standard monitoring, stable keywords | Medium |
 
-### Phase 4: Multi-engine tracking (if relevant)
+### Phase 5: Multi-engine tracking (if relevant)
 
 ```
 track-rankings(keywords: [kw], target: domain, engine: "bing")
@@ -78,12 +88,20 @@ track-rankings(keywords: [kw], target: domain, engine: "yahoo")
 
 **Supported engines:** google, bing, yahoo, baidu, naver, seznam
 
-### Phase 5: Export and analyze
+### Phase 6: Export and analyze
 
 ```
 read-result-set(handle: result_handle, operation: "aggregate", group_by: "keyword", metrics: ["avg"])
 → export-result-set(handle: result_handle, format: "csv")
 ```
+
+### Phase 7: Compile ranking report
+
+```
+compile-report(target: domain, tool_names: ["track-rankings", "analyze-serp"])
+```
+
+If you skipped Phase 3, omit `analyze-serp` from `tool_names`.
 
 ## Interpreting results
 

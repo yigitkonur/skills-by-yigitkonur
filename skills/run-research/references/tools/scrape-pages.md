@@ -1,8 +1,10 @@
-# scrape_pages — Structured Content Extraction
+# scrape_pages / mcp__research_powerpack__scrape_links — Structured Content Extraction
 
 ## What It Does
 
 Scrapes 1–50 URLs and extracts structured content using AI-powered extraction. Strips navigation, ads, footers, and boilerplate. Returns only the content you request via pipe-separated extraction targets.
+
+The skill shorthand is `scrape_pages`. In Codex, call the wrapper `mcp__research_powerpack__scrape_links`.
 
 ## Parameters
 
@@ -12,7 +14,6 @@ Scrapes 1–50 URLs and extracts structured content using AI-powered extraction.
 | `what_to_extract` | `string` | No | — | Pipe-separated extraction targets. |
 | `use_llm` | `bool` | No | `true` | AI extraction post-processing. Set false for raw content. |
 | `timeout` | `int` | No | `30` | Timeout in seconds per URL (5–120). |
-| `model` | `string` | No | `openai/gpt-oss-120b:nitro` | Extraction model. Alt: `x-ai/grok-4.1-fast` (adds web search). |
 
 ## Token Budget
 
@@ -94,11 +95,6 @@ Use `|` to separate distinct extraction targets. Each target is a category of in
 - Lower latency, lower cost
 - Best for: debugging scraping issues, when you need raw HTML structure
 - Use when: you suspect LLM extraction is losing important content
-
-### Model Selection
-
-- `openai/gpt-oss-120b:nitro` (default) — Best for extraction accuracy
-- `x-ai/grok-4.1-fast` — Adds web search capability to extraction
 
 ## Composing with Other Tools
 

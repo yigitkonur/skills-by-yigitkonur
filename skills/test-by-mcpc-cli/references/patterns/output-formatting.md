@@ -186,18 +186,15 @@ Wraps MCP `InitializeResult` with an `_mcpc` block:
 {
   "_mcpc": {
     "sessionName": "@apify",
-    "profileName": "default",
-    "server": { "url": "https://mcp.apify.com", "headers": { "Authorization": "[REDACTED]" } }
+    "server": { "url": "https://mcp.apify.com" }
   },
   "protocolVersion": "2025-11-25",
-  "capabilities": { "tools": { "listChanged": true }, "resources": {}, "logging": {} },
-  "serverInfo": { "name": "Apify MCP Server", "version": "1.0.0" },
-  "instructions": "...",
-  "tools": [ ... ]
+  "capabilities": { "tools": { "listChanged": true } },
+  "serverInfo": { "name": "Apify MCP Server", "version": "1.0.0" }
 }
 ```
 
-Sensitive header values are replaced with `"[REDACTED]"` before output.
+Sensitive header values are redacted before output when present.
 
 ### top-level listing — `mcpc --json`
 
@@ -205,7 +202,7 @@ Sensitive header values are replaced with `"[REDACTED]"` before output.
 {
   "sessions": [
     {
-      "name": "apify",
+      "name": "@apify",
       "server": { "url": "https://mcp.apify.com" },
       "profileName": "default",
       "pid": 12345,

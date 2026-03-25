@@ -2,6 +2,8 @@
 
 Every issue created by plan-issue-tree uses this structure. The body doubles as a subagent prompt — run-issue-plan reads it directly to generate agent dispatches.
 
+Because the body is reused as a runtime prompt, keep it tool-agnostic. Use file paths, module names, and observable outcomes. Do not hard-code editor, test-runner, or build-tool commands into the body. Use the ownership line and Definition of Done closing sentence exactly as written below.
+
 ## Template
 
 ```markdown
@@ -20,7 +22,7 @@ Every issue created by plan-issue-tree uses this structure. The body doubles as 
 - **Known risks:** [what could go wrong]
 - **Tradeoffs accepted:** [what we chose not to do and why]
 
-**Ownership:** You own this. Explore freely, trust your judgment, adapt as needed.
+**Ownership:** You own this problem. Explore freely, trust your judgment, adapt as needed.
 
 ## Definition of Done
 
@@ -30,7 +32,8 @@ Every criterion is Binary (done or not), Specific (concrete), Verifiable (third 
 - [ ] [Criterion 2]
 - [ ] [Criterion 3]
 
-> You must achieve 100% of every criterion before stopping. Partial = incomplete.
+> You must achieve 100% of every criterion above before stopping.
+> Partial completion = not complete. Do not hand back until every item is fully satisfied.
 
 ## Wave & Dependencies
 
@@ -64,8 +67,8 @@ Most important type — these become subagent prompts. Write with maximum specif
 
 ```markdown
 - [ ] File `src/auth/middleware.ts` exports `validateToken(token: string): Promise<boolean>`
-- [ ] `npm test -- --testPathPattern=auth` passes with 0 failures
-- [ ] POST /api/login with valid credentials returns 200 with `access_token` in body
+- [ ] Authentication-focused tests pass with 0 failures
+- [ ] POST /api/login with valid credentials returns HTTP 200 with `access_token` in the response body
 ```
 
 ## BSV criteria — good and bad
@@ -73,13 +76,14 @@ Most important type — these become subagent prompts. Write with maximum specif
 ### Good
 
 - `File src/auth/middleware.ts exports function validateToken`
-- `Running npm test -- --testPathPattern=auth passes with 0 failures`
+- `Authentication-focused tests pass with 0 failures`
 - `POST /api/login with valid credentials returns HTTP 200`
 - `The users table has columns: id (uuid), email (varchar unique), created_at (timestamptz)`
 
 ### Bad
 
 - `Code is clean` — not specific
+- `npm test -- --testPathPattern=auth passes` — tool-specific; issue bodies must stay tool-agnostic
 - `Tests pass` — which tests? what command?
 - `Works correctly` — not verifiable
 - `Good performance` — no threshold

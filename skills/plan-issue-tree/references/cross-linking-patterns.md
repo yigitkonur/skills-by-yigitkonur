@@ -1,6 +1,6 @@
 # Cross-Linking Patterns
 
-Bidirectional dependency wiring between issues. Every dependency must be documented in BOTH directions.
+Bidirectional dependency wiring between issues. Every dependency must be documented in BOTH directions. Assumes `REPO` is already set and every `gh` command uses `--repo "$REPO"`.
 
 ## Core principle
 
@@ -46,7 +46,7 @@ Sub-issue relationship. Parent closes when all children close.
 
 Additionally wire via GraphQL sub-issue API:
 ```bash
-bash {baseDir}/scripts/link-sub-issue.sh "$REPO" PARENT_NUM CHILD_NUM
+bash "$SKILL_DIR/scripts/link-sub-issue.sh" "$REPO" PARENT_NUM CHILD_NUM
 ```
 
 ### 3. Related (informational)
@@ -89,9 +89,9 @@ After all issues are created, update references that couldn't be set during crea
 
 ```bash
 # Pattern: replace placeholder with real number
-gh issue view $ISSUE_NUM --json body -q .body | \
+gh issue view "$ISSUE_NUM" --repo "$REPO" --json body -q .body | \
   sed "s/PLACEHOLDER_AUTH_MIDDLEWARE/#$AUTH_ISSUE/g" | \
-  xargs -0 gh issue edit $ISSUE_NUM --body
+  gh issue edit "$ISSUE_NUM" --repo "$REPO" --body-file -
 ```
 
 ### Bidirectional verification
@@ -101,8 +101,10 @@ After all wiring, verify every link is bidirectional:
 ```bash
 # For each issue, check that every "Blocks" reference
 # has a corresponding "Blocked by" in the target
-gh issue view $NUM --json body -q .body | grep -oP 'Blocks:.*#\K\d+' | while read target; do
-  BLOCKED_BY=$(gh issue view "$target" --json body -q .body | grep -oP 'Blocked by:.*')
+gh issue view "$NUM" --repo "$REPO" --json body -q .body | \
+  awk '/\*\*Blocks:\*\*/ {print}' | \
+  grep -oE '#[0-9]+' | tr -d '#' | while read -r target; do
+  BLOCKED_BY=$(gh issue view "$target" --repo "$REPO" --json body -q .body | awk '/\*\*Blocked by:\*\*/ {print}')
   if ! echo "$BLOCKED_BY" | grep -q "#$NUM"; then
     echo "MISSING BACKLINK: #$target does not list #$NUM as blocker"
   fi
@@ -127,10 +129,10 @@ In addition to body references, add dependency information via labels for machin
 
 ```bash
 # Mark issue as blocked
-gh issue edit $NUM --add-label "status:blocked"
+gh issue edit "$NUM" --repo "$REPO" --add-label "status:blocked"
 
 # After blocker closes, update status
-gh issue edit $NUM --remove-label "status:blocked" --add-label "status:ready"
+gh issue edit "$NUM" --repo "$REPO" --remove-label "status:blocked" --add-label "status:ready"
 ```
 
 ## Scale patterns (50+ issues)

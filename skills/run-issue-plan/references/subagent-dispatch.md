@@ -1,14 +1,16 @@
 # Subagent Dispatch
 
-How to generate subagent prompts from GitHub Issue bodies and dispatch them via the Agent tool.
+How to generate subagent prompts from GitHub Issue bodies and dispatch them through the current runtime's subagent/task tool.
+
+Assumes `REPO` and `SKILL_DIR` are already set.
 
 ## Reading an issue for dispatch
 
 ```bash
-gh issue view NUMBER --json title,body,labels,assignees,comments
-gh api repos/OWNER/REPO/issues/NUMBER/sub_issues \
+gh issue view NUMBER --repo "$REPO" --json title,body,labels,assignees,comments
+gh api "repos/$REPO/issues/NUMBER/sub_issues" \
   --jq '.[] | "- #\(.number): \(.title) [\(.state)]"'
-gh issue view NUMBER --json comments \
+gh issue view NUMBER --repo "$REPO" --json comments \
   --jq '.comments[-3:] | .[] | "[\(.author.login)]: \(.body)"'
 ```
 
@@ -25,6 +27,9 @@ You are working on issue #{NUMBER}: "{TITLE}" in the {REPO} repository.
 
 ### Sub-issues in scope
 {LIST_OF_SUB_ISSUES}
+
+### Wave & dependency context
+{WAVE_AND_DEPENDENCIES_SUMMARY}
 
 ### Additional context
 {RECENT_COMMENTS_IF_ANY}
@@ -47,24 +52,21 @@ Read relevant files by exploring the codebase before implementing.
 ## Completion Protocol
 
 When all DoD criteria are met:
-1. Run verification commands from the DoD
+1. Discover and run the project-native verification commands needed to prove the DoD
 2. Confirm each criterion with evidence
 3. Report completion listing evidence per criterion
 ```
 
-## Dispatch via Agent tool
+## Dispatch via the runtime-native subagent tool
 
-```
-Agent(
-  description: "Execute #NUMBER: SHORT_TITLE",
-  prompt: [assembled prompt],
-  subagent_type: "general-purpose",
-  mode: "auto",
-  name: "issue-NUMBER"
-)
-```
+Dispatch the assembled prompt using whatever task/subagent mechanism the current runtime provides. Keep the prompt body intact and adapt only the wrapper fields:
 
-For independent issues in the same wave, dispatch multiple Agent calls in a single message.
+- description/title: `Execute #NUMBER: SHORT_TITLE`
+- prompt/body: the assembled prompt
+- stable name or id: `issue-NUMBER` if supported
+- autonomous worker mode if the runtime exposes mode selection
+
+For independent issues in the same wave, launch multiple subagent/task invocations in the same turn when the runtime supports parallel dispatch.
 
 ## Dispatch patterns
 
@@ -79,8 +81,8 @@ For independent issues in the same wave, dispatch multiple Agent calls in a sing
 ### Success
 
 ```bash
-gh issue edit NUMBER --remove-label "status:in-progress"
-gh issue close NUMBER --comment "$(cat <<'EOF'
+gh issue edit NUMBER --repo "$REPO" --remove-label "status:in-progress" --remove-label "status:needs-review" --remove-label "status:blocked" --remove-label "status:failed" --remove-label "status:ready"
+gh issue close NUMBER --repo "$REPO" --comment "$(cat <<'EOF'
 ## Completed
 All DoD criteria verified:
 - [x] Criterion 1 — [evidence]
@@ -92,8 +94,8 @@ EOF
 ### Failure
 
 ```bash
-gh issue edit NUMBER --remove-label "status:in-progress" --add-label "status:blocked"
-gh issue comment NUMBER --body "Attempt incomplete. Unmet: [list]. Needs: [guidance]."
+gh issue edit NUMBER --repo "$REPO" --remove-label "status:in-progress" --remove-label "status:needs-review" --remove-label "status:ready" --add-label "status:failed"
+gh issue comment NUMBER --repo "$REPO" --body "Attempt incomplete. Unmet: [list]. Needs: [guidance]."
 ```
 
 Keep the issue open. Do not retry without user input.
@@ -103,7 +105,7 @@ Keep the issue open. Do not retry without user input.
 For issues with sub-issues, read the full tree before dispatching:
 
 ```bash
-FULL=1 bash {baseDir}/scripts/read-tree.sh OWNER/REPO ISSUE_NUMBER
+FULL=1 bash "$SKILL_DIR/scripts/read-tree.sh" "$REPO" ISSUE_NUMBER
 ```
 
-Include the output in the subagent prompt's "Sub-issues in scope" section.
+Include the output in the subagent prompt's "Sub-issues in scope" section. Summarize the `## Wave & Dependencies` section into the prompt's dependency context so the executing subagent sees blockers, dependents, and parent ownership boundaries.

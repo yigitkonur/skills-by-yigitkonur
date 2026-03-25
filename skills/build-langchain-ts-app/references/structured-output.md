@@ -1,6 +1,6 @@
 # Structured Output Reference
 
-Complete reference for structured output in LangChain.js. All code verified against langchain@1.x, @langchain/core@0.3.x, @langchain/openai@0.3.x. TypeScript only.
+Complete reference for structured output in LangChain.js. All code verified against langchain@1.x, @langchain/core@1.x, @langchain/openai@1.x. TypeScript only.
 
 ---
 

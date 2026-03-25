@@ -34,7 +34,7 @@ All LangChain multi-agent architectures are built from four foundational pattern
 
 | Scenario | Better Alternative |
 |----------|-------------------|
-| Simple chatbot with ≤10 tools, one domain | Single `createAgent` or `createReactAgent` |
+| Simple chatbot with ≤10 tools, one domain | Single `createAgent` |
 | Linear A → B → C pipeline | LCEL chain or functional API |
 | Classification + single handler | Conditional routing in one graph |
 | Agent has poor routing but few tools | Better prompting, not more agents |
@@ -91,7 +91,7 @@ npm install @langchain/langgraph-supervisor @langchain/langgraph @langchain/core
 
 ```typescript
 import { createSupervisor } from "@langchain/langgraph-supervisor";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
@@ -108,18 +108,18 @@ const webSearch = tool(
   { name: "web_search", description: "Search the web", schema: z.object({ query: z.string() }) }
 );
 
-const mathAgent = createReactAgent({
-  llm: model,
+const mathAgent = createAgent({
+  model,
   tools: [add],
   name: "math_expert",
-  prompt: "You are a math expert. Use your tools to solve math problems.",
+  systemPrompt: "You are a math expert. Use your tools to solve math problems.",
 });
 
-const researchAgent = createReactAgent({
-  llm: model,
+const researchAgent = createAgent({
+  model,
   tools: [webSearch],
   name: "research_expert",
-  prompt: "You are a research expert. Search for information when asked.",
+  systemPrompt: "You are a research expert. Search for information when asked.",
 });
 
 const workflow = createSupervisor({
@@ -269,13 +269,13 @@ Nest supervisors for complex organizations. In TypeScript, build hierarchical te
 
 ```typescript
 import { StateGraph, MessagesAnnotation, Annotation, END, START } from "@langchain/langgraph";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 
 const llm = new ChatOpenAI({ model: "gpt-4o" });
 
 // Level 2: Research team members
-const webResearcher = createReactAgent({ llm, tools: [webSearchTool], name: "web_researcher" });
-const dbResearcher  = createReactAgent({ llm, tools: [dbQueryTool],   name: "db_researcher"  });
+const webResearcher = createAgent({ model: llm, tools: [webSearchTool], name: "web_researcher" });
+const dbResearcher  = createAgent({ model: llm, tools: [dbQueryTool],   name: "db_researcher"  });
 
 const researchTeamState = Annotation.Root({
   ...MessagesAnnotation.spec,
@@ -344,7 +344,7 @@ npm install @langchain/langgraph-swarm @langchain/langgraph @langchain/core
 
 ```typescript
 import { createSwarm, createHandoffTool } from "@langchain/langgraph-swarm";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
 import { MemorySaver } from "@langchain/langgraph";
 import { tool } from "@langchain/core/tools";
@@ -352,37 +352,37 @@ import { z } from "zod";
 
 const llm = new ChatOpenAI({ model: "gpt-4o" });
 
-const flightAgent = createReactAgent({
-  llm,
+const flightAgent = createAgent({
+  model: llm,
   tools: [
     searchFlightsTool,
     createHandoffTool({ agentName: "hotel_agent", description: "Hand off to hotel_agent for accommodation" }),
     createHandoffTool({ agentName: "car_agent",   description: "Hand off to car_agent for rentals" }),
   ],
   name: "flight_agent",
-  prompt: "You are a flight booking specialist. Hand off to hotel_agent or car_agent as needed.",
+  systemPrompt: "You are a flight booking specialist. Hand off to hotel_agent or car_agent as needed.",
 });
 
-const hotelAgent = createReactAgent({
-  llm,
+const hotelAgent = createAgent({
+  model: llm,
   tools: [
     searchHotelsTool,
     createHandoffTool({ agentName: "flight_agent" }),
     createHandoffTool({ agentName: "car_agent" }),
   ],
   name: "hotel_agent",
-  prompt: "You are a hotel booking specialist.",
+  systemPrompt: "You are a hotel booking specialist.",
 });
 
-const carAgent = createReactAgent({
-  llm,
+const carAgent = createAgent({
+  model: llm,
   tools: [
     searchCarsTool,
     createHandoffTool({ agentName: "flight_agent" }),
     createHandoffTool({ agentName: "hotel_agent" }),
   ],
   name: "car_agent",
-  prompt: "You are a car rental specialist.",
+  systemPrompt: "You are a car rental specialist.",
 });
 
 const checkpointer = new MemorySaver();
@@ -405,7 +405,7 @@ const result = await swarm.invoke(
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `agentName` | `string` | Target agent name (must match `name` in `createReactAgent`) |
+| `agentName` | `string` | Target agent name (must match `name` in `createAgent`) |
 | `description` | `string` | Optional; guides LLM decision on when to hand off |
 
 ### Swarm vs Supervisor
@@ -1087,9 +1087,6 @@ import { StateGraph, Annotation, MessagesAnnotation, START, END } from "@langcha
 import { MemorySaver, InMemoryStore, Command, Send } from "@langchain/langgraph";
 import { StateSchema, MessagesValue, ReducedValue } from "@langchain/langgraph";
 import { messagesStateReducer } from "@langchain/langgraph";
-
-// Prebuilt agents
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
 
 // LangChain v1 high-level API
 import { createAgent, createMiddleware, tool } from "langchain";

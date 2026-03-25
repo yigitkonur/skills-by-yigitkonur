@@ -28,7 +28,7 @@ SPECIFIC QUESTIONS:
 2) What does "Cryptographic Failures" (A02) look like in Node.js?
 3) How do we test for SSRF in an app with outbound HTTP calls?
 4) How to structure automated OWASP checks in CI/CD?
-FOCUS: Practical remediation steps, not theory
+PRIORITY INFO: Practical remediation steps, not theory
 ```
 
 **search_google**: `["OWASP Top 10 2025 2026 updated list", "OWASP A01 broken access control prevention", "OWASP compliance Node.js", "OWASP scanning tools comparison site:github.com"]`
@@ -65,7 +65,7 @@ SPECIFIC QUESTIONS:
 **deep_research** -- describe current approach honestly:
 ```
 WHAT I NEED: Secrets strategy for 5-dev team on AWS ECS with Terraform.
-WHY: Currently using .env files in private repo. Near-miss with public fork.
+WHY I'M RESEARCHING THIS: Currently using .env files in private repo. Near-miss with public fork.
 SPECIFIC QUESTIONS:
 1) Is Vault overkill for 5 people? Minimum viable approach?
 2) AWS Secrets Manager vs Parameter Store: when does cost justify?
@@ -92,7 +92,7 @@ SPECIFIC QUESTIONS:
 3) CSP directives for React, styled-components, Google Fonts, Stripe.js, CDN?
 4) CSP nonces with styled-components?
 5) Report-only mode deployment process?
-FOCUS: Exact header values and nginx config
+PRIORITY INFO: Exact header values and nginx config
 ```
 
 **search_google**: `["CORS Access-Control-Allow-Origin error Express React", "CSP header generator tool", "CORS preflight 403 nginx reverse proxy", "blocked by CORS policy credentials include"]`
@@ -131,7 +131,7 @@ SPECIFIC QUESTIONS:
 3) SHA-256 vs BLAKE3 for integrity: BLAKE3 production-ready for HIPAA?
 4) Key rotation for already-encrypted columns without downtime?
 5) node:crypto pitfalls for AES-GCM (IV, key handling, auth tag)?
-FOCUS: Correctness and compliance. HIPAA non-negotiable.
+PRIORITY INFO: Correctness and compliance. HIPAA non-negotiable.
 ```
 
 **search_google**: `["AES-GCM vs ChaCha20-Poly1305 2025", "AES-GCM nonce reuse catastrophic", "NIST post-quantum cryptography standard", "libsodium vs node:crypto"]`
@@ -164,14 +164,14 @@ SPECIFIC QUESTIONS:
 **deep_research** -- describe traffic and infrastructure:
 ```
 WHAT I NEED: Rate limiting for public REST API (authenticated + anonymous).
-WHY: Credential stuffing, scraping, traffic spikes.
+WHY I'M RESEARCHING THIS: Credential stuffing, scraping, traffic spikes.
 SPECIFIC QUESTIONS:
 1) Token bucket vs sliding window: which and why?
 2) Rate limits per tier (public, authenticated, admin)? Starting values?
 3) Distributed rate limiting with Redis for ECS cluster?
 4) /login credential stuffing defense without blocking legitimate users?
 5) Layering Cloudflare edge with application rate limiting?
-FOCUS: Specific values, Redis key design, Cloudflare config
+PRIORITY INFO: Specific values, Redis key design, Cloudflare config
 ```
 
 **search_google**: `["token bucket vs sliding window comparison", "rate limiting Redis distributed pattern", "API rate limiting per-user per-IP per-endpoint", "Cloudflare Turnstile vs reCAPTCHA comparison"]`
@@ -191,7 +191,7 @@ SPECIFIC QUESTIONS:
 3) Filename sanitization: what to remove? UUID instead?
 4) Virus scanning: ClamAV vs VirusTotal vs AWS-native for a startup?
 5) S3 bucket policy and presigned URL configuration?
-FOCUS: Implementation order, specific libraries, S3 config
+PRIORITY INFO: Implementation order, specific libraries, S3 config
 ```
 
 **search_google**: `["secure file upload Node.js 2025", "MIME magic bytes validation", "S3 presigned URL security", "file upload OWASP checklist", "SVG XSS file upload", "zip bomb detection"]`
@@ -211,7 +211,7 @@ SPECIFIC QUESTIONS:
 3) JWT validation: claims beyond exp/iss? JWK rotation?
 4) Webhook signing: HMAC-SHA256 implementation?
 5) Need API gateway (Kong, AWS) at ~1000 RPM?
-FOCUS: Implementation patterns with Express middleware
+PRIORITY INFO: Implementation patterns with Express middleware
 ```
 
 **search_google**: `["API security 2025 OWASP API Top 10", "JWT validation Node.js jose library", "API key hashing rotation storage", "HMAC webhook verification", "GraphQL security depth limiting"]`

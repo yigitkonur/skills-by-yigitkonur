@@ -19,7 +19,7 @@ Risk: Highest — agent can do anything
 **`coding`** — Tools for software development workflows.
 
 ```
-Includes: group:fs + group:runtime + group:sessions + group:memory + group:image
+Includes: group:fs + group:runtime + group:sessions + group:memory + group:media
 Excludes: group:messaging, group:web, group:nodes, group:automation, group:agents, group:ui
 Use when: Agent focuses on code reading, writing, execution, and testing
 Risk: Medium — can access filesystem and run code

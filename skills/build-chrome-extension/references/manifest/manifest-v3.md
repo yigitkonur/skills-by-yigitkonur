@@ -105,7 +105,7 @@ MV3 replaces persistent background pages with a service worker.
 ```jsonc
 {
   "background": {
-    "service_worker": "background.ts",  // single entry point
+    "service_worker": "background.js",  // single built entry point
     "type": "module"                     // enables ES module imports
   }
 }
@@ -118,8 +118,10 @@ MV3 replaces persistent background pages with a service worker.
 - No DOM access — no `document`, no `window`, no `XMLHttpRequest`
 - Terminates after ~30 seconds of inactivity (5 minutes for active event processing)
 
+If you author the service worker in TypeScript, bundle or transpile it so the loadable extension manifest still points at the emitted `.js` file.
+
 ```typescript
-// background.ts — service worker entry point
+// src/background.ts — source entry point that builds to background.js
 import { setupContextMenus } from "./lib/menus.js";
 import { handleMessages } from "./lib/messages.js";
 

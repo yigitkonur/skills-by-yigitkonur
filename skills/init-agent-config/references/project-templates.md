@@ -4,6 +4,8 @@ Copy-paste templates for AGENTS.md and CLAUDE.md organized by project type. Each
 
 Every AGENTS.md template includes a **Boundaries** section. Every template assumes commands are verified against actual project config before committing. **Strip sections you don't need — shorter is better.**
 
+Thin wrapper rule: Step 3 of `SKILL.md` is the canonical base template. Treat the wrapper snippets below as customizations. If a wrapper here shows only `@AGENTS.md`, that is the zero-addition variant. Remove any `.claude/rules/` line unless that directory already exists or you are creating rule files in this session.
+
 ---
 
 ## 1. Minimal (Any Project)
@@ -577,7 +579,68 @@ Use this for published libraries, SDKs, or open-source packages. Language-agnost
 
 ---
 
-## 10. CLI Tool
+## 10. Docs / Skills Pack / Standards Repository
+
+Use this for repositories whose primary output is guidance, skills, standards, or reference content rather than an executable application.
+
+### AGENTS.md
+
+```markdown
+# [Repository Name]
+
+[One-line description of the documentation, standards, or skills catalog.]
+
+## Structure
+- Primary content lives in `[docs/skills/references path]`
+- Contributor guidance lives in `[CONTRIBUTING.md or equivalent]`
+- Naming or taxonomy rules live in `[naming/standards file]`
+
+## Conventions
+- Preserve the existing information architecture and naming scheme
+- Prefer updating canonical references over duplicating guidance in multiple files
+- Keep examples and templates aligned with the repository's actual file layout
+
+## Commands
+- Commands: `[not configured]` if the repo has no verified dev/test/build entrypoints
+
+## Boundaries
+- Always: Ground instructions in the repo's real docs and reference structure
+- Always: Update contributor-facing guidance when changing shared conventions
+- Never: Invent build, lint, or test commands when the repo has no command manifest
+- Never: Treat docs-only repos like app repos with fake runtime workflows
+```
+
+### CLAUDE.md (Thin Wrapper)
+
+```markdown
+@AGENTS.md
+
+## Claude-Specific
+- Add Claude-only memory notes here only if this repo actually needs them
+```
+
+### CLAUDE.md (Standalone)
+
+```markdown
+# [Repository Name]
+
+[One-line description.]
+
+## Focus
+- Primary content: `[skills/docs/standards]`
+- Canonical contributor docs: `[README.md / CONTRIBUTING.md / standards file]`
+
+## Commands
+- `[not configured]` unless the repo exposes verified automation commands
+
+## Boundaries
+- Always: Keep instructions aligned with the canonical docs
+- Never: Invent runtime or build workflows for a docs-only repository
+```
+
+---
+
+## 11. CLI Tool
 
 Use this for command-line applications, developer tools, or scripts.
 

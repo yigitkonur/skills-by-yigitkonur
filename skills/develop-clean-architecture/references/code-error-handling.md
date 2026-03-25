@@ -7,7 +7,7 @@ tags: code, errors, result-type, null-safety, two-error-types
 
 ## Use Result Types and Custom Error Hierarchies Not Null Returns
 
-Returning `null` or `-1` to signal errors is invisible to the type system. Use the two-error-type model: EXPECTED errors (domain errors) are typed and returned in Result; UNEXPECTED errors (defects) are thrown and caught by catch-all middleware. Use `_tag` discriminant for pattern matching and `never` exhaustion for compile-time completeness.
+Returning `null` or `-1` to signal errors is invisible to the type system. Use the two-error-type model: EXPECTED errors (domain errors) are typed and returned in Result; UNEXPECTED errors (defects) are thrown and caught by catch-all middleware. In this repo the Result branch uses `ok: true | false`, while rich error variants use `_tag` for pattern matching and `never` exhaustion.
 
 **Incorrect (null returns hide error paths):**
 

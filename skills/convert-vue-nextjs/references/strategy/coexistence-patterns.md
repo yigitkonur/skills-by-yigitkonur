@@ -81,36 +81,35 @@ async rewrites() {
 },
 ```
 
-### 3.2 Next 16+ `proxy.ts` Network Boundary
+### 3.2 Network Boundary File (`proxy.ts` on Next.js 16+, `middleware.ts` on older App Router projects)
 
-`proxy.ts` replaces many `middleware.ts` uses for routing decisions — runs before the Next.js router.
+Use `next.config.js` rewrites for pure path forwarding. Reach for the request boundary file only when you need request-aware branching, headers, or conditional rewrites.
 
 ```ts
-// proxy.ts (project root — Next 16+)
+// proxy.ts on Next.js 16+, middleware.ts on older App Router projects
+import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const VUE_ORIGIN = process.env.VUE_APP_ORIGIN!;
 const LEGACY_PREFIXES = ["/settings", "/admin", "/reports"];
 
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   if (LEGACY_PREFIXES.some((p) => pathname.startsWith(p))) {
-    return fetch(new URL(pathname + request.nextUrl.search, VUE_ORIGIN), {
-      headers: request.headers,
-      method: request.method,
-      body: request.body,
-    });
+    return NextResponse.rewrite(new URL(`${pathname}${search}`, VUE_ORIGIN));
   }
-  return undefined; // proceed to Next.js
+  return NextResponse.next();
 }
 ```
+
+On older App Router projects, move the same logic into `middleware.ts` and rename the exported function to `middleware`.
 
 ### 3.3 Pitfalls
 
 | Pitfall                    | Detail                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------- |
 | **Hydration mismatch**     | If rewritten path differs from what Vue Router expects, hydration breaks. Always preserve the original path. |
-| **Auth in proxy**          | Don't overload `proxy.ts` with auth logic. Share sessions via common cookie domain or JWT. |
+| **Auth in the boundary file** | Don't overload `proxy.ts` / `middleware.ts` with auth logic. Share sessions via common cookie domain or JWT. |
 | **Cookie/CORS drift**      | Both apps must share the same top-level domain or set `Domain=.example.com`.    |
 | **Health-check coupling**  | Next.js health checks pass even if Vue is down. Ping both in `/api/health`.     |
 
@@ -328,10 +327,10 @@ Every migration step must be reversible. Three levels cover the full spectrum.
 
 ### 8.1 Route-Level Rollback
 
-Add the route back to `LEGACY_PREFIXES` to redirect traffic to Vue:
+Add the route back to `LEGACY_PREFIXES` in your boundary file to redirect traffic to Vue:
 
 ```ts
-// proxy.ts — rollback: add "/dashboard" back
+// proxy.ts on Next.js 16+, middleware.ts on older App Router projects
 const LEGACY_PREFIXES = ["/settings", "/dashboard"];
 ```
 
@@ -358,7 +357,7 @@ export function StatusBadge(props: StatusBadgeProps) {
 
 ### 8.3 Request-Boundary Rollback
 
-`proxy.ts` is a **single-file convention** for instant rollback at the network edge:
+Your boundary file is a **single-file convention** for instant rollback at the network edge:
 
 ```ts
 // Rollback in one file:
@@ -384,7 +383,7 @@ Once every route is migrated and validated, remove coexistence scaffolding:
 
 - [ ] **Remove Vue runtime** — delete `vue`, `@vue/*` from `package.json`
 - [ ] **Remove adapter layer** — delete `register-elements.ts`, `.ce.vue` files
-- [ ] **Remove proxy rules** — delete `proxy.ts` legacy forwarding, clean `rewrites()`
+- [ ] **Remove proxy rules** — delete legacy forwarding from `proxy.ts` / `middleware.ts`, clean `rewrites()`
 - [ ] **Remove feature flags** — delete migration-specific flags and dead code paths
 - [ ] **Simplify build pipeline** — remove Module Federation / single-spa config
 - [ ] **Remove Vue dev tooling** — Vite config, Vue ESLint plugin, Vue test utils

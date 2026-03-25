@@ -90,11 +90,25 @@ User request
 
 ## New Plugin Workflow
 
+### Phase 0: Verify the runtime boundary first
+
+Before scaffolding anything, verify these three boundary conditions:
+
+1. **SDK source is real.** Confirm the actual Plugin SDK import path from the target OpenClaw runtime, monorepo, or an existing working plugin. Do not assume a public npm package exists just because examples show one.
+2. **Package name and runtime name are distinct.** Decide both identifiers up front:
+   - npm package name: usually `openclaw-plugin-{your-name}`
+   - manifest `name`: the runtime plugin identifier inside `openclaw.plugin.json`
+3. **Local verification path exists.** Know how you will install and enable the plugin in a real OpenClaw runtime before you start coding.
+
+Success signal for this phase: the SDK import path is known and a local build can resolve it. If you cannot verify the SDK source or local runtime path, stop at manifest/design output and ask for the missing runtime evidence instead of inventing installation steps.
+
 ### Phase 1: Define scope
 
 1. Identify which extension points the plugin provides (tools, channels, providers, skills)
 2. Decide core vs. external classification
-3. Choose a kebab-case package name: `openclaw-plugin-{your-name}`
+3. Choose both names now:
+   - npm package name: `openclaw-plugin-{your-name}`
+   - manifest/runtime name: short kebab-case plugin identifier used by OpenClaw
 4. List configuration keys the plugin needs from the OpenClaw config
 
 ### Phase 2: Scaffold
@@ -145,11 +159,13 @@ Read `references/guides/plugin-manifest.md` for the full manifest specification.
 }
 ```
 
+In this example, the npm package could be named `openclaw-plugin-example` while the manifest `name` remains `example`. Keep those two names aligned in documentation, but do not collapse them into one concept.
+
 ### Phase 4: Implement extension points
 
 For each extension point, follow the relevant reference:
 
-- **Tools**: Read `references/guides/tool-registration.md` — define typed functions with name, description, parameters schema, and handler
+- **Tools**: Read `references/guides/tool-registration.md` — define typed functions with name, description, parameters schema, and handler; the handler still performs runtime validation before any side effect
 - **Channels/Providers**: Read `references/guides/channel-provider-setup.md` — implement the required interface for the extension type
 - **Skills**: Read `references/patterns/plugin-skills-bundling.md` — place skill directories under the declared `skills` path
 
@@ -164,10 +180,21 @@ If the plugin's tools need controlled access:
 
 ### Phase 6: Test and publish
 
-1. Test locally by linking the plugin into an OpenClaw installation
-2. Verify all extension points register correctly
-3. Verify config gating works (plugin disabled when required config is missing)
-4. For external plugins: publish to npm with proper `openclaw.plugin.json` in the package
+Use the CLI loop below only if the target runtime actually exposes `openclaw plugins ...` commands. If it does not, stop after step 1 and ask for the exact config-based local plugin load path instead of guessing the config file, key, or install location.
+
+1. Verify the SDK/build path first. Success signal: `tsc --noEmit`, the repo's build command, or equivalent local build resolves the actual OpenClaw SDK imports without path hacks.
+2. Install the plugin locally with an absolute path:
+   - `openclaw plugins install -l /abs/path/to/openclaw-plugin-example`
+3. Enable it by the manifest/runtime name, not the npm package name:
+   - `openclaw plugins enable example`
+4. Run `openclaw doctor`, then `openclaw status` to confirm the runtime is healthy and the plugin is visible.
+5. Verify each extension point actually appears and behaves correctly:
+   - tools are listed and callable
+   - skills load from the declared relative path
+   - config gating disables the plugin when required keys are missing
+   - invalid tool input is rejected by the handler, not just by the manifest schema
+6. If the plugin CLI is unavailable in the target environment, stop after manifest/build verification and report that local runtime verification is blocked until the user provides a working OpenClaw install path or the exact config-based local plugin entry used by that runtime. Do not invent the config key or file name.
+7. For external plugins: publish to npm with proper `openclaw.plugin.json` in the package
 
 ## Tool groups reference
 
@@ -192,7 +219,7 @@ Tools are organized into groups for bulk allow/deny operations:
 | Profile | Includes | Use case |
 |---|---|---|
 | `full` | All tools | Unrestricted agent access |
-| `coding` | `group:fs` + `group:runtime` + `group:sessions` + `group:memory` + `group:image` | Software development workflows |
+| `coding` | `group:fs` + `group:runtime` + `group:sessions` + `group:memory` + `group:media` | Software development workflows |
 | `messaging` | `group:messaging` + session list/history/send/status | Chat-focused agents |
 | `minimal` | `session_status` only | Monitoring, health checks |
 
@@ -206,7 +233,7 @@ Tools are organized into groups for bulk allow/deny operations:
 | Skills directory not found | Use relative path from plugin root in manifest `skills` array |
 | Deny list not blocking a tool | `tools.deny` overrides `tools.allow` — verify the tool name or group |
 | Provider-specific restrictions ignored | Check `tools.byProvider` matches the model provider ID exactly |
-| Tool parameters not validated | Define a JSON Schema or Zod schema; never trust raw model output |
+| Tool parameters not validated | Define a schema for model guidance, then validate again in the handler before side effects |
 | Plugin works locally but fails when installed from npm | Ensure `dist/` is built and `main` field points to compiled output |
 
 ## Reference routing
@@ -232,8 +259,9 @@ Tools are organized into groups for bulk allow/deny operations:
 - NEVER publish a plugin without `openclaw.plugin.json` in the package.
 - NEVER hardcode API keys or secrets in plugin source — use config gating via `metadata.openclaw.requires.config`.
 - NEVER register tools without descriptions — the model cannot select undescribed tools.
+- NEVER assume the SDK package name or import path; verify it against the target OpenClaw runtime first.
 - NEVER assume all tools are available — respect the active profile and allow/deny lists.
-- ALWAYS validate tool input parameters server-side; model-generated parameters may be malformed.
+- ALWAYS validate tool input parameters in the handler; model-generated parameters and manifest schemas are not a security boundary.
 - ALWAYS declare required config keys in the manifest so the plugin is disabled when config is missing.
 - ALWAYS test with `minimal` profile to verify graceful degradation when tools are restricted.
 - ALWAYS use kebab-case for plugin names and tool names.

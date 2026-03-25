@@ -4,21 +4,29 @@ Lobster is a typed workflow runtime provided as an OpenClaw plugin. It enables m
 
 ## Enabling Lobster
 
-Lobster is a plugin-provided tool. It must be explicitly allowed in your OpenClaw configuration.
+Lobster is an optional plugin tool. You need both the OpenClaw tool permission and the Lobster CLI installed on the gateway host.
 
-**CRITICAL:** Use `tools.alsoAllow`, not `tools.allow`. Using `tools.allow` creates a restrictive allowlist that blocks all tools not listed. `tools.alsoAllow` adds Lobster alongside the defaults.
+Recommended: add Lobster through `tools.alsoAllow` so you enable it without switching into restrictive allowlist mode.
 
 ```yaml
-# CORRECT -- adds Lobster without restricting other tools
+# RECOMMENDED -- adds Lobster without changing the rest of the tool policy
 tools:
   alsoAllow:
     - "lobster"
 
-# WRONG -- restricts ALL tools to only Lobster
+# RESTRICTIVE -- use only if you intentionally manage an allowlist
 # tools:
 #   allow:
 #     - "lobster"
 ```
+
+If you use `tools.allow`, OpenClaw enters allowlist mode. If the allowlist only names optional plugin tools like `lobster`, core tools stay available, but you are still opting into restrictive policy management. Prefer `alsoAllow` unless you want to manage that policy explicitly.
+
+Preflight before execution:
+
+- `openclaw status --all` shows `lobster`
+- `command -v lobster` succeeds on the gateway host
+- if the workflow will call `llm-task`, that tool is also visible in runtime status
 
 ## Tool API: lobster
 
@@ -48,6 +56,32 @@ Example call:
   "argsJson": "{\"target\": \"production\", \"verbose\": true}"
 }
 ```
+
+### Argument interpolation
+
+Values passed through `argsJson` are exposed by key name inside the workflow and referenced as `${key}` inside `command` and `env` fields.
+
+Example:
+
+```json
+{
+  "action": "run",
+  "pipeline": "./workflows/repo-check.lobster",
+  "argsJson": "{\"repo\": \"openclaw/openclaw\"}"
+}
+```
+
+```yaml
+name: repo-check
+args:
+  repo:
+    type: string
+steps:
+  - id: inspect
+    command: "git -C /repos/${repo} status --short"
+```
+
+Use `${key}` for workflow arguments and `$stepId.stdout` or `$stepId.json` for step output references. Do not mix argument interpolation with step-output references.
 
 ### resume action
 
@@ -157,14 +191,14 @@ steps:
 |-------|------|----------|-------------|
 | `id` | string | Yes | Unique step identifier (used in `$stepId.stdout` references) |
 | `command` | string | Yes | Shell command to execute |
-| `stdin` | string | No | Pipe previous step output, e.g. `$gather-data.stdout` |
+| `stdin` | string | No | Pipe previous step output, e.g. `$gather-data.stdout` or `$gather-data.json` |
 | `approval` | string | No | `"required"` or `"optional"` -- pauses for human approval |
 | `condition` | string | No | Expression that must be truthy for step to run |
 | `when` | string | No | Conditional like `$stepId.approved` -- runs only when referenced step was approved |
 
 ### Data flow between steps
 
-Use `$stepId.stdout` to pipe one step's output into another:
+Use `$stepId.stdout` for raw text output and `$stepId.json` when a prior step produced JSON:
 
 ```yaml
 steps:
@@ -215,7 +249,7 @@ Lobster produces specific error messages for common failures:
 
 ## llm-task plugin
 
-LLM Task is a complementary plugin often used within Lobster workflows for AI reasoning steps.
+`llm-task` is a complementary plugin tool often used inside Lobster workflows for JSON-only reasoning steps.
 
 ### Enabling llm-task
 
@@ -226,14 +260,43 @@ plugins:
       enabled: true
 ```
 
-### llm-task schema
+If the agent uses explicit allowlists, permit the tool as well:
+
+```yaml
+agents:
+  list:
+    - id: main
+      tools:
+        allow:
+          - "llm-task"
+```
+
+Lobster does not need a special LLM-step syntax here. Use a normal `command` step that invokes the `llm-task` tool through `openclaw.invoke`.
+
+### llm-task tool arguments
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `prompt` | string | Yes | Instruction for the LLM |
-| `thinking` | string | No | Reasoning depth: `"low"`, `"medium"`, or `"high"` |
+| `thinking` | string | No | Reasoning preset such as `"low"`, `"medium"`, or `"high"` |
 | `input` | object | No | Structured data passed as context to the prompt |
 | `schema` | JSON Schema | No | Output schema enforcing structured JSON response |
+| `provider` | string | No | Override provider for this step |
+| `model` | string | No | Override model for this step |
+| `authProfileId` | string | No | Override auth profile for this step |
+| `temperature` | number | No | Sampling control for the step |
+| `maxTokens` | number | No | Output token cap |
+| `timeoutMs` | number | No | Request timeout for the tool call |
+
+Example Lobster step:
+
+```yaml
+steps:
+  - id: classify-ticket
+    command: >
+      openclaw.invoke --tool llm-task --action json --args-json
+      '{"prompt":"Classify this support ticket by urgency and category.","thinking":"medium","input":{"ticket_text":"My production database is down and customers cannot log in.","ticket_id":"TICK-4521"},"schema":{"type":"object","properties":{"urgency":{"type":"string","enum":["critical","high","medium","low"]},"category":{"type":"string","enum":["infrastructure","billing","feature","bug"]},"summary":{"type":"string"}},"required":["urgency","category","summary"],"additionalProperties":false}}'
+```
 
 The `schema` field uses standard JSON Schema:
 
@@ -266,7 +329,7 @@ Use Lobster when:
 - Steps produce structured data that feeds into subsequent steps
 - Destructive or expensive actions need human approval before proceeding
 - The workflow may need to be paused, inspected, and resumed later
-- You need an audit trail of what happened at each step
+- You need a clear record of what happened at each step
 
 Do NOT use Lobster when:
 
@@ -288,7 +351,7 @@ Use LLM Task as a reasoning step within a Lobster workflow. The Lobster step def
 
 ### Lobster + exec
 
-Lobster steps execute shell commands by design. Wrapping exec in Lobster provides audit trails, typed data flow, and approval gates that raw exec lacks.
+Lobster steps execute shell commands by design. Wrapping exec in Lobster provides execution history, typed data flow, and approval gates that raw exec lacks.
 
 ### Lobster + browser
 
@@ -304,12 +367,12 @@ When a workflow fails or produces unexpected results:
 4. **Check timeoutMs** -- increase if steps legitimately take longer than 20 seconds
 5. **Check maxStdoutBytes** -- increase if steps produce large output
 6. **Run the failing step in isolation** -- test the command independently
-7. **Check plugin availability** -- verify Lobster is loaded with `tools.alsoAllow`
+7. **Check plugin availability** -- verify `openclaw status --all` shows `lobster` and `command -v lobster` works on the gateway host
 
 ## Safety considerations
 
 - Always use approval gates before destructive or irreversible actions
-- Log workflow execution for audit purposes
+- Log workflow execution for debugging and traceability
 - Set appropriate `timeoutMs` on workflows to prevent hanging
 - Handle step failures gracefully -- a workflow should not leave external systems in an inconsistent state
 - When a workflow is rejected at an approval gate, clean up any resources created by earlier steps

@@ -67,20 +67,24 @@ Creates `.mcp-use/tool-registry.d.ts` for type-safe `useCallTool` in widgets.
 Add to `tsconfig.json`: `"include": ["index.ts", "src/**/*", "resources/**/*", ".mcp-use/**/*"]`.
 Runs automatically in `mcp-use dev`; run manually for CI or after schema changes.
 
+For scaffolded `create-mcp-use-app` projects, omit `--server` and use the default root `index.ts`. For manual or side-car layouts, point `--server` at the real entry file you are editing.
+
 ### Recommended package.json Scripts
 
 ```json
 {
   "scripts": {
     "dev": "mcp-use dev src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
+    "build": "mcp-use build",
+    "start": "mcp-use start",
     "inspect": "npx @mcp-use/inspector --url http://localhost:3000/mcp",
     "typecheck": "tsc --noEmit",
-    "generate-types": "mcp-use generate-types"
+    "generate-types": "mcp-use generate-types --server src/server.ts"
   }
 }
 ```
+
+If the project is scaffolded and uses root `index.ts`, the equivalent scripts are `mcp-use dev` and `mcp-use generate-types` without the custom entry argument.
 
 ### Official Feature Examples (from mcp-use monorepo)
 
@@ -150,15 +154,17 @@ curl -s -X POST http://localhost:3000/mcp \
   -d '{"jsonrpc":"2.0","method":"prompts/get","params":{"name":"summarize","arguments":{"topic":"MCP"}},"id":5}' | jq .
 ```
 
-### SSE / Streaming Transport
+### Legacy SSE alias
 
 ```bash
-curl -N -H "Accept: text/event-stream" http://localhost:3000/mcp/sse  # Open SSE stream
+curl -N -H "Accept: text/event-stream" http://localhost:3000/sse  # Legacy alias for older clients
 # In separate terminal:
-curl -s -X POST http://localhost:3000/mcp/message \
+curl -s -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
+
+Modern clients should use `/mcp`. The `/sse` path is only for backward-compatibility with older SSE-era clients.
 
 ---
 
@@ -170,15 +176,13 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "my-server": {
-      "command": "node",
-      "args": ["/absolute/path/to/dist/server.js"],
-      "env": { "API_KEY": "your-key-here" }
+      "url": "http://localhost:3000/mcp"
     }
   }
 }
 ```
 
-For HTTP: `{ "mcpServers": { "my-http-server": { "url": "http://localhost:3000/mcp" } } }`
+For production, swap the URL to your deployed HTTPS endpoint.
 
 **Verify:** Quit Claude (Cmd+Q) → Reopen → Click 🔨 to confirm tools appear.
 
@@ -438,7 +442,7 @@ curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" \
 - [ ] `mcp-use generate-types` succeeds and types compile
 - [ ] `DEBUG=2` shows correct request/response logging
 - [ ] Environment variables documented and validated on startup
-- [ ] No `console.log()` in stdio server code; CORS/auth tested
+- [ ] Logging is deliberate (no noisy debug output or secret leaks); CORS/auth tested
 
 ---
 
@@ -562,33 +566,27 @@ curl -X POST $BASE \
 
 ## 14. Claude Desktop Integration
 
-Add your MCP server to Claude Desktop by editing the config JSON. Use HTTP for StreamableHTTP/SSE servers or stdio for local processes.
+Add your MCP server to Claude Desktop by editing the config JSON. For `mcp-use/server`, start the server locally or remotely over HTTP and point Claude Desktop at the `/mcp` URL.
 
-### HTTP Server Example
+### Local HTTP Example
 
 ```json
 {
   "mcpServers": {
     "mcp-use": {
-      "command": "npx",
-      "args": ["@mcp-use/cli", "start"],
-      "env": { "PORT": "3000" },
-      "transport": "http",
       "url": "http://localhost:3000/mcp"
     }
   }
 }
 ```
 
-### Stdio Server Example
+### Remote HTTPS Example
 
 ```json
 {
   "mcpServers": {
-    "local": {
-      "command": "node",
-      "args": ["dist/server.js"],
-      "transport": "stdio"
+    "production": {
+      "url": "https://mcp.example.com/mcp"
     }
   }
 }

@@ -1,10 +1,12 @@
 # Tested Multi-Agent Patterns
 
-Every pattern below has been tested with real agents on hcom v0.7.6. Event outputs are from real runs on 2026-03-24.
+Every pattern below was exercised with real agents on hcom v0.7.6. Event outputs are from real runs on 2026-03-24, but you must still run the hook preflight and readiness checks in your current environment before treating them as runnable baselines.
+
+For copy-paste execution, prefer the matching script in `references/scripts/`. Those baselines add hook preflight, recipient-first launch order, and timeout diagnostics. The snippets below focus on message shape and control flow.
 
 ## Pattern 1: Basic Two-Agent Messaging
 
-Worker sends result, reviewer acknowledges, DONE signal to orchestrator.
+Worker sends result, reviewer acknowledges, DONE signal on the workflow thread.
 
 ```bash
 #!/usr/bin/env bash
@@ -34,19 +36,19 @@ name_arg=""
 
 thread="basic-$(date +%s)"
 
+# Launch reviewer first so @reviewer- exists before worker sends to it
+launch_out=$(hcom 1 claude --tag reviewer --go --headless \
+  --hcom-prompt "Wait for @worker-. Reply: hcom send \"@worker-\" --thread ${thread} --intent ack -- \"ACK\". Send: hcom send --thread ${thread} --intent inform -- \"DONE\". Then: hcom stop" 2>&1)
+track_launch "$launch_out"
+reviewer=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
+echo "Reviewer: $reviewer"
+
 # Launch worker
 launch_out=$(hcom 1 claude --tag worker --go --headless \
   --hcom-prompt "Do: ${task}. Send result: hcom send \"@reviewer-\" --thread ${thread} --intent inform -- \"RESULT: <answer>\". Then: hcom stop" 2>&1)
 track_launch "$launch_out"
 worker=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
 echo "Worker: $worker"
-
-# Launch reviewer
-launch_out=$(hcom 1 claude --tag reviewer --go --headless \
-  --hcom-prompt "Wait for @worker-. Reply: hcom send \"@${worker}\" --thread ${thread} --intent ack -- \"ACK\". Send: hcom send \"@bigboss\" --thread ${thread} --intent inform -- \"DONE\". Then: hcom stop" 2>&1)
-track_launch "$launch_out"
-reviewer=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
-echo "Reviewer: $reviewer"
 echo "Thread: $thread"
 
 # Wait for DONE signal
@@ -106,19 +108,19 @@ name_arg=""
 
 thread="review-$(date +%s)"
 
-# Launch worker
-launch_out=$(hcom 1 claude --tag worker --go --headless \
-  --hcom-prompt "Task: ${task}. Do it. Send: hcom send \"@reviewer-\" --thread ${thread} --intent inform -- \"ROUND 1 DONE: <result>\". If you get FIX feedback, fix and resend as ROUND 2 DONE. After APPROVED, send: hcom send \"@bigboss\" --thread ${thread} --intent inform -- \"FINAL\". Then: hcom stop." 2>&1)
-track_launch "$launch_out"
-worker=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
-echo "Worker: $worker"
-
-# Launch reviewer
+# Launch reviewer first so FIX/APPROVED feedback has a live target
 launch_out=$(hcom 1 claude --tag reviewer --go --headless \
-  --hcom-prompt "On ROUND N DONE from @worker-: check result for correctness. If correct: hcom send \"@${worker}\" --thread ${thread} --intent inform -- \"APPROVED\". If wrong: hcom send \"@${worker}\" --thread ${thread} --intent request -- \"FIX: <issue>\". After sending verdict, hcom stop." 2>&1)
+  --hcom-prompt "On ROUND 1 DONE or ROUND 2 DONE from @worker-: check result for correctness. If correct: hcom send \"@worker-\" --thread ${thread} --intent inform -- \"APPROVED\" and stop. If ROUND 1 is wrong: hcom send \"@worker-\" --thread ${thread} --intent request -- \"FIX: <issue>\" and keep waiting for ROUND 2 DONE. If ROUND 2 is still wrong: hcom send \"@worker-\" --thread ${thread} --intent inform -- \"APPROVED WITH NOTES: <remaining issue>\" and stop." 2>&1)
 track_launch "$launch_out"
 reviewer=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
 echo "Reviewer: $reviewer"
+
+# Launch worker
+launch_out=$(hcom 1 claude --tag worker --go --headless \
+  --hcom-prompt "Task: ${task}. Do it. Send: hcom send \"@reviewer-\" --thread ${thread} --intent inform -- \"ROUND 1 DONE: <result>\". If you get FIX feedback, fix and resend as ROUND 2 DONE. After APPROVED or APPROVED WITH NOTES, send: hcom send --thread ${thread} --intent inform -- \"FINAL\". Then: hcom stop." 2>&1)
+track_launch "$launch_out"
+worker=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
+echo "Worker: $worker"
 echo "Thread: $thread"
 
 # Wait for FINAL signal
@@ -181,6 +183,13 @@ name_arg=""
 
 thread="ens-$(date +%s)"
 
+# Launch judge first so @judge- exists before contestants answer
+launch_out=$(hcom 1 claude --tag judge --go --headless \
+  --hcom-prompt "Wait for 3 contestant answers in thread ${thread}. Check answers: hcom events --sql \"msg_thread='${thread}' AND msg_text LIKE 'C%'\" --last 10 $name_arg. Compare answers. Send: hcom send --thread ${thread} --intent inform -- \"VERDICT: <best answer> (<reasoning>)\". Then: hcom stop." 2>&1)
+track_launch "$launch_out"
+judge=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
+echo "Judge: $judge"
+
 # Launch 3 contestants
 for i in 1 2 3; do
   launch_out=$(hcom 1 claude --tag "c${i}" --go --headless \
@@ -189,13 +198,6 @@ for i in 1 2 3; do
   name=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
   echo "Contestant ${i}: $name"
 done
-
-# Launch judge
-launch_out=$(hcom 1 claude --tag judge --go --headless \
-  --hcom-prompt "Wait for 3 contestant answers in thread ${thread}. Check answers: hcom events --sql \"msg_thread='${thread}' AND msg_text LIKE 'C%'\" --last 10 $name_arg. Compare answers. Send: hcom send \"@bigboss\" --thread ${thread} --intent inform -- \"VERDICT: <best answer> (<reasoning>)\". Then: hcom stop." 2>&1)
-track_launch "$launch_out"
-judge=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
-echo "Judge: $judge"
 echo "Thread: $thread"
 
 # Wait for VERDICT
@@ -336,23 +338,23 @@ name_arg=""
 
 thread="duo-$(date +%s)"
 
-# Claude architect
-launch_out=$(hcom 1 claude --tag arch --go --headless \
-  --hcom-prompt "Design spec: ${task}. Send: hcom send \"@eng-\" --thread ${thread} --intent request -- \"SPEC: <detailed spec>\". Wait for IMPLEMENTED. Send APPROVED. Stop." 2>&1)
-track_launch "$launch_out"
-arch=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
-echo "Architect (Claude): $arch"
-
-# Codex engineer
+# Codex engineer first so @eng- exists before Claude sends SPEC
 launch_out=$(hcom 1 codex --tag eng --go --headless \
   --hcom-prompt "Wait for spec from @arch-. Implement exactly as specified. Confirm: hcom send \"@arch-\" --thread ${thread} --intent inform -- \"IMPLEMENTED\". Stop." 2>&1)
 track_launch "$launch_out"
 eng=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
 echo "Engineer (Codex): $eng"
-echo "Thread: $thread"
 
-# CRITICAL: Wait for Codex to be ready before anything happens
+# CRITICAL: Wait for Codex to be ready before Claude sends SPEC
 hcom events --wait 30 --idle "$eng" $name_arg >/dev/null 2>&1
+
+# Claude architect
+launch_out=$(hcom 1 claude --tag arch --go --headless \
+  --hcom-prompt "Design spec: ${task}. Send: hcom send \"@eng-\" --thread ${thread} --intent request -- \"SPEC: <detailed spec>\". Wait for IMPLEMENTED. Send: hcom send --thread ${thread} --intent inform -- \"APPROVED\". Stop." 2>&1)
+track_launch "$launch_out"
+arch=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
+echo "Architect (Claude): $arch"
+echo "Thread: $thread"
 
 # Wait for APPROVED
 result=$(hcom events --wait 180 --sql "type='message' AND msg_thread='${thread}' AND msg_text LIKE '%APPROVED%'" $name_arg 2>/dev/null)
@@ -416,22 +418,20 @@ name_arg=""
 
 thread="codex-$(date +%s)"
 
+# Claude reviewer first so @reviewer- exists before Codex sends CODE DONE
+launch_out=$(hcom 1 claude --tag reviewer --go --headless \
+  --hcom-prompt "Wait for a control message in thread ${thread} that says CODER NAME: <name>. Replace <name> with that coder name, then wait for CODE DONE from @coder-. Read full transcript: hcom transcript @<name> --last 5 --full $name_arg. Review code quality and correctness. Send: hcom send --thread ${thread} --intent inform -- \"REVIEWED: pass\" or \"REVIEWED: fail (<reason>)\". Then: hcom stop." 2>&1)
+track_launch "$launch_out"
+reviewer=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
+echo "Reviewer (Claude): $reviewer"
+
 # Codex coder
 launch_out=$(hcom 1 codex --tag coder --go --headless \
   --hcom-prompt "Do: ${task}. When done, send output: hcom send \"@reviewer-\" --thread ${thread} --intent inform -- \"CODE DONE: <output>\". Then: hcom stop." 2>&1)
 track_launch "$launch_out"
 coder=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
 echo "Coder (Codex): $coder"
-
-# CRITICAL: wait for Codex to bind
-hcom events --wait 30 --idle "$coder" $name_arg >/dev/null 2>&1
-
-# Claude reviewer
-launch_out=$(hcom 1 claude --tag reviewer --go --headless \
-  --hcom-prompt "Wait for CODE DONE from @coder-. Read full transcript: hcom transcript @${coder} --last 5 --full $name_arg. Review code quality and correctness. Send: hcom send --thread ${thread} --intent inform -- \"REVIEWED: pass\" or \"REVIEWED: fail (<reason>)\". Then: hcom stop." 2>&1)
-track_launch "$launch_out"
-reviewer=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
-echo "Reviewer (Claude): $reviewer"
+hcom send @"${reviewer}" --thread "$thread" --intent inform -- "CODER NAME: ${coder}" >/dev/null 2>&1 || true
 echo "Thread: $thread"
 
 # Wait for review
@@ -474,4 +474,4 @@ PASS
 | 5 | Cross-tool duo | 2 | Claude+Codex | PASS | ~30s |
 | 6 | Codex->Claude review | 2 | Codex+Claude | PASS | ~35s |
 
-All 6 patterns verified working with real agent runs. Scripts are production-ready.
+All 6 patterns produced the documented event shapes in real runs. Treat them as reference baselines, not as a substitute for hooks preflight or readiness checks in your environment.

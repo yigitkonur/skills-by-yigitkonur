@@ -17,11 +17,12 @@ Generate Devin review configuration from repository evidence. `REVIEW.md` contro
 ## Core working rules
 
 - Start with the repository, not the scenario library.
-- Inspect existing instruction and context files before writing anything: `REVIEW.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.cursorrules`, `.windsurfrules`, `agents/rules/*.md`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `CODE_OF_CONDUCT.md`, `.editorconfig`, `.github/CODEOWNERS`, `COMPLIANCE.md`, `.devin/` config files. Also read `LICENSE` for licensing context (do not duplicate its content).
+- Inspect existing instruction and context files before writing anything: matching `**/REVIEW.md`, `**/AGENTS.md`, `**/CLAUDE.md`, `**/CONTRIBUTING.md`, `SECURITY.md`, `.cursorrules`, `.windsurfrules`, `agents/rules/**/*.md`, `.cursor/rules/**/*.mdc`, `.github/copilot-instructions.md`, `.coderabbit.yaml`, `.coderabbit.yml`, `greptile.json`, `CODE_OF_CONDUCT.md`, `.editorconfig`, `.github/CODEOWNERS`, `COMPLIANCE.md`, and `.devin/` config files.
+- Account for scoped instruction files inside agent-style subdirectories such as `.agents/`, `.devin/`, `.cursor/`, or `.github/` when checking for overlap. Also read `LICENSE` for licensing context (do not duplicate its content).
 - Reuse the repo's real paths, libraries, commands, docs, and pain points. Never copy reference text verbatim.
-- `REVIEW.md` can live at the root or in scoped subdirectories. `AGENTS.md` should stay root-only.
+- `REVIEW.md` can live at the root or in scoped subdirectories. `AGENTS.md` can also be scoped, but default to one root file and add scoped `AGENTS.md` only when package-specific execution rules truly diverge.
 - Keep `REVIEW.md` focused on reviewable diff issues. Put coding workflow, architecture, and task-execution behavior in `AGENTS.md` only when needed.
-- Prefer one strong root `REVIEW.md` over many weak files. Add scoped `REVIEW.md` files only where review concerns truly diverge.
+- Prefer one strong root `REVIEW.md` over many weak files. Keep root rules cross-cutting and add scoped `REVIEW.md` files only where review concerns truly diverge.
 - Do not encode formatter, linter, or CI rules unless Devin adds value beyond existing automation.
 
 ## Required workflow
@@ -29,6 +30,8 @@ Generate Devin review configuration from repository evidence. `REVIEW.md` contro
 ### 1. Scan the repo
 
 Collect only the evidence needed to write grounded rules. Start by identifying the primary language and stack — this determines which artifacts, tools, and risk areas to look for.
+
+Start by changing into the target repo root. If you are working from a shared fixture or sample repository, copy it to a scratch repo/worktree before writing `REVIEW.md` or `AGENTS.md` so the source fixture stays unchanged.
 
 **Language-detection routing:**
 
@@ -42,22 +45,24 @@ Collect only the evidence needed to write grounded rules. Start by identifying t
 
 **How to scan:**
 
-```
-find . -maxdepth 3 -name "*.md" -o -name "*.toml" -o -name "*.json" -o -name "*.yaml" | head -50
-cat README.md | head -30
-ls -la .github/ .cursor/ .windsurf/ agents/ .devin/ 2>/dev/null
+```bash
+find . -maxdepth 3 \( -name "REVIEW.md" -o -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "CONTRIBUTING.md" -o -name ".cursorrules" -o -name ".windsurfrules" -o -name "*.rules" -o -name "*.mdc" -o -name ".coderabbit.yaml" -o -name ".coderabbit.yml" -o -name "greptile.json" \) | sort
+find . -maxdepth 3 \( -name "*.md" -o -name "*.toml" -o -name "*.json" -o -name "*.yaml" \) | head -50
+[ -f README.md ] && head -30 README.md
+ls -la .github/ .cursor/ .windsurf/ .agents/ agents/ .devin/ 2>/dev/null
 grep -r "lint\|format\|check" package.json Makefile pyproject.toml 2>/dev/null | head -20
 ```
 
 - Read the dependency manifest first: `package.json`, `go.mod`, `requirements.txt`/`pyproject.toml`, `Cargo.toml`, `pom.xml`
 - For monorepos (>5,000 files), limit deep scanning to top two directory levels plus any `apps/`, `packages/`, `services/`, `cmd/`, or `internal/` subdirectories
 - Check for CI configuration: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `Makefile`
+- When root and scoped instruction files overlap, do not guess at undocumented precedence. Keep root files cross-cutting, make scoped files local, and remove contradictions instead of relying on overrides.
 
 **What to collect:**
 
 - **structure**: single-service repo or monorepo; top-level directories (`apps/`, `packages/`, `services/`, `cmd/`, `internal/`, `src/`)
 - **stack**: primary language(s), frameworks, data/storage layer (ORM, direct DB, object storage, key-value stores), transport/runtime (HTTP framework, gRPC, message queues, CLI), test tooling (unit runner, integration, E2E, benchmarks)
-- **existing instructions**: `REVIEW.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `.cursorrules`, `.windsurfrules`, `agents/rules/*.md`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `CODE_OF_CONDUCT.md`, `.editorconfig`, `.github/CODEOWNERS`, `COMPLIANCE.md`, `.devin/` config files. Read `LICENSE` for licensing context — don't duplicate its content.
+- **existing instructions**: matching `**/REVIEW.md`, `**/AGENTS.md`, `**/CLAUDE.md`, `**/CONTRIBUTING.md`, `SECURITY.md`, `.cursorrules`, `.windsurfrules`, `agents/rules/**/*.md`, `.cursor/rules/**/*.mdc`, `.github/copilot-instructions.md`, `.coderabbit.yaml`, `.coderabbit.yml`, `greptile.json`, `CODE_OF_CONDUCT.md`, `.editorconfig`, `.github/CODEOWNERS`, `COMPLIANCE.md`, and `.devin/` config files. Read `LICENSE` for licensing context — don't duplicate its content.
 - **contracts and docs**: OpenAPI/Swagger specs, Prisma/Django/SQLAlchemy schema, `go.mod`, ADRs, architecture docs, security docs, design docs in `docs/`
 - **enforcement already present**: the repo's existing linters, formatters, CI, or SAST tools (e.g. Semgrep, Bandit, gosec, CodeQL) — check actual config files rather than assuming which tools are used
 - **recurring risk areas**: detect which apply by scanning for related code and config:
@@ -74,7 +79,8 @@ grep -r "lint\|format\|check" package.json Makefile pyproject.toml 2>/dev/null |
 | --- | --- |
 | Single service or one shared review model | Root `REVIEW.md` |
 | Monorepo with cross-cutting rules plus package-specific risks | Root `REVIEW.md` + scoped `REVIEW.md` only in divergent directories |
-| User asks for Devin coding or task behavior too | Root `REVIEW.md` + root `AGENTS.md` |
+| User asks for Devin coding or task behavior too, and one execution model fits the repo | Root `REVIEW.md` + root `AGENTS.md` |
+| Repo has package-specific execution rules that would make one `AGENTS.md` contradictory or bloated | Root `REVIEW.md` + root `AGENTS.md`, plus scoped `AGENTS.md` only in the divergent directories |
 | Existing `AGENTS.md` or `CLAUDE.md` already covers coding behavior | Usually `REVIEW.md` only; extend or align instead of duplicating |
 
 Default to `REVIEW.md` only unless the request or repo evidence clearly calls for `AGENTS.md`.
@@ -98,6 +104,8 @@ Rule of thumb: if the statement is about **reviewing a diff**, it belongs in `RE
 
 Before writing, find the closest scenario in `references/scenarios.md` and use it as your starting template. Adapt — don't copy.
 
+If no scenario is a close fit, choose the nearest one by primary language/runtime and reuse only its section order and severity style. Drop stack-specific rules that do not match the repo instead of inventing new framework guidance from the template.
+
 When writing `REVIEW.md`:
 
 1. Put high-signal sections near the top. Preferred order: `Critical Areas` → `Security` → `Conventions` → `Performance` → `Patterns` → `Ignore` → `Testing`.
@@ -112,7 +120,8 @@ When writing `REVIEW.md`:
 
 When writing `AGENTS.md`:
 
-- keep it root-scoped
+- prefer one root file; add scoped `AGENTS.md` only when package-level workflow, architecture, or dependency rules truly diverge
+- keep root guidance cross-cutting and scoped guidance local to that subtree
 - focus on architecture, workflow, dependencies, file organization, testing, and communication expectations
 - do not restate bug-finding rules that already belong in `REVIEW.md`
 
@@ -137,7 +146,7 @@ Before returning any configuration, verify:
 - ignore patterns match actual generated and build files in the repo
 - monorepo scoped files add new package-specific guidance instead of duplicating root rules
 - `AGENTS.md` is only included when agent-behavior guidance is truly needed
-- no contradictions with `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or editor rule files — check each existing file for conflicts
+- no contradictions across overlapping `REVIEW.md`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or editor/review rule files
 - `REVIEW.md` stays lean enough for Bug Catcher to focus
 
 ## Output requirements
@@ -145,15 +154,16 @@ Before returning any configuration, verify:
 When asked to generate files, return:
 
 1. a short file plan or tree
-2. each file as a complete markdown block
-3. brief notes tying major sections to repository evidence
-4. a simple verification path: submit a test PR to see Bug Catcher's response, or use `devinreview.com` to preview rule behavior, or run `npx devin-review` locally — see `references/setup/getting-started.md` for setup details and `references/customization/rules-and-exclusions.md` for tuning exclusions after the first run
+2. If filesystem access exists, write the files into the target repo first unless the user explicitly asked for draft-only output
+3. each file as a complete markdown block
+4. brief notes tying major sections to repository evidence
+5. a simple verification path: submit a test PR to see Bug Catcher's response, or use `devinreview.com` to preview rule behavior, or run `npx devin-review` locally — see `references/setup/getting-started.md` for setup details and `references/customization/rules-and-exclusions.md` for tuning exclusions after the first run
 
 ## Recovery loops
 
 - **Too much noise:** shorten the file, add or expand `Ignore`, delete vague rules, and remove rules already enforced elsewhere. See `references/customization/rules-and-exclusions.md` and `references/troubleshooting/common-issues.md`.
 - **Missing real bugs:** move critical rules higher, add path-specific critical areas, tighten phrasing, and add repo-accurate examples. See `references/review-md/format-and-directives.md` and `references/troubleshooting/common-issues.md`.
-- **Monorepo confusion:** keep root rules cross-cutting; put only package-specific risks in scoped files. See `references/patterns/common-configurations.md`.
+- **Monorepo confusion:** keep root rules cross-cutting; put only package-specific risks in scoped files; do not rely on precedence to resolve contradictions. See `references/patterns/common-configurations.md` and `references/review-spec.md`.
 - **`REVIEW.md` vs `AGENTS.md` overlap:** move diff-catching rules back to `REVIEW.md`; keep coding workflow in `AGENTS.md`. See `references/agents-md/configuration.md`.
 - **Need a starting pattern for a known stack:** use the closest scenario as inspiration, then rewrite it against the repo. `references/scenarios.md` covers TypeScript backends, Next.js sites and dashboards, Django APIs, Tauri apps, MCP servers, Python `mcp-use`, and monorepos.
 
@@ -161,13 +171,14 @@ When asked to generate files, return:
 
 | Need | Workflow phase | Read |
 | --- | --- | --- |
+| instruction-file patterns, scoping boundaries, and review runtime behavior | Step 1 — scanning, Step 2 — planning | `references/review-spec.md` |
 | section order, phrasing, weighting, monorepo `REVIEW.md` behavior | Step 4 — drafting | `references/review-md/format-and-directives.md` |
 | `AGENTS.md` structure and file-split decisions | Step 2–3 — planning | `references/agents-md/configuration.md` |
 | noise reduction, exclusions, severity tuning | Recovery / tuning | `references/customization/rules-and-exclusions.md` |
 | reusable security, performance, framework, and monorepo patterns | Step 1 — scanning, Step 4 — drafting | `references/patterns/common-configurations.md` |
 | full stack examples to adapt, not copy | Step 4 — drafting | `references/scenarios.md` |
 | noisy reviews, missed bugs, and triggering/debug issues | Recovery / tuning | `references/troubleshooting/common-issues.md` |
-| install, enrollment, and system behavior | Setup / verification | `references/setup/getting-started.md`, `references/review-spec.md` |
+| install, enrollment, and verification paths | Setup / verification | `references/setup/getting-started.md` |
 
 ## Final reminder
 

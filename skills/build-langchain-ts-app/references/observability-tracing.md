@@ -686,12 +686,12 @@ class MyHandler extends BaseCallbackHandler {
 }
 ```
 
-### Custom Handler for LangGraph `createReactAgent`
+### Custom Handler for `createAgent`
 
 ```typescript
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import { LLMResult } from "@langchain/core/outputs";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { createAgent } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
 
 class AgentObserver extends BaseCallbackHandler {
@@ -707,12 +707,12 @@ class AgentObserver extends BaseCallbackHandler {
 }
 
 const llm = new ChatOpenAI({ model: "gpt-4.1-mini" });
-const agent = createReactAgent({ llm, tools: [] });
+const agent = createAgent({ model: llm, tools: [] });
 
 // CORRECT: pass callbacks via invoke config to see full tool definitions
 const response = await agent.invoke(
   { messages: [{ role: "user", content: "What is 2+2?" }] },
-  { callbacks: [new AgentObserver()] }  // NOT in createReactAgent constructor
+  { callbacks: [new AgentObserver()] }  // not in the createAgent constructor
 );
 ```
 
@@ -1392,7 +1392,7 @@ Append secret to URL: `https://api.example.com/langsmith-webhook?secret=your-sec
 | Streaming token count inaccuracy | `handleLLMNewToken` counters | Use `usage_metadata` when available; tiktoken for estimation only |
 | `handleLLMNewToken` + tiktoken underestimates prompt tokens | Chat models | Use `format_prompt` + tiktoken for chat messages |
 | `usage_metadata` unreliable during streaming | Non-OpenAI providers | Wrap the provider client directly for token counts |
-| LangGraph `createReactAgent` callbacks missing | LangGraph prebuilt agent | Pass callbacks in `invoke` config, NOT in `createReactAgent` constructor |
+| `createAgent` callbacks missing | Agent callbacks attached in the wrong place | Pass callbacks in `invoke` config, not in the `createAgent` constructor |
 | Metadata not propagated to child runs | Dashboard group-by queries | Explicitly attach metadata to both root run AND each LLM child run |
 | API key in `LANGSMITH_API_KEY` hardcoded in code | Production deployments | Always load from environment secrets; never commit to git |
 | EU data residency missed | Regulated environments | Use `https://eu.api.smith.langchain.com` endpoint explicitly |

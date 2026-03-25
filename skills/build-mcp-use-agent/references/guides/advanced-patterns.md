@@ -102,7 +102,7 @@ interface SimplifiedModeOptions {
 | `run` | `run(prompt: string)` or `run({ prompt, schema?, maxSteps?, signal? })` | `Promise<string>` or `Promise<T>` | Execute a prompt; plain string form is deprecated but works. |
 | `stream` | `stream(prompt: string)` or `stream({ prompt, schema?, maxSteps?, signal? })` | `AsyncGenerator<AgentStep, string \| T, void>` | Yield step objects; generator return value is the final result. |
 | `streamEvents` | `streamEvents(prompt: string)` or `streamEvents({ prompt, schema?, maxSteps?, signal? })` | `AsyncGenerator<StreamEvent, void, void>` | Yield raw LangChain events; plain string form is deprecated. |
-| `prettyStreamEvents` | `prettyStreamEvents({ prompt, maxSteps?, schema? })` | `AsyncGenerator<void, string, void>` | Formatted, colored CLI output — options object only. |
+| `prettyStreamEvents` | `prettyStreamEvents(prompt: string)` or `prettyStreamEvents({ prompt, maxSteps?, schema? })` | `AsyncGenerator<void, string, void>` | Formatted, colored CLI output. Plain-string form is deprecated; prefer the options object. |
 | `initialize` | `initialize(): Promise<void>` | `Promise<void>` | Async setup; called automatically when `autoInitialize: true` or when `manageConnector` is true at runtime. |
 | `setDisallowedTools` | `setDisallowedTools(tools: string[]): void` | `void` | Update restricted tools at runtime. Changes take effect on next `initialize()` call. |
 | `getDisallowedTools` | `getDisallowedTools(): string[]` | `string[]` | Retrieve current restricted tool list. |
@@ -280,7 +280,7 @@ const agent = new MCPAgent({
 
 ## Server Manager
 
-When `useServerManager: true` is set, the agent gains four built-in management tools that it can invoke autonomously to discover and route between servers.
+When `useServerManager: true` is set, the agent gains five built-in management tools that it can invoke autonomously to discover and route between servers.
 
 ### Built-in server management tools
 
@@ -290,7 +290,7 @@ When `useServerManager: true` is set, the agent gains four built-in management t
 | `connect_to_mcp_server` | `serverName: string` | `Promise<void>` | Activate a server and load its tools. |
 | `get_active_mcp_server` | — | `Promise<string \| null>` | Name of the currently connected server. |
 | `disconnect_from_mcp_server` | — | `Promise<void>` | Deactivate current server and unload tools. |
-| `add_mcp_server_from_config` | `name: string, config: ServerConfig` | `Promise<void>` | Register a new server at runtime. |
+| `add_mcp_server_from_config` | `serverName: string, serverConfig: ServerConfig` | `Promise<void>` | Register a new server at runtime. |
 
 ### ServerInfo type
 
@@ -484,7 +484,7 @@ for await (const event of agent.streamEvents("Search for the latest Python news 
 await client.closeAllSessions();
 ```
 
-### `agent.prettyStreamEvents(opts)` — formatted CLI output
+### `agent.prettyStreamEvents(...)` — formatted CLI output
 
 Applies syntax highlighting and colored formatting automatically. Nothing needs to be done inside the loop.
 
@@ -718,7 +718,7 @@ GOOD:
 for await (const event of agent.streamEvents(prompt)) {
   if (event.event === "on_structured_output_progress") showSpinner();
   else if (event.event === "on_structured_output") save(event.data);
-  else if (event.event === "on_structured_output_error") handleError(event.error);
+  else if (event.event === "on_structured_output_error") handleError(event.data?.error ?? "Structured output failed");
 }
 ```
 

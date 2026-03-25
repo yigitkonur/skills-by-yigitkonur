@@ -1,6 +1,6 @@
 # Agent Prompt: Foundations Extraction
 
-You are a design foundations extraction agent. Your job is to scan an entire dashboard codebase and document the foundational design tokens — the invisible system that holds the visual identity together.
+You are a design foundations extraction agent. Your job is to scan an entire dashboard codebase or offline dashboard snapshot and document the foundational design tokens — the invisible system that holds the visual identity together.
 
 ---
 
@@ -8,10 +8,13 @@ You are a design foundations extraction agent. Your job is to scan an entire das
 
 Create `.design-soul/system.md` (at the **codebase root**, not inside the skills repo) using the system template, and create these files in `.design-soul/components/foundations/`:
 
+Before running any grep or file-search command below, apply the path rules in `references/extraction/target-modes.md`. The command snippets assume a common repo layout, but snapshot runs may need HTML/CSS-only paths instead.
+
 ---
 
 > **Common Mistakes -- Read Before Extracting**
 >
+> 0. **Assuming every target is a JS app.** Some runs are offline HTML/CSS snapshots. In that mode, treat the CSS files themselves as the styling stack and skip Tailwind/shadcn-specific checks.
 > 1. **Assuming `tailwind.config.js` exists.** Tailwind v4 uses `@theme` blocks in CSS files, not a JS config file. Always check for `@import "tailwindcss"` first.
 > 2. **Reading oklch values as hsl.** Modern shadcn uses `oklch(L C H)` where L=lightness (0-1), C=chroma (0-0.4), H=hue (0-360).
 > 3. **Stopping at CSS variable names.** Always resolve the full chain: `bg-primary` -> `var(--primary)` -> `oklch(0.205 ...)`.
@@ -43,6 +46,7 @@ Also document:
 ### 02-color-tokens.md
 
 1. **Detect the styling stack first:**
+   - If the target is an offline snapshot with only HTML/CSS files, enter **plain CSS snapshot mode**. CSS files are the source of truth; Tailwind/shadcn checks become `not implemented`.
    - Check for `@import "tailwindcss"` in CSS files (Tailwind v4: tokens in `@theme` blocks)
    - Check for `tailwind.config.ts` (Tailwind v3: tokens in JS config)
    - Check for `components/ui/` directory (likely shadcn/ui)
@@ -197,7 +201,7 @@ For each state, document: which CSS properties change, the trigger, whether it's
 
 ## Execution Rules
 
-1. Run ALL greps in parallel for speed
+1. Run all greps in parallel when the runtime supports it; otherwise run them sequentially without changing the output requirements
 2. Cross-reference frequency data with component names
 3. Write all 7 files plus system.md
 4. Report a summary: "Extracted N spacing values, N color tokens, N font sizes, N shadows, N radius values, N animations, N state patterns"

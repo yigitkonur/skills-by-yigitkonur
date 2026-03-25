@@ -37,12 +37,14 @@ Do not read every reference by default. Start with the minimum set that fits the
 
 ### 1. Ground on the repository before drafting
 
-Inspect the actual repository first. Quick repo scan recipe:
+Inspect the actual repository first. Start by changing into the target repo root. If you are using a shared fixture or sample repo, copy it to a scratch repo/worktree before writing any `.github/` files so you do not mutate the source fixture by accident.
+
+Quick repo scan recipe:
 
 ```bash
 find . -maxdepth 3 -type f -name "*.md" | head -20       # doc landscape
 ls .github/ .github/instructions/ 2>/dev/null             # existing Copilot config
-cat .eslintrc* .prettierrc* biome.json 2>/dev/null | head  # enforced style rules
+find . -maxdepth 2 -type f \( -name '.eslintrc*' -o -name '.prettierrc*' -o -name 'eslint.config.*' -o -name 'prettier.config.*' -o -name 'biome.json' -o -name 'biome.jsonc' \) | head -20  # enforced style rules
 find . \( -name "*.test.*" \) -o \( -name "*.spec.*" \) | head -10  # test conventions
 ```
 
@@ -152,7 +154,7 @@ applyTo: "src/api/**/*.ts"
 - Highest-priority rules go first
 - Keep examples short and include them only when they clarify a semantic rule
 
-> **⚠️ Steering: Brace expansion platform validation.** While `{ts,tsx}` is standard glob syntax and works in `find` and most glob engines, always verify your patterns match the intended files with the `find` command in Step 5. If you are uncertain about Copilot's glob engine supporting a specific syntax, use a broader pattern (e.g., `**/*.ts` plus a separate file for `**/*.tsx`) as a safe fallback.
+> **⚠️ Steering: Brace expansion platform validation.** GitHub glob syntax supports `{ts,tsx}`, but shell tools do not all validate it the same way. Do not rely on `find -path` to validate brace patterns. Use Python globbing in Step 5 or split the scope into separate patterns/files if you need a shell-only fallback.
 
 Overlapping scoped files are acceptable only when the rules are **additive** — two files may mention the same concept if the rules target different contexts. Flag duplication only when the same instruction is copy-pasted or when rules could conflict. If two matching files would disagree, narrow `applyTo` until they no longer conflict. Multiple matching scoped files are concatenated, so never rely on overlap to resolve contradictions for you.
 
@@ -170,7 +172,7 @@ Run this checklist — every item must pass:
 **Content quality:**
 - No external links
 - No attempts to control Copilot's comment formatting, severity labels, approvals, or merge blocking
-- No rules duplicated from linter or formatter config — verify by grepping: `grep -r "rule-name" .eslintrc* biome.json golangci* 2>/dev/null`
+- No rules duplicated from linter or formatter config — verify against the actual config files you found in Step 1. Example: `find . -maxdepth 2 -type f \( -name '.eslintrc*' -o -name 'eslint.config.*' -o -name '.prettierrc*' -o -name 'prettier.config.*' -o -name 'biome.json' -o -name 'biome.jsonc' -o -name '.golangci.yml' -o -name '.golangci.yaml' \) -exec grep -n "rule-name" {} + 2>/dev/null`
 - No contradictory rules across overlapping scopes
 - Root file contains only universal rules
 - Package/service files do not repeat root rules
@@ -178,7 +180,23 @@ Run this checklist — every item must pass:
 **Glob verification:**
 ```bash
 # Verify a glob pattern matches intended files
-find . -path "./<applyTo-pattern>" -type f | head -20
+python3 - <<'PY'
+from glob import glob
+def expand_braces(pattern):
+    if '{' not in pattern:
+        return [pattern]
+    start = pattern.index('{')
+    end = pattern.index('}', start)
+    options = pattern[start + 1:end].split(',')
+    expanded = []
+    for option in options:
+        expanded.extend(expand_braces(pattern[:start] + option + pattern[end + 1:]))
+    return expanded
+pattern = "<applyTo-pattern>"
+paths = sorted({path for candidate in expand_braces(pattern) for path in glob(candidate, recursive=True)})
+for path in paths[:20]:
+    print(path)
+PY
 ```
 
 **Deployment awareness:**
@@ -189,6 +207,7 @@ find . -path "./<applyTo-pattern>" -type f | head -20
 ### 6. Present the result as an architecture, not just a dump
 
 Return:
+- If filesystem access is available, write or update the instruction files in `.github/` first unless the user explicitly asked for draft-only output.
 - The `.github/` file tree
 - Full contents of each generated instruction file
 - A 1–3 sentence per-file explanation covering:
@@ -210,7 +229,7 @@ If repo evidence is weak or mixed, say so explicitly and keep the instruction se
 | Add a scoped file only when the scope has unique review value | Generate one file for every detected tool |
 | Use short, imperative, semantic bullets | Write long prose or vague quality slogans |
 | Evaluate existing instruction files before overwriting them | Start from scratch when files already exist |
-| Verify glob patterns with `find` before presenting | Assume glob patterns match without testing |
+| Verify glob patterns with Python globbing or an equivalent brace-aware tool before presenting | Assume glob patterns match without testing |
 | Adapt scenario and template references to the repo | Copy templates verbatim |
 | Split files when they near 4,000 characters | Assume trailing content will still be read |
 | Make overlapping files complementary | Rely on conflicting files and hope Copilot resolves them |

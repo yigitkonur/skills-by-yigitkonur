@@ -223,13 +223,21 @@ oklch(lightness chroma hue)
 ### Theme Switching with Controller
 
 ```html
-<!-- Dropdown theme selector -->
-<select data-choose-theme class="select">
-  <option value="light">Light</option>
-  <option value="dark">Dark</option>
-  <option value="cupcake">Cupcake</option>
-</select>
+<label class="label cursor-pointer justify-start gap-3">
+  <input type="radio" name="theme-picker" class="theme-controller radio" value="light" checked />
+  <span>Light</span>
+</label>
+<label class="label cursor-pointer justify-start gap-3">
+  <input type="radio" name="theme-picker" class="theme-controller radio" value="dark" />
+  <span>Dark</span>
+</label>
+<label class="label cursor-pointer justify-start gap-3">
+  <input type="radio" name="theme-picker" class="theme-controller radio" value="cupcake" />
+  <span>Cupcake</span>
+</label>
 ```
+
+If you want a `<select data-choose-theme>` pattern, that requires an external helper such as `theme-change`; do not assume it is built in.
 
 ### Toggle Dark Mode
 

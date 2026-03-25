@@ -43,7 +43,7 @@ All Rust tracing events captured by the DevTools subscriber. This includes:
 
 **Combining filters:** Level filters AND target/text filters are combined. For example: ERROR level + target "my_app" shows only errors from your application code, excluding errors from dependencies.
 
-> ⚠️ **Steering:** The Console tab shows ALL tracing events, not just errors. Use level filters (ERROR, WARN) to reduce noise before analyzing. In testing, agents were overwhelmed by TRACE-level output from dependencies like `hyper` and `tonic`.
+> ⚠️ **Steering:** The Console tab shows ALL tracing events, not just errors. Use level filters (ERROR, WARN) to reduce noise before analyzing.
 
 ### Jump-to-Source
 Click on a target path to copy the full module path to clipboard. This path corresponds to the Rust source file structure. For example, `my_app::commands::file_ops` maps to `src/commands/file_ops.rs`.
@@ -103,7 +103,7 @@ If you click a button but no call appears:
 - The command name may be misspelled (check browser DevTools console for errors)
 - The IPC call may be blocked by a missing capability permission
 
-> ⚠️ **Steering:** Tauri IPC commands appear automatically in the Calls tab — no instrumentation needed. Only internal Rust functions need `#[tracing::instrument]`. Agents frequently added redundant instrumentation to `#[tauri::command]` functions.
+> ⚠️ **Steering:** Tauri IPC commands appear automatically in the Calls tab — no instrumentation needed. Only internal Rust functions need `#[tracing::instrument]`.
 
 ---
 
@@ -192,4 +192,4 @@ When operating as an AI agent without visual DevTools access, use these terminal
 | Config | Direct file inspection | Read `src-tauri/tauri.conf.json` and `src-tauri/capabilities/*.json` directly |
 | Sources | File system inspection | Check `src-tauri/` directory structure and `tauri.conf.json` bundle settings |
 
-> ⚠️ **Steering:** Never claim to "open" or "see" a DevTools tab if you're an AI agent without visual access. Instead, explicitly state you're using terminal output or file inspection as alternatives. Fabricating visual evidence was a P0 failure in derailment testing.
+> ⚠️ **Steering:** Never claim to "open" or "see" a DevTools tab if you're an AI agent without visual access. Explicitly state when you are using terminal output or file inspection instead.

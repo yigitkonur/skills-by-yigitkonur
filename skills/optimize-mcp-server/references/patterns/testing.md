@@ -179,7 +179,7 @@ Which description would help you use this tool more effectively? Why?
 ```
 
 **What this catches that evals miss:**
-- Subtle friction: the model "works around" a bad description instead of failing
+- Subtle usability gap: the model "works around" a bad description instead of failing
 - Missing context: the model wishes it knew what format a parameter expects
 - Naming mismatch: the model's mental model does not match your parameter names
 - Ambiguous boundaries: the model cannot tell when to use tool A vs tool B

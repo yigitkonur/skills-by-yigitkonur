@@ -1,8 +1,10 @@
-# deep_research — Structured Synthesis Engine
+# deep_research / mcp__research_powerpack__deep_research — Structured Synthesis Engine
 
 ## What It Does
 
-Runs 2–10 parallel structured research questions with AI-powered analysis. Distributes a 32K token budget across questions. Each question receives multi-source synthesis — not just a search, but a comprehensive analysis with reasoning, evidence, and recommendations.
+Runs 1–10 parallel structured research questions with AI-powered analysis. Distributes a 32K token budget across questions. Each question receives multi-source synthesis — not just a search, but a comprehensive analysis with reasoning, evidence, and recommendations.
+
+The skill shorthand is `deep_research`. In Codex, call the wrapper `mcp__research_powerpack__deep_research`.
 
 ## Parameters
 
@@ -35,29 +37,29 @@ Total budget: 32K tokens distributed across questions.
 This template is MANDATORY for high-quality results. Without it, answers are shallow and generic.
 
 ```
-GOAL: [What you need to accomplish — clear, specific]
-WHY: [Decision context — what problem are you solving?]
-KNOWN: [What you already know — so research fills gaps, not basics]
-APPLY: [How you'll use the answer — implementation, debugging, architecture]
+WHAT I NEED: [What you need to accomplish — clear, specific]
+WHY I'M RESEARCHING THIS: [Decision context — what problem are you solving?]
+WHAT I ALREADY KNOW: [What you already know — so research fills gaps, not basics]
+HOW I PLAN TO USE THIS: [How you'll use the answer — implementation, debugging, architecture]
 SPECIFIC QUESTIONS:
-1) [Precise question targeting a specific aspect]
-2) [Another angle or facet]
-3) [A third dimension — failure modes, alternatives, edge cases]
-PREFERRED SOURCES: [Optional — specific docs, sites, standards]
-FOCUS: [Optional — performance, security, simplicity, cost]
+1. [Precise question targeting a specific aspect]
+2. [Another angle or facet]
+3. [A third dimension — failure modes, alternatives, edge cases]
+PRIORITY SOURCES: [Optional — specific docs, sites, standards]
+PRIORITY INFO: [Optional — performance, security, simplicity, cost]
 ```
 
 ### Why Each Section Matters
 
 | Section | Without It | With It |
 |---------|-----------|---------|
-| GOAL | Vague, unfocused response | Targeted, actionable analysis |
-| WHY | Generic textbook answer | Context-specific recommendation |
-| KNOWN | Wastes tokens on basics you know | Fills actual knowledge gaps |
-| APPLY | Theoretical advice | Implementation-ready guidance |
+| WHAT I NEED | Vague, unfocused response | Targeted, actionable analysis |
+| WHY I'M RESEARCHING THIS | Generic textbook answer | Context-specific recommendation |
+| WHAT I ALREADY KNOW | Wastes tokens on basics you know | Fills actual knowledge gaps |
+| HOW I PLAN TO USE THIS | Theoretical advice | Implementation-ready guidance |
 | SPECIFIC QUESTIONS | Scattered coverage | Precise, structured analysis |
-| PREFERRED SOURCES | Random source selection | Authoritative, relevant sources |
-| FOCUS | Balanced but shallow | Deep on what matters most |
+| PRIORITY SOURCES | Random source selection | Authoritative, relevant sources |
+| PRIORITY INFO | Balanced but shallow | Deep on what matters most |
 
 ## When to Use
 
@@ -90,7 +92,7 @@ File attachments are **MANDATORY** for these question types:
 
 ```python
 questions = [{
-    "question": "GOAL: Diagnose why API response time degrades under load...",
+    "question": "WHAT I NEED: Diagnose why API response time degrades under load...",
     "file_attachments": [
         {
             "path": "/absolute/path/to/server.ts",
@@ -154,7 +156,7 @@ Best when you have partial information and need integration.
 | Generic answers | Textbook content, no specificity | Use the structured template; attach code files |
 | Hallucinated sources | Citations to non-existent papers or docs | Verify claims with search_google + scrape_pages |
 | Shallow analysis | Surface-level answers for complex questions | Reduce question count (2 instead of 5) for deeper analysis |
-| Missed context | Answer ignores your tech stack constraints | Add KNOWN and APPLY sections to template |
+| Missed context | Answer ignores your tech stack constraints | Add WHAT I ALREADY KNOW and HOW I PLAN TO USE THIS sections to template |
 | Contradictory claims | Different parts of answer conflict | Ask follow-up with narrower focus |
 | Token exhaustion | Truncated answers | Reduce question count or narrow scope |
 
@@ -176,25 +178,25 @@ Best when you have partial information and need integration.
 ```python
 questions = [
     {
-        "question": """GOAL: Choose between PostgreSQL + TimescaleDB vs ClickHouse for IoT analytics.
-WHY: Building SaaS ingesting 50K sensor readings/second, need sub-second dashboards.
-KNOWN: PostgreSQL works for current 5K/s. TimescaleDB is a PG extension. ClickHouse is column-oriented.
-APPLY: Must decide before next sprint. Team knows PostgreSQL, not ClickHouse.
+        "question": """WHAT I NEED: Choose between PostgreSQL + TimescaleDB vs ClickHouse for IoT analytics.
+WHY I'M RESEARCHING THIS: Building SaaS ingesting 50K sensor readings/second, need sub-second dashboards.
+WHAT I ALREADY KNOW: PostgreSQL works for current 5K/s. TimescaleDB is a PG extension. ClickHouse is column-oriented.
+HOW I PLAN TO USE THIS: Must decide before next sprint. Team knows PostgreSQL, not ClickHouse.
 SPECIFIC QUESTIONS:
-1) Can TimescaleDB handle 50K inserts/sec with concurrent dashboard queries?
-2) What is the real operational cost of ClickHouse vs staying in PostgreSQL ecosystem?
-3) What happens at 500K/sec — which scales further?
-FOCUS: Operational complexity and team ramp-up, not just benchmarks"""
+1. Can TimescaleDB handle 50K inserts/sec with concurrent dashboard queries?
+2. What is the real operational cost of ClickHouse vs staying in PostgreSQL ecosystem?
+3. What happens at 500K/sec — which scales further?
+PRIORITY INFO: Operational complexity and team ramp-up, not just benchmarks"""
     },
     {
-        "question": """GOAL: Design the data retention and aggregation strategy for chosen DB.
-WHY: Raw data at 50K/s = 4TB/day. Need hot/warm/cold tiers.
-KNOWN: Most queries hit last 24h. Weekly reports need 90-day data. Compliance needs 7-year raw.
-APPLY: Designing table partitioning and aggregation jobs.
+        "question": """WHAT I NEED: Design the data retention and aggregation strategy for chosen DB.
+WHY I'M RESEARCHING THIS: Raw data at 50K/s = 4TB/day. Need hot/warm/cold tiers.
+WHAT I ALREADY KNOW: Most queries hit last 24h. Weekly reports need 90-day data. Compliance needs 7-year raw.
+HOW I PLAN TO USE THIS: Designing table partitioning and aggregation jobs.
 SPECIFIC QUESTIONS:
-1) Optimal partition interval for this write rate?
-2) Continuous aggregation vs batch materialization?
-3) Cold storage integration (S3/GCS) with query capability?"""
+1. Optimal partition interval for this write rate?
+2. Continuous aggregation vs batch materialization?
+3. Cold storage integration (S3/GCS) with query capability?"""
     }
 ]
 ```
@@ -204,16 +206,16 @@ SPECIFIC QUESTIONS:
 ```python
 questions = [
     {
-        "question": """GOAL: Diagnose intermittent 502 errors on Node.js API behind nginx.
-WHY: 0.5% of requests return 502 under normal load. Increases to 5% during peaks.
-KNOWN: nginx proxies to Node.js cluster (4 workers). Connection: keep-alive. No memory leaks detected.
-APPLY: Need specific diagnostic steps and likely root causes for our setup.
+        "question": """WHAT I NEED: Diagnose intermittent 502 errors on Node.js API behind nginx.
+WHY I'M RESEARCHING THIS: 0.5% of requests return 502 under normal load. Increases to 5% during peaks.
+WHAT I ALREADY KNOW: nginx proxies to Node.js cluster (4 workers). Connection: keep-alive. No memory leaks detected.
+HOW I PLAN TO USE THIS: Need specific diagnostic steps and likely root causes for our setup.
 SPECIFIC QUESTIONS:
-1) What are the top 5 causes of intermittent 502 behind nginx + Node.js?
-2) Which nginx and Node.js settings should I check first?
-3) How to correlate nginx error logs with Node.js worker state?
-4) Could keep-alive timeout mismatch between nginx and Node.js cause this?
-FOCUS: Diagnostic methodology, not generic advice""",
+1. What are the top 5 causes of intermittent 502 behind nginx + Node.js?
+2. Which nginx and Node.js settings should I check first?
+3. How to correlate nginx error logs with Node.js worker state?
+4. Could keep-alive timeout mismatch between nginx and Node.js cause this?
+PRIORITY INFO: Diagnostic methodology, not generic advice""",
         "file_attachments": [
             {"path": "/app/nginx.conf", "description": "nginx reverse proxy config"},
             {"path": "/app/server.ts", "description": "Express server with cluster setup"}
@@ -228,11 +230,11 @@ deep_research is your synthesis tool. It excels when the question has multiple d
 
 ## Steering notes from production testing
 
-### KNOWN field is the single biggest quality lever
+### WHAT I ALREADY KNOW is the single biggest quality lever
 
-**Bad:** `KNOWN: I need to choose a WebSocket library.`
+**Bad:** `WHAT I ALREADY KNOW: I need to choose a WebSocket library.`
 
-**Good:** `KNOWN: Comparing Socket.io (14.2M npm downloads), Pusher ($49/mo starter), Ably (99.999% SLA). Next.js 15 App Router, Vercel hosting (serverless). Socket.io needs dedicated server (conflicts with serverless). Reddit reports Pusher rate limits at scale.`
+**Good:** `WHAT I ALREADY KNOW: Comparing Socket.io (14.2M npm downloads), Pusher ($49/mo starter), Ably (99.999% SLA). Next.js 15 App Router, Vercel hosting (serverless). Socket.io needs dedicated server (conflicts with serverless). Reddit reports Pusher rate limits at scale.`
 
 ### Hallucination risk areas
 

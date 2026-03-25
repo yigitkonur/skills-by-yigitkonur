@@ -1,35 +1,74 @@
 #!/usr/bin/env bash
 # Creates the standard label set for wave-based issue planning.
 # Usage: setup-labels.sh OWNER/REPO
+# Set MAX_WAVE=N to create wave:1..wave:N labels (default 5).
 set -euo pipefail
 
 REPO="${1:?Usage: setup-labels.sh OWNER/REPO}"
+MAX_WAVE="${MAX_WAVE:-5}"
+
+command -v gh >/dev/null || { echo "ERROR: gh CLI is required" >&2; exit 1; }
+
+case "$MAX_WAVE" in
+  ''|*[!0-9]*)
+    echo "ERROR: MAX_WAVE must be an integer >= 1" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$MAX_WAVE" -lt 1 ]; then
+  echo "ERROR: MAX_WAVE must be at least 1" >&2
+  exit 1
+fi
+
+create_or_update_label() {
+  local name="$1"
+  local color="$2"
+  local description="$3"
+
+  gh label create "$name" --repo "$REPO" --color "$color" --description "$description" --force 2>/dev/null && echo "✓ $name" || echo "exists: $name"
+}
+
+wave_color() {
+  case "$1" in
+    1) echo "1D76DB" ;;
+    2) echo "5319E7" ;;
+    3) echo "B60205" ;;
+    4) echo "D93F0B" ;;
+    5) echo "E4E669" ;;
+    6) echo "0E8A16" ;;
+    7) echo "FBCA04" ;;
+    8) echo "7057FF" ;;
+    9) echo "006B75" ;;
+    *) echo "5319E7" ;;
+  esac
+}
 
 # Wave labels
-gh label create "wave:0-foundation" --repo "$REPO" --color "0052CC" --description "Foundation — must complete before all other waves" --force 2>/dev/null && echo "✓ wave:0-foundation" || echo "exists: wave:0-foundation"
-gh label create "wave:1" --repo "$REPO" --color "1D76DB" --description "Wave 1" --force 2>/dev/null && echo "✓ wave:1" || echo "exists: wave:1"
-gh label create "wave:2" --repo "$REPO" --color "5319E7" --description "Wave 2" --force 2>/dev/null && echo "✓ wave:2" || echo "exists: wave:2"
-gh label create "wave:3" --repo "$REPO" --color "B60205" --description "Wave 3" --force 2>/dev/null && echo "✓ wave:3" || echo "exists: wave:3"
-gh label create "wave:4" --repo "$REPO" --color "D93F0B" --description "Wave 4" --force 2>/dev/null && echo "✓ wave:4" || echo "exists: wave:4"
-gh label create "wave:5" --repo "$REPO" --color "E4E669" --description "Wave 5" --force 2>/dev/null && echo "✓ wave:5" || echo "exists: wave:5"
+create_or_update_label "wave:0-foundation" "0052CC" "Foundation — must complete before all other waves"
+for wave in $(seq 1 "$MAX_WAVE"); do
+  create_or_update_label "wave:$wave" "$(wave_color "$wave")" "Wave $wave"
+done
 
 # Type labels
-gh label create "type:epic" --repo "$REPO" --color "3E4B9E" --description "Top-level grouping" --force 2>/dev/null && echo "✓ type:epic" || echo "exists: type:epic"
-gh label create "type:feature" --repo "$REPO" --color "0E8A16" --description "User-facing capability" --force 2>/dev/null && echo "✓ type:feature" || echo "exists: type:feature"
-gh label create "type:task" --repo "$REPO" --color "C2E0C6" --description "Implementation unit" --force 2>/dev/null && echo "✓ type:task" || echo "exists: type:task"
-gh label create "type:subtask" --repo "$REPO" --color "BFD4F2" --description "Atomic work item" --force 2>/dev/null && echo "✓ type:subtask" || echo "exists: type:subtask"
+create_or_update_label "type:epic" "3E4B9E" "Top-level grouping"
+create_or_update_label "type:feature" "0E8A16" "User-facing capability"
+create_or_update_label "type:task" "C2E0C6" "Implementation unit"
+create_or_update_label "type:subtask" "BFD4F2" "Atomic work item"
+create_or_update_label "type:tracking" "7057FF" "Traceability or dependency-matrix issue"
 
 # Priority labels
-gh label create "priority:critical" --repo "$REPO" --color "B60205" --description "Blocks everything" --force 2>/dev/null && echo "✓ priority:critical" || echo "exists: priority:critical"
-gh label create "priority:high" --repo "$REPO" --color "D93F0B" --description "Must complete this wave" --force 2>/dev/null && echo "✓ priority:high" || echo "exists: priority:high"
-gh label create "priority:medium" --repo "$REPO" --color "FBCA04" --description "Important, not blocking" --force 2>/dev/null && echo "✓ priority:medium" || echo "exists: priority:medium"
-gh label create "priority:low" --repo "$REPO" --color "0E8A16" --description "Can defer" --force 2>/dev/null && echo "✓ priority:low" || echo "exists: priority:low"
+create_or_update_label "priority:critical" "B60205" "Blocks everything"
+create_or_update_label "priority:high" "D93F0B" "Must complete this wave"
+create_or_update_label "priority:medium" "FBCA04" "Important, not blocking"
+create_or_update_label "priority:low" "0E8A16" "Can defer"
 
 # Status labels
-gh label create "status:blocked" --repo "$REPO" --color "B60205" --description "Waiting on dependency" --force 2>/dev/null && echo "✓ status:blocked" || echo "exists: status:blocked"
-gh label create "status:ready" --repo "$REPO" --color "0E8A16" --description "Ready for execution" --force 2>/dev/null && echo "✓ status:ready" || echo "exists: status:ready"
-gh label create "status:in-progress" --repo "$REPO" --color "FBCA04" --description "Currently being worked" --force 2>/dev/null && echo "✓ status:in-progress" || echo "exists: status:in-progress"
-gh label create "status:needs-review" --repo "$REPO" --color "D876E3" --description "Needs human review" --force 2>/dev/null && echo "✓ status:needs-review" || echo "exists: status:needs-review"
+create_or_update_label "status:blocked" "B60205" "Waiting on dependency"
+create_or_update_label "status:ready" "0E8A16" "Ready for execution"
+create_or_update_label "status:in-progress" "FBCA04" "Currently being worked"
+create_or_update_label "status:needs-review" "D876E3" "Needs human review"
+create_or_update_label "status:failed" "D73A4A" "Attempt failed; waiting on recovery decision"
 
 echo ""
-echo "Done — labels created for $REPO"
+echo "Done - labels created for $REPO (foundation + wave:1..wave:$MAX_WAVE)"

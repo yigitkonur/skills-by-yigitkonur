@@ -41,7 +41,7 @@ Headers passed via `--header` flags are **never** placed on the command line —
 2. The sanitized config is JSON-serialized and passed as `args[1]`.
 3. If a `--profile` was specified, `--profile <name>` is appended; if only raw headers were given (no OAuth profile), `--profile dummy` is appended so the bridge knows to wait for credentials before connecting.
 
-Other flags forwarded verbatim: `--verbose`, `--proxy-host`, `--proxy-port`, `--mcp-session-id`, `--x402`, `--insecure`.
+Other flags forwarded verbatim depend on the current CLI build. For operator guidance, trust `mcpc --help`; `mcpc 0.1.11` does not expose `--insecure`.
 
 ### The spawn call
 
@@ -76,7 +76,7 @@ The `BridgeProcess` inside `src/bridge/index.ts` executes this sequence on start
 
 1. Parse CLI args (`sessionName`, serialized `serverConfig`, flags).
 2. Initialize file logger at `~/.mcpc/logs/bridge-<session>.log` (10 MB max, 5 rotating files).
-3. Apply `--insecure` flag (skip TLS verification) and `--proxy-host`/`--proxy-port` (configure HTTP proxy via `initProxy`).
+3. Apply proxy-related startup flags and initialize any transport-level proxy settings.
 4. Ensure bridges directory exists (`~/.mcpc/bridges/`).
 5. Clean up orphaned log files from dead sessions.
 6. Build the socket path from session name via `getSocketPath()` (Unix: `~/.mcpc/bridges/<session>.sock`; Windows: named pipe).
@@ -136,10 +136,10 @@ When the bridge sends a response with an `error`, the numeric `code` field is ma
 
 `sendAuthCredentials()` and `sendX402Wallet()` call the internal `send()` method, which writes a JSON line without registering a pending request — there is no response expected.
 
-### Notifications and task-updates
+### Notifications and internal task-update messages
 
 - `notification` messages are re-emitted on the `BridgeClient` instance as `'notification'` events.
-- `task-update` messages are emitted as `'task-update:<requestId>'` events, letting the correct `callToolWithTask` caller receive progress updates.
+- `task-update` messages are internal plumbing for older task-oriented code paths. `mcpc 0.1.11` does not expose public `--task` or `tasks-*` commands.
 
 ---
 
@@ -166,7 +166,7 @@ Non-network errors (server errors, auth errors, client errors) are **not** retri
 
 ### `callToolWithTask()` crash resilience
 
-This method tracks whether a background task ID was received before the crash. If `capturedTaskId` is set when a `NetworkError` fires:
+This is an internal pattern, not a public `mcpc 0.1.11` workflow. In older task-oriented code paths, the method tracks whether a background task ID was received before the crash. If `capturedTaskId` is set when a `NetworkError` fires:
 
 1. The bridge is restarted and reconnected (same as `withRetry()`).
 2. `pollTask(capturedTaskId)` is called instead of re-invoking the tool.

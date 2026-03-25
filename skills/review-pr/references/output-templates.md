@@ -108,7 +108,7 @@ Templates for structuring the review output in the synthesis and output phase.
 <Are the changes adequately tested? What's missing?>
 ```
 
-## Compact review template (for small PRs <100 lines)
+## Compact review template (for PRs under 500 changed lines with 5 or fewer findings)
 
 ```markdown
 ## PR Review: <PR title> (#<number>)
@@ -122,6 +122,38 @@ Templates for structuring the review output in the synthesis and output phase.
 - 🟡 `file:line` — <issue and suggestion>
 - 🟢 `file:line` — <suggestion>
 - 🎯 <positive observation>
+```
+
+## Adapting templates for local diff mode
+
+When there is no GitHub PR target, use the same verdict logic and finding format, but replace PR-only fields with local equivalents:
+
+| PR-oriented field | Local diff replacement |
+|---|---|
+| `## PR Review: <PR title> (#<number>)` | `## Diff Review: <repo-name> (<comparison target>)` |
+| `**Base:** <base-branch> ← <head-branch>` | `**Comparison:** <base>...<head>` or `**Comparison:** HEAD + staged + unstaged` |
+| `**CI status:** ...` | `**Checks:** <local test/build result>` or `**Checks:** unavailable in local diff mode` |
+| `### Existing Review Threads` | `### Existing Review State` with either the imported review summary or `Unavailable in local diff mode` |
+| PR body / linked issue summary | user request, branch naming, and commit-history summary |
+
+Use the same compact-vs-full threshold in local diff mode; only the labels and metadata fields change.
+
+## Local diff compact template
+
+```markdown
+## Diff Review: <repo-name> (<comparison target>)
+
+**Verdict: <✅ Approve | 💬 Comment | 🔄 Request Changes>**
+
+<2-3 sentence summary covering the intended goal, major findings, and any GitHub-only context that was unavailable.>
+
+<Findings if any, using inline format:>
+- 🔴 `file:line` — <issue and suggestion>
+- 🟡 `file:line` — <issue and suggestion>
+- 🟢 `file:line` — <suggestion>
+- 🎯 <positive observation>
+
+**Existing review state:** <Imported review summary | Unavailable in local diff mode>
 ```
 
 ## Finding format (per finding)
@@ -150,6 +182,7 @@ Each finding MUST include:
 
 - **Compact template** — PRs under 500 changed lines with 5 or fewer findings
 - **Full template** — PRs over 500 changed lines, or PRs with more than 5 findings
+- **Local diff mode** — use the same size thresholds, but adapt PR-only fields using the table above
 - **Always include** — at least one 🎯 Praise finding with specific evidence
 
 ### Steering note: Present, don't submit

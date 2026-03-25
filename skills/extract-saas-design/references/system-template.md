@@ -2,9 +2,11 @@
 
 Use this template for `.design-soul/system.md` (created at the **codebase root**).
 
-> **Tech Stack Detection -- Run These First**
+> **Target Mode Check -- Run These First**
 >
-> Before filling in the template, detect the project tech stack:
+> Before filling in the template, decide whether the target is a repo-backed UI or an offline snapshot. Apply the path rules in `references/extraction/target-modes.md`.
+>
+> Repo-backed UI examples:
 > ```bash
 > # Framework
 > grep -l '"next"' package.json && echo "Next.js detected"
@@ -18,6 +20,16 @@ Use this template for `.design-soul/system.md` (created at the **codebase root**
 > # Charts
 > grep '"recharts"' package.json && echo "Recharts detected"
 > ```
+>
+> Offline snapshot examples:
+> ```bash
+> # Inventory the captured UI files
+> find . -maxdepth 2 -type f \( -name "*.html" -o -name "*.css" -o -name "*.svg" \)
+> # Detect Tailwind CSS markers if the snapshot preserved them
+> grep -rl '@import.*tailwindcss\|@theme' --include="*.css" .
+> ```
+>
+> If snapshot mode applies, skip framework/package checks and fill library-specific sections with `N/A` or `not implemented` where the evidence truly does not exist.
 
  Fill in every section from codebase analysis. Use `[N/A]` only when genuinely not applicable — not when you haven't checked.
 

@@ -39,7 +39,7 @@ You have a Figma design file and need to produce a complete daisyUI page.
 ```json
 {
   "url": "https://www.figma.com/design/abc123/MyDesign?node-id=1-2",
-  "depth": 10,
+  "depth": 5,
   "includeImages": false
 }
 ```
@@ -110,7 +110,7 @@ Figma color fills → Map to daisyUI semantic roles → Generate @plugin block
 | `Gray/50` | `#f9fafb` | `--color-base-100` |
 | `Success/500` | `#22c55e` | `--color-success` |
 
-Convert to OKLCH and output the theme block (see [04-image-to-theme-prompt.md](./04-image-to-theme-prompt.md)).
+Convert to OKLCH and output the theme block (see [image-to-theme-prompt.md](./image-to-theme-prompt.md)).
 
 **What feeds forward:**
 - Complete `@plugin "daisyui/theme"` CSS block → Step 4
@@ -299,7 +299,7 @@ Grid: container, row, col-md-4 (×3), col-md-6 (×2), col-12
 
 #### Step 2 — Class Mapping
 
-Apply the comprehensive mapping table from [02-bootstrap-to-daisyui-prompt.md](./02-bootstrap-to-daisyui-prompt.md):
+Apply the comprehensive mapping table from [bootstrap-prompt.md](./bootstrap-prompt.md):
 
 | Category | Bootstrap Classes Found | daisyUI Replacement |
 |----------|----------------------|-------------------|
@@ -394,7 +394,7 @@ Building a new site from a brand image or mood board with no existing code.
 
 #### Step 1 — Image Color Extraction
 
-Analyze the brand image and extract the color palette (see [04-image-to-theme-prompt.md](./04-image-to-theme-prompt.md)):
+Analyze the brand image and extract the color palette (see [image-to-theme-prompt.md](./image-to-theme-prompt.md)):
 
 **Output:**
 ```

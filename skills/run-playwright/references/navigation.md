@@ -17,6 +17,8 @@ in `playwright-cli`.
 - [Navigation verification](#navigation-verification)
 - [Common navigation patterns](#common-navigation-patterns)
 
+All examples in this file are shell commands. Prefix each subcommand with `playwright-cli` when copying from a short example that omits it for readability.
+
 ---
 
 ## Core navigation commands
@@ -24,7 +26,7 @@ in `playwright-cli`.
 ### open
 
 ```bash
-open <url>
+playwright-cli open <url>
 ```
 
 Navigates to the given URL. Usually prints page metadata and a snapshot.
@@ -32,10 +34,12 @@ Navigates to the given URL. Usually prints page metadata and a snapshot.
 After `open`, always capture a fresh snapshot before interacting:
 
 ```bash
-open https://example.com
-snapshot
-screenshot --filename=landing.png
+playwright-cli open https://example.com
+playwright-cli snapshot
+playwright-cli screenshot --filename=landing.png
 ```
+
+**Local-target rule:** `file://` URLs and `localhost`/LAN hosts are not guaranteed to be reachable from the browser context. If they fail, prefer a `data:` URL for tiny fixtures or a publicly reachable staging/tunnel URL for real pages.
 
 ### go-back
 
@@ -98,8 +102,8 @@ open "https://app.example.com/dashboard?tab=settings&view=profile"
 ### Verify the URL arrived correctly
 
 ```bash
-open "https://example.com/search?q=test"
-eval "() => window.location.href"
+playwright-cli open "https://example.com/search?q=test"
+playwright-cli eval "() => window.location.href"
 ```
 
 The `eval` check is more reliable than the printed page header,

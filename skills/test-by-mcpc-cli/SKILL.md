@@ -30,11 +30,29 @@ Test and debug any MCP server using the `mcpc` CLI. Covers stdio, HTTP stateless
 
 ```bash
 mcpc --version
-# Expected: mcpc X.Y.Z (0.1.10+)
+# Expected: mcpc X.Y.Z
 # If not found, read references/guides/installation.md
 ```
 
 Node.js 20+ required. Install mcpc: `npm install -g @apify/mcpc`.
+
+## Version boundary
+
+This skill is written against `mcpc 0.1.11`.
+
+Before using any older snippet, verify it against `mcpc --help`. In `0.1.11`, do **not** assume support for these older examples:
+
+- `tools-call --task` / `--detach`
+- `tasks-list`, `tasks-get`, `tasks-cancel`
+- `mcpc login ... --scope`, `--client-id`, `--client-secret`
+- `resources-read -o <file>` or `resources-read --max-size`
+- `--insecure`
+
+Use shell redirection to save resources:
+
+```bash
+mcpc @session resources-read "https://example.com/data" > output.json
+```
 
 ## Persistent authenticated sessions (MUST READ for OAuth servers)
 
@@ -143,21 +161,29 @@ Stdio servers are local processes. Define them in a JSON config file, then conne
   "mcpServers": {
     "my-server": {
       "command": "npx",
-      "args": ["@modelcontextprotocol/server-filesystem", "/tmp/test-dir"],
+      "args": ["@modelcontextprotocol/server-filesystem", "/ABSOLUTE/CANONICAL/TEST-DIR"],
       "env": { "DEBUG": "true" }
     }
   }
 }
 ```
 
+If you are testing a filesystem-backed stdio server on macOS, canonicalize the path first and reuse that exact path everywhere:
+
+```bash
+TEST_DIR="$(realpath /tmp/test-dir)"
+```
+
+`/tmp/...` often resolves to `/private/tmp/...`; if the server allowlists the canonical path, tool calls using the alias path will fail. Put the `realpath` result into the config file too instead of leaving `/tmp/...` in `args`.
+
 **Connect:**
 
 ```bash
 # Connect using config file entry
-mcpc /path/to/config.json:my-server connect @test-stdio
+mcpc --config /path/to/config.json my-server connect @test-stdio
 
 # Or reference VS Code config
-mcpc ~/.vscode/mcp.json:filesystem connect @test-stdio
+mcpc --config ~/.vscode/mcp.json filesystem connect @test-stdio
 ```
 
 **Verify the server started:**
@@ -170,7 +196,7 @@ mcpc @test-stdio help
 If the server fails to start, run the command manually first to check for errors:
 
 ```bash
-npx @modelcontextprotocol/server-filesystem /tmp/test-dir
+npx @modelcontextprotocol/server-filesystem "$TEST_DIR"
 ```
 
 Read `references/guides/stdio-testing.md` for config format, env vars, and debugging.
@@ -354,7 +380,7 @@ Read `references/patterns/argument-parsing.md` for the full type coercion table 
 mcpc @session resources-read "file:///path/to/resource"
 
 # Save resource to file
-mcpc @session resources-read "https://example.com/data" -o output.json
+mcpc @session resources-read "https://example.com/data" > output.json
 
 # Subscribe to resource updates (registers interest, returns immediately)
 # Returns: {"subscribed": true, "uri": "..."} — does NOT stream in CLI mode
@@ -364,6 +390,8 @@ mcpc @session resources-subscribe "file:///watched-path"
 # Get a prompt with arguments
 mcpc @session prompts-get my-prompt arg1:=value1 arg2:=value2
 ```
+
+`resources-list`, `resources-templates-list`, and `prompts-list` are optional MCP capabilities. If you get `MCP error -32601: Method not found`, record "capability not implemented" and continue. That is not a transport failure.
 
 ### Step 5: Use JSON mode for scripted tests
 
@@ -412,8 +440,8 @@ Read `references/patterns/output-formatting.md` for exact JSON shapes of every c
 ```bash
 mcpc @session close           # Close one session
 mcpc                         # List active sessions
-mcpc clean sessions          # Clean all sessions
-mcpc clean all               # Clean sessions + profiles + logs
+mcpc --clean=sessions          # Clean all sessions
+mcpc --clean=all               # Clean sessions + profiles + logs
 ```
 
 ## Transport comparison
@@ -682,14 +710,14 @@ Run through this checklist sequentially when `mcpc login` fails. Each step depen
 | Stdio server not starting | Run command manually first, check stderr |
 | HTTP 401/403 on connect | `mcpc login <server>` or use `--header "Authorization: Bearer $TOKEN"` |
 | Timeout on tool call | Increase with `--timeout 600` (default: 300s) |
-| Self-signed cert rejected | Use `--insecure` (dev only, never production) |
-| Stale sessions after crash | `mcpc clean sessions` |
+| Private CA or self-signed cert rejected | Install the CA locally or set `NODE_EXTRA_CA_CERTS=/path/to/ca.pem` before connecting |
+| Stale sessions after crash | `mcpc --clean=sessions` |
 | Can't tell if stateful or stateless | Check `mcpc --json @session \| jq .protocolVersion` — 2025-11-25+ is streamable |
 | Tool args parsed wrong type | Force string with `id:='"123"'` (single-quote wrapped JSON string) |
 | `key:=value` fails for array params | Use inline JSON: `'{"items":["a","b"]}'` or `items:='["a","b"]'` |
 | Server error but exit code is 0 | Normal — check `jq '.isError'` in JSON, not exit code |
 | "unknown command: completions" | mcpc doesn't support completions/sampling/roots capabilities |
-| Bridge process orphaned | `mcpc clean sessions` clears PIDs and sockets |
+| Bridge process orphaned | `mcpc --clean=sessions` clears PIDs and sockets |
 | `grep -oP` fails on macOS | macOS ships BSD grep which lacks `-P` (Perl regex). Use `grep -oE` (extended regex) instead, which works on both GNU and BSD grep |
 | OrbStack/Docker grabbing callback port | `lsof -i :8000-8010 \| grep LISTEN` before `mcpc login` — stop conflicting listeners |
 | `{"detail":"Not Found"}` JSON in browser callback | NOT mcpc — another process on the port (OrbStack, Docker, dev server). mcpc's 404 is plain text |
@@ -725,7 +753,7 @@ Run through this checklist sequentially when `mcpc login` fails. Each step depen
 | `references/guides/cleanup-maintenance.md` | Clean command categories, session consolidation, storage management, recovery |
 | `references/guides/ci-cd-integration.md` | GitHub Actions workflows, Docker testing, MCPC_HOME_DIR isolation, headless auth |
 | `references/guides/x402-payments.md` | x402 agentic payment testing, wallet setup, USDC on Base, proactive/reactive signing |
-| `references/guides/async-tasks.md` | Async tool execution: `--task`, `--detach`, polling, cancel, crash recovery, task lifecycle |
+| `references/guides/async-tasks.md` | Current CLI boundary for async/task-style work; what `mcpc 0.1.11` does and does not expose |
 
 ### Patterns and internals
 
@@ -770,10 +798,10 @@ Do not invent commands for these — they will fail with "unknown command" (exit
 - Use `--json` when scripting — never parse human-readable colored output
 - Use unique session names for parallel testing — collisions cause errors
 - Close sessions after testing — orphaned bridges consume resources
-- Never use `--insecure` in production — only for local dev with self-signed certs
+- Do not assume a TLS-bypass flag exists in `mcpc 0.1.11` — use valid certificates or `NODE_EXTRA_CA_CERTS`
 - Never hardcode tokens in scripts — use environment variables (`$MCP_TOKEN`)
 - Test stdio server commands manually before connecting via mcpc
 - **Exit codes reflect CLI errors only, NOT MCP server errors.** Exit codes: 0=success or server-side error, 1=bad CLI args, 3=network, 4=auth. Server-side tool errors (validation failures, tool-not-found) return exit code 0 with `isError: true` in JSON. **Always check `isError` in JSON output for server errors — do not rely on exit codes alone.**
 - Before calling any tool, check its schema (`tools-get <name> --json | jq '.inputSchema'`) — if params are arrays, use inline JSON, not `key:=value`
-- Do not run `mcpc clean all` without confirming — it deletes saved OAuth profiles
+- Do not run `mcpc --clean=all` without confirming — it deletes saved OAuth profiles
 - Before running `mcpc login`, always check `lsof -i :8000-8010 | grep LISTEN` for port conflicts — OrbStack, Docker, and dev servers silently intercept OAuth callbacks

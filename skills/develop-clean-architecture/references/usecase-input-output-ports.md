@@ -8,6 +8,7 @@ tags: usecase, ports, input, output, boundaries
 ## Define Input and Output Ports for Use Cases
 
 Use cases should define their own input (request) and output (response) data structures. These ports isolate the use case from the delivery mechanism (HTTP, CLI, queue).
+Adapters still own parsing and request-shape validation; the use case should accept an already-parsed command and return a delivery-agnostic response.
 
 **Incorrect (use case coupled to HTTP):**
 
@@ -35,9 +36,9 @@ public class RegisterUserUseCase
 ```csharp
 // application/ports/input/RegisterUserCommand.cs
 public record RegisterUserCommand(
-    string Email,
-    string Password,
-    string Name
+    EmailAddress Email,
+    PlainTextPassword Password,
+    PersonName Name
 );
 
 // application/ports/output/RegisterUserResult.cs
@@ -55,11 +56,8 @@ public class RegisterUserUseCase
 
     public RegisterUserResult Execute(RegisterUserCommand command)
     {
-        if (string.IsNullOrEmpty(command.Email))
-            throw new ValidationException("Email required");
-
         var hashedPassword = _hasher.Hash(command.Password);
-        var user = new User(command.Email, hashedPassword, command.Name);
+        var user = User.Register(command.Email, hashedPassword, command.Name);
         _repository.Save(user);
 
         return new RegisterUserResult(
@@ -74,13 +72,28 @@ public class RegisterUserUseCase
 [ApiController]
 public class UserController : ControllerBase
 {
+    private readonly RegisterUserUseCase _useCase;
+    private readonly IRegisterUserRequestValidator _validator;
+
+    public UserController(
+        RegisterUserUseCase useCase,
+        IRegisterUserRequestValidator validator)
+    {
+        _useCase = useCase;
+        _validator = validator;
+    }
+
     [HttpPost]
     public IActionResult Register([FromBody] RegisterRequest request)
     {
+        var validation = _validator.Validate(request);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors);
+
         var command = new RegisterUserCommand(
-            request.Email,
-            request.Password,
-            request.Name
+            EmailAddress.Parse(request.Email),
+            PlainTextPassword.Parse(request.Password),
+            PersonName.Parse(request.Name)
         );
 
         var result = _useCase.Execute(command);

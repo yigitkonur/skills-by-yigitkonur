@@ -231,13 +231,16 @@ No configuration needed — reads AGENTS.md workspace-wide.
 
 Claude Code reads `CLAUDE.md`, not `AGENTS.md`. For compatibility:
 
-```bash
-# Option 1: Symlink
-ln -s AGENTS.md CLAUDE.md
+```markdown
+@AGENTS.md
 
-# Option 2: Thin wrapper
-echo '@AGENTS.md' > CLAUDE.md
+## Claude-Specific
+<!-- Only add the next line if .claude/rules/ exists or you are creating rule files -->
+- See `.claude/rules/` for path-scoped rules
+- Add Claude-only memory or imports here only if needed
 ```
+
+If Claude needs no extra memory or features, the wrapper can be just `@AGENTS.md`. Use a symlink only when the repo truly wants identical content and the environment supports it.
 
 ## Verification
 

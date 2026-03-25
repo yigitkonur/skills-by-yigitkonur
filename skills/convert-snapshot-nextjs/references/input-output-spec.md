@@ -6,7 +6,7 @@ How the pipeline detects input formats and what it produces at each stage.
 
 ## Input Specification
 
-This skill is designed for **saved HTML snapshots** — the kind produced by browser "Save As", wget, HTTrack, SingleFile, or any offline snapshot tool.
+This skill is designed for **saved HTML snapshots** — the kind produced by browser "Save As", wget, HTTrack, SingleFile, or any offline snapshot tool. The CSS corpus may live in a companion `_files/` directory, in adjacent local `.css` files referenced by the HTML, or inside inline `<style>` blocks.
 
 ### Expected Directory Structure
 
@@ -38,6 +38,9 @@ for f in *.html; do
   base="${f%.html}"
   if [ -d "${base}_files" ]; then
     echo "SNAPSHOT: $f → ${base}_files/ ($(ls ${base}_files/*.css 2>/dev/null | wc -l) CSS files)"
+  elif grep -qE 'href="[^"]+\.css' "$f"; then
+    css_refs=$(grep -oE 'href="[^"]+\.css[^"]*"' "$f" | sed 's/^href="//;s/"$//' | sort -u | wc -l | tr -d ' ')
+    echo "ADJACENT-ASSET SNAPSHOT: $f ($css_refs local CSS references)"
   else
     echo "SINGLEFILE: $f ($(grep -c '<style' "$f" 2>/dev/null) <style> blocks)"
   fi
@@ -50,12 +53,13 @@ done
 | Signal | Input Type | Behavior |
 |--------|-----------|----------|
 | `.html` files + `_files/` directories | Saved snapshot | **Primary mode** — grep minified CSS, decode CSS Module names, extract from companion folders |
-| `.html` with `<style>` blocks only, no `_files/` | SingleFile export | **Inline CSS mode** — extract from `<style>` tags within the HTML |
+| `.html` with local `.css` references, no `_files/` | Saved snapshot (adjacent assets) | **Adjacent-asset mode** — treat referenced CSS files as the page corpus; extract assets relative to the HTML file |
+| `.html` with `<style>` blocks only, no `_files/` and no local `.css` files | SingleFile export | **Inline CSS mode** — extract from `<style>` tags within the HTML |
 | `package.json` + `src/` directory | Source repository | **Fallback mode** — read component files directly, parse `tailwind.config.*`, follow imports |
 
 ### Key Characteristics of Saved Snapshots
 
-- CSS is **MINIFIED** — single-line blobs, 100–400KB each, 12+ files per page
+- CSS is often **MINIFIED** — single-line blobs, 100–400KB each, 12+ files per page — but adjacent-asset snapshots may keep CSS multi-line and human-readable
 - Filenames are **hashed** (`06cc9eb5faccd3be.css`) — no semantic meaning in filenames
 - Class names follow the **CSS Module pattern**: `ComponentName_propertyName__hashCode`
 - **CSS custom properties** (`--color-*`, `--font-*`, `--ease-*`) form the design system backbone
@@ -64,6 +68,16 @@ done
 - Each HTML file represents **one page type** (homepage, pricing, features, about, etc.)
 - **Same CSS file** often appears in multiple `_files/` folders — deduplication is mandatory
 - JS bundles contain **behavior logic**: scroll animations, intersection observers, dynamic class toggling
+
+### CSS Corpus Rule
+
+Wave 0 commands should operate on the page's **CSS corpus**, not blindly on `{page}_files/*.css`.
+
+- Primary mode CSS corpus: every CSS file in `{page}_files/`
+- Adjacent-asset mode CSS corpus: every local `.css` file referenced from the HTML plus sibling CSS assets you can prove belong to the page
+- SingleFile mode CSS corpus: inline `<style>` blocks extracted from the HTML
+
+If a command in the references mentions `{page}_files/*.css`, substitute the discovered CSS corpus for the current input mode.
 
 ---
 
@@ -150,7 +164,7 @@ nextjs-project/                                  ← Buildable project (Waves 3�
 │       └── icons/
 ├── tailwind.config.ts                           # Extended with REAL extracted values
 ├── postcss.config.js                            # Standard PostCSS with Tailwind + autoprefixer
-├── package.json                                 # ONLY: next, react, react-dom, typescript, tailwindcss
+├── package.json                                 # ONLY the allowed Next/React/Tailwind/TypeScript/PostCSS deps/devDeps from Wave 3
 ├── tsconfig.json                                # strict: true
 └── next.config.js                               # Minimal Next.js config
 ```

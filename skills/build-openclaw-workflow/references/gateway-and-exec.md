@@ -16,7 +16,7 @@ This reference covers three related tools for system-level operations in OpenCla
 
 The gateway tool restarts the OpenClaw instance. Use it for:
 
-- Applying configuration changes that require a restart
+- Applying changes that do not hot-apply and truly require a restart
 - Recovering from a corrupted state
 - Refreshing the runtime environment
 - Scheduled maintenance restarts (via cron)
@@ -46,6 +46,18 @@ The gateway tool restarts the OpenClaw instance. Use it for:
 6. Verify instance health
 ```
 
+### Confirmation template for risky operations
+
+Use this wording before gateway, exec, browser, or process actions with side effects:
+
+`About to run <tool> for <action>. Side effects: <effect>. Verification: <check>. Reply approve to continue.`
+
+Examples:
+
+- `About to run gateway for a runtime restart. Side effects: active sessions and workflows will be interrupted. Verification: openclaw status returns healthy. Reply approve to continue.`
+- `About to run exec for a package install. Side effects: filesystem and dependency changes. Verification: the install command exits 0 and the build passes. Reply approve to continue.`
+- `About to run browser against an authenticated session. Side effects: the site may perform real account actions. Verification: screenshot after each critical step. Reply approve to continue.`
+
 ## Exec tool
 
 ### Purpose
@@ -73,6 +85,20 @@ The exec tool has the highest risk level in OpenClaw because it:
 6. **Capture and log output.** Always redirect stdout and stderr for debugging.
 7. **Never run exec in an unbounded loop.** Set maximum iteration counts.
 8. **Ask for user confirmation** before running exec commands that modify the filesystem, install software, or make network calls.
+
+### Execution boundary
+
+OpenClaw exec is not automatically a host shell. Be explicit about where the command runs:
+
+| Setting | Meaning |
+|---|---|
+| `host: "sandbox"` | Default. Use this whenever the task can stay inside the sandbox. |
+| `host: "gateway"` | Run on the gateway host. Requires approval and policy alignment. |
+| `host: "node"` | Run on a paired node host. Requires a configured node target. |
+| `security: "deny" \| "allowlist" \| "full"` | Controls what host execution is permitted to do. |
+| `ask: "off" \| "on-miss" \| "always"` | Controls approval prompting for host execution. |
+
+Prefer sandbox execution first. Only move to `gateway` or `node` when the workflow truly needs host access and the user has approved that risk.
 
 ### Safe exec patterns
 
@@ -187,16 +213,17 @@ Step 2 (LLM Task): Analyze output, classify issues
 Step 3 (exec or notification): Act on findings
 ```
 
-## Thinking level adjustment
+## Thinking control
 
-The `thinking_level` tool adjusts agent reasoning depth:
+There is no separate `thinking_level` tool in this workflow. Use the OpenClaw thinking controls that match the primitive:
 
 | Level | When to use |
 |---|---|
-| `fast` | Simple exec commands, straightforward cron jobs, routine process management |
-| `deep` | Complex pipeline design, multi-step workflow planning, debugging failures |
+| `/think:low` or `thinking: "low"` | Simple exec commands, straightforward cron jobs, routine process management |
+| `/think:medium` or `thinking: "medium"` | Multi-step workflow planning, structured analysis, bounded troubleshooting |
+| `/think:high` | Complex pipeline design, debugging failures with several moving parts |
 
-Set thinking level before starting the task, not between individual commands.
+Set the level before the run you care about. For interactive turns, use `/think:<level>`. For primitives such as cron payloads or `llm-task`, use their documented `thinking` field.
 
 ## Tool-loop detection
 

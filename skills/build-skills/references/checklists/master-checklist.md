@@ -1,6 +1,6 @@
 # Master Skill Checklist
 
-> **Phase routing:** Not every checklist item applies at every stage. Items marked "DRAFT ESSENTIAL" (Phases 0-3) should be checked before sharing any draft. Items marked "FINAL AUDIT ONLY" (Phases 4+) are for comprehensive quality passes before publishing.
+> **Phase routing:** Not every checklist item applies at every stage. Items marked "DRAFT ESSENTIAL" (Phases 0-3) should be checked before sharing any draft. Items marked "FINAL PASS ONLY" (Phases 4+) are for comprehensive quality passes before publishing.
 >
 > **Quick start for drafts:** Search this file for "DRAFT ESSENTIAL" to find the minimum viable checks.
 
@@ -15,13 +15,13 @@ Use the full checklist for published skills. Use Phase 0-3 for personal skills. 
 
 Planning and preparation before writing any files.
 
-- [ ] Verified `skill-dl` is installed (`skill-dl --version`) — required for remote research. Install: `curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash`
+- [ ] If using the full research path: verified `skill-dl` is installed (`skill-dl --version`) or documented the fallback method. Install: `curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash`
 - [ ] Identified 2-3 concrete use cases with specific user trigger phrases
 - [ ] Classified skill type: Document/Asset Creation, Workflow Automation, or MCP Enhancement
 - [ ] Listed all tools needed: built-in Claude tools, MCP servers, scripts
 - [ ] Defined quantitative success criteria (trigger accuracy, tool call count, token budget)
 - [ ] Defined qualitative success criteria (no user corrections, consistent output, first-try success)
-- [ ] Reviewed existing skills on the same topic (local workspace + remote search)
+- [ ] Reviewed existing skills on the same topic (local workspace first, plus remote search for the full research path)
 - [ ] Planned folder structure (flat references vs. subdirectories)
 - [ ] Decided on reference file organization strategy
 - [ ] Identified target platforms (Claude.ai, Claude Code, API)
@@ -137,7 +137,7 @@ Reference files provide depth without bloating SKILL.md.
 
 ---
 
-## Phase 4 — 🔍 FINAL AUDIT ONLY: Content Quality
+## Phase 4 — 🔍 FINAL PASS ONLY: Content Quality
 
 The content must be accurate, current, and synthesized — not copied.
 
@@ -168,14 +168,16 @@ The content must be accurate, current, and synthesized — not copied.
 
 ---
 
-## Phase 5 — 🔍 FINAL AUDIT ONLY: Testing
+## Phase 5 — 🔍 FINAL PASS ONLY: Testing
 
 Testing validates that the skill works correctly in practice.
 
 ### Triggering tests
-- [ ] 5+ queries that SHOULD trigger the skill — all confirmed working
-- [ ] 5+ queries that should NOT trigger the skill — all confirmed silent
-- [ ] 3+ paraphrased variants tested — skill triggers on natural language variations
+- [ ] Live trigger coverage completed in the active runtime, OR the installation block is documented and live trigger coverage is explicitly excluded
+- [ ] For new skills: installed the draft into the active runtime's skill directory before live trigger testing, or documented why installation was blocked
+- [ ] 5+ queries that SHOULD trigger the skill prepared and executed live when installation was possible
+- [ ] 5+ queries that should NOT trigger the skill prepared and executed live when installation was possible
+- [ ] 3+ paraphrased variants tested live when installation was possible
 - [ ] Asked Claude "When would you use [skill-name]?" — answer matches intent
 - [ ] No conflicts with other enabled skills on the same queries
 
@@ -194,7 +196,7 @@ Testing validates that the skill works correctly in practice.
 
 ---
 
-## Phase 6 — 🔍 FINAL AUDIT ONLY: Publishing
+## Phase 6 — 🔍 FINAL PASS ONLY: Publishing
 
 Preparing the skill for public distribution.
 
@@ -219,7 +221,7 @@ Preparing the skill for public distribution.
 
 ---
 
-## Phase 7 — 🔍 FINAL AUDIT ONLY: Post-Ship Monitoring
+## Phase 7 — 🔍 FINAL PASS ONLY: Post-Ship Monitoring
 
 Ongoing maintenance after the skill is live.
 

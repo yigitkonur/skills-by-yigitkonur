@@ -1,6 +1,6 @@
 # Performance Profiling & Optimization — Tauri DevTools
 
-> ⚠️ **Steering:** Follow this order strictly: IDENTIFY the slow command (Calls tab) → MEASURE baseline duration → LOCATE bottleneck (child spans) → ADD instrumentation if needed → ANALYZE root cause → FIX → VERIFY. Agents in testing jumped from "identify" to "fix" without locating the bottleneck, resulting in optimizations to the wrong code path.
+> ⚠️ **Steering:** Follow this order strictly: IDENTIFY the slow command (Calls tab) → MEASURE baseline duration → LOCATE bottleneck (child spans) → ADD instrumentation if needed → ANALYZE root cause → FIX → VERIFY.
 
 ## Using the Calls Tab for Performance Analysis
 
@@ -115,7 +115,7 @@ async fn download_files(urls: Vec<String>) -> Vec<Result<Vec<u8>, Error>> {
 
 ### 1. Sequential I/O (Should Be Parallel)
 
-> ⚠️ **Steering:** Sequential I/O is the most common anti-pattern (40% of performance issues in testing). Look for: `for item in items { process(item).await; }` — this processes items one at a time. Fix with `futures::future::join_all()` for async or `rayon::par_iter()` for CPU-bound work.
+> ⚠️ **Steering:** Sequential I/O is a common anti-pattern. Look for: `for item in items { process(item).await; }` — this processes items one at a time. Fix with `futures::future::join_all()` for async or `rayon::par_iter()` for CPU-bound work.
 
 ```
 Calls tab shows:

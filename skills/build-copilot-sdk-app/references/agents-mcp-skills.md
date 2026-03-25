@@ -312,8 +312,8 @@ extensions_reload({})
 
 > Common mistakes agents make with MCP/agents/skills.
 
-- **Extensions (MCP servers) are registered at session creation** via `extensions: [...]`. They cannot be added mid-session.
+- **CLI extensions and session MCP servers are different mechanisms**. CLI extensions run through `.github/extensions/.../extension.mjs` + `joinSession()`. Session MCP servers are configured with `mcpServers` on `createSession()` / `resumeSession()`.
 - **Extension tool names must be globally unique**. If two extensions define a tool with the same name, the second one silently overwrites the first.
 - **MCP server configuration** follows the standard MCP protocol. The SDK passes the config directly to the CLI, which spawns the MCP server process.
-- **Custom agents** (via `agentConfig`) change the system prompt and default behavior. Use `agentSlug` to specify a well-known agent (like `@workspace`).
-- **Skills are referenced by name** in `sessionConfig.skills`. The SDK looks them up from the Copilot CLI's skill registry.
+- **Custom agents** are configured with `customAgents` and can be activated at start with `agent` or switched at runtime with `session.rpc.agent.select(...)`.
+- **Skills are loaded from `skillDirectories`** and can be disabled with `disabledSkills`. They are not referenced through a separate `sessionConfig.skills` field in the API shown here.

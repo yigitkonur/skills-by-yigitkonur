@@ -45,7 +45,8 @@ Before publishing, verify your skill meets all quality standards. Run through th
 
 **Testing:**
 
-- [ ] 5+ trigger tests passed (should-trigger and should-NOT-trigger)
+- [ ] Skill load was confirmed in the runtime before counting test results
+- [ ] 5+ should-trigger and 5+ should-NOT-trigger queries passed
 - [ ] Primary workflow completes without error
 - [ ] Self-check test passes ("When would you use this skill?")
 

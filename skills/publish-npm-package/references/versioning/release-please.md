@@ -320,7 +320,9 @@ Commits without a scope that matches a component apply to the root package.
 
 ## Two-Job Workflow Pattern
 
-The recommended pattern separates release-please from publishing:
+The recommended pattern separates release-please from publishing. The example
+below is the **pure OIDC** variant; for token auth, keep the same job split but
+lift the publish-step wiring from `references/workflows/token-workflows.md`.
 
 ```yaml
 name: Release
@@ -355,6 +357,9 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -376,14 +381,13 @@ jobs:
 
       - name: Publish
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
 This pattern ensures:
 - Publishing only happens when a release is created (not on every push)
 - Build and test run before publish
 - The publish step can be customized independently
+- Pure OIDC keeps the publish step free of `NPM_TOKEN` / `NODE_AUTH_TOKEN`
 
 ---
 
@@ -496,22 +500,29 @@ version before first run:
 ### Greenfield Projects (No Prior Releases)
 
 For a brand-new package with no published versions and no git tags, set the
-manifest to `"0.0.0"` (or `"0.1.0"` if you prefer). release-please will compute
-the first version from commits after bootstrap:
+manifest to the version already in `package.json`. release-please uses that
+value as the baseline when there is no prior tag:
 
 ```json
 // .release-please-manifest.json
 {
-  ".": "0.0.0"
+  ".": "0.1.0"
 }
 ```
 
-The first Release PR will bump to `0.1.0` (for a `feat:` commit) or `0.0.1`
-(for a `fix:` commit). No git tag is needed — release-please treats the manifest
-version as the baseline when no matching tag exists.
+If `package.json` is `0.1.0`, the first Release PR will bump to `0.2.0` (for a
+`feat:` commit) or `0.1.1` (for a `fix:` commit). If you want the first Release
+PR to produce `0.1.0`, start with `0.0.0` in both `package.json` and the
+manifest. No git tag is needed — release-please treats the manifest version as
+the baseline when no matching tag exists.
 
-release-please will look for a git tag matching `v2.5.3` and analyze commits
-since that tag for the next release.
+This is the versioning baseline only. If your steady-state auth mode is OIDC,
+the **first actual publish** still uses token bootstrap before you switch the
+workflow to pure OIDC.
+
+For already-published repos, release-please looks for a git tag matching the
+current manifest version (for example `v2.5.3`) and analyzes commits since that
+tag for the next release.
 
 ### If No Git Tag Exists
 

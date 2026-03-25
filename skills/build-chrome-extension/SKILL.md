@@ -91,37 +91,76 @@ User request
 3. Determine minimum permissions using the principle of least privilege
 4. Choose a framework or vanilla approach (read `references/frameworks/comparison.md`)
 
+**Default framework rule**
+
+- If the user gives no framework preference, start with **WXT**. It is the safest default for new MV3 extensions, including dead-simple popup-only tools.
+- Choose **CRXJS** when the user already has a Vite app and wants the smallest extension-specific change.
+- Choose **vanilla + Vite** only when the user explicitly wants manual control or needs to fit the extension into an existing custom build.
+
+**Quick selection heuristic**
+
+| Situation | Default |
+|---------|---------|
+| New extension, unsure of needs | WXT |
+| Popup-only or small internal tool | WXT |
+| Existing Vite app gaining extension output | CRXJS |
+| Existing custom build or explicit no-framework requirement | Vanilla + Vite |
+
 ### Phase 2: Scaffold
 
-Generate the project structure:
+If the task is a new extension and no stronger signal exists, use the WXT fast path:
+
+```bash
+npm create wxt@latest my-extension
+cd my-extension
+npm install
+npm run dev
+```
+
+After `npm run dev`, WXT writes the unpacked development build to `.output/chrome-mv3-dev/`. Load that directory manually if WXT does not launch the browser for you. Use `.output/chrome-mv3/` after a production build.
+
+If you intentionally choose **vanilla + Vite**, follow `references/frameworks/comparison.md` exactly:
+
+- Keep `manifest.json` and icons under `public/`
+- Put popup HTML/CSS/TS entry files under `src/`
+- Build with `npm run build`
+- Treat `src/` + `public/` as source only; Chrome should only ever load the built output
+- Load the built **`dist/`** directory in `chrome://extensions`
+
+If you are building the manual vanilla + Vite path, generate this exact source tree. Do not force WXT, Plasmo, or CRXJS into this layout:
 
 ```
 my-extension/
-├── manifest.json              # Extension manifest (V3)
+├── public/
+│   ├── manifest.json          # Hand-written manifest copied into dist/
+│   ├── icons/
+│   │   ├── icon-16.png
+│   │   ├── icon-48.png
+│   │   └── icon-128.png
+│   └── _locales/              # i18n assets copied as-is (if needed)
+│       └── en/
+│           └── messages.json
 ├── src/
 │   ├── background/
-│   │   └── service-worker.ts  # Background service worker
+│   │   └── index.ts           # Builds to dist/background/index.js
 │   ├── content/
-│   │   └── content-script.ts  # Content scripts (if needed)
+│   │   └── index.ts           # Builds to dist/content/index.js (if needed)
 │   ├── popup/
-│   │   ├── popup.html
-│   │   ├── popup.ts
-│   │   └── popup.css
-│   ├── options/               # Options page (if needed)
-│   ├── sidepanel/             # Side panel (if needed)
+│   │   ├── index.html         # Builds to dist/popup/index.html
+│   │   ├── main.ts
+│   │   └── styles.css
+│   ├── options/
+│   │   ├── index.html         # Optional
+│   │   └── main.ts
+│   ├── sidepanel/
+│   │   ├── index.html         # Optional
+│   │   └── main.ts
 │   └── lib/
 │       ├── messaging.ts       # Type-safe message passing
 │       └── storage.ts         # Type-safe storage helpers
-├── icons/
-│   ├── icon-16.png
-│   ├── icon-48.png
-│   └── icon-128.png
-├── _locales/                  # i18n (if needed)
-│   └── en/
-│       └── messages.json
 ├── tsconfig.json
 ├── package.json
-└── vite.config.ts             # Or framework config
+└── vite.config.ts
 ```
 
 ### Phase 3: Implement
@@ -141,6 +180,9 @@ Read `references/testing/testing-guide.md` for the full testing approach:
 - Unit test business logic with Vitest
 - Integration test Chrome APIs with Puppeteer or Playwright
 - Manual load in `chrome://extensions` with Developer Mode
+  - WXT: load `.output/chrome-mv3-dev/` during `npm run dev`, or `.output/chrome-mv3/` after a production build
+  - Plasmo: load `build/chrome-mv3-dev/` for dev or `build/chrome-mv3-prod/` for production
+  - CRXJS / vanilla Vite: load `dist/`
 - Test service worker restart resilience
 
 ### Phase 5: Package and Publish
@@ -162,7 +204,7 @@ Read `references/publishing/web-store.md` for store submission:
   "description": "A brief description of the extension.",
   "permissions": [],
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_popup": "popup/index.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",
@@ -176,6 +218,8 @@ Read `references/publishing/web-store.md` for store submission:
   }
 }
 ```
+
+For hand-written manifests, point every manifest entry at the built extension files, not at `src/*.ts` or other source-only paths. Frameworks like WXT and CRXJS generate or rewrite those manifest paths for you.
 
 Add fields as needed:
 
@@ -203,6 +247,8 @@ Add fields as needed:
 | Extension not reloading changes | Use `chrome.runtime.reload()` or enable auto-reload via framework |
 | Side panel not showing | Requires Chrome 114+; add `"sidePanel"` permission |
 | `chrome.scripting` undefined | Add `"scripting"` permission to manifest |
+| Manifest points at `src/*.ts` or other source-only files | In hand-written builds, point manifest entries at built files inside `dist/` such as `popup/index.html` and `background/index.js` |
+| Shared repo `tsc` errors block extension build | Scope compilation to the extension package/entrypoints; do not typecheck unrelated UI code just to ship the extension |
 
 ## Type-safe messaging pattern
 

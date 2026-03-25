@@ -1,40 +1,23 @@
 # Security Hardening
 
-This guide covers all security features available in OpenClaw for production environments, including real-world threat intelligence from community reports and CVE disclosures.
+This guide covers security features available in OpenClaw for production environments. Treat official docs and GitHub security advisories as primary sources. Community reports can highlight operator pain, but they are not source-of-truth for requirements or CVE scope.
 
-## Known threats and CVEs
+## Primary security references
 
-OpenClaw has a documented history of security vulnerabilities. These are not theoretical -- they have affected real deployments.
-
-### CVE summary
-
-| Metric | Value |
-|--------|-------|
-| Total CVEs since launch | 14 |
-| Critical CVEs | 8 |
-| Most severe | CVE-2026-25253 (ClawJacked) -- CVSS 8.8 |
-| Instances affected by ClawJacked | 135,000+ |
-
-### ClawJacked (CVE-2026-25253)
-
-- **CVSS:** 8.8 (High)
-- **Impact:** Remote exploitation of OpenClaw instances
-- **Affected:** 135,000+ instances worldwide
-- **Mitigation:** Update to latest version immediately, enable gateway authentication, bind gateway to localhost
-
-### ClawHavoc malicious skills (January 2026)
-
-- **824 malicious skills** discovered on ClawHub (12% of total skills at the time)
-- **Impact:** Data exfiltration, credential theft, crypto mining
-- **Mitigation:** Pin skill versions, audit all installed skills, never install from unverified publishers, use tool allowlists
+Before making security claims or deciding urgency, check:
+- `https://docs.openclaw.ai/gateway/configuration`
+- `https://docs.openclaw.ai/install/docker`
+- `https://docs.openclaw.ai/cli/health`
+- `https://docs.openclaw.ai/cli/gateway`
+- `https://github.com/openclaw/openclaw/security/advisories`
 
 ### Key lessons from real-world incidents
 
-1. **The gateway binds to 0.0.0.0 by default** -- it is accessible from any network interface unless explicitly bound to localhost
-2. **No authentication is enabled by default** -- you must configure it manually
+1. **Do not publish the gateway directly** -- native installs can stay on `gateway.bind: "loopback"`, but Docker bridge deployments need host publishing on loopback and the container itself bound to `lan` or `custom`
+2. **Authentication is required by default, but you still need to verify the chosen auth mode and token handling explicitly**
 3. **No HTTPS by default** -- a reverse proxy is required for encrypted connections
 4. **Updates are manual** -- there is no auto-update mechanism; config format changes occasionally break things
-5. **Malicious skills are a real threat** -- ClawHub has had verified malicious content
+5. **Community skills are a real threat surface** -- audit and pin before production use
 
 ## Security posture assessment
 
@@ -42,37 +25,62 @@ Before hardening, assess the current posture:
 
 | Check | Status | Action if missing |
 |-------|--------|-------------------|
-| Gateway bound to localhost | **Critical** | Change port binding to `127.0.0.1:8080` immediately |
+| Gateway reachability matches the runtime | **Critical** | Native: set `gateway.bind: "loopback"`. Docker bridge: publish `127.0.0.1:18789:18789` and set `gateway.bind: "lan"` or `custom` inside the container |
 | Gateway authentication active | **Critical** | Configure before exposing any endpoint |
 | Reverse proxy with TLS | **Critical** | Set up Caddy or nginx before going live |
 | API spending caps set | **Critical** | Set BEFORE connecting messaging channels |
 | Exec approvals enabled | Required for production | Enable immediately |
 | Tool exec security set to allowlist | Required | Set `tools.exec.security: "allowlist"` |
-| Gateway token secured | Required | Use Docker secrets, not env vars |
+| Gateway token secured | Required | Keep the bootstrap `.env` private, and prefer Docker secrets / SecretRefs for long-lived production |
 | Skills audited | Required | Pin versions, verify publishers |
 | Tool allow/deny lists configured | Recommended | Define based on use case |
 | Sandbox isolation verified | Required for untrusted skills | Test container boundary |
 | Tool-loop detection enabled | Recommended | Enable to prevent runaway agents |
 | Elevated mode policy defined | Recommended | Restrict to specific skills |
-| Secrets in environment variables | Required | Migrate from config files |
+| Secrets wired through `.env`, SecretRefs, or a secret manager | Required | Remove inline secrets from config files |
 
 ## Gateway security (highest priority)
 
-The gateway is the most critical attack surface. Three default behaviors make it dangerous out of the box:
+The gateway is the most critical attack surface. Three settings decide whether your exposure is actually safe:
 
-### 1. Gateway binds to 0.0.0.0 by default
+### 1. Reachability must match the runtime
 
-**Fix:** Always bind to localhost in your deployment configuration.
+**Fix:** native installs can stay on `gateway.bind: "loopback"`. Docker bridge installs should keep host publishing on loopback, but the container itself must listen on `lan` or `custom`.
 
 Docker/Docker Compose:
 ```yaml
 ports:
-  - "127.0.0.1:8080:8080"  # NOT "8080:8080"
+  - "127.0.0.1:18789:18789"
 ```
 
-### 2. No authentication by default
+Gateway config:
 
-**Fix:** Enable authentication before exposing the gateway to any network.
+```json
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    }
+  }
+}
+```
+
+For native installs, change `gateway.bind` to `loopback` unless a different access layer requires otherwise.
+
+### 2. Authentication mode must stay explicit
+
+**Reality:** auth is required by default, and onboarding usually generates a token automatically. The risk comes from disabling auth (`gateway.auth.mode: "none"`) or losing control of the shared token/password.
+
+**Fix:** keep token/password auth on non-loopback binds. Reserve `mode: "none"` for trusted loopback-only local setups.
 
 ### 3. No HTTPS by default
 
@@ -97,14 +105,15 @@ gateway:
 The gateway token is the master credential for your OpenClaw instance.
 
 - **Treat it as a crown jewel** -- compromise of this token means full instance takeover
-- **Use Docker secrets** to pass it to the container, not plain environment variables
+- The official Docker onboarding flow writes the token to `.env`; keep that file private, never commit it, and lock ownership to the deployment user
+- **For long-lived production, prefer Docker secrets, SecretRefs, or your secret manager** over a shared `.env`
 - **Rotate regularly** and after any suspected compromise
 - **Never log it** or include it in error reports
 
 ```yaml
 # Docker Compose with secrets
 services:
-  openclaw:
+  openclaw-gateway:
     secrets:
       - gateway_token
     environment:
@@ -115,20 +124,30 @@ secrets:
     file: ./secrets/gateway_token.txt
 ```
 
-## API spending caps
+## API spending caps and config placement
 
 **Set API spending caps BEFORE connecting any messaging channels.**
 
-Real-world reports from Reddit document $300-600 bills caused by retry loops on messaging channels. When a channel disconnects and reconnects, pending messages can trigger a flood of API calls.
+Real-world operator reports document $300-600 bills caused by retry loops on messaging channels. When a channel disconnects and reconnects, pending messages can trigger a flood of API calls.
 
-```yaml
-monitoring:
-  cost:
-    enabled: true
-    daily_limit_usd: 50
-    weekly_limit_usd: 250
-    monthly_limit_usd: 800
-    limit_action: "stop"  # Use "stop", not "alert", for spending caps
+Put the policy in the main config file:
+- Host/native installs: `~/.openclaw/openclaw.json`
+- Container installs: the bind-mounted directory that becomes `/home/node/.openclaw/openclaw.json`
+
+Keep secrets in `.env` or SecretRefs, not inline in the JSON/YAML policy file.
+
+```json
+{
+  "monitoring": {
+    "cost": {
+      "enabled": true,
+      "daily_limit_usd": 50,
+      "weekly_limit_usd": 250,
+      "monthly_limit_usd": 800,
+      "limit_action": "stop"
+    }
+  }
+}
 ```
 
 See monitoring-and-ops.md for full cost tracking configuration.
@@ -187,9 +206,9 @@ security:
 
 ## Skills security
 
-### The ClawHavoc threat
+### Community marketplace threat model
 
-824 malicious skills were found on ClawHub in January 2026, representing 12% of all published skills. These performed:
+Community skill marketplaces can distribute malicious or compromised packages. Threats include:
 
 - Data exfiltration (sending config/secrets to external servers)
 - Credential harvesting
@@ -227,7 +246,7 @@ security:
       - "read_file"
       - "search_code"
       - "web_search"
-      - "healthcheck"
+      - "health"
 ```
 
 ### Deny list (blacklist) approach
@@ -329,7 +348,7 @@ OAuth2 security rules:
 
 ```
 openclaw.example.com {
-    reverse_proxy localhost:8080
+    reverse_proxy localhost:18789
 }
 ```
 
@@ -349,7 +368,7 @@ server {
 
     location / {
         limit_req zone=openclaw burst=20 nodelay;
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:18789;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -362,12 +381,12 @@ server {
 
 Before going live:
 
-- [ ] Gateway bound to `127.0.0.1`, not `0.0.0.0`
-- [ ] Gateway authentication enabled
+- [ ] Native installs use `gateway.bind: "loopback"`, or Docker bridge installs publish `127.0.0.1:18789:18789` while the container uses `gateway.bind: "lan"` or `custom`
+- [ ] Gateway auth mode is reviewed; `mode: "none"` is limited to trusted loopback-only setups
 - [ ] API spending caps configured and set to "stop" mode
 - [ ] Reverse proxy with TLS in front of gateway
 - [ ] `tools.exec.security: "allowlist"` with specific commands only
-- [ ] Gateway token stored in Docker secrets, not env vars
+- [ ] Gateway token is not committed or world-readable; Docker secrets / SecretRefs are used for long-lived production where available
 - [ ] All skills version-pinned and audited
 - [ ] No skills from unverified publishers
 - [ ] Exec approvals enabled and tested
@@ -379,7 +398,7 @@ Before going live:
 - [ ] Rate limiting configured at the reverse proxy
 - [ ] Audit logging enabled for security events
 - [ ] IP restrictions applied where feasible
-- [ ] Node.js v22 confirmed (older versions may have unpatched vulnerabilities)
+- [ ] Supported runtime confirmed (`22.x` or `24.x`)
 - [ ] OpenClaw updated to latest version (check for CVE patches)
 
 ## Steering experiences
@@ -397,4 +416,4 @@ Skills that do not need network access should use `network: none`. Leaving the d
 Private networks get compromised. Lateral movement from any host on the network gives full access. Always enable auth regardless of network trust level.
 
 ### SE-05: Installing popular skills without auditing
-The ClawHavoc incident proved that popular skills can be malicious. Always audit code before installation, even for highly-starred skills.
+Popularity is not a security control. Always audit code before installation, even for highly-starred skills.

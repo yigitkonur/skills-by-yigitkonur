@@ -2,6 +2,37 @@
 
 Issues discovered during real testing with hcom v0.7.6 on 2026-03-24. Every entry below was hit during actual test runs.
 
+## Hooks Preflight (mandatory)
+
+Before launching any headless workflow:
+
+```bash
+hcom hooks
+hcom status
+# Confirm the target tool shows installed hooks
+```
+
+If the target tool is missing hooks:
+
+```bash
+hcom hooks add codex
+hcom status
+```
+
+If `hcom hooks add <tool>` fails or `hcom status` still does not show the hooks as installed, stop and capture diagnostics. Do not continue to launch scripts in a half-configured environment.
+
+Use these diagnostics before retrying:
+
+```bash
+hcom hooks
+hcom status --logs
+hcom status --json
+```
+
+- `hcom hooks` gives the fastest installed/not-installed check.
+- `hcom status --logs` prints the recent warning/error lines and the log file path.
+- `hcom status --json` shows per-tool `hooks`, `installed`, and `settings_path` fields so you know which config file hcom tried to modify.
+
 ## Script Hangs Forever
 
 **Cause:** Missing `--go` flag on `hcom 1 claude`, `hcom kill`, or any command that normally prompts for confirmation.
@@ -99,6 +130,8 @@ if [[ -n "$result" ]]; then
   echo "MATCHED"
 else
   echo "TIMEOUT - no matching event within 60s"
+  hcom events --sql "msg_thread='${thread}'" --last 20 $name_arg 2>/dev/null || true
+  hcom status 2>/dev/null || true
 fi
 ```
 

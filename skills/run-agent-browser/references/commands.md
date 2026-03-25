@@ -1,12 +1,12 @@
 # Command Reference
 
-Complete reference for all agent-browser commands. For quick start and common patterns, see SKILL.md.
+Practical reference for the `agent-browser` commands used most often by this skill. For quick start and scenario-specific patterns, see `SKILL.md` and the routed references.
 
 ## Navigation
 
 ```bash
 agent-browser open <url>      # Navigate to URL (aliases: goto, navigate)
-                              # Supports: https://, http://, file://, about:, data://
+                              # Supports: https://, http://, file://, about:, data:
                               # Auto-prepends https:// if no protocol given
 agent-browser back            # Go back
 agent-browser forward         # Go forward
@@ -44,9 +44,17 @@ agent-browser uncheck @e1         # Uncheck checkbox
 agent-browser select @e1 "value"  # Select dropdown option
 agent-browser select @e1 "a" "b"  # Select multiple options
 agent-browser scroll down 500     # Scroll page (default: down 300px)
-agent-browser scrollintoview @e1  # Scroll element into view (alias: scrollinto)
+agent-browser scrollintoview @e1  # Scroll element into view
 agent-browser drag @e1 @e2        # Drag and drop
 agent-browser upload @e1 file.pdf # Upload files
+agent-browser download @e1 file.pdf # Click element and save download to a file
+```
+
+## Keyboard
+
+```bash
+agent-browser keyboard type "Hello"        # Type into the currently focused element
+agent-browser keyboard inserttext "Paste"  # Insert text without key events
 ```
 
 ## Get Information
@@ -77,6 +85,7 @@ agent-browser is checked @e1      # Check if checked
 agent-browser screenshot          # Save to temporary directory
 agent-browser screenshot path.png # Save to specific path
 agent-browser screenshot --full   # Full page
+agent-browser screenshot --annotate # Annotated screenshot with numbered labels
 agent-browser pdf output.pdf      # Save as PDF
 ```
 
@@ -98,6 +107,7 @@ agent-browser wait --text "Success"        # Wait for text (or -t)
 agent-browser wait --url "**/dashboard"    # Wait for URL pattern (or -u)
 agent-browser wait --load networkidle      # Wait for network idle (or -l)
 agent-browser wait --fn "window.ready"     # Wait for JS condition (or -f)
+agent-browser wait --download ./file.pdf   # Wait for download and save it
 ```
 
 ## Mouse Control
@@ -142,13 +152,14 @@ agent-browser set media light reduced-motion  # Light mode + reduced motion
 ## Cookies and Storage
 
 ```bash
-agent-browser cookies                     # Get all cookies
-agent-browser cookies set name value      # Set cookie
-agent-browser cookies clear               # Clear cookies
-agent-browser storage local               # Get all localStorage
-agent-browser storage local key           # Get specific key
-agent-browser storage local set k v       # Set value
-agent-browser storage local clear         # Clear all
+agent-browser cookies                               # Get all cookies
+agent-browser cookies set session_id "abc123"      # Set cookie
+agent-browser cookies clear                         # Clear cookies
+agent-browser storage local                         # Get all localStorage
+agent-browser storage local get authToken          # Get specific key
+agent-browser storage local set theme "dark"       # Set value
+agent-browser storage local clear                  # Clear all localStorage
+agent-browser storage session get userId           # Read sessionStorage
 ```
 
 ## Network
@@ -166,11 +177,19 @@ agent-browser network requests --filter api    # Filter requests
 
 ```bash
 agent-browser tab                 # List tabs
+agent-browser tab list            # Explicit tab listing
 agent-browser tab new [url]       # New tab
 agent-browser tab 2               # Switch to tab by index
 agent-browser tab close           # Close current tab
 agent-browser tab close 2         # Close tab by index
 agent-browser window new          # New window
+```
+
+## Sessions
+
+```bash
+agent-browser session             # Show current session name
+agent-browser session list        # List active sessions
 ```
 
 ## Frames
@@ -231,9 +250,11 @@ agent-browser diff url url1 url2 --screenshot  # Compare two URLs (visual diff)
 ```bash
 agent-browser --session <name> ...        # Isolated browser session
 agent-browser --session-name <name> ...   # Auto-save/restore session state (persisted across runs)
+agent-browser --profile <path> ...        # Persistent browser profile directory
 agent-browser --json ...                  # JSON output for parsing
-agent-browser --headed ...               # Show browser window (not headless)
-agent-browser --full ...                 # Full page screenshot (-f)
+agent-browser --headed ...                # Show browser window (not headless)
+agent-browser --full ...                  # Full page screenshot (-f)
+agent-browser --annotate ...              # Annotated screenshot labels
 agent-browser --cdp <port> ...           # Connect via Chrome DevTools Protocol
 agent-browser --auto-connect ...         # Auto-discover running Chrome instance
 agent-browser -p <provider> ...          # Cloud browser provider (--provider): browserbase, browseruse, kernel, ios
@@ -255,7 +276,7 @@ agent-browser --max-output <chars>       # Truncate output at N characters
 agent-browser --allowed-domains <list>   # Domain allowlist (comma-separated)
 agent-browser --action-policy <path>     # Action policy JSON file
 agent-browser --confirm-actions <list>   # Actions requiring user confirmation
-agent-browser --confirm-interactive <l>  # Interactive commands requiring confirmation
+agent-browser --confirm-interactive      # Interactive confirmation prompts
 agent-browser --user-agent <string>      # Custom user agent string
 agent-browser --args <flags>             # Extra Chromium flags (e.g. "--disable-gpu")
 agent-browser --debug                    # Enable debug logging
@@ -282,7 +303,9 @@ agent-browser profiler start              # Start Chrome DevTools profiling
 agent-browser profiler stop trace.json    # Stop and save profile
 ```
 
-## Environment Variables
+## Common Environment Variables
+
+This list focuses on the variables used elsewhere in this skill. Use `agent-browser --help` for the full surface.
 
 ```bash
 AGENT_BROWSER_SESSION="mysession"            # --session default
@@ -291,24 +314,27 @@ AGENT_BROWSER_STATE="/path/state.json"       # --state default
 AGENT_BROWSER_EXECUTABLE_PATH="/path/chrome" # Custom browser path
 AGENT_BROWSER_EXTENSIONS="/ext1,/ext2"       # Comma-separated extension paths
 AGENT_BROWSER_PROVIDER="browserbase"         # Cloud browser provider
+AGENT_BROWSER_PROXY="http://proxy:8080"      # Proxy server URL
+AGENT_BROWSER_PROXY_BYPASS="localhost,*.local"  # Proxy bypass hosts
 AGENT_BROWSER_STREAM_PORT="9223"             # WebSocket streaming port
-AGENT_BROWSER_HOME="/path/to/agent-browser"  # Custom install location
 AGENT_BROWSER_HEADED="1"                     # Always show browser UI
+AGENT_BROWSER_ANNOTATE="1"                   # Annotated screenshots by default
 AGENT_BROWSER_NATIVE="1"                     # Use native Rust daemon
 AGENT_BROWSER_ENGINE="lightpanda"            # Browser engine
 AGENT_BROWSER_COLOR_SCHEME="dark"            # Color scheme
 AGENT_BROWSER_PROFILE="/path/profile"        # Persistent profile directory
 AGENT_BROWSER_CONFIG="/path/config.json"     # Config file path
+AGENT_BROWSER_DOWNLOAD_PATH="/tmp/downloads" # Default download directory
+AGENT_BROWSER_DEFAULT_TIMEOUT="60000"        # Default Playwright timeout in ms
 AGENT_BROWSER_CONTENT_BOUNDARIES="1"         # LLM-safe output wrapping
 AGENT_BROWSER_MAX_OUTPUT="20000"             # Truncate output chars
 AGENT_BROWSER_ALLOWED_DOMAINS="a.com,b.com"  # Domain allowlist
 AGENT_BROWSER_ACTION_POLICY="policy.json"    # Action policy path
 AGENT_BROWSER_CONFIRM_ACTIONS="click,fill"   # Actions needing confirmation
-AGENT_BROWSER_CONFIRM_INTERACTIVE="close"    # Interactive cmds needing confirmation
+AGENT_BROWSER_CONFIRM_INTERACTIVE="1"        # Enable interactive confirmation prompts
 AGENT_BROWSER_USER_AGENT="MyBot/1.0"         # Custom user agent
 AGENT_BROWSER_ARGS="--disable-gpu"           # Extra Chromium flags
 AGENT_BROWSER_DEBUG="1"                      # Debug logging
-AGENT_BROWSER_PROXY_BYPASS="localhost,*.local"  # Proxy bypass hosts
 AGENT_BROWSER_ENCRYPTION_KEY="secret"        # Encryption key for saved state
 AGENT_BROWSER_STATE_EXPIRE_DAYS="30"         # Auto-expire saved state after N days
 ```

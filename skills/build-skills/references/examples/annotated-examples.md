@@ -172,7 +172,7 @@ init-agent-config/
 ```yaml
 ---
 name: init-agent-config
-description: Use skill if you are creating or auditing CLAUDE.md and AGENTS.md
+description: Use skill if you are creating or reviewing CLAUDE.md and AGENTS.md
   files that configure AI coding agents for your project.
 ---
 

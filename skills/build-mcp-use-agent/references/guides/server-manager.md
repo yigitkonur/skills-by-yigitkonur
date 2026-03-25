@@ -107,9 +107,9 @@ const client = new MCPClient({
 | Method | Signature | Description |
 |---|---|---|
 | `run` | `(opts: { prompt: string; schema?: ZodSchema<any>; maxSteps?: number }): Promise<any>` | Executes a single agent cycle. Returns the final LLM response (typed if `schema` supplied). |
-| `stream` | `(opts: { prompt: string }): AsyncIterable<{ action: { tool: string; args: any } }>` | Yields each step as the agent selects and runs a tool. |
-| `prettyStreamEvents` | `(opts: { prompt: string; maxSteps?: number }): AsyncIterable<void>` | Same as `stream` but prints formatted, syntax-highlighted output (CLI-friendly). |
-| `streamEvents` | `(opts: { prompt: string }): AsyncIterable<{ event: string; data?: any }>` | Low-level event stream (e.g., `event === 'on_chat_model_stream'` gives raw LLM chunks). |
+| `stream` | `(opts: { prompt: string }): AsyncGenerator<{ action: { tool: string; args: any } }, string, void>` | Yields each step as the agent selects and runs a tool. |
+| `prettyStreamEvents` | `(opts: { prompt: string; maxSteps?: number }): AsyncGenerator<void, string, void>` | Same as `stream` but prints formatted, syntax-highlighted output (CLI-friendly). |
+| `streamEvents` | `(opts: { prompt: string }): AsyncGenerator<{ event: string; data?: any }, void, void>` | Low-level event stream (e.g., `event === 'on_chat_model_stream'` gives raw LLM chunks). |
 | `close` | `(): Promise<void>` | Gracefully shuts down any open server processes and releases resources. |
 | `clearConversationHistory` | `(): void` | Empties the internal memory buffer when `memoryEnabled` is true. |
 
@@ -196,7 +196,7 @@ When `useServerManager: true`, the agent gains access to these built-in manageme
 
 ## Dynamic server addition
 
-Use the `add_mcp_server_from_config` management tool to add servers at runtime. The `config` parameter follows the same shape as entries in `MCPClient`'s `mcpServers`.
+Use the `add_mcp_server_from_config` management tool to add servers at runtime. The `serverConfig` parameter follows the same shape as entries in `MCPClient`'s `mcpServers`.
 
 ### Config shape
 
@@ -215,7 +215,8 @@ const result = await agent.run(
   "I need to query the SQLite database. Add the sqlite server and show me the available tables."
   // Agent reasoning:
   // 1. No sqlite tools available.
-  // 2. Call add_mcp_server_from_config with { command: "uvx", args: ["mcp-server-sqlite"] }.
+  // 2. Call add_mcp_server_from_config with
+  //    { serverName: "sqlite", serverConfig: { command: "uvx", args: ["mcp-server-sqlite"] } }.
   // 3. Connect to the new server and proceed.
 );
 ```

@@ -117,21 +117,19 @@ The gRPC server is the network interface:
 
 ## How Custom Tracing Layers Interact
 
-If your application already uses custom tracing subscribers or layers (e.g., `tracing_subscriber::fmt` for terminal output), DevTools works alongside them using `tracing_subscriber`'s layered architecture:
+DevTools owns the global tracing subscriber in debug builds. Do not add a second `set_global_default()` call just to mirror terminal output while DevTools is active:
 
 ```rust
 use tracing_subscriber::prelude::*;
 
 // DevTools registers its own subscriber internally.
-// Your custom layers are NOT in conflict — tracing supports
-// multiple subscribers via the registry pattern.
-//
-// However, DevTools uses its OWN registry. If you need both
-// DevTools AND a custom subscriber, use the Builder pattern
-// and attach your logger via attach_logger().
+// If the app already has custom logging, review that setup
+// carefully instead of adding another global subscriber.
+// For tauri-plugin-log, use attach_logger() as shown in
+// references/devtools-integration-patterns.md.
 ```
 
-DevTools manages its own subscriber registration. You do NOT need to manually compose it with other layers using `tracing_subscriber::registry()`. The `init()` / `Builder::init()` call handles subscriber setup internally.
+DevTools manages its own subscriber registration. You do NOT need to manually compose it with `tracing_subscriber::registry()`. The `init()` / `Builder::init()` call handles subscriber setup internally; if you need special coexistence rules, use `references/devtools-integration-patterns.md`.
 
 ## Memory and Performance Characteristics
 
@@ -199,4 +197,4 @@ Understanding the architecture helps avoid common diagnostic errors:
 4. **Separate thread means no async interference** — DevTools won't cause your app to slow down or deadlock, even under heavy tracing load.
 5. **Memory is bounded** — the Aggregator buffers data. Very long-running sessions may lose oldest events. Restart the app for a fresh capture if needed.
 
-> ⚠️ **Steering:** Agents in testing assumed DevTools captured ALL output (including println). When debugging produced no DevTools evidence, they concluded the code wasn't executing — when in fact the output was going to stdout, not the tracing subscriber. Always verify output goes through `tracing` macros.
+> ⚠️ **Steering:** DevTools does NOT capture `println!()` output. If no evidence appears, verify that the code is emitting through `tracing` macros rather than stdout.

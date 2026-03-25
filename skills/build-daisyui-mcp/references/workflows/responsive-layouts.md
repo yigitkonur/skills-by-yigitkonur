@@ -116,7 +116,7 @@ Mobile:                          Desktop:
     <aside class="bg-base-100 min-h-full w-64">
       <div class="p-4 text-xl font-bold">Brand</div>
       <ul class="menu p-4">
-        <li><a class="active">Dashboard</a></li>
+        <li><a class="menu-active">Dashboard</a></li>
         <li><a>Analytics</a></li>
         <li><a>Settings</a></li>
       </ul>

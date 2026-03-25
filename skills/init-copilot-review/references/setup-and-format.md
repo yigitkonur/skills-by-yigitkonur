@@ -144,6 +144,8 @@ excludeAgent: "coding-agent"
 
 This file applies to TypeScript files during **code review only** — the Copilot coding agent will not read it. Use this when review-specific rules would confuse the coding agent, or vice versa.
 
+**Verification note:** GitHub supports brace expansion in `applyTo`, but shell tools like `find -path` are not a reliable validator for brace patterns. Verify `applyTo` with Python globbing or another brace-aware glob tool when testing locally.
+
 ### File naming convention
 
 Use `kebab-case.instructions.md`:
@@ -178,12 +180,10 @@ Use `kebab-case.instructions.md`:
 
 ```bash
 # Single file
-wc -c .github/copilot-instructions.md
+wc -m .github/copilot-instructions.md 2>/dev/null
 
 # All instruction files
-for f in .github/instructions/*.instructions.md; do
-  echo "$f: $(wc -c < "$f") chars"
-done
+find .github/instructions -type f -name '*.instructions.md' -exec wc -m {} + 2>/dev/null
 ```
 
 ---
@@ -302,7 +302,7 @@ When a repository already has copilot instruction files, follow this evaluation 
 ### Step 1: Inventory existing files
 
 ```bash
-find .github -name "*.instructions.md" -o -name "copilot-instructions.md" | sort
+find .github \( -name "*.instructions.md" -o -name "copilot-instructions.md" \) -print 2>/dev/null | sort
 ```
 
 ### Step 2: Evaluate each file
@@ -314,8 +314,8 @@ For each existing instruction file, check:
 | File is under 4,000 characters | wc -m shows < 4,000 | File is truncated; split or trim |
 | Frontmatter is valid YAML | First line is --- with quoted applyTo | Missing or malformed frontmatter |
 | Rules pass SMSA (see writing-instructions.md) | Each rule is specific, measurable, actionable, semantic | Vague slogans, linter duplicates, or narrative prose |
-| No linter-duplicated rules | grep linter configs returns nothing for rule name | Rule is already enforced by a linter |
-| applyTo matches intended files | find with pattern returns expected files | Glob is too broad, too narrow, or broken |
+| No linter-duplicated rules | Grep the actual linter configs found in Step 1; the rule name should not appear there | Rule is already enforced by a linter |
+| applyTo matches intended files | Python globbing returns the expected files | Glob is too broad, too narrow, or broken |
 | No contradictions with other files | Manual review of overlapping scopes | Same topic, conflicting advice |
 
 ### Step 3: Decide action
@@ -328,7 +328,7 @@ For each existing instruction file, check:
 | Mistake | Why it is wrong | Fix |
 |---|---|---|
 | Discarding all existing files | Loses team intent and domain knowledge | Evaluate first, refine in place |
-| Keeping linter-duplicated rules | Wastes character budget | Grep linter configs and remove duplicates |
+| Keeping linter-duplicated rules | Wastes character budget | Grep the actual linter configs you found in Step 1 and remove duplicates |
 | Ignoring frontmatter errors | Silent scope failures | Validate YAML frontmatter for every scoped file |
 | Not checking character count | Truncated content is silently ignored | Always measure with wc -m |
 

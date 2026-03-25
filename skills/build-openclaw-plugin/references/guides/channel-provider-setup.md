@@ -2,6 +2,8 @@
 
 OpenClaw plugins can register four types of non-tool extension points: channels, model providers, speech providers, and image generators. Each follows a similar pattern — declare in the manifest, implement the interface, export from the plugin.
 
+Verify the actual Plugin SDK import path in the target runtime before copying any example below. The `@openclaw/sdk` imports shown here are illustrative; some OpenClaw deployments expose these interfaces from a monorepo package or private runtime path instead of a public npm package.
+
 ## Channels
 
 Channels are communication interfaces that connect OpenClaw to external messaging platforms.

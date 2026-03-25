@@ -4,8 +4,8 @@
 
 | Crate | Purpose | Install |
 |---|---|---|
-| `tauri-plugin-devtools` | Free web UI (browser-based) | `cargo add tauri-plugin-devtools` |
-| `tauri-plugin-devtools-app` | Premium embedded desktop panel | `cargo add tauri-plugin-devtools-app` |
+| `tauri-plugin-devtools` | Free web UI (browser-based) | `cargo add tauri-plugin-devtools@2` |
+| `tauri-plugin-devtools-app` | Premium embedded desktop panel | `cargo add tauri-plugin-devtools-app@2` |
 | `devtools` | Legacy Tauri v1 only | `cargo add devtools` (do NOT use for v2) |
 
 Use `tauri-plugin-devtools` (free web UI) unless the user specifically requests the premium desktop panel.
@@ -15,7 +15,9 @@ Current stable versions (Tauri v2):
 - `tauri-plugin-devtools-app = "2.0.1"`
 - Internal core: `devtools-core = "0.3.6"`
 
-> ⚠️ **Steering:** Default to `tauri-plugin-devtools` (free web UI). Agents incorrectly chose `tauri-plugin-devtools-app` (premium) or `devtools` (v1 legacy) in testing. Only use premium if the user explicitly requests it.
+> ⚠️ **Steering:** Default to `tauri-plugin-devtools` (free web UI). Only use the premium desktop panel if the user explicitly requests it, and do not use the legacy `devtools` crate for Tauri v2.
+
+> **Version guardrail:** Prefer an explicit major-version install (`cargo add ...@2` or manual `= "2"` in `Cargo.toml`). If `cargo add` warns that your pinned `rust-version` is too old and silently chooses an older plugin, stop and either raise the project's `rust-version`/toolchain or edit `Cargo.toml` manually. Do not proceed assuming the downgraded crate behaves like the current v2 docs.
 
 ## Cargo.toml Setup
 
@@ -56,7 +58,15 @@ tauri-plugin-log = "2"
 
 Pattern 4 is an extended example of Pattern 1 with more plugins — choose Pattern 1 and add your plugins after the DevTools plugin. All patterns work with any number of other plugins.
 
-> ⚠️ **Steering:** If unsure, use Pattern 1. In derailment testing, agents incorrectly chose Pattern 2 for projects without `tauri-plugin-log`, adding unnecessary complexity. Pattern 2 is ONLY for projects that already use `tauri-plugin-log`.
+> ⚠️ **Steering:** If unsure, use Pattern 1. Pattern 2 is ONLY for projects that already use `tauri-plugin-log`.
+
+Concrete check:
+
+```bash
+rg -n "tauri-plugin-log" src-tauri/Cargo.toml
+```
+
+No match → Pattern 1. Match → Pattern 2.
 
 ## Initialization Patterns
 
@@ -89,7 +99,7 @@ pub fn run() {
 
 Why `init()` comes first: The `init()` call creates the tracing subscriber. Events emitted before the subscriber is registered are lost forever. Calling it before `Builder::default()` ensures plugin initialization events from other plugins are captured.
 
-> ⚠️ **Steering:** The `init()` call MUST come before `Builder::default()`. In derailment testing, placing it after caused all plugin initialization events to be lost — DevTools connected but showed incomplete data. This is the #1 installation mistake.
+> ⚠️ **Steering:** The `init()` call MUST come before `Builder::default()`. Registering it later loses early plugin initialization events, so DevTools may connect but still miss the evidence you need.
 
 ### Pattern 2: With tauri-plugin-log (split pattern)
 
@@ -215,18 +225,55 @@ Use feature flags when you need finer control than debug/release (e.g., DevTools
 
 ## Connecting to DevTools
 
-> ⚠️ **Steering:** First compilation after adding DevTools takes significantly longer (new dependency tree). Agents in testing mistook the long compile time for a hang and killed the process. Wait for the WebSocket URL in terminal output.
+> ⚠️ **Steering:** First compilation after adding DevTools takes significantly longer (new dependency tree). Wait for the connection banner in terminal output before treating startup as hung.
 
 ### Free web UI
 
 1. Run your app from the project root (where `package.json` lives): `cargo tauri dev`
-2. First run after adding DevTools triggers a longer recompilation (new dependencies). Wait for the WebSocket URL to appear.
-3. Look for terminal output like:
+2. First run after adding DevTools triggers a longer recompilation (new dependencies). Wait for the listener or dashboard URL to appear.
+3. Look for terminal output like either of these:
    ```
    devtools: listening on ws://127.0.0.1:7043
    ```
+   or
+   ```
+   https://devtools.crabnebula.dev/dash/127.0.0.1/3033
+   ```
 4. Open https://devtools.crabnebula.dev in any browser
-5. Paste the connection URL from the terminal
+5. Paste the connection URL from the terminal, or open the dashboard URL directly if the plugin prints that form instead
+
+If `cargo tauri dev` exits before printing any DevTools banner:
+
+1. Inspect `src-tauri/tauri.conf.json` for `beforeDevCommand`
+2. Ensure the referenced package-manager script actually exists in `package.json`
+3. For a smoke test, it is acceptable to temporarily clear `beforeDevCommand` so the Tauri app can start and prove DevTools wiring
+
+### Minimal smoke test in an existing Tauri project
+
+Use this path when the goal is to prove DevTools wiring, not diagnose a product bug.
+
+1. Add a temporary command in `src-tauri/src/lib.rs`, `main.rs`, or the app entrypoint module:
+   ```rust
+   #[tauri::command]
+   fn devtools_smoke_ping() -> &'static str {
+       "pong"
+   }
+   ```
+2. Register that command in the existing `invoke_handler`.
+3. Trigger it once from the frontend:
+   ```ts
+   import { invoke } from "@tauri-apps/api/core";
+
+   await invoke("devtools_smoke_ping");
+   ```
+   If there is no convenient UI action, call it from a temporary button or one-off startup effect.
+4. Run `cargo tauri dev` from the project root.
+5. Verify:
+   - terminal prints the DevTools listener banner or dashboard URL
+   - either startup emits a trace/event to stderr, or the `devtools_smoke_ping` call prints a matching command span
+   - UI mode: the call appears in Calls
+   - terminal-only mode: the command span or matching trace appears on stderr
+6. Remove temporary smoke-test-only command code after wiring is proven.
 
 ### Premium desktop app
 
@@ -247,6 +294,17 @@ After connecting in the browser:
    - Confirm you are running `cargo tauri dev` (not a release build).
 
 > ⚠️ **Steering:** If the dashboard is blank, the most common cause is init() being called too late. Check the ordering. The second most common cause is running a release build (`cargo tauri build` instead of `cargo tauri dev`).
+
+### Terminal-only verification (AI agent / no UI)
+
+If you cannot open the DevTools UI, use this checklist instead:
+
+1. `cargo tauri dev` prints a DevTools listener banner or dashboard URL
+2. stderr shows proof that the subscriber is live: either an existing startup trace/event, or the first invoked command span
+3. after invoking any `#[tauri::command]`, a matching tracing event/span appears on stderr
+4. if you added temporary `tracing::info!` or `#[tracing::instrument]`, the event appears exactly once where expected
+
+If any step fails, DevTools is not yet verified.
 
 After verifying DevTools works, return to the main SKILL.md workflow at Phase 2.
 

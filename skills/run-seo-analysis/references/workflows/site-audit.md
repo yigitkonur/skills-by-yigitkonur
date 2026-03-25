@@ -6,48 +6,44 @@ Complete technical SEO audit workflow using MCP Marketers tools.
 
 User wants: site health check, technical SEO audit, crawl issues, page speed analysis, Core Web Vitals, duplicate content, redirect chains, indexation problems.
 
+## Preflight
+
+Before Phase 1:
+- Confirm the MCP Marketers tool surface is available. If `resolve-geo` or `audit-site` is missing, stop instead of improvising with unrelated tools. If `analyze-domain` is missing, continue with the crawl phases and explicitly note that domain-intelligence enrichment is unavailable.
+- Confirm the target is publicly reachable over HTTP/HTTPS. `file://`, local snapshot files, `localhost`, and private preview URLs without public ingress are unsupported for this workflow.
+- If the user only has a local fixture, ask for a public staging URL or tunnel. Otherwise stop and recommend a local audit workflow outside this skill.
+- If the user wants a compiled deliverable, start `start-report-workflow` before Phase 1.
+
 ## The SEO practitioner's mental model
 
 A technical SEO audit answers: "What's broken on my site that prevents search engines from crawling, indexing, and ranking it effectively?" The practitioner needs a systematic sweep across crawlability, indexability, performance, and content quality — not just one metric.
 
 ## Workflow
 
-### Phase 1: Domain overview (context first)
+### Phase 1: Quick crawl (instant audit first)
 
 ```
 resolve-geo(location: user's market, product: "domain")
-→ analyze-domain(target: domain, dataType: "overview")
+→ audit-site(target: domain, dataType: "instant", maxPages: 100, device: "desktop")
 ```
 
-**Why first:** Establishes baseline metrics (traffic, authority, keyword count) so audit findings have context. A site with 100 pages needs a different audit than one with 100,000.
-
-**Key parameters:**
-- `engine`: google (default) or bing based on user's market
-- `forceRefresh: true` if user suspects stale data
-
-### Phase 2: Quick crawl (instant audit)
-
-```
-audit-site(target: domain, dataType: "instant", maxPages: 100, device: "desktop")
-```
-
-**Why instant first:** Returns results in seconds. Gives immediate signal on major issues before committing to a full crawl. Check the summary for critical/error/warning counts.
+**Why instant first:** Returns results in seconds. Gives immediate signal on major issues before committing to deeper follow-ups. Use the returned `taskId` as the anchor for duplicate-tag, redirect, non-indexable, and link checks.
 
 **Key parameters:**
 - `maxPages`: 50 for quick scan, 100 for standard, 500+ for thorough (cost scales linearly)
 - `device`: "desktop" first, then "mobile" if mobile-specific issues suspected
 - `enableJs: false` (default) — only enable for JS-heavy SPAs (significantly increases cost and time)
 
-### Phase 3: Deep analysis (run in parallel where possible)
+### Phase 2: Deep analysis (run in parallel where possible)
 
 These can run concurrently — they hit different API endpoints:
 
 ```
 audit-site(target: domain, dataType: "lighthouse", pageUrl: homepage)
-audit-site(target: domain, dataType: "duplicate_tags", taskId: from_phase2)
-audit-site(target: domain, dataType: "redirect_chains", taskId: from_phase2)
-audit-site(target: domain, dataType: "non_indexable", taskId: from_phase2)
-audit-site(target: domain, dataType: "links", taskId: from_phase2)
+audit-site(target: domain, dataType: "duplicate_tags", taskId: from_phase1)
+audit-site(target: domain, dataType: "redirect_chains", taskId: from_phase1)
+audit-site(target: domain, dataType: "non_indexable", taskId: from_phase1)
+audit-site(target: domain, dataType: "links", taskId: from_phase1)
 ```
 
 **What each reveals:**
@@ -61,33 +57,44 @@ audit-site(target: domain, dataType: "links", taskId: from_phase2)
 | `keyword_density` | Over-optimized pages, keyword stuffing | Medium |
 | `microdata` | Schema markup errors, missing structured data | Medium |
 
+**Using `nextSteps` here:** Keep `instant -> lighthouse -> crawl-derived analyses` as the base chain. If the instant audit response suggests extra crawl-derived checks in `nextSteps`, take the high-priority ones that use the same `taskId` before branching into other workflows.
+
 **Key parameters for lighthouse:**
 - `pageUrl`: Test the homepage first, then top traffic pages
 - `lighthouseCategories`: ["performance", "seo", "accessibility"] to focus
 - `device`: Test both "desktop" and "mobile"
 
+### Phase 3: Domain context and enrichment
+
+```
+analyze-domain(target: domain, dataType: "overview")
+→ analyze-domain(target: domain, dataType: "ranked_keywords", limit: 50, sortBy: "traffic")
+→ analyze-domain(target: domain, dataType: "technologies")
+```
+
+**Why now:** Once the crawl has surfaced concrete issues, domain context tells you how much traffic, keyword visibility, and platform complexity are at risk. If `analyze-domain` is unavailable, skip this phase and say so explicitly in the final summary.
+
+**Key parameters:**
+- `engine`: google (default) or bing based on user's market
+- `forceRefresh: true` if user suspects stale data
+
 ### Phase 4: Content quality (if scope includes content)
 
 ```
-audit-site(target: domain, dataType: "keyword_density", taskId: from_phase2, keywordLength: 2)
+audit-site(target: domain, dataType: "keyword_density", taskId: from_phase1, keywordLength: 2)
 audit-site(target: domain, dataType: "content_parsing", pageUrl: top_page)
-audit-site(target: domain, dataType: "microdata", taskId: from_phase2)
+audit-site(target: domain, dataType: "microdata", taskId: from_phase1)
 ```
 
-### Phase 5: Cross-reference with domain intelligence
-
-```
-analyze-domain(target: domain, dataType: "ranked_keywords", limit: 50, sortBy: "traffic")
-analyze-domain(target: domain, dataType: "technologies")
-```
-
-**Why:** Ranked keywords reveal which pages drive traffic (protect these). Technologies reveal CMS, analytics, CDN — useful for diagnosing performance issues.
-
-### Phase 6: Compile findings
+### Phase 5: Compile findings
 
 ```
 compile-report(target: domain, tool_names: ["audit-site", "analyze-domain"])
 ```
+
+If Phase 3 was skipped because `analyze-domain` was unavailable, omit `analyze-domain` from `tool_names`.
+
+**Fallback if report helpers are unavailable:** deliver a manual summary grouped by crawl issues, performance, and domain context, and explicitly note that report compilation was unavailable in the runtime.
 
 ## Interpreting results: what to flag
 

@@ -282,10 +282,10 @@ jobs:
 ### `.release-please-manifest.json`
 
 ```json
-{ ".": "0.0.0" }
+{ ".": "0.1.0" }
 ```
 
-> Set to the version in `package.json`. For never-published packages, use the `package.json` version (typically `1.0.0` or `0.1.0`).
+> Example above assumes `package.json` is also `0.1.0`. Always set the manifest to the version in `package.json`. For never-published packages, use the `package.json` version exactly.
 
 ### Files to create
 

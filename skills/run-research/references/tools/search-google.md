@@ -1,14 +1,16 @@
-# search_google — Breadth-First Discovery
+# search_google / mcp__research_powerpack__web_search — Breadth-First Discovery
 
 ## What It Does
 
-Runs 3–100 parallel Google searches simultaneously. Each keyword executes as a separate search returning ~10 URLs. Returns **URLs only** — never page content. You MUST follow up with `scrape_pages` to get actual content.
+Runs 1–100 parallel web searches simultaneously. Each keyword executes as a separate search returning ranked URLs. Returns **URLs only** — never page content. You MUST follow up with `scrape_pages` to get actual content.
+
+The skill shorthand is `search_google`. In Codex, call the wrapper `mcp__research_powerpack__web_search`.
 
 ## Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `keywords` | `string[]` | Yes | — | 3–100 search keywords. Each runs as a separate parallel search. |
+| `keywords` | `string[]` | Yes | — | 1–100 search keywords. Each runs as a separate parallel search. |
 
 Supports all Google search operators: `site:`, `"exact phrase"`, `-exclude`, `filetype:`, `OR`, `intitle:`.
 
@@ -29,7 +31,6 @@ Supports all Google search operators: `site:`, `"exact phrase"`, `-exclude`, `fi
 
 - When you need page content (use `scrape_pages` after)
 - When you need community opinions (start with `search_reddit` instead)
-- For simple factual questions that `deep_research` answers directly
 - When you already know the URL — go straight to `scrape_pages`
 
 ## Query Formulation Rules
@@ -127,7 +128,7 @@ Use when the search_google results reveal the topic is complex enough to warrant
 
 | Anti-Pattern | Why It's Wrong | Fix |
 |--------------|---------------|-----|
-| Single keyword search | Misses angles; low recall | Always use 5-7 keywords minimum |
+| Single keyword search | Misses angles for non-trivial research | Use 5-7 keywords unless this is a narrow fact-check |
 | Stopping at search_google | URLs are not answers | Always follow with scrape_pages |
 | Repeating the same query reworded | Wastes searches; returns duplicates | Each keyword must target a different angle |
 | Not using operators | Drowns in noise | Use `site:`, `"quotes"`, `-exclude` |

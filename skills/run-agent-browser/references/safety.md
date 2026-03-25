@@ -21,8 +21,8 @@ These commands can modify system state, execute arbitrary code, or persist secre
 | `download` | Medium | Writes files to disk |
 | `set credentials` | High | Stores secrets in browser credential store |
 | `cookies set` | Medium | Sets cookies (session hijacking risk) |
-| `storage set` | Medium | Writes to localStorage/sessionStorage |
-| `network route` / `network mock` | High | Intercepts and modifies network traffic |
+| `storage local set` / `storage session set` | Medium | Writes to localStorage/sessionStorage |
+| `network route` | High | Intercepts and modifies network traffic |
 | `--allow-file-access` | High | Enables `file://` URL access |
 | `--executable-path` | High | Runs arbitrary binary as browser |
 | `--cdp` | High | Connects to arbitrary Chrome instance |
@@ -81,6 +81,8 @@ Before running automated browser sessions in production:
 
 Restrict which commands agents can execute:
 
+Keep the entries aligned to real command names from `agent-browser --help` on the installed version.
+
 ```json
 {
   "default": "deny",
@@ -89,13 +91,14 @@ Restrict which commands agents can execute:
     "click", "dblclick", "fill", "type", "press",
     "hover", "select", "check", "scroll",
     "wait", "get", "find",
-    "close", "tab list", "tab switch"
+    "close", "tab", "session"
   ],
   "deny": [
     "eval", "download",
-    "network route", "network mock",
+    "network route",
     "state save", "state load",
-    "set credentials", "cookies set", "storage set"
+    "set credentials", "cookies set",
+    "storage local set", "storage session set"
   ]
 }
 ```
@@ -120,7 +123,7 @@ agent-browser open https://malicious.example.org  # ❌ Blocked
 
 ## Supply-Chain Hygiene
 
-- **Pin CLI version:** `npm install -g agent-browser@0.16.2`
+- **Pin CLI version:** `npm install -g agent-browser@0.17.1`
 - **Install in isolated environments:** containers, VMs, or dedicated CI runners
 - **Avoid elevated privileges:** never run with `sudo`
 - **Review upgrades:** check changelogs before updating

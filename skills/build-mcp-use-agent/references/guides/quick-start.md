@@ -31,6 +31,11 @@ Use `references/guides/agent-configuration.md` after the first successful run if
 | Provider API keys | Required for the selected LLM | Keep them in `.env` |
 | A shutdown strategy | Prevents leaked sessions or sandboxes | Always call `await agent.close()` |
 
+Before the first `run()`, verify both sides of the setup:
+
+- **LLM side:** confirm the needed provider key exists (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or `GROQ_API_KEY`)
+- **MCP side:** confirm each configured server command exists or each remote server URL is reachable
+
 ## Install the minimum packages
 
 ### npm
@@ -154,6 +159,10 @@ import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
 
 async function main() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Set OPENAI_API_KEY before running this example.");
+  }
+
   const client = new MCPClient({
     mcpServers: {
       filesystem: {
@@ -193,6 +202,62 @@ main().catch((error) => {
 });
 ```
 
+## Minimal local calculator server for agent tutorials
+
+If the task is "build a calculator agent" and the repo does not already expose calculator tools, start a tiny MCP server first, then point the agent at it over HTTP.
+
+**`src/mcp/calculator-server.ts`**
+
+```typescript
+import { MCPServer, error, object } from "mcp-use/server";
+import { z } from "zod";
+
+const server = new MCPServer({ name: "calculator-server", version: "1.0.0" });
+
+const numberPair = z.object({
+  a: z.number().describe("First number"),
+  b: z.number().describe("Second number"),
+});
+
+server.tool({ name: "add", description: "Add two numbers", schema: numberPair }, async ({ a, b }) =>
+  object({ result: a + b })
+);
+server.tool({ name: "subtract", description: "Subtract two numbers", schema: numberPair }, async ({ a, b }) =>
+  object({ result: a - b })
+);
+server.tool({ name: "multiply", description: "Multiply two numbers", schema: numberPair }, async ({ a, b }) =>
+  object({ result: a * b })
+);
+server.tool({ name: "divide", description: "Divide two numbers", schema: numberPair }, async ({ a, b }) =>
+  b === 0 ? error("Division by zero is not allowed") : object({ result: a / b })
+);
+
+await server.listen(3000);
+```
+
+Run it in one terminal:
+
+```bash
+npx tsx src/mcp/calculator-server.ts
+```
+
+Then point the agent at it:
+
+```typescript
+const agent = new MCPAgent({
+  llm: "openai/gpt-4o",
+  llmConfig: { temperature: 0 },
+  mcpServers: {
+    calculator: { url: "http://127.0.0.1:3000/mcp" },
+  },
+  maxSteps: 10,
+  memoryEnabled: false,
+  autoInitialize: true,
+});
+```
+
+This is the smallest self-contained tool surface for calculator-style agent tasks.
+
 ### Pre-initializing all sessions
 
 If you want all MCP server connections established before the first `run()` call (for example, to surface startup errors early), call `createAllSessions()` on the client before constructing the agent:
@@ -201,7 +266,7 @@ If you want all MCP server connections established before the first `run()` call
 await client.createAllSessions();
 ```
 
-This is optional. When `autoInitialize: true` is set on the agent, initialization happens implicitly on the first call instead.
+This is optional. When `autoInitialize: true` is set on the agent, initialization happens for you before the first execution call. If you keep `autoInitialize: false`, call `await agent.initialize()` or `await client.createAllSessions()` yourself before `run()`, `stream()`, or `streamEvents()`.
 
 ### Why this example is the recommended baseline
 

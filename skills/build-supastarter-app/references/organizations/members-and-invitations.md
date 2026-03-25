@@ -2,7 +2,7 @@
 
 > Documents the main organization membership management components. Consult this when changing invite flows, role assignment, or the members/invitations settings UI.
 
-> ⚠️ **No `organizationProcedure`.** There is no org-scoped procedure tier. Use `protectedProcedure` and manually check membership via `auth.api.getFullOrganization()`.
+> ⚠️ **No `organizationProcedure`.** There is no org-scoped procedure tier. Use `protectedProcedure` and manually verify membership against the organization before mutating org-scoped data.
 
 ## Key files
 
@@ -37,15 +37,18 @@ This entire cluster is role-sensitive and assumes the active organization contex
 
 ```typescript
 // In a protectedProcedure handler:
-const org = await auth.api.getFullOrganization({
-  headers: await headers(),
-  query: { organizationId: input.organizationId },
+const membership = await db.member.findFirst({
+  where: {
+    organizationId: input.organizationId,
+    userId: context.user.id,
+  },
 });
 
-if (!org) throw new Error("Organization not found");
-
-const membership = org.members.find((m) => m.userId === session.user.id);
-if (!membership) throw new Error("Not a member");
+if (!membership) {
+  throw new ORPCError("FORBIDDEN", {
+    message: "Not a member of this organization",
+  });
+}
 ```
 
 ---

@@ -1,8 +1,10 @@
-# fetch_reddit — Deep Comment Thread Extraction
+# fetch_reddit / mcp__research_powerpack__get_reddit_post — Deep Comment Thread Extraction
 
 ## What It Does
 
 Fetches full post content and comment trees from 2–50 Reddit URLs. Extracts the complete discussion including nested reply chains where the best insights, corrections, code snippets, and dissenting opinions live. Auto-allocates a comment budget across posts for balanced depth.
+
+The skill shorthand is `fetch_reddit`. In Codex, call the wrapper `mcp__research_powerpack__get_reddit_post`.
 
 ## Parameters
 
@@ -11,22 +13,20 @@ Fetches full post content and comment trees from 2–50 Reddit URLs. Extracts th
 | `urls` | `string[]` | Yes | — | 2–50 Reddit post URLs. Min 2 required. |
 | `fetch_comments` | `bool` | No | `true` | Fetch comment trees. Always set to true. |
 | `use_llm` | `bool` | No | `false` | AI summarization. Keep false for exact content. |
-| `max_comments` | `int` | No | `100` | Override comment budget per post. |
 | `what_to_extract` | `string` | No | — | Extraction/synthesis targets when use_llm=true. |
 
-## Comment Budget Auto-Allocation
+## Depth Budget Auto-Allocation
 
-Total budget: 1000 comments distributed across posts.
+The wrapper budgets by extracted thread depth and word count, not by a user-set `max_comments` field. Plan selection quality accordingly:
 
-| Posts | Comments per Post | Depth Level |
-|-------|------------------|-------------|
-| 2 | 500 | Maximum depth — full thread with all replies |
-| 5 | 200 | Deep — captures most discussion threads |
-| 10 | 100 | Balanced — top-level + key reply chains |
-| 20 | 50 | Broad — top-level comments and first replies |
-| 50 | 20 | Scan — top comments only |
+| Posts | Approximate depth | Depth Level |
+|-------|-------------------|-------------|
+| 2-3 | Very deep thread coverage | Maximum depth — rich reply chains |
+| 5-8 | Strong coverage of top threads | Recommended — good balance |
+| 10-15 | Moderate per-thread depth | Balanced scan |
+| 20+ | Shallow per-thread depth | Broad scan only |
 
-**Recommendation:** 5–10 posts for most tasks. This gives 100–200 comments per post — enough to capture the full discussion including dissenting views.
+**Recommendation:** 5–8 posts for most tasks. This preserves enough thread depth to capture corrections and dissenting replies.
 
 ## use_llm Modes: Critical Decision
 
@@ -141,7 +141,7 @@ what_to_extract = "consensus recommendations | dissenting opinions | specific ve
 |--------------|---------------|-----|
 | fetch_comments=false | Loses 90% of the value — insights are in replies | Always set fetch_comments=true |
 | use_llm=true by default | Loses exact code, versions, numbers | Keep use_llm=false; only true for 20+ post synthesis |
-| Fetching 50 posts | 20 comments each = surface-level only | Use 5-10 posts for meaningful depth |
+| Fetching 50 posts | Per-thread depth becomes too shallow to be useful | Use 5-8 posts for meaningful depth |
 | Only reading top comments | Misses corrections and edge cases | Read 2nd and 3rd level replies |
 | Ignoring timestamps | Old comments may be outdated | Check comment dates, especially for fast-moving tech |
 | Not checking for "solved" | Missing confirmed fixes | Search for "EDIT:", "solved", "fixed" in OP comments |

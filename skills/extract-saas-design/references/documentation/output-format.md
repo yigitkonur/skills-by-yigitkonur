@@ -2,6 +2,10 @@
 
 How to structure the final output of a design extraction for maximum usability.
 
+Write the `.design-soul/` tree at the target codebase root or at a writable working copy of that codebase. Do not write it inside the skills repo or another unrelated parent directory.
+
+For narrow extractions, create only the files required by scope. `INDEX.md` and `_summary.md` become required when the extraction spans multiple docs or categories.
+
 ---
 
 ## Output Directory Structure
@@ -26,7 +30,7 @@ How to structure the final output of a design extraction for maximum usability.
     ├── overlays/               # Dialog, Popover, Tooltip, Dropdown
     ├── feedback/               # Badge, Toast, Alert, Skeleton
     ├── data-display/           # Table, Chart, Metric Card
-    └── [app-specific]/         # Product-unique components
+    └── [app-specific]/         # Product-unique components and composition patterns
 ```
 
 ---
@@ -35,6 +39,7 @@ How to structure the final output of a design extraction for maximum usability.
 
 - Foundation files: `NN-{topic}.md` (e.g., `01-spacing-scale.md`)
 - Component files: `NN-{component-name}.md` (e.g., `01-button.md`)
+- Pattern files in `components/[app-specific]/`: `NN-{pattern-name}.md` (e.g., `01-dashboard-layout.md`)
 - Number prefix controls reading order within a category
 - Use kebab-case for all filenames
 
@@ -88,7 +93,7 @@ Agent: [model/version used]
 3. `components/foundations/` → detailed token documentation
 4. `components/controls/` → core interactive components
 5. `components/navigation/` → app structure and navigation
-6. `components/[app-specific]/` → product-unique components
+6. `components/[app-specific]/` → product-unique components and pattern docs
 
 ## Where to Look by Task
 
@@ -97,7 +102,7 @@ Agent: [model/version used]
 | Build a form | controls/ (input, select, checkbox) + foundations/01-spacing |
 | Build navigation | navigation/ (sidebar, breadcrumb) + foundations/02-colors |
 | Build a modal | overlays/ (dialog, sheet) + foundations/06-animations |
-| Add a data table | data-display/ (table, pagination) + dashboard-patterns |
+| Add a data table | data-display/ (table, pagination) + app-specific pattern docs when the table is part of a broader dashboard workflow |
 | Understand theming | system.md + foundations/02-color-tokens |
 ```
 

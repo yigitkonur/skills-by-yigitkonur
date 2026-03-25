@@ -27,6 +27,7 @@ The orchestrator groups pages before spawning Wave 1 agents. Each group gets its
 | `blog` | Blog / Content | article body + author bio + related posts + reading time | `/blog/*`, `/articles/*`, `/changelog/*` |
 | `about` | About / Team | team member grid + company story + values + timeline | `/about`, `/team`, `/company`, `/careers` |
 | `docs` | Documentation | sidebar navigation + content area + code blocks + breadcrumbs | `/docs/*`, `/api/*`, `/guides/*` |
+| `dashboard` | App / Dashboard | sidebar shell + KPI cards + filters + tables/charts + dense content zones | `/dashboard/*`, `/app/*`, `/settings/*`, `/account/*` |
 | `auth` | Authentication | form fields + OAuth buttons + minimal chrome | `/login`, `/signup`, `/register` |
 | `legal` | Legal / Policy | long-form text + table of contents + minimal layout | `/terms`, `/privacy`, `/legal/*` |
 
@@ -35,8 +36,8 @@ The orchestrator groups pages before spawning Wave 1 agents. Each group gets its
 1. **Shared navigation pattern** — pages with identical nav structures likely belong to the same group
 2. **Section composition overlap** — if 60%+ of section types match, pages are the same group
 3. **Visual treatment similarity** — same background strategy, same spacing rhythm, same color palette usage
-4. **Content density** — landing pages are spacious; docs pages are dense; blog is medium
-5. **CTA presence and frequency** — landing pages have multiple CTAs; docs pages have zero
+4. **Content density** — landing pages are spacious; docs and dashboard pages are dense; blog is medium
+5. **CTA presence and frequency** — landing pages have multiple CTAs; docs pages usually have zero; dashboards favor task actions over marketing CTAs
 
 If a page doesn't clearly fit any group, assign it to the group with the highest section-type overlap. Document the ambiguity.
 
@@ -53,7 +54,7 @@ The design soul for a page-type group consists of these eight systems. Each must
 5. **Layout Pattern System** — page-level, section-level, grid, flex, and stack patterns
 6. **Responsive Architecture** — breakpoints, approach (mobile-first vs desktop-first), per-component responsive behavior
 7. **Motion & Interaction Language** — easings, durations, scroll animations, hover effects, focus indicators, keyframes
-8. **Conversion Architecture** — (landing pages only) hero strategy, social proof placement, CTA rhythm, pricing psychology
+8. **Conversion Architecture / App-Shell Strategy** — landing/pricing pages document hero strategy, social proof placement, CTA rhythm, pricing psychology; dashboard pages document shell layout, sidebar behavior, KPI rhythm, filter/table composition, and chart usage
 
 Every value in every system must trace to a specific Wave 0 file and line. No invented values. No assumptions. No "probably this."
 

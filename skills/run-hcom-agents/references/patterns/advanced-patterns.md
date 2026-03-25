@@ -2,6 +2,8 @@
 
 Patterns inspired by research on 35 multi-agent repositories (MetaGPT, CrewAI, AutoGen, ChatDev, CAMEL, OpenAI Swarm, Reflexion, MoA, and others). Each pattern is adapted to hcom primitives.
 
+Apply the mandatory preflight from `SKILL.md` before using any snippet here. When a pattern depends on targeted messaging, launch the downstream recipient before the upstream sender; for Codex, wait for `hcom events --wait 30 --idle "$name"` before another agent sends to it.
+
 ## Pattern 1: Reflexion / Self-Critique Loop
 
 **Inspired by:** Reflexion (3.1K stars), Self-Refine (790 stars)
@@ -216,18 +218,23 @@ while [[ $# -gt 0 ]]; do
   case "$1" in --name) name_flag="$2"; shift 2 ;; --path) watch_path="$2"; shift 2 ;; -*) shift ;; *) shift ;; esac
 done
 name_arg="" ; [[ -n "$name_flag" ]] && name_arg="--name $name_flag"
+thread="watch-$(date +%s)"
 
 # Launch reactive reviewer
 launch_out=$(hcom 1 claude --tag watcher --go --headless \
-  --hcom-prompt "You are a live code reviewer. Subscribe to file changes: hcom events sub --file \"${watch_path}*.py\" $name_arg. When you get a notification about a file change, read the changed file, review it, and send feedback: hcom send \"@bigboss\" --intent inform -- \"REVIEW: <file>: <feedback>\". Stay active -- do not stop. Keep listening for more changes." 2>&1)
+  --hcom-prompt "You are a live code reviewer. Subscribe to file changes: hcom events sub --file \"${watch_path}*.py\" $name_arg. When you get a notification about a file change, read the changed file, review it, and send feedback on thread ${thread}: hcom send --thread ${thread} --intent inform -- \"REVIEW: <file>: <feedback>\". Stay active -- do not stop. Keep listening for more changes." 2>&1)
 track_launch "$launch_out"
+watcher=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
 
 echo "Watcher launched. It will auto-review any .py file changes in ${watch_path}"
+echo "Thread: $thread"
 echo "Press Ctrl+C to stop."
 
-# Keep script alive until interrupted
+# Keep script alive until interrupted without using sleep for coordination
 trap "cleanup; exit 0" INT
-while true; do sleep 60; done
+while hcom list --names 2>/dev/null | tr ' ' '\n' | grep -qx "$watcher"; do
+  hcom events --wait 60 --agent "$watcher" $name_arg >/dev/null 2>&1 || true
+done
 ```
 
 **Key technique:** `hcom events sub --file "pattern"` creates a subscription. When any agent edits a matching file, the watcher receives a system message automatically.
@@ -375,11 +382,19 @@ Agents pass structured artifacts through a defined pipeline. Each role transform
 ```bash
 thread="sop-$(date +%s)"
 
-# PM writes user stories
-launch_out=$(hcom 1 claude --tag pm --go --headless \
-  --hcom-system-prompt "You are a product manager. Write clear user stories with acceptance criteria." \
-  --hcom-prompt "Requirement: ${task}. Write user stories. Send: hcom send \"@arch-\" --thread ${thread} --intent request -- \"STORIES: <user stories with acceptance criteria>\". Stop." 2>&1)
+# Launch downstream recipients first so each sender has a live target.
+
+# QA tests
+launch_out=$(hcom 1 claude --tag qa --go --headless \
+  --hcom-prompt "Wait for CODE from @eng-. Read transcript: hcom transcript @eng- --full --detailed $name_arg. Write and run tests. Send: hcom send --thread ${thread} --intent inform -- \"QA: pass/fail <report>\". Stop." 2>&1)
 track_launch "$launch_out"
+
+# Engineer implements
+launch_out=$(hcom 1 codex --tag eng --go --headless \
+  --hcom-prompt "Wait for DESIGN from @arch-. Implement the code. Send: hcom send \"@qa-\" --thread ${thread} --intent request -- \"CODE: <implementation summary>\". Stop." 2>&1)
+track_launch "$launch_out"
+eng=$(echo "$launch_out" | grep '^Names: ' | sed 's/^Names: //' | tr -d ' ')
+hcom events --wait 30 --idle "$eng" $name_arg >/dev/null 2>&1
 
 # Architect designs system
 launch_out=$(hcom 1 claude --tag arch --go --headless \
@@ -387,14 +402,10 @@ launch_out=$(hcom 1 claude --tag arch --go --headless \
   --hcom-prompt "Wait for STORIES from @pm-. Design system architecture. Send: hcom send \"@eng-\" --thread ${thread} --intent request -- \"DESIGN: <architecture with component diagram and API spec>\". Stop." 2>&1)
 track_launch "$launch_out"
 
-# Engineer implements
-launch_out=$(hcom 1 codex --tag eng --go --headless \
-  --hcom-prompt "Wait for DESIGN from @arch-. Implement the code. Send: hcom send \"@qa-\" --thread ${thread} --intent request -- \"CODE: <implementation summary>\". Stop." 2>&1)
-track_launch "$launch_out"
-
-# QA tests
-launch_out=$(hcom 1 claude --tag qa --go --headless \
-  --hcom-prompt "Wait for CODE from @eng-. Read transcript: hcom transcript @eng- --full --detailed $name_arg. Write and run tests. Send: hcom send --thread ${thread} --intent inform -- \"QA: pass/fail <report>\". Stop." 2>&1)
+# PM writes user stories
+launch_out=$(hcom 1 claude --tag pm --go --headless \
+  --hcom-system-prompt "You are a product manager. Write clear user stories with acceptance criteria." \
+  --hcom-prompt "Requirement: ${task}. Write user stories. Send: hcom send \"@arch-\" --thread ${thread} --intent request -- \"STORIES: <user stories with acceptance criteria>\". Stop." 2>&1)
 track_launch "$launch_out"
 ```
 

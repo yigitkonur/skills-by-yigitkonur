@@ -18,16 +18,32 @@ Use this skill when the user is changing a real Supastarter monorepo and the ans
 ## Do not use this skill for
 
 - generic TypeScript quality work with no Supastarter-specific patterns; use `develop-typescript`
-- pull request review or audit-only work; use `review-pr`
+- pull request review or review-only work; use `review-pr`
 - framework-agnostic Next.js advice that ignores this repo's routing, guards, and package boundaries
 
 ## Core operating rule
 
 Classify the request first. Find the owning surface before editing. Read the smallest matching reference bundle. Copy the existing repo pattern. Expand only when the current reference cannot answer the next decision.
 
+## Repo-fit preflight
+
+This skill only applies to a real Supastarter monorepo. Before following the workflow, verify the canonical boundaries exist:
+
+```bash
+[ -d apps/web/app ] && \
+[ -d apps/web/modules ] && \
+[ -d packages/api/modules ] && \
+[ -d packages/database ]
+```
+
+Success signal: all four directories exist and the repo layout matches the ownership model in this skill.
+
+If the check fails, stop. Do not improvise generic Next.js or SaaS structure under this skill. Redirect to a more general framework skill or ask for the actual Supastarter repo.
+
 ## Default workflow
 
 1. **Classify the change before reading broadly.**
+   - confirm the repo-fit preflight passed before classifying
    - routing or page placement
    - API or backend procedure
    - auth, session, onboarding, or organizations
@@ -52,10 +68,14 @@ Classify the request first. Find the owning surface before editing. Read the sma
 
    For composite tasks, identify the **primary owner** (the package other packages import from) and the **secondary wiring points**. Example: for "add org-scoped CRUD," primary owner is `packages/database` (schema), secondary wiring goes through `packages/api/modules` (procedures) then `apps/web/app` (pages).
 
+   If the repo-fit preflight passed but one of these canonical boundaries or anchor files is still missing, treat that as repo drift or a different Supastarter version. Re-read `references/setup/monorepo-structure.md`, confirm the actual repo layout, and stop instead of inventing alternate top-level paths under this skill.
+
    > ⚠️ **Steering:** Composite tasks touch 4+ boundaries. Always identify primary vs secondary so you change the primary owner first and avoid backtracking.
 
 3. **Start with the smallest relevant reference bundle.**
    Begin with the task guide or hub in the table below, then follow the related-reference links from that file instead of scanning the whole tree.
+
+   For the smallest full-stack task ("one SaaS page + one backend procedure" with no schema, auth, billing, or storage changes), start with exactly these four files: `references/tasks/add-api-endpoint.md`, `references/tasks/add-saas-page.md`, `references/cheatsheets/file-locations.md`, and `references/setup/monorepo-structure.md`. Only add database, auth, billing, or storage bundles when the request explicitly changes those layers.
 
    If your task spans multiple rows, read task guides in the dependency order from step 4: data files first → API second → page/config last. This ensures each bundle's context builds on the previous one.
 
@@ -99,7 +119,7 @@ Classify the request first. Find the owning surface before editing. Read the sma
 - Onboarding, organization creation, and plan selection are helper pages outside `/app` on purpose.
 - Organization-scoped pages live under `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/`.
 
-> ⚠️ **Steering:** Org-scoped pages use a `(organizations)` route group: `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/<page>/page.tsx`. Omitting `(organizations)` creates the file in a path that silently never renders — no error, no redirect, just blank. This was the single most critical bug found in testing.
+> ⚠️ **Steering:** Org-scoped pages use a `(organizations)` route group: `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/<page>/page.tsx`. Omitting `(organizations)` creates the file in a path that silently never renders — no error, no redirect, just blank.
 
 **Do this, not that:**
 - Put public pages in the marketing tree; do not drop them into the SaaS group because they need a session-aware navbar.
@@ -171,9 +191,7 @@ Classify the request first. Find the owning surface before editing. Read the sma
 
 > **Deeper references:** `references/setup/import-conventions.md` · `references/setup/next-config.md` · `references/setup/tooling-biome.md` · `references/conventions/naming.md` · `references/conventions/typescript-patterns.md` · `references/conventions/component-patterns.md` · `references/conventions/code-review-checklist.md`
 
-## Common mistakes from real testing
-
-These errors were found during literal execution of this skill on a real org-scoped CRUD task. Each one caused time loss or silent failure.
+## Common mistakes
 
 | Mistake | What happens | Fix |
 |---------|-------------|-----|
@@ -189,6 +207,7 @@ These errors were found during literal execution of this skill on a real org-sco
 | Task | Start here |
 |---|---|
 | Repo orientation, package ownership, file placement, config switches | `references/README.md`, `references/setup/monorepo-structure.md`, `references/cheatsheets/file-locations.md`, `references/setup/config-feature-flags.md` |
+| Small end-to-end feature (SaaS page + backend procedure) | `references/tasks/add-api-endpoint.md`, `references/tasks/add-saas-page.md`, `references/cheatsheets/file-locations.md`, `references/setup/monorepo-structure.md` |
 | New protected SaaS page or dashboard route | `references/tasks/add-saas-page.md`, `references/routing/routing-saas.md`, `references/routing/access-guards.md` |
 | New marketing or content page | `references/tasks/add-marketing-page.md`, `references/routing/routing-marketing.md`, `references/i18n/locale-routing.md`, `references/marketing/pages.md`, `references/marketing/content-collections.md`, `references/marketing/home-page-components.md` |
 | New API procedure or backend change | `references/tasks/add-api-endpoint.md`, `references/api/procedure-tiers.md`, `references/api/root-router.md`, `references/database/query-patterns.md` |

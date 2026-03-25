@@ -1,6 +1,6 @@
 # Logging & Tracing — CrabNebula DevTools
 
-> ⚠️ **Steering:** This is the most commonly needed reference during debugging. Key rule: NEVER use `println!()` for debugging in Tauri apps. `println!()` output goes to stdout and is INVISIBLE to DevTools. Always use `tracing::info!()`, `tracing::debug!()`, etc. In derailment testing, agents used `println!()` and then concluded their code wasn't executing because no output appeared in DevTools.
+> ⚠️ **Steering:** This is the most commonly needed reference during debugging. Key rule: NEVER use `println!()` for debugging in Tauri apps. `println!()` output goes to stdout and is INVISIBLE to DevTools. Always use `tracing::info!()`, `tracing::debug!()`, etc.
 
 ## How DevTools Captures Logs
 
@@ -157,7 +157,7 @@ logging system was already initialized")
 
 ### The Solution: split() Pattern
 
-> ⚠️ **Steering:** If your project uses `tauri-plugin-log`, you MUST use the `split()/attach_logger()` pattern (Pattern 2 in installation-and-config.md). Agents in testing tried to: (a) remove tauri-plugin-log (broke existing features), (b) initialize both independently (got PluginInitialization error), (c) use a custom subscriber bridge (unnecessary complexity). The split pattern is the only supported approach.
+> ⚠️ **Steering:** If your project uses `tauri-plugin-log`, you MUST use the `split()/attach_logger()` pattern (Pattern 2 in installation-and-config.md). The split pattern is the only supported approach.
 
 ```rust
 tauri::Builder::default()
@@ -248,4 +248,4 @@ Before adding any tracing instrumentation, verify these dependencies in `Cargo.t
 | Custom subscriber layers | `tracing-subscriber = "0.3"` |
 | Log crate bridging | `tracing-log = "0.2"` (usually handled by DevTools) |
 
-> ⚠️ **Steering:** Missing the `tracing` dependency was the #2 most common agent error in derailment testing (after skipping DevTools installation check). Always verify before instrumenting.
+> ⚠️ **Steering:** Always verify the `tracing` dependency before instrumenting.

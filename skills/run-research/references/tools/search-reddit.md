@@ -1,8 +1,10 @@
-# search_reddit — Community Signal Discovery
+# search_reddit / mcp__research_powerpack__search_reddit — Community Signal Discovery
 
 ## What It Does
 
 Runs 3–50 parallel Reddit searches. Returns post titles and URLs sorted by relevance. Surfaces real practitioner experiences, war stories, failure reports, and unfiltered opinions that official documentation never contains.
+
+The skill shorthand is `search_reddit`. In Codex, call the wrapper `mcp__research_powerpack__search_reddit`.
 
 ## Parameters
 
@@ -12,6 +14,8 @@ Runs 3–50 parallel Reddit searches. Returns post titles and URLs sorted by rel
 | `date_after` | `string` | No | — | Filter for posts after this date (YYYY-MM-DD). |
 
 Supports operators: `intitle:`, `"exact phrase"`, `OR`, `-exclude`. Auto-adds `site:reddit.com`.
+
+Focused workflows usually use 5-8 queries. Broad comparisons or landscape scans can justify 8-12. Use exactly 3 only for quick escalation branches where Reddit is a secondary signal.
 
 ## Token Budget
 
@@ -31,8 +35,8 @@ Supports operators: `intitle:`, `"exact phrase"`, `OR`, `-exclude`. Auto-adds `s
 
 - When you need page content from non-Reddit sources → `search_google`
 - When you need the full comment threads → follow up with `fetch_reddit`
-- For finding official documentation → `search_google` + `scrape_pages`
-- For questions with definitive technical answers → `deep_research`
+- For finding official documentation or resolving a definitive technical claim → `search_google` + `scrape_pages`
+- When community signal is irrelevant to the decision → skip Reddit entirely
 
 ## Query Formulation Rules
 
@@ -149,7 +153,7 @@ Quick sentiment check before deeper research.
 | Not using date_after | Gets outdated advice for fast-moving tech | Filter for recent posts when relevance depends on recency |
 | Stopping at search_reddit | Titles don't contain full analysis | Follow up with fetch_reddit for comment threads |
 | Single subreddit focus | Echo chamber effect — biased results | Target 2-3 different subreddits per topic |
-| Too few queries | Misses important angles | Use 5-7 queries covering different categories |
+| Too few queries | Misses important angles | Use at least 3 queries; use 5-8 for focused tasks and 8-12 for broad scans |
 | Generic queries | Returns low-relevance results | Use specific tool/library names and technical terms |
 
 ## Query Examples
@@ -225,4 +229,6 @@ At least 25% of queries should be negative: `"regret switching to [X]"`, `"probl
 7. `r/nextjs websocket server component 2025` -- framework-specific
 8. `"managed websocket" vs "self-hosted"` -- architecture
 
-### Query count: 8-12 recommended (80-120 posts)
+### Query count
+
+5-8 queries is the standard range for focused research. Use 8-12 only for broad comparisons or landscape scans. Use 3 only for quick escalation branches where Reddit is clearly secondary.

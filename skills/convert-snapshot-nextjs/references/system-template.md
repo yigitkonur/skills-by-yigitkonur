@@ -19,7 +19,7 @@ Before Wave 3 begins, the following must exist:
 
 ## 1. Next.js Project Structure
 
-The scaffold creates a standard Next.js App Router project. Every folder and file has a specific purpose. Nothing is optional.
+The scaffold creates a standard Next.js App Router project. Every folder and file class has a specific purpose. The scaffold shape is fixed, but individual shared component files are created only when Wave 1/2 evidence proves they exist or a minimal unstyled wrapper is required to express extracted layout.
 
 ```
 nextjs-project/
@@ -33,17 +33,17 @@ nextjs-project/
 │
 ├── components/
 │   ├── shared/                        # Shared components from Wave 1 inventory
-│   │   ├── Button.tsx
-│   │   ├── NavLink.tsx
-│   │   ├── SectionWrapper.tsx
+│   │   ├── Button.tsx                 # Only if a button primitive is grounded in source
+│   │   ├── NavLink.tsx                # Only if nav links are shared
+│   │   ├── SectionWrapper.tsx         # Allowed as an unstyled layout wrapper when needed
 │   │   ├── Header.tsx                 # Shared header (marked SHARED in Wave 2)
-│   │   ├── Footer.tsx                 # Shared footer
-│   │   ├── Badge.tsx                  # Tag/badge component
-│   │   ├── Card.tsx                   # Generic card shell
-│   │   ├── Container.tsx              # Max-width + padding wrapper
-│   │   ├── GradientText.tsx           # Gradient text effect (if found in source)
-│   │   ├── Icon.tsx                   # SVG icon wrapper
-│   │   └── index.ts                   # Barrel export for all shared components
+│   │   ├── Footer.tsx                 # Shared footer (if present in source)
+│   │   ├── Badge.tsx                  # Only if badge/tag treatment exists
+│   │   ├── Card.tsx                   # Only if card shell is a real repeated primitive
+│   │   ├── Container.tsx              # Allowed as an unstyled max-width wrapper when needed
+│   │   ├── GradientText.tsx           # Only if gradient text is grounded in source
+│   │   ├── Icon.tsx                   # Only if icon wrapper semantics are needed
+│   │   └── index.ts                   # Export only the files that actually exist
 │   └── pages/                         # Page-specific components (built in Wave 4)
 │       ├── homepage/
 │       ├── pricing/
@@ -94,25 +94,30 @@ Every stub MUST use tokens from the design system so `npm run build` validates t
 
 ### Package.json Dependencies (HARD LIMIT)
 
+Use one internally compatible version set. Do not independently pin every package to `latest`. The safest path is to start from one fresh Next.js App Router scaffold for the chosen Next major, then prune every package outside the allowlist below.
+
 ```json
 {
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "next": "<current-compatible-next>",
+    "react": "<matching-react>",
+    "react-dom": "<matching-react-dom>"
   },
   "devDependencies": {
-    "typescript": "latest",
-    "tailwindcss": "^3",
-    "@types/react": "latest",
-    "@types/node": "latest",
-    "postcss": "latest",
-    "autoprefixer": "latest"
+    "typescript": "<next-compatible-typescript>",
+    "tailwindcss": "<current-tailwind-3-compatible>",
+    "@types/react": "<matching-react-types>",
+    "@types/react-dom": "<matching-react-dom-types>",
+    "@types/node": "<current-node-types>",
+    "postcss": "<current-compatible-postcss>",
+    "autoprefixer": "<current-compatible-autoprefixer>"
   }
 }
 ```
 
 **NO other packages.** No UI libraries (no shadcn, no radix, no headless-ui). No animation libraries (no framer-motion, no gsap). No icon packages (no lucide-react, no heroicons). No font packages (no @fontsource). No utility packages (no clsx — we write our own cn()). If a feature requires a library, implement it with vanilla CSS/JS instead.
+
+If `npx tsc --noEmit` fails because the installed TypeScript version requires an `ignoreDeprecations` setting, add the exact compiler-requested value to `tsconfig.json`. Do not guess a value and do not downgrade the grounding requirements just to silence the compiler.
 
 ---
 
@@ -880,22 +885,22 @@ export function Button({
 }
 ```
 
-### Required Shared Components
+### Shared Component Decision Table
 
-Every component listed below MUST be implemented in Wave 3. The props, variants, and source references come from Wave 1 component inventory and Wave 2 manifest annotations.
+Only implement the components below when the Wave 1 inventory or Wave 2 manifests prove they exist, or when a wrapper is explicitly allowed as a zero-style structural helper. If a listed component is absent from the source, omit the file and record that omission in the Wave 3 traceability matrix instead of inventing visuals.
 
 | Component | File | Props | Variants | Source |
 |-----------|------|-------|----------|--------|
-| Button | `Button.tsx` | variant, size, href, className, children | primary / secondary / ghost × sm / md / lg | Wave 1 component-inventory |
-| Header | `Header.tsx` | transparent?: boolean | standard / transparent | Wave 1 component-inventory |
-| Footer | `Footer.tsx` | — | — | Wave 1 component-inventory |
-| NavLink | `NavLink.tsx` | href, active?: boolean, children | — | Wave 1 component-inventory |
-| SectionWrapper | `SectionWrapper.tsx` | maxWidth?: string, padding?: string, bg?: string, className?, children | — | Pattern analysis |
-| Container | `Container.tsx` | size?: 'default' / 'narrow' / 'wide', className?, children | default / narrow / wide | Pattern analysis |
-| Badge | `Badge.tsx` | variant?: 'default' / 'brand' / 'success', children | color variants | Wave 1 component-inventory |
-| Card | `Card.tsx` | hover?: boolean, className?, children | with/without hover effect | Wave 1 component-inventory |
-| GradientText | `GradientText.tsx` | gradient?: string, as?: keyof JSX.IntrinsicElements, children | — | Pattern analysis (if gradient text found) |
-| Icon | `Icon.tsx` | name: string, size?: 'sm' / 'md' / 'lg', className? | size variants | SVG wrapper utility |
+| Button | `Button.tsx` | variant, size, href, className, children | primary / secondary / ghost × sm / md / lg | Create only if buttons are a shared primitive in Wave 1 inventory |
+| Header | `Header.tsx` | transparent?: boolean | standard / transparent | Create only if Wave 2 marks header as SHARED |
+| Footer | `Footer.tsx` | — | — | Create only if footer is grounded in source |
+| NavLink | `NavLink.tsx` | href, active?: boolean, children | — | Create only if shared nav links exist |
+| SectionWrapper | `SectionWrapper.tsx` | maxWidth?: string, padding?: string, bg?: string, className?, children | — | Allowed structural helper; must stay unstyled except for grounded layout values |
+| Container | `Container.tsx` | size?: 'default' / 'narrow' / 'wide', className?, children | default / narrow / wide | Allowed structural helper; must stay unstyled except for grounded layout values |
+| Badge | `Badge.tsx` | variant?: 'default' / 'brand' / 'success', children | color variants | Create only if badges/tags exist in inventory |
+| Card | `Card.tsx` | hover?: boolean, className?, children | with/without hover effect | Create only if a reusable card shell is grounded in source |
+| GradientText | `GradientText.tsx` | gradient?: string, as?: keyof JSX.IntrinsicElements, children | — | Create only if gradient text exists in source |
+| Icon | `Icon.tsx` | name: string, size?: 'sm' / 'md' / 'lg', className? | size variants | Create only if icon wrapper semantics are needed |
 
 ### Barrel Export
 
@@ -913,19 +918,22 @@ export { GradientText } from './GradientText';
 export { Icon } from './Icon';
 ```
 
+Only export files that were actually created. Do not add empty stubs just to satisfy the table above.
+
 ---
 
 ## 7. Root Layout (app/layout.tsx)
 
-The root layout wires up fonts, global styles, metadata, and the shared Header/Footer that wraps every page.
+The root layout wires up fonts, global styles, metadata, and any optional shared chrome that truly applies across pages.
 
 ```typescript
 // app/layout.tsx
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import '@/styles/animations.css';
-import { Header } from '@/components/shared/Header';
-import { Footer } from '@/components/shared/Footer';
+// Import shared chrome only if Wave 2 marked it SHARED:
+// import { Header } from '@/components/shared/Header';
+// import { Footer } from '@/components/shared/Footer';
 
 export const metadata: Metadata = {
   title: '[Site Name] — [Tagline]',       // From Wave 0 <title> extraction
@@ -941,9 +949,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-body bg-bg-primary text-text-primary antialiased">
-        <Header />
+        {/* Optional shared chrome: render only when those components exist in Wave 3. */}
+        {/* <Header /> */}
         {children}
-        <Footer />
+        {/* <Footer /> */}
       </body>
     </html>
   );
@@ -953,7 +962,7 @@ export default function RootLayout({
 ### Layout Rules:
 - `globals.css` is imported FIRST — it contains @tailwind directives and @font-face.
 - `animations.css` is imported SECOND — it contains @keyframes referenced by animation utilities.
-- Header and Footer wrap all page content. They are the SHARED components from Wave 2.
+- Header and Footer wrap page content only when Wave 2 proves they are SHARED. Do not invent global chrome when the snapshot has page-specific shells or no persistent header/footer.
 - The `<html>` element gets `lang="en"` (or whatever `lang` attribute was found in Wave 0 HTML).
 - The `<body>` element gets base typography and color classes from the design system.
 - Metadata is extracted from Wave 0 HTML `<head>` — title, description, Open Graph tags.
@@ -1026,15 +1035,7 @@ Only after ALL checks above pass, write:
 foundation-ready.signal
 ```
 
-This file contains:
-```
-WAVE_3_COMPLETE=true
-TIMESTAMP=[ISO 8601]
-TOKEN_COUNT=[number of unique tokens in tokens.ts]
-COMPONENT_COUNT=[number of shared components built]
-ROUTE_COUNT=[number of route stubs created]
-BUILD_STATUS=passing
-```
+`foundation-ready.signal` is an empty file. If you need a human-readable completion summary, keep it in `foundation-brief.md` or `traceability-matrix.md`, not in the signal file.
 
 ---
 
@@ -1049,8 +1050,9 @@ This file is the handoff document that every Wave 4 page agent reads before buil
 // How to import tokens (for reference, not direct use — prefer Tailwind classes)
 import { colors, typography, spacing } from '@/lib/tokens';
 
-// How to import shared components
-import { Button, SectionWrapper, Container, Badge } from '@/components/shared';
+// Import only the shared components Wave 3 actually created.
+// Example:
+// import { Button, SectionWrapper, Container, Badge } from '@/components/shared';
 
 // How to import animation utilities
 import { useScrollAnimation, useStaggerAnimation } from '@/lib/animations';
@@ -1096,7 +1098,7 @@ const ref = useStaggerAnimation(100);
 **5. Image Strategy**
 - All images go in `public/assets/images/[page-name]/`
 - Reference as `/assets/images/[page-name]/filename.ext`
-- Use native `<img>` or Next.js `<Image>` component
+- Use Next.js `<Image>` for raster assets by default; fall back to plain `<img>` only when the brief explicitly requires it, and keep icons as inline SVG or local SVG assets
 - Provide `width`, `height`, and `alt` on every image
 
 **6. Page Structure Convention**
@@ -1105,12 +1107,17 @@ Every page follows this skeleton:
 export default function PageName() {
   return (
     <main>
-      <SectionWrapper bg="bg-bg-primary" padding="section-lg">
-        {/* Section content */}
-      </SectionWrapper>
-      <SectionWrapper bg="bg-bg-secondary" padding="section-md">
-        {/* Next section */}
-      </SectionWrapper>
+      {/* Use SectionWrapper only if Wave 3 created it. Otherwise put the grounded classes directly on the section. */}
+      <section className="bg-bg-primary py-section-lg">
+        <div className="mx-auto max-w-container px-container">
+          {/* Section content */}
+        </div>
+      </section>
+      <section className="bg-bg-secondary py-section-md">
+        <div className="mx-auto max-w-container px-container">
+          {/* Next section */}
+        </div>
+      </section>
     </main>
   );
 }
@@ -1208,11 +1215,11 @@ When Wave 3 completes, these files MUST exist. No exceptions.
 | `postcss.config.js` | PostCSS with Tailwind + autoprefixer | Section 1 |
 | `styles/globals.css` | Font-face + CSS vars + Tailwind directives | Section 4 |
 | `styles/animations.css` | @keyframes + animation utilities | Section 5 |
-| `app/layout.tsx` | Root layout with Header/Footer | Section 7 |
+| `app/layout.tsx` | Root layout with globals + optional shared chrome | Section 7 |
 | `app/page.tsx` | Homepage route stub | Section 1 |
 | `app/[route]/page.tsx` | One stub per Wave 2 page | Section 1 |
-| `components/shared/*.tsx` | All shared components | Section 6 |
-| `components/shared/index.ts` | Barrel export | Section 6 |
+| `components/shared/*.tsx` | All grounded shared components | Section 6 |
+| `components/shared/index.ts` | Barrel export for created shared components | Section 6 |
 | `package.json` | Only allowed deps | Section 1 |
 | `tsconfig.json` | strict: true, path aliases | Section 1 |
 | `next.config.js` | Minimal Next.js config | Section 1 |
@@ -1280,6 +1287,8 @@ No other PostCSS plugins. No nesting plugin (use Tailwind's built-in support if 
 
 The `@/*` path alias is mandatory — all imports use it (`@/lib/tokens`, `@/components/shared`).
 
+If the installed TypeScript version requires `ignoreDeprecations`, add only the exact value requested by the compiler. Keep the rest of the config minimal.
+
 ## Appendix C: next.config.js
 
 ```javascript
@@ -1297,7 +1306,7 @@ No image domains (all assets are local). No rewrites. No headers. Keep it minima
 
 ## Appendix D: SectionWrapper Pattern
 
-The `SectionWrapper` is the most-used shared component. It provides consistent section spacing, max-width containment, and background color control.
+`SectionWrapper` is an optional structural helper. Use it only when Wave 3 intentionally creates it to express grounded section spacing and containment. Do not force every section through it if the page is clearer without the wrapper.
 
 ```typescript
 // components/shared/SectionWrapper.tsx
@@ -1328,9 +1337,11 @@ export function SectionWrapper({
 }
 ```
 
-Every Wave 4 section uses `SectionWrapper` as its outer container. This ensures consistent spacing and containment across all pages without repetition.
+Wave 4 may use `SectionWrapper` when it matches the extracted layout. Otherwise, place the same grounded classes directly on the section markup. Keep the defaults above only when those values are genuinely shared across the snapshot; if not, require explicit props.
 
 ## Appendix E: Header / Footer Pattern
+
+Use these patterns only when the source proves a shared header, footer, or nav primitive exists. If the snapshot uses page-specific chrome, keep those pieces page-local instead of creating global shared components.
 
 ### Header
 
@@ -1366,16 +1377,15 @@ export function Header({ transparent = false }: HeaderProps) {
 
         {/* Navigation links — from Wave 2 manifest */}
         <nav className="hidden md:flex items-center gap-6">
-          <NavLink href="/features">Features</NavLink>
-          <NavLink href="/pricing">Pricing</NavLink>
-          <NavLink href="/about">About</NavLink>
-          {/* ... links from Wave 2 routing map */}
+          {/* <NavLink href="/route-from-wave2">Label from source</NavLink> */}
+          {/* Repeat only for links proven by Wave 2 route/navigation docs */}
         </nav>
       </div>
 
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" href="/login">Log in</Button>
-        <Button variant="primary" size="sm" href="/signup">Sign up</Button>
+        {/* Optional action buttons from the source header */}
+        {/* <Button variant="ghost" size="sm" href="/source-action">Action</Button> */}
+        {/* <Button variant="primary" size="sm" href="/source-action">Primary Action</Button> */}
       </div>
     </header>
   );
@@ -1397,12 +1407,11 @@ export function Footer() {
           {/* Column groups — from Wave 2 footer manifest */}
           <div>
             <h4 className="text-caption font-semibold text-text-primary uppercase tracking-wider mb-4">
-              Product
+              [Column Heading]
             </h4>
             <ul className="space-y-2">
-              <li><NavLink href="/features">Features</NavLink></li>
-              <li><NavLink href="/pricing">Pricing</NavLink></li>
-              {/* ... */}
+              {/* <li><NavLink href="/route-from-wave2">Link label from source</NavLink></li> */}
+              {/* Repeat for grounded footer links only */}
             </ul>
           </div>
           {/* ... additional columns ... */}

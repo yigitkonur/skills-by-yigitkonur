@@ -336,7 +336,7 @@ If missing, check `references/remote-sources.md` for installation instructions. 
 
 ---
 
-## Post-build audit checklist
+## Post-build verification checklist
 
 After completing a skill build or revision, verify all of the following before finalizing:
 
@@ -352,4 +352,4 @@ If any answer is "no," address it before finalizing.
 
 ---
 
-> **Steering tip:** When diagnosing trigger issues, distinguish between "skill not loaded" (installation problem) and "skill loaded but didn't activate" (description problem). For new skills, verify installation first — see `references/authoring/testing-methodology.md` for creation vs. revision testing paths.
+> Tip: When diagnosing trigger issues, distinguish between "skill not loaded" (installation problem) and "skill loaded but didn't activate" (description problem). For new skills, verify installation first — see `references/authoring/testing-methodology.md` for creation vs. revision testing paths.

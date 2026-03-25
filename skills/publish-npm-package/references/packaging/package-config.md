@@ -133,6 +133,23 @@ npm pack && tar -tf my-package-1.0.0.tgz   # create and inspect tarball
 
 **Common mistake:** forgetting type declarations. If `.d.ts` files are in a separate directory, include it: `"files": ["dist", "typings"]`. Better: configure your build to co-locate `.d.ts` next to `.js` in `dist/`.
 
+### Resolve `src/` vs `dist/` Before Touching CI/CD
+
+If `npm pack --dry-run` includes `src/` files but `main`, `module`, `types`, or
+`exports` point at `dist/`, stop and fix the package shape first. A release
+workflow cannot repair a tarball that points at files it does not publish.
+
+Choose one package shape and make the tarball match it:
+
+1. **Built artifact package**: add or fix the build step, publish `dist/`, and
+   point `main` / `types` / `exports` at files that actually exist in `dist/`.
+2. **Source package**: only for packages that intentionally ship source. Publish
+   `src/` (or root JS files) and change `main` / `types` / `exports` to those
+   shipped paths instead of `dist/`.
+
+Do **not** mix the two. `exports: "./dist/index.js"` plus a tarball that only
+contains `src/index.ts` is a broken package.
+
 ---
 
 ## 3. `.npmignore` vs `files` Field

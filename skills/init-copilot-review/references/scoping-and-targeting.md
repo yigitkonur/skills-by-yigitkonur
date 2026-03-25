@@ -48,6 +48,8 @@ Requirements:
 
 **Note:** The glob follows GitHub's standard path globbing (same syntax as CODEOWNERS). Regular expressions are NOT supported.
 
+**Local validation note:** `find -path` is not a faithful validator for every GitHub glob, especially brace expansion like `{ts,tsx}`. Use Python globbing or another brace-aware matcher when checking `applyTo` locally.
+
 ---
 
 ## Common Glob Patterns
@@ -512,7 +514,21 @@ For each file type with more than 10 files, confirm one of:
 
 ```bash
 # For each instruction file, count how many repo files match its glob
-find . -path "./<applyTo-pattern>" -type f | wc -l
+python3 - <<'PY'
+from glob import glob
+def expand_braces(pattern):
+    if '{' not in pattern:
+        return [pattern]
+    start = pattern.index('{')
+    end = pattern.index('}', start)
+    options = pattern[start + 1:end].split(',')
+    expanded = []
+    for option in options:
+        expanded.extend(expand_braces(pattern[:start] + option + pattern[end + 1:]))
+    return expanded
+pattern = "<applyTo-pattern>"
+print(len({path for candidate in expand_braces(pattern) for path in glob(candidate, recursive=True)}))
+PY
 
 # Compare against total files of that type
 find . -name "*.ts" -type f | wc -l

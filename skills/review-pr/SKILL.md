@@ -1,11 +1,11 @@
 ---
 name: review-pr
-description: Use skill if you are reviewing a GitHub pull request or branch diff for merge readiness and need high-signal findings grounded in PR goals, changed-file clusters, and existing review threads.
+description: Use skill if you are reviewing a GitHub pull request or local branch diff for merge readiness and need high-signal findings grounded in stated goals, changed-file clusters, and existing review state when available.
 ---
 
 # Review PR
 
-High-signal pull request review for GitHub. Read the PR as a change proposal, not a pile of files. Prioritize goal achievement, correctness, security, data safety, contract compatibility, and merge risk. Avoid style policing, speculative architecture feedback, and shallow summaries with no evidence.
+High-signal pull request and branch diff review. Read the change as a proposal, not a pile of files. Prioritize goal achievement, correctness, security, data safety, contract compatibility, and merge risk. Avoid style policing, speculative architecture feedback, and shallow summaries with no evidence.
 
 ## Trigger
 
@@ -39,10 +39,28 @@ Follow these phases in order. Load `references/review-workflow.md` for detailed 
 
 > **Tool access:** Examples below use `gh` CLI syntax. If you have GitHub MCP server tools available (e.g. `pull_request_read`, `get_file_contents`, `issue_read`), prefer those — they return the same data without shell access. See `references/gh-cli-reference.md` for the MCP equivalents table.
 
+### Review target modes
+
+| Mode | Required target | Context available |
+|---|---|---|
+| GitHub PR mode | PR number/URL + repo | PR body, issues, CI, review threads, bot comments |
+| Local diff mode | Local git repo + base/head refs or explicit working-tree diff | commit history, diff, file context; PR body/CI/review threads may be unavailable |
+
+Use local diff mode only when the user explicitly asks for a diff/branch review and no GitHub PR target exists.
+
+Before leaving triage, name the exact comparison target you are reviewing:
+- `owner/repo#123`
+- `origin/main...HEAD`
+- `main...feature-branch`
+- `HEAD + staged + unstaged`
+
+If you cannot name the comparison target in one line, stop and ask before reviewing code.
+
 ### Phase 1 — Triage the review request
 
 First identify:
 - PR number, URL, branch, and repo
+- for local diff mode: repo root, base ref, head ref (or working tree vs base), and whether the user wants staged/unstaged changes included
 - whether the user wants a full review or a targeted pass
 - whether the PR is draft or ready
 - whether the task is merge-readiness, security-only, performance-only, or general review
@@ -52,7 +70,8 @@ If no review type is specified, default to **general merge-readiness review**.
 **Decision rules**
 - Draft PR with no explicit request for deep review → stop after a readiness note or limit feedback to high-level concerns.
 - Targeted review request such as security on PR 42 → still do Phases 2 through 4, then go deep only on the requested dimension.
-- No clear repo or PR target → do not begin code review until the target is known.
+- No clear GitHub PR target but a local repo + diff range exists → switch to local diff mode.
+- No clear repo/PR target and no local diff target → do not begin code review until the target is known.
 - PR is a refactor, deprecation, or behavioral change → in Phase 6, weight call-site impact, backwards compatibility, and migration path over net-new bug patterns. In Phase 7, check that all callers of deprecated APIs have been updated or warned.
 
 ### Phase 2 — Gather context before reading code
@@ -70,6 +89,7 @@ Do not start code review before you can explain the goal in plain language.
 
 **Recovery**
 - PR body or linked issue is thin → record a context gap and keep that uncertainty visible in later findings.
+- Local diff mode with no PR body/issues/CI → synthesize intent from the user's request, branch name, and commit history; explicitly state which GitHub-only context is unavailable.
 - CI is failing → note which checks fail, then focus on merge-risk issues the failing checks do not already cover.
 - Lint or format checks are already red → do not repeat machine-catchable style feedback.
 - Security scan failed → escalate its findings and read the scan output before concluding the review.
@@ -111,7 +131,9 @@ Load if needed:
 
 ### Phase 4 — Read existing review state before adding new findings
 
-Fetch:
+If local diff mode has no imported review history, record `Existing review state: unavailable in local diff mode` and continue. Do not fabricate threads, bot findings, or prior reviewer positions.
+
+Fetch when available:
 - formal reviews
 - inline comment threads
 - general PR conversation comments
@@ -129,6 +151,7 @@ Build an already-reviewed map and classify threads as:
 - Bot comments count as prior review state when they already identify the same issue.
 
 **Recovery**
+- User supplied copied comments or exported review notes for a local diff → treat them as prior review state and deduplicate against them.
 - Thread state is unclear → state the uncertainty and avoid confident duplication.
 - Only bots reviewed so far → continue with a full review, but still deduplicate against bot findings.
 - All review feedback is conversation-level (general PR comments, not inline threads) → classify it as strategic discussion; do not try to map it to code lines. Summarize team positions in your output.
@@ -219,7 +242,7 @@ Before finalizing:
 - batch repeated issues into one finding where helpful
 - cut anything speculative, stylistic, or low-value
 - include at least one specific positive observation
-- summarize existing review state
+- summarize existing review state, or explicitly say it is unavailable in local diff mode
 - state which clusters were deep-reviewed versus skimmed
 - note whether tests cover the risky paths you reviewed
 

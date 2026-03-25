@@ -38,13 +38,17 @@ class UserService {
 **Correct (separated command and query handlers):**
 
 ```typescript
+type Result<T, E> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E };
+
 // application/ports/cqrs.ts
 interface Command {
   readonly type: string;
 }
 
-interface CommandHandler<C extends Command> {
-  execute(command: C): Promise<Result<void>>;
+interface CommandHandler<C extends Command, E> {
+  execute(command: C): Promise<Result<void, E>>;
 }
 
 interface QueryHandler<Q, R> {
@@ -59,21 +63,21 @@ interface UpdateUserCommand extends Command {
   readonly email: string;
 }
 
-class UpdateUserCommandHandler implements CommandHandler<UpdateUserCommand> {
+class UpdateUserCommandHandler implements CommandHandler<UpdateUserCommand, 'UserNotFound'> {
   constructor(
     private readonly userRepo: IUserRepository,
     private readonly eventBus: IEventBus,
   ) {}
 
-  async execute(command: UpdateUserCommand): Promise<Result<void>> {
+  async execute(command: UpdateUserCommand): Promise<Result<void, 'UserNotFound'>> {
     const user = await this.userRepo.findById(command.userId);
-    if (!user) return Result.fail('User not found');
+    if (!user) return { ok: false, error: 'UserNotFound' };
 
     user.updateProfile(command.name, command.email);
     await this.userRepo.save(user);
     await this.eventBus.publish(user.pullEvents());
 
-    return Result.ok();  // Commands return void/Result, never data
+    return { ok: true, value: undefined };  // Commands return void/Result, never data
   }
 }
 
@@ -104,10 +108,10 @@ class GetUserQueryHandler implements QueryHandler<GetUserQuery, UserReadModel> {
 
 // application/Dispatcher.ts
 class Dispatcher {
-  private commands = new Map<string, CommandHandler<any>>();
+  private commands = new Map<string, CommandHandler<any, any>>();
   private queries = new Map<string, QueryHandler<any, any>>();
 
-  async dispatch<C extends Command>(command: C): Promise<Result<void>> {
+  async dispatch<C extends Command>(command: C): Promise<Result<void, unknown>> {
     const handler = this.commands.get(command.type);
     if (!handler) throw new Error(`No handler for ${command.type}`);
     return handler.execute(command);

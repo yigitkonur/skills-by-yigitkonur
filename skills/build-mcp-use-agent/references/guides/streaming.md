@@ -37,7 +37,7 @@ When building agentic applications, you often have a choice between waiting for 
 
 The `agent.stream()` method yields `AgentStep` objects. Each step represents one cycle of the agent's loop where a tool is selected and called.
 
-> **Important:** `step.observation` may be populated or empty depending on execution order. The agent tracks tool results internally. When using `for await`, the `observation` field reflects the tool result for that step. When manually calling `.next()`, the `observation` field on yielded steps may be empty; only the generator's return value (when `done === true`) contains the final string result.
+> **Important:** In the current published TypeScript package, yielded steps use `observation: ""` as a placeholder. Tool results are tracked internally and the final generator return value (`done === true`) contains the final string result. If you need live tool-result payloads, use `streamEvents()`.
 
 ### Type Definition
 
@@ -65,10 +65,9 @@ export interface AgentStep {
   };
 
   /**
-   * The output returned by the tool execution.
-   * May be populated when using for-await iteration.
-   * When manually calling .next(), only the generator return value
-   * (done === true, value = final string) contains the complete result.
+   * Placeholder for tool output in the yielded step object.
+   * The current package yields an empty string here and keeps tool
+   * results inside the agent/event stream instead.
    */
   observation: string;
 }
@@ -141,10 +140,9 @@ async function stepStreamingExample() {
   console.log('Agent is working...')
   console.log('-'.repeat(50))
 
-  for await (const step of agent.stream('Search for the latest Python news and summarize it')) {
+  for await (const step of agent.stream({ prompt: 'Search for the latest Python news and summarize it' })) {
     console.log(`\nTool: ${step.action.tool}`)
     console.log(`Input: ${JSON.stringify(step.action.toolInput)}`)
-    console.log(`Output: ${step.observation}`)
   }
 
   console.log('\nDone!')
@@ -292,16 +290,20 @@ for await (const event of agent.streamEvents(prompt)) {
 
 For command-line tools, `mcp-use` includes a built-in formatter that pretty-prints the event stream with ANSI colors and syntax highlighting. This is the fastest way to get professional-looking CLI output without writing your own formatter.
 
-This method always accepts an **options object** (unlike `stream()` and `streamEvents()`, there is no plain string form).
+This method accepts either a **plain string prompt** (deprecated but supported) or a **`RunOptions` object**. Prefer the options-object form so you can add `schema`, `maxSteps`, or `signal` without rewriting the call site.
 
 ### Signature
 
 ```typescript
+// Options object form (preferred)
 agent.prettyStreamEvents(options: {
   prompt: string
   maxSteps?: number
   schema?: ZodSchema<T>  // Optional: for structured output
 }): AsyncGenerator<void, string, void>
+
+// Plain string form (deprecated but still works)
+agent.prettyStreamEvents(prompt: string): AsyncGenerator<void, string, void>
 ```
 
 ### Usage
@@ -498,8 +500,8 @@ Streaming is essential for creating high-quality, responsive AI experiences.
 
 - Use **`stream(prompt)`** or **`stream({ prompt, ... })`** for step-level visibility — see which tools are called and with what inputs. The generator return value (when `done === true`) is the final string result.
 - Use **`streamEvents(prompt)`** or **`streamEvents({ prompt, schema? })`** for token-level streaming and chat interfaces. Always check both `chunk.text` (Anthropic) and `chunk.content` (OpenAI) for compatibility.
-- Use **`prettyStreamEvents({ prompt })`** for CLI tools with zero-config formatting. This method only accepts an options object.
-- `stream()` and `streamEvents()` accept either a **plain string** (deprecated) or an **options object** `{ prompt, maxSteps?, schema?, signal? }`. `prettyStreamEvents()` always takes an **options object**.
+- Use **`prettyStreamEvents({ prompt })`** for CLI tools with zero-config formatting. `prettyStreamEvents("prompt")` still works, but the object form is the preferred shape.
+- `stream()`, `streamEvents()`, and `prettyStreamEvents()` all accept either a **plain string** (deprecated) or an **options object** `{ prompt, maxSteps?, schema?, signal? }`.
 - All three streaming methods return `AsyncGenerator` instances — not `AsyncIterable`. You can use `for await` or call `.next()` manually.
 - Always implement **error handling** with try/catch around streaming loops.
 - For the full event type reference, see the [LangChain JavaScript streaming documentation](https://js.langchain.com/docs/how_to/streaming/).

@@ -31,25 +31,36 @@ Verify `skill-dl` is installed before doing anything else.
 skill-dl --version
 ```
 
-If missing, install:
+If `skill-dl --version` succeeds, continue. If it is missing, install with a saved-and-inspected installer, then verify again. On macOS, if `bash --version` is 3.x, install a newer Bash first with `brew install bash`.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh -o /tmp/install-skill-dl.sh
+sed -n '1,160p' /tmp/install-skill-dl.sh
+
+# Run one of the next two commands.
+# Linux, or macOS where `bash --version` is already 4+:
+bash /tmp/install-skill-dl.sh
+
+# macOS if `bash --version` is 3.x (the default /bin/bash is 3.2):
+"$(brew --prefix)"/bin/bash /tmp/install-skill-dl.sh
+
+skill-dl --version
 ```
 
-Requirements: Bash 4+, git, curl. No API keys needed — built-in defaults work.
+Installation requirements: `git` plus `curl` or `wget`. The Bash 4+ requirement applies to the installer script, not to using a preinstalled `skill-dl`. No API keys are required for normal searches because `skill-dl` ships with built-in backend defaults. See `references/download-patterns.md` for output layout, batching, and troubleshooting.
 
 ## Workflow
 
 ### 1. Define your search intent
 
-Before running any search, write down:
+Before your first search, read `references/search-strategies.md`, then write down:
 
 - The topic or domain you need skills for
 - Whether you need broad coverage (landscape scan) or targeted matches (specific technique)
 - How the downloaded skills will be used (comparison, evidence, reference)
+- Keywords from at least 3 different angles (technology, domain, activity, pattern, or scope)
 
-This determines keyword strategy. Read `references/search-strategies.md` for keyword formulation rules.
+Keyword diversity matters more than synonyms. This step determines search quality.
 
 ### 2. Search for skills
 
@@ -74,11 +85,12 @@ If the first search returns too many results, add `--min-match 2` or narrow keyw
 
 ### 3. Evaluate results and build a URL list
 
-From the search table, pick candidates based on:
+Shortlist 3-10 URLs using this order:
 
-- **Match count** — more matched keywords means broader relevance
-- **Skill name** — does the name suggest the right scope?
-- **Owner/repo** — recognized authors or repos signal quality
+- **Match count first** — start with skills matching 2+ keywords. If the best results only match 1-2 keywords, treat the topic as niche and curate from the full list.
+- **Scope fit second** — reject skills whose names clearly signal the wrong depth, domain, or task, even if they rank highly.
+- **Diversity third** — prefer distinct repos or workflow angles over near-duplicate skills from one source.
+- **Owner/repo last** — use familiar authors or repos as a tie-breaker, not as the primary signal.
 
 For batch downloads, save selected URLs to a file (one per line, `#` comments allowed):
 
@@ -92,11 +104,15 @@ https://playbooks.com/skills/owner/repo/skill-two
 
 Read `references/download-patterns.md` for the full download reference. Quick patterns:
 
+Default layout: `skill-dl` writes to `<output>/<auto-category>/<owner>--<repo>--<skill>/`. Example: `./corpus/pro-and-review/mcollina--skills--typescript-magician/`. Use `--no-auto-category` for a flat `<output>/<owner>--<repo>--<skill>/` layout, or `-c <name>` to force a single category folder.
+
 **Single skill:**
 
 ```bash
 skill-dl https://playbooks.com/skills/owner/repo/skill-name -o ./corpus
 ```
+
+For 2-4 ad hoc downloads, pass multiple URLs directly in one `skill-dl` command. Use a URL file when you need comments, reuse, or a larger batch.
 
 **Batch from file:**
 
@@ -120,6 +136,8 @@ skill-dl urls.txt --dry-run
 
 After download, inspect what you got. Read `references/corpus-inspection.md` for the full inspection protocol.
 
+Default auto-categorization puts `SKILL.md` one level deeper than flat mode, so the `find ... -maxdepth 3` commands below work for both layouts. If `tree` is unavailable, use `find ./corpus -maxdepth 3 -type d | sort` for a directory view.
+
 Quick inspection:
 
 ```bash
@@ -127,8 +145,8 @@ Quick inspection:
 tree -L 2 ./corpus
 
 # Count skills and references
-find ./corpus -name "SKILL.md" -maxdepth 2 | wc -l
-find ./corpus -name "SKILL.md" -maxdepth 2 | while read f; do
+find ./corpus -name "SKILL.md" -maxdepth 3 | wc -l
+find ./corpus -name "SKILL.md" -maxdepth 3 | while read f; do
   d=$(dirname "$f")
   echo "$(basename "$d"): $(find "$d" -type f | wc -l) files"
 done
@@ -139,14 +157,15 @@ For each high-signal skill:
 1. Read its SKILL.md fully — understand trigger boundary, workflow, decision rules
 2. Tree its `references/` directory — see structure and decomposition
 3. Read the 2-3 most relevant reference files
-4. Note what to inherit and what to avoid
+4. Check `scripts/`, `rules/`, or `examples/` if present
+5. Note what to inherit and what to avoid
 
 ### 6. Use the end-to-end script (optional)
 
-For one-command search-to-inspect, use `skill-research.sh` from the `build-skills` references:
+Only use this if you have the full `skills-by-yigitkonur` repo checked out locally. From the repo root, you can use `skill-research.sh` from the `build-skills` references for one-command search-to-inspect:
 
 ```bash
-bash ../build-skills/references/skill-research.sh "keyword1,keyword2,keyword3" ./corpus 6
+bash skills/build-skills/references/skill-research.sh "keyword1,keyword2,keyword3" ./corpus 6
 ```
 
 This runs all three phases (discovery, download, inspection) with parallel execution.

@@ -94,7 +94,7 @@ pnpm clean                  # Clean all build outputs (dist, .next, etc.)
 **Starting from scratch:**
 ```bash
 docker compose up -d
-cp .env.example .env.local
+cp .env.local.example .env.local
 pnpm install
 pnpm generate && pnpm db:push
 pnpm dev

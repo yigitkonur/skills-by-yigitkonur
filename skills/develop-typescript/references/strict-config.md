@@ -2,6 +2,8 @@
 
 TypeScript compiler configuration for maximum type safety.
 
+The first snippet below is the **bundler-app baseline**. Use the Node.js or library baselines later in this file when they match the project better. Strictness is separate from module mode: keep the correct runtime mode, then tighten the safety flags inside that mode.
+
 ## Recommended `tsconfig.json`
 
 ```json
@@ -74,6 +76,19 @@ TypeScript compiler configuration for maximum type safety.
   }
 }
 ```
+
+### Baseline selection rule
+
+Pick the baseline by runtime, then compare strictness flags within that family:
+
+| Project shape | Baseline |
+|---|---|
+| Vite / webpack / esbuild / Bun app | `moduleResolution: "bundler"` |
+| Node.js ESM app or package | `moduleResolution: "node16"` or `"nodenext"` |
+| Published library | Library baseline in this file |
+
+Do not change module mode just because another example in this file is stricter. Change it only when the runtime/build target changes too.
+In monorepos or solution-style repos, start with the package tsconfig that owns the edited files and then follow its `extends` chain. Do not compare only the root helper config.
 
 ### For library publishing
 
@@ -310,6 +325,18 @@ function internal(x: number) {
 
 **Why**: Enables `tsup`, `oxc`, and `swc` to generate declarations without running the full type checker. Useful for large monorepos where type-checking is slow.
 
+For exported TSX components, use the repo's existing return-type convention. If the codebase has no convention yet, this is the most version-stable explicit form:
+
+```tsx
+import type { ReactElement } from 'react';
+
+export function Toolbar(): ReactElement {
+  return <div>...</div>;
+}
+```
+
+This avoids depending on whether the global `JSX` namespace is available in the current React/TypeScript setup.
+
 ---
 
 ## `isolatedModules`
@@ -540,7 +567,7 @@ Requires `"type": "module"` in package.json.
 | Missing `"type": "module"` in package.json | `.ts` files treated as CJS despite ESM syntax | Add to package.json |
 | `paths` aliases without bundler support | TypeScript resolves, runtime crashes | Configure bundler/loader aliases to match |
 | `strict: false` with individual strict flags | Confusing — some strict checks on, `strict` says off | Set `strict: true`, disable specific flags |
-| `skipLibCheck: true` hiding real errors | Catches nothing from `@types/*` packages | Enable periodically; always on in CI |
+| Assuming `skipLibCheck: true` is enough while debugging dependency types | Third-party declaration regressions stay hidden | Keep it on for normal builds, but temporarily turn it off when investigating `@types/*` conflicts or library publish issues |
 
 ### Legacy `moduleResolution` — only `"node"` is legacy
 
@@ -567,7 +594,7 @@ Only bare `"node"` is legacy. `"node16"` and `"nodenext"` are modern and correct
 | `exactOptionalPropertyTypes` | 4.4 | Distinguishes `undefined` from missing |
 | `moduleResolution: "node16"` | 4.7 | ESM-aware resolution for Node.js |
 | `moduleResolution: "bundler"` | 5.0 | For bundled applications |
-| `verbatimModuleSyntax` | 5.0 | Replaces `isolatedModules` + `preserveValueImports` |
+| `verbatimModuleSyntax` | 5.0 | Replaces `importsNotUsedAsValues` + `preserveValueImports` |
 | `allowImportingTsExtensions` | 5.0 | Allows `.ts` in import specifiers |
 | `rewriteRelativeImportExtensions` | 5.7 | Rewrites `.ts` to `.js` in output |
 | `erasableSyntaxOnly` | 5.8 | Blocks enums, namespaces, parameter properties |

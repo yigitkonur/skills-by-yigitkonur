@@ -132,7 +132,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
 ---
@@ -179,31 +178,33 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
+      core_released: ${{ steps.release.outputs['packages/core--release_created'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with: { token: "${{ secrets.GITHUB_TOKEN }}" }
-  publish:
+  publish-core:
     needs: release-please
-    if: needs.release-please.outputs.releases_created == 'true'
+    if: needs.release-please.outputs.core_released == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20, registry-url: "https://registry.npmjs.org" }
-      - run: npm ci && npm run build --workspaces
-      - name: Publish released packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-        run: |
-          for pkg in packages/*/; do
-            component=$(basename "$pkg")
-            if [ "${{ steps.release.outputs[format('{0}--release_created', env.component)] }}" = "true" ]; then
-              npm publish --workspace="$pkg" --provenance --access public
-            fi
-          done
+      - run: npm ci
+      - run: npm run build --workspace=packages/core --if-present
+      - run: npm test --workspace=packages/core --if-present
+      - run: npm publish --provenance --access public
+        working-directory: packages/core
 ```
+
+Duplicate the `publish-core` job once per releasable workspace (`core`,
+`cli`, `utils`, etc.), changing the exposed output and `working-directory` each
+time. Do **not** try to read `steps.release.outputs` from a different job inside
+one shell loop — pass the outputs through `needs.release-please.outputs` first.
 
 ---
 
@@ -243,7 +244,7 @@ Each package needs its own `.releaserc.json`:
 | **Cross-package bumps** | Automatic via `fixed`/`linked` config | Manual or grouped PRs |
 | **Monorepo support** | Native, first-class | Config-based (`release-please-config.json`) |
 | **PR flow** | "Version Packages" PR auto-created | Release PR per component or grouped |
-| **OIDC provenance** | Via `NPM_CONFIG_PROVENANCE=true` env | Via `--provenance` flag in publish step |
+| **OIDC provenance** | Via `--provenance` or `publishConfig.provenance: true` without npm secrets | Via `--provenance` flag in publish step |
 | **Ecosystem** | Vercel, Turborepo, Radix, Chakra | Google Cloud SDKs, googleapis |
 | **Risk of accidental release** | Low — requires explicit changeset file | Medium — any `fix:`/`feat:` commit triggers |
 | **Best for** | Teams wanting explicit release control | Teams with strict commit conventions |
@@ -393,10 +394,10 @@ jobs:
           version: npx changeset version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 ```
-For token auth instead of OIDC: remove `id-token: write` and rely solely on `NPM_TOKEN`.
+For token auth instead of OIDC: remove `id-token: write` and use the matching
+token workflow template to add `NODE_AUTH_TOKEN` in the publish path.
 
 ---
 

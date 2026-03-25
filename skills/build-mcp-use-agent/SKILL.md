@@ -23,6 +23,8 @@ Run `tree -L 3` or `ls -R` in the user's working directory. Look for signs of an
 
 When you find an existing implementation, deploy four parallel subagents to explore and diagnose it. Each subagent must read the relevant reference files and surface three things: what is correct, what is wrong, and what is missing.
 
+If the runtime cannot spawn subagents, do the same four audits sequentially in the order below and keep the same output contract.
+
 **Subagent 1 — Agent configuration audit**
 Explore: constructor options, initialization mode (explicit vs simplified), LLM choice and provider, `maxSteps` setting, `autoInitialize`, prompt customization.
 Read: `references/guides/agent-configuration.md`, `references/guides/llm-integration.md`
@@ -49,7 +51,7 @@ After all subagents report back:
 
 Check for context: is there an existing application that could benefit from an agent (e.g., an Express server, a CLI tool, a Next.js app)?
 
-**If context exists:** Infer what kind of agent fits and build it. Read `references/guides/quick-start.md` and `references/examples/integration-recipes.md` for the right integration pattern.
+**If context exists:** Infer what kind of agent fits and build it. Read `references/guides/quick-start.md` and `references/examples/integration-recipes.md` for the right integration pattern. If the task is calculator-style and the repo does not already expose calculator tools, use the calculator server section in `references/guides/quick-start.md` before wiring the agent.
 
 **If no context exists:** Ask the user up to 10 questions, each with 5+ concrete options:
 
@@ -66,6 +68,17 @@ Check for context: is there an existing application that could benefit from an a
 
 Then build the agent using the quick start patterns below and the relevant references.
 
+**Fast default for tiny, well-scoped tasks:** if the task is simple and the working directory already makes the choice obvious, skip the long questionnaire and use these defaults unless the repo says otherwise:
+
+- simplified mode
+- `llm: "openai/gpt-4o"`
+- `maxSteps: 10`
+- `memoryEnabled: false`
+- `autoInitialize: true`
+- one clearly relevant MCP server only
+
+Before the first `run()` / `stream()` / `streamEvents()` call, verify the provider key and every MCP server command or URL. Fix missing prerequisites first instead of debugging agent logic against a broken runtime.
+
 ## Reference routing — curiosity-driven
 
 Read these when the situation calls for it. Each trigger tells you *why* you would want that file.
@@ -75,7 +88,7 @@ Read these when the situation calls for it. Each trigger tells you *why* you wou
 | `references/guides/quick-start.md` | Building a first agent, choosing explicit vs simplified mode, creating a chat loop, or wiring an HTTP route. Start here for any greenfield build. |
 | `references/guides/agent-configuration.md` | Choosing between explicit and simplified mode, or wondering what all the constructor options do and their defaults. Has the full `MCPAgentOptions` with accurate defaults (`maxSteps=5`, `autoInitialize=false`, `memoryEnabled=true`). |
 | `references/guides/llm-integration.md` | Selecting a provider, using `"provider/model"` string shortcuts, switching providers at runtime, or validating model capabilities. Covers OpenAI, Anthropic, Google, Groq, and custom adapters. |
-| `references/guides/streaming.md` | Need streaming? There are 3 methods with very different signatures. `stream()` takes a plain string, `streamEvents()` takes a string or options object, `prettyStreamEvents()` always takes an options object. Read this before implementing — getting the signatures wrong is the #1 streaming mistake. |
+| `references/guides/streaming.md` | Need streaming? There are 3 methods with very different signatures. All 3 accept the newer options-object form, and the plain-string overloads remain as deprecated compatibility helpers. Read this before implementing — getting the signatures wrong is the #1 streaming mistake. |
 | `references/guides/structured-output.md` | Structured output with Zod schemas? The return types are `AsyncGenerator`, not `AsyncIterable`. Event payloads use `event.data.output`, not `event.data`. Read this for the correct patterns and the mcp-use-specific events (`on_structured_output`, `on_structured_output_progress`, `on_structured_output_error`). |
 | `references/guides/memory-management.md` | Memory behavior matters in chat loops and multi-turn agents. Covers `memoryEnabled`, `clearConversationHistory()`, `getConversationHistory()`, `externalHistory`, and when to disable memory for stateless jobs. |
 | `references/guides/server-manager.md` | Multiple MCP servers or dynamic activation. Covers `useServerManager: true`, the 5 built-in management tools, runtime server addition, and when NOT to use it. |
@@ -158,10 +171,12 @@ try {
 1. Pick explicit mode if you already have a LangChain model instance or need client options.
 2. Pick simplified mode for compact scripts and server routes.
 3. Set `maxSteps` deliberately — default is 5, which is low for most real tasks.
-4. Use object-form `run({ prompt, ... })` for production code.
-5. Wrap every agent in `try/finally` with `await agent.close()`.
-6. Add streaming only after the non-streaming path works.
-7. Add observability after the response path is stable.
+4. Validate provider env vars and MCP server command/URL before the first execution call.
+5. If `autoInitialize` stays `false`, call `await agent.initialize()` or pre-create sessions before `run()` / `stream()` / `streamEvents()`.
+6. Use object-form `run({ prompt, ... })` for production code.
+7. Wrap every agent in `try/finally` with `await agent.close()`.
+8. Add streaming only after the non-streaming path works.
+9. Add observability after the response path is stable.
 
 ## Core API summary
 
@@ -202,11 +217,11 @@ For the full options table with all defaults, read `references/guides/agent-conf
 
 | Method | Argument | Returns | Best for |
 |---|---|---|---|
-| `stream(prompt)` | plain string only | `AsyncIterable<AgentStep>` | Step-by-step UIs, logs |
-| `streamEvents(prompt)` | string or options object | `AsyncIterable<StreamEvent>` | Token streams, raw events |
-| `prettyStreamEvents(options)` | options object always | `AsyncIterable<void>` | ANSI terminal output |
+| `stream(...)` | string or options object | `AsyncGenerator<AgentStep, string \| T, void>` | Step-by-step UIs, logs |
+| `streamEvents(...)` | string or options object | `AsyncGenerator<StreamEvent, void, void>` | Token streams, raw events |
+| `prettyStreamEvents(...)` | string or options object | `AsyncGenerator<void, string, void>` | ANSI terminal output |
 
-**Critical:** `stream()` takes a plain string only — never pass an object. `streamEvents()` takes either a plain string or `{ prompt, schema?, tags?, metadata?, onStructuredOutput?, ... }` — use the object form for structured output. `prettyStreamEvents()` always takes `{ prompt, maxSteps?, schema?, metadata?, flush?, onComplete?, onError? }`.
+**Critical:** Prefer the options-object form for all three streaming methods: `stream({ prompt, maxSteps?, schema?, signal? })`, `streamEvents({ prompt, ... })`, and `prettyStreamEvents({ prompt, ... })`. The plain-string overloads still work, but they are deprecated compatibility paths.
 
 #### `AgentStep` type reference
 
@@ -231,7 +246,7 @@ import { ChatOpenAI } from "@langchain/openai";
 
 const agent = new MCPAgent({ llm: new ChatOpenAI({ model: "gpt-4o" }), client });
 
-for await (const event of agent.streamEvents("Explain the architecture.")) {
+for await (const event of agent.streamEvents({ prompt: "Explain the architecture." })) {
   if (event.event === "on_chat_model_stream") {
     const text = event.data?.chunk?.text ?? event.data?.chunk?.content;
     if (typeof text === "string") process.stdout.write(text);
@@ -340,9 +355,9 @@ For dynamic server switching and multi-server patterns, read `references/guides/
 3. Close the agent with `await agent.close()` in `try/finally` in every example.
 4. Put secrets in environment variables, never string literals.
 5. Use object-form `run()` in production code and typed flows.
-6. `stream()` accepts a plain string only — never pass an options object.
-7. `streamEvents()` accepts a plain string or an options object — use the object form when passing `schema` or callbacks.
-8. `prettyStreamEvents()` always accepts an options object.
+6. Prefer the options-object form for `stream()`, `streamEvents()`, and `prettyStreamEvents()`; the plain-string overloads still exist but are deprecated.
+7. Use the object form whenever you need `schema`, `maxSteps`, `signal`, or other per-call controls.
+8. `prettyStreamEvents()` also has a deprecated plain-string overload, but the object form is the stable shape to document and extend.
 9. `step.observation` is always empty at yield time — never claim it contains tool output.
 10. Call `flush()` before `close()` in serverless environments.
 11. Langfuse auto-initializes via env vars — do not manually wire `CallbackHandler` unless using a custom endpoint.
@@ -359,7 +374,7 @@ For dynamic server switching and multi-server patterns, read `references/guides/
 |---|---|---|
 | Missing `await agent.close()` | Sessions and sandboxes stay open | `try/finally` in every example |
 | Mixing explicit and simplified mode | Internally inconsistent code | Pick one mode |
-| Passing options object to `stream()` | Wrong signature — string only | `agent.stream("prompt")` |
+| Assuming `stream()` rejects options objects | Published `mcp-use` types accept `RunOptions` | Prefer `agent.stream({ prompt, maxSteps, schema, signal })` |
 | Passing plain string to `streamEvents()` with schema | No way to pass `schema` or callbacks | Use object form: `agent.streamEvents({ prompt, schema })` |
 | Reading `step.observation` during streaming | Always empty at yield time | Log only `step.action.tool` and `step.action.toolInput` |
 | Leaving `maxSteps` at default 5 | Agent stops too early on real tasks | Set explicitly per workload |
@@ -381,8 +396,8 @@ For dynamic server switching and multi-server patterns, read `references/guides/
 | Show complete imports and cleanup | Leave readers guessing about packages or shutdown |
 | Explain defaults when they matter | Present options without operational guidance |
 | Route advanced topics to reference files | Inflate the quick start with every edge case |
-| Pass a plain string to `stream()` | Pass `{ prompt: "..." }` to `stream()` |
-| Pass options object to `streamEvents()` for schema | Pass plain string when you need structured output |
+| Pass `{ prompt: "..." }` to `stream()` | Default to the deprecated plain-string form |
+| Pass options object to `streamEvents()` when you need schema or extensibility | Use plain string when you need structured output or callbacks |
 | Call `flush()` before `close()` in serverless | Skip `flush()` and lose traces |
 | Rely on Langfuse auto-init via env vars | Manually wire `CallbackHandler` for basic tracing |
 | Call `client.closeAllSessions()` when owning client | Leave server processes running |

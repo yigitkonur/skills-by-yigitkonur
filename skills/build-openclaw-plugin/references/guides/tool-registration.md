@@ -51,6 +51,8 @@ Tools can be declared statically in `openclaw.plugin.json`:
 
 Tools can also be registered programmatically in the plugin entry point:
 
+Verify the real SDK import path in the target runtime before copying the example below. The package name shown here is illustrative; some OpenClaw deployments ship the plugin base classes from a monorepo package or private runtime path instead of a public npm package.
+
 ```typescript
 // src/index.ts
 import { Plugin, ToolDefinition } from '@openclaw/sdk';
@@ -129,6 +131,14 @@ Results are ordered by relevance. Empty queries return recent documents.
 5. **Use enums for constrained choices** — gives the model a finite set of valid values
 6. **Provide defaults in descriptions** — e.g., "Maximum results (default: 10)"
 
+## Schema guidance vs runtime validation
+
+The schema helps the model form valid tool calls, but it is not a security boundary.
+
+- Treat `parameters` as guidance for tool selection and argument shape
+- Re-validate and authorize inside the handler before side effects
+- Return an actionable `isError: true` response when input is invalid instead of crashing
+
 ## Tool response format
 
 Tool handlers return a response object with a `content` array:
@@ -190,3 +200,4 @@ Before shipping a tool:
 - [ ] Tool is assigned to an appropriate group
 - [ ] Tool works correctly when called with only required params
 - [ ] Tool handles invalid input gracefully (returns error, does not crash)
+- [ ] Local build resolves the actual OpenClaw SDK imports used by this runtime

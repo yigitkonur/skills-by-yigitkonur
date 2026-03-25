@@ -428,7 +428,7 @@ declare const dogProcessor: Processor<Dog>;
 
 ---
 
-## `satisfies` Operator (5.0+)
+## `satisfies` Operator (4.9+)
 
 Validates an expression against a type without widening its inferred type.
 

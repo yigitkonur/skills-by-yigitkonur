@@ -23,7 +23,7 @@ Each scenario follows the same structure:
 
 **Agent action:** Identify the slow child span. If it's file I/O, switch to async `tokio::fs`. If it's a database query, add indexes or reduce result set size. If no child spans exist, add `#[tracing::instrument]` to internal functions to get more granular timing data.
 
-> ⚠️ **Steering:** In derailment testing, agents skipped adding `#[tracing::instrument]` to internal functions and instead tried to optimize the top-level command handler. Always instrument INTERNAL functions first to find the actual bottleneck before optimizing.
+> ⚠️ **Steering:** Instrument INTERNAL functions first to find the actual bottleneck before optimizing the top-level command handler.
 
 ---
 
@@ -53,7 +53,7 @@ Each scenario follows the same structure:
 
 **Agent action:** Add the missing permission to the appropriate capability file in `src-tauri/capabilities/`. The error message in Console often specifies the needed permission. If it doesn't name the specific permission, use the Common Plugin Permission Identifiers table in `references/plugins/capabilities-and-permissions.md` to find the correct identifier for the failing operation.
 
-> ⚠️ **Steering:** Distinguish between Tauri ACL errors ("not allowed", "capability") and OS-level errors ("os error 13", "Permission denied"). ACL errors need capability file fixes. OS errors need filesystem permission fixes or path changes. Agents frequently confused these in testing.
+> ⚠️ **Steering:** Distinguish between Tauri ACL errors ("not allowed", "capability") and OS-level errors ("os error 13", "Permission denied"). ACL errors need capability file fixes. OS errors need filesystem permission fixes or path changes.
 
 ---
 
@@ -127,7 +127,7 @@ Each scenario follows the same structure:
 
 **Agent action:** Identify the blocking operation from the span hierarchy. If no child spans exist, add `#[tracing::instrument]` to internal functions to narrow down the stuck point. Common fixes: add timeouts to network calls, use `tokio::task::spawn_blocking` for sync operations, check for deadlock patterns.
 
-> ⚠️ **Steering:** Before assuming deadlock, check if the command is simply doing blocking I/O on the async runtime. Use `tokio::task::spawn_blocking()` for any synchronous operation that takes >1ms. This was the root cause in 80% of hang issues during testing.
+> ⚠️ **Steering:** Before assuming deadlock, check if the command is simply doing blocking I/O on the async runtime. Use `tokio::task::spawn_blocking()` for any synchronous operation that takes >1ms.
 
 ---
 
@@ -231,10 +231,10 @@ Focus on functions that perform I/O, database queries, or heavy computation. Don
 
 **Which tab:** N/A — DevTools itself is the problem
 
-**What to look for:** Check terminal output from `cargo tauri dev`. Look for the WebSocket URL line: `devtools: listening on ws://127.0.0.1:XXXX`. If absent, DevTools isn't initializing. If present, the connection URL may be wrong.
+**What to look for:** Check terminal output from `cargo tauri dev`. Look for either the raw listener URL (`devtools: listening on ws://127.0.0.1:XXXX`) or the CrabNebula dashboard URL (`https://devtools.crabnebula.dev/dash/...`). If absent, DevTools isn't initializing. If present, the connection target may still be wrong.
 
 **Root cause pattern:** (a) `init()` called after `Builder::default()` — tracing subscriber created too late, (b) `#[cfg(debug_assertions)]` gate missing and binary is a release build, (c) port conflict on 6000-9000 range, (d) DevTools crate not in Cargo.toml, (e) plugin not registered with `.plugin()` in lib.rs.
 
 **Agent action:** Follow the First-time setup checklist in SKILL.md. Check: 1) `tauri-plugin-devtools` in Cargo.toml, 2) `init()` before `Builder::default()`, 3) `.plugin(devtools)` in builder chain, 4) `#[cfg(debug_assertions)]` gate present, 5) running `cargo tauri dev` (not `cargo tauri build`). See `references/setup/installation-and-config.md` for patterns.
 
-> ⚠️ **Steering:** This is the #1 derailment scenario. Agents attempted to debug app issues without DevTools working, wasting entire diagnosis cycles. ALWAYS verify DevTools connects before proceeding to app debugging.
+> ⚠️ **Steering:** Do not debug app issues until DevTools itself connects. Verify the connection first; otherwise later observations are unreliable.

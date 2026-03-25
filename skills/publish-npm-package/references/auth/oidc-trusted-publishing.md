@@ -2,7 +2,7 @@
 
 Zero-secret npm publishing using GitHub Actions' built-in OIDC identity. The most secure method for public packages.
 
-> **⚠️ Steering (F-07):** OIDC means **zero secrets** — no `NPM_TOKEN`, no `NODE_AUTH_TOKEN`, no secrets of any kind. If your workflow has `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` in an `env:` block, **you are NOT using OIDC** — you are using token-based auth. See `granular-tokens.md` for that approach. A common mistake is copying a workflow from `release-please.md` or similar templates that use `NODE_AUTH_TOKEN` and assuming OIDC is active. OIDC authentication is handled entirely by the `id-token: write` permission — the npm CLI obtains a token from the GitHub Actions runtime automatically.
+> **⚠️ Steering (F-07):** OIDC means **zero secrets** — no `NPM_TOKEN`, no `NODE_AUTH_TOKEN`, no secrets of any kind. If your workflow has `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` in an `env:` block, **you are NOT using OIDC** — you are using token-based auth. See `granular-tokens.md` for that approach. A common mistake is copying a token-based publish step and assuming OIDC is active. OIDC authentication is handled entirely by the `id-token: write` permission — the npm CLI obtains a token from the GitHub Actions runtime automatically.
 
 ---
 

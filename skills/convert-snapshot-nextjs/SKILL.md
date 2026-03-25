@@ -24,7 +24,7 @@ Convert saved HTML snapshots into grounded Next.js App Router builds. Treat the 
 | Key | Value |
 |---|---|
 | **Output location** | `{page}-nextjs/` sibling to snapshot dir |
-| **Naming** | kebab-case everywhere (files, CSS classes, variables) |
+| **Naming** | Route folders, CSS classes, tokens, and asset names use kebab-case. React component files and exported component symbols use PascalCase. |
 | **Minified CSS warning** | Snapshot CSS may be minified (no trailing `;` before `}`). All grep patterns in references use `[^;}]+` to handle this — do not simplify to `[^;]+`. |
 
 ## Start with these decisions
@@ -32,7 +32,8 @@ Convert saved HTML snapshots into grounded Next.js App Router builds. Treat the 
 | Situation | Action |
 |---|---|
 | `.html` + `_files/` folders present | Primary mode. Extract from external CSS, JS, and assets. |
-| `.html` with inline `<style>` blocks but no `_files/` | SingleFile fallback. Extract from inline styles and document any reduced confidence. |
+| `.html` with adjacent/local `.css` files but no `_files/` | Adjacent-asset snapshot mode. Treat the referenced CSS files as the Wave 0 corpus and the snapshot directory as the asset root. |
+| `.html` with inline `<style>` blocks but no `_files/` or local `.css` files | SingleFile fallback. Extract from inline styles and document any reduced confidence. |
 | `package.json` + source repo but no saved snapshot | Fallback mode only. Read source directly, but keep the same grounding rules. |
 | Request says "extract", "document", "design system", or "tokens" | Stop at Waves 0–2 unless the user explicitly asks for a build. |
 | Request says "rebuild", "recreate", "convert", "clone", or "pixel-perfect" | Run Waves 0–4. |
@@ -55,7 +56,7 @@ Read `references/input-output-spec.md` for full input detection, output trees, a
 | Do this | Not that |
 |---|---|
 | Use CSS Module prefixes, semantic tags, and real selector boundaries to identify sections | Infer sections from generic `<div>` nesting alone |
-| Search across all `_files/*.css` together and deduplicate shared files | Read minified CSS by eye or treat each hashed CSS file as an isolated system |
+| Search across the full discovered CSS corpus for the page, then deduplicate shared files | Read minified CSS by eye or treat each hashed CSS file as an isolated system |
 | Carry exact source values through Wave 0 → Wave 4 | Round, normalize, or replace values because they look "close enough" |
 | Download remote assets during Wave 0 and map them to local paths | Leave Google Fonts or CDN assets in the final build |
 | Implement only documented hover, focus, animation, and responsive behavior | Invent motion, states, or breakpoint behavior not found in source |
@@ -85,7 +86,7 @@ If the user only asked for extraction or documentation, stop after the appropria
 
 ## Recovery rules
 
-- **Missing `_files/` folder:** treat as SingleFile mode if inline CSS exists; otherwise full reconstruction may be blocked.
+- **Missing `_files/` folder:** if the HTML references local CSS files, use adjacent-asset snapshot mode; if it only contains inline CSS, use SingleFile mode; otherwise full reconstruction may be blocked.
 - **Missing assets or remote-only assets:** download them during extraction and record original → local path mapping.
 - **Missing fonts:** Check `<link>` tags for Google Fonts / Typekit URLs. Download font files to `public/assets/fonts/` and create `@font-face` declarations. If URL is unreachable, substitute with a system font stack and add `/* TODO: replace with original font */`.
 - **External JS (analytics, chat widgets):** Do NOT embed third-party scripts. Add a `{/* TODO: re-add [service] script */}` comment in `layout.tsx`.
@@ -98,6 +99,9 @@ If the user only asked for extraction or documentation, stop after the appropria
 Every conversion must pass these checks before declaring success:
 
 ```bash
+# Install deps in nextjs-project/ first
+npm install
+
 # Type-check passes
 npx tsc --noEmit
 

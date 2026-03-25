@@ -5,9 +5,9 @@ description: Use skill if you are building MCP client applications with the mcp-
 
 # Build MCP Use Client
 
-Build production-grade MCP client applications with the `mcp-use` TypeScript library (v1.21+, Node 22 LTS). The library provides `MCPClient` for multi-server management, `MCPSession` for per-server protocol operations, `useMcp`/`McpClientProvider` React hooks, CLI client, code mode, and environment-specific entry points (`mcp-use`, `mcp-use/browser`, `mcp-use/react`).
+Build production-grade MCP client applications with the `mcp-use` TypeScript library (v1.21+, Node 18+ supported, Node 22 LTS recommended). The library provides `MCPClient` for multi-server management, `MCPSession` for per-server protocol operations, `useMcp`/`McpClientProvider` React hooks, CLI client, code mode, and environment-specific entry points (`mcp-use`, `mcp-use/browser`, `mcp-use/react`).
 
-> **Building an MCP server?** Use `build-mcp-use-server`. **Building an AI agent?** Use `build-mcp-use-agent`. **Building widget-based MCP Apps?** Use `build-mcp-use-app`.
+> **Building an MCP server?** Use `build-mcp-use-server`. **Building an AI agent?** Use `build-mcp-use-agent`. **Building widget-based MCP Apps?** Use `build-mcp-use-apps-widgets`.
 
 ---
 
@@ -17,7 +17,7 @@ This is the decision procedure you MUST follow every time.
 
 ### Step 1 — Detect what exists
 
-Run `tree -L 3` (or `ls -R` if tree is unavailable) in the user's working directory. Look for signs of an existing mcp-use client:
+Run `tree -L 3` (or `ls -R` if tree is unavailable) at the actual project root you will edit. If the user named a package, fixture, or app subdirectory, scan that path instead of the repo root. Look for signs of an existing mcp-use client:
 
 - `package.json` with `"mcp-use"` as a dependency
 - Files importing from `"mcp-use"`, `"mcp-use/browser"`, or `"mcp-use/react"`
@@ -29,8 +29,11 @@ Run `tree -L 3` (or `ls -R` if tree is unavailable) in the user's working direct
 
 When there IS an existing client implementation, launch four parallel subagents to explore the codebase and cross-reference with the reference files:
 
+If the runtime cannot launch subagents, do the same audits sequentially yourself and keep the same four coverage areas.
+When you do use subagents, write each prompt as a bounded audit brief: why the audit matters, the desired end-state, hard constraints, and binary deliverables.
+
 **Subagent 1 — Client configuration audit**
-Explore constructor options, server entries, transport types, `loadConfigFile` / `MCPClient.fromDict` usage, environment-specific imports. Cross-reference with `references/guides/client-configuration.md` and `references/guides/environments.md`. Surface: what is correctly configured, what violates best practices, what is missing.
+Explore constructor options, server entries, transport types, `loadConfigFile` / `MCPClient.fromConfigFile` / `MCPClient.fromDict` usage, environment-specific imports. Cross-reference with `references/guides/client-configuration.md` and `references/guides/environments.md`. Surface: what is correctly configured, what violates best practices, what is missing.
 
 **Subagent 2 — Tool, resource, and prompt usage audit**
 Explore how tools are listed/called, how resources are read, how prompts are retrieved, completion usage, timeout/abort config. Cross-reference with `references/guides/tools.md`, `references/guides/resources.md`, `references/guides/prompts.md`, and `references/guides/completion.md`. Surface: correct patterns, missing error handling, timeout gaps.
@@ -52,6 +55,11 @@ After all subagents report back:
 Check context: is there an existing app that needs MCP client integration?
 
 **If context exists** (e.g., a React app, a Node CLI, a backend service): infer what is needed and build the client integration directly using the reference files.
+
+Pick the server target explicitly before coding:
+- If the repo already contains a real MCP server, connect to that server and discover its actual tool/resource names with `listTools()`, `listResources()`, and `listPrompts()`.
+- If the task is only about client mechanics and no domain server exists yet, use `@modelcontextprotocol/server-everything` as a smoke-test server and discover the real tool names before calling them.
+- If the request depends on a domain-specific tool such as `calculator`, `search-products`, or repo-specific commands and no matching server exists, stop and add/build that server first instead of inventing tool names. Route to `build-mcp-use-server` when needed.
 
 **If no context exists**: ask up to 10 questions, each with 5+ numbered options:
 
@@ -81,7 +89,7 @@ Each trigger below tells you exactly when and why to open a reference file. Read
 
 **Client configuration and connections:**
 
-- If you are connecting to servers, choosing between STDIO and HTTP, setting up multi-server configs, or wiring per-server callbacks — read `references/guides/client-configuration.md`. It has the full `MCPClientConfigShape`, discriminated union types for STDIO vs HTTP entries, `loadConfigFile`, `MCPClient.fromDict`, `ClientInfo` shape, and per-server callback overrides.
+- If you are connecting to servers, choosing between STDIO and HTTP, setting up multi-server configs, or wiring per-server callbacks — read `references/guides/client-configuration.md`. It has the full `MCPClientConfigShape`, discriminated union types for STDIO vs HTTP entries, `loadConfigFile`, `MCPClient.fromConfigFile`, `MCPClient.fromDict`, `ClientInfo` shape, and per-server callback overrides.
 - If you are managing multiple servers with lazy loading, composed capabilities, or `disallowedTools` filtering — read `references/guides/server-manager.md`. It covers `useServerManager` on `MCPAgent`, environment variable substitution in config JSON, and dynamic server addition.
 
 **Core protocol operations:**
@@ -142,19 +150,21 @@ const client = new MCPClient({
   },
 });
 await client.createAllSessions();
-const session = client.getSession("myServer");
+const session = client.requireSession("myServer");
 
 const tools = await session.listTools();
 console.log("Tools:", tools.map((t) => t.name));
 
-const result = await session.callTool("echo", { message: "hello" });
+const result = await session.callTool("greet-user", { name: "Ada", formal: false });
 console.log("Result:", result);
 
 await client.closeAllSessions();
 ```
 
-Run: `npx tsx src/client.ts`
-Test: `npx mcp-use client connect http://localhost:3000/mcp --name test`
+If the repo does not already have a TypeScript runner, add one first with `npm install -D tsx typescript`. Save this as `src/client.ts` or `src/mcp-client.ts`, keep the run command aligned with the filename you chose, then run `npm pkg set scripts.start="tsx src/client.ts"` and `npm start`, or `npx tsx src/client.ts` (substitute `src/mcp-client.ts` if that is the file you saved).
+Smoke test the same STDIO server from the CLI: `npx mcp-use client connect --stdio "npx -y @modelcontextprotocol/server-everything" --name test`
+
+If the first connection prints an anonymized telemetry banner from `mcp-use`, treat it as informational unless the repo explicitly disables telemetry.
 
 ---
 
@@ -203,8 +213,11 @@ Other construction patterns:
 ```typescript
 // From JSON file (Node.js only):
 import { MCPClient, loadConfigFile } from "mcp-use";
-const config = await loadConfigFile("path/to/config.json");
+const config = loadConfigFile("path/to/config.json");
 const client = new MCPClient(config);
+
+// Convenience factory:
+const fromFile = MCPClient.fromConfigFile("path/to/config.json");
 
 // From in-memory object:
 const client = MCPClient.fromDict({
@@ -219,7 +232,7 @@ Full config shape, `ClientInfo` interface, and per-server callback overrides are
 ```typescript
 await client.createAllSessions();              // connect to all configured servers
 const session = await client.createSession("myServer"); // connect to one server
-const session = client.getSession("myServer"); // get existing session
+const session = client.getSession("myServer"); // get existing session or null
 await client.closeAllSessions();               // disconnect all
 await client.close();                          // alias — also cleans up E2B sandboxes
 ```
@@ -243,10 +256,11 @@ const result = await session.callTool("slow_tool", { data: "value" }, {
 
 Full `CallToolOptions`, `CallToolResult`, and `Tool` types are in `references/guides/tools.md`.
 
-### listResources / readResource
+### listResources / listAllResources / readResource
 
 ```typescript
-const resources = await session.listResources();
+const resources = await session.listResources();      // paginated
+const allResources = await session.listAllResources(); // full catalog
 const result = await session.readResource("file:///data/config.json");
 for (const content of result.contents) {
   console.log(content.text ?? content.blob);
@@ -417,10 +431,10 @@ VM options, E2B setup, custom executors, `BaseCodeExecutor`, and `PROMPTS.CODE_M
 | Hardcoded secrets in client config | Use environment variables: `` headers: { Authorization: `Bearer ${process.env.TOKEN}` } `` |
 | Not handling `isError` in tool results | Check `result.isError` before processing `result.content` |
 | Forgetting cleanup on process exit | Register `process.on("SIGINT", () => client.closeAllSessions())` |
-| Using SSE transport for new servers | Use `transportType: "http"` — SSE is legacy per MCP Spec 2025-11-25 |
+| Using legacy SSE for new HTTP connections | Prefer streamable HTTP: use `transport: "http"` in client config or `transportType: "http"` in React |
 | No reconnection config in React | Set `autoReconnect: true` on `useMcp` or per-server options |
 | Checking `mcp.status` instead of `mcp.state` | The hook exposes `state`, not `status` |
-| Using `session.listAllResources()` | Correct method is `session.listResources()` |
+| Assuming one `listResources()` call returns the full catalog | Use `session.listAllResources()` for the full set, or follow `nextCursor` with `listResources(cursor)` |
 | Treating `readResource()` as plain value | It returns `{ contents: ResourceContent[] }` — iterate `result.contents` |
 | Using `persistenceProvider` on McpClientProvider | Correct prop is `storageProvider` |
 | Confusing `autoReconnect` with `reconnectionOptions` | `autoReconnect` = app-level health checks; `reconnectionOptions` = SDK transport back-off |
@@ -441,9 +455,9 @@ VM options, E2B setup, custom executors, `BaseCodeExecutor`, and `PROMPTS.CODE_M
 | `useMcp({ url, autoReconnect: true })` in React | Build custom WebSocket reconnection logic |
 | `validate(params, data)` before accepting elicitation | Skip validation and accept any input |
 | Per-server `onSampling` for multi-LLM setups | One global callback with server-name switch |
-| `session.listResources()` | `session.listAllResources()` (does not exist) |
+| `session.listAllResources()` for the full catalog, or `session.listResources(cursor)` for pagination | Assume one `listResources()` page is exhaustive |
 | `mcp.state` in React | `mcp.status` (does not exist) |
-| `transportType: "http"` for new servers | `transportType: "sse"` (deprecated) |
+| `transport: "http"` in client config or `transportType: "http"` in React | `transport: "sse"` or `transportType: "sse"` for new integrations |
 | `storageProvider={...}` on McpClientProvider | `persistenceProvider={...}` (wrong prop name) |
 | `client.close()` after E2B code mode | `closeAllSessions()` alone (misses sandbox cleanup) |
 
@@ -463,13 +477,12 @@ VM options, E2B setup, custom executors, `BaseCodeExecutor`, and `PROMPTS.CODE_M
 - Always set `autoReconnect: true` in production React apps.
 - Always debounce `complete()` calls in autocomplete UIs.
 - Always clean up sessions on process exit — register `SIGINT`/`SIGTERM` handlers.
-- Prefer `transportType: "http"` over `"sse"` for new HTTP connections. Valid values: `"auto" | "http" | "sse"`.
-- Never use `session.listAllResources()` — correct method is `session.listResources()`.
+- Prefer streamable HTTP for new connections: use `transport: "http"` in server config, or `transportType: "http"` / `"auto"` in React.
 - Never treat `readResource()` return as a plain value — it returns `{ contents: ResourceContent[] }`.
-- Never use `MCPClient.fromConfigFile()` — it does not exist. Use `loadConfigFile()` or `MCPClient.fromDict()`.
+- Do not `await loadConfigFile()` — it reads and parses JSON synchronously in Node. Use `new MCPClient("config.json")`, `MCPClient.fromConfigFile("config.json")`, or `new MCPClient(loadConfigFile("config.json"))`.
 - Never use `mcp.status` in React — correct property is `mcp.state`.
 - Always check all connection states: `"discovering"`, `"authenticating"`, `"pending_auth"`, `"ready"`, `"failed"`.
 - Never use `persistenceProvider` on McpClientProvider — correct prop is `storageProvider`.
 - Do not confuse `autoReconnect` (app-level health checks) with `reconnectionOptions` (SDK transport back-off).
 - Always call `client.close()` when using E2B code mode — sandboxes persist until explicitly closed.
-- The deprecated elicitation callback alias has a typo: `elicitaitonCallback` — prefer `onElicitation`.
+- Prefer `onElicitation` over the deprecated `elicitationCallback` alias.

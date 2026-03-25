@@ -613,9 +613,10 @@ const ragChain = await createRetrievalChain({
 ### Agentic RAG (retriever as tool)
 
 ```typescript
+import { createAgent } from "langchain";
 import { tool } from "@langchain/core/tools";
+import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
 
 const retrieve = tool(
   async ({ query }: { query: string }) => {
@@ -631,9 +632,10 @@ const retrieve = tool(
   }
 );
 
-const agent = createReactAgent({
-  llm: new ChatOpenAI({ model: "gpt-4o" }),
+const agent = createAgent({
+  model: new ChatOpenAI({ model: "gpt-4o" }),
   tools: [retrieve],
+  systemPrompt: "Use the retrieve tool when the answer depends on the knowledge base.",
 });
 ```
 

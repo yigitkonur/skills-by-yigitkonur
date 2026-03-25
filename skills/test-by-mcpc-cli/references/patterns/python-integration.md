@@ -26,7 +26,7 @@ class ClientError(McpcError):
     pass
 
 class ServerError(McpcError):
-    """Exit code 2: tool execution failed, resource not found."""
+    """Exit code 2: rare bridge/server failure surfaced by the CLI."""
     pass
 
 class NetworkError(McpcError):
@@ -83,12 +83,12 @@ class Mcpc:
             try:
                 err = json.loads(result.stdout)
             except json.JSONDecodeError:
-                err = {"error": "Unknown", "message": result.stderr or result.stdout}
+                err = {"error": result.stderr or result.stdout or "Unknown"}
 
             cls = ERROR_MAP.get(result.returncode, McpcError)
             raise cls(
                 error_type=err.get("error", "Unknown"),
-                message=err.get("message", f"mcpc exited with code {result.returncode}"),
+                message=err.get("message") or err.get("error", f"mcpc exited with code {result.returncode}"),
                 code=result.returncode,
                 details=err.get("details"),
             )
@@ -145,7 +145,11 @@ class Mcpc:
         if result.returncode != 0:
             err = json.loads(result.stdout) if result.stdout.strip() else {}
             cls = ERROR_MAP.get(result.returncode, McpcError)
-            raise cls(err.get("error", "Unknown"), err.get("message", ""), result.returncode)
+            raise cls(
+                err.get("error", "Unknown"),
+                err.get("message") or err.get("error", f"mcpc exited with code {result.returncode}"),
+                result.returncode,
+            )
         return json.loads(result.stdout)
 
     # --- Resource commands ---
@@ -257,9 +261,13 @@ class AsyncMcpc:
             try:
                 err = json.loads(output)
             except json.JSONDecodeError:
-                err = {"error": "Unknown", "message": output}
+                err = {"error": output or "Unknown"}
             cls = ERROR_MAP.get(proc.returncode, McpcError)
-            raise cls(err.get("error", ""), err.get("message", ""), proc.returncode)
+            raise cls(
+                err.get("error", "Unknown"),
+                err.get("message") or err.get("error", f"mcpc exited with code {proc.returncode}"),
+                proc.returncode,
+            )
 
         if not output.strip():
             return {}

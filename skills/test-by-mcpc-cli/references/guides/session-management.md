@@ -53,17 +53,23 @@ All session metadata lives in `~/.mcpc/sessions.json`. This file is managed with
 
 ```json
 {
-  "my-session": {
-    "name": "my-session",
-    "target": "https://mcp.example.com",
-    "pid": 12345,
-    "status": "live",
-    "createdAt": "2025-03-20T10:00:00.000Z",
-    "lastSeenAt": "2025-03-20T10:05:30.000Z",
-    "protocolVersion": "2025-11-25",
-    "headers": "<redacted>",
-    "profile": "default",
-    "proxy": null
+  "sessions": {
+    "@my-session": {
+      "name": "@my-session",
+      "server": {
+        "url": "https://mcp.example.com",
+        "headers": {
+          "Authorization": "<redacted>"
+        }
+      },
+      "pid": 12345,
+      "status": "live",
+      "createdAt": "2025-03-20T10:00:00.000Z",
+      "lastSeenAt": "2025-03-20T10:05:30.000Z",
+      "protocolVersion": "2025-11-25",
+      "profileName": "default",
+      "proxy": null
+    }
   }
 }
 ```
@@ -191,7 +197,7 @@ This ensures that `mcpc` (bare command, list sessions) always shows accurate sta
 mcpc mcp.example.com connect @prod
 
 # Stdio server from config
-mcpc ~/.vscode/mcp.json:my-server connect @local
+mcpc --config ~/.vscode/mcp.json my-server connect @local
 
 # With authentication
 mcpc https://mcp.example.com connect @authed \
@@ -213,15 +219,15 @@ mcpc
 # JSON output with full metadata
 mcpc --json | jq '.sessions[]'
 
-# Single session metadata
-mcpc --json @prod | jq '._mcpc'
+# Single session metadata from the live-session list
+mcpc --json | jq '.sessions[] | select(.name == "@prod")'
 
 # Extract specific fields
-mcpc --json @prod | jq '{
-  status: ._mcpc.status,
-  pid: ._mcpc.pid,
-  target: ._mcpc.target,
-  uptime: (now - (._mcpc.createdAt | fromdateiso8601))
+mcpc --json | jq '(.sessions[] | select(.name == "@prod")) | {
+  status,
+  pid,
+  target: (.server.url // .server.command // "unknown"),
+  uptime: (now - (.createdAt | fromdateiso8601))
 }'
 ```
 
@@ -254,11 +260,11 @@ mcpc @prod close
 ### Bulk cleanup
 
 ```bash
-# Remove all sessions with dead bridges
-mcpc clean sessions
+# Remove all sessions
+mcpc --clean=sessions
 
 # Remove everything (sessions + profiles + logs + credentials)
-mcpc clean all
+mcpc --clean=all
 ```
 
 ## Multi-session patterns
@@ -317,7 +323,7 @@ set -euo pipefail
 SESSIONS=$(mcpc --json | jq -r '.sessions[].name')
 
 for session in $SESSIONS; do
-  STATUS=$(mcpc --json "@$session" | jq -r '._mcpc.status')
+  STATUS=$(mcpc --json | jq -r --arg s "$session" '.sessions[] | select(.name == $s) | .status')
 
   case "$STATUS" in
     live)
@@ -328,14 +334,14 @@ for session in $SESSIONS; do
       ;;
     crashed)
       echo "[$session] crashed — restarting bridge"
-      mcpc "@$session" restart 2>/dev/null || echo "[$session] restart failed"
+      mcpc "$session" restart 2>/dev/null || echo "[$session] restart failed"
       ;;
     unauthorized)
       echo "[$session] unauthorized — re-authentication required"
       ;;
     expired)
       echo "[$session] expired — restarting to get new session ID"
-      mcpc "@$session" restart 2>/dev/null || echo "[$session] restart failed"
+      mcpc "$session" restart 2>/dev/null || echo "[$session] restart failed"
       ;;
     *)
       echo "[$session] unknown status: $STATUS"
@@ -355,7 +361,7 @@ printf "%-20s %-15s %-8s %-30s %-20s\n" "SESSION" "STATUS" "PID" "TARGET" "LAST 
 printf "%-20s %-15s %-8s %-30s %-20s\n" "-------" "------" "---" "------" "---------"
 
 mcpc --json | jq -r '.sessions[] |
-  [.name, .status, (.pid // "dead" | tostring), .target, .lastSeenAt] |
+  [.name, .status, (.pid // "dead" | tostring), (.server.url // .server.command // "unknown"), .lastSeenAt] |
   @tsv' | while IFS=$'\t' read -r name status pid target lastseen; do
     printf "%-20s %-15s %-8s %-30s %-20s\n" "$name" "$status" "$pid" "$target" "$lastseen"
 done
@@ -378,10 +384,10 @@ while true; do
     echo "$TIMESTAMP no-sessions" >> "$LOG_FILE"
   else
     for session in $SESSIONS; do
-      STATUS=$(mcpc --json "@$session" 2>/dev/null | jq -r '._mcpc.status' 2>/dev/null || echo "unreachable")
+      STATUS=$(mcpc --json 2>/dev/null | jq -r --arg s "$session" '.sessions[] | select(.name == $s) | .status' 2>/dev/null || echo "unreachable")
       RTT=""
       if [ "$STATUS" = "live" ]; then
-        RTT=$(mcpc "@$session" ping --json 2>/dev/null | jq -r '.rtt // "unknown"' 2>/dev/null || echo "timeout")
+        RTT=$(mcpc "$session" ping --json 2>/dev/null | jq -r '.rtt // "unknown"' 2>/dev/null || echo "timeout")
       fi
       echo "$TIMESTAMP $session status=$STATUS rtt=$RTT" >> "$LOG_FILE"
     done

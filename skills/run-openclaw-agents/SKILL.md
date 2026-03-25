@@ -16,9 +16,9 @@ Coordinate multi-agent work at runtime: spawn sub-agents, manage sessions, route
 - Routing work to ACP (Advanced Control Protocol) agents for specialized coordination
 - Sending cross-platform messages via `message` (Discord, Slack, Telegram)
 - Designing multi-agent pipelines: fan-out, fan-in, supervisor, chain-of-responsibility
-- Choosing tool profiles to constrain what sub-agents can access
+- Choosing the target agent or configured child tool policy for delegated work
 - Using `nodes` for cross-device hardware interaction (screenshots, GPS, camera)
-- Waiting on sub-agent results with `sessions_yield` or polling `subagents`
+- Collecting child results via announce replies, `session_status`, `sessions_history`, or bounded `sessions_send` follow-ups
 
 ### Do not use this skill when
 
@@ -30,13 +30,38 @@ Coordinate multi-agent work at runtime: spawn sub-agents, manage sessions, route
 
 ## Non-negotiable rules
 
-1. **Confirm risk level before every HIGH or VERY HIGH risk tool call.** `sessions_spawn`, `sessions_send`, `message`, and `nodes` can have irreversible side effects. State the action and its consequences before executing.
-2. **Use the narrowest tool profile that satisfies the sub-agent's task.** Never spawn a sub-agent with full tool access when a restricted profile suffices.
-3. **Always yield or poll sub-agents to completion.** Abandoned sub-agents waste resources and may leave work in an inconsistent state.
+1. **Confirm risk level before every HIGH or VERY HIGH risk tool call.** `sessions_spawn`, `sessions_send`, `message`, and `nodes` can have irreversible side effects. State the action and its consequences, then wait for an explicit `YES` or equally direct approval.
+2. **Use the narrowest effective child tool surface.** `sessions_spawn` does not take a per-call tool profile. Constrain delegated work by choosing the right target agent and by relying on the runtime's configured sub-agent tool policy.
+3. **Always collect child results or status to completion.** `sessions_spawn` is non-blocking. Use announce replies, `session_status`, `sessions_history`, or bounded `sessions_send` follow-ups instead of assuming the child finished.
 4. **Verify session existence before sending messages.** Use `sessions_list` or `session_status` before `sessions_send`.
 5. **Never send cross-platform messages without explicit user confirmation.** The `message` tool reaches real humans on real platforms.
 6. **Scope hardware access narrowly.** The `nodes` tool controls physical devices. Request only the specific capability needed (screenshot, GPS, camera) and confirm with the user.
 7. **Prefer session reuse over session creation.** Check `sessions_list` for existing sessions that match the needed context before spawning new ones.
+
+## Runtime assumptions and preflight
+
+This skill requires the OpenClaw orchestration tool surface itself: `agents_list`, `sessions_list`, `sessions_history`, `sessions_send`, `sessions_spawn`, `session_status`, and any messaging/node tools you plan to use. `/subagents` controls are optional operator commands, not the core agent tool surface.
+
+Before Step 1:
+
+1. Inspect the current tool inventory and confirm those names are actually exposed.
+2. If tool inventory is not visible, do a read-only smoke test with `agents_list` and `sessions_list`.
+3. If any required tool is missing or blocked, stop immediately. This skill is not a generic subagent-playbook template.
+4. If the runtime only exposes another orchestration system, use that system's native skill instead of translating OpenClaw commands by hand.
+5. Do not use presence or absence of an `openclaw` CLI binary as the gate. This skill is about runtime tools, not local shell setup.
+
+Use this confirmation template for HIGH and VERY HIGH risk calls:
+
+```text
+HIGH-RISK ACTION
+Tool: sessions_spawn or sessions_send
+What will happen: start or steer TARGET_SESSION_OR_AGENT for TASK
+Why this is needed: REASON
+Possible side effects: new agent execution, inherited tool access, persistent session state
+Reply YES to proceed.
+```
+
+For `message` or `nodes`, include the exact target/capability and an irreversibility warning before waiting for explicit approval. Do not treat implied assent as approval.
 
 ## Decision tree
 
@@ -67,8 +92,8 @@ START: What is the orchestration need?
 |   +-- Send data between sessions --> Inter-session messaging
 |   |   Read: references/session-management.md (Inter-session)
 |   |
-|   +-- Check or wait for sub-agent results --> Yield and poll
-|   |   Read: references/session-management.md (Yield patterns)
+|   +-- Check or wait for sub-agent results --> Completion and inspection
+|   |   Read: references/session-management.md (Completion patterns)
 |   |
 |   +-- Stop or clean up sessions --> Session lifecycle
 |       Read: references/session-management.md (Cleanup)
@@ -91,7 +116,7 @@ START: What is the orchestration need?
     +-- Supervisor that delegates and aggregates --> Supervisor pattern
     |   Read: references/sub-agent-patterns.md (Supervisor)
     |
-    +-- Agents with different tool profiles --> Profile-constrained agents
+    +-- Agents with different configured tool surfaces --> Profile-constrained agents
     |   Read: references/sub-agent-patterns.md (Tool profiles)
     |
     +-- Need risk assessment for the pipeline --> Risk review
@@ -116,25 +141,30 @@ Before calling any orchestration tool:
 | `sessions_history` | LOW | Read-only history |
 | `session_status` | LOW | Read-only status check |
 | `agents_list` | LOW | Read-only agent listing |
-| `subagents` | LOW | Read-only sub-agent status |
-| `sessions_yield` | LOW | Passive wait for results |
 | `sessions_spawn` | HIGH | Creates new agent with tool access |
 | `sessions_send` | HIGH | Sends data between sessions, can trigger actions |
 | `message` | VERY HIGH | Sends messages to real humans on external platforms |
 | `nodes` | VERY HIGH | Controls physical hardware across devices |
 
-### 2) Choose the tool profile for sub-agents
+### 2) Choose the child tool surface
 
-When spawning sub-agents, select the narrowest profile:
+`sessions_spawn` does not accept a per-call `tool_profile`. A child's capabilities come from the target agent configuration plus the runtime's `tools.subagents.tools` policy.
+
+When the runtime uses OpenClaw tool profiles, the base profiles are:
 
 | Profile | Tools available | Use when |
 |---|---|---|
-| `minimal` | Read-only tools, no file writes, no network | Information gathering, analysis, summarization |
-| `coding` | File read/write, shell, git | Code generation, refactoring, testing |
-| `messaging` | `message`, `sessions_send` | Communication tasks only |
+| `minimal` | `session_status` only | Nearly tool-less children or sessions that will be built up explicitly in config |
+| `coding` | File I/O, runtime, sessions, memory, image | Code generation, refactoring, testing, repo inspection |
+| `messaging` | `message`, `sessions_list`, `sessions_history`, `sessions_send`, `session_status` | Communication and coordination tasks |
 | Full (no restriction) | All tools | Only when the task genuinely requires unrestricted access |
 
-Rule: start with `minimal` and escalate only if the task cannot complete.
+Rules:
+
+- Start with the narrowest configured option that can already do the job.
+- `minimal` is not a generic read-only worker unless the runtime explicitly adds more tools to it.
+- OpenClaw child runs are broad by default unless the runtime narrows them. Do not assume a spawned child is safe just because you did not ask for extra tools.
+- If the available target agents do not expose the required tool surface safely, stop and say the runtime config must change.
 
 ### 3) Execute the orchestration pattern
 
@@ -144,16 +174,16 @@ Follow the pattern identified in the decision tree. Each pattern is documented i
 
 1. `agents_list` -- discover available agents
 2. `sessions_list` -- check for reusable sessions
-3. `sessions_spawn` -- create sub-agent (if no reusable session)
-4. `sessions_yield` or poll `subagents` -- wait for results
-5. `sessions_history` -- inspect results
-6. Clean up: stop sub-agents via `subagents`
+3. `sessions_spawn` -- create sub-agent (if no reusable session) and capture the returned `childSessionKey` / session identifier
+4. Collect progress or results with announce replies, `session_status`, `sessions_history`, or `sessions_send ... timeoutSeconds=N`
+5. Use `runTimeoutSeconds` on spawn when the child must finish within a bounded window
+6. Decide whether to reuse, auto-archive, or delete the session
 
 ### 4) Verify and clean up
 
 After orchestration completes:
 
-- Confirm all sub-agents returned results (check `subagents` status)
+- Confirm all delegated sessions returned results or an explicit terminal state
 - Verify no sessions are left in a running state unless intentionally persistent
 - For messaging: confirm delivery where possible
 - Aggregate results if using fan-out or supervisor patterns
@@ -163,30 +193,30 @@ After orchestration completes:
 | Do this | Not that |
 |---|---|
 | Check `sessions_list` before spawning a new session | Spawn new sessions without checking for reusable ones |
-| Use the narrowest tool profile for sub-agents | Give every sub-agent full tool access by default |
+| Constrain delegated work through target-agent choice and child tool policy | Assume `sessions_spawn` can set a per-call tool profile |
 | Confirm with the user before `message` or `nodes` calls | Send external messages or access hardware without confirmation |
-| Use `sessions_yield` to wait for sub-agent results | Fire-and-forget sub-agents without collecting results |
+| Capture `childSessionKey` from `sessions_spawn` and inspect via status/history or announce replies | Fire-and-forget sub-agents without collecting results |
 | State the risk level and consequences before HIGH/VERY HIGH calls | Execute high-risk calls silently |
-| Poll `subagents` status when yield times out | Assume a sub-agent completed when it may have failed |
+| Back off between `session_status` or `sessions_list` checks | Poll in a tight loop or assume a child completed when it may have failed |
 | Route to ACP agents for specialized coordination | Build custom coordination logic when an ACP agent already handles it |
-| Clean up sub-agents after work completes | Leave orphaned sessions running |
+| Use `cleanup: "delete"` for disposable runs or document why a session stays alive | Leave orphaned sessions running |
 
 ## Recovery paths
 
-- **Sub-agent is stuck or unresponsive:** Check status with `subagents`. If stuck, stop it and re-spawn with a clearer task description or different tool profile.
-- **Session not found when sending messages:** Re-run `sessions_list` to verify the session ID. Sessions may have terminated between listing and sending.
+- **Sub-agent is stuck or unresponsive:** Check `session_status`, then inspect `sessions_history`. If operator controls are available, use `/subagents info` or `/subagents kill`; otherwise re-spawn only after you understand why the run stalled.
+- **Session not found when sending messages:** Re-run `sessions_list` to verify the `sessionKey` / `sessionId`. Sessions may have terminated, been archived, or been deleted between listing and sending.
 - **External message delivery fails:** Check the platform and channel configuration. Verify the message target exists. Do not retry without user confirmation.
 - **Fan-out results are inconsistent:** Use `sessions_history` to inspect each sub-agent's work. Identify the divergent agent and either re-run it or reconcile manually.
-- **Tool profile is too restrictive:** The sub-agent will fail with permission errors. Inspect the error, escalate to the next profile level, and re-spawn.
+- **Child tool surface is too restrictive:** Inspect the error, then choose a different target agent or broader sub-agent policy. Do not invent unsupported `sessions_spawn` parameters.
 - **Nodes hardware access fails:** Verify the target node is online and the specific capability (screenshot, GPS, camera) is available. Read `references/risk-and-security.md`.
 
 ## Steering anti-patterns
 
 1. **Over-spawning.** Creating a sub-agent for every small task. If the work can be done in the current session in a few steps, do not spawn.
-2. **Full-access default.** Giving sub-agents unrestricted tool profiles out of convenience. This creates unnecessary risk surface.
+2. **Blind child-surface assumptions.** Assuming spawned children are read-only or narrowly scoped when the runtime may actually allow broad non-session tools by default.
 3. **Fire-and-forget messaging.** Sending `message` calls to external platforms without confirming the target, content, and timing with the user.
 4. **Orphaned sessions.** Spawning sub-agents and never checking their status or cleaning them up.
-5. **Polling without backoff.** Checking `subagents` status in a tight loop instead of using `sessions_yield` with a reasonable timeout.
+5. **Polling without backoff.** Checking `session_status` or `sessions_list` in a tight loop instead of using reasonable intervals and bounded waits.
 6. **ACP bypass.** Building custom multi-step coordination when a purpose-built ACP agent already handles the pattern.
 
 ## Reference routing
@@ -196,7 +226,7 @@ Read the smallest set that covers your current need:
 | Need | Reference |
 |---|---|
 | Spawning sub-agents, fan-out, pipelines, supervisor patterns, tool profiles | `references/sub-agent-patterns.md` |
-| Session lifecycle: listing, history, inter-session messaging, yield, cleanup | `references/session-management.md` |
+| Session lifecycle: listing, history, inter-session messaging, completion patterns, cleanup | `references/session-management.md` |
 | ACP agent discovery, routing, and coordination patterns | `references/acp-routing.md` |
 | Cross-platform messaging: Discord, Slack, Telegram, confirmation workflows | `references/messaging-patterns.md` |
 | Risk levels, confirmation protocols, hardware access, security boundaries | `references/risk-and-security.md` |
@@ -209,7 +239,7 @@ Read the smallest set that covers your current need:
 
 **Fan-out parallel work:**
 - `references/sub-agent-patterns.md` (Fan-out section)
-- `references/session-management.md` (Yield patterns section)
+- `references/session-management.md` (Completion patterns section)
 
 **Send cross-platform messages:**
 - `references/messaging-patterns.md`

@@ -133,7 +133,7 @@ This reference provides complete, step-by-step research workflows for the most c
    team composition, risk tolerance, timeline
 
 2. deep_research (2-3 structured questions)
-   Use the full template (GOAL/WHY/KNOWN/APPLY/QUESTIONS).
+   Use the full template (WHAT I NEED / WHY I'M RESEARCHING THIS / WHAT I ALREADY KNOW / HOW I PLAN TO USE THIS / SPECIFIC QUESTIONS).
    Attach relevant code showing current architecture.
    Ask about:
    - Trade-offs between options
@@ -225,10 +225,11 @@ This reference provides complete, step-by-step research workflows for the most c
 3. APPLY the most relevant fix
 
 4. If fix doesn't work:
-   search_reddit (2 queries, recent)
+   search_reddit (3 queries, recent)
    queries = [
        '"[error]" [framework] fix [year]',
        '[framework] [symptom] workaround',
+       'r/[language] [error type] recent',
    ]
    date_after = "[30 days ago]"
 ```
@@ -274,6 +275,54 @@ This reference provides complete, step-by-step research workflows for the most c
    what_to_extract = "new features | breaking changes | deprecations | roadmap | release dates"
 ```
 
+## Workflow 7: "I Need to Audit or Repair a Skill / Runbook"
+
+**Trigger:** Repo-local skill repair, workflow audit, command-path verification, or execution-contract cleanup.
+**Expected tool calls:** 3-4
+**Expected time:** 4-8 minutes
+
+### Step-by-Step
+
+```
+1. FRAME the audit as an execution-contract question
+   Write down:
+   - runtime/tool surface being assumed
+   - command paths or wrappers that must be exact
+   - approval gates or stop conditions that must remain intact
+   - source files that define the workflow
+
+2. deep_research (1 focused question)
+   Use the full template.
+   Attach the source skill files or runbook sections under review.
+   Ask:
+   - which steps have hidden runtime assumptions?
+   - which commands, tool names, or gates need source-of-truth verification?
+   - what should the stop conditions and verification signals be?
+
+3. search_google (3-5 keywords)
+   keywords = [
+       '[tool or CLI name] official docs [year]',
+       'site:github.com/[org]/[repo] [command or subcommand]',
+       '[tool name] wrapper name documentation',
+       '[tool name] configuration syntax official',
+   ]
+
+4. scrape_pages (2-4 URLs)
+   what_to_extract = "canonical command syntax | required prerequisites | verification signals | stop conditions | version-specific differences"
+
+5. OPTIONAL Reddit branch
+   Only if the topic has clear practitioner signal.
+   If direct Reddit coverage is weak, search adjacent runtime/tooling topics once.
+   If signal is still weak, stop the Reddit branch and record "community signal weak".
+
+6. SYNTHESIZE
+   Output:
+   - execution-contract findings
+   - source-of-truth repairs needed
+   - verification signals
+   - explicit stop conditions or fallback branches
+```
+
 ## Workflow Selection Quick Reference
 
 | Situation | Workflow | Key First Tool |
@@ -284,6 +333,7 @@ This reference provides complete, step-by-step research workflows for the most c
 | Verifying if info is current | Workflow 4 | search_google |
 | Production incident | Workflow 5 | search_google |
 | Technology landscape check | Workflow 6 | search_reddit |
+| Skill / runbook audit | Workflow 7 | deep_research |
 
 ## Adapting Workflows
 

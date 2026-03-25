@@ -202,7 +202,7 @@ Bootstrap and daisyUI share a similar component philosophy (semantic class names
   </div>
   <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><a class="active">Home</a></li>
+      <li><a class="menu-active">Home</a></li>
       <li><a>About</a></li>
     </ul>
   </div>
@@ -327,7 +327,7 @@ Bootstrap and daisyUI share a similar component philosophy (semantic class names
 |-----------------|---------------|
 | `table` | `table` |
 | `table-striped` | `table-zebra` |
-| `table-hover` | Add `hover` class to `<tr>` |
+| `table-hover` | Add `hover:bg-base-300` (or a similar semantic hover color) to `<tr>` |
 | `table-bordered` | Add border utilities |
 | `table-sm` | `table-xs` or `table-sm` |
 | `table-responsive` | Wrap in `<div class="overflow-x-auto">` |
@@ -597,16 +597,16 @@ Most Bootstrap components require JavaScript. daisyUI uses CSS-only patterns:
 | Collapse (`data-bs-toggle="collapse"`) | `<details>/<summary>` or `collapse` with checkbox |
 | Dropdown (`data-bs-toggle="dropdown"`) | CSS-only `dropdown` (focus-based) or `<details>` |
 | Tab switching (`data-bs-toggle="tab"`) | Radio input `tabs` pattern |
-| Tooltip (`data-bs-toggle="tooltip"`) | CSS `tooltip` class with `data-tip` |
+| Tooltip (`data-bs-toggle="tooltip"`) | `tooltip` component with `data-tip` or `tooltip-content` |
 | Carousel (`data-bs-ride="carousel"`) | CSS `carousel` with scroll-snap |
 | Offcanvas (`data-bs-toggle="offcanvas"`) | `drawer` with checkbox toggle |
 | Toast | `toast` with CSS positioning |
 | Accordion | `collapse` with radio inputs (for exclusive open) |
 
 **What still needs JS in daisyUI:**
-- Theme switching (use `theme-controller` with radio/checkbox)
+- Persisting a user-selected theme across reloads or syncing it to app state
 - Complex carousel auto-play (add minimal JS)
-- Form validation (use native HTML5 validation + `validator` component)
+- App-specific validation logic beyond native HTML5 validation + `validator`
 
 ---
 

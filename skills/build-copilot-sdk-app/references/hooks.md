@@ -333,7 +333,7 @@ session.on("hook.end", (event) => {
 
 - **All hooks can return `void`** (no return statement). This is the most common pattern for logging-only hooks. The hook is treated as a no-op.
 - **Hook errors are silently caught**. If your hook throws, execution continues as if the hook returned `undefined`. This means bugs in hooks are invisible — add try/catch with logging inside hooks for debugging.
-- **`onPreToolUse` can block tools** by returning `{ blocked: true, reason: "..." }`. The model sees the reason and may try alternative approaches. Use this for security guardrails (e.g., blocking `rm -rf /`).
+- **`onPreToolUse` can block tools** by returning `{ permissionDecision: "deny", permissionDecisionReason: "..." }`. The model sees the reason and may try alternative approaches. Use this for security guardrails (e.g., blocking `rm -rf /`).
 - **`onPostToolUse` sees the full result** via `toolResult.textResultForLlm`. Use this for audit logging, metrics, or result sanitization.
 - **`onUserPromptSubmitted` can modify the prompt** by returning `{ modifiedPrompt: "..." }`. Use this to inject system context (e.g., prepending repository info). Returning the original prompt is a no-op.
 - **Hook execution is synchronous relative to the SDK pipeline** — the SDK waits for your hook to resolve before proceeding. Long-running hooks will block the pipeline. Keep hooks fast.

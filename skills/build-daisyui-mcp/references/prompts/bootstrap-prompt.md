@@ -184,7 +184,7 @@ structural rules below.
       </div>
       <ul tabindex="0"
         class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-        <li><a class="active">Home</a></li>
+        <li><a class="menu-active">Home</a></li>
         <li><a>About</a></li>
       </ul>
     </div>
@@ -192,7 +192,7 @@ structural rules below.
   </div>
   <div class="navbar-center hidden lg:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><a class="active">Home</a></li>
+      <li><a class="menu-active">Home</a></li>
       <li><a>About</a></li>
     </ul>
   </div>
@@ -347,9 +347,9 @@ structural rules below.
 | `spinner-grow` | `loading loading-ball` | |
 | `table` | `table` | Very similar |
 | `table-striped` | `table-zebra` | Different name |
-| `table-hover` | `hover` on `<tr>` | |
+| `table-hover` | `hover:bg-base-300` on `<tr>` | Use a semantic hover fill in v5 |
 | `toast` | `toast` | |
-| `tooltip` | Tailwind `tooltip` or CSS | daisyUI doesn't have a tooltip |
+| `tooltip` | `tooltip` with `data-tip` or `tooltip-content` | daisyUI has a tooltip component |
 
 ---
 
@@ -412,7 +412,7 @@ Bootstrap is more flat. Always check the daisyUI component reference for correct
 | Bootstrap Feature | Recommended Alternative |
 |------------------|------------------------|
 | Scrollspy | Intersection Observer API (JavaScript) |
-| Popovers | Tailwind tooltip plugin or custom CSS |
+| Popovers | Popover API or custom HTML/CSS (tooltip only covers hover/focus hints) |
 | Offcanvas | daisyUI `drawer` component |
 | Toasts (auto-dismiss) | daisyUI `toast` + JavaScript timer |
 | `btn-close` | `btn btn-sm btn-circle btn-ghost` with × text |
@@ -543,7 +543,7 @@ Bootstrap is more flat. Always check the daisyUI component reference for correct
         </div>
         <ul tabindex="0"
           class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-          <li><a class="active">Home</a></li>
+          <li><a class="menu-active">Home</a></li>
           <li><a>About</a></li>
         </ul>
       </div>
@@ -551,7 +551,7 @@ Bootstrap is more flat. Always check the daisyUI component reference for correct
     </div>
     <div class="navbar-center hidden lg:flex">
       <ul class="menu menu-horizontal px-1">
-        <li><a class="active">Home</a></li>
+        <li><a class="menu-active">Home</a></li>
         <li><a>About</a></li>
       </ul>
     </div>

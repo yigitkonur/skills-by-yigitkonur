@@ -298,29 +298,29 @@ Report confidence weekly. Pair the status color with one sentence explaining *wh
 - What should we add to the risk register for the next cycle?
 
 
-## Steering experiences
+## Common traps
 
-### SE-01: Checkpoints defined but no pivot triggers
+### Checkpoints defined but no pivot triggers
 **What happens:** The plan has 4 checkpoints ("review at end of sprint 2, 4, 6, 8") but no criteria for what would cause a change in plan. At each checkpoint, the team reviews progress and continues regardless.
 **Why it happens:** Checkpoints feel productive. But without pivot triggers, they become status meetings.
 **Prevention:** Every checkpoint must have at least one pivot trigger: "If [condition], we [change plan/stop/escalate]." The trigger must be specific and measurable, not "if things are not going well."
 
-### SE-02: Risk mitigation is "monitor the situation"
+### Risk mitigation is "monitor the situation"
 **What happens:** Agent identifies a risk ("key team member might leave") and lists the mitigation as "monitor the situation and adjust if needed." This is not a mitigation.
 **Why it happens:** Real mitigations require commitments (cross-training, documentation, hiring). "Monitor" is easy to write and feels responsible.
 **Prevention:** Every mitigation must be an action with an owner and a deadline. "Monitor" is never a valid mitigation. Replace with: "Cross-train backup engineer on module X by sprint 3" or "Document critical knowledge in wiki by [date]."
 
-### SE-03: Pre-mortem skipped because "we already identified risks"
+### Pre-mortem skipped because "we already identified risks"
 **What happens:** The risk register has 5 entries from the planning phase. Agent skips pre-mortem because "risks are already covered." The project fails due to a risk that was obvious in hindsight but absent from the register.
 **Why it happens:** The risk register feels complete. Pre-mortem feels redundant.
 **Prevention:** Pre-mortem is not redundant with risk identification. Risk identification asks "what could go wrong?" Pre-mortem asks "the project failed -- why?" The framing change surfaces different risks. Always run both.
 
-### SE-04: All risks scored as Medium
+### All risks scored as Medium
 **What happens:** Agent assigns every risk a Medium likelihood and Medium impact. The risk register becomes a flat list with no prioritization.
 **Why it happens:** Scoring requires judgment. Medium is the safe default that avoids debate.
 **Prevention:** Force differentiation: at least one risk must be High and at least one must be Low in each dimension. If all risks genuinely feel Medium, the categories are too coarse -- add a 5-point scale or split the risks into finer categories.
 
-### SE-05: OODA loop used once instead of continuously
+### OODA loop used once instead of continuously
 **What happens:** Agent runs one Observe-Orient-Decide-Act cycle and treats the output as the final plan. The "loop" part of OODA is lost.
 **Why it happens:** The skill mentions OODA for "fast-changing execution" but does not specify the re-entry cadence.
 **Prevention:** When using OODA, define the loop cadence upfront: "Re-enter Observe phase every [time period/event trigger]." Without a defined cadence, OODA degrades into a one-shot decision framework.

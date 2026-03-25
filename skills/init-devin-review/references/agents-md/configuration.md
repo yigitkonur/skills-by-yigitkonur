@@ -10,7 +10,7 @@ Complete reference for writing `AGENTS.md` files that guide Devin's behavior dur
 |--------|-----------|-----------|
 | **Primary purpose** | Review criteria — what to check in diffs | Agent behavior — how Devin should work |
 | **Read by** | Bug Catcher during PR analysis | Devin during task execution and reviews |
-| **Scope** | Any directory (`**/REVIEW.md`) | Root only |
+| **Scope** | Any directory (`**/REVIEW.md`) | Any directory (`**/AGENTS.md`) |
 | **Content focus** | Rules, patterns, ignore lists | Architecture, coding standards, workflows |
 | **Output** | Bugs and Flags on PR diffs | Code changes, suggestions, explanations |
 
@@ -26,14 +26,14 @@ Complete reference for writing `AGENTS.md` files that guide Devin's behavior dur
 |---|---|
 | What to flag during review | `REVIEW.md` |
 | How the agent should write code | `AGENTS.md` |
-| Both review + coding behavior | `AGENTS.md` (Bug Catcher reads it too) |
+| Both review + coding behavior | Split it: reviewable diff rules in `REVIEW.md`, coding behavior in `AGENTS.md` |
 
 ---
 
 ## File Basics
 
 - **Format**: Markdown (H2/H3 headers, bullet lists, code blocks)
-- **Location**: Repository root only (not directory-scoped like REVIEW.md)
+- **Location**: Prefer the repository root. Scoped `AGENTS.md` files are valid, but add them only when package-level execution guidance truly differs.
 - **Encoding**: UTF-8
 - **Recommended length**: 100–300 lines
 
@@ -41,9 +41,9 @@ Complete reference for writing `AGENTS.md` files that guide Devin's behavior dur
 
 ## Monorepo Coordination
 
-In monorepos, you can place scoped `AGENTS.md` files at package or service level alongside the root file.
+In monorepos, start with a single root `AGENTS.md`. Add scoped `AGENTS.md` files only when package or service-level workflow, architecture, dependency, or testing guidance would make the root file contradictory or bloated.
 
-**Precedence**: closest-scope-wins — a rule in `packages/api/AGENTS.md` overrides the root `AGENTS.md` for code under `packages/api/`.
+Devin ingests scoped `AGENTS.md` files, but the docs do not define a deterministic override model for overlapping files. Keep root guidance cross-cutting, keep scoped guidance local, and remove contradictions instead of relying on precedence.
 
 ```
 repo-root/
@@ -57,9 +57,9 @@ repo-root/
 
 **Rules:**
 - Root `AGENTS.md` holds cross-cutting concerns (commit format, branch policy, shared linting).
-- Scoped files hold package-specific architecture, dependencies, and testing.
-- **Don't repeat root rules in scoped files** — Devin reads both; duplication adds noise.
-- If a scoped rule intentionally contradicts the root, add a brief comment explaining why.
+- Scoped files hold package-specific architecture, dependencies, workflow, or testing guidance only when those rules truly diverge.
+- Avoid repeating root rules in scoped files unless the local file needs a short, consistent reminder for clarity.
+- If a subtree needs a local exception, narrow or rewrite the root rule so the files no longer conflict when read together.
 
 ---
 
@@ -199,7 +199,7 @@ How Devin should communicate about changes in PR descriptions and comments.
 
 ## AGENTS.md for Review Context
 
-Even though `AGENTS.md` is primarily for task execution, Devin also reads it during PR reviews. This means:
+Even though `AGENTS.md` is primarily for task execution, Devin also reads matching `AGENTS.md` files during PR reviews. This means:
 
 - **Architecture** rules help the Bug Catcher flag violations (e.g., business logic in controllers)
 - **Coding Standards** give the Bug Catcher additional patterns to check

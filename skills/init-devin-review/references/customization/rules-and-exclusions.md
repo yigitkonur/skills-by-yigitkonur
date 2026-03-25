@@ -60,7 +60,7 @@ Key triggers for lower severity:
 
 ## Custom Review Rule File Paths
 
-By default, Devin reads `**/REVIEW.md`. To add additional instruction files:
+By default, Devin reads `**/REVIEW.md` plus the built-in instruction file types listed in `references/review-spec.md`. To add additional instruction files:
 
 1. Go to `Settings > Review > Review Rules`
 2. Type a glob pattern (e.g., `docs/**/*.md`, `**/*.review-rules`)
@@ -75,7 +75,7 @@ By default, Devin reads `**/REVIEW.md`. To add additional instruction files:
 | `.github/review-config.md` | Co-locate with other GitHub configs |
 | `packages/*/REVIEW-RULES.md` | Alternative naming for monorepo scoping |
 
-Custom patterns are read in addition to `**/REVIEW.md` — they don't replace the default.
+Custom patterns are read in addition to the built-in instruction files — they don't replace them.
 
 ---
 
@@ -205,10 +205,12 @@ Devin reads multiple instruction files. Duplicating rules across files creates n
 | **ESLint / linter config** | `.eslintrc`, `eslint.config.js` | Rules already enforced by the linter |
 | **CI pipeline** | `.github/workflows/`, `Jenkinsfile` | Checks already run in CI (type-checking, tests) |
 | **Prettier / formatter** | `.prettierrc`, `biome.json` | Style rules the formatter handles |
-| **CLAUDE.md** | Root | Coding standards already specified |
-| **CONTRIBUTING.md** | Root | Workflow instructions already documented |
+| **CLAUDE.md** | Matching scope | Coding standards already specified |
+| **CONTRIBUTING.md** | Matching scope | Workflow instructions already documented |
 | **.cursorrules** | Root | Editor-specific rules already defined |
-| **AGENTS.md** | Root | Agent behavior instructions already defined |
+| **AGENTS.md** | Matching scope | Agent behavior instructions already defined |
+| **.coderabbit.yaml / .yml** | Root | Existing review-tool rules already defined |
+| **greptile.json** | Root | Existing review-tool review preferences already defined |
 
 ### Discovering Existing Enforcement
 
@@ -217,7 +219,7 @@ Before adding any rule, walk through this checklist:
 1. **Linter configs** — scan `.eslintrc*`, `pyproject.toml [tool.ruff]`, `.rubocop.yml`, `Cargo.toml [lints]` for rules already enforced
 2. **CI workflows** — check `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` for automated checks (type-check, lint, test)
 3. **Pre-commit hooks** — inspect `.pre-commit-config.yaml`, `.husky/`, `lefthook.yml` for commit-time gates
-4. **Editor / agent configs** — read `.cursor/rules/*.mdc`, `agents/rules/*.md`, `.editorconfig`
+4. **Instruction files and agent configs** — read matching `**/AGENTS.md`, `**/CLAUDE.md`, `**/CONTRIBUTING.md`, `.cursor/rules/**/*.mdc`, `agents/rules/**/*.md`, `.coderabbit.yaml`, `.coderabbit.yml`, `greptile.json`, `.editorconfig`
 5. **List enforced rules** — write down every rule already caught automatically
 
 > **Duplicating linter rules = noise.** Only add rules to REVIEW.md that linters CAN'T check — architecture patterns, business-logic invariants, security context that requires human judgment.
@@ -230,8 +232,10 @@ Some repos contain rule files for editors and coding agents:
 |-------------|---------|
 | `.cursor/rules/*.mdc` | Cursor editor rules (MDC format) — loaded automatically by Cursor |
 | `agents/rules/*.md` | Agent-specific rules — consumed by coding agents (Copilot, Devin, etc.) |
+| `.coderabbit.yaml` / `.coderabbit.yml` | Existing review-tool rules that may already encode review preferences |
+| `greptile.json` | Existing review-tool configuration that may already encode review preferences |
 
-**Read these before writing REVIEW.md.** They often contain style, naming, and architecture rules that overlap. If a rule is already in `.mdc` or agent rules, don't repeat it in REVIEW.md unless you need different severity or Devin-specific behavior.
+**Read these before writing REVIEW.md.** They often contain style, naming, architecture, or review rules that overlap. If a rule is already captured in these files, don't repeat it in `REVIEW.md` unless you need different severity or Devin-specific behavior.
 
 ### Division of Concerns
 

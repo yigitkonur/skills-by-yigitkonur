@@ -153,7 +153,7 @@ Installation managed by `commands/hooks.rs::cmd_hooks_add()` which dispatches to
 2. **Message fetching** (`common::deliver_pending_messages`):
    ```
    get_unread_messages(instance_name)
-     -> limit to MAX_MESSAGES_PER_DELIVERY (20)
+     -> limit to MAX_MESSAGES_PER_DELIVERY (50)
      -> advance last_event_id cursor
      -> format using messages::format_messages_json()
      -> update instance status to ST_ACTIVE

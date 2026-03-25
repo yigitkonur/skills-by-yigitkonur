@@ -13,7 +13,7 @@ All commands, flags, and options for the `mcpc` CLI.
 | `mcpc @<session> shell` | Open interactive shell |
 | `mcpc login <server>` | OAuth login and save profile |
 | `mcpc logout <server>` | Delete authentication profile |
-| `mcpc clean [resources...]` | Clean up mcpc data |
+| `mcpc --clean[=types]` | Clean up mcpc data |
 | `mcpc x402 [subcommand]` | Configure x402 payment wallet (experimental) |
 | `mcpc help [command]` | Show help |
 | `mcpc --version` | Show version |
@@ -29,8 +29,6 @@ All commands, flags, and options for the `mcpc` CLI.
 | `mcpc @s tools-list` | List tools (alias) |
 | `mcpc @s tools-get <name>` | Get tool details and schema |
 | `mcpc @s tools-call <name> [args...]` | Call a tool |
-| `mcpc @s tools-call <name> --task` | Call tool as task (experimental) |
-| `mcpc @s tools-call <name> --task --detach` | Start task, return immediately |
 
 ### Resource commands
 
@@ -39,8 +37,7 @@ All commands, flags, and options for the `mcpc` CLI.
 | `mcpc @s resources` | List resources |
 | `mcpc @s resources-list` | List resources (alias) |
 | `mcpc @s resources-read <uri>` | Read a resource |
-| `mcpc @s resources-read <uri> -o <file>` | Read resource to file |
-| `mcpc @s resources-read <uri> --max-size <n>` | Read with size limit |
+| `mcpc @s resources-read <uri> > <file>` | Read resource to file via shell redirection |
 | `mcpc @s resources-subscribe <uri>` | Subscribe to updates |
 | `mcpc @s resources-unsubscribe <uri>` | Unsubscribe |
 | `mcpc @s resources-templates-list` | List resource templates |
@@ -52,14 +49,6 @@ All commands, flags, and options for the `mcpc` CLI.
 | `mcpc @s prompts` | List prompts |
 | `mcpc @s prompts-list` | List prompts (alias) |
 | `mcpc @s prompts-get <name> [args...]` | Get prompt with arguments |
-
-### Task commands (experimental)
-
-| Command | Description |
-|---|---|
-| `mcpc @s tasks-list` | List active tasks |
-| `mcpc @s tasks-get <taskId>` | Get task status |
-| `mcpc @s tasks-cancel <taskId>` | Cancel a task |
 
 ### Utility commands
 
@@ -80,6 +69,7 @@ These MCP capabilities have no CLI command — do not attempt them:
 | `completion/complete` | Argument auto-completion — no `completions` command exists |
 | `sampling` | Server-initiated LLM requests — client-side only |
 | `roots` | Client root declarations — not applicable to CLI |
+| Generic task lifecycle commands | `mcpc 0.1.11` does not expose `--task`, `--detach`, or `tasks-*` commands |
 
 If the server advertises these capabilities, they simply cannot be tested via mcpc.
 
@@ -88,9 +78,11 @@ If the server advertises these capabilities, they simply cannot be tested via mc
 | Flag | Short | Description | Default |
 |---|---|---|---|
 | `--json` | `-j` | JSON output mode | off |
+| `--config <file>` | `-c` | Load target from MCP config file | none |
+| `--header "Key: Value"` | `-H` | Add HTTP header (repeatable) | none |
 | `--verbose` | | Debug logging | off |
+| `--profile <name>` | | OAuth profile name | `default` when available |
 | `--timeout <seconds>` | | Request timeout | 300 |
-| `--insecure` | | Skip TLS verification | off |
 | `--schema <file>` | | Validate against schema file | none |
 | `--schema-mode <mode>` | | Schema validation: `strict`, `compatible`, `ignore` | `compatible` |
 | `--version` | `-v` | Show version | |
@@ -112,9 +104,6 @@ If the server advertises these capabilities, they simply cannot be tested via mc
 | Flag | Description |
 |---|---|
 | `--profile <name>` | Profile name (default: "default") |
-| `--scope <scopes>` | OAuth scopes (space-separated) |
-| `--client-id <id>` | Custom OAuth client ID |
-| `--client-secret <secret>` | Custom OAuth client secret |
 
 ## Logout flags
 
@@ -125,11 +114,11 @@ If the server advertises these capabilities, they simply cannot be tested via mc
 ## Clean command
 
 ```bash
-mcpc clean                    # Safe cleanup only
-mcpc clean sessions           # Remove all sessions
-mcpc clean profiles           # Remove all OAuth profiles
-mcpc clean logs               # Remove bridge logs
-mcpc clean all                # Remove everything
+mcpc --clean                    # Safe cleanup only
+mcpc --clean=sessions           # Remove all sessions
+mcpc --clean=profiles           # Remove all OAuth profiles
+mcpc --clean=logs               # Remove bridge logs
+mcpc --clean=all                # Remove everything
 ```
 
 ## Server format
@@ -139,8 +128,8 @@ mcpc clean all                # Remove everything
 | URL | `https://mcp.example.com` | HTTP |
 | Bare hostname | `mcp.example.com` | HTTP (https://) |
 | Localhost | `localhost:3000` | HTTP (http://) |
-| Config entry | `~/.vscode/mcp.json:server-name` | Stdio |
-| Config entry | `./config.json:my-server` | Stdio |
+| Config entry | `mcpc --config ~/.vscode/mcp.json server-name connect @session` | Stdio |
+| Config entry | `mcpc --config ./config.json my-server connect @session` | Stdio |
 
 ## Argument format (`key:=value`)
 
@@ -209,9 +198,9 @@ Exit codes reflect **mcpc CLI errors only**. MCP server errors return exit 0 wit
 |---|---|
 | `~/.mcpc/sessions.json` | Active session metadata |
 | `~/.mcpc/profiles.json` | OAuth profile metadata |
-| `~/.mcpc/credentials` | Fallback credential storage |
-| `~/.mcpc/history` | Shell history |
-| `~/.mcpc/bridges/<name>.sock` | Bridge IPC sockets |
+| `~/.mcpc/credentials.json` | Fallback credential storage |
+| `~/.mcpc/shell-history` | Shell history |
+| `~/.mcpc/bridges/@<name>.sock` | Bridge IPC sockets |
 | `~/.mcpc/logs/bridge-<name>.log` | Bridge logs |
 
 ## Common recipes

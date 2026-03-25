@@ -5,7 +5,7 @@ description: Use skill if you are building TypeScript agents, RAG pipelines, or 
 
 # Build LangChain TypeScript App
 
-Build LLM-powered TypeScript applications with LangChain.js v1 (`langchain@1.2+`, `@langchain/core@1.1+`, `@langchain/langgraph@1.2+`). All patterns verified against current packages. TypeScript only.
+Build LLM-powered TypeScript applications with LangChain.js v1 (`langchain@1.2+`, `@langchain/core@1.1+`, `@langchain/langgraph@1.2+`). Use v1-style APIs by default. TypeScript only.
 
 ## Master decision tree
 
@@ -22,11 +22,12 @@ What do you need?
 │   └── OpenRouter setup ──────────────────────────► OpenRouter section (below)
 │
 ├── Tool-calling agent
-│   ├── Simple (1-5 tools, no state) ──────────────► Quick start B — createAgent
+│   ├── Simple (1-5 tools, no state) ──────────────► references/getting-started.md § Path 1 — createAgent
+│   │   Quick reference ───────────────────────────► Quick start B — createAgent
 │   │   Deep dive ─────────────────────────────────► references/agents.md § createAgent
 │   │   Tool design guidance ──────────────────────► references/tools.md § Tool Design
 │   │
-│   └── Complex (state, cycles, HITL) ────────────► Quick start C — LangGraph StateGraph
+│   └── Complex (state, cycles, HITL) ────────────► Pattern C — LangGraph StateGraph
 │       Deep dive ─────────────────────────────────► references/langgraph.md § StateGraph
 │       HITL patterns ─────────────────────────────► references/human-in-the-loop.md
 │
@@ -45,7 +46,7 @@ What do you need?
 │   ├── Do I even need RAG? ───────────────────────► references/rag.md § RAG Decision Tree
 │   ├── Document loading & splitting ──────────────► references/rag.md § Document Loading
 │   ├── Embeddings & vector stores ────────────────► references/rag.md § Embeddings, Vector Stores
-│   ├── Basic RAG chain ───────────────────────────► Quick start D (below)
+│   ├── Basic RAG chain ───────────────────────────► Pattern D (below)
 │   └── Agentic RAG ──────────────────────────────► references/rag.md § Agentic RAG
 │
 ├── Memory & persistence
@@ -142,21 +143,35 @@ What do you need?
     └─► Migration table (below)
 ```
 
+## Start here first
+
+If you want the smallest runnable path with exact installs, env vars, suggested file names, and a run command, start with `references/getting-started.md`.
+
+- Path 1 is the default: `createAgent` plus a few real tools around existing helper functions.
+- Path 2 is for OpenRouter when you only need direct tool binding or want to validate provider setup first.
+- StateGraph is not the default. Choose it only when you need explicit state, cycles, interrupts, or resumable execution.
+- The sections labeled `Pattern` below assume you already chose a model, tools, or retrieval strategy.
+
 ## Required packages
 
 ```bash
 npm install langchain @langchain/core @langchain/openai @langchain/langgraph zod
-# For OpenRouter:
+# For OpenRouter instead of OpenAI:
 npm install @langchain/openrouter
-# For multi-agent:
+# Optional extras:
 npm install @langchain/langgraph-supervisor @langchain/langgraph-swarm
-# For text splitting (RAG):
 npm install @langchain/textsplitters
-# For MCP integration:
 npm install @langchain/mcp-adapters
 ```
 
 Node.js 20+ required. Node 18 dropped in v1.
+
+Before running any example, set credentials for the provider you actually use:
+
+- OpenAI examples: `OPENAI_API_KEY`
+- OpenRouter examples: `OPENROUTER_API_KEY`
+
+For exact per-path install commands, env vars, file names, and first-run commands: `references/getting-started.md`
 
 ## OpenRouter setup
 
@@ -207,29 +222,75 @@ const toolResult = await search.invoke(response.tool_calls[0].args);
 
 For full tool design guidance: `references/tools.md`
 
-## Quick start B — createAgent
+## Quick start B — createAgent with existing helpers
 
 The v1 standard for building agents. Built on LangGraph under the hood.
 
 ```typescript
 import { createAgent } from "langchain";
+import { ChatOpenAI } from "@langchain/openai";
 import { tool } from "@langchain/core/tools";
 import { MemorySaver } from "@langchain/langgraph";
 import { z } from "zod";
+import { add, subtract, multiply, divide } from "./lib/math.js";
 
-const calculator = tool(
-  ({ expression }) => String(Function(`"use strict"; return (${expression})`)()),
+const model = new ChatOpenAI({
+  model: "gpt-4.1",
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const addTool = tool(
+  ({ a, b }) => String(add(a, b)),
   {
-    name: "calculator",
-    description: "Evaluate math expressions",
-    schema: z.object({ expression: z.string() }),
+    name: "add_numbers",
+    description: "Add two numbers using the repo's real math helper",
+    schema: z.object({
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    }),
+  }
+);
+
+const subtractTool = tool(
+  ({ a, b }) => String(subtract(a, b)),
+  {
+    name: "subtract_numbers",
+    description: "Subtract the second number from the first",
+    schema: z.object({
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    }),
+  }
+);
+
+const multiplyTool = tool(
+  ({ a, b }) => String(multiply(a, b)),
+  {
+    name: "multiply_numbers",
+    description: "Multiply two numbers",
+    schema: z.object({
+      a: z.number().describe("First number"),
+      b: z.number().describe("Second number"),
+    }),
+  }
+);
+
+const divideTool = tool(
+  ({ a, b }) => String(divide(a, b)),
+  {
+    name: "divide_numbers",
+    description: "Divide the first number by the second",
+    schema: z.object({
+      a: z.number().describe("Dividend"),
+      b: z.number().describe("Divisor"),
+    }),
   }
 );
 
 const agent = createAgent({
   model,
-  tools: [calculator],
-  prompt: "You are a helpful assistant.",
+  tools: [addTool, subtractTool, multiplyTool, divideTool],
+  systemPrompt: "Use the arithmetic tools instead of mental math.",
   checkpointer: new MemorySaver(),
 });
 
@@ -239,12 +300,14 @@ const result = await agent.invoke(
 );
 ```
 
+This quick start assumes `OPENAI_API_KEY` is set. If your repo already has helper functions, wrap those helpers directly instead of using `Function(...)` or other eval-based calculator shortcuts. For an exact file layout and `npx tsx` run command, use `references/getting-started.md`.
+
 For full parameter reference, streaming modes, structured output: `references/agents.md`
 
 ### Structured output with createAgent
 
 ```typescript
-import { createAgent, ToolStrategy } from "langchain";
+import { createAgent, toolStrategy } from "langchain";
 
 const schema = z.object({
   summary: z.string(),
@@ -253,10 +316,10 @@ const schema = z.object({
 });
 
 const agent = createAgent({
-  model,
+  model: "gpt-4.1",
   tools: [search],
-  responseFormat: ToolStrategy.fromSchema(schema),
-  prompt: "Search and return structured results.",
+  responseFormat: toolStrategy(schema),
+  systemPrompt: "Search and return structured results.",
 });
 
 const result = await agent.invoke({ messages: [{ role: "user", content: "..." }] });
@@ -289,7 +352,9 @@ const agent = createAgent({
 
 For all 14 built-in middleware: `references/middleware-catalog.md`. Custom middleware, guardrails: `references/middleware-patterns.md`
 
-## Quick start C — LangGraph StateGraph
+## Pattern C — LangGraph StateGraph
+
+Use this after Quick start B when you need explicit graph nodes, cycles, interrupts, or custom state. This snippet assumes you already have a concrete `model` and `tools` array.
 
 ```typescript
 import { StateGraph, MessagesAnnotation, START, END, MemorySaver } from "@langchain/langgraph";
@@ -362,7 +427,9 @@ const result2 = await app.invoke(new Command({ resume: "yes" }), config);
 
 For full HITL patterns, RBAC, async approval, UI integration: `references/human-in-the-loop.md`
 
-## Quick start D — RAG chain (LCEL)
+## Pattern D — RAG chain (LCEL)
+
+Use this after you have chosen a chat model and a retrieval strategy. This snippet is the LCEL wiring pattern, not a full ingestion pipeline.
 
 ```typescript
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -497,7 +564,7 @@ import { createSupervisor } from "@langchain/langgraph-supervisor";
 
 const supervisor = await createSupervisor({
   agents: [researchAgent, writerAgent],
-  model,
+  llm: model,
   prompt: "Coordinate research and writing tasks.",
 });
 const app = supervisor.compile();
@@ -522,7 +589,7 @@ Full catalog with code examples in `references/common-errors.md § Antipatterns`
 |-------|-----------|-----|
 | `import { LLMChain } from "langchain/chains"` | `createAgent` or LCEL `.pipe()` | Removed in v1 |
 | `new ConversationBufferMemory()` | `MemorySaver` checkpointer | Legacy, unmaintained |
-| `new ToolStrategy(schema)` | `ToolStrategy.fromSchema(schema)` | Constructor API differs |
+| `ToolStrategy.fromSchema(schema)` | `toolStrategy(schema)` | Current v1 helper is the stable public API |
 | `providerStrategy` with OpenRouter | `toolStrategy` | Multi-model routing breaks it |
 | `ChatOpenAI({ baseURL: "openrouter..." })` | `ChatOpenRouter({ model, apiKey })` | Dedicated package |
 | `modelFallbackMiddleware({ models: [m] })` | `modelFallbackMiddleware(m1, m2)` | Spread args, not object |
@@ -537,7 +604,7 @@ Full catalog with code examples in `references/common-errors.md § Antipatterns`
 
 ```typescript
 // langchain (v1 high-level)
-import { createAgent, createMiddleware, ToolStrategy } from "langchain";
+import { createAgent, createMiddleware, toolStrategy } from "langchain";
 import { modelRetryMiddleware, modelFallbackMiddleware } from "langchain";
 import { toolCallLimitMiddleware, toolRetryMiddleware } from "langchain";
 import { dynamicSystemPromptMiddleware, summarizationMiddleware } from "langchain";
@@ -569,7 +636,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenRouter } from "@langchain/openrouter";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { initChatModel } from "langchain/chat_models/universal";
+import { initChatModel } from "langchain";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 ```
 
@@ -628,7 +695,7 @@ const myFunc = traceable(async (input: string) => {
 }, { name: "my-custom-function" });
 ```
 
-LangSmith Deployment pricing: $0.001/node executed.
+LangSmith pricing and deployment tiers change over time. Check the current LangSmith pricing page before budgeting.
 
 For LangSmith tracing, callbacks, cost tracking: `references/observability-tracing.md`. For evaluation, OTEL: `references/observability-evaluation.md`
 
@@ -651,6 +718,7 @@ For all errors with full Error→Cause→Fix format, antipatterns catalog: `refe
 
 | Document | What it contains | Load when |
 |----------|-----------------|-----------|
+| `references/getting-started.md` | First runnable paths with exact package subsets, env vars, file names, and run commands | Starting a new LangChain TS app or unblocking the first working run |
 | `references/agents.md` | createAgent full parameter reference, 9 overloads, model config, structured output, streaming modes, ReAct lifecycle | Building an agent with createAgent |
 | `references/models.md` | 15+ provider configs, 14 content block types, fakeModel API, model selection guide | Choosing or configuring chat models |
 | `references/providers.md` | 24+ providers, feature matrix, initChatModel universal interface, provider-specific setup | Setting up providers or comparing capabilities |

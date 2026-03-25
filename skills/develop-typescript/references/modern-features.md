@@ -1,8 +1,8 @@
-# Modern TypeScript Features (5.0–5.7)
+# Modern TypeScript Features (4.9+)
 
 New language features, type system additions, and configuration options from recent TypeScript releases.
 
-## `satisfies` Operator (5.0+)
+## `satisfies` Operator (4.9+)
 
 Validates that an expression matches a type without widening inference.
 
@@ -451,7 +451,7 @@ const re3 = /^[a-z]+$/i;
 
 | Feature | Version | Key Benefit |
 |---------|---------|-------------|
-| `satisfies` | 5.0 | Validate types without widening |
+| `satisfies` | 4.9 | Validate types without widening |
 | `const` type params | 5.0 | Infer literals in generics |
 | TC39 Decorators | 5.0 | Standard class decorators |
 | Variance annotations | 5.0 | Explicit `in`/`out` on type params |

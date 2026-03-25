@@ -1,12 +1,12 @@
 # Mobile Debugging — Android & iOS with Tauri DevTools
 
-> ⚠️ **Steering:** Mobile debugging adds a connection step that desktop doesn't need. For Android: `adb forward tcp:PORT tcp:PORT`. For iOS: copy the URL from Xcode console. If DevTools won't connect on mobile, check port forwarding FIRST — this resolves 90% of mobile connection issues.
+> ⚠️ **Steering:** Mobile debugging adds a connection step that desktop does not need. For Android: `adb forward tcp:PORT tcp:PORT`. For iOS: copy the URL from Xcode console. If DevTools will not connect on mobile, check port forwarding first.
 
 ## Android Debugging
 
 ### Connecting DevTools on Android
 
-> ⚠️ **Steering:** `cargo tauri dev` for Android targets builds and installs the APK. The DevTools port is printed to logcat, NOT the terminal. Use `adb logcat | grep devtools` to find it. Agents in testing looked at the terminal for the port number, which only works for desktop.
+> ⚠️ **Steering:** `cargo tauri android dev` builds and installs the APK. The DevTools port is printed to logcat, NOT the terminal. Use `adb logcat | grep devtools` to find it.
 
 The DevTools gRPC server runs inside the app on the device/emulator. To connect from your desktop browser:
 
@@ -16,7 +16,7 @@ cargo tauri android dev
 
 # Step 2: Find the DevTools port from logcat
 adb logcat | grep -i devtools
-# Look for output like: "devtools: listening on ws://127.0.0.1:7043"
+# Look for output like either: "devtools: listening on ws://127.0.0.1:7043" or "https://devtools.crabnebula.dev/dash/127.0.0.1/3033"
 
 # Step 3: Forward the port to your desktop
 adb forward tcp:7043 tcp:7043
@@ -139,7 +139,7 @@ xcrun simctl spawn booted log stream --predicate 'processImagePath contains "you
 
 ## Cross-Platform Mobile Debugging Strategy
 
-> ⚠️ **Steering:** The #1 mobile-only failure is hardcoded file paths. Desktop uses `/home/user/...` or `C:\Users\...`, but mobile uses app-specific sandboxed directories. Always use `app.path().app_data_dir()` instead of hardcoded paths. In testing, agents fixed a "file not found" error by hardcoding the desktop path, which broke mobile.
+> ⚠️ **Steering:** The most common mobile-only failure is hardcoded file paths. Desktop uses `/home/user/...` or `C:\Users\...`, but mobile uses app-specific sandboxed directories. Always use `app.path().app_data_dir()` instead of hardcoded paths.
 
 ### When to Use What
 
@@ -211,7 +211,7 @@ Use the DevTools **Console tab** to check for plugin init errors on mobile — t
 
 ## Common Mobile Mistakes
 
-> ⚠️ **Steering:** This table captures the most frequent mobile-specific failures from derailment testing. When debugging a mobile issue, check this table FIRST before investigating deeper — most mobile failures match one of these patterns.
+> ⚠️ **Steering:** When debugging a mobile issue, check this table first before investigating deeper. Most mobile failures match one of these patterns.
 
 | Mistake | Platform | Impact | Fix |
 |---|---|---|---|

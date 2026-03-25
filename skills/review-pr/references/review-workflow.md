@@ -3,8 +3,52 @@
 Step-by-step review procedure with exact CLI examples for every phase.
 This is the primary reference for `SKILL.md`. Follow phases in order; do not skip.
 
-> **Prerequisites:** You need `gh` (GitHub CLI) authenticated. Run `gh auth status` to confirm.
+> **Prerequisites:**
+> - **GitHub PR mode:** you need `gh` (GitHub CLI) authenticated. Run `gh auth status` to confirm.
+> - **Local diff mode:** you need a local git checkout with the target diff available. `gh` auth is not required.
+>
 > If the repository is cloned locally, many commands can be replaced with faster local equivalents noted throughout.
+
+## Target bootstrap
+
+### Local diff mode bootstrap
+
+When no GitHub PR exists, establish one exact comparison target before reading code.
+
+Use the first case that applies:
+
+| Situation | Comparison target | Commands |
+|---|---|---|
+| User supplied base + head refs | `<base>...<head>` | `git diff --stat <base>...<head>` and `git log --oneline <base>..<head>` |
+| Current branch review against repo default branch | `<default-branch>...HEAD` | `git branch --show-current`, resolve `<default-branch>`, then `git diff --stat <default-branch>...HEAD` |
+| Uncommitted work only | `HEAD + staged + unstaged` | `git diff --cached --stat` and `git diff --stat` |
+
+Common bootstrap commands:
+
+```bash
+git rev-parse --show-toplevel
+git branch --show-current
+git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's@^origin/@@'
+git diff --stat <base>...<head>
+git log --oneline <base>..<head>
+```
+
+If `refs/remotes/origin/HEAD` is unset, `git remote show origin | sed -n '/HEAD branch/s/.*: //p'` is the fallback for resolving the default branch.
+
+If you are reviewing uncommitted work, inspect both staged and unstaged state explicitly:
+
+```bash
+git diff --cached --stat
+git diff --stat
+```
+
+If a file you expect to review is missing from `git status` or the diff, check whether ignore rules are hiding it:
+
+```bash
+git check-ignore -v path/to/file
+```
+
+If you still cannot identify the exact comparison target or whether staged/unstaged changes are in scope, stop and ask. Do not invent a diff target.
 
 ### Navigation — SKILL.md phase mapping
 
@@ -29,6 +73,22 @@ SKILL.md defines 8 phases; this file covers phases 2-8 as its internal phases 1-
 
 **Goal:** Build a mental model of what the PR is trying to do and why, before looking at any code.
 
+If you are in local diff mode, replace PR metadata/issue/CI fields with local equivalents:
+- branch name + recent commits instead of PR title/body
+- user request or branch naming instead of linked issues
+- local test results only if the user or workflow provides them
+
+Mark GitHub-only fields as unavailable rather than fabricating them.
+
+Use this source mapping in local diff mode:
+
+| Need | GitHub PR mode | Local diff mode |
+|---|---|---|
+| Goal statement | PR title/body + linked issues | user request + branch name + commit history |
+| Base/head refs | `baseRefName` / `headRefName` | explicit comparison target from bootstrap |
+| CI/checks | `gh pr checks` and check runs | local test/build output if provided; otherwise unavailable |
+| Existing review state | PR reviews and comments | unavailable unless the user supplies copied comments or exported review data |
+
 ### 1.1 Get PR metadata
 
 ```bash
@@ -48,6 +108,12 @@ Record these fields immediately — you will reference them throughout the revie
 | `isDraft` | If `true`, do not review unless explicitly asked |
 | `reviewDecision` | Shows if already approved, changes requested, or no decision yet |
 
+In local diff mode, record the local equivalents:
+- repo root from `git rev-parse --show-toplevel`
+- current branch from `git branch --show-current`
+- comparison target from bootstrap
+- author, labels, milestone, and mergeability only if the user explicitly provides them
+
 #### Red flags in metadata
 - **Empty body:** PR has no description — flag immediately as a finding
 - **Draft state:** Only review if explicitly asked; otherwise note and stop
@@ -55,6 +121,8 @@ Record these fields immediately — you will reference them throughout the revie
 - **Stale PR:** `updatedAt` weeks ago suggests abandoned work or merge conflicts
 
 ### 1.2 Extract and fetch linked issues
+
+In local diff mode, use the user request, branch naming, and commit messages as the issue source unless the user supplies a linked issue or copied task text.
 
 Parse the PR body for issue references using these patterns:
 
@@ -120,6 +188,10 @@ No checks configured
   → Note the absence. This is worth mentioning if the repo normally has CI.
 ```
 
+In local diff mode:
+- local test/build output provided → record it as your verification state
+- no local verification output available → write `Checks unavailable in local diff mode` and continue
+
 When a specific CI run failed and you need logs:
 
 ```bash
@@ -134,6 +206,12 @@ gh run view <run-id> --repo owner/repo --log-failed
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/{N}/commits --paginate --jq '.[] | {sha: .sha[:8], message: .commit.message, author: .commit.author.name, date: .commit.author.date}'
+```
+
+Local diff mode equivalent:
+
+```bash
+git log --oneline <base>..<head>
 ```
 
 Scan commit messages for:
@@ -157,6 +235,13 @@ Write a one-paragraph internal summary:
 > It links to issues [#X, #Y] which describe [problem]. CI status: [all green / N failures / pending].
 > Key signals: [any labels, milestone, red flags from commit messages].
 
+Local diff mode version:
+
+> Local diff review for [repo root] comparing [comparison target].
+> Intended goal: [goal from user request / branch / commits].
+> GitHub-only context unavailable: [PR body, linked issues, CI, review threads].
+> Key signals: [branch name, commit markers, local verification state].
+
 ---
 
 ## Phase 2 — Scope and Cluster
@@ -173,6 +258,18 @@ This returns each file's name, status (`added`, `modified`, `removed`, `renamed`
 
 ```bash
 gh pr view <N> --repo owner/repo --json files --jq '.files[] | "\(.additions)+/\(.deletions)- \(.path)"'
+```
+
+Local diff mode equivalents:
+
+```bash
+# Branch diff
+git diff --name-status <base>...<head>
+git diff --stat <base>...<head>
+
+# Working tree review
+git diff --name-status --cached
+git diff --name-status
 ```
 
 ### 2.2 Clustering algorithm
@@ -269,9 +366,19 @@ Total: 3 clusters, 4 files, 117 additions, 22 deletions
 
 **Goal:** Avoid duplicating prior reviewer feedback and understand the current conversation.
 
+If local diff mode has no imported review history, skip the fetch steps below. Record:
+
+```
+Prior reviews: unavailable in local diff mode
+Active threads: unavailable
+Resolved threads: unavailable
+```
+
+If the user provides copied comments, exported review threads, or bot output for the same diff, treat that material as the review state for this phase.
+
 ### 3.1 Fetch all review data
 
-Make these three calls (they can be parallelized):
+In GitHub PR mode, make these three calls (they can be parallelized):
 
 **Get formal reviews (approvals, change requests):**
 
@@ -354,6 +461,19 @@ Outdated threads: 1 (on src/utils/helpers.ts — needs recheck)
 ```bash
 gh pr diff <N> --repo owner/repo
 ```
+
+Local diff mode equivalents:
+
+```bash
+# Branch diff
+git diff <base>...<head>
+
+# Working tree review
+git diff --cached
+git diff
+```
+
+If both committed branch changes and uncommitted work are in scope, review them as separate buckets in your notes and final output.
 
 For large diffs, you can filter to specific files:
 
@@ -770,6 +890,7 @@ Use the template from `references/output-templates.md`. Key sections:
 3. **Findings** — Grouped by severity (blockers → important → suggestions → questions).
 4. **Positive observations** — At least one.
 5. **Existing review threads** — Summary of prior review state from Phase 3.
+   Use `Unavailable in local diff mode` when no imported review history exists.
 6. **Test coverage** — Assessment of whether changes are adequately tested.
 7. **Scope/size note** — If large PR, note which clusters were deeply vs. lightly reviewed.
 
@@ -791,6 +912,7 @@ Before submitting the review:
 - [ ] Findings are ordered by severity (most important first)
 - [ ] At least one positive observation is included
 - [ ] Existing review thread summary is included
+- [ ] GitHub-only fields are either evidenced or marked unavailable in local diff mode
 - [ ] Verdict matches the findings (no blocker → no "request changes")
 - [ ] Total finding count is reasonable (<15)
 - [ ] Language is constructive ("this could" not "you should")
@@ -799,7 +921,7 @@ Before submitting the review:
 
 ## Submitting the Review
 
-Once you have assembled your review output, submit it using `gh`.
+Present the review to the user first. Only submit or post it on GitHub if the user explicitly asks you to do that. If the user asked only for review findings, stop here and do not run any command in this section.
 
 ### Post a formal review with verdict
 
@@ -1063,9 +1185,9 @@ If any check is ⚠️, record it as a **🟡 important** finding and proceed.
 | Get issue details | `gh issue view <N> --repo owner/repo --json title,body,state,labels,comments` |
 | Search code | `gh search code "query repo:owner/repo"` or `grep -rn "pattern" .` |
 | Get CI logs | `gh run view <run-id> --repo owner/repo --log-failed` |
-| Post review | `gh pr review <N> --repo owner/repo --approve\|--request-changes\|--comment --body "text"` |
-| Post comment | `gh pr comment <N> --repo owner/repo --body "text"` |
-| Post inline comment | `gh api repos/{owner}/{repo}/pulls/{N}/comments -f body="text" -f commit_id="sha" -f path="file" -F line=42 -f side="RIGHT"` |
+| Post review *(only when explicitly asked to submit/post)* | `gh pr review <N> --repo owner/repo --approve\|--request-changes\|--comment --body "text"` |
+| Post comment *(only when explicitly asked to submit/post)* | `gh pr comment <N> --repo owner/repo --body "text"` |
+| Post inline comment *(only when explicitly asked to submit/post)* | `gh api repos/{owner}/{repo}/pulls/{N}/comments -f body="text" -f commit_id="sha" -f path="file" -F line=42 -f side="RIGHT"` |
 | Checkout PR locally | `gh pr checkout <N> --repo owner/repo` |
 
 ## Steering notes

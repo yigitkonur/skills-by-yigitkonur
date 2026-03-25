@@ -6,6 +6,20 @@ The `openclaw.plugin.json` file is the required manifest for every OpenClaw plug
 
 Place `openclaw.plugin.json` at the root of the npm package (next to `package.json`). It must be included in the published package via the `files` field in `package.json`.
 
+## Name boundary: package vs runtime identifier
+
+Do not treat the npm package name and the manifest `name` as the same field.
+
+- npm package name: usually `openclaw-plugin-yourname`
+- manifest `name`: the runtime plugin identifier inside `openclaw.plugin.json`
+
+Example:
+
+- `package.json` `name`: `openclaw-plugin-example`
+- `openclaw.plugin.json` `name`: `example`
+
+The runtime identifier is what `openclaw plugins enable <name>` and runtime status output will use.
+
 ## Full manifest schema
 
 ```json
@@ -52,7 +66,7 @@ Place `openclaw.plugin.json` at the root of the npm package (next to `package.js
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | Yes | Unique plugin identifier, kebab-case |
+| `name` | string | Yes | Runtime plugin identifier, kebab-case, distinct from the npm package name |
 | `version` | string | Yes | Semver version |
 | `description` | string | Yes | What the plugin does (shown in UI) |
 | `main` | string | Yes | Path to compiled entry point |
@@ -94,6 +108,7 @@ This is the gating mechanism — it prevents the plugin from loading when its de
 When your manifest is ready, verify:
 
 - [ ] `name` is unique, kebab-case, does not contain "openclaw" prefix (that is implied)
+- [ ] `name` matches the runtime/plugin identifier you will enable locally
 - [ ] `version` follows semver
 - [ ] `main` points to the compiled output (not TypeScript source)
 - [ ] Every tool in `tools` has `name`, `description`, and `parameters`
@@ -106,6 +121,7 @@ When your manifest is ready, verify:
 | Mistake | Symptom | Fix |
 |---|---|---|
 | `main` points to `.ts` file | Plugin fails to load at runtime | Point to `dist/index.js` (compiled output) |
+| Manifest `name` copied from npm package name | Runtime enable/status commands refer to the wrong identifier | Keep npm package name and manifest `name` distinct and document both |
 | Config key name mismatch | Plugin disabled even when config exists | Match key names exactly (case-sensitive) |
 | Missing from `files` in package.json | Plugin installs but manifest not found | Add `"openclaw.plugin.json"` to `files` array |
 | Trailing comma in JSON | Parse error on load | Use a JSON linter before publishing |

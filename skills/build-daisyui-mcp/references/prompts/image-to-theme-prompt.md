@@ -85,7 +85,7 @@ Beyond colors, the theme needs structural variables:
 | `--size-selector` | Size of checkboxes, radios, toggles | `0.25rem` – `0.5rem` |
 | `--size-field` | Height of input fields, selects | `0.25rem` – `0.5rem` |
 | `--border` | Border width for components | `0px` – `2px` |
-| `--depth` | Shadow depth (0 = flat, 1 = normal, 2 = elevated) | `0` – `2` |
+| `--depth` | Shadow depth (`0` = flat, `1` = elevated) | `0` – `1` |
 | `--noise` | Background noise texture (0 = clean, 1 = subtle texture) | `0` – `1` |
 
 Choose values based on the image mood:
@@ -97,7 +97,7 @@ Choose values based on the image mood:
 | **Sharp / corporate** | `0.25rem` | `1px` | `1` | `0` |
 | **Flat / minimal** | `0.5rem` | `0px` | `0` | `0` |
 | **Retro / textured** | `0rem` | `2px` | `0` | `1` |
-| **Playful / bubbly** | `2rem` | `0px` | `2` | `0` |
+| **Playful / bubbly** | `2rem` | `0px` | `1` | `0` |
 
 ### Step 5 — Output the Theme Block
 

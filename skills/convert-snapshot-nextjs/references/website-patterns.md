@@ -12,6 +12,8 @@ This reference helps you identify section types from CSS Module class prefixes, 
 - The **propertyName** (between `_` and `__`) tells you which element within that component
 - The **hashCode** (after `__`) is a build-time unique identifier — ignore it
 
+**Tailwind example rule:** Tailwind classes in this document illustrate structure and implementation shape only. Replace their concrete values with token-backed classes and extracted numbers from Waves 1–3 before you write production code.
+
 ---
 
 ## Master Prefix Identification Table
@@ -31,6 +33,11 @@ This reference helps you identify section types from CSS Module class prefixes, 
 | `Blog_`, `Post_`, `Article_`, `News_` | Blog/Content | Article structure | Dates, authors, reading time |
 | `Footer_`, `SiteFooter_` | Footer | `<footer>` | Link columns, copyright, social icons |
 | `Stats_`, `Metrics_`, `Numbers_` | Stats | Number grid | Large numbers + labels |
+| `Dashboard_`, `AppShell_`, `Shell_`, `Workspace_` | App Shell / Dashboard | persistent sidebar + top bar + content pane | navigation chrome, filters, data cards, dense content |
+| `Sidebar_`, `SideNav_`, `Rail_` | Sidebar Navigation | `<aside>` or fixed left column | stacked nav items, workspace switcher, collapsed labels |
+| `Metric_`, `Kpi_`, `StatCard_` | KPI / Metric Cards | repeated compact cards | large value + label + delta/trend |
+| `Table_`, `DataTable_`, `GridTable_` | Data Table | `<table>` or row grid | column headers, dense rows, sorting/filter affordances |
+| `Filter_`, `Toolbar_`, `SegmentedControl_` | Filter / Toolbar | control bar above content | pills, selects, search, date filters |
 | `Timeline_`, `History_`, `Roadmap_` | Timeline | Sequential items | Dates, milestone descriptions |
 | `Changelog_`, `Updates_`, `Release_` | Changelog | Versioned entries | Version numbers, descriptions |
 | `Integrations_`, `Partners_`, `AppStore_` | Integrations | Logo/card grid | App icons, "Connect" buttons |
@@ -39,6 +46,8 @@ This reference helps you identify section types from CSS Module class prefixes, 
 - Outermost prefix wins (a `Header_` wrapping `Button_` means this is the Header section, not the Button section)
 - Semantic HTML tags validate: `<footer>` + `Footer_` = definitely footer
 - Utility prefixes are NOT sections: `Flex_`, `Grid_`, `Layout_`, `Spacer_`, `Container_`, `Wrapper_`, `Bleed_`
+
+**App-UI escape hatch:** If a snapshot is clearly an authenticated product surface rather than a marketing page, classify the outer shell as **App Shell / Dashboard** first, then classify repeated regions as **Sidebar Navigation**, **KPI / Metric Cards**, **Data Table**, **Filter / Toolbar**, or another grounded app-ui pattern. Do not force these into hero/features/CTA buckets.
 
 **How to extract the prefix map from any page:**
 ```bash
@@ -560,7 +569,7 @@ Umbrella category for information-dense sections that don't fit the conversion-f
 - Team grid: `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8`
 - Team photo: `aspect-square rounded-full object-cover` or `rounded-xl` for rectangle
 - Timeline line: `absolute left-4 top-0 bottom-0 w-px bg-border` with nodes `absolute left-2.5 size-3 rounded-full bg-primary border-2 border-background`
-- Prose: `max-w-prose mx-auto leading-relaxed` (Tailwind's `prose` class from `@tailwindcss/typography`)
+- Prose: `mx-auto max-w-[75ch] leading-relaxed` or an equivalent token-backed class set built from extracted typography values. Do not use `@tailwindcss/typography`; this skill forbids extra Tailwind plugins.
 
 **Responsive:** Blog grid: `1→2→3` columns. Team grid: `2→3→4` columns. Timeline: single column on mobile (items stacked with left line), alternating left/right on `lg:` breakpoint. Prose sections are naturally responsive — constrain `max-width` and padding handles the rest.
 
@@ -688,6 +697,8 @@ Before marking any page complete:
 ## Snapshot-Specific Patterns
 
 These patterns are unique to saved HTML snapshots and won't appear in live source code inspection. Understanding them is essential for accurate extraction from saved pages.
+
+Unless stated otherwise, `_files/` examples in this section mean the primary snapshot mode. In adjacent-asset mode, substitute the page's discovered CSS corpus and asset root.
 
 ### Mangled Image References
 Images saved with CDN query strings baked into filenames:

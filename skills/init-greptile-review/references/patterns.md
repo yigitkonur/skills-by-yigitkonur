@@ -18,16 +18,27 @@ Before selecting a pattern, map the repository systematically. This section prov
 
 2. **List top-level directories** to understand layout:
    ```bash
-   ls -d */ 2>/dev/null | head -20
+   find . -mindepth 1 -maxdepth 1 -type d ! -name '.git' -print | sed 's#^\./##' | head -20
    ```
 
 3. **Identify languages and frameworks** from dependency manifests:
    ```bash
    # JavaScript/TypeScript
-   cat package.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('deps:', list(d.get('dependencies',{}).keys())[:15]); print('dev:', list(d.get('devDependencies',{}).keys())[:10])"
+   python3 - <<'PY'
+from pathlib import Path
+import json
+
+package_json = Path("package.json")
+if package_json.exists():
+    data = json.loads(package_json.read_text())
+    print("deps:", list(data.get("dependencies", {}).keys())[:15])
+    print("dev:", list(data.get("devDependencies", {}).keys())[:10])
+else:
+    print("package.json not found")
+PY
    
    # Python
-   cat pyproject.toml 2>/dev/null || cat requirements.txt 2>/dev/null | head -20
+   head -20 pyproject.toml 2>/dev/null || head -20 requirements.txt 2>/dev/null
    
    # Go
    head -20 go.mod 2>/dev/null
@@ -38,18 +49,18 @@ Before selecting a pattern, map the repository systematically. This section prov
 
 4. **Find risk-sensitive directories** by searching for keywords:
    ```bash
-   find . -type d \( -name auth -o -name payment* -o -name billing -o -name webhook* -o -name middleware -o -name migration* -o -name security \) -not -path '*/node_modules/*' 2>/dev/null
+   find . -type d \( -name 'auth' -o -name 'payment*' -o -name 'billing' -o -name 'webhook*' -o -name 'middleware' -o -name 'migration*' -o -name 'security' \) -not -path '*/node_modules/*' 2>/dev/null
    ```
 
 5. **Find context-worthy files** (schemas, specs, architecture docs):
    ```bash
-   find . -name '*.prisma' -o -name '*.graphql' -o -name 'openapi*' -o -name 'swagger*' -o -name '*.proto' 2>/dev/null | grep -v node_modules
-   ls docs/ architecture.md ADR* ARCHITECTURE* 2>/dev/null
+   find . -type f \( -name '*.prisma' -o -name '*.graphql' -o -name 'openapi*' -o -name 'swagger*' -o -name '*.proto' \) -not -path '*/node_modules/*' 2>/dev/null
+   find . -maxdepth 3 -type f \( -path './docs/*' -o -name 'architecture.md' -o -name 'ARCHITECTURE*' -o -name 'ADR*' \) ! -name 'README*' ! -name 'CHANGELOG*' 2>/dev/null | head -20
    ```
 
 6. **Detect existing linters/formatters**:
    ```bash
-   ls .eslintrc* prettier.config* biome.* .stylelintrc* pyproject.toml .rubocop.yml .golangci.yml 2>/dev/null
+   find . -maxdepth 2 -type f \( -name '.eslintrc*' -o -name 'prettier.config*' -o -name '.prettierrc*' -o -name 'biome.*' -o -name '.stylelintrc*' -o -name 'pyproject.toml' -o -name '.rubocop.yml' -o -name '.golangci.yml' -o -name '.golangci.yaml' \) 2>/dev/null
    ```
 
 ### Depth guidance
@@ -118,7 +129,7 @@ Beyond universal patterns, every repo has unique noise. Discover it:
 
 ```bash
 # Find generated files (often have 'generated', 'auto', or header comments)
-find . -name '*generated*' -o -name '*auto*' -o -name '*.gen.*' 2>/dev/null | grep -v node_modules | head -10
+find . -type f \( -name '*generated*' -o -name '*auto*' -o -name '*.gen.*' \) -not -path '*/node_modules/*' 2>/dev/null | head -10
 
 # Find build output directories
 find . -type d \( -name dist -o -name build -o -name out -o -name .next -o -name target -o -name bin \) -not -path '*/node_modules/*' 2>/dev/null

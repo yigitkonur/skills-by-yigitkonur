@@ -1,5 +1,7 @@
 # Search Strategies
 
+Read this file before the first `skill-dl search` in a session. Keyword choice is the main quality lever.
+
 ## Keyword formulation rules
 
 `skill-dl search` accepts 3-20 space-separated keywords and ranks results by how many keywords each skill matches. Cross-keyword overlap is the primary ranking signal.

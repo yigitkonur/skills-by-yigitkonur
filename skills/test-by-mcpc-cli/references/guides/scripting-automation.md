@@ -89,7 +89,8 @@ fi
 set -euo pipefail
 
 # Configuration
-SERVER="${1:?Usage: $0 <server-url-or-config:entry>}"
+SERVER="${1:?Usage: $0 <server-url-or-entry-name>}"
+MCPC_CONFIG="${MCPC_CONFIG:-}"
 SESSION="test-$$-$(date +%s)"
 TIMEOUT="${2:-300}"
 FAILURES=0
@@ -112,14 +113,21 @@ cleanup() {
 trap cleanup EXIT
 
 echo "=== MCP Server Test Suite ==="
-echo "Server: $SERVER"
+echo "Server target: $SERVER"
+echo "Config file: ${MCPC_CONFIG:-<direct URL/host>}"
 echo "Session: @$SESSION"
 echo "Timeout: ${TIMEOUT}s"
 echo ""
 
 # === Phase 1: Connection ===
 echo "Phase 1: Connection"
-if mcpc "$SERVER" connect "@$SESSION" --timeout "$TIMEOUT" 2>/dev/null; then
+if [ -n "$MCPC_CONFIG" ]; then
+  CONNECT_CMD=(mcpc --config "$MCPC_CONFIG" "$SERVER" connect "@$SESSION" --timeout "$TIMEOUT")
+else
+  CONNECT_CMD=(mcpc "$SERVER" connect "@$SESSION" --timeout "$TIMEOUT")
+fi
+
+if "${CONNECT_CMD[@]}" 2>/dev/null; then
   pass "Connected to server"
 else
   fail "Failed to connect"
@@ -225,7 +233,7 @@ chmod +x test-mcp.sh
 ./test-mcp.sh https://mcp.example.com
 
 # Test a stdio server from config
-./test-mcp.sh ~/.vscode/mcp.json:my-server
+MCPC_CONFIG=~/.vscode/mcp.json ./test-mcp.sh my-server
 
 # Test with custom timeout
 ./test-mcp.sh https://slow-server.com 600
@@ -330,12 +338,16 @@ mcpc "$SESSION_NEW" close
 
 ```bash
 # Test multiple servers concurrently
-SERVERS=("https://server1.com" "https://server2.com" "config.json:local")
+SERVERS=("https://server1.com" "https://server2.com" "local")
 
 for server in "${SERVERS[@]}"; do
   (
     SESSION="@parallel-$(echo "$server" | md5sum | cut -c1-8)"
-    mcpc "$server" connect "$SESSION" && \
+    if [[ "$server" == "local" ]]; then
+      MCPC_CONFIG=./config.json mcpc --config ./config.json "$server" connect "$SESSION"
+    else
+      mcpc "$server" connect "$SESSION"
+    fi && \
     mcpc "$SESSION" tools-list --json > "/tmp/results-$SESSION.json" && \
     mcpc "$SESSION" close
   ) &

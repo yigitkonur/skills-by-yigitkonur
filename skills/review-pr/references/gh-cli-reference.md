@@ -37,6 +37,57 @@ After checkout: `git diff main...HEAD` to see all changes.
 
 ---
 
+## Local Diff Operations
+
+Use these when there is no GitHub PR target and the review is against a local branch or working tree.
+
+### Pick the comparison target first
+
+Use one exact comparison target before reviewing:
+
+- Explicit branch diff from the user: `<base>...<head>`
+- Current branch against the repo default branch: `<default-branch>...HEAD`
+- Working tree review: `HEAD + staged + unstaged`
+
+If none of these are clearly available, stop and ask instead of guessing.
+
+### Establish repo + target refs
+```bash
+git rev-parse --show-toplevel
+git branch --show-current
+git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's@^origin/@@'
+```
+
+Fallback when `refs/remotes/origin/HEAD` is unset:
+
+```bash
+git remote show origin | sed -n '/HEAD branch/s/.*: //p'
+```
+
+### Review a branch diff
+```bash
+git diff --stat <base>...<head>
+git diff <base>...<head>
+git log --oneline <base>..<head>
+```
+
+### Review staged / unstaged changes
+```bash
+git diff --cached
+git diff
+```
+
+### Diagnose missing files in the diff
+```bash
+git check-ignore -v path/to/file
+```
+
+### Mark unavailable GitHub-only context
+
+There is no local equivalent for PR body, linked issues, review threads, bot comments, or CI unless the user supplies that material. Record those fields as unavailable rather than inventing them.
+
+---
+
 ## Review State Operations
 
 ### Get all reviews
@@ -144,6 +195,8 @@ Use when: gathering context — understanding linked issues referenced in PR bod
 
 ## Submitting Reviews
 
+Only use this section when the user explicitly asks you to submit, post, or publish the review on GitHub. Otherwise stop at presenting the review in the conversation.
+
 ### Submit a review
 ```bash
 # Approve
@@ -178,6 +231,8 @@ gh api repos/{owner}/{repo}/pulls/{N}/comments/{comment_id}/replies \
   --method POST \
   -f body="Reply text"
 ```
+
+If the user asked only for a review, not a submission, do not run any command in this section.
 
 ---
 

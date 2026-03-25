@@ -4,16 +4,16 @@
 
 | # | Architecture Decision | Primary Tools | Why These Tools |
 |---|----------------------|--------------|-----------------|
-| 01 | Design Pattern Selection | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Patterns involve nuanced trade-offs needing synthesis; canonical sources provide frameworks; Reddit has survivorship-bias-free signal |
-| 02 | State Management Approach | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Rapidly changing landscape needs current synthesis; benchmarks require extraction; Reddit has migration stories |
-| 03 | API Style Decision | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Multi-boundary problem needs holistic analysis; engineering blogs document real decisions; Reddit has operational metrics |
-| 04 | Database Selection | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Total cost of ownership requires multi-dimensional synthesis; benchmarks need extraction; Reddit has cost surprises |
-| 05 | Caching Strategy Design | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Multi-data-type strategy needs holistic design; vendor guides have decision trees; Reddit has failure mode stories |
-| 06 | Authentication Architecture | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Security decisions cascade; OWASP sets the baseline; Reddit has security reviews in comment form |
-| 07 | Microservices vs Monolith | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Most context-dependent decision (team size, org structure); Reddit has the microservices backlash data |
-| 08 | Real-Time Architecture | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Transport and application protocol are tightly coupled; pricing models are complex; Reddit has scaling numbers |
-| 09 | Event-Driven Design | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Broker selection involves subtle delivery semantic differences; schema evolution needs synthesis |
-| 10 | Deployment Strategy | deep_research -> search_google -> scrape_pages -> search_reddit -> fetch_reddit | Cost trajectory analysis needs multi-source modeling; Reddit has billing shock stories |
+| 01 | Design Pattern Selection | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Patterns involve nuanced trade-offs needing synthesis; Reddit reveals rollback stories; canonical sources verify decision criteria and constraints. |
+| 02 | State Management Approach | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Rapidly changing landscape needs current synthesis first; Reddit surfaces migration pain; docs and benchmarks verify the remaining claims. |
+| 03 | API Style Decision | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Multi-boundary problems need holistic analysis first; practitioners expose operational costs; official sources verify protocol and tooling facts. |
+| 04 | Database Selection | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Total cost of ownership needs synthesis first; Reddit reveals cost surprises; benchmarks and docs verify performance and limits. |
+| 05 | Caching Strategy Design | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Multi-data-type strategy needs holistic design first; Reddit has failure mode stories; vendor docs verify patterns and constraints. |
+| 06 | Authentication Architecture | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Security decisions cascade; practitioner stories reveal deployment pain; OWASP and vendor docs verify exact requirements. |
+| 07 | Microservices vs Monolith | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | This is highly context-dependent; Reddit has backlash and rollback data; official case studies and docs verify migration constraints. |
+| 08 | Real-Time Architecture | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Transport and application protocol are tightly coupled; Reddit reveals scaling failures; docs and pricing pages verify hard limits. |
+| 09 | Event-Driven Design | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Broker selection involves subtle semantics; practitioners report schema and ops pain; docs verify guarantees and pricing. |
+| 10 | Deployment Strategy | deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages | Cost trajectory analysis needs synthesis first; Reddit has billing shock stories; vendor docs verify limits and pricing curves. |
 
 ---
 
@@ -154,17 +154,17 @@
 
 1. **Frame the decision** precisely: constraints, scale targets, team composition, risk tolerance.
 2. **Start with deep_research** (unlike bug-fixing which starts with search_google). Architecture decisions benefit from synthesized analysis upfront.
-3. **Use search_google** (5-7 keywords) for canonical sources, benchmarks, and decision frameworks. Use `site:` operators for high-quality sources.
-4. **Use scrape_pages** on top 3-5 URLs to extract decision criteria, benchmark data, and pricing tables. Focus on "when to use" and "when NOT to use."
-5. **Use search_reddit** (5-7 queries) for real-world experiences and regret stories. Search for "regret", "rolled back", "not worth it."
-6. **Use fetch_reddit** (fetch_comments=True, use_llm=False) on 5-10 threads from r/ExperiencedDevs and r/softwarearchitecture.
-7. **Synthesize with a second deep_research pass** if new questions arose. Feed Reddit and scrape_pages findings into a targeted follow-up.
+3. **Use search_reddit** (5-8 queries for focused decisions) for real-world experiences and regret stories. Search for "regret", "rolled back", and "not worth it." If direct practitioner signal is weak, run one adjacent community round on the underlying runtime, framework, or problem class. If signal is still weak, stop the Reddit branch and note low community signal instead of forcing weak threads.
+4. **Use fetch_reddit** (`fetch_comments=True`, `use_llm=False`) on 5-8 threads from r/ExperiencedDevs and r/softwarearchitecture.
+5. **Use search_google** (3-5 keywords) for canonical sources, benchmarks, and decision frameworks. Use `site:` operators for high-quality sources.
+6. **Use scrape_pages** on top 3-5 URLs to extract decision criteria, benchmark data, and pricing tables. Focus on "when to use" and "when NOT to use."
+7. **Run a follow-up deep_research question only if needed** after Reddit and scraped docs. Use it to resolve contradictions, probe failure modes, or evaluate a narrowed shortlist.
 8. **Build a decision matrix**: rows = criteria from authoritative sources, columns = options. Score using gathered data.
 
 ## Steering notes
 
 1. **Start with `deep_research`**, not `search_google`. Architecture needs trade-off synthesis.
-2. **Specific GOAL/WHY/KNOWN/APPLY.** "Should a 4-person team at 500 req/s migrate from Rails monolith?" not "should I use microservices?"
+2. **Specific WHAT I NEED / WHY I'M RESEARCHING THIS / WHAT I ALREADY KNOW / HOW I PLAN TO USE THIS.** "Should a 4-person team at 500 req/s migrate from Rails monolith?" not "should I use microservices?"
 3. **Reddit reveals operational reality.** Search r/devops, r/microservices, r/softwarearchitecture.
 4. **3-source verification strictly** -- architecture is expensive to reverse.
 5. **Include cost forecasting** in queries.

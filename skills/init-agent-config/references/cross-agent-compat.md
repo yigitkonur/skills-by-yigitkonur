@@ -162,13 +162,9 @@ Use the agent's native config directly:
 
 1. **Write AGENTS.md** as the single source of truth (universal content only)
 2. **Create agent-specific wrappers:**
-   ```bash
-   # Claude Code: thin wrapper
-   echo '@AGENTS.md' > CLAUDE.md
-
-   # Or symlink
-   ln -s AGENTS.md CLAUDE.md
-   ```
+   - Claude Code: use the canonical thin wrapper from Step 3 of `SKILL.md`
+   - If Claude needs no extra memory or features, the wrapper can be just `@AGENTS.md`
+   - Use a symlink only when the repo truly wants identical content and the environment supports it
 3. **Add agent-specific config** only where needed:
    - `.claude/rules/` for path-scoped Claude rules
    - `.cursor/rules/` for Cursor-specific behavior

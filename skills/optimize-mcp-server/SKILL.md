@@ -16,38 +16,59 @@ This skill does NOT apply patterns automatically. It follows a strict exploratio
 3. **Present** — Show findings as critical decisions with options and trade-offs
 4. **Optimize** — Only after user approval, provide specific code changes
 
+**Prerequisite:** This skill requires a real MCP server codebase. If exploration cannot find an MCP server entry point, tool registration, schema, or transport after searching the repo root and the most likely server directories surfaced by the tree (`src/`, `server/`, `servers/`, `app/`, `apps/`, `packages/`, `services/`, `mcp/`), stop and report the missing prerequisite. Do not invent a server just to continue the audit.
+
 ## Phase 1: Explore the Codebase
 
 Before asking a single question, understand what exists. Run these explorations:
 
 ```bash
 # Map the project structure
-tree src/ -I node_modules --dirsfirst -L 3
+tree . -I node_modules --dirsfirst -L 3
 
 # Find MCP server entry points
-grep -r "McpServer\|FastMCP\|server.tool\|@tool\|@mcp.tool" src/ --include="*.ts" --include="*.py" -l
+rg -n -l "McpServer|FastMCP|server\\.tool|@tool|@mcp\\.tool|registerTool|Server\\(" . -g '!node_modules'
 
 # Find tool definitions
-grep -r "server.tool\|@tool\|registerTool\|def.*tool" src/ --include="*.ts" --include="*.py" -n
+rg -n "server\\.tool|@tool|registerTool|def .*tool|tool\\(" . -g '!node_modules'
 
 # Count tools
-grep -r "server.tool\|@tool\|registerTool" src/ --include="*.ts" --include="*.py" -c
+rg -n "server\\.tool|@tool|registerTool|def .*tool|tool\\(" . -g '!node_modules'
 
 # Find schema definitions (Zod, JSON Schema, Pydantic)
-grep -r "z\.\|inputSchema\|BaseModel\|Field(" src/ --include="*.ts" --include="*.py" -l
+rg -n -l "z\\.|inputSchema|BaseModel|Field\\(|pydantic|jsonschema" . -g '!node_modules'
 
 # Check error handling patterns
-grep -r "isError\|throw\|raise\|catch\|except" src/ --include="*.ts" --include="*.py" -n | head -30
+rg -n "isError|throw|raise|catch|except" . -g '!node_modules' | head -30
 
 # Check transport configuration
-grep -r "stdio\|streamable\|sse\|transport" src/ --include="*.ts" --include="*.py" --include="*.json" -n
+rg -n "stdio|streamable|sse|transport" . -g '!node_modules'
 ```
 
-Read the key files discovered. Understand the tool count, schema complexity, error patterns, and transport choice BEFORE proceeding.
+If `tree` is unavailable, replace it with `find . -maxdepth 3 -type d | sort`. If `rg` is unavailable, use `grep -R` with the same repo-root scope.
+
+After the search pass, read files in this order:
+- package manifests and runtime config (`package.json`, `pyproject.toml`, lockfiles, env examples) to identify SDK, entry command, and deployment shape
+- MCP server entry points and bootstrapping files
+- tool registration and handler files
+- schema/model definitions and validation helpers
+- transport, auth, and deployment config files
+
+If you find multiple MCP servers or packages, stop after inventory and scope them before diagnosing:
+- list each candidate server with its root path, SDK, transport, and rough tool count
+- ask the user which server is in scope, unless they explicitly asked for a repo-wide audit
+- do not merge findings across multiple servers into one blended assessment
+
+If those searches return no MCP server signals, stop with a prerequisite report:
+- where you searched
+- what server indicators were absent
+- what file(s) or directory path the user needs to provide
 
 ## Phase 2: Diagnostic Questions
 
 After exploring, ask targeted questions based on what you found. Do NOT ask generic questions — reference specific files and patterns you discovered.
+
+If the user is unavailable for follow-up, you may produce **draft findings** with explicit assumptions and 2-3 option sets, but you still must not apply any optimization until the user approves a concrete option.
 
 **Template** (adapt based on what you found):
 
@@ -61,7 +82,7 @@ I explored your MCP server and found:
 Based on this, I have questions about [2-3 specific areas]:
 
 1. [Question referencing a specific file/pattern you found]
-   Example: "In `src/tools/search.ts:42`, your `search_users` tool accepts 14 parameters
+   Example: "In `packages/customer-mcp/tools/search.ts:42`, your `search_users` tool accepts 14 parameters
    including nested `filters.dateRange.start`. Are all 14 params used in most calls,
    or are many optional?"
 
@@ -76,7 +97,9 @@ Based on this, I have questions about [2-3 specific areas]:
 
 ## Phase 3: Optimization Assessment
 
-After the user answers, evaluate their server against the relevant dimensions. Present findings as a prioritized list of critical decisions.
+After the user answers, or after you have stated assumptions for draft mode, evaluate their server against the relevant dimensions. Present findings as a prioritized list of critical decisions.
+
+Only raise a finding when you can tie it to actual code evidence, stated deployment context, or an explicit assumption. The thresholds in the reference docs are diagnostic cues, not automatic defects. If the context needed to judge a pattern is missing, ask about it first or mark the finding as a draft assumption.
 
 **Format each finding as:**
 
@@ -101,7 +124,9 @@ After the user answers, evaluate their server against the relevant dimensions. P
 **Should I optimize this?** (yes / no / show me the code for option [X] first)
 ````
 
-Present findings one at a time, starting with the highest severity. Wait for user decision before moving to next finding.
+Interactive mode: present findings one at a time, starting with the highest severity, and wait for user decision before moving to the next.
+
+Draft mode when the user is unavailable: present the full prioritized finding set in one pass, label every assumption clearly, and stop before Phase 4.
 
 ## Phase 4: Apply Optimization
 
@@ -231,8 +256,11 @@ When applying these patterns, follow these rules:
 
 - **Explore before asking.** Run tree/grep/read on the codebase before asking any questions. Your questions must reference specific files and patterns you found.
 - **Ask before optimizing.** Never apply a pattern without presenting it as a finding with options and getting explicit user approval.
-- **One finding at a time.** Present findings by severity. Wait for user decision before the next.
+- **In interactive mode, one finding at a time.** Present findings by severity and wait for user decision before the next.
+- **Use draft mode only when follow-up is unavailable.** In draft mode, assumptions must be explicit and no code changes are applied.
 - **Show real code.** Every finding must reference the user's actual code with file paths and line numbers — never hypothetical examples.
+- **Scope one server at a time.** If a repo contains multiple MCP servers, inventory them first and ask which one is in scope unless the user requested a repo-wide comparison.
+- **Treat thresholds as heuristics, not verdicts.** Tool-count, parameter-count, and latency guidance must be grounded in the observed code and target deployment, not applied mechanically.
 - **Verify after applying.** Every optimization gets a verification step (MCP Inspector, test command, or manual check).
 - **Do not create one tool per API endpoint.** Map tools to user intents. If tool names mirror REST routes, the design needs rethinking.
 - **Do not use deeply nested schemas.** If a parameter requires more than one level of nesting, restructure. LLMs generate flat structures far more reliably.

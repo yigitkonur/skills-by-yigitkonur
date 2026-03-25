@@ -297,12 +297,13 @@ repo-root/
 When generating Greptile configuration, present it in this exact order:
 
 1. **File tree** — markdown code block showing `.greptile/` directory structure
-2. **Complete file contents** — each file in a fenced code block with the filename as header
-3. **Reasoning annotations** — markdown list tying each rule to repo evidence:
+2. **Write/update the repo files first** — if filesystem access exists, create or update the `.greptile/` files in the target repo before printing them, unless the user explicitly asked for draft-only output
+3. **Complete file contents** — each file in a fenced code block with the filename as header
+4. **Reasoning annotations** — markdown list tying each rule to repo evidence:
    ```markdown
    - **rule-id**: Added because [specific repo observation] (see `path/to/file:line`)
    ```
-4. **Canary test** — a temporary low-severity rule to verify config is being read:
+5. **Canary test** — a temporary low-severity rule to verify config is being read:
    ```json
    {
      "id": "canary",
@@ -311,7 +312,7 @@ When generating Greptile configuration, present it in this exact order:
      "severity": "low"
    }
    ```
-5. **Migration notes** — only if replacing `greptile.json` with `.greptile/`
+6. **Migration notes** — only if replacing `greptile.json` with `.greptile/`
 
 ---
 

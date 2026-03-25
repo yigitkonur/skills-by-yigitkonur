@@ -4,7 +4,7 @@
 
 ## Choose the correct route
 
-> ⚠️ **Steering:** Org-scoped pages MUST include the `(organizations)` route group in the file path. Omitting it creates a page that silently never renders — no error, no redirect, just blank. This was the most common derailment found in testing.
+> ⚠️ **Steering:** Org-scoped pages MUST include the `(organizations)` route group in the file path. Omitting it creates a page that silently never renders — no error, no redirect, just blank.
 
 - Account-scoped page: `apps/web/app/(saas)/app/(account)/<page>/page.tsx`
 - Organization-scoped page: `apps/web/app/(saas)/app/(organizations)/[organizationSlug]/<page>/page.tsx`

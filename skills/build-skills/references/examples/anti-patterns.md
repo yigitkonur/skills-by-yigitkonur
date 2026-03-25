@@ -150,7 +150,7 @@ references/
 └── backup-guide.md    # Backup of guide.md ❌
 ```
 
-**Problem:** Orphaned files waste disk space and confuse anyone auditing the skill. The agent may accidentally read them.
+**Problem:** Orphaned files waste disk space and confuse anyone reviewing the skill. The agent may accidentally read them.
 
 **Fix:** Every file in `references/` must be reachable from SKILL.md (decision tree, reading set, or routing table). Delete everything else.
 
@@ -421,11 +421,11 @@ Before publishing, verify none of these apply:
 
 ---
 
-## Derailment anti-patterns (AP-D1 through AP-D7)
+## Category 6: Workflow execution problems
 
-These anti-patterns were discovered through systematic derailment testing of the build-skills workflow.
+These anti-patterns show up repeatedly when operators follow the workflow too loosely or make assumptions the skill does not support.
 
-### AP-D1: Reference overload
+### AP-25: Reference overload
 
 **Pattern:** Loading all 22+ reference files at once during Steps 3-4a.
 
@@ -435,7 +435,7 @@ These anti-patterns were discovered through systematic derailment testing of the
 
 **Detection:** Agent has read more than 5 reference files before completing Step 4.
 
-### AP-D2: Output batching
+### AP-26: Output batching
 
 **Pattern:** Producing all output artifacts at the end instead of showing them at the step that produces them.
 
@@ -445,7 +445,7 @@ These anti-patterns were discovered through systematic derailment testing of the
 
 **Detection:** Agent reaches Step 7 without having shown any intermediate output.
 
-### AP-D3: Tool assumption
+### AP-27: Tool assumption
 
 **Pattern:** Assuming `skill-dl` or other tools are installed because the skill mentions them.
 
@@ -455,7 +455,7 @@ These anti-patterns were discovered through systematic derailment testing of the
 
 **Detection:** A tool command fails with "command not found" during execution.
 
-### AP-D4: Quality blindness
+### AP-28: Quality blindness
 
 **Pattern:** Treating all downloaded skills as high-quality references regardless of their actual quality.
 
@@ -465,7 +465,7 @@ These anti-patterns were discovered through systematic derailment testing of the
 
 **Detection:** Comparison table has no "avoid" entries or all skills are rated positively.
 
-### AP-D5: Path confusion
+### AP-29: Path confusion
 
 **Pattern:** Writing test instructions that assume creation when the task is revision (or vice versa).
 
@@ -475,7 +475,7 @@ These anti-patterns were discovered through systematic derailment testing of the
 
 **Detection:** All trigger tests "pass" but the skill wasn't installed before testing.
 
-### AP-D6: Research scope creep
+### AP-30: Research scope creep
 
 **Pattern:** Downloading 20+ skills and reading all of them without a stopping criterion.
 
@@ -485,7 +485,7 @@ These anti-patterns were discovered through systematic derailment testing of the
 
 **Detection:** More than 10 skills downloaded or more than 3 steps spent on research alone.
 
-### AP-D7: Checklist as workflow
+### AP-31: Checklist as workflow
 
 **Pattern:** Treating the master checklist as a sequential todo list, working through all 100+ items for every task.
 

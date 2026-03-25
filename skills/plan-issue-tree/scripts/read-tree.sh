@@ -9,6 +9,9 @@ ISSUE="${2:?Usage: read-tree.sh OWNER/REPO ISSUE_NUMBER [DEPTH]}"
 DEPTH="${3:-0}"
 MAX_DEPTH="${MAX_DEPTH:-8}"
 
+command -v gh >/dev/null || { echo "ERROR: gh CLI is required" >&2; exit 1; }
+command -v jq >/dev/null || { echo "ERROR: jq is required" >&2; exit 1; }
+
 if [ "$DEPTH" -ge "$MAX_DEPTH" ]; then
   printf '%*s' $((DEPTH * 2)) ''
   echo "... (max depth $MAX_DEPTH reached)"
