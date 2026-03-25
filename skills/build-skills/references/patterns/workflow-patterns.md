@@ -285,6 +285,28 @@ Primary: Sequential (overall workflow)
 Keep the primary pattern visible in SKILL.md. Move secondary pattern details to reference files.
 
 
+## Documenting skipped steps
+
+When skipping steps in any workflow pattern, state the reason explicitly. The output should never jump from step N to step N+4 without explanation.
+
+**Example:**
+
+```markdown
+Steps 4-6 skipped: this is a local-only revision that does not require
+research artifacts or remote comparison.
+```
+
+Unexplained gaps make the output look incomplete and prevent reviewers from distinguishing intentional omissions from accidental ones.
+
+## Using the master checklist correctly
+
+The master checklist is a quality gate, not a sequential todo list. Treat it accordingly:
+
+- **Phases 0-3** are draft essentials — always check these items, even for small changes.
+- **Phases 4+** are final audit items — only run these during a comprehensive quality pass before shipping.
+
+**Common mistake:** Working through all 100+ checklist items sequentially before having a draft. The checklist validates a draft; it does not replace the drafting process. If you find yourself running checklist items before any artifacts exist, stop and draft first.
+
 ---
 
 > **Steering tip:** Workflow patterns should produce visible artifacts at each phase boundary. If your workflow produces output only at the end, add intermediate checkpoints. See the output contract timing hints in SKILL.md.

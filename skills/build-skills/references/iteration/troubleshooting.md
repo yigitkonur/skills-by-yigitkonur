@@ -314,6 +314,42 @@ Skill problem?
 ```
 
 
+## Problem 7: Tool prerequisites missing
+
+### Symptom: "command not found" when running skill tools
+
+**Cause**: The skill references a CLI tool (e.g., `skill-dl`) that is not installed in the current environment.
+
+**Fix**:
+
+```bash
+# Verify before first use
+skill-dl --version
+```
+
+If missing, check `references/remote-sources.md` for installation instructions. If installation is not possible in the current environment, fall back to:
+
+1. MCP tools (`skills-as-context-search-skills`, `skills-as-context-get-skill-details`)
+2. Manual GitHub search for repos containing SKILL.md files
+
+**Best practice:** Always verify tool prerequisites at the start of any workflow that depends on external CLIs. Do not assume availability.
+
 ---
 
-> **Steering tip:** When diagnosing trigger issues, distinguish between "skill not loaded" (installation problem) and "skill loaded but didn't activate" (description problem). For new skills, verify installation first — see `references/steering/derailment-lessons.md` Trap 5.
+## Post-build audit checklist
+
+After completing a skill build or revision, verify all of the following before finalizing:
+
+1. **Output completeness:** Did you show artifacts at the steps that produced them?
+2. **Skip documentation:** Did you explain every skipped step?
+3. **Tool verification:** Did you verify prerequisites before using tools?
+4. **Quality assessment:** Does your comparison include entries in the "avoid" column?
+5. **Test path clarity:** Did you distinguish creation vs. revision in testing?
+6. **File sizes:** Are all files under 500 lines?
+7. **Routing completeness:** Does every reference file appear in SKILL.md routing?
+
+If any answer is "no," address it before finalizing.
+
+---
+
+> **Steering tip:** When diagnosing trigger issues, distinguish between "skill not loaded" (installation problem) and "skill loaded but didn't activate" (description problem). For new skills, verify installation first — see `references/authoring/testing-methodology.md` for creation vs. revision testing paths.

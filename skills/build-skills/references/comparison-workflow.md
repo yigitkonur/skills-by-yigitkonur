@@ -67,6 +67,26 @@ After the table exists, summarize the strategy in plain language:
 
 Only then should you draft or revise the actual skill files.
 
+## Source quality assessment
+
+Evaluate every downloaded skill against quality criteria before using it as a positive reference. Many downloaded skills violate the standards this workflow enforces — common problems include SKILL.md files exceeding 500 lines, missing `references/` directories, and templates inlined in the body instead of stored in `assets/`.
+
+Quality problems in downloaded skills are valid "avoid" entries in the comparison table. A comparison table with no "avoid" entries is a warning sign that downloaded skills were not critically evaluated.
+
+**Rule:** If a downloaded skill would fail your own validation checklist, it belongs in the "avoid" column, not the "inherit" column.
+
+## Evidence requirements for comparison rows
+
+For each downloaded skill in the comparison table, you must have:
+
+1. Read its SKILL.md fully (not just the title or description)
+2. Run `tree` on its `references/` directory to see the structural choices
+3. Read the 2-3 most relevant reference files in full
+
+Only then write the comparison row. Entries that lack specific file references or line counts indicate the row was written from memory rather than evidence. This produces unreliable comparisons that lead to poor design decisions.
+
+**Verification signal:** Every comparison row should cite at least one specific file path from the downloaded skill. If a row contains only general impressions ("well-structured", "comprehensive"), it was likely not based on a thorough read.
+
 ## Anti-patterns
 
 Avoid these failure modes:

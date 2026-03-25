@@ -66,7 +66,7 @@ If the skill enhances an MCP, also read `references/patterns/mcp-enhancement.md`
 - Note the reference file naming scheme, nesting depth, and whether routing in `SKILL.md` matches what actually exists on disk.
 - Note repo conventions, existing reference coverage, and obvious gaps before widening scope.
 
-> ⚠️ **Steering (from derailment testing):** Steps 3–4a concentrate 44% of all execution friction. Use the reference routing table to load only 3–5 relevant files per step, not all 22. See `references/steering/derailment-lessons.md` for common traps.
+> ⚠️ **Known issue:** Steps 3–4a are the highest-risk portion of execution. Use the reference routing table to load only 3–5 relevant files per step, not all 22. See `references/authoring/reference-file-structure.md` for loading discipline guidelines.
 
 ### 4. Run remote research when the job is non-trivial
 
@@ -228,12 +228,6 @@ Load the smallest relevant set for the branch of work you are in.
 |---|---|
 | `references/iteration/feedback-signals.md` | Interpreting under/over-triggering signals or planning post-ship iteration. |
 | `references/iteration/troubleshooting.md` | Diagnosing upload failures, trigger issues, MCP problems, or instruction-following issues. |
-
-### Steering
-
-| File | Read when |
-|---|---|
-| `references/steering/derailment-lessons.md` | Starting any skill build or revision, or when hitting friction during execution. Contains learned pitfalls from real testing. |
 
 ### Distribution
 

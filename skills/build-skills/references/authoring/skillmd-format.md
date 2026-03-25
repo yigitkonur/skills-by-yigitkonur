@@ -206,6 +206,35 @@ description: Implements the Project entity model with hierarchical relationships
 # Too technical — no user-natural language, no trigger phrases
 ```
 
+## Output contract timing
+
+When defining the output contract (what the skill produces), show each artifact at the step that produces it — not batched at the end. If the output contract lists five deliverables and all five appear only after the final step, intermediate review is impossible and errors compound silently.
+
+Include timing hints in the output contract:
+
+```markdown
+## Output contract
+
+| Artifact | Produced at | Format |
+|---|---|---|
+| Research summary | After Step 2 | `skills.markdown` |
+| Comparison table | After Step 5 | Markdown table in output |
+| Draft SKILL.md | After Step 7 | File on disk |
+| Final checklist | After Step 9 | Inline checklist |
+```
+
+**Common mistake:** Reaching the final step without having shown any output. If you find yourself at the end of a workflow with nothing yet visible to the user, the output contract is missing timing hints.
+
+## Frontmatter validation checklist
+
+Before finalizing frontmatter, verify all three of the following:
+
+1. **Description length:** `echo ${#description}` — must be under 1024 characters
+2. **No angle brackets:** The `description` and other frontmatter values must not contain `<` or `>` characters (they can inject unintended instructions into the agent)
+3. **Directory-name match:** The parent directory name must match the frontmatter `name` field
+
+Failing any of these causes silent loading failures or cryptic upload errors.
+
 ## Validation checklist
 
 Before shipping a skill, verify:
@@ -289,4 +318,4 @@ export function UserCard({ name, email }: UserCardProps) {
 
 ---
 
-> **Steering tip:** When this file's guidance conflicts with a downloaded skill's structure, this file wins. Downloaded skills are evidence, not templates. See `references/steering/derailment-lessons.md` Trap 4 for details.
+> **Steering tip:** When this file's guidance conflicts with a downloaded skill's structure, this file wins. Downloaded skills are evidence, not templates. See `references/comparison-workflow.md` for quality assessment guidance.

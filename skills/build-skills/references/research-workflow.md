@@ -219,3 +219,13 @@ Track your research time against these limits:
 | **Total** | **45 min** | Move to comparison regardless of completeness |
 
 If you exceed a phase budget, move to the next phase with what you have. Incomplete research with honest documentation is better than exhaustive research that delays synthesis.
+
+## Research volume limits
+
+Set a research budget before starting to prevent scope expansion:
+
+- Download at most **10** candidate skills
+- Read at most **5** in detail
+- Stop discovery when you have **3+** viable comparison entries
+
+If you find yourself downloading more than 10 skills or spending more than 3 consecutive steps on research alone, you have exceeded the budget. Work with what you have — additional downloads rarely change the outcome once you have 3 solid comparison entries.
