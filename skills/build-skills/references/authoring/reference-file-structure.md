@@ -245,6 +245,41 @@ references/types/
 | Deep nesting | `references/a/b/c/d/file.md` | Max 2 levels: `references/category/file.md` |
 | Mixed concerns | One file covers auth + database + caching | One topic per file |
 
+## Loading discipline
+
+Load only the 3-5 reference files relevant to your current step. Use the SKILL.md routing table to decide which files to read. Loading all references at once exhausts context and makes it impossible to trace which file informed which decision. If you find yourself needing more files mid-step, load them in the next step rather than front-loading everything.
+
+**Rule of thumb:** If you have read more than 5 reference files before producing any output, you are over-loading.
+
+## Size guard
+
+Before adding content to any reference file, check its current size:
+
+```bash
+wc -l references/path/to/file.md
+```
+
+If adding your content would push the file beyond 500 lines, split the new content into a separate file and add a routing entry in SKILL.md. Do not let files grow silently past the size limit — this is the most common cause of oversized reference files.
+
+To audit existing files:
+```bash
+find references -name '*.md' -exec wc -l {} + | sort -rn | head -5
+```
+
+Any file over 500 lines should be split.
+
+## Routing verification
+
+After completing your reference structure, verify that every file is reachable from SKILL.md:
+
+```bash
+for f in $(find references -name '*.md' -type f); do
+  grep -q "$(basename $f)" SKILL.md || echo "ORPHAN: $f"
+done
+```
+
+Any file reported by this command is not routed from SKILL.md and will never be loaded by the agent. Either add a routing entry or remove the file.
+
 ## Progressive disclosure checklist
 
 When designing the reference structure, ensure:

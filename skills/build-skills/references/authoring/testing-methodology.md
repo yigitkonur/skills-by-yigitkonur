@@ -267,6 +267,12 @@ Testing differs significantly between creating a new skill and revising an exist
 - Verify unchanged workflows still work
 - Run at least one full end-to-end test
 
+### Key distinction: installation before testing
+
+New skills must be installed to `~/.claude/skills/[name]/` before trigger testing. Without installation, trigger tests produce false positives — the skill appears to "pass" because Claude never had the opportunity to load it. This is the most common source of silent test failures for new skills.
+
+Revisions test against the currently installed version. The skill is already in place, so trigger testing works immediately.
+
 ### Common testing mistakes
 
 | Mistake | Impact | Fix |
