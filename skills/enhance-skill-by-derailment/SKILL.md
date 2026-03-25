@@ -1,5 +1,5 @@
 ---
-name: test-skill-quality
+name: enhance-skill-by-derailment
 description: Use skill if you are testing a skill's instructional quality by following its workflow literally on a real task, documenting friction points, and fixing ambiguities.
 ---
 
