@@ -85,7 +85,7 @@ Check whether there is enough context in the working directory to infer what to 
 
 **If context exists:** Infer the right MCP server implementation from the existing codebase. Explain briefly what you plan to build and why, then build it. Read `references/guides/quick-start.md` and `references/examples/project-templates.md` to pick the right starting template.
 
-**If no context exists:** Ask the user focused questions to determine what to build. Ask up to 10 questions, one at a time, each with 5+ numbered options:
+**If no context exists AND the user hasn't already specified what to build:** Ask focused questions to determine what to build. Skip the questionnaire if the user's request already specifies tools, transport, and scope. Ask up to 10 questions, one at a time, each with 5+ numbered options:
 
 1. What kind of data or service will this server expose?
    (1) Filesystem access, (2) Database queries, (3) External API wrapper, (4) Custom business logic, (5) Multi-source aggregator, (6) Other — describe it
@@ -114,7 +114,7 @@ After gathering answers, build the full implementation following the build workf
 
 ## Quick start
 
-Minimal MCP server using the object-first registration API:
+**Prerequisites:** `npm install mcp-use zod` (zod is a peer dependency since v1.21.5). Ensure `package.json` has `"type": "module"` — ESM imports fail without it.
 
 ```typescript
 import { MCPServer, text } from "mcp-use/server";
@@ -139,7 +139,7 @@ server.tool(
 await server.listen(3000);
 ```
 
-Run: `npm run dev` (with HMR) or `npx tsx src/server.ts`
+Run: `npm run dev` (with HMR) or `npx tsx index.ts`
 
 For the full scaffolding walkthrough (create-mcp-use-app, project structure, package.json setup), read `references/guides/quick-start.md`. For ready-to-copy project templates (minimal CLI, production HTTP, OAuth-protected), read `references/examples/project-templates.md`.
 
@@ -537,7 +537,7 @@ Claude Desktop config:
 {
   "mcpServers": {
     "my-server": {
-      "url": "https://<id>.deploy.mcp-use.com/mcp"
+      "url": "https://<auto-subdomain>.run.mcp-use.com/mcp"
     }
   }
 }
