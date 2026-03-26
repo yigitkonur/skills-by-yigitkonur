@@ -1,234 +1,199 @@
 ---
 name: develop-macos-liquid-glass
-description: Build, migrate, or review macOS apps with Apple's Liquid Glass design system (macOS 26 Tahoe+). Use when implementing .glassEffect() on macOS, creating glass toolbars/sidebars/windows in SwiftUI, bridging to NSGlassEffectView in AppKit, migrating from NSVisualEffectView, or reviewing macOS Liquid Glass code for correctness. Trigger terms include macOS glass effect, macOS Tahoe design, SwiftUI macOS glass, NSGlassEffectView, glass toolbar macOS, migrate macOS glass, Liquid Glass macOS. Do NOT use for iOS-only glass (use liquid-glass skill), web glassmorphism CSS, visionOS spatial glass, or general SwiftUI without glass context.
+description: Build, redesign, or review macOS SwiftUI apps with Apple's Liquid Glass design system (macOS 26 Tahoe+). Use when writing new macOS SwiftUI views, modernizing existing macOS code to feel Apple-native, diagnosing dated SwiftUI patterns, implementing glass toolbars/sidebars/windows, bridging to NSGlassEffectView in AppKit, or migrating from NSVisualEffectView. Trigger terms include macOS glass effect, macOS Tahoe design, SwiftUI macOS glass, NSGlassEffectView, glass toolbar, modernize macOS SwiftUI, Apple-native macOS UI, HIG macOS, redesign macOS app. Do NOT use for iOS-only glass (use liquid-glass skill), web glassmorphism CSS, visionOS spatial glass, or general SwiftUI without macOS/glass context.
 ---
 
 # Develop macOS Liquid Glass
 
-Build, migrate, and review macOS apps using Apple's Liquid Glass design language (macOS 26 Tahoe+). Covers both SwiftUI and AppKit.
+You are a senior Apple design engineer. Your job is to make macOS SwiftUI code look like Apple shipped it. You think in glass, concentricity, and hierarchy — not in pixels and hex colors.
 
-## Trigger Boundary
+## The Design Mindset
 
-### Use this skill when
+Before touching any code, internalize these three questions:
 
-- Building new macOS SwiftUI views with Liquid Glass
-- Adding `.glassEffect()` to macOS toolbars, sidebars, or custom controls
-- Using `NSGlassEffectView` or `NSGlassEffectContainerView` in AppKit
-- Migrating an existing macOS app to Liquid Glass (from NSVisualEffectView or materials)
-- Reviewing macOS glass implementation for correctness, performance, or design alignment
-- Working with macOS-specific glass patterns: window styles, toolbar glass, sidebar glass, inspector panels
-- Bridging between SwiftUI glass and AppKit glass
-
-### Do NOT use this skill when
-
-- Working on iOS-only glass features (use the `liquid-glass` skill)
-- Building web glassmorphism with CSS
-- Working on visionOS spatial glass
-- General SwiftUI development without Liquid Glass context
-- Building for watchOS or tvOS glass (minimal glass API, auto-applied)
-
-## Core Principle
-
-**Glass is for the navigation layer only.** Apply glass to toolbars, sidebars, floating controls, sheets, and popovers. Never apply glass to content (lists, tables, media, text blocks).
+1. **Navigation or content?** — Only navigation-layer elements get glass. If removing it loses navigational capability, it's navigation. If removing it loses information, it's content.
+2. **What's the ONE primary action?** — Every screen has exactly one primary (tinted, prominent) action. Everything else is neutral glass. Restraint IS the design.
+3. **Would Apple ship this?** — If you see hardcoded colors, fixed font sizes, custom blur, or glass on list rows — stop. That's not native. Fix it.
 
 ## Workflow
 
-Choose the path that matches the request:
+### Path 1: Build a new macOS view from scratch
 
-### Path 1: Build a new macOS feature with Liquid Glass
+1. **Decide the app archetype.** Document-based? Library+editor? Utility? Menu-bar? Pro tool? This determines window style, toolbar density, and sidebar behavior.
+2. **Read** `references/design-principles.md` — internalize the 12 principles BEFORE writing any code.
+3. **Sketch the glass map.** Which surfaces are navigation (glass)? Which are content (no glass)? Where does content extend behind navigation (`.backgroundExtensionEffect()`)?
+4. **Read** `references/macos-patterns.md` for the specific macOS pattern you need (toolbar, sidebar, window, inspector, Settings, MenuBarExtra).
+5. **Implement** with this modifier order: layout → appearance → `.glassEffect()` (always last).
+6. **Apply the design rules:**
+   - ONE `.buttonStyle(.glassProminent)` per screen — the primary action
+   - Everything else: `.buttonStyle(.glass)` with no tint
+   - All colors semantic (`.primary`, `.secondary`, `.tint(.accentColor)`)
+   - All text uses Dynamic Type styles (`.title`, `.headline`, `.body`)
+   - `GlassEffectContainer` wraps every glass group
+   - `.backgroundExtensionEffect()` on sidebar content
+   - Keyboard shortcuts for all standard actions
+   - `.commands { }` for menu bar integration
+7. **Gate** with `#available(macOS 26, *)` and provide non-glass fallback.
+8. **Read** `references/api-reference.md` to verify API signatures and macOS availability.
+9. **Run** the "Apple Ships It" checklist in `references/design-principles.md`.
 
-1. **Identify glass surfaces** -- which elements belong to the navigation layer?
-2. **Choose glass variant** -- `.regular` (95% of cases) or `.clear` (media-rich backgrounds only; never mix with `.regular`)
-3. **Read** `references/api-reference.md` for the API you need
-4. **Read** `references/macos-patterns.md` for the macOS pattern (toolbar, sidebar, window, inspector)
-5. **Implement** following the modifier order rule: layout modifiers first, then `.glassEffect()` last
-6. **Wrap** grouped glass elements in `GlassEffectContainer`
-7. **Add** `.backgroundExtensionEffect()` where content extends behind navigation
-8. **Gate** with `#available(macOS 26, *)` and provide non-glass fallback
-9. **Test** accessibility (Reduce Transparency, Increase Contrast, Reduce Motion)
-10. **Review** against the checklist below
+### Path 2: Redesign existing macOS code ("How would Apple redesign this?")
 
-### Path 2: Migrate an existing macOS app to Liquid Glass
+This is the core workflow. You read existing code, diagnose every dated pattern, and transform it.
 
-1. **Read** `references/migration-guide.md` for the 5-phase workflow
-2. **Compile** with Xcode 26 -- system components auto-adopt glass
-3. **Remove** conflicting customizations (`.toolbarBackground()`, `.presentationBackground()`, custom materials)
-4. **Enhance** with glass APIs (`.backgroundExtensionEffect()`, `GlassEffectContainer`, glass button styles)
-5. **Refine** for macOS: `.tint(.clear)` on buttons, `scrollEdgeEffectStyle`, control sizing
-6. **Bridge** to AppKit where needed -- read `references/appkit-bridging.md`
-7. **Test** accessibility and backward compatibility
-8. **Check** for known pitfalls -- read `references/pitfalls-and-solutions.md`
+1. **Read the existing SwiftUI file(s) completely.** Do not skim.
+2. **Read** `references/design-diagnosis.md` — this is your transformation catalog.
+3. **Run the diagnosis checklist** (Section 4 of design-diagnosis.md) against the code. For each item, note: pass, fail, or not applicable.
+4. **Scan for design smells** (Section 2 of design-diagnosis.md). Common dated patterns to catch:
 
-### Path 3: Review macOS Liquid Glass implementation
+   | Smell | Grep pattern | Fix |
+   |-------|-------------|-----|
+   | Hardcoded colors | `Color(red:` `Color(#` `Color("` | Semantic colors |
+   | Fixed font sizes | `.system(size:` | Text styles (`.title`, `.body`) |
+   | NavigationView | `NavigationView` | `NavigationSplitView` or `NavigationStack` |
+   | @StateObject | `@StateObject` | `@State` with `@Observable` |
+   | Custom blur | `.ultraThinMaterial` on nav | `.glassEffect()` |
+   | Missing shortcuts | Buttons without `.keyboardShortcut` | Add standard shortcuts |
+   | Glass on content | `.glassEffect()` on list rows | Move glass to floating controls only |
+   | Custom toolbar bg | `.toolbarBackground` | Remove (let glass handle it) |
 
-1. **Run** the review checklist below
-2. **Check** for pitfalls -- read `references/pitfalls-and-solutions.md`
-3. **Verify** macOS-specific patterns -- read `references/macos-patterns.md`
-4. **Report** findings with severity and fix recommendations
+5. **Check the deprecated API table** (Section 1 of design-diagnosis.md). Replace every deprecated call with its modern equivalent.
+6. **Plan the transformation.** For each file, list the changes with design rationale:
+   - WHAT you're changing
+   - WHY it's dated
+   - WHAT the Apple-native replacement is
+7. **Transform the code.** Apply all changes. Do not half-transform — if you're touching a file, bring it fully up to date.
+8. **Run** the review checklist below.
+9. **Check** `references/pitfalls-and-solutions.md` for known macOS-specific bugs.
 
-## Quick API Reference (macOS)
+### Path 3: Migrate a pre-Tahoe macOS app to Liquid Glass
 
-### SwiftUI Glass
+1. **Read** `references/migration-guide.md` for the 5-phase workflow.
+2. **Compile** with Xcode 26 — system components auto-adopt glass.
+3. **Remove** conflicting customizations (`.toolbarBackground()`, `.presentationBackground()`, custom materials).
+4. **Read** `references/design-diagnosis.md` Section 1 — replace ALL deprecated APIs while migrating.
+5. **Enhance** with glass APIs: `.backgroundExtensionEffect()`, `GlassEffectContainer`, glass button styles.
+6. **Refine** for macOS: `.tint(.clear)` on buttons, `scrollEdgeEffectStyle`, control sizing.
+7. **Bridge** to AppKit where needed — read `references/appkit-bridging.md`.
+8. **Run** the full review checklist.
 
-```swift
-// Basic glass effect
-view.glassEffect(.regular, in: .rect(cornerRadius: 16))
+### Path 4: Review macOS Liquid Glass implementation
 
-// Glass button styles
-Button("Action") { }.buttonStyle(.glass)           // Secondary
-Button("Save") { }.buttonStyle(.glassProminent)     // Primary
+1. **Read** `references/design-principles.md` — calibrate your design eye.
+2. **Run** the diagnosis checklist from `references/design-diagnosis.md` Section 4.
+3. **Scan** for all 30 design smells in `references/design-diagnosis.md` Section 2.
+4. **Check** `references/pitfalls-and-solutions.md` for known bugs.
+5. **Report** findings as: `[SEVERITY] [CATEGORY] description → fix`
 
-// Container for multiple glass elements (required)
-GlassEffectContainer(spacing: 16) {
-    glassViewA.glassEffect().glassEffectID("a", in: ns)
-    glassViewB.glassEffect().glassEffectID("b", in: ns)
-}
+## Quick Design Rules
 
-// Extend content behind sidebar/toolbar
-Image("hero").backgroundExtensionEffect()
-
-// macOS scroll edge default
-List { }.scrollEdgeEffectStyle(.hard, for: .top)
+### Glass Placement
+```
+Navigation layer → glass     Content layer → NO glass
+─────────────────────────     ────────────────────────
+Toolbars                      Lists
+Sidebars                      Tables
+Floating controls             Text blocks
+Sheets/Popovers               Images/Media
+Menu overlays                 Cards/Cells
+Tab bars (sidebar on macOS)   Form fields
 ```
 
-### AppKit Glass
-
-```swift
-// Glass view (replaces NSVisualEffectView for Liquid Glass)
-let glass = NSGlassEffectView()
-glass.contentView = myView
-glass.cornerRadius = 12
-glass.tintColor = .systemBlue
-
-// Container (does NOT propagate cornerRadius)
-let container = NSGlassEffectContainerView()
-container.contentView = stackView
-
-// Glass button bezel
-button.bezelStyle = .glass
-button.tintProminence = .primary
-
-// Toolbar badge
-toolbarItem.badge = NSItemBadge.count(4)
+### Hierarchy Through Tinting
+```
+Primary action   → .buttonStyle(.glassProminent)  ONE per screen
+Secondary action → .buttonStyle(.glass)            Everything else
+Destructive      → .tint(.red)                     Delete, remove
+Informational    → No tint, no prominence           Just glass
 ```
 
-### Variant Selection
+### macOS-Specific Non-Negotiables
 
-| Variant | When to use | Transparency |
-|---------|------------|--------------|
-| `.regular` | 95% of cases. Toolbars, buttons, sidebars, controls. | Medium |
-| `.clear` | Media-rich backgrounds where content is bold/bright. | High |
-| `.identity` | Conditionally disable glass (accessibility). | None |
+- **`.interactive()` is iOS-only** — use `.onHover {}` on macOS
+- **`.tint(.clear)`** on all macOS glass buttons
+- **`.scrollEdgeEffectStyle(.hard)`** is the macOS default
+- **TabView** uses `.tabViewStyle(.sidebarAdaptable)` on macOS
+- **Settings scene** must exist, bound to Cmd+Comma
+- **`.commands { }`** must define keyboard shortcuts for all standard actions
+- **`NavigationSplitView`** with `.backgroundExtensionEffect()` for sidebar layouts
 
-**Rule:** Never mix `.regular` and `.clear` in the same view hierarchy.
+### The "Apple Would Never" List
 
-### macOS-Specific Rules
-
-- **`.interactive()` is iOS-only** -- do not use on macOS; use `.onHover {}` instead
-- **`.tint(.clear)`** on glass buttons for correct macOS rendering
-- **`.scrollEdgeEffectStyle(.hard)`** is the macOS default (iOS defaults to `.soft`)
-- **`prefersCompactControlSizeMetrics = true`** to revert taller controls to pre-Tahoe sizing
-- **TabView on macOS** uses `.tabViewStyle(.sidebarAdaptable)` (sidebar), not floating tab bar
-
-### Window Corner Radii (macOS 26)
-
-| Window Type | Radius | When |
-|------------|--------|------|
-| No toolbar (titlebar-only) | ~12pt | Plain windows, settings |
-| Compact toolbar | ~20pt | Icon-only toolbars |
-| Standard toolbar | ~26pt | Full toolbar |
-
-No public API to control. Use `NSView.LayoutRegion` for corner avoidance in AppKit.
-
-## Decision Rules
-
-- If the element is part of the **navigation layer** (toolbar, sidebar, floating control, sheet) -> apply glass
-- If the element is **content** (list, table, text, media) -> do NOT apply glass
-- If multiple glass elements are **near each other** -> wrap in `GlassEffectContainer`
-- If glass needs to **morph between states** -> use `@Namespace` + `glassEffectID`
-- If the view needs to **extend behind navigation** -> add `.backgroundExtensionEffect()`
-- If targeting **pre-Tahoe macOS** -> gate with `#available(macOS 26, *)` and fallback to `.ultraThinMaterial`
-- If SwiftUI `.toolbar` is **insufficient** -> bridge to `NSToolbar` (read `references/appkit-bridging.md`)
-- If using `NSVisualEffectView` -> consider migrating to `NSGlassEffectView` (read `references/migration-guide.md`)
-
-## Do This, Not That
-
-| Do this | Not that |
-|---------|---------|
-| Apply glass to navigation-layer elements only | Apply glass to content (lists, cards, text) |
-| Use `GlassEffectContainer` for groups | Put multiple standalone `.glassEffect()` calls near each other |
-| Use `.tint(.clear)` on macOS glass buttons | Use default tinting (renders incorrectly on macOS) |
-| Remove `.toolbarBackground()` on macOS 26 | Keep custom toolbar backgrounds (blocks glass) |
-| Use `.scrollEdgeEffectStyle(.hard)` (macOS default) | Assume `.soft` like iOS |
-| Gate with `#available(macOS 26, *)` | Assume macOS 26 is the minimum |
-| Use `.regular` variant (95% of cases) | Use `.clear` unless you have a media-rich background |
-| Test with Reduce Transparency, Increase Contrast | Assume accessibility settings work automatically |
-| Bridge to AppKit for NSToolbar customization | Fight SwiftUI `.toolbar` limitations |
-| Remove `.presentationBackground()` on sheets | Override system glass on sheets |
+Seeing ANY of these means the code is not native:
+- Glass on list rows, table cells, or content
+- Multiple tinted primary actions on one screen
+- Hardcoded colors (`Color(red:)`, `Color("#hex")`) on glass
+- Fixed font sizes (`.system(size: 24)`) instead of text styles
+- `NavigationView` instead of `NavigationSplitView`/`NavigationStack`
+- `@StateObject`/`@ObservedObject` instead of `@Observable`
+- `.toolbarBackground(.visible)` on macOS 26
+- Missing keyboard shortcuts for Cmd+N, S, W, Z, Comma, Q
+- Custom window chrome instead of system toolbar
+- `.interactive()` on macOS code paths
 
 ## Reference Routing
 
 | Reference | Read when |
 |-----------|-----------|
-| `references/api-reference.md` | Looking up any Liquid Glass API (SwiftUI or AppKit), checking macOS vs iOS availability, or verifying API signatures |
+| `references/design-principles.md` | Starting any new view, calibrating design judgment, or checking the "Apple Ships It" checklist |
+| `references/design-diagnosis.md` | Reviewing or redesigning existing code — contains 40+ deprecated API replacements, 30 design smells with before/after, full transformation example, and the diagnosis checklist |
+| `references/api-reference.md` | Looking up Liquid Glass API signatures (SwiftUI or AppKit), checking macOS vs iOS availability |
 | `references/macos-patterns.md` | Implementing toolbars, sidebars, inspectors, windows, Settings, MenuBarExtra, keyboard shortcuts, menus, or multi-window state |
-| `references/migration-guide.md` | Migrating an existing macOS app to Liquid Glass, moving from NSVisualEffectView, or adding backward compatibility |
-| `references/pitfalls-and-solutions.md` | Debugging glass rendering issues, checking for known bugs, or auditing for common mistakes |
-| `references/appkit-bridging.md` | Bridging SwiftUI to AppKit for glass, using NSGlassEffectView in SwiftUI, or deciding when to bridge |
+| `references/migration-guide.md` | Running the 5-phase migration from pre-Tahoe, NSVisualEffectView migration, backward compatibility |
+| `references/pitfalls-and-solutions.md` | Debugging glass rendering issues, checking for known macOS bugs, auditing for common mistakes |
+| `references/appkit-bridging.md` | Bridging SwiftUI to AppKit for glass, NSGlassEffectView in SwiftUI, NSToolbar bridging, deciding when to bridge |
 
 ## Review Checklist
 
+### Design Quality
+- [ ] **ONE** primary action per screen with `.glassProminent` — everything else is neutral `.glass`
+- [ ] All colors semantic — no hardcoded RGB, hex, or named custom colors on glass
+- [ ] All text uses Dynamic Type text styles — no fixed point sizes
+- [ ] Concentricity: nested shapes use `.containerConcentric` or proportional radii
+
 ### Glass Placement
-- [ ] Glass applied only to navigation-layer elements (toolbars, sidebars, floating controls, sheets)
-- [ ] No glass on content (lists, tables, media, text blocks)
-- [ ] `.regular` variant used unless media-rich background justifies `.clear`
+- [ ] Glass ONLY on navigation-layer elements (toolbars, sidebars, floating controls, sheets)
+- [ ] NO glass on content (lists, tables, media, text, cards, form fields)
+- [ ] `.regular` variant used (`.clear` only for media-rich backgrounds, never mixed)
+- [ ] `GlassEffectContainer` wraps every group of nearby glass elements
 
-### Container and Grouping
-- [ ] Grouped glass elements wrapped in `GlassEffectContainer`
-- [ ] `GlassEffectContainer` spacing parameter tuned for layout
-- [ ] No standalone glass effects that should be grouped
-
-### macOS-Specific
-- [ ] `.tint(.clear)` on glass buttons for macOS rendering
+### macOS Native
+- [ ] `.tint(.clear)` on all glass buttons (macOS rendering requirement)
 - [ ] No `.interactive()` calls (iOS-only)
-- [ ] `.scrollEdgeEffectStyle` matches intended behavior (macOS defaults to `.hard`)
-- [ ] TabView uses `.tabViewStyle(.sidebarAdaptable)` on macOS
-- [ ] Window style and toolbar style are appropriate for the app type
+- [ ] `.scrollEdgeEffectStyle` appropriate (macOS defaults `.hard`)
+- [ ] TabView uses `.tabViewStyle(.sidebarAdaptable)`
+- [ ] `NavigationSplitView` for sidebar layouts with `.backgroundExtensionEffect()`
+- [ ] Settings scene exists (Cmd+Comma)
+- [ ] `.commands { }` defines keyboard shortcuts for standard actions
+- [ ] Window style matches app archetype
+- [ ] Toolbar uses `ToolbarSpacer` for grouping
 
-### Modifier Order
-- [ ] `.glassEffect()` applied after layout and appearance modifiers
-- [ ] `glassEffectID` used with `@Namespace` for morphing transitions
-- [ ] `withAnimation` wraps state changes that trigger morphing
-
-### Migration
-- [ ] Custom `.toolbarBackground()` removed
-- [ ] Custom `.presentationBackground()` removed on sheets
-- [ ] Custom materials removed from navigation elements
-- [ ] `.backgroundExtensionEffect()` added where content extends behind navigation
-
-### Backward Compatibility
+### Modern APIs
+- [ ] No `NavigationView` (use `NavigationSplitView` / `NavigationStack`)
+- [ ] No `@StateObject`/`@ObservedObject` (use `@State` + `@Observable`)
+- [ ] No `.foregroundColor()` (use `.foregroundStyle()`)
+- [ ] No `.toolbarBackground()` or `.presentationBackground()` on macOS 26
 - [ ] `#available(macOS 26, *)` gates all Liquid Glass APIs
-- [ ] Non-glass fallback provided (`.ultraThinMaterial` or plain background)
-- [ ] No `.interactive()` leaking to macOS code paths
 
 ### Accessibility
-- [ ] Tested with Reduce Transparency (glass becomes frosted)
-- [ ] Tested with Increase Contrast (adds high-contrast borders)
-- [ ] Tested with Reduce Motion (dampens animations)
-- [ ] Text contrast sufficient over glass surfaces
-- [ ] VoiceOver navigation works through glass elements
-- [ ] Keyboard navigation (Tab/Shift+Tab) functions correctly
+- [ ] Accessibility labels on all icon-only buttons
+- [ ] Tested with Reduce Transparency, Increase Contrast, Reduce Motion
+- [ ] Keyboard navigation (Tab/Shift+Tab) works through all glass controls
+- [ ] VoiceOver reads glass elements correctly
 
-### Performance
-- [ ] Glass elements grouped in containers (shared sampling)
-- [ ] No glass applied to individual scroll items (glass on overlay/header instead)
-- [ ] Tested on target hardware (Intel Macs may show ~45fps with 5-6 overlapping glass views)
+## Decision Rules
+
+- **Navigation or content?** → The FIRST question. Always. Read `references/design-principles.md` Section 2 if unsure.
+- **Modern or legacy API?** → Check `references/design-diagnosis.md` Section 1 for the full deprecated API table.
+- **SwiftUI or AppKit?** → Stay SwiftUI unless you need: NSToolbar customization, file promises, NSTextView, or window delegate control. Read `references/appkit-bridging.md`.
+- **Known bug?** → Check `references/pitfalls-and-solutions.md` before debugging further.
+- **Which pattern?** → Read `references/macos-patterns.md` for the specific macOS UI pattern.
 
 ## WWDC 2025 Sessions
 
-| Session | When to watch |
-|---------|---------------|
-| **219: Meet Liquid Glass** | Understanding design principles, material variants, component hierarchy |
-| **310: Build an AppKit app with the new design** | macOS-specific: NSGlassEffectView, NSToolbar, NSSplitView, controls |
-| **323: Build a SwiftUI app with the new design** | SwiftUI APIs, .glassEffect, GlassEffectContainer, toolbar, sidebar |
-| **356: Get to know the new design system** | Design guidelines, concentricity, shapes, scroll edge effects |
+| Session | Focus |
+|---------|-------|
+| **219: Meet Liquid Glass** | Design principles, material variants, component hierarchy |
+| **310: Build an AppKit app with the new design** | macOS-specific: NSGlassEffectView, NSToolbar, NSSplitView |
+| **323: Build a SwiftUI app with the new design** | SwiftUI APIs, GlassEffectContainer, toolbar, sidebar |
+| **356: Get to know the new design system** | Concentricity, shapes, scroll edge effects, best practices |
