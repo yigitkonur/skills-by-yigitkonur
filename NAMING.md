@@ -42,7 +42,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `build-` vs `convert-` — `build-` starts from requirements; `convert-` starts from an existing artifact in a different format
 - `build-` vs `develop-` — `build-` is framework-specific ("build a Supastarter app"); `develop-` is language-level ("write TypeScript correctly")
 
-**Current skills:** `build-chrome-extension`, `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-langchain-ts-app`, `build-mcp-use-agent`, `build-mcp-use-apps-widgets`, `build-mcp-use-client`, `build-mcp-use-server`, `build-skills`, `build-supastarter-app`
+**Current skills:** `build-chrome-extension`, `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-hcom-systems`, `build-langchain-ts-app`, `build-mcp-use-agent`, `build-mcp-use-apps-widgets`, `build-mcp-use-client`, `build-mcp-use-server`, `build-openclaw-plugin`, `build-openclaw-skill`, `build-openclaw-workflow`, `build-raycast-script-command`, `build-skills`, `build-supastarter-app`
 
 ---
 
@@ -128,7 +128,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `init-` vs `run-` — `init-` generates files once; `run-` executes a tool repeatedly during a session
 - Multiple `init-` skills can target the same *category* (code review) but different *platforms* (Greptile vs Devin vs Copilot)
 
-**Current skills:** `init-agent-config`, `init-copilot-review`, `init-devin-review`, `init-greptile-review`
+**Current skills:** `init-agent-config`, `init-copilot-review`, `init-devin-review`, `init-greptile-review`, `init-openclaw-agent`
 
 ---
 
@@ -215,7 +215,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `run-` vs `init-` — `run-` is an ongoing session with the tool; `init-` is a one-time generation
 - `run-` vs `test-` — `run-` drives any external tool; `test-` specifically runs verification/validation suites
 
-**Current skills:** `run-agent-browser`, `run-issue-plan`, `run-playwright`, `run-research`, `run-seo-analysis`
+**Current skills:** `run-agent-browser`, `run-hcom-agents`, `run-issue-plan`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`, `run-seo-analysis`
 
 ---
 
@@ -364,11 +364,16 @@ When renaming a published skill:
 - `build-chrome-extension`
 - `build-copilot-sdk-app`
 - `build-daisyui-mcp`
+- `build-hcom-systems`
 - `build-langchain-ts-app`
 - `build-mcp-use-agent`
 - `build-mcp-use-apps-widgets`
 - `build-mcp-use-client`
 - `build-mcp-use-server`
+- `build-openclaw-plugin`
+- `build-openclaw-skill`
+- `build-openclaw-workflow`
+- `build-raycast-script-command`
 - `build-skills`
 - `build-supastarter-app`
 - `convert-snapshot-nextjs`
@@ -382,6 +387,7 @@ When renaming a published skill:
 - `init-copilot-review`
 - `init-devin-review`
 - `init-greptile-review`
+- `init-openclaw-agent`
 - `optimize-mcp-server`
 - `plan-issue-tree`
 - `plan-prd`
@@ -389,9 +395,13 @@ When renaming a published skill:
 - `publish-npm-package`
 - `review-pr`
 - `run-agent-browser`
+- `run-hcom-agents`
 - `run-issue-plan`
+- `run-openclaw-agents`
+- `run-openclaw-deploy`
 - `run-playwright`
 - `run-research`
 - `run-seo-analysis`
+- `use-skill-dl-util`
 - `test-by-mcpc-cli`
 - `enhance-skill-by-derailment`
