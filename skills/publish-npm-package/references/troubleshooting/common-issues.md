@@ -168,11 +168,31 @@ rekor-cli search --rekor_server https://rekor.sigstore.dev \
 
 | Error | Cause | Fix |
 |-------|-------|-----|
+| `EOTP` with automation/granular token (local) | npm is NOT using your token — it's using the interactive `npm login` session which has 2FA | Pass token via CLI flag: `--//registry.npmjs.org/:_authToken=TOKEN`. The `NODE_AUTH_TOKEN` env var only works with setup-node's `.npmrc`. |
+| `EOTP` with automation/granular token (CI) | `actions/setup-node` missing `registry-url`, so `.npmrc` with `${NODE_AUTH_TOKEN}` was never created | Add `registry-url: 'https://registry.npmjs.org'` to setup-node config |
 | `ENEEDAUTH` | `NPM_TOKEN` secret not set, empty, or misspelled | Verify secret in repo **Settings → Secrets → Actions** |
 | `403 Forbidden` | Token lacks write access to the package | Create a **granular access token** scoped to the package |
 | `403 Forbidden` | Token expired | Rotate token, update GitHub Secret, re-run workflow |
 | `E401` | Token created for wrong registry (e.g., GitHub Packages) | Create token on **npmjs.com** → Access Tokens |
 | Publish succeeds but wrong registry | `registry-url` missing in `actions/setup-node` | Always set `registry-url: 'https://registry.npmjs.org'` |
+
+### EOTP Diagnosis Flowchart
+
+```
+Getting EOTP error?
+├─ Local publish?
+│  ├─ Run: npm whoami
+│  │  └─ Shows your username? → npm is using login session, not the token
+│  │     └─ Fix: npm publish --//registry.npmjs.org/:_authToken="${NPM_TOKEN}"
+│  ├─ Check: grep NPM_TOKEN ~/.zshrc ~/.bashrc
+│  │  └─ Token exists in shell profile? → Use it with the CLI flag above
+│  └─ Check: Is the token type "Automation" or "Granular" with "Bypass 2FA"?
+│     └─ It's a "Publish" token? → ❌ Publish tokens CANNOT bypass 2FA. Create a granular or automation token.
+├─ CI publish?
+│  ├─ Does setup-node have registry-url? → If no, add it
+│  └─ Is NODE_AUTH_TOKEN set in the publish step? → If no, add env block
+└─ Neither? → Token might be expired or revoked. Check npmjs.com → Access Tokens.
+```
 
 ### Token Setup
 
@@ -486,6 +506,8 @@ npm publish --provenance --access public
 
 | Error Message | Likely Fix |
 |---------------|------------|
+| `EOTP` (local) | npm is using interactive login, not your token. Use `--//registry.npmjs.org/:_authToken=TOKEN` CLI flag |
+| `EOTP` (CI) | Missing `registry-url` in setup-node, so `NODE_AUTH_TOKEN` is not wired. Or token is a classic "Publish" type (not automation/granular) |
 | `ENEEDAUTH` | Set `NODE_AUTH_TOKEN` or add `registry-url` to setup-node |
 | `E401` | Regenerate npm token; verify it's for npmjs.com |
 | `E403` | Add `--access public` or check token scopes |
