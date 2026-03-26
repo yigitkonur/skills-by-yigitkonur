@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-43 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, multi-agent orchestration, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, CI/CD, OpenClaw platform, and skill research.
+44 skills for AI coding agents — agent configuration, code review, design extraction, browser automation, multi-agent orchestration, planning, research, project execution, SEO & marketing, framework guides, SDK guides, language standards, UI component libraries, CI/CD, OpenClaw platform, and skill research.
 
 ## Install the full pack
 
@@ -212,12 +212,14 @@ Deep reference skills for specific frameworks and tools.
 | **[debug-tauri-devtools](skills/debug-tauri-devtools/)** | CrabNebula DevTools integration for debugging Tauri v2 apps — gives AI agents visibility into the Rust side with console logs, tracing spans, IPC call timings, live config inspection, and frontend source browsing. Includes 5 reference docs: architecture deep-dive, IPC span anatomy, integration patterns, tab reference, and common debugging scenarios. |
 | **[convert-vue-nextjs](skills/convert-vue-nextjs/)** | Converts Vue 2/3 and Nuxt codebases to Next.js App Router — component mapping (directives, slots, emits, v-model), state migration (Pinia/Vuex to Zustand/Context), routing conversion, SSR/data-fetching patterns, coexistence architectures (proxy/Web Components/micro-frontends), and testing strategy. Includes 12 reference docs: component mapping, state management, routing, SSR/data fetching, advanced patterns, migration workflow, package mapping, migration strategies, assessment checklist, coexistence patterns, testing strategy, and pitfalls. |
 | **[build-chrome-extension](skills/build-chrome-extension/)** | Production-grade Chrome extension development with Manifest V3 — service worker persistence patterns, content script injection (ISOLATED/MAIN worlds), type-safe messaging and storage, popup/sidepanel/options UI, framework comparison (WXT/Plasmo/CRXJS/vanilla), testing with Playwright/Puppeteer, and Chrome Web Store publishing. Includes 13 reference docs: manifest V3 spec, permissions risk matrix, MV2-to-MV3 migration, messaging, storage, 12 core Chrome APIs, service worker patterns, content scripts, UI surfaces, framework comparison, testing guide, debugging, and Web Store publishing. |
+| **[build-raycast-script-command](skills/build-raycast-script-command/)** | Raycast Script Command development in Python or Bash — metadata headers, `fullOutput`/`compact`/`silent`/`inline` modes, typed arguments, discovery/runtime troubleshooting, portability, and shareable packaging. Includes 17 reference docs: scope and fit, workflow, language selection, metadata, arguments, Python/Bash patterns, conventions, troubleshooting, examples, and source provenance. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-supastarter-app
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/debug-tauri-devtools
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-vue-nextjs
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-chrome-extension
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-raycast-script-command
 ```
 
 ---
