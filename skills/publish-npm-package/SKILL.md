@@ -10,15 +10,73 @@ Set up npmjs publishing via GitHub Actions with a complete, internally consisten
 ## Trigger
 
 Use this skill when the task is about:
-- publishing to npmjs.org from GitHub Actions
+- publishing to npmjs.org from GitHub Actions or locally from a developer machine
+- first-time npm publishing of a new package (local bootstrap or CI)
 - replacing manual `npm login` / `npm publish` with CI/CD
 - choosing OIDC trusted publishing vs `NPM_TOKEN`
 - choosing semantic-release vs changesets vs release-please vs manual trigger
 - adding provenance, least-privilege permissions, or supply-chain hardening
 - wiring single-package or monorepo npm releases
-- debugging a failing npm publish workflow
+- debugging a failing npm publish workflow (including EOTP, ENEEDAUTH, E403)
 
 This skill assumes npmjs.org. For deep `package.json` / exports / files shaping, route to `references/packaging/package-config.md` instead of expanding that detail here.
+
+## Local publish vs CI publish — know which mode you're in
+
+Before doing anything, determine whether this is a **local publish** (from the user's terminal) or a **CI publish** (from GitHub Actions). The token wiring is fundamentally different and mixing them up is the #1 cause of EOTP/ENEEDAUTH errors.
+
+> **⚠️ Steering (F-20):** `NODE_AUTH_TOKEN` as an environment variable ONLY works in CI when `actions/setup-node` with `registry-url` has created an `.npmrc` containing `${NODE_AUTH_TOKEN}`. On a developer's local machine, npm ignores `NODE_AUTH_TOKEN` entirely unless an `.npmrc` with that placeholder exists. If you set `NODE_AUTH_TOKEN=<token> npm publish` locally and it still asks for OTP, npm is NOT using your token — it's using the interactive login session from `npm login`.
+
+### Local publish (developer terminal)
+
+**Check existing auth first:**
+```bash
+npm whoami --registry https://registry.npmjs.org    # Who am I logged in as?
+echo "${NPM_TOKEN:+NPM_TOKEN is set}"               # Is NPM_TOKEN in environment?
+cat ~/.npmrc 2>/dev/null | grep -v authToken | head  # What .npmrc exists?
+```
+
+**Check shell profile for existing tokens:**
+```bash
+grep -l 'NPM_TOKEN' ~/.zshrc ~/.bashrc ~/.zprofile ~/.bash_profile 2>/dev/null
+```
+
+Many developers already have `NPM_TOKEN` exported in their shell profile. Use it if present — do not create a new one.
+
+**Wire the token for local publish** (one of these):
+```bash
+# Option 1: CLI flag (works everywhere, no .npmrc needed)
+npm publish --access public --//registry.npmjs.org/:_authToken="${NPM_TOKEN}"
+
+# Option 2: Temporary .npmrc (creates file, works for session)
+echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+npm publish --access public
+rm .npmrc   # clean up
+
+# Option 3: Interactive login (triggers browser-based 2FA, no token needed)
+npm login   # then npm publish --access public
+```
+
+> **⚠️ Steering (F-21):** The `--//registry.npmjs.org/:_authToken=TOKEN` CLI flag is NOT a security risk on a local machine. The granular-tokens reference marks it as "❌ Wrong" — that guidance applies to CI (where it would appear in logs). Locally, it's the most reliable way to publish with a token.
+
+### CI publish (GitHub Actions)
+
+Use `NODE_AUTH_TOKEN` env var **with** `actions/setup-node` `registry-url`:
+```yaml
+- uses: actions/setup-node@v4
+  with:
+    registry-url: 'https://registry.npmjs.org'  # Creates .npmrc with ${NODE_AUTH_TOKEN}
+- run: npm publish --access public
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+### Diagnosing "EOTP when token should bypass 2FA"
+
+If you see `EOTP` with an automation/granular token that has "Bypass 2FA" enabled:
+1. **npm is not using your token.** It's falling back to the interactive `npm login` session.
+2. Run `npm whoami` — if it shows your personal username, the session auth is active.
+3. Fix: pass the token explicitly via CLI flag (`--//registry.npmjs.org/:_authToken=...`) or properly wire `NODE_AUTH_TOKEN` with a setup-node `.npmrc`.
 
 ## Always classify the repo first
 
@@ -281,9 +339,13 @@ These are the highest-impact traps found during derailment testing. Each is docu
 
 | Trap | Impact | What to do |
 |---|---|---|
+| Setting `NODE_AUTH_TOKEN` env var locally without setup-node's `.npmrc` | P0 — npm ignores the token, falls back to interactive login, triggers EOTP | `NODE_AUTH_TOKEN` only works when `.npmrc` contains `${NODE_AUTH_TOKEN}`. Locally, use `--//registry.npmjs.org/:_authToken=TOKEN` CLI flag instead. |
+| Seeing EOTP and assuming the token type is wrong | P0 — misdiagnosis, wasted cycles | EOTP means npm is using the *interactive session auth*, not your token. Run `npm whoami` to confirm. The token isn't reaching npm — fix the wiring, not the token. |
+| Not checking shell profile (`~/.zshrc`, `~/.bashrc`) for existing `NPM_TOKEN` | P1 — user already has a token but agent creates a new one or asks for one | Always `grep NPM_TOKEN ~/.zshrc ~/.bashrc` before asking the user to create or provide a token. |
 | Using `NODE_AUTH_TOKEN`/`NPM_TOKEN` and calling it "OIDC" | P0 — silent wrong auth | OIDC means zero npm secrets. If the publish step has `NODE_AUTH_TOKEN`, it is token auth. |
 | First-publish with OIDC on a package that does not exist on npm yet | P0 — 404 error | Bootstrap: publish once with a granular token, then switch to OIDC. |
 | Picking semantic-release/release-please without conventional commits | P0 compound — blocked | Use changesets if the team will not adopt conventional commits. |
+| Treating `--//registry.npmjs.org/:_authToken=TOKEN` as always wrong | P1 — blocks local publish | The "❌ Wrong" label in the granular-tokens reference applies to CI logs only. On a local terminal, the CLI flag is the most reliable token-passing method. |
 | Assuming changesets is monorepo-only | P1 — wrong tool choice | changesets works for single-package repos and does not require conventional commits. |
 | Confusing greenfield "will adopt" with existing "does not have" | P1 — wrong guidance | Greenfield can adopt conventional commits (design choice). Existing repos without them need changesets. |
 | Copying config from versioning reference instead of workflow template | P1 — config mismatch | Workflow template is baseline; versioning reference shows customization options. |

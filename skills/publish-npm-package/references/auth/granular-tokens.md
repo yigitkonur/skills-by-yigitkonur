@@ -247,19 +247,47 @@ If you need a project `.npmrc`, use environment variable substitution:
 //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-### Use NODE_AUTH_TOKEN environment variable
+### Token wiring: CI vs local
+
+**CI (GitHub Actions) — use `NODE_AUTH_TOKEN` env var:**
 
 ```yaml
-# ✅ Correct: token in env var (masked in logs)
+# ✅ Correct for CI: token in env var (masked in logs, requires setup-node with registry-url)
 - run: npm publish
   env:
     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-# ❌ Wrong: token as CLI argument (visible in logs)
+# ❌ Wrong for CI: token as CLI argument (visible in workflow logs)
 - run: npm publish --//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
 
-# ❌ Wrong: writing token to file directly
+# ❌ Wrong for CI: writing token to file directly
 - run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+```
+
+**Local (developer terminal) — use CLI flag or temporary .npmrc:**
+
+```bash
+# ✅ Correct for local: CLI flag (reliable, no .npmrc needed)
+npm publish --access public --//registry.npmjs.org/:_authToken="${NPM_TOKEN}"
+
+# ✅ Also correct for local: temporary .npmrc
+echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+npm publish --access public
+rm .npmrc
+
+# ❌ Wrong for local: NODE_AUTH_TOKEN env var alone (npm ignores it without setup-node's .npmrc)
+NODE_AUTH_TOKEN="${NPM_TOKEN}" npm publish   # → will use npm login session, may trigger EOTP
+```
+
+> **⚠️ Steering (F-21):** The CI "❌ Wrong" patterns flip for local usage. The CLI flag `--//registry.npmjs.org/:_authToken=TOKEN` is the most reliable local method because it doesn't depend on `.npmrc` state. It's only wrong in CI because GitHub Actions logs would expose the token.
+
+**Always check for existing tokens before creating new ones:**
+
+```bash
+# Check shell profile
+grep -l 'NPM_TOKEN' ~/.zshrc ~/.bashrc ~/.zprofile ~/.bash_profile 2>/dev/null
+# Check current value
+echo "${NPM_TOKEN:0:10}..."  # first 10 chars only
 ```
 
 ### Set minimum required scopes
