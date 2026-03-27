@@ -71,7 +71,7 @@ Skills that forensically parse real CSS/JS from existing sites and produce struc
 | Skill | What it does |
 |---|---|
 | **[extract-saas-design](skills/extract-saas-design/)** | Extracts the complete visual DNA from any SaaS dashboard or admin panel codebase — every token, component state, animation keyframe, and responsive breakpoint — into structured documentation that lets a builder recreate the exact look-and-feel without copying source. Includes 6 reference docs: component/system templates, dashboard patterns catalog, foundations and components agent guides, and a quality checklist. |
-| **[convert-snapshot-nextjs](skills/convert-snapshot-nextjs/)** | Converts live sites or saved HTML snapshots into buildable Next.js App Router projects with capture-first route inventory, mirrored assets, self-hosted resources, and screenshot-led fidelity verification. Includes 7 reference docs: capture workflow, foundations/sections agent guides, section/system templates, website patterns catalog, and a quality checklist. |
+| **[convert-snapshot-nextjs](skills/convert-snapshot-nextjs/)** | Converts live sites or saved HTML snapshots into buildable Next.js App Router projects with capture-first route inventory, mirrored assets, self-hosted resources, and screenshot-led fidelity verification. Includes 10 reference docs: capture workflow, input/output spec, grounding rules, foundations and sections agents, section and system templates, wave orchestration, website patterns, and a quality checklist. |
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/extract-saas-design
