@@ -1,372 +1,400 @@
 # Wave Pipeline — Orchestration Details
 
-The 5-wave pipeline converts saved HTML snapshots into buildable Next.js projects. Each wave has strict entry gates, parallel agent spawning, defined outputs, and completion signals.
+The pipeline converts live websites or saved HTML snapshots into buildable Next.js projects. It has one optional pre-wave for live capture plus five strict downstream waves. Each phase has entry gates, defined artifacts, and completion signals.
+
+---
+
+## Capture Wave — Live Route Inventory & Grounded Browser Capture
+
+**Trigger:** The source starts as a live URL or a partially recovered production site
+**Agents:** 1 inventory agent + 1 capture agent per canonical route family or in-scope route batch
+**Input:** Root URL or explicit route list
+**Output:** `.design-soul/capture/`
+
+Read `references/capture-workflow.md` before starting this wave.
+
+### Pre-Flight: Scope and Inventory
+
+Before spawning capture agents, the orchestrator must:
+
+1. record the requested root URL and any allowlist/denylist routes
+2. discover candidate routes from header/footer links, sitemap, in-page internal links, and explicit user scope
+3. normalize and dedupe routes
+4. classify routes into page families
+5. choose at least one canonical exemplar per family
+
+Typical families include:
+
+- `home`
+- `marketing-landing`
+- `pricing`
+- `contact`
+- `customers-index`
+- `blog`
+- `docs`
+- `about`
+- `auth`
+- `dashboard`
+- `legal`
+
+### Required Capture Artifacts Per Route
+
+Every captured route must preserve:
+
+1. **Final hydrated DOM**
+   - `dom.html`
+   - title + H1/H2/H3 outline
+   - visible section order
+
+2. **Visual evidence**
+   - desktop, tablet, and mobile screenshots
+   - full-page screenshots when supported
+   - scroll-slice screenshots for long pages so below-the-fold sections are not missed
+
+3. **Runtime metadata**
+   - stylesheet and script URLs
+   - image and font URLs
+   - exposed build IDs, route manifests, chunk references
+   - `__NEXT_DATA__`, `self.__next_f`, or equivalent framework runtime data when present
+
+4. **Mirrored assets**
+   - local copies of CSS, JS, fonts, images, and chunks needed for Wave 0
+   - route-level asset manifests tying original URLs to local files
+
+5. **Route classification**
+   - URL, pathname, inclusion status, page family, canonical exemplar status, notes
+
+### Capture Wave Outputs
+
+1. **`route-manifest.json`** — one row per discovered route:
+   ```json
+   {
+     "url": "https://example.com/pricing",
+     "pathname": "/pricing",
+     "included": true,
+     "pageFamily": "pricing",
+     "canonical": true,
+     "notes": ["pricing page", "nav linked", "in scope"]
+   }
+   ```
+
+2. **`page-types.md`** — page-family grouping with rationale and canonical exemplar choice.
+
+3. **`capture/{route}/...`** — route-level artifacts:
+   - `dom.html`
+   - `headings.json`
+   - `runtime-metadata.json`
+   - `assets.json`
+   - `mirror/`
+   - `screenshots/*.png`
+   - `done.signal`
+
+4. **`capture-summary.md`** — gaps, blocked routes, session-specific caveats, and evidence quality.
+
+### Capture Wave Completion Gate
+
+The Capture Wave is complete when:
+
+- every in-scope route in `route-manifest.json` has a route directory
+- every canonical page family has at least one exemplar route
+- desktop/tablet/mobile screenshots exist for each canonical route
+- scroll slices exist for long pages
+- mirrored asset roots exist for routes that need Wave 0 extraction
+- `.design-soul/capture/done.signal` exists
+
+**Do not proceed to Wave 0 until this gate passes.**
 
 ---
 
 ## Wave 0 — Per-Page Deep Exploration & Deobfuscation
 
-**Trigger:** Orchestrator scans `source-pages/` and finds saved snapshot `.html` files plus usable CSS/asset context
-**Agents:** 1 per page (ALL run in parallel)
-**Input:** One `{page}.html` + its discovered asset context (`{page}_files/`, adjacent local CSS/assets, or inline `<style>` blocks only)
+**Trigger:** Capture Wave completed, or saved snapshots already exist
+**Agents:** 1 per page/route (parallel within the phase)
+**Input:** One captured route directory or one saved `{page}.html` plus its grounded asset context
 **Output:** `.design-soul/wave0/{page}/`
 
-### Pre-Flight: Input Scan
+### Wave 0 Entry Requirements
 
-Before spawning agents, the orchestrator must:
+The orchestrator must give each Wave 0 agent one grounded input set:
 
-```bash
-# 1. Inventory all pages
-find source-pages/ -maxdepth 1 -name "*.html" | sort
+- **Live-capture path:** `.design-soul/capture/{route}/dom.html`, screenshots, runtime metadata, and `mirror/`
+- **Snapshot path:** `{page}.html` plus its `{page}_files/` folder
+- **Adjacent-asset snapshot path:** `{page}.html` plus the local CSS/assets referenced by that HTML
+- **SingleFile path:** `{page}.html` with inline styles, plus a note about reduced confidence
 
-# 2. Classify snapshot mode and discover each page's CSS corpus
-for f in source-pages/*.html; do
-  base="${f%.html}"
-  if [ -d "${base}_files" ]; then
-    css_count=$(ls "${base}_files"/*.css 2>/dev/null | wc -l)
-    js_count=$(ls "${base}_files"/*.js 2>/dev/null | wc -l)
-    echo "PRIMARY: $(basename $f) → ${base}_files/ (${css_count} CSS, ${js_count} JS)"
-  elif grep -qE 'href="[^"]+\.css' "$f"; then
-    css_refs=$(grep -oE 'href="[^"]+\.css[^"]*"' "$f" | sed 's/^href="//;s/"$//' | sort -u | wc -l | tr -d ' ')
-    echo "ADJACENT: $(basename $f) → ${css_refs} local CSS references"
-  else
-    style_count=$(grep -c '<style' "$f" 2>/dev/null)
-    echo "INLINE-ONLY: $(basename $f) → ${style_count} <style> blocks"
-  fi
-done
-
-# 3. Deduplicate CSS across every discovered external CSS file
-find source-pages/ \( -path "*_files/*.css" -o -name "*.css" \) -type f -exec md5 -r {} \; | sort | uniq -d -w 32
-```
-
-If a page has no `_files/` folder, no local CSS references, and no inline `<style>` blocks, stop and ask the user for a richer snapshot before Wave 0. There is not enough source data to ground the extraction.
-
-### Agent Spawning
-
-For EACH `.html` file found, spawn one Wave 0 agent with:
-- Path to the `.html` file
-- The page's input mode and asset root (`{page}_files/`, snapshot directory, or inline-only)
-- The page's CSS corpus
-- Shared CSS dedup map (so agents don't re-process identical files)
-- Instruction: "Read `references/foundations-agent.md` and execute Wave 0 extraction for this page"
+If a live-capture route lacks `mirror/`, stop and finish the Capture Wave first. If a snapshot route has no `_files/`, no local CSS references, and no inline `<style>` blocks, stop and get a richer snapshot before Wave 0.
 
 ### What Each Agent Produces
 
-1. **`exploration.md`** — Complete section inventory with:
-   - Ordered list of every section found (top → bottom)
-   - CSS Module prefix map with element counts per prefix
-   - CSS token map: every custom property used, its declaration, its resolved value
-   - Responsive behavior map: what changes at each `@media` breakpoint
-   - Animation catalog: every `@keyframes`, `transition`, and `transform` with trigger context
-   - Font inventory: every `font-family` + `@font-face` source
-   - Color inventory: every unique color value (hex, rgb, hsl, custom property)
+1. **`exploration.md`**
+   - page classification and confidence
+   - capture mode (live capture vs saved snapshot)
+   - section inventory in render order
+   - CSS token map and resolved custom properties
+   - responsive map from real media queries
+   - animation catalog and runtime behavior notes
+   - font inventory, color inventory, spacing inventory
+   - screenshot coverage and any missing evidence notes
 
-2. **`deobfuscated.css`** — ALL CSS from the page's discovered CSS corpus:
-   - Concatenated into a single file
-   - Deduplicated (identical rules removed)
-   - Obfuscated class names mapped to semantic names via comment annotations
-   - Example: `.Plans_card__SCfoV { ... }` → annotated as `/* Section: Plans, Element: card */`
+2. **`deobfuscated.css`**
+   - concatenated and deduplicated CSS
+   - readable class names where possible
+   - source comments for traceability
 
-3. **`behavior-spec.md`** — JS behaviors documented as declarative specifications:
-   - Each behavior: trigger → target element → effect → timing → easing
-   - Scroll-triggered animations (IntersectionObserver patterns)
-   - Hover/focus/active state changes driven by JS class toggling
-   - Dynamic content loading (lazy images, deferred sections)
-   - Navigation behavior (mobile menu toggle, dropdown logic)
-   - NO raw JS code — only declarative specs a builder can implement
+3. **`behavior-spec.md`**
+   - declarative behavior specs only
+   - trigger -> target -> effect -> timing -> easing
+   - scroll behavior, menu toggles, hover/focus states, visibility changes
 
-4. **`assets/`** — All referenced external assets:
-   - `assets/fonts/` — All font files (.woff2, .woff, .ttf) from `@font-face` declarations
-   - `assets/images/` — All images referenced in HTML or CSS (backgrounds, heroes, logos)
-   - `assets/icons/` — SVG icons extracted from inline SVGs or external references
-   - Asset manifest listing source URL → local path for each file
+4. **`assets/`**
+   - copied or downloaded fonts, images, icons, plus asset manifest
 
-5. **`done.signal`** — Empty file written ONLY after all other outputs are complete
+5. **`done.signal`**
 
-### Completion Gate
+### Wave 0 Completion Gate
 
-Wave 0 is complete when ALL `wave0/{page}/done.signal` files exist. The orchestrator must verify:
-
-```bash
-expected=$(find source-pages/ -maxdepth 1 -name "*.html" | wc -l)
-actual=$(find .design-soul/wave0/ -name "done.signal" | wc -l)
-[ "$expected" -eq "$actual" ] && echo "WAVE 0 COMPLETE" || echo "WAVE 0 INCOMPLETE: $actual/$expected"
-```
-
-**Do NOT proceed to Wave 1 until this gate passes.**
+Wave 0 is complete when every in-scope page/route has a `wave0/{page}/done.signal`.
 
 ---
 
-## Wave 1 — Design Soul Extraction (Page-Type Grouping)
+## Wave 1 — Design Soul Extraction by Page Family
 
-**Trigger:** ALL Wave 0 `done.signal` files exist
-**Agents:** 1 per page-type group (ALL run in parallel)
-**Input:** All `wave0/` docs for pages in each type group
+**Trigger:** All Wave 0 `done.signal` files exist
+**Agents:** 1 per page family (parallel within the phase)
+**Input:** All `wave0/` outputs for one family
 **Output:** `.design-soul/wave1/{group}/`
 
-### Page-Type Grouping
+### Grouping Rules
 
-Before spawning Wave 1 agents, classify every page into a type group:
+Families are deterministic. A page belongs to exactly one group.
 
-| Page Indicators | Group Name | Typical Pages |
-|----------------|-----------|---------------|
-| Hero + feature sections + CTA | `landing` | Homepage, product pages |
-| Plan cards + comparison tables | `pricing` | Pricing, plans |
-| Feature detail grids + demos | `features` | Features, integrations |
-| Blog post layout + article body | `blog` | Blog, articles, changelog |
-| Sidebar nav + content area + code blocks | `docs` | Docs, API reference, guides |
-| Team bios + company info | `about` | About, careers, team |
-| Sidebar shell + KPI cards + filters + dense data regions | `dashboard` | App, dashboard, settings, account |
-| Form fields + OAuth buttons + minimal chrome | `auth` | Login, signup, register |
-| Long-form policy text + table of contents | `legal` | Privacy, terms, legal pages |
+Typical groups:
 
-Grouping criteria (in priority order):
-1. **Shared navigation structure** — same nav items = same group
-2. **Section composition overlap** — >60% shared CSS Module prefixes = same group
-3. **Visual treatment similarity** — same background pattern, typography scale, spacing rhythm
+| Group | Signal |
+|---|---|
+| `home` | homepage shell + hero + trust + conversion sections |
+| `marketing-landing` | product, platform, or solution landing pages with shared shell and block library |
+| `pricing` | pricing cards, comparison, FAQ, conversion CTAs |
+| `contact` | form-led contact or demo-request pages |
+| `customers-index` | customer story or testimonial listing pages |
+| `blog` | article-led content pages |
+| `docs` | docs or API reference pages |
+| `about` | company and team pages |
+| `auth` | login or signup pages |
+| `dashboard` | app shells, settings, or dense data pages |
+| `legal` | privacy, terms, or policy pages |
 
-If only one page exists, still assign the best semantic group above. If no group fits cleanly, choose the closest overlap and document the ambiguity instead of inventing a new group.
+### Grouping Criteria
+
+Use these signals in priority order:
+
+1. shared navigation structure
+2. section composition overlap
+3. visual treatment similarity
+4. conversion rhythm or app-shell intent
+5. route purpose and content density
+
+If only one page exists, still assign the closest honest semantic group instead of inventing a bespoke one-off family.
 
 ### Agent Spawning
 
-For EACH page-type group, spawn one Wave 1 agent with:
-- List of `wave0/{page}/` directories belonging to this group
-- All `exploration.md` files from those directories
-- All `deobfuscated.css` files from those directories
-- Instruction: "Read `references/sections-agent.md` and extract the unified design soul for this page-type group"
+For each page family, spawn one Wave 1 agent with:
+
+- the list of `wave0/{page}/` directories in the family
+- all `exploration.md` files from those directories
+- all `deobfuscated.css` files from those directories
+- instruction to read `references/sections-agent.md`
 
 ### What Each Agent Produces
 
-1. **`design-soul.md`** — Unified visual DNA for this page-type group:
-   - Typography system: font families, weight scale, size scale, line heights, letter spacing
-   - Color system: named palette, semantic color roles, dark mode mapping (if present)
-   - Spacing system: padding scale, margin patterns, gap values, section rhythm
-   - Component anatomy: how each UI element is composed (container → children → leaf)
-   - Layout patterns: grid systems, flex patterns, max-width constraints, alignment
-   - Responsive architecture: breakpoint strategy, layout shifts, typography scaling
-   - Motion language: easing curves, duration scale, trigger patterns, stagger timing
+1. **`design-soul.md`**
+   - unified typography, color, spacing, layout, responsive, and motion systems
+   - shared shell analysis
+   - canonical section blocks and known overrides
+   - route-family-specific conversion or shell architecture when applicable
 
-2. **`token-values.json`** — Machine-readable token values:
-   ```json
-   {
-     "colors": { "--color-bg-primary": "#0a0a0a", "source": "homepage_files/06cc9eb.css :root" },
-     "typography": { "--font-display": "'Inter', sans-serif", "source": "homepage_files/a3b2c1.css :root" },
-     "spacing": { "--section-padding-y": "120px", "source": "homepage_files/06cc9eb.css .Hero_root" },
-     "breakpoints": { "tablet": "768px", "desktop": "1024px", "wide": "1280px" }
-   }
-   ```
-   Every value MUST include its source file and selector.
+2. **`token-values.json`**
+   - machine-readable tokens with source citations
 
-3. **`component-inventory.md`** — Every repeating UI element:
-   - Component name (from CSS Module prefix), anatomy breakdown, visual variants
-   - Interactive states (hover, focus, active, disabled)
-   - Responsive behavior (layout changes per breakpoint)
-   - Shared vs. page-specific classification
+3. **`component-inventory.md`**
+   - repeating components with `GLOBAL-SHARED`, `SHARED`, or `PAGE-SPECIFIC` tags
 
-4. **`responsive-map.md`** — Breakpoint behavior per component:
-   - Every `@media` query found, sorted by breakpoint
-   - What changes at each: layout, font sizes, spacing, visibility
-   - Mobile-first vs. desktop-first detection
+4. **`responsive-map.md`**
+   - per-component changes by breakpoint
 
-5. **`cross-site-patterns.md`** — Patterns shared across pages in this group:
-   - Section ordering conventions, visual rhythm, content density patterns
-   - CTA placement strategy, conversion architecture flow
+5. **`cross-site-patterns.md`**
+   - shared ordering, shell patterns, reusable section families, canonical exemplar notes
 
-6. **`done.signal`** — Empty file, written ONLY after all outputs complete
+6. **`done.signal`**
 
-### Landing Page Reality Check
+### Wave 1 Completion Gate
 
-Wave 1 agents processing landing pages must document these anatomical patterns explicitly:
-
-- **Hero composition** — Headline hierarchy, CTA placement, background treatment
-- **Social proof strategy** — Logo bar position, testimonial format, trust signals
-- **Feature presentation** — Grid layout vs. alternating, icon usage, description density
-- **Pricing hierarchy** — Card emphasis, comparison table, toggle patterns
-- **CTA rhythm** — Primary vs. secondary styling, spacing, urgency signals
-- **Conversion architecture** — Awareness → interest → trust → decision → action flow
-
-### Completion Gate
-
-Wave 1 is complete when ALL `wave1/{group}/done.signal` files exist.
+Wave 1 is complete when every page family has a `wave1/{group}/done.signal`.
 
 ---
 
 ## Wave 2 — Page Build Brief Manufacturing
 
-**Trigger:** ALL Wave 1 `done.signal` files exist
-**Agents:** 1 per page (batch: up to 3 same-type pages per agent)
+**Trigger:** All Wave 1 `done.signal` files exist
+**Agents:** 1 per page, or 1 per small batch of highly similar same-family pages
 **Input:** `wave1/{group}/` soul docs + `wave0/{page}/` raw data
 **Output:** `.design-soul/wave2/{page}/`
 
-### Agent Spawning
-
-For EACH page (or batch of up to 3 same-type pages):
-- The relevant `wave1/{group}/design-soul.md` and `token-values.json`
-- The page's `wave0/{page}/exploration.md` and `deobfuscated.css`
-- The page's `wave0/{page}/behavior-spec.md`
-- Instruction: "Read `references/section-template.md` and create a complete, self-contained build brief for this page"
-
 ### What Each Agent Produces
 
-1. **`agent-brief.md`** — Self-contained build instructions following the Wave 2 template. Must be **complete enough that a Wave 4 agent can build the page from this brief ALONE**, without accessing Wave 0 or Wave 1 outputs.
+1. **`agent-brief.md`** — self-contained build instructions that a Wave 4 agent can use alone
+2. **`done.signal`**
 
-2. **`done.signal`** — Written only after the brief passes completeness checks
+### Wave 2 Brief Requirements
 
-### Brief Completeness Rule
+Every brief must include:
 
-Every `agent-brief.md` MUST include ALL of these sections:
+- route identity and metadata
+- section blueprint in render order
+- component manifest with reuse rules
+- token references with exact values
+- asset table with local destinations
+- interaction specs with exact triggers/timings
+- responsive rules for desktop, tablet, and mobile
+- acceptance criteria tied to visual QA
 
-| Section | Contents | Why Required |
-|---------|----------|-------------|
-| Page Identity | Route path, page title, meta description, page type | Builder needs routing and SEO |
-| Section Blueprint | Every section top→bottom with full visual spec | Builder needs the complete page structure |
-| Component Manifest | Every component tagged SHARED or PAGE-SPECIFIC | Builder knows what to import vs. create |
-| Token Reference | All design tokens used on this page with values | Builder doesn't need to look up tokens |
-| Asset Reference Table | `wave0/` path → `public/` destination for every asset | Builder knows where every image/font goes |
-| Interaction Spec | Every animation/transition: trigger → effect → timing → easing | Builder implements exact motion |
-| Responsive Spec | Layout at every breakpoint for every section | Builder handles all screen sizes |
-| State Variants | Hover, focus, active, disabled for every interactive element | Builder implements all states |
-| Acceptance Criteria | Specific visual assertions that must pass | Builder can self-verify |
+### Wave 2 Completion Gate
 
-### Brief Self-Containment Test
-
-Ask: "If I gave this brief to a developer who has NEVER seen the original website and has NO access to Wave 0 or Wave 1 outputs — could they build a pixel-perfect page?" If not, the brief is incomplete.
-
-### Completion Gate
-
-Wave 2 is complete when ALL `wave2/{page}/done.signal` files exist.
+Wave 2 is complete when every in-scope page has a `wave2/{page}/done.signal`.
 
 ---
 
 ## Wave 3 — Design System Foundation & Next.js Scaffold
 
-**Trigger:** ALL Wave 2 `done.signal` files exist
-**Agents:** 1 orchestrator agent (may spawn specialist sub-agents)
-**Input:** ALL `wave2/` briefs + ALL `wave1/` soul docs
-**Output:** `nextjs-project/` scaffold + `.design-soul/wave3/`
+**Trigger:** All Wave 2 `done.signal` files exist
+**Agents:** 1 orchestrator agent, with optional internal specialists
+**Input:** All Wave 1 soul docs + all Wave 2 briefs
+**Output:** `nextjs-project/` + `.design-soul/wave3/`
 
 ### What the Orchestrator Produces
 
-**1. `nextjs-project/` — Complete project scaffold:**
+1. **`nextjs-project/` scaffold**
+   - `package.json` with only allowed dependencies
+   - strict TypeScript config
+   - Tailwind config extended with extracted values, not defaults
+   - `globals.css`, `tokens.ts`, and shared primitives wired to extracted values
+   - route stubs or route implementations for every in-scope page
+
+2. **`.design-soul/wave3/` docs**
+   - `foundation-brief.md`
+   - `traceability-matrix.md`
+   - `foundation-ready.signal`
+
+### Recommended Scaffold Map
 
 | File/Directory | Contents | Source |
-|---------------|----------|--------|
-| `package.json` | Dependencies: ONLY next, react, react-dom, typescript, tailwindcss, @types/react, @types/react-dom, @types/node, postcss, autoprefixer | Wave 3 constraint |
-| `tsconfig.json` | `strict: true`, path aliases for `@/components`, `@/lib` | Standard Next.js |
-| `tailwind.config.ts` | Extended theme with REAL breakpoints, colors, fonts, spacing from Wave 1 tokens | `wave1/*/token-values.json` |
-| `postcss.config.js` | Standard PostCSS: tailwindcss + autoprefixer | Standard |
-| `styles/globals.css` | `@font-face` declarations for all self-hosted fonts + CSS custom properties from `:root` | `wave0/*/assets/fonts/` + `wave1/*/token-values.json` |
+|---|---|---|
+| `package.json` | Only the allowed Next/React/Tailwind/TypeScript/PostCSS dependencies | Wave 3 constraint |
+| `tsconfig.json` | `strict: true`, path aliases for `@/components` and `@/lib` | Standard Next.js scaffold |
+| `tailwind.config.ts` | Extended theme with real breakpoints, colors, fonts, and spacing from Wave 1 tokens | `wave1/*/token-values.json` |
+| `postcss.config.js` | Standard PostCSS with Tailwind and autoprefixer | Standard scaffold |
+| `styles/globals.css` | `@font-face` declarations and CSS custom properties from extracted tokens | `wave0/*/assets/` + `wave1/*/token-values.json` |
 | `lib/tokens.ts` | Typed TypeScript constants for all design tokens | `wave1/*/token-values.json` |
-| `lib/animations.ts` | Animation utility functions from extracted `@keyframes` and transition patterns | `wave0/*/behavior-spec.md` |
-| `components/shared/` | Shared component shells (Header, Footer, etc.) with props interfaces | `wave2/*/agent-brief.md` component manifests |
-| `app/layout.tsx` | Root layout importing fonts, globals.css, shared header/footer | All wave outputs |
-| `app/*/page.tsx` | Route stubs for every page with placeholder content | `wave2/` page list |
+| `lib/animations.ts` | Animation utility helpers from extracted `@keyframes` and transition patterns | `wave0/*/behavior-spec.md` |
+| `components/shared/` | Shared shell components with props interfaces | `wave2/*/agent-brief.md` |
+| `app/layout.tsx` | Root layout importing fonts, globals, and shared shell | All wave outputs |
+| `app/*/page.tsx` | Route stubs or real implementations for every in-scope page | `wave2/` page list |
 
-**2. `.design-soul/wave3/` — Foundation documentation:**
+### Wave 3 Quality Gate
 
-- **`foundation-brief.md`** — Instructions for Wave 4 agents: how to use `tokens.ts`, `animations.ts`, extend shared components, Tailwind conventions, responsive approach, asset paths
-- **`traceability-matrix.md`** — Complete trace from tokens to source:
-  ```
-  Token Name              → Wave 2 Brief Reference      → Wave 0 Source File
-  --color-bg-primary      → homepage/agent-brief.md:L42  → homepage_files/06cc9eb.css :root
-  --font-display          → homepage/agent-brief.md:L18  → homepage_files/a3b2c1.css :root
-  ```
-- **`foundation-ready.signal`** — Written ONLY after the quality gate passes
+Before writing `foundation-ready.signal`, verify:
 
-### Foundation Quality Gate
-
-Before writing `foundation-ready.signal`, verify ALL conditions:
-
-| Check | Verification Method | Pass Criteria |
-|-------|-------------------|---------------|
-| Token coverage | Diff `tokens.ts` exports vs. all `wave2/*/agent-brief.md` token references | 100% of referenced tokens exist |
-| Shared components | List SHARED-tagged components across all Wave 2 briefs | Every SHARED component has a file |
-| Breakpoints | Compare `tailwind.config.ts` vs. Wave 1 `responsive-map.md` | All source breakpoints represented |
-| Font loading | Verify `@font-face` references files in `public/assets/fonts/` | All fonts self-hosted |
-| Animations | Check `animations.ts` covers all Wave 2 interaction specs | All shared patterns defined |
-| Zero deps | Read `package.json` dependencies | NO UI/animation/icon/font libraries |
-| TypeScript | `tsc --noEmit` passes | Zero errors |
-| Route stubs | Count `app/*/page.tsx` files vs. Wave 2 page count | Every page has a route |
-
-Read `references/system-template.md` for the complete quality gate specification and scaffold structure.
-
-### Completion Gate
-
-Wave 3 is complete when `.design-soul/wave3/foundation-ready.signal` exists.
+- token coverage is complete
+- shared components exist for all `GLOBAL-SHARED` and required `SHARED` items
+- fonts/assets are self-hosted
+- breakpoints match extracted values
+- strict TypeScript passes
+- production build passes
+- no forbidden dependencies are introduced
 
 ---
 
-## Wave 4 — Full Page Build (Pixel-Perfect Reconstruction)
+## Wave 4 — Full Page Build & Visual QA Loop
 
 **Trigger:** `.design-soul/wave3/foundation-ready.signal` exists
-**Agents:** 1 per page (or per batch of up to 3 same-type pages)
+**Agents:** 1 per page, or 1 per small same-family batch
 **Input:** `wave2/{page}/agent-brief.md` + `wave3/foundation-brief.md`
-**Output:** `app/{route}/page.tsx` + `components/pages/{page}/`
-
-### Agent Spawning
-
-For EACH page, spawn one Wave 4 agent with:
-- The page's `wave2/{page}/agent-brief.md` (complete build spec)
-- The `wave3/foundation-brief.md` (how to use the design system)
-- Path to `nextjs-project/` (the existing scaffold)
-- Instruction: "Read the agent-brief and foundation-brief. Build this page using ONLY the Wave 3 design system. Zero external dependencies. Every visual value must match the brief exactly."
+**Output:** Next.js route code plus visual comparison artifacts
 
 ### What Each Agent Produces
 
-1. **`app/{route}/page.tsx`** — Server component by default (`'use client'` only where interaction requires). Imports shared components from `@/components/shared/`, page-specific from `@/components/pages/{page}/`. Uses tokens from `@/lib/tokens`.
+1. **Route code**
+   - `app/{route}/page.tsx`
+   - `components/pages/{page}/...`
+   - copied assets under `public/assets/{page}/`
 
-2. **`components/pages/{page}/`** — One component file per section (e.g., `Hero.tsx`, `FeatureGrid.tsx`). TypeScript interfaces for all props. Tailwind classes using the extended theme. CSS custom properties via inline styles where Tailwind doesn't cover.
+2. **Visual QA artifacts** under `.design-soul/visual/{page}/`
+   - source screenshots
+   - build screenshots
+   - diff images
+   - `summary.json` with similarity metrics and notes
 
-3. **`public/assets/{page}/`** — Page-specific images and icons copied from `wave0/{page}/assets/`.
+### Wave 4 Acceptance Criteria
 
-### Acceptance Criteria (Per Page)
+Each page must pass:
 
-| Criterion | Verification |
-|-----------|-------------|
-| Visual match — desktop (≥1280px) | Layout, typography, colors, spacing match agent-brief |
-| Visual match — tablet (768–1279px) | Responsive layout shifts match tablet spec |
-| Visual match — mobile (≤767px) | Mobile layout, stacking, font scaling match mobile spec |
-| Interactive states | All hover/focus/active/disabled states match behavior spec |
-| Animations | All scroll-triggered, load, and hover animations fire correctly |
-| Typography | All fonts render with correct family, weight, size, line-height |
-| Images | All images self-hosted in `public/assets/` and displaying |
-| No external requests | Zero network requests to CDNs, Google Fonts, external APIs |
-| TypeScript strict | `tsc --noEmit` passes with zero errors |
-| Build succeeds | `next build` completes without errors |
+- desktop compare
+- tablet compare
+- mobile compare
+- full-page or scroll-slice compare for long pages
+- interactive states grounded in the brief
+- zero external requests for shipped assets
+- `tsc --noEmit`
+- `npm run build`
+
+### Similarity Rule
+
+Use objective compare artifacts instead of subjective `looks close` language. If the user gives a threshold, hit it. If they do not, use route-by-route comparison artifacts and document the measured gap before claiming fidelity.
 
 ---
 
 ## Global Fleet Rules
 
-These rules apply across ALL waves and ALL agents.
+### Strict Phase Order
 
-### Wave Sequencing (STRICT)
-
+```text
+Capture Wave (if needed)
+-> Gate
+-> Wave 0 (all agents)
+-> Gate
+-> Wave 1 (all agents)
+-> Gate
+-> Wave 2 (all agents)
+-> Gate
+-> Wave 3
+-> Gate
+-> Wave 4 (all agents + visual QA loop)
 ```
-Wave 0 (all agents) → Gate → Wave 1 (all agents) → Gate → Wave 2 (all agents) → Gate → Wave 3 → Gate → Wave 4 (all agents)
-```
 
-No Wave N+1 agent may start until ALL Wave N `done.signal` files exist. Non-negotiable.
+No later phase starts before the prior phase gate passes.
 
-### Parallelism Within Waves
+### Parallelism Within Phases
 
-- Wave 0: All page agents simultaneously
-- Wave 1: All page-type group agents simultaneously
-- Wave 2: All page brief agents simultaneously
-- Wave 3: Single orchestrator (may spawn parallel sub-agents internally)
-- Wave 4: All page build agents simultaneously
+- Capture Wave: route inventory first, then per-route or per-family captures in parallel
+- Wave 0: all page agents in parallel
+- Wave 1: all page-family agents in parallel
+- Wave 2: all page brief agents in parallel
+- Wave 3: single orchestrator
+- Wave 4: all page build agents in parallel where write scopes do not overlap
+
+### Session Hygiene for Live Capture
+
+- Prefer isolated browser sessions per route or per family to avoid cross-route contamination
+- Capture source screenshots before comparing against rebuilds
+- Preserve the original raw artifacts before normalizing or formatting anything
 
 ### Signal File Convention
 
+```text
+.design-soul/capture/{route}/done.signal
+.design-soul/capture/done.signal
+.design-soul/wave{0,1,2}/{identifier}/done.signal
+.design-soul/wave3/foundation-ready.signal
 ```
-.design-soul/wave{N}/{identifier}/done.signal     # Per-agent completion (Waves 0, 1, 2)
-.design-soul/wave3/foundation-ready.signal          # Wave 3 completion (single signal)
-```
 
-Signal files are EMPTY files. Their existence is the ONLY indicator of completion. An agent must write its signal file LAST, after all other outputs are verified.
-
-### The Consistency Rule
-
-The same token name must mean the same value everywhere:
-- `tokens.ts` value = `tailwind.config.ts` extension = `globals.css` custom property = `wave2/*/agent-brief.md` reference
-- If a discrepancy is found, trace back to Wave 0 source and use the authoritative value
+Signals are written only after the corresponding validation passes.

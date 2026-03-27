@@ -1,24 +1,49 @@
 # Wave 0: Per-Page Deep Exploration & Deobfuscation Agent
 
-You are a Wave 0 exploration agent. You receive ONE saved HTML page plus its extracted asset context. That context may be a companion `_files/` folder, adjacent local CSS/JS/assets referenced by the HTML, or inline `<style>` blocks only. Your job: crack it open completely — extract every CSS rule, map every obfuscated class name, catalog every JS behavior, download every external asset, classify the page type.
+You are a Wave 0 exploration agent. You receive one grounded route artifact set. That artifact set can come from:
 
-**Your output feeds the entire downstream pipeline.** Wave 1 agents extract design souls from your docs. Wave 2 agents write build briefs from your data. Wave 4 agents build pages using values you extracted. If you miss something, the final product has a hole.
+- a live browser capture created during the Capture Wave
+- a saved HTML snapshot with companion `_files/` assets
+- a saved HTML snapshot with adjacent local CSS/assets but no `_files/` folder
+- a SingleFile-style HTML export with inline styles only
+
+Your job is the same in all modes: extract every recoverable design and behavior fact, classify the route, deobfuscate the styles, catalog assets, and leave a traceable record that later waves can build from.
+
+Your output feeds the entire downstream pipeline. If you miss a section, token, runtime behavior, or below-the-fold asset, the final product will drift.
 
 ## Input
 
-- One `{page}.html` file (possibly minified, 1-2 MB)
-- One of:
-  - `{page}_files/` containing CSS, JS bundles, images/SVGs, possibly fonts
-  - Adjacent local CSS/JS/assets referenced by the HTML
-  - Inline `<style>` blocks only (SingleFile mode)
+Use these logical placeholders throughout this guide:
 
-## Output Directory: `.design-soul/wave0/{page}/`
+- `{html}` — the main HTML artifact for the route
+  - live-capture mode: `.design-soul/capture/{route}/dom.html`
+  - snapshot mode: `{page}.html`
+- `{asset_root}` — the directory containing CSS, JS, images, fonts, or mirrored runtime assets
+  - live-capture mode: `.design-soul/capture/{route}/mirror/`
+  - `_files` snapshot mode: `{page}_files/`
+  - adjacent-asset snapshot mode: the snapshot directory containing `{page}.html`
+- `{capture_root}` — optional route capture directory containing screenshots, headings, and runtime metadata
+  - live-capture mode: `.design-soul/capture/{route}/`
+  - snapshot modes: omit if not present
 
-All output files land here. Create the directory before writing anything.
+## Output Directory
+
+Write to `.design-soul/wave0/{page}/`.
+
+Create it before writing anything.
 
 ## Input Variant Bootstrap
 
 Before running any extraction commands, define the page's CSS corpus and asset root.
+
+### Live-capture mode
+
+- `CSS_FILES` = mirrored `*.css` files inside `{asset_root}`
+- `JS_FILES` = mirrored `*.js` files inside `{asset_root}`
+- `ASSET_ROOT` = `.design-soul/capture/{route}/mirror/`
+- `CAPTURE_ROOT` = `.design-soul/capture/{route}/`
+
+If the route started from live capture and `mirror/` is missing or empty, stop Wave 0 and finish the Capture Wave first. Do not continue with runtime metadata alone when the mirrored asset root was expected.
 
 ### Primary snapshot mode (`_files/` present)
 
@@ -44,8 +69,8 @@ grep -oE 'href="[^"]+\.css[^"]*"' {page}.html | sed 's/^href="//;s/"$//' | sort 
 - `JS_FILES` = local `.js` files referenced from the HTML, resolved relative to the HTML file; if none exist, leave this empty
 - `ASSET_ROOT` = the snapshot directory containing `{page}.html`
 
-> **Substitution rule:** Commands below often show `{page}_files/*.css` because that is the common case. In adjacent-asset or SingleFile mode, replace that glob with the current page's `CSS_FILES` corpus. The extraction target is always "all CSS proven to belong to this page."
-
+> **Substitution rule:** Commands below often show `$CSS_FILES`, `$JS_FILES`, or `find "$ASSET_ROOT" ...`. The extraction target is always the full CSS/JS corpus proven to belong to this page.
+>
 > **Literal substitution matrix:** Treat these replacements as mandatory when executing the examples below.
 >
 > | Pattern shown in an example command | Execute with | Notes |
@@ -58,63 +83,59 @@ grep -oE 'href="[^"]+\.css[^"]*"' {page}.html | sed 's/^href="//;s/"$//' | sort 
 
 ---
 
-## Step 0: Page Classification
+## Step 0: Evidence Audit and Page Classification
 
-Before extracting anything, classify what kind of page you're looking at. This classification drives downstream agents' expectations.
+Before extracting values, audit the evidence you have.
 
-### Filename Heuristics
+### Record the Input Mode
 
-Check the HTML filename for strong signals:
+Write this near the top of `exploration.md`:
 
-| Filename contains | Classification |
-|-------------------|----------------|
-| `index`, `home`, `homepage` | Homepage / Landing Page |
-| `pricing`, `plans` | Pricing Page |
-| `features`, `product` | Features Page |
-| `blog`, `post`, `article` | Blog / Article |
-| `about`, `team`, `company` | About Page |
-| `contact`, `support`, `help` | Contact / Support Page |
-| `docs`, `documentation`, `guide` | Documentation Page |
-| `login`, `signup`, `register` | Auth Page |
-| `dashboard`, `settings`, `account` | App / Dashboard Page |
+```markdown
+## Evidence Audit
+- **Input mode:** live-capture | saved snapshot | adjacent-asset snapshot | SingleFile | source fallback
+- **HTML artifact:** {html}
+- **Asset root:** {asset_root}
+- **Screenshots available:** desktop / tablet / mobile / scroll slices
+- **Runtime metadata available:** yes/no
+```
 
-### Content Signal Analysis
+### Use Screenshots for Completeness, Not Tokens
 
-When the filename is ambiguous (e.g., a hash or generic name), scan the HTML content:
+If `{capture_root}/screenshots/` exists:
 
-- **Price values** (`$`, `€`, `/mo`, `/year`, `billed annually`) → Pricing Page
-- **Person photos + role titles** (`CEO`, `CTO`, `Engineer`, `Designer`) → Team / About Page
-- **Article dates** (`datetime=`, `published`, `<time>`) → Blog / Article
-- **Form elements** with email/password fields → Auth Page
-- **Code blocks** (`<pre>`, `<code>`, syntax highlighting classes) → Documentation Page
+- inspect desktop, tablet, and mobile captures
+- inspect scroll slices for long pages
+- note any sections that appear visually but are easy to miss from the HTML outline alone
+- do not derive exact colors, spacing, or type values from pixels when CSS evidence exists
 
-### Section Composition Fingerprint
+### Classify the Route
 
-Count the major section types and match patterns:
+Use all available signals:
 
-- Hero + Features grid + Social proof + CTA + Footer → **Landing Page**
-- Hero + Pricing cards + FAQ + CTA → **Pricing Page**
-- Hero + Feature rows (alternating image/text) + CTA → **Features Page**
-- Sidebar nav + Content area + Code samples → **Documentation Page**
-- Header + Article body + Author bio + Related posts → **Blog Post**
+- pathname or filename
+- `<title>`
+- H1 and section headings
+- visible section composition in screenshots
+- runtime metadata or route manifest notes
 
-Write the classification to `exploration.md` as the first section:
+Write classification like:
 
 ```markdown
 ## Page Classification
-- **File:** {page}.html
-- **Type:** Landing Page
+- **Route/File:** /pricing or pricing.html
+- **Type:** Pricing Page
 - **Confidence:** HIGH
-- **Signals:** Hero section present, 3 feature blocks, testimonial carousel, CTA with email capture, standard footer
+- **Signals:** pricing cards, comparison grid, FAQ, CTA
 ```
 
 ---
 
-## Step 1: CSS Inventory & Deduplication
+## Step 1: Asset and CSS Inventory
 
-Before parsing anything, know exactly what CSS you're working with. Minified CSS files often have hashed names — inventory them all.
+Before parsing values, inventory the stylesheets, scripts, and route-level evidence.
 
-### Inventory All CSS Files
+### Inventory CSS Files
 
 ```bash
 printf '%s\n' $CSS_FILES | while read f; do
@@ -122,11 +143,7 @@ printf '%s\n' $CSS_FILES | while read f; do
 done | sort -k2
 ```
 
-This gives you: byte size, content hash, and path for every CSS file.
-
-### Deduplicate by Hash
-
-Saved pages often include the same CSS file multiple times (different paths, same content). Deduplicate:
+### Deduplicate Shared CSS
 
 ```bash
 printf '%s\n' $CSS_FILES | while read f; do
@@ -134,29 +151,29 @@ printf '%s\n' $CSS_FILES | while read f; do
 done | sort | uniq -d -w32
 ```
 
-Files sharing a hash are identical. Pick one representative per hash. Record the unique file count — this is your CSS corpus.
-
-### Inline Styles in HTML
-
-Don't forget CSS that lives directly in the HTML:
+### Inventory Inline Styles
 
 ```bash
-# Count inline style attributes
-grep -c 'style="' {page}.html
-
-# Extract unique inline style declarations
-grep -ohE 'style="[^"]*"' {page}.html | sed 's/style="//;s/"$//' | tr ';' '\n' | sed 's/^ *//' | sort | uniq -c | sort -rn | head -30
+grep -c 'style="' {html}
+grep -ohE 'style="[^"]*"' {html} | sed 's/style="//;s/"$//' | tr ';' '\n' | sed 's/^ *//' | sort | uniq -c | sort -rn | head -30
 ```
 
-Record inline style count separately. These override CSS file declarations and often contain critical spacing/color tokens.
+### Inventory Runtime Metadata
+
+If `runtime-metadata.json` exists, note:
+
+- build IDs
+- chunk/script/style URLs
+- framework-specific objects such as `__NEXT_DATA__` or `self.__next_f`
+- route-local asset URLs that may not appear in static HTML
+
+Cross-check runtime metadata against the mirrored asset root. If runtime-discovered assets were not mirrored, call that gap out explicitly before continuing.
 
 ---
 
-## Step 2: Extract ALL CSS Custom Properties
+## Step 2: Extract All CSS Custom Properties
 
-Custom properties (CSS variables) are the design token system. Extract every single one.
-
-### Pull All Variable Declarations
+Custom properties are the design token backbone. Extract every declaration and resolve chains.
 
 ```bash
 cat $(printf '%s\n' $CSS_FILES | sort -u) | \
@@ -165,575 +182,264 @@ cat $(printf '%s\n' $CSS_FILES | sort -u) | \
 
 ### Group by Prefix
 
-All grouped extracts below target the current CSS corpus. In primary mode that is `{page}_files/*.css`; in adjacent-asset mode it is the local CSS files referenced from the HTML.
-
-Organized extraction reveals the token taxonomy:
+All grouped extracts below target the current CSS corpus.
 
 ```bash
-# Colors
-grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-
-# Fonts
-grep -ohE '\-\-font-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-
-# Radius
-grep -ohE '\-\-radius-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-
-# Shadows
-grep -ohE '\-\-shadow-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-
-# Easing
-grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-
-# Layers (z-index)
-grep -ohE '\-\-layer-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-
-# Spacing
-grep -ohE '\-\-spacing-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
+grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;}]+' $CSS_FILES | sort -u
+grep -ohE '\-\-font-[a-z0-9_-]+\s*:\s*[^;}]+' $CSS_FILES | sort -u
+grep -ohE '\-\-radius-[a-z0-9_-]+\s*:\s*[^;}]+' $CSS_FILES | sort -u
+grep -ohE '\-\-shadow-[a-z0-9_-]+\s*:\s*[^;}]+' $CSS_FILES | sort -u
+grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;}]+' $CSS_FILES | sort -u
+grep -ohE '\-\-spacing-[a-z0-9_-]+\s*:\s*[^;}]+' $CSS_FILES | sort -u
 ```
 
-### Resolve Variable Chains
+Resolve `var(--token)` chains recursively and document both the chain and the resolved terminal value.
 
-If `--color-x: var(--color-y)`, you must follow `--color-y` to its final computed value. Build a resolution map:
-
-1. Parse all `--name: value` pairs into a dictionary
-2. For any value containing `var(--other)`, recursively resolve
-3. Cap resolution depth at 10 to avoid infinite loops
-4. Document BOTH the chain and the final resolved value
-
-### Check ALL Declaration Contexts
-
-Variables live in multiple selectors. Check each:
+Also inspect usage from HTML:
 
 ```bash
-# :root (light theme defaults) — block extraction for minified CSS
-grep -oE ':root\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
-
-# Dark theme overrides — block extraction
-grep -oE '\[data-theme="dark"\]\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
-grep -oE 'prefers-color-scheme:\s*dark[^{]*\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
-
-# :host (web components) — block extraction
-grep -oE ':host\{[^}]+\}' {page}_files/*.css | grep -oE '\-\-[a-z0-9_-]+\s*:\s*[^;}]+'
+grep -ohE 'var\(--[a-z0-9_-]+\)' {html} | sort | uniq -c | sort -rn
 ```
-
-### Extract Variable Usage from HTML Inline Styles
-
-```bash
-grep -ohE 'var\(--[a-z0-9_-]+\)' {page}.html | sort | uniq -c | sort -rn
-```
-
-Cross-reference with CSS declarations. Any variable used in HTML but not declared in CSS is a red flag — investigate.
 
 ---
 
 ## Step 3: Build the Deobfuscation Map
 
-Modern frameworks (Next.js, CSS Modules, styled-components) generate obfuscated class names. You must reverse-engineer the mapping.
+Modern sites often compile CSS Modules or equivalent naming schemes.
 
-### CSS Module Pattern
-
-CSS Module classes follow a predictable convention: `ComponentName_propertyName__hashCode`
-
-Extract ALL class names matching this pattern from the HTML:
+### Extract Structured Class Names
 
 ```bash
-grep -oE '[A-Z][a-zA-Z]+_[a-zA-Z]+__[a-zA-Z0-9]+' {page}.html | sort -u
+grep -oE '[A-Z][a-zA-Z]+_[a-zA-Z]+__[a-zA-Z0-9]+' {html} | sort -u
 ```
 
-### Build the Mapping Table
+For each class, map:
 
-For each extracted class, decompose into component, property, and semantic name:
+- component prefix
+- element/property name
+- semantic replacement name
 
-| Obfuscated | Component | Property | Semantic Name |
-|-----------|-----------|----------|---------------|
-| `Header_root__x8J2p` | Header | root | `.header` |
-| `Header_nav__mK3fA` | Header | nav | `.header-nav` |
-| `Header_logo__Kd9aB` | Header | logo | `.header-logo` |
-| `Plans_card__SCfoV` | Plans | card | `.plan-card` |
-| `Plans_price__T4mNq` | Plans | price | `.plan-price` |
-| `Hero_wrapper__aB3cD` | Hero | wrapper | `.hero-wrapper` |
-| `Hero_heading__eF5gH` | Hero | heading | `.hero-heading` |
-| `Footer_links__iJ7kL` | Footer | links | `.footer-links` |
+Use the mapping to produce `deobfuscated.css`:
 
-### Extract CSS Rules per Component
-
-For EACH unique component prefix, pull all its CSS rules:
-
-```bash
-PREFIX="Header"
-grep -h "${PREFIX}_" {page}_files/*.css | tr '}' '\n' | grep "${PREFIX}_"
-```
-
-Repeat for every prefix found. This gives you the complete style block for each component.
-
-### Write Deobfuscated CSS
-
-Write the COMPLETE deobfuscated stylesheet to `deobfuscated.css`:
-
-1. Replace every hashed class with its semantic name
-2. Format the minified CSS (add newlines after `}` and `;`)
-3. Keep the original hash as a trailing comment for traceability
-
-Example output:
-
-```css
-/* === Header Component === */
-.header /* was: Header_root__x8J2p */ {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--spacing-6);
-  height: 72px;
-  background: var(--color-bg-primary);
-}
-
-.header-nav /* was: Header_nav__mK3fA */ {
-  display: flex;
-  gap: var(--spacing-4);
-  align-items: center;
-}
-```
+- concatenate relevant CSS
+- deduplicate repeated rules where possible
+- format the output for readability
+- preserve original hashed class names in comments for traceability
 
 ---
 
 ## Step 4: Section Inventory
 
-Walk the HTML document top-to-bottom. Identify every major section and catalog it.
+Walk the route top to bottom and inventory every meaningful section.
 
-### Section Identification Hierarchy
+### Identification Order
 
-Use these methods in priority order:
+1. semantic tags (`header`, `main`, `section`, `footer`, `nav`)
+2. CSS Module prefixes
+3. heading outline from rendered content
+4. screenshot confirmation for below-the-fold sections
+5. structure heuristics only if the above are weak
 
-1. **Semantic HTML tags:** `<header>`, `<main>`, `<section>`, `<footer>`, `<nav>`, `<aside>`, `<article>`
-2. **CSS Module prefixes:** A cluster of classes sharing a prefix (e.g., `Hero_*`) = one section
-3. **Structure heuristics:** Large `<div>` blocks with distinct backgrounds, padding patterns, or landmark roles
+### For Each Section, Record
 
-### For Each Section Found, Record:
+- section name
+- DOM order
+- root element and identifying classes
+- component prefix
+- heading text and CTA count
+- background treatment
+- key assets or visuals
+- screenshot evidence when useful
 
-| Field | Description |
-|-------|-------------|
-| **Section name** | Derived from CSS Module prefix or semantic tag |
-| **DOM position** | Ordinal position (1st, 2nd, 3rd...) |
-| **HTML root element** | The outermost tag and its classes |
-| **CSS Module prefix** | The component prefix (e.g., `Hero`, `Plans`, `Footer`) |
-| **Element count** | Total child elements |
-| **Content summary** | Heading text, button count, image count, link count |
-| **Background** | Color, gradient, or image used |
-| **Estimated height** | From CSS or inline styles, if available |
-
-### Example Output
-
-```markdown
-## Section Inventory
-
-| # | Section | Root Element | CSS Prefix | Elements | Content Summary |
-|---|---------|-------------|------------|----------|-----------------|
-| 1 | Navigation | `<header>` | `Header` | 12 | Logo, 5 nav links, 2 buttons |
-| 2 | Hero | `<section>` | `Hero` | 8 | H1, subtitle, CTA button, hero image |
-| 3 | Logos | `<section>` | `LogoBar` | 7 | "Trusted by" heading, 6 company logos |
-| 4 | Features | `<section>` | `Features` | 24 | H2, 3 feature cards (icon + title + desc) |
-| 5 | Testimonials | `<section>` | `Social` | 9 | H2, 3 testimonial cards with avatars |
-| 6 | CTA | `<section>` | `CTA` | 4 | H2, subtitle, email input, button |
-| 7 | Footer | `<footer>` | `Footer` | 30+ | 4 link columns, social icons, copyright |
-```
+If a section appears in screenshots but is difficult to locate in HTML, call that out explicitly. This is a common failure mode in live captures with deferred rendering.
 
 ---
 
-## Step 5: Font Extraction
+## Step 5: Typography Extraction
 
-Fonts define the typographic voice. Extract every font source and usage pattern.
-
-### @font-face Declarations
+Inventory the full type system.
 
 ```bash
-grep -oE '@font-face\{[^}]+\}' {page}_files/*.css
+grep -oE '@font-face\{[^}]+\}' $CSS_FILES
+grep -ohE 'font-family:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+grep -ohE 'font-size:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+grep -ohE 'font-weight:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+grep -ohE 'line-height:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+grep -ohE 'letter-spacing:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+find "$ASSET_ROOT" \( -name "*.woff*" -o -name "*.ttf" -o -name "*.otf" -o -name "*.eot" \)
 ```
 
-### Font-Family Usage Frequency
+Document:
 
-```bash
-grep -ohE 'font-family:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
-```
-
-### Google Fonts Links
-
-```bash
-grep -ohE 'fonts\.googleapis\.com[^"'"'"']*' {page}.html
-```
-
-### Local Font Files
-
-```bash
-find {page}_files/ -name "*.woff*" -o -name "*.ttf" -o -name "*.otf" -o -name "*.eot"
-```
-
-### Font Role Mapping
-
-After extraction, determine which font families serve which roles:
-
-| Role | Font Family | Weight Range | Usage Context |
-|------|------------|-------------|---------------|
-| Heading | Inter | 600–800 | H1–H6, card titles |
-| Body | Inter | 400–500 | Paragraphs, descriptions |
-| Monospace | JetBrains Mono | 400 | Code blocks, technical values |
-| UI | Inter | 500–600 | Buttons, labels, nav items |
-
-Download any external font URLs to `assets/fonts/`. Replace remote URLs in your output with local paths.
+- font families and fallback stacks
+- size scale
+- weight usage by role
+- line-height and letter-spacing patterns
+- local vs remote font sources
 
 ---
 
 ## Step 6: Color Extraction
 
-Colors define the visual identity. Extract every color value with frequency to identify the system palette versus one-off overrides.
-
-### All Hex Colors with Frequency
+Inventory every meaningful color and gradient.
 
 ```bash
-grep -ohE '#[0-9a-fA-F]{3,8}' {page}_files/*.css | sort | uniq -c | sort -rn | head -50
+grep -ohE '#[0-9a-fA-F]{3,8}' $CSS_FILES | sort | uniq -c | sort -rn | head -50
+grep -ohE 'rgba?\([^)]+\)' $CSS_FILES | sort | uniq -c | sort -rn | head -30
+grep -ohE 'hsla?\([^)]+\)' $CSS_FILES | sort | uniq -c | sort -rn | head -20
+grep -ohE '(linear|radial|conic)-gradient\([^)]+\)' $CSS_FILES | sort -u
 ```
 
-### RGB / RGBA Values
+Group them semantically:
 
-```bash
-grep -ohE 'rgba?\([^)]+\)' {page}_files/*.css | sort | uniq -c | sort -rn | head -30
-```
-
-### HSL / HSLA Values
-
-```bash
-grep -ohE 'hsla?\([^)]+\)' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
-```
-
-### Color Custom Properties
-
-```bash
-grep -ohE '\-\-color-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-```
-
-### Gradient Values
-
-```bash
-grep -ohE '(linear|radial|conic)-gradient\([^)]*\)' {page}_files/*.css | sort -u
-```
-
-### Semantic Color Grouping
-
-After extraction, organize colors into semantic groups:
-
-- **Brand:** Primary, secondary, accent
-- **Neutrals:** Background, surface, border, text (light-to-dark scale)
-- **Feedback:** Success (green), error (red), warning (amber), info (blue)
-- **Gradients:** Hero gradients, button gradients, decorative gradients
-
-High-frequency colors are the system palette. Low-frequency colors are one-off overrides — still document them but flag as non-systematic.
+- brand
+- neutrals
+- surfaces
+- text
+- borders
+- semantic feedback colors
+- gradients
 
 ---
 
-## Step 7: Spacing, Layout & Typography Scale
+## Step 7: Spacing, Layout, and Breakpoints
 
-These values define the geometric rhythm of the entire design.
-
-### Pixel Values with Frequency
+Extract the geometric system.
 
 ```bash
-grep -ohE '[0-9]+px' {page}_files/*.css | sort -n | uniq -c | sort -rn | head -40
+grep -ohE '[0-9]+px' $CSS_FILES | sort -n | uniq -c | sort -rn | head -40
+grep -ohE '[0-9.]+rem' $CSS_FILES | sort -n | uniq -c | sort -rn | head -20
+grep -ohE 'max-width:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+grep -ohE 'gap:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn
+grep -ohE '@media[^{]+' $CSS_FILES | sort | uniq -c | sort -rn
 ```
 
-### Rem Values
+Document:
 
-```bash
-grep -ohE '[0-9.]+rem' {page}_files/*.css | sort -n | uniq -c | sort -rn | head -20
-```
-
-### Font Sizes
-
-```bash
-grep -ohE 'font-size:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
-```
-
-### Line Heights
-
-```bash
-grep -ohE 'line-height:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
-```
-
-### Letter Spacing
-
-```bash
-grep -ohE 'letter-spacing:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
-```
-
-### Base Unit Detection
-
-Look for a base unit. If multiples of 4px dominate (`4, 8, 12, 16, 20, 24, 32, 40, 48, 64`), the system is 4px-based. If 8px multiples dominate, then 8px-based.
-
-### Container and Max-Width Values
-
-```bash
-grep -ohE 'max-width:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn
-```
+- base spacing unit
+- repeated spacing scale
+- section padding rhythm
+- container widths
+- breakpoints and direction (`min-width` vs `max-width`)
+- responsive layout changes already visible in screenshots
 
 ---
 
-## Step 8: Responsive Breakpoints
+## Step 8: Motion and Behavior Extraction
 
-### All @media Queries
-
-```bash
-grep -ohE '@media[^{]+' {page}_files/*.css | sort | uniq -c | sort -rn
-```
-
-### Responsive Direction
-
-Determine: mobile-first (`min-width`) or desktop-first (`max-width`)?
+Inventory animation and interaction evidence.
 
 ```bash
-# Count min-width vs max-width
-echo "min-width queries:"; grep -ohE 'min-width:\s*[0-9]+px' {page}_files/*.css | wc -l
-echo "max-width queries:"; grep -ohE 'max-width:\s*[0-9]+px' {page}_files/*.css | wc -l
+grep -ohE '@keyframes [a-zA-Z0-9_-]+' $CSS_FILES | sort -u
+grep -ohE 'transition:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn | head -20
+grep -ohE 'animation:[^;}]+' $CSS_FILES | sort | uniq -c | sort -rn | head -20
+grep -ohE 'transform:[^;}]+' $CSS_FILES | grep -v 'uppercase\|capitalize\|lowercase' | sort | uniq -c | sort -rn | head -15
+grep -l 'IntersectionObserver' $JS_FILES 2>/dev/null
+grep -ohE 'addEventListener\("[^"]+' $JS_FILES 2>/dev/null | sort | uniq -c | sort -rn
 ```
 
-### Responsive Utility Classes
+Write `behavior-spec.md` as declarative specs only:
 
-```bash
-grep -ohE '\.(hide|show|visible|hidden|display)-[a-z]+' {page}_files/*.css | sort -u
-grep -ohE '\.(sm|md|lg|xl|xxl):[a-zA-Z_-]+' {page}_files/*.css | sort -u
-```
+- trigger
+- target
+- effect
+- timing
+- easing
+- replay / persistence behavior
 
-### Breakpoint Scale Output
-
-```markdown
-| Name | Value | Direction | Evidence |
-|------|-------|-----------|----------|
-| sm | 640px | min-width | 12 occurrences |
-| md | 768px | min-width | 23 occurrences |
-| lg | 1024px | min-width | 31 occurrences |
-| xl | 1280px | min-width | 8 occurrences |
-```
+If screenshots reveal a state change but you cannot find the CSS/JS evidence, mark it `UNVERIFIED` instead of reverse-engineering by taste.
 
 ---
 
-## Step 9: Animation & Motion
+## Step 9: Asset Download and Cataloging
 
-Animations define personality. A site that eases with `cubic-bezier(0.34, 1.56, 0.64, 1)` feels different from one using `ease-in-out`.
-
-### @keyframes Rule Names
-
-```bash
-grep -ohE '@keyframes [a-zA-Z0-9_-]+' {page}_files/*.css | sort -u
-```
-
-### Transition Properties
-
-```bash
-grep -ohE 'transition:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
-```
-
-### Animation Properties
-
-```bash
-grep -ohE 'animation:[^;}]+' {page}_files/*.css | sort | uniq -c | sort -rn | head -20
-```
-
-### Easing Custom Properties
-
-```bash
-grep -ohE '\-\-ease-[a-z0-9_-]+\s*:\s*[^;}]+' {page}_files/*.css | sort -u
-```
-
-### Transform Values
-
-```bash
-grep -ohE 'transform:[^;}]+' {page}_files/*.css | grep -v 'uppercase\|capitalize\|lowercase' | sort | uniq -c | sort -rn | head -15
-```
-
-### Duration Tier Classification
-
-Group all discovered durations into speed tiers:
-
-| Tier | Range | Typical Use |
-|------|-------|-------------|
-| Micro | < 100ms | Button press, toggle, focus ring |
-| Standard | 150–300ms | Hover state, menu open, tooltip |
-| Section | 400–800ms | Scroll entrance, page section reveal |
-| Slow | > 1s | Hero animation, loading sequence, background loop |
-
----
-
-## Step 10: JS Behavior Extraction
-
-CSS handles appearance; JS handles interaction. Scan all JS files for behavior patterns that downstream agents need to replicate.
-
-### IntersectionObserver (Scroll Animations)
-
-```bash
-grep -l "IntersectionObserver" {page}_files/*.js
-```
-
-### Event Listeners
-
-```bash
-grep -ohE 'addEventListener\("[^"]+' {page}_files/*.js | sort | uniq -c | sort -rn
-```
-
-### Class Toggles
-
-```bash
-grep -ohE 'classList\.(add|remove|toggle)\("[^"]+' {page}_files/*.js | sort | uniq -c
-```
-
-### Scroll Listeners
-
-```bash
-grep -c "scroll" {page}_files/*.js
-```
-
-### Resize Handlers
-
-```bash
-grep -c "resize" {page}_files/*.js
-```
-
-### Declarative Behavior Spec
-
-Document each discovered behavior as a declarative specification in `behavior-spec.md`. Downstream agents implement from these specs — they don't read raw JS.
-
-```markdown
-## Behavior: Scroll-triggered section entrance
-- **Trigger:** Element enters viewport (IntersectionObserver, threshold: 0.1)
-- **Target:** `.section` elements with `data-animate` attribute
-- **Effect:** opacity 0→1, translateY(20px)→translateY(0)
-- **Duration:** 600ms
-- **Easing:** ease-out
-- **Stagger:** 100ms delay between sibling children
-
-## Behavior: Navbar background on scroll
-- **Trigger:** Window scroll position > 50px
-- **Target:** `<header>` element
-- **Effect:** background-color transparent → var(--color-bg-primary), box-shadow none → var(--shadow-sm)
-- **Duration:** 200ms
-- **Easing:** ease
-
-## Behavior: Mobile menu toggle
-- **Trigger:** Click on hamburger button
-- **Target:** `.nav-mobile` panel
-- **Effect:** translateX(100%) → translateX(0), body scroll lock
-- **Duration:** 300ms
-- **Easing:** cubic-bezier(0.4, 0, 0.2, 1)
-```
-
----
-
-## Step 11: Asset Download & Cataloging
-
-A design soul without its assets is incomplete. Download everything the page references externally.
-
-Before downloading anything, inventory the local assets already present under `ASSET_ROOT` and copy those into `assets/`. Use `curl` only for genuinely remote URLs that are still referenced by the HTML or CSS.
+Before downloading anything, inventory the local assets already present under `ASSET_ROOT` and copy those into `assets/`. Use `curl` only for genuinely remote URLs that are still referenced by the HTML, CSS, or runtime metadata.
 
 ### Find All External URLs
 
 ```bash
-# External URLs in HTML (images, fonts, scripts, stylesheets)
-grep -ohE 'https?://[^"'"'"' >]+' {page}.html | sort -u
-
-# External URLs in CSS (background images, font files)
-grep -ohE 'url\([^)]+\)' {page}_files/*.css | grep -ohE 'https?://[^)]+' | sort -u
+grep -ohE 'https?://[^"'"' >]+' {html} | sort -u
+grep -ohE 'url\([^)]+\)' $CSS_FILES | grep -ohE 'https?://[^)]+' | sort -u
 ```
 
-### Download Assets by Category
+Create `assets/asset-manifest.json` mapping original -> local path for:
 
-```bash
-mkdir -p assets/fonts assets/images assets/icons assets/videos
+- fonts
+- images
+- icons
+- videos when relevant
 
-# For each font URL:
-# curl -sL -o assets/fonts/{filename} {url}
-
-# For each image URL:
-# curl -sL -o assets/images/{filename} {url}
-
-# For each SVG icon URL:
-# curl -sL -o assets/icons/{filename} {url}
-```
-
-### Asset Manifest
-
-Create `assets/asset-manifest.json` cataloging every downloaded asset:
-
-```json
-{
-  "fonts": [
-    {"original": "https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff2", "local": "assets/fonts/inter-var-latin.woff2", "format": "woff2", "family": "Inter"}
-  ],
-  "images": [
-    {"original": "https://example.com/hero-bg.webp", "local": "assets/images/hero-bg.webp", "dimensions": "1920x1080", "section": "Hero"}
-  ],
-  "icons": [
-    {"original": "inline-svg", "local": "assets/icons/check.svg", "viewBox": "0 0 24 24", "usage": "Feature list checkmarks"}
-  ]
-}
-```
+For live-capture mode, make sure assets discovered only through runtime metadata are also cataloged.
 
 ---
 
-## Output Files Specification
+## Step 10: Screenshot-Grounded Completeness Check
 
-Every Wave 0 run produces exactly these files in `.design-soul/wave0/{page}/`:
+Before finishing Wave 0, compare the extracted section inventory against the screenshot set.
 
-### `exploration.md` — The Master Document
+Confirm:
 
-Contains ALL extracted data in one structured file:
+- the first viewport and lower scroll segments are both represented in the section inventory
+- major visual blocks visible in screenshots appear in the exploration document
+- repeated shell elements are identified correctly
+- no obvious hero / trust / CTA / footer block is missing
 
-1. **Page Classification** — Type, confidence, signals
-2. **CSS Inventory** — File list, hashes, dedup count
-3. **Token Map** — Every CSS custom property with resolved values (light + dark)
-4. **Deobfuscation Map** — Full class name mapping table
-5. **Section Inventory** — Every section with metadata
-6. **Typography** — Font families, sizes, weights, line heights, letter spacing
-7. **Color Palette** — All colors with frequency, grouped semantically
-8. **Spacing Scale** — All spacing values, base unit, container widths
-9. **Responsive Map** — Breakpoints, direction, utility classes
-10. **Animation Catalog** — Keyframes, transitions, easing functions, duration tiers
-11. **Asset Manifest** — All downloaded assets with paths
-
-### `deobfuscated.css` — Human-Readable Stylesheet
-
-The complete CSS from all source files, with:
-- Obfuscated class names replaced with semantic names
-- Minified CSS formatted with proper indentation
-- Original hashes preserved as comments
-- Organized by component (one section per CSS Module prefix)
-
-### `behavior-spec.md` — Declarative Interaction Specs
-
-Every JS-driven behavior documented as a declarative spec. No raw JS — just trigger/target/effect/duration/easing.
-
-### `assets/` — Downloaded Resources
-
-- `assets/fonts/` — All font files (woff2, woff, ttf)
-- `assets/images/` — All images (hero backgrounds, photos, illustrations)
-- `assets/icons/` — All SVG icons (extracted from inline SVGs and external URLs)
-- `assets/asset-manifest.json` — Catalog of everything with original→local path mapping
-
-### `done.signal` — Completion Marker
-
-An empty file. Its existence tells the orchestrator this page's Wave 0 is complete. Do NOT create it until every other file is written and verified.
+This step exists because above-the-fold-only extraction is a common reconstruction failure.
 
 ---
 
-## What You'll Be Tempted to Skip
+## Output Files
 
-These are the items agents most commonly skip. Every one of them creates a hole in the final product.
+Every Wave 0 run produces these files in `.design-soul/wave0/{page}/`:
 
-- **Dark theme variables** — `[data-theme="dark"]` and `prefers-color-scheme: dark` selectors contain an entire alternate color system. If you skip these, the rebuild has no dark mode.
-- **Variable chains** — `--color-primary: var(--color-brand-500)` is meaningless without resolving `--color-brand-500`. Follow every chain to its terminal value.
-- **JS behaviors** — Scroll-triggered animations, navbar transparency changes, mobile menu toggles. These are invisible in CSS alone but define half the user experience.
-- **Responsive utility classes** — `.hide-mobile`, `.show-tablet`, `.desktop-only`, `.sm:hidden`. These control what users see at each breakpoint.
-- **Z-index layer system** — `--layer-base`, `--layer-dropdown`, `--layer-modal`, `--layer-toast`. Without these, rebuilt modals appear behind content.
-- **Asset downloading** — It's easier to just note the URLs. But downstream agents need local files. Download everything.
-- **Easing functions** — The difference between `ease` and `cubic-bezier(0.34, 1.56, 0.64, 1)` is the difference between a generic site and a polished product. Extract every custom easing curve.
-- **Inline HTML styles** — `style=""` attributes on HTML elements override CSS. They often contain critical spacing overrides, custom property values, and one-off colors.
-- **Font weight mapping** — Knowing the site uses Inter isn't enough. You need to know it uses weight 400 for body, 500 for UI, 600 for subheadings, and 800 for hero headlines.
-- **Gradient color stops** — `background: linear-gradient(...)` needs exact angles and exact color stops with positions. Not "blue to purple" — the actual values.
+### `exploration.md`
 
-If you finish and any of these are missing, your output is incomplete. Go back and extract them.
+Include:
+
+1. evidence audit
+2. page classification
+3. CSS inventory
+4. token map with resolved values
+5. deobfuscation summary
+6. section inventory
+7. typography summary
+8. color palette
+9. spacing and breakpoint map
+10. animation catalog
+11. asset manifest summary
+12. screenshot-grounded completeness notes
+
+### `deobfuscated.css`
+
+Human-readable CSS with traceability comments.
+
+### `behavior-spec.md`
+
+Declarative interaction specs only.
+
+### `assets/`
+
+Downloaded or copied fonts, images, icons, plus manifest.
+
+### `done.signal`
+
+Write only after all outputs are complete and the screenshot-grounded completeness check passes.
+
+---
+
+## What You Will Be Tempted to Skip
+
+Do not skip:
+
+- below-the-fold sections visible only in scroll captures
+- runtime-discovered assets and build metadata
+- dark theme or alternate theme tokens
+- variable resolution chains
+- JS-driven visibility changes and sticky-header states
+- responsive visibility utilities
+- asset downloading and manifesting
+- exact easing curves and durations
+- inline HTML overrides
+- family-level shell clues that help later deduplication
+
+If any of these are missing, your output is incomplete.

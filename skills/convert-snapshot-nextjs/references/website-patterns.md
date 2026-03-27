@@ -1,14 +1,16 @@
-# Website Section Patterns — Identification from Saved Snapshots
+# Website Section Patterns — Identification from Captured or Saved Pages
 
-This reference helps you identify section types from CSS Module class prefixes, semantic HTML tags, and content patterns. When you encounter an unknown prefix in a saved snapshot, look it up here.
+This reference helps you identify section types from CSS Module class prefixes, semantic HTML tags, heading structure, and content patterns. Use it for both saved snapshots and browser-captured live routes.
 
 **Section Identification Hierarchy (use in this order):**
 1. Semantic HTML tags (`<header>`, `<section>`, `<footer>`, `<nav>`)
 2. CSS Module class prefix (the part before `_` in `Header_root__x8J2p`)
-3. Structure heuristics (layout patterns, content signals)
+3. Heading outline and route context
+4. Screenshot confirmation for below-the-fold sections
+5. Structure heuristics (layout patterns, content signals)
 
 **CSS Module naming convention:** `ComponentName_propertyName__hashCode`
-- The **ComponentName** (before the first `_`) tells you which section or component you're looking at
+- The **ComponentName** (before the first `_`) often tells you which section or component you're looking at
 - The **propertyName** (between `_` and `__`) tells you which element within that component
 - The **hashCode** (after `__`) is a build-time unique identifier — ignore it
 
@@ -67,7 +69,7 @@ done | sort -rn
 The topmost persistent element on every page — logo, links, and primary CTA. Usually fixed or sticky, often changes appearance on scroll.
 
 **CSS Module Identification:**
-- Prefixes: `Header_`, `Nav_`, `Navigation_`, `Navbar_`, `TopBar_`
+- Prefixes: `Header_`, `Nav_`, `Navigation_`, `TopBar_`
 - HTML signals: `<header>`, `<nav>`, or first child of `<body>` before `<main>`
 - CSS signals: `position: fixed` or `sticky`, `z-index` > 100, `backdrop-filter: blur()`
 - Content signals: Logo image/SVG, horizontal link list, CTA button at far right
@@ -190,7 +192,7 @@ Showcases product capabilities, benefits, or key selling points. Typically a gri
 - `text-primary` on icons, `size-10` for icon containers
 - Bento grid: `grid-cols-2 lg:grid-cols-3` with specific children using `col-span-2` or `row-span-2`
 
-**Responsive:** Grid collapses: `3→2→1` or `4→2→1`. Use `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`. Alternating image+text rows reverse via `lg:grid-cols-2` with even items using `lg:[&>*:first-child]:order-2` or a manual `flex-row-reverse` at the component level.
+**Responsive:** Grid collapses: `3→2→1` or `4→2→1`. Use `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`. Alternating image+text rows reverse via `lg:grid-cols-2` with even items using `lg:[&>*:first-child]:order-2` or a manual `flex-row-reverse`.
 
 **Animation:** Scroll-triggered fade-in per card with staggered delay. Use `IntersectionObserver` hook + CSS classes: `opacity-0 translate-y-4` → `opacity-100 translate-y-0 transition-all duration-500`. Stagger via inline `style={{ transitionDelay: index * 100 + 'ms' }}`.
 
@@ -322,13 +324,17 @@ Large numeric values with labels that quantify credibility. Often animated with 
 
 **Tailwind approach:**
 - Container: `grid grid-cols-2 lg:grid-cols-4 gap-8` or `flex flex-wrap justify-center gap-12`
-- Number: `text-4xl font-bold tracking-tight text-foreground tabular-nums` (use `font-variant-numeric: tabular-nums` via `tabular-nums` class so digits don't shift width during count-up)
-- Label: `text-sm text-muted-foreground mt-1`
-- Dividers: `divide-x` on the flex container, or individual `border-l` on items except first
+- Base card: `rounded-2xl border bg-card p-8`
+- Highlighted card: `border-primary ring-2 ring-primary/20 shadow-lg relative` with badge `absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full`
+- Price: `text-5xl font-bold` for amount, `text-base text-muted-foreground` for period
+- Feature list: `space-y-3` with check icon `text-primary size-4 shrink-0` + `text-sm`
 
-**Responsive:** `grid-cols-2` on mobile → `lg:grid-cols-4` on desktop. If 3 stats, use `grid-cols-1 sm:grid-cols-3`. Dividers switch from vertical (`border-l`) on desktop to horizontal (`border-t`) on mobile, or remove entirely on small screens with `hidden sm:block` on divider elements.
+**Responsive:**
+- Desktop: `grid-cols-4` → `grid-cols-3` → `grid-cols-2` → `grid-cols-1`
+- Tablet: `grid-cols-3` → `grid-cols-2` → `grid-cols-1`
+- Mobile: `grid-cols-2` → `grid-cols-1`
 
-**Animation:** `useEffect` + `IntersectionObserver` to detect when stats enter viewport. On intersection, animate from 0 to target value over ~2 seconds using `requestAnimationFrame`. Format numbers with locale-aware `Intl.NumberFormat` for commas/decimals. Fire animation only once — track with a ref flag.
+**Animation:** `useEffect` + `IntersectionObserver` to detect when stats enter viewport. On intersection, animate from 0 to target value over ~2 seconds using `requestAnimationFrame`. Format numbers with locale-aware `Intl.NumberFormat` for commas/decimals. Fire the animation only once — track that with a ref flag.
 
 **Common pitfalls:**
 - Count-up animation causing layout shift — numbers change width as digits increase. Fix with `tabular-nums` font feature and `min-w-[ch-count]` or fixed-width container
@@ -372,9 +378,15 @@ Displays available plans with prices, features, and per-plan CTAs. Almost always
 - Price: `text-5xl font-bold` for amount, `text-base text-muted-foreground` for period
 - Feature list: `space-y-3` with check icon `text-primary size-4 shrink-0` + `text-sm`
 
-**Responsive:** Cards stack on mobile: `grid-cols-1`. Highlighted card should appear first on mobile (use `order-first md:order-none`) so users see the recommended plan without scrolling. Toggle stays centered at all sizes.
+**Responsive:**
+- Desktop: `grid-cols-3` → `grid-cols-2` → `grid-cols-1`
+- Tablet: `grid-cols-2` → `grid-cols-1`
+- Mobile: `grid-cols-1`
 
-**Animation:** Toggle state change can crossfade prices: wrap price in a container with `transition-opacity duration-200`. On toggle, briefly set `opacity-0`, update price, then `opacity-100`. No library needed — `useState` + `useEffect` with a short timeout.
+**Animation:**
+- Toggle state change can crossfade prices: wrap price in a container with `transition-opacity duration-200`.
+- On toggle, briefly set `opacity-0`, update price, then `opacity-100`.
+- No library needed — `useState` + `useEffect` with a short timeout.
 
 **Common pitfalls:**
 - Price display not updating when toggle changes — ensure price data structure maps both monthly and annual prices per plan, not just one
@@ -419,9 +431,14 @@ Side-by-side feature comparison between plans, products, or your product vs. com
 - Checkmark cell: `text-center text-primary` with inline SVG check icon
 - Highlighted column: `bg-primary/5` on header + all cells in that column
 
-**Responsive:** Tables are inherently difficult on mobile. Two strategies: (1) horizontal scroll with `overflow-x-auto` and `min-w-[640px]` on the table, (2) collapse into individual cards per plan. Choose (1) for 3 columns or fewer, (2) for 4+. Sticky header needs `z-10` when combined with horizontal scroll.
+**Responsive:**
+- Tables are inherently difficult on mobile. Two strategies: (1) horizontal scroll with `overflow-x-auto` and `min-w-[640px]` on the table, (2) collapse into individual cards per plan. Choose (1) for 3 columns or fewer, (2) for 4+.
+- Sticky header needs `z-10` when combined with horizontal scroll.
 
-**Animation:** Collapsible groups use `grid-rows` animation pattern: container with `grid grid-rows-[0fr]` → `grid-rows-[1fr]` on open, inner content with `overflow-hidden`. Smoother than `max-height` because it doesn't need a hardcoded max. Rotate chevron icon with `transition-transform rotate-180`.
+**Animation:**
+- Collapsible groups use `grid-rows` animation pattern: container with `grid grid-rows-[0fr]` → `grid-rows-[1fr]` on open, inner content with `overflow-hidden`.
+- Smoother than `max-height` because it doesn't need a hardcoded max.
+- Rotate chevron icon with `transition-transform duration-200`.
 
 **Common pitfalls:**
 - Sticky header not working inside `overflow-x-auto` — this is a known CSS limitation. Solution: make the header sticky via JavaScript `position: fixed` mirroring, or accept non-sticky header on mobile
@@ -466,9 +483,17 @@ A conversion-focused section, typically near the bottom of the page (pre-footer)
 - Button on dark bg: `bg-white text-primary hover:bg-white/90 font-semibold px-8 py-3 rounded-lg`
 - Email form: `flex flex-col sm:flex-row gap-3 max-w-md mx-auto` with input `flex-1 rounded-lg bg-white/10 border-white/20 text-white placeholder:text-white/60 px-4 py-3`
 
-**Responsive:** Buttons stack vertically on mobile: `flex flex-col sm:flex-row gap-3`. Email input + submit button stack the same way. Section padding reduces slightly on mobile: `py-16 sm:py-24`. Heading scales down: `text-2xl sm:text-3xl lg:text-4xl`.
+**Responsive:**
+- Buttons stack vertically on mobile: `flex flex-col sm:flex-row gap-3`.
+- Email input + submit button stack the same way.
+- Section padding reduces slightly on mobile: `py-16 sm:py-24`.
+- Heading scales down: `text-2xl sm:text-3xl lg:text-4xl`.
 
-**Animation:** Minimal — this section should feel stable and confident, not flashy. Optional: subtle fade-in on scroll. If card CTA variant, a gentle `hover:-translate-y-1 transition-transform` on the card wrapper. Floating/sticky CTA enters from bottom with `translate-y-full → translate-y-0` triggered by scroll position.
+**Animation:**
+- Minimal — this section should feel stable and confident, not flashy.
+- Optional: subtle fade-in on scroll.
+- If card CTA variant, a gentle `hover:-translate-y-1 transition-transform` on the card wrapper.
+- Floating/sticky CTA enters from bottom with `translate-y-full → translate-y-0` triggered by scroll position.
 
 **Common pitfalls:**
 - Button contrast insufficient on gradient backgrounds — test both ends of the gradient for WCAG AA compliance
@@ -512,15 +537,22 @@ Frequently asked questions displayed as expandable question/answer pairs. Reduce
 - Answer container: `grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 data-[state=open]:grid-rows-[1fr]`
 - Answer inner: `overflow-hidden` → answer text with `pb-4 text-muted-foreground leading-relaxed`
 
-**Responsive:** FAQ layout works well at all sizes by default. Two-column FAQ uses `lg:columns-2 lg:gap-x-8` and collapses to single column naturally. Max-width on the FAQ container: `max-w-3xl mx-auto` keeps lines readable.
+**Responsive:**
+- FAQ layout works well at all sizes by default.
+- Two-column FAQ uses `lg:columns-2 lg:gap-x-8`.
+- Max-width on the FAQ container: `max-w-3xl mx-auto` keeps lines readable.
 
-**Animation:** Use the CSS Grid rows technique for smooth expand/collapse: parent toggles between `grid-rows-[0fr]` and `grid-rows-[1fr]`, child has `overflow-hidden`. This is smoother than `max-height` because it doesn't require a hardcoded max value. Chevron rotation via `transition-transform duration-200 rotate-180`. No animation library needed.
+**Animation:**
+- Use the CSS Grid rows technique for smooth expand/collapse: parent toggles between `grid-rows-[0fr]` and `grid-rows-[1fr]`, child has `overflow-hidden`.
+- This is smoother than `max-height` because it doesn't require a hardcoded max value.
+- Chevron rotation via `transition-transform duration-200 rotate-180`.
+- No animation library needed.
 
 **Common pitfalls:**
-- Using `max-height: 999px` for open state — causes visible delay on short answers because the transition covers the full 999px range. Use the `grid-rows` technique instead
-- Missing keyboard accessibility — the question must be a `<button>`, not a `<div>` with `onClick`. Must respond to Enter and Space keys
-- Multiple items open simultaneously when only one should be — decide upfront: independent (each item has own state) or exclusive (accordion with single shared state). Most marketing sites use independent
-- Answer content flashing on page load — ensure initial state is closed in both JS state and CSS (no hydration mismatch)
+- Using `max-height: 999px` for open state — causes visible delay on short answers because the transition covers the full `999px` range. Use the `grid-rows` technique instead
+- Missing keyboard accessibility — the question must be a `<button>`, not a `<div>` with `onClick`. It must respond to Enter and Space keys
+- Multiple items open simultaneously when only one should be — decide upfront: independent (each item has its own state) or exclusive (accordion with single shared state)
+- Answer content flashing on page load — ensure the initial state is closed in both JS state and CSS to avoid hydration mismatch
 
 ---
 
@@ -571,9 +603,16 @@ Umbrella category for information-dense sections that don't fit the conversion-f
 - Timeline line: `absolute left-4 top-0 bottom-0 w-px bg-border` with nodes `absolute left-2.5 size-3 rounded-full bg-primary border-2 border-background`
 - Prose: `mx-auto max-w-[75ch] leading-relaxed` or an equivalent token-backed class set built from extracted typography values. Do not use `@tailwindcss/typography`; this skill forbids extra Tailwind plugins.
 
-**Responsive:** Blog grid: `1→2→3` columns. Team grid: `2→3→4` columns. Timeline: single column on mobile (items stacked with left line), alternating left/right on `lg:` breakpoint. Prose sections are naturally responsive — constrain `max-width` and padding handles the rest.
+**Responsive:**
+- Blog grid: `1→2→3` columns.
+- Team grid: `2→3→4` columns.
+- Timeline: single column on mobile (items stacked with left line), alternating left/right on `lg:` breakpoint.
+- Prose sections are naturally responsive — constrain `max-width` and padding handles the rest.
 
-**Animation:** Blog cards: `group-hover:scale-105` on image with `transition-transform duration-300` and `overflow-hidden` on card. Team photos: `grayscale hover:grayscale-0 transition-all duration-300` for the desaturate-on-hover effect. Timeline items: staggered scroll-triggered fade-in, alternating from left/right.
+**Animation:**
+- Blog cards: `group-hover:scale-105` on image with `transition-transform duration-300` and `overflow-hidden` on card.
+- Team photos: `grayscale hover:grayscale-0 transition-all duration-300` for the desaturate-on-hover effect.
+- Timeline items: staggered scroll-triggered fade-in, alternating from left/right.
 
 **Common pitfalls:**
 - Blog card images with inconsistent aspect ratios — force `aspect-[16/9]` with `object-cover` on all thumbnail images
@@ -619,9 +658,16 @@ The final section of every page — contains navigation links, legal information
 - Bottom bar: `border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4`
 - Social icons: `size-5 text-gray-400 hover:text-white transition-colors`
 
-**Responsive:** Link columns collapse: `grid-cols-2` on mobile → `md:grid-cols-4` or more on desktop. Brand column spans full width on mobile. Bottom bar stacks vertically on mobile: `flex-col` → `sm:flex-row`. Social icons stay as a horizontal row at all sizes.
+**Responsive:**
+- Link columns collapse: `grid-cols-2` on mobile → `md:grid-cols-4` or more on desktop.
+- Brand column spans full width on mobile.
+- Bottom bar stacks vertically on mobile: `flex-col` → `sm:flex-row`.
+- Social icons stay as a horizontal row at all sizes.
 
-**Animation:** None needed — footers should be stable and utilitarian. Only interactive element: link hover color transitions via `transition-colors duration-150`. No scroll animations, no fade-ins.
+**Animation:**
+- None needed — footers should be stable and utilitarian.
+- Only interactive element: link hover color transitions via `transition-colors duration-150`.
+- No scroll animations, no fade-ins.
 
 **Common pitfalls:**
 - Copyright year hardcoded — use `{new Date().getFullYear()}` in JSX
@@ -694,9 +740,9 @@ Before marking any page complete:
 
 ---
 
-## Snapshot-Specific Patterns
+## Capture- and Snapshot-Specific Patterns
 
-These patterns are unique to saved HTML snapshots and won't appear in live source code inspection. Understanding them is essential for accurate extraction from saved pages.
+These patterns matter when the source comes from either a saved snapshot or a live browser capture. Some are snapshot-specific, some are runtime-specific, and many appear in both.
 
 Unless stated otherwise, `_files/` examples in this section mean the primary snapshot mode. In adjacent-asset mode, substitute the page's discovered CSS corpus and asset root.
 
@@ -711,34 +757,50 @@ hero-image_files/image%3Fwidth%3D1200%26quality%3D80.webp
 - Use context (parent CSS class, alt text, dimensions) to determine image purpose, not filename
 
 ### Shared CSS Files Across Pages
-Same CSS file (same hash) appearing in multiple `_files/` folders:
+Same CSS file (same hash) appearing in multiple route captures or `_files/` folders:
 - Deduplicate before frequency counting
 - Shared CSS often contains the design system (`:root` variables, typography, color tokens)
-- Use `grep -rh "ClassName_" *_files/*.css` to search across all CSS bundles
+- Search across all route artifacts before deciding a rule is page-specific
 
 ### Data Attributes for State
 `data-highlighted="true"`, `data-state="open"`, `data-transparent-header="false"`:
-- These indicate component variants/states at the time the page was saved
-- Look for matching CSS selectors: `[data-highlighted="true"]` in CSS files
-- Document both states when possible — infer the "other" state from CSS rules that target opposite values
+- These indicate component variants or runtime states at the time the page was captured
+- Look for matching CSS selectors such as `[data-highlighted="true"]`
+- Document both states when the opposing state is recoverable from CSS or behavior evidence
+
+### Runtime-Metadata Hints
+In live-capture mode, inspect runtime artifacts for section clues:
+- `__NEXT_DATA__`
+- `self.__next_f`
+- build IDs
+- discovered chunk or manifest URLs
+- route-level script/style lists
+
+These do not replace DOM/CSS extraction, but they often reveal route scope and asset provenance.
+
+### Scroll-Revealed Sections
+Some routes look complete in the first viewport but reveal major sections only after scrolling:
+- use full-page screenshots or scroll slices to verify section completeness
+- do not assume the visible top viewport is the whole page
+- if a section appears in screenshots but is weak in HTML, mark it for closer evidence review instead of omitting it
 
 ### Responsive Utility Classes
 Compiled from CSS: `.hide-mobile`, `.hide-tablet`, `.show-tablet`, `.hide-laptop`:
-- These are responsive visibility toggles
-- Look for `@media` queries targeting these classes in CSS files
-- Some elements in HTML may be invisible at certain viewports — document which
+- these are responsive visibility toggles
+- look for `@media` queries targeting these classes in CSS files
+- some elements in HTML may be invisible at certain viewports — document which
 
 ### Inline CSS Variables
 `style="--height: 80px; --text-color: var(--color-text-tertiary);"`:
-- These override design tokens at the element level
-- Resolve the referenced variables by grepping CSS files: `grep "color-text-tertiary" *_files/*.css`
-- Document these overrides in the section's variable usage map
+- these override design tokens at the element level
+- resolve the referenced variables by searching the captured stylesheets
+- document these overrides in the section's variable usage map
 
 ### SVG Files as Separate Assets
-Icons and illustrations saved as separate files in `_files/`:
-- Check `viewBox`, `fill`, `stroke` attributes for styling patterns
-- Icon sizing is often set by CSS on the container, not the SVG itself
-- Open SVGs to extract fill colors, stroke widths, and viewBox dimensions as design tokens
+Icons and illustrations saved as separate files or discovered from runtime asset URLs:
+- check `viewBox`, `fill`, and `stroke` for styling patterns
+- icon sizing is often set by CSS on the container, not the SVG itself
+- extract fill colors, stroke widths, and viewBox dimensions as design tokens when relevant
 
 ---
 
