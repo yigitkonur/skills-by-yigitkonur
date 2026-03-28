@@ -1,0 +1,462 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "yigitkonur-skills",
+  "version": "1.0.0",
+  "description": "45 skills for AI coding agents.",
+  "owner": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "plugins": [
+    {
+      "name": "build-chrome-extension",
+      "description": "Building or debugging a Chrome extension with Manifest V3 — service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-chrome-extension",
+      "category": "development"
+    },
+    {
+      "name": "build-copilot-sdk-app",
+      "description": "Building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-copilot-sdk-app",
+      "category": "development"
+    },
+    {
+      "name": "build-daisyui-mcp",
+      "description": "Building UI with daisyUI components, converting Figma designs or screenshots to daisyUI code, or generating themes using the daisyui-blueprint MCP server",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-daisyui-mcp",
+      "category": "development"
+    },
+    {
+      "name": "build-hcom-systems",
+      "description": "Building applications or automation systems on top of hcom — designing multi-agent architectures, extending hcom with custom workflow scripts, integrating hcom into CI/CD pipelines, or understanding hcom internals like its hook system, SQLite schema, relay networking, and event subscriptions",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-hcom-systems",
+      "category": "orchestration"
+    },
+    {
+      "name": "build-langchain-ts-app",
+      "description": "Building TypeScript agents, RAG pipelines, or tool-calling workflows with LangChain.js and LangGraph",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-langchain-ts-app",
+      "category": "development"
+    },
+    {
+      "name": "build-mcp-use-agent",
+      "description": "Building TypeScript AI agents with mcp-use MCPAgent — configuration, LLM integration, streaming, structured output, observability, and production deployment",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-mcp-use-agent",
+      "category": "development"
+    },
+    {
+      "name": "build-mcp-use-apps-widgets",
+      "description": "Building or fixing an `mcp-use` server that renders React widgets from `resources/` and needs `useWidget`, `useCallTool`, streaming preview, CSP, or ChatGPT/MCP Apps compatibility. Do not use for plain MCP servers without widgets or for MCP client apps",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-mcp-use-apps-widgets",
+      "category": "development"
+    },
+    {
+      "name": "build-mcp-use-client",
+      "description": "Building MCP client applications with the mcp-use TypeScript SDK — MCPClient, sessions, tools, resources, React hooks, code mode, and authentication",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-mcp-use-client",
+      "category": "development"
+    },
+    {
+      "name": "build-mcp-use-server",
+      "description": "Building or extending TypeScript MCP servers with the mcp-use library — tools, Zod schemas, resources, prompts, transports, OAuth, sessions, testing, and deployment",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-mcp-use-server",
+      "category": "development"
+    },
+    {
+      "name": "build-openclaw-plugin",
+      "description": "Building OpenClaw plugins — registering tools, channels, model providers, writing plugin manifests, and configuring tool profiles",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-openclaw-plugin",
+      "category": "platform"
+    },
+    {
+      "name": "build-openclaw-skill",
+      "description": "Creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance. Trigger phrases include \"OpenClaw skill\", \"SKILL.md\", \"metadata gating\", \"test a skill\", \"ClawHub\"",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-openclaw-skill",
+      "category": "platform"
+    },
+    {
+      "name": "build-openclaw-workflow",
+      "description": "Building OpenClaw automation — Lobster typed workflows, cron scheduled jobs, LLM task chains, and browser automation",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-openclaw-workflow",
+      "category": "platform"
+    },
+    {
+      "name": "build-raycast-script-command",
+      "description": "Building or repairing Raycast Script Commands in Python or Bash and need correct metadata, output modes, arguments, discovery, or runtime behavior",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-raycast-script-command",
+      "category": "development"
+    },
+    {
+      "name": "build-skills",
+      "description": "Creating or substantially revising a Claude skill and need workspace-first evidence, remote comparison, and repo-fit synthesis before writing SKILL.md",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-skills",
+      "category": "productivity"
+    },
+    {
+      "name": "build-supastarter-app",
+      "description": "Extending a Supastarter app with App Router pages, oRPC procedures, Better Auth flows, Prisma/Drizzle data work, billing, storage, or monorepo package changes",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/build-supastarter-app",
+      "category": "development"
+    },
+    {
+      "name": "convert-snapshot-nextjs",
+      "description": "Converting saved HTML snapshots into buildable Next.js pages with self-hosted assets and extracted styles",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/convert-snapshot-nextjs",
+      "category": "design"
+    },
+    {
+      "name": "convert-vue-nextjs",
+      "description": "Converting Vue 2/3 or Nuxt components to Next.js App Router with React, including component mapping, state migration, routing, SSR, or ecosystem packages",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/convert-vue-nextjs",
+      "category": "development"
+    },
+    {
+      "name": "debug-tauri-devtools",
+      "description": "Debugging a runnable Tauri app with CrabNebula DevTools, or need to install/connect DevTools to inspect Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/debug-tauri-devtools",
+      "category": "development"
+    },
+    {
+      "name": "develop-clean-architecture",
+      "description": "Applying Clean Architecture layers, dependency direction, DDD entities, use cases, or strict TypeScript patterns to structure or audit a codebase",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/develop-clean-architecture",
+      "category": "development"
+    },
+    {
+      "name": "develop-macos-liquid-glass",
+      "description": "Building, modernizing, or reviewing macOS SwiftUI code with Apple's Liquid Glass design system — glass toolbars, sidebars, windows, NSGlassEffectView, or migrating from NSVisualEffectView",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/develop-macos-liquid-glass",
+      "category": "development"
+    },
+    {
+      "name": "develop-typebox-fastify",
+      "description": "Building Fastify REST APIs with TypeBox schemas, type-provider-typebox, route validation, OpenAPI generation, plugins, hooks, inject() testing, or Drizzle/Prisma database integration",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/develop-typebox-fastify",
+      "category": "development"
+    },
+    {
+      "name": "develop-typescript",
+      "description": "Writing or reviewing framework-agnostic TypeScript and need strict typing, tsconfig/lint decisions, safer refactors, or guidance on generics, unions, and typed boundaries",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/develop-typescript",
+      "category": "development"
+    },
+    {
+      "name": "enhance-skill-by-derailment",
+      "description": "Testing a skill's instructional quality by following its workflow literally on a real task, diagnosing friction root causes, and fixing SKILL.md and references/ directly",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/enhance-skill-by-derailment",
+      "category": "productivity"
+    },
+    {
+      "name": "extract-saas-design",
+      "description": "Forensically documenting the visual system of an existing SaaS dashboard or admin UI into structured design docs, not rebuilding or redesigning it",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/extract-saas-design",
+      "category": "design"
+    },
+    {
+      "name": "init-agent-config",
+      "description": "Generating, auditing, or migrating repo-grounded AGENTS.md and CLAUDE.md files, especially for dual-file setups, multi-agent compatibility, or converting existing agent config",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/init-agent-config",
+      "category": "configuration"
+    },
+    {
+      "name": "init-copilot-review",
+      "description": "Creating or refining GitHub Copilot code review instruction files such as .github/copilot-instructions.md and scoped *.instructions.md for repository-specific PR reviews",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/init-copilot-review",
+      "category": "productivity"
+    },
+    {
+      "name": "init-devin-review",
+      "description": "Creating or refining REVIEW.md, AGENTS.md, or repo-scoped Devin Bug Catcher review instructions",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/init-devin-review",
+      "category": "productivity"
+    },
+    {
+      "name": "init-greptile-review",
+      "description": "Generating `.greptile/` review config, scoped rules, or context-file mappings for Greptile pull request reviews in a specific repository",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/init-greptile-review",
+      "category": "productivity"
+    },
+    {
+      "name": "init-openclaw-agent",
+      "description": "Configuring an OpenClaw agent workspace or agent-specific runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/init-openclaw-agent",
+      "category": "platform"
+    },
+    {
+      "name": "optimize-mcp-server",
+      "description": "Optimizing, auditing, or enhancing an MCP server's tool quality, error handling, security, context efficiency, or production readiness for any MCP SDK",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/optimize-mcp-server",
+      "category": "development"
+    },
+    {
+      "name": "plan-issue-tree",
+      "description": "Planning a project as GitHub Issues with sub-issues, wave-based execution order, labels, and dependency wiring via the gh CLI",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/plan-issue-tree",
+      "category": "productivity"
+    },
+    {
+      "name": "plan-prd",
+      "description": "Writing a PRD, product requirements document, feature spec, or requirements document with structured discovery, codebase-grounded analysis, and AI-agent-actionable output",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/plan-prd",
+      "category": "productivity"
+    },
+    {
+      "name": "plan-work",
+      "description": "Framing a vague request, comparing approaches, prioritizing a backlog, or defining risks, checkpoints, and decision criteria before acting",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/plan-work",
+      "category": "productivity"
+    },
+    {
+      "name": "publish-npm-package",
+      "description": "Automating npm publishing via GitHub Actions and need auth, versioning, provenance, or workflow-template choices",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/publish-npm-package",
+      "category": "development"
+    },
+    {
+      "name": "review-pr",
+      "description": "Reviewing a GitHub pull request or local branch diff for merge readiness and need high-signal findings grounded in stated goals, changed-file clusters, and existing review state when available",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/review-pr",
+      "category": "productivity"
+    },
+    {
+      "name": "run-agent-browser",
+      "description": "Driving the agent-browser CLI for browser navigation, DOM-grounded interaction, session/tab management, screenshots, data extraction, or repeatable web app workflows",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-agent-browser",
+      "category": "testing"
+    },
+    {
+      "name": "run-hcom-agents",
+      "description": "Orchestrating multiple AI coding agents via hcom — launching headless Claude or Codex agents, messaging between them, writing multi-agent workflow scripts, or applying patterns like worker-reviewer loops, ensemble consensus, and cascade pipelines",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-hcom-agents",
+      "category": "orchestration"
+    },
+    {
+      "name": "run-issue-plan",
+      "description": "Executing a project plan stored as GitHub Issues with sub-issues by reading the tree, dispatching subagents wave-by-wave, and tracking completion",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-issue-plan",
+      "category": "productivity"
+    },
+    {
+      "name": "run-openclaw-agents",
+      "description": "Orchestrating OpenClaw multi-agent systems — spawning sub-agents, managing sessions, ACP routing, and cross-agent messaging",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-openclaw-agents",
+      "category": "platform"
+    },
+    {
+      "name": "run-openclaw-deploy",
+      "description": "Deploying OpenClaw to production — Docker containers, VPS setup, security hardening, gateway management, and monitoring",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-openclaw-deploy",
+      "category": "platform"
+    },
+    {
+      "name": "run-playwright",
+      "description": "Controlling a live browser with @anthropic-ai/playwright-cli for navigation, forms, screenshots, tab workflows, or interactive debugging from the terminal",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-playwright",
+      "category": "testing"
+    },
+    {
+      "name": "run-research",
+      "description": "Researching a coding bug, library choice, architecture trade-off, or API behavior with web search, Reddit validation, and code-attached deep research",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-research",
+      "category": "productivity"
+    },
+    {
+      "name": "run-seo-analysis",
+      "description": "Running SEO workflows with MCP Marketers tools — site audits, keyword research, backlink analysis, competitor intelligence, SERP analysis, rank tracking, or content optimization",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-seo-analysis",
+      "category": "marketing"
+    },
+    {
+      "name": "test-by-mcpc-cli",
+      "description": "Testing or debugging MCP servers with mcpc CLI across stdio, HTTP stateless, and HTTP stateful transports — tool calling, schema validation, and automated test scripts",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/test-by-mcpc-cli",
+      "category": "development"
+    },
+    {
+      "name": "use-skill-dl-util",
+      "description": "Searching, discovering, and downloading AI coding skills using skill-dl with Serper-powered search and batch downloads",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/use-skill-dl-util",
+      "category": "productivity"
+    }
+  ]
+}

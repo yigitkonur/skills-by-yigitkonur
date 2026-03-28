@@ -1,0 +1,8 @@
+{
+  "name": "run-seo-analysis",
+  "description": "Running SEO workflows with MCP Marketers tools — site audits, keyword research, backlink analysis, competitor intelligence, SERP analysis, rank tracking, or content optimization",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

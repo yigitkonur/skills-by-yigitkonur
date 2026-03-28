@@ -1,0 +1,8 @@
+{
+  "name": "build-raycast-script-command",
+  "description": "Building or repairing Raycast Script Commands in Python or Bash and need correct metadata, output modes, arguments, discovery, or runtime behavior",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "review-pr",
+  "description": "Reviewing a GitHub pull request or local branch diff for merge readiness and need high-signal findings grounded in stated goals, changed-file clusters, and existing review state when available",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

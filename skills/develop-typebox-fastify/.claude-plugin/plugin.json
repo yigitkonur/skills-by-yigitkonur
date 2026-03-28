@@ -1,0 +1,8 @@
+{
+  "name": "develop-typebox-fastify",
+  "description": "Building Fastify REST APIs with TypeBox schemas, type-provider-typebox, route validation, OpenAPI generation, plugins, hooks, inject() testing, or Drizzle/Prisma database integration",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

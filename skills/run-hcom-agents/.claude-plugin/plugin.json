@@ -1,0 +1,8 @@
+{
+  "name": "run-hcom-agents",
+  "description": "Orchestrating multiple AI coding agents via hcom — launching headless Claude or Codex agents, messaging between them, writing multi-agent workflow scripts, or applying patterns like worker-reviewer loops, ensemble consensus, and cascade pipelines",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

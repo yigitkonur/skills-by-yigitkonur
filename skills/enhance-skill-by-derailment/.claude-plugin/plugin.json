@@ -1,0 +1,8 @@
+{
+  "name": "enhance-skill-by-derailment",
+  "description": "Testing a skill's instructional quality by following its workflow literally on a real task, diagnosing friction root causes, and fixing SKILL.md and references/ directly",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}
