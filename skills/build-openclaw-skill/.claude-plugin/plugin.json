@@ -1,0 +1,8 @@
+{
+  "name": "build-openclaw-skill",
+  "description": "Creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance. Trigger phrases include \"OpenClaw skill\", \"SKILL.md\", \"metadata gating\", \"test a skill\", \"ClawHub\"",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

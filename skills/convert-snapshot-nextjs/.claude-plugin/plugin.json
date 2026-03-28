@@ -1,0 +1,8 @@
+{
+  "name": "convert-snapshot-nextjs",
+  "description": "Converting saved HTML snapshots into buildable Next.js pages with self-hosted assets and extracted styles",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "build-chrome-extension",
+  "description": "Building or debugging a Chrome extension with Manifest V3 — service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

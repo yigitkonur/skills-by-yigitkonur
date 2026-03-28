@@ -1,0 +1,8 @@
+{
+  "name": "init-greptile-review",
+  "description": "Generating `.greptile/` review config, scoped rules, or context-file mappings for Greptile pull request reviews in a specific repository",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

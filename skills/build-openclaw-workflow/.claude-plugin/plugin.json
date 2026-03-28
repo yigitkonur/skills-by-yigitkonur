@@ -1,0 +1,8 @@
+{
+  "name": "build-openclaw-workflow",
+  "description": "Building OpenClaw automation — Lobster typed workflows, cron scheduled jobs, LLM task chains, and browser automation",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

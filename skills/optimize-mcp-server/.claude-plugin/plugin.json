@@ -1,0 +1,8 @@
+{
+  "name": "optimize-mcp-server",
+  "description": "Optimizing, auditing, or enhancing an MCP server's tool quality, error handling, security, context efficiency, or production readiness for any MCP SDK",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

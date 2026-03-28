@@ -1,0 +1,8 @@
+{
+  "name": "develop-macos-liquid-glass",
+  "description": "Building, modernizing, or reviewing macOS SwiftUI code with Apple's Liquid Glass design system — glass toolbars, sidebars, windows, NSGlassEffectView, or migrating from NSVisualEffectView",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}
