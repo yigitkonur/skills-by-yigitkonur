@@ -1,0 +1,8 @@
+{
+  "name": "run-github-repo-evaluate",
+  "description": "Evaluating GitHub repositories for quality, maturity, and maintainer credibility using GraphQL batch queries, REST signals, and code-level analysis",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}
