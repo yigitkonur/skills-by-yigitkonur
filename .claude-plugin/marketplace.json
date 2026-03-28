@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "46 skills for AI coding agents.",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "plugins": [
     {
@@ -231,7 +231,7 @@
     {
       "name": "enhance-prompt",
       "description": "Enhancing a prompt before sending it to an LLM or coding agent — adds narrative structure, thinking-steering, failure pre-emption, halt conditions, and verification layers",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Yigit Konur"
       },
