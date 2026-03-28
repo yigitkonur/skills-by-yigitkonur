@@ -4,7 +4,7 @@
     "name": "Yigit Konur"
   },
   "metadata": {
-    "description": "47 skills for AI coding agents.",
+    "description": "50 skills for AI coding agents.",
     "version": "1.0.0"
   },
   "plugins": [
@@ -240,7 +240,7 @@
     },
     {
       "name": "enhance-skill-by-derailment",
-      "description": "Testing a skill's instructional quality by following its workflow literally on a real task, diagnosing friction root causes, and fixing SKILL.md and references/ directly",
+      "description": "Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find where instructions break, and fixing the skill directly",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -387,6 +387,36 @@
       },
       "source": "./skills/run-comprehensive-research",
       "category": "orchestration"
+    },
+    {
+      "name": "run-github-repo-evaluate",
+      "description": "Evaluating GitHub repositories for quality, maturity, and maintainer credibility using GraphQL batch queries, REST signals, and code-level analysis",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-github-repo-evaluate",
+      "category": "productivity"
+    },
+    {
+      "name": "run-github-repo-search",
+      "description": "Searching GitHub for repositories matching a technology, pattern, library, or framework using diverse search hypotheses and gh CLI",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-github-repo-search",
+      "category": "productivity"
+    },
+    {
+      "name": "run-github-scout",
+      "description": "Finding the best GitHub repos for a technology need: searches, evaluates, and ranks repos using subagent swarms with automatic retry when results are weak",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/run-github-scout",
+      "category": "productivity"
     },
     {
       "name": "run-hcom-agents",

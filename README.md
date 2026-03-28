@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-45 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+50 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -59,7 +59,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [develop-typebox-fastify](skills/develop-typebox-fastify/) | development | Type-safe Fastify APIs with TypeBox |
 | [develop-typescript](skills/develop-typescript/) | development | Strict TypeScript patterns and config |
 | [enhance-prompt](skills/enhance-prompt/) | productivity | Turbocharge LLM prompts with steering, halt conditions, and failure pre-emption |
-| [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via literal execution |
+| [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS.md and CLAUDE.md generation |
 | [init-copilot-review](skills/init-copilot-review/) | productivity | GitHub Copilot review instruction files |
@@ -74,6 +74,9 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
 | [run-comprehensive-research](skills/run-comprehensive-research/) | orchestration | Multi-domain research orchestrator with parallel agents and structured docs |
+| [run-github-repo-evaluate](skills/run-github-repo-evaluate/) | productivity | Deep-evaluate GitHub repos for quality, maturity, and maintainer credibility |
+| [run-github-repo-search](skills/run-github-repo-search/) | productivity | Discover GitHub repos via diverse search hypotheses and gh CLI |
+| [run-github-scout](skills/run-github-scout/) | productivity | End-to-end GitHub repo discovery, evaluation, and ranking with subagent swarms |
 | [run-hcom-agents](skills/run-hcom-agents/) | orchestration | Multi-agent orchestration via hcom |
 | [run-issue-plan](skills/run-issue-plan/) | productivity | Execute GitHub Issue tree plans |
 | [run-openclaw-agents](skills/run-openclaw-agents/) | platform | OpenClaw multi-agent orchestration |

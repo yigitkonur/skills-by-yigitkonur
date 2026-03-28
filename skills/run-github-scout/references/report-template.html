@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Scout — [TOPIC]</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--font-body:'DM Sans',system-ui,sans-serif;--font-mono:'DM Mono',ui-monospace,monospace;--ease:cubic-bezier(.22,.61,.36,1);--dur:.25s;--radius:6px;--bar-h:6px}
+  [data-theme="dark"]{--bg-0:#0e1117;--bg-1:#161b22;--bg-2:#1c2129;--bg-3:#252c35;--tx-0:#e6edf3;--tx-1:#9eaab8;--tx-2:#6b7685;--border:#30363d;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3d2a;--yellow:#d29922;--yellow-dim:#3d2e10;--red:#f85149;--red-dim:#3d1a1a;--orange:#db6d28;--purple:#bc8cff}
+  [data-theme="light"]{--bg-0:#f6f8fa;--bg-1:#ffffff;--bg-2:#f0f3f6;--bg-3:#e6eaef;--tx-0:#1f2328;--tx-1:#59636e;--tx-2:#8b949e;--border:#d1d9e0;--accent:#0969da;--accent-dim:#ddf4ff;--green:#1a7f37;--green-dim:#dafbe1;--yellow:#9a6700;--yellow-dim:#fff8c5;--red:#cf222e;--red-dim:#ffebe9;--orange:#bc4c00;--purple:#8250df}
+  *,*::before,*::after{box-sizing:border-box;margin:0}
+  body{font-family:var(--font-body);background:var(--bg-0);color:var(--tx-0);line-height:1.55;-webkit-font-smoothing:antialiased;transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+  .shell{max-width:1120px;margin:0 auto;padding:2rem clamp(1rem,4vw,2.5rem) 6rem}
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding-bottom:2rem;border-bottom:1px solid var(--border)}
+  header h1{font-size:clamp(1.4rem,3vw,1.75rem);font-weight:700;letter-spacing:-.02em;line-height:1.2}
+  header h1 span{color:var(--tx-2);font-weight:400}
+  .meta{display:flex;gap:1.5rem;color:var(--tx-2);font-size:.8rem;margin-top:.35rem}
+  .meta b{color:var(--tx-1);font-weight:500}
+  .hdr-actions{display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+  .publish-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:.4rem .85rem;font-family:var(--font-body);font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.3rem;transition:all var(--dur)}
+  .publish-btn:hover{filter:brightness(1.1)}.publish-btn:disabled{opacity:.5;cursor:not-allowed}
+  .publish-btn.success{background:var(--green)}.publish-btn.error{background:var(--red)}
+  .toggle{background:var(--bg-2);border:1px solid var(--border);border-radius:99px;padding:.35rem;display:flex;gap:2px}
+  .toggle button{all:unset;width:28px;height:28px;display:grid;place-items:center;border-radius:99px;font-size:.85rem;cursor:pointer;transition:background var(--dur) var(--ease)}
+  .toggle button.active{background:var(--bg-1);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  .exec{margin-top:2rem;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .exec-head{padding:1rem 1.25rem;border-bottom:1px solid var(--border);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--tx-1)}
+  .exec-body{padding:1.25rem}.exec-body p{font-size:1.05rem;line-height:1.6;max-width:72ch}.exec-body p strong{color:var(--accent);font-weight:600}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);border-top:1px solid var(--border)}
+  .kpi{background:var(--bg-1);padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.15rem}
+  .kpi-val{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;font-family:var(--font-mono)}
+  .kpi-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-2)}
+  .kpi-val.green{color:var(--green)}.kpi-val.accent{color:var(--accent)}.kpi-val.yellow{color:var(--yellow)}
+  .section-label{margin-top:2.5rem;margin-bottom:.75rem;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--tx-2);font-weight:600}
+  .toolbar{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;flex-wrap:wrap}
+  .search-box{flex:1;min-width:180px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:.45rem .75rem;color:var(--tx-0);font-family:var(--font-body);font-size:.8rem;outline:none;transition:border-color var(--dur)}
+  .search-box:focus{border-color:var(--accent)}.search-box::placeholder{color:var(--tx-2)}
+  .filter-btn{background:var(--bg-2);border:1px solid var(--border);border-radius:99px;padding:.3rem .65rem;font-size:.7rem;color:var(--tx-1);cursor:pointer;font-family:var(--font-body);transition:all var(--dur)}
+  .filter-btn:hover,.filter-btn.on{background:var(--accent-dim);color:var(--accent);border-color:var(--accent)}
+  .row-count{font-size:.7rem;color:var(--tx-2);font-family:var(--font-mono);margin-left:auto;white-space:nowrap}
+  .table-wrap{background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  thead th{text-align:left;padding:.65rem 1rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-2);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--bg-1);cursor:pointer;user-select:none}
+  thead th:hover{color:var(--tx-0)}thead th .arrow{font-size:.55rem;margin-left:.25rem;opacity:.4}thead th.sorted .arrow{opacity:1;color:var(--accent)}
+  tbody td{padding:.6rem 1rem;border-bottom:1px solid var(--border);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}tbody tr:hover{background:var(--bg-2)}tbody tr.hidden{display:none}
+  .repo-name{font-weight:600;color:var(--accent);text-decoration:none;font-family:var(--font-mono);font-size:.8rem}.repo-name:hover{text-decoration:underline}
+  .rank-num{font-family:var(--font-mono);font-weight:700;color:var(--tx-2);font-size:.75rem;width:2rem;text-align:center}
+  .stars{font-family:var(--font-mono);font-weight:500;white-space:nowrap}
+  .score-cell{min-width:120px}.score-bar{display:flex;align-items:center;gap:.5rem}
+  .score-track{flex:1;height:var(--bar-h);background:var(--bg-3);border-radius:99px;overflow:hidden}
+  .score-fill{height:100%;border-radius:99px;transition:width .6s var(--ease)}
+  .score-fill.excellent{background:var(--green)}.score-fill.good{background:var(--accent)}.score-fill.fair{background:var(--yellow)}.score-fill.weak{background:var(--orange)}.score-fill.avoid{background:var(--red)}
+  .score-num{font-family:var(--font-mono);font-size:.75rem;font-weight:600;min-width:2rem;text-align:right}
+  .breakdown{display:flex;gap:3px;align-items:center;font-size:.65rem;color:var(--tx-2);cursor:pointer;transition:opacity var(--dur)}.breakdown:hover{opacity:.7}
+  .mini-bar{width:32px;height:4px;background:var(--bg-3);border-radius:99px;overflow:hidden}
+  .mini-fill{height:100%;border-radius:99px}.mini-fill.h{background:var(--green)}.mini-fill.a{background:var(--purple)}.mini-fill.c{background:var(--accent)}
+  .drill-icon{margin-left:4px;font-size:.55rem;transition:transform var(--dur)}.drill-icon.open{transform:rotate(90deg)}
+  .tag{display:inline-block;padding:.1rem .45rem;border-radius:99px;font-size:.65rem;font-weight:500;white-space:nowrap}
+  .tag.lang{background:var(--accent-dim);color:var(--accent)}.tag.risk{background:var(--red-dim);color:var(--red)}.tag.strength{background:var(--green-dim);color:var(--green)}
+  /* ── Drill-Down Panel ── */
+  .drilldown-row td{padding:0!important;border-bottom:1px solid var(--border)}
+  .drilldown-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+  .drill-section{background:var(--bg-1);padding:1rem}
+  .drill-header{font-size:.75rem;font-weight:600;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem}
+  .drill-dot{width:8px;height:8px;border-radius:99px}.drill-score{font-family:var(--font-mono);margin-left:auto;color:var(--tx-1)}
+  .drill-metrics{display:flex;flex-direction:column;gap:.45rem}
+  .drill-metric{display:flex;justify-content:space-between;align-items:center;font-size:.73rem}
+  .drill-metric-label{color:var(--tx-1)}.drill-metric-value{font-family:var(--font-mono);font-weight:500}
+  .drill-flag{font-size:.68rem;color:var(--red);padding:.2rem .5rem;background:var(--red-dim);border-radius:4px;margin-top:.35rem}
+  .commit-sparkline{display:flex;gap:1px;align-items:flex-end;height:24px;margin-top:.4rem}
+  .commit-sparkline-bar{width:4px;background:var(--accent);border-radius:1px 1px 0 0;min-height:1px}
+  /* ── Feature Matrix ── */
+  .matrix-wrap{overflow-x:auto}.matrix-wrap table{min-width:600px}
+  .sticky-col{position:sticky;left:0;background:var(--bg-1);z-index:1;min-width:160px}
+  .feature-col{writing-mode:vertical-lr;transform:rotate(180deg);font-size:.6rem!important;max-width:2.5rem;height:90px;text-align:left;letter-spacing:0}
+  .matrix-cell{text-align:center;cursor:pointer;padding:.35rem;transition:background var(--dur);font-size:.75rem}
+  .matrix-cell:hover{background:var(--bg-3)}
+  .matrix-cell.yes{color:var(--green)}.matrix-cell.no{color:var(--tx-2);opacity:.35}.matrix-cell.partial{color:var(--yellow)}
+  .evidence-popover{position:fixed;z-index:100;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem;max-width:380px;font-size:.78rem;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none}
+  .evidence-header{font-weight:600;font-size:.68rem;color:var(--tx-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
+  .evidence-body{color:var(--tx-0);line-height:1.5}.evidence-confidence{margin-top:.35rem;font-size:.65rem;color:var(--tx-2)}
+  /* ── Cards ── */
+  .cards{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);margin-top:.75rem}
+  .card{background:var(--bg-1);padding:1.25rem;display:grid;grid-template-columns:3rem 1fr auto;gap:1rem;align-items:start}
+  .card:first-child{border-radius:var(--radius) var(--radius) 0 0}.card:last-child{border-radius:0 0 var(--radius) var(--radius)}
+  .card-rank{font-family:var(--font-mono);font-size:1.4rem;font-weight:700;color:var(--tx-2);line-height:1;padding-top:.1rem}.card-rank.top{color:var(--accent)}
+  .card-info h3{font-size:.95rem;font-weight:600;margin-bottom:.25rem}.card-info h3 a{color:var(--accent);text-decoration:none}.card-info h3 a:hover{text-decoration:underline}
+  .card-desc{color:var(--tx-1);font-size:.82rem;line-height:1.5;max-width:60ch}
+  .card-features{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem}
+  .feat{font-size:.65rem;padding:.15rem .4rem;border-radius:4px;font-weight:500}
+  .feat.yes{background:var(--green-dim);color:var(--green)}.feat.no{background:var(--bg-3);color:var(--tx-2);text-decoration:line-through}
+  .card-score{text-align:right;white-space:nowrap}
+  .card-score-num{font-family:var(--font-mono);font-size:1.6rem;font-weight:700;line-height:1}
+  .card-score-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx-2);margin-top:.15rem}
+  /* ── Categories ── */
+  .categories{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
+  .cat-chip{display:flex;align-items:center;gap:.4rem;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:.4rem .75rem;font-size:.78rem;cursor:pointer;transition:all var(--dur)}
+  .cat-chip:hover,.cat-chip.on{border-color:var(--accent);background:var(--accent-dim)}
+  .cat-dot{width:8px;height:8px;border-radius:99px}.cat-count{font-family:var(--font-mono);font-weight:600;color:var(--tx-2);font-size:.7rem}
+  /* ── Coverage ── */
+  .coverage{margin-top:2.5rem;padding:1rem 1.25rem;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);font-size:.78rem;color:var(--tx-1);display:flex;flex-wrap:wrap;gap:1.5rem}
+  .coverage dt{color:var(--tx-2);font-size:.65rem;text-transform:uppercase;letter-spacing:.06em}.coverage dd{font-family:var(--font-mono);font-weight:500;margin-top:.1rem}
+  /* ── Toast ── */
+  .toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1.25rem;font-size:.82rem;z-index:200;display:flex;align-items:center;gap:.5rem;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .toast a{color:var(--accent);font-family:var(--font-mono);font-size:.78rem}
+  .toast-copy{all:unset;cursor:pointer;color:var(--tx-2);font-size:.7rem}
+  /* ── Animations ── */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .exec,.table-wrap,.cards,.coverage,.categories,.matrix-wrap{animation:fadeUp .5s var(--ease) both}
+  .table-wrap{animation-delay:.08s}.cards{animation-delay:.12s}.matrix-wrap{animation-delay:.14s}.categories{animation-delay:.18s}.coverage{animation-delay:.22s}
+  @media(max-width:768px){.drilldown-panel{grid-template-columns:1fr}}
+  @media print{body{background:#fff;color:#1f2328}.hdr-actions,.toolbar{display:none}.shell{max-width:none;padding:1rem}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div>
+      <h1>GitHub Scout <span>/ [TOPIC]</span></h1>
+      <div class="meta"><span><b>[DATE]</b></span><span><b>[TOTAL_REPOS]</b> repos evaluated</span><span><b>[AGENT_COUNT]</b> agents</span></div>
+    </div>
+    <div class="hdr-actions">
+      <button class="publish-btn" id="publishBtn" onclick="publishReport()"><span>↗</span> Publish</button>
+      <div class="toggle" role="radiogroup" aria-label="Theme">
+        <button onclick="setTheme('light')" aria-label="Light" id="btn-light">☀</button>
+        <button onclick="setTheme('dark')" aria-label="Dark" id="btn-dark" class="active">☾</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="exec">
+    <div class="exec-head">◆ Executive Summary</div>
+    <div class="exec-body">
+      <p><strong>[TOP_REPO]</strong> leads the field with a score of [TOP_SCORE]/100 — [ONE_LINE_REASON]. [RUNNER_UP] is a strong alternative for [ALTERNATIVE_USE_CASE]. [LANDSCAPE_INSIGHT]</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="kpi-val accent">[TOTAL_REPOS]</span><span class="kpi-label">Repos Found</span></div>
+      <div class="kpi"><span class="kpi-val green">[EVALUATED]</span><span class="kpi-label">Deep Evaluated</span></div>
+      <div class="kpi"><span class="kpi-val">[SEARCH_WAVES]</span><span class="kpi-label">Search Waves</span></div>
+      <div class="kpi"><span class="kpi-val yellow">[TOP_SCORE]</span><span class="kpi-label">Best Score</span></div>
+      <div class="kpi"><span class="kpi-val">[MEDIAN_STARS]</span><span class="kpi-label">Median Stars</span></div>
+    </div>
+  </div>
+
+  <!-- ── Ranked Table ── -->
+  <div class="section-label">Ranked Results</div>
+  <div class="toolbar">
+    <input class="search-box" id="tblSearch" type="text" placeholder="Filter repos, languages, strengths...">
+    <button class="filter-btn" onclick="filterScore(80)" data-min="80">80+</button>
+    <button class="filter-btn" onclick="filterScore(60)" data-min="60">60+</button>
+    <button class="filter-btn" onclick="filterScore(40)" data-min="40">40+</button>
+    <button class="filter-btn" onclick="filterScore(0)" data-min="0">All</button>
+    <span class="row-count" id="rowCount"></span>
+  </div>
+  <div class="table-wrap">
+    <table id="mainTable">
+      <thead><tr>
+        <th data-col="0" data-type="num"># <span class="arrow">▼</span></th>
+        <th data-col="1" data-type="str">Repository <span class="arrow">▼</span></th>
+        <th data-col="2" data-type="num">Score <span class="arrow">▼</span></th>
+        <th data-col="3" data-type="num">Stars <span class="arrow">▼</span></th>
+        <th data-col="4" data-type="str">Lang <span class="arrow">▼</span></th>
+        <th>H / A / C</th><th>Strength</th><th>Risk</th>
+      </tr></thead>
+      <tbody>
+        <!-- ROW_START — data-score and data-cat power filters, data-repo powers drill-down -->
+        <tr data-score="[SCORE]" data-cat="[CATEGORY]" data-repo="[REPO_FULL_NAME]">
+          <td class="rank-num">[RANK]</td>
+          <td><a class="repo-name" href="https://github.com/[REPO_FULL_NAME]" target="_blank">[REPO_FULL_NAME]</a></td>
+          <td class="score-cell"><div class="score-bar"><div class="score-track"><div class="score-fill [SCORE_CLASS]" style="width:[SCORE]%"></div></div><span class="score-num">[SCORE]</span></div></td>
+          <td class="stars">[STARS]★</td>
+          <td><span class="tag lang">[LANG]</span></td>
+          <td><div class="breakdown drilldown-trigger" data-repo="[REPO_FULL_NAME]" title="Click for score breakdown">
+            <span>H</span><div class="mini-bar"><div class="mini-fill h" style="width:[HEALTH]%"></div></div>
+            <span>A</span><div class="mini-bar"><div class="mini-fill a" style="width:[AUTHOR]%"></div></div>
+            <span>C</span><div class="mini-bar"><div class="mini-fill c" style="width:[CODE]%"></div></div>
+            <span class="drill-icon">▸</span>
+          </div></td>
+          <td><span class="tag strength">[KEY_STRENGTH]</span></td>
+          <td><span class="tag risk">[KEY_RISK]</span></td>
+        </tr>
+        <!-- ROW_END -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Drill-Down Template (cloned by JS, never shown directly) ── -->
+  <template id="drilldownTpl">
+    <tr class="drilldown-row"><td colspan="8"><div class="drilldown-panel">
+      <div class="drill-section"><div class="drill-header"><span class="drill-dot" style="background:var(--green)"></span>Health<span class="drill-score" data-s="health"></span></div><div class="drill-metrics" data-m="health"></div><div data-f="health"></div></div>
+      <div class="drill-section"><div class="drill-header"><span class="drill-dot" style="background:var(--purple)"></span>Author<span class="drill-score" data-s="author"></span></div><div class="drill-metrics" data-m="author"></div><div data-f="author"></div></div>
+      <div class="drill-section"><div class="drill-header"><span class="drill-dot" style="background:var(--accent)"></span>Code<span class="drill-score" data-s="code"></span></div><div class="drill-metrics" data-m="code"></div><div data-f="code"></div></div>
+    </div></td></tr>
+  </template>
+
+  <!-- ── Deep Dive Cards ── -->
+  <div class="section-label">Deep Dive — Top [DEEP_COUNT]</div>
+  <div class="cards">
+    <!-- CARD_START -->
+    <div class="card">
+      <div class="card-rank [RANK_CLASS]">[RANK]</div>
+      <div class="card-info">
+        <h3><a href="https://github.com/[REPO_FULL_NAME]" target="_blank">[REPO_FULL_NAME]</a></h3>
+        <div class="card-desc">[ANALYSIS_2_3_SENTENCES]</div>
+        <div class="card-features">
+          <span class="feat [FIT_CLASS]">[FEATURE_1]</span><span class="feat [FIT_CLASS]">[FEATURE_2]</span><span class="feat [FIT_CLASS]">[FEATURE_3]</span><span class="feat [FIT_CLASS]">[FEATURE_4]</span><span class="feat [FIT_CLASS]">[FEATURE_5]</span>
+        </div>
+      </div>
+      <div class="card-score"><div class="card-score-num" style="color:var(--[SCORE_COLOR])">[SCORE]</div><div class="card-score-label">/ 100</div></div>
+    </div>
+    <!-- CARD_END -->
+  </div>
+
+  <!-- ── Feature Comparison Matrix ── -->
+  <div class="section-label">Feature Comparison</div>
+  <div class="table-wrap matrix-wrap">
+    <table id="featureMatrix">
+      <thead><tr>
+        <th class="sticky-col">Repository</th>
+        <!-- FEATURE_HEADER_START --><th class="feature-col" title="[FEATURE_DESC]">[FEATURE_NAME]</th><!-- FEATURE_HEADER_END -->
+      </tr></thead>
+      <tbody>
+        <!-- MATRIX_ROW_START -->
+        <tr>
+          <td class="sticky-col"><a class="repo-name" href="https://github.com/[REPO_FULL_NAME]" target="_blank" style="font-size:.72rem">[REPO_SHORT_NAME]</a></td>
+          <!-- MATRIX_CELL_START --><td class="matrix-cell [PRESENT_CLASS]" data-repo="[REPO_FULL_NAME]" data-feature="[FEATURE_SLUG]">[CHECK_OR_X]</td><!-- MATRIX_CELL_END -->
+        </tr>
+        <!-- MATRIX_ROW_END -->
+      </tbody>
+    </table>
+  </div>
+  <div class="evidence-popover" id="evidencePopover">
+    <div class="evidence-header"><span id="evRepo"></span> / <span id="evFeat"></span></div>
+    <div class="evidence-body" id="evBody"></div>
+    <div class="evidence-confidence" id="evConf"></div>
+  </div>
+
+  <!-- ── Categories ── -->
+  <div class="section-label">Categories</div>
+  <div class="categories" id="catChips">
+    <!-- CAT_START --><div class="cat-chip" onclick="filterCat('[CATEGORY_SLUG]')"><div class="cat-dot" style="background:[CAT_COLOR]"></div><span>[CATEGORY_NAME]</span><span class="cat-count">[CAT_COUNT]</span></div><!-- CAT_END -->
+  </div>
+
+  <div class="coverage">
+    <dl><dt>Waves</dt><dd>[SEARCH_WAVES]</dd></dl>
+    <dl><dt>Unique Repos</dt><dd>[TOTAL_REPOS]</dd></dl>
+    <dl><dt>Evaluated</dt><dd>[EVALUATED]</dd></dl>
+    <dl><dt>Agents Used</dt><dd>[AGENT_COUNT]</dd></dl>
+    <dl><dt>Best Hypothesis</dt><dd>[BEST_HYPOTHESIS]</dd></dl>
+    <dl><dt>Gaps</dt><dd>[GAPS_NOTE]</dd></dl>
+  </div>
+</div>
+
+<!-- ── Data Blobs (replaced by orchestrator) ── -->
+<script>const DRILL_DOWN = [DRILL_DOWN_JSON];</script>
+<script>const FEATURE_MATRIX = [FEATURE_MATRIX_JSON];</script>
+
+<script>
+/* ── Theme ── */
+function setTheme(t){document.documentElement.dataset.theme=t;document.getElementById('btn-light').classList.toggle('active',t==='light');document.getElementById('btn-dark').classList.toggle('active',t==='dark');try{localStorage.setItem('scout-theme',t)}catch(e){}}
+try{const s=localStorage.getItem('scout-theme');if(s)setTheme(s)}catch(e){}
+
+/* ── Table: search + score filter + category filter ── */
+const tbody=document.querySelector('#mainTable tbody');
+const rows=[...tbody.querySelectorAll('tr:not(.drilldown-row)')];
+const countEl=document.getElementById('rowCount');
+let activeScoreMin=0,activeCat='';
+function applyFilters(){const q=document.getElementById('tblSearch').value.toLowerCase();let v=0;rows.forEach(r=>{const t=r.textContent.toLowerCase(),s=parseInt(r.dataset.score||'0'),c=r.dataset.cat||'';const show=(!q||t.includes(q))&&s>=activeScoreMin&&(!activeCat||c===activeCat);r.classList.toggle('hidden',!show);if(show)v++});countEl.textContent=v+' of '+rows.length}
+document.getElementById('tblSearch').addEventListener('input',applyFilters);
+function filterScore(m){activeScoreMin=m;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('on',parseInt(b.dataset.min)===m));applyFilters()}
+function filterCat(s){activeCat=activeCat===s?'':s;document.querySelectorAll('.cat-chip').forEach(c=>c.classList.toggle('on',c.textContent.trim().toLowerCase().includes(activeCat)));applyFilters()}
+
+/* ── Table: sort ── */
+document.querySelectorAll('#mainTable thead th[data-col]').forEach(th=>{th.addEventListener('click',()=>{const col=parseInt(th.dataset.col),isNum=th.dataset.type==='num',asc=th.classList.contains('sorted')&&!th.classList.contains('desc');document.querySelectorAll('thead th').forEach(h=>{h.classList.remove('sorted','desc')});th.classList.add('sorted');if(!asc)th.classList.add('desc');rows.sort((a,b)=>{let va=a.children[col].textContent.replace(/[★,%]/g,'').trim(),vb=b.children[col].textContent.replace(/[★,%]/g,'').trim();if(isNum){va=parseFloat(va)||0;vb=parseFloat(vb)||0}return va<vb?asc?-1:1:va>vb?asc?1:-1:0});rows.forEach(r=>tbody.appendChild(r))})});
+
+/* ── Drill-Down ── */
+const drillTpl=document.getElementById('drilldownTpl');
+document.querySelectorAll('.drilldown-trigger').forEach(trigger=>{trigger.addEventListener('click',()=>{
+  const repo=trigger.dataset.repo,row=trigger.closest('tr');
+  const existing=row.nextElementSibling?.classList.contains('drilldown-row')?row.nextElementSibling:null;
+  if(existing){existing.remove();trigger.querySelector('.drill-icon').classList.remove('open');return}
+  document.querySelectorAll('.drilldown-row').forEach(r=>r.remove());
+  document.querySelectorAll('.drill-icon.open').forEach(i=>i.classList.remove('open'));
+  trigger.querySelector('.drill-icon').classList.add('open');
+  if(typeof DRILL_DOWN==='undefined')return;const data=DRILL_DOWN[repo];if(!data)return;
+  const clone=drillTpl.content.cloneNode(true),panel=clone.querySelector('.drilldown-panel');
+  ['health','author','code'].forEach((sec,i)=>{
+    const sd=data[sec];if(!sd)return;
+    panel.querySelector(`[data-s="${sec}"]`).textContent=sd.score+'/100';
+    const mel=panel.querySelector(`[data-m="${sec}"]`);
+    Object.entries(sd.metrics||{}).forEach(([k,m])=>{
+      const d=document.createElement('div');d.className='drill-metric';
+      const lbl=k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      let val=m.label||m.value;if(m.unit)val+=m.unit;
+      d.innerHTML=`<span class="drill-metric-label">${lbl}</span><span class="drill-metric-value">${val}</span>`;
+      if(m.note)d.title=m.note;mel.appendChild(d);
+    });
+    if(sec==='health'&&sd.metrics?.commit_consistency?.weekly_data){
+      const sp=document.createElement('div');sp.className='commit-sparkline';
+      const mx=Math.max(...sd.metrics.commit_consistency.weekly_data,1);
+      sd.metrics.commit_consistency.weekly_data.forEach(v=>{const b=document.createElement('div');b.className='commit-sparkline-bar';b.style.height=(v/mx*100)+'%';sp.appendChild(b)});
+      mel.appendChild(sp);
+    }
+    const fl=panel.querySelector(`[data-f="${sec}"]`);
+    (sd.flags||[]).forEach(f=>{const fd=document.createElement('div');fd.className='drill-flag';fd.textContent='⚠ '+f;fl.appendChild(fd)});
+  });
+  row.after(clone);
+})});
+
+/* ── Feature Matrix: Evidence Popover ── */
+const pop=document.getElementById('evidencePopover');
+if(typeof FEATURE_MATRIX!=='undefined'){
+  document.querySelectorAll('.matrix-cell').forEach(cell=>{cell.addEventListener('click',e=>{
+    const r=cell.dataset.repo,f=cell.dataset.feature;
+    const d=FEATURE_MATRIX?.repos?.[r]?.[f];if(!d){pop.style.display='none';return}
+    document.getElementById('evRepo').textContent=r;
+    document.getElementById('evFeat').textContent=f;
+    document.getElementById('evBody').textContent=d.evidence||'No evidence recorded';
+    document.getElementById('evConf').textContent='Confidence: '+(d.confidence||'unknown');
+    pop.style.display='block';
+    const rect=cell.getBoundingClientRect();
+    pop.style.top=(rect.bottom+8)+'px';
+    pop.style.left=Math.min(rect.left,window.innerWidth-400)+'px';
+  })});
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.matrix-cell')&&!e.target.closest('.evidence-popover'))pop.style.display='none'});
+
+/* ── Publish ── */
+const PUBLISH_ENDPOINT='https://scout.yigitkonur.com/publish';
+async function publishReport(){
+  const btn=document.getElementById('publishBtn');btn.disabled=true;btn.textContent='Publishing...';
+  try{
+    const btnOrig=btn.innerHTML;btn.innerHTML='<span>↗</span> Publish';
+    const html='<!DOCTYPE html>'+document.documentElement.outerHTML;
+    btn.innerHTML=btnOrig;
+    const resp=await fetch(PUBLISH_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/html'},body:html});
+    if(!resp.ok){const err=await resp.json().catch(()=>({error:resp.statusText}));throw new Error(err.error||'Failed')}
+    const{url}=await resp.json();
+    btn.classList.add('success');btn.innerHTML='<span>✓</span> Published';
+    const toast=document.createElement('div');toast.className='toast';
+    toast.innerHTML=`Published! <a href="${url}" target="_blank">${url}</a> <button class="toast-copy" onclick="navigator.clipboard.writeText('${url}');this.textContent='Copied!'">Copy</button>`;
+    document.body.appendChild(toast);setTimeout(()=>toast.remove(),15000);
+  }catch(e){
+    btn.classList.add('error');btn.innerHTML='<span>✕</span> Failed';btn.title=e.message;
+    setTimeout(()=>{btn.classList.remove('error');btn.disabled=false;btn.innerHTML='<span>↗</span> Publish'},3000);
+  }
+}
+
+/* ── Init ── */
+filterScore(0);
+</script>
+</body>
+</html>
