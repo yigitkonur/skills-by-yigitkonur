@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - 'skills/**'
+      - '.claude-plugin/**'
+      - 'scripts/generate-marketplace.py'
   pull_request:
     branches: [main]
     paths:
       - 'skills/**'
+      - '.claude-plugin/**'
+      - 'scripts/generate-marketplace.py'
 
 jobs:
   validate-references:
@@ -70,5 +74,69 @@ jobs:
               sys.exit(1)
           else:
               print('\n✅ All reference files are properly linked from their SKILL.md')
+              sys.exit(0)
+          SCRIPT
+
+  validate-marketplace:
+    name: Check marketplace.json and plugin.json consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate marketplace and plugin manifests
+        run: |
+          python3 << 'SCRIPT'
+          import json, os, sys
+
+          errors = []
+
+          # Check marketplace.json exists and is valid
+          mp_path = '.claude-plugin/marketplace.json'
+          if not os.path.isfile(mp_path):
+              print('❌ .claude-plugin/marketplace.json not found')
+              sys.exit(1)
+
+          with open(mp_path) as f:
+              marketplace = json.load(f)
+
+          plugin_names = {p['name'] for p in marketplace['plugins']}
+
+          # Check every skill directory has a marketplace entry and plugin.json
+          for skill_name in sorted(os.listdir('skills')):
+              skill_dir = os.path.join('skills', skill_name)
+              if not os.path.isdir(skill_dir):
+                  continue
+              skill_md = os.path.join(skill_dir, 'SKILL.md')
+              if not os.path.isfile(skill_md):
+                  continue
+
+              # Check marketplace entry exists
+              if skill_name not in plugin_names:
+                  errors.append(f'{skill_name}: missing from marketplace.json')
+
+              # Check plugin.json exists and is valid
+              pj_path = os.path.join(skill_dir, '.claude-plugin', 'plugin.json')
+              if not os.path.isfile(pj_path):
+                  errors.append(f'{skill_name}: missing .claude-plugin/plugin.json')
+                  continue
+
+              with open(pj_path) as f:
+                  pj = json.load(f)
+
+              if pj.get('name') != skill_name:
+                  errors.append(f'{skill_name}: plugin.json name "{pj.get("name")}" != directory name')
+
+              if not pj.get('version'):
+                  errors.append(f'{skill_name}: plugin.json missing version field')
+
+          print(f'Checked {len(plugin_names)} marketplace entries')
+
+          if errors:
+              print(f'\n❌ {len(errors)} issue(s) found:\n')
+              for e in errors:
+                  print(f'  - {e}')
+              sys.exit(1)
+          else:
+              print('\n✅ All marketplace entries and plugin.json files are consistent')
               sys.exit(0)
           SCRIPT

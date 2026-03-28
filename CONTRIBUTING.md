@@ -84,9 +84,15 @@ Good reference docs:
 
 5. **Check trigger collisions** — if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
 
-6. **Update `README.md`** — add the skill to the appropriate category table with a one-sentence description.
+6. **Regenerate marketplace files**:
+   ```bash
+   python3 scripts/generate-marketplace.py
+   ```
+   This updates `.claude-plugin/marketplace.json` and creates `skills/<name>/.claude-plugin/plugin.json`. If the skill is new, add its category to the `CATEGORIES` dict in the script first.
 
-7. **Open a PR**.
+7. **Update `README.md`** — add a row to the skills table (alphabetical order).
+
+8. **Open a PR**.
 
 ---
 
@@ -103,6 +109,8 @@ Before submitting:
 - [ ] `SKILL.md` is focused enough to scan quickly, with deeper detail moved to references when useful
 - [ ] No LICENSE or README files inside the skill directory unless explicitly required
 - [ ] No `.DS_Store`, `.swp`, or other junk files
+- [ ] `scripts/generate-marketplace.py` ran and skill appears in `.claude-plugin/marketplace.json`
+- [ ] `skills/<name>/.claude-plugin/plugin.json` exists with correct name and version
 - [ ] Single-skill install works
 - [ ] Whole-pack install still makes sense if the new skill is part of the combined repo
 - [ ] Trigger phrasing does not accidentally collide with nearby skills unless the overlap is intentional
