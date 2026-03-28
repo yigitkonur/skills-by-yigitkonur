@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "50 skills for AI coding agents.",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "plugins": [
     {
@@ -411,7 +411,7 @@
     {
       "name": "run-github-scout",
       "description": "Finding the best GitHub repos for a technology need: searches, evaluates, and ranks repos using subagent swarms with automatic retry when results are weak",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Yigit Konur"
       },
