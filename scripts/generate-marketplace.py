@@ -56,6 +56,7 @@ CATEGORIES = {
     "run-openclaw-agents": "platform",
     "run-openclaw-deploy": "platform",
     "run-playwright": "testing",
+    "run-comprehensive-research": "orchestration",
     "run-research": "productivity",
     "run-seo-analysis": "marketing",
     "test-by-mcpc-cli": "development",
