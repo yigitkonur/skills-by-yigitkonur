@@ -73,6 +73,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
+| [run-comprehensive-research](skills/run-comprehensive-research/) | orchestration | Multi-domain research orchestrator with parallel agents and structured docs |
 | [run-hcom-agents](skills/run-hcom-agents/) | orchestration | Multi-agent orchestration via hcom |
 | [run-issue-plan](skills/run-issue-plan/) | productivity | Execute GitHub Issue tree plans |
 | [run-openclaw-agents](skills/run-openclaw-agents/) | platform | OpenClaw multi-agent orchestration |
