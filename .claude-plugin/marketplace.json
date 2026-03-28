@@ -4,8 +4,8 @@
     "name": "Yigit Konur"
   },
   "metadata": {
-    "description": "45 skills for AI coding agents.",
-    "version": "1.0.1"
+    "description": "46 skills for AI coding agents.",
+    "version": "1.0.0"
   },
   "plugins": [
     {
@@ -160,7 +160,7 @@
     },
     {
       "name": "convert-snapshot-nextjs",
-      "description": "Converting saved HTML snapshots into buildable Next.js pages with self-hosted assets and extracted styles",
+      "description": "Converting live websites or saved HTML snapshots into grounded Next.js pages with browser capture, self-hosted assets, extracted styles, and screenshot-led fidelity verification",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -227,6 +227,16 @@
       },
       "source": "./skills/develop-typescript",
       "category": "development"
+    },
+    {
+      "name": "enhance-prompt",
+      "description": "Enhancing a prompt before sending it to an LLM or coding agent — adds narrative structure, thinking-steering, failure pre-emption, halt conditions, and verification layers",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/enhance-prompt",
+      "category": "productivity"
     },
     {
       "name": "enhance-skill-by-derailment",
@@ -420,8 +430,8 @@
     },
     {
       "name": "run-research",
-      "description": "Researching a coding bug, library choice, architecture trade-off, or API behavior with web search, Reddit validation, and code-attached deep research",
-      "version": "2.0.1",
+      "description": "Researching a bug, library choice, architecture trade-off, pricing, security advisory, or any technical question where current web evidence, Reddit practitioner experience, and multi-source synthesis would change the recommendation",
+      "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
       },

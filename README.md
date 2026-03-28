@@ -58,6 +58,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [develop-macos-liquid-glass](skills/develop-macos-liquid-glass/) | development | macOS Liquid Glass design system (Tahoe+) |
 | [develop-typebox-fastify](skills/develop-typebox-fastify/) | development | Type-safe Fastify APIs with TypeBox |
 | [develop-typescript](skills/develop-typescript/) | development | Strict TypeScript patterns and config |
+| [enhance-prompt](skills/enhance-prompt/) | productivity | Turbocharge LLM prompts with steering, halt conditions, and failure pre-emption |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via literal execution |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS.md and CLAUDE.md generation |

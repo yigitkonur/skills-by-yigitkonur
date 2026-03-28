@@ -36,6 +36,7 @@ CATEGORIES = {
     "develop-macos-liquid-glass": "development",
     "develop-typebox-fastify": "development",
     "develop-typescript": "development",
+    "enhance-prompt": "productivity",
     "enhance-skill-by-derailment": "productivity",
     "extract-saas-design": "design",
     "init-agent-config": "configuration",
