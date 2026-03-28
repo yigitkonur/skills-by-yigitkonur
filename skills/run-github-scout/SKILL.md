@@ -286,3 +286,4 @@ Create `.githubresearch/` at the start. If it already exists from a prior run, a
 - The orchestrator reads ALL agent output personally. No subagent-of-subagent chains.
 - Use AskUserQuestion for requirements, not open-ended chat.
 - If a subagent's output file is empty or missing, re-run that agent once. If still empty, proceed without it.
+
