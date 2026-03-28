@@ -85,8 +85,8 @@ Do not batch fixes for later. When you identify a friction point:
 2. **Match it to a fix pattern** from `references/fix-patterns.md`
 3. **Apply the fix immediately** to the skill's source files:
    - Edit `SKILL.md` for missing/wrong/ambiguous instructions
-   - Edit existing `references/*.md` files for missing context in reference docs
-   - Create new `references/*.md` files when a whole topic is undocumented — and add the routing entry to SKILL.md's reference routing table
+   - Edit existing reference files for missing context in reference docs
+   - Create new reference files when a whole topic is undocumented — and add the routing entry to SKILL.md's reference routing table
 4. **Keep fixes minimal** — add only what was missing, don't rewrite surrounding text
 
 Priority order if you have many friction points: P0 (blocks progress) first, then P1 (causes confusion), then P2 (minor annoyance).

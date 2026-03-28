@@ -89,11 +89,12 @@ def main():
         print(f"Error: skill '{skill_name}' not found in marketplace.json plugins list")
         sys.exit(1)
 
-    # Always patch-bump the top-level marketplace version
-    old_top_version = marketplace_data["version"]
+    # Always patch-bump the marketplace metadata version
+    metadata = marketplace_data.setdefault("metadata", {})
+    old_top_version = metadata.get("version", "1.0.0")
     new_top_version = bump_semver(old_top_version, "patch")
-    marketplace_data["version"] = new_top_version
-    print(f"marketplace.json [top-level]: {old_top_version} -> {new_top_version}")
+    metadata["version"] = new_top_version
+    print(f"marketplace.json [metadata]: {old_top_version} -> {new_top_version}")
 
     with open(MARKETPLACE_PATH, "w") as f:
         json.dump(marketplace_data, f, indent=2)

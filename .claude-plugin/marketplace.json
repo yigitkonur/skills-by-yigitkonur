@@ -1,11 +1,11 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "yigitkonur-skills",
-  "version": "1.0.0",
-  "description": "45 skills for AI coding agents.",
   "owner": {
-    "name": "Yigit Konur",
-    "url": "https://github.com/yigitkonur"
+    "name": "Yigit Konur"
+  },
+  "metadata": {
+    "description": "45 skills for AI coding agents.",
+    "version": "1.0.0"
   },
   "plugins": [
     {
