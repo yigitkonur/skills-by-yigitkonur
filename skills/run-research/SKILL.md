@@ -1,244 +1,131 @@
 ---
 name: run-research
-description: Use skill if you are researching a coding bug, library choice, architecture trade-off, or API behavior with web search, Reddit validation, and code-attached deep research.
+description: Use skill if you are researching a bug, library choice, architecture trade-off, pricing, security advisory, or any technical question where current web evidence, Reddit practitioner experience, and multi-source synthesis would change the recommendation.
 ---
 
-# Research Powerpack
+# Multi-Source Technical Research
 
-Use this skill to run disciplined, multi-source technical research. Do not drift into shallow workflows. A single query, a Google snippet, a Reddit title, or one AI synthesis is not enough for decisions that affect code, dependencies, architecture, or production behavior.
+You have five research tools. Using them in the right order, at the right depth, with the right parameters is what separates shallow answers from decision-grade research.
 
-## Activation boundaries
+## Tool prerequisites
 
-### Use this skill when
-- Fixing a bug, runtime error, regression, or version-specific issue you do not fully recognize
-- Choosing between libraries, frameworks, vendors, or architectural approaches
-- Verifying whether technical guidance is current, deprecated, or contradicted by production experience
-- Researching API behavior, limits, auth patterns, migration risk, or ecosystem trade-offs
-- Validating AI-generated claims against official documentation and practitioner evidence
+This skill requires five MCP tools: `web-search`, `scrape-links`, `search-reddit`, `get-reddit-post`, and `deep-research`. If any of these tools are not available in your current environment, install the research MCP server first:
 
-### Do not use this skill when
-- You already know the exact authoritative URL and can go straight to `scrape_pages`
-- The task is internal planning without external research; use `plan-work` instead
-- The answer is a trivial single-doc lookup with no real ambiguity
-- You only need to operate a browser or tool without doing research synthesis
+```bash
+npx -y @anthropic-ai/claude-code@latest mcp add research-server -y -- npx -y mcp-remote@latest https://research.yigitkonur.com/mcp --allow-http
+```
 
-## Runtime assumptions and tool map
+After installation, restart your session. All five tools will then appear in your tool list.
 
-This skill assumes the Research Powerpack tool surface is available in the current runtime. In Codex, the callable wrappers are:
+## Your Tools
+**`web-search`** runs up to 100 parallel Google searches and returns consensus-ranked URLs with an aggregated summary. That summary alone often reframes your entire approach — it shows you what the landscape looks like before you read a single page. Always start here.
 
-| Skill shorthand | Callable wrapper | Notes |
+**`scrape-links`** fetches 1–50 pages and extracts exactly what you ask for. Always use `use_llm=true` with pipe-separated extraction targets like `"pricing|features|limitations|compatibility|when NOT to use"`. The specificity of your targets determines the quality of what comes back. Group thematically similar URLs in the same call — they share context and extract more coherently.
+
+**`search-reddit`** runs 3–50 parallel Reddit searches and returns ranked thread URLs. Reddit tells you what actually happens in production: what breaks, what costs more than advertised, what people quietly regret, and what the docs forgot to mention.
+
+**`get-reddit-post`** fetches full comment trees from 2–50 Reddit posts. Always use `fetch_comments=true` and `use_llm=false`. Reddit data comes through a structured API — no navigation, no ads, no boilerplate. The raw threaded comments ARE the signal. The best insights are never in the post title — they're in the corrections, the "EDIT: solved it", the "after 6 months in production..." replies, and the specific numbers people share.
+
+**`deep-research`** runs 1–10 parallel research questions with AI synthesis across multiple sources. Its power scales with your KNOWN field — the more specific evidence you feed it from earlier steps, the sharper and more actionable its output becomes. Use the structured template: GOAL → WHY → KNOWN → APPLY → SPECIFIC QUESTIONS. Attach code files when debugging or evaluating architecture.
+
+## The Research Loop
+
+### 1. Search first — always, without exception
+Every research task begins with `web-search`. Before Reddit. Before deep-research. Before you think you already know the answer. The aggregated view across dozens of search results creates a landscape understanding that no single source provides.
+
+Write keywords that attack genuinely different angles — you can run up to 100 in parallel. Exact error messages in quotes. Official docs with `site:`. Comparison queries. Failure modes. Year-pinned queries for fast-moving ecosystems. Negative signal (`"problems with"`, `"regret"`, `"switched from"`). If your keywords are minor rewrites of each other, stop and diversify before searching.
+
+Use search operators aggressively: `site:` for authoritative domains, `"exact phrases"` for error messages, `-site:` to exclude SEO farms, `intitle:` for focused results, `OR` for variant matching.
+
+### 2. Read what matters
+
+Search results are leads, not evidence. After `web-search`, scrape the most promising URLs with `scrape-links`. You can process up to 50 pages — pick the 3–10 that look highest-signal.
+
+Your extraction targets determine everything:
+- Strong: `"root cause|fix steps|version affected|workarounds|breaking changes|migration path"`
+- Weak: `"tell me about this page"`
+
+Aim for 4–8 pipe-separated targets per call. Each target should name a specific category of information you need.
+
+### 3. Hear from practitioners
+Official documentation tells you how things should work. Reddit tells you how they actually work. After you understand the official story, check what real developers experience.
+
+Use `search-reddit` with diverse queries — up to 50. Cover multiple angles: direct topic, subreddit-targeted (`r/node`, `r/ExperiencedDevs`), comparisons (`"X vs Y"`), negative signal (`"regret"`, `"not worth it"`, `"broke in production"`), year-specific, and scale-specific queries. At least a quarter of your queries should hunt for negative signal — developers who warn you are often more useful than those who recommend.
+
+Then fetch the best threads with `get-reddit-post`:
+- Always `fetch_comments=true`
+- Always `use_llm=false`
+- Pick 5–10 high-engagement threads (10+ comments) rather than 30 shallow ones
+- Comment budget is ~1000 total — fewer threads means richer context per thread
+
+Look for: "EDIT: this fixed it" (confirmed solutions), "after X months in production" (battle-tested experience), specific numbers (latency, cost, scale), corrections in reply chains, and dissenting views with substantive arguments.
+
+### 4. Synthesize with evidence
+
+For complex questions, use `deep-research` to pull everything together. By this point your KNOWN field should overflow with findings from steps 1–3. Include specific data points, version numbers, Reddit quotes, and scraped facts — not vague summaries.
+
+Ask 2–3 focused questions rather than 5–10 scattered ones. Each question gets a share of the 32K token budget, so fewer questions means deeper analysis. Attach relevant code files for bugs, `package.json` for library decisions, config files for infrastructure questions.
+
+### 5. Verify what matters
+Before finalizing: cross-check any claim that could change your recommendation. Scrape the official changelog for version-specific facts. Run a targeted search for counter-evidence. Compare what Reddit says with what the docs promise.
+
+Stop when additional tool calls stop changing your conclusion.
+
+## Matching Depth to Stakes
+
+You decide how deep to go based on the question, not a rigid formula:
+
+| Situation | Typical path | Why |
 |---|---|---|
-| `search_google` | `mcp__research_powerpack__web_search` | Accepts 1-100 keywords. This skill still recommends 5-7 for quality. |
-| `scrape_pages` | `mcp__research_powerpack__scrape_links` | Use `what_to_extract`; there is no `model` parameter. |
-| `search_reddit` | `mcp__research_powerpack__search_reddit` | Requires at least 3 diverse queries. |
-| `fetch_reddit` | `mcp__research_powerpack__get_reddit_post` | Requires 2-50 Reddit URLs. |
-| `deep_research` | `mcp__research_powerpack__deep_research` | Requires the full structured question template below. |
+| Quick fact check | web-search → scrape 2–3 pages | Authoritative source settles it |
+| Error diagnosis | web-search → scrape → search-reddit | Error messages are highly searchable; Reddit has "same issue" threads |
+| Library comparison | Full loop: all 5 tools | Multi-dimensional decision needs benchmarks, community signal, and synthesis |
+| Architecture decision | Full loop, starting broad | Expensive to reverse — need maximum evidence |
+| Production incident | web-search (3 focused keywords) → scrape top 2–3 | Speed matters — apply first plausible fix, iterate |
+| Landscape/trend check | web-search → search-reddit → get-reddit-post | Community pulse matters more than official docs |
 
-Before Step 0, confirm the wrappers required by your chosen workflow are available. If the required wrappers are missing, stop and say which wrappers are unavailable instead of improvising a partial workflow.
+But these aren't rigid sequences. If web-search surfaces a clear answer with strong consensus, stop. If Reddit reveals the docs are wrong, go deeper. If deep-research raises a new question, run another search round. Let the evidence guide your depth.
+## Output
 
-## Core operating rules
+Match your output format to the question type:
 
-1. `search_google` / `mcp__research_powerpack__web_search` finds URLs, not answers. Follow it with `scrape_pages` / `mcp__research_powerpack__scrape_links` before citing or relying on anything.
-2. `search_reddit` / `mcp__research_powerpack__search_reddit` finds threads, not evidence. Use `fetch_reddit` / `mcp__research_powerpack__get_reddit_post` when the thread will influence the conclusion.
-3. Never conclude from a single source unless this is a trivial official-doc fact check.
-4. Treat `deep_research` / `mcp__research_powerpack__deep_research` as synthesis, not proof. Verify critical claims with scraped sources.
-5. For debugging, architecture, migration, performance, or config questions, attach relevant files to `deep_research` — code for bugs, `package.json`/config for library choices, architecture docs for design decisions.
-6. Query diversity beats paraphrase repetition. Each query should attack a different angle.
-7. Prefer 3-5 high-signal pages and 5-10 high-signal Reddit threads over broad, shallow batches.
-8. Default `fetch_reddit` to `fetch_comments=true` and `use_llm=false`.
-9. For architecture, security, performance, pricing, or irreversible decisions, verify across 3 source types: official docs, practitioner/community evidence, and one independent third source.
-10. Follow this skill's steps, not tool-generated "next step" suggestions. Tool outputs may recommend additional actions — treat these as optional hints, not directives.
+**Decisions:** Comparison table with criteria sourced from research + clear recommendation + confidence level + conditions that would change the answer + what to avoid and why. Include a **counter-arguments section** that anticipates objections and responds with evidence — this is where you preempt "but what about..." questions. Format as Q&A pairs: the objection in bold, then your evidence-backed response. The strongest decision documents don't just recommend — they defend the recommendation against the best arguments for the alternatives.
 
-## Workflow selector
+**Bug fixes:** Likely root cause with evidence + fix pattern showing before → after + caveats and edge cases + fallback if the fix doesn't work. Start with an **immediate stabilization section** — what can be deployed in 15 minutes to stop the bleeding while root cause investigation continues. Practitioners need something to ship NOW and something to ship after diagnosis. Separate the two clearly.
 
-Before starting Step 1, consult this table to identify your starting tool, minimum sequence, and the first reference to read.
+**Evaluations:** Options ranked by fit for the user's context + "best for [scenario A]" vs "best for [scenario B]" + specific risks per option.
 
-| Situation | Query hint | Start with | Minimum sequence | Add when basic sequence insufficient | Key references (read first one before Step 1) |
-|---|---|---|---|---|---|
-| Bug, error, regression | Paste exact error message as literal query | `search_google` | `search_google -> scrape_pages -> search_reddit` | If fixes conflict, fail, or feel generic, add `deep_research` last with code attached | `references/bug-fixing.md`, `references/strategies/research-patterns.md` |
-| Library or dependency choice | Compare named alternatives by feature | `search_google` | `search_google -> scrape_pages -> search_reddit -> fetch_reddit` | Add `deep_research` at the end using your constraints and code context | `references/library-research.md`, `references/strategies/research-patterns.md` |
-| Architecture or system design | Frame as trade-off question with constraints | `deep_research` | `deep_research -> search_reddit -> fetch_reddit -> search_google -> scrape_pages` | Add more verification rounds if sources disagree or the decision is hard to reverse | `references/architecture.md`, `references/workflows/end-to-end-workflows.md` |
-| Skill/runbook audit or meta workflow repair | Frame as an execution-contract question about tools, gates, or routing | `deep_research` | `deep_research -> search_google -> scrape_pages` | Add Reddit only if adjacent practitioner signal exists; if direct Reddit coverage is weak, stop the Reddit branch and note low community signal | `references/workflows/end-to-end-workflows.md`, `references/tools/deep-research.md` |
-| Understand a tool or concept | Ask "how does X work" with version context | `deep_research` | `deep_research -> search_google -> scrape_pages` | Add Reddit only if production reality matters | `references/strategies/research-patterns.md`, `references/tools/deep-research.md` |
-| Fact check or recency check | Include version number and year in query | `search_google` | `search_google -> scrape_pages` | Add Reddit only if the claim is contested or docs are ambiguous | `references/fact-checking/verification-methods.md` |
-| Landscape scan or state-of-the-ecosystem check | Use "best", "top", "vs" queries across subreddits | `search_reddit` | `search_reddit -> fetch_reddit -> search_google -> scrape_pages` | Add `deep_research` at the end if you need a recommendation, not just a pulse check | `references/workflows/end-to-end-workflows.md` |
+**Fact checks:** Current verified status + what changed and when + sources confirming and contradicting.
 
-**Sequence rules:** Complete the minimum sequence first. Add escalation tools one at a time until the answer is clear. Do not skip ahead.
+**All output types:** Cite sources with specificity — Reddit usernames and dates (`u/username, Mon YYYY`), GitHub issue numbers, blog post authors and dates, version numbers. "Reddit consensus" is not a citation. `u/jsmith (Mar 2025, r/node): "exact quote"` is a citation. When you cite a number (latency, cost, scale threshold), name where that number came from.
 
-## Execution sequence
+When sources disagree, explain why — different versions, different scale, different context. When the answer depends on the user's situation, name the variable that flips the recommendation.
+## What Separates Good Research from Bad
 
-### 0) Route and orient
+**Query diversity is everything.** Five angles on one topic beats fifty paraphrases. Exact error in quotes, `site:` for official docs, "switched from X" for migration stories, "problems with X at scale" for hidden issues, year-tagged for recency.
 
-1. Find your situation in the Workflow Selector table above.
-2. Read the **first** key reference listed for your situation — this gives you task-specific patterns.
-3. Note the starting tool and minimum sequence. You will follow this sequence through Steps 1–5.
-4. If your sequence includes `deep_research`, draft the `WHAT I NEED` and `WHY I'M RESEARCHING THIS` fields now — you will populate `WHAT I ALREADY KNOW` with findings from earlier steps before calling it.
+**Negative signal reveals truth.** People who succeed rarely post about it. People who fail explain exactly what went wrong. Always search for failures, regrets, and pain alongside recommendations.
 
-### 1) Frame the research before calling tools
+**The KNOWN field is deep-research's biggest quality lever.** Feed it specific findings — version numbers, benchmark data, Reddit quotes, pricing tiers — and it produces analysis tailored to your situation. Feed it nothing and it produces a textbook answer.
 
-Write down the actual decision or question in a reasoning step, scratch pad, or inline comment. Include:
-- Stack, framework, version, and year
-- Scale, environment, and deployment model
-- Reversibility and risk tolerance
-- Whether this is a bug, choice, architecture question, verification task, or landscape scan
-- What you have already tried, or — if this is initial investigation — what you suspect and what you plan to try
+**Specific extraction beats vague extraction.** `"pricing tiers|free tier limits|overage costs|API rate limits|SLA"` returns structured data. `"what does this cost"` returns prose.
 
-This framing anchors every query you write and every source you evaluate.
+**Raw Reddit > summarized Reddit.** The API delivers clean structured data. `use_llm=true` throws away the exact code snippets, version strings, config values, and authority signals that make Reddit research actionable.
 
-When calling `deep_research` (at any point in the sequence), always use the full structured format:
-- `WHAT I NEED`
-- `WHY I'M RESEARCHING THIS`
-- `WHAT I ALREADY KNOW`
-- `HOW I PLAN TO USE THIS`
-- `SPECIFIC QUESTIONS` (2-5 targeted questions)
-- Optional: `PRIORITY SOURCES`
-- Optional: `PRIORITY INFO`
+## What to Avoid
 
-For code-related work, attach the smallest useful set of files and describe what each file should be inspected for.
+- Treating search snippets as evidence (they're leads, not citations)
+- Following tool-generated "Next Steps" suggestions instead of your own research plan
+- Fetching 30+ Reddit threads at 30 comments each (shallow) instead of 5–10 at 100–200 each (rich)
+- Calling deep-research first with empty KNOWN (gather evidence first, then synthesize)
+- Paraphrasing the same query instead of genuinely diversifying angles
+- Stopping at one source for anything that influences a decision (triangulate across source types)
+- Using `use_llm=true` on `get-reddit-post` (Reddit data is already clean)
+- Using vague extraction targets on `scrape-links` (specificity determines quality)
+## References
 
-To identify files worth attaching: grep the codebase for the error message, trace the stack trace to source files, or find the entry point (route handler, middleware, config) where the problem originates.
+Consult these when you need deeper guidance on a specific aspect:
 
-### 2) Generate diverse queries per tool
-
-Generate queries for **one tool at a time** as you progress through the sequence. Do not batch queries across different tools.
-
-- **`search_google`** (5–7 keywords): Cover exact error match, official docs (`site:`), failure mode, comparison, best practice, and year-specific variants. Use operators: `site:`, `-site:`, quotes, `OR`, `intitle:`.
-- **`search_reddit`** (focused passes: 5–8 queries; broad comparisons or landscape scans: 8–12; absolute minimum: 3 because the wrapper enforces it): Include negative-signal queries (`regret`, `problems`, `switched from`, `not worth it`), subreddit-targeted queries (`r/nextjs`, `r/node`), comparison queries (`vs`), and year-specific queries.
-- Add year and version tokens for fast-moving ecosystems.
-
-If your queries are minor rewrites of each other, stop and diversify before searching.
-
-### 3) Read the actual sources
-
-After `search_google`, scrape the best 3–5 URLs immediately using `scrape_pages` with `use_llm=true` and **specific** extraction targets (pipe-separated: `"pricing|features|limitations|compatibility"`). Never rely on search result snippets — they are discovery input, not evidence.
-
-After `search_reddit`, fetch the best 5–8 threads using `fetch_reddit` with `fetch_comments=true`. Prioritize threads with 10+ comments and high engagement. If the topic is repo-local or the direct Reddit signal is weak, do one adjacent search round on the underlying tool/runtime/problem class. If that still does not surface strong threads, stop the Reddit branch and say community signal is weak instead of forcing low-quality URLs into the synthesis.
-
-**When to call `deep_research`:** After completing the minimum sequence from the Workflow Selector. Use it to fill gaps, synthesize across sources, or get structured analysis. Populate the `WHAT I ALREADY KNOW` field with findings from your earlier search/scrape/Reddit steps — this dramatically improves output quality.
-
-### 4) Validate before concluding
-
-For every claim that affects the recommendation, cross-check using one of:
-- `scrape_pages` on **official docs** or changelogs for version-specific claims
-- A focused `deep_research` question for counter-evidence or alternative perspectives
-- A targeted `search_google` round for conflicting information
-
-Check each key claim against:
-- Source type (official doc vs. blog vs. AI-generated)
-- Recency (publication date vs. current version)
-- Version or environment assumptions
-- Independence (is another source confirming or contradicting?)
-
-**Validation is sufficient when:** at least 2 independent sources confirm each key claim, AND no source contradicts it without resolution. If `deep_research` provided sourced answers with 2+ references per claim, you can proceed to synthesis. One verification pass is enough — do not recursively verify.
-
-Always verify version-sensitive claims (version numbers, API changes, deprecations) by scraping the official documentation or changelog directly. Do not trust blog posts or AI-generated claims for version-specific facts.
-
-### 5) Synthesize to an action, not a bibliography
-
-**Before writing the synthesis:** Reconcile your sources. Identify where search results, Reddit comments, and `deep_research` agree (high confidence) and where they disagree (needs resolution). See `references/synthesis/synthesize-findings.md` for reconciliation patterns.
-
-**If you used `deep_research`**, its output forms the core of your synthesis. Supplement it with specific quotes or data points from Reddit/scrape that `deep_research` may have missed. Do not re-do the analysis — augment it.
-
-End with one of these structured outputs:
-
-**For bug fixes:**
-- Likely root cause with evidence
-- Fix code pattern (show bad → good)
-- Caveats and edge cases
-- Fallback if fix doesn't work
-
-**For library/dependency choices:**
-- Comparison table: features, cost, DX, scalability, caveats
-- Recommendation with rationale and confidence level
-- Migration path or integration steps
-- Conditions that would change the recommendation
-
-**For architecture decisions:**
-- Trade-off matrix: approach × dimension (cost, complexity, scalability, reversibility)
-- Recommendation with context variables that change the answer
-- Implementation sketch
-
-**For skill/runbook audits:**
-- Execution-contract findings: stale commands, missing prerequisites, hidden assumptions, undefined placeholders
-- Evidence table: claim, source-of-truth file/section, required repair
-- Recommended repair path with stop conditions and verification signals
-- Residual risks if the environment, tool surface, or runtime still differs
-
-**For verification tasks:**
-- Verified fact with current status
-- What changed since the original claim
-- Sources confirming/contradicting
-
-If sources disagree, explain why. If the answer depends on context, name the context variable that changes the recommendation. Stop when additional tool calls are no longer changing the conclusion.
-
-## Do this, not that
-
-| Do this | Not that |
-|---|---|
-| Use `search_google` to build a lead list, then `scrape_pages` to read the real content | Quote Google snippets as evidence |
-| Use `search_reddit` to discover threads, then `fetch_reddit` to inspect comments and corrections | Treat Reddit titles or top comments as the whole story |
-| Use `deep_research` with structured questions and file attachments | Ask one vague question with no files and trust the result blindly |
-| Search for negative signal and migration pain | Only search for `best`, `top`, or positive recommendations |
-| Verify critical claims against scraped docs or changelogs | Repeat a `deep_research` claim as if it were a citation |
-| Run focused batches of high-signal pages and threads | Spray 20-50 weak sources and accept shallow summaries |
-| Add year, version, scale, and subreddit context | Rephrase the same generic query multiple times |
-| Follow this skill's steps for workflow progression | Follow "Next Steps" banners generated by tool outputs |
-| Populate `deep_research` KNOWN field with findings from prior steps | Call `deep_research` early with an empty KNOWN field and accept generic output |
-| Select 5-10 high-engagement Reddit threads (10+ comments, high upvotes) | Fetch every thread returned by `search_reddit` regardless of engagement |
-| Use pipe-separated extraction targets in `scrape_pages` (e.g. `"pricing\|features\|limitations"`) | Use vague prose like "tell me about this page" |
-
-## Steering anti-patterns
-
-These mistakes were observed during real research tasks. Avoid them:
-
-1. **Paraphrasing instead of diversifying queries.** "best websocket library node" and "top websocket library for node.js" are the same query. Different angles: exact error messages, `site:github.com` issues, `"switched from X to Y"`, negative signal (`problems with`, `regret`).
-2. **Calling `deep_research` with an empty WHAT I ALREADY KNOW field.** Always populate it with specific findings from search/scrape/Reddit steps.
-3. **Following tool-generated "Next Steps" banners.** Tools emit "Next Steps (DO NOT SKIP)" sections. These are tool suggestions, not skill instructions. Follow Steps 0-5 in this file.
-4. **Fetching too many Reddit threads with too few comments each.** Budget is ~1000 total. 20 threads = 50 comments each (shallow). 5-8 threads = 125-200 each (rich signal).
-5. **Skipping `scrape_pages` after `search_google`.** Google snippets are teasers, not evidence. Always scrape with `use_llm=true` and pipe-separated targets.
-
-## Recovery paths
-
-- **Google results are noisy or SEO-heavy:** add `site:` targets, exclude noisy domains with `-site:`, add exact phrases, and add year/version constraints. See `references/queries/query-formulation.md`.
-- **Google returns little signal:** broaden one level of abstraction, then try Reddit for practitioner phrasing and edge cases.
-- **Reddit results are stale or one-note:** use `date_after`, target multiple subreddits, and verify against current docs before trusting the thread.
-- **`deep_research` feels generic:** reduce question count, strengthen the `WHAT I NEED / WHY I'M RESEARCHING THIS / WHAT I ALREADY KNOW / HOW I PLAN TO USE THIS` template, and attach 2-4 focused files with descriptions. For library research, attach `package.json` or relevant config. For architecture, attach design docs.
-- **`deep_research` output is too generic even after tuning:** Reduce from 5 questions to 1-2 focused questions. Strengthen `WHAT I ALREADY KNOW` with specific data points from prior steps. Attach 2-4 source files with descriptions.
-- **Direct Reddit coverage is weak:** run one adjacent community search round on the underlying runtime, framework, or tool family. If that still yields weak signal, stop Reddit escalation and say so explicitly in the synthesis.
-- **Agent is following tool-generated "Next Steps" instead of skill steps:** Stop. Re-read the Workflow Selector row for your task type. Follow the minimum sequence column. Rule 10 applies.
-- **Sources conflict:** trust scraped official facts over synthesized claims, then use `references/synthesis/synthesize-findings.md` to map consensus and context splits.
-- **You cannot identify which files to attach:** grep the codebase for the error message, trace the stack trace to source files, or find the entry point (route handler, middleware, config file) where the problem originates.
-- **You are under time pressure:** run the smallest workflow that can still produce a verified answer, then escalate only if the result is unclear.
-
-## Reference router
-
-### Research method references
-- `references/strategies/research-patterns.md` — choose the right pattern before spending tool calls
-- `references/workflows/end-to-end-workflows.md` — full step-by-step workflows and escalation points
-- `references/queries/query-formulation.md` — query diversification, operators, and expansion strategies
-- `references/fact-checking/verification-methods.md` — source validation, recency checks, and triangulation
-- `references/synthesis/synthesize-findings.md` — consensus mapping, contradiction handling, and final recommendation formats
-
-### Tool references
-- `references/tools/search-google.md` — breadth-first discovery rules and anti-patterns
-- `references/tools/scrape-pages.md` — focused extraction targets and scraping failure modes
-- `references/tools/deep-research.md` — structured question format, attachment rules, and escalation use cases
-- `references/tools/search-reddit.md` — negative-signal query design and subreddit targeting
-- `references/tools/fetch-reddit.md` — comment-thread reading strategy and exact-value preservation
-
-### Domain references
-
-Read the domain reference for your task type to get scenario-specific tool sequences and query patterns. Look up your specific scenario (e.g., "race condition" in bug-fixing.md) and adapt the workflow selector's tool sequence accordingly.
-
-- `references/bug-fixing.md`
-- `references/library-research.md`
-- `references/architecture.md`
-- `references/api-integration.md`
-- `references/security.md`
-- `references/performance.md`
-- `references/testing.md`
-- `references/frontend.md`
-- `references/devops.md`
-- `references/language-idioms.md`
-
-**Reading order:** Read the domain reference first (matches your task type), then consult the method reference only if the domain reference doesn't cover your specific scenario.
+- `references/tools.md` — Detailed parameters, token budgets, failure modes, and composition patterns for each tool
+- `references/workflows.md` — Step-by-step research workflows for common scenarios: bug fixing, library evaluation, architecture decisions, security audits, performance optimization, and more
+- `references/synthesis.md` — How to weigh sources, resolve contradictions, handle uncertainty, and distill findings into actionable recommendations

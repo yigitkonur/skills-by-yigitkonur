@@ -77,7 +77,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-openclaw-agents](skills/run-openclaw-agents/) | platform | OpenClaw multi-agent orchestration |
 | [run-openclaw-deploy](skills/run-openclaw-deploy/) | platform | OpenClaw production deployment |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
-| [run-research](skills/run-research/) | productivity | Multi-source technical research |
+| [run-research](skills/run-research/) | productivity | Multi-source technical research with web search, Reddit practitioner mining, page scraping, and AI synthesis. Includes 3 reference docs: tool parameters, research workflows, synthesis methods. |
 | [run-seo-analysis](skills/run-seo-analysis/) | marketing | SEO workflows with MCP Marketers |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc CLI |
 | [use-skill-dl-util](skills/use-skill-dl-util/) | productivity | Skill search and download via skill-dl |
