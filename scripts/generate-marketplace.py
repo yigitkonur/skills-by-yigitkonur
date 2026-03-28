@@ -162,11 +162,12 @@ def generate():
     os.makedirs(marketplace_dir, exist_ok=True)
 
     marketplace = {
-        "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
         "name": "yigitkonur-skills",
-        "version": "1.0.0",
-        "description": f"{len(plugins)} skills for AI coding agents.",
-        "owner": {"name": "Yigit Konur", "url": "https://github.com/yigitkonur"},
+        "owner": {"name": "Yigit Konur"},
+        "metadata": {
+            "description": f"{len(plugins)} skills for AI coding agents.",
+            "version": "1.0.0",
+        },
         "plugins": plugins,
     }
 
