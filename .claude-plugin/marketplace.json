@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "51 skills for AI coding agents.",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "plugins": [
     {
@@ -21,7 +21,7 @@
     {
       "name": "build-convex-clerk-swiftui",
       "description": "Building a SwiftUI app with Convex backend and Clerk auth — covers reactive subscriptions, TypeScript server functions, schema design, auth integration, and iOS/macOS production patterns",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Yigit Konur"
       },
