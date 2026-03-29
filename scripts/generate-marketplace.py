@@ -46,6 +46,7 @@ CATEGORIES = {
     "init-greptile-review": "productivity",
     "init-openclaw-agent": "platform",
     "optimize-mcp-server": "development",
+    "optimize-swift-linter": "development",
     "plan-issue-tree": "productivity",
     "plan-prd": "productivity",
     "plan-work": "productivity",

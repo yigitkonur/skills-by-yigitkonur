@@ -4,8 +4,8 @@
     "name": "Yigit Konur"
   },
   "metadata": {
-    "description": "51 skills for AI coding agents.",
-    "version": "1.0.1"
+    "description": "52 skills for AI coding agents.",
+    "version": "1.0.0"
   },
   "plugins": [
     {
@@ -21,7 +21,7 @@
     {
       "name": "build-convex-clerk-swiftui",
       "description": "Building a SwiftUI app with Convex backend and Clerk auth — covers reactive subscriptions, TypeScript server functions, schema design, auth integration, and iOS/macOS production patterns",
-      "version": "1.0.1",
+      "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -326,6 +326,16 @@
         "name": "Yigit Konur"
       },
       "source": "./skills/optimize-mcp-server",
+      "category": "development"
+    },
+    {
+      "name": "optimize-swift-linter",
+      "description": "Writing, reviewing, or setting up Swift code quality tooling for macOS/iOS apps — covers SwiftLint, SwiftFormat, Airbnb rules, architecture, testing, and platform-specific patterns",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/optimize-swift-linter",
       "category": "development"
     },
     {
