@@ -68,6 +68,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-greptile-review](skills/init-greptile-review/) | productivity | Greptile review config and scoped rules |
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | MCP server audit and optimization |
+| [optimize-swift-linter](skills/optimize-swift-linter/) | development | Swift code quality: SwiftLint, Airbnb rules, macOS/iOS patterns |
 | [plan-issue-tree](skills/plan-issue-tree/) | productivity | GitHub Issues with sub-issues and waves |
 | [plan-prd](skills/plan-prd/) | productivity | Product requirements documents |
 | [plan-work](skills/plan-work/) | productivity | Structured planning and decision-making |

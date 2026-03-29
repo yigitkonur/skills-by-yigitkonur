@@ -1,0 +1,8 @@
+{
+  "name": "optimize-swift-linter",
+  "description": "Writing, reviewing, or setting up Swift code quality tooling for macOS/iOS apps — covers SwiftLint, SwiftFormat, Airbnb rules, architecture, testing, and platform-specific patterns",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}
