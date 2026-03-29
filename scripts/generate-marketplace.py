@@ -15,6 +15,7 @@ SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
 
 CATEGORIES = {
     "build-chrome-extension": "development",
+    "build-convex-clerk-swiftui": "development",
     "build-copilot-sdk-app": "development",
     "build-daisyui-mcp": "development",
     "build-hcom-systems": "orchestration",
