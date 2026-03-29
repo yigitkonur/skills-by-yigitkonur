@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-50 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+51 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -37,6 +37,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | Skill | Category | Description |
 |---|---|---|
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
+| [build-convex-clerk-swiftui](skills/build-convex-clerk-swiftui/) | development | Convex + Clerk backends for SwiftUI iOS/macOS apps |
 | [build-copilot-sdk-app](skills/build-copilot-sdk-app/) | development | GitHub Copilot SDK apps in TypeScript |
 | [build-daisyui-mcp](skills/build-daisyui-mcp/) | development | daisyUI components via MCP blueprint server |
 | [build-hcom-systems](skills/build-hcom-systems/) | orchestration | Multi-agent systems on the hcom backbone |
