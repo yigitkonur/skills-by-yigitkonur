@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-51 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+49 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -63,9 +63,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS.md and CLAUDE.md generation |
-| [init-copilot-review](skills/init-copilot-review/) | productivity | GitHub Copilot review instruction files |
-| [init-devin-review](skills/init-devin-review/) | productivity | Devin Bug Catcher review config |
-| [init-greptile-review](skills/init-greptile-review/) | productivity | Greptile review config and scoped rules |
+| [init-review](skills/init-review/) | productivity | AI code review config for Copilot, Devin, and Greptile |
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | MCP server audit and optimization |
 | [optimize-swift-linter](skills/optimize-swift-linter/) | development | Swift code quality: SwiftLint, Airbnb rules, macOS/iOS patterns |

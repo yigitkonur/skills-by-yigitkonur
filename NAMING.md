@@ -126,9 +126,9 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 **Disambiguation:**
 - `init-` vs `build-` — `init-` produces config for external tools; `build-` produces application code
 - `init-` vs `run-` — `init-` generates files once; `run-` executes a tool repeatedly during a session
-- Multiple `init-` skills can target the same *category* (code review) but different *platforms* (Greptile vs Devin vs Copilot)
+- Multiple platforms for the same category can be combined into one skill (e.g. `init-review` covers Copilot, Devin, and Greptile)
 
-**Current skills:** `init-agent-config`, `init-copilot-review`, `init-devin-review`, `init-greptile-review`, `init-openclaw-agent`
+**Current skills:** `init-agent-config`, `init-openclaw-agent`, `init-review`
 
 ---
 
@@ -385,10 +385,8 @@ When renaming a published skill:
 - `develop-typescript`
 - `extract-saas-design`
 - `init-agent-config`
-- `init-copilot-review`
-- `init-devin-review`
-- `init-greptile-review`
 - `init-openclaw-agent`
+- `init-review`
 - `optimize-mcp-server`
 - `plan-issue-tree`
 - `plan-prd`
