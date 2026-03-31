@@ -1,7 +1,7 @@
 {
   "name": "extract-saas-design",
   "description": "Forensically documenting the visual system of an existing SaaS dashboard or admin UI into structured design docs, not rebuilding or redesigning it",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Yigit Konur"
   }
