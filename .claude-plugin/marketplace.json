@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "49 skills for AI coding agents.",
-    "version": "1.0.1"
+    "version": "1.0.2"
   },
   "plugins": [
     {
@@ -371,7 +371,7 @@
     {
       "name": "run-agent-browser",
       "description": "Driving the agent-browser CLI for browser navigation, DOM-grounded interaction, session/tab management, screenshots, data extraction, or repeatable web app workflows",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Yigit Konur"
       },
