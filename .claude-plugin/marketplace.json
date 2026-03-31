@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "49 skills for AI coding agents.",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "plugins": [
     {
@@ -291,7 +291,7 @@
     {
       "name": "init-review",
       "description": "Creating or refining AI code review config for GitHub Copilot, Devin Bug Catcher, Greptile, or any combination for a repository",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Yigit Konur"
       },
