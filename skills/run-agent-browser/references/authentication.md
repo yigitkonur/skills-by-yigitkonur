@@ -17,6 +17,73 @@ Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 - [Token Refresh Handling](#token-refresh-handling)
 - [Security Best Practices](#security-best-practices)
 
+## Import Auth from Your Browser
+
+The fastest way to authenticate is to reuse cookies from a Chrome session you are already logged into.
+
+**Step 1:** Start Chrome with remote debugging:
+
+```bash
+# macOS
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222
+```
+
+**Step 2:** Log in to target sites in that Chrome window normally.
+
+**Step 3:** Grab the auth state:
+
+```bash
+agent-browser --auto-connect state save ./my-auth.json
+```
+
+**Step 4:** Reuse in automation:
+
+```bash
+agent-browser --state ./my-auth.json open https://app.example.com/dashboard
+```
+
+> **Security note:** `--remote-debugging-port` exposes full browser control on localhost. Only use on trusted machines. State files contain session tokens in plaintext — add to `.gitignore` and set `AGENT_BROWSER_ENCRYPTION_KEY` for encryption at rest.
+
+**Tip:** Combine with `--session-name` so the imported auth auto-persists across restarts:
+
+```bash
+agent-browser --session-name myapp state load ./my-auth.json
+# From now on, state is auto-saved/restored for "myapp"
+```
+
+## Persistent Profiles
+
+Use `--profile` to point agent-browser at a Chrome user data directory. This persists everything (cookies, IndexedDB, service workers, cache) across browser restarts without explicit save/load:
+
+```bash
+# First run: login once (manually with --headed, or via automation)
+agent-browser --profile ~/.myapp-profile --headed open https://app.example.com/login
+# ... complete login flow in the visible browser ...
+agent-browser close
+
+# All subsequent runs: already authenticated — no flags needed
+agent-browser --profile ~/.myapp-profile open https://app.example.com/dashboard
+```
+
+Set globally so every invocation uses the same profile:
+
+```bash
+# Via environment variable (add to ~/.zshrc or ~/.bashrc)
+export AGENT_BROWSER_PROFILE="$HOME/.agent-browser/profile"
+
+# Or via config.json (~/.agent-browser/config.json)
+{"engine": "chrome", "profile": "~/.agent-browser/profile"}
+```
+
+When set globally, just `agent-browser open <url>` works — all sites stay authenticated across sessions and reboots. Use different paths for different projects or test users:
+
+```bash
+agent-browser --profile ~/.profiles/admin open https://app.example.com
+agent-browser --profile ~/.profiles/viewer open https://app.example.com
+```
+
+> **Note:** `--profile` cannot be combined with `--state`. The profile manages its own state natively.
+
 ## Auth Vault (Recommended)
 
 The Auth Vault stores credentials encrypted on disk and replays login flows automatically. The LLM agent never sees passwords — only vault profile names.

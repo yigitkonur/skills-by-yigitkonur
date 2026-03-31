@@ -14,6 +14,30 @@ Multiple isolated browser sessions with state persistence and concurrent browsin
 - [Session Cleanup](#session-cleanup)
 - [Best Practices](#best-practices)
 
+## Persistent Profiles (`--profile`)
+
+`--profile` uses a real Chrome user data directory for maximum persistence. Unlike `--session-name` (cookies + localStorage only), `--profile` persists everything Chrome natively stores:
+
+| Feature | `--profile` | `--session-name` | `--session` |
+|---------|------------|-----------------|------------|
+| Cookies | ✓ (native Chrome) | ✓ (auto-save/load) | ✗ (manual) |
+| localStorage | ✓ | ✓ | ✗ |
+| IndexedDB | ✓ | ✗ | ✗ |
+| Service workers | ✓ | ✗ | ✗ |
+| Cache | ✓ | ✗ | ✗ |
+| Session isolation | ✗ (single profile) | ✓ | ✓ |
+| Manual save/load | Not needed | Not needed | Required |
+| Env var | `AGENT_BROWSER_PROFILE` | `AGENT_BROWSER_SESSION_NAME` | `AGENT_BROWSER_SESSION` |
+| Best for | Single user, always authenticated | Named session with auto-persist | Parallel isolated sessions |
+
+```bash
+# Set globally — every command uses this profile
+export AGENT_BROWSER_PROFILE="$HOME/.agent-browser/profile"
+agent-browser open https://app.example.com  # authenticated automatically
+```
+
+> **Note:** `--profile` cannot be combined with `--state` or `--session-name`. Choose one persistence strategy.
+
 ## Named Sessions
 
 Use `--session` flag to isolate browser contexts:
