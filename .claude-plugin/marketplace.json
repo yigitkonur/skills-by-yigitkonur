@@ -4,7 +4,7 @@
     "name": "Yigit Konur"
   },
   "metadata": {
-    "description": "49 skills for AI coding agents.",
+    "description": "47 skills for AI coding agents.",
     "version": "1.0.1"
   },
   "plugins": [
@@ -326,26 +326,6 @@
         "name": "Yigit Konur"
       },
       "source": "./skills/plan-issue-tree",
-      "category": "productivity"
-    },
-    {
-      "name": "plan-prd",
-      "description": "Writing a PRD, product requirements document, feature spec, or requirements document with structured discovery, codebase-grounded analysis, and AI-agent-actionable output",
-      "version": "1.0.0",
-      "author": {
-        "name": "Yigit Konur"
-      },
-      "source": "./skills/plan-prd",
-      "category": "productivity"
-    },
-    {
-      "name": "plan-work",
-      "description": "Framing a vague request, comparing approaches, prioritizing a backlog, or defining risks, checkpoints, and decision criteria before acting",
-      "version": "1.0.1",
-      "author": {
-        "name": "Yigit Konur"
-      },
-      "source": "./skills/plan-work",
       "category": "productivity"
     },
     {

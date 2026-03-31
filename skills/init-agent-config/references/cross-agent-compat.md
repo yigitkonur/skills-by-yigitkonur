@@ -320,4 +320,4 @@ All agents read root AGENTS.md. Codex and Cursor also read nested AGENTS.md file
 - Reads AGENTS.md from workspace root
 - `.github/copilot-instructions.md` is the Copilot-native config
 - Scoped instruction files: `.github/instructions/*.instructions.md` with `applyTo:` frontmatter
-- For review-specific config, use the `init-copilot-review` skill instead
+- For review-specific config, use the `init-review` skill instead

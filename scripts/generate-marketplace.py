@@ -46,8 +46,6 @@ CATEGORIES = {
     "optimize-mcp-server": "development",
     "optimize-swift-linter": "development",
     "plan-issue-tree": "productivity",
-    "plan-prd": "productivity",
-    "plan-work": "productivity",
     "publish-npm-package": "development",
     "review-pr": "productivity",
     "run-agent-browser": "testing",
@@ -61,7 +59,6 @@ CATEGORIES = {
     "run-github-repo-search": "productivity",
     "run-github-scout": "productivity",
     "run-research": "productivity",
-    "run-seo-analysis": "marketing",
     "test-by-mcpc-cli": "development",
     "use-skill-dl-util": "productivity",
 }
@@ -134,18 +131,26 @@ def generate():
         user_desc = to_user_description(description) if description else name
         category = CATEGORIES.get(skill_name, "development")
 
-        # Generate per-skill plugin.json
+        # Generate per-skill plugin.json (preserve existing version if present)
         plugin_conf_dir = os.path.join(skill_dir, ".claude-plugin")
         os.makedirs(plugin_conf_dir, exist_ok=True)
+        plugin_json_path = os.path.join(plugin_conf_dir, "plugin.json")
+
+        existing_version = "1.0.0"
+        if os.path.isfile(plugin_json_path):
+            try:
+                with open(plugin_json_path) as ef:
+                    existing_version = json.load(ef).get("version", "1.0.0")
+            except (json.JSONDecodeError, KeyError):
+                pass
 
         plugin_json = {
             "name": name,
             "description": user_desc,
-            "version": "1.0.0",
+            "version": existing_version,
             "author": {"name": "Yigit Konur"},
         }
 
-        plugin_json_path = os.path.join(plugin_conf_dir, "plugin.json")
         with open(plugin_json_path, "w") as f:
             json.dump(plugin_json, f, indent=2, ensure_ascii=False)
             f.write("\n")
@@ -155,28 +160,36 @@ def generate():
             {
                 "name": name,
                 "description": user_desc,
-                "version": "1.0.0",
+                "version": existing_version,
                 "author": {"name": "Yigit Konur"},
                 "source": f"./skills/{skill_name}",
                 "category": category,
             }
         )
 
-    # Generate root marketplace.json
+    # Generate root marketplace.json (preserve existing marketplace version)
     marketplace_dir = os.path.join(REPO_ROOT, ".claude-plugin")
     os.makedirs(marketplace_dir, exist_ok=True)
+    marketplace_json_path = os.path.join(marketplace_dir, "marketplace.json")
+
+    existing_marketplace_version = "1.0.0"
+    if os.path.isfile(marketplace_json_path):
+        try:
+            with open(marketplace_json_path) as ef:
+                existing_marketplace_version = json.load(ef).get("metadata", {}).get("version", "1.0.0")
+        except (json.JSONDecodeError, KeyError):
+            pass
 
     marketplace = {
         "name": "yigitkonur-skills",
         "owner": {"name": "Yigit Konur"},
         "metadata": {
             "description": f"{len(plugins)} skills for AI coding agents.",
-            "version": "1.0.0",
+            "version": existing_marketplace_version,
         },
         "plugins": plugins,
     }
 
-    marketplace_json_path = os.path.join(marketplace_dir, "marketplace.json")
     with open(marketplace_json_path, "w") as f:
         json.dump(marketplace, f, indent=2, ensure_ascii=False)
         f.write("\n")

@@ -162,7 +162,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 **Disambiguation:**
 - `plan-` vs `run-` — `plan-` is internal reasoning with structured methods; `run-research` is external information gathering via APIs and web scraping
 
-**Current skills:** `plan-issue-tree`, `plan-prd`, `plan-work`
+**Current skills:** `plan-issue-tree`
 
 ---
 
@@ -215,7 +215,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `run-` vs `init-` — `run-` is an ongoing session with the tool; `init-` is a one-time generation
 - `run-` vs `test-` — `run-` drives any external tool; `test-` specifically runs verification/validation suites
 
-**Current skills:** `run-agent-browser`, `run-github-repo-evaluate`, `run-github-repo-search`, `run-github-scout`, `run-hcom-agents`, `run-issue-plan`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`, `run-seo-analysis`
+**Current skills:** `run-agent-browser`, `run-comprehensive-research`, `run-github-repo-evaluate`, `run-github-repo-search`, `run-github-scout`, `run-hcom-agents`, `run-issue-plan`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`
 
 ---
 
@@ -389,11 +389,10 @@ When renaming a published skill:
 - `init-review`
 - `optimize-mcp-server`
 - `plan-issue-tree`
-- `plan-prd`
-- `plan-work`
 - `publish-npm-package`
 - `review-pr`
 - `run-agent-browser`
+- `run-comprehensive-research`
 - `run-github-repo-evaluate`
 - `run-github-repo-search`
 - `run-github-scout`
@@ -403,7 +402,6 @@ When renaming a published skill:
 - `run-openclaw-deploy`
 - `run-playwright`
 - `run-research`
-- `run-seo-analysis`
-- `use-skill-dl-util`
 - `test-by-mcpc-cli`
+- `use-skill-dl-util`
 - `enhance-skill-by-derailment`
