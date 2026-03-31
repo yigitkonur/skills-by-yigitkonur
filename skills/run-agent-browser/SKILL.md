@@ -49,6 +49,8 @@ agent-browser snapshot -i
 - Reuse the default session for a single continuous task.
 - Use `--session SESSION_NAME` only for isolated concurrent work.
 - Use `--session-name SESSION_NAME` only when deliberate persistence across runs is valuable and safe.
+- Use `--profile PATH` for permanent authentication persistence without manual save/load. When set globally (config.json or env var), all sessions automatically retain cookies, IndexedDB, service workers, and cache across browser restarts and reboots. See `references/authentication.md#persistent-profiles`.
+- Use `--auto-connect` to import authentication from a running Chrome session the user is already logged into — fastest way to bootstrap auth for one-off tasks. See `references/authentication.md#import-auth-from-your-browser`.
 
 ### 2) Navigate or focus the correct page
 
@@ -125,6 +127,7 @@ Capture screenshots only when you need:
 - Same task, same auth context: stay in the current or default session.
 - Concurrent or role-separated work: use named `--session` sessions.
 - Intentional long-lived login reuse across runs: use `--session-name`, `auth`, or `state save/load`.
+- Permanent auth persistence without manual save/load: use `--profile` (set globally via config.json `{"profile": "~/.myapp"}` or `AGENT_BROWSER_PROFILE` env var).
 
 ### Tab and window rules
 
