@@ -1,8 +1,0 @@
-{
-  "name": "plan-prd",
-  "description": "Writing a PRD, product requirements document, feature spec, or requirements document with structured discovery, codebase-grounded analysis, and AI-agent-actionable output",
-  "version": "1.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}
