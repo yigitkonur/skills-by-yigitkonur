@@ -4,8 +4,8 @@
     "name": "Yigit Konur"
   },
   "metadata": {
-    "description": "52 skills for AI coding agents.",
-    "version": "1.0.1"
+    "description": "49 skills for AI coding agents.",
+    "version": "1.0.0"
   },
   "plugins": [
     {
@@ -279,36 +279,6 @@
       "category": "configuration"
     },
     {
-      "name": "init-copilot-review",
-      "description": "Creating or refining GitHub Copilot code review instruction files such as .github/copilot-instructions.md and scoped *.instructions.md for repository-specific PR reviews",
-      "version": "1.0.0",
-      "author": {
-        "name": "Yigit Konur"
-      },
-      "source": "./skills/init-copilot-review",
-      "category": "productivity"
-    },
-    {
-      "name": "init-devin-review",
-      "description": "Creating or refining REVIEW.md, AGENTS.md, or repo-scoped Devin Bug Catcher review instructions",
-      "version": "1.0.0",
-      "author": {
-        "name": "Yigit Konur"
-      },
-      "source": "./skills/init-devin-review",
-      "category": "productivity"
-    },
-    {
-      "name": "init-greptile-review",
-      "description": "Generating `.greptile/` review config, scoped rules, or context-file mappings for Greptile pull request reviews in a specific repository",
-      "version": "1.0.0",
-      "author": {
-        "name": "Yigit Konur"
-      },
-      "source": "./skills/init-greptile-review",
-      "category": "productivity"
-    },
-    {
       "name": "init-openclaw-agent",
       "description": "Configuring an OpenClaw agent workspace or agent-specific runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings",
       "version": "1.0.0",
@@ -317,6 +287,16 @@
       },
       "source": "./skills/init-openclaw-agent",
       "category": "platform"
+    },
+    {
+      "name": "init-review",
+      "description": "Creating or refining AI code review config for GitHub Copilot, Devin Bug Catcher, Greptile, or any combination for a repository",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/init-review",
+      "category": "productivity"
     },
     {
       "name": "optimize-mcp-server",
@@ -331,7 +311,7 @@
     {
       "name": "optimize-swift-linter",
       "description": "Writing, reviewing, or setting up Swift code quality tooling for macOS/iOS apps — covers SwiftLint, SwiftFormat, Airbnb rules, architecture, testing, and platform-specific patterns",
-      "version": "1.0.1",
+      "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -497,16 +477,6 @@
       },
       "source": "./skills/run-research",
       "category": "productivity"
-    },
-    {
-      "name": "run-seo-analysis",
-      "description": "Running SEO workflows with MCP Marketers tools — site audits, keyword research, backlink analysis, competitor intelligence, SERP analysis, rank tracking, or content optimization",
-      "version": "1.0.0",
-      "author": {
-        "name": "Yigit Konur"
-      },
-      "source": "./skills/run-seo-analysis",
-      "category": "marketing"
     },
     {
       "name": "test-by-mcpc-cli",

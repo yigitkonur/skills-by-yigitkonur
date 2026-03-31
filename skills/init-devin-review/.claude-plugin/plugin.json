@@ -1,8 +1,0 @@
-{
-  "name": "init-devin-review",
-  "description": "Creating or refining REVIEW.md, AGENTS.md, or repo-scoped Devin Bug Catcher review instructions",
-  "version": "1.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

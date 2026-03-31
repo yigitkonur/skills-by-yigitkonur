@@ -1,8 +1,0 @@
-{
-  "name": "init-copilot-review",
-  "description": "Creating or refining GitHub Copilot code review instruction files such as .github/copilot-instructions.md and scoped *.instructions.md for repository-specific PR reviews",
-  "version": "1.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}
