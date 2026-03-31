@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Pre-push hook: validates all skills before allowing push.
+#
+# Setup (one-time):
+#   git config core.hooksPath .githooks
+#
+# This hook runs scripts/validate-skills.py --quick (skips marketplace
+# consistency to keep it fast). The full check runs in CI.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+VALIDATOR="$REPO_ROOT/scripts/validate-skills.py"
+
+if [ ! -f "$VALIDATOR" ]; then
+    echo "⚠️  scripts/validate-skills.py not found — skipping pre-push validation"
+    exit 0
+fi
+
+echo "🔍 Validating skills before push..."
+echo ""
+
+if ! python3 "$VALIDATOR" --quick; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ PUSH BLOCKED: skill validation failed"
+    echo ""
+    echo "  Every file in references/ must be linked from SKILL.md."
+    echo "  Every SKILL.md must have valid frontmatter."
+    echo "  No junk files (evals/, .DS_Store, LICENSE) in skills."
+    echo ""
+    echo "  Fix the errors above, then push again."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 1
+fi
+
+echo ""
+echo "✅ All checks passed — pushing"

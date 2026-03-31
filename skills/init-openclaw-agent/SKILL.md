@@ -1,6 +1,7 @@
 ---
 name: init-openclaw-agent
-description: "Use this skill if you are configuring an OpenClaw agent workspace or agent-specific runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings."
+description: >-
+  Use skill if you are configuring an OpenClaw agent workspace or runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings.
 ---
 
 # Configure OpenClaw Agent

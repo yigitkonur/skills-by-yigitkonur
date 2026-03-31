@@ -1,6 +1,7 @@
 ---
 name: build-openclaw-skill
-description: Use skill if you are creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance. Trigger phrases include "OpenClaw skill", "SKILL.md", "metadata gating", "test a skill", "ClawHub".
+description: >-
+  Use skill if you are creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance.
 ---
 
 # Build OpenClaw Skill

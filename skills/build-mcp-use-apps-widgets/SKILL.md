@@ -1,6 +1,7 @@
 ---
 name: build-mcp-use-apps-widgets
-description: Use skill if you are building or fixing an `mcp-use` server that renders React widgets from `resources/` and needs `useWidget`, `useCallTool`, streaming preview, CSP, or ChatGPT/MCP Apps compatibility. Do not use for plain MCP servers without widgets or for MCP client apps.
+description: >-
+  Use skill if you are building or fixing an mcp-use server that renders React widgets and needs useWidget, useCallTool, streaming, CSP, or ChatGPT/MCP Apps compatibility.
 ---
 
 # Build MCP Apps & Widgets

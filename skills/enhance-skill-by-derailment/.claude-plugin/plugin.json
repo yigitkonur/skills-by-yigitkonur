@@ -1,6 +1,6 @@
 {
   "name": "enhance-skill-by-derailment",
-  "description": "Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find where instructions break, and fixing the skill directly",
+  "description": "Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find breaks, and applying fixes",
   "version": "1.0.0",
   "author": {
     "name": "Yigit Konur"

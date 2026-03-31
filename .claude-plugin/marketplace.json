@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "49 skills for AI coding agents.",
-    "version": "1.0.2"
+    "version": "1.0.0"
   },
   "plugins": [
     {
@@ -50,7 +50,7 @@
     },
     {
       "name": "build-hcom-systems",
-      "description": "Building applications or automation systems on top of hcom — designing multi-agent architectures, extending hcom with custom workflow scripts, integrating hcom into CI/CD pipelines, or understanding hcom internals like its hook system, SQLite schema, relay networking, and event subscriptions",
+      "description": "Building applications or automation systems on hcom — multi-agent architectures, custom workflow scripts, CI/CD integration, or understanding hcom internals like hooks, SQLite, relay, and events",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -80,7 +80,7 @@
     },
     {
       "name": "build-mcp-use-apps-widgets",
-      "description": "Building or fixing an `mcp-use` server that renders React widgets from `resources/` and needs `useWidget`, `useCallTool`, streaming preview, CSP, or ChatGPT/MCP Apps compatibility. Do not use for plain MCP servers without widgets or for MCP client apps",
+      "description": "Building or fixing an mcp-use server that renders React widgets and needs useWidget, useCallTool, streaming, CSP, or ChatGPT/MCP Apps compatibility",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -120,7 +120,7 @@
     },
     {
       "name": "build-openclaw-skill",
-      "description": "Creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance. Trigger phrases include \"OpenClaw skill\", \"SKILL.md\", \"metadata gating\", \"test a skill\", \"ClawHub\"",
+      "description": "Creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -190,7 +190,7 @@
     },
     {
       "name": "debug-tauri-devtools",
-      "description": "Debugging a runnable Tauri app with CrabNebula DevTools, or need to install/connect DevTools to inspect Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets",
+      "description": "Debugging a Tauri app with CrabNebula DevTools — inspecting Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -250,7 +250,7 @@
     },
     {
       "name": "enhance-skill-by-derailment",
-      "description": "Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find where instructions break, and fixing the skill directly",
+      "description": "Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find breaks, and applying fixes",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -280,7 +280,7 @@
     },
     {
       "name": "init-openclaw-agent",
-      "description": "Configuring an OpenClaw agent workspace or agent-specific runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings",
+      "description": "Configuring an OpenClaw agent workspace or runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -291,7 +291,7 @@
     {
       "name": "init-review",
       "description": "Creating or refining AI code review config for GitHub Copilot, Devin Bug Catcher, Greptile, or any combination for a repository",
-      "version": "1.0.1",
+      "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -360,7 +360,7 @@
     },
     {
       "name": "review-pr",
-      "description": "Reviewing a GitHub pull request or local branch diff for merge readiness and need high-signal findings grounded in stated goals, changed-file clusters, and existing review state when available",
+      "description": "Reviewing a GitHub pull request or branch diff for merge readiness with high-signal findings grounded in stated goals and changed-file clusters",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -371,7 +371,7 @@
     {
       "name": "run-agent-browser",
       "description": "Driving the agent-browser CLI for browser navigation, DOM-grounded interaction, session/tab management, screenshots, data extraction, or repeatable web app workflows",
-      "version": "1.0.1",
+      "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -420,7 +420,7 @@
     },
     {
       "name": "run-hcom-agents",
-      "description": "Orchestrating multiple AI coding agents via hcom — launching headless Claude or Codex agents, messaging between them, writing multi-agent workflow scripts, or applying patterns like worker-reviewer loops, ensemble consensus, and cascade pipelines",
+      "description": "Orchestrating multiple AI coding agents via hcom — launching headless agents, messaging between them, or writing multi-agent workflow scripts with patterns like worker-reviewer loops",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"
@@ -470,7 +470,7 @@
     },
     {
       "name": "run-research",
-      "description": "Researching a bug, library choice, architecture trade-off, pricing, security advisory, or any technical question where current web evidence, Reddit practitioner experience, and multi-source synthesis would change the recommendation",
+      "description": "Researching a bug, library choice, architecture trade-off, or technical question where current web evidence, Reddit experience, and multi-source synthesis matter",
       "version": "1.0.0",
       "author": {
         "name": "Yigit Konur"

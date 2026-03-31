@@ -1,6 +1,7 @@
 ---
 name: build-hcom-systems
-description: Use skill if you are building applications or automation systems on top of hcom — designing multi-agent architectures, extending hcom with custom workflow scripts, integrating hcom into CI/CD pipelines, or understanding hcom internals like its hook system, SQLite schema, relay networking, and event subscriptions.
+description: >-
+  Use skill if you are building applications or automation systems on hcom — multi-agent architectures, custom workflow scripts, CI/CD integration, or understanding hcom internals like hooks, SQLite, relay, and events.
 ---
 
 # Build hcom-Based Systems

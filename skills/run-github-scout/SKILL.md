@@ -108,7 +108,7 @@ Read SKILL.md and its references.
 Evaluate these repos: {REPO_LIST}
 
 For each repo, run Phase 1 (batch screen) and Phase 2 (deep dive).
-Use the scoring rubric from references/scoring-rubric.md.
+Use the scoring rubric from skills/run-github-repo-evaluate/references/scoring-rubric.md.
 
 Custom Feature Fit criteria for this search:
 {FEATURE_CHECKLIST_FROM_PHASE_1}

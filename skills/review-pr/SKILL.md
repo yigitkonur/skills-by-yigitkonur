@@ -1,6 +1,7 @@
 ---
 name: review-pr
-description: Use skill if you are reviewing a GitHub pull request or local branch diff for merge readiness and need high-signal findings grounded in stated goals, changed-file clusters, and existing review state when available.
+description: >-
+  Use skill if you are reviewing a GitHub pull request or branch diff for merge readiness with high-signal findings grounded in stated goals and changed-file clusters.
 ---
 
 # Review PR

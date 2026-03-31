@@ -1,6 +1,6 @@
 {
   "name": "build-mcp-use-apps-widgets",
-  "description": "Building or fixing an `mcp-use` server that renders React widgets from `resources/` and needs `useWidget`, `useCallTool`, streaming preview, CSP, or ChatGPT/MCP Apps compatibility. Do not use for plain MCP servers without widgets or for MCP client apps",
+  "description": "Building or fixing an mcp-use server that renders React widgets and needs useWidget, useCallTool, streaming, CSP, or ChatGPT/MCP Apps compatibility",
   "version": "1.0.0",
   "author": {
     "name": "Yigit Konur"
