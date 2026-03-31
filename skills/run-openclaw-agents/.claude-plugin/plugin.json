@@ -1,7 +1,7 @@
 {
   "name": "run-openclaw-agents",
   "description": "Orchestrating OpenClaw multi-agent systems — spawning sub-agents, managing sessions, ACP routing, and cross-agent messaging",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Yigit Konur"
   }

@@ -1,7 +1,7 @@
 {
   "name": "plan-issue-tree",
   "description": "Planning a project as GitHub Issues with sub-issues, wave-based execution order, labels, and dependency wiring via the gh CLI",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Yigit Konur"
   }
