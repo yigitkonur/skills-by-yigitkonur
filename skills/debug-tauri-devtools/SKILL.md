@@ -1,6 +1,7 @@
 ---
 name: debug-tauri-devtools
-description: Use skill if you are debugging a runnable Tauri app with CrabNebula DevTools, or need to install/connect DevTools to inspect Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets.
+description: >-
+  Use skill if you are debugging a Tauri app with CrabNebula DevTools — inspecting Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets.
 ---
 
 # Debug Tauri DevTools

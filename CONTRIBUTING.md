@@ -72,27 +72,28 @@ Good reference docs:
 
 3. **Add reference docs** if the skill needs them — make sure every file is explicitly referenced in `SKILL.md`.
 
-4. **Test locally**:
-   - install the single skill:
-     ```bash
-     npx skills add ./skills/my-skill
-     ```
-   - optionally test the whole repo install behavior:
-     ```bash
-     npx skills add .
-     ```
+4. **Validate locally** (catches errors before CI):
+   ```bash
+   python3 scripts/validate-skills.py
+   ```
+   This checks reference linkage, frontmatter format, junk files, and marketplace consistency.
 
-5. **Check trigger collisions** — if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
+5. **Test install**:
+   ```bash
+   npx skills add ./skills/my-skill
+   ```
 
-6. **Regenerate marketplace files**:
+6. **Check trigger collisions** — if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
+
+7. **Regenerate marketplace files**:
    ```bash
    python3 scripts/generate-marketplace.py
    ```
    This updates `.claude-plugin/marketplace.json` and creates `skills/<name>/.claude-plugin/plugin.json`. If the skill is new, add its category to the `CATEGORIES` dict in the script first.
 
-7. **Update `README.md`** — add a row to the skills table (alphabetical order).
+8. **Update `README.md`** — add a row to the skills table (alphabetical order).
 
-8. **Open a PR**.
+9. **Open a PR**.
 
 ---
 
@@ -125,6 +126,24 @@ Before submitting:
 - If you rename a skill, update the directory name, frontmatter `name`, frontmatter `description`, README label, and any cross-skill references together
 - If you edit an existing skill without renaming it, normalize the frontmatter `description` to the current repo standard before you finish
 - Re-check install paths, README label, description format, and cross-skill references after any rename or scope change
+
+---
+
+## Pre-push Hook (Recommended)
+
+Enable the git hook to block pushes when validation fails:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This runs `scripts/validate-skills.py --quick` before every push. The hook catches:
+- Orphaned reference files not linked from SKILL.md
+- SKILL.md referencing non-existent files
+- Bad frontmatter (wrong name, missing "Use skill if you are", >30 words)
+- Junk files (evals/, .DS_Store, LICENSE inside skills)
+
+The full validation (including marketplace consistency) runs in CI.
 
 ---
 

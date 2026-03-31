@@ -1,6 +1,7 @@
 ---
 name: run-research
-description: Use skill if you are researching a bug, library choice, architecture trade-off, pricing, security advisory, or any technical question where current web evidence, Reddit practitioner experience, and multi-source synthesis would change the recommendation.
+description: >-
+  Use skill if you are researching a bug, library choice, architecture trade-off, or technical question where current web evidence, Reddit experience, and multi-source synthesis matter.
 ---
 
 # Multi-Source Technical Research

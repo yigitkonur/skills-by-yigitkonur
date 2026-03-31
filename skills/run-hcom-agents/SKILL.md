@@ -1,6 +1,7 @@
 ---
 name: run-hcom-agents
-description: Use skill if you are orchestrating multiple AI coding agents via hcom — launching headless Claude or Codex agents, messaging between them, writing multi-agent workflow scripts, or applying patterns like worker-reviewer loops, ensemble consensus, and cascade pipelines.
+description: >-
+  Use skill if you are orchestrating multiple AI coding agents via hcom — launching headless agents, messaging between them, or writing multi-agent workflow scripts with patterns like worker-reviewer loops.
 ---
 
 # Run hcom Agents

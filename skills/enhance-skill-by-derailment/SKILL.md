@@ -1,6 +1,7 @@
 ---
 name: enhance-skill-by-derailment
-description: "Use skill if you are improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find where instructions break, and fixing the skill directly."
+description: >-
+  Use skill if you are improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find breaks, and applying fixes.
 ---
 
 # Enhance Skill by Using

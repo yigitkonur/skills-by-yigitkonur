@@ -1,6 +1,6 @@
 {
   "name": "debug-tauri-devtools",
-  "description": "Debugging a runnable Tauri app with CrabNebula DevTools, or need to install/connect DevTools to inspect Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets",
+  "description": "Debugging a Tauri app with CrabNebula DevTools — inspecting Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets",
   "version": "1.0.0",
   "author": {
     "name": "Yigit Konur"
