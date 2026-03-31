@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-49 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+47 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -68,8 +68,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | MCP server audit and optimization |
 | [optimize-swift-linter](skills/optimize-swift-linter/) | development | Swift code quality: SwiftLint, Airbnb rules, macOS/iOS patterns |
 | [plan-issue-tree](skills/plan-issue-tree/) | productivity | GitHub Issues with sub-issues and waves |
-| [plan-prd](skills/plan-prd/) | productivity | Product requirements documents |
-| [plan-work](skills/plan-work/) | productivity | Structured planning and decision-making |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
@@ -83,7 +81,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-openclaw-deploy](skills/run-openclaw-deploy/) | platform | OpenClaw production deployment |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
 | [run-research](skills/run-research/) | productivity | Multi-source technical research with web search, Reddit practitioner mining, page scraping, and AI synthesis. Includes 3 reference docs: tool parameters, research workflows, synthesis methods. |
-| [run-seo-analysis](skills/run-seo-analysis/) | marketing | SEO workflows with MCP Marketers |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc CLI |
 | [use-skill-dl-util](skills/use-skill-dl-util/) | productivity | Skill search and download via skill-dl |
 

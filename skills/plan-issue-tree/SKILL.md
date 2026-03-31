@@ -14,7 +14,7 @@ Use when planning any project, feature, or complex task using GitHub Issues with
 Do NOT use when:
 - Executing an existing issue plan (use `run-issue-plan`)
 - Reviewing a PR (use `review-pr`)
-- General planning without GitHub Issues (use `plan-work`)
+- General planning without GitHub Issues
 
 ## Prerequisites
 

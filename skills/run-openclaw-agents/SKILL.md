@@ -26,7 +26,7 @@ Coordinate multi-agent work at runtime: spawn sub-agents, manage sessions, route
 - Building a new OpenClaw plugin (use `build-openclaw-plugin`)
 - Building a new OpenClaw skill (use `build-openclaw-skill`)
 - Doing browser automation without multi-agent coordination (use `run-agent-browser`)
-- Planning work decomposition without runtime orchestration (use `plan-work` or `plan-issue-tree`)
+- Planning work decomposition without runtime orchestration (use `plan-issue-tree`)
 
 ## Non-negotiable rules
 

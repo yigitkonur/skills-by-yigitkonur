@@ -17,9 +17,7 @@ Generate agent configuration that reflects the actual repository, not a generic 
 
 ## Do not use this skill for
 
-- `.github/copilot-instructions.md` or `*.instructions.md` review config -> use `init-copilot-review`
-- `REVIEW.md` or Devin-specific review setup -> use `init-devin-review`
-- Greptile config setup -> use `init-greptile-review`
+- AI code review config for Copilot, Devin, or Greptile -> use `init-review`
 - writing generic "AI coding guidelines" without inspecting a real repository
 
 ## Non-negotiables
