@@ -4,8 +4,9 @@
 Checks:
   1. Reference linkage — every file in references/ must be linked from SKILL.md
   2. Frontmatter — name matches directory, description format and word count
-  3. Marketplace consistency — every skill has plugin.json and marketplace entry
-  4. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
+  3. SKILL.md length — SKILL.md must stay under 500 lines
+  4. Marketplace consistency — every skill has plugin.json and marketplace entry
+  5. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
 
 Usage:
     python3 scripts/validate-skills.py          # full validation, exit 1 on errors
@@ -23,6 +24,7 @@ SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
 JUNK_PATTERNS = {".DS_Store", ".swp", "Thumbs.db", ".gitkeep"}
 JUNK_DIRS = {"evals", "__pycache__"}
 BANNED_FILES_IN_SKILL = {"LICENSE", "LICENSE.md", "README.md", "CHANGELOG.md"}
+MAX_SKILL_MD_LINES = 500
 
 
 def parse_frontmatter(skill_md_path):
@@ -170,6 +172,24 @@ def check_junk(skill_name, skill_dir):
     return errors
 
 
+def check_skill_length(skill_dir):
+    """Check that SKILL.md remains under the line budget."""
+    errors = []
+    skill_md = os.path.join(skill_dir, "SKILL.md")
+    if not os.path.isfile(skill_md):
+        return errors
+
+    with open(skill_md) as fh:
+        line_count = sum(1 for _ in fh)
+
+    if line_count > MAX_SKILL_MD_LINES:
+        errors.append(
+            f"SKILL.md is {line_count} lines (max {MAX_SKILL_MD_LINES})"
+        )
+
+    return errors
+
+
 def check_marketplace():
     """Check marketplace.json and plugin.json consistency."""
     errors = []
@@ -233,6 +253,7 @@ def main():
 
         skill_errors = []
         skill_errors.extend(check_frontmatter(skill_name, skill_dir))
+        skill_errors.extend(check_skill_length(skill_dir))
         skill_errors.extend(check_references(skill_name, skill_dir))
         skill_errors.extend(check_junk(skill_name, skill_dir))
 
@@ -263,6 +284,27 @@ def main():
 
     for e in marketplace_errors:
         print(f"  {e}")
+
+    flattened_errors = [e for errs in all_errors.values() for e in errs] + marketplace_errors
+    has_reference_errors = any(
+        "orphaned reference not linked from SKILL.md" in e
+        or "references non-existent file" in e
+        or "glob pattern" in e
+        for e in flattened_errors
+    )
+    has_length_errors = any("SKILL.md is" in e and "lines (max" in e for e in flattened_errors)
+
+    if has_reference_errors or has_length_errors:
+        print("\nHow to fix:")
+        if has_reference_errors:
+            print("  • Reference linkage:")
+            print("      - Every file under references/ must be explicitly mentioned in SKILL.md.")
+            print("      - Remove stale links to files that no longer exist.")
+        if has_length_errors:
+            print(f"  • SKILL.md length (max {MAX_SKILL_MD_LINES} lines):")
+            print("      - Move deep detail into references/ files (nested folders are encouraged).")
+            print("      - Keep SKILL.md focused on trigger logic, workflow, decision rules, and routing.")
+            print("      - Link every newly added references/*.md file from SKILL.md to preserve context.")
 
     print(
         "\n"

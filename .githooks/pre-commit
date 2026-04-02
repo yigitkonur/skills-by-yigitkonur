@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Pre-commit hook: quick skill validation with actionable feedback.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+VALIDATOR="$REPO_ROOT/scripts/validate-skills.py"
+
+if [ ! -f "$VALIDATOR" ]; then
+    echo "⚠️  scripts/validate-skills.py not found — skipping pre-commit validation"
+    exit 0
+fi
+
+echo "🔎 Running pre-commit skill validation..."
+echo ""
+
+if ! python3 "$VALIDATOR" --quick; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ COMMIT BLOCKED: skill validation failed"
+    echo ""
+    echo "  Fix the file-level issues reported above."
+    echo ""
+    echo "  If SKILL.md length exceeds 500 lines:"
+    echo "    1) Move detailed content into references/<topic>/... markdown files"
+    echo "       (nested folders are encouraged)."
+    echo "    2) Keep SKILL.md as a concise router and workflow."
+    echo "    3) Link every new references file from SKILL.md."
+    echo ""
+    echo "  Re-run quick check:"
+    echo "    python3 scripts/validate-skills.py --quick"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exit 1
+fi
+
+echo "✅ Pre-commit checks passed"
