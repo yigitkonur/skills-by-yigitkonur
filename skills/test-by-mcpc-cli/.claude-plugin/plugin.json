@@ -1,7 +1,7 @@
 {
   "name": "test-by-mcpc-cli",
   "description": "Testing or debugging MCP servers with mcpc CLI across stdio, HTTP stateless, and HTTP stateful transports — tool calling, schema validation, and automated test scripts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Yigit Konur"
   }
