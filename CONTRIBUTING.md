@@ -9,14 +9,20 @@ Before naming or documenting a skill, read **[NAMING.md](NAMING.md)**. Directory
 Every skill lives in `skills/<skill-name>/` and follows this layout:
 
 ```
-skills/my-skill/
-├── SKILL.md                    # Required — the skill definition
-└── references/
-    ├── topic-one.md            # Optional — deep-dive reference docs
-    ├── topic-two.md
-    └── nested-domain/          # Optional — nested grouping for large skills
-        └── detail.md
+skills/my-skill/                    # Plugin root (installed by Claude Code)
+├── .claude-plugin/
+│   └── plugin.json                 # Auto-generated plugin manifest
+└── skills/
+    └── my-skill/                   # Skill content dir (must match plugin name)
+        ├── SKILL.md                # Required — the skill definition
+        └── references/
+            ├── topic-one.md        # Optional — deep-dive reference docs
+            ├── topic-two.md
+            └── nested-domain/      # Optional — nested grouping for large skills
+                └── detail.md
 ```
+
+The `skills/<name>/` subdirectory inside the plugin root is required for Claude Code to discover and activate the skill.
 
 ### SKILL.md
 
@@ -65,10 +71,11 @@ Good reference docs:
 
 1. **Create the directory** with the canonical name from `NAMING.md`.
    ```bash
-   mkdir -p skills/my-skill/references
+   mkdir -p skills/my-skill/skills/my-skill/references
+   mkdir -p skills/my-skill/.claude-plugin
    ```
 
-2. **Write `SKILL.md`** — start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
+2. **Write `SKILL.md`** at `skills/my-skill/skills/my-skill/SKILL.md` — start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
 
 3. **Add reference docs** if the skill needs them — make sure every file is explicitly referenced in `SKILL.md`.
 
@@ -80,7 +87,7 @@ Good reference docs:
 
 5. **Test install**:
    ```bash
-   npx skills add ./skills/my-skill
+   claude --plugin-dir ./skills/my-skill
    ```
 
 6. **Check trigger collisions** — if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
@@ -101,6 +108,7 @@ Good reference docs:
 
 Before submitting:
 
+- [ ] SKILL.md is at `skills/<name>/skills/<name>/SKILL.md` (required for Claude Code activation)
 - [ ] `name` in `SKILL.md` frontmatter matches the directory name exactly
 - [ ] `description` starts with `Use skill if you are`
 - [ ] `description` is 30 words or fewer
