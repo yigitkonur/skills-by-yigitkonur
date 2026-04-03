@@ -111,7 +111,7 @@ def generate():
 
     for skill_name in sorted(os.listdir(SKILLS_DIR)):
         skill_dir = os.path.join(SKILLS_DIR, skill_name)
-        skill_md = os.path.join(skill_dir, "SKILL.md")
+        skill_md = os.path.join(skill_dir, "skills", skill_name, "SKILL.md")
 
         if not os.path.isdir(skill_dir) or not os.path.isfile(skill_md):
             continue
@@ -207,7 +207,7 @@ def generate():
         d
         for d in os.listdir(SKILLS_DIR)
         if os.path.isdir(os.path.join(SKILLS_DIR, d))
-        and os.path.isfile(os.path.join(SKILLS_DIR, d, "SKILL.md"))
+        and os.path.isfile(os.path.join(SKILLS_DIR, d, "skills", d, "SKILL.md"))
     }
     plugin_names = {p["name"] for p in plugins}
     missing = skill_dirs - plugin_names

@@ -1,7 +1,7 @@
 {
   "name": "build-hcom-systems",
   "description": "Building applications or automation systems on hcom — multi-agent architectures, custom workflow scripts, CI/CD integration, or understanding hcom internals like hooks, SQLite, relay, and events",
-  "version": "1.0.1",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "47 skills for AI coding agents.",
-    "version": "1.0.3"
+    "version": "7.0.0"
   },
   "plugins": [
     {
       "name": "build-chrome-extension",
       "description": "Building or debugging a Chrome extension with Manifest V3 — service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -21,7 +21,7 @@
     {
       "name": "build-convex-clerk-swiftui",
       "description": "Building a SwiftUI app with Convex backend and Clerk auth — covers reactive subscriptions, TypeScript server functions, schema design, auth integration, and iOS/macOS production patterns",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -31,7 +31,7 @@
     {
       "name": "build-copilot-sdk-app",
       "description": "Building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -41,7 +41,7 @@
     {
       "name": "build-daisyui-mcp",
       "description": "Building UI with daisyUI components, converting Figma designs or screenshots to daisyUI code, or generating themes using the daisyui-blueprint MCP server",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -51,7 +51,7 @@
     {
       "name": "build-hcom-systems",
       "description": "Building applications or automation systems on hcom — multi-agent architectures, custom workflow scripts, CI/CD integration, or understanding hcom internals like hooks, SQLite, relay, and events",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -61,7 +61,7 @@
     {
       "name": "build-langchain-ts-app",
       "description": "Building TypeScript agents, RAG pipelines, or tool-calling workflows with LangChain.js and LangGraph",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -71,7 +71,7 @@
     {
       "name": "build-mcp-use-agent",
       "description": "Building TypeScript AI agents with mcp-use MCPAgent — configuration, LLM integration, streaming, structured output, observability, and production deployment",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -81,7 +81,7 @@
     {
       "name": "build-mcp-use-apps-widgets",
       "description": "Building or fixing an mcp-use server that renders React widgets and needs useWidget, useCallTool, streaming, CSP, or ChatGPT/MCP Apps compatibility",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -91,7 +91,7 @@
     {
       "name": "build-mcp-use-client",
       "description": "Building MCP client applications with the mcp-use TypeScript SDK — MCPClient, sessions, tools, resources, React hooks, code mode, and authentication",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -101,7 +101,7 @@
     {
       "name": "build-mcp-use-server",
       "description": "Building or extending TypeScript MCP servers with the mcp-use library — tools, Zod schemas, resources, prompts, transports, OAuth, sessions, testing, and deployment",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -111,7 +111,7 @@
     {
       "name": "build-openclaw-plugin",
       "description": "Building OpenClaw plugins — registering tools, channels, model providers, writing plugin manifests, and configuring tool profiles",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -121,7 +121,7 @@
     {
       "name": "build-openclaw-skill",
       "description": "Creating, testing, or publishing OpenClaw skills and need SKILL.md structure, metadata gating, reference routing, or ClawHub guidance",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -131,7 +131,7 @@
     {
       "name": "build-openclaw-workflow",
       "description": "Building OpenClaw automation — Lobster typed workflows, cron scheduled jobs, LLM task chains, and browser automation",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -141,7 +141,7 @@
     {
       "name": "build-raycast-script-command",
       "description": "Building or repairing Raycast Script Commands in Python or Bash and need correct metadata, output modes, arguments, discovery, or runtime behavior",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -151,7 +151,7 @@
     {
       "name": "build-skills",
       "description": "Creating or substantially revising a Claude skill and need workspace-first evidence, remote comparison, and repo-fit synthesis before writing SKILL.md",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -161,7 +161,7 @@
     {
       "name": "build-supastarter-app",
       "description": "Extending a Supastarter app with App Router pages, oRPC procedures, Better Auth flows, Prisma/Drizzle data work, billing, storage, or monorepo package changes",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -171,7 +171,7 @@
     {
       "name": "convert-snapshot-nextjs",
       "description": "Converting live websites or saved HTML snapshots into grounded Next.js pages with browser capture, self-hosted assets, extracted styles, and screenshot-led fidelity verification",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -181,7 +181,7 @@
     {
       "name": "convert-vue-nextjs",
       "description": "Converting Vue 2/3 or Nuxt components to Next.js App Router with React, including component mapping, state migration, routing, SSR, or ecosystem packages",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -191,7 +191,7 @@
     {
       "name": "debug-tauri-devtools",
       "description": "Debugging a Tauri app with CrabNebula DevTools — inspecting Rust logs, IPC calls, runtime config, plugin permissions, or bundled assets",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -201,7 +201,7 @@
     {
       "name": "develop-clean-architecture",
       "description": "Applying Clean Architecture layers, dependency direction, DDD entities, use cases, or strict TypeScript patterns to structure or audit a codebase",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -211,7 +211,7 @@
     {
       "name": "develop-macos-liquid-glass",
       "description": "Building, modernizing, or reviewing macOS SwiftUI code with Apple's Liquid Glass design system — glass toolbars, sidebars, windows, NSGlassEffectView, or migrating from NSVisualEffectView",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -221,7 +221,7 @@
     {
       "name": "develop-typebox-fastify",
       "description": "Building Fastify REST APIs with TypeBox schemas, type-provider-typebox, route validation, OpenAPI generation, plugins, hooks, inject() testing, or Drizzle/Prisma database integration",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -231,7 +231,7 @@
     {
       "name": "develop-typescript",
       "description": "Writing or reviewing framework-agnostic TypeScript and need strict typing, tsconfig/lint decisions, safer refactors, or guidance on generics, unions, and typed boundaries",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -241,7 +241,7 @@
     {
       "name": "enhance-prompt",
       "description": "Enhancing a prompt before sending it to an LLM or coding agent — adds narrative structure, thinking-steering, failure pre-emption, halt conditions, and verification layers",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -251,7 +251,7 @@
     {
       "name": "enhance-skill-by-derailment",
       "description": "Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find breaks, and applying fixes",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -261,7 +261,7 @@
     {
       "name": "extract-saas-design",
       "description": "Forensically documenting the visual system of an existing SaaS dashboard or admin UI into structured design docs, not rebuilding or redesigning it",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -271,7 +271,7 @@
     {
       "name": "init-agent-config",
       "description": "Generating, auditing, or migrating repo-grounded AGENTS.md and CLAUDE.md files, especially for dual-file setups, multi-agent compatibility, or converting existing agent config",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -281,7 +281,7 @@
     {
       "name": "init-openclaw-agent",
       "description": "Configuring an OpenClaw agent workspace or runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -291,7 +291,7 @@
     {
       "name": "init-review",
       "description": "Creating or refining AI code review config for GitHub Copilot, Devin Bug Catcher, Greptile, or any combination for a repository",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -301,7 +301,7 @@
     {
       "name": "optimize-mcp-server",
       "description": "Optimizing, auditing, or enhancing an MCP server's tool quality, error handling, security, context efficiency, or production readiness for any MCP SDK",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -311,7 +311,7 @@
     {
       "name": "optimize-swift-linter",
       "description": "Writing, reviewing, or setting up Swift code quality tooling for macOS/iOS apps — covers SwiftLint, SwiftFormat, Airbnb rules, architecture, testing, and platform-specific patterns",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -321,7 +321,7 @@
     {
       "name": "plan-issue-tree",
       "description": "Planning a project as GitHub Issues with sub-issues, wave-based execution order, labels, and dependency wiring via the gh CLI",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -331,7 +331,7 @@
     {
       "name": "publish-npm-package",
       "description": "Automating npm publishing via GitHub Actions and need auth, versioning, provenance, or workflow-template choices",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -341,7 +341,7 @@
     {
       "name": "review-pr",
       "description": "Reviewing a GitHub pull request or branch diff for merge readiness with high-signal findings grounded in stated goals and changed-file clusters",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -351,7 +351,7 @@
     {
       "name": "run-agent-browser",
       "description": "Driving the agent-browser CLI for browser navigation, DOM-grounded interaction, session/tab management, screenshots, data extraction, or repeatable web app workflows",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -361,7 +361,7 @@
     {
       "name": "run-comprehensive-research",
       "description": "Orchestrating multi-domain research across official docs, community forums, and practitioner experience with parallel researcher agents producing structured, implementation-ready documentation",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -371,7 +371,7 @@
     {
       "name": "run-github-repo-evaluate",
       "description": "Evaluating GitHub repositories for quality, maturity, and maintainer credibility using GraphQL batch queries, REST signals, and code-level analysis",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -381,7 +381,7 @@
     {
       "name": "run-github-repo-search",
       "description": "Searching GitHub for repositories matching a technology, pattern, library, or framework using diverse search hypotheses and gh CLI",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -391,7 +391,7 @@
     {
       "name": "run-github-scout",
       "description": "Finding the best GitHub repos for a technology need: searches, evaluates, and ranks repos using subagent swarms with automatic retry when results are weak",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -401,7 +401,7 @@
     {
       "name": "run-hcom-agents",
       "description": "Orchestrating multiple AI coding agents via hcom — launching headless agents, messaging between them, or writing multi-agent workflow scripts with patterns like worker-reviewer loops",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -411,7 +411,7 @@
     {
       "name": "run-issue-plan",
       "description": "Executing a project plan stored as GitHub Issues with sub-issues by reading the tree, dispatching subagents wave-by-wave, and tracking completion",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -421,7 +421,7 @@
     {
       "name": "run-openclaw-agents",
       "description": "Orchestrating OpenClaw multi-agent systems — spawning sub-agents, managing sessions, ACP routing, and cross-agent messaging",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -431,7 +431,7 @@
     {
       "name": "run-openclaw-deploy",
       "description": "Deploying OpenClaw to production — Docker containers, VPS setup, security hardening, gateway management, and monitoring",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -441,7 +441,7 @@
     {
       "name": "run-playwright",
       "description": "Controlling a live browser with @anthropic-ai/playwright-cli for navigation, forms, screenshots, tab workflows, or interactive debugging from the terminal",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -451,7 +451,7 @@
     {
       "name": "run-research",
       "description": "Researching a bug, library choice, architecture trade-off, or technical question where current web evidence, Reddit experience, and multi-source synthesis matter",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -461,7 +461,7 @@
     {
       "name": "test-by-mcpc-cli",
       "description": "Testing or debugging MCP servers with mcpc CLI across stdio, HTTP stateless, and HTTP stateful transports — tool calling, schema validation, and automated test scripts",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },
@@ -471,7 +471,7 @@
     {
       "name": "use-skill-dl-util",
       "description": "Searching, discovering, and downloading AI coding skills using skill-dl with Serper-powered search and batch downloads",
-      "version": "1.0.0",
+      "version": "7.0.0",
       "author": {
         "name": "Yigit Konur"
       },

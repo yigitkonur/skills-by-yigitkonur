@@ -1,7 +1,7 @@
 {
   "name": "init-agent-config",
   "description": "Generating, auditing, or migrating repo-grounded AGENTS.md and CLAUDE.md files, especially for dual-file setups, multi-agent compatibility, or converting existing agent config",
-  "version": "1.0.1",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

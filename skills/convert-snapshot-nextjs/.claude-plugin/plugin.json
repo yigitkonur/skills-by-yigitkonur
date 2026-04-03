@@ -1,7 +1,7 @@
 {
   "name": "convert-snapshot-nextjs",
   "description": "Converting live websites or saved HTML snapshots into grounded Next.js pages with browser capture, self-hosted assets, extracted styles, and screenshot-led fidelity verification",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

@@ -1,7 +1,7 @@
 {
   "name": "run-research",
   "description": "Researching a bug, library choice, architecture trade-off, or technical question where current web evidence, Reddit experience, and multi-source synthesis matter",
-  "version": "1.0.1",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

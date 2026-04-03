@@ -1,7 +1,7 @@
 {
   "name": "run-github-repo-search",
   "description": "Searching GitHub for repositories matching a technology, pattern, library, or framework using diverse search hypotheses and gh CLI",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }
