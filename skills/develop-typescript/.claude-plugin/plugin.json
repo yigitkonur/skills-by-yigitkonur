@@ -1,7 +1,7 @@
 {
   "name": "develop-typescript",
   "description": "Writing or reviewing framework-agnostic TypeScript and need strict typing, tsconfig/lint decisions, safer refactors, or guidance on generics, unions, and typed boundaries",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

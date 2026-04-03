@@ -1,7 +1,7 @@
 {
   "name": "run-comprehensive-research",
   "description": "Orchestrating multi-domain research across official docs, community forums, and practitioner experience with parallel researcher agents producing structured, implementation-ready documentation",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

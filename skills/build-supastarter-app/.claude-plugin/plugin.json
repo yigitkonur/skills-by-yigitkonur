@@ -1,7 +1,7 @@
 {
   "name": "build-supastarter-app",
   "description": "Extending a Supastarter app with App Router pages, oRPC procedures, Better Auth flows, Prisma/Drizzle data work, billing, storage, or monorepo package changes",
-  "version": "1.0.1",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

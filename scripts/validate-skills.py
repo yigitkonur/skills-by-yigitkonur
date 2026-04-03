@@ -27,6 +27,11 @@ BANNED_FILES_IN_SKILL = {"LICENSE", "LICENSE.md", "README.md", "CHANGELOG.md"}
 MAX_SKILL_MD_LINES = 500
 
 
+def skill_content_dir(skill_dir, skill_name):
+    """Return the path to the skill content directory (SKILL.md + references/)."""
+    return os.path.join(skill_dir, "skills", skill_name)
+
+
 def parse_frontmatter(skill_md_path):
     """Extract name and description from SKILL.md YAML frontmatter."""
     with open(skill_md_path) as f:
@@ -55,11 +60,21 @@ def parse_frontmatter(skill_md_path):
     return name, description
 
 
+def check_structure(skill_name, skill_dir):
+    """Verify SKILL.md is in the correct plugin subdirectory for Claude Code discovery."""
+    errors = []
+    expected = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
+    if not os.path.isfile(expected):
+        errors.append(f"SKILL.md not found at expected path: skills/{skill_name}/SKILL.md")
+    return errors
+
+
 def check_references(skill_name, skill_dir):
     """Check that every reference file is linked from SKILL.md and vice versa."""
     errors = []
-    refs_dir = os.path.join(skill_dir, "references")
-    skill_md = os.path.join(skill_dir, "SKILL.md")
+    content_dir = skill_content_dir(skill_dir, skill_name)
+    refs_dir = os.path.join(content_dir, "references")
+    skill_md = os.path.join(content_dir, "SKILL.md")
 
     if not os.path.isdir(refs_dir) or not os.path.isfile(skill_md):
         return errors
@@ -69,7 +84,7 @@ def check_references(skill_name, skill_dir):
     for root, _dirs, files in os.walk(refs_dir):
         for f in files:
             if f.endswith(".md"):
-                rel = os.path.relpath(os.path.join(root, f), skill_dir)
+                rel = os.path.relpath(os.path.join(root, f), content_dir)
                 on_disk.add(rel)
 
     if not on_disk:
@@ -118,7 +133,7 @@ def check_references(skill_name, skill_dir):
 def check_frontmatter(skill_name, skill_dir):
     """Check frontmatter name, description format, and word count."""
     errors = []
-    skill_md = os.path.join(skill_dir, "SKILL.md")
+    skill_md = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
 
     if not os.path.isfile(skill_md):
         errors.append("missing SKILL.md")
@@ -165,17 +180,17 @@ def check_junk(skill_name, skill_dir):
                 rel = os.path.relpath(os.path.join(root, f), skill_dir)
                 errors.append(f"junk file: {rel}")
             if f in BANNED_FILES_IN_SKILL:
-                # Only at skill root level
-                if root == skill_dir:
+                # At skill root level or skill content dir root
+                if root == skill_dir or root == skill_content_dir(skill_dir, skill_name):
                     errors.append(f"banned file in skill root: {f}")
 
     return errors
 
 
-def check_skill_length(skill_dir):
+def check_skill_length(skill_name, skill_dir):
     """Check that SKILL.md remains under the line budget."""
     errors = []
-    skill_md = os.path.join(skill_dir, "SKILL.md")
+    skill_md = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
     if not os.path.isfile(skill_md):
         return errors
 
@@ -209,7 +224,7 @@ def check_marketplace():
         skill_dir = os.path.join(SKILLS_DIR, skill_name)
         if not os.path.isdir(skill_dir):
             continue
-        skill_md = os.path.join(skill_dir, "SKILL.md")
+        skill_md = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
         if not os.path.isfile(skill_md):
             continue
 
@@ -252,8 +267,9 @@ def main():
             continue
 
         skill_errors = []
+        skill_errors.extend(check_structure(skill_name, skill_dir))
         skill_errors.extend(check_frontmatter(skill_name, skill_dir))
-        skill_errors.extend(check_skill_length(skill_dir))
+        skill_errors.extend(check_skill_length(skill_name, skill_dir))
         skill_errors.extend(check_references(skill_name, skill_dir))
         skill_errors.extend(check_junk(skill_name, skill_dir))
 

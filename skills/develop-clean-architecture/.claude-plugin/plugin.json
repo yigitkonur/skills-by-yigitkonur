@@ -1,7 +1,7 @@
 {
   "name": "develop-clean-architecture",
   "description": "Applying Clean Architecture layers, dependency direction, DDD entities, use cases, or strict TypeScript patterns to structure or audit a codebase",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

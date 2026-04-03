@@ -1,7 +1,7 @@
 {
   "name": "convert-vue-nextjs",
   "description": "Converting Vue 2/3 or Nuxt components to Next.js App Router with React, including component mapping, state migration, routing, SSR, or ecosystem packages",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }

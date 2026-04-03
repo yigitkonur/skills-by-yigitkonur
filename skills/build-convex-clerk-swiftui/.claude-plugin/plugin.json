@@ -1,7 +1,7 @@
 {
   "name": "build-convex-clerk-swiftui",
   "description": "Building a SwiftUI app with Convex backend and Clerk auth — covers reactive subscriptions, TypeScript server functions, schema design, auth integration, and iOS/macOS production patterns",
-  "version": "1.0.0",
+  "version": "7.0.0",
   "author": {
     "name": "Yigit Konur"
   }
