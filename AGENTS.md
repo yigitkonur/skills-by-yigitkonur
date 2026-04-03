@@ -8,10 +8,12 @@ This is a Claude Code plugin marketplace containing 47 skills for AI coding agen
 .
 ├── skills/                         # All skills live here
 │   └── <verb>-<object>/            # Each skill directory (one per plugin)
-│       ├── SKILL.md                # Required -- the skill definition (hand-written)
 │       ├── .claude-plugin/
 │       │   └── plugin.json         # Auto-generated plugin manifest (name, description, version)
-│       └── references/             # Optional -- deep-dive docs routed from SKILL.md
+│       └── skills/
+│           └── <verb>-<object>/    # Skill content dir (matches plugin name)
+│               ├── SKILL.md        # Required -- the skill definition (hand-written)
+│               └── references/     # Optional -- deep-dive docs routed from SKILL.md
 ├── scripts/
 │   ├── validate-skills.py          # Validates all skills (references, frontmatter, junk, marketplace)
 │   ├── generate-marketplace.py     # Generates marketplace.json + per-skill plugin.json from frontmatter
@@ -82,13 +84,13 @@ The root file at `.claude-plugin/marketplace.json` follows the official Claude C
   "owner": { "name": "Yigit Konur" },
   "metadata": {
     "description": "47 skills for AI coding agents.",
-    "version": "1.0.2"
+    "version": "7.0.0"
   },
   "plugins": [
     {
       "name": "review-pr",
       "description": "Systematic pull request review with evidence-based workflow...",
-      "version": "1.0.1",
+      "version": "7.0.0",
       "author": { "name": "Yigit Konur" },
       "source": "./skills/review-pr",
       "category": "productivity"
@@ -109,7 +111,7 @@ Each skill has `skills/<name>/.claude-plugin/plugin.json`:
 {
   "name": "review-pr",
   "description": "Systematic pull request review...",
-  "version": "1.0.1",
+  "version": "7.0.0",
   "author": { "name": "Yigit Konur" }
 }
 ```
@@ -201,10 +203,13 @@ Build a comparison table before synthesizing. Never copy a source skill wholesal
 ### 3. Create the skill directory
 
 ```bash
-mkdir -p skills/<skill-name>/references
+mkdir -p skills/<skill-name>/skills/<skill-name>/references
+mkdir -p skills/<skill-name>/.claude-plugin
 ```
 
 ### 4. Write SKILL.md
+
+Write the skill definition at `skills/<skill-name>/skills/<skill-name>/SKILL.md`.
 
 **Frontmatter** (required):
 ```yaml
@@ -275,7 +280,7 @@ This catches: orphaned references not linked from SKILL.md, SKILL.md referencing
 ### 9. Push
 
 ```bash
-git add skills/<skill-name>/ .claude-plugin/marketplace.json README.md scripts/generate-marketplace.py
+git add skills/<skill-name>/ .claude-plugin/marketplace.json README.md scripts/generate-marketplace.py NAMING.md
 git commit -m "feat: add <skill-name> skill"
 git push
 ```
@@ -300,6 +305,7 @@ Use the `enhance-skill-by-derailment` workflow: launch a Sonnet subagent with a 
 Before finishing any skill work:
 
 - [ ] Directory name starts with a verb prefix from the registry
+- [ ] SKILL.md is at `skills/<name>/skills/<name>/SKILL.md` (required for Claude Code activation)
 - [ ] Frontmatter `name` exactly matches directory name
 - [ ] Description starts with `Use skill if you are`, 30 words or fewer
 - [ ] Description includes concrete trigger phrases, not body summary

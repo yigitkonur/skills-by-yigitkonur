@@ -42,7 +42,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `build-` vs `convert-` — `build-` starts from requirements; `convert-` starts from an existing artifact in a different format
 - `build-` vs `develop-` — `build-` is framework-specific ("build a Supastarter app"); `develop-` is language-level ("write TypeScript correctly")
 
-**Current skills:** `build-chrome-extension`, `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-hcom-systems`, `build-langchain-ts-app`, `build-mcp-use-agent`, `build-mcp-use-apps-widgets`, `build-mcp-use-client`, `build-mcp-use-server`, `build-openclaw-plugin`, `build-openclaw-skill`, `build-openclaw-workflow`, `build-raycast-script-command`, `build-skills`, `build-supastarter-app`
+**Current skills:** `build-chrome-extension`, `build-convex-clerk-swiftui`, `build-copilot-sdk-app`, `build-daisyui-mcp`, `build-hcom-systems`, `build-langchain-ts-app`, `build-mcp-use-agent`, `build-mcp-use-apps-widgets`, `build-mcp-use-client`, `build-mcp-use-server`, `build-openclaw-plugin`, `build-openclaw-skill`, `build-openclaw-workflow`, `build-raycast-script-command`, `build-skills`, `build-supastarter-app`
 
 ---
 
@@ -114,6 +114,24 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 
 ---
 
+### `enhance-`
+
+**Definition:** Test and improve the instructional quality of an existing skill, prompt, or agent artifact by running it through real-world usage, analyzing failure points, and applying targeted fixes.
+
+**Boundary:** The skill improves *instruction quality* through empirical testing. If the skill creates something new from scratch, it's `build-`. If it audits code, it's `review-` or `optimize-`.
+
+**Use when:** The agent improves a skill's SKILL.md by running it, reading the execution trace, and fixing instruction gaps. Or when the agent restructures a prompt for better LLM performance.
+**Not when:** The agent creates a skill from scratch (`build-skills`), reviews code (`review-`), or runs verification tests (`test-`).
+
+**Disambiguation:**
+- `enhance-` vs `build-` — `enhance-` improves an existing artifact's quality; `build-` creates from scratch
+- `enhance-` vs `optimize-` — `enhance-` focuses on instructional/prompt quality; `optimize-` focuses on system performance
+- `enhance-` vs `test-` — `enhance-` includes the fix step; `test-` only verifies
+
+**Current skills:** `enhance-prompt`, `enhance-skill-by-derailment`
+
+---
+
 ### `init-`
 
 **Definition:** Generate configuration, instruction, or setup files that a third-party tool or platform reads. The skill analyzes the user's repo and produces tailored config files — not application code.
@@ -146,7 +164,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `optimize-` vs `review-` — `optimize-` actively applies improvements; `review-` only evaluates
 - `optimize-` vs `develop-` — `optimize-` is system-specific (MCP servers); `develop-` is language-wide (TypeScript)
 
-**Current skills:** `optimize-mcp-server`
+**Current skills:** `optimize-mcp-server`, `optimize-swift-linter`
 
 ---
 
@@ -233,7 +251,26 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `test-` vs `run-` — `test-` is specifically about verification; `run-` is about general tool execution
 - `test-` vs `review-` — `test-` runs the code and checks output; `review-` reads the code and checks quality
 
-**Current skills:** `test-by-mcpc-cli`, `enhance-skill-by-derailment`
+**Current skills:** `test-by-mcpc-cli`
+
+---
+
+### `use-`
+
+**Definition:** Drive a specific CLI utility to accomplish a targeted workflow. The skill teaches the agent the correct commands, flags, and patterns for a particular utility.
+
+**Boundary:** Scoped to a *single CLI utility* with a focused workflow. If the tool is a browser or multi-step external API, prefer `run-`. If the tool generates config once, prefer `init-`.
+
+**Use when:** The agent operates a single CLI utility for a specific task (downloading skills, formatting files, etc.).
+**Not when:** The agent drives a browser or multi-step API workflow (`run-`), generates config files (`init-`), or runs verification suites (`test-`).
+
+**Disambiguation:**
+- `use-` vs `run-` — `use-` is a single-utility focused workflow; `run-` is broader external tool/API orchestration
+- `use-` vs `init-` — `use-` executes the tool repeatedly; `init-` generates files once
+
+**Current skills:** `use-skill-dl-util`
+
+---
 
 ## Choosing a Prefix — Decision Tree
 
@@ -251,6 +288,9 @@ What does the skill primarily do?
 │
 ├─ Applies language-level patterns and standards while coding?
 │  └─► develop-
+│
+├─ Tests and improves instructional quality of a skill or prompt?
+│  └─► enhance-
 │
 ├─ Reads a codebase and produces design documentation?
 │  └─► extract-
@@ -275,6 +315,9 @@ What does the skill primarily do?
 │
 ├─ Runs verification/validation checks with pass/fail criteria?
 │  └─► test-
+│
+├─ Drives a single CLI utility for a focused workflow?
+│  └─► use-
 │
 └─ None of the above?
    └─► Propose a new prefix (see "Adding a New Verb Prefix")
@@ -362,6 +405,7 @@ When renaming a published skill:
 ## Current Canonical Skill Names
 
 - `build-chrome-extension`
+- `build-convex-clerk-swiftui`
 - `build-copilot-sdk-app`
 - `build-daisyui-mcp`
 - `build-hcom-systems`
@@ -383,11 +427,14 @@ When renaming a published skill:
 - `develop-macos-liquid-glass`
 - `develop-typebox-fastify`
 - `develop-typescript`
+- `enhance-prompt`
+- `enhance-skill-by-derailment`
 - `extract-saas-design`
 - `init-agent-config`
 - `init-openclaw-agent`
 - `init-review`
 - `optimize-mcp-server`
+- `optimize-swift-linter`
 - `plan-issue-tree`
 - `publish-npm-package`
 - `review-pr`
@@ -404,4 +451,3 @@ When renaming a published skill:
 - `run-research`
 - `test-by-mcpc-cli`
 - `use-skill-dl-util`
-- `enhance-skill-by-derailment`
