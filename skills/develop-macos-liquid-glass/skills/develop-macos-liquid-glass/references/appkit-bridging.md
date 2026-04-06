@@ -27,6 +27,8 @@ Stay in pure SwiftUI when:
 
 > **Rule of thumb:** Start in SwiftUI. Bridge only the specific view or subsystem that requires AppKit. Never wrap an entire window in `NSViewRepresentable` when only one control needs it.
 
+> **Critical constraint:** `NSGlassEffectView` has no `.state` property. When the hosting `NSWindow` is not the key window, glass renders significantly more opaque. There is no public API to force active glass on inactive windows (unlike `NSVisualEffectView.state = .active`). This is unresolved as of macOS 26.4 and breaks HUD-style floating windows. See `pitfalls-and-solutions.md` pitfall #30.
+
 ## NSViewRepresentable for NSGlassEffectView
 
 The most common bridge: wrapping `NSGlassEffectView` so you can set corner radius and tint color beyond what the SwiftUI modifier exposes.

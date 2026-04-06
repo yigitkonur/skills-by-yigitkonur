@@ -110,7 +110,7 @@ Informational    → No tint, no prominence           Just glass
 ### macOS-Specific Non-Negotiables
 
 - **`.interactive()` is iOS-only** — use `.onHover {}` on macOS
-- **`.tint(.clear)`** on all macOS glass buttons
+- **`.tint(.clear)`** on macOS glass secondary buttons (practitioner workaround for tint bleed, not official Apple guidance)
 - **`.scrollEdgeEffectStyle(.hard)`** is the macOS default
 - **TabView** uses `.tabViewStyle(.sidebarAdaptable)` on macOS
 - **Settings scene** must exist, bound to Cmd+Comma
@@ -125,7 +125,7 @@ Seeing ANY of these means the code is not native:
 - Hardcoded colors (`Color(red:)`, `Color("#hex")`) on glass
 - Fixed font sizes (`.system(size: 24)`) instead of text styles
 - `NavigationView` instead of `NavigationSplitView`/`NavigationStack`
-- `@StateObject`/`@ObservedObject` instead of `@Observable`
+- `@StateObject`/`@ObservedObject` instead of `@Observable` (superseded, not officially deprecated — but preferred for glass performance)
 - `.toolbarBackground(.visible)` on macOS 26
 - Missing keyboard shortcuts for Cmd+N, S, W, Z, Comma, Q
 - Custom window chrome instead of system toolbar
@@ -158,7 +158,7 @@ Seeing ANY of these means the code is not native:
 - [ ] `GlassEffectContainer` wraps every group of nearby glass elements
 
 ### macOS Native
-- [ ] `.tint(.clear)` on all glass buttons (macOS rendering requirement)
+- [ ] `.tint(.clear)` on secondary glass buttons (practitioner workaround for macOS tint bleed)
 - [ ] No `.interactive()` calls (iOS-only)
 - [ ] `.scrollEdgeEffectStyle` appropriate (macOS defaults `.hard`)
 - [ ] TabView uses `.tabViewStyle(.sidebarAdaptable)`
@@ -170,7 +170,7 @@ Seeing ANY of these means the code is not native:
 
 ### Modern APIs
 - [ ] No `NavigationView` (use `NavigationSplitView` / `NavigationStack`)
-- [ ] No `@StateObject`/`@ObservedObject` (use `@State` + `@Observable`)
+- [ ] No `@StateObject`/`@ObservedObject` (prefer `@State` + `@Observable` — not deprecated but superseded)
 - [ ] No `.foregroundColor()` (use `.foregroundStyle()`)
 - [ ] No `.toolbarBackground()` or `.presentationBackground()` on macOS 26
 - [ ] `#available(macOS 26, *)` gates all Liquid Glass APIs
