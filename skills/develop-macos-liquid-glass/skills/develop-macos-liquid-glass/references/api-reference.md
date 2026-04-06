@@ -25,7 +25,7 @@ func glassEffect(
 | Preset | Description | Typical use |
 |--------|-------------|-------------|
 | `.regular` | Default translucent glass with standard material and vibrancy | Toolbar items, tab bars, floating controls |
-| `.clear` | Minimal glass — nearly transparent until hovered/active | Secondary or de-emphasized controls |
+| `.clear` | Minimal glass — nearly transparent until hovered/active. **Note:** arrived in Xcode 26 beta 5, not the initial release. On macOS, does not fully replicate Control Center/Dock glass density. | Secondary or de-emphasized controls |
 | `.identity` | No glass effect rendered (opt-out while keeping the modifier in the chain) | Conditional toggling |
 
 #### `.tint(_:)` on Glass
@@ -442,7 +442,9 @@ glass.tintColor = .controlAccentColor // Optional tint applied to the glass
 | `cornerRadius` | `CGFloat` | Corner radius of the glass shape |
 | `tintColor` | `NSColor?` | Optional color tint composited into the glass material |
 
-> **Migration note:** `NSVisualEffectView` continues to work but does not produce the Liquid Glass appearance. To adopt the new design, replace `NSVisualEffectView` instances with `NSGlassEffectView`.
+> **Migration note:** `NSVisualEffectView` continues to work (it is NOT deprecated) but does not produce the Liquid Glass appearance. To adopt the new design, replace `NSVisualEffectView` instances with `NSGlassEffectView`.
+
+> **Critical production constraint:** `NSGlassEffectView` has NO `.state` property equivalent to `NSVisualEffectView.state`. When the hosting `NSWindow` is not the key window, the glass renders significantly more opaque/solid. Unlike `NSVisualEffectView.state = .active`, there is no public API to force active glass rendering on an inactive window. This breaks HUD-style floating windows that intentionally don't take focus. The only known workarounds involve overriding private `NSWindow` methods (`_hasActiveAppearance`, `_hasKeyAppearance`) — which risks App Store rejection. Unresolved as of macOS 26.4.
 
 ---
 
@@ -518,6 +520,8 @@ toolbarItem.isBordered = false // Removes the default glass platter background
 toolbarItem.style = .prominent // Renders with accent color tint (like .glassProminent)
 ```
 
+> **Verification note:** `NSToolbarItem.style = .prominent` could not be independently confirmed in Apple's public API documentation. If this API does not compile, the alternative is to use a custom `NSButton` with `bezelStyle = .glass` and `bezelColor = .controlAccentColor` as the toolbar item's view.
+
 #### Custom background tint
 
 ```swift
@@ -554,20 +558,16 @@ button.bezelStyle = .glass
 button.bezelColor = NSColor.systemGreen   // Optional custom glass tint
 ```
 
-#### `tintProminence`
+#### Tint Control
 
-Controls how strongly the tint color is applied to the glass bezel.
+Control glass button tint via `bezelColor` (confirmed API):
 
 ```swift
-button.tintProminence = .primary // Strong tint — use for primary actions
+button.bezelColor = NSColor.controlAccentColor  // Accent-tinted glass (primary action)
+button.bezelColor = NSColor.clear                // Neutral glass (secondary action)
 ```
 
-| Value | Behavior |
-|-------|----------|
-| `.automatic` | System decides based on context |
-| `.none` | No tint applied (neutral glass) |
-| `.secondary` | Subtle tint |
-| `.primary` | Full tint — visually equivalent to `.glassProminent` in SwiftUI |
+> **Verification note:** Some sources reference a `tintProminence` property with `.automatic`, `.none`, `.secondary`, `.primary` values. This property name could not be independently verified against Apple's public SDK headers. The confirmed path for tint control is `bezelColor` on `NSButton` with `.glass` bezel style. If `tintProminence` exists, it may be from a later Xcode 26 seed — verify against your SDK.
 
 ---
 
