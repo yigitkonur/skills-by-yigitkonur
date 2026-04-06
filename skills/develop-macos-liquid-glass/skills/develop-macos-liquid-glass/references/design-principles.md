@@ -101,14 +101,19 @@ The window's corners establish a baseline radius. Every nested element — toolb
 On macOS 26, the system handles most concentricity automatically. You opt in by using `.rect(cornerRadius: .containerConcentric)` instead of hardcoding a radius value:
 
 ```swift
-// ✅ CORRECT — concentric with the parent container
+// ✅ CORRECT — use the system's concentric shape type
+.glassEffect(.regular, in: ConcentricRectangle())
+
+// ✅ ALSO CORRECT — concentric corner radius token (verify exact API name against Xcode 26 SDK)
 .glassEffect(.regular, in: .rect(cornerRadius: .containerConcentric))
 
 // ❌ WRONG — hardcoded radius breaks concentric alignment
 .glassEffect(.regular, in: .rect(cornerRadius: 12))
 ```
 
-The `.containerConcentric` token tells the system: "make this shape's corners proportional to whatever container I am inside." If your element is inside a toolbar, it becomes concentric with the toolbar. If it is inside a sidebar, it becomes concentric with the sidebar.
+> **API name note:** Official Apple sources reference `ConcentricRectangle` as the SwiftUI shape type for concentricity. The `.containerConcentric` token on `.rect(cornerRadius:)` also appears in practitioner code. Verify the exact spelling against your Xcode 26 SDK — Apple may use `.concentric` or a similar variant.
+
+The concentric system tells the framework: "make this shape's corners proportional to whatever container I am inside." If your element is inside a toolbar, it becomes concentric with the toolbar. If it is inside a sidebar, it becomes concentric with the sidebar.
 
 ### macOS corner radius tiers
 
@@ -116,9 +121,11 @@ The window itself has a corner radius determined by its toolbar style:
 
 | Window Configuration | Approximate Corner Radius | Example |
 |---------------------|--------------------------|---------|
-| No toolbar | ~12pt | Settings panel, utility window |
+| No toolbar (title-bar-only) | ~16pt | Settings panel, utility window |
 | Compact toolbar (icon-only) | ~20pt | Finder, Mail |
 | Standard toolbar (icon+text) | ~26pt | Photos, Keynote |
+
+> **Note:** These values are community-measured from macOS 26 betas, not published by Apple. The no-toolbar tier was previously estimated at ~12pt but multiple independent measurements converge on ~16pt.
 
 Toolbar elements are concentric with the window. Buttons within toolbar glass get smaller concentric radii automatically. You do not need to calculate this — the system does it when you use `.containerConcentric`.
 
@@ -156,6 +163,8 @@ Liquid Glass has a precise hierarchy of visual weight controlled entirely by tin
 
 **One primary action per screen. One. Not two. Not "well, these are both important." One.**
 
+> This rule is consistent with Apple's stated intent ("Apply a single, purposeful tint per screen" — WWDC 2025 Session 219) and mirrors the HIG's long-standing "one default button per view at most" rule for push buttons. While not stated in exactly these words by Apple, violating it produces visual noise.
+
 If your screen has two tinted prominent buttons, neither of them is primary. You have created visual noise, and the user's eye has nowhere to land. Pick the action the user is most likely to perform and make it prominent. Make everything else neutral glass.
 
 ```swift
@@ -189,14 +198,16 @@ If your screen has two tinted prominent buttons, neither of them is primary. You
 
 macOS toolbar buttons are **monochrome by default**. The system renders them in a neutral tone that matches the glass surface. You apply `.tint()` only to the primary action — the one button that needs to stand out.
 
-On macOS, use `.tint(.clear)` on glass buttons to get the correct rendering for secondary actions. This is a macOS-specific requirement — without it, some buttons render with an unexpected tint bleed:
+On macOS, some practitioners report that glass buttons render with unexpected tint bleed from the accent color. A common workaround is `.tint(.clear)` on secondary actions. This is a practitioner-discovered pattern, not official Apple guidance:
 
 ```swift
-// macOS secondary button — explicit clear tint
+// macOS secondary button — practitioner workaround for tint bleed
 Button("Export", systemImage: "square.and.arrow.up") { export() }
     .buttonStyle(.glass)
-    .tint(.clear)
+    .tint(.clear)  // removes accent tint bleed on some macOS configurations
 ```
+
+> **Note:** This `.tint(.clear)` pattern is not documented in any WWDC session or Apple API doc. It addresses a rendering quirk, not a design requirement. Test on your target macOS version before applying universally.
 
 ### What restraint looks like
 
@@ -369,9 +380,11 @@ macOS defaults to `.hard` — a visible dividing line at the scroll edge. iOS de
 
 | Style | Behavior | Use when |
 |-------|---------|----------|
-| `.hard` (macOS default) | Strong dividing line at scroll edge | Document apps, utilities, dense content, any app where clear toolbar/content separation aids comprehension |
-| `.soft` | Gradual fade at scroll edge | Media apps, creative tools, immersive experiences where the toolbar should feel like it floats over content |
-| `.none` | No effect at scroll edge | **Never.** This looks broken — content abruptly clips under the toolbar with no visual treatment |
+| `.hard` (macOS default, ALL edges) | Strong dividing line at scroll edge | Document apps, utilities, dense content, any app where clear toolbar/content separation aids comprehension |
+| `.soft` (iOS default) | Gradual fade at scroll edge | Media apps, creative tools, immersive experiences where the toolbar should feel like it floats over content |
+| `.none` | No effect at scroll edge | Rarely appropriate — content clips under the toolbar with no visual treatment. Exists as a valid API case but use with caution. |
+
+> **Platform defaults:** `.automatic` resolves to `.hard` on macOS for ALL edges (top and bottom). On iOS, `.automatic` resolves to `.soft`. There is no per-edge platform default difference — macOS is `.hard` everywhere.
 
 ```swift
 // Override macOS default for a media-centric app
@@ -543,7 +556,7 @@ These are patterns that immediately mark code as non-native. If a reviewer sees 
 
 6. **`.toolbarBackground(.visible)` on macOS 26.** This forces the old-style opaque toolbar background, which blocks glass rendering entirely. Remove it.
 
-7. **Purple or indigo tint on primary actions.** Apple uses tint colors semantically: blue for standard primary actions, green for positive/confirm, red for destructive. Purple and indigo are not part of this vocabulary. They look out of place.
+7. **Decorative tinting without semantic meaning.** Apple uses tint to communicate function: blue for standard primary actions, green for positive/confirm, red for destructive. Using tint purely for decoration (any color) weakens the signal. If the tint does not convey primary/destructive/selected status, consider removing it.
 
 8. **Fixed font sizes.** `.font(.system(size: 14))` instead of `.font(.body)`. This breaks Dynamic Type and looks wrong at non-default text sizes.
 

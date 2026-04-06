@@ -35,7 +35,7 @@ Toolbar items on macOS 26 automatically adopt Liquid Glass styling. The system r
 |------|--------|
 | Icons | Monochrome by default. The system tints them to match glass appearance. |
 | `.tint()` | Use only on primary action buttons to draw visual emphasis. |
-| `.confirmationAction` | Automatically receives `.glassProminent` treatment (stronger glass fill). |
+| `.confirmationAction` | Intended for primary confirmation actions. May receive `.glassProminent` treatment automatically (not independently verified — apply explicit `.buttonStyle(.glassProminent)` if needed). |
 | `.toolbar(removing: .title)` | Removes the window title from the toolbar area for a cleaner glass surface. |
 | Grouping | Use `ToolbarItemGroup` to cluster related actions. Glass groups them visually. |
 | Spacers | `ToolbarSpacer(.flexible)` for push-apart layout, `.fixed` for consistent gaps. |
@@ -54,7 +54,7 @@ NavigationSplitView {
         Label(item.name, systemImage: item.icon)
     }
     .backgroundExtensionEffect()
-    .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+    .navigationSplitViewColumnWidth(min: 180, ideal: 200) // Note: unreliable on macOS 26.0–26.1; verify on your target version
 } detail: {
     DetailView(item: selected)
 }
@@ -114,7 +114,7 @@ struct ContentView: View {
 }
 ```
 
-The inspector inherits Liquid Glass from the window chrome. Its content area gets the same ambient tinting as the sidebar.
+The inspector receives an edge-to-edge glass treatment alongside the content (not floating like the sidebar). This is managed by `NSSplitViewController` automatically. Its content area gets ambient tinting similar to (but architecturally distinct from) the sidebar.
 
 ---
 

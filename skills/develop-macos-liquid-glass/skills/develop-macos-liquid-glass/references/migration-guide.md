@@ -294,7 +294,7 @@ For inline replacement across a codebase, the mapping is:
 
 ### Adaptive Glass Modifier
 
-A drop-in `View` extension that uses glass on macOS 26+ and falls back to material on earlier versions:
+A recommended `View` extension that uses glass on macOS 26+ and falls back to material on earlier versions (note: this is a guide-defined pattern, not a widely adopted community convention yet):
 
 ```swift
 extension View {
