@@ -156,7 +156,7 @@ On macOS, glass buttons render correctly with a clear tint. Without this, the bu
 ```swift
 Button("Action") { }
     .buttonStyle(.glass)
-    .tint(.clear)  // Required for proper macOS glass rendering
+    .tint(.clear)  // Practitioner workaround for macOS tint bleed (not official Apple guidance)
 ```
 
 ### Window Background for Editing Surfaces
@@ -376,6 +376,6 @@ Is your app pure SwiftUI with standard controls?
 
 1. **Leaving `.toolbarColorScheme(.dark)` in place** -- causes white icons on a light glass surface, making them invisible. Always remove.
 2. **Using `.presentationBackground` on sheets** -- clips glass edges and produces hard borders. Let the system handle sheet backgrounds.
-3. **Forgetting `.tint(.clear)` on macOS glass buttons** -- buttons inherit the accent color, looking out of place on glass.
+3. **Unexpected tint bleed on macOS glass buttons** -- secondary buttons may inherit the accent color. Practitioner workaround: `.tint(.clear)`. Not official Apple guidance but widely used.
 4. **Not testing Reduce Transparency** -- glass becomes opaque. If your layout assumed translucency for visual hierarchy, it may look flat.
 5. **Assuming `NSVisualEffectView` removal is required** -- it is not deprecated. Only replace where glass is a better fit.

@@ -126,7 +126,7 @@ macOS 26 dynamically adjusts window corner radii based on toolbar configuration:
 
 | Toolbar Configuration | Corner Radius |
 |----------------------|---------------|
-| No toolbar (titlebar-only) | ~12pt |
+| No toolbar (titlebar-only) | ~16pt |
 | Compact toolbar | ~20pt |
 | Standard toolbar | ~26pt |
 
@@ -495,15 +495,15 @@ struct FloatingToolPalette: View {
 
 ### macOS Button Tinting Rule
 
-On macOS, glass buttons can appear visually heavy when they carry the default accent tint. Use `.tint(.clear)` on glass-backed buttons to produce a neutral glass appearance:
+On macOS, glass buttons may appear visually heavy when they carry an unexpected accent tint. Practitioners report that `.tint(.clear)` on secondary glass buttons produces a cleaner neutral appearance:
 
 ```swift
 Button("Action", systemImage: "star") { }
     .glassEffect(.regular, in: .capsule)
-    .tint(.clear) // Neutral glass on macOS
+    .tint(.clear) // Practitioner workaround for tint bleed — not official Apple guidance
 ```
 
-Reserve colored tints for the single primary action in a group.
+Reserve colored tints for the single primary action in a group. The `.tint(.clear)` pattern is not documented in WWDC sessions — test on your target macOS version.
 
 ### Selection State in Glass Groups
 
@@ -556,7 +556,7 @@ List {
 
 - Use `.soft` when you want the toolbar to feel more integrated with the scrolling content (e.g., media browsers, canvas-style interfaces).
 - Keep `.hard` (the default) for document-oriented apps where a clear toolbar boundary aids readability.
-- The bottom edge is typically `.soft` on both platforms by default. Override to `.hard` if you have a bottom toolbar that needs a crisp divider.
+- On macOS, `.automatic` resolves to `.hard` for ALL edges (top and bottom). On iOS, `.automatic` resolves to `.soft` for all edges. Override explicitly if needed.
 
 ```swift
 ScrollView {
