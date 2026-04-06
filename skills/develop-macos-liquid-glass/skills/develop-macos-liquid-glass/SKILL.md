@@ -51,7 +51,7 @@ This is the core workflow. You read existing code, diagnose every dated pattern,
    | Hardcoded colors | `Color(red:` `Color(#` `Color("` | Semantic colors |
    | Fixed font sizes | `.system(size:` | Text styles (`.title`, `.body`) |
    | NavigationView | `NavigationView` | `NavigationSplitView` or `NavigationStack` |
-   | @StateObject | `@StateObject` | `@State` with `@Observable` |
+   | @StateObject (superseded) | `@StateObject` | `@State` with `@Observable` (preferred, not deprecated) |
    | Custom blur | `.ultraThinMaterial` on nav | `.glassEffect()` |
    | Missing shortcuts | Buttons without `.keyboardShortcut` | Add standard shortcuts |
    | Glass on content | `.glassEffect()` on list rows | Move glass to floating controls only |
@@ -73,7 +73,7 @@ This is the core workflow. You read existing code, diagnose every dated pattern,
 3. **Remove** conflicting customizations (`.toolbarBackground()`, `.presentationBackground()`, custom materials).
 4. **Read** `references/design-diagnosis.md` Section 1 — replace ALL deprecated APIs while migrating.
 5. **Enhance** with glass APIs: `.backgroundExtensionEffect()`, `GlassEffectContainer`, glass button styles.
-6. **Refine** for macOS: `.tint(.clear)` on buttons, `scrollEdgeEffectStyle`, control sizing.
+6. **Refine** for macOS: `.tint(.clear)` on secondary glass buttons if tint bleed occurs, `scrollEdgeEffectStyle`, control sizing.
 7. **Bridge** to AppKit where needed — read `references/appkit-bridging.md`.
 8. **Run** the full review checklist.
 
