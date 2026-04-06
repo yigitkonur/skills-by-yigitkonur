@@ -4,7 +4,7 @@
     "name": "Yigit Konur"
   },
   "metadata": {
-    "description": "47 skills for AI coding agents.",
+    "description": "48 skills for AI coding agents.",
     "version": "7.0.0"
   },
   "plugins": [
@@ -206,6 +206,16 @@
         "name": "Yigit Konur"
       },
       "source": "./skills/develop-clean-architecture",
+      "category": "development"
+    },
+    {
+      "name": "develop-macos-hig",
+      "description": "Building, reviewing, or designing macOS SwiftUI or AppKit interfaces and need HIG-compliant component specs, spacing values, color tokens, accessibility rules, or platform patterns",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yigit Konur"
+      },
+      "source": "./skills/develop-macos-hig",
       "category": "development"
     },
     {
