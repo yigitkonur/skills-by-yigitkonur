@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-47 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+48 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -56,6 +56,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [convert-vue-nextjs](skills/convert-vue-nextjs/) | development | Vue/Nuxt to Next.js App Router migration |
 | [debug-tauri-devtools](skills/debug-tauri-devtools/) | development | Tauri debugging with CrabNebula DevTools |
 | [develop-clean-architecture](skills/develop-clean-architecture/) | development | Clean Architecture and DDD in TypeScript |
+| [develop-macos-hig](skills/develop-macos-hig/) | development | macOS HIG design system — spacing, components, accessibility |
 | [develop-macos-liquid-glass](skills/develop-macos-liquid-glass/) | development | macOS Liquid Glass design system (Tahoe+) |
 | [develop-typebox-fastify](skills/develop-typebox-fastify/) | development | Type-safe Fastify APIs with TypeBox |
 | [develop-typescript](skills/develop-typescript/) | development | Strict TypeScript patterns and config |

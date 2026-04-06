@@ -1,0 +1,8 @@
+{
+  "name": "develop-macos-hig",
+  "description": "Building, reviewing, or designing macOS SwiftUI or AppKit interfaces and need HIG-compliant component specs, spacing values, color tokens, accessibility rules, or platform patterns",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yigit Konur"
+  }
+}

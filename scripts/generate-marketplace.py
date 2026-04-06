@@ -34,6 +34,7 @@ CATEGORIES = {
     "convert-vue-nextjs": "development",
     "debug-tauri-devtools": "development",
     "develop-clean-architecture": "development",
+    "develop-macos-hig": "development",
     "develop-macos-liquid-glass": "development",
     "develop-typebox-fastify": "development",
     "develop-typescript": "development",
