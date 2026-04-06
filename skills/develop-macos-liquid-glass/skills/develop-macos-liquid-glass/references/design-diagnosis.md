@@ -848,26 +848,26 @@ TabView {
 
 ---
 
-### Smell 25: Missing Glass Button Tint Clear on macOS
+### Smell 25: Unexpected Tint Bleed on macOS Glass Buttons
 
 **What it looks like:**
 ```swift
-// WRONG: Glass button without .tint(.clear) on macOS
+// May show unwanted accent tint on some macOS configurations
 Button("Action") { }
     .buttonStyle(.glass)
 ```
 
-**Why it is wrong:** On macOS, glass buttons inherit the system accent color by default, which produces an unwanted colored tint on what should be a neutral glass surface.
+**Why it can be a problem:** On macOS, glass buttons may inherit the system accent color, producing an unwanted colored tint on what should be a neutral glass surface. This is a rendering quirk, not universal — test on your target configuration.
 
-**Fix:**
+**Practitioner workaround:**
 ```swift
-// NATIVE: Clear tint for neutral macOS glass
+// Clear tint for neutral macOS glass — not official Apple guidance
 Button("Action") { }
     .buttonStyle(.glass)
     .tint(.clear)
 ```
 
-**Grep pattern:** `.buttonStyle(.glass)` without a subsequent `.tint(.clear)` on macOS.
+**Grep pattern:** `.buttonStyle(.glass)` without a subsequent `.tint(.clear)` on macOS — apply if tint bleed is visible.
 
 ---
 
@@ -1374,7 +1374,7 @@ Use this checklist when reviewing any existing macOS SwiftUI file. Read through 
 ```
 [ ] One primary action uses .buttonStyle(.glassProminent)
 [ ] Secondary actions use .buttonStyle(.glass)
-[ ] .tint(.clear) on macOS glass buttons for neutral appearance
+[ ] .tint(.clear) on macOS secondary glass buttons if tint bleed occurs (practitioner workaround)
 [ ] Destructive actions use Button(role: .destructive)
 [ ] No multiple tinted buttons in the same group
 [ ] .controlSize appropriate for context

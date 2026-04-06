@@ -169,7 +169,7 @@ func glassEffectTransition(
 |-------|----------|
 | `.identity` | No special transition — standard SwiftUI transitions apply |
 | `.matchedGeometry` | Morph between two glass effects that share the same `glassEffectID` |
-| `.materialize` | The glass platter fades in with a material-specific dissolve (glass "materializes" from nothing) |
+| `.materialize` | The glass platter fades in with a material-specific dissolve (glass "materializes" from nothing). **Note:** This value could not be independently confirmed by web research — `.identity` and `.matchedGeometry` are widely used in practitioner code; `.materialize` may be from a later SDK seed. Verify against your Xcode 26 build. |
 
 ```swift
 if showControls {
@@ -267,8 +267,10 @@ macOS 26 introduces several toolbar enhancements for Liquid Glass layouts.
 Inserts explicit spacing in toolbar layouts.
 
 ```swift
-ToolbarSpacer(.fixed)    // Fixed-width spacer (non-flexible)
-ToolbarSpacer(.flexible) // Flexible spacer (expands to fill)
+ToolbarSpacer(.fixed)    // Fixed-width spacer (non-flexible) — verify enum syntax
+ToolbarSpacer(.flexible) // Flexible spacer (expands to fill) — verify enum syntax
+// Note: Apple docs confirm ToolbarSpacer() (no arg, flexible default).
+// The (.fixed)/(.flexible) enum syntax is from practitioner code — verify against SDK.
 ```
 
 ```swift
@@ -319,9 +321,11 @@ ToolbarItemGroup {
 
 Controls how the search field behaves in the toolbar.
 
+> **Verification note:** This exact API name could not be independently confirmed in Apple's public documentation. The behavior (collapsing search to an icon) is real and handled by `NSSearchToolbarItem` in AppKit. The SwiftUI modifier name may differ — verify against your Xcode 26 SDK.
+
 ```swift
 .searchable(text: $query)
-.searchToolbarBehavior(.minimized) // Collapses to icon until activated
+.searchToolbarBehavior(.minimized) // Collapses to icon until activated — verify API name
 ```
 
 #### `ToolbarItemGroup`
@@ -633,14 +637,14 @@ This reverts buttons, text fields, and other controls within that view hierarchy
 | `.toolbar(removing: .title)` | Yes | Yes | |
 | `ToolbarSpacer` | Yes | Yes | |
 | `.sharedBackgroundVisibility` | Yes | Yes | |
-| `.searchToolbarBehavior(.minimized)` | Yes | Yes | |
+| `.searchToolbarBehavior(.minimized)` | Unverified | Unverified | API name not confirmed in Apple docs — behavior is real via NSSearchToolbarItem |
 | `NSGlassEffectView` | Yes | N/A | AppKit only |
 | `NSGlassEffectContainerView` | Yes | N/A | AppKit only |
 | `NSBackgroundExtensionView` | Yes | N/A | AppKit only |
 | `NSView.LayoutRegion` | Yes | N/A | Window corner avoidance (AppKit) |
 | `NSButton.bezelStyle = .glass` | Yes | N/A | AppKit only |
 | `NSToolbarItem.badge` | Yes | N/A | AppKit only |
-| `NSToolbarItem.style = .prominent` | Yes | N/A | AppKit only |
+| `NSToolbarItem.style = .prominent` | Unverified | N/A | AppKit only — verify against SDK; use `NSButton.bezelStyle = .glass` + `bezelColor` as alternative |
 | `NSSplitView` accessory VCs | Yes | N/A | AppKit only |
 | `prefersCompactControlSizeMetrics` | Yes | N/A | Revert to pre-Tahoe sizing (AppKit) |
 | Window corner radii (larger) | Yes | N/A | macOS 26 windows have larger corner radii |
@@ -722,8 +726,8 @@ if isExpanded {
 ```swift
 let button = NSButton(title: "Submit", target: self, action: #selector(submit))
 button.bezelStyle = .glass
-button.bezelColor = .controlAccentColor
-button.tintProminence = .primary
+button.bezelColor = .controlAccentColor  // Confirmed API for glass tint control
+// button.tintProminence = .primary      // Unverified — see Tint Control section above
 ```
 
 ### AppKit toolbar item with badge
@@ -732,5 +736,6 @@ button.tintProminence = .primary
 let item = NSToolbarItem(itemIdentifier: .messages)
 item.image = NSImage(systemSymbolName: "message", accessibilityDescription: "Messages")
 item.badge = .count(3)
-item.style = .prominent
+// item.style = .prominent  // Unverified API — see Prominent style section above
+// Alternative: use a custom NSButton with bezelStyle = .glass + bezelColor for prominence
 ```
