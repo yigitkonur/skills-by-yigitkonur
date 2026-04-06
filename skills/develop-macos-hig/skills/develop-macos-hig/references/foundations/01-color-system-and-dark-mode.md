@@ -603,3 +603,94 @@ All claims in this document trace to the following verified sources:
 | Focus ring | `NSColor.keyboardFocusIndicatorColor` |
 | Disabled control text | `NSColor.disabledControlTextColor` |
 | Alternating table rows | `NSColor.alternatingContentBackgroundColors[0/1]` |
+
+---
+
+## 9. Custom Dynamic Colors in AppKit
+
+`NSColor(name:dynamicProvider:)` (macOS 10.15+) creates colors that adapt to all four appearance variants:
+
+```swift
+let brandColor = NSColor(name: "Brand") { appearance in
+    switch appearance.name {
+    case .aqua, .vibrantLight, .accessibilityHighContrastVibrantLight:
+        return NSColor(srgbRed: 0.0, green: 0.48, blue: 1.0, alpha: 1.0)
+    case .darkAqua, .vibrantDark, .accessibilityHighContrastVibrantDark:
+        return NSColor(srgbRed: 0.04, green: 0.52, blue: 1.0, alpha: 1.0)
+    case .accessibilityHighContrastAqua:
+        return NSColor(srgbRed: 0.0, green: 0.30, blue: 0.85, alpha: 1.0)
+    case .accessibilityHighContrastDarkAqua:
+        return NSColor(srgbRed: 0.2, green: 0.65, blue: 1.0, alpha: 1.0)
+    default: return NSColor(srgbRed: 0.0, green: 0.48, blue: 1.0, alpha: 1.0)
+    }
+}
+```
+
+All 8 `NSAppearance.Name` values: `.aqua`, `.darkAqua`, `.vibrantLight`, `.vibrantDark`, `.accessibilityHighContrastAqua`, `.accessibilityHighContrastDarkAqua`, `.accessibilityHighContrastVibrantLight`, `.accessibilityHighContrastVibrantDark`.
+
+## 10. Color Resolution in SwiftUI
+
+`Color.resolve(in:)` (macOS 14+) extracts concrete RGBA at runtime:
+
+```swift
+@Environment(\.self) private var environment
+let resolved = color.resolve(in: environment)  // Color.Resolved — Float RGBA in linear extended sRGB
+```
+
+Use for: custom Canvas drawing, exporting colors, computing contrast ratios, bridging to AppKit/Metal. Don't use for general styling — pass `Color` directly.
+
+## 11. Display P3 Wide Gamut
+
+Use P3 for vivid colors outside the sRGB triangle. All Apple Silicon Macs support P3.
+
+```swift
+let p3Red = NSColor(displayP3Red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)  // macOS 10.12+
+```
+
+Asset catalog: set Color Space dropdown to "Display P3". Use 16-bit depth to avoid banding.
+
+**Extended sRGB:** Same primaries as sRGB but components can exceed 0–1. The most saturated P3 red maps to extended sRGB ~(1.09, -0.23, -0.15). Clamp to 0–1 before converting to hex.
+
+## 12. CALayer Color Refresh Pattern
+
+**The problem:** `CALayer.backgroundColor`, `.borderColor`, `.shadowColor` take `CGColor` — a frozen snapshot that doesn't update on appearance change.
+
+**The fix:**
+```swift
+override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    effectiveAppearance.performAsCurrentDrawingAppearance {  // macOS 11+
+        layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        layer?.borderColor = NSColor.separatorColor.cgColor
+    }
+}
+```
+
+Alternative: override `updateLayer()` with `wantsUpdateLayer = true` — appearance is already correct there.
+
+| API | Auto-adapts? |
+|---|---|
+| `NSColor` semantic token | Yes |
+| `NSColor(name:dynamicProvider:)` | Yes |
+| Asset catalog `NSColor(named:)` | Yes |
+| `CGColor` from `.cgColor` | **No** — frozen |
+| `CALayer` color properties | **No** — must refresh |
+| SwiftUI `Color` | Yes |
+| `Color.Resolved` | **No** — snapshot |
+
+## 13. Color Asset Catalogs
+
+Define colors in `.xcassets` with per-appearance slots: Any, Light, Dark, High Contrast Light, High Contrast Dark. Set Color Space to sRGB or Display P3 per slot.
+
+```swift
+// AppKit
+let color = NSColor(named: "BrandBlue")  // auto-adapts to appearance
+
+// SwiftUI
+Color(.brandBlue)  // generated symbol (Xcode 15+)
+Color("BrandBlue") // string name
+```
+
+Asset catalog colors are fully dynamic — no manual refresh needed (unlike programmatic CGColor).
+
+**Sources:** Apple Developer Documentation (NSColor dynamic provider, NSColorSpace.displayP3, Color.resolve), WWDC 2016/2019, Jesse Squires CGColor articles, Zenn/usagimaru appearance article.

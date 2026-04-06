@@ -5,7 +5,7 @@ description: "Use skill if you are building, reviewing, or designing macOS Swift
 
 # macOS Human Interface Guidelines — Complete Design System Reference
 
-Definitive reference for building native macOS applications. Backed by 20 exhaustively sourced reference documents totaling 10,761 lines — every claim traced to Apple HIG, AppKit API docs, WWDC sessions, or verified practitioner sources.
+Definitive reference for building native macOS applications. Backed by 21 exhaustively sourced reference documents totaling 13,286 lines — every claim traced to Apple HIG, AppKit API docs, SDK headers, WWDC sessions, or verified practitioner sources. Covers macOS Sequoia (15) through Tahoe (26) including Liquid Glass, Compositional Layout, SF Symbol effects, AutoFill/Passkeys, and window tiling.
 
 The skill body below contains **critical values you need constantly** — spacing scale, typography sizes, component decision trees, and core patterns. For detailed specs, **read the corresponding reference file** from the Reference Index. Do not guess dimensions or behaviors — look them up.
 
@@ -284,10 +284,10 @@ Read these files for detailed specs. Each contains exact values, API examples, a
 
 | Topic | File | Key Content |
 |---|---|---|
-| Color System & Dark Mode | `references/foundations/01-color-system-and-dark-mode.md` | 50+ color tokens with hex values, dark mode rules, accent colors |
+| Color System & Dark Mode | `references/foundations/01-color-system-and-dark-mode.md` | 50+ color tokens, dark mode, accent colors, dynamic color construction, P3 wide gamut, CALayer refresh pattern, asset catalogs |
 | Typography & Text Styles | `references/foundations/02-typography-and-text-styles.md` | All text styles, SF Pro family, Dynamic Type, tracking |
 | Layout, Spacing & Alignment | `references/foundations/03-layout-spacing-and-alignment.md` | Window chrome dimensions, form layouts, sidebar widths |
-| Iconography & SF Symbols | `references/foundations/04-iconography-and-sf-symbols.md` | 10 app icon sizes, squircle geometry, SF Symbols rendering |
+| Iconography & SF Symbols | `references/foundations/04-iconography-and-sf-symbols.md` | 10 app icon sizes, squircle geometry, SF Symbols rendering, animated symbol effects (.bounce/.pulse/.wiggle/.breathe/.rotate) |
 | Materials, Vibrancy & Effects | `references/foundations/05-materials-vibrancy-and-effects.md` | 14 named materials, blending modes, Liquid Glass API |
 | Motion & Animation | `references/foundations/06-motion-and-animation.md` | Timing values, spring parameters, easing curves, Reduced Motion |
 
@@ -296,19 +296,19 @@ Read these files for detailed specs. Each contains exact values, API examples, a
 | Topic | File | Key Content |
 |---|---|---|
 | Buttons & Action Controls | `references/components/01-buttons-and-action-controls.md` | 20+ button variants, segmented controls, dialog button rules |
-| Text Inputs, Labels & Search | `references/components/02-text-inputs-labels-and-search.md` | Text fields, search fields, token fields, combo boxes, validation |
-| Selection Controls & Pickers | `references/components/03-selection-controls-and-pickers.md` | Checkboxes, radio buttons, sliders, steppers, color wells |
-| Menus & Menu Bar | `references/components/04-menus-and-menu-bar.md` | Complete menu system, contextual menus, menu bar extras |
+| Text Inputs, Labels & Search | `references/components/02-text-inputs-labels-and-search.md` | Text fields, search fields, token fields, combo boxes, validation, AutoFill/NSTextContentType, passkey integration |
+| Selection Controls & Pickers | `references/components/03-selection-controls-and-pickers.md` | Checkboxes, radio buttons, sliders, steppers, color wells, NSLevelIndicator (4 styles), NSPathControl (3 styles) |
+| Menus & Menu Bar | `references/components/04-menus-and-menu-bar.md` | Complete menu system, NSMenu delegate lifecycle, validation, Services menu, dynamic menus, toggle states, Format menu |
 | Popovers, Tooltips & Disclosure | `references/components/05-popovers-tooltips-and-disclosure.md` | Popover sizing/behavior, tooltip timing, disclosure controls |
-| Tables, Lists & Outlines | `references/components/06-tables-lists-and-outlines.md` | NSTableView, NSOutlineView, NSCollectionView, NSBrowser |
-| Alerts, Sheets & Dialogs | `references/components/07-alerts-sheets-and-dialogs.md` | Alert styles, button placement, modality levels |
+| Tables, Lists & Outlines | `references/components/06-tables-lists-and-outlines.md` | NSTableView, NSOutlineView, NSCollectionView, NSBrowser, NSCollectionViewCompositionalLayout |
+| Alerts, Sheets & Dialogs | `references/components/07-alerts-sheets-and-dialogs.md` | Alert styles, button placement, modality levels, accessoryView, SwiftUI limits, NSPanel patterns, Save Changes pattern, multi-item phrasing |
 
 ### Platform Patterns
 
 | Topic | File | Key Content |
 |---|---|---|
-| Window Management & Types | `references/platform-patterns/01-window-management-and-types.md` | Window types, sizing, full-screen, tabs (pending) |
-| Sidebars & Split Views | `references/platform-patterns/02-sidebars-source-lists-split-views.md` | Sidebar types, width specs, inspectors, collapse |
+| Window Management & Types | `references/platform-patterns/01-window-management-and-types.md` | Window types, title bar 28pt, traffic lights, full-screen, Stage Manager, tabbing, proxy icons, tiling |
+| Sidebars & Split Views | `references/platform-patterns/02-sidebars-source-lists-split-views.md` | Sidebar types, width specs, inspectors, collapse, macOS 26 floating Liquid Glass sidebars, migration path |
 | Toolbars & Title Bars | `references/platform-patterns/03-toolbars-and-title-bars.md` | 5 toolbar styles, customization, overflow |
 | Keyboard Shortcuts & Input | `references/platform-patterns/04-keyboard-shortcuts-and-input.md` | Complete shortcut table, focus system |
 | Drag, Drop & File Management | `references/platform-patterns/05-drag-drop-and-file-management.md` | Drag lifecycle, cursor badges, file promises |

@@ -338,7 +338,7 @@ macOS body text is 13 pt — not 17 pt as on iOS. This is the most important pla
 
 | Text style | Size | Weight | Leading | Use |
 |---|---|---|---|---|
-| Large Title | 28 pt | Regular | ~34 pt | Major headings |
+| Large Title | 26 pt | Regular | ~31 pt | Major headings |
 | Title 1 | 22 pt | Regular | ~26 pt | Section titles |
 | Title 2 | 17 pt | Regular | ~22 pt | Subsection headings |
 | Title 3 | 15 pt | Regular | ~19 pt | Tertiary headings |

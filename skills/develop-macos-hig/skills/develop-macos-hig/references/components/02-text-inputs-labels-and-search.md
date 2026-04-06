@@ -693,3 +693,76 @@ The current Apple HIG web pages do not publish explicit pixel/point heights for 
 - NSControl.ControlSize enum documentation confirming the four size tiers (mini, small, regular, large)
 
 These values are stable and consistent across macOS 10.14 (Mojave) through macOS 15 (Sequoia). If Apple's Liquid Glass redesign (macOS 26) introduces different heights, this document should be updated against the updated design resources.
+
+---
+
+## 10. AutoFill & NSTextContentType
+
+> **Availability:** `NSTextField.contentType` macOS 10.15+, SwiftUI `.textContentType()` macOS 11.0+
+
+### All Content Types (macOS)
+
+#### Credentials
+
+| Value | Constant | macOS | Behavior |
+|---|---|---|---|
+| Username | `.username` | 10.15+ | Triggers saved credentials + passkey suggestions |
+| Password | `.password` | 10.15+ | Shows iCloud Keychain credentials for associated domain |
+| New password | `.newPassword` | 10.15+ | Shows strong-password generator |
+| One-time code | `.oneTimeCode` | 12.0+ | Surfaces OTP codes relayed from iPhone via Continuity |
+
+#### Personal Identity (all macOS 10.15+)
+
+`.emailAddress`, `.telephoneNumber`, `.name`, `.namePrefix`, `.givenName`, `.middleName`, `.familyName`, `.nickname`, `.jobTitle`, `.organizationName`
+
+#### Address (all macOS 10.15+)
+
+`.fullStreetAddress`, `.streetAddressLine1`, `.streetAddressLine2`, `.addressCity`, `.addressState`, `.addressCityAndState`, `.postalCode`, `.countryName`, `.location`
+
+#### Credit Card (macOS 14.0+)
+
+`.creditCardNumber`, `.creditCardName`, `.creditCardType`, `.creditCardExpirationMonth`, `.creditCardExpirationYear`, `.creditCardExpiration`, `.creditCardSecurityCode`
+
+#### Travel (macOS 14.0+)
+
+`.flightNumber`, `.shipmentTrackingNumber`
+
+### Usage
+
+```swift
+// AppKit — Login form
+usernameField.contentType = .username
+passwordField.contentType = .password
+
+// AppKit — Registration (triggers strong password generator)
+newPasswordField.contentType = .newPassword
+
+// SwiftUI
+TextField("Email", text: $email).textContentType(.username)
+SecureField("Password", text: $password).textContentType(.password)
+```
+
+### Associated Domains (Required)
+
+Password AutoFill matches credentials to domains via the Associated Domains entitlement:
+
+1. Add `webcredentials:yourdomain.com` to Signing & Capabilities
+2. Host `apple-app-site-association` at `https://yourdomain.com/.well-known/apple-app-site-association`
+
+### One-Time Code (macOS 12.0+)
+
+SMS codes from a paired iPhone are relayed via Continuity. Set `.oneTimeCode` on the verification field. Use `NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac = YES` in Info.plist to disable heuristic detection.
+
+### Passkeys (macOS 13.0+)
+
+Fields with `.username` automatically show passkey suggestions alongside passwords. Use `ASAuthorizationPlatformPublicKeyCredentialProvider` for registration/assertion. Combine passkey and password requests in one `ASAuthorizationController` for broadest compatibility.
+
+### Do's and Don'ts
+
+- **Do** pair `.username` + `.password` fields in the same view hierarchy
+- **Do** use `.newPassword` only on registration forms
+- **Don't** use `.newPassword` on login forms (shows generator instead of saved credentials)
+- **Don't** rely on heuristics — set `contentType` explicitly
+- **Do** configure Associated Domains before testing AutoFill
+
+**Sources:** Apple Developer Documentation (NSTextContentType, Password AutoFill workflow, ASAuthorizationPlatformPublicKeyCredentialProvider).
