@@ -110,12 +110,15 @@ Informational    → No tint, no prominence           Just glass
 ### macOS-Specific Non-Negotiables
 
 - **`.interactive()` is iOS-only** — use `.onHover {}` on macOS
-- **`.tint(.clear)`** on macOS glass secondary buttons (practitioner workaround for tint bleed, not official Apple guidance)
 - **`.scrollEdgeEffectStyle(.hard)`** is the macOS default
 - **TabView** uses `.tabViewStyle(.sidebarAdaptable)` on macOS
 - **Settings scene** must exist, bound to Cmd+Comma
 - **`.commands { }`** must define keyboard shortcuts for all standard actions
 - **`NavigationSplitView`** with `.backgroundExtensionEffect()` for sidebar layouts
+
+### Known Workarounds
+
+- **`.tint(.clear)`** on macOS glass secondary buttons — practitioner workaround for tint bleed, not official Apple guidance. Apply only when tint bleed is visually apparent, not as a blanket rule.
 
 ### The "Apple Would Never" List
 
@@ -158,7 +161,7 @@ Seeing ANY of these means the code is not native:
 - [ ] `GlassEffectContainer` wraps every group of nearby glass elements
 
 ### macOS Native
-- [ ] `.tint(.clear)` on secondary glass buttons (practitioner workaround for macOS tint bleed)
+- [ ] `.tint(.clear)` applied only to secondary glass buttons showing tint bleed (practitioner workaround, not a default requirement)
 - [ ] No `.interactive()` calls (iOS-only)
 - [ ] `.scrollEdgeEffectStyle` appropriate (macOS defaults `.hard`)
 - [ ] TabView uses `.tabViewStyle(.sidebarAdaptable)`

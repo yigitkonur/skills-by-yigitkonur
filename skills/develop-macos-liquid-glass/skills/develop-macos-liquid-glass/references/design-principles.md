@@ -101,17 +101,17 @@ The window's corners establish a baseline radius. Every nested element — toolb
 On macOS 26, the system handles most concentricity automatically. You opt in by using `.rect(cornerRadius: .containerConcentric)` instead of hardcoding a radius value:
 
 ```swift
-// ✅ CORRECT — use the system's concentric shape type
-.glassEffect(.regular, in: ConcentricRectangle())
-
-// ✅ ALSO CORRECT — concentric corner radius token (verify exact API name against Xcode 26 SDK)
+// ✅ PREFERRED — concentric corner radius token
 .glassEffect(.regular, in: .rect(cornerRadius: .containerConcentric))
+
+// ✅ ALTERNATIVE — dedicated concentric shape type
+.glassEffect(.regular, in: ConcentricRectangle())
 
 // ❌ WRONG — hardcoded radius breaks concentric alignment
 .glassEffect(.regular, in: .rect(cornerRadius: 12))
 ```
 
-> **API name note:** Official Apple sources reference `ConcentricRectangle` as the SwiftUI shape type for concentricity. The `.containerConcentric` token on `.rect(cornerRadius:)` also appears in practitioner code. Verify the exact spelling against your Xcode 26 SDK — Apple may use `.concentric` or a similar variant.
+> **API name note:** `ConcentricRectangle()` is a confirmed SwiftUI Shape type in macOS 26 / iOS 26. The concentric corner radius token on `.rect(cornerRadius:)` may be named `.concentric` in SwiftUI (not `.containerConcentric` — that is the UIKit name on `UICornerConfiguration.containerConcentric(minimum:)`). WWDC sessions reference both approaches. **Verify the exact SwiftUI token name against your Xcode 26 SDK** — this document uses `.containerConcentric` as a placeholder that may need updating to `.concentric`.
 
 The concentric system tells the framework: "make this shape's corners proportional to whatever container I am inside." If your element is inside a toolbar, it becomes concentric with the toolbar. If it is inside a sidebar, it becomes concentric with the sidebar.
 
