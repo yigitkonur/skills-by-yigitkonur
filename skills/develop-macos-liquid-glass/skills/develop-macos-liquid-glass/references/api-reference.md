@@ -524,7 +524,7 @@ toolbarItem.isBordered = false // Removes the default glass platter background
 toolbarItem.style = .prominent // Renders with accent color tint (like .glassProminent)
 ```
 
-> **Verification note:** `NSToolbarItem.style = .prominent` could not be independently confirmed in Apple's public API documentation. If this API does not compile, the alternative is to use a custom `NSButton` with `bezelStyle = .glass` and `bezelColor = .controlAccentColor` as the toolbar item's view.
+> **Note:** `NSToolbarItem.Style.prominent` is available from macOS 26.0+. An alternative approach using a custom `NSButton` with `bezelStyle = .glass` and `bezelColor = .controlAccentColor` achieves a similar effect if you need more control over the button appearance.
 
 #### Custom background tint
 
@@ -644,7 +644,7 @@ This reverts buttons, text fields, and other controls within that view hierarchy
 | `NSView.LayoutRegion` | Yes | N/A | Window corner avoidance (AppKit) |
 | `NSButton.bezelStyle = .glass` | Yes | N/A | AppKit only |
 | `NSToolbarItem.badge` | Yes | N/A | AppKit only |
-| `NSToolbarItem.style = .prominent` | Unverified | N/A | AppKit only — verify against SDK; use `NSButton.bezelStyle = .glass` + `bezelColor` as alternative |
+| `NSToolbarItem.style = .prominent` | Yes | N/A | AppKit only (macOS 26.0+) |
 | `NSSplitView` accessory VCs | Yes | N/A | AppKit only |
 | `prefersCompactControlSizeMetrics` | Yes | N/A | Revert to pre-Tahoe sizing (AppKit) |
 | Window corner radii (larger) | Yes | N/A | macOS 26 windows have larger corner radii |
@@ -736,6 +736,5 @@ button.bezelColor = .controlAccentColor  // Confirmed API for glass tint control
 let item = NSToolbarItem(itemIdentifier: .messages)
 item.image = NSImage(systemSymbolName: "message", accessibilityDescription: "Messages")
 item.badge = .count(3)
-// item.style = .prominent  // Unverified API — see Prominent style section above
-// Alternative: use a custom NSButton with bezelStyle = .glass + bezelColor for prominence
+item.style = .prominent
 ```
