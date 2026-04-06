@@ -580,3 +580,103 @@ Are the options mutually exclusive AND more than 5?
 | 8 | Reddit r/MacOS — "Apple should read its own Guidelines" (Jun 2022, score 1828) | Community | Direct quotes from Apple HIG toggle page: "Avoid using a switch to control a single detail or a minor setting." and "Use a checkbox instead of a switch if you need to present a hierarchy of settings." Fetched with full comment tree. |
 | 9 | UX Planet — "Checkbox vs Toggle Switch" (uxdesign.cc) | Practitioner UX | Confirms toggle = immediate execution; checkbox = deferred (requires Apply/Submit). Scraped successfully. |
 | 10 | Apple HIG — Sliders page (`developer.apple.com/design/human-interface-guidelines/sliders`) | Official Apple docs | Confirmed page exists and contains circular slider content (tick marks appear as dots around circumference). |
+
+---
+
+## 11. Level Indicators (NSLevelIndicator)
+
+Display-only or interactive control showing a value within a finite range. macOS 10.4+.
+
+### Styles
+
+| Style | Visual | Editable | Use case |
+|---|---|---|---|
+| `.continuousCapacity` | Solid bar, color changes at warning/critical thresholds | No | Disk usage, memory, audio levels |
+| `.discreteCapacity` | N rectangular segments, filled in steps | No | Battery, signal strength, progress |
+| `.rating` | Star row (customizable images) | Yes (click) | Star ratings, quality ranking |
+| `.relevancy` | Proportional bar segments decreasing in prominence | No | Search relevance, match strength |
+
+### Key Properties
+
+```swift
+indicator.style = .continuousCapacity
+indicator.minValue = 0; indicator.maxValue = 100
+indicator.warningValue = 70    // yellow
+indicator.criticalValue = 90   // red
+indicator.doubleValue = 45
+indicator.fillColor = .systemGreen
+indicator.warningFillColor = .systemOrange
+indicator.criticalFillColor = .systemRed
+
+// Rating style (macOS 10.13+)
+indicator.ratingImage = NSImage(named: "StarFilled")
+indicator.ratingPlaceholderImage = NSImage(named: "StarEmpty")
+indicator.isEditable = true
+```
+
+### Dimensions
+
+| Control size | Approximate height |
+|---|---|
+| Regular | ~18 pt |
+| Small | ~12 pt |
+| Mini | ~10 pt |
+
+### SwiftUI: Use `Gauge` (macOS 13+)
+
+```swift
+Gauge(value: usedGB, in: 0...100) { Text("Storage") }
+    .gaugeStyle(.linearCapacity)
+```
+
+---
+
+## 12. Path Controls (NSPathControl)
+
+Breadcrumb navigation bar showing a file-system path. macOS 10.5+.
+
+### Styles
+
+| Style | Visual | Click behavior |
+|---|---|---|
+| `.standard` | All components with icons + chevrons | Click navigates to that ancestor |
+| `.popUp` | Only last component shown as button | Click opens full-path popup + "Choose..." |
+| `.none` | No built-in styling | Custom rendering |
+
+### Usage
+
+```swift
+let pathControl = NSPathControl()
+pathControl.pathStyle = .standard
+pathControl.url = URL(fileURLWithPath: "/Users/alice/Documents/README.md")
+pathControl.target = self
+pathControl.action = #selector(pathClicked(_:))
+
+@objc func pathClicked(_ sender: NSPathControl) {
+    guard let url = sender.clickedPathItem?.url else { return }
+    NSWorkspace.shared.open(url)
+}
+```
+
+### Dimensions
+
+| Control size | Approximate height |
+|---|---|
+| Regular | ~22 pt |
+| Small | ~18 pt |
+| Mini | ~13 pt |
+
+Truncates intermediate components when too wide, always showing first and last.
+
+### SwiftUI
+
+No built-in equivalent. Use `NSViewRepresentable` wrapper.
+
+### Do's and Don'ts
+
+- **Do** use `.standard` for breadcrumb navigation, `.popUp` for compact pickers
+- **Do** implement drag-and-drop delegate for file-selection paths
+- **Don't** use NSPathControl as a file picker replacement — use NSOpenPanel directly
+- **Don't** use `.none` unless building a fully custom renderer
+
+**Sources:** Apple Developer Documentation (NSLevelIndicator, NSLevelIndicatorCell, NSPathControl, NSPathControlDelegate), Code Workshop API diffs, Leopard-era Apple HIG.

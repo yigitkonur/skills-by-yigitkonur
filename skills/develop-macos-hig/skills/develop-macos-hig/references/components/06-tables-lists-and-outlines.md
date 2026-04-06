@@ -734,3 +734,95 @@ Community consensus (r/SwiftUI, r/swift, 2024–2026): SwiftUI on macOS is "not 
 | NSOutlineView keyboard navigation (arrows, Space, Return) | Apple Developer Documentation extracted via scraper |
 | `allowsMultipleSelection` default = false | Apple Developer Documentation — NSOutlineView doc extracted |
 | NSCollectionViewFlowLayout `itemSize` default = NSZeroSize | AppCoda tutorial; Apple Developer Documentation: "if you do not provide an estimated size or implement the delegate method..." |
+
+---
+
+## Appendix: NSCollectionViewCompositionalLayout (macOS 10.15+)
+
+The modern declarative layout system for `NSCollectionView`. Replaces subclassing `NSCollectionViewFlowLayout` for all layouts with irregular structure, orthogonal sections, or adaptive per-section configuration.
+
+**Availability:** Layout macOS 10.15+, Orthogonal scrolling macOS 11.0+, `visibleItemsInvalidationHandler` macOS 12.0+.
+
+### Architecture: Item → Group → Section → Layout
+
+| Element | Role | Size descriptor |
+|---|---|---|
+| `NSCollectionLayoutItem` | Leaf — maps to one cell | `NSCollectionLayoutSize` |
+| `NSCollectionLayoutGroup` | Positions items (horizontal/vertical/custom) | `NSCollectionLayoutSize` |
+| `NSCollectionLayoutSection` | Groups + spacing + insets + supplementary | Wraps a group |
+| `NSCollectionViewCompositionalLayout` | Full layout | Wraps sections |
+
+### NSCollectionLayoutDimension Factories
+
+| Factory | Meaning |
+|---|---|
+| `.fractionalWidth(_ f)` | f × container width |
+| `.fractionalHeight(_ f)` | f × container height |
+| `.absolute(_ pts)` | Fixed points |
+| `.estimated(_ pts)` | Initial estimate, refined after layout |
+
+### Standard Patterns
+
+**List:** Full-width rows — `.fractionalWidth(1.0)` item + vertical group.
+
+**Grid:** N columns — `.fractionalWidth(1.0/N)` items + horizontal group.
+
+**Adaptive:** Section provider closure reads `layoutEnvironment.container.effectiveContentSize.width` to choose column count at runtime.
+
+**Orthogonal scrolling (macOS 11.0+):** Horizontally scrolling carousel within vertical layout via `section.orthogonalScrollingBehavior`:
+
+| Case | Behavior |
+|---|---|
+| `.none` | No orthogonal scrolling (default) |
+| `.continuous` | Free scroll |
+| `.continuousGroupLeadingBoundary` | Snaps to group leading edge |
+| `.groupPaging` | Pages by group width |
+| `.groupPagingCentered` | Pages by group, centered |
+| `.paging` | Pages by container width |
+
+### Supplementary Items (Headers/Footers)
+
+```swift
+let headerSize = NSCollectionLayoutSize(
+    widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(44))
+let header = NSCollectionLayoutBoundarySupplementaryItem(
+    layoutSize: headerSize,
+    elementKind: NSCollectionView.elementKindSectionHeader,
+    alignment: .top)
+section.boundarySupplementaryItems = [header]
+```
+
+### Decoration Items (Section Backgrounds)
+
+Register on the **layout** (not collection view):
+
+```swift
+layout.register(BackgroundView.self, forDecorationViewOfKind: "bg")
+let bg = NSCollectionLayoutDecorationItem.background(elementKind: "bg")
+bg.zIndex = -1
+section.decorationItems = [bg]
+```
+
+### macOS vs iOS Differences
+
+| Aspect | macOS | iOS |
+|---|---|---|
+| Orthogonal scrolling | macOS 11.0+ | iOS 13.0 |
+| Item class | `NSCollectionViewItem` (controller) | `UICollectionViewCell` |
+| `UICollectionLayoutListConfiguration` | **Not available** | iOS 14+ |
+| `visibleItemsInvalidationHandler` | macOS 12.0+ | iOS 13.0+ |
+| Coordinate origin | Lower-left (flipped) | Upper-left |
+
+### Known Bugs
+
+- **FB14638771 (macOS 14.6):** Orthogonal sections use nested NSScrollView; parent `documentVisibleRect` is incorrect.
+- **macOS 13.x:** `pinToVisibleBounds = true` + orthogonal scrolling offsets header origin.
+
+### Decision Tree
+
+- Uniform grid, simple → **NSCollectionViewGridLayout**
+- Per-item size variation, delegate callbacks → **NSCollectionViewFlowLayout**
+- Per-section variance, orthogonal, adaptive, decoration → **NSCollectionViewCompositionalLayout** (modern default)
+- SwiftUI, <500 items → **LazyVGrid**
+
+**Sources:** Apple Developer Documentation (NSCollectionViewCompositionalLayout, NSCollectionLayoutSection, NSCollectionLayoutBoundarySupplementaryItem, NSCollectionViewDiffableDataSource), WWDC19 session 215.

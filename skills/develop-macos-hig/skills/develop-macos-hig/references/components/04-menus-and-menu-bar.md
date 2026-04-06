@@ -219,3 +219,104 @@ Use template images (`isTemplate = true`) for automatic light/dark adaptation. F
 6. AppCoda — macOS Programming: Menus and Toolbar
 7. 8th Light — Menu Bar Extra tutorial
 8. Electron GitHub Issue #48909 — SF Symbol specs for menu items
+
+---
+
+## 10. NSMenu Delegate Lifecycle
+
+| Method | Called when | Modify items? |
+|---|---|---|
+| `menuNeedsUpdate(_:)` | Before display | Yes — rebuild freely |
+| `numberOfItems(in:)` + `menu(_:update:at:shouldCancel:)` | Before display (lazy, per-item) | Yes — update each item |
+| `menuWillOpen(_:)` | After sizing, before display | No — state only |
+| `menu(_:willHighlight:)` | Cursor moves to new item | No |
+| `menuDidClose(_:)` | After dismissal | No |
+| `menuHasKeyEquivalent(_:for:target:action:)` | Key-down, before population | No |
+
+**Lifecycle order:** `menuNeedsUpdate` → `menuWillOpen` → tracking → `menuDidClose`
+
+Use `menuNeedsUpdate` for fast rebuilds. Use `numberOfItems`+`update` pair for large menus (supports cancellation via `shouldCancel`).
+
+## 11. Menu Item Validation
+
+`NSMenu.autoenablesItems = true` (default). For each item, AppKit walks the responder chain to find a target responding to the item's `action`, then calls `validateMenuItem(_:)`.
+
+```swift
+func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    switch menuItem.action {
+    case #selector(copy(_:)):  return hasSelection
+    case #selector(paste(_:)): return NSPasteboard.general.canReadItem(
+        withDataConformingToTypes: [UTType.plainText.identifier])
+    case #selector(toggleWordWrap(_:)):
+        menuItem.state = isWordWrapEnabled ? .on : .off
+        return true
+    default: return responds(to: menuItem.action!)
+    }
+}
+```
+
+Use `validateUserInterfaceItem(_:)` for logic shared between toolbar items and menu items.
+
+## 12. Dynamic Menu Construction
+
+| Strategy | When | Method |
+|---|---|---|
+| Full rebuild | Fast, changing item count | `menuNeedsUpdate(_:)` — `removeAllItems()` + rebuild |
+| Lazy per-item | Large data, cancellable | `numberOfItems(in:)` + `menu(_:update:at:shouldCancel:)` |
+| State update only | Static structure, dynamic state | `menuWillOpen(_:)` — update titles/enabled/state |
+
+Never do I/O in delegate callbacks. Use `representedObject` to bind data to items.
+
+## 13. Services Menu Implementation
+
+**Consuming:** Implement `NSServicesMenuRequestor` — `writeSelection(to:types:)` and `readSelection(from:)`.
+
+**Providing:** Add `NSServices` array to Info.plist:
+- `NSMenuItem` — menu title
+- `NSMessage` — method name (without `:userData:error:`)
+- `NSPortName` — app name
+- `NSSendTypes` / `NSReturnTypes` — UTI strings
+
+Handler signature: `methodName(_:userData:error:)`. Register with `NSApp.servicesProvider = self`. Force rescan: `NSUpdateDynamicServices()`.
+
+## 14. Toggle State Management
+
+| State | Constant | Visual |
+|---|---|---|
+| `.on` | 1 | Checkmark (✓) |
+| `.off` | 0 | No indicator |
+| `.mixed` | -1 | Dash (–) |
+
+**Dynamic titles** must describe the action to take: "Hide Toolbar" when visible, "Show Toolbar" when hidden. Update in `validateMenuItem(_:)`, not in action handlers.
+
+## 15. Format Menu — Complete Structure
+
+```
+Format
+├── Font [submenu]
+│   ├── Show Fonts      Cmd-T    → orderFrontFontPanel
+│   ├── Bold            Cmd-B    → addFontTrait
+│   ├── Italic          Cmd-I    → addFontTrait
+│   ├── Underline       Cmd-U    → underline
+│   ├── Bigger          Cmd-+    → modifyFont
+│   ├── Smaller         Cmd--    → modifyFont
+│   ├── Kern [submenu] (Default/None/Tighten/Loosen)
+│   ├── Ligature [submenu] (Default/None/All)
+│   ├── Baseline [submenu] (Default/Super/Sub/Raise/Lower)
+│   └── Show Colors   Shift-Cmd-C → orderFrontColorPanel
+├── Text [submenu]
+│   ├── Align Left      Cmd-{    → alignLeft
+│   ├── Center          Cmd-|    → alignCenter
+│   ├── Justify                  → alignJustified
+│   ├── Align Right     Cmd-}    → alignRight
+│   ├── Writing Direction [submenu]
+│   └── Show Ruler               → toggleRuler
+└── Substitutions [submenu]
+    ├── Smart Copy/Paste, Smart Quotes, Smart Dashes
+    ├── Smart Links, Data Detectors, Text Replacement
+    └── Show Substitutions
+```
+
+`NSFontManager.shared` coordinates Font panel, Font menu, and first responder. `NSTextView` responds to all standard selectors automatically.
+
+**Sources:** Apple Developer Documentation (NSMenuDelegate, NSMenuItemValidation, NSServicesMenuRequestor, NSFontManager, NSTextView), Apple Archive (Application Menus, System Services).

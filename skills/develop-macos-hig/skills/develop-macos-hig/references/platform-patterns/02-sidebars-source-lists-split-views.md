@@ -276,3 +276,71 @@ Set `NSSplitView.autosaveName` (AppKit) or use `@SceneStorage` (SwiftUI).
 | Apple HIG JSON API | Official Apple documentation |
 | Stack Overflow (sidebar collapse animation) | Practitioner evidence |
 | Reddit r/SwiftUI (inspector threads 2023–2025) | Community evidence |
+
+---
+
+## 10. macOS 26 (Tahoe) Floating Sidebar Changes
+
+> **Availability:** macOS 26.0+ (Xcode 26 SDK required for automatic adoption)
+
+### What Changed
+
+Sidebars adopt a **floating Liquid Glass panel** visual instead of edge-attached translucent vibrancy. The physical attachment is unchanged (same NSSplitView column), but rendering material is now `NSGlassEffectView` instead of `NSVisualEffectView`.
+
+| Dimension | macOS 10.11–15 | macOS 26 (Tahoe) |
+|---|---|---|
+| Material | `NSVisualEffectView` (sidebar) | `NSGlassEffectView` (Liquid Glass) |
+| Edge attachment | True edge-to-edge, behind toolbar | Visually floating; inset with padding |
+| Background | Behind-window blur | Lens-samples content behind sidebar panel |
+| Color pickup | None | Ambient from adjacent content (automatic) |
+
+### API Changes
+
+**AppKit:** Automatic with Xcode 26 SDK. New properties:
+```swift
+// Let content extend under the floating sidebar
+splitViewItem.automaticallyAdjustsSafeAreaInsets = true
+
+// Per-split-item accessories (macOS 26+)
+splitViewItem.addTopAlignedAccessoryViewController(accessory)
+```
+
+**SwiftUI:** `NavigationSplitView` auto-adopts. New modifiers:
+```swift
+SidebarView()
+    .backgroundExtensionEffect()   // extends glass beyond safe area
+
+SomeView()
+    .glassEffect(in: RoundedRectangle(cornerRadius: 12))
+
+GlassEffectContainer {
+    // Groups glass elements to share one sampling region
+}
+```
+
+### Migration Path
+
+1. **Build with Xcode 26** — automatic Liquid Glass adoption
+2. **Remove custom NSVisualEffectView** layered inside sidebar — blocks system material
+3. **Remove custom `presentationBackground`** modifiers wrapping sidebar content
+4. **Test insets** — sidebar now floats with padding; fixed top/bottom insets may look wrong
+
+**Backward compatibility guard:**
+```swift
+if #available(macOS 26, *) {
+    // NSGlassEffectView, glassEffect(), backgroundExtensionEffect()
+}
+```
+
+**Opt out:** Apps can defer Liquid Glass via plist key (expected mandatory in Xcode 27).
+
+### Known Issues
+
+| Issue | Status |
+|---|---|
+| NSGlassEffectView fully transparent on window defocus with heavy tintColor | Bug (macOS 26.2) |
+| NavigationSplitView floating sidebar requires top-level placement in WindowGroup | By design |
+| Open panel sidebar too narrow to resize (26.0–26.1) | Fixed in later releases |
+| Stacking glass on glass without GlassEffectContainer = visual inconsistency | By design |
+
+**Sources:** WWDC25 Session 310 (AppKit), WWDC25 Session 323 (SwiftUI), ForkLift 4.4.3 release notes, Reddit r/SwiftUI, dev.to Liquid Glass best practices.

@@ -203,3 +203,94 @@ Interrupt needed?
 7. AppCoda — macOS Alerts tutorial
 8. Stack Overflow — NSAlert destructive button
 9. Reddit r/MacOS, r/UXDesign — destructive action patterns
+
+---
+
+## 12. NSAlert.accessoryView — Embedding Custom Views
+
+Insert any `NSView` between informativeText and buttons. Alert expands vertically to fit.
+
+```swift
+let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 22))
+field.placeholderString = "New name"
+alert.accessoryView = field
+alert.window.initialFirstResponder = field
+alert.layout()  // REQUIRED — forces recompute of window height
+```
+
+- Alert width is ~420pt (system-fixed). Accessory view is centered horizontally.
+- For multiple controls, wrap in NSView/NSStackView with explicit frame.
+- Call `layout()` again if accessoryView changes after initial call.
+
+## 13. SwiftUI .alert() and .sheet() Limitations on macOS
+
+### .alert() Cannot:
+- Embed custom views (no accessoryView)
+- Mark specific buttons as destructive (`hasDestructiveAction`)
+- Add suppression checkbox (use `.dialogSuppressionToggle` instead)
+- Override window level or collection behavior
+
+### .sheet() Gets Wrong:
+- No title-bar slide animation (floats from center instead)
+- Content sizing requires explicit `.frame(width:height:)`
+- Sheet has close button and is movable (unlike AppKit sheets)
+
+**Workaround:** Bridge to AppKit via `NSAlert` directly for document-modal interactions requiring correct sheet animation or custom controls.
+
+## 14. NSPanel Patterns
+
+`NSPanel` (subclass of `NSWindow`) for utility and accessory windows:
+
+| Flag | Effect |
+|---|---|
+| `.utilityWindow` | Small title bar, floats above document windows |
+| `.nonactivatingPanel` | Clicking doesn't steal focus (must set at init time) |
+| `.hudWindow` | Dark translucent HUD appearance |
+
+**Find Bar:** `textView.usesFindBar = true` enables inline find bar via `NSTextFinder`. For custom views, implement `NSTextFinderClient` protocol.
+
+**Floating Tool Panel:**
+```swift
+let panel = NSPanel(contentRect: rect, styleMask: [.titled, .closable, .utilityWindow], backing: .buffered, defer: false)
+panel.isFloatingPanel = true
+panel.becomesKeyOnlyIfNeeded = true
+```
+
+## 15. Standard "Save Changes?" Pattern
+
+### Automatic (NSDocument)
+
+`NSDocument` presents the sheet automatically when `isDocumentEdited == true` and window closes:
+- Message: `"Do you want to save the changes made to the document "[name]"?"`
+- Informative: `"Your changes will be lost if you don't save them."`
+- Buttons: **Save** (default/Return) · **Cancel** (Escape) · **Don't Save** (destructive/leftmost)
+
+### Manual Implementation
+
+```swift
+let alert = NSAlert()
+alert.messageText = "Do you want to save the changes made to \"\(name)\"?"
+alert.informativeText = "Your changes will be lost if you don't save them."
+alert.addButton(withTitle: "Save")          // default — Return
+alert.addButton(withTitle: "Cancel")         // Escape
+alert.addButton(withTitle: "Don't Save")     // destructive — leftmost
+if #available(macOS 11.0, *) { alert.buttons[2].hasDestructiveAction = true }
+alert.beginSheetModal(for: window) { response in ... }
+```
+
+## 16. Multi-Item Destructive Action Phrasing
+
+| Scenario | Message text | Button |
+|---|---|---|
+| Single named item | `Delete "Annual Report.pdf"?` | `Delete` |
+| Multiple items | `Delete 3 Items?` | `Delete` |
+| All items | `Delete All Items in Trash?` | `Delete` |
+
+**Rules:**
+- Use the item's name in quotes for single items
+- Use numeric count for multiple items
+- Use the exact action verb as the button title — not "OK", "Yes", or "Confirm"
+- Mark destructive buttons with `hasDestructiveAction = true` (macOS 11+)
+- Destructive button must NOT be the first button added
+
+**Sources:** Apple Developer Documentation (NSAlert, NSPanel, NSTextFinder, NSDocument), Stack Overflow, Reddit practitioner threads.

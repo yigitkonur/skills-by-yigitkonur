@@ -287,3 +287,87 @@ Weight variants required: **Ultralight**, **Regular**, **Black** (minimum). Syst
 20. Stack Overflow — Sidebar icon size
 21. Apple Leopard HIG archive — 8-pixel grid, canvas specs
 22. dev.to — WWDC 2025 SF Symbols 7
+
+---
+
+## 8. SF Symbol Animation Effects
+
+SF Symbols 4+ introduced unified animation effects across SwiftUI/AppKit. Effects are declared in the `Symbols` framework.
+
+### Effect Categories
+
+| Category | Behavior | Lifecycle |
+|---|---|---|
+| **Discrete** | Plays once, re-triggered by changing `value` | `.symbolEffect(.bounce, value: count)` |
+| **Indefinite** | Persists until removed | `.symbolEffect(.breathe, isActive: bool)` |
+| **Transition** | Animates enter/leave view hierarchy | `.transition(.symbolEffect(...))` |
+| **Content Transition** | Animates symbol-to-symbol swap | `.contentTransition(.symbolEffect(.replace))` |
+
+### All Effects
+
+| Effect | Category | macOS | Behavior |
+|---|---|---|---|
+| `.bounce` | Discrete | 14+ | Transient scale pop (up/down) |
+| `.pulse` | Discrete + Indefinite | 14+ | Opacity cycle only |
+| `.variableColor` | Discrete + Indefinite | 14+ | Cycles opacity through variable-color layers |
+| `.scale` | Indefinite | 14+ | Persistent size change (up/down) |
+| `.appear` / `.disappear` | Indefinite + Transition | 14+ | Show/hide with motion |
+| `.replace` | Content Transition | 14+ | Symbol swap; Magic Replace default on macOS 15+ |
+| `.wiggle` | Discrete + Indefinite | **15+** | Lateral/rotational oscillation |
+| `.breathe` | Indefinite | **15+** | Size + opacity cycle ("living" indicator) |
+| `.rotate` | Indefinite | **15+** | Rotational motion (by layer or whole) |
+| `.drawOn` / `.drawOff` | Transition | **26+** | Stroke drawing animation |
+
+### SwiftUI API
+
+```swift
+// Indefinite — toggle with Boolean
+Image(systemName: "mic.fill")
+    .symbolEffect(.breathe, isActive: isRecording)
+
+// Discrete — trigger on value change
+Image(systemName: "cart.fill")
+    .symbolEffect(.bounce, value: cartCount)
+
+// Content transition — symbol swap
+Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+    .contentTransition(.symbolEffect(.replace))
+
+// Options
+.symbolEffect(.wiggle, options: .repeat(3).speed(2), value: errorCount)
+
+// Prevent child inheritance
+Image(systemName: "checkmark").symbolEffectsRemoved()
+```
+
+### AppKit API
+
+```swift
+// Add indefinite effect
+imageView.addSymbolEffect(.breathe)
+imageView.addSymbolEffect(.variableColor.iterative.reversing, options: .speed(1.5))
+
+// Add discrete effect (fires once per call)
+imageView.addSymbolEffect(.bounce, options: .repeat(2))
+
+// Remove
+imageView.removeSymbolEffect(ofType: .breathe)
+
+// Content transition (symbol swap)
+imageView.setSymbolImage(newImage, contentTransition: .replace)
+```
+
+### Combination Rules
+
+- Multiple indefinite effects coexist (`.breathe` + `.scale.up`)
+- `.variableColor` and `.variableDraw` are mutually exclusive
+- Same-type indefinite effects update (don't stack)
+- Content transitions queue if overlapping
+
+### macOS Guidance
+
+**Do:** Bounce on user action, breathe for persistent state, replace on state flip, scale on hover.
+
+**Don't:** Animate for decoration. Run multiple indefinite effects simultaneously. Wiggle/bounce inside controls. Animate on hover beyond subtle scale.
+
+**Reduce Motion:** SF Symbol effects automatically respect the system preference when applied through the standard API. Custom Core Animation bypasses this — check `NSWorkspace.shared.accessibilityDisplayShouldReduceMotion` manually.
