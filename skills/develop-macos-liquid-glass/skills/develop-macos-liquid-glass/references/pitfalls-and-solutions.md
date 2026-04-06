@@ -1,6 +1,6 @@
 # macOS Liquid Glass — Pitfalls and Solutions
 
-> Verified against macOS 26 Tahoe (26.0–26.2) and Xcode 28 — March 2026
+> Verified against macOS 26 Tahoe (26.0–26.4) and Xcode 26 — April 2026
 > Every issue was reproduced or confirmed via WWDC sessions, Apple documentation, developer forums, or community reports.
 
 ---
@@ -38,6 +38,11 @@
 | 27 | AppKit | `NSGlassEffectContainerView` does NOT propagate cornerRadius | Medium |
 | 28 | AppKit | `NSGlassEffectView` minimal public API | Info |
 | 29 | AppKit | Private `set_variant(_:)` API | Critical |
+| 30 | AppKit | NSGlassEffectView opaque on inactive windows | High |
+| 31 | Migration | No fallback on pre-macOS 26 — crash | Critical |
+| 32 | Accessibility | Focus ring regression — FKA silently enabled | Medium |
+| 33 | Visual | Window resize cursor misalignment (fixed 26.4) | Low |
+| 34 | Visual | Scrollbar clipping under corner radius (partial fix 26.4) | Medium |
 
 ---
 
@@ -285,9 +290,9 @@ GlassEffectContainer {
 
 ### 12. Performance on Intel Macs
 
-GPU-bound shader work is negligible on Apple Silicon but can dip to ~45fps with 5–6 overlapping glass views on older Intel Macs.
+GPU-bound shader work is negligible on Apple Silicon but causes substantial frame rate drops on Intel Macs. Community reports describe Intel integrated GPUs as ~3x slower than Apple Silicon for the Liquid Glass rendering pipeline, with users reporting "20 FPS less in Tahoe" and memory pressure from WindowServer shader calculations.
 
-**Fix**: Reduce overlapping glass elements. Test on target hardware. Consider conditional enhancements for Apple Silicon.
+**Fix**: Reduce overlapping glass elements. Test on target hardware. Profile with Instruments > Core Animation (watch FPS and "Hitches in commit"). Consider conditional enhancements for Apple Silicon.
 
 ```swift
 #if arch(arm64)
@@ -558,9 +563,9 @@ Text("Hello")
 
 ### 25. Reduce Transparency regression
 
-The "Reduce Transparency" accessibility setting stopped working correctly in macOS 26 through 26.2. Glass effects may still render even when the user has enabled the setting.
+The "Reduce Transparency" accessibility setting has been unreliable since macOS 26.0. While macOS 26.1 added explicit user control over Liquid Glass effects, community reports from 26.3 show the toggle itself becoming greyed out and non-functional for some users. **Do not assume this is fixed in any specific version — treat as ongoing.**
 
-**Fix**: File Feedback with Apple. Test with the setting enabled (`System Settings > Accessibility > Display > Reduce Transparency`). Provide additional contrast via semantic colors as a defensive measure.
+**Fix**: Always implement defensive code regardless of OS version. File Feedback with Apple. Test with the setting enabled (`System Settings > Accessibility > Display > Reduce Transparency`).
 
 ```swift
 // Defensive: check accessibility setting
@@ -650,3 +655,51 @@ glassView.tintColor = .clear
 ```
 
 > **Severity: Critical** — Using private API risks App Store rejection and runtime crashes on future macOS versions.
+
+---
+
+### 30. NSGlassEffectView renders opaque on inactive windows — no public workaround
+
+When the hosting `NSWindow` is not the key window, `NSGlassEffectView` becomes significantly more opaque/solid. Unlike `NSVisualEffectView.state = .active`, there is no public API to force active glass rendering.
+
+**Impact**: Breaks HUD-style floating windows, tool palettes, and any non-focus-taking overlay that uses glass.
+
+**Workaround**: The only known approach overrides private `NSWindow` methods (`_hasActiveAppearance`, `_hasKeyAppearance`) via a subclass — this risks App Store rejection.
+
+**Fix**: None available via public API as of macOS 26.4. File Feedback with Apple requesting a `state`-equivalent property on `NSGlassEffectView`.
+
+---
+
+### 31. No automatic fallback on pre-macOS 26 targets — crash
+
+`.buttonStyle(.glass)`, `.glassEffect()`, and all Liquid Glass APIs crash at runtime on macOS versions prior to 26 if called without an `#available` guard. There is no silent degradation.
+
+**Fix**: Always gate with `#available(macOS 26, *)`:
+
+```swift
+if #available(macOS 26, *) {
+    button.glassEffect(.regular, in: .capsule)
+} else {
+    button.background(.ultraThinMaterial)
+}
+```
+
+---
+
+### 32. Focus ring regression — Full Keyboard Access silently enabled
+
+macOS 26 Tahoe implicitly enables Full Keyboard Access for some users after upgrade, causing a blue focus ring to appear around all focusable UI elements — including glass controls. Users are confused by the unexpected focus rings.
+
+**Workaround**: Users can disable via Settings > Accessibility > Motor > Keyboard > Full Keyboard Access (toggle off) or Settings > Keyboard > Keyboard Navigation (toggle off). Developers should not suppress focus rings — they are an accessibility feature — but should be aware this may affect visual testing.
+
+---
+
+### 33. Window resize cursor misalignment (fixed in 26.4)
+
+The resize pointer did not follow the window's large rounded corner shape during drag-resize in macOS 26.0–26.3. Confirmed fixed in macOS 26.4.
+
+---
+
+### 34. Scrollbar clipping under large corner radius (partially fixed in 26.4)
+
+Scrollbars were clipped under the large window corner radius in macOS 26.0–26.3. Fixed in 26.4 for large-radius windows; still present under small-radius windows (e.g., Terminal) as of 26.4. Also affects Finder column view where horizontal scrollbar overlaps resize handles when "always show scrollbars" is enabled.

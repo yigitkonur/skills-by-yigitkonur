@@ -22,10 +22,12 @@ Each row is a concrete find-and-replace. The "Design Reason" column is what you 
 
 ### State Management (Observation)
 
+> **Important:** `@StateObject`, `@ObservedObject`, `@EnvironmentObject`, and `ObservableObject` are **not officially deprecated** — Apple has not added deprecation annotations to these APIs. However, the `@Observable` macro (iOS 17 / macOS 14) is the preferred modern pattern and offers significant performance advantages. The replacements below are recommendations, not deprecation-driven requirements.
+
 | # | Old API | New API | Since | Design Reason |
 |---|---------|---------|-------|---------------|
 | 6 | `class VM: ObservableObject` | `@Observable class VM` | iOS 17 / macOS 14 | Precise property-level invalidation. Only views reading a changed property re-render. Eliminates phantom redraws that cause glass shimmer artifacts. |
-| 7 | `@StateObject private var vm = VM()` | `@State private var vm = VM()` (with `@Observable`) | iOS 17 / macOS 14 | `@StateObject` is tied to `ObservableObject`. With `@Observable`, `@State` owns the lifecycle. |
+| 7 | `@StateObject private var vm = VM()` | `@State private var vm = VM()` (with `@Observable`) | iOS 17 / macOS 14 | With `@Observable`, `@State` owns the lifecycle. Note: `@StateObject` has unique deferred-initialization semantics that `@State` on `@Observable` does not replicate — verify your use case before migrating. |
 | 8 | `@ObservedObject var vm: VM` | Direct property `var vm: VM` (with `@Observable`) | iOS 17 / macOS 14 | Observation tracking is implicit. No wrapper needed. |
 | 9 | `@EnvironmentObject var store: Store` | `@Environment(Store.self) var store` | iOS 17 / macOS 14 | Type-safe. Compiler error if not injected, instead of runtime crash. |
 | 10 | `@Published var name: String` | Remove (automatic in `@Observable`) | iOS 17 / macOS 14 | Every stored property is observed by default. `@Published` is `ObservableObject`-era boilerplate. |
