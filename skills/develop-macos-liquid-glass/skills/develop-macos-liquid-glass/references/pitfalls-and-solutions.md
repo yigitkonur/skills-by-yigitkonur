@@ -74,9 +74,9 @@ GlassEffectContainer {
 
 ### 2. macOS button tinting issue
 
-Glass buttons appear incorrectly tinted on macOS. The system applies a default tint that does not match expected behavior.
+Glass buttons may appear with unexpected accent-color tint bleed on macOS. The system applies a default tint that some configurations render incorrectly.
 
-**Fix**: Use `.tint(.clear)` on glass buttons for proper macOS rendering.
+**Fix**: Practitioners use `.tint(.clear)` on secondary glass buttons as a workaround. This is not documented in Apple's official guidance but widely adopted.
 
 ```swift
 // ❌ WRONG — tint distorts glass appearance on macOS
@@ -455,7 +455,7 @@ The new 3-tier corner radius system (12pt / 20pt / 26pt) is automatic. There is 
 
 | Tier | Radius | Usage |
 |------|--------|-------|
-| Inner | 12pt | Controls, buttons |
+| Inner | ~16pt | Controls, buttons |
 | Middle | 20pt | Panels, cards |
 | Outer | 26pt | Window chrome |
 

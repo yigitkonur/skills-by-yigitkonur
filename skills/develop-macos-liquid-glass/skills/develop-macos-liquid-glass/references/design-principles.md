@@ -121,7 +121,7 @@ The window itself has a corner radius determined by its toolbar style:
 
 | Window Configuration | Approximate Corner Radius | Example |
 |---------------------|--------------------------|---------|
-| No toolbar (title-bar-only) | ~16pt | Settings panel, utility window |
+| Title-bar-only (no toolbar) | ~16pt | Settings panel, utility window |
 | Compact toolbar (icon-only) | ~20pt | Finder, Mail |
 | Standard toolbar (icon+text) | ~26pt | Photos, Keynote |
 
@@ -583,7 +583,7 @@ When your code passes every item on this list, it will feel like Apple wrote it.
 
 ### Hierarchy
 - [ ] ONE primary action with `.glassProminent` and `.tint(.accentColor)` per screen
-- [ ] All other actions use `.buttonStyle(.glass)` with no tint (or `.tint(.clear)` on macOS)
+- [ ] All other actions use `.buttonStyle(.glass)` with no tint (apply `.tint(.clear)` if tint bleed occurs on macOS)
 - [ ] Destructive actions use `.tint(.red)` and `role: .destructive`
 - [ ] Glass variant is `.regular` (use `.clear` only if media-rich background justifies it)
 
