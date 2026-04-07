@@ -10,7 +10,7 @@ Find the best GitHub repos for any technology need. Orchestrates search and eval
 ## Trigger boundary
 
 **Use when:** "find the best X on GitHub", "what should I use for Y", "compare all Z options", "landscape survey for W"
-**Do NOT use when:** you already know which repos to evaluate (use `run-github-repo-evaluate` directly) or just need a quick list without scoring (use `run-github-repo-search` directly)
+**Do NOT use when:** you already have scored evaluation data and just need to re-read it, or a completely unrelated task
 
 ## Workflow
 
@@ -42,19 +42,7 @@ Write this strategy to `.githubresearch/strategy.md` in the working directory. T
 
 ### Phase 2: Search (dispatch subagent)
 
-Launch ONE search subagent (Sonnet):
-
-```
-You have a skill at ~/.claude/skills/run-github-repo-search/.
-Read SKILL.md and its references, then search for: {SEED_KEYWORDS_AND_CONTEXT}
-
-Known repos to include: {KNOWN_COMPETITORS}
-
-Write your results (the final ranked markdown table) to:
-  .githubresearch/search-findings/wave-01.md
-
-Prefix all commands with rtk.
-```
+Launch ONE search subagent (Sonnet). Use the prompt template from `references/subagent-prompts.md` (Search Subagent section), filling in the topic and context. The subagent reads `references/search/search-methodology.md` and its supporting references.
 
 **Agent config:** model `sonnet`, mode `bypassPermissions`, `run_in_background: true`.
 
@@ -69,16 +57,7 @@ Wait for completion. Read `.githubresearch/search-findings/wave-01.md`.
 | <5 repos found | **Retry**: tell a new subagent what was wrong and which angles to try. Write to `wave-02.md`. Max 2 retries. |
 | Results are off-topic | **Retry with feedback**: "These are wrong because X. Try searching for Y instead." |
 
-**Retry prompt template:**
-```
-Previous search found only {N} repos. Here's what was found:
-{PASTE wave-01.md table}
-
-This missed the mark because: {SPECIFIC_FEEDBACK}
-Try these angles instead: {NEW_ANGLES}
-
-Skill at ~/.claude/skills/run-github-repo-search/. Write to .githubresearch/search-findings/wave-02.md.
-```
+**Retry:** Use the Search Retry Subagent template from `references/subagent-prompts.md`, providing feedback on what was missed and new angles to try.
 
 **Max 3 search waves total.** If still <5 after 3 waves, tell the user the topic may be too niche.
 
@@ -99,32 +78,7 @@ Take ALL unique repos from all search waves. Decide swarm size:
 
 **HARD CAP: Never more than 5 evaluation agents.**
 
-Each eval subagent gets:
-
-```
-You have a skill at ~/.claude/skills/run-github-repo-evaluate/.
-Read SKILL.md and its references.
-
-Evaluate these repos: {REPO_LIST}
-
-For each repo, run Phase 1 (batch screen) and Phase 2 (deep dive).
-Use the scoring rubric from skills/run-github-repo-evaluate/references/scoring-rubric.md.
-
-Custom Feature Fit criteria for this search:
-{FEATURE_CHECKLIST_FROM_PHASE_1}
-
-Write your scored results to:
-  .githubresearch/repo-reviews/batch-{N}.md
-
-Use this format per repo:
-  ## owner/repo
-  Score: X/100 | Stars: N | Health: X | Author: X | Code: X
-  Key strength: ...
-  Key risk: ...
-  Feature fit: [checklist with yes/no per feature]
-
-Prefix all commands with rtk.
-```
+Each eval subagent gets the Evaluation Subagent prompt from `references/subagent-prompts.md`, with the repo list and feature checklist filled in. Subagents read `references/evaluation/evaluation-methodology.md` and its supporting references for the full evaluation workflow.
 
 Launch all agents in parallel. Wait for all to complete.
 
@@ -271,11 +225,37 @@ Create `.githubresearch/` at the start. If it already exists from a prior run, a
 
 ## Reference routing
 
+### Orchestration
 | File | Read when |
 |---|---|
 | `references/subagent-prompts.md` | Phase 2/3/3.5 — launching search, eval, or feature-detection subagents |
 | `references/quality-gates.md` | After any search wave, evaluation, or feature detection — deciding retry vs proceed |
 | `references/report-template.html` | Phase 5 — copy and fill with data to generate the HTML report |
+
+### Search (subagent reads these)
+| File | Read when |
+|---|---|
+| `references/search/search-methodology.md` | Entry point — full search workflow for subagents |
+| `references/search/search-hypothesis-thinking.md` | Generating hypotheses — worked examples |
+| `references/search/gh-search-syntax-cheatsheet.md` | Building queries — qualifier reference |
+| `references/search/output-format-recipes.md` | Formatting gh output — jq patterns |
+| `references/search/search-diversity-examples.md` | Need more angle inspiration |
+| `references/search/web-search-patterns.md` | Supplementing gh search with web search |
+| `references/search/dedup-and-rank.md` | Merging results from multiple searches |
+
+### Evaluation (subagent reads these)
+| File | Read when |
+|---|---|
+| `references/evaluation/evaluation-methodology.md` | Entry point — full evaluation workflow for subagents |
+| `references/evaluation/graphql-repo-deep-dive.md` | Single repo deep query |
+| `references/evaluation/graphql-batch-repos.md` | Batch screening query |
+| `references/evaluation/graphql-user-profile.md` | Author assessment |
+| `references/evaluation/rest-unique-signals.md` | REST-only endpoints |
+| `references/evaluation/code-level-analysis.md` | README, files, source sampling |
+| `references/evaluation/scoring-rubric.md` | Scoring metrics and scales |
+| `references/evaluation/author-red-flags.md` | Red flag detection |
+| `references/evaluation/api-gotchas.md` | Known API pitfalls |
+| `references/evaluation/eval-subagent-dispatch.md` | Exact subagent prompt template and metrics format |
 
 ## Guardrails
 

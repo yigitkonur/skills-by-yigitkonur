@@ -25,7 +25,7 @@ Improve a skill by making a subagent use it on a real task, reading the executio
 
 ### 1. Get the skill
 
-**Local skill** (user says "test run-github-repo-search"):
+**Local skill** (user says "test run-github-scout"):
 ```
 Read ~/.claude/skills/{name}/SKILL.md
 Tree ~/.claude/skills/{name}/references/
