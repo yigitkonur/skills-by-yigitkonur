@@ -1,6 +1,6 @@
 # run-research
 
-Researching a bug, library choice, architecture trade-off, or technical question where current web evidence, Reddit experience, and multi-source synthesis matter.
+Technical research using web search, page scraping, Reddit practitioner mining, and AI synthesis. Handles both simple single-agent questions and multi-domain orchestrated research with parallel agents.
 
 **Category:** productivity
 

@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-48 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+47 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -56,7 +56,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
-| [run-comprehensive-research](skills/run-comprehensive-research/) | orchestration | Multi-domain research orchestrator with parallel agents and structured docs |
 | [run-github-repo-evaluate](skills/run-github-repo-evaluate/) | productivity | Deep-evaluate GitHub repos for quality, maturity, and maintainer credibility |
 | [run-github-repo-search](skills/run-github-repo-search/) | productivity | Discover GitHub repos via diverse search hypotheses and gh CLI |
 | [run-github-scout](skills/run-github-scout/) | productivity | End-to-end GitHub repo discovery, evaluation, and ranking with subagent swarms |
@@ -65,7 +64,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-openclaw-agents](skills/run-openclaw-agents/) | platform | OpenClaw multi-agent orchestration |
 | [run-openclaw-deploy](skills/run-openclaw-deploy/) | platform | OpenClaw production deployment |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
-| [run-research](skills/run-research/) | productivity | Multi-source technical research with web search, Reddit practitioner mining, page scraping, and AI synthesis |
+| [run-research](skills/run-research/) | productivity | Technical research with web search, Reddit mining, and multi-agent orchestration |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc CLI |
 | [use-skill-dl-util](skills/use-skill-dl-util/) | productivity | Skill search and download via skill-dl |
 
