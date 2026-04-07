@@ -1,8 +1,0 @@
-{
-  "name": "build-skills",
-  "description": "Creating or substantially revising a Claude skill and need workspace-first evidence, remote comparison, and repo-fit synthesis before writing SKILL.md",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

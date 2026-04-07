@@ -1,8 +1,0 @@
-{
-  "name": "build-mcp-use-server",
-  "description": "Building or extending TypeScript MCP servers with the mcp-use library — tools, Zod schemas, resources, prompts, transports, OAuth, sessions, testing, and deployment",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

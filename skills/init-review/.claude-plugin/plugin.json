@@ -1,8 +1,0 @@
-{
-  "name": "init-review",
-  "description": "Creating or refining AI code review config for GitHub Copilot, Devin Bug Catcher, Greptile, or any combination for a repository",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

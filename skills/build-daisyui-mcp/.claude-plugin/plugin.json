@@ -1,8 +1,0 @@
-{
-  "name": "build-daisyui-mcp",
-  "description": "Building UI with daisyUI components, converting Figma designs or screenshots to daisyUI code, or generating themes using the daisyui-blueprint MCP server",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

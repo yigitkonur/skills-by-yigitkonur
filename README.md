@@ -1,36 +1,20 @@
 # skills-by-yigitkonur
 
-48 skills for AI coding agents — code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+48 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
-Add the marketplace to Claude Code (auto-updates on every launch):
+Install all skills at once:
 
-```
-/plugin marketplace add yigitkonur/skills-by-yigitkonur
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 ```
 
 Install a single skill:
 
-```
-/plugin install review-pr@yigitkonur-skills
-```
-
-Browse all available skills:
-
-```
-/plugin
-```
-
-<details>
-<summary>Legacy npx install (still works)</summary>
-
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 ```
-
-</details>
 
 ## Skills
 
@@ -56,7 +40,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [convert-vue-nextjs](skills/convert-vue-nextjs/) | development | Vue/Nuxt to Next.js App Router migration |
 | [debug-tauri-devtools](skills/debug-tauri-devtools/) | development | Tauri debugging with CrabNebula DevTools |
 | [develop-clean-architecture](skills/develop-clean-architecture/) | development | Clean Architecture and DDD in TypeScript |
-| [develop-macos-hig](skills/develop-macos-hig/) | development | macOS HIG design system — spacing, components, accessibility |
+| [develop-macos-hig](skills/develop-macos-hig/) | development | macOS HIG design system -- spacing, components, accessibility |
 | [develop-macos-liquid-glass](skills/develop-macos-liquid-glass/) | development | macOS Liquid Glass design system (Tahoe+) |
 | [develop-typebox-fastify](skills/develop-typebox-fastify/) | development | Type-safe Fastify APIs with TypeBox |
 | [develop-typescript](skills/develop-typescript/) | development | Strict TypeScript patterns and config |
@@ -64,8 +48,8 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS.md and CLAUDE.md generation |
-| [init-review](skills/init-review/) | productivity | AI code review config for Copilot, Devin, and Greptile |
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
+| [init-review](skills/init-review/) | productivity | AI code review config for Copilot, Devin, and Greptile |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | MCP server audit and optimization |
 | [optimize-swift-linter](skills/optimize-swift-linter/) | development | Swift code quality: SwiftLint, Airbnb rules, macOS/iOS patterns |
 | [plan-issue-tree](skills/plan-issue-tree/) | productivity | GitHub Issues with sub-issues and waves |
@@ -81,14 +65,13 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-openclaw-agents](skills/run-openclaw-agents/) | platform | OpenClaw multi-agent orchestration |
 | [run-openclaw-deploy](skills/run-openclaw-deploy/) | platform | OpenClaw production deployment |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
-| [run-research](skills/run-research/) | productivity | Multi-source technical research with web search, Reddit practitioner mining, page scraping, and AI synthesis. Includes 3 reference docs: tool parameters, research workflows, synthesis methods. |
+| [run-research](skills/run-research/) | productivity | Multi-source technical research with web search, Reddit practitioner mining, page scraping, and AI synthesis |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc CLI |
 | [use-skill-dl-util](skills/use-skill-dl-util/) | productivity | Skill search and download via skill-dl |
 
 ## Notes
 
 - Each installed skill adds to the context window. Install only what you need.
-- Auto-updates run on Claude Code startup via `git pull`. Version bumps in `plugin.json` trigger updates.
 - If you see duplicate skill triggers, that is a known Claude Code issue ([#27721](https://github.com/anthropics/claude-code/issues/27721)).
 
 ## Contributing

@@ -1,8 +1,0 @@
-{
-  "name": "run-issue-plan",
-  "description": "Executing a project plan stored as GitHub Issues with sub-issues by reading the tree, dispatching subagents wave-by-wave, and tracking completion",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

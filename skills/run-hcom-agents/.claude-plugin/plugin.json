@@ -1,8 +1,0 @@
-{
-  "name": "run-hcom-agents",
-  "description": "Orchestrating multiple AI coding agents via hcom — launching headless agents, messaging between them, or writing multi-agent workflow scripts with patterns like worker-reviewer loops",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

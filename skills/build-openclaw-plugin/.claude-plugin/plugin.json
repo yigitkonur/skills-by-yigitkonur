@@ -1,8 +1,0 @@
-{
-  "name": "build-openclaw-plugin",
-  "description": "Building OpenClaw plugins — registering tools, channels, model providers, writing plugin manifests, and configuring tool profiles",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

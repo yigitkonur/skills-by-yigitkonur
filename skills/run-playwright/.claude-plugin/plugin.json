@@ -1,8 +1,0 @@
-{
-  "name": "run-playwright",
-  "description": "Controlling a live browser with @anthropic-ai/playwright-cli for navigation, forms, screenshots, tab workflows, or interactive debugging from the terminal",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

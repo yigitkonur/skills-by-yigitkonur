@@ -9,20 +9,19 @@ Before naming or documenting a skill, read **[NAMING.md](NAMING.md)**. Directory
 Every skill lives in `skills/<skill-name>/` and follows this layout:
 
 ```
-skills/my-skill/                    # Plugin root (installed by Claude Code)
-├── .claude-plugin/
-│   └── plugin.json                 # Auto-generated plugin manifest
+skills/my-skill/                    # Skill root
+├── README.md                       # Install instructions and overview
 └── skills/
-    └── my-skill/                   # Skill content dir (must match plugin name)
-        ├── SKILL.md                # Required — the skill definition
+    └── my-skill/                   # Skill content dir (must match skill name)
+        ├── SKILL.md                # Required -- the skill definition
         └── references/
-            ├── topic-one.md        # Optional — deep-dive reference docs
+            ├── topic-one.md        # Optional -- deep-dive reference docs
             ├── topic-two.md
-            └── nested-domain/      # Optional — nested grouping for large skills
+            └── nested-domain/      # Optional -- nested grouping for large skills
                 └── detail.md
 ```
 
-The `skills/<name>/` subdirectory inside the plugin root is required for Claude Code to discover and activate the skill.
+The `skills/<name>/` subdirectory inside the skill root is required for Claude Code to discover and activate the skill.
 
 ### SKILL.md
 
@@ -43,7 +42,7 @@ The body is the actual instruction set the agent follows.
 - `name` must exactly match the directory name
 - `description` must start with `Use skill if you are`
 - `description` must be 30 words or fewer
-- `description` is the trigger — write when to load the skill, not a body summary
+- `description` is the trigger -- write when to load the skill, not a body summary
 - Include concrete phrases, tools, file patterns, or workflows when they help routing
 - Keep it specific enough to avoid collisions with neighboring skills
 
@@ -56,7 +55,7 @@ The body is the actual instruction set the agent follows.
 
 ### references/
 
-Deep-dive documents the `SKILL.md` can point agents to. Every file in `references/` **must** be referenced by `SKILL.md` — unreferenced files are dead weight and should be removed or linked properly.
+Deep-dive documents the `SKILL.md` can point agents to. Every file in `references/` **must** be referenced by `SKILL.md` -- unreferenced files are dead weight and should be removed or linked properly.
 
 Good reference docs:
 - Config specs with parameter tables
@@ -67,40 +66,30 @@ Good reference docs:
 
 **Naming:** Use descriptive `kebab-case`. For large skills, nested folders inside `references/` are valid when they improve discoverability.
 
-## Adding a Skill — Step by Step
+## Adding a Skill -- Step by Step
 
 1. **Create the directory** with the canonical name from `NAMING.md`.
    ```bash
    mkdir -p skills/my-skill/skills/my-skill/references
-   mkdir -p skills/my-skill/.claude-plugin
    ```
 
-2. **Write `SKILL.md`** at `skills/my-skill/skills/my-skill/SKILL.md` — start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
+2. **Write `SKILL.md`** at `skills/my-skill/skills/my-skill/SKILL.md` -- start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
 
-3. **Add reference docs** if the skill needs them — make sure every file is explicitly referenced in `SKILL.md`.
+3. **Add reference docs** if the skill needs them -- make sure every file is explicitly referenced in `SKILL.md`.
 
-4. **Validate locally** (catches errors before CI):
+4. **Create `README.md`** at the skill root (`skills/my-skill/README.md`) with the skill name, description, and install command.
+
+5. **Validate locally** (catches errors before CI):
    ```bash
    python3 scripts/validate-skills.py
    ```
-   This checks reference linkage, frontmatter format, junk files, and marketplace consistency.
+   This checks reference linkage, frontmatter format, and junk files.
 
-5. **Test install**:
-   ```bash
-   claude --plugin-dir ./skills/my-skill
-   ```
+6. **Check trigger collisions** -- if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
 
-6. **Check trigger collisions** — if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
+7. **Update `README.md`** -- add a row to the root skills table (alphabetical order).
 
-7. **Regenerate marketplace files**:
-   ```bash
-   python3 scripts/generate-marketplace.py
-   ```
-   This updates `.claude-plugin/marketplace.json` and creates `skills/<name>/.claude-plugin/plugin.json`. If the skill is new, add its category to the `CATEGORIES` dict in the script first.
-
-8. **Update `README.md`** — add a row to the skills table (alphabetical order).
-
-9. **Open a PR**.
+8. **Open a PR**.
 
 ---
 
@@ -116,10 +105,8 @@ Before submitting:
 - [ ] Every file in `references/` is explicitly referenced in `SKILL.md`
 - [ ] No unreferenced files, dead content, or stale sibling-skill names remain
 - [ ] `SKILL.md` is focused enough to scan quickly, with deeper detail moved to references when useful
-- [ ] No LICENSE or README files inside the skill directory unless explicitly required
+- [ ] No LICENSE files inside the skill directory unless explicitly required
 - [ ] No `.DS_Store`, `.swp`, or other junk files
-- [ ] `scripts/generate-marketplace.py` ran and skill appears in `.claude-plugin/marketplace.json`
-- [ ] `skills/<name>/.claude-plugin/plugin.json` exists with correct name and version
 - [ ] Single-skill install works
 - [ ] Whole-pack install still makes sense if the new skill is part of the combined repo
 - [ ] Trigger phrasing does not accidentally collide with nearby skills unless the overlap is intentional
@@ -145,13 +132,11 @@ Enable the git hook to block pushes when validation fails:
 git config core.hooksPath .githooks
 ```
 
-This runs `scripts/validate-skills.py --quick` before every push. The hook catches:
+This runs `scripts/validate-skills.py` before every push. The hook catches:
 - Orphaned reference files not linked from SKILL.md
 - SKILL.md referencing non-existent files
 - Bad frontmatter (wrong name, missing "Use skill if you are", >30 words)
 - Junk files (evals/, .DS_Store, LICENSE inside skills)
-
-The full validation (including marketplace consistency) runs in CI.
 
 ---
 

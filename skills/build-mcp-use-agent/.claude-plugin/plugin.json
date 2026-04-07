@@ -1,8 +1,0 @@
-{
-  "name": "build-mcp-use-agent",
-  "description": "Building TypeScript AI agents with mcp-use MCPAgent — configuration, LLM integration, streaming, structured output, observability, and production deployment",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}
