@@ -127,6 +127,10 @@ grep -v '^#' urls.txt | grep -v '^$' | xargs -P 6 -I {} skill-dl {} -o ./corpus 
 
 Folders: `{owner}--{repo}--{skill}/` containing `SKILL.md` + bundled references.
 
+### Auto-categorization
+
+By default, `skill-dl` sorts downloaded skills into subfolders based on name patterns. The path shape is `<output>/<auto-category>/<owner>--<repo>--<skill>/`. Use `--no-auto-category` for flat `<output>/<owner>--<repo>--<skill>/` layout, or `-c <name>` to force a single category folder.
+
 ### Skill search paths
 
 skill-dl checks these locations in order:
@@ -197,3 +201,10 @@ For each downloaded skill, quickly assess:
 | Routing table | `grep '### ' SKILL.md` | Has section-based routing |
 
 Skills failing 3+ checks are Tier 3 — use only as anti-pattern examples.
+
+## Environment variables
+
+| Variable | Purpose | Notes |
+|---|---|---|
+| `SERPER_API_KEY` | Google search via Serper | Built-in default included; override for higher quota |
+| `SCRAPEDO_API_KEY` | Proxy fallback for scraping | Built-in default included; override if rate-limited |
