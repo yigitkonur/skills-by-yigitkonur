@@ -1,8 +1,0 @@
-{
-  "name": "build-mcp-use-client",
-  "description": "Building MCP client applications with the mcp-use TypeScript SDK — MCPClient, sessions, tools, resources, React hooks, code mode, and authentication",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "name": "init-openclaw-agent",
-  "description": "Configuring an OpenClaw agent workspace or runtime policy: workspace files, tool profiles, allow/deny lists, skills loading, memory, or security settings",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

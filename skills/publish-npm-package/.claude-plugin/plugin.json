@@ -1,8 +1,0 @@
-{
-  "name": "publish-npm-package",
-  "description": "Automating npm publishing via GitHub Actions and need auth, versioning, provenance, or workflow-template choices",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

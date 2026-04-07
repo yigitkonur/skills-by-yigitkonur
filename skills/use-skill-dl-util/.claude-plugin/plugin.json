@@ -1,8 +1,0 @@
-{
-  "name": "use-skill-dl-util",
-  "description": "Searching, discovering, and downloading AI coding skills using skill-dl with Serper-powered search and batch downloads",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

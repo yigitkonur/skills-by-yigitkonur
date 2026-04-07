@@ -5,15 +5,13 @@ Checks:
   1. Reference linkage — every file in references/ must be linked from SKILL.md
   2. Frontmatter — name matches directory, description format and word count
   3. SKILL.md length — SKILL.md must stay under 500 lines
-  4. Marketplace consistency — every skill has plugin.json and marketplace entry
-  5. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
+  4. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
 
 Usage:
     python3 scripts/validate-skills.py          # full validation, exit 1 on errors
-    python3 scripts/validate-skills.py --quick   # skip marketplace check (for pre-push)
+    python3 scripts/validate-skills.py --quick   # same checks (kept for hook compat)
 """
 
-import json
 import os
 import re
 import sys
@@ -23,7 +21,7 @@ SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
 
 JUNK_PATTERNS = {".DS_Store", ".swp", "Thumbs.db", ".gitkeep"}
 JUNK_DIRS = {"evals", "__pycache__"}
-BANNED_FILES_IN_SKILL = {"LICENSE", "LICENSE.md", "README.md", "CHANGELOG.md"}
+BANNED_FILES_IN_SKILL = {"LICENSE", "LICENSE.md", "CHANGELOG.md"}
 MAX_SKILL_MD_LINES = 500
 
 
@@ -61,7 +59,7 @@ def parse_frontmatter(skill_md_path):
 
 
 def check_structure(skill_name, skill_dir):
-    """Verify SKILL.md is in the correct plugin subdirectory for Claude Code discovery."""
+    """Verify SKILL.md is in the correct subdirectory for Claude Code discovery."""
     errors = []
     expected = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
     if not os.path.isfile(expected):
@@ -205,59 +203,7 @@ def check_skill_length(skill_name, skill_dir):
     return errors
 
 
-def check_marketplace():
-    """Check marketplace.json and plugin.json consistency."""
-    errors = []
-
-    mp_path = os.path.join(REPO_ROOT, ".claude-plugin", "marketplace.json")
-    if not os.path.isfile(mp_path):
-        errors.append("REPO: .claude-plugin/marketplace.json not found")
-        return errors
-
-    with open(mp_path) as f:
-        marketplace = json.load(f)
-
-    plugin_names = {p["name"] for p in marketplace["plugins"]}
-
-    # Check every skill directory has a marketplace entry and plugin.json
-    for skill_name in sorted(os.listdir(SKILLS_DIR)):
-        skill_dir = os.path.join(SKILLS_DIR, skill_name)
-        if not os.path.isdir(skill_dir):
-            continue
-        skill_md = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
-        if not os.path.isfile(skill_md):
-            continue
-
-        if skill_name not in plugin_names:
-            errors.append(f"{skill_name}: missing from marketplace.json")
-
-        pj_path = os.path.join(skill_dir, ".claude-plugin", "plugin.json")
-        if not os.path.isfile(pj_path):
-            errors.append(f"{skill_name}: missing .claude-plugin/plugin.json")
-            continue
-
-        with open(pj_path) as f:
-            pj = json.load(f)
-
-        if pj.get("name") != skill_name:
-            errors.append(
-                f'{skill_name}: plugin.json name "{pj.get("name")}" != directory name'
-            )
-        if not pj.get("version"):
-            errors.append(f"{skill_name}: plugin.json missing version")
-
-    # Check marketplace entries point to existing skills
-    for plugin in marketplace["plugins"]:
-        pname = plugin["name"]
-        if not os.path.isdir(os.path.join(SKILLS_DIR, pname)):
-            errors.append(f"MARKETPLACE: entry '{pname}' has no matching skill directory")
-
-    return errors
-
-
 def main():
-    quick = "--quick" in sys.argv
-
     all_errors = {}
     skills_checked = 0
 
@@ -278,15 +224,10 @@ def main():
 
         skills_checked += 1
 
-    # Marketplace check (skip in --quick mode)
-    marketplace_errors = []
-    if not quick:
-        marketplace_errors = check_marketplace()
-
     # Report
     print(f"Validated {skills_checked} skills")
 
-    total_errors = sum(len(e) for e in all_errors.values()) + len(marketplace_errors)
+    total_errors = sum(len(e) for e in all_errors.values())
 
     if total_errors == 0:
         print("\n✅ All validations passed")
@@ -298,10 +239,7 @@ def main():
         for e in errs:
             print(f"  {skill_name}: {e}")
 
-    for e in marketplace_errors:
-        print(f"  {e}")
-
-    flattened_errors = [e for errs in all_errors.values() for e in errs] + marketplace_errors
+    flattened_errors = [e for errs in all_errors.values() for e in errs]
     has_reference_errors = any(
         "orphaned reference not linked from SKILL.md" in e
         or "references non-existent file" in e

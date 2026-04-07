@@ -1,8 +1,0 @@
-{
-  "name": "build-langchain-ts-app",
-  "description": "Building TypeScript agents, RAG pipelines, or tool-calling workflows with LangChain.js and LangGraph",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}

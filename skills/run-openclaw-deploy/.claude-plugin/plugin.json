@@ -1,8 +1,0 @@
-{
-  "name": "run-openclaw-deploy",
-  "description": "Deploying OpenClaw to production — Docker containers, VPS setup, security hardening, gateway management, and monitoring",
-  "version": "7.0.0",
-  "author": {
-    "name": "Yigit Konur"
-  }
-}
