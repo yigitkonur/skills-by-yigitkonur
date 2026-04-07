@@ -9,8 +9,14 @@ I need to find all GitHub repos for: {TOPIC}
 
 {CONTEXT_FROM_USER — any constraints, languages, known repos}
 
-There's a skill for this at ~/.claude/skills/github-repo-search/.
-Read the SKILL.md and reference files, then run the full workflow.
+Read the search methodology and reference files at {SKILL_DIR}/references/search/.
+Start with search-methodology.md for the full workflow, then consult:
+- search-hypothesis-thinking.md for worked examples
+- gh-search-syntax-cheatsheet.md for query syntax
+- output-format-recipes.md for jq patterns
+- search-diversity-examples.md for angle inspiration
+- web-search-patterns.md for supplementing gh search
+- dedup-and-rank.md for merging results
 
 Write your final ranked table to: .githubresearch/search-findings/wave-01.md
 
@@ -36,7 +42,7 @@ Try these angles:
 - {ANGLE_2}
 - {ANGLE_3}
 
-Skill at ~/.claude/skills/github-repo-search/.
+Read the search methodology at {SKILL_DIR}/references/search/search-methodology.md.
 Write results to: .githubresearch/search-findings/wave-{N}.md
 
 Don't repeat repos already found above. Only add NEW finds.
@@ -51,8 +57,17 @@ Evaluate these GitHub repos for quality:
 
 {REPO_LIST — one per line}
 
-There's a skill at ~/.claude/skills/github-repo-evaluate/.
-Read SKILL.md and its references, then run the full workflow.
+Read the evaluation methodology and reference files at {SKILL_DIR}/references/evaluation/.
+Start with evaluation-methodology.md for the full workflow, then consult:
+- graphql-repo-deep-dive.md for single-repo queries
+- graphql-batch-repos.md for batch screening
+- graphql-user-profile.md for author assessment
+- rest-unique-signals.md for REST-only endpoints
+- code-level-analysis.md for README and source sampling
+- scoring-rubric.md for the scoring rubric
+- author-red-flags.md for red flag detection
+- api-gotchas.md for known API pitfalls
+- eval-subagent-dispatch.md for the exact metrics format
 
 Custom criteria for this evaluation:
 {FEATURE_CHECKLIST}
