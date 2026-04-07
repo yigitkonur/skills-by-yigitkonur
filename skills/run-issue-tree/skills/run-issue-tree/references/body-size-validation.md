@@ -88,7 +88,7 @@ done
 
 ### 5. Tool-agnostic prompt check
 
-`run-issue-plan` dispatches issue bodies verbatim as subagent prompts. Keep the body tool-agnostic: describe outcomes to verify, not specific editors, test runners, or build tools.
+Execute Mode dispatches issue bodies verbatim as subagent prompts. Keep the body tool-agnostic: describe outcomes to verify, not specific editors, test runners, or build tools.
 
 ```bash
 TOOL_SPECIFIC_PATTERNS='npm test|pnpm test|yarn test|bun test|pytest|go test|cargo test|mvn test|gradle test|make test|jest|vitest|playwright|eslint|biome|ruff|tsc --noEmit'

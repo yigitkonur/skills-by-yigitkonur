@@ -1,6 +1,6 @@
 # Issue Body Template
 
-Every issue created by plan-issue-tree uses this structure. The body doubles as a subagent prompt — run-issue-plan reads it directly to generate agent dispatches.
+Every issue created by Plan Mode uses this structure. The body doubles as a subagent prompt — Execute Mode reads it directly to generate agent dispatches.
 
 Because the body is reused as a runtime prompt, keep it tool-agnostic. Use file paths, module names, and observable outcomes. Do not hard-code editor, test-runner, or build-tool commands into the body. Use the ownership line and Definition of Done closing sentence exactly as written below.
 
