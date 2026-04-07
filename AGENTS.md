@@ -1,6 +1,6 @@
 # AGENTS.md — skills-by-yigitkonur
 
-This repository is a curated skills pack for AI coding agents — 47 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
+This repository is a curated skills pack for AI coding agents — 41 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
 
 ## What this repo is
 
@@ -265,7 +265,7 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (47 skills)
+## Current canonical skill names (41 skills)
 
 Use this list to check for naming collisions:
 
@@ -277,15 +277,13 @@ build-mcp-use-server        build-openclaw-plugin        build-openclaw-skill
 build-openclaw-workflow      build-raycast-script-command build-skills
 build-supastarter-app       convert-snapshot-nextjs       convert-vue-nextjs
 debug-tauri-devtools        develop-clean-architecture    develop-macos-hig
-develop-macos-liquid-glass  develop-typebox-fastify       develop-typescript
-enhance-prompt              enhance-skill-by-derailment   extract-saas-design
-init-agent-config           init-openclaw-agent           init-review
-optimize-mcp-server         optimize-swift-linter         plan-issue-tree
+develop-macos-liquid-glass  develop-typescript            enhance-prompt
+enhance-skill-by-derailment extract-saas-design           init-agent-config
+init-openclaw-agent         init-review                   optimize-mcp-server
 publish-npm-package         review-pr                     run-agent-browser
-run-github-repo-evaluate    run-github-repo-search        run-github-scout
-run-hcom-agents             run-issue-plan                run-openclaw-agents
-run-openclaw-deploy         run-playwright                run-research
-test-by-mcpc-cli            use-skill-dl-util
+run-github-scout            run-hcom-agents               run-issue-tree
+run-openclaw-agents         run-openclaw-deploy           run-playwright
+run-research                test-by-mcpc-cli
 ```
 
 ---
@@ -293,7 +291,7 @@ test-by-mcpc-cli            use-skill-dl-util
 ## Creating a new skill
 
 1. **Choose the canonical name** using the prefix registry and decision tree above
-2. **Verify no naming collision** with the 47 existing skills
+2. **Verify no naming collision** with the 41 existing skills
 3. **Research before writing** — for non-trivial skills, use `skill-dl` to search and download existing skills as evidence:
    ```bash
    skill-dl search typescript mcp server sdk patterns --top 20
@@ -352,7 +350,7 @@ Before finishing any skill work, verify **all** of the following:
 - [ ] `README.md` exists at skill root with install command
 - [ ] Root README row added in alphabetical order with short description
 - [ ] `python3 scripts/validate-skills.py` passes
-- [ ] The skill reads like it belongs in the same repo family as the existing 47 skills
+- [ ] The skill reads like it belongs in the same repo family as the existing 41 skills
 
 ---
 

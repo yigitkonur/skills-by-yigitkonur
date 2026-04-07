@@ -93,7 +93,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `develop-` vs `build-` — `develop-` is language-wide ("TypeScript strict mode everywhere"); `build-` is framework-specific ("build a Next.js app with Supastarter")
 - `develop-` vs `review-` — `develop-` provides standards to apply *while writing*; `review-` evaluates *already-written* code in a PR context
 
-**Current skills:** `develop-clean-architecture`, `develop-macos-hig`, `develop-macos-liquid-glass`, `develop-typebox-fastify`, `develop-typescript`
+**Current skills:** `develop-clean-architecture`, `develop-macos-hig`, `develop-macos-liquid-glass`, `develop-typescript`
 
 ---
 
@@ -164,7 +164,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `optimize-` vs `review-` — `optimize-` actively applies improvements; `review-` only evaluates
 - `optimize-` vs `develop-` — `optimize-` is system-specific (MCP servers); `develop-` is language-wide (TypeScript)
 
-**Current skills:** `optimize-mcp-server`, `optimize-swift-linter`
+**Current skills:** `optimize-mcp-server`
 
 ---
 
@@ -180,7 +180,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 **Disambiguation:**
 - `plan-` vs `run-` — `plan-` is internal reasoning with structured methods; `run-research` is external information gathering via APIs and web scraping
 
-**Current skills:** `plan-issue-tree`
+**Current skills:** *(none currently — prefix reserved for future use)*
 
 ---
 
@@ -233,7 +233,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `run-` vs `init-` — `run-` is an ongoing session with the tool; `init-` is a one-time generation
 - `run-` vs `test-` — `run-` drives any external tool; `test-` specifically runs verification/validation suites
 
-**Current skills:** `run-agent-browser`, `run-comprehensive-research`, `run-github-repo-evaluate`, `run-github-repo-search`, `run-github-scout`, `run-hcom-agents`, `run-issue-plan`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`
+**Current skills:** `run-agent-browser`, `run-github-scout`, `run-hcom-agents`, `run-issue-tree`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`
 
 ---
 
@@ -268,7 +268,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `use-` vs `run-` — `use-` is a single-utility focused workflow; `run-` is broader external tool/API orchestration
 - `use-` vs `init-` — `use-` executes the tool repeatedly; `init-` generates files once
 
-**Current skills:** `use-skill-dl-util`
+**Current skills:** *(none currently — prefix reserved for future use)*
 
 ---
 
@@ -426,7 +426,6 @@ When renaming a published skill:
 - `develop-clean-architecture`
 - `develop-macos-hig`
 - `develop-macos-liquid-glass`
-- `develop-typebox-fastify`
 - `develop-typescript`
 - `enhance-prompt`
 - `enhance-skill-by-derailment`
@@ -435,20 +434,14 @@ When renaming a published skill:
 - `init-openclaw-agent`
 - `init-review`
 - `optimize-mcp-server`
-- `optimize-swift-linter`
-- `plan-issue-tree`
 - `publish-npm-package`
 - `review-pr`
 - `run-agent-browser`
-- `run-comprehensive-research`
-- `run-github-repo-evaluate`
-- `run-github-repo-search`
 - `run-github-scout`
 - `run-hcom-agents`
-- `run-issue-plan`
+- `run-issue-tree`
 - `run-openclaw-agents`
 - `run-openclaw-deploy`
 - `run-playwright`
 - `run-research`
 - `test-by-mcpc-cli`
-- `use-skill-dl-util`
