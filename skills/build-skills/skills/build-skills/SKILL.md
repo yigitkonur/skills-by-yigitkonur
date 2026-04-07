@@ -215,6 +215,8 @@ Load the smallest relevant set for the branch of work you are in.
 | `references/source-patterns.md` | Choosing what to inherit, simplify, or avoid from earlier skill patterns. |
 | `references/research/source-verification.md` | Filtering low-signal sources, assessing trust, or justifying candidate selection. |
 | `references/research/fact-checking.md` | Verifying claims, commands, or ecosystem details before they influence the new skill. |
+| `references/research/search-strategies.md` | Formulating diverse search keywords and running multi-round skill discovery with skill-dl. |
+| `references/research/corpus-inspection.md` | Inspecting downloaded skills for quality, assessing what to inherit or avoid. |
 
 ### Quality and examples
 
