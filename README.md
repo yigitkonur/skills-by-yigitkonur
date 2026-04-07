@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-47 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+41 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -34,7 +34,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-openclaw-skill](skills/build-openclaw-skill/) | platform | OpenClaw skills with SKILL.md format |
 | [build-openclaw-workflow](skills/build-openclaw-workflow/) | platform | OpenClaw automation and Lobster workflows |
 | [build-raycast-script-command](skills/build-raycast-script-command/) | development | Raycast Script Commands in Python/Bash |
-| [build-skills](skills/build-skills/) | productivity | Claude skill creation methodology |
+| [build-skills](skills/build-skills/) | productivity | Claude skill creation and research methodology |
 | [build-supastarter-app](skills/build-supastarter-app/) | development | SupaStarter Next.js SaaS boilerplate |
 | [convert-snapshot-nextjs](skills/convert-snapshot-nextjs/) | design | HTML snapshots to Next.js projects |
 | [convert-vue-nextjs](skills/convert-vue-nextjs/) | development | Vue/Nuxt to Next.js App Router migration |
@@ -42,7 +42,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [develop-clean-architecture](skills/develop-clean-architecture/) | development | Clean Architecture and DDD in TypeScript |
 | [develop-macos-hig](skills/develop-macos-hig/) | development | macOS HIG design system -- spacing, components, accessibility |
 | [develop-macos-liquid-glass](skills/develop-macos-liquid-glass/) | development | macOS Liquid Glass design system (Tahoe+) |
-| [develop-typebox-fastify](skills/develop-typebox-fastify/) | development | Type-safe Fastify APIs with TypeBox |
 | [develop-typescript](skills/develop-typescript/) | development | Strict TypeScript patterns and config |
 | [enhance-prompt](skills/enhance-prompt/) | productivity | Turbocharge LLM prompts with steering, halt conditions, and failure pre-emption |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
@@ -51,22 +50,17 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
 | [init-review](skills/init-review/) | productivity | AI code review config for Copilot, Devin, and Greptile |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | MCP server audit and optimization |
-| [optimize-swift-linter](skills/optimize-swift-linter/) | development | Swift code quality: SwiftLint, Airbnb rules, macOS/iOS patterns |
-| [plan-issue-tree](skills/plan-issue-tree/) | productivity | GitHub Issues with sub-issues and waves |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
-| [run-github-repo-evaluate](skills/run-github-repo-evaluate/) | productivity | Deep-evaluate GitHub repos for quality, maturity, and maintainer credibility |
-| [run-github-repo-search](skills/run-github-repo-search/) | productivity | Discover GitHub repos via diverse search hypotheses and gh CLI |
 | [run-github-scout](skills/run-github-scout/) | productivity | End-to-end GitHub repo discovery, evaluation, and ranking with subagent swarms |
 | [run-hcom-agents](skills/run-hcom-agents/) | orchestration | Multi-agent orchestration via hcom |
-| [run-issue-plan](skills/run-issue-plan/) | productivity | Execute GitHub Issue tree plans |
+| [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub Issue trees with sub-issues and waves |
 | [run-openclaw-agents](skills/run-openclaw-agents/) | platform | OpenClaw multi-agent orchestration |
 | [run-openclaw-deploy](skills/run-openclaw-deploy/) | platform | OpenClaw production deployment |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
 | [run-research](skills/run-research/) | productivity | Technical research with web search, Reddit mining, and multi-agent orchestration |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc CLI |
-| [use-skill-dl-util](skills/use-skill-dl-util/) | productivity | Skill search and download via skill-dl |
 
 ## Notes
 
