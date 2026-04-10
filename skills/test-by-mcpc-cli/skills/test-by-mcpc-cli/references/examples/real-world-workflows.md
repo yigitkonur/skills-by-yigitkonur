@@ -11,7 +11,6 @@ SESSION=@research-smoke
 TARGET=https://research.yigitkonur.com/mcp
 
 mcpc connect "$TARGET" "$SESSION"
-mcpc --json "$SESSION"
 mcpc "$SESSION" help
 mcpc "$SESSION" grep search
 mcpc "$SESSION" tools-list --full
@@ -22,6 +21,7 @@ mcpc close "$SESSION"
 
 Notes:
 
+- start smoke tests from a fresh `connect`; inspect old sessions only when reuse is the point of the task
 - the `/mcp` path matters; `https://research.yigitkonur.com` is not the same target
 - direct one-shot URL commands were removed in `0.2.x`; always connect first
 
@@ -125,9 +125,12 @@ Use this when another process can only speak to a local HTTP MCP endpoint.
 SESSION=@research-proxy
 mcpc connect https://research.yigitkonur.com/mcp "$SESSION" --proxy 127.0.0.1:8787 --proxy-bearer-token demo-token
 curl http://127.0.0.1:8787/health
-curl -H 'Authorization: Bearer demo-token' http://127.0.0.1:8787/health
+mcpc connect http://127.0.0.1:8787/mcp @research-proxy-check --no-profile
+mcpc close @research-proxy-check
 mcpc close "$SESSION"
 ```
 
 The proxy is owned by the detached bridge for that session.
 Once `connect` succeeds, it does not need `nohup` or `tmux` to survive the original terminal.
+Treat `/health` as a liveness check only.
+If bearer enforcement matters, verify it with real MCP connects on the exact release you are documenting.

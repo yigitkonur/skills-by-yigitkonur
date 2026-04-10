@@ -1,6 +1,7 @@
 # Fix Patterns
 
-Match the root cause to a pattern, then apply.
+Match the root cause to a pattern, then apply it to the source text that caused the miss.
+Default move: rewrite the controlling paragraph and its paired example so the right path becomes the natural one.
 
 ## 1. Prerequisite Surfacing (cures S1)
 Add prerequisites BEFORE step 1, with verification command and fallback.
@@ -29,5 +30,14 @@ Add explicit gate at top of step: "Only execute if [condition]. Skip to step N f
 ## 9. Schema Duplication at Point of Use (cures S3)
 If schema <=10 items, duplicate it. If larger, cross-reference with exact section name.
 
+## 10. Harness Alignment (cures O6)
+Remove test-harness-only constraints that are not part of the real skill contract.
+The executor should be judged against the skill, not against wrapper instructions you added for the test.
+
+## 11. Source Rewrite First
+If one sentence, example, or routing table caused the miss, rewrite or delete that source.
+Do not preserve bad text and add a warning beside it unless both are truly needed.
+
 ## Anti-pattern: Errata files
-Never create separate "errata" or "known issues" docs. Fixes go directly into the source.
+Never create separate "errata", "known issues", output-summary, or mistake-notebook docs.
+Fixes go directly into the source.
