@@ -30,6 +30,12 @@ PORT=3011 npx -y @modelcontextprotocol/server-everything streamableHttp
 mcpc connect http://127.0.0.1:3011/mcp @everything-http
 ```
 
+Selection rule:
+
+- if you did not explicitly start `streamableHttp`, do not assume an old `@everything-http` session is usable
+- for fresh local verification, start with `stdio`
+- use the HTTP session only when you are intentionally testing Streamable HTTP behavior
+
 ## What worked during verification
 
 ```bash

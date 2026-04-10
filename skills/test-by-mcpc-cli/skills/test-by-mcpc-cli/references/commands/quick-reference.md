@@ -22,6 +22,22 @@ This sheet is aligned to `@apify/mcpc 0.2.4`.
 | safe cleanup | `mcpc clean` |
 | targeted cleanup | `mcpc clean sessions logs` |
 
+## First commands for any new target
+
+```bash
+mcpc connect <server-or-file:entry> @check
+mcpc @check
+mcpc @check help
+mcpc @check grep search
+mcpc @check tools-list --full
+```
+
+If task support matters, add:
+
+```bash
+mcpc --json @check tools-list | jq '.[] | {name, taskSupport: (.execution.taskSupport // "unspecified")}'
+```
+
 ## Server formats
 
 | Target type | Example | Notes |

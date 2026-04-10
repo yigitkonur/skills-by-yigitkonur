@@ -36,6 +36,41 @@ This rewrite was verified against `0.2.4` and live-tested with:
 
 If `mcpc` is missing, older, or your config shape is wrong, start with `references/guides/installation.md`.
 
+## Minimal Read Sets
+
+Do not load the whole skill by default.
+Use one of these bundles first, then widen only if the task forces you to.
+
+### Remote Streamable HTTP smoke test
+
+Read these first:
+
+- `references/commands/quick-reference.md`
+- `references/guides/http-testing.md`
+- `references/guides/discovery-search.md`
+- `references/guides/tool-resource-testing.md`
+- `references/guides/cleanup-maintenance.md`
+
+### Local stdio plus task verification
+
+Read these first:
+
+- `references/commands/quick-reference.md`
+- `references/guides/stdio-testing.md`
+- `references/guides/async-tasks.md`
+- `references/guides/everything-server.md`
+- `references/guides/cleanup-maintenance.md`
+
+### Auth, proxy, or payment edge cases
+
+Read these first:
+
+- `references/commands/quick-reference.md`
+- `references/guides/authentication.md`
+- `references/guides/proxy-testing.md`
+- `references/guides/x402-payments.md`
+- `references/guides/cleanup-maintenance.md`
+
 ## Command Family Change
 
 The `0.2.x` CLI is session-first.
@@ -84,6 +119,10 @@ mcpc connect /tmp/everything-mcp.json:everything @everything-stdio
 
 Use `--no-profile` when anonymous HTTP testing matters on a machine with saved OAuth profiles.
 
+If `mcpc --json` already shows an older session for the same target and its status is not `live`, do not assume that session is still the right test entrypoint.
+Either `mcpc restart @session` or create a fresh session with a new name.
+For Everything-specific work, prefer a fresh stdio session unless you intentionally started the `streamableHttp` server yourself.
+
 ### 3. Inspect before deep testing
 
 ```bash
@@ -107,6 +146,22 @@ mcpc @research prompts-get some-prompt --schema ./expected-prompt-schema.json
 
 `key:=value` still works, but arrays and objects should be sent as inline JSON literals or full JSON payloads.
 Route quoting edge cases to `references/patterns/argument-parsing.md`.
+
+### 4b. Reality-check advertised capabilities
+
+Do not trust `capabilities` alone.
+Check the server info, the tool metadata, and one real call.
+
+```bash
+mcpc --json @research | jq '.capabilities'
+mcpc --json @everything-http tools-list | jq '.[] | {name, taskSupport: (.execution.taskSupport // "unspecified")}'
+```
+
+Rules:
+
+- if `completions` appears in server info, treat it as informational until you confirm the CLI actually exposes a command
+- if tasks appear in capabilities, still inspect per-tool `execution.taskSupport`
+- if a tool is marked `task:required`, prove it with one `--task` or `--detach` call before writing automation around it
 
 ### 5. Exercise the capability you care about
 
@@ -156,9 +211,10 @@ Use `mcpc clean all` only for a real reset.
 3. Inspect `isError`, task status, and payload text instead of trusting human-mode success banners.
 4. Use `--no-profile` to force anonymous HTTP tests when saved OAuth state would pollute the result.
 5. Use `mcpc clean ...`, not legacy `--clean=...` flags.
-6. Treat HTTP+SSE endpoints as unsupported for `mcpc 0.2.x`; use Streamable HTTP or stdio instead.
-7. Reach for `--insecure` only when the endpoint really uses a self-signed or otherwise untrusted certificate.
-8. When a tool is marked `task:required`, expect plain `tools-call` to fail until you add `--task` or `--detach`.
+6. If an old session is `disconnected`, `reconnecting`, `expired`, or `crashed`, do not reuse it blindly for a smoke test. Restart it or create a fresh session.
+7. Treat HTTP+SSE endpoints as unsupported for `mcpc 0.2.x`; use Streamable HTTP or stdio instead.
+8. Reach for `--insecure` only when the endpoint really uses a self-signed or otherwise untrusted certificate.
+9. When a tool is marked `task:required`, expect plain `tools-call` to fail until you add `--task` or `--detach`.
 
 ## Capability Boundary
 

@@ -21,3 +21,19 @@ Separate advertised capability from usable CLI surface.
 
 Live behavior beats static README prose.
 The official Everything server is the fastest way to probe these edges.
+
+## Reality-check sequence
+
+Use this order when capability claims matter:
+
+```bash
+mcpc --json @session | jq '.capabilities'
+mcpc --json @session tools-list | jq '.[] | {name, taskSupport: (.execution.taskSupport // "unspecified")}'
+mcpc @session tools-list --full
+```
+
+Then prove the edge with one real command:
+
+- `task:required` -> run one `tools-call --task` or `--detach`
+- `completions` -> treat as informational because there is no CLI command
+- sampling or roots-related helpers -> expect demo-grade behavior until the live result proves otherwise
