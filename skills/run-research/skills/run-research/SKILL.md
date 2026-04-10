@@ -16,13 +16,22 @@ You research technical questions using web search, page scraping, Reddit practit
 
 ## Tool prerequisites
 
-This skill uses five MCP tools: `web-search`, `scrape-links`, `search-reddit`, `get-reddit-post`, and `deep-research`. If any are missing, install the research MCP server:
+This skill uses four MCP tools: `web-search`, `scrape-links`, `search-reddit`, and `get-reddit-post`. If any are missing, install the research MCP server:
 
 ```bash
 npx -y @anthropic-ai/claude-code@latest mcp add research-server -y -- npx -y mcp-remote@latest https://research.yigitkonur.com/mcp --allow-http
 ```
 
 Restart your session after installation. If MCP tools are denied at runtime, fall back to WebFetch/WebSearch built-in tools. If those fail, use `curl` via Bash. Never stop because a tool was denied.
+
+## Tool API (v4.1+)
+
+| Tool | Required params | Optional | LLM? |
+|---|---|---|---|
+| `web-search` | `queries` (up to 100), `extract` (what you're looking for) | `raw` (skip LLM, default false) | Yes — classifies results into 3 tiers |
+| `search-reddit` | `queries` (up to 100) | — | No — returns flat URL list |
+| `get-reddit-post` | `urls` (up to 100) | — | No — returns raw posts + comments |
+| `scrape-links` | `urls` (up to 100), `extract` (what to pull) | — | Yes — always extracts |
 
 ## Decision: single-agent or multi-agent?
 
@@ -38,31 +47,27 @@ Restart your session after installation. If MCP tools are denied at runtime, fal
 
 ## Single-Agent Path
 
-You research directly using the five tools. Read `references/tools.md` for parameters and token budgets.
+You research directly using the four tools. Read `references/tools.md` for parameters and usage patterns.
 
 ### The research loop
 
 #### 1. Search first — always
 
-Every task begins with `web-search`. Write keywords that attack genuinely different angles — up to 100 in parallel. Exact error messages in quotes. Official docs with `site:`. Comparisons. Failure modes. Year-pinned queries. Negative signal (`"problems with"`, `"regret"`, `"switched from"`). If your keywords are minor rewrites of each other, diversify before searching.
+Every task begins with `web-search`. Write queries that attack genuinely different angles — up to 100 in parallel. Always provide an `extract` describing what you're looking for so the LLM classifies results by relevance. Exact error messages in quotes. Official docs with `site:`. Comparisons. Failure modes. Year-pinned queries. Negative signal (`"problems with"`, `"regret"`, `"switched from"`). If your queries are minor rewrites of each other, diversify before searching.
 
 #### 2. Read what matters
 
-After search, scrape the 3-10 most promising URLs with `scrape-links`. Your extraction targets determine quality:
+After search, scrape the 3-10 most promising URLs with `scrape-links`. Your `extract` instructions determine quality:
 - Strong: `"root cause|fix steps|version affected|workarounds|breaking changes|migration path"`
 - Weak: `"tell me about this page"`
 
-Use 4-8 pipe-separated targets per call. Always `use_llm=true`.
+Use 4-8 pipe-separated targets per call.
 
 #### 3. Hear from practitioners
 
-Official docs say how things should work. Reddit says how they actually work. Use `search-reddit` with diverse queries — at least 25% negative signal (`"regret"`, `"not worth it"`, `"broke in production"`). Then fetch the best 5-10 threads with `get-reddit-post` — always `fetch_comments=true`, always `use_llm=false`. Raw threaded comments ARE the signal.
+Official docs say how things should work. Reddit says how they actually work. Use `search-reddit` with diverse queries — at least 25% negative signal (`"regret"`, `"not worth it"`, `"broke in production"`). Then fetch the best 5-10 threads with `get-reddit-post`. Raw threaded comments ARE the signal — posts are returned with full comment trees, author names, scores, and OP markers.
 
-#### 4. Synthesize with evidence
-
-For complex questions, use `deep-research` to pull everything together. By this point your KNOWN field should overflow with findings from steps 1-3. Ask 2-3 focused questions, not 10 scattered ones. Attach relevant code files.
-
-#### 5. Verify what matters
+#### 4. Verify what matters
 
 Cross-check any claim that could change your recommendation. Stop when additional tool calls stop changing your conclusion.
 
@@ -72,9 +77,9 @@ Cross-check any claim that could change your recommendation. Stop when additiona
 |---|---|
 | Quick fact check | web-search → scrape 2-3 pages |
 | Error diagnosis | web-search → scrape → search-reddit |
-| Library comparison | Full loop: all 5 tools |
+| Library comparison | Full loop: all 4 tools |
 | Architecture decision | Full loop, starting broad |
-| Production incident | web-search (3 keywords) → scrape top 2-3 |
+| Production incident | web-search (3 queries) → scrape top 2-3 |
 
 Read `references/workflows.md` for complete workflow templates covering bug fixes, library comparisons, architecture decisions, security audits, performance investigations, and more.
 
@@ -104,7 +109,7 @@ Clarify what the user needs. "What will you DO with this research?" (always). "A
 
 ### Phase 1: Explore context (orchestrator does this)
 
-Before designing missions: read project docs, existing research, architecture files. Run a quick web-search (5-10 keywords) to map the landscape. Capture existing knowledge, gaps, and user context. This feeds Phase 2.
+Before designing missions: read project docs, existing research, architecture files. Run a quick web-search (5-10 queries) to map the landscape. Capture existing knowledge, gaps, and user context. This feeds Phase 2.
 
 ### Phase 2: Design the research architecture
 
@@ -142,7 +147,7 @@ The orchestrator reads everything personally. No subagent-of-subagent chains for
 
 | File | Read when |
 |---|---|
-| `references/tools.md` | Single-agent: tool parameters, token budgets, failure modes |
+| `references/tools.md` | Single-agent: tool parameters and usage patterns |
 | `references/workflows.md` | Single-agent: step-by-step workflows for common scenarios |
 | `references/synthesis.md` | Single-agent: source credibility, contradiction resolution, output patterns |
 | `references/orchestrator-philosophy.md` | Multi-agent: mindset for writing mission briefs |
@@ -156,7 +161,6 @@ The orchestrator reads everything personally. No subagent-of-subagent chains for
 - Query diversity > query volume. Five angles beats fifty paraphrases.
 - Negative signal reveals truth. Always search for failures alongside recommendations.
 - Never treat search snippets as evidence (they're leads — scrape to verify).
-- Never call deep-research first with empty KNOWN (gather evidence first).
 - Never more than 8 researcher agents per wave, 2 retries per domain.
 - Always design output architecture BEFORE dispatching agents.
 - The orchestrator reads ALL agent output personally — no delegation of synthesis.
