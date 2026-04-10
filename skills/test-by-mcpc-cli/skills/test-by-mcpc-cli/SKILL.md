@@ -59,6 +59,8 @@ Read these first:
 - `references/guides/stdio-testing.md`
 - `references/guides/async-tasks.md`
 - `references/guides/everything-server.md`
+- `references/guides/discovery-search.md`
+- `references/guides/tool-resource-testing.md`
 - `references/guides/cleanup-maintenance.md`
 
 ### Auth, proxy, or payment edge cases
@@ -103,8 +105,13 @@ Route migration work to `references/patterns/session-first-syntax.md`.
 - Confirm `mcpc --version` reports `0.2.x`.
 - Confirm examples use `mcpc connect <server-or-file:entry> @session`.
 - Treat old `--config file entry` and direct URL one-shot commands as obsolete.
+- When you are validating the CLI contract itself, start with plain `mcpc`.
+  Add wrappers such as `rtk` only after the raw `mcpc` path works.
 
 ### 2. Connect a stable session
+
+Do not start with a full `mcpc --json` dump unless session reuse is the actual question.
+On a busy machine, a fresh isolated session is usually faster and less ambiguous.
 
 ```bash
 # Remote URL; https:// is added automatically for non-local hosts
@@ -119,8 +126,16 @@ mcpc connect /tmp/everything-mcp.json:everything @everything-stdio
 
 Use `--no-profile` when anonymous HTTP testing matters on a machine with saved OAuth profiles.
 
-If `mcpc --json` already shows an older session for the same target and its status is not `live`, do not assume that session is still the right test entrypoint.
+If you do need to inspect an existing session, prefer `mcpc` or an exact-name JSON filter instead of an unfiltered global dump:
+
+```bash
+mcpc
+mcpc --json | jq '.sessions[] | select(.name == "@research")'
+```
+
+If an older session for the same target is not `live`, do not assume that session is still the right test entrypoint.
 Either `mcpc restart @session` or create a fresh session with a new name.
+If `mcpc restart @session` returns `Session not found`, stop retrying that name and create a fresh session immediately.
 For Everything-specific work, prefer a fresh stdio session unless you intentionally started the `streamableHttp` server yourself.
 
 ### 3. Inspect before deep testing
@@ -203,6 +218,7 @@ mcpc clean sessions logs
 ```
 
 Use `mcpc clean all` only for a real reset.
+Do not run `close` and `clean` for the same session in parallel.
 
 ## High-Signal Rules
 
@@ -215,6 +231,8 @@ Use `mcpc clean all` only for a real reset.
 7. Treat HTTP+SSE endpoints as unsupported for `mcpc 0.2.x`; use Streamable HTTP or stdio instead.
 8. Reach for `--insecure` only when the endpoint really uses a self-signed or otherwise untrusted certificate.
 9. When a tool is marked `task:required`, expect plain `tools-call` to fail until you add `--task` or `--detach`.
+10. Use plain `mcpc` as the baseline when documenting behavior; wrappers can change quoting, TTY, and session-state visibility.
+11. Treat proxy `/health` as a liveness probe, not a bearer-auth proof.
 
 ## Capability Boundary
 

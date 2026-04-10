@@ -7,11 +7,13 @@
 ```bash
 mcpc connect https://research.yigitkonur.com/mcp @research
 mcpc
-mcpc --json
+mcpc --json | jq '.sessions[] | select(.name == "@research")'
 mcpc @research
 mcpc restart @research
 mcpc close @research
 ```
+
+Use human `mcpc` output or an exact-name JSON filter before a full global dump on machines with many saved sessions.
 
 ## Session states that matter operationally
 
@@ -36,9 +38,15 @@ Do not describe the runtime as only marking sessions dead.
 ## Useful inspection filters
 
 ```bash
+mcpc --json | jq '.sessions[] | select(.name == "@research")'
 mcpc --json | jq '.sessions[] | {name, status, createdAt, lastSeenAt, server}'
 mcpc --json | jq '.sessions[] | select(.status != "live")'
 ```
+
+## Restart fallback
+
+If `mcpc restart @session` returns `Session not found`, treat that as a lost session record, not a signal to keep retrying.
+Create a fresh named session instead.
 
 ## Cleanup pairing
 
