@@ -1,146 +1,110 @@
 # Pause Flow Handling
 
-When wait-task returns `input_required`, the agent is paused and needs a response before it can continue. The `pending_question` field in the wait-task response tells you what the agent needs.
+When wait-task returns `input_required`, the agent is paused. The `pending_question` field tells you what it needs. There are 5 pause types, but **only `dynamic_tool` actually pauses the task for the orchestrator**. The other 4 are auto-resolved by the MCP server.
 
-## Pause types
+## CRITICAL: Auto-resolution behavior
 
-### user_input — Agent has questions
+| Type | Auto-resolved? | How |
+|---|---|---|
+| `command_approval` | **YES** — auto-accepted | Server sends `accept` immediately |
+| `file_approval` | **YES** — auto-accepted | Server sends `accept` immediately |
+| `elicitation` | **YES** — auto-accepted | Server sends `accept` immediately |
+| `user_input` | **YES** — auto-answered | Server selects first option (the one marked "(Recommended)") |
+| `dynamic_tool` | **NO** — task pauses | Orchestrator must provide result or error |
 
-The agent wants to ask the user something. Common scenarios: clarifying ambiguous requirements, choosing between options, confirming destructive operations.
+The server's `developer_instructions` include a QUESTION POLICY that tells the agent: put the recommended option first and mark it with "(Recommended)". This ensures auto-answer picks the right choice.
 
-**wait-task response:**
+You will see auto-resolutions in the timeline as `AUTO` and `APPROVE` lines. In `events.jsonl`, they appear as `_auto_answer` and synthetic approval events.
+
+## Type 1: user_input
+
+Agent asked a question. Server auto-selects the first option.
+
+**Server request (in events.jsonl):**
 ```json
 {
-  "status": "input_required",
-  "pending_question": {
-    "type": "user_input",
-    "requestId": "req-1",
+  "t": "2026-04-10T18:49:06.687Z",
+  "method": "_server_request:item/tool/requestUserInput",
+  "requestId": 0,
+  "params": {
+    "threadId": "019d78b9-e054-...",
+    "turnId": "019d78b9-e05f-...",
+    "itemId": "call_FhnUjvAGUjyvlC0geDhLxfmZ",
     "questions": [
       {
-        "id": "db_choice",
-        "text": "Which database should I use?",
-        "options": ["PostgreSQL", "MySQL", "SQLite"],
-        "allowFreeform": true
+        "id": "color_choice",
+        "header": "Color",
+        "question": "What color should I use for /tmp/color-choice.txt?",
+        "isOther": true,
+        "isSecret": false,
+        "options": [
+          { "label": "Red (Recommended)", "description": "Use red." },
+          { "label": "Blue", "description": "Use blue." },
+          { "label": "Green", "description": "Use green." }
+        ]
       }
     ]
   }
 }
 ```
 
-**respond-task call:**
+**Auto-answer (in events.jsonl):**
+```json
+{
+  "t": "2026-04-10T18:49:06.688Z",
+  "method": "_auto_answer",
+  "answers": { "color_choice": "Red (Recommended)" },
+  "summary": "What color should I use for /tmp/color-choice.txt? → \"Red (Recommended)\""
+}
+```
+
+**Timeline line:**
+```
+11:49:06 AUTO    What color should I use for /tmp/color-choice.txt? → "Red (Recommended)"
+```
+
+**Manual respond-task (if you need to override):**
 ```json
 {
   "task_id": "bold-falcon-42",
   "type": "user_input",
-  "answers": {
-    "db_choice": "PostgreSQL"
-  }
+  "answers": { "color_choice": "Blue" }
 }
 ```
 
-The `answers` object maps question `id` to answer string. If `allowFreeform` is true, any text is valid. If false, pick from `options`.
+## Type 2: command_approval (auto-accepted)
 
-### command_approval — Agent wants to run a shell command
+Agent wants to run a shell command. Pending question: `{type: "command_approval", requestId, command, sandboxPolicy}`.
 
-The agent wants to execute a command. The `command` field shows the exact command.
-
-**wait-task response:**
-```json
-{
-  "status": "input_required",
-  "pending_question": {
-    "type": "command_approval",
-    "requestId": "req-2",
-    "command": "npm install express @types/express",
-    "sandboxPolicy": "workspaceWrite"
-  }
-}
+```
+14:22:03 APPROVE cmd: npm install express @types/express
 ```
 
-**respond-task call:**
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "command_approval",
-  "decision": "accept"
-}
+Manual override: `{task_id, type: "command_approval", decision: "accept" | "reject"}`
+
+## Type 3: file_approval (auto-accepted)
+
+Agent wants to write/modify files. Pending question: `{type: "file_approval", requestId, fileChanges: [{path, patch}]}`.
+
+```
+14:22:05 APPROVE files: src/config.ts, package.json
 ```
 
-**Decision guidance:**
-- `accept` — let the agent run the command
-- `reject` — block the command; agent may try an alternative or ask again
+Manual override: `{task_id, type: "file_approval", decision: "accept" | "reject"}`
 
-Review the `command` field before accepting. Be cautious with destructive commands (`rm -rf`, `git reset --hard`, etc.).
+## Type 4: elicitation (auto-accepted)
 
-### file_approval — Agent wants to modify files
+MCP server wants confirmation. Pending question: `{type: "elicitation", requestId, serverName, message, schema}`.
 
-The agent wants to write or modify files. The `fileChanges` array shows paths and patches.
-
-**wait-task response:**
-```json
-{
-  "status": "input_required",
-  "pending_question": {
-    "type": "file_approval",
-    "requestId": "req-3",
-    "fileChanges": [
-      { "path": "src/config.ts", "patch": "+export const API_URL = ..." },
-      { "path": "package.json", "patch": "+\"express\": \"^4.18.0\"" }
-    ]
-  }
-}
+```
+14:22:07 APPROVE elicitation: database-mcp — Allow read access to production database?
 ```
 
-**respond-task call:**
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "file_approval",
-  "decision": "accept"
-}
-```
+Manual override: `{task_id, type: "elicitation", action: "accept" | "decline"}`
 
-### elicitation — MCP server confirmation
+## Type 5: dynamic_tool (THE ONLY REAL PAUSE)
 
-An MCP server the agent is using wants confirmation for an operation.
-
-**wait-task response:**
-```json
-{
-  "status": "input_required",
-  "pending_question": {
-    "type": "elicitation",
-    "requestId": "req-4",
-    "serverName": "database-mcp",
-    "message": "Allow read access to production database?",
-    "schema": {}
-  }
-}
-```
-
-**respond-task call:**
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "elicitation",
-  "action": "accept"
-}
-```
-
-Or to decline:
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "elicitation",
-  "action": "decline"
-}
-```
-
-**Note:** Unanswered elicitations auto-decline after 30 seconds.
-
-### dynamic_tool — Agent invoked a custom tool
-
-The agent called a tool that requires external execution. You provide the result.
+Agent invoked a tool that requires external execution. The task genuinely pauses — you must provide the result.
 
 **wait-task response:**
 ```json
@@ -155,7 +119,12 @@ The agent called a tool that requires external execution. You provide the result
 }
 ```
 
-**respond-task call (success):**
+**Timeline line:**
+```
+14:22:10 ASK     dynamic_tool: run_benchmark({"suite": "perf"})
+```
+
+**respond-task (success):**
 ```json
 {
   "task_id": "bold-falcon-42",
@@ -164,7 +133,7 @@ The agent called a tool that requires external execution. You provide the result
 }
 ```
 
-**respond-task call (error):**
+**respond-task (error):**
 ```json
 {
   "task_id": "bold-falcon-42",
@@ -173,32 +142,20 @@ The agent called a tool that requires external execution. You provide the result
 }
 ```
 
+## Handling wrong auto-answers
+
+If the auto-answer picked the wrong option:
+1. The task continues with the wrong choice
+2. You see `[auto-answer]` or `AUTO` in the output/timeline
+3. Steer via `message-task`: "Undo: you used Red but I need Blue. Re-do the file with Blue."
+4. Or: cancel and respawn with a clearer prompt that doesn't trigger a question
+
 ## Multiple pauses in sequence
 
-An agent may pause multiple times during a single task. After each respond-task, call wait-task again. The cycle continues until the task reaches a terminal state.
+A task can pause multiple times. After each respond-task, call wait-task again:
 
 ```
-spawn → wait → input_required (question 1)
-  → respond → wait → input_required (question 2)
-  → respond → wait → input_required (command approval)
+spawn → wait → input_required (dynamic_tool #1)
+  → respond → wait → input_required (dynamic_tool #2)
   → respond → wait → completed
 ```
-
-## Auto-approve strategy
-
-For trusted environments where you want maximum autonomy:
-
-```
-while wait-task returns input_required:
-  if pending_question.type == "command_approval":
-    respond with decision: "accept"
-  elif pending_question.type == "file_approval":
-    respond with decision: "accept"
-  elif pending_question.type == "user_input":
-    respond with best-guess answers
-  elif pending_question.type == "elicitation":
-    respond with action: "accept"
-  wait-task again
-```
-
-For untrusted environments, always review before responding.
