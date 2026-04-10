@@ -1,6 +1,8 @@
 # Root Cause Taxonomy
 
 Tag each friction point with a code to understand WHY it broke.
+Use the smallest set of codes that explains the whole miss.
+Five symptoms can still come from one bad paragraph or one bad example.
 
 ## Structural causes (S)
 
@@ -32,6 +34,7 @@ Tag each friction point with a code to understand WHY it broke.
 | O3 | Edge case unhandled — valid input produces unexpected behavior | P2 |
 | O4 | Scaling breakdown — works small, breaks at realistic scale | P2 |
 | O5 | Stale reference — docs reference tool version/flag that no longer exists | P1 |
+| O6 | Harness-induced drift — the test prompt or wrapper changed the task enough to create fake friction | P1 |
 
 ## Root cause → fix pattern mapping
 
@@ -45,3 +48,4 @@ Tag each friction point with a code to understand WHY it broke.
 | M4 | Execution Method Specification |
 | M5 | Scaling Guidance or Prerequisite Surfacing |
 | O1 | Error Recovery Addition |
+| O6 | Harness Alignment |

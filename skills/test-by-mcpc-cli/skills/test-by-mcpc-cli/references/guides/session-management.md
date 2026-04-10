@@ -13,7 +13,8 @@ mcpc restart @research
 mcpc close @research
 ```
 
-Use human `mcpc` output or an exact-name JSON filter before a full global dump on machines with many saved sessions.
+For smoke tests, start from a fresh `connect`.
+Use human `mcpc` output or an exact-name JSON filter only when reuse or cleanup is the actual question.
 
 ## Session states that matter operationally
 

@@ -35,7 +35,8 @@ This rewrite was verified against `0.2.4` and live-tested with:
 - `@modelcontextprotocol/server-everything` over stdio and Streamable HTTP
 
 If `mcpc` is missing, older, or your config shape is wrong, start with `references/guides/installation.md`.
-If you need the collected live outputs that drove the latest derailment fixes, read `references/examples/derailment-output-summary.md`.
+This skill documents raw `mcpc` behavior.
+Establish the plain CLI path first, then layer wrappers or harnesses back in only after the raw command path already works.
 
 ## Minimal Read Sets
 
@@ -105,14 +106,13 @@ Route migration work to `references/patterns/session-first-syntax.md`.
 
 - Confirm `mcpc --version` reports `0.2.x`.
 - Confirm examples use `mcpc connect <server-or-file:entry> @session`.
+- Validate the released CLI contract with plain `mcpc`, not a shell wrapper.
 - Treat old `--config file entry` and direct URL one-shot commands as obsolete.
-- When you are validating the CLI contract itself, start with plain `mcpc`.
-  Add wrappers such as `rtk` only after the raw `mcpc` path works.
 
 ### 2. Connect a stable session
 
-Do not start with a full `mcpc --json` dump unless session reuse is the actual question.
-On a busy machine, a fresh isolated session is usually faster and less ambiguous.
+Default to a fresh `connect`.
+Reach for session inventory only when reuse, cleanup, or stale-state diagnosis is the actual job.
 
 ```bash
 # Remote URL; https:// is added automatically for non-local hosts
@@ -127,7 +127,7 @@ mcpc connect /tmp/everything-mcp.json:everything @everything-stdio
 
 Use `--no-profile` when anonymous HTTP testing matters on a machine with saved OAuth profiles.
 
-If you do need to inspect an existing session, prefer `mcpc` or an exact-name JSON filter instead of an unfiltered global dump:
+If you do need to inspect an existing session, narrow the lookup to the exact session name instead of reading the whole inventory first:
 
 ```bash
 mcpc
@@ -151,6 +151,7 @@ mcpc @research prompts-list
 ```
 
 Prefer `help` and `grep` before heavy `jq` pipelines.
+If the acceptance criteria explicitly mention prompts, resources, or templates, add those list calls in the first pass instead of widening the read set later.
 
 ### 4. Validate schema and argument shape
 
@@ -182,7 +183,7 @@ Rules:
 ### 5. Exercise the capability you care about
 
 ```bash
-mcpc @research tools-call search-reddit '{"queries":["OpenAI MCP"]}' --json
+mcpc --json @research tools-call search-reddit '{"queries":["OpenAI MCP"]}'
 mcpc @everything-http prompts-get args-prompt city:=Paris state:=Texas
 mcpc @everything-http resources-read demo://resource/static/document/features.md
 mcpc @everything-http logging-set-level debug
@@ -232,8 +233,8 @@ Do not run `close` and `clean` for the same session in parallel.
 7. Treat HTTP+SSE endpoints as unsupported for `mcpc 0.2.x`; use Streamable HTTP or stdio instead.
 8. Reach for `--insecure` only when the endpoint really uses a self-signed or otherwise untrusted certificate.
 9. When a tool is marked `task:required`, expect plain `tools-call` to fail until you add `--task` or `--detach`.
-10. Use plain `mcpc` as the baseline when documenting behavior; wrappers can change quoting, TTY, and session-state visibility.
-11. Treat proxy `/health` as a liveness probe, not a bearer-auth proof.
+10. Use plain `mcpc` as the documented baseline; wrappers can change quoting, TTY, and session-state visibility.
+11. Treat proxy `/health` as a liveness probe only. Verify proxy auth with a real MCP request on the exact release you ship before you depend on it.
 
 ## Capability Boundary
 

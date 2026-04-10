@@ -1,5 +1,9 @@
 # Friction Classification
 
+These severities classify symptoms in the trace.
+They do not tell you what to edit.
+Several P1 symptoms from the same step usually point to one source defect in the skill text.
+
 ## Severity levels
 
 ### P0 — Blocks progress

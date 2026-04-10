@@ -33,6 +33,7 @@ mcpc clean sessions
 
 Do not run `close` and `clean` for the same session in parallel.
 If `close` already says `Session not found`, skip straight to targeted cleanup.
+In disposable CI state such as a temporary `MCPC_HOME_DIR`, `clean all` is fine after `close`.
 
 ## What not to assume
 

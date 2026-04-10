@@ -1,6 +1,7 @@
 # mcpc Quick Reference
 
 This sheet is aligned to `@apify/mcpc 0.2.4`.
+It documents raw `mcpc` behavior first.
 
 ## Core syntax
 
@@ -32,8 +33,8 @@ mcpc @check grep search
 mcpc @check tools-list --full
 ```
 
-Use plain `mcpc` for this baseline pass.
-If you normally wrap commands with `rtk` or another helper, rerun any odd behavior with plain `mcpc` before you blame the server or the docs.
+Start this baseline pass with plain `mcpc`.
+Only reintroduce shell wrappers after the raw CLI path already behaves the way the docs describe.
 
 If the machine has many saved sessions, skip the raw global dump unless reuse is the question.
 Either connect a fresh isolated session first or filter by exact name:
@@ -94,7 +95,7 @@ Teach the explicit `*-list` form first.
 | `--profile <name>` | use a saved OAuth profile |
 | `--no-profile` | disable default-profile auto-selection |
 | `--proxy <[host:]port>` | start a local proxy bound to the session |
-| `--proxy-bearer-token <token>` | require bearer auth for the proxy |
+| `--proxy-bearer-token <token>` | configure a proxy bearer token; verify actual enforcement on your release |
 | `--x402` | enable x402 auto-payment |
 
 ## `login` options

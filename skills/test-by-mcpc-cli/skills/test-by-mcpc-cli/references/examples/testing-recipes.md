@@ -14,6 +14,9 @@ mcpc --json | jq -e --arg s "$SESSION" '.sessions[] | select(.name == $s and .st
 mcpc close "$SESSION"
 ```
 
+For fresh smoke tests, connect directly and filter by exact name.
+Do not dump every saved session unless reuse or cleanup is the actual question.
+
 ## Recipe: assert a tool exists
 
 ```bash
@@ -90,3 +93,19 @@ rg 'Schema file not found' /tmp/mcpc.err >/dev/null
 ```
 
 This confirms current `prompts-get` accepts `--schema` in the released CLI.
+
+## Recipe: assert a proxy is live without over-claiming auth
+
+```bash
+UPSTREAM=@proxy-upstream
+CHECK=@proxy-check
+
+mcpc connect https://research.yigitkonur.com/mcp "$UPSTREAM" --proxy 127.0.0.1:8787 --proxy-bearer-token demo-token
+curl -s http://127.0.0.1:8787/health | jq -e '.status == "ok"' >/dev/null
+mcpc connect http://127.0.0.1:8787/mcp "$CHECK" --no-profile
+mcpc close "$CHECK"
+mcpc close "$UPSTREAM"
+```
+
+This proves the proxy is serving MCP traffic.
+It does not prove bearer enforcement, so test auth separately on the release you ship.
