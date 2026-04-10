@@ -35,6 +35,7 @@ This rewrite was verified against `0.2.4` and live-tested with:
 - `@modelcontextprotocol/server-everything` over stdio and Streamable HTTP
 
 If `mcpc` is missing, older, or your config shape is wrong, start with `references/guides/installation.md`.
+If you need the collected live outputs that drove the latest derailment fixes, read `references/examples/derailment-output-summary.md`.
 
 ## Minimal Read Sets
 
