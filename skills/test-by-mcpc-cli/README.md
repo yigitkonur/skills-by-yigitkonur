@@ -1,6 +1,6 @@
 # test-by-mcpc-cli
 
-Testing or debugging MCP servers with mcpc CLI across stdio, HTTP stateless, and HTTP stateful transports — tool calling, schema validation, and automated test scripts.
+testing or debugging MCP servers with mcpc 0.2.x across stdio or Streamable HTTP, including session setup, schemas, grep, tasks, and JSON scripting.
 
 **Category:** development
 

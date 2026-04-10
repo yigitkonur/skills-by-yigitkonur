@@ -1,229 +1,128 @@
 # mcpc Quick Reference
 
-All commands, flags, and options for the `mcpc` CLI.
+This sheet is aligned to `@apify/mcpc 0.2.4`.
 
-## Top-level commands
+## Core syntax
 
-| Command | Description |
+| Task | Command |
 |---|---|
-| `mcpc` | List active sessions and saved OAuth profiles |
-| `mcpc <server> connect @<session>` | Create a persistent session |
-| `mcpc @<session> close` | Close a session (kills bridge) |
-| `mcpc @<session> restart` | Restart session (new connection) |
-| `mcpc @<session> shell` | Open interactive shell |
-| `mcpc login <server>` | OAuth login and save profile |
-| `mcpc logout <server>` | Delete authentication profile |
-| `mcpc --clean[=types]` | Clean up mcpc data |
-| `mcpc x402 [subcommand]` | Configure x402 payment wallet (experimental) |
-| `mcpc help [command]` | Show help |
-| `mcpc --version` | Show version |
+| list sessions and profiles | `mcpc` |
+| list sessions and profiles as JSON | `mcpc --json` |
+| create a session | `mcpc connect <server> @session` |
+| open the interactive shell | `mcpc shell @session` |
+| create an OAuth profile | `mcpc login <server>` |
+| delete an OAuth profile | `mcpc logout <server>` |
+| show command help | `mcpc help [command] [subcommand]` |
+| inspect a session | `mcpc @session` |
+| show server info and commands | `mcpc @session help` |
+| search all sessions | `mcpc grep <pattern>` |
+| search one session | `mcpc @session grep <pattern>` |
+| restart a session | `mcpc restart @session` |
+| close a session | `mcpc close @session` |
+| safe cleanup | `mcpc clean` |
+| targeted cleanup | `mcpc clean sessions logs` |
 
-## Session commands (after `@<session>`)
+## Server formats
 
-### Tool commands
+| Target type | Example | Notes |
+|---|---|---|
+| remote HTTP target | `mcpc connect mcp.apify.com @apify` | `https://` is added automatically for non-local hosts |
+| explicit HTTPS target | `mcpc connect https://research.yigitkonur.com/mcp @research` | use full path when the server is not on `/` |
+| localhost HTTP target | `mcpc connect 127.0.0.1:3011/mcp @everything-http` | localhost keeps `http://` |
+| config entry | `mcpc connect ~/.vscode/mcp.json:filesystem @fs` | config must use `mcpServers` |
 
-| Command | Description |
+## Session commands
+
+| Area | Commands |
 |---|---|
-| `mcpc @s tools` | List tools (summary) |
-| `mcpc @s tools --full` | List tools with full schemas |
-| `mcpc @s tools-list` | List tools (alias) |
-| `mcpc @s tools-get <name>` | Get tool details and schema |
-| `mcpc @s tools-call <name> [args...]` | Call a tool |
+| discovery | `mcpc @s`, `mcpc @s help`, `mcpc @s grep search` |
+| tools | `tools-list [--full]`, `tools-get <name>`, `tools-call <name> [args...]` |
+| prompts | `prompts-list`, `prompts-get <name> [args...]` |
+| resources | `resources-list`, `resources-read <uri>`, `resources-subscribe <uri>`, `resources-unsubscribe <uri>`, `resources-templates-list` |
+| logging | `logging-set-level <level>` |
+| health | `ping` |
+| tasks | `tools-call --task`, `tools-call --detach`, `tasks-list`, `tasks-get <taskId>`, `tasks-cancel <taskId>` |
 
-### Resource commands
+Aliases that still work: `tools`, `resources`, and `prompts`.
+Teach the explicit `*-list` form first.
 
-| Command | Description |
+## Global options
+
+| Option | Meaning |
 |---|---|
-| `mcpc @s resources` | List resources |
-| `mcpc @s resources-list` | List resources (alias) |
-| `mcpc @s resources-read <uri>` | Read a resource |
-| `mcpc @s resources-read <uri> > <file>` | Read resource to file via shell redirection |
-| `mcpc @s resources-subscribe <uri>` | Subscribe to updates |
-| `mcpc @s resources-unsubscribe <uri>` | Unsubscribe |
-| `mcpc @s resources-templates-list` | List resource templates |
-
-### Prompt commands
-
-| Command | Description |
-|---|---|
-| `mcpc @s prompts` | List prompts |
-| `mcpc @s prompts-list` | List prompts (alias) |
-| `mcpc @s prompts-get <name> [args...]` | Get prompt with arguments |
-
-### Utility commands
-
-| Command | Description |
-|---|---|
-| `mcpc @s ping` | Check if server is alive |
-| `mcpc @s help` | Show server info and capabilities |
-| `mcpc @s logging-set-level <level>` | Set server logging level |
-| `mcpc @s restart` | Restart session |
-| `mcpc @s close` | Close session |
-
-## Not supported by mcpc
-
-These MCP capabilities have no CLI command — do not attempt them:
-
-| MCP Capability | Why no command |
-|---|---|
-| `completion/complete` | Argument auto-completion — no `completions` command exists |
-| `sampling` | Server-initiated LLM requests — client-side only |
-| `roots` | Client root declarations — not applicable to CLI |
-| Generic task lifecycle commands | `mcpc 0.1.11` does not expose `--task`, `--detach`, or `tasks-*` commands |
-
-If the server advertises these capabilities, they simply cannot be tested via mcpc.
-
-## Global flags
-
-| Flag | Short | Description | Default |
-|---|---|---|---|
-| `--json` | `-j` | JSON output mode | off |
-| `--config <file>` | `-c` | Load target from MCP config file | none |
-| `--header "Key: Value"` | `-H` | Add HTTP header (repeatable) | none |
-| `--verbose` | | Debug logging | off |
-| `--profile <name>` | | OAuth profile name | `default` when available |
-| `--timeout <seconds>` | | Request timeout | 300 |
-| `--schema <file>` | | Validate against schema file | none |
-| `--schema-mode <mode>` | | Schema validation: `strict`, `compatible`, `ignore` | `compatible` |
-| `--version` | `-v` | Show version | |
-| `--help` | `-h` | Show help | |
-
-## Connect flags
-
-| Flag | Description |
-|---|---|
-| `--header "Key: Value"` | Add HTTP header (repeatable) |
+| `-j`, `--json` | machine-readable output |
+| `--verbose` | debug logging |
 | `--profile <name>` | OAuth profile name |
-| *(omit --profile and --header)* | Connect anonymously (no flag needed) |
-| `--proxy [host:]port` | Start proxy MCP server |
-| `--proxy-bearer-token <token>` | Require token for proxy |
-| `--x402` | Enable x402 auto-payment |
+| `--schema <file>` | validate tool or prompt schema |
+| `--schema-mode <mode>` | `strict`, `compatible`, or `ignore` |
+| `--timeout <seconds>` | request timeout |
+| `--insecure` | skip TLS verification for self-signed or untrusted certs |
+| `-v`, `--version` | show version |
+| `-h`, `--help` | show help |
 
-## Login flags
+## `connect` options
 
-| Flag | Description |
+| Option | Meaning |
 |---|---|
-| `--profile <name>` | Profile name (default: "default") |
+| `-H`, `--header 'Key: Value'` | add HTTP header; can be repeated |
+| `--profile <name>` | use a saved OAuth profile |
+| `--no-profile` | disable default-profile auto-selection |
+| `--proxy <[host:]port>` | start a local proxy bound to the session |
+| `--proxy-bearer-token <token>` | require bearer auth for the proxy |
+| `--x402` | enable x402 auto-payment |
 
-## Logout flags
+## `login` options
 
-| Flag | Description |
+| Option | Meaning |
 |---|---|
-| `--profile <name>` | Profile to delete (default: "default") |
+| `--profile <name>` | profile name |
+| `--scope "read write"` | request explicit OAuth scopes |
+| `--client-id <id>` | static OAuth client ID |
+| `--client-secret <secret>` | static OAuth client secret |
 
-## Clean command
+## `clean` forms
 
 ```bash
-mcpc --clean                    # Safe cleanup only
-mcpc --clean=sessions           # Remove all sessions
-mcpc --clean=profiles           # Remove all OAuth profiles
-mcpc --clean=logs               # Remove bridge logs
-mcpc --clean=all                # Remove everything
+mcpc clean
+mcpc clean sessions
+mcpc clean profiles
+mcpc clean logs
+mcpc clean sessions logs
+mcpc clean all
 ```
 
-## Server format
+Without arguments, `mcpc clean` removes stale data only.
 
-| Format | Example | Transport |
-|---|---|---|
-| URL | `https://mcp.example.com` | HTTP |
-| Bare hostname | `mcp.example.com` | HTTP (https://) |
-| Localhost | `localhost:3000` | HTTP (http://) |
-| Config entry | `mcpc --config ~/.vscode/mcp.json server-name connect @session` | Stdio |
-| Config entry | `mcpc --config ./config.json my-server connect @session` | Stdio |
-
-## Argument format (`key:=value`)
-
-`key:=value` only produces **scalar values**. For arrays/objects, use JSON literals or inline JSON.
-
-| Example | Parsed as | Notes |
-|---|---|---|
-| `count:=10` | number `10` | |
-| `enabled:=true` | boolean `true` | |
-| `name:=hello` | string `"hello"` | |
-| `id:='"123"'` | string `"123"` (forced) | |
-| `items:='[1,2,3]'` | array `[1,2,3]` | JSON literal with shell quoting |
-| `tags:='["a","b"]'` | array `["a","b"]` | JSON literal with shell quoting |
-| `config:='{"k":"v"}'` | object `{"k":"v"}` | JSON literal with shell quoting |
-| `'{"key":"val"}'` | inline JSON object | all-or-nothing, cannot mix with key:=value |
-| (piped stdin) | JSON from stdin | |
-
-**Common mistake:** `items:=hello` sends the string `"hello"`, NOT `["hello"]`. If the tool expects an array, this will fail with a validation error. Always check the tool schema first.
-
-## Environment variables
-
-| Variable | Purpose |
-|---|---|
-| `MCPC_VERBOSE` | Enable debug logging (`1`, `true`, `yes`) |
-| `MCPC_JSON` | Enable JSON output mode |
-| `MCPC_HOME_DIR` | Override `~/.mcpc` directory |
-| `HTTP_PROXY` | HTTP proxy |
-| `HTTPS_PROXY` | HTTPS proxy |
-| `NO_PROXY` | Bypass proxy for hosts |
-
-## Logging levels
-
-Valid values for `logging-set-level`:
-
-```
-debug < info < notice < warning < error < critical < alert < emergency
-```
-
-## Exit codes
-
-Exit codes reflect **mcpc CLI errors only**. MCP server errors return exit 0 with `isError: true` in JSON.
-
-| Code | Meaning | Covers |
-|---|---|---|
-| 0 | CLI success (but check `isError` in JSON!) | Includes server validation errors, tool-not-found |
-| 1 | Client error | Invalid CLI args, unknown mcpc command, session not found |
-| 2 | Server error | Rare transport-level failures |
-| 3 | Network error | Connection refused, timeout, DNS failure |
-| 4 | Auth error | 401/403, expired token |
-
-**In scripts, always check both:** `$?` for CLI errors AND `jq '.isError'` for server errors.
-
-## Session status indicators
-
-| Icon | State | Meaning |
-|---|---|---|
-| 🟢 | live | Bridge running, server responding |
-| 🟡 | disconnected | Bridge alive, server unreachable |
-| 🟡 | crashed | Bridge process died |
-| 🔴 | unauthorized | Auth rejected (401/403) |
-| 🔴 | expired | Session ID rejected (404) |
-
-## File locations
-
-| Path | Purpose |
-|---|---|
-| `~/.mcpc/sessions.json` | Active session metadata |
-| `~/.mcpc/profiles.json` | OAuth profile metadata |
-| `~/.mcpc/credentials.json` | Fallback credential storage |
-| `~/.mcpc/shell-history` | Shell history |
-| `~/.mcpc/bridges/@<name>.sock` | Bridge IPC sockets |
-| `~/.mcpc/logs/bridge-<name>.log` | Bridge logs |
-
-## Common recipes
+## x402 commands
 
 ```bash
-# Quick smoke test
-mcpc <server> connect @smoke && mcpc @smoke ping && mcpc @smoke tools-list && mcpc @smoke close
-
-# List all tool names
-mcpc @s tools-list --json | jq -r '.[].name'
-
-# Count tools
-mcpc @s tools-list --json | jq 'length'
-
-# Call tool and extract text
-mcpc @s tools-call my-tool arg:=val --json | jq -r '.content[0].text'
-
-# Check if tool errored (MUST do this — exit code is 0 even for server errors)
-mcpc @s tools-call my-tool '{"arg":"val"}' --json | jq '.isError // false'
-
-# Verbose debugging
-MCPC_VERBOSE=1 mcpc @s tools-call my-tool arg:=val
-
-# Isolated test environment
-MCPC_HOME_DIR=/tmp/test mcpc <server> connect @isolated
+mcpc x402 init
+mcpc x402 import <private-key>
+mcpc x402 info
+mcpc x402 sign <payment-required>
+mcpc x402 sign <payment-required> --amount 0.10 --expiry 120
+mcpc x402 remove
 ```
+
+## Argument shapes
+
+| Form | Example | Use when |
+|---|---|---|
+| `key:=value` | `city:=Paris` | simple scalars or quoted JSON literals |
+| inline JSON | `'{"queries":["OpenAI MCP"]}'` | full object payload |
+| stdin JSON | `printf '%s' '{"queries":["OpenAI MCP"]}' | mcpc @s tools-call search-reddit` | scripting pipelines |
+
+If a tool expects an array or object, send a JSON literal.
+`queries:=OpenAI` is still a string, not `['OpenAI']`.
+
+## Session states you will see in JSON output
+
+- runtime JSON commonly shows `live`, `connecting`, `reconnecting`, `disconnected`, `crashed`, `unauthorized`, or `expired`
+- persisted internal state uses a slightly different vocabulary; do not script against the on-disk file format unless you have to
+
+## Unsupported or partial areas
+
+- no `mcpc completions` command even if server capabilities show `completions`
+- no dedicated roots configuration CLI even though some servers may expose roots-aware demo tools
+- sampling demo tools may exist, but can still return `isError: true`
+- no standalone `tasks-result` command after `--detach`
