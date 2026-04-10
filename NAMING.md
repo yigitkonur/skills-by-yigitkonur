@@ -233,7 +233,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `run-` vs `init-` — `run-` is an ongoing session with the tool; `init-` is a one-time generation
 - `run-` vs `test-` — `run-` drives any external tool; `test-` specifically runs verification/validation suites
 
-**Current skills:** `run-agent-browser`, `run-github-scout`, `run-hcom-agents`, `run-issue-tree`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`
+**Current skills:** `run-agent-browser`, `run-athena-flow`, `run-github-scout`, `run-hcom-agents`, `run-issue-tree`, `run-openclaw-agents`, `run-openclaw-deploy`, `run-playwright`, `run-research`
 
 ---
 
@@ -437,6 +437,7 @@ When renaming a published skill:
 - `publish-npm-package`
 - `review-pr`
 - `run-agent-browser`
+- `run-athena-flow`
 - `run-github-scout`
 - `run-hcom-agents`
 - `run-issue-tree`

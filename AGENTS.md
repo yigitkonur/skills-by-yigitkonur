@@ -265,7 +265,7 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (44 skills)
+## Current canonical skill names (45 skills)
 
 Use this list to check for naming collisions:
 
@@ -283,9 +283,10 @@ develop-macos-liquid-glass  develop-typescript            enhance-prompt
 enhance-skill-by-derailment extract-saas-design           init-agent-config
 init-openclaw-agent         init-review                   optimize-mcp-server
 publish-npm-package         review-pr                     run-agent-browser
-run-codex-subagents         run-github-scout              run-hcom-agents
-run-issue-tree              run-openclaw-agents           run-openclaw-deploy
-run-playwright              run-research                  test-by-mcpc-cli
+run-athena-flow             run-codex-subagents           run-github-scout
+run-hcom-agents             run-issue-tree                run-openclaw-agents
+run-openclaw-deploy         run-playwright                run-research
+test-by-mcpc-cli
 ```
 
 ---
