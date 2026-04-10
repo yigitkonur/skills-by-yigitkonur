@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-42 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+44 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -26,6 +26,8 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-daisyui-mcp](skills/build-daisyui-mcp/) | development | daisyUI components via MCP blueprint server |
 | [build-hcom-systems](skills/build-hcom-systems/) | orchestration | Multi-agent systems on the hcom backbone |
 | [build-langchain-ts-app](skills/build-langchain-ts-app/) | development | LangChain.js agents, RAG, and tool-calling |
+| [build-mcp-sdk](skills/build-mcp-sdk/) | development | MCP servers with @modelcontextprotocol/sdk v1.x |
+| [build-mcp-sdk-v2](skills/build-mcp-sdk-v2/) | development | MCP servers with @modelcontextprotocol/server v2 |
 | [build-mcp-use-agent](skills/build-mcp-use-agent/) | development | AI agents with mcp-use MCPAgent |
 | [build-mcp-use-apps-widgets](skills/build-mcp-use-apps-widgets/) | development | MCP apps with React widget rendering |
 | [build-mcp-use-client](skills/build-mcp-use-client/) | development | MCP clients with mcp-use SDK |
