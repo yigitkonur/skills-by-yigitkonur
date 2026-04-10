@@ -32,6 +32,16 @@ mcpc @check grep search
 mcpc @check tools-list --full
 ```
 
+Use plain `mcpc` for this baseline pass.
+If you normally wrap commands with `rtk` or another helper, rerun any odd behavior with plain `mcpc` before you blame the server or the docs.
+
+If the machine has many saved sessions, skip the raw global dump unless reuse is the question.
+Either connect a fresh isolated session first or filter by exact name:
+
+```bash
+mcpc --json | jq '.sessions[] | select(.name == "@check")'
+```
+
 If task support matters, add:
 
 ```bash
@@ -108,6 +118,7 @@ mcpc clean all
 ```
 
 Without arguments, `mcpc clean` removes stale data only.
+Do not parallelize `mcpc close @session` and `mcpc clean ...` for the same session.
 
 ## x402 commands
 

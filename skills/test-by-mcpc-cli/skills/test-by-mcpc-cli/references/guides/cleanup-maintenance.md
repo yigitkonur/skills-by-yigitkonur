@@ -24,6 +24,16 @@ mcpc clean all
 Multiple cleanup targets in one invocation are valid.
 `mcpc clean sessions logs --json` is fine.
 
+## Sequence cleanup, do not race it
+
+```bash
+mcpc close @research
+mcpc clean sessions
+```
+
+Do not run `close` and `clean` for the same session in parallel.
+If `close` already says `Session not found`, skip straight to targeted cleanup.
+
 ## What not to assume
 
 - cleanup does not rely on a public `expiresAt` field; document status-based cleanup behavior instead
