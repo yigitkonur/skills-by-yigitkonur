@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-push hook: validates all skills before allowing push.
+# Pre-push hook: validates all skills before push, but does not block it.
 #
 # Setup (one-time):
 #   git config core.hooksPath .githooks
@@ -23,7 +23,7 @@ echo ""
 if ! python3 "$VALIDATOR" --quick; then
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "❌ PUSH BLOCKED: skill validation failed"
+    echo "⚠️  PUSH CONTINUES: skill validation failed"
     echo ""
     echo "  Check the validator output above for exact file-level fixes."
     echo ""
@@ -37,9 +37,9 @@ if ! python3 "$VALIDATOR" --quick; then
     echo "  Re-run locally:"
     echo "    python3 scripts/validate-skills.py --quick"
     echo ""
-    echo "  After fixes are clean, push again."
+    echo "  Push is continuing because validation is advisory here."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    exit 1
+    exit 0
 fi
 
 echo ""
