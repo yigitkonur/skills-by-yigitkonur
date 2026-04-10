@@ -1,6 +1,6 @@
 # run-codex-subagents
 
-Orchestrate coding tasks via mcp-codex-worker MCP tools: spawn parallel agents, wait for results, handle approvals, batch cancel, and run multi-wave execution plans.
+Orchestrate Codex coding agents via mcp-codex-worker MCP tools — spawn tasks, monitor timeline progress, handle auto-answered questions, recover partial work from failed tasks, and run multi-wave implementation plans with real-time diagnostics.
 
 **Category:** orchestration
 
