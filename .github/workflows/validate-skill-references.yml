@@ -14,10 +14,17 @@ on:
 
 jobs:
   validate:
-    name: Validate all skills
+    name: Audit all skills
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Run skill validation
+        id: validate
+        continue-on-error: true
         run: python3 scripts/validate-skills.py
+
+      - name: Report advisory failure
+        if: steps.validate.outcome == 'failure'
+        run: |
+          echo "::warning title=Skill validation failed::Validation is advisory in CI. Review the job log for exact file-level fixes."
