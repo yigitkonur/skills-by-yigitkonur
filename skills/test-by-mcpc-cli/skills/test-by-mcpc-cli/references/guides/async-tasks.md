@@ -1,54 +1,59 @@
-# Async Work Boundary
+# Async Tasks
 
-Use this page to avoid inventing task commands that `mcpc 0.1.11` does not expose.
+`mcpc 0.2.x` has real public task support.
+Use this guide instead of old `0.1.11` advice that told you to avoid task workflows.
 
-## Current CLI surface
+## When to use task mode
 
-`mcpc 0.1.11` does **not** support these commands or flags:
+Reach for it when either of these is true:
 
-```bash
-mcpc @session tools-call slow-tool --task
-mcpc @session tools-call slow-tool --task --detach
-mcpc @session tasks-list
-mcpc @session tasks-get <taskId>
-mcpc @session tasks-cancel <taskId>
-```
+- the tool metadata shows `taskSupport: required`
+- the tool can run long enough that you want streamed progress or a detached task ID
 
-If you run them, Commander exits with a client error such as:
-
-- `Unknown option: --task`
-- `unknown command 'tasks-list'`
-
-## What to do instead
-
-### Long-running tool calls
-
-Use a longer timeout and treat the call as synchronous:
+Inspect the tool first:
 
 ```bash
-mcpc @session tools-call slow-tool arg:=value --timeout 900
+mcpc @session tools-list --full
+mcpc --json @session tools-get simulate-research-query | jq '.execution'
 ```
 
-If the call returns JSON, still check `.isError` because tool-level failures keep exit code `0`:
+## Modes
+
+### Plain call
 
 ```bash
-mcpc --json @session tools-call slow-tool arg:=value --timeout 900 | jq '.isError // false'
+mcpc @session tools-call tool-name arg:=value
 ```
 
-### Background work
+Use this for normal tools and for tools whose execution says `taskSupport: forbidden`.
 
-If the server itself exposes job IDs through a normal tool, use that server-specific workflow rather than generic `tasks-*` commands. Example pattern:
+### Wait for result with `--task`
 
 ```bash
-JOB=$(mcpc --json @session tools-call start-export format:=csv | jq -r '.content[0].text')
+mcpc @everything-http tools-call simulate-research-query topic:='"mcpc tasks"' --task
 ```
 
-Then poll through whatever server-specific tool the schema exposes.
+Use this when you want the final result body in the CLI.
 
-### Progress and notifications
+### Detach with `--detach`
 
-`progress` notifications may still exist inside the MCP protocol, but `mcpc 0.1.11` does not provide a generic task runner, detach flow, or polling surface for them.
+```bash
+mcpc --json @everything-http tools-call simulate-research-query topic:='"mcpc detach"' --detach
+mcpc --json @everything-http tasks-get <taskId>
+mcpc --json @everything-http tasks-list
+mcpc @everything-http tasks-cancel <taskId>
+```
 
-## Operator rule
+Use this when the task ID is enough for orchestration.
+In `0.2.4`, `tasks-get` returns task status information, not the original result payload.
+There is no standalone `tasks-result` command.
 
-Before writing any async testing instructions, check `mcpc --help`. If the command is not listed there, do not assume the CLI can drive it.
+## Common outcomes
+
+- `task:required`: plain `tools-call` fails until you add `--task` or `--detach`
+- `task:forbidden`: `--task` or `--detach` will fail because the server does not want task execution for that tool
+- completed detached tasks can still appear in `tasks-list`, but you do not recover the original result body there
+
+## Good verification target
+
+The Everything server's `simulate-research-query` tool is the fastest way to confirm current task behavior.
