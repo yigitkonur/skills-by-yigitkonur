@@ -3,245 +3,398 @@ name: run-codex-subagents
 description: "Use skill if you are orchestrating Codex coding agents via mcp-codex-worker MCP tools — spawning tasks, monitoring timeline progress, handling auto-answered questions, recovering partial work, or running multi-wave implementation plans."
 ---
 
-# Orchestrate Codex Workers
+# Orchestrate Codex Workers via CLI
 
-You are an orchestrator. You dispatch work to Codex coding agents, monitor their progress in real time, recover from failures gracefully, and deliver verified results. The prompt you write determines the quality of everything that follows.
+You are an orchestrator. You dispatch work to Codex coding agents using the `cli-codex-subagent` CLI, monitor their progress in real time, recover from failures gracefully, and deliver verified results. The prompt file you write determines the quality of everything that follows.
 
 ## Prerequisites
 
-5 MCP tools must be available from the `codex-worker` server:
-- `spawn-task` — create and start a task
-- `wait-task` — block until done, failed, or paused
-- `respond-task` — answer a paused task
-- `message-task` — steer a running task
-- `cancel-task` — abort tasks
+The `cli-codex-subagent` daemon must be reachable. Check with:
 
-If missing, the server isn't connected. Stop and tell the user.
-
-## The Core Loop
-
-```
-spawn-task → Monitor(timeline) → wait-task
-  ├── completed    → use output
-  ├── failed       → check disk for partial work → recover or retry
-  ├── input_required → already auto-answered, check [auto-answer] in output
-  └── working      → check Monitor events → wait again or abort
+```bash
+cli-codex-subagent doctor
 ```
 
-### MUST: Start the Monitor after every spawn
+The daemon auto-starts on first use. If `doctor` shows errors, the Codex runtime may not be installed. Stop and tell the user.
+
+## Core Loop
 
 ```
-Monitor({
-  command: "tail -f {disk_paths.timeline_log}",
-  description: "Task {task_id} progress",
-  timeout_ms: {task_timeout},
-  persistent: false
-})
+run task.md --follow
+  ├── DONE completed  → use output / artifacts
+  ├── exit 1 failed   → check disk for partial work → recover or retry
+  ├── exit 2 blocked  → request list → request answer → task follow
+  └── exit 3 reconnect error → retry or check network
 ```
 
-Without this you are blind between spawn and completion. The timeline streams one-liners like `CMD npm test → exit=0 (1.2s)` and `THINK Considering approach...` so you see exactly what the agent is doing. Read `references/guides/monitoring-patterns.md` for merged multi-task monitors and diagnostic commands.
+### One-shot (most common)
 
-## Choosing Reasoning Level
+```bash
+cli-codex-subagent run task.md --follow --auto-approve
+```
+
+`--follow` streams all events and blocks until done. `--auto-approve` skips shell-command approval prompts.
+
+### Async (fire-and-forget for parallel work)
+
+```bash
+# Spawn, get task id immediately
+cli-codex-subagent run task.md --json
+# Returns: { "taskId": "tsk_...", "sessionId": "ses_..." }
+
+# Later: block until done
+cli-codex-subagent task wait tsk_abc123
+
+# Or stream events
+cli-codex-subagent task follow tsk_abc123
+```
+
+## Command Reference
+
+### Spawn a task
+
+```bash
+# Shorthand (most common)
+cli-codex-subagent run task.md [options]
+
+# Explicit
+cli-codex-subagent task start task.md [options]
+```
+
+**Key flags:**
+
+| Flag | What it does | When to use |
+|------|-------------|-------------|
+| `--effort <level>` | Reasoning depth: `none\|minimal\|low\|medium\|high\|xhigh` | Always — determines reliability |
+| `--auto-approve` | Auto-accept all shell command approvals | Autonomous mode |
+| `--approval-policy <p>` | `never\|on-failure\|on-request\|untrusted` | Fine-grained control |
+| `--follow` | Stream events, block until terminal | Interactive / foreground runs |
+| `--wait` | Block until terminal, no streaming | CI / scripted pipelines |
+| `--session <sesId>` | Attach to existing session | Continue prior context |
+| `--context-file <f>` | Prepend file as context (repeatable) | Supply reference files |
+| `--output-schema <f>` | JSON Schema file for structured output | When structured JSON output required |
+| `--label <label>` | Tag for filtering | Parallel batches |
+| `--model <model>` | Override model | When specific model required |
+
+**Frontmatter alternative** — put options in the task file header:
+
+```markdown
+---
+label: "My Task"
+effort: low
+session: ses_abc123
+context_files:
+  - ./notes.md
+  - ./schema.ts
+output_schema: ./response-schema.json
+---
+
+Your task prompt goes here...
+```
+
+### Monitor a running task
+
+```bash
+# Stream live events (attach to already-running task)
+cli-codex-subagent task follow tsk_abc123
+
+# Stream as JSON for scripting
+cli-codex-subagent task follow tsk_abc123 --stream-json
+```
+
+### Block until done
+
+```bash
+cli-codex-subagent task wait tsk_abc123
+```
+
+### Inspect task state
+
+```bash
+# Summary + artifact paths
+cli-codex-subagent task read tsk_abc123
+
+# Specific field (for scripting)
+cli-codex-subagent task read tsk_abc123 --field status
+cli-codex-subagent task read tsk_abc123 --field artifacts.handoffManifestPath
+
+# Event log (all notifications)
+cli-codex-subagent task events tsk_abc123
+
+# Raw app-server events
+cli-codex-subagent task events tsk_abc123 --raw
+
+# Last N events only
+cli-codex-subagent task events tsk_abc123 --tail 20
+```
+
+### List tasks
+
+```bash
+cli-codex-subagent task list
+cli-codex-subagent task list --status failed
+cli-codex-subagent task list --label "wave-1" --json
+cli-codex-subagent task list --quiet   # ids only
+```
+
+### Steer (continue after completion)
+
+```bash
+cli-codex-subagent task steer tsk_abc123 followup.md [--follow] [--effort low]
+```
+
+Use when a prior task has **completed** and you want to continue in the same session with new instructions. The agent retains full prior context.
+
+### Handle approvals and input requests
+
+When a task blocks on a shell-command approval or user input, `--follow` exits with code `2` and prints the blocking request id.
+
+```bash
+# Find what's blocked
+cli-codex-subagent request list
+
+# Inspect the request
+cli-codex-subagent request read req_abc123
+
+# Answer an approval
+cli-codex-subagent request answer req_abc123 --decision accept-session
+
+# Answer a multiple-choice prompt (1-indexed)
+cli-codex-subagent request answer req_abc123 --choice 1
+
+# Answer with free text
+cli-codex-subagent request answer req_abc123 --text-file answer.txt
+
+# Advanced / custom payload
+cli-codex-subagent request answer req_abc123 --json-file payload.json
+
+# Then resume following
+cli-codex-subagent task follow tsk_abc123
+```
+
+### Cancel a task
+
+```bash
+cli-codex-subagent task cancel tsk_abc123
+```
+
+## Exit Codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| `0` | Completed successfully | Use output |
+| `1` | Task failed | Check partial work on disk, see recovery below |
+| `2` | Blocked — needs `request answer` | `request list` → `request answer` → `task follow` |
+| `3` | Reconnect / network error | Retry or check network |
+| `5` | Task file not found | Use absolute path: `/path/to/task.md` |
+
+## Event Stream Format
+
+`--follow` and `task follow` print normalized events. Key line types:
+
+| Tag | Meaning |
+|-----|---------|
+| `TURN` | New conversation turn metadata |
+| `MSG` | Agent message text token |
+| `FILE` | File written/changed: `path (kind)` |
+| `TOKENS` | Token usage snapshot |
+| `DONE` | Turn complete: `completed \| failed \| blocked` |
+
+Full events (including reasoning, commands, MCP calls) are in:
+
+```bash
+cli-codex-subagent task events tsk_abc123
+```
+
+## Choosing Effort Level
 
 The single most important parameter. It determines whether the task completes.
 
 | Level | When | Reliability | Typical tokens |
-|---|---|---|---|
-| `gpt-5.4(low)` | 1-3 commands, simple file ops | ~100% | ~15K |
-| `gpt-5.4(medium)` | Multi-step coding, refactoring | ~50-70% | 30-110K |
-| `gpt-5.4(high)` | Complex multi-file reasoning | ~30-50% | 60-110K |
-| `gpt-5.4(xhigh)` | Deep research, architecture | Untested | — |
+|-------|------|-------------|----------------|
+| `low` | 1–3 commands, simple file ops | ~100% | ~15K |
+| `medium` | Multi-step coding, refactoring | ~50–70% | 30–110K |
+| `high` | Complex multi-file reasoning | ~30–50% | 60–110K |
+| `xhigh` | Deep research, architecture | Untested | — |
 
-**Default to `low` unless the task genuinely needs planning.** Higher reasoning = more tokens consumed thinking = higher chance of process exit before execution. A task that can be expressed as "run these 3 commands" should always use `low`. Read `references/guides/reasoning-levels.md` for the full decision framework.
+**Default to `low` unless the task genuinely needs planning.** Higher effort = more reasoning tokens = higher chance of process exit before execution. A task expressible as "run these 3 commands" should always use `low`.
 
 ## Writing Prompts That Work
 
 Minimum: `{what to do} + {which files} + {expected outcome} + {what NOT to touch}`
 
-For complex tasks, write a MISSION_PROTOCOL brief with: Context (why this exists, what happened before, what to read) → Mission Objective (observable end-state) → Hard Constraints → Definition of Done (binary, specific, verifiable) → Verification Commands.
+For complex tasks, use a MISSION_PROTOCOL brief:
 
-Templates for common patterns:
-- `references/templates/coder-mission.md` — file creation, extraction, refactoring
-- `references/templates/research-mission.md` — codebase exploration
-- `references/templates/quick-diagnostic.md` — single-command diagnostic
-- `references/templates/batch-wave.md` — parallel wave dispatch
+```markdown
+---
+effort: medium
+label: "Feature: auth-refresh"
+---
 
-Read `references/guides/mission-protocol-prompts.md` for the complete prompt-writing framework.
+## Context
+{Why this exists, what happened before, which files to read first}
 
-## Task Types
+## Mission
+{Observable end-state — what exists / passes after success}
 
-| Type | Route to | Example |
-|---|---|---|
-| `coder` | Code writing/editing (default) | "Create BluetoothController.swift" |
-| `tester` | Test execution | "Run swift test and report results" |
-| `planner` | Decomposition | "Break this feature into 5 tasks" |
-| `researcher` | Exploration | "Read every file under src/auth/ and summarize" |
-| `general` | Anything else | "List all TODO comments in the project" |
+## Hard Constraints
+- Do not modify {file}
+- Do not install new dependencies
 
-Read `references/guides/task-types.md` for detailed routing guidance.
+## Definition of Done
+- [ ] {Binary, verifiable condition 1}
+- [ ] {Binary, verifiable condition 2}
 
-## Key Parameters
-
-| Parameter | What it does | When to use |
-|---|---|---|
-| `reasoning` | Model + effort level | Always — determines reliability |
-| `cwd` | Working directory | Always — agent sees files here |
-| `labels` | Tags for filtering | Parallel batches — distinguish tasks |
-| `developer_instructions` | System-level constraints | Cross-cutting rules (coding conventions, safety) |
-| `context_files` | Prepend files as context | When agent needs specific file content upfront |
-| `depends_on` | Task dependency chain | Sequential pipelines |
-| `timeout_ms` | Hard time limit | Always — prevents runaway tasks |
-
-Read `references/tool-reference.md` for full parameter schemas and response shapes.
-
-## Handling Results
-
-### Completed
-Output in `output` array. Token usage in `token_usage` with `pct_used` percentage. Use the result directly.
-
-### Failed (process exit)
-**Don't panic — check for partial work.** The Codex agent often completes 80%+ of the work before dying. The recovery pattern:
-
-1. `git status` or `ls` — new files?
-2. Files exist → try building
-3. Build passes → run tests
-4. Tests pass → commit the agent's work yourself
-5. Tests fail → fix the specific errors (you do 20%, agent did 80%)
-
-Read `references/guides/partial-work-recovery.md` for the full pattern.
-
-### Auto-answered questions
-The MCP server auto-selects the first (recommended) option when the agent asks questions via `request_user_input`. You see `[auto-answer]` in the output. If wrong, steer via `message-task`. Read `references/guides/auto-answer-behavior.md`.
-
-### Failure footers — always append these
-When a task fails, include:
-```
-Task failed. Recovery options:
-- View timeline: read task:///{id}/timeline
-- View events: read task:///{id}/events
-- Retry: spawn-task with same params
-- If auto-answered wrong: retry + steer via message-task after spawn
+## Verification Commands
+{Exact commands to run to confirm success}
 ```
 
 ## Parallel Dispatch
 
-Spawn all tasks in one message. They run concurrently.
+Spawn all tasks in one shell invocation. They run concurrently through the daemon.
 
-**Warning: shared process.** All parallel tasks share one Codex process. If one triggers an exit, all siblings die at the same millisecond. Design for this:
+```bash
+# Async spawn — returns immediately with task ids
+cli-codex-subagent run task-a.md --json   # note the taskId
+cli-codex-subagent run task-b.md --json
+cli-codex-subagent run task-c.md --json
+
+# Block until each completes
+cli-codex-subagent task wait tsk_111
+cli-codex-subagent task wait tsk_222
+cli-codex-subagent task wait tsk_333
+
+# Or follow all simultaneously in separate terminals (or tmux panes)
+cli-codex-subagent task follow tsk_111
+```
+
+**Warning: shared process.** All parallel tasks share one Codex process. If one triggers a crash, siblings may also die. Design for this:
 - Don't batch your most critical task with experimental ones
 - Completed tasks survive (results captured before exit)
-- Check scoreboard for same-timestamp EXIT events
+- Check `task list --status failed` for casualties
 
-Merge monitor streams:
-```
-Monitor({
-  command: "for id in {id1} {id2} {id3}; do tail -f ~/.mcp-codex-worker/tasks/$id/timeline.log | sed --unbuffered 's/^/[$id] /' & done; wait",
-  description: "Wave N parallel tasks",
-  timeout_ms: 300000,
-  persistent: false
-})
-```
+## Handling Results
 
-Read `references/guides/parallel-dispatch.md` and `references/orchestration-patterns.md`.
+### Completed (`exit 0`)
 
-## Resources (7 URIs)
+Output is in the task artifacts directory:
 
-| URI | Returns | Use for |
-|---|---|---|
-| `task:///all` | Scoreboard: badges, labels, timing, pending questions | Track all tasks |
-| `task:///{id}` | Metadata: reasoning, cwd, timestamps, status | Inspect one task |
-| `task:///{id}/log` | Last 20 summary lines | Quick output |
-| `task:///{id}/log.verbose` | Full disk-backed transcript | Deep inspection |
-| `task:///{id}/events` | Full JSONL (all notifications) | Debug trace |
-| `task:///{id}/events/summary` | Filtered JSONL (no deltas/hooks) | Clean events |
-| `task:///{id}/timeline` | One-liner per meaningful event | Progress overview |
-
-Read `references/resources-reference.md` for response shapes and examples.
-
-## Timeline Format
-
-The timeline is your primary monitoring tool. Each line:
-```
-HH:MM:SS TAG     detail
+```bash
+cli-codex-subagent task read tsk_abc123
+# Shows: status, session, artifact paths, event/summary tails
 ```
 
-| Tag | Meaning |
-|---|---|
-| VERSION | Server version stamp |
-| STARTED | Task began |
-| TURN | New conversation turn |
-| THINK | Agent reasoning (with summary if available) |
-| PLAN | Agent's plan with status icons: [✓] done [→] active [ ] pending |
-| CMD | Command executed: `{cmd} → exit={code} ({duration})` |
-| FILE | File changed: `{path} ({kind})` |
-| MSG | Agent message (truncated at 200 chars) |
-| MCP | MCP tool call: `{server}/{tool} → {status}` |
-| TOKENS | Token usage: `{used} / {window} ({pct}%)` |
-| AUTO | Auto-answered question: `{question} → "{answer}"` |
-| APPROVE | Approval request (auto-accepted) |
-| ASK | Waiting for orchestrator input |
-| STDERR | Process error output |
-| EXIT | Process exited: `code={N} signal={S}` |
-| DONE | Turn completed: `{status}` |
+### Failed (`exit 1`) — check for partial work first
 
-Read `references/timeline-format.md` for all 16 types with examples.
+**Don't panic — the agent often completes 80%+ before failing.**
+
+```bash
+# 1. Check what was written to disk
+git status   # or: ls -la <cwd>
+
+# 2. Files exist → try building
+npm run build  # or your build command
+
+# 3. Build passes → run tests
+npm test
+
+# 4. Tests pass → commit the agent's work yourself
+git add -A && git commit -m "Partial: agent completed 80%"
+
+# 5. Tests fail → fix specific errors (you do 20%, agent did 80%)
+```
+
+### Blocked (`exit 2`) — answer the request
+
+```bash
+# Find pending request
+cli-codex-subagent request list
+
+# Inspect what it's asking
+cli-codex-subagent request read req_abc123
+
+# Answer and resume
+cli-codex-subagent request answer req_abc123 --decision accept-session
+cli-codex-subagent task follow tsk_abc123
+```
+
+### Failure footer — always append when a task fails
+
+```
+Task failed. Recovery options:
+- View events: cli-codex-subagent task events <taskId>
+- Read state:  cli-codex-subagent task read <taskId>
+- Retry:       cli-codex-subagent run task.md --follow
+- If blocked:  cli-codex-subagent request list
+```
+
+## Steering: Continuing After Completion
+
+Use `task steer` when you want to iterate on a completed task without losing session context:
+
+```bash
+# Step 1: initial task
+cli-codex-subagent run step1.md --wait
+
+# Step 2: build on it in same session (use the task id from step 1)
+cli-codex-subagent task steer tsk_step1id step2.md --follow
+```
+
+The steered task runs in the same session, so the agent remembers prior context.
+
+## Multi-Wave Pipelines (Sequential Dependencies)
+
+```bash
+# Wave 1: plan (fast, low effort)
+cli-codex-subagent run plan.md --effort low --wait
+
+# Wave 2: implement (depends on plan output)
+cli-codex-subagent run impl.md --effort medium --follow
+
+# Wave 3: test (steer from impl task to keep session context)
+cli-codex-subagent task steer tsk_impl_id test.md --follow
+```
 
 ## Decision Tree
 
 ```
 What do you need?
-├── Quick single command → spawn(low) → wait → done
-├── Multi-step coding → spawn(medium) + Monitor → wait → recover if needed
-├── Multiple independent tasks → spawn all + merged Monitor → wait each
-├── Tasks with dependencies → depends_on or sequential spawn→wait
-├── Steer running task → message-task → wait-task
-├── Cancel work → cancel-task (single or batch array)
-├── Diagnose failure → read timeline → check events → check disk
-└── Continue after completion → spawn new task in same cwd
+├── Quick single command  → run task.md --effort low --follow --auto-approve
+├── Multi-step coding     → run task.md --effort medium --follow
+├── Multiple independent  → async run each → task wait or task follow each
+├── Tasks with deps       → wait wave N → run wave N+1
+├── Continue in context   → task steer <taskId> followup.md --follow
+├── Cancel work           → task cancel <taskId>
+├── Diagnose failure      → task events <taskId> → task read <taskId>
+├── Answer approval       → request list → request answer <reqId>
+└── After blocking (exit 2) → request answer <reqId> → task follow <taskId>
 ```
 
-## Reference Index
+## Session Management
 
-### Guides (read for understanding)
-| File | Covers |
-|---|---|
-| `references/guides/reasoning-levels.md` | When to use low/medium/high/xhigh with reliability data |
-| `references/guides/mission-protocol-prompts.md` | Writing MISSION_PROTOCOL briefs that produce quality work |
-| `references/guides/partial-work-recovery.md` | Recovering 80%-done work from failed tasks |
-| `references/guides/parallel-dispatch.md` | Wave execution, shared-process risk, batch design |
-| `references/guides/monitoring-patterns.md` | Monitor integration, merged streams, diagnostics |
-| `references/guides/developer-instructions.md` | System-level instruction injection |
-| `references/guides/task-types.md` | Coder vs planner vs tester vs researcher routing |
-| `references/guides/token-budget.md` | Context usage, reasoning overhead, budget estimation |
-| `references/guides/failure-diagnosis.md` | Reading timelines, exit codes, STDERR analysis |
-| `references/guides/auto-answer-behavior.md` | How requestUserInput auto-resolves and steering |
-| `references/guides/labels-and-tracking.md` | Labels, scoreboard filtering, batch management |
-| `references/guides/fleet-mode.md` | Multi-profile execution |
-| `references/guides/context-files.md` | Prepending files, size considerations |
+```bash
+# List sessions
+cli-codex-subagent session list
 
-### Templates (copy-paste starters)
-| File | For |
-|---|---|
-| `references/templates/coder-mission.md` | Standard coding task |
-| `references/templates/research-mission.md` | Codebase exploration |
-| `references/templates/planning-mission.md` | Architecture decomposition |
-| `references/templates/quick-diagnostic.md` | Single-command check |
-| `references/templates/batch-wave.md` | Parallel wave dispatch |
-| `references/templates/test-runner.md` | Test suite execution |
+# Read a session
+cli-codex-subagent session read ses_abc123
 
-### Specs (exact schemas)
-| File | Covers |
-|---|---|
-| `references/tool-reference.md` | All 5 tools: parameters, responses, constraints |
-| `references/pause-flow-handling.md` | 5 pause types, auto-answer, response formats |
-| `references/orchestration-patterns.md` | 8 execution patterns with examples |
-| `references/timeline-format.md` | All 16 timeline line types |
-| `references/event-types.md` | Codex notification types and where they're captured |
-| `references/resources-reference.md` | All 7 resource URIs with response shapes |
+# Start a task in an existing session (preserves context)
+cli-codex-subagent run task.md --session ses_abc123 --follow
+```
 
-### Scripts (ready to run)
-| File | Does |
-|---|---|
-| `references/scripts/diagnostic-queries.md` | jq one-liners for event analysis |
-| `references/scripts/merged-monitor.sh` | Multi-task merged timeline monitor |
-| `references/scripts/batch-status.sh` | Wave status checker |
+## Daemon Management
+
+```bash
+cli-codex-subagent daemon status   # Is it running?
+cli-codex-subagent daemon stop     # Stop gracefully
+cli-codex-subagent daemon run      # Run in foreground (debug)
+cli-codex-subagent doctor          # Full readiness check
+```
+
+## Model and Account Inspection
+
+```bash
+cli-codex-subagent model list      # Available models
+cli-codex-subagent account         # Rate limits and account info
+```
