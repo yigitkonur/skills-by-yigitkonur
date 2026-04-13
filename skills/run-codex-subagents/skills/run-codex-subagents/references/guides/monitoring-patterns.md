@@ -2,19 +2,38 @@
 
 How to observe tasks as they run using `cli-codex-subagent`.
 
-## Primary pattern: --follow flag
+## Primary pattern: --follow with --compact
 
-The simplest monitoring path. Attaches a live event stream to any running task.
+The recommended monitoring approach. `--compact` shows agent messages fully but compresses tool-call detail — similar to a monitor mode.
 
 ```bash
-# Start a task and follow immediately
-cli-codex-subagent run task.md --effort medium --follow
+# Start a task and follow with compact output (recommended for agents)
+cli-codex-subagent run task.md --effort medium --follow --auto-approve --compact
 
 # Or attach to an existing task
-cli-codex-subagent task follow tsk_abc123
+cli-codex-subagent task follow tsk_abc123 --compact
 ```
 
-Output:
+Compact output:
+```
+TURN    019d786c-c74a-7001-bbbe-c6f3b4e1e1b4
+CMD     find src -name "*.ts" | head -20 ✓ exit 0
+CMD     cat src/index.ts ✓ exit 0
+FILE    src/controllers/auth.ts (created)
+CMD     npx tsc --noEmit ✓ exit 0
+MSG     Done! Created auth.ts with JWT validation middleware.
+DONE    completed
+```
+
+## Verbose follow (full detail)
+
+For debugging or when you need to see command output and diffs:
+
+```bash
+cli-codex-subagent run task.md --effort medium --follow --auto-approve
+```
+
+Full output:
 ```
 TURN    019d786c-c74a-7001-bbbe-c6f3b4e1e1b4
 THINK   Let me start by exploring the project structure
@@ -27,6 +46,25 @@ FILE    src/controllers/auth.ts (created)
 CMD     npx tsc --noEmit → exit=0 (4.1s)
 MSG     Done! Created auth.ts with JWT validation middleware.
 DONE    completed
+```
+
+## Plan-mode monitoring
+
+When using `--plan`, the event stream includes `PLAN` tags showing the agent's execution plan:
+
+```bash
+cli-codex-subagent run task.md --follow --plan --compact --auto-approve
+```
+
+Output includes plan steps:
+```
+PLAN    Step 1: Analyze existing code [done]
+PLAN    Step 2: Implement auth middleware [inProgress]
+CMD     cat src/middleware.ts ✓ exit 0
+FILE    src/middleware/auth.ts (created)
+PLAN    Step 2: Implement auth middleware [done]
+PLAN    Step 3: Write tests [inProgress]
+...
 ```
 
 ## Monitoring multiple tasks in parallel
@@ -136,8 +174,11 @@ cat "$TASK_DIR/events.jsonl" | python3 -c "
 import sys, json
 for line in sys.stdin:
     e = json.loads(line)
-    if e.get('tag') == 'MCP':  # MCP tool calls (event field = mcpToolCall)
-        print(json.dumps(e.get('data', {}))[:200])
+    tag = e.get('tag', '')
+    if tag == 'CMD':
+        print(f'CMD: {json.dumps(e.get(\"data\", {}))[:200]}')
+    elif tag == 'PLAN':
+        print(f'PLAN: {json.dumps(e.get(\"data\", {}))[:200]}')
 "
 
 # Summary

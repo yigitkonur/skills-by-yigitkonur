@@ -42,7 +42,7 @@ Fix: Wait, then re-spawn. Or reduce parallel task count.
 ```
 Error: request_user_input tool is not available in this context
 ```
-This means the agent tried to ask a question but the MCP bridge couldn't handle it. Usually happens when the auto-answer mechanism fails.
+This means the agent tried to ask a question but the runtime couldn't handle the request. Usually happens when the auto-answer mechanism fails.
 
 **Model overloaded:**
 ```

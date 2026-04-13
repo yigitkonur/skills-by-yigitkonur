@@ -20,22 +20,36 @@ The daemon auto-starts on first use. If `doctor` shows errors, the Codex runtime
 ## Core Loop
 
 ```
-run task.md --follow
+run task.md --follow --auto-approve
   ├── DONE completed  → use output / artifacts
   ├── exit 1 failed   → check disk for partial work → recover or retry
   ├── exit 2 blocked  → request list → request answer → task follow
   └── exit 3 reconnect error → retry or check network
 ```
 
-### One-shot (most common)
+### Standard (recommended — follow mode)
 
 ```bash
 cli-codex-subagent run task.md --follow --auto-approve
 ```
 
-`--follow` streams all events and blocks until done. `--auto-approve` skips shell-command approval prompts.
+`--follow` streams all events and blocks until done. `--auto-approve` skips shell-command approval prompts. This is the recommended default for all single-task runs.
 
-### Async (fire-and-forget for parallel work)
+For compact output (agent-friendly — shows messages fully, compresses tool calls):
+
+```bash
+cli-codex-subagent run task.md --follow --auto-approve --compact
+```
+
+### Plan-first (complex tasks)
+
+```bash
+cli-codex-subagent run task.md --follow --plan --auto-approve
+```
+
+`--plan` activates plan-first collaboration mode. The agent creates a plan before executing. Recommended for tasks with `--effort medium` or higher. The event stream will include `PLAN` tags showing the plan steps and their status.
+
+### Async (parallel dispatch only)
 
 ```bash
 # Spawn, get task id immediately
@@ -66,9 +80,12 @@ cli-codex-subagent task start task.md [options]
 | Flag | What it does | When to use |
 |------|-------------|-------------|
 | `--effort <level>` | Reasoning depth: `none\|minimal\|low\|medium\|high\|xhigh` | Always — determines reliability |
-| `--auto-approve` | Auto-accept all shell command approvals | Autonomous mode |
+| `--auto-approve` | Auto-accept all shell command approvals | Autonomous mode (recommended) |
 | `--approval-policy <p>` | `never\|on-failure\|on-request\|untrusted` | Fine-grained control |
-| `--follow` | Stream events, block until terminal | Interactive / foreground runs |
+| `--follow` | Stream events, block until terminal | **Default for all single tasks** |
+| `--compact` | Full agent messages, one-liner tool calls | Agent-friendly output (use with --follow) |
+| `--plan` | Plan-first collaboration mode | Complex tasks (effort >= medium) |
+| `--no-plan` | Skip planning (default) | Simple/fast tasks |
 | `--wait` | Block until terminal, no streaming | CI / scripted pipelines |
 | `--session <sesId>` | Attach to existing session | Continue prior context |
 | `--context-file <f>` | Prepend file as context (repeatable) | Supply reference files |
@@ -95,12 +112,17 @@ Your task prompt goes here...
 ### Monitor a running task
 
 ```bash
-# Stream live events (attach to already-running task)
+# Stream live events (compact — recommended for agents)
+cli-codex-subagent task follow tsk_abc123 --compact
+
+# Full verbose output
 cli-codex-subagent task follow tsk_abc123
 
 # Stream as JSON for scripting
 cli-codex-subagent task follow tsk_abc123 --stream-json
 ```
+
+**Compact mode** (`--compact`): Shows agent messages (`MSG`) and plan text (`PLAN`) in full. Compresses tool calls to one-liners: `CMD npm test ✓ exit 0`, `FILE src/auth.ts (modified)`. Suppresses `TOKENS` and `TURN` metadata entirely. Always shows `REQ`, `DONE`, and `FAIL`.
 
 ### Block until done
 
@@ -149,6 +171,15 @@ Use when a prior task has **completed** and you want to continue in the same ses
 
 When a task blocks on a shell-command approval or user input, `--follow` exits with code `2` and prints the blocking request id.
 
+**Approval policy guide:**
+
+| Policy | Behavior | When to use |
+|--------|----------|-------------|
+| `--auto-approve` | Accept all commands and file changes automatically | **Autonomous agents (recommended)** |
+| `--approval-policy on-request` | Block and ask for every command/file change | Human-supervised mode |
+| `--approval-policy on-failure` | Auto-approve unless a command fails, then ask | Semi-autonomous |
+| `--approval-policy untrusted` | Strictest: block on everything including reads | Security-sensitive environments |
+
 ```bash
 # Find what's blocked
 cli-codex-subagent request list
@@ -169,7 +200,7 @@ cli-codex-subagent request answer req_abc123 --text-file answer.txt
 cli-codex-subagent request answer req_abc123 --json-file payload.json
 
 # Then resume following
-cli-codex-subagent task follow tsk_abc123
+cli-codex-subagent task follow tsk_abc123 --compact
 ```
 
 ### Cancel a task
@@ -196,11 +227,13 @@ cli-codex-subagent task cancel tsk_abc123
 |-----|---------|
 | `TURN` | New conversation turn metadata |
 | `MSG` | Agent message text token |
+| `PLAN` | Plan step text (when using `--plan` mode) |
 | `FILE` | File written/changed: `path (kind)` |
+| `CMD` | Shell command execution |
 | `TOKENS` | Token usage snapshot |
 | `DONE` | Turn complete: `completed \| failed \| blocked` |
 
-Full events (including reasoning, commands, MCP calls) are in:
+Full events (including reasoning, commands, file changes) are in:
 
 ```bash
 cli-codex-subagent task events tsk_abc123
@@ -359,11 +392,12 @@ cli-codex-subagent task steer tsk_impl_id test.md --follow
 
 ```
 What do you need?
-├── Quick single command  → run task.md --effort low --follow --auto-approve
-├── Multi-step coding     → run task.md --effort medium --follow
+├── Quick single command  → run task.md --effort low --follow --auto-approve --compact
+├── Complex multi-step    → run task.md --effort medium --follow --plan --auto-approve --compact
+├── Research/architecture → run task.md --effort high --follow --plan --auto-approve
 ├── Multiple independent  → async run each → task wait or task follow each
 ├── Tasks with deps       → wait wave N → run wave N+1
-├── Continue in context   → task steer <taskId> followup.md --follow
+├── Continue in context   → task steer <taskId> followup.md --follow --compact
 ├── Cancel work           → task cancel <taskId>
 ├── Diagnose failure      → task events <taskId> → task read <taskId>
 ├── Answer approval       → request list → request answer <reqId>

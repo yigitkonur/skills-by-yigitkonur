@@ -20,6 +20,9 @@ cli-codex-subagent task start <task.md> [options]
 | `--auto-approve` | flag | off | Auto-accept all shell-command and file approvals |
 | `--approval-policy <p>` | enum | `on-request` | `never\|on-failure\|on-request\|untrusted` |
 | `--follow` | flag | off | Stream events; block until terminal state |
+| `--compact` | flag | off | Compact event output (with --follow): full messages, one-liner tool calls |
+| `--plan` | flag | off | Plan-first collaboration mode |
+| `--no-plan` | flag | — | Explicitly disable plan mode (default behavior) |
 | `--wait` | flag | off | Block until terminal state, no streaming |
 | `--session <sesId>` | string | — | Attach to an existing session (preserves context) |
 | `--context-file <f>` | string | — | Prepend a file as context (repeatable) |
@@ -102,18 +105,28 @@ Returns exit code 0/1/2 matching task outcome.
 Attach to a running task and stream normalized events until terminal state.
 
 ```bash
-cli-codex-subagent task follow <taskId> [--stream-json]
+cli-codex-subagent task follow <taskId> [--compact] [--stream-json]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--compact` | off | Compact output: full messages, one-liner tool calls, suppressed metadata |
 | `--stream-json` | off | Emit raw JSON events instead of human-readable lines |
+
+**Compact mode** shows:
+- `MSG` — full agent message text
+- `PLAN` — full plan step text
+- `CMD` — one-liner: `CMD npm test ✓ exit 0`
+- `FILE` — one-liner: `FILE src/auth.ts (modified)`
+- `REQ` / `DONE` / `FAIL` — always shown
+- `TOKENS` / `TURN` / `THINK` — suppressed
 
 Output format (human-readable):
 ```
 TURN    019d786c-...
 THINK   Inspecting the repository structure
 CMD     find src -name "*.ts" → exit=0 (0.3s)
+PLAN    Step 1: Analyze existing code [done]
 FILE    src/auth.ts (modified)
 TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
 MSG     I've updated the auth module...
@@ -127,7 +140,7 @@ DONE    completed
 Run a follow-up prompt in the same session as a completed task. The agent retains full prior context.
 
 ```bash
-cli-codex-subagent task steer <taskId> <followup.md> [--follow] [--effort <level>]
+cli-codex-subagent task steer <taskId> <followup.md> [--follow] [--compact] [--plan] [--effort <level>]
 ```
 
 **Requires:** the referenced task must be in a terminal state (`completed`, `failed`). Attempting to steer a still-running task returns an error.
@@ -153,7 +166,7 @@ Output includes: status, session, model, effort, cwd, created/started/completed 
 
 ## task events — Full event log
 
-Print or stream the `events.jsonl` for a task.
+Print the `events.jsonl` for a task.
 
 ```bash
 cli-codex-subagent task events <taskId> [--raw] [--tail N]
@@ -163,7 +176,6 @@ cli-codex-subagent task events <taskId> [--raw] [--tail N]
 |------|-------------|
 | `--raw` | Emit raw app-server events (unprocessed) |
 | `--tail <N>` | Show only the last N events |
-| `--follow` | Stream new events as they arrive |
 
 ---
 
@@ -175,7 +187,7 @@ cli-codex-subagent task list [--status <s>] [--label <l>] [--quiet] [--json]
 
 | Flag | Description |
 |------|-------------|
-| `--status <s>` | Filter: `completed\|failed\|working\|cancelled` |
+| `--status <s>` | Filter: `completed\|failed\|running\|cancelled` |
 | `--label <l>` | Filter by label tag |
 | `--quiet` | Print task IDs only (one per line) |
 | `--json` | Emit JSON array |
