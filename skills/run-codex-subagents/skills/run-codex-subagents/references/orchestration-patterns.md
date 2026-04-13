@@ -1,174 +1,129 @@
-# Orchestration Patterns
+# Orchestration Patterns For `codex-worker`
 
-8 execution patterns from simple to complex, using `cli-codex-subagent` CLI commands.
+These patterns assume the current thread/turn/request model. Replace `codex-worker` with `npx -y codex-worker` if you are not installed globally.
 
-## Pattern 1: Single task (one-shot)
+## Pattern 1: Single foreground run
 
-The simplest flow. Spawn one task, stream events, wait for completion.
+Use this when one prompt file should run to completion before you decide anything else.
 
 ```bash
-cli-codex-subagent run task.md --effort low --follow --auto-approve
-# → streams events in real time
-# → exits 0 on success, 1 on failure, 2 if blocked
+codex-worker run task.md
 ```
 
-For fully unattended runs:
+If the turn completes, inspect the result with:
+
 ```bash
-cli-codex-subagent run task.md --effort low --wait --auto-approve
-echo "Exit: $?"
+codex-worker read <thread-id>
 ```
 
-## Pattern 2: Parallel wave
-
-Spawn N independent tasks, then wait for all of them.
+If it blocks, answer the request and then:
 
 ```bash
-# Spawn all — returns task IDs immediately
-TASK_A=$(cli-codex-subagent run auth.md    --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-TASK_B=$(cli-codex-subagent run billing.md --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-TASK_C=$(cli-codex-subagent run notify.md  --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-
-# Monitor all three simultaneously in separate terminal panes, or serially:
-cli-codex-subagent task wait "$TASK_A"
-cli-codex-subagent task wait "$TASK_B"
-cli-codex-subagent task wait "$TASK_C"
-
-# Check results
-cli-codex-subagent task list --label wave-1
+codex-worker wait --thread-id <thread-id>
 ```
 
-**Risk:** All parallel tasks share one Codex process. If one triggers a crash, all siblings die at the same millisecond. Design for this:
-- Don't batch your most critical task with experimental ones
-- Completed tasks survive (results captured before exit)
-- Check `task list --status failed` for casualties
+## Pattern 2: Background wave of independent tasks
 
-## Pattern 3: Sequential chain
-
-Wave N must complete before Wave N+1 starts.
+Spawn multiple threads in parallel and keep the returned ids in shell variables.
 
 ```bash
-# Wave 1: schema
-cli-codex-subagent run schema.md --effort low --wait --label wave-1
+AUTH_JSON=$(codex-worker --output json run auth.md --async)
+API_JSON=$(codex-worker --output json run api.md --async)
+TEST_JSON=$(codex-worker --output json run tests.md --async)
 
-# Wave 2: depends on schema (two tasks in parallel)
-TASK_MIG=$(cli-codex-subagent run migration.md --effort low --label wave-2 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-TASK_TYP=$(cli-codex-subagent run types.md     --effort low --label wave-2 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-cli-codex-subagent task wait "$TASK_MIG"
-cli-codex-subagent task wait "$TASK_TYP"
+AUTH_THREAD=$(printf '%s' "$AUTH_JSON" | jq -r '.threadId')
+API_THREAD=$(printf '%s' "$API_JSON" | jq -r '.threadId')
+TEST_THREAD=$(printf '%s' "$TEST_JSON" | jq -r '.threadId')
 
-# Wave 3: validation
-cli-codex-subagent run validate.md --effort low --wait --label wave-3
+AUTH_JOB=$(printf '%s' "$AUTH_JSON" | jq -r '.job.id')
+API_JOB=$(printf '%s' "$API_JSON" | jq -r '.job.id')
+TEST_JOB=$(printf '%s' "$TEST_JSON" | jq -r '.job.id')
+
+codex-worker wait --job-id "$AUTH_JOB"
+codex-worker wait --job-id "$API_JOB"
+codex-worker wait --job-id "$TEST_JOB"
 ```
 
-## Pattern 4: Continuation (steer after completion)
-
-When a completed task needs follow-up work, use `task steer` to continue in the same session. The agent retains all prior context.
+Follow-up inspection:
 
 ```bash
-# Step 1: initial task
-cli-codex-subagent run auth.md --effort medium --wait
-# → tsk_abc123 completed
-
-# Step 2: follow-up in same session (agent remembers the auth module)
-cli-codex-subagent task steer tsk_abc123 rate-limiting.md --follow --effort low
+codex-worker read "$AUTH_THREAD"
+codex-worker read "$API_THREAD"
+codex-worker read "$TEST_THREAD"
 ```
 
-Note: `task steer` requires the prior task to be in a terminal state. To span multiple follow-ups:
+## Pattern 3: Explicit thread bootstrapping
+
+Use `thread start` when you want to inject thread-level instructions before the first turn.
 
 ```bash
-TASK1=$(cli-codex-subagent run step1.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-cli-codex-subagent task wait "$TASK1"
+THREAD_JSON=$(codex-worker --output json thread start \
+  --cwd "$PWD" \
+  --developer-instructions "Prefer rg over grep. Keep output concise.")
 
-TASK2=$(cli-codex-subagent task steer "$TASK1" step2.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
-cli-codex-subagent task wait "$TASK2"
+THREAD_ID=$(printf '%s' "$THREAD_JSON" | jq -r '.thread.id')
 
-cli-codex-subagent task steer "$TASK2" step3.md --follow
+TURN_JSON=$(codex-worker --output json turn start "$THREAD_ID" plan.md --async)
+TURN_ID=$(printf '%s' "$TURN_JSON" | jq -r '.turnId')
+
+codex-worker wait --turn-id "$TURN_ID"
+codex-worker send "$THREAD_ID" implement.md
 ```
 
-## Pattern 5: Continuation without session (new task in same cwd)
+## Pattern 4: Continue from a known turn
 
-When you don't need to preserve session context, simply spawn a new task in the same working directory. The new task sees all files the previous task created.
+Steer a thread after reviewing the prior result.
 
 ```bash
-# Task 1 creates the auth module
-cli-codex-subagent run create-auth.md --effort medium --wait
+FIRST_JSON=$(codex-worker --output json run step1.md --async)
+THREAD_ID=$(printf '%s' "$FIRST_JSON" | jq -r '.threadId')
+TURN_ID=$(printf '%s' "$FIRST_JSON" | jq -r '.turnId')
 
-# Task 2 reads the auth module and adds rate limiting
-# Uses the same cwd, sees auth module files
-cli-codex-subagent run add-rate-limiting.md --effort low --follow
+codex-worker wait --turn-id "$TURN_ID"
+codex-worker turn steer "$THREAD_ID" "$TURN_ID" step2.md
 ```
 
-## Pattern 6: Diagnostic then fix (branch point)
+Use `turn steer` when the next prompt depends on the specific turn boundary you just reviewed. Use `send` when you only need to continue the thread.
 
-Run a diagnostic task first, then decide what to do based on output.
-
-```bash
-# Phase 1: diagnose
-cli-codex-subagent run diagnose.md --effort low --wait
-# diagnose.md: "Run 'npm run build 2>&1' and report: exit code, error count, first 5 errors with file:line"
-
-# Read diagnostic output
-cli-codex-subagent task read tsk_diag123 | tail -20
-
-# Phase 2: branch based on output
-# If 0 errors: done
-# If < 5 errors: targeted fix
-cli-codex-subagent run fix-specific.md --effort low --follow
-# If 5+ errors: broad fix
-cli-codex-subagent run fix-broad.md --effort medium --follow
-```
-
-`fix-specific.md` should paste the exact errors from the diagnostic output.
-
-## Pattern 7: Retry with lower effort
-
-When a task fails due to process exit (reasoning burned too many tokens), retry at lower effort with a more specific prompt.
+## Pattern 5: Failure, inspect, salvage, continue
 
 ```bash
-# First attempt at medium
-cli-codex-subagent run refactor.md --effort medium --wait   # → exit 1 (process exit)
+RUN_JSON=$(codex-worker --output json run repair.md --async)
+THREAD_ID=$(printf '%s' "$RUN_JSON" | jq -r '.threadId')
+JOB_ID=$(printf '%s' "$RUN_JSON" | jq -r '.job.id')
 
-# Check what was done
-git status   # agent may have partially completed
+codex-worker wait --job-id "$JOB_ID" || true
+codex-worker read "$THREAD_ID"
+codex-worker logs "$THREAD_ID"
 
-# Retry at low with narrower scope
-cli-codex-subagent run refactor-narrow.md --effort low --follow
-# refactor-narrow.md: exact file names, exact line ranges, minimal scope
-```
-
-Key insight: the retry prompt is more specific (exact file, exact line range). That's why `low` succeeds where `medium` failed.
-
-## Pattern 8: Partial work recovery
-
-When a task fails but left work on disk, salvage it instead of retrying from scratch.
-
-```bash
-# Original task failed
-cli-codex-subagent run create-controllers.md --effort medium --wait   # → exit 1
-
-# Step 1: check what exists
 git status
-
-# Found: 3 of 5 controllers created, 2 compile cleanly
-
-# Step 2: fix what's broken (targeted)
-cli-codex-subagent run fix-import.md --effort low --follow
-# fix-import.md: "TimerPopupController.swift has a missing import 'Combine'. Add it. Don't modify anything else."
-
-# Step 3: create what's missing
-cli-codex-subagent run create-remaining.md --effort low --follow
-# create-remaining.md: "Create 2 remaining controllers: NotchGestureRouter.swift and NotchWindowCoordinator.swift. Follow the same pattern as the 3 existing ones."
+npm run build
+npm test
 ```
 
-## Anti-patterns
+If the agent wrote useful partial work, keep the thread and send a narrowly scoped follow-up:
 
-| Anti-pattern | Problem | Fix |
-|---|---|---|
-| Waiting between parallel spawns | Tasks run sequentially | Spawn ALL before waiting |
-| Spawning > 8 tasks in one wave | Resource exhaustion, shared-process risk | Cap at 5-8 per wave |
-| No `task list` checks between waves | Blind to failures | Check after each wave |
-| Using `task steer` on a running task | Returns error | Wait for completion first |
-| High effort on simple tasks | Reasoning burns budget; execution never starts | Use `low` unless explicitly needed |
-| Not using `--auto-approve` for batch work | Manual approvals break unattended runs | Add `--auto-approve` for autonomous tasks |
-| Re-running from scratch on every failure | Discards 80%+ completed work | Always check `git status` first |
-| Higher effort on retry | Burns more tokens → worse outcome | Lower effort + narrower prompt |
+```bash
+codex-worker send "$THREAD_ID" fix-only.md
+```
+
+## Pattern 6: Blocked request in the middle of a wave
+
+```bash
+THREAD_JSON=$(codex-worker --output json run feature.md --async)
+THREAD_ID=$(printf '%s' "$THREAD_JSON" | jq -r '.threadId')
+
+codex-worker request list
+codex-worker request read <request-id>
+codex-worker request respond <request-id> --decision accept-session
+codex-worker wait --thread-id "$THREAD_ID"
+```
+
+## Pattern 7: Tracking waves without label flags
+
+The current CLI has no `--label`. Track waves with:
+- prompt filenames such as `wave-1-auth.md`, `wave-1-api.md`
+- shell variables or a local TSV/JSON manifest of `threadId` and `job.id`
+- `thread list --cwd /abs/project` to scope to one workspace
+
+That keeps batch orchestration explicit and scriptable without depending on removed task-label features.

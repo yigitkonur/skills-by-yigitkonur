@@ -1,335 +1,214 @@
-# CLI Command Reference
+# codex-worker command reference
 
-Complete parameter and flag reference for all `cli-codex-subagent` commands.
-
-## run / task start — Spawn a task
-
-Create and start a task from a prompt file. Returns immediately (async) or blocks until done.
+Use `codex-worker` directly after a global install:
 
 ```bash
-cli-codex-subagent run <task.md> [options]
-# shorthand for:
-cli-codex-subagent task start <task.md> [options]
+npm install -g codex-worker
+codex-worker --help
 ```
 
-### Flags
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--effort <level>` | enum | `medium` | Reasoning depth: `none\|minimal\|low\|medium\|high\|xhigh` |
-| `--auto-approve` | flag | off | Auto-accept all shell-command and file approvals |
-| `--approval-policy <p>` | enum | `on-request` | `never\|on-failure\|on-request\|untrusted` |
-| `--follow` | flag | off | Stream events; block until terminal state |
-| `--compact` | flag | off | Compact event output (with --follow): full messages, one-liner tool calls |
-| `--plan` | flag | off | Plan-first collaboration mode |
-| `--no-plan` | flag | — | Explicitly disable plan mode (default behavior) |
-| `--wait` | flag | off | Block until terminal state, no streaming |
-| `--session <sesId>` | string | — | Attach to an existing session (preserves context) |
-| `--context-file <f>` | string | — | Prepend a file as context (repeatable) |
-| `--output-schema <f>` | string | — | JSON Schema file for structured output |
-| `--label <label>` | string | — | Tag for filtering in `task list` |
-| `--model <model>` | string | — | Override the model |
-| `--json` | flag | off | Print task JSON (`task.id` = task ID) and exit immediately |
-
-### Exit codes
-
-| Code | Meaning |
-|------|---------|
-| `0` | Task completed successfully |
-| `1` | Task failed |
-| `2` | Task blocked — needs `request answer` |
-| `3` | Reconnect / network error |
-| `5` | Task file not found |
-
-### Response (default async)
-
-Prints full task JSON (`task.id` is the task ID, `task_id` also at top level), then exits. Task runs in the daemon.
-
-```
-Started task tsk_abc123 in session ses_xyz789
-```
-
-### Response (--json)
-
-```json
-{
-  "task": { "id": "tsk_abc123", "sessionId": "ses_xyz789", "status": "running", "..." : "..." },
-  "task_id": "tsk_abc123",
-  "session_id": "ses_xyz789"
-}
-```
-
-### Frontmatter alternative
-
-Options can be embedded in the task file YAML frontmatter:
-
-```markdown
----
-label: "wave-1:auth"
-effort: low
-session: ses_abc123
-context_files:
-  - ./notes.md
-  - ./schema.ts
-output_schema: ./response-schema.json
-base_instructions_file: ./AGENTS.md
-cwd: /project
-model: gpt-4o
----
-
-Your task prompt here...
-```
-
-Frontmatter keys: `label`, `effort`, `session`, `context_files` (array), `output_schema` (path or inline JSON), `base_instructions_file`, `cwd`, `model`.
-
----
-
-## task wait — Block until done
-
-Block until a task reaches a terminal state. No streaming output.
+Or use it ad hoc through `npx`:
 
 ```bash
-cli-codex-subagent task wait <taskId> [--timeout-ms N]
+npx -y codex-worker --help
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--timeout-ms <N>` | daemon default | Max wait in ms before returning current status |
+All examples below use the global form for brevity. Prefix with `npx -y` when you are not installed globally.
 
-Returns exit code 0/1/2 matching task outcome.
+## Global Output Mode
 
----
-
-## task follow — Stream events
-
-Attach to a running task and stream normalized events until terminal state.
+Set JSON output before the command when scripting:
 
 ```bash
-cli-codex-subagent task follow <taskId> [--compact] [--stream-json]
+codex-worker --output json read <thread-id>
+codex-worker --output json run task.md --async
 ```
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--compact` | off | Compact output: full messages, one-liner tool calls, suppressed metadata |
-| `--stream-json` | off | Emit raw JSON events instead of human-readable lines |
+## Friendly Aliases
 
-**Compact mode** shows:
-- `MSG` — full agent message text
-- `PLAN` — full plan step text
-- `CMD` — one-liner: `CMD npm test ✓ exit 0`
-- `FILE` — one-liner: `FILE src/auth.ts (modified)`
-- `REQ` / `DONE` / `FAIL` — always shown
-- `TOKENS` / `TURN` / `THINK` — suppressed
+### `run <task.md>`
 
-Output format (human-readable):
-```
-TURN    019d786c-...
-THINK   Inspecting the repository structure
-CMD     find src -name "*.ts" → exit=0 (0.3s)
-PLAN    Step 1: Analyze existing code [done]
-FILE    src/auth.ts (modified)
-TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
-MSG     I've updated the auth module...
-DONE    completed
-```
-
----
-
-## task steer — Continue in same session
-
-Run a follow-up prompt in the same session as a completed task. The agent retains full prior context.
+Creates a thread and starts its first turn from the Markdown prompt file.
 
 ```bash
-cli-codex-subagent task steer <taskId> <followup.md> [--follow] [--compact] [--plan] [--effort <level>]
+codex-worker run task.md
+codex-worker run task.md --cwd /abs/project
+codex-worker run task.md --model gpt-5.4
+codex-worker --output json run task.md --async
 ```
 
-**Requires:** the referenced task must be in a terminal state (`completed`, `failed`). Attempting to steer a still-running task returns an error.
+Key flags:
+- `--cwd <dir>`: working directory for the new thread
+- `--model <id>`: override model selection
+- `--async`: return immediately with thread, turn, and job ids
+- `--timeout <ms>`: override wait timeout for blocking runs
 
----
+### `send <thread-id> <message.md>`
 
-## task read — Inspect task state
-
-Print task metadata and artifact paths.
+Resume the existing thread and add a new turn from a Markdown file.
 
 ```bash
-cli-codex-subagent task read <taskId> [--field <key>] [--json]
+codex-worker send <thread-id> followup.md
+codex-worker --output json send <thread-id> followup.md --async
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--field <key>` | Print a single field value (e.g. `status`, `artifacts.timelineLogPath`) |
-| `--json` | Emit full task record as JSON |
+### `read <thread-id>`
 
-Output includes: status, session, model, effort, cwd, created/started/completed timestamps, artifact paths (timeline, events, summary, stderr), last output tail.
-
----
-
-## task events — Full event log
-
-Print the `events.jsonl` for a task.
+Read the tracked thread state, turns, pending requests, and artifact paths.
 
 ```bash
-cli-codex-subagent task events <taskId> [--raw] [--tail N]
+codex-worker read <thread-id>
+codex-worker read <thread-id> --tail 50
+codex-worker --output json read <thread-id>
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--raw` | Emit raw app-server events (unprocessed) |
-| `--tail <N>` | Show only the last N events |
+### `logs <thread-id>`
 
----
-
-## task list — List tasks
+Print the readable execution tail for a thread.
 
 ```bash
-cli-codex-subagent task list [--status <s>] [--label <l>] [--quiet] [--json]
+codex-worker logs <thread-id>
+codex-worker logs <thread-id> --tail 100
+codex-worker --output json logs <thread-id>
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--status <s>` | Filter: `completed\|failed\|running\|cancelled` |
-| `--label <l>` | Filter by label tag |
-| `--quiet` | Print task IDs only (one per line) |
-| `--json` | Emit JSON array |
+## Protocol-First Commands
 
----
+### `thread start`
 
-## task cancel — Cancel a task
+Create an idle thread before the first turn.
 
 ```bash
-cli-codex-subagent task cancel <taskId>
+codex-worker thread start --cwd /abs/project
+codex-worker --output json thread start --cwd /abs/project --model gpt-5.4
+codex-worker thread start --developer-instructions "Prefer rg over grep."
+codex-worker thread start --base-instructions "Always verify before claiming success."
 ```
 
-Cancels an actively running task. No-op on already-terminal tasks.
+### `thread resume`
 
----
-
-## request list — Find pending requests
+Reattach to a known thread id.
 
 ```bash
-cli-codex-subagent request list [--task <taskId>] [--json]
+codex-worker thread resume <thread-id>
 ```
 
-Lists all requests pending a response. Requests are created when a task blocks on a shell-command approval, user-input question, or file-write approval.
+### `thread read`
 
----
-
-## request read — Inspect a request
+Protocol-first variant of `read`.
 
 ```bash
-cli-codex-subagent request read <reqId>
+codex-worker thread read <thread-id>
+codex-worker thread read <thread-id> --include-turns
+codex-worker thread read <thread-id> --tail 50
 ```
 
-Shows request type, payload (question text, command details, choices), and which task it belongs to.
+### `thread list`
 
----
-
-## request answer — Unblock a task
+List tracked threads.
 
 ```bash
-cli-codex-subagent request answer <reqId> [options]
+codex-worker thread list
+codex-worker thread list --cwd /abs/project
+codex-worker thread list --limit 20
+codex-worker --output json thread list
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--decision <d>` | `accept-session\|accept-once\|reject` (for command/file approvals) |
-| `--choice <N>` | 1-indexed choice for multiple-choice prompts |
-| `--text-file <f>` | File containing free-text answer |
-| `--custom-file <f>` | File with custom response payload |
-| `--json-file <f>` | JSON file with full response payload |
+### `turn start`
 
-After answering, resume monitoring with:
-```bash
-cli-codex-subagent task follow <taskId>
-```
-
----
-
-## session list / read / create
+Start a new turn inside an existing thread.
 
 ```bash
-cli-codex-subagent session list [--json]
-cli-codex-subagent session read <sesId>
-cli-codex-subagent session create
+codex-worker turn start <thread-id> prompt.md
+codex-worker --output json turn start <thread-id> prompt.md --async
 ```
 
-Sessions are auto-created when you run a task. Use `--session <sesId>` to reuse a session (and its context) for a new task.
+### `turn steer`
 
----
-
-## prompt inspect / lint
+Continue from a known turn boundary.
 
 ```bash
-cli-codex-subagent prompt inspect <task.md>   # Show resolved prompt with context
-cli-codex-subagent prompt lint <task.md>       # Validate frontmatter and context files
+codex-worker turn steer <thread-id> <turn-id> followup.md
+codex-worker --output json turn steer <thread-id> <turn-id> followup.md --async
 ```
 
-Use before running to verify the prompt will be loaded correctly.
+### `turn interrupt`
 
----
-
-## model list
+Request interruption of the active turn.
 
 ```bash
-cli-codex-subagent model list [--json]
+codex-worker turn interrupt <thread-id> <turn-id>
 ```
 
-Lists available models from the configured Codex runtime.
+## Request Handling
 
----
-
-## account
+### `request list`
 
 ```bash
-cli-codex-subagent account
+codex-worker request list
+codex-worker request list --status pending
+codex-worker --output json request list
 ```
 
-Shows rate limits, token quotas, and account info from the Codex runtime.
-
----
-
-## doctor
+### `request read`
 
 ```bash
-cli-codex-subagent doctor
+codex-worker request read <request-id>
 ```
 
-Full readiness check: verifies daemon connectivity, Codex runtime availability, auth configuration, and state directory layout.
+### `request respond`
 
----
-
-## daemon status / stop / run
+Approval requests:
 
 ```bash
-cli-codex-subagent daemon status   # Is the daemon running?
-cli-codex-subagent daemon stop     # Graceful shutdown
-cli-codex-subagent daemon run      # Run in foreground (debug mode)
+codex-worker request respond <request-id> --decision accept-session
+codex-worker request respond <request-id> --decision reject
 ```
 
-The daemon auto-starts on first `run` or `task start`. You only need these commands for diagnostics or forced restarts.
+User-input requests:
 
----
+```bash
+codex-worker request respond <request-id> --question-id style --answer "Short"
+```
 
-## Effort levels
+Raw payload:
 
-| Level | Reasoning depth | Reliability | Typical tokens | Use for |
-|-------|----------------|-------------|----------------|---------|
-| `none` | Off | ~100% | ~5K | Trivial output, no reasoning |
-| `minimal` | Minimal | ~100% | ~8K | Simple transforms |
-| `low` | Low | ~100% | ~15K | 1–3 commands, simple file ops |
-| `medium` | Medium | ~50–70% | 30–110K | Multi-step coding, refactoring |
-| `high` | High | ~30–50% | 60–110K | Complex multi-file reasoning |
-| `xhigh` | Max | Untested | — | Deep research, architecture |
+```bash
+codex-worker request respond <request-id> --json '{"answers":{"style":{"answers":["Short"]}}}'
+```
 
-**Default to `low` unless the task genuinely needs planning.** Higher effort = more reasoning tokens = higher chance of process exit before work completes.
+## Waiting
 
----
+Use `wait` to block on a background run or a resumed blocked turn.
 
-## Approval policies
+```bash
+codex-worker wait --thread-id <thread-id>
+codex-worker wait --turn-id <turn-id>
+codex-worker wait --job-id <job-id>
+codex-worker wait --thread-id <thread-id> --timeout 300000
+```
 
-| Policy | Behavior |
-|--------|---------|
-| `never` | Auto-approve everything (equivalent to `--auto-approve`) |
-| `on-failure` | Auto-approve unless a command has previously failed |
-| `on-request` | Default — block and require explicit `request answer` |
-| `untrusted` | Stricter — blocks on more approval types |
+## Runtime Inspection
+
+```bash
+codex-worker doctor
+codex-worker --output json doctor
+codex-worker daemon start
+codex-worker daemon status
+codex-worker daemon stop
+codex-worker model list
+codex-worker model list --cwd /abs/project --include-hidden
+codex-worker account read
+codex-worker account read --refresh-token
+codex-worker account rate-limits
+```
+
+## Old To New
+
+| Old idea | Current command |
+|---|---|
+| Start a task | `run` or `thread start` + `turn start` |
+| Continue a task/session | `send` or `turn steer` |
+| Read task artifacts | `read`, `logs`, `thread read` |
+| Follow live work | foreground `run`/`send`, or `wait` + `read`/`logs` |
+| Answer a request | `request respond` |

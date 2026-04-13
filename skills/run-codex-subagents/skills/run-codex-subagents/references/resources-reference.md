@@ -1,182 +1,115 @@
-# CLI Inspection Reference
+# Thread Records, Artifacts, And State Layout
 
-How to inspect tasks, sessions, requests, and artifacts using `cli-codex-subagent` commands. Replaces the old `task:///` URI resource model.
+`codex-worker` is thread-centric. A thread owns the workspace context, its turns, pending requests, and the local transcript/log artifacts.
 
-## Task list — Scoreboard
-
-```bash
-cli-codex-subagent task list
-cli-codex-subagent task list --status failed
-cli-codex-subagent task list --label "wave-1"
-cli-codex-subagent task list --json
-cli-codex-subagent task list --quiet    # IDs only
-```
-
-**When to use:** Between waves to check overall status. After a failure to find which tasks need recovery.
-
-**Example output:**
-```
-tsk_abc123  [done]    completed   23s    109K tokens   wave-1
-tsk_def456  [done]    completed   45s    85K tokens    wave-1
-tsk_ghi789  [busy]    working     62s    running       wave-1
-tsk_jkl012  [fail]    failed      8s     —             wave-1
-
-Total: 4 tasks
-```
-
----
-
-## Task read — Task detail
+## Quick Inspection Commands
 
 ```bash
-cli-codex-subagent task read <taskId>
-cli-codex-subagent task read <taskId> --json
-cli-codex-subagent task read <taskId> --field status
-cli-codex-subagent task read <taskId> --field artifacts.timelineLogPath
+codex-worker thread list
+codex-worker read <thread-id>
+codex-worker logs <thread-id>
+codex-worker --output json thread read <thread-id>
 ```
 
-**When to use:** Inspect one task's full metadata after completion or failure.
+## Verified Thread Creation Shape
 
-**Output includes:**
-- `status`, `effort`, `model`, `cwd`, `labels`
-- `sessionId` — for continuing with `--session` or `task steer`
-- Timestamps: `createdAt`, `startedAt`, `completedAt`
-- Error message if failed
-- Artifact paths (timeline, events, summary, stderr)
-- Last output tail
-
-**Scripting — get session id:**
-```bash
-SESSION=$(cli-codex-subagent task read tsk_abc123 --field sessionId)
-cli-codex-subagent run followup.md --session "$SESSION" --follow
-```
-
----
-
-## Task events — Full event trace
+`thread start` returns the thread record, selected model/provider, and convenience actions:
 
 ```bash
-cli-codex-subagent task events <taskId>
-cli-codex-subagent task events <taskId> --tail 20
-cli-codex-subagent task events <taskId> --raw           # raw app-server events
-# stream as task runs → use: cli-codex-subagent task follow <taskId>
+codex-worker --output json thread start --cwd /abs/project
 ```
 
-**When to use:** Debug trace — every notification including reasoning, commands, file changes, token usage. Use `--raw` for the lowest-level JSON.
+Representative fields:
+- `thread.id`
+- `thread.cwd`
+- `thread.status`
+- `model`
+- `modelProvider`
+- `actions.read`
+- `actions.send`
+- `actions.requests`
 
-**Output format (default — normalized):**
-```
-TURN    019d786c-...
-THINK   Inspecting the repository
-CMD     find src -name "*.ts" → exit=0 (0.3s)
-FILE    src/auth.ts (modified)
-TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
-MSG     I've updated the auth module.
-DONE    completed
-```
+## `read` / `thread read` JSON Shape
 
-**Raw output:** One JSON object per line (full `events.jsonl` format). Includes delta events, hooks, and all streaming data. See `event-types.md`.
+Important top-level fields from `codex-worker --output json read <thread-id>`:
 
-**Disk path** (direct access):
-```bash
-cat ~/.cli-codex-subagent/tasks/<taskId>/events.jsonl
-```
+- `thread`: current remote-or-local thread record
+- `localThread`: persisted local view
+- `turns`: locally tracked turns for this thread
+- `pendingRequests`: unresolved server requests for this thread
+- `artifacts.transcriptPath`
+- `artifacts.logPath`
+- `artifacts.recentEvents`
+- `artifacts.logTail`
+- `artifacts.displayLog`
+- `actions`
 
----
+Use `read` as the main operator view. Use `logs` when you only want the readable output tail.
 
-## Task follow — Live event stream
+## Default Disk Layout
 
-```bash
-cli-codex-subagent task follow <taskId>
-cli-codex-subagent task follow <taskId> --stream-json
-```
+By default, state lives under:
 
-The primary monitoring tool for running tasks. Streams normalized events until the task reaches a terminal state.
-
-**Also available as a flag on `run`:**
-```bash
-cli-codex-subagent run task.md --follow
-```
-
-**Disk path** (for direct tail):
-```bash
-tail -f ~/.cli-codex-subagent/tasks/<taskId>/timeline.log
+```text
+~/.codex-worker/
 ```
 
-See `timeline-format.md` for all 16 line types.
+Verified files and directories:
 
----
-
-## Summary log — Artifact tails
-
-The summary log (last ~20 human-readable lines) is shown automatically by `task read`.
-
-**Disk path:**
-```bash
-cat ~/.cli-codex-subagent/tasks/<taskId>/summary.log
+```text
+~/.codex-worker/daemon.json
+~/.codex-worker/registry.json
+~/.codex-worker/workspaces/<workspace-hash>/threads/<thread-id>.jsonl
+~/.codex-worker/workspaces/<workspace-hash>/logs/<thread-id>.output
 ```
 
-Format: `[HH:MM:SS] {type}: {detail}`. Types: `cmd`, `agent`, `turn completed`, `turn failed`, `ERROR`.
+The workspace hash is derived from the thread working directory. The same thread id appears in both the transcript and log file names.
 
----
+## State Root Override
 
-## Verbose log — Full command output
-
-Not exposed as a CLI command; access directly from disk:
+Use a custom root when you need isolation:
 
 ```bash
-cat ~/.cli-codex-subagent/tasks/<taskId>/verbose.log
+export CODEX_WORKER_STATE_DIR=/tmp/codex-worker-state
+codex-worker doctor
 ```
 
-Contains full stdout/stderr from every command, not just the one-liner summary.
+## Artifact Meaning
 
----
+### Transcript (`threads/<thread-id>.jsonl`)
 
-## Request list — Pending approvals
+JSONL event stream persisted by the daemon. It includes:
+- the original user prompt as a `user` record
+- streamed assistant deltas
+- pending request records
+- raw notification envelopes needed to reconstruct history
+
+### Log (`logs/<thread-id>.output`)
+
+Plain-text execution log persisted for the thread. `logs` prefers the synthesized readable view (`displayLog`) and falls back to the raw log tail.
+
+## Operator Queries
+
+List the most recent local threads:
 
 ```bash
-cli-codex-subagent request list
-cli-codex-subagent request list --task <taskId>
-cli-codex-subagent request list --json
+codex-worker --output json thread list --limit 20 | jq '.data[] | {id, status, cwd}'
 ```
 
-**When to use:** When a task exits with code `2` (blocked). Lists all pending requests across all tasks.
-
----
-
-## Request read — Inspect what's needed
+Resolve artifact paths for one thread:
 
 ```bash
-cli-codex-subagent request read <reqId>
+codex-worker --output json read <thread-id> | jq '.artifacts'
 ```
 
-Shows the request type, full payload (command being approved, question text, available choices), and the task that created it.
-
----
-
-## Session read — Session metadata
+Watch the raw log file directly:
 
 ```bash
-cli-codex-subagent session read <sesId>
-cli-codex-subagent session list
+tail -f "$(codex-worker --output json read <thread-id> | jq -r '.artifacts.logPath')"
 ```
 
-Shows session status, the tasks that ran within it, and context window usage. Use to find the right `sesId` for `task steer` or `--session`.
+Inspect the transcript JSONL directly:
 
----
-
-## Disk layout
-
-All artifacts are under `~/.cli-codex-subagent/tasks/<taskId>/`:
-
-| File | CLI command |
-|------|------------|
-| `timeline.log` | `task follow <id>` (or `task events <id>`) |
-| `events.jsonl` | `task events <id> --raw` |
-| `summary.log` | Shown by `task read <id>` |
-| `verbose.log` | Direct disk access only |
-| `stderr.log` | Direct disk access only |
-| `prompt.md` | The original prompt file (preserved) |
-| `context.manifest.json` | Context files used |
-
-The state root can be overridden with `CLI_CODEX_SUBAGENT_STATE_DIR`.
+```bash
+jq . "$(codex-worker --output json read <thread-id> | jq -r '.artifacts.transcriptPath')"
+```
