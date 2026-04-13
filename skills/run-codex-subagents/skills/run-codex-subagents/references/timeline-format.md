@@ -102,7 +102,7 @@ Source event: `item/completed` with `type: "agentMessage"`.
 10:24:16 TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":38407},"modelContextWindow":258400}}
 ```
 
-MCP format: `{serverName}/{toolName} → {status}`. TOKENS format: `{total} / {window} ({pct}%)`. Duplicates (same total) are filtered.
+MCP format: `{serverName}/{toolName} → {status}`. TOKENS format: JSON object with `tokenUsage.total.totalTokens` and `modelContextWindow` fields. Duplicates (same total) are filtered.
 
 ### AUTO
 
