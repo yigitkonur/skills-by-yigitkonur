@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-TASK_DIR="${MCP_CODEX_WORKER_DIR:-$HOME/.mcp-codex-worker}/tasks"
+TASK_DIR="${CLI_CODEX_SUBAGENT_STATE_DIR:-$HOME/.cli-codex-subagent}/tasks"
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <task-id-1> [task-id-2] [task-id-3] ..."

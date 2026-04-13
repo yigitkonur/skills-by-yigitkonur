@@ -4,51 +4,53 @@ Labels are string arrays attached to tasks at spawn time. They appear throughout
 
 ## Setting Labels
 
-Pass `labels` as a string array on `spawn-task`:
+Set labels with the `--label` flag at spawn time:
 
-```json
-{
-  "prompt": "Extract NotchHoverStateMachine from ContentView",
-  "cwd": "/project",
-  "labels": ["wave-1", "notch", "extraction"]
-}
+```bash
+cli-codex-subagent run task.md --label wave-1 --label notch --label extraction
+```
+
+Or in the task.md frontmatter:
+
+```yaml
+---
+labels: ["wave-1", "notch", "extraction"]
+---
 ```
 
 Labels are immutable after spawn. You cannot add or remove labels from a running task.
 
 ## Where Labels Appear
 
-### Scoreboard (task:///all)
+### Scoreboard
 
 The scoreboard is the primary tracking view. Labels appear in brackets after the task ID:
 
 ```
 tasks -- 6 total (3 done, 2 busy, 1 fail)
 
-[done]    bold-falcon-42   [wave-1,notch]      -- "Extract NotchHoverStateMachine..."
-[done]    calm-river-17    [wave-1,music]      -- "Extract MusicHoverController..."
-[done]    dark-mesa-09     [wave-1,gesture]    -- "Extract NotchGestureRouter..."
-[busy]    easy-wind-33     [wave-2,notch]      -- "Wire NotchHoverStateMachine into..."
-[busy]    free-lake-21     [wave-2,music]      -- "Wire MusicHoverController into..."
-[fail]    gray-peak-55     [wave-2,gesture]    -- "Wire NotchGestureRouter into..."
+[done]    tsk_abc123   [wave-1,notch]      -- "Extract NotchHoverStateMachine..."
+[done]    tsk_def456    [wave-1,music]      -- "Extract MusicHoverController..."
+[done]    tsk_ghi789     [wave-1,gesture]    -- "Extract NotchGestureRouter..."
+[busy]    tsk_jkl012     [wave-2,notch]      -- "Wire NotchHoverStateMachine into..."
+[busy]    tsk_mno345     [wave-2,music]      -- "Wire MusicHoverController into..."
+[fail]    tsk_pqr678     [wave-2,gesture]    -- "Wire NotchGestureRouter into..."
 ```
 
-### wait-task response
+### task read output
 
-Labels are included in the response metadata:
+Labels appear in `task read` output:
 
-```json
-{
-  "task_id": "bold-falcon-42",
-  "status": "completed",
-  "labels": ["wave-1", "notch", "extraction"],
-  "output": ["..."]
-}
+```
+taskId:     tsk_abc123
+status:     done
+labels:     wave-1, notch, extraction
+completedAt: 2025-01-15T10:32:45Z
 ```
 
-### Task detail (task:///{id})
+### Task detail
 
-The full task detail includes labels alongside other metadata.
+`cli-codex-subagent task read tsk_abc123` includes labels alongside other metadata.
 
 ## Label Strategies
 
@@ -86,23 +88,21 @@ If a wave partially fails, you can quickly identify which failures matter.
 
 Combine strategies for rich tracking:
 
-```json
-{
-  "labels": ["wave-2", "auth", "critical"]
-}
+```bash
+cli-codex-subagent run task.md --label wave-2 --label auth --label critical
 ```
 
-Scoreboard shows: `[busy] easy-wind-33 [wave-2,auth,critical] -- "Implement JWT refresh..."`
+Scoreboard shows: `tsk_jkl012  [done]  23s  wave-2, auth, critical`
 
 ## Batch Operations Using Labels
 
 ### Visual filtering on scoreboard
 
-Read `task:///all` and scan for your label. No programmatic filtering exists yet — you scan the text output.
+Use `cli-codex-subagent task list --label wave-N` to filter by label.
 
 ```
 # Read scoreboard
-read resource: task:///all
+cli-codex-subagent task list
 
 # Mentally or textually filter for "wave-1"
 # Count: 3 done, 0 busy, 0 fail → Wave 1 complete, proceed to Wave 2
@@ -112,14 +112,13 @@ read resource: task:///all
 
 To cancel all tasks in a wave:
 
-1. Read scoreboard
-2. Identify task IDs with the target label
-3. Pass them as an array to cancel-task
+1. `cli-codex-subagent task list --label wave-N` to find IDs
+2. Cancel each:
 
-```json
-{
-  "task_id": ["easy-wind-33", "free-lake-21", "gray-peak-55"]
-}
+```bash
+cli-codex-subagent task cancel tsk_jkl012
+cli-codex-subagent task cancel tsk_mno345
+cli-codex-subagent task cancel tsk_pqr678
 ```
 
 ### Wave completion check

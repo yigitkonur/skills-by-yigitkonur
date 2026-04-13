@@ -1,6 +1,6 @@
 ---
 name: run-codex-subagents
-description: "Use skill if you are orchestrating Codex coding agents via mcp-codex-worker MCP tools — spawning tasks, monitoring timeline progress, handling auto-answered questions, recovering partial work, or running multi-wave implementation plans."
+description: "Use skill if you are orchestrating Codex coding agents via the cli-codex-subagent CLI — spawning tasks, monitoring timeline progress, handling approval requests, recovering partial work, or running multi-wave implementation plans."
 ---
 
 # Orchestrate Codex Workers via CLI

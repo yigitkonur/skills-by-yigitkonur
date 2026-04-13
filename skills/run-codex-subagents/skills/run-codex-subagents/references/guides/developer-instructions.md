@@ -4,14 +4,20 @@ The `developer_instructions` parameter injects text before the user prompt at sy
 
 ## How It Works
 
-When you call `spawn-task`:
+When you run a task with `developer_instructions` in the frontmatter:
 
+```yaml
+---
+developer_instructions: "Always prefix shell commands with `rtk`. Read AGENTS.md before starting any task."
+effort: low
+---
+Extract MusicHoverController from ContentView...
 ```
-spawn-task(
-  prompt="Extract MusicHoverController from ContentView...",
-  developer_instructions="Always prefix shell commands with `rtk`. Read AGENTS.md before starting any task.",
-  reasoning="low"
-)
+
+Or via CLI flag:
+
+```bash
+cli-codex-subagent run task.md --effort low
 ```
 
 The agent receives:
@@ -28,7 +34,7 @@ The developer instructions appear BEFORE the task prompt. They set the operating
 
 ## What the Server Also Injects
 
-Beyond your custom instructions, the MCP server automatically injects a QUESTION POLICY that tells the agent when to ask questions vs decide independently. This policy is what makes auto-answer behavior predictable — the agent is instructed to only ask questions for truly ambiguous situations.
+Beyond your custom instructions, the daemon automatically injects a QUESTION POLICY that tells the agent when to ask questions vs decide independently. This policy is what makes auto-answer behavior predictable — the agent is instructed to only ask questions for truly ambiguous situations.
 
 You don't need to include question-handling instructions in your developer_instructions. The server handles this.
 
@@ -114,7 +120,7 @@ The bad example wastes 150+ tokens on information that should be in the prompt o
 
 ## Fleet Mode and Multi-Profile Setups
 
-When running multiple MCP server instances (e.g., one for each project or reasoning level), the server adds a `[codex-worker-fleet]` sentinel to developer instructions. This marks the agent as part of a managed fleet, which affects:
+When running multiple CLI daemon instances (e.g., one for each project or reasoning level), the server adds a `[codex-worker-fleet]` sentinel to developer instructions. This marks the agent as part of a managed fleet, which affects:
 
 - Logging behavior (fleet agents log to a shared directory)
 - Session management (fleet agents can be batch-cancelled)

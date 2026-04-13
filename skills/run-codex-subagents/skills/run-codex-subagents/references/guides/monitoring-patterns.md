@@ -1,166 +1,173 @@
-# Monitoring Patterns: Seeing What Agents Are Doing
+# Monitoring Patterns
 
-Without monitoring, agent failures are invisible. You spawn a task, wait, and get back either a result or a cryptic error. Monitoring transforms this into a live stream of agent activity. It is non-optional for any serious Codex workflow.
+How to observe tasks as they run using `cli-codex-subagent`.
 
-## The Monitor Tool
+## Primary pattern: --follow flag
 
-The Monitor tool streams events as background notifications. You start it and continue working — events arrive asynchronously. This is fundamentally different from running `tail -f` in a blocking shell.
-
-### Basic Pattern: One Task
-
-After every `spawn-task`, immediately start monitoring:
-
-```
-spawn-task(prompt="...", reasoning="low")
-→ returns task_id="abc-123"
-
-Monitor(tail -f /path/to/sessions/abc-123/timeline.log)
-```
-
-You are now free to do other work. Each new line in the timeline arrives as a notification.
-
-### Parallel Pattern: Multiple Tasks
-
-For parallel dispatch, merge multiple tails with prefixes:
-
-```
-Monitor(
-  tail -f /path/sessions/task-a/timeline.log | sed 's/^/[music] /' &
-  tail -f /path/sessions/task-b/timeline.log | sed 's/^/[timer] /' &
-  tail -f /path/sessions/task-c/timeline.log | sed 's/^/[gesture] /'
-)
-```
-
-Output arrives interleaved with labels:
-```
-[music]   STARTED reasoning=low
-[timer]   STARTED reasoning=low
-[gesture] STARTED reasoning=low
-[music]   THINK "Reading ContentView.swift to understand..."
-[timer]   CMD read FastNotch/ContentView.swift
-[music]   CMD create MusicHoverController.swift
-[gesture] THINK "I need to understand the gesture handling..."
-```
-
-### Quick Check: Is It Still Alive?
-
-When you just need to know the current state without streaming:
+The simplest monitoring path. Attaches a live event stream to any running task.
 
 ```bash
-tail -1 /path/sessions/task-a/timeline.log
+# Start a task and follow immediately
+cli-codex-subagent run task.md --effort medium --follow
+
+# Or attach to an existing task
+cli-codex-subagent task follow tsk_abc123
 ```
 
-Returns the last event. If it's `EXIT`, the task is done or dead. If it's `CMD` or `THINK`, the task is still running.
-
-## Timeline Event Types
-
-| Event   | Meaning                              | Example                          |
-|---------|--------------------------------------|----------------------------------|
-| STARTED | Task process launched                | `STARTED reasoning=low`          |
-| THINK   | Agent is reasoning (internal)        | `THINK "Analyzing the pattern"`  |
-| CMD     | Agent executed a shell command        | `CMD read ContentView.swift`     |
-| WRITE   | Agent wrote/modified a file          | `WRITE Controllers/Music.swift`  |
-| AUTO    | Auto-answered a question             | `AUTO "Apply changes? → Yes"`    |
-| EXIT    | Process terminated                   | `EXIT code=0 signal=null`        |
-
-## What to Watch For
-
-### Healthy Progress
+Output:
 ```
-STARTED → THINK → CMD(read) → THINK → CMD(read) → THINK → WRITE → CMD(read) → 
-WRITE → CMD(build) → THINK → WRITE(fix) → CMD(build) → EXIT
+TURN    019d786c-c74a-7001-bbbe-c6f3b4e1e1b4
+THINK   Let me start by exploring the project structure
+CMD     find src -name "*.ts" | head -20 → exit=0 (0.3s)
+FILE    src/index.ts (read)
+CMD     cat src/index.ts → exit=0 (0.2s)
+TOKENS  18629 / 996147 (1.9%)
+THINK   Now I understand the structure. Let me create the new controller.
+FILE    src/controllers/auth.ts (created)
+CMD     npx tsc --noEmit → exit=0 (4.1s)
+MSG     Done! Created auth.ts with JWT validation middleware.
+DONE    completed
 ```
 
-Agent reads, thinks, writes, verifies, fixes, verifies again. This is the ideal flow.
+## Monitoring multiple tasks in parallel
 
-### Stuck in Thinking
-```
-STARTED → THINK → THINK → THINK → THINK → THINK → EXIT
-```
-
-Agent spent its entire budget reasoning and never executed a command. Two possible causes:
-1. Reasoning level too high (downgrade to `low`)
-2. Prompt too vague (agent can't decide what to do)
-
-### Immediate Death
-```
-STARTED → EXIT
-```
-
-Process-level failure. Check STDERR for auth errors, rate limits, or configuration issues.
-
-### Approval Gate Death
-```
-STARTED → THINK → CMD → THINK → CMD → AUTO → THINK → EXIT
-```
-
-The `AUTO` event means the agent asked a question and got an auto-answer. If the auto-answer was wrong, the agent may have gone down a bad path. If the EXIT follows shortly after AUTO, the process may have died at the approval gate.
-
-### Productive Death
-```
-STARTED → THINK → CMD → WRITE → CMD → WRITE → CMD → WRITE → EXIT
-```
-
-Agent created files, then died. High probability of recoverable partial work. Check git status immediately.
-
-## The events.jsonl File
-
-For deeper diagnosis, each task also writes an `events.jsonl` file with structured JSON:
+Use background processes:
 
 ```bash
-# Last 5 events with full detail
-tail -5 /path/sessions/task-a/events.jsonl | jq .
+# Spawn 3 tasks
+TASK_A=$(cli-codex-subagent run auth.md    --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK_B=$(cli-codex-subagent run billing.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK_C=$(cli-codex-subagent run notify.md  --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+
+# Follow all three simultaneously (in tmux panes, or to log files)
+cli-codex-subagent task follow "$TASK_A" > /tmp/auth.log    &
+cli-codex-subagent task follow "$TASK_B" > /tmp/billing.log &
+cli-codex-subagent task follow "$TASK_C" > /tmp/notify.log  &
+
+# Block until all finish
+cli-codex-subagent task wait "$TASK_A"
+cli-codex-subagent task wait "$TASK_B"
+cli-codex-subagent task wait "$TASK_C"
+
+# Check results
+cli-codex-subagent task list --label wave-1
 ```
 
-```json
-{
-  "type": "command",
-  "timestamp": "2026-04-10T17:05:20.123Z",
-  "command": "cat FastNotch/ContentView.swift",
-  "exit_code": 0
-}
-{
-  "type": "exit",
-  "timestamp": "2026-04-10T17:05:25.846Z",
-  "code": 0,
-  "signal": null
-}
+## Machine-readable event stream
+
+For automation: parse events as JSON lines.
+
+```bash
+cli-codex-subagent task follow tsk_abc123 --stream-json | while IFS= read -r line; do
+    TYPE=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('type',''))")
+    if [ "$TYPE" = "task_complete" ]; then
+        echo "DONE"
+        break
+    elif [ "$TYPE" = "task_error" ]; then
+        echo "FAILED"
+        break
+    fi
+done
 ```
 
-The events.jsonl is the forensic record. The timeline.log is the live operational view.
+## Scoreboard check (between waves)
 
-## Monitoring Was Instrumental In
+After spawning and waiting, audit all tasks at once:
 
-### Diagnosing auth token crash
-Timeline showed STARTED → EXIT with no commands. events.jsonl STDERR showed `authentication token expired`. Led to discovery that tokens need refresh every 2 hours.
-
-### Discovering shared-process death
-Two task timelines showed EXIT at identical millisecond timestamp. This was impossible for independent processes — proved the shared-process model.
-
-### Identifying 4-second question timeout
-Timeline showed AUTO event followed by EXIT 4 seconds later. events.jsonl showed the auto-answer was sent but the process had already begun shutdown. Led to understanding that `request_user_input` has a 4-second timeout.
-
-### Catching wrong auto-answers
-Timeline showed AUTO → agent took wrong path → build failures → EXIT. The AUTO event revealed the agent was asked "Use delegate pattern or closure pattern?" and auto-selected "delegate" when the codebase used closures. Led to prompt improvement: put the correct choice first and mark it "(Recommended)".
-
-## Monitor After Recovery
-
-After recovering partial work and committing, if you need to spawn a follow-up task, monitor it with context:
-
-```
-Monitor(tail -f /path/sessions/followup-task/timeline.log | sed 's/^/[followup] /')
+```bash
+cli-codex-subagent task list --label wave-1
 ```
 
-This lets you see if the follow-up is reading the right files and building on the recovered work correctly.
+Output:
+```
+tsk_abc123  [done]    completed   23s    109K tokens   wave-1
+tsk_def456  [done]    completed   45s    85K tokens    wave-1
+tsk_ghi789  [fail]    failed      8s     —             wave-1
+```
 
-## Anti-Patterns
+Count by status:
+```bash
+cli-codex-subagent task list --label wave-1 --json | python3 -c "
+import sys, json
+tasks = json.load(sys.stdin)
+from collections import Counter
+print(Counter(t['status'] for t in tasks))
+"
+```
 
-1. **Not monitoring at all** — You'll discover failures 5 minutes later when `wait-task` returns. By then you've lost context on what the agent was doing.
+## Tail existing task output after it completes
 
-2. **Blocking on monitor output** — The Monitor tool is non-blocking. Don't wait for it to produce output before continuing your work.
+If you weren't following live, read what happened:
 
-3. **Monitoring only one task in a parallel batch** — If the process dies, you need timestamps from ALL tasks to diagnose shared-process death.
+```bash
+# Tail the summary (human-readable)
+cli-codex-subagent task read tsk_abc123
 
-4. **Ignoring AUTO events** — Every AUTO event is a decision the agent made without your input. Review them to catch wrong paths early.
+# Full event trace
+cli-codex-subagent task events tsk_abc123
 
-5. **Not checking events.jsonl after failures** — The timeline is a summary. The events file has the STDERR output, exact timestamps, and exit codes you need for real diagnosis.
+# Last N events only
+cli-codex-subagent task events tsk_abc123 --tail 30
+
+# Raw events (JSONL)
+cli-codex-subagent task events tsk_abc123 --raw
+```
+
+## Direct disk access (no daemon required)
+
+Artifacts are plain files — accessible even if the daemon isn't running:
+
+```bash
+STATE="${CLI_CODEX_SUBAGENT_STATE_DIR:-$HOME/.cli-codex-subagent}"
+TASK_DIR="$STATE/tasks/tsk_abc123"
+
+# Tail live (while running)
+tail -f "$TASK_DIR/timeline.log"
+
+# Event JSONL
+cat "$TASK_DIR/events.jsonl" | python3 -c "
+import sys, json
+for line in sys.stdin:
+    e = json.loads(line)
+    if e.get('type') == 'tool_result':
+        print(e.get('output', '')[:200])
+"
+
+# Summary
+cat "$TASK_DIR/summary.log"
+
+# Prompt that was used
+cat "$TASK_DIR/prompt.md"
+```
+
+## Cross-task patterns to watch
+
+```bash
+# Find all tasks that are currently running
+cli-codex-subagent task list --status working
+
+# Find all tasks that failed today
+cli-codex-subagent task list --status failed --json | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+now = datetime.now(timezone.utc)
+tasks = json.load(sys.stdin)
+today = [t for t in tasks if t.get('createdAt','')[:10] == now.strftime('%Y-%m-%d')]
+for t in today:
+    print(t['taskId'], t.get('errorMessage','')[:80])
+"
+```
+
+## High-token tasks (token burn rate)
+
+In `task follow` output, watch the TOKENS lines:
+
+```
+TOKENS  18629 / 996147 (1.9%)
+```
+
+If you see >50% with no end in sight, the task is burning context. Intervene:
+1. Cancel the task: `cli-codex-subagent task cancel tsk_abc123`
+2. Check `git status` for partial work
+3. Rewrite the prompt with smaller scope
+4. Restart at lower effort: `--effort low`

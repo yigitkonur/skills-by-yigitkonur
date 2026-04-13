@@ -4,128 +4,118 @@ Template for dispatching parallel waves of tasks with monitoring, inter-wave che
 
 ## Template: Single Wave
 
-### Spawn phase — all tasks in one message
+### Spawn phase — all tasks before waiting
 
-```
-spawn-task: {
-  prompt: "{task 1 mission}",
-  cwd: "{project_root}",
-  task_type: "coder",
-  reasoning: "gpt-5.4(low)",
-  labels: ["wave-1", "{domain-1}"],
-  timeout_ms: 120000
-}
-→ task-id-1
+```bash
+#!/usr/bin/env bash
 
-spawn-task: {
-  prompt: "{task 2 mission}",
-  cwd: "{project_root}",
-  task_type: "coder",
-  reasoning: "gpt-5.4(low)",
-  labels: ["wave-1", "{domain-2}"],
-  timeout_ms: 120000
-}
-→ task-id-2
+TASK_1=$(cli-codex-subagent run task1.md --effort low --label wave-1 --label domain-1 --auto-approve --json \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
 
-spawn-task: {
-  prompt: "{task 3 mission}",
-  cwd: "{project_root}",
-  task_type: "coder",
-  reasoning: "gpt-5.4(low)",
-  labels: ["wave-1", "{domain-3}"],
-  timeout_ms: 120000
-}
-→ task-id-3
+TASK_2=$(cli-codex-subagent run task2.md --effort low --label wave-1 --label domain-2 --auto-approve --json \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+
+TASK_3=$(cli-codex-subagent run task3.md --effort low --label wave-1 --label domain-3 --auto-approve --json \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+
+echo "Spawned: $TASK_1 $TASK_2 $TASK_3"
 ```
 
-### Monitor phase — merged timeline stream
+### Monitor phase — follow all in background
 
-```
-Monitor({
-  command: "for id in {task-id-1} {task-id-2} {task-id-3}; do tail -f ~/.mcp-codex-worker/tasks/$id/timeline.log | sed --unbuffered 's/^/['$id'] /' & done; wait",
-  description: "Wave 1 parallel tasks",
-  timeout_ms: 180000,
-  persistent: false
-})
+```bash
+cli-codex-subagent task follow "$TASK_1" > /tmp/task1.log &
+cli-codex-subagent task follow "$TASK_2" > /tmp/task2.log &
+cli-codex-subagent task follow "$TASK_3" > /tmp/task3.log &
+
+# Or tail merged (prepend task ID to each line)
+tail -f /tmp/task1.log /tmp/task2.log /tmp/task3.log
 ```
 
 ### Collect phase — wait for each
 
-```
-wait-task: { task_id: "task-id-1", timeout_ms: 120000 }
-wait-task: { task_id: "task-id-2", timeout_ms: 120000 }
-wait-task: { task_id: "task-id-3", timeout_ms: 120000 }
+```bash
+cli-codex-subagent task wait "$TASK_1"
+cli-codex-subagent task wait "$TASK_2"
+cli-codex-subagent task wait "$TASK_3"
 ```
 
-### Verify phase — check scoreboard
+### Verify phase — scoreboard check
 
-```
-read resource: task:///all
+```bash
+cli-codex-subagent task list --label wave-1
 
-Expected output:
-[done] task-id-1 [wave-1,domain-1] -- "task 1 mission..."
-[done] task-id-2 [wave-1,domain-2] -- "task 2 mission..."
-[done] task-id-3 [wave-1,domain-3] -- "task 3 mission..."
+# Expected:
+# tsk_abc123  [done]    completed   23s    109K tokens   wave-1,domain-1
+# tsk_def456  [done]    completed   45s    85K tokens    wave-1,domain-2
+# tsk_ghi789  [done]    completed   31s    72K tokens    wave-1,domain-3
 ```
 
 ## Template: Multi-Wave Execution
 
 ### Wave 1: Foundation (no dependencies)
 
-```
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
 # Spawn all Wave 1 tasks
-spawn-task: { ..., labels: ["wave-1", "types"] }     → w1-a
-spawn-task: { ..., labels: ["wave-1", "config"] }    → w1-b
-spawn-task: { ..., labels: ["wave-1", "utils"] }     → w1-c
+W1_TYPES=$(cli-codex-subagent run tasks/types.md  --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+W1_CONFIG=$(cli-codex-subagent run tasks/config.md --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+W1_UTILS=$(cli-codex-subagent run tasks/utils.md  --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
 
-# Monitor
-Monitor({ command: "merged tail for w1-a, w1-b, w1-c", ... })
+# Wait for all
+cli-codex-subagent task wait "$W1_TYPES"
+cli-codex-subagent task wait "$W1_CONFIG"
+cli-codex-subagent task wait "$W1_UTILS"
 
-# Wait
-wait-task: w1-a → completed
-wait-task: w1-b → completed
-wait-task: w1-c → completed
-
-# Scoreboard check
-read resource: task:///all
-→ All wave-1 tasks [done]? Yes → proceed to Wave 2
+# Scoreboard check — all wave-1 done?
+cli-codex-subagent task list --label wave-1
 ```
 
-### Subsequent waves
+### Wave 2: Depends on Wave 1
 
-Repeat the spawn/monitor/wait/scoreboard pattern for each wave. Between waves, optionally spawn a quick verification task (e.g., "check files exist") before proceeding. Read `task:///all` after each wave to confirm all tasks show `[done]`.
+```bash
+# Spawn Wave 2 (only after wave-1 complete)
+W2_AUTH=$(cli-codex-subagent run tasks/auth.md     --effort low --label wave-2 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+W2_API=$(cli-codex-subagent run tasks/api.md      --effort low --label wave-2 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+
+cli-codex-subagent task wait "$W2_AUTH"
+cli-codex-subagent task wait "$W2_API"
+
+# Scoreboard
+cli-codex-subagent task list --label wave-2
+```
+
+### Wave 3: Integration
+
+```bash
+cli-codex-subagent run tasks/integration.md --effort low --label wave-3 --auto-approve --follow
+```
 
 ## Handling Failures Mid-Wave
 
-```
-# Wave 1 results:
-wait-task: w1-a → completed
-wait-task: w1-b → failed       ← failure
-wait-task: w1-c → completed
+```bash
+# After waiting for wave-1:
+cli-codex-subagent task list --label wave-1 --status failed --json
 
-# Recovery:
-# 1. Check partial work from w1-b
-git status / ls in cwd → files partially created?
+# If failures exist:
+# 1. Check partial work on disk
+git status
 
-# 2. If partial work exists and is usable:
-#    Fix manually or spawn a targeted fix task
+# 2. If partial work is usable, fix it
+cli-codex-subagent run tasks/fix-w1-failure.md --effort low --label wave-1 --label retry --follow
 
-# 3. If no usable work:
-#    Retry with adjusted prompt
-spawn-task: { prompt: "{adjusted mission}", labels: ["wave-1", "retry"] }
-wait-task → completed
-
-# 4. Verify all Wave 1 work is now complete before proceeding
-read resource: task:///all
-→ All wave-1 [done]? Yes → proceed to Wave 2
+# 3. Verify all Wave 1 work is complete before proceeding
+cli-codex-subagent task list --label wave-1
 ```
 
 ## Rules
 
-1. **Spawn all tasks in a wave in one message.** Don't wait between spawns.
-2. **Always label by wave.** `["wave-N", ...]` on every task.
-3. **Always set up a merged Monitor** after spawning a wave.
-4. **Check scoreboard between waves.** Don't start Wave N+1 until Wave N is all [done].
-5. **Limit parallel tasks to 5-8 per wave.** More risks API limits and shared-process instability.
-6. **Handle failures before proceeding.** One failed task in Wave 1 can cascade to Wave 2.
-7. **Inter-wave verification is optional but recommended** for multi-wave plans where later waves depend on earlier outputs.
+1. **Spawn all tasks in a wave before waiting.** Don't `task wait` between spawns.
+2. **Label every task by wave.** `--label wave-N` on every spawn.
+3. **Follow tasks in background.** Use `> /tmp/task.log &` to capture events.
+4. **Check scoreboard between waves.** `task list --label wave-N` before proceeding to N+1.
+5. **Cap at 5-8 tasks per wave.** More risks resource exhaustion.
+6. **Handle failures before proceeding.** Carry-forward failures corrupt later waves.
+7. **Use `--auto-approve` for unattended batch runs.** Manual approvals break the pipeline.

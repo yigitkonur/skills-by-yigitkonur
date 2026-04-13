@@ -1,6 +1,6 @@
 # Diagnostic Queries
 
-Ready-to-use jq one-liners for `events.jsonl` analysis. All paths assume `~/.mcp-codex-worker/tasks/{id}/events.jsonl`.
+Ready-to-use jq one-liners for `events.jsonl` analysis. All paths assume `~/.cli-codex-subagent/tasks/{id}/events.jsonl`.
 
 ## Quick health check
 
@@ -89,7 +89,7 @@ for line in open(sys.argv[1] if len(sys.argv) > 1 else "events.jsonl"):
     prev_method = e["method"]
 ```
 
-Usage: `python3 time_gaps.py ~/.mcp-codex-worker/tasks/{id}/events.jsonl`
+Usage: `python3 time_gaps.py ~/.cli-codex-subagent/tasks/{id}/events.jsonl`
 
 ## Exit analysis
 
@@ -97,14 +97,14 @@ Check for process exits and STDERR across all tasks.
 
 ```bash
 # All exits
-for f in ~/.mcp-codex-worker/tasks/*/events.jsonl; do
+for f in ~/.cli-codex-subagent/tasks/*/events.jsonl; do
   id=$(basename $(dirname "$f"))
   jq -r "select(.method == \"_process_exit\") |
     \"$id  code=\(.code) signal=\(.signal)\"" "$f" 2>/dev/null
 done
 
 # All STDERR (first line only per task)
-for f in ~/.mcp-codex-worker/tasks/*/events.jsonl; do
+for f in ~/.cli-codex-subagent/tasks/*/events.jsonl; do
   id=$(basename $(dirname "$f"))
   jq -r "select(.method == \"_stderr\") | .data" "$f" 2>/dev/null | head -1 | \
     sed "s/^/$id  /"
@@ -117,7 +117,7 @@ When parallel tasks share a Codex process and one crashes, all siblings die at t
 
 ```bash
 # Group _process_exit events by timestamp (within 100ms)
-for f in ~/.mcp-codex-worker/tasks/*/events.jsonl; do
+for f in ~/.cli-codex-subagent/tasks/*/events.jsonl; do
   id=$(basename $(dirname "$f"))
   jq -r "select(.method == \"_process_exit\") | \"$id \(.t)\"" "$f" 2>/dev/null
 done | sort -k2 | awk '
@@ -143,7 +143,7 @@ If you see 2+ task IDs with the same timestamp, they were killed by the same pro
 List all auto-answered questions to verify correctness.
 
 ```bash
-for f in ~/.mcp-codex-worker/tasks/*/events.jsonl; do
+for f in ~/.cli-codex-subagent/tasks/*/events.jsonl; do
   id=$(basename $(dirname "$f"))
   jq -r "select(.method == \"_auto_answer\") |
     \"$id  \(.summary)\"" "$f" 2>/dev/null

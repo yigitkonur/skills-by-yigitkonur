@@ -141,9 +141,9 @@ Key fields in `params.tokenUsage`: `total` (`totalTokens`, `inputTokens`, `cache
 | `serverRequest/resolved` | — | Server request resolved (after auto-answer or manual respond). |
 | `error` | — | Error event. Has `params.error.message`, `params.error.codexErrorInfo`, `params.willRetry`. |
 
-### Synthetic events (5 types — injected by MCP server)
+### Synthetic events (5 types — injected by the daemon)
 
-These are NOT from the Codex API. The MCP server synthesizes them for diagnostics.
+These are NOT from the Codex API. The daemon synthesizes them for diagnostics.
 
 | Method | Captured in timeline? | Description |
 |---|---|---|

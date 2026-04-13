@@ -1,178 +1,182 @@
-# Resources Reference
+# CLI Inspection Reference
 
-All 7 MCP resource URIs exposed by the codex-worker server.
+How to inspect tasks, sessions, requests, and artifacts using `cli-codex-subagent` commands. Replaces the old `task:///` URI resource model.
 
-## 1. task:///all — Scoreboard
+## Task list — Scoreboard
 
-**URI:** `task:///all`
-**mimeType:** `text/plain`
-**When to use:** Track all tasks between waves. Poll every ~30s. Quick status overview.
-
-**Response when tasks exist:**
-```
-tasks -- 5 total (3 done, 1 busy, 1 fail)
-
-[done] bold-falcon-42     "Create slugify.ts..."              23s   109K tokens (11%)
-[done] calm-tiger-88      "Write auth module..."              45s   85K tokens (8.5%)
-[done] dark-raven-12      "Add rate limiting..."              18s   42K tokens (4.2%)
-[busy] eager-wolf-99      "Refactor billing..."               62s   running
-[fail] fast-bear-33       "Complex migration..."              8s    failed: process exit
-
-> Details: read `task:///<id>` · Events: read `task:///<id>/events` · Poll: read `task:///all` every ~30s
+```bash
+cli-codex-subagent task list
+cli-codex-subagent task list --status failed
+cli-codex-subagent task list --label "wave-1"
+cli-codex-subagent task list --json
+cli-codex-subagent task list --quiet    # IDs only
 ```
 
-**Response when empty:**
+**When to use:** Between waves to check overall status. After a failure to find which tasks need recovery.
+
+**Example output:**
 ```
-tasks -- 0 total
+tsk_abc123  [done]    completed   23s    109K tokens   wave-1
+tsk_def456  [done]    completed   45s    85K tokens    wave-1
+tsk_ghi789  [busy]    working     62s    running       wave-1
+tsk_jkl012  [fail]    failed      8s     —             wave-1
 
-
-> Details: read `task:///<id>` · Events: read `task:///<id>/events` · Poll: read `task:///all` every ~30s
+Total: 4 tasks
 ```
 
-Shows badges `[done]`, `[busy]`, `[fail]`, `[wait]`, `[stop]`. Includes labels, timing, token usage. Pending questions are flagged.
+---
 
-## 2. task:///{id} — Task detail
+## Task read — Task detail
 
-**URI:** `task:///{id}` (e.g. `task:///careful-wolf-228`)
-**mimeType:** `text/markdown`
+```bash
+cli-codex-subagent task read <taskId>
+cli-codex-subagent task read <taskId> --json
+cli-codex-subagent task read <taskId> --field status
+cli-codex-subagent task read <taskId> --field artifacts.timelineLogPath
+```
+
 **When to use:** Inspect one task's full metadata after completion or failure.
 
-**Response:**
-```markdown
-# Task: careful-wolf-228 -- echo hello
+**Output includes:**
+- `status`, `effort`, `model`, `cwd`, `labels`
+- `sessionId` — for continuing with `--session` or `task steer`
+- Timestamps: `createdAt`, `startedAt`, `completedAt`
+- Error message if failed
+- Artifact paths (timeline, events, summary, stderr)
+- Last output tail
 
-| Field | Value |
-|---|---|
-| **Status** | [fail] `failed` |
-| **Provider** | codex |
-| **Session ID** | `019d76ff-e670-79a2-b477-6203b8df41ae` |
-| **Reasoning** | `gpt-5.4(low)` |
-| **Task type** | coder |
-| **CWD** | `/tmp` |
-| **Created** | 2026-04-10T10:46:15.324Z |
-| **Started** | 2026-04-10T10:46:15.416Z |
-| **Completed** | 2026-04-10T10:46:15.510Z |
-| **Updated** | 2026-04-10T10:46:15.510Z |
-
-## Error
-
-\```
-Missing environment variable: `CODEX_LB_API_KEY`. [other]
-\```
-
-## Recent Output
-
-[03:46:15] ERROR: other — Missing environment variable: `CODEX_LB_API_KEY`.
-[03:46:15] turn failed: other — Missing environment variable: `CODEX_LB_API_KEY`.
+**Scripting — get session id:**
+```bash
+SESSION=$(cli-codex-subagent task read tsk_abc123 --field sessionId)
+cli-codex-subagent run followup.md --session "$SESSION" --follow
 ```
 
-Fields include: status badge, provider, session ID, reasoning level, task type, cwd, timestamps (created, started, completed, updated), labels if present, error if failed, recent output lines.
+---
 
-## 3. task:///{id}/log — Summary log
+## Task events — Full event trace
 
-**URI:** `task:///{id}/log` (e.g. `task:///grotesque-gopher-198/log`)
-**mimeType:** `text/plain`
-**When to use:** Quick output check. Shows last ~20 lines from the summary log.
-
-**Response:**
+```bash
+cli-codex-subagent task events <taskId>
+cli-codex-subagent task events <taskId> --tail 20
+cli-codex-subagent task events <taskId> --raw           # raw app-server events
+cli-codex-subagent task events <taskId> --follow        # stream as task runs
 ```
-# Log: grotesque-gopher-198 (from disk)
 
-[10:24:10] cmd: /bin/zsh -lc "rtk find FastNotch ..." (exit 0, 0.0s)
-[10:24:10] cmd: /bin/zsh -lc 'rtk pwd && rtk find ...' (exit 0, 0.3s)
-[10:24:16] cmd: /bin/zsh -lc "rtk cat AGENTS.md ..." (exit 0, 0.0s)
-[10:24:19] cmd: /bin/zsh -lc 'rtk cat FastNotch/...' (exit 1, 0.0s)
-[10:24:23] cmd: /bin/zsh -lc 'rtk wc -l ...' (exit 0, 0.0s)
-[10:24:27] agent: I inspected the target directory...
-[10:24:27] turn completed
+**When to use:** Debug trace — every notification including reasoning, commands, file changes, token usage. Use `--raw` for the lowest-level JSON.
+
+**Output format (default — normalized):**
+```
+TURN    019d786c-...
+THINK   Inspecting the repository
+CMD     find src -name "*.ts" → exit=0 (0.3s)
+FILE    src/auth.ts (modified)
+TOKENS  18629 / 996147 (1.9%)
+MSG     I've updated the auth module.
+DONE    completed
+```
+
+**Raw output:** One JSON object per line (full `events.jsonl` format). Includes delta events, hooks, and all streaming data. See `event-types.md`.
+
+**Disk path** (direct access):
+```bash
+cat ~/.cli-codex-subagent/tasks/<taskId>/events.jsonl
+```
+
+---
+
+## Task follow — Live event stream
+
+```bash
+cli-codex-subagent task follow <taskId>
+cli-codex-subagent task follow <taskId> --stream-json
+```
+
+The primary monitoring tool for running tasks. Streams normalized events until the task reaches a terminal state.
+
+**Also available as a flag on `run`:**
+```bash
+cli-codex-subagent run task.md --follow
+```
+
+**Disk path** (for direct tail):
+```bash
+tail -f ~/.cli-codex-subagent/tasks/<taskId>/timeline.log
+```
+
+See `timeline-format.md` for all 16 line types.
+
+---
+
+## Summary log — Artifact tails
+
+The summary log (last ~20 human-readable lines) is shown automatically by `task read`.
+
+**Disk path:**
+```bash
+cat ~/.cli-codex-subagent/tasks/<taskId>/summary.log
 ```
 
 Format: `[HH:MM:SS] {type}: {detail}`. Types: `cmd`, `agent`, `turn completed`, `turn failed`, `ERROR`.
 
-## 4. task:///{id}/log.verbose — Full verbose log
+---
 
-**URI:** `task:///{id}/log.verbose`
-**mimeType:** `text/plain`
-**When to use:** Deep inspection. Shows full command output, not just summaries.
+## Verbose log — Full command output
 
-**Response:**
-```
-[10:24:10] === command completed: /bin/zsh -lc "rtk find ..." (exit 0, 0.0s) ===
-[10:24:10] started: /bin/zsh -lc "rtk find ..."
-[10:24:10] started: /bin/zsh -lc 'rtk pwd && rtk find ...'
-471F 471D:
+Not exposed as a CLI command; access directly from disk:
 
-SWComp/ AGENTS.md
-SWComp/SWComp/ AGENTS.md
-...
+```bash
+cat ~/.cli-codex-subagent/tasks/<taskId>/verbose.log
 ```
 
-Includes full stdout/stderr from commands, not just the one-liner summary. Read from disk at `~/.mcp-codex-worker/tasks/{id}/verbose.log`.
+Contains full stdout/stderr from every command, not just the one-liner summary.
 
-## 5. task:///{id}/events — Full event trace
+---
 
-**URI:** `task:///{id}/events`
-**mimeType:** `application/jsonl`
-**When to use:** Debug trace. Contains every notification including deltas, hooks, and all streaming data.
+## Request list — Pending approvals
 
-**Response:** JSONL (one JSON object per line):
-```jsonl
-{"t":"2026-04-10T17:24:03.487Z","method":"thread/status/changed","params":{"threadId":"...","status":{"type":"active","activeFlags":[]}}}
-{"t":"2026-04-10T17:24:03.487Z","method":"turn/started","params":{"threadId":"...","turn":{"id":"...","items":[],"status":"inProgress","error":null}}}
-{"t":"2026-04-10T17:24:05.282Z","method":"hook/started","params":{"threadId":"...","turnId":"...","run":{"id":"session-start:0:...","eventName":"sessionStart","status":"running"}}}
-{"t":"2026-04-10T17:24:06.349Z","method":"item/started","params":{"item":{"type":"reasoning","id":"rs_...","summary":[],"content":[]}}}
-...
+```bash
+cli-codex-subagent request list
+cli-codex-subagent request list --task <taskId>
+cli-codex-subagent request list --json
 ```
 
-Read from disk at `~/.mcp-codex-worker/tasks/{id}/events.jsonl`. Can be hundreds of lines for complex tasks due to delta events.
+**When to use:** When a task exits with code `2` (blocked). Lists all pending requests across all tasks.
 
-## 6. task:///{id}/events/summary — Filtered event trace
+---
 
-**URI:** `task:///{id}/events/summary`
-**mimeType:** `application/jsonl`
-**When to use:** Clean events without noise. Good for programmatic analysis.
+## Request read — Inspect what's needed
 
-**Response:** Same JSONL format but with these filtered OUT:
-- All delta events (`*Delta`, `*delta`)
-- Hook events (`hook/started`, `hook/completed`)
-- Streaming events
-
-What remains: thread lifecycle, turn lifecycle, item started/completed (without streaming), token usage, synthetic events, plan updates.
-
-## 7. task:///{id}/timeline — One-liner timeline
-
-**URI:** `task:///{id}/timeline`
-**mimeType:** `text/plain`
-**When to use:** Progress overview. One meaningful line per event. Primary monitoring tool.
-
-**Response:**
-```
-10:24:03 STARTED
-10:24:03 TURN    019d786c-191e-7cb2-a0d9-70d6a03885e9
-10:24:06 THINK   (reasoning...)
-10:24:09 TOKENS  18629 / 996147 (1.9%)
-10:24:10 CMD     find FastNotch -path '*/AGENTS.md' -print → exit=0 (<1ms)
-10:24:10 CMD     pwd && find .. -name AGENTS.md -print → exit=0 (0.3s)
-10:24:13 THINK   (reasoning...)
-10:24:16 THINK   Inspecting agents' paths
-10:24:16 TOKENS  38407 / 996147 (3.9%)
-10:24:27 MSG     I inspected the target directory and counted... [+38 chars]
-10:24:27 TOKENS  109621 / 996147 (11.0%)
-10:24:27 DONE    completed
+```bash
+cli-codex-subagent request read <reqId>
 ```
 
-Read from disk at `~/.mcp-codex-worker/tasks/{id}/timeline.log`. See `timeline-format.md` for all 16 line types.
+Shows the request type, full payload (command being approved, question text, available choices), and the task that created it.
 
-## Disk paths
+---
 
-All resources are backed by files under `~/.mcp-codex-worker/tasks/{id}/`:
+## Session read — Session metadata
 
-| File | Resource URI |
-|---|---|
-| `meta.json` | `task:///{id}` (metadata source) |
-| `summary.log` | `task:///{id}/log` |
-| `verbose.log` | `task:///{id}/log.verbose` |
-| `events.jsonl` | `task:///{id}/events` and `task:///{id}/events/summary` |
-| `timeline.log` | `task:///{id}/timeline` |
+```bash
+cli-codex-subagent session read <sesId>
+cli-codex-subagent session list
+```
 
-The `meta.json` file contains all task metadata including: `id`, `status`, `provider`, `taskType`, `prompt`, `cwd`, `createdAt`, `updatedAt`, `startedAt`, `completedAt`, `labels`, `output` array, `pendingQuestions`, `model`, `effort`, `timeoutMs`, `sessionId`, `tokenUsage`, `lastOutputAt`.
+Shows session status, the tasks that ran within it, and context window usage. Use to find the right `sesId` for `task steer` or `--session`.
+
+---
+
+## Disk layout
+
+All artifacts are under `~/.cli-codex-subagent/tasks/<taskId>/`:
+
+| File | CLI command |
+|------|------------|
+| `timeline.log` | `task follow <id>` (or `task events <id>`) |
+| `events.jsonl` | `task events <id> --raw` |
+| `summary.log` | Shown by `task read <id>` |
+| `verbose.log` | Direct disk access only |
+| `stderr.log` | Direct disk access only |
+| `prompt.md` | The original prompt file (preserved) |
+| `context.manifest.json` | Context files used |
+
+The state root can be overridden with `CLI_CODEX_SUBAGENT_STATE_DIR`.
