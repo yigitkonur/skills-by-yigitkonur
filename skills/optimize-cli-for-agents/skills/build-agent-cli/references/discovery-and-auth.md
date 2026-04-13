@@ -4,6 +4,288 @@ Reference patterns for CLI discoverability, help systems, authentication, and co
 
 ---
 
+## Standard Flag Reference
+
+All well-designed CLIs should support these standard flags consistently:
+
+| Flag | Short | Type | Purpose | Example |
+|------|-------|------|---------|---------|
+| `--json` | `-j` | bool | Structured JSON output for machine parsing | `mycli list --json` |
+| `--quiet` | `-q` | bool | Suppress non-essential output (warnings, info) | `mycli deploy -q` |
+| `--verbose` | `-v` | bool | Increase verbosity (debug info, timing) | `mycli run -v` |
+| `--yes` | `-y` | bool | Skip all confirmations / auto-approve | `mycli delete all -y` |
+| `--dry-run` | | bool | Preview changes without executing | `mycli apply --dry-run` |
+| `--force` | `-f` | bool | Override safety checks and guards | `mycli rm protected -f` |
+| `--output` | `-o` | string | Output format: `json`, `yaml`, `table`, `text` | `mycli get -o yaml` |
+| `--timeout` | | duration | Operation timeout (e.g., `30s`, `5m`) | `mycli sync --timeout 2m` |
+| `--no-input` | | bool | Non-interactive mode; fail if input needed | `mycli setup --no-input` |
+| `--help` | `-h` | bool | Show help for command | `mycli deploy -h` |
+
+### Flag Behavior Matrix
+
+| Environment | `--json` | `--quiet` | `--verbose` | Colors | Prompts |
+|-------------|----------|-----------|-------------|--------|---------|
+| TTY (human) | Off | Off | Off | On | On |
+| CI | Auto-on | Auto-on | Off | Off | Off |
+| Piped | Auto-on | Auto-on | Off | Off | Off |
+| `--no-input` | Unchanged | Unchanged | Unchanged | Unchanged | Off |
+
+### Implementation Pattern
+
+```go
+// Add standard flags to root command
+func addStandardFlags(cmd *cobra.Command) {
+    cmd.PersistentFlags().BoolP("json", "j", false, "Output as JSON")
+    cmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress non-essential output")
+    cmd.PersistentFlags().BoolP("verbose", "v", false, "Increase verbosity")
+    cmd.PersistentFlags().BoolP("yes", "y", false, "Skip confirmations")
+    cmd.PersistentFlags().Bool("dry-run", false, "Preview without executing")
+    cmd.PersistentFlags().BoolP("force", "f", false, "Override safety checks")
+    cmd.PersistentFlags().StringP("output", "o", "table", "Output format: json|yaml|table|text")
+    cmd.PersistentFlags().Duration("timeout", 30*time.Second, "Operation timeout")
+    cmd.PersistentFlags().Bool("no-input", false, "Non-interactive mode")
+}
+```
+
+---
+
+## Exit Codes
+
+Standardized exit codes for consistent error handling in scripts and CI:
+
+| Code | Name | Description | Example Scenario |
+|------|------|-------------|------------------|
+| `0` | Success | Operation completed successfully | `mycli deploy` → deployed |
+| `1` | Crash | Unexpected error / panic / internal failure | Nil pointer, unhandled exception |
+| `2` | Usage | Invalid arguments, missing required flags, bad syntax | `mycli --invalid-flag` |
+| `3` | NotFound | Requested resource does not exist | `mycli get user xyz` → no such user |
+| `4` | Auth | Authentication or authorization failure | Expired token, insufficient permissions |
+| `5` | Conflict | Resource conflict, already exists, version mismatch | `mycli create foo` → already exists |
+| `6` | Validation | Input validation failed (bad format, out of range) | `mycli set --port 999999` |
+| `7` | Transient | Temporary failure, retry may succeed | Network timeout, rate limit, 503 |
+
+### Implementation Pattern
+
+```go
+const (
+    ExitSuccess    = 0
+    ExitCrash      = 1
+    ExitUsage      = 2
+    ExitNotFound   = 3
+    ExitAuth       = 4
+    ExitConflict   = 5
+    ExitValidation = 6
+    ExitTransient  = 7
+)
+
+func exitWithError(err error) {
+    var code int
+    switch {
+    case errors.Is(err, ErrNotFound):
+        code = ExitNotFound
+    case errors.Is(err, ErrUnauthorized), errors.Is(err, ErrForbidden):
+        code = ExitAuth
+    case errors.Is(err, ErrConflict), errors.Is(err, ErrAlreadyExists):
+        code = ExitConflict
+    case errors.Is(err, ErrValidation), errors.Is(err, ErrInvalidInput):
+        code = ExitValidation
+    case errors.Is(err, ErrTimeout), errors.Is(err, ErrRateLimit), errors.Is(err, ErrUnavailable):
+        code = ExitTransient
+    case errors.Is(err, ErrUsage):
+        code = ExitUsage
+    default:
+        code = ExitCrash
+    }
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(code)
+}
+```
+
+### Scripting with Exit Codes
+
+```bash
+#!/bin/bash
+mycli deploy my-app --env prod
+case $? in
+    0) echo "Deploy succeeded" ;;
+    4) echo "Auth failed - re-authenticate"; mycli auth login ;;
+    7) echo "Transient error - retrying..."; sleep 5; mycli deploy my-app --env prod ;;
+    *) echo "Fatal error"; exit 1 ;;
+esac
+```
+
+---
+
+## Configuration Precedence
+
+Configuration values are resolved in this order (highest to lowest priority):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. CLI Flags          (highest priority)                   │
+│     mycli --api-url https://custom.api.com deploy           │
+├─────────────────────────────────────────────────────────────┤
+│  2. Environment Variables                                   │
+│     MYCLI_API_URL=https://env.api.com mycli deploy          │
+├─────────────────────────────────────────────────────────────┤
+│  3. Project Config     (.mycli.yaml in cwd or parents)      │
+│     api_url: https://project.api.com                        │
+├─────────────────────────────────────────────────────────────┤
+│  4. User Config        (~/.config/mycli/config.yaml)        │
+│     api_url: https://user.api.com                           │
+├─────────────────────────────────────────────────────────────┤
+│  5. System Config      (/etc/mycli/config.yaml)             │
+│     api_url: https://system.api.com                         │
+├─────────────────────────────────────────────────────────────┤
+│  6. Defaults           (built into binary)                  │
+│     api_url: https://api.example.com                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Debug Config Sources
+
+```bash
+mycli config show --effective --json
+```
+
+```json
+{
+  "api_url": {
+    "value": "https://custom.api.com",
+    "source": "flag",
+    "sources_checked": ["flag", "env", "project", "user", "system", "default"]
+  },
+  "timeout": {
+    "value": "30s",
+    "source": "user_config",
+    "file": "~/.config/mycli/config.yaml"
+  }
+}
+```
+
+---
+
+## Authentication Flow Diagrams
+
+### Token-Based Authentication
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant CredStore as Credential Store
+    participant API
+
+    User->>CLI: mycli auth login --token-stdin
+    User->>CLI: (pipes token via stdin)
+    CLI->>CLI: Validate token format
+    CLI->>API: GET /auth/validate
+    API-->>CLI: 200 OK (user info)
+    CLI->>CredStore: Store token securely
+    CLI-->>User: ✓ Authenticated as user@example.com
+
+    Note over CLI,API: Subsequent requests
+    User->>CLI: mycli resource list
+    CLI->>CredStore: Retrieve token
+    CredStore-->>CLI: token
+    CLI->>API: GET /resources (Authorization: Bearer token)
+    API-->>CLI: 200 OK (resources)
+    CLI-->>User: Display resources
+```
+
+### OAuth 2.0 Device Flow (Headless/CI)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Browser
+    participant AuthServer as Auth Server
+    participant API
+
+    User->>CLI: mycli auth login
+    CLI->>AuthServer: POST /device/code
+    AuthServer-->>CLI: device_code, user_code, verification_uri
+
+    CLI-->>User: Visit https://auth.example.com/device
+    CLI-->>User: Enter code: ABCD-1234
+
+    User->>Browser: Navigate to verification_uri
+    Browser->>AuthServer: Enter user_code
+    User->>AuthServer: Approve access
+    AuthServer-->>Browser: Authorization granted
+
+    loop Poll for token (every 5s)
+        CLI->>AuthServer: POST /token (device_code)
+        AuthServer-->>CLI: authorization_pending | access_token
+    end
+
+    CLI->>CLI: Store tokens securely
+    CLI-->>User: ✓ Authenticated as user@example.com
+```
+
+### Service Account / Workload Identity
+
+```mermaid
+sequenceDiagram
+    participant Workload as CLI (in Cloud)
+    participant MetadataAPI as Metadata API
+    participant TokenExchange as Token Exchange
+    participant API
+
+    Note over Workload: Auto-detect cloud environment
+    Workload->>MetadataAPI: GET /instance/service-accounts/default/token
+    MetadataAPI-->>Workload: cloud_identity_token
+
+    Workload->>TokenExchange: POST /token (cloud_identity_token)
+    Note right of TokenExchange: Exchange cloud token for API token
+    TokenExchange-->>Workload: api_access_token
+
+    Workload->>API: GET /resources (Authorization: Bearer api_access_token)
+    API-->>Workload: 200 OK (resources)
+
+    Note over Workload,API: Token auto-refreshed before expiry
+```
+
+### Credential Resolution Flow
+
+```mermaid
+flowchart TD
+    Start([Resolve Credentials]) --> Flag{CLI flag?<br/>--token / --token-file}
+    Flag -->|Yes| UseFlag[Use flag value]
+    Flag -->|No| Env{ENV var?<br/>MYCLI_TOKEN}
+    
+    Env -->|Yes| UseEnv[Use env value]
+    Env -->|No| Config{Config file<br/>has token?}
+    
+    Config -->|Yes| UseConfig[Use config token]
+    Config -->|No| Helper{Credential<br/>helper?}
+    
+    Helper -->|Yes| UseHelper[Query credential helper]
+    Helper -->|No| Workload{Cloud workload<br/>identity?}
+    
+    Workload -->|Yes| UseWorkload[Get cloud token + exchange]
+    Workload -->|No| Interactive{Interactive<br/>TTY?}
+    
+    Interactive -->|Yes| Login[Prompt: mycli auth login]
+    Interactive -->|No| Fail[Exit 4: No credentials]
+    
+    UseFlag --> Validate
+    UseEnv --> Validate
+    UseConfig --> Validate
+    UseHelper --> Validate
+    UseWorkload --> Validate
+    
+    Validate{Token valid?} -->|Yes| Success([Authenticated])
+    Validate -->|Expired + Refresh| Refresh[Refresh token]
+    Validate -->|No| Fail
+    
+    Refresh -->|Success| Success
+    Refresh -->|Fail| Fail
+```
+
+---
+
 ## 1. Command Grammar
 
 ### Noun-Verb Hierarchy (Preferred)
@@ -26,17 +308,12 @@ mycli deployment status my-app
 
 ### Consistent Flag Naming
 
-| Flag | Short | Purpose |
-|------|-------|---------|
-| `--json` | | JSON output |
-| `--quiet` | `-q` | Minimal output |
-| `--verbose` | `-v` | Detailed logs |
-| `--yes` | `-y` | Auto-confirm |
-| `--force` | `-f` | Bypass safety |
-| `--non-interactive` | | No prompts |
-| `--dry-run` | | Preview changes |
-| `--output` | `-o` | Output format |
-| `--profile` | `-p` | Config profile |
+See **Standard Flag Reference** at the top for the complete flag table. Key principles:
+
+- **Short flags**: Reserve single letters for frequently-used flags (`-j`, `-q`, `-v`, `-y`, `-f`, `-o`, `-h`)
+- **Boolean defaults**: All boolean flags default to `false`
+- **Negation**: Support `--no-<flag>` for disabling defaults (e.g., `--no-wait`)
+- **Profile support**: Use `--profile` / `-p` for selecting config profiles
 
 ---
 
@@ -324,14 +601,7 @@ func getAuthenticatedClient(ctx context.Context) (*Client, error) {
 
 ## 5. Configuration Management
 
-### Config Precedence
-
-1. Flags (highest)
-2. Environment variables
-3. Project config (`.mycli.yaml` in cwd)
-4. User config (`~/.config/mycli/config.yaml`)
-5. System config (`/etc/mycli/config.yaml`)
-6. Defaults (lowest)
+> **Precedence**: See **Configuration Precedence** section above for the full resolution order.
 
 ### Profile Support
 
@@ -743,6 +1013,8 @@ func runCommand(cmd *cobra.Command, args []string) error {
 
 ## Quick Reference
 
+### Common Commands
+
 | Pattern | Command | Purpose |
 |---------|---------|---------|
 | Help | `mycli <cmd> --help` | Discover flags and examples |
@@ -751,3 +1023,39 @@ func runCommand(cmd *cobra.Command, args []string) error {
 | Config debug | `mycli config show --effective` | See config sources |
 | Env check | `mycli env --json` | Detect runtime context |
 | Secure auth | `echo $TOKEN \| mycli auth --token-stdin` | No process exposure |
+
+### Standard Flags (All Commands)
+
+| Flag | Purpose |
+|------|---------|
+| `-j, --json` | JSON output |
+| `-q, --quiet` | Suppress noise |
+| `-v, --verbose` | Debug output |
+| `-y, --yes` | Auto-approve |
+| `--dry-run` | Preview only |
+| `-f, --force` | Skip guards |
+| `-o, --output` | Format: json/yaml/table |
+| `--timeout` | Op timeout |
+| `--no-input` | Non-interactive |
+
+### Exit Codes
+
+| Code | Meaning | Script Action |
+|------|---------|---------------|
+| `0` | Success | Continue |
+| `1` | Crash | Abort + report bug |
+| `2` | Usage error | Fix command syntax |
+| `3` | Not found | Handle missing resource |
+| `4` | Auth failed | Re-authenticate |
+| `5` | Conflict | Resolve state |
+| `6` | Validation | Fix input |
+| `7` | Transient | Retry with backoff |
+
+### Config Precedence (High → Low)
+
+1. CLI flags (`--api-url`)
+2. Env vars (`MYCLI_API_URL`)
+3. Project config (`.mycli.yaml`)
+4. User config (`~/.config/mycli/`)
+5. System config (`/etc/mycli/`)
+6. Defaults

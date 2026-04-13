@@ -19,6 +19,124 @@ description: "Use skill if you are auditing a CLI for agent-readiness, fixing ou
 
 ---
 
+## 0. Quick Start (TL;DR)
+
+### 3-Minute Audit
+
+Copy-paste these commands to quickly test any CLI (replace `mycli cmd` with your actual command):
+
+```bash
+# Test 1: JSON output exists?
+mycli cmd --json 2>/dev/null | jq . && echo "✅ C1 PASS" || echo "❌ C1 FAIL"
+
+# Test 2: stdout/stderr separated?
+mycli cmd --json > /tmp/out.txt 2>/tmp/err.txt && jq . /tmp/out.txt && echo "✅ C2 PASS"
+
+# Test 3: Semantic exit codes?
+mycli nonexistent-thing; [ $? -ne 0 ] && [ $? -ne 1 ] && echo "✅ C3 PASS" || echo "❌ C3 FAIL (exit code was $?)"
+
+# Test 4: Non-interactive mode?
+echo "" | timeout 5 mycli dangerous-cmd && echo "✅ C4 PASS" || echo "❌ C4 FAIL (hung or no --yes)"
+
+# Test 5: Structured errors?
+mycli fail --json 2>/dev/null | jq '.error.code' && echo "✅ C5 PASS" || echo "❌ C5 FAIL"
+```
+
+### 5-Minute Design Checklist
+
+Quick reference for new CLIs:
+
+- [ ] `--json` flag outputs pure JSON to stdout
+- [ ] All progress/logs go to stderr
+- [ ] Exit codes: 0=success, 2=usage, 3=not_found, 4=auth, 5=conflict, 6=validation, 7=transient
+- [ ] `--yes`/`--force` flags for non-interactive mode
+- [ ] Error JSON has `class`, `code`, `retryable`, `suggestion` fields
+
+### Instant Score Calculator
+
+```
+Score = (C_pass × 20) + (I_pass × 5) + (N_pass × 2)
+
+≥90 = ✅ Agent-Ready | 70-89 = 🟡 Mostly Ready | 50-69 = 🟠 Needs Work | <50 = 🔴 Agent-Hostile
+```
+
+Where: **C** = Critical checks (5 items, 20pts each), **I** = Important checks (5 items, 5pts each), **N** = Nice-to-have (5 items, 2pts each)
+
+---
+
+## Decision Flow
+
+```mermaid
+flowchart TD
+    A[Start: CLI + Agents] --> B{Existing CLI<br/>or new build?}
+    
+    B -->|Existing| C[AUDIT MODE]
+    B -->|New Build| D[DESIGN MODE]
+    
+    C --> E[Run 5 Critical Checks]
+    E --> F{Score ≥ 70?}
+    
+    F -->|Yes| G[Fix Important gaps]
+    F -->|No| H[Fix Critical gaps first]
+    
+    H --> I[Re-audit after fixes]
+    I --> F
+    
+    G --> J{Score ≥ 90?}
+    J -->|Yes| K[✅ Agent-Ready]
+    J -->|No| L[Add Nice-to-haves]
+    L --> K
+    
+    D --> M[Apply 8 Principles]
+    M --> N[Build with --json from day 1]
+    N --> O[Implement exit code table]
+    O --> P[Add error.suggestion fields]
+    P --> Q[Test with agents]
+    Q --> K
+    
+    style K fill:#90EE90
+    style H fill:#FFB6C1
+    style C fill:#87CEEB
+    style D fill:#DDA0DD
+```
+
+<details>
+<summary>ASCII version (for terminals without mermaid rendering)</summary>
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    optimize-cli-for-agents                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│    ┌──────────────┐                    ┌──────────────┐         │
+│    │ AUDIT MODE   │                    │ DESIGN MODE  │         │
+│    │ (existing)   │                    │ (new build)  │         │
+│    └──────┬───────┘                    └──────┬───────┘         │
+│           │                                   │                  │
+│           ▼                                   ▼                  │
+│    ┌──────────────┐                    ┌──────────────┐         │
+│    │ 5 Critical   │                    │ 8 Agent-First│         │
+│    │ Checks       │                    │ Principles   │         │
+│    └──────┬───────┘                    └──────┬───────┘         │
+│           │                                   │                  │
+│           ▼                                   ▼                  │
+│    ┌──────────────┐                    ┌──────────────┐         │
+│    │ Score & Fix  │                    │ Build with   │         │
+│    │ Gaps         │──────────┬─────────│ --json, etc  │         │
+│    └──────────────┘          │         └──────────────┘         │
+│                              ▼                                   │
+│                    ┌──────────────────┐                         │
+│                    │  ✅ Agent-Ready   │                         │
+│                    │  CLI (Score ≥90)  │                         │
+│                    └──────────────────┘                         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+</details>
+
+---
+
 ## 1. AUDIT MODE — Agent-Readiness Checklist
 
 Run this checklist against any existing CLI to produce a score and prioritized fix list.
@@ -373,7 +491,353 @@ except Exception:
 
 ---
 
-## 6. References
+### Anti-Pattern 6: Unpaginated List Outputs
+
+```bash
+# Breaks agents — OOM on large datasets, no way to continue
+mycli users list  # returns 50,000 users as one JSON array
+```
+
+**Why it breaks:** Agent memory exhausted; no cursor for resumption. Fix: `--limit`, `--cursor`, return `next_cursor` in response.
+
+```json
+// Agent-safe pagination
+{
+  "ok": true,
+  "result": {
+    "items": [...],
+    "next_cursor": "eyJpZCI6MTAwMH0=",
+    "has_more": true
+  }
+}
+```
+
+---
+
+### Anti-Pattern 7: Rate Limit Without Retry-After
+
+```bash
+# Breaks agents — no hint when to retry
+{"error": "Rate limited"}  # exits 1
+```
+
+**Why it breaks:** Agent retries immediately, gets rate-limited again, loops forever. Fix: Exit 7 (transient), include `retry_after_seconds`.
+
+```json
+{
+  "ok": false,
+  "error": {
+    "class": "transient",
+    "code": "RATE_LIMITED",
+    "retryable": true,
+    "retry_after_seconds": 30
+  }
+}
+```
+
+---
+
+### Anti-Pattern 8: Platform-Specific Paths in Output
+
+```bash
+# Breaks agents — paths don't work on other OS
+{"path": "C:\\Users\\admin\\file.txt"}  # Windows
+{"path": "/home/user/file.txt"}          # Linux
+```
+
+**Why it breaks:** Agent running on different OS can't use the path. Fix: Use relative paths or include `platform` field.
+
+```json
+{
+  "result": {
+    "relative_path": "./output/file.txt",
+    "absolute_path": "/home/user/project/output/file.txt",
+    "platform": "linux"
+  }
+}
+```
+
+---
+
+### Anti-Pattern 9: No Timeout Handling
+
+```bash
+# Breaks agents — hangs indefinitely on slow network
+mycli deploy --wait  # no timeout, blocks forever
+```
+
+**Why it breaks:** Agent workflow hangs; no way to abort. Fix: `--timeout` flag with default; exit 7 on timeout.
+
+```python
+# Good pattern
+parser.add_argument('--timeout', type=int, default=300, 
+                    help='Max seconds to wait (default: 300)')
+
+if time.time() - start > timeout:
+    exit_error("transient", "TIMEOUT", f"Operation timed out after {timeout}s", 
+               retryable=True, exit_code=7)
+```
+
+---
+
+### Anti-Pattern 10: Unbounded Batch Operations
+
+```bash
+# Breaks agents — can't control blast radius
+mycli users delete-inactive  # deletes ALL inactive users
+```
+
+**Why it breaks:** Agent can't limit scope; one wrong call = disaster. Fix: Require `--limit` or `--dry-run` first.
+
+```bash
+# Good pattern
+mycli users delete-inactive --dry-run  # shows what would be deleted
+mycli users delete-inactive --limit 100 --yes  # controlled batch
+```
+
+---
+
+### Anti-Pattern 11: Version Sniffing via Error Messages
+
+```bash
+# Breaks agents — no programmatic way to check compatibility
+mycli --version
+# outputs: "mycli v2.3.4 (built 2024-01-15)"
+# Agent must regex-parse this
+```
+
+**Why it breaks:** Version format changes break regex; no semantic comparison. Fix: `--version --json` with structured output.
+
+```json
+// mycli --version --json
+{
+  "name": "mycli",
+  "version": "2.3.4",
+  "major": 2,
+  "minor": 3,
+  "patch": 4,
+  "api_version": "v2",
+  "min_api_version": "v1"
+}
+```
+
+---
+
+## 7. Testing & Verification
+
+### Automated Audit Script
+
+Save this as `audit-cli.sh` and run against any CLI:
+
+```bash
+#!/bin/bash
+# Usage: ./audit-cli.sh "mycli cmd"
+
+CLI="$1"
+SCORE=0
+MAX_CRITICAL=100
+MAX_IMPORTANT=25
+MAX_NICE=10
+
+echo "🔍 Auditing: $CLI"
+echo "================================"
+
+# C1: JSON output
+echo -n "C1 JSON output: "
+if $CLI --json 2>/dev/null | jq . > /dev/null 2>&1; then
+    echo "✅ PASS (+20)"
+    ((SCORE+=20))
+else
+    echo "❌ FAIL"
+fi
+
+# C2: stdout/stderr separation
+echo -n "C2 stdout/stderr: "
+$CLI --json > /tmp/out.txt 2>/tmp/err.txt
+if jq . /tmp/out.txt > /dev/null 2>&1; then
+    echo "✅ PASS (+20)"
+    ((SCORE+=20))
+else
+    echo "❌ FAIL"
+fi
+
+# C3: Semantic exit codes
+echo -n "C3 Exit codes: "
+$CLI nonexistent-resource --json > /dev/null 2>&1
+EXIT=$?
+if [ $EXIT -gt 1 ] && [ $EXIT -lt 8 ]; then
+    echo "✅ PASS (+20) - exit code $EXIT"
+    ((SCORE+=20))
+else
+    echo "❌ FAIL - exit code $EXIT (expected 2-7)"
+fi
+
+# C4: Non-interactive
+echo -n "C4 Non-interactive: "
+if timeout 5 bash -c "echo '' | $CLI dangerous-cmd --json" > /dev/null 2>&1; then
+    echo "✅ PASS (+20)"
+    ((SCORE+=20))
+else
+    echo "❌ FAIL (hung or requires --yes)"
+fi
+
+# C5: Structured errors
+echo -n "C5 Error structure: "
+if $CLI fail --json 2>/dev/null | jq -e '.error.code' > /dev/null 2>&1; then
+    echo "✅ PASS (+20)"
+    ((SCORE+=20))
+else
+    echo "❌ FAIL (no error.code field)"
+fi
+
+echo "================================"
+echo "Score: $SCORE / $MAX_CRITICAL (Critical only)"
+
+if [ $SCORE -ge 90 ]; then
+    echo "Grade: ✅ Agent-Ready"
+elif [ $SCORE -ge 70 ]; then
+    echo "Grade: 🟡 Mostly Ready"
+elif [ $SCORE -ge 50 ]; then
+    echo "Grade: 🟠 Needs Work"
+else
+    echo "Grade: 🔴 Agent-Hostile"
+fi
+```
+
+---
+
+### CI Integration (GitHub Actions)
+
+```yaml
+# .github/workflows/agent-ready.yml
+name: Agent Readiness
+
+on: [push, pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build CLI
+        run: make build
+        
+      - name: Test JSON output
+        run: |
+          OUTPUT=$(./mycli status --json)
+          echo "$OUTPUT" | jq -e '.ok != null' || exit 1
+          
+      - name: Test error structure
+        run: |
+          ./mycli nonexistent --json > /dev/null 2>&1 || true
+          ./mycli nonexistent --json 2>&1 | jq -e '.error.code' || exit 1
+          
+      - name: Test exit codes
+        run: |
+          ./mycli nonexistent --json > /dev/null 2>&1
+          [ $? -eq 3 ] || exit 1  # Should be "not found"
+          
+      - name: Test non-interactive
+        run: |
+          timeout 5 bash -c 'echo "" | ./mycli create --json' || [ $? -eq 2 ]
+          
+      - name: Validate JSON Schema
+        run: |
+          ./mycli status --json | npx ajv validate -s schema/response.json -d -
+```
+
+---
+
+### JSON Schema for Validation
+
+```json
+// schema/response.json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["ok"],
+  "properties": {
+    "ok": {"type": "boolean"},
+    "command": {"type": "string"},
+    "schema_version": {"type": "string"},
+    "result": {},
+    "error": {
+      "type": "object",
+      "required": ["class", "code", "message"],
+      "properties": {
+        "class": {"enum": ["unknown", "usage", "not_found", "auth", "conflict", "validation", "transient"]},
+        "code": {"type": "string", "pattern": "^[A-Z_]+$"},
+        "message": {"type": "string"},
+        "retryable": {"type": "boolean"},
+        "suggestion": {"type": "string"},
+        "retry_after_seconds": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "if": {"properties": {"ok": {"const": false}}},
+  "then": {"required": ["ok", "error"]}
+}
+```
+
+---
+
+### Smoke Test Suite
+
+```bash
+#!/bin/bash
+# smoke-test.sh - Run before every release
+
+set -e
+
+echo "=== Smoke Test Suite ==="
+
+# Test 1: Basic invocation
+echo "Test 1: Basic --json"
+./mycli version --json | jq -e '.version' > /dev/null
+
+# Test 2: Error handling
+echo "Test 2: Error structure"
+./mycli nonexistent --json 2>&1 | jq -e '.error.class' > /dev/null
+
+# Test 3: Exit codes
+echo "Test 3: Exit codes"
+set +e
+./mycli auth check --json > /dev/null 2>&1
+CODE=$?
+set -e
+[ $CODE -eq 0 ] || [ $CODE -eq 4 ] || { echo "Unexpected exit code: $CODE"; exit 1; }
+
+# Test 4: stdout purity
+echo "Test 4: stdout is pure JSON"
+./mycli list --json > /tmp/out.txt 2>/dev/null
+head -c1 /tmp/out.txt | grep -q '{' || { echo "stdout doesn't start with {"; exit 1; }
+
+# Test 5: Non-interactive mode
+echo "Test 5: Non-interactive"
+timeout 5 bash -c 'echo "" | ./mycli delete test --json' 2>&1 | jq -e '.error.code == "NON_INTERACTIVE"' > /dev/null
+
+echo "=== All smoke tests passed ✅ ==="
+```
+
+---
+
+### Pre-Release Checklist
+
+Before releasing a new version:
+
+- [ ] All 5 critical checks pass (audit score ≥ 100)
+- [ ] JSON schema validation passes for all commands
+- [ ] Exit codes match the documented table
+- [ ] `--help` includes examples and exit code documentation
+- [ ] No ANSI codes in stdout when `--json` is active
+- [ ] `--dry-run` works for all destructive commands
+- [ ] Error suggestions include valid runnable commands
+- [ ] CI workflow passes on Linux, macOS, and Windows
+
+---
+
+## 8. References
 
 The following reference files provide deeper detail on specific topics:
 

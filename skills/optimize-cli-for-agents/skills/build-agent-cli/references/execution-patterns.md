@@ -1403,30 +1403,99 @@ func cmdDeployStream() error {
 
 ## 8. Timeout and Cancellation
 
-### Timeout Configuration
+### CLI Timeout Flags
 
 ```bash
-# Overall timeout + graceful shutdown period
+# Standard timeout patterns
 mycli long-operation \
-  --timeout 5m \
-  --graceful-shutdown-timeout 30s
+  --timeout 5m \                         # Overall operation timeout
+  --connect-timeout 10s \                # Connection establishment timeout
+  --read-timeout 30s \                   # Per-request read timeout
+  --graceful-shutdown-timeout 30s        # Time allowed for cleanup
+
+# Timeout with behavior control
+mycli deploy \
+  --timeout 10m \
+  --timeout-exit-code 124 \              # Custom exit code on timeout (like GNU timeout)
+  --on-timeout cleanup                   # Action: cleanup | abort | preserve
 ```
+
+### Timeout Flag Standards
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--timeout <duration>` | Overall operation timeout | None (wait forever) |
+| `--connect-timeout <duration>` | Connection establishment | 10s |
+| `--read-timeout <duration>` | Read/response timeout | 30s |
+| `--write-timeout <duration>` | Write/send timeout | 30s |
+| `--idle-timeout <duration>` | Idle connection timeout | 60s |
+| `--graceful-shutdown-timeout <duration>` | Cleanup time on cancel | 30s |
+| `--on-timeout <action>` | Timeout behavior | abort |
+
+### Timeout Output
+
+```json
+{
+  "ok": false,
+  "error": {
+    "class": "timeout",
+    "code": "OPERATION_TIMEOUT",
+    "message": "Operation timed out after 5m",
+    "timeout_type": "overall",
+    "elapsed": "5m0.023s",
+    "timeout_configured": "5m"
+  },
+  "partial_result": {
+    "completed_steps": 45,
+    "total_steps": 100,
+    "last_checkpoint": "step-45"
+  },
+  "recovery": {
+    "resumable": true,
+    "resume_command": "mycli long-operation --resume-from step-45"
+  }
+}
+```
+
+### Timeout Configuration
 
 ### Signal Handling
 
-| Signal | Behavior |
-|--------|----------|
-| `SIGINT` (Ctrl+C) | Graceful shutdown, attempt cleanup |
-| `SIGTERM` | Graceful shutdown, shorter deadline |
-| `SIGKILL` | Immediate termination (not catchable) |
+| Signal | Behavior | Exit Code |
+|--------|----------|-----------|
+| `SIGINT` (Ctrl+C) | Graceful shutdown, attempt cleanup | 130 |
+| `SIGTERM` | Graceful shutdown, shorter deadline | 143 |
+| `SIGKILL` | Immediate termination (not catchable) | 137 |
+| `SIGHUP` | Reload config, continue running | N/A |
+| `SIGUSR1` | Dump status/progress | N/A |
+
+### Context Cancellation Patterns
+
+**Hierarchical Timeout Structure:**
+
+```
+Operation (5m overall)
+├── Phase 1: Prepare (30s)
+│   ├── Sub-operation A (10s)
+│   └── Sub-operation B (10s)
+├── Phase 2: Execute (4m)
+│   └── Per-item timeout (5s each)
+└── Phase 3: Cleanup (30s)
+```
 
 ### Implementation
 
-**Go:**
+**Go - Comprehensive Timeout + Signal Handling:**
 
 ```go
 func main() {
-    ctx, cancel := context.WithCancel(context.Background())
+    // Parse timeout flags
+    timeout := parseFlags().timeout // e.g., 5 * time.Minute
+    gracePeriod := parseFlags().gracefulShutdownTimeout // e.g., 30 * time.Second
+    
+    // Create timeout context
+    ctx, cancel := context.WithTimeout(context.Background(), timeout)
+    defer cancel()
     
     // Handle signals
     sigCh := make(chan os.Signal, 1)
@@ -1545,6 +1614,1085 @@ with GracefulShutdown() as shutdown:
 
 ---
 
+## 9. Pagination Patterns
+
+### Cursor-Based Pagination
+
+Cursor-based pagination is preferred for large datasets as it's stable under concurrent modifications.
+
+```bash
+# Basic cursor pagination
+mycli list items --per-page 50
+
+# Continue with cursor from previous response
+mycli list items --per-page 50 --cursor "eyJpZCI6MTAwfQ=="
+
+# Fetch all pages automatically
+mycli list items --all --per-page 100
+
+# Specific page (offset-based fallback)
+mycli list items --page 3 --per-page 50
+```
+
+### Pagination Flag Standards
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--per-page <n>` | Items per page | 20-100 |
+| `--page <n>` | Page number (1-indexed, offset-based) | 1 |
+| `--cursor <token>` | Cursor for next page | None |
+| `--all` | Fetch all pages automatically | false |
+| `--max-pages <n>` | Maximum pages when using `--all` | 100 |
+| `--direction <dir>` | Pagination direction: `forward` \| `backward` | forward |
+| `--sort-by <field>` | Sort field | created_at |
+| `--sort-order <order>` | Sort order: `asc` \| `desc` | desc |
+
+### Paginated Response Structure
+
+```json
+{
+  "ok": true,
+  "data": [
+    {"id": "item-51", "name": "Item 51"},
+    {"id": "item-52", "name": "Item 52"}
+  ],
+  "pagination": {
+    "total_count": 1500,
+    "page_size": 50,
+    "has_next": true,
+    "has_previous": true,
+    "next_cursor": "eyJpZCI6MTAwLCJjcmVhdGVkX2F0IjoiMjAyNC0wMS0xNVQxMDozMDowMFoifQ==",
+    "previous_cursor": "eyJpZCI6NTAsImNyZWF0ZWRfYXQiOiIyMDI0LTAxLTE1VDA5OjMwOjAwWiJ9",
+    "current_page": 2,
+    "total_pages": 30
+  },
+  "next_command": "mycli list items --per-page 50 --cursor 'eyJpZCI6MTAwLCJjcmVhdGVkX2F0IjoiMjAyNC0wMS0xNVQxMDozMDowMFoifQ=='"
+}
+```
+
+### Implementation
+
+**Go - Cursor Pagination:**
+
+```go
+type PaginationOptions struct {
+    PerPage   int    `json:"per_page"`
+    Cursor    string `json:"cursor,omitempty"`
+    Page      int    `json:"page,omitempty"`
+    All       bool   `json:"all,omitempty"`
+    MaxPages  int    `json:"max_pages,omitempty"`
+    SortBy    string `json:"sort_by,omitempty"`
+    SortOrder string `json:"sort_order,omitempty"`
+}
+
+type PageInfo struct {
+    TotalCount     int    `json:"total_count"`
+    PageSize       int    `json:"page_size"`
+    HasNext        bool   `json:"has_next"`
+    HasPrevious    bool   `json:"has_previous"`
+    NextCursor     string `json:"next_cursor,omitempty"`
+    PreviousCursor string `json:"previous_cursor,omitempty"`
+    CurrentPage    int    `json:"current_page,omitempty"`
+    TotalPages     int    `json:"total_pages,omitempty"`
+}
+
+type PaginatedResponse[T any] struct {
+    OK         bool     `json:"ok"`
+    Data       []T      `json:"data"`
+    Pagination PageInfo `json:"pagination"`
+}
+
+func (s *Server) ListItems(ctx context.Context, opts PaginationOptions) (*PaginatedResponse[Item], error) {
+    // Decode cursor if provided
+    var startAfter *Item
+    if opts.Cursor != "" {
+        decoded, err := decodeCursor(opts.Cursor)
+        if err != nil {
+            return nil, fmt.Errorf("invalid cursor: %w", err)
+        }
+        startAfter = decoded
+    }
+    
+    // Fetch one extra to determine has_next
+    limit := opts.PerPage + 1
+    items, err := s.db.QueryItems(ctx, startAfter, limit, opts.SortBy, opts.SortOrder)
+    if err != nil {
+        return nil, err
+    }
+    
+    hasNext := len(items) > opts.PerPage
+    if hasNext {
+        items = items[:opts.PerPage]
+    }
+    
+    var nextCursor string
+    if hasNext && len(items) > 0 {
+        nextCursor = encodeCursor(items[len(items)-1])
+    }
+    
+    return &PaginatedResponse[Item]{
+        OK:   true,
+        Data: items,
+        Pagination: PageInfo{
+            PageSize:   opts.PerPage,
+            HasNext:    hasNext,
+            NextCursor: nextCursor,
+        },
+    }, nil
+}
+
+// Cursor encoding/decoding
+func encodeCursor(item *Item) string {
+    data, _ := json.Marshal(map[string]interface{}{
+        "id":         item.ID,
+        "created_at": item.CreatedAt,
+    })
+    return base64.URLEncoding.EncodeToString(data)
+}
+
+func decodeCursor(cursor string) (*Item, error) {
+    data, err := base64.URLEncoding.DecodeString(cursor)
+    if err != nil {
+        return nil, err
+    }
+    var item Item
+    if err := json.Unmarshal(data, &item); err != nil {
+        return nil, err
+    }
+    return &item, nil
+}
+```
+
+**Python - Fetch All Pages:**
+
+```python
+import click
+from typing import Iterator, TypeVar, Generic
+from dataclasses import dataclass
+
+T = TypeVar('T')
+
+@dataclass
+class Page(Generic[T]):
+    data: list[T]
+    next_cursor: str | None
+    total_count: int | None
+
+def fetch_all_pages(
+    fetch_fn: callable,
+    per_page: int = 100,
+    max_pages: int = 100
+) -> Iterator[T]:
+    """Generator that yields items from all pages."""
+    cursor = None
+    pages_fetched = 0
+    
+    while pages_fetched < max_pages:
+        page = fetch_fn(per_page=per_page, cursor=cursor)
+        yield from page.data
+        
+        pages_fetched += 1
+        
+        if not page.next_cursor:
+            break
+        cursor = page.next_cursor
+
+@click.command()
+@click.option('--per-page', default=50, help='Items per page')
+@click.option('--cursor', help='Pagination cursor')
+@click.option('--page', type=int, help='Page number (offset-based)')
+@click.option('--all', 'fetch_all', is_flag=True, help='Fetch all pages')
+@click.option('--max-pages', default=100, help='Max pages when using --all')
+@click.option('--sort-by', default='created_at', help='Sort field')
+@click.option('--sort-order', type=click.Choice(['asc', 'desc']), default='desc')
+def list_items(per_page, cursor, page, fetch_all, max_pages, sort_by, sort_order):
+    if fetch_all:
+        items = list(fetch_all_pages(
+            lambda **kw: api.list_items(**kw, sort_by=sort_by, sort_order=sort_order),
+            per_page=per_page,
+            max_pages=max_pages
+        ))
+        output_json({
+            "ok": True,
+            "data": items,
+            "pagination": {"total_fetched": len(items)}
+        })
+    else:
+        result = api.list_items(
+            per_page=per_page,
+            cursor=cursor,
+            page=page,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        output_json(result)
+```
+
+**Node.js - Async Iterator:**
+
+```typescript
+interface PaginationOptions {
+  perPage?: number;
+  cursor?: string;
+  page?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+interface PageInfo {
+  totalCount?: number;
+  pageSize: number;
+  hasNext: boolean;
+  nextCursor?: string;
+}
+
+interface Page<T> {
+  data: T[];
+  pagination: PageInfo;
+}
+
+async function* fetchAllPages<T>(
+  fetchFn: (opts: PaginationOptions) => Promise<Page<T>>,
+  options: { perPage?: number; maxPages?: number } = {}
+): AsyncGenerator<T> {
+  const perPage = options.perPage ?? 100;
+  const maxPages = options.maxPages ?? 100;
+  let cursor: string | undefined;
+  let pagesFetched = 0;
+
+  while (pagesFetched < maxPages) {
+    const page = await fetchFn({ perPage, cursor });
+    
+    for (const item of page.data) {
+      yield item;
+    }
+    
+    pagesFetched++;
+    
+    if (!page.pagination.hasNext) break;
+    cursor = page.pagination.nextCursor;
+  }
+}
+
+// CLI command
+program
+  .command('list')
+  .option('--per-page <n>', 'Items per page', '50')
+  .option('--cursor <token>', 'Pagination cursor')
+  .option('--page <n>', 'Page number')
+  .option('--all', 'Fetch all pages')
+  .option('--max-pages <n>', 'Max pages for --all', '100')
+  .option('--sort-by <field>', 'Sort field', 'created_at')
+  .option('--sort-order <order>', 'Sort order', 'desc')
+  .action(async (options) => {
+    if (options.all) {
+      const items: Item[] = [];
+      for await (const item of fetchAllPages(
+        (opts) => api.listItems(opts),
+        { perPage: parseInt(options.perPage), maxPages: parseInt(options.maxPages) }
+      )) {
+        items.push(item);
+      }
+      console.log(JSON.stringify({ ok: true, data: items }));
+    } else {
+      const result = await api.listItems({
+        perPage: parseInt(options.perPage),
+        cursor: options.cursor,
+        page: options.page ? parseInt(options.page) : undefined,
+        sortBy: options.sortBy,
+        sortOrder: options.sortOrder,
+      });
+      console.log(JSON.stringify(result));
+    }
+  });
+```
+
+---
+
+## 10. Batch Operation Limits
+
+### Batch Size and Concurrency Controls
+
+```bash
+# Control batch execution
+mycli bulk-create \
+  --input items.json \
+  --batch-size 100 \                   # Items per batch
+  --max-concurrent 5 \                 # Parallel batch workers
+  --delay-between-batches 1s \         # Rate limiting between batches
+  --max-items 10000 \                  # Total item limit
+  --continue-on-error \                # Don't stop on failures
+  --fail-threshold 0.1                 # Stop if >10% failures
+```
+
+### Batch Flag Standards
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--batch-size <n>` | Items per batch | 100 |
+| `--max-concurrent <n>` | Parallel workers | 5 |
+| `--delay-between-batches <duration>` | Pause between batches | 0 |
+| `--max-items <n>` | Maximum items to process | unlimited |
+| `--continue-on-error` | Continue on item failures | false |
+| `--stop-on-error` | Stop on first failure | false (default: continue) |
+| `--fail-threshold <ratio>` | Stop if failure ratio exceeds | 1.0 |
+| `--dry-run` | Preview without executing | false |
+| `--retry-failed <n>` | Retry failed items n times | 0 |
+
+### Partial Failure Response
+
+```json
+{
+  "ok": false,
+  "status": "partial_failure",
+  "exit_code": 3,
+  "summary": {
+    "total_input": 1000,
+    "processed": 1000,
+    "succeeded": 950,
+    "failed": 50,
+    "skipped": 0,
+    "failure_rate": 0.05
+  },
+  "timing": {
+    "started_at": "2024-01-15T10:30:00Z",
+    "completed_at": "2024-01-15T10:35:30Z",
+    "elapsed": "5m30s",
+    "items_per_second": 3.03
+  },
+  "batches": {
+    "total": 10,
+    "completed": 10,
+    "batch_size": 100,
+    "max_concurrent": 5
+  },
+  "succeeded": [
+    {"id": "item-1", "result": {"resource_id": "res_abc123"}}
+  ],
+  "failed": [
+    {
+      "id": "item-51",
+      "batch_index": 0,
+      "item_index": 50,
+      "attempts": 3,
+      "error": {
+        "class": "validation",
+        "code": "INVALID_INPUT",
+        "message": "Field 'email' is invalid"
+      }
+    }
+  ],
+  "recovery": {
+    "failed_items_file": "./failed-items-2024-01-15T10-35-30.json",
+    "retry_command": "mycli bulk-create --input ./failed-items-2024-01-15T10-35-30.json"
+  }
+}
+```
+
+### Implementation
+
+**Go - Bounded Concurrency with Semaphore:**
+
+```go
+type BatchOptions struct {
+    BatchSize            int           `json:"batch_size"`
+    MaxConcurrent        int           `json:"max_concurrent"`
+    DelayBetweenBatches  time.Duration `json:"delay_between_batches"`
+    MaxItems             int           `json:"max_items"`
+    ContinueOnError      bool          `json:"continue_on_error"`
+    FailThreshold        float64       `json:"fail_threshold"`
+    RetryFailed          int           `json:"retry_failed"`
+}
+
+type BatchResult struct {
+    OK        bool                `json:"ok"`
+    Status    string              `json:"status"`
+    Summary   BatchSummary        `json:"summary"`
+    Timing    BatchTiming         `json:"timing"`
+    Succeeded []ItemResult        `json:"succeeded,omitempty"`
+    Failed    []ItemFailure       `json:"failed,omitempty"`
+    Recovery  *RecoveryInfo       `json:"recovery,omitempty"`
+}
+
+func ProcessBatch(ctx context.Context, items []Item, opts BatchOptions) (*BatchResult, error) {
+    if opts.MaxItems > 0 && len(items) > opts.MaxItems {
+        items = items[:opts.MaxItems]
+    }
+    
+    result := &BatchResult{
+        Summary: BatchSummary{TotalInput: len(items)},
+    }
+    startTime := time.Now()
+    
+    // Create semaphore for concurrency control
+    sem := make(chan struct{}, opts.MaxConcurrent)
+    var mu sync.Mutex
+    var wg sync.WaitGroup
+    
+    // Split into batches
+    batches := chunkItems(items, opts.BatchSize)
+    
+    for batchIdx, batch := range batches {
+        select {
+        case <-ctx.Done():
+            result.Status = "cancelled"
+            return result, ctx.Err()
+        default:
+        }
+        
+        // Delay between batches
+        if batchIdx > 0 && opts.DelayBetweenBatches > 0 {
+            time.Sleep(opts.DelayBetweenBatches)
+        }
+        
+        for itemIdx, item := range batch {
+            wg.Add(1)
+            sem <- struct{}{} // Acquire
+            
+            go func(item Item, bIdx, iIdx int) {
+                defer wg.Done()
+                defer func() { <-sem }() // Release
+                
+                // Process with retry
+                var lastErr error
+                for attempt := 0; attempt <= opts.RetryFailed; attempt++ {
+                    if err := processItem(ctx, item); err != nil {
+                        lastErr = err
+                        if !isRetryable(err) {
+                            break
+                        }
+                        time.Sleep(backoff(attempt))
+                        continue
+                    }
+                    
+                    mu.Lock()
+                    result.Succeeded = append(result.Succeeded, ItemResult{ID: item.ID})
+                    result.Summary.Succeeded++
+                    mu.Unlock()
+                    return
+                }
+                
+                mu.Lock()
+                result.Failed = append(result.Failed, ItemFailure{
+                    ID:         item.ID,
+                    BatchIndex: bIdx,
+                    ItemIndex:  iIdx,
+                    Error:      toErrorInfo(lastErr),
+                })
+                result.Summary.Failed++
+                
+                // Check fail threshold
+                failRate := float64(result.Summary.Failed) / float64(result.Summary.Processed())
+                mu.Unlock()
+                
+                if !opts.ContinueOnError || failRate > opts.FailThreshold {
+                    // Signal to stop (in real impl, use context cancellation)
+                }
+            }(item, batchIdx, itemIdx)
+        }
+    }
+    
+    wg.Wait()
+    
+    result.Timing.Elapsed = time.Since(startTime)
+    result.OK = result.Summary.Failed == 0
+    result.Status = determineStatus(result.Summary)
+    
+    // Generate recovery info if failures
+    if len(result.Failed) > 0 {
+        result.Recovery = generateRecoveryInfo(result.Failed)
+    }
+    
+    return result, nil
+}
+```
+
+**Python - Async Batch Processing:**
+
+```python
+import asyncio
+from dataclasses import dataclass
+from typing import Callable, TypeVar
+import aiofiles
+
+T = TypeVar('T')
+R = TypeVar('R')
+
+@dataclass
+class BatchOptions:
+    batch_size: int = 100
+    max_concurrent: int = 5
+    delay_between_batches: float = 0.0
+    max_items: int | None = None
+    continue_on_error: bool = True
+    fail_threshold: float = 1.0
+    retry_failed: int = 0
+
+async def process_batch(
+    items: list[T],
+    processor: Callable[[T], R],
+    options: BatchOptions
+) -> dict:
+    if options.max_items:
+        items = items[:options.max_items]
+    
+    semaphore = asyncio.Semaphore(options.max_concurrent)
+    succeeded = []
+    failed = []
+    
+    async def process_with_semaphore(item: T, batch_idx: int, item_idx: int):
+        async with semaphore:
+            for attempt in range(options.retry_failed + 1):
+                try:
+                    result = await processor(item)
+                    succeeded.append({"id": item.id, "result": result})
+                    return
+                except Exception as e:
+                    if attempt == options.retry_failed or not is_retryable(e):
+                        failed.append({
+                            "id": item.id,
+                            "batch_index": batch_idx,
+                            "item_index": item_idx,
+                            "error": error_to_dict(e)
+                        })
+                        return
+                    await asyncio.sleep(backoff(attempt))
+    
+    # Process in batches
+    batches = [items[i:i+options.batch_size] 
+               for i in range(0, len(items), options.batch_size)]
+    
+    for batch_idx, batch in enumerate(batches):
+        if batch_idx > 0 and options.delay_between_batches > 0:
+            await asyncio.sleep(options.delay_between_batches)
+        
+        # Check fail threshold
+        if len(succeeded) + len(failed) > 0:
+            fail_rate = len(failed) / (len(succeeded) + len(failed))
+            if fail_rate > options.fail_threshold:
+                break
+        
+        tasks = [
+            process_with_semaphore(item, batch_idx, item_idx)
+            for item_idx, item in enumerate(batch)
+        ]
+        await asyncio.gather(*tasks)
+    
+    return {
+        "ok": len(failed) == 0,
+        "status": "success" if len(failed) == 0 else "partial_failure",
+        "summary": {
+            "total_input": len(items),
+            "succeeded": len(succeeded),
+            "failed": len(failed)
+        },
+        "succeeded": succeeded,
+        "failed": failed
+    }
+
+# CLI
+@click.command()
+@click.option('--input', 'input_file', required=True)
+@click.option('--batch-size', default=100)
+@click.option('--max-concurrent', default=5)
+@click.option('--delay-between-batches', default='0s')
+@click.option('--max-items', type=int)
+@click.option('--continue-on-error', is_flag=True)
+@click.option('--fail-threshold', default=1.0)
+@click.option('--retry-failed', default=0)
+def bulk_create(input_file, **kwargs):
+    items = load_items(input_file)
+    options = BatchOptions(**kwargs)
+    
+    result = asyncio.run(process_batch(items, create_item, options))
+    output_json(result)
+```
+
+---
+
+## 11. Rate Limiting (Client-Side)
+
+### Rate Limit Flags
+
+```bash
+# Client-side rate limiting
+mycli sync \
+  --rate-limit 100/minute \            # Request rate limit
+  --retry-on-rate-limit \              # Auto-retry on 429
+  --max-retries 5 \                    # Maximum retry attempts
+  --backoff-initial 1s \               # Initial backoff delay
+  --backoff-max 60s \                  # Maximum backoff delay
+  --backoff-multiplier 2.0 \           # Exponential multiplier
+  --respect-retry-after                # Honor Retry-After header
+```
+
+### Rate Limit Flag Standards
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--rate-limit <rate>` | Request rate (e.g., `100/minute`) | unlimited |
+| `--retry-on-rate-limit` | Auto-retry on 429 | true |
+| `--max-retries <n>` | Maximum retry attempts | 5 |
+| `--backoff-initial <duration>` | Initial backoff delay | 1s |
+| `--backoff-max <duration>` | Maximum backoff delay | 60s |
+| `--backoff-multiplier <n>` | Exponential multiplier | 2.0 |
+| `--backoff-jitter <ratio>` | Random jitter (0-1) | 0.1 |
+| `--respect-retry-after` | Honor Retry-After header | true |
+| `--circuit-breaker-threshold <n>` | Failures before circuit opens | 5 |
+| `--circuit-breaker-timeout <duration>` | Time before retry after open | 30s |
+
+### Rate Limit Response
+
+```json
+{
+  "ok": false,
+  "error": {
+    "class": "rate_limit",
+    "code": "RATE_LIMITED",
+    "message": "Rate limit exceeded",
+    "retry_after": 45,
+    "retry_after_unit": "seconds",
+    "limit": {
+      "requests_per_minute": 100,
+      "remaining": 0,
+      "reset_at": "2024-01-15T10:31:00Z"
+    }
+  },
+  "retry": {
+    "should_retry": true,
+    "retry_after": "45s",
+    "retry_command": "mycli sync --continue"
+  }
+}
+```
+
+### Implementation
+
+**Go - Comprehensive Rate Limiter with Circuit Breaker:**
+
+```go
+type RateLimitOptions struct {
+    RateLimit             string        `json:"rate_limit"` // e.g., "100/minute"
+    RetryOnRateLimit      bool          `json:"retry_on_rate_limit"`
+    MaxRetries            int           `json:"max_retries"`
+    BackoffInitial        time.Duration `json:"backoff_initial"`
+    BackoffMax            time.Duration `json:"backoff_max"`
+    BackoffMultiplier     float64       `json:"backoff_multiplier"`
+    BackoffJitter         float64       `json:"backoff_jitter"`
+    RespectRetryAfter     bool          `json:"respect_retry_after"`
+    CircuitBreakerThreshold int         `json:"circuit_breaker_threshold"`
+    CircuitBreakerTimeout time.Duration `json:"circuit_breaker_timeout"`
+}
+
+type RateLimiter struct {
+    limiter       *rate.Limiter
+    opts          RateLimitOptions
+    failures      int
+    circuitOpen   bool
+    circuitOpenAt time.Time
+    mu            sync.Mutex
+}
+
+func NewRateLimiter(opts RateLimitOptions) (*RateLimiter, error) {
+    limit, err := parseRateLimit(opts.RateLimit) // e.g., "100/minute" -> rate.Limit
+    if err != nil {
+        return nil, err
+    }
+    
+    return &RateLimiter{
+        limiter: rate.NewLimiter(limit, int(limit)), // burst = limit
+        opts:    opts,
+    }, nil
+}
+
+func (r *RateLimiter) Do(ctx context.Context, fn func() (*http.Response, error)) (*http.Response, error) {
+    // Check circuit breaker
+    r.mu.Lock()
+    if r.circuitOpen {
+        if time.Since(r.circuitOpenAt) > r.opts.CircuitBreakerTimeout {
+            r.circuitOpen = false
+            r.failures = 0
+        } else {
+            r.mu.Unlock()
+            return nil, &CircuitOpenError{
+                OpenAt:   r.circuitOpenAt,
+                WaitFor:  r.opts.CircuitBreakerTimeout - time.Since(r.circuitOpenAt),
+            }
+        }
+    }
+    r.mu.Unlock()
+    
+    // Wait for rate limit
+    if err := r.limiter.Wait(ctx); err != nil {
+        return nil, err
+    }
+    
+    var lastErr error
+    backoff := r.opts.BackoffInitial
+    
+    for attempt := 0; attempt <= r.opts.MaxRetries; attempt++ {
+        resp, err := fn()
+        if err != nil {
+            lastErr = err
+            r.recordFailure()
+            continue
+        }
+        
+        // Handle rate limit response
+        if resp.StatusCode == http.StatusTooManyRequests {
+            r.recordFailure()
+            
+            if !r.opts.RetryOnRateLimit {
+                return resp, nil
+            }
+            
+            // Determine wait time
+            waitTime := backoff
+            if r.opts.RespectRetryAfter {
+                if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+                    if seconds, err := strconv.Atoi(retryAfter); err == nil {
+                        waitTime = time.Duration(seconds) * time.Second
+                    } else if t, err := http.ParseTime(retryAfter); err == nil {
+                        waitTime = time.Until(t)
+                    }
+                }
+            }
+            
+            // Add jitter
+            if r.opts.BackoffJitter > 0 {
+                jitter := time.Duration(float64(waitTime) * r.opts.BackoffJitter * (rand.Float64()*2 - 1))
+                waitTime += jitter
+            }
+            
+            select {
+            case <-ctx.Done():
+                return nil, ctx.Err()
+            case <-time.After(waitTime):
+            }
+            
+            // Exponential backoff for next attempt
+            backoff = time.Duration(float64(backoff) * r.opts.BackoffMultiplier)
+            if backoff > r.opts.BackoffMax {
+                backoff = r.opts.BackoffMax
+            }
+            
+            lastErr = &RateLimitError{RetryAfter: waitTime}
+            continue
+        }
+        
+        // Success - reset failures
+        r.recordSuccess()
+        return resp, nil
+    }
+    
+    return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+}
+
+func (r *RateLimiter) recordFailure() {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    
+    r.failures++
+    if r.failures >= r.opts.CircuitBreakerThreshold {
+        r.circuitOpen = true
+        r.circuitOpenAt = time.Now()
+    }
+}
+
+func (r *RateLimiter) recordSuccess() {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    r.failures = 0
+    r.circuitOpen = false
+}
+```
+
+**Python - Async Rate Limiter:**
+
+```python
+import asyncio
+import time
+from dataclasses import dataclass
+from typing import Callable, TypeVar
+import random
+
+T = TypeVar('T')
+
+@dataclass
+class RateLimitOptions:
+    rate_limit: str = "100/minute"  # e.g., "100/minute", "10/second"
+    retry_on_rate_limit: bool = True
+    max_retries: int = 5
+    backoff_initial: float = 1.0
+    backoff_max: float = 60.0
+    backoff_multiplier: float = 2.0
+    backoff_jitter: float = 0.1
+    respect_retry_after: bool = True
+    circuit_breaker_threshold: int = 5
+    circuit_breaker_timeout: float = 30.0
+
+class RateLimiter:
+    def __init__(self, options: RateLimitOptions):
+        self.options = options
+        self.tokens, self.interval = self._parse_rate_limit(options.rate_limit)
+        self.available_tokens = self.tokens
+        self.last_refill = time.monotonic()
+        self.failures = 0
+        self.circuit_open = False
+        self.circuit_open_at = 0.0
+        self._lock = asyncio.Lock()
+    
+    def _parse_rate_limit(self, rate: str) -> tuple[int, float]:
+        count, period = rate.split('/')
+        periods = {'second': 1, 'minute': 60, 'hour': 3600}
+        return int(count), periods.get(period, 60)
+    
+    async def _acquire(self):
+        async with self._lock:
+            now = time.monotonic()
+            elapsed = now - self.last_refill
+            self.available_tokens = min(
+                self.tokens,
+                self.available_tokens + (elapsed / self.interval) * self.tokens
+            )
+            self.last_refill = now
+            
+            if self.available_tokens < 1:
+                wait_time = (1 - self.available_tokens) * (self.interval / self.tokens)
+                await asyncio.sleep(wait_time)
+                self.available_tokens = 1
+            
+            self.available_tokens -= 1
+    
+    async def execute(self, fn: Callable[[], T]) -> T:
+        # Check circuit breaker
+        if self.circuit_open:
+            if time.monotonic() - self.circuit_open_at > self.options.circuit_breaker_timeout:
+                self.circuit_open = False
+                self.failures = 0
+            else:
+                raise CircuitOpenError(
+                    f"Circuit open, retry after {self.options.circuit_breaker_timeout - (time.monotonic() - self.circuit_open_at):.1f}s"
+                )
+        
+        await self._acquire()
+        
+        backoff = self.options.backoff_initial
+        last_error = None
+        
+        for attempt in range(self.options.max_retries + 1):
+            try:
+                result = await fn()
+                self.failures = 0
+                return result
+            except RateLimitError as e:
+                self.failures += 1
+                if self.failures >= self.options.circuit_breaker_threshold:
+                    self.circuit_open = True
+                    self.circuit_open_at = time.monotonic()
+                    raise CircuitOpenError("Too many failures, circuit opened")
+                
+                if not self.options.retry_on_rate_limit:
+                    raise
+                
+                # Determine wait time
+                wait_time = e.retry_after if self.options.respect_retry_after and e.retry_after else backoff
+                
+                # Add jitter
+                if self.options.backoff_jitter > 0:
+                    jitter = wait_time * self.options.backoff_jitter * (random.random() * 2 - 1)
+                    wait_time += jitter
+                
+                await asyncio.sleep(wait_time)
+                
+                backoff = min(backoff * self.options.backoff_multiplier, self.options.backoff_max)
+                last_error = e
+            except Exception as e:
+                self.failures += 1
+                last_error = e
+                if self.failures >= self.options.circuit_breaker_threshold:
+                    self.circuit_open = True
+                    self.circuit_open_at = time.monotonic()
+                raise
+        
+        raise MaxRetriesExceeded(f"Max retries exceeded: {last_error}")
+
+# CLI usage
+@click.command()
+@click.option('--rate-limit', default='100/minute')
+@click.option('--retry-on-rate-limit', is_flag=True, default=True)
+@click.option('--max-retries', default=5)
+@click.option('--backoff-initial', default='1s')
+@click.option('--backoff-max', default='60s')
+@click.option('--backoff-multiplier', default=2.0)
+@click.option('--respect-retry-after', is_flag=True, default=True)
+@click.option('--circuit-breaker-threshold', default=5)
+@click.option('--circuit-breaker-timeout', default='30s')
+def sync(rate_limit, **kwargs):
+    options = RateLimitOptions(rate_limit=rate_limit, **kwargs)
+    limiter = RateLimiter(options)
+    
+    async def run():
+        return await limiter.execute(api.sync)
+    
+    result = asyncio.run(run())
+    output_json(result)
+```
+
+**Node.js - Token Bucket with Retry:**
+
+```typescript
+interface RateLimitOptions {
+  rateLimit: string;
+  retryOnRateLimit: boolean;
+  maxRetries: number;
+  backoffInitial: number;
+  backoffMax: number;
+  backoffMultiplier: number;
+  backoffJitter: number;
+  respectRetryAfter: boolean;
+  circuitBreakerThreshold: number;
+  circuitBreakerTimeout: number;
+}
+
+class RateLimiter {
+  private tokens: number;
+  private maxTokens: number;
+  private refillInterval: number;
+  private lastRefill: number;
+  private failures = 0;
+  private circuitOpen = false;
+  private circuitOpenAt = 0;
+
+  constructor(private options: RateLimitOptions) {
+    const [count, period] = this.parseRateLimit(options.rateLimit);
+    this.maxTokens = count;
+    this.tokens = count;
+    this.refillInterval = period;
+    this.lastRefill = Date.now();
+  }
+
+  private parseRateLimit(rate: string): [number, number] {
+    const [count, period] = rate.split('/');
+    const periods: Record<string, number> = {
+      second: 1000,
+      minute: 60000,
+      hour: 3600000,
+    };
+    return [parseInt(count), periods[period] ?? 60000];
+  }
+
+  private refill(): void {
+    const now = Date.now();
+    const elapsed = now - this.lastRefill;
+    const refillAmount = (elapsed / this.refillInterval) * this.maxTokens;
+    this.tokens = Math.min(this.maxTokens, this.tokens + refillAmount);
+    this.lastRefill = now;
+  }
+
+  private async acquire(): Promise<void> {
+    this.refill();
+    if (this.tokens < 1) {
+      const waitTime = ((1 - this.tokens) / this.maxTokens) * this.refillInterval;
+      await sleep(waitTime);
+      this.tokens = 1;
+    }
+    this.tokens -= 1;
+  }
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    // Check circuit breaker
+    if (this.circuitOpen) {
+      if (Date.now() - this.circuitOpenAt > this.options.circuitBreakerTimeout) {
+        this.circuitOpen = false;
+        this.failures = 0;
+      } else {
+        throw new CircuitOpenError(
+          `Circuit open, retry after ${this.options.circuitBreakerTimeout - (Date.now() - this.circuitOpenAt)}ms`
+        );
+      }
+    }
+
+    await this.acquire();
+
+    let backoff = this.options.backoffInitial;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
+      try {
+        const result = await fn();
+        this.failures = 0;
+        return result;
+      } catch (error) {
+        this.failures++;
+
+        if (this.failures >= this.options.circuitBreakerThreshold) {
+          this.circuitOpen = true;
+          this.circuitOpenAt = Date.now();
+          throw new CircuitOpenError('Too many failures');
+        }
+
+        if (error instanceof RateLimitError) {
+          if (!this.options.retryOnRateLimit) throw error;
+
+          let waitTime = backoff;
+          if (this.options.respectRetryAfter && error.retryAfter) {
+            waitTime = error.retryAfter * 1000;
+          }
+
+          // Add jitter
+          if (this.options.backoffJitter > 0) {
+            const jitter = waitTime * this.options.backoffJitter * (Math.random() * 2 - 1);
+            waitTime += jitter;
+          }
+
+          await sleep(waitTime);
+          backoff = Math.min(backoff * this.options.backoffMultiplier, this.options.backoffMax);
+          lastError = error;
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw new MaxRetriesExceeded(`Max retries exceeded: ${lastError?.message}`);
+  }
+}
+
+// CLI
+program
+  .command('sync')
+  .option('--rate-limit <rate>', 'Rate limit', '100/minute')
+  .option('--retry-on-rate-limit', 'Auto retry on 429', true)
+  .option('--max-retries <n>', 'Max retries', '5')
+  .option('--backoff-initial <ms>', 'Initial backoff', '1000')
+  .option('--backoff-max <ms>', 'Max backoff', '60000')
+  .option('--backoff-multiplier <n>', 'Backoff multiplier', '2')
+  .option('--respect-retry-after', 'Honor Retry-After', true)
+  .option('--circuit-breaker-threshold <n>', 'Circuit breaker threshold', '5')
+  .option('--circuit-breaker-timeout <ms>', 'Circuit reset timeout', '30000')
+  .action(async (options) => {
+    const limiter = new RateLimiter({
+      rateLimit: options.rateLimit,
+      retryOnRateLimit: options.retryOnRateLimit,
+      maxRetries: parseInt(options.maxRetries),
+      backoffInitial: parseInt(options.backoffInitial),
+      backoffMax: parseInt(options.backoffMax),
+      backoffMultiplier: parseFloat(options.backoffMultiplier),
+      backoffJitter: 0.1,
+      respectRetryAfter: options.respectRetryAfter,
+      circuitBreakerThreshold: parseInt(options.circuitBreakerThreshold),
+      circuitBreakerTimeout: parseInt(options.circuitBreakerTimeout),
+    });
+
+    const result = await limiter.execute(() => api.sync());
+    console.log(JSON.stringify(result));
+  });
+```
+
+---
+
 ## Summary: Agent-Friendly Execution Patterns
 
 | Pattern | Key Benefit | Implementation Priority |
@@ -1553,13 +2701,28 @@ with GracefulShutdown() as shutdown:
 | **Retry with backoff** | Handles transient failures | High |
 | **Dry-run** | Preview before commit | High |
 | **Non-interactive** | CI/CD compatibility | High |
+| **Timeout handling** | Graceful deadline enforcement | High |
+| **Pagination** | Efficient large dataset traversal | High |
 | **Batch with partial failure** | Efficient bulk operations | Medium |
+| **Batch limits** | Resource-safe bulk processing | Medium |
+| **Rate limiting (client)** | Prevents throttling, respects quotas | Medium |
 | **Long-running tasks** | Async operation support | Medium |
 | **Transaction/rollback** | Atomic multi-step ops | Medium |
 | **Timeout/cancellation** | Graceful failure handling | Medium |
+
+### Standard Flag Reference
+
+| Category | Flags |
+|----------|-------|
+| **Timeout** | `--timeout`, `--connect-timeout`, `--read-timeout`, `--graceful-shutdown-timeout`, `--on-timeout` |
+| **Pagination** | `--per-page`, `--page`, `--cursor`, `--all`, `--max-pages`, `--sort-by`, `--sort-order` |
+| **Batch** | `--batch-size`, `--max-concurrent`, `--delay-between-batches`, `--continue-on-error`, `--fail-threshold` |
+| **Rate Limit** | `--rate-limit`, `--max-retries`, `--backoff-initial`, `--backoff-max`, `--respect-retry-after`, `--circuit-breaker-threshold` |
+| **General** | `--dry-run`, `--yes`, `--force`, `--idempotency-key`, `--output`, `--quiet` |
 
 All patterns should:
 1. Return structured JSON output
 2. Use clear exit codes
 3. Provide sufficient context for automated recovery
 4. Never hang waiting for human input
+5. Use consistent `--kebab-case` flag naming
