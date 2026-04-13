@@ -118,7 +118,7 @@ After a wave finishes, check for failures before proceeding:
 
 ```bash
 # After waiting for all wave-1 tasks:
-FAILED=$(cli-codex-subagent task list --label wave-1 --status failed --json | python3 -c "import sys,json; tasks=json.load(sys.stdin); print(len(tasks))")
+FAILED=$(cli-codex-subagent task list --label wave-1 --status failed --json | python3 -c "import sys,json; tasks=json.load(sys.stdin)['data']; print(len(tasks))")
 echo "Failed: $FAILED"
 
 if [ "$FAILED" -gt 0 ]; then

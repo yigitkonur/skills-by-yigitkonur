@@ -59,12 +59,19 @@ For automation: parse events as JSON lines.
 
 ```bash
 cli-codex-subagent task follow tsk_abc123 --stream-json | while IFS= read -r line; do
-    TYPE=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('type',''))")
-    if [ "$TYPE" = "task_complete" ]; then
-        echo "DONE"
-        break
-    elif [ "$TYPE" = "task_error" ]; then
-        echo "FAILED"
+    # Each line is {"type":"event","event":"...","data":{...}} or {"type":"result","status":"..."}
+    RESULT=$(echo "$line" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+if d.get('type') == 'result':
+    print('DONE' if d.get('status') == 'completed' else 'FAILED')
+elif d.get('type') == 'event' and d.get('event') == 'task.completed':
+    print('DONE')
+elif d.get('type') == 'event' and d.get('event') == 'task.failed':
+    print('FAILED')
+")
+    if [ "$RESULT" = "DONE" ] || [ "$RESULT" = "FAILED" ]; then
+        echo "$RESULT"
         break
     fi
 done
@@ -89,7 +96,7 @@ Count by status:
 ```bash
 cli-codex-subagent task list --label wave-1 --json | python3 -c "
 import sys, json
-tasks = json.load(sys.stdin)
+tasks = json.load(sys.stdin)['data']
 from collections import Counter
 print(Counter(t['status'] for t in tasks))
 "
@@ -129,8 +136,8 @@ cat "$TASK_DIR/events.jsonl" | python3 -c "
 import sys, json
 for line in sys.stdin:
     e = json.loads(line)
-    if e.get('type') == 'tool_result':
-        print(e.get('output', '')[:200])
+    if e.get('tag') == 'MCP':  # MCP tool calls (event field = mcpToolCall)
+        print(json.dumps(e.get('data', {}))[:200])
 "
 
 # Summary
@@ -144,14 +151,14 @@ cat "$TASK_DIR/prompt.md"
 
 ```bash
 # Find all tasks that are currently running
-cli-codex-subagent task list --status working
+cli-codex-subagent task list --status running
 
 # Find all tasks that failed today
 cli-codex-subagent task list --status failed --json | python3 -c "
 import sys, json
 from datetime import datetime, timezone
 now = datetime.now(timezone.utc)
-tasks = json.load(sys.stdin)
+tasks = json.load(sys.stdin)['data']
 today = [t for t in tasks if t.get('createdAt','')[:10] == now.strftime('%Y-%m-%d')]
 for t in today:
     print(t['id'], t.get('errorMessage','')[:80])
