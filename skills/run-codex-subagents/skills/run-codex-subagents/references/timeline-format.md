@@ -98,8 +98,8 @@ Source event: `item/completed` with `type: "agentMessage"`.
 ```
 14:22:20 MCP     database-mcp/query → completed           ← item/completed (mcpToolCall)
 14:22:25 MCP     search-mcp/index → failed
-10:24:09 TOKENS  18629 / 996147 (1.9%)                    ← thread/tokenUsage/updated (deduplicated)
-10:24:16 TOKENS  38407 / 996147 (3.9%)
+10:24:09 TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}  ← tokenUsage/updated
+10:24:16 TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":38407},"modelContextWindow":258400}}
 ```
 
 MCP format: `{serverName}/{toolName} → {status}`. TOKENS format: `{total} / {window} ({pct}%)`. Duplicates (same total) are filtered.
