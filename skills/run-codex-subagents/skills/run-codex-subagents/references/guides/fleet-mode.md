@@ -4,13 +4,13 @@ Fleet mode enables multi-profile Codex execution, rotating tasks across multiple
 
 ## Enabling Fleet Mode
 
-Set the environment variable before starting the MCP server:
+Set the environment variable before starting the daemon:
 
 ```bash
 export CODEX_ENABLE_FLEET=1
 ```
 
-When active, the server appends a `[codex-worker-fleet]` sentinel to the `developer_instructions` of every spawned task. This sentinel is how the server tracks fleet-managed tasks internally.
+When active, the CLI appends a `[codex-worker-fleet]` sentinel to the `developer_instructions` of every spawned task. This sentinel is how the daemon tracks fleet-managed tasks internally.
 
 ## How It Works
 
@@ -68,7 +68,7 @@ The cooldown prevents hitting per-account rate limits when dispatching many task
 2. Authenticate each profile independently
 3. Set `CODEX_HOME_DIRS` to colon-separated list of profile roots
 4. Set `CODEX_ENABLE_FLEET=1`
-5. Restart the MCP server
+5. Restart the daemon
 6. Verify by spawning a task and checking for `[codex-worker-fleet]` in developer_instructions
 
 ## Monitoring Fleet Tasks
@@ -89,9 +89,9 @@ To see which profile handled a task, check the Codex CLI logs in the respective 
 ## Interaction with Other Features
 
 - **Labels:** Work normally. Fleet-dispatched tasks can have labels like any other task.
-- **depends_on:** Dependency chains work across profiles. The server handles sequencing regardless of which profile runs each task.
+- **depends_on:** Dependency chains work across profiles. The CLI handles sequencing regardless of which profile runs each task.
 - **context_files:** File paths must be absolute and accessible from all profile roots.
-- **cancel-task:** Cancels the task regardless of which profile is running it.
+- **`task cancel`:** Cancels the task regardless of which profile is running it.
 
 ## Security Note
 

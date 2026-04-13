@@ -1,161 +1,170 @@
-# Pause Flow Handling
+# Request Handling: Approvals and Input
 
-When wait-task returns `input_required`, the agent is paused. The `pending_question` field tells you what it needs. There are 5 pause types, but **only `dynamic_tool` actually pauses the task for the orchestrator**. The other 4 are auto-resolved by the MCP server.
+When a task blocks on a shell-command approval, file-write approval, or user-input question, it exits with code `2`. The `request` commands let you inspect and answer these without restarting the task.
 
-## CRITICAL: Auto-resolution behavior
-
-| Type | Auto-resolved? | How |
-|---|---|---|
-| `command_approval` | **YES** — auto-accepted | Server sends `accept` immediately |
-| `file_approval` | **YES** — auto-accepted | Server sends `accept` immediately |
-| `elicitation` | **YES** — auto-accepted | Server sends `accept` immediately |
-| `user_input` | **YES** — auto-answered | Server selects first option (the one marked "(Recommended)") |
-| `dynamic_tool` | **NO** — task pauses | Orchestrator must provide result or error |
-
-The server's `developer_instructions` include a QUESTION POLICY that tells the agent: put the recommended option first and mark it with "(Recommended)". This ensures auto-answer picks the right choice.
-
-You will see auto-resolutions in the timeline as `AUTO` and `APPROVE` lines. In `events.jsonl`, they appear as `_auto_answer` and synthetic approval events.
-
-## Type 1: user_input
-
-Agent asked a question. Server auto-selects the first option.
-
-**Server request (in events.jsonl):**
-```json
-{
-  "t": "2026-04-10T18:49:06.687Z",
-  "method": "_server_request:item/tool/requestUserInput",
-  "requestId": 0,
-  "params": {
-    "threadId": "019d78b9-e054-...",
-    "turnId": "019d78b9-e05f-...",
-    "itemId": "call_FhnUjvAGUjyvlC0geDhLxfmZ",
-    "questions": [
-      {
-        "id": "color_choice",
-        "header": "Color",
-        "question": "What color should I use for /tmp/color-choice.txt?",
-        "isOther": true,
-        "isSecret": false,
-        "options": [
-          { "label": "Red (Recommended)", "description": "Use red." },
-          { "label": "Blue", "description": "Use blue." },
-          { "label": "Green", "description": "Use green." }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**Auto-answer (in events.jsonl):**
-```json
-{
-  "t": "2026-04-10T18:49:06.688Z",
-  "method": "_auto_answer",
-  "answers": { "color_choice": "Red (Recommended)" },
-  "summary": "What color should I use for /tmp/color-choice.txt? → \"Red (Recommended)\""
-}
-```
-
-**Timeline line:**
-```
-11:49:06 AUTO    What color should I use for /tmp/color-choice.txt? → "Red (Recommended)"
-```
-
-**Manual respond-task (if you need to override):**
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "user_input",
-  "answers": { "color_choice": "Blue" }
-}
-```
-
-## Type 2: command_approval (auto-accepted)
-
-Agent wants to run a shell command. Pending question: `{type: "command_approval", requestId, command, sandboxPolicy}`.
+## The Approval Flow
 
 ```
-14:22:03 APPROVE cmd: npm install express @types/express
+cli-codex-subagent run task.md --follow
+   → exit 2 (blocked)
+
+cli-codex-subagent request list
+   → req_abc123  command_approval  tsk_xyz  "npm install express"
+
+cli-codex-subagent request read req_abc123
+   → type: command_approval
+     command: "npm install express"
+     task: tsk_xyz
+
+cli-codex-subagent request answer req_abc123 --decision accept-session
+
+cli-codex-subagent task follow tsk_xyz
+   → resumes...
+   → DONE completed
 ```
 
-Manual override: `{task_id, type: "command_approval", decision: "accept" | "reject"}`
+## Preventing Approvals Entirely
 
-## Type 3: file_approval (auto-accepted)
+The best approach for autonomous runs: **skip approvals at spawn time**.
 
-Agent wants to write/modify files. Pending question: `{type: "file_approval", requestId, fileChanges: [{path, patch}]}`.
+```bash
+# Auto-approve everything (--auto-approve = --approval-policy never)
+cli-codex-subagent run task.md --follow --auto-approve
 
-```
-14:22:05 APPROVE files: src/config.ts, package.json
-```
+# Fine-grained: only block if a command previously failed
+cli-codex-subagent run task.md --follow --approval-policy on-failure
 
-Manual override: `{task_id, type: "file_approval", decision: "accept" | "reject"}`
-
-## Type 4: elicitation (auto-accepted)
-
-MCP server wants confirmation. Pending question: `{type: "elicitation", requestId, serverName, message, schema}`.
-
-```
-14:22:07 APPROVE elicitation: database-mcp — Allow read access to production database?
+# Or in frontmatter:
+# approval_policy: never
 ```
 
-Manual override: `{task_id, type: "elicitation", action: "accept" | "decline"}`
+Approval policies:
 
-## Type 5: dynamic_tool (THE ONLY REAL PAUSE)
+| Policy | Behavior |
+|--------|---------|
+| `never` | Auto-approve all requests |
+| `on-failure` | Auto-approve unless the command previously failed |
+| `on-request` | Default — require explicit approval |
+| `untrusted` | Strict — approve more request types explicitly |
 
-Agent invoked a tool that requires external execution. The task genuinely pauses — you must provide the result.
+---
 
-**wait-task response:**
-```json
-{
-  "status": "input_required",
-  "pending_question": {
-    "type": "dynamic_tool",
-    "requestId": "req-5",
-    "toolName": "run_benchmark",
-    "arguments": "{\"suite\": \"perf\"}"
-  }
-}
+## Request Types
+
+### command_approval
+
+Agent wants to run a shell command. Shown in the event stream as:
+```
+APPROVE cmd: npm install express @types/express
 ```
 
-**Timeline line:**
-```
-14:22:10 ASK     dynamic_tool: run_benchmark({"suite": "perf"})
-```
-
-**respond-task (success):**
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "dynamic_tool",
-  "result": "All 12 benchmarks passed. Mean latency: 45ms."
-}
+**Answer:**
+```bash
+cli-codex-subagent request answer req_abc123 --decision accept-session
+# or: --decision accept-once   (approve just this command)
+# or: --decision reject        (block the command)
 ```
 
-**respond-task (error):**
-```json
-{
-  "task_id": "bold-falcon-42",
-  "type": "dynamic_tool",
-  "error": "Benchmark suite not found."
-}
+### file_approval
+
+Agent wants to write or modify files. Shown as:
+```
+APPROVE files: src/config.ts, package.json
 ```
 
-## Handling wrong auto-answers
-
-If the auto-answer picked the wrong option:
-1. The task continues with the wrong choice
-2. You see `[auto-answer]` or `AUTO` in the output/timeline
-3. Steer via `message-task`: "Undo: you used Red but I need Blue. Re-do the file with Blue."
-4. Or: cancel and respawn with a clearer prompt that doesn't trigger a question
-
-## Multiple pauses in sequence
-
-A task can pause multiple times. After each respond-task, call wait-task again:
-
+**Answer:**
+```bash
+cli-codex-subagent request answer req_abc123 --decision accept-session
 ```
-spawn → wait → input_required (dynamic_tool #1)
-  → respond → wait → input_required (dynamic_tool #2)
-  → respond → wait → completed
+
+### user_input (question)
+
+Agent asked a clarifying question with options. Shown as:
 ```
+ASK   What color should I use? (1) Red  (2) Blue  (3) Green
+```
+
+**Answer by choice index (1-indexed):**
+```bash
+cli-codex-subagent request answer req_abc123 --choice 2
+```
+
+**Answer with free text:**
+```bash
+echo "Use blue, matching the brand guidelines" > /tmp/answer.txt
+cli-codex-subagent request answer req_abc123 --text-file /tmp/answer.txt
+```
+
+**Custom payload (advanced):**
+```bash
+cli-codex-subagent request answer req_abc123 --json-file payload.json
+```
+
+### elicitation
+
+The Codex runtime wants confirmation before a system-level action.
+
+```bash
+cli-codex-subagent request answer req_abc123 --decision accept-session
+```
+
+---
+
+## Multiple Requests in Sequence
+
+A task can block multiple times. After each `request answer`, follow the task again:
+
+```bash
+cli-codex-subagent run task.md --follow    # → exit 2
+
+cli-codex-subagent request answer req_1 --decision accept-session
+cli-codex-subagent task follow tsk_abc    # → exit 2 again
+
+cli-codex-subagent request answer req_2 --choice 1
+cli-codex-subagent task follow tsk_abc    # → DONE completed
+```
+
+---
+
+## Diagnosing a Blocked Task
+
+```bash
+# 1. Find the task that blocked
+cli-codex-subagent task list --status working
+
+# 2. Find pending requests
+cli-codex-subagent request list
+
+# 3. Inspect what's needed
+cli-codex-subagent request read req_abc123
+
+# 4. Answer it
+cli-codex-subagent request answer req_abc123 --decision accept-session
+
+# 5. Resume
+cli-codex-subagent task follow tsk_xyz
+```
+
+---
+
+## Fixing Wrong Auto-Answers
+
+With `--auto-approve`, the daemon auto-selects the first option for questions. If the wrong choice was made:
+1. The task continues with the wrong answer
+2. You see the AUTO event in `task follow` or `task events`
+3. Steer with a corrective follow-up after the task completes:
+   ```bash
+   cli-codex-subagent task steer tsk_abc123 correction.md --follow
+   ```
+   Where `correction.md` says: "You used Red but I need Blue. Re-do the file with Blue."
+4. Or: cancel the task and re-run with a better prompt that doesn't trigger the question.
+
+---
+
+## Events in the timeline
+
+| Tag | Source |
+|-----|--------|
+| `AUTO` | Auto-answered question (auto-approve was on, or daemon auto-selected) |
+| `APPROVE` | Auto-approved command or file approval |
+| `ASK` | Request that requires manual `request answer` (exit code 2) |

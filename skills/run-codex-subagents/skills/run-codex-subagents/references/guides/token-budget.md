@@ -92,7 +92,7 @@ The timeline shows token consumption:
 14:32:15 TOKENS  45,231 / 996,147 (4.5%)
 ```
 
-The wait-task response includes:
+`task read` or `task events` output includes:
 ```json
 {
   "token_usage": {

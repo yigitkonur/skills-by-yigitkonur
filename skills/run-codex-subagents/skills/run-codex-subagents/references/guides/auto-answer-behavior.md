@@ -1,12 +1,12 @@
 # Auto-Answer Behavior: How Questions Get Answered Without You
 
-When a Codex agent calls `request_user_input`, the MCP server auto-selects the first (recommended) option instantly. You never see the question. The agent continues as if you answered. Understanding this mechanism is critical for designing prompts that don't derail.
+When a Codex agent calls `request_user_input`, the daemon auto-selects the first (recommended) option instantly. You never see the question. The agent continues as if you answered. Understanding this mechanism is critical for designing prompts that don't derail.
 
 ## The Mechanism
 
 1. Agent reaches a decision point and calls `request_user_input`
-2. MCP server receives the question with answer options
-3. Server immediately returns the first option (index 0) as the answer
+2. daemon receives the question with answer options
+3. Daemon immediately returns the first option (index 0) as the answer
 4. Agent receives the answer and continues execution
 5. An `AUTO` line appears in the timeline log
 
@@ -23,7 +23,7 @@ Response format sent back to the agent:
 
 ## Why Auto-Answer Exists
 
-The Codex `request_user_input` tool has a 4-second timeout. The orchestrator round-trip (agent → MCP server → orchestrator → you → orchestrator → MCP server → agent) takes 5-30 seconds minimum. The timeout would ALWAYS fire before a human could respond.
+The Codex `request_user_input` tool has a 4-second timeout. The orchestrator round-trip (agent → daemon → CLI → you → CLI → daemon → agent) takes 5-30 seconds minimum. The timeout would ALWAYS fire before a human could respond.
 
 Auto-answer is the only way to keep agents running. The alternative is every question kills the agent.
 
@@ -94,20 +94,23 @@ Signs that auto-answer chose incorrectly:
 
 ### Steering After Wrong Auto-Answer
 
-If the agent is still running (not dead), use `message-task` to steer:
+Wait for the task to finish (or cancel if needed), then steer with `task steer`:
 
+```bash
+# Wait for completion
+cli-codex-subagent task wait tsk_abc123
+
+# Steer: correct the wrong choice
+cat > /tmp/correction.md << 'EOF'
+You used the closures pattern but this codebase uses delegates everywhere.
+Undo your last changes and redo using the delegate approach from BluetoothPopupController.swift.
+EOF
+cli-codex-subagent task steer tsk_abc123 /tmp/correction.md --follow
 ```
-message-task(
-  id="abc-123",
-  message="Stop. You chose the wrong pattern. Use delegate pattern, not closures. 
-           Undo your last changes and redo using the delegate approach from 
-           BluetoothPopupController.swift."
-)
-```
 
-This sends a follow-up message to the same session. The agent will receive it and (usually) adjust course.
+Note: `task steer` only works on tasks that have reached a terminal state (completed or failed). If the task is still running and you need to redirect it mid-flight, you must cancel and re-run.
 
-If the agent is dead, recover partial work or re-spawn with a better prompt.
+If the task produced corrupt output, recover partial work or re-spawn with a better prompt.
 
 ## The 4-Second Timeout Detail
 
@@ -115,8 +118,8 @@ The exact flow:
 
 ```
 T+0.000s  Agent calls request_user_input
-T+0.050s  MCP server receives the question
-T+0.100s  MCP server sends auto-answer back
+T+0.050s  daemon receives the question
+T+0.100s  daemon sends auto-answer back
 T+0.150s  Agent receives answer
            (Agent continues working normally)
 ```
@@ -136,7 +139,7 @@ The 4-second timeout is the hard ceiling. If auto-answer doesn't arrive within 4
 
 There is one exception to auto-answering: `dynamic_tool` invocations actually pause and wait for the orchestrator. These are different from `request_user_input` — they represent tool calls that the agent is making, not questions it's asking.
 
-If you see a task stuck in `input_required` status from a `dynamic_tool` call, use `respond-task` to provide the tool result.
+If you see a task stuck in `input_required` status from a `dynamic_tool` call, use `request answer <reqId>` to provide the tool result.
 
 ## Testing Auto-Answer Behavior
 

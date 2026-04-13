@@ -1,17 +1,20 @@
 # Context Files
 
-The `context_files` parameter on `spawn-task` prepends file contents into the agent's context before the prompt. Use it to give the agent immediate access to critical reference material without requiring file reads.
+The `context_files` frontmatter key prepends file contents into the agent's context before the prompt. Use it to give the agent immediate access to critical reference material without requiring file reads.
 
 ## Format
 
-```json
-{
-  "context_files": [
-    { "path": "/absolute/path/to/file.md", "description": "Migration plan v3" },
-    { "path": "/project/src/types.ts", "description": "Core type definitions" },
-    { "path": "/project/schema.prisma" }
-  ]
-}
+In task.md frontmatter:
+
+```yaml
+---
+context_files:
+  - path: /absolute/path/to/file.md
+    description: "Migration plan v3"
+  - path: /project/src/types.ts
+    description: "Core type definitions"
+  - path: /project/schema.prisma
+---
 ```
 
 Each entry:
@@ -76,17 +79,16 @@ Context files consume input tokens on every reasoning turn. A 200-line TypeScrip
 
 The `description` field helps the agent understand why the file is relevant:
 
-```json
-// Good — tells the agent how to use this file
-{ "path": "/project/PLAN.md", "description": "Implementation plan — follow steps in order" }
-{ "path": "/project/types.ts", "description": "Type definitions — new code must conform to these" }
+```yaml
+# Good — tells the agent how to use this file
+context_files:
+  - path: /project/PLAN.md
+    description: "Implementation plan — follow steps in order"
+  - path: /project/types.ts
+    description: "Type definitions — new code must conform to these"
 
-// Bad — description doesn't add value
-{ "path": "/project/PLAN.md", "description": "A file" }
-{ "path": "/project/types.ts", "description": "TypeScript file" }
-
-// Fine — omitting description when the filename is self-explanatory
-{ "path": "/project/schema.prisma" }
+# Fine — omitting description when the filename is self-explanatory
+  - path: /project/schema.prisma
 ```
 
 ## Combining with Prompts
@@ -105,18 +107,18 @@ This tells the agent to look at the prepended content rather than searching the 
 
 - Paths must be absolute (`/Users/me/project/file.ts`, not `./file.ts`)
 - Paths must exist on disk at spawn time (server reads them synchronously)
-- Paths must be readable by the MCP server process
+- Paths must be readable by the daemon process
 - Symlinks are followed
-- If a path doesn't exist, the spawn-task call fails with an error
+- If a path doesn't exist, the `run` command fails with an error
 
 ## Interaction with Other Parameters
 
 | Parameter | Interaction |
 |---|---|
-| `prompt` | Context files appear before the prompt in agent's view |
-| `developer_instructions` | System instructions appear separately; context files are in user context |
-| `cwd` | Context file paths are independent of cwd — always absolute |
-| `depends_on` | Context files are read at spawn time, not when dependency resolves |
+| `prompt` in task.md | Context files appear before the prompt in agent's view |
+| `developer_instructions` frontmatter | System instructions appear separately; context files are in user context |
+| `cwd` flag | Context file paths are independent of cwd — always absolute |
+| `session` | Context files are read at spawn time, not when dependency resolves |
 
 ## Anti-patterns
 

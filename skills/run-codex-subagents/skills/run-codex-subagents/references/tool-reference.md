@@ -1,153 +1,319 @@
-# Tool Reference
+# CLI Command Reference
 
-Complete parameter and response schemas for all 5 mcp-codex-worker tools.
+Complete parameter and flag reference for all `cli-codex-subagent` commands.
 
-## spawn-task
+## run / task start — Spawn a task
 
-Create and start a provider-agnostic task. Returns immediately with a task_id.
+Create and start a task from a prompt file. Returns immediately (async) or blocks until done.
 
-### Parameters (11 total)
-
-| Parameter | Type | Required | Default | Constraints |
-|---|---|---|---|---|
-| `prompt` | string | **Yes** | — | `minLength: 1`. Name files, symbols, expected outcome, and what NOT to touch. |
-| `cwd` | string | No | server process cwd | Absolute path. Agent sees files relative to this. |
-| `task_type` | enum | No | `coder` | `coder` \| `planner` \| `tester` \| `researcher` \| `general` |
-| `reasoning` | enum | No | `gpt-5.4(medium)` | `gpt-5.4(low)` \| `gpt-5.4(medium)` \| `gpt-5.4(high)` \| `gpt-5.4(xhigh)` |
-| `provider` | enum | No | auto-routed by task_type | `codex` \| `copilot` \| `claude-cli`. Leave unset in almost all cases. |
-| `timeout_ms` | integer | No | provider default | Min `1000`, max `3600000` (1 hour). Task marked `timed_out` if exceeded. |
-| `developer_instructions` | string | No | — | System-level constraints injected ahead of user prompt. |
-| `labels` | string[] | No | — | Free-form tags for filtering and grouping on the scoreboard. |
-| `depends_on` | string[] | No | — | Task IDs that must complete before this task starts. |
-| `keep_alive` | number | No | — | Retention window (ms) — how long the server keeps the completed result. |
-| `context_files` | array of `{path, description?}` | No | — | Files to prepend as context. `path` is required (absolute), `description` is optional. |
-
-### Response shape
-
-```json
-{
-  "task_id": "bold-falcon-42",
-  "status": "working",
-  "poll_frequency": 5000,
-  "disk_paths": {
-    "dir": "~/.mcp-codex-worker/tasks/bold-falcon-42",
-    "events_log": "~/.mcp-codex-worker/tasks/bold-falcon-42/events.jsonl",
-    "timeline_log": "~/.mcp-codex-worker/tasks/bold-falcon-42/timeline.log",
-    "meta": "~/.mcp-codex-worker/tasks/bold-falcon-42/meta.json"
-  },
-  "labels": ["wave-1", "auth"],
-  "provider_session_id": "019d728c-a9bc-7e12-8c40-9a68b6640c8e",
-  "resources": {
-    "scoreboard": "task:///all",
-    "detail": "task:///bold-falcon-42",
-    "log": "task:///bold-falcon-42/log"
-  }
-}
+```bash
+cli-codex-subagent run <task.md> [options]
+# shorthand for:
+cli-codex-subagent task start <task.md> [options]
 ```
 
-Key fields: `task_id` is the handle for all subsequent calls. `disk_paths.timeline_log` is the path to `tail -f` via Monitor.
+### Flags
 
----
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--effort <level>` | enum | `medium` | Reasoning depth: `none\|minimal\|low\|medium\|high\|xhigh` |
+| `--auto-approve` | flag | off | Auto-accept all shell-command and file approvals |
+| `--approval-policy <p>` | enum | `on-request` | `never\|on-failure\|on-request\|untrusted` |
+| `--follow` | flag | off | Stream events; block until terminal state |
+| `--wait` | flag | off | Block until terminal state, no streaming |
+| `--session <sesId>` | string | — | Attach to an existing session (preserves context) |
+| `--context-file <f>` | string | — | Prepend a file as context (repeatable) |
+| `--output-schema <f>` | string | — | JSON Schema file for structured output |
+| `--label <label>` | string | — | Tag for filtering in `task list` |
+| `--model <model>` | string | — | Override the model |
+| `--json` | flag | off | Print `{taskId, sessionId}` JSON and exit immediately |
 
-## wait-task
+### Exit codes
 
-Block until a task reaches terminal state or `input_required`.
+| Code | Meaning |
+|------|---------|
+| `0` | Task completed successfully |
+| `1` | Task failed |
+| `2` | Task blocked — needs `request answer` |
+| `3` | Reconnect / network error |
+| `5` | Task file not found |
 
-### Parameters
+### Response (default async)
 
-| Parameter | Type | Required | Default | Constraints |
-|---|---|---|---|---|
-| `task_id` | string | **Yes** | — | `minLength: 1` |
-| `timeout_ms` | integer | No | `30000` | `exclusiveMinimum: 0`, max `300000` (5 minutes) |
-| `poll_interval_ms` | integer | No | `1000` | Min `250`, max `30000` |
+Prints `taskId` and `sessionId`, then exits. Task runs in the daemon.
 
-### Response shape
-
-```json
-{
-  "task_id": "bold-falcon-42",
-  "status": "completed",              // or "failed", "input_required", "working", "cancelled"
-  "provider_session_id": "019d728c-a9bc-...",
-  "output": ["[10:24:10] cmd: ...", "[10:24:27] agent: ...", "[10:24:27] turn completed"],
-  "token_usage": { "totalTokens": 109621, "inputTokens": 108526, "outputTokens": 1095, "contextWindow": 996147 },
-  "pct_used": "11.0%",
-  "pending_question": null            // populated when status is "input_required"
-}
+```
+Started task tsk_abc123 in session ses_xyz789
 ```
 
-When `status` is `input_required`, `pending_question` contains `{type, requestId, ...}` — see pause-flow-handling.md.
-
-When `timeout_ms` elapses without a terminal state, returns current status (e.g. `"working"`). Task keeps running. Call wait-task again or cancel-task.
-
----
-
-## respond-task
-
-Unblock a task that is in `input_required`. Payload is discriminated by `type` which must match `pending_question.type` from wait-task.
-
-### Common parameters
-
-| Parameter | Type | Required |
-|---|---|---|
-| `task_id` | string | **Yes** |
-| `type` | enum | **Yes** — must match `pending_question.type` |
-
-### Payload by type
-
-| type | Additional fields | Example payload |
-|---|---|---|
-| `user_input` | `answers`: `{questionId: "answer"}` | `{task_id, type: "user_input", answers: {"db_choice": "PostgreSQL"}}` |
-| `command_approval` | `decision`: `"accept"` or `"reject"` | `{task_id, type: "command_approval", decision: "accept"}` |
-| `file_approval` | `decision`: `"accept"` or `"reject"` | `{task_id, type: "file_approval", decision: "accept"}` |
-| `elicitation` | `action`: `"accept"` or `"decline"`, optional `content`: object | `{task_id, type: "elicitation", action: "accept"}` |
-| `dynamic_tool` | `result`: string (success) OR `error`: string (failure) | `{task_id, type: "dynamic_tool", result: "Passed."}` |
-
-See `pause-flow-handling.md` for full request/response JSON for each type.
-
----
-
-## message-task
-
-Send a follow-up message to an existing task on its original session.
-
-### Parameters
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `task_id` | string | **Yes** | `minLength: 1`. Must be an active (non-terminal) task. |
-| `message` | string | **Yes** | `minLength: 1`. The follow-up instruction. Be as specific as the original prompt. |
-| `reasoning` | enum | No | Override reasoning for this follow-up turn only. Same 4 enum values as spawn-task. |
-
-### Constraints
-
-- Only works on **active** tasks (status = `working` or `input_required`)
-- Terminal tasks (`completed`, `failed`, `cancelled`, `timed_out`) reject messages
-- For terminal tasks, spawn a new task in the same `cwd` instead
-- After calling, follow up with `wait-task` exactly like after `spawn-task`
-
----
-
-## cancel-task
-
-Cancel one or more running tasks.
-
-### Parameters
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `task_id` | string or string[] | **Yes** | Single ID (`minLength: 1`) or array (`minItems: 1`, each `minLength: 1`). |
-
-### Response shape
+### Response (--json)
 
 ```json
-{
-  "cancelled": ["task-1", "task-2"],
-  "already_terminal": ["task-3"],
-  "not_found": ["bogus-id"]
-}
+{ "taskId": "tsk_abc123", "sessionId": "ses_xyz789" }
 ```
 
-Three categories:
-- `cancelled` — tasks that were actively running and are now aborted
-- `already_terminal` — tasks already in a final state (completed/failed/cancelled) — no-op
-- `not_found` — unknown task IDs
+### Frontmatter alternative
+
+Options can be embedded in the task file YAML frontmatter:
+
+```markdown
+---
+label: "wave-1:auth"
+effort: low
+session: ses_abc123
+context_files:
+  - ./notes.md
+  - ./schema.ts
+output_schema: ./response-schema.json
+base_instructions_file: ./AGENTS.md
+cwd: /project
+model: gpt-4o
+---
+
+Your task prompt here...
+```
+
+Frontmatter keys: `label`, `effort`, `session`, `context_files` (array), `output_schema` (path or inline JSON), `base_instructions_file`, `cwd`, `model`.
+
+---
+
+## task wait — Block until done
+
+Block until a task reaches a terminal state. No streaming output.
+
+```bash
+cli-codex-subagent task wait <taskId> [--timeout-ms N]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--timeout-ms <N>` | daemon default | Max wait in ms before returning current status |
+
+Returns exit code 0/1/2 matching task outcome.
+
+---
+
+## task follow — Stream events
+
+Attach to a running task and stream normalized events until terminal state.
+
+```bash
+cli-codex-subagent task follow <taskId> [--stream-json]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--stream-json` | off | Emit raw JSON events instead of human-readable lines |
+
+Output format (human-readable):
+```
+TURN    019d786c-...
+THINK   Inspecting the repository structure
+CMD     find src -name "*.ts" → exit=0 (0.3s)
+FILE    src/auth.ts (modified)
+TOKENS  18629 / 996147 (1.9%)
+MSG     I've updated the auth module...
+DONE    completed
+```
+
+---
+
+## task steer — Continue in same session
+
+Run a follow-up prompt in the same session as a completed task. The agent retains full prior context.
+
+```bash
+cli-codex-subagent task steer <taskId> <followup.md> [--follow] [--effort <level>]
+```
+
+**Requires:** the referenced task must be in a terminal state (`completed`, `failed`). Attempting to steer a still-running task returns an error.
+
+---
+
+## task read — Inspect task state
+
+Print task metadata and artifact paths.
+
+```bash
+cli-codex-subagent task read <taskId> [--field <key>] [--json]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--field <key>` | Print a single field value (e.g. `status`, `artifacts.timelineLogPath`) |
+| `--json` | Emit full task record as JSON |
+
+Output includes: status, session, model, effort, cwd, created/started/completed timestamps, artifact paths (timeline, events, summary, stderr), last output tail.
+
+---
+
+## task events — Full event log
+
+Print or stream the `events.jsonl` for a task.
+
+```bash
+cli-codex-subagent task events <taskId> [--raw] [--tail N] [--follow]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--raw` | Emit raw app-server events (unprocessed) |
+| `--tail <N>` | Show only the last N events |
+| `--follow` | Stream new events as they arrive |
+
+---
+
+## task list — List tasks
+
+```bash
+cli-codex-subagent task list [--status <s>] [--label <l>] [--quiet] [--json]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--status <s>` | Filter: `completed\|failed\|working\|cancelled` |
+| `--label <l>` | Filter by label tag |
+| `--quiet` | Print task IDs only (one per line) |
+| `--json` | Emit JSON array |
+
+---
+
+## task cancel — Cancel a task
+
+```bash
+cli-codex-subagent task cancel <taskId>
+```
+
+Cancels an actively running task. No-op on already-terminal tasks.
+
+---
+
+## request list — Find pending requests
+
+```bash
+cli-codex-subagent request list [--task <taskId>] [--json]
+```
+
+Lists all requests pending a response. Requests are created when a task blocks on a shell-command approval, user-input question, or file-write approval.
+
+---
+
+## request read — Inspect a request
+
+```bash
+cli-codex-subagent request read <reqId>
+```
+
+Shows request type, payload (question text, command details, choices), and which task it belongs to.
+
+---
+
+## request answer — Unblock a task
+
+```bash
+cli-codex-subagent request answer <reqId> [options]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--decision <d>` | `accept-session\|accept-once\|reject` (for command/file approvals) |
+| `--choice <N>` | 1-indexed choice for multiple-choice prompts |
+| `--text-file <f>` | File containing free-text answer |
+| `--custom-file <f>` | File with custom response payload |
+| `--json-file <f>` | JSON file with full response payload |
+
+After answering, resume monitoring with:
+```bash
+cli-codex-subagent task follow <taskId>
+```
+
+---
+
+## session list / read / create
+
+```bash
+cli-codex-subagent session list [--json]
+cli-codex-subagent session read <sesId>
+cli-codex-subagent session create
+```
+
+Sessions are auto-created when you run a task. Use `--session <sesId>` to reuse a session (and its context) for a new task.
+
+---
+
+## prompt inspect / lint
+
+```bash
+cli-codex-subagent prompt inspect <task.md>   # Show resolved prompt with context
+cli-codex-subagent prompt lint <task.md>       # Validate frontmatter and context files
+```
+
+Use before running to verify the prompt will be loaded correctly.
+
+---
+
+## model list
+
+```bash
+cli-codex-subagent model list [--json]
+```
+
+Lists available models from the configured Codex runtime.
+
+---
+
+## account
+
+```bash
+cli-codex-subagent account
+```
+
+Shows rate limits, token quotas, and account info from the Codex runtime.
+
+---
+
+## doctor
+
+```bash
+cli-codex-subagent doctor
+```
+
+Full readiness check: verifies daemon connectivity, Codex runtime availability, auth configuration, and state directory layout.
+
+---
+
+## daemon status / stop / run
+
+```bash
+cli-codex-subagent daemon status   # Is the daemon running?
+cli-codex-subagent daemon stop     # Graceful shutdown
+cli-codex-subagent daemon run      # Run in foreground (debug mode)
+```
+
+The daemon auto-starts on first `run` or `task start`. You only need these commands for diagnostics or forced restarts.
+
+---
+
+## Effort levels
+
+| Level | Reasoning depth | Reliability | Typical tokens | Use for |
+|-------|----------------|-------------|----------------|---------|
+| `none` | Off | ~100% | ~5K | Trivial output, no reasoning |
+| `minimal` | Minimal | ~100% | ~8K | Simple transforms |
+| `low` | Low | ~100% | ~15K | 1–3 commands, simple file ops |
+| `medium` | Medium | ~50–70% | 30–110K | Multi-step coding, refactoring |
+| `high` | High | ~30–50% | 60–110K | Complex multi-file reasoning |
+| `xhigh` | Max | Untested | — | Deep research, architecture |
+
+**Default to `low` unless the task genuinely needs planning.** Higher effort = more reasoning tokens = higher chance of process exit before work completes.
+
+---
+
+## Approval policies
+
+| Policy | Behavior |
+|--------|---------|
+| `never` | Auto-approve everything (equivalent to `--auto-approve`) |
+| `on-failure` | Auto-approve unless a command has previously failed |
+| `on-request` | Default — block and require explicit `request answer` |
+| `untrusted` | Stricter — blocks on more approval types |

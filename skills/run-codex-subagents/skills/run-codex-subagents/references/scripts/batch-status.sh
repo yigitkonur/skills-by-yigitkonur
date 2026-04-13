@@ -7,11 +7,11 @@
 #   bash batch-status.sh --label wave-1     # Only tasks with label "wave-1"
 #   bash batch-status.sh --recent 10        # Last 10 tasks by creation time
 #
-# Reads meta.json files from ~/.mcp-codex-worker/tasks/ and prints a table.
+# Reads meta.json files from ~/.cli-codex-subagent/tasks/ and prints a table.
 
 set -euo pipefail
 
-TASK_DIR="${MCP_CODEX_WORKER_DIR:-$HOME/.mcp-codex-worker}/tasks"
+TASK_DIR="${CLI_CODEX_SUBAGENT_STATE_DIR:-$HOME/.cli-codex-subagent}/tasks"
 FILTER_STATUS=""
 FILTER_LABEL=""
 RECENT_COUNT=0
