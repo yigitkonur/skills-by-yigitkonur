@@ -57,7 +57,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
 | [run-athena-flow](skills/run-athena-flow/) | orchestration | Athena Flow CLI for AI workflow orchestration |
-| [run-codex-subagents](skills/run-codex-subagents/) | orchestration | Orchestrate Codex coding agents via MCP tools |
+| [run-codex-subagents](skills/run-codex-subagents/) | orchestration | Orchestrate Codex coding agents with codex-worker |
 | [run-github-scout](skills/run-github-scout/) | productivity | End-to-end GitHub repo discovery, evaluation, and ranking with subagent swarms |
 | [run-hcom-agents](skills/run-hcom-agents/) | orchestration | Multi-agent orchestration via hcom |
 | [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub Issue trees with sub-issues and waves |

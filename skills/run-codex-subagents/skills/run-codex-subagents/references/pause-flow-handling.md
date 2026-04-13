@@ -1,170 +1,72 @@
-# Request Handling: Approvals and Input
+# Blocked Turns And `request respond`
 
-When a task blocks on a shell-command approval, file-write approval, or user-input question, it exits with code `2`. The `request` commands let you inspect and answer these without restarting the task.
+When a running turn needs a decision or user input, `codex-worker` persists a pending request and returns control to you. The current turn is still the same turn; you answer the request and then continue waiting or inspecting the same thread.
 
-## The Approval Flow
-
-```
-cli-codex-subagent run task.md --follow
-   → exit 2 (blocked)
-
-cli-codex-subagent request list
-   → req_abc123  command_approval  tsk_xyz  "npm install express"
-
-cli-codex-subagent request read req_abc123
-   → type: command_approval
-     command: "npm install express"
-     task: tsk_xyz
-
-cli-codex-subagent request answer req_abc123 --decision accept-session
-
-cli-codex-subagent task follow tsk_xyz
-   → resumes...
-   → DONE completed
-```
-
-## Preventing Approvals Entirely
-
-The best approach for autonomous runs: **skip approvals at spawn time**.
+## Core Flow
 
 ```bash
-# Auto-approve everything (--auto-approve = --approval-policy never)
-cli-codex-subagent run task.md --follow --auto-approve
-
-# Fine-grained: only block if a command previously failed
-cli-codex-subagent run task.md --follow --approval-policy on-failure
-
-# Or in frontmatter:
-# approval_policy: never
+codex-worker --output json run task.md --async
+codex-worker request list
+codex-worker request read <request-id>
+codex-worker request respond <request-id> --decision accept-session
+codex-worker wait --thread-id <thread-id>
 ```
 
-Approval policies:
+After `request respond`, do not start a fresh thread unless you are intentionally abandoning the original turn. Use `wait`, `read`, or `logs` against the same thread.
 
-| Policy | Behavior |
-|--------|---------|
-| `never` | Auto-approve all requests |
-| `on-failure` | Auto-approve unless the command previously failed |
-| `on-request` | Default — require explicit approval |
-| `untrusted` | Strict — approve more request types explicitly |
+## Approval Requests
 
----
-
-## Request Types
-
-### command_approval
-
-Agent wants to run a shell command. Shown in the event stream as:
-```
-APPROVE cmd: npm install express @types/express
-```
-
-**Answer:**
-```bash
-cli-codex-subagent request answer req_abc123 --decision accept-session
-# or: --decision accept-once   (approve just this command)
-# or: --decision reject        (block the command)
-```
-
-### file_approval
-
-Agent wants to write or modify files. Shown as:
-```
-APPROVE files: src/config.ts, package.json
-```
-
-**Answer:**
-```bash
-cli-codex-subagent request answer req_abc123 --decision accept-session
-```
-
-### user_input (question)
-
-Agent asked a clarifying question with options. Shown as:
-```
-ASK   What color should I use? (1) Red  (2) Blue  (3) Green
-```
-
-**Answer by choice index (1-indexed):**
-```bash
-cli-codex-subagent request answer req_abc123 --choice 2
-```
-
-**Answer with free text:**
-```bash
-echo "Use blue, matching the brand guidelines" > /tmp/answer.txt
-cli-codex-subagent request answer req_abc123 --text-file /tmp/answer.txt
-```
-
-**Custom payload (advanced):**
-```bash
-cli-codex-subagent request answer req_abc123 --json-file payload.json
-```
-
-### elicitation
-
-The Codex runtime wants confirmation before a system-level action.
+Common decisions:
 
 ```bash
-cli-codex-subagent request answer req_abc123 --decision accept-session
+codex-worker request respond <request-id> --decision accept-session
+codex-worker request respond <request-id> --decision accept
+codex-worker request respond <request-id> --decision reject
 ```
 
----
+Use `request read` first when you need the exact request type or payload.
 
-## Multiple Requests in Sequence
+## User-Input Requests
 
-A task can block multiple times. After each `request answer`, follow the task again:
+Text answer:
 
 ```bash
-cli-codex-subagent run task.md --follow    # → exit 2
-
-cli-codex-subagent request answer req_1 --decision accept-session
-cli-codex-subagent task follow tsk_abc    # → exit 2 again
-
-cli-codex-subagent request answer req_2 --choice 1
-cli-codex-subagent task follow tsk_abc    # → DONE completed
+codex-worker request respond <request-id> --question-id answer_style --answer "Short"
 ```
 
----
-
-## Diagnosing a Blocked Task
+Raw JSON answer:
 
 ```bash
-# 1. Find the task that blocked
-cli-codex-subagent task list --status working
-
-# 2. Find pending requests
-cli-codex-subagent request list
-
-# 3. Inspect what's needed
-cli-codex-subagent request read req_abc123
-
-# 4. Answer it
-cli-codex-subagent request answer req_abc123 --decision accept-session
-
-# 5. Resume
-cli-codex-subagent task follow tsk_xyz
+codex-worker request respond <request-id> --json '{"answers":{"answer_style":{"answers":["Short"]}}}'
 ```
 
----
+This CLI does not offer `--choice`, `--text-file`, or `--json-file`. Build the response with `--answer` plus `--question-id`, or pass the full payload through `--json`.
 
-## Fixing Wrong Auto-Answers
+## Discovering Question Ids
 
-With `--auto-approve`, the daemon auto-selects the first option for questions. If the wrong choice was made:
-1. The task continues with the wrong answer
-2. You see the AUTO event in `task follow` or `task events`
-3. Steer with a corrective follow-up after the task completes:
-   ```bash
-   cli-codex-subagent task steer tsk_abc123 correction.md --follow
-   ```
-   Where `correction.md` says: "You used Red but I need Blue. Re-do the file with Blue."
-4. Or: cancel the task and re-run with a better prompt that doesn't trigger the question.
+```bash
+codex-worker request read <request-id> | jq '.params.questions'
+```
 
----
+For single-question prompts, the first question id is usually enough. For multi-question prompts, answer each question in the JSON payload.
 
-## Events in the timeline
+## Continue After Responding
 
-| Tag | Source |
-|-----|--------|
-| `AUTO` | Auto-answered question (auto-approve was on, or daemon auto-selected) |
-| `APPROVE` | Auto-approved command or file approval |
-| `ASK` | Request that requires manual `request answer` (exit code 2) |
+Block again on the same background turn:
+
+```bash
+codex-worker wait --thread-id <thread-id>
+```
+
+Or inspect the current state without blocking:
+
+```bash
+codex-worker read <thread-id>
+codex-worker logs <thread-id>
+```
+
+## Failure Modes
+
+- Request still appears in `request list`: the payload shape was invalid or the daemon rejected it. Re-read the request and respond again with a correct payload.
+- Thread stays failed after responding: the request was only one blocker; inspect `logs` and `read` for the actual runtime failure.
+- You lost the thread id: recover it from `request read`, then use `wait --thread-id`, `read`, or `send`.
