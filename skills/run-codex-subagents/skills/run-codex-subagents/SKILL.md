@@ -40,7 +40,7 @@ cli-codex-subagent run task.md --follow --auto-approve
 ```bash
 # Spawn, get task id immediately
 cli-codex-subagent run task.md --json
-# Returns: { "taskId": "tsk_...", "sessionId": "ses_..." }
+# Returns nested JSON: task.id = "tsk_...", task_id also at top level
 
 # Later: block until done
 cli-codex-subagent task wait tsk_abc123

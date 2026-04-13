@@ -132,7 +132,7 @@ Common hook events: `sessionStart`, `userPromptSubmit`. These run custom user ho
 |---|---|---|
 | `thread/tokenUsage/updated` | TOKENS | Token counts. Deduplicated in timeline. |
 
-Key fields in `params.tokenUsage`: `total` (`totalTokens`, `inputTokens`, `cachedInputTokens`, `outputTokens`, `reasoningOutputTokens`), `last` (same shape for this turn only), `modelContextWindow` (e.g. 996147).
+Key fields in `params.tokenUsage`: `total` (`totalTokens`, `inputTokens`, `cachedInputTokens`, `outputTokens`, `reasoningOutputTokens`), `last` (same shape for this turn only), `modelContextWindow` (e.g. 258400).
 
 ### Server request events (2 types)
 

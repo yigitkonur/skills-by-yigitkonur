@@ -42,8 +42,8 @@ tasks -- 6 total (3 done, 2 busy, 1 fail)
 Labels appear in `task read` output:
 
 ```
-taskId:     tsk_abc123
-status:     done
+id:         tsk_abc123
+status:     completed
 labels:     wave-1, notch, extraction
 completedAt: 2025-01-15T10:32:45Z
 ```

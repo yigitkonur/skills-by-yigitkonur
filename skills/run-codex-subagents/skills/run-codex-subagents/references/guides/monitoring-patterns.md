@@ -21,7 +21,7 @@ THINK   Let me start by exploring the project structure
 CMD     find src -name "*.ts" | head -20 → exit=0 (0.3s)
 FILE    src/index.ts (read)
 CMD     cat src/index.ts → exit=0 (0.2s)
-TOKENS  18629 / 996147 (1.9%)
+TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
 THINK   Now I understand the structure. Let me create the new controller.
 FILE    src/controllers/auth.ts (created)
 CMD     npx tsc --noEmit → exit=0 (4.1s)
@@ -35,9 +35,9 @@ Use background processes:
 
 ```bash
 # Spawn 3 tasks
-TASK_A=$(cli-codex-subagent run auth.md    --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_B=$(cli-codex-subagent run billing.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_C=$(cli-codex-subagent run notify.md  --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK_A=$(cli-codex-subagent run auth.md    --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_B=$(cli-codex-subagent run billing.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_C=$(cli-codex-subagent run notify.md  --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 # Follow all three simultaneously (in tmux panes, or to log files)
 cli-codex-subagent task follow "$TASK_A" > /tmp/auth.log    &
@@ -78,11 +78,11 @@ After spawning and waiting, audit all tasks at once:
 cli-codex-subagent task list --label wave-1
 ```
 
-Output:
+Output (real format — `id  status  cwd`):
 ```
-tsk_abc123  [done]    completed   23s    109K tokens   wave-1
-tsk_def456  [done]    completed   45s    85K tokens    wave-1
-tsk_ghi789  [fail]    failed      8s     —             wave-1
+tsk_abc123  completed  /path/to/project
+tsk_def456  completed  /path/to/project
+tsk_ghi789  failed     /path/to/project
 ```
 
 Count by status:
@@ -154,7 +154,7 @@ now = datetime.now(timezone.utc)
 tasks = json.load(sys.stdin)
 today = [t for t in tasks if t.get('createdAt','')[:10] == now.strftime('%Y-%m-%d')]
 for t in today:
-    print(t['taskId'], t.get('errorMessage','')[:80])
+    print(t['id'], t.get('errorMessage','')[:80])
 "
 ```
 
@@ -163,7 +163,7 @@ for t in today:
 In `task follow` output, watch the TOKENS lines:
 
 ```
-TOKENS  18629 / 996147 (1.9%)
+TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
 ```
 
 If you see >50% with no end in sight, the task is burning context. Intervene:

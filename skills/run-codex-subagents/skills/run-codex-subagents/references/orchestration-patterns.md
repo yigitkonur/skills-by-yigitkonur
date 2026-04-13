@@ -24,9 +24,9 @@ Spawn N independent tasks, then wait for all of them.
 
 ```bash
 # Spawn all — returns task IDs immediately
-TASK_A=$(cli-codex-subagent run auth.md    --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_B=$(cli-codex-subagent run billing.md --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_C=$(cli-codex-subagent run notify.md  --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK_A=$(cli-codex-subagent run auth.md    --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_B=$(cli-codex-subagent run billing.md --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_C=$(cli-codex-subagent run notify.md  --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 # Monitor all three simultaneously in separate terminal panes, or serially:
 cli-codex-subagent task wait "$TASK_A"
@@ -51,8 +51,8 @@ Wave N must complete before Wave N+1 starts.
 cli-codex-subagent run schema.md --effort low --wait --label wave-1
 
 # Wave 2: depends on schema (two tasks in parallel)
-TASK_MIG=$(cli-codex-subagent run migration.md --effort low --label wave-2 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_TYP=$(cli-codex-subagent run types.md     --effort low --label wave-2 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK_MIG=$(cli-codex-subagent run migration.md --effort low --label wave-2 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_TYP=$(cli-codex-subagent run types.md     --effort low --label wave-2 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 cli-codex-subagent task wait "$TASK_MIG"
 cli-codex-subagent task wait "$TASK_TYP"
 
@@ -76,10 +76,10 @@ cli-codex-subagent task steer tsk_abc123 rate-limiting.md --follow --effort low
 Note: `task steer` requires the prior task to be in a terminal state. To span multiple follow-ups:
 
 ```bash
-TASK1=$(cli-codex-subagent run step1.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK1=$(cli-codex-subagent run step1.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 cli-codex-subagent task wait "$TASK1"
 
-TASK2=$(cli-codex-subagent task steer "$TASK1" step2.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK2=$(cli-codex-subagent task steer "$TASK1" step2.md --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 cli-codex-subagent task wait "$TASK2"
 
 cli-codex-subagent task steer "$TASK2" step3.md --follow

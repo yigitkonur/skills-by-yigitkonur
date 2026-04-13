@@ -59,7 +59,7 @@ cli-codex-subagent run followup.md --session "$SESSION" --follow
 cli-codex-subagent task events <taskId>
 cli-codex-subagent task events <taskId> --tail 20
 cli-codex-subagent task events <taskId> --raw           # raw app-server events
-cli-codex-subagent task events <taskId> --follow        # stream as task runs
+# stream as task runs → use: cli-codex-subagent task follow <taskId>
 ```
 
 **When to use:** Debug trace — every notification including reasoning, commands, file changes, token usage. Use `--raw` for the lowest-level JSON.
@@ -70,7 +70,7 @@ TURN    019d786c-...
 THINK   Inspecting the repository
 CMD     find src -name "*.ts" → exit=0 (0.3s)
 FILE    src/auth.ts (modified)
-TOKENS  18629 / 996147 (1.9%)
+TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
 MSG     I've updated the auth module.
 DONE    completed
 ```

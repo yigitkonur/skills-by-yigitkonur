@@ -10,13 +10,13 @@ Template for dispatching parallel waves of tasks with monitoring, inter-wave che
 #!/usr/bin/env bash
 
 TASK_1=$(cli-codex-subagent run task1.md --effort low --label wave-1 --label domain-1 --auto-approve --json \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 TASK_2=$(cli-codex-subagent run task2.md --effort low --label wave-1 --label domain-2 --auto-approve --json \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 TASK_3=$(cli-codex-subagent run task3.md --effort low --label wave-1 --label domain-3 --auto-approve --json \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 echo "Spawned: $TASK_1 $TASK_2 $TASK_3"
 ```
@@ -60,9 +60,9 @@ cli-codex-subagent task list --label wave-1
 set -euo pipefail
 
 # Spawn all Wave 1 tasks
-W1_TYPES=$(cli-codex-subagent run tasks/types.md  --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-W1_CONFIG=$(cli-codex-subagent run tasks/config.md --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-W1_UTILS=$(cli-codex-subagent run tasks/utils.md  --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+W1_TYPES=$(cli-codex-subagent run tasks/types.md  --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+W1_CONFIG=$(cli-codex-subagent run tasks/config.md --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+W1_UTILS=$(cli-codex-subagent run tasks/utils.md  --effort low --label wave-1 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 # Wait for all
 cli-codex-subagent task wait "$W1_TYPES"
@@ -77,8 +77,8 @@ cli-codex-subagent task list --label wave-1
 
 ```bash
 # Spawn Wave 2 (only after wave-1 complete)
-W2_AUTH=$(cli-codex-subagent run tasks/auth.md     --effort low --label wave-2 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-W2_API=$(cli-codex-subagent run tasks/api.md      --effort low --label wave-2 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+W2_AUTH=$(cli-codex-subagent run tasks/auth.md     --effort low --label wave-2 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+W2_API=$(cli-codex-subagent run tasks/api.md      --effort low --label wave-2 --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 cli-codex-subagent task wait "$W2_AUTH"
 cli-codex-subagent task wait "$W2_API"

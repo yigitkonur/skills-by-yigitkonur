@@ -7,9 +7,9 @@ How to spawn multiple tasks simultaneously and coordinate their completion.
 ```bash
 #!/usr/bin/env bash
 # Spawn phase
-TASK_A=$(cli-codex-subagent run auth.md    --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_B=$(cli-codex-subagent run billing.md --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
-TASK_C=$(cli-codex-subagent run notify.md  --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+TASK_A=$(cli-codex-subagent run auth.md    --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_B=$(cli-codex-subagent run billing.md --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
+TASK_C=$(cli-codex-subagent run notify.md  --effort low --label wave-1 --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
 
 echo "Spawned: $TASK_A $TASK_B $TASK_C"
 
@@ -30,7 +30,7 @@ cli-codex-subagent task list --label wave-1
 #!/usr/bin/env bash
 TASKS=()
 for PROMPT in prompts/wave-1/*.md; do
-    TASK_ID=$(cli-codex-subagent run "$PROMPT" --effort low --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+    TASK_ID=$(cli-codex-subagent run "$PROMPT" --effort low --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
     TASKS+=("$TASK_ID")
     echo "Spawned $TASK_ID <- $PROMPT"
 done
@@ -56,7 +56,7 @@ run_wave() {
     shift
     local TASKS=()
     for PROMPT in "$@"; do
-        TASK_ID=$(cli-codex-subagent run "$PROMPT" --effort low --auto-approve --label "$LABEL" --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+        TASK_ID=$(cli-codex-subagent run "$PROMPT" --effort low --auto-approve --label "$LABEL" --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
         TASKS+=("$TASK_ID")
         echo "  spawned $TASK_ID <- $PROMPT"
     done
@@ -91,7 +91,7 @@ COUNT=0
 WAVE=1
 
 for PROMPT in prompts/*.md; do
-    TASK_ID=$(cli-codex-subagent run "$PROMPT" --effort low --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['taskId'])")
+    TASK_ID=$(cli-codex-subagent run "$PROMPT" --effort low --auto-approve --json | python3 -c "import sys,json; print(json.load(sys.stdin)['task']['id'])")
     TASKS+=("$TASK_ID")
     COUNT=$((COUNT + 1))
     if [ "$COUNT" -ge "$BATCH_SIZE" ]; then

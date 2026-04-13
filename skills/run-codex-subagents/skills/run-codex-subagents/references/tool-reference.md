@@ -26,7 +26,7 @@ cli-codex-subagent task start <task.md> [options]
 | `--output-schema <f>` | string | — | JSON Schema file for structured output |
 | `--label <label>` | string | — | Tag for filtering in `task list` |
 | `--model <model>` | string | — | Override the model |
-| `--json` | flag | off | Print `{taskId, sessionId}` JSON and exit immediately |
+| `--json` | flag | off | Print task JSON (`task.id` = task ID) and exit immediately |
 
 ### Exit codes
 
@@ -40,7 +40,7 @@ cli-codex-subagent task start <task.md> [options]
 
 ### Response (default async)
 
-Prints `taskId` and `sessionId`, then exits. Task runs in the daemon.
+Prints full task JSON (`task.id` is the task ID, `task_id` also at top level), then exits. Task runs in the daemon.
 
 ```
 Started task tsk_abc123 in session ses_xyz789
@@ -49,7 +49,11 @@ Started task tsk_abc123 in session ses_xyz789
 ### Response (--json)
 
 ```json
-{ "taskId": "tsk_abc123", "sessionId": "ses_xyz789" }
+{
+  "task": { "id": "tsk_abc123", "sessionId": "ses_xyz789", "status": "running", "..." : "..." },
+  "task_id": "tsk_abc123",
+  "session_id": "ses_xyz789"
+}
 ```
 
 ### Frontmatter alternative
@@ -111,7 +115,7 @@ TURN    019d786c-...
 THINK   Inspecting the repository structure
 CMD     find src -name "*.ts" → exit=0 (0.3s)
 FILE    src/auth.ts (modified)
-TOKENS  18629 / 996147 (1.9%)
+TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":18629},"modelContextWindow":258400}}
 MSG     I've updated the auth module...
 DONE    completed
 ```
@@ -152,7 +156,7 @@ Output includes: status, session, model, effort, cwd, created/started/completed 
 Print or stream the `events.jsonl` for a task.
 
 ```bash
-cli-codex-subagent task events <taskId> [--raw] [--tail N] [--follow]
+cli-codex-subagent task events <taskId> [--raw] [--tail N]
 ```
 
 | Flag | Description |

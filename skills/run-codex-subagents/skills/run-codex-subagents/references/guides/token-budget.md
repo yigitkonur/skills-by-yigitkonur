@@ -1,6 +1,6 @@
 # Token Budget
 
-The Codex agent operates within a 996,147 token context window. Understanding how tokens are consumed prevents avoidable failures.
+The Codex agent operates within a model-dependent context window (currently ~258,400 tokens for gpt-5.x models). Understanding how tokens are consumed prevents avoidable failures.
 
 ## What Consumes Tokens
 
@@ -89,7 +89,7 @@ Bad: [3 pages of coding standards pasted inline]
 
 The timeline shows token consumption:
 ```
-14:32:15 TOKENS  45,231 / 996,147 (4.5%)
+14:32:15 TOKENS {"threadId":"...","tokenUsage":{"total":{"totalTokens":45231},"modelContextWindow":258400}}
 ```
 
 `task read` or `task events` output includes:
