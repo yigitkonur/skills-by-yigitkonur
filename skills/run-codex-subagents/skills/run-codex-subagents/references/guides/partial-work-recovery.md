@@ -6,7 +6,16 @@ A failed thread may still have written useful files. Recover that work before re
 
 ```bash
 codex-worker read <thread-id>
-codex-worker logs <thread-id>
+
+# How far did the failed turn get before dying? The raw log's mtime is the
+# last activity timestamp; the line count is a proxy for progress.
+RAW=$(codex-worker --output json read <thread-id> | jq -r '.artifacts.rawLogPath')
+stat -f %Sm "$RAW"
+wc -l "$RAW"
+
+# Find the cause of death (see guides/failure-diagnosis.md):
+jq -c 'select(.dir=="daemon" or .dir=="exit" or .method=="error")' "$RAW"
+
 git status
 npm run build
 npm test

@@ -1,19 +1,41 @@
 # codex-worker command reference
 
-Use `codex-worker` directly after a global install:
+## Install
 
 ```bash
+# Global install (canonical). Puts the binary on PATH.
 npm install -g codex-worker
-codex-worker --help
+which codex-worker
+#   macOS with Homebrew-managed node: /opt/homebrew/bin/codex-worker
+#   Other:  $(npm prefix -g)/bin/codex-worker
+codex-worker --version
 ```
 
-Or use it ad hoc through `npx`:
+If `which codex-worker` is empty, your npm global bin is not on PATH. Run `npm prefix -g` and add the resulting `bin/` to `PATH` in `~/.zshrc`.
+
+Throwaway, no install:
 
 ```bash
 npx -y codex-worker --help
 ```
 
 All examples below use the global form for brevity. Prefix with `npx -y` when you are not installed globally.
+
+## Environment Variables
+
+All vars are read per-call. Set inline for a single command, or export persistently and restart the daemon (`codex-worker daemon stop && codex-worker doctor`).
+
+| Var | Effect | Inline example |
+|---|---|---|
+| `CODEX_WORKER_TURN_TIMEOUT_MS` | Idle watchdog window in ms. Default 1800000 (30 min). Resets on every notification. | `CODEX_WORKER_TURN_TIMEOUT_MS=3600000 codex-worker run task.md` |
+| `CODEX_WORKER_RAW_LOG` | Set to `0` to disable the per-thread raw NDJSON firehose. Default on. | `CODEX_WORKER_RAW_LOG=0 codex-worker run task.md` |
+| `CODEX_WORKER_STATE_DIR` | Override the state root (default `~/.codex-worker`). | `CODEX_WORKER_STATE_DIR=/tmp/iso codex-worker doctor` |
+| `CLI_CODEX_WORKER_STATE_DIR` | Legacy fallback for `CODEX_WORKER_STATE_DIR`. Prefer the new name. | — |
+| `CODEX_HOME` | Override the Codex profile directory (default `~/.codex`). | `CODEX_HOME=/alt codex-worker thread list` |
+| `CODEX_HOME_DIRS` | Colon-separated list of Codex profile dirs for multi-account failover. | `CODEX_HOME_DIRS=~/.codex:~/.codex-work codex-worker doctor` |
+| `CODEX_ENABLE_FLEET` | Set to `1` to append fleet developer instructions on thread-start. | `CODEX_ENABLE_FLEET=1 codex-worker run task.md` |
+
+See `guides/log-artifacts.md` for what `CODEX_WORKER_RAW_LOG` controls and `guides/failure-diagnosis.md` for how to tune `CODEX_WORKER_TURN_TIMEOUT_MS`.
 
 ## Global Output Mode
 

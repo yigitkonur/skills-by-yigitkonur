@@ -1,77 +1,136 @@
-# Diagnostic Queries For Transcript And Log Artifacts
+# Diagnostic Queries Against The Raw NDJSON Log
 
-Resolve the artifact paths from the thread first:
+All queries here target `artifacts.rawLogPath` (shipped in `codex-worker@0.1.4`). This is the firehose — every event with real method names and the `dir` taxonomy. The transcript JSONL (`artifacts.transcriptPath`) is a derived view with collapsed types and is **not** the right source for diagnostics. See `guides/log-artifacts.md` for the full map.
+
+## Resolve paths
 
 ```bash
 THREAD_ID=<thread-id>
-THREAD_JSON=$(codex-worker --output json read "$THREAD_ID")
-TRANSCRIPT=$(printf '%s' "$THREAD_JSON" | jq -r '.artifacts.transcriptPath')
-LOG_PATH=$(printf '%s' "$THREAD_JSON" | jq -r '.artifacts.logPath')
+JSON=$(codex-worker --output json read "$THREAD_ID")
+RAW=$(printf '%s' "$JSON" | jq -r '.artifacts.rawLogPath')
 ```
 
-All queries below assume `$TRANSCRIPT` points to `threads/<thread-id>.jsonl`.
+All queries below assume `$RAW` is set.
 
-## Show prompts and requests only
+## Count events by method / direction
 
 ```bash
-jq -r '
-  if .type == "user" then
-    "PROMPT  " + (.prompt // .text // "")
-  elif .type == "request" then
-    "REQUEST " + (.method // "")
-  else
-    empty
-  end
-' "$TRANSCRIPT"
+jq -r '.method // ("[" + .dir + "]")' "$RAW" | sort | uniq -c | sort -rn
 ```
 
-## Reconstruct assistant text
+Balanced counts are a health signal:
+
+- `hook/started` ≈ `hook/completed`
+- `item/started` ≈ `item/completed`
+
+Big gap = a hook or tool call stalled.
+
+## Turn lifecycle trace
 
 ```bash
-jq -r 'select(.type == "assistant.delta") | .delta' "$TRANSCRIPT"
+jq -rc '
+  select(
+    .method == "turn/started" or
+    .method == "turn/completed" or
+    .method == "thread/status/changed" or
+    .dir == "daemon" or
+    .dir == "exit" or
+    .method == "error"
+  ) |
+  "\(.ts[11:19])  \(.dir)  \(.method // .message)"
+' "$RAW"
 ```
 
-## Count notification methods
+## Tool calls that completed
 
 ```bash
-jq -r 'select(.type == "notification") | .method' "$TRANSCRIPT" | sort | uniq -c | sort -rn
+jq -rc '
+  select(.method == "item/completed" and .params.item.type == "commandExecution") |
+  "\(.ts[11:19])  \(.params.item.commandName // .params.item.displayText // "?")"
+' "$RAW"
 ```
 
-## List request payloads
+## File changes that completed
 
 ```bash
-jq -r 'select(.type == "request") | {requestId, method, params}' "$TRANSCRIPT"
+jq -rc '
+  select(.method == "item/completed" and .params.item.type == "fileChange") |
+  "\(.ts[11:19])  \(.params.item.path // .params.item.displayText // "?")"
+' "$RAW"
 ```
 
-## Show streamed command output deltas
+## Assistant messages (full text, not word deltas)
+
+Completed assistant messages, end-of-thought each:
 
 ```bash
-jq -r 'select(.type == "item/commandExecution/outputDelta") | .delta' "$TRANSCRIPT"
+jq -rc '
+  select(.method == "item/completed" and .params.item.type == "agentMessage") |
+  .params.item.text
+' "$RAW"
 ```
 
-## Show streamed file-change output deltas
+Reconstruct from deltas (useful if the thread never completed):
 
 ```bash
-jq -r 'select(.type == "item/fileChange/outputDelta") | .delta' "$TRANSCRIPT"
+jq -r 'select(.method == "item/agentMessage/delta") | .params.delta' "$RAW"
 ```
 
-## Tail the readable log
+## Streamed command output
 
 ```bash
-tail -n 50 "$LOG_PATH"
+jq -r 'select(.method == "item/commandExecution/outputDelta") | .params.delta' "$RAW"
 ```
 
-## Watch the transcript grow
+## Server requests (places the turn asked for input)
 
 ```bash
-tail -f "$TRANSCRIPT"
+jq -rc '
+  select(.dir == "server_request") |
+  "\(.ts[11:19])  id=\(.id)  \(.method)"
+' "$RAW"
 ```
 
-## Find generic runtime failures
+## Stderr from the codex child
+
+Rare; copy verbatim into bug reports if present.
 
 ```bash
-jq -r '
-  select(.type == "notification" and .method == "error") |
-  .params.message // "unknown error"
-' "$TRANSCRIPT"
+jq -rc 'select(.dir == "stderr") | "\(.ts[11:19])  \(.data[0:200])"' "$RAW"
 ```
+
+## Find the cause of a failed turn
+
+```bash
+jq -c '
+  select(
+    .dir == "daemon"         or
+    .dir == "exit"           or
+    .dir == "protocol_error" or
+    .method == "error"
+  )
+' "$RAW"
+```
+
+Interpretation:
+
+- `{"dir":"daemon","message":"watchdog_fire …"}` — the worker's idle watchdog fired. Tune `CODEX_WORKER_TURN_TIMEOUT_MS` (see `guides/failure-diagnosis.md`).
+- `{"dir":"exit","data":{"code":…,"signal":…}}` — the `codex` child exited on its own.
+- `{"method":"error","params":{"message":"…"}}` — runtime error reported by codex.
+
+## Token-usage tempo
+
+Every `thread/tokenUsage/updated` is one model generation. Burst counts and gaps are a proxy for model latency.
+
+```bash
+jq -rc 'select(.method == "thread/tokenUsage/updated") | .ts[11:19]' "$RAW"
+```
+
+## Is the log still growing?
+
+```bash
+stat -f %Sm "$RAW"      # last-modified time
+wc -l "$RAW"            # total events so far
+```
+
+Fresh mtime + growing line count = the thread is still working, regardless of `Status:`.

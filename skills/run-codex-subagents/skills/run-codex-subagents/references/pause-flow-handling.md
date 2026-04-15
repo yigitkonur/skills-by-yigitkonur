@@ -14,6 +14,15 @@ codex-worker wait --thread-id <thread-id>
 
 After `request respond`, do not start a fresh thread unless you are intentionally abandoning the original turn. Use `wait`, `read`, or `logs` against the same thread.
 
+To spot a pending request the moment it appears — without polling `request list` — tail the raw log:
+
+```bash
+RAW=$(codex-worker --output json read <thread-id> | jq -r '.artifacts.rawLogPath')
+tail -F "$RAW" | jq -rc 'select(.dir == "server_request") | "\(.ts[11:19])  \(.method)  id=\(.id)"'
+```
+
+The `{"dir":"server_request", ...}` line fires at the instant the app-server asks for input. Same signal as `request list`, surfaced live. See `guides/log-artifacts.md`.
+
 ## Approval Requests
 
 Common decisions:

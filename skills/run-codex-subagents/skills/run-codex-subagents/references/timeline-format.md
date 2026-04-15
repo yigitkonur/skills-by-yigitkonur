@@ -5,7 +5,9 @@ Older worker CLIs exposed a dedicated `timeline.log`. `codex-worker` does not. T
 - live TTY streaming from a blocking `run`, `send`, `turn start`, `turn steer`, or `wait`
 - `codex-worker read <thread-id>`
 - `codex-worker logs <thread-id>`
-- the persisted `.jsonl` transcript and `.output` log files
+- the persisted `.raw.ndjson` firehose, `.jsonl` transcript, and `.output` log files
+
+For live forensic-grade monitoring, prefer `artifacts.rawLogPath` over `displayLog`. See `guides/log-artifacts.md`.
 
 ## Text Output From `read`
 
@@ -54,6 +56,7 @@ If no readable output exists yet, the command falls back to:
 
 From `codex-worker --output json read <thread-id>`:
 
+- `artifacts.rawLogPath` — raw NDJSON firehose; source of truth for live monitoring
 - `artifacts.displayLog`
 - `artifacts.logTail`
 - `artifacts.recentEvents`
@@ -62,13 +65,21 @@ From `codex-worker --output json read <thread-id>`:
 
 ## Direct File Tail Patterns
 
-Readable log:
+Raw NDJSON firehose (preferred for live monitoring):
+
+```bash
+tail -F "$(codex-worker --output json read <thread-id> | jq -r '.artifacts.rawLogPath')"
+```
+
+Apply a milestone `jq` filter — see `guides/monitoring-patterns.md`.
+
+Readable log (noisy for assistant deltas — one word per line):
 
 ```bash
 tail -f "$(codex-worker --output json read <thread-id> | jq -r '.artifacts.logPath')"
 ```
 
-Transcript JSONL:
+Transcript JSONL (derived view):
 
 ```bash
 tail -f "$(codex-worker --output json read <thread-id> | jq -r '.artifacts.transcriptPath')"
