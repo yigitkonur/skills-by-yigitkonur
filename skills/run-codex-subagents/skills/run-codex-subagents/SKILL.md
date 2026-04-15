@@ -1,220 +1,276 @@
 ---
 name: run-codex-subagents
-description: "Use skill if you are orchestrating Codex coding agents with codex-worker across thread, turn, request, wait, and recovery flows for parallel or multi-step implementation work."
+description: "Use skill if you are orchestrating Codex coding agents via codex-worker CLI — spawning tasks, monitoring timeline progress, handling auto-answered questions, recovering partial work, or running multi-wave implementation plans."
 ---
 
-# run-codex-subagents
+# Orchestrate Codex Tasks with codex-worker
 
-Use `codex-worker` as a CLI-first thread orchestrator. The modern surface is `run`, `send`, `read`, `logs`, `thread`, `turn`, `request`, `wait`, `doctor`, and `daemon`. Do not use retired `task`, `session`, `request answer`, `--choice`, `--text-file`, or `--auto-approve` examples.
+Use this skill when delegating coding, research, verification, or follow-up work to Codex workers through the `codex-worker` CLI.
 
-## Install And Verify
+This is a CLI skill. Use shell commands, local artifact paths, and shell-native control flow.
 
-Three install paths:
+## Trigger Boundaries
 
-```bash
-# 1. Throwaway (no install). Good for one-offs:
-npx -y codex-worker --help
+Use this skill for:
+- launching Codex work from Markdown prompt files
+- monitoring async runs with `task follow` or `task wait`
+- handling blocked requests with `request list`, `request read`, and `request answer`
+- reusing sessions via `--session`, steering completed tasks, coordinating multi-wave batches
+- recovering failed runs from `task read`, `task events`, `read`, `logs`, and `doctor`
 
-# 2. Global install. This is the canonical setup — puts the binary on PATH
-#    so every shell, subagent, and editor can call it by name:
-npm install -g codex-worker
-codex-worker --version
+Do not use for:
+- MCP server setup or `mcpc` testing
+- changing `codex-worker` source code unless the user explicitly asks
+- general Codex/OpenAI documentation questions
 
-# 3. Confirm the install landed on PATH:
-which codex-worker
-#   macOS with Homebrew-managed node: /opt/homebrew/bin/codex-worker
-#   Other:  $(npm prefix -g)/bin/codex-worker
-```
+## Prerequisites
 
-If `which codex-worker` prints nothing, your npm global bin is not on PATH. Check `npm prefix -g` — add its `bin/` subdirectory to `PATH` in `~/.zshrc` (or equivalent).
+1. Verify the CLI: `codex-worker --help` or `npx -y codex-worker --help`
+2. If unavailable, stop and tell the user.
+3. Confirm runtime health: `codex-worker --output json doctor`
+4. Prompts are file-backed. Write a `.md` file before dispatching.
 
-Then confirm the runtime is healthy:
+## Two Command Layers
 
-```bash
-codex-worker --output json doctor
-```
+`codex-worker` has two layers. Use whichever fits:
 
-Expect a JSON object with `node`, `codex`, `daemonRunning`, `stateRoot`, and `profiles`.
+| Layer | Commands | Best for |
+|---|---|---|
+| **Agent-friendly** (recommended) | `task start`, `task steer`, `task follow`, `task list`, `task read`, `task events`, `task wait`, `task cancel`, `session list/read`, `request answer` | Agents orchestrating work — auto-resolves turn ids, supports `--follow`, `--compact`, `--plan` |
+| **Protocol-first** | `run`, `send`, `thread start/resume/read/list`, `turn start/steer/interrupt`, `request respond`, `wait`, `read`, `logs` | Direct thread/turn control, scripting with explicit ids |
 
-## Env Vars
-
-Set inline for a single command, or export persistently. All variables are read per-call by the daemon, so inline overrides are always safe.
-
-```bash
-# Raise the per-turn idle watchdog from 30 min to 1 h, just for this run:
-CODEX_WORKER_TURN_TIMEOUT_MS=3600000 codex-worker run task.md
-
-# Disable the raw NDJSON firehose (rarely needed — it powers monitoring):
-CODEX_WORKER_RAW_LOG=0 codex-worker run task.md
-
-# Isolate the state root for sandboxed experiments:
-CODEX_WORKER_STATE_DIR=/tmp/isolated codex-worker doctor
-
-# Override the Codex profile dir:
-CODEX_HOME=/path/to/alt codex-worker thread list
-```
-
-Persistent in `~/.zshrc`:
-
-```bash
-export CODEX_WORKER_TURN_TIMEOUT_MS=3600000
-```
-
-After changing a persistent value, `codex-worker daemon stop && codex-worker doctor` to pick up the new env. Full reference: `references/tool-reference.md`.
+The `task` commands wrap thread/turn operations. `task start` ≈ `run`, but defaults to async and supports `--follow --compact`. Use `task` when you want the CLI to handle id resolution and event streaming.
 
 ## Canonical Workflow
 
-### 1. Start a new task from Markdown
+### 1. Write a task file
 
-Without a global install:
+Every task file should specify: what to do, which files matter, what not to touch, success criteria, and verification commands.
+
+### 2. Start the task
+
+**Recommended** — async start with live streaming:
 
 ```bash
-npx -y codex-worker run task.md
+codex-worker task start task.md --follow --compact
 ```
 
-With a global install:
+**One-shot blocking** (simpler but no streaming):
 
 ```bash
 codex-worker run task.md
 ```
 
-`run` creates a thread and starts its first turn from the Markdown file. If the command is attached to a TTY and not `--async`, it streams live notifications until the turn completes, fails, or blocks on a request.
-
-### 2. Continue the same thread
-
-```bash
-codex-worker send <thread-id> followup.md
-```
-
-Use `send` when the prior turn already created the thread context you want to keep.
-
-### 3. Background work and waiting
+**Async start** (return immediately, monitor later):
 
 ```bash
 codex-worker --output json run task.md --async
-codex-worker wait --thread-id <thread-id>
 ```
 
-Async results include `threadId`, `turnId`, `job`, `pendingRequests`, and `actions`. Use `wait` when you only need terminal status, or `read` and `logs` when you need artifacts and recent output.
+Key flags for `run` and `task start`:
+- `--follow` — stream events until completion (recommended for agents)
+- `--compact` — concise emoji-prefixed event output (with `--follow`)
+- `--plan` — instruct agent to plan before implementing
+- `--skip-plan` — skip planning, implement directly
+- `--effort <level>` — reasoning effort hint: `low`, `medium`, `high`
+- `--label <text>` — task label for tracking in multi-wave batches
+- `--session <id>` — continue an existing session/thread
+- `--model <id>` — override model selection
+- `--cwd <dir>` — working directory
+- `--async` — return immediately with ids
+- `--timeout <ms>` — wait timeout
 
-### 4. Protocol-first control
-
-Use the protocol-first commands when you need explicit thread lifecycle control:
+### 3. Monitor
 
 ```bash
-codex-worker --output json thread start --cwd /abs/project
-codex-worker turn start <thread-id> prompt.md
-codex-worker turn steer <thread-id> <turn-id> followup.md
-codex-worker turn interrupt <thread-id> <turn-id>
+codex-worker task follow <thread-id>                    # stream events
+codex-worker task follow <thread-id> --compact           # concise output
+codex-worker task wait <thread-id>                       # block until done
+codex-worker task wait <thread-id> --follow --compact    # block + stream
+codex-worker task read <thread-id>                       # current state
+codex-worker task read <thread-id> --field status        # extract single field
+codex-worker task events <thread-id> --tail 10           # recent events
+codex-worker task events <thread-id> --raw               # raw JSONL events
+codex-worker task list --status running                  # running tasks only
+codex-worker task list --quiet                           # thread ids only
 ```
 
-`thread start` creates an idle thread. `turn start` adds a new turn to that thread. `turn steer` continues from a known turn boundary.
+### 4. Unblock requests
 
-## Request Handling
-
-Blocked turns surface through `request list`, `request read`, and `request respond`.
-
-Approval requests:
+When a task pauses on approval or user input:
 
 ```bash
-codex-worker request list
+codex-worker request list --status pending
 codex-worker request read <request-id>
-codex-worker request respond <request-id> --decision accept-session
+codex-worker request answer <request-id> --decision accept    # approval
+codex-worker request answer <request-id> --answer "Yes"       # free text
+codex-worker request answer <request-id> --choice 1           # pick option by number
+codex-worker request answer <request-id> --text-file reply.md # answer from file
 ```
 
-Free-text or multiple-choice user-input requests:
+Then resume monitoring: `codex-worker task follow <thread-id>`
+
+### 5. Continue or recover
 
 ```bash
-codex-worker request respond <request-id> --question-id style --answer "Short"
+# Continue with new instructions (auto-resolves latest turn):
+codex-worker task steer <thread-id> followup.md --follow --compact
+
+# Or send directly on the thread:
+codex-worker send <thread-id> followup.md
+
+# Cancel a running task:
+codex-worker task cancel <thread-id>
 ```
 
-Raw JSON payload when you need exact control:
+For failed tasks, always inspect before retrying:
 
 ```bash
-codex-worker request respond <request-id> --json '{"answers":{"style":{"answers":["Short"]}}}'
-```
-
-For this CLI, multiple-choice answers are label-based. There is no supported `--choice` flag.
-
-## Recovery And Inspection
-
-Read the thread record and recent transcript/log tail:
-
-```bash
-codex-worker read <thread-id>
+codex-worker task read <thread-id>
+codex-worker task events <thread-id> --tail 20
 codex-worker logs <thread-id>
 ```
 
-Use JSON when scripting:
+## Compact Output Format
 
-```bash
-codex-worker --output json read <thread-id>
-codex-worker --output json thread list --limit 20
+With `--follow --compact`, events render as single emoji-prefixed lines:
+
+```
+👤 Build a REST API for user management...
+🔧 bash (completed)
+📝 created: src/routes/users.ts
+💬 I've created the user management API with...
+✅ Turn completed
 ```
 
-Important artifact fields from `read`:
-- `artifacts.rawLogPath` — firehose NDJSON; the source of truth for live monitoring and post-mortems
-- `artifacts.transcriptPath` — deduplicated structured transcript
-- `artifacts.logPath` — plain-text tail (noisy for assistant deltas)
-- `artifacts.recentEvents`
-- `artifacts.displayLog`
+This is the recommended default for agent use. It keeps context lean while showing meaningful progress.
 
-Read `references/guides/log-artifacts.md` before tailing anything. Do not poll `Status:` to infer progress — it only flips at turn boundaries.
+## Quick Reference Table
 
-Default state root is `~/.codex-worker`. Override it with `CODEX_WORKER_STATE_DIR` when you need isolation.
-
-## Translation Table For Old Docs
-
-| Retired form | Use now |
+| Need | Command |
 |---|---|
-| `cli-codex-subagent ...` | `codex-worker ...` |
-| `task start` | `run` or `thread start` + `turn start` |
-| `task follow` | foreground `run` / `send`, or `wait` + `read` / `logs` |
-| `task read` | `read` or `thread read` |
-| `task list` | `thread list` |
-| `task steer` | `turn steer` |
-| `task cancel` | `turn interrupt` |
-| `request answer` | `request respond` |
-| `--choice 1` | `--question-id <id> --answer "<label>"` |
-| `~/.cli-codex-subagent/...` or `~/.mcp-codex-worker/...` | `~/.codex-worker/...` |
+| One-shot with streaming | `codex-worker task start task.md --follow --compact` |
+| Async launch, monitor later | `codex-worker --output json run task.md --async` then `task follow <id>` |
+| Plan before implementing | `codex-worker task start task.md --follow --compact --plan` |
+| Continue same thread | `codex-worker task steer <id> followup.md --follow --compact` |
+| Check task status | `codex-worker task read <id> --field status` |
+| List failed tasks | `codex-worker task list --status failed` |
+| Handle blocked request | `request list` → `request read` → `request answer` |
+| Diagnose a failure | `task read` + `task events` + `logs` + `doctor` |
+| Batch parallel tasks | separate `.md` files + `run task.md --async --label wave-1` for each |
 
-## Routing Guide
+## Handling Results
 
-Read these references based on the work at hand:
+| Status | Meaning | Next move |
+|---|---|---|
+| `running` | task is active | `task follow`, `task wait`, or `task read` |
+| `waiting_request` | blocked on runtime input | use `request` commands |
+| `completed` | finished successfully | inspect artifacts or `task steer` |
+| `failed` | ended with error | inspect artifacts, recover, retry |
+| `interrupted` | cancelled or stopped | inspect artifacts, retry or steer |
+| `idle` | thread created, no active turn | `turn start` or `task start --session` |
 
-- `references/tool-reference.md` for the current command surface, flags, env vars, and install commands.
-- `references/guides/log-artifacts.md` for `rawLogPath`, `transcriptPath`, `logPath`, and when each is authoritative — read this before tailing anything.
-- `references/resources-reference.md` for thread records, artifact paths, and state layout.
-- `references/pause-flow-handling.md` for blocked turns and `request respond` payloads.
-- `references/orchestration-patterns.md` for sequential, parallel, and steer-based execution patterns.
-- `references/event-types.md` for live stream and persisted transcript event shapes.
-- `references/timeline-format.md` for what `read`, `logs`, and TTY streaming actually show.
-- `references/guides/auto-answer-behavior.md` for the current no-auto-answer behavior and safe response patterns.
-- `references/guides/context-files.md` for structuring Markdown prompt files and inlining extra context.
-- `references/guides/developer-instructions.md` for `thread start --developer-instructions` and `--base-instructions`.
-- `references/guides/failure-diagnosis.md` for interpreting failed turns, blocked requests, and daemon/runtime issues.
-- `references/guides/fleet-mode.md` for `CODEX_ENABLE_FLEET=1` behavior.
-- `references/guides/labels-and-tracking.md` for naming and tracking waves without legacy label flags.
-- `references/guides/mission-protocol-prompts.md` for prompt structure and mission-writing rules.
-- `references/guides/monitoring-patterns.md` for `read`, `logs`, `wait`, and artifact-tail workflows.
-- `references/guides/parallel-dispatch.md` for multi-thread async launch patterns.
-- `references/guides/partial-work-recovery.md` for salvaging failed work on disk before retrying.
-- `references/scripts/diagnostic-queries.md` for `jq`, shell, and Python snippets against transcript and log artifacts.
-- `references/templates/batch-wave.md` for a reusable wave launcher and manifest pattern.
-- `references/templates/coder-mission.md` for implementation-task prompt files.
-- `references/templates/planning-mission.md` for planning-only prompt files.
-- `references/templates/quick-diagnostic.md` for one-command probes.
-- `references/templates/research-mission.md` for exploration and audit prompts.
-- `references/templates/test-runner.md` for test-only prompt files.
+## Effort Levels
 
-Helper scripts shipped alongside this skill:
-- `references/scripts/batch-status.sh`
-- `references/scripts/merged-monitor.sh`
+`task start` and `run` accept `--effort low|medium|high`.
 
-## Operating Rules
+- `low` — narrow edits, deterministic file work
+- `medium` — multi-step implementation or refactors
+- `high` — deep synthesis, complex architectural work
 
-- Prefer `run` for one-shot work and `send` for follow-ups on the same thread.
-- Prefer `thread start` plus `turn start` when you need explicit setup before the first turn.
-- Use `--output json` for scripting and parsing. Text output is for interactive use.
-- Treat `read` as the source of truth for artifacts, pending requests, and tracked turns.
-- Recover partial work before retrying: inspect the workspace, build, test, then decide whether to `send` or start a new thread.
+Do not compensate for vague prompts by raising effort. Tighten the task file first.
+
+## Protocol-First Commands
+
+When you need explicit thread/turn control:
+
+```bash
+codex-worker thread start --cwd /abs/project --model gpt-5.4
+codex-worker turn start <thread-id> prompt.md
+codex-worker turn steer <thread-id> <turn-id> followup.md
+codex-worker turn interrupt <thread-id> <turn-id>
+codex-worker thread list --limit 20
+codex-worker read <thread-id> --tail 50
+codex-worker logs <thread-id> --tail 100
+codex-worker wait --thread-id <id> --timeout 300000
+```
+
+## Session Management
+
+```bash
+codex-worker session list                    # list all sessions/threads
+codex-worker session read <session-id>       # read session state
+```
+
+To continue work in an existing session:
+
+```bash
+codex-worker task start task.md --session <session-id> --follow --compact
+codex-worker run task.md --session <session-id>
+```
+
+## Runtime Inspection
+
+```bash
+codex-worker doctor                          # check prerequisites
+codex-worker model list                      # available models
+codex-worker account read                    # account info
+codex-worker account rate-limits             # current limits
+codex-worker daemon status                   # daemon state
+```
+
+## Machine-Readable Output
+
+Use `--output json` for scripting:
+
+```bash
+codex-worker --output json task read <thread-id>
+codex-worker --output json task list
+codex-worker --output json run task.md --async
+```
+
+## State Layout
+
+Default state root: `~/.codex-worker/` (override: `CODEX_WORKER_STATE_DIR`).
+
+Key paths:
+- `registry.json` — threads, turns, jobs, requests
+- `daemon.json` / `daemon.sock` — daemon connection info
+- `workspaces/<hash>/threads/<id>.jsonl` — transcript events
+- `workspaces/<hash>/logs/<id>.output` — execution log
+
+## Do This, Not That
+
+| Do this | Not that |
+|---|---|
+| `task start --follow --compact` for live visibility | fire-and-forget without monitoring |
+| `request answer` for blocked runs | assume the runtime auto-answered |
+| `--output json` + `task read --field` for scripting | parse text output |
+| inspect artifacts before retrying failures | immediately rerun the same prompt |
+| `--session <id>` for intentional continuity | reuse sessions casually across unrelated tasks |
+| `--plan` when work is complex | let the agent decide on plan vs. no-plan |
+
+## Reference Files
+
+| File | When to read |
+|---|---|
+| `references/command-reference.md` | Full command surface, all flags, output modes |
+| `references/orchestration-patterns.md` | Sequential, parallel, session, batch patterns |
+| `references/request-handling.md` | Handling blocked requests, answer payloads |
+| `references/recovery-and-diagnostics.md` | Failed tasks, artifacts, doctor output |
+| `references/composability-and-exit-codes.md` | Exit-code contracts, shell composability, scripting behavior |
+| `references/prompt-bundles.md` | Multi-file prompt bundle structure and reuse patterns |
+| `references/prompt-writing.md` | Writing effective Markdown task files |
+| `references/runtime-config.md` | Runtime config inheritance, CODEX_HOME |
+| `references/templates/coder-mission.md` | Implementation task template |
+| `references/templates/research-mission.md` | Exploration/audit template |
+| `references/templates/batch-wave.md` | Multi-wave orchestration template |
+| `references/templates/test-runner.md` | Test execution template |
+
+## Guardrails
+
+- Do not mention MCP tools, MCP resources, or `task:///...` URIs.
+- Do not assume blocked requests are auto-answered.
+- Do not invent CLI flags. Run `--help` to verify before using.
+- Do not reuse stale thread/request ids without reading their current state.
+- Do not claim a task is irrecoverable until you have inspected `task read`, `task events`, `logs`, and `doctor`.

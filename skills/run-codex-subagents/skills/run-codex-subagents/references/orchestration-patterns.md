@@ -1,138 +1,130 @@
-# Orchestration Patterns For `codex-worker`
+# Orchestration patterns
 
-These patterns assume the current thread/turn/request model. Replace `codex-worker` with `npx -y codex-worker` if you are not installed globally.
+Use this file when you already know the task shape and need a reliable CLI execution loop.
 
-## Pattern 1: Single foreground run
+Assume `jq` is available when examples capture ids from JSON. If it is not, use any equivalent JSON parser.
 
-Use this when one prompt file should run to completion before you decide anything else.
+## 1. One-shot blocking execution
+
+Use this when you want one command that starts the task and waits for the final result:
 
 ```bash
 codex-worker run task.md
 ```
 
-If the turn completes, inspect the result with:
+With live streaming:
 
 ```bash
-codex-worker read <thread-id>
+codex-worker run task.md --follow --compact
 ```
 
-If it blocks, answer the request and then:
+Best for:
+
+- narrow implementation tasks
+- verification tasks
+- quick research tasks with a single output
+
+## 2. Async start, then follow
+
+Use this when you want ids immediately and will monitor later:
 
 ```bash
-codex-worker wait --thread-id <thread-id>
+START_JSON="$(codex-worker --output json run task.md --async)"
+THREAD_ID="$(printf '%s' "$START_JSON" | jq -r '.threadId')"
+
+codex-worker task follow "$THREAD_ID" --compact
 ```
 
-## Pattern 2: Background wave of independent tasks
-
-Spawn multiple threads in parallel and keep the returned ids in shell variables.
+If you only want the final state later:
 
 ```bash
-AUTH_JSON=$(codex-worker --output json run auth.md --async)
-API_JSON=$(codex-worker --output json run api.md --async)
-TEST_JSON=$(codex-worker --output json run tests.md --async)
-
-AUTH_THREAD=$(printf '%s' "$AUTH_JSON" | jq -r '.threadId')
-API_THREAD=$(printf '%s' "$API_JSON" | jq -r '.threadId')
-TEST_THREAD=$(printf '%s' "$TEST_JSON" | jq -r '.threadId')
-
-AUTH_JOB=$(printf '%s' "$AUTH_JSON" | jq -r '.job.id')
-API_JOB=$(printf '%s' "$API_JSON" | jq -r '.job.id')
-TEST_JOB=$(printf '%s' "$TEST_JSON" | jq -r '.job.id')
-
-codex-worker wait --job-id "$AUTH_JOB"
-codex-worker wait --job-id "$API_JOB"
-codex-worker wait --job-id "$TEST_JOB"
+codex-worker task wait "$THREAD_ID"
 ```
 
-Follow-up inspection:
+## 3. Session continuity
+
+Use a session when multiple turns should share the same runtime thread, cwd, and evolving context:
 
 ```bash
-codex-worker read "$AUTH_THREAD"
-codex-worker read "$API_THREAD"
-codex-worker read "$TEST_THREAD"
+# Start first task
+START_JSON="$(codex-worker --output json run prompts/step-1.md --async)"
+THREAD_ID="$(printf '%s' "$START_JSON" | jq -r '.threadId')"
+
+codex-worker task wait "$THREAD_ID"
+
+# Continue in same session
+codex-worker task steer "$THREAD_ID" prompts/step-2.md --follow --compact
 ```
 
-## Pattern 3: Explicit thread bootstrapping
-
-Use `thread start` when you want to inject thread-level instructions before the first turn.
+Or use `--session` on `run` or `task start`:
 
 ```bash
-THREAD_JSON=$(codex-worker --output json thread start \
-  --cwd "$PWD" \
-  --developer-instructions "Prefer rg over grep. Keep output concise.")
-
-THREAD_ID=$(printf '%s' "$THREAD_JSON" | jq -r '.thread.id')
-
-TURN_JSON=$(codex-worker --output json turn start "$THREAD_ID" plan.md --async)
-TURN_ID=$(printf '%s' "$TURN_JSON" | jq -r '.turnId')
-
-codex-worker wait --turn-id "$TURN_ID"
-codex-worker send "$THREAD_ID" implement.md
+codex-worker task start prompts/step-2.md --session "$THREAD_ID" --follow --compact
 ```
 
-## Pattern 4: Continue from a known turn
+Do not reuse a session casually across unrelated tasks.
 
-Steer a thread after reviewing the prior result.
+## 4. Multi-wave parallel work
+
+Parallel tasks should not share one active session. Start them independently.
+
+Wave launch:
 
 ```bash
-FIRST_JSON=$(codex-worker --output json run step1.md --async)
-THREAD_ID=$(printf '%s' "$FIRST_JSON" | jq -r '.threadId')
-TURN_ID=$(printf '%s' "$FIRST_JSON" | jq -r '.turnId')
-
-codex-worker wait --turn-id "$TURN_ID"
-codex-worker turn steer "$THREAD_ID" "$TURN_ID" step2.md
+IDS=()
+for file in prompts/wave-1/*.md; do
+  START_JSON="$(codex-worker --output json run "$file" --async --label wave-1)"
+  IDS+=("$(printf '%s' "$START_JSON" | jq -r '.threadId')")
+done
 ```
 
-Use `turn steer` when the next prompt depends on the specific turn boundary you just reviewed. Use `send` when you only need to continue the thread.
-
-## Pattern 5: Failure, inspect, salvage, continue
+Wave monitor:
 
 ```bash
-RUN_JSON=$(codex-worker --output json run repair.md --async)
-THREAD_ID=$(printf '%s' "$RUN_JSON" | jq -r '.threadId')
-JOB_ID=$(printf '%s' "$RUN_JSON" | jq -r '.job.id')
+for id in "${IDS[@]}"; do
+  codex-worker task wait "$id" || true
+done
 
-codex-worker wait --job-id "$JOB_ID" || true
-codex-worker read "$THREAD_ID"
-
-# Find the cause of death in the raw log (see guides/failure-diagnosis.md):
-RAW=$(codex-worker --output json read "$THREAD_ID" | jq -r '.artifacts.rawLogPath')
-jq -c 'select(.dir=="daemon" or .dir=="exit" or .method=="error" or .dir=="protocol_error")' "$RAW"
-
-git status
-npm run build
-npm test
+codex-worker --output json task list --status failed
 ```
 
-If the agent wrote useful partial work, keep the thread and send a narrowly scoped follow-up:
+Only start the next wave after checking for failures.
+
+## 5. Blocked-request loop
+
+When a task stops in `waiting_request`:
 
 ```bash
-codex-worker send "$THREAD_ID" fix-only.md
+codex-worker request list --status pending
+codex-worker request read req_123
+codex-worker request answer req_123 --decision accept
+codex-worker task follow thr_abc123 --compact
 ```
 
-## Pattern 6: Blocked request in the middle of a wave
+Treat this as normal control flow, not an exceptional state.
+
+## 6. Recovery before retry
+
+If a task fails:
 
 ```bash
-THREAD_JSON=$(codex-worker --output json run feature.md --async)
-THREAD_ID=$(printf '%s' "$THREAD_JSON" | jq -r '.threadId')
-
-# Either poll:
-codex-worker request list
-
-# …or tail the raw log for a live "turn just paused on me" signal:
-RAW=$(codex-worker --output json read "$THREAD_ID" | jq -r '.artifacts.rawLogPath')
-tail -F "$RAW" | jq -rc 'select(.dir=="server_request")' &
-
-codex-worker request read <request-id>
-codex-worker request respond <request-id> --decision accept-session
-codex-worker wait --thread-id "$THREAD_ID"
+codex-worker task read thr_abc123 --tail 40
+codex-worker task events thr_abc123 --tail 100
+codex-worker doctor
 ```
 
-## Pattern 7: Tracking waves without label flags
+Decide whether to:
 
-The current CLI has no `--label`. Track waves with:
-- prompt filenames such as `wave-1-auth.md`, `wave-1-api.md`
-- shell variables or a local TSV/JSON manifest of `threadId` and `job.id`
-- `thread list --cwd /abs/project` to scope to one workspace
+- answer a request
+- tighten the prompt and rerun
+- use `task steer` with a focused follow-up
+- restart cleanly
 
-That keeps batch orchestration explicit and scriptable without depending on removed task-label features.
+## Anti-patterns
+
+| Avoid | Why |
+|---|---|
+| sharing one active session across parallel tasks | the CLI protects active sessions and you lose clean isolation |
+| retrying immediately after failure | you throw away diagnostics |
+| using `task steer` on a still-running task | it is rejected by design |
+| parsing text output in scripts | `--output json`, `--field`, and `--quiet` are the stable contract |
