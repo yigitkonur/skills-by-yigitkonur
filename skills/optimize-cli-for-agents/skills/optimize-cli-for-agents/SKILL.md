@@ -15,7 +15,9 @@ Use this skill when:
 - every failure exits `1` with no structured error body
 - a command hangs waiting for interactive confirmation
 - you are designing a fresh CLI and want agent-first constraints from day one
-- you need to decide whether a workflow should stay a CLI or move to MCP
+- you need to decide whether a workflow should stay CLI-first, move to MCP, or split into a hybrid
+
+If the user is choosing between CLI, MCP, skills, or a hybrid, read `references/mcp-vs-cli-decision.md` before recommending an interface.
 
 ## Core Audit
 
@@ -80,21 +82,23 @@ When repairing an existing CLI, work in this order:
 ## CLI Vs MCP
 
 Stay with a CLI when:
-- the workflow is command-shaped
-- shell composition matters
+- a mature CLI already exists and the workflow is command-shaped
+- shell composition, files, or pipes are central to the task
 - the agent only needs process execution plus stable parsing
+- the operator is a developer or trusted local runtime
 
 Prefer MCP when:
-- the workflow needs fine-grained tool calls
+- the workflow needs per-user auth, approvals, or tenant isolation
 - the agent benefits from typed tool schemas instead of shell parsing
 - long interactive sessions or stateful tool orchestration dominate the use case
+- no strong CLI exists and a shell wrapper would mostly reimplement a remote API
 
 ## Reference Routing
 
 - `references/output-contracts.md` for JSON envelope design, schemas, and error fields.
 - `references/execution-patterns.md` for async job models, retries, and long-running command flows.
 - `references/discovery-and-auth.md` for help-driven discovery and auth handling.
-- `references/mcp-vs-cli-decision.md` for deciding whether a workflow should stay CLI-first or become MCP.
+- `references/mcp-vs-cli-decision.md` for deciding whether a workflow should stay CLI-first, move to MCP, or split auth and discovery from execution.
 - `references/examples.md` for worked audit and redesign examples.
 - `references/agent-integration.md` for implementation patterns when another agent or service will invoke the CLI.
 

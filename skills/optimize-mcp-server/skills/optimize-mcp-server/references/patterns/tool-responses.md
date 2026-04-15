@@ -1,6 +1,6 @@
 # Tool Response Patterns
 
-How to craft MCP tool responses that steer the model toward correct next steps, minimize token waste, and serve both the user and the agent. These 10 patterns treat every response as a prompt to the model.
+How to craft MCP tool responses that steer the model toward correct next steps, minimize token waste, and serve both the user and the agent. These 11 patterns treat every response as a prompt to the model.
 
 ## Pattern 1: Treat Every Tool Response as a Prompt to the Model
 
@@ -466,3 +466,69 @@ Use "page" param to paginate. Pass user "id" values to get_user_details.`,
 This is not pretty, but it works. The description gets long, and purists will object. But in practice, agents that see example responses make fewer errors and fewer exploratory calls. The token cost of a slightly longer description is far less than the cost of a wasted tool round-trip.
 
 **Source:** [u/gauthierpia on r/AI_Agents](https://reddit.com/r/AI_Agents) — reported significant reduction in wasted tool calls after adding example responses to descriptions
+
+---
+
+## Pattern 11: Return a Search Frontier, Not Just the First SERP
+
+For research, SEO, and discovery tools, the first result page is rarely the finished product. A better response returns the **current frontier** for the next step, not just the current evidence.
+
+**Weak response:**
+```json
+{
+  "results": ["10 search results here"]
+}
+```
+
+**Agentic response:**
+```json
+{
+  "summary": "The current SERP is strong on general overviews but weak on implementation examples and CLI translation.",
+  "results": ["10 search results here"],
+  "coverage_gaps": [
+    "Few concrete MCP implementation examples",
+    "Almost no CLI-specific steering guidance",
+    "Low source diversity across the top results"
+  ],
+  "recommended_next_queries": [
+    {
+      "query": "seo research mcp implementation example",
+      "reason": "Fill the implementation gap",
+      "expected_signal": "production patterns"
+    },
+    {
+      "query": "agentic cli steering for seo workflows",
+      "reason": "Translate MCP steering patterns into CLI output contracts",
+      "expected_signal": "CLI design patterns"
+    }
+  ],
+  "recommended_next_tool": "fetch_pages",
+  "server_actions_taken": [
+    {
+      "type": "internal_planner_turn",
+      "purpose": "derive next-query candidates from the current results"
+    }
+  ],
+  "stop_conditions": [
+    "Stop if two consecutive follow-up waves add no novel authoritative sources."
+  ]
+}
+```
+
+**Strong example:** a secure research MCP accepts a seed keyword, performs dozens of searches, then uses an internal model turn to decide which keywords to search next based on the returned SERP. The gain comes from collapsing a repeated "inspect results -> pick next keywords -> search again" loop into one bounded server response.
+
+This is especially effective for SEO because good research is not just recall. It is **coverage management**:
+- intent coverage
+- source diversity
+- freshness
+- implementation depth
+- authority mix
+
+**How to think deeply about agentic steering here:**
+1. Return the **gap model**, not just the current answer.
+2. Recommend next steps in ranked, structured objects, not prose.
+3. Separate `server_actions_taken` from `recommended_next_queries` so the agent knows what already happened.
+4. Prefer recommendations that remove the biggest information bottleneck first.
+5. Bound internal continuation with spend, time, and wave caps.
+
+Do not hide opaque autonomy inside the tool. If you use an internal planner or a second model call, disclose it in the response. That keeps the system debuggable and lets you evaluate whether the extra steering actually improves outcomes.
