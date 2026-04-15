@@ -11,10 +11,6 @@ cwd: .
 
 Investigate the target area and report concrete findings with file references.
 
-## Label
-
-replace-with-short-research-label
-
 ## Scope
 
 - Focus on:

@@ -11,10 +11,6 @@ cwd: .
 
 Make the required code change and carry it through verification.
 
-## Label
-
-replace-with-short-task-label
-
 ## Scope
 
 - Files or directories the worker owns:
@@ -41,7 +37,3 @@ npm test
 - Report the touched files.
 - Report the verification results.
 ~~~~
-
-Tighten the scope before raising effort.
-
-Launch with: `codex-worker run mission.md --effort medium --label your-label`

@@ -11,10 +11,6 @@ cwd: .
 
 Run the required verification commands and explain the result precisely.
 
-## Label
-
-replace-with-test-task-label
-
 ## Scope
 
 - Commands to run:

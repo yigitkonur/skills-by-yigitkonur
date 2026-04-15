@@ -4,9 +4,9 @@ Use this file when writing the Markdown prompt file that `codex-worker` will exe
 
 ## Core rule
 
-Tighter prompts beat higher effort settings.
+Tighter prompts beat clever flag combinations.
 
-Before raising `--effort`, make the prompt file more concrete.
+Before adding more runtime knobs, make the prompt file more concrete.
 
 ## Every prompt file should answer five questions
 
@@ -29,10 +29,10 @@ You do not need all headings every time, but the content should exist somewhere 
 
 ## CLI flags vs prompt content
 
-Behavioral control belongs in CLI flags:
+Behavioral control that exists in the released CLI belongs in CLI flags:
 
 ```bash
-codex-worker run task.md --cwd . --model gpt-5.4 --effort medium --label auth-refactor --plan
+codex-worker run task.md --cwd . --model gpt-5.4 --timeout 240000
 ```
 
 Prompt-file content should describe the work, not replace those flags.
