@@ -94,7 +94,10 @@ JOB_ID=$(printf '%s' "$RUN_JSON" | jq -r '.job.id')
 
 codex-worker wait --job-id "$JOB_ID" || true
 codex-worker read "$THREAD_ID"
-codex-worker logs "$THREAD_ID"
+
+# Find the cause of death in the raw log (see guides/failure-diagnosis.md):
+RAW=$(codex-worker --output json read "$THREAD_ID" | jq -r '.artifacts.rawLogPath')
+jq -c 'select(.dir=="daemon" or .dir=="exit" or .method=="error" or .dir=="protocol_error")' "$RAW"
 
 git status
 npm run build
@@ -113,7 +116,13 @@ codex-worker send "$THREAD_ID" fix-only.md
 THREAD_JSON=$(codex-worker --output json run feature.md --async)
 THREAD_ID=$(printf '%s' "$THREAD_JSON" | jq -r '.threadId')
 
+# Either poll:
 codex-worker request list
+
+# …or tail the raw log for a live "turn just paused on me" signal:
+RAW=$(codex-worker --output json read "$THREAD_ID" | jq -r '.artifacts.rawLogPath')
+tail -F "$RAW" | jq -rc 'select(.dir=="server_request")' &
+
 codex-worker request read <request-id>
 codex-worker request respond <request-id> --decision accept-session
 codex-worker wait --thread-id "$THREAD_ID"

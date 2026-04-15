@@ -9,24 +9,58 @@ Use `codex-worker` as a CLI-first thread orchestrator. The modern surface is `ru
 
 ## Install And Verify
 
-Install the runtime one of two ways:
+Three install paths:
 
 ```bash
+# 1. Throwaway (no install). Good for one-offs:
 npx -y codex-worker --help
-```
 
-```bash
+# 2. Global install. This is the canonical setup — puts the binary on PATH
+#    so every shell, subagent, and editor can call it by name:
 npm install -g codex-worker
-codex-worker --help
+codex-worker --version
+
+# 3. Confirm the install landed on PATH:
+which codex-worker
+#   macOS with Homebrew-managed node: /opt/homebrew/bin/codex-worker
+#   Other:  $(npm prefix -g)/bin/codex-worker
 ```
 
-Then confirm the local runtime is healthy:
+If `which codex-worker` prints nothing, your npm global bin is not on PATH. Check `npm prefix -g` — add its `bin/` subdirectory to `PATH` in `~/.zshrc` (or equivalent).
+
+Then confirm the runtime is healthy:
 
 ```bash
 codex-worker --output json doctor
 ```
 
 Expect a JSON object with `node`, `codex`, `daemonRunning`, `stateRoot`, and `profiles`.
+
+## Env Vars
+
+Set inline for a single command, or export persistently. All variables are read per-call by the daemon, so inline overrides are always safe.
+
+```bash
+# Raise the per-turn idle watchdog from 30 min to 1 h, just for this run:
+CODEX_WORKER_TURN_TIMEOUT_MS=3600000 codex-worker run task.md
+
+# Disable the raw NDJSON firehose (rarely needed — it powers monitoring):
+CODEX_WORKER_RAW_LOG=0 codex-worker run task.md
+
+# Isolate the state root for sandboxed experiments:
+CODEX_WORKER_STATE_DIR=/tmp/isolated codex-worker doctor
+
+# Override the Codex profile dir:
+CODEX_HOME=/path/to/alt codex-worker thread list
+```
+
+Persistent in `~/.zshrc`:
+
+```bash
+export CODEX_WORKER_TURN_TIMEOUT_MS=3600000
+```
+
+After changing a persistent value, `codex-worker daemon stop && codex-worker doctor` to pick up the new env. Full reference: `references/tool-reference.md`.
 
 ## Canonical Workflow
 
@@ -119,10 +153,13 @@ codex-worker --output json thread list --limit 20
 ```
 
 Important artifact fields from `read`:
-- `artifacts.transcriptPath`
-- `artifacts.logPath`
+- `artifacts.rawLogPath` — firehose NDJSON; the source of truth for live monitoring and post-mortems
+- `artifacts.transcriptPath` — deduplicated structured transcript
+- `artifacts.logPath` — plain-text tail (noisy for assistant deltas)
 - `artifacts.recentEvents`
 - `artifacts.displayLog`
+
+Read `references/guides/log-artifacts.md` before tailing anything. Do not poll `Status:` to infer progress — it only flips at turn boundaries.
 
 Default state root is `~/.codex-worker`. Override it with `CODEX_WORKER_STATE_DIR` when you need isolation.
 
@@ -145,7 +182,8 @@ Default state root is `~/.codex-worker`. Override it with `CODEX_WORKER_STATE_DI
 
 Read these references based on the work at hand:
 
-- `references/tool-reference.md` for the current command surface, flags, and install commands.
+- `references/tool-reference.md` for the current command surface, flags, env vars, and install commands.
+- `references/guides/log-artifacts.md` for `rawLogPath`, `transcriptPath`, `logPath`, and when each is authoritative — read this before tailing anything.
 - `references/resources-reference.md` for thread records, artifact paths, and state layout.
 - `references/pause-flow-handling.md` for blocked turns and `request respond` payloads.
 - `references/orchestration-patterns.md` for sequential, parallel, and steer-based execution patterns.

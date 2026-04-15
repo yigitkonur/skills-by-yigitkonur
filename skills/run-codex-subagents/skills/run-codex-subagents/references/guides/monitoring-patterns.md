@@ -1,44 +1,92 @@
 # Monitoring Patterns
 
-Use the current primitives together:
-- foreground streaming from blocking commands
-- `wait` for background turns
-- `read` for structured state
-- `logs` for readable output
+Three questions cover every live-monitoring need: **Is it moving? Is it blocked? What is it doing?** Map each to the right artifact. Do not poll `Status:` — see the note at the bottom.
 
-## Foreground Monitoring
+Resolve paths once:
 
 ```bash
-codex-worker run task.md
+THREAD_ID=<thread-id>
+RAW=$(codex-worker --output json read "$THREAD_ID" | jq -r '.artifacts.rawLogPath')
 ```
 
-If stdout is a TTY, you will see `[event] payload` lines until the turn completes, fails, or blocks.
+All queries below assume `$RAW` is set. See `guides/log-artifacts.md` for the file taxonomy.
 
-## Background Monitoring
+## Is it moving?
 
 ```bash
-RUN_JSON=$(codex-worker --output json run task.md --async)
-THREAD_ID=$(printf '%s' "$RUN_JSON" | jq -r '.threadId')
-JOB_ID=$(printf '%s' "$RUN_JSON" | jq -r '.job.id')
-
-codex-worker wait --job-id "$JOB_ID"
-codex-worker read "$THREAD_ID"
-codex-worker logs "$THREAD_ID"
+tail -F "$RAW" | jq -rc '
+  select(
+    .method == "turn/started"              or
+    .method == "turn/completed"            or
+    .method == "item/completed"            or
+    .method == "thread/tokenUsage/updated" or
+    .method == "thread/status/changed"     or
+    .dir    == "server_request"            or
+    .dir    == "exit"                      or
+    .dir    == "stderr"                    or
+    (.dir == "daemon" and (.message | test("watchdog|fail")))
+  ) |
+  "\(.ts[11:19])  \(.dir)  \(.method // .message)  \(.params.item.type // \"\")"
+'
 ```
 
-## Tail The Stored Artifacts
+Rule: any line = alive. Silence for longer than `CODEX_WORKER_TURN_TIMEOUT_MS` (default 30 min) = actually stuck — and the idle watchdog will fire on its own anyway.
+
+Mtime variant when `jq` is unavailable:
 
 ```bash
-LOG_PATH=$(codex-worker --output json read <thread-id> | jq -r '.artifacts.logPath')
-TRANSCRIPT_PATH=$(codex-worker --output json read <thread-id> | jq -r '.artifacts.transcriptPath')
-
-tail -f "$LOG_PATH"
-tail -f "$TRANSCRIPT_PATH"
+stat -f %Sm "$RAW"   # last activity timestamp; advances = alive
 ```
 
-## Triage Checklist
+## Is it blocked on me?
 
-- `wait` if you want to block until the current turn stops changing
-- `read` if you need turns, requests, and artifact paths
-- `logs` if you only need the readable tail
-- direct file tails if the CLI summary is not enough
+Two equivalent signals. The first is one-shot, the second is live.
+
+```bash
+codex-worker --output json request list
+tail -F "$RAW" | jq -rc 'select(.dir == "server_request") | "\(.ts[11:19])  \(.method)  id=\(.id)"'
+```
+
+Any hit means the turn is paused for `request respond`. Unblock via `guides/pause-flow-handling.md`.
+
+## What is it doing right now?
+
+Snapshot state plus rich context:
+
+```bash
+codex-worker --output json read "$THREAD_ID" | jq '{
+  status: .localThread.status,
+  pendingRequests,
+  raw: .artifacts.rawLogPath,
+  transcript: .artifacts.transcriptPath
+}'
+```
+
+Then tail the raw log for the live view, or `scripts/diagnostic-queries.md` for replay-style queries.
+
+## Watching many threads at once
+
+Use `scripts/merged-monitor.sh <tid-1> <tid-2> ...`. It resolves each thread's `rawLogPath`, applies the milestone filter, and prefixes each line with the 8-char short id.
+
+## Why `Status:` is the wrong signal for live monitoring
+
+Thread `Status:` only flips at turn boundaries:
+
+- `turn/started` → `active`
+- `turn/completed` → `idle`
+- watchdog or codex exit → `failed`
+- `server_request` → `waiting_request`
+
+A healthy long-running turn stays `active` for its entire duration. Polling `codex-worker thread read | awk '/^Status:/'` will report one transition at turn start and silence until the turn ends. That is not a progress signal. Use `rawLogPath`.
+
+## Triage cheatsheet
+
+| Symptom | What to run |
+|---|---|
+| Need live progress of one thread | `tail -F "$RAW" \| jq` with the "Is it moving?" filter |
+| Need live progress of many threads | `scripts/merged-monitor.sh <tid>...` |
+| Need to know if I need to respond | `codex-worker request list` or the `dir=="server_request"` tail |
+| Need a wait-for-terminal on a job | `codex-worker wait --job-id "$JOB_ID"` |
+| Need the structured snapshot | `codex-worker --output json read <tid>` |
+| Suspect stuck | `stat -f %Sm "$RAW"` — stale = stuck, fresh = running |
+| Want to know why a finished thread failed | `guides/failure-diagnosis.md` |
