@@ -1,6 +1,6 @@
 # init-agent-config
 
-Generating, auditing, or migrating repo-grounded AGENTS.md and CLAUDE.md files, especially for dual-file setups, multi-agent compatibility, or converting existing agent config.
+Generating AGENTS-first repo instructions, `REVIEW.md` standards, folder-scoped guidance, and companion agent entrypoints for multi-agent coding workflows.
 
 **Category:** configuration
 

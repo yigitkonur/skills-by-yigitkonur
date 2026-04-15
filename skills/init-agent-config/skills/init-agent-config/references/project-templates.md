@@ -1,724 +1,346 @@
 # Project Templates
 
-Copy-paste templates for AGENTS.md and CLAUDE.md organized by project type. Each template includes AGENTS.md, CLAUDE.md thin wrapper, and CLAUDE.md standalone variants.
+AGENTS-first starter templates for common repository shapes. Use these only after discovery. Every template assumes:
 
-Every AGENTS.md template includes a **Boundaries** section. Every template assumes commands are verified against actual project config before committing. **Strip sections you don't need — shorter is better.**
+- root `AGENTS.md` is written first
+- meaningful `src/*`, app, package, or service folders get local `AGENTS.md`
+- each finalized `AGENTS.md` gets a sibling `CLAUDE.md -> AGENTS.md`
+- if symlinks are impossible, use `@AGENTS.md` as the fallback wrapper
 
-Thin wrapper rule: Step 3 of `SKILL.md` is the canonical base template. Treat the wrapper snippets below as customizations. If a wrapper here shows only `@AGENTS.md`, that is the zero-addition variant. Remove any `.claude/rules/` line unless that directory already exists or you are creating rule files in this session.
+## Shared Folder Template
 
----
+Use this for any local subtree after Wave 2 confirms it needs its own file.
 
-## 1. Minimal (Any Project)
+```markdown
+# <folder>
 
-### AGENTS.md
+## Local Focus
+- What this folder owns
+
+## Local Commands
+- Verified local command
+
+## Local Conventions
+- Folder-specific rule
+
+## Local Boundaries
+- Always: local invariant
+- Never: local mistake to avoid
+```
+
+## 1. Minimal Project
+
+### Root `AGENTS.md`
 
 ```markdown
 # Project Name
 
-Brief project description.
-
 ## Commands
-- Dev: `command`
-- Test: `command`
-- Build: `command`
+- Dev: `verified command`
+- Test: `verified command`
 
-## Conventions
-- Key convention 1
-- Key convention 2
+## Architecture
+- `src/` — core code
 
 ## Boundaries
-- Always: Run tests before committing
-- Never: Commit directly to main
+- Always: run tests before committing
+- Never: guess commands
 ```
 
-### CLAUDE.md (Thin Wrapper)
+### Companion files
 
-```markdown
-@AGENTS.md
+```text
+CLAUDE.md -> AGENTS.md
 ```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Project Name
-
-Brief description.
-
-## Stack
-- Language/Framework
-- Key dependencies
-
-## Commands
-- Dev: `command`
-- Test: `command`
-- Build: `command`
-
-## Conventions
-- Key convention 1
-- Key convention 2
-```
-
----
 
 ## 2. Node.js / TypeScript
 
-### AGENTS.md
+### Root `AGENTS.md`
 
 ```markdown
 # Project Name
-
-TypeScript application using [framework].
-
-## Commands
-- Dev: `pnpm dev`
-- Test: `pnpm test`
-- Test single: `pnpm test -- path/to/file.test.ts`
-- Build: `pnpm build`
-- Lint: `pnpm lint`
-- Type check: `pnpm typecheck`
-
-## Structure
-- `src/` — Application source
-- `src/lib/` — Shared utilities
-- `tests/` — Test suites
-
-## Conventions
-- Strict TypeScript: no `any`, no `as` casts unless justified in comment
-- Named exports only, no default exports
-- Imports: use path aliases (`@/` → `src/`)
-- Error handling: use typed errors, never catch-and-ignore
-
-## Dependencies
-- Use `pnpm`, not npm or yarn
-- Check existing deps before adding new ones
-
-## Boundaries
-- Always: Run `pnpm typecheck && pnpm test` before committing
-- Always: Update types when changing interfaces
-- Ask: Before adding new production dependencies
-- Ask: Before changing tsconfig compiler options
-- Never: Use `any` type without explicit justification comment
-- Never: Disable ESLint rules inline without justification
-```
-
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-
-## Claude-Specific
-- Path-scoped rules in `.claude/rules/` for API vs frontend conventions
-- Use `/compact` when context grows large
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# Project Name
-
-One-line description.
-
-## Stack
-- Node.js 20+ with TypeScript 5.x
-- [Framework: Express/Fastify/Hono]
-- [Database: Prisma/Drizzle + Postgres/SQLite]
-- [Package manager: pnpm/npm/bun]
 
 ## Commands
 - Dev: `pnpm dev`
 - Test: `pnpm test`
 - Build: `pnpm build`
-- Types: `pnpm typecheck`
+- Typecheck: `pnpm typecheck`
+
+## Architecture
+- `src/api/` — HTTP and contracts
+- `src/web/` — UI
+- `src/lib/` — shared runtime helpers
 
 ## Conventions
-- Strict TypeScript (no `any`)
-- Named exports, no default exports
-- Errors via Result types, not exceptions
-
-## Git
-- Branch: `feat/description` or `fix/description`
-- Conventional Commits
-```
-
----
-
-## 3. Python
-
-### AGENTS.md
-
-```markdown
-# Project Name
-
-Python application using [framework].
-
-## Commands
-- Dev: `python -m [module]` or `uvicorn app:main --reload`
-- Test: `pytest`
-- Test single: `pytest path/to/test_file.py -v`
-- Lint: `ruff check .`
-- Format: `ruff format .`
-- Type check: `mypy .`
-
-## Structure
-- `src/[package]/` — Application source
-- `tests/` — Test suites
-- `pyproject.toml` — Project config and dependencies
-
-## Conventions
-- Type hints on all public function signatures
-- Docstrings on public modules, classes, and functions
-- Use `pathlib.Path` not `os.path`
-- Prefer dataclasses or Pydantic models over raw dicts
-
-## Dependencies
-- Use `uv` for dependency management (or `pip` if uv not available)
-- Pin versions in `pyproject.toml`
-- Virtual env: `.venv/` (do not use system Python)
+- Use `pnpm`, not npm
+- Named exports only
 
 ## Boundaries
-- Always: Run `pytest` before committing
-- Always: Run `ruff check` before committing
-- Ask: Before adding dependencies to pyproject.toml
-- Ask: Before changing Python version requirement
-- Never: Use `import *`
-- Never: Catch bare `Exception` without re-raising or logging
+- Always: run `pnpm typecheck && pnpm test`
+- Ask: before adding production dependencies
+- Never: bypass shared validation utilities
 ```
 
-### CLAUDE.md (Thin Wrapper)
+### Local `src/api/AGENTS.md`
 
 ```markdown
-@AGENTS.md
+# src/api
 
-## Claude-Specific
-- Use `uv run` prefix for all Python commands in this environment
+## Local Focus
+- Request validation, response contracts, transport errors
+
+## Local Commands
+- API tests: `pnpm test -- src/api`
+
+## Local Boundaries
+- Always: update schemas and handlers together
+- Never: return ad-hoc error shapes
 ```
 
-### CLAUDE.md (Standalone)
+### Local `src/web/AGENTS.md`
+
+```markdown
+# src/web
+
+## Local Focus
+- Pages, components, data loading boundaries
+
+## Local Boundaries
+- Always: preserve server/client boundaries
+- Never: import server-only modules into client code
+```
+
+## 3. Python Service
+
+### Root `AGENTS.md`
 
 ```markdown
 # Project Name
-
-One-line description.
-
-## Stack
-- Python 3.11+
-- [Framework: FastAPI/Django/Flask]
-- [ORM: SQLAlchemy/Django ORM]
-- uv for dependency management
 
 ## Commands
 - Dev: `uv run uvicorn src.main:app --reload`
 - Test: `uv run pytest`
 - Lint: `uv run ruff check .`
-- Types: `uv run mypy src/`
 
-## Conventions
-- Type hints required (strict mypy)
-- Pydantic for validation
-- Async by default
-- Docstrings for public APIs
-```
-
----
-
-## 4. Go
-
-### AGENTS.md
-
-```markdown
-# Project Name
-
-Go service using [framework/stdlib].
-
-## Commands
-- Dev: `go run ./cmd/[service]`
-- Test: `go test ./...`
-- Test single: `go test ./path/to/package -run TestName -v`
-- Build: `go build ./cmd/[service]`
-- Lint: `golangci-lint run`
-
-## Structure
-- `cmd/` — Entry points
-- `internal/` — Private packages
-- `pkg/` — Public packages (if any)
-
-## Conventions
-- Return errors, do not panic
-- Use `context.Context` as first parameter
-- Table-driven tests
-- `internal/` for all non-public packages
+## Architecture
+- `src/app/` — request handling
+- `src/domain/` — business rules
+- `tests/` — automated checks
 
 ## Boundaries
-- Always: Run `go test ./...` before committing
-- Always: Run `go vet ./...` before committing
-- Ask: Before adding external dependencies
-- Never: Use `panic` for error handling in library code
-- Never: Use global mutable state
+- Always: run `uv run pytest`
+- Ask: before changing Python version or dependency manager
+- Never: use system Python for project tasks
 ```
 
-### CLAUDE.md (Standalone)
+### Local `src/domain/AGENTS.md`
+
+```markdown
+# src/domain
+
+## Local Focus
+- Domain entities, pure business rules, policy code
+
+## Local Boundaries
+- Always: keep framework concerns out of domain code
+- Never: import web-layer modules here
+```
+
+## 4. React / Next.js
+
+### Root `AGENTS.md`
 
 ```markdown
 # Project Name
-
-One-line description.
-
-## Stack
-- Go 1.22+
-- [Framework: stdlib/chi/gin/echo]
-- [Database: pgx/sqlc/ent]
-
-## Commands
-- Dev: `go run ./cmd/server`
-- Test: `go test ./...`
-- Lint: `golangci-lint run`
-- Build: `go build -o bin/server ./cmd/server`
-
-## Conventions
-- Accept interfaces, return structs
-- Errors are values — wrap with context
-- Table-driven tests
-- No global state
-```
-
----
-
-## 5. Rust
-
-### AGENTS.md
-
-```markdown
-# Project Name
-
-Rust application using [framework].
-
-## Commands
-- Dev: `cargo run`
-- Test: `cargo test`
-- Test single: `cargo test test_name -- --nocapture`
-- Build: `cargo build --release`
-- Lint: `cargo clippy -- -D warnings`
-- Format: `cargo fmt`
-
-## Structure
-- `src/` — Source code
-- `src/main.rs` or `src/lib.rs` — Entry point
-- `tests/` — Integration tests
-
-## Conventions
-- Use `Result<T, E>` for fallible operations
-- Derive `Debug` on all public types
-- Use `thiserror` for library errors, `anyhow` for application errors
-- Prefer `&str` over `String` in function parameters
-
-## Boundaries
-- Always: Run `cargo test` and `cargo clippy` before committing
-- Always: Run `cargo fmt` before committing
-- Ask: Before adding new crate dependencies
-- Ask: Before using `unsafe`
-- Never: Use `.unwrap()` in library code without comment
-- Never: Ignore compiler warnings
-```
-
----
-
-## 6. React / Next.js
-
-### AGENTS.md
-
-```markdown
-# Project Name
-
-Next.js application with App Router.
 
 ## Commands
 - Dev: `pnpm dev`
 - Test: `pnpm test`
 - Build: `pnpm build`
-- Lint: `pnpm lint`
 
-## Structure
-- `src/app/` — App Router pages and layouts
-- `src/app/api/` — API routes
-- `src/components/` — React components
-- `src/lib/` — Shared utilities
+## Architecture
+- `src/app/` — routes and layouts
+- `src/components/` — reusable UI
+- `src/lib/` — shared helpers
 
 ## Conventions
-- App Router only, NOT Pages Router
-- Server Components by default; add `'use client'` only when needed
-- Component files: PascalCase (`UserProfile.tsx`)
-- Use `next/image` for images, `next/link` for navigation
+- App Router only
+- Server Components by default
 
 ## Boundaries
-- Always: Run `pnpm build` before opening a PR (catches SSR errors)
-- Always: Use Server Components unless client interactivity is needed
-- Ask: Before adding client-side state management libraries
-- Never: Use `useEffect` for data fetching (use Server Components or SWR)
-- Never: Import server-only code in client components
+- Always: run `pnpm build` before shipping route changes
+- Never: fetch primary data in `useEffect` when a server path exists
 ```
 
-### CLAUDE.md (Thin Wrapper)
+### Local `src/components/AGENTS.md`
 
 ```markdown
-@AGENTS.md
+# src/components
 
-## Claude-Specific
-- Path rules: `.claude/rules/frontend.md` for component conventions
-- No barrel exports (no `index.ts` re-exports)
-- Data fetching in Server Components, not client-side
+## Local Focus
+- Shared UI primitives and composed components
+
+## Local Boundaries
+- Always: keep component APIs stable and predictable
+- Never: hide data fetching inside reusable presentational components
 ```
 
----
+## 5. Monorepo
 
-## 7. Monorepo
-
-### AGENTS.md
+### Root `AGENTS.md`
 
 ```markdown
 # Project Name
 
-Monorepo managed with [pnpm workspaces / Turborepo / Nx].
-
 ## Commands
-- Dev (all): `pnpm dev`
-- Dev (specific): `pnpm --filter [package] dev`
+- Dev: `pnpm dev`
 - Test: `pnpm test`
-- Test (specific): `pnpm --filter [package] test`
 - Build: `pnpm build`
-- Lint: `pnpm lint`
-
-## Structure
-- `packages/` — Shared libraries
-- `apps/` or `services/` — Deployable applications
-
-## Conventions
-- Internal packages use workspace protocol: `"@repo/shared": "workspace:*"`
-- Changes to shared packages require testing all dependents
-- Each package has its own tsconfig extending root
-
-## Boundaries
-- Always: Run affected tests when changing shared packages
-- Always: Use workspace protocol for internal dependencies
-- Ask: Before creating a new package
-- Ask: Before adding cross-package dependencies
-- Never: Import from another package's `src/` directly (use package exports)
-- Never: Hoist dependencies that should be package-local
-
-## Per-Package Instructions
-
-Each package may have its own AGENTS.md:
-- `apps/web/AGENTS.md` — Web application specifics
-- `apps/api/AGENTS.md` — API service specifics
-- `packages/shared/AGENTS.md` — Shared library rules
-```
-
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-
-## Claude-Specific
-- Path-scoped rules in `.claude/rules/` for per-package conventions
-- Use `claudeMdExcludes` in settings to skip irrelevant packages
-
-## Supplemental Docs
-| Area | File | Load When |
-|------|------|-----------|
-| Building | `agent_docs/building.md` | Build/deploy tasks |
-| Testing | `agent_docs/testing.md` | Test runner, coverage |
-| Architecture | `agent_docs/service-architecture.md` | Cross-service changes |
-```
-
----
-
-## 8. Django
-
-### AGENTS.md
-
-```markdown
-# Project Name
-
-Django application with [DRF / HTMX / GraphQL].
-
-## Commands
-- Dev: `python manage.py runserver`
-- Test: `python manage.py test`
-- Test single: `python manage.py test app.tests.TestClass.test_method`
-- Migrate: `python manage.py migrate`
-- Make migrations: `python manage.py makemigrations`
-- Shell: `python manage.py shell_plus`
-
-## Structure
-- `apps/` — Django applications
-- `config/` — Settings and root URL config
-- `templates/` — HTML templates
-- `static/` — Static assets
-
-## Conventions
-- Fat models, thin views
-- Class-based views for CRUD, function views for custom logic
-- Settings split: `base.py`, `local.py`, `production.py`
-- Use `get_user_model()`, never import User directly
-
-## Boundaries
-- Always: Run `python manage.py test` before committing
-- Always: Create migrations for model changes (`makemigrations`)
-- Ask: Before changing existing migration files
-- Ask: Before adding new Django apps
-- Never: Modify existing migration files (create new ones)
-- Never: Put secrets in settings files (use environment variables)
-- Never: Use raw SQL when ORM queries suffice
-```
-
----
-
-## Monorepo with Path-Scoped Rules (Claude Code)
-
-For monorepos using Claude Code's `.claude/rules/` for per-package instructions:
-
-```
-project/
-├── AGENTS.md                    # Universal instructions (all agents)
-├── CLAUDE.md                    # @AGENTS.md + Claude-specific
-├── .claude/
-│   └── rules/
-│       ├── shared.md            # No paths → universal (always loads)
-│       ├── api.md               # paths: ["apps/api/**"]
-│       ├── web.md               # paths: ["apps/web/**"]
-│       └── database.md          # paths: ["packages/db/**"]
-├── apps/
-│   ├── api/
-│   │   └── AGENTS.md            # API-specific (Codex, Cursor, VS Code)
-│   └── web/
-│       └── AGENTS.md            # Web-specific
-└── packages/
-    └── db/
-        └── AGENTS.md
-```
-
-**How this works:**
-- All agents read root `AGENTS.md` (universal)
-- Codex, Cursor, VS Code also read nested `AGENTS.md` files
-- Claude Code additionally loads path-scoped `.claude/rules/` files
-- Root CLAUDE.md stays under 60 lines — detail lives in rules and nested files
-
----
-
-## 9. Library / OSS Package
-
-Use this for published libraries, SDKs, or open-source packages. Language-agnostic -- replace `[placeholders]` with your actual values.
-
-### AGENTS.md
-
-```markdown
-# [Package Name]
-
-[One-line description of what this package does.]
-
-## Commands
-- Install: `[install command]`
-- Test: `[test command]`
-- Lint: `[lint command]`
-- Build: `[build command]`
-- Publish: `[publish command]` (maintainers only)
 
 ## Architecture
-- Source: `[src/lib directory]`
-- Tests: `[test directory]`
-- Public API surface: `[entry point file]`
-
-## Conventions
-- [Key convention 1 -- e.g., "All exports must be named, no default exports"]
-- [Key convention 2 -- e.g., "Every public function needs a JSDoc/docstring"]
-- [Key convention 3 -- e.g., "Semver strictly -- breaking changes require major bump"]
+- `apps/` — deployable applications
+- `packages/` — shared libraries
 
 ## Boundaries
-- Always: Run full test suite before opening a PR
-- Always: Update CHANGELOG for user-facing changes
-- Never: Add runtime dependencies without maintainer approval
-- Never: Change public API signatures without a deprecation path
-- Ask: Before adding a new dependency
+- Always: run affected tests when changing shared packages
+- Ask: before creating new workspace packages
+- Never: import from another package's private source path
 ```
 
-### CLAUDE.md (Thin Wrapper)
+### Local `apps/api/AGENTS.md`
 
 ```markdown
-@AGENTS.md
+# apps/api
 
-## Claude-Specific
-<!-- Only add the next line if .claude/rules/ exists or you are creating rule files -->
-- See `.claude/rules/` for path-scoped rules
+## Local Focus
+- HTTP boundary, auth, persistence integration
+
+## Local Commands
+- API tests: `pnpm --filter api test`
+
+## Local Boundaries
+- Always: update contracts and handlers together
+- Never: bypass shared auth middleware
 ```
 
-### CLAUDE.md (Standalone)
+### Local `packages/contracts/AGENTS.md`
 
 ```markdown
-# [Package Name]
+# packages/contracts
 
-[One-line description.]
+## Local Focus
+- Shared schema and type contracts
 
-## Stack
-- Language: [language and version]
-- Build: [build tool]
-- Test: [test framework]
-- Package manager: [manager]
+## Local Boundaries
+- Always: version contract changes deliberately
+- Never: make breaking schema changes without updating dependents
+```
+
+## 6. Library / OSS Package
+
+### Root `AGENTS.md`
+
+```markdown
+# Package Name
 
 ## Commands
-- Test: `[test command]`
-- Build: `[build command]`
-- Lint: `[lint command]`
-
-## Conventions
-- [Convention 1]
-- [Convention 2]
-
-## Boundaries
-- Always: Run tests before committing
-- Never: Publish without CI green
-```
-
----
-
-## 10. Docs / Skills Pack / Standards Repository
-
-Use this for repositories whose primary output is guidance, skills, standards, or reference content rather than an executable application.
-
-### AGENTS.md
-
-```markdown
-# [Repository Name]
-
-[One-line description of the documentation, standards, or skills catalog.]
-
-## Structure
-- Primary content lives in `[docs/skills/references path]`
-- Contributor guidance lives in `[CONTRIBUTING.md or equivalent]`
-- Naming or taxonomy rules live in `[naming/standards file]`
-
-## Conventions
-- Preserve the existing information architecture and naming scheme
-- Prefer updating canonical references over duplicating guidance in multiple files
-- Keep examples and templates aligned with the repository's actual file layout
-
-## Commands
-- Commands: `[not configured]` if the repo has no verified dev/test/build entrypoints
-
-## Boundaries
-- Always: Ground instructions in the repo's real docs and reference structure
-- Always: Update contributor-facing guidance when changing shared conventions
-- Never: Invent build, lint, or test commands when the repo has no command manifest
-- Never: Treat docs-only repos like app repos with fake runtime workflows
-```
-
-### CLAUDE.md (Thin Wrapper)
-
-```markdown
-@AGENTS.md
-
-## Claude-Specific
-- Add Claude-only memory notes here only if this repo actually needs them
-```
-
-### CLAUDE.md (Standalone)
-
-```markdown
-# [Repository Name]
-
-[One-line description.]
-
-## Focus
-- Primary content: `[skills/docs/standards]`
-- Canonical contributor docs: `[README.md / CONTRIBUTING.md / standards file]`
-
-## Commands
-- `[not configured]` unless the repo exposes verified automation commands
-
-## Boundaries
-- Always: Keep instructions aligned with the canonical docs
-- Never: Invent runtime or build workflows for a docs-only repository
-```
-
----
-
-## 11. CLI Tool
-
-Use this for command-line applications, developer tools, or scripts.
-
-### AGENTS.md
-
-```markdown
-# [CLI Name]
-
-[One-line description -- what the CLI does and who uses it.]
-
-## Commands
-- Dev: `[run command]`
-- Test: `[test command]`
-- Build: `[build command]`
-- Install locally: `[local install command]`
+- Test: `verified command`
+- Build: `verified command`
+- Lint: `verified command`
 
 ## Architecture
-- Entry point: `[main file or bin/]`
-- Commands: `[commands directory]`
-- Config parsing: `[config module]`
-- Output formatting: `[output module]`
-
-## Conventions
-- [Key convention 1 -- e.g., "All CLI output goes through the formatter module"]
-- [Key convention 2 -- e.g., "Exit codes: 0=success, 1=user error, 2=internal error"]
-- [Key convention 3 -- e.g., "Flags use --kebab-case, env vars use UPPER_SNAKE"]
+- `src/` — library implementation
+- `tests/` — consumer-facing coverage
 
 ## Boundaries
-- Always: Test with --help and common subcommands before committing
-- Always: Handle stdin/stdout/stderr correctly -- never mix output and errors
-- Never: Add interactive prompts without a --yes/--no-input flag
-- Ask: Before adding a new subcommand
+- Always: run the full test suite before release work
+- Ask: before adding runtime dependencies
+- Never: break public API contracts silently
 ```
 
-### CLAUDE.md (Thin Wrapper)
+### Local `src/AGENTS.md`
 
 ```markdown
-@AGENTS.md
+# src
 
-## Claude-Specific
-- When testing CLI changes, run the binary directly, not through a test harness
+## Local Focus
+- Public API surface, implementation internals, error contracts
+
+## Local Boundaries
+- Always: preserve documented exports
+- Never: change runtime behavior without updating tests and release notes
 ```
 
----
+## 7. Docs / Skills / Standards Repository
 
-## Go Thin Wrapper Example
-
-For Go projects using the dual-file pattern:
+### Root `AGENTS.md`
 
 ```markdown
-@AGENTS.md
+# Repository Name
 
-## Claude-Specific
-- Run `go vet ./...` before committing
-- Use `go test -race ./...` for concurrency tests
+## Structure
+- Canonical guidance lives in `skills/` or `docs/`
+- Contributor rules live in `CONTRIBUTING.md`
+
+## Commands
+- Validation: `python3 scripts/validate-skills.py`
+
+## Boundaries
+- Always: ground edits in repo-local references
+- Never: invent build or runtime workflows the repo does not expose
 ```
 
-## Rust Thin Wrapper Example
-
-For Rust projects using the dual-file pattern:
+### Local `skills/<name>/AGENTS.md`
 
 ```markdown
-@AGENTS.md
+# skills/<name>
 
-## Claude-Specific
-- Run `cargo clippy -- -D warnings` before committing
-- Use `cargo test` for all tests, `cargo test --doc` for doc tests
+## Local Focus
+- Skill body, references, install docs for this one skill
+
+## Local Boundaries
+- Always: keep the skill's naming and reference routing consistent
+- Never: leave unreferenced files in `references/`
 ```
 
----
+## 8. CLI Tool
 
-## Customization Notes
+### Root `AGENTS.md`
 
-- **Strip sections** you don't need -- shorter is better
-- **Merge sections** if the project is simple enough
-- **Add sections** for project-specific concerns (Database, Deployment, API Design)
-- **Boundaries** should reflect real project risks, not hypothetical ones
-- **Commands** must be verified against actual project config
-- **Thin wrappers** are preferred when the team uses multiple agents
-- **Canonical thin wrapper:** Step 3 of SKILL.md is the authoritative thin wrapper template. The thin wrappers in this file are project-type customizations -- adapt them, but defer to SKILL.md Step 3 for the base pattern
-- **Language-agnostic templates** (like Library/OSS) use `[placeholders]` -- replace every `[placeholder]` with actual project values
+```markdown
+# CLI Name
+
+## Commands
+- Dev: `verified command`
+- Test: `verified command`
+- Build: `verified command`
+
+## Architecture
+- `cmd/` or `src/cli/` — entry points
+- `src/core/` — business logic
+
+## Boundaries
+- Always: validate `--help` and common flows before shipping
+- Never: introduce interactive prompts without non-interactive flags
+```
+
+### Local `src/cli/AGENTS.md`
+
+```markdown
+# src/cli
+
+## Local Focus
+- Argument parsing, output formatting, exit codes
+
+## Local Boundaries
+- Always: keep stdout and stderr responsibilities separate
+- Never: print human text from core business logic modules
+```
+
+## Customization Rules
+
+- strip sections you do not need
+- add sections only when discovery found 3+ facts that justify them
+- keep folder files smaller than the root file
+- if a folder has only one important local rule, a 3-6 line file is fine
+- create the companion `CLAUDE.md` after the AGENTS file is finalized, not before

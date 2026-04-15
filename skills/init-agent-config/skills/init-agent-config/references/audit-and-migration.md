@@ -1,335 +1,214 @@
 # Audit and Migration Guide
 
-How to audit existing agent configuration files for quality, and how to migrate between formats.
+How to audit existing repo instruction files and migrate them into an AGENTS-first hierarchy without losing signal.
 
-## Quality Scoring Rubric
+## Workflow
 
-Rate any agent config file (CLAUDE.md, AGENTS.md, .cursorrules) on these dimensions:
+### Phase 1: Discovery
 
-| Dimension | Weight | What to Check |
+Find the current instruction surfaces before changing anything.
+
+```bash
+find . \( -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "GEMINI.md" -o -name ".cursorrules" -o -path "./.github/copilot-instructions.md" \) 2>/dev/null | sort
+tree -dL 2 .
+```
+
+**What to capture:**
+- root instruction files
+- nested instruction files
+- agent-native directories such as `.claude/`, `.cursor/`, `.github/instructions/`
+- candidate `src/*` folders that should receive local `AGENTS.md` coverage
+
+### Phase 2: Quality Assessment
+
+Score each existing instruction file before editing it.
+
+| Criterion | Weight | What to check |
 |-----------|--------|---------------|
-| **Commands accuracy** | 25% | All documented commands verified against package.json / Makefile / CI. No invented commands. |
-| **Architecture documentation** | 25% | Non-obvious boundaries, data flow, service ownership documented. Not duplicating README. |
-| **Non-obvious patterns** | 20% | Documents what agents cannot infer: why decisions were made, hidden gotchas, non-standard paths. |
-| **Conciseness** | 15% | No bloat, no filler, no linter-enforced rules. Every line passes the litmus test. |
-| **Actionability** | 15% | Instructions are directives, not suggestions. Agent can execute without ambiguity. |
+| Commands and workflows | 20 | Are commands verified and current? |
+| Architecture clarity | 20 | Can an agent understand repo and folder boundaries? |
+| Folder coverage | 15 | Do the right folders have local guidance? |
+| Non-obvious patterns | 15 | Are gotchas and WHY context documented? |
+| Conciseness | 15 | Is each line high-signal? |
+| Actionability | 15 | Are instructions concrete and executable? |
 
 ### Grade Thresholds
 
 | Grade | Score | Meaning |
 |-------|-------|---------|
-| A | 90–100 | Production-ready, minimal iteration needed |
-| B | 75–89 | Good, 1–2 areas to tighten |
-| C | 60–74 | Functional but noisy or missing key sections |
-| D | 45–59 | Significant gaps or stale content |
-| F | < 45 | Actively harmful — incorrect commands, misleading architecture |
+| A | 90-100 | Ready to keep or tighten only |
+| B | 75-89 | Good, but missing some structure or signal |
+| C | 60-74 | Functional, but too noisy or incomplete |
+| D | 45-59 | Major gaps or stale guidance |
+| F | <45 | Actively harmful or misleading |
 
-### Scoring Each Dimension (0–5)
+### Phase 3: Report Before Updates
 
-**Commands accuracy (25%):**
-- 5: All commands verified, tested, and current
-- 4: Commands verified but 1–2 minor gaps
-- 3: Most commands correct but some unverified
-- 2: Several commands incorrect or missing
-- 1: Commands mostly invented or stale
-- 0: No commands section
+Always output the quality report before editing existing files.
 
-**Architecture documentation (25%):**
-- 5: Non-obvious decisions documented with WHY context
-- 4: Key decisions documented but missing some reasoning
-- 3: Architecture described but mostly restating the obvious
-- 2: Minimal architecture context
-- 1: Copy of README or generic description
-- 0: No architecture section
+Use this format:
 
-**Non-obvious patterns (20%):**
-- 5: Gotchas, edge cases, and conventions that prevent real mistakes
-- 4: Most non-obvious patterns covered
-- 3: Some useful patterns but misses key ones
-- 2: Few patterns, mostly obvious
-- 1: Generic advice not specific to project
-- 0: No patterns documented
+```markdown
+## Agent Instructions Quality Report
 
-**Conciseness (15%):**
-- 5: Every line passes the "would removing this cause a mistake?" test
-- 4: 1–2 lines of bloat
-- 3: ~20% noise (linter rules, obvious facts)
-- 2: ~40% noise
-- 1: ~60% noise, config is more noise than signal
-- 0: Wall of text, mostly useless
+### Summary
+- Files found: X
+- Average score: X/100
+- Files needing update: X
 
-**Actionability (15%):**
-- 5: All instructions are specific, measurable directives
-- 4: Most instructions are directives, 1–2 suggestions
-- 3: Mix of directives and vague suggestions
-- 2: Mostly suggestions and aspirational statements
-- 1: Generic advice ("write clean code")
-- 0: No actionable instructions
+### File-by-File Assessment
+
+#### 1. ./AGENTS.md
+**Score: XX/100 (Grade: X)**
+
+| Criterion | Score | Notes |
+|-----------|-------|-------|
+| Commands and workflows | X/20 | ... |
+| Architecture clarity | X/20 | ... |
+| Folder coverage | X/15 | ... |
+| Non-obvious patterns | X/15 | ... |
+| Conciseness | X/15 | ... |
+| Actionability | X/15 | ... |
+
+**Issues:**
+- ...
+
+**Recommended changes:**
+- ...
+```
+
+### Phase 4: Targeted Updates
+
+After the report:
+
+1. keep what is already correct
+2. move universal guidance into `AGENTS.md`
+3. add missing folder-level files where the tree proves they are needed
+4. create or repair companion entrypoints only after the AGENTS hierarchy is stable
+5. remove duplication between AGENTS and agent-native files
+
+### Phase 5: Apply and Verify
+
+After edits:
+- re-check commands and paths
+- verify folder coverage matches the tree
+- confirm companion files point back to AGENTS
+- summarize any remaining unknowns outside the files
 
 ## Audit Checklist
 
-### Phase 1: Structural Audit
+### Structural Audit
 
-- [ ] File exists at correct location (project root or `.claude/CLAUDE.md`)
-- [ ] File is under target line count (see sizing table)
-- [ ] Clear markdown structure with headers and bullet lists
-- [ ] No paragraphs of prose — only structured instructions
-- [ ] Commands section present and appears first or second
+- [ ] Root `AGENTS.md` exists or is intentionally absent
+- [ ] Meaningful `src/*` or app/package folders have local coverage
+- [ ] Companion `CLAUDE.md` files exist where AGENTS files exist
+- [ ] Files are short enough to be scanned quickly
+- [ ] Child files do not repeat parent content
 
-### Phase 2: Command Verification
+### Command Verification
 
-For every command documented in the config file:
+For every documented command, check the real source:
 
 ```bash
-# Check against package.json scripts
+# package.json scripts
 cat package.json | jq '.scripts'
 
-# Check against Makefile targets
-grep -E '^[a-zA-Z_-]+:' Makefile
+# Makefile targets
+grep -E '^[A-Za-z0-9_.-]+:' Makefile
 
-# Check against pyproject.toml scripts
+# pyproject scripts
 grep -A 20 '\[project.scripts\]' pyproject.toml
 
-# Check against CI config
-cat .github/workflows/*.yml | grep -E 'run:'
-
-# Check against Cargo.toml aliases
-grep -A 10 '\[alias\]' .cargo/config.toml
+# CI commands
+grep -R "run:" .github/workflows
 ```
 
-- [ ] Every documented command exists in actual config
-- [ ] No commands are invented or assumed
-- [ ] Uncertain commands say `"See [file]"` instead of guessing
+- [ ] Every documented command exists
+- [ ] Uncertain commands are marked `[unverified]` or replaced with `See <file>`
+- [ ] Folder-local files only list folder-local commands
 
-### Phase 3: Signal Quality Audit
+### Signal Audit
 
-For each line, apply these checks:
+For each line, ask:
 
-| Check | Action if True |
-|-------|---------------|
-| Agent can infer this from reading code | Remove |
-| Linter/formatter enforces this | Remove |
-| This is a standard convention for the framework | Remove |
-| This duplicates README content | Remove or reference README |
-| This is a suggestion, not a directive | Rewrite as directive or remove |
-| This is generic advice applicable to any project | Remove |
+| Question | Action |
+|----------|--------|
+| Can an agent infer this from code? | Remove it |
+| Is it enforced by tooling? | Remove it |
+| Is it generic advice? | Remove or rewrite |
+| Is it really parent-level guidance? | Move it up |
+| Is it only relevant inside one subtree? | Move it down |
 
-### Phase 4: Content Completeness
+### Migration Audit
 
-- [ ] Non-obvious tech stack choices documented
-- [ ] Architecture boundaries and data flow documented
-- [ ] Boundaries section with Always/Ask/Never rules
-- [ ] WHY context for non-obvious decisions
-- [ ] Troubleshooting for common gotchas
-
-### Phase 5: Format-Specific Checks
-
-**AGENTS.md-specific:**
-- [ ] Plain markdown only — no `@import`, no YAML frontmatter
-- [ ] Under 32 KiB combined across all nested files
-- [ ] Boundaries section uses Always/Ask/Never format
-- [ ] Nested files do not repeat root-level instructions
-
-**CLAUDE.md-specific:**
-- [ ] Any `@import` paths resolve to real files
-- [ ] Progressive disclosure files referenced from root
-- [ ] `.claude/rules/` files have valid `paths:` frontmatter
-- [ ] Thin wrapper pattern: no duplicated content from AGENTS.md
-
-### Phase 6: Cross-Check
-
-- [ ] No secrets or credentials in config files
-- [ ] No stale paths, dead links, or outdated versions
-- [ ] Conventions match actual code patterns (grep for counter-examples)
-- [ ] No linter-enforced rules repeated
-
-## Audit Output Template
-
-```markdown
-## Agent Config Audit: [Project Name]
-
-**File:** CLAUDE.md / AGENTS.md
-**Lines:** NN
-**Date:** YYYY-MM-DD
-
-### Scores
-
-| Dimension | Score (0–5) | Notes |
-|-----------|-------------|-------|
-| Commands accuracy | X/5 | [specific notes] |
-| Architecture docs | X/5 | [specific notes] |
-| Non-obvious patterns | X/5 | [specific notes] |
-| Conciseness | X/5 | [specific notes] |
-| Actionability | X/5 | [specific notes] |
-| **Weighted Total** | **XX/100** | **Grade: X** |
-
-### Issues Found
-
-1. [Issue description + fix]
-2. [Issue description + fix]
-
-### Recommended Changes
-
-1. [Change + rationale]
-2. [Change + rationale]
-```
+- [ ] Shared rules are in `AGENTS.md`
+- [ ] Agent-native files do not carry shared policy
+- [ ] `CLAUDE.md` companions are symlinks or explicit wrapper exceptions
+- [ ] No stale references to deleted or moved files remain
 
 ## Migration Guides
 
-### From `.cursorrules` to AGENTS.md
+### From standalone `CLAUDE.md` to AGENTS-first
 
-**When to migrate:** Team uses multiple AI agents or wants cross-agent compatibility.
+**When to migrate:** the repo now needs portability, folder scoping, or a second coding agent.
 
-**Steps:**
+1. read the current `CLAUDE.md`
+2. extract all shared rules into root `AGENTS.md`
+3. use `tree -d .` or `tree -dL 2 .` to identify local folders that need their own `AGENTS.md`
+4. create nested files for those folders
+5. replace each `CLAUDE.md` with a sibling symlink to the matching `AGENTS.md`
+6. move Claude-only behavior into `.claude/`
 
-1. **Read existing `.cursorrules`**
-   ```bash
-   cat .cursorrules
-   ```
+### From `.cursorrules` to AGENTS-first
 
-2. **Extract universal content**
-   - Copy all project description, commands, conventions, and boundaries
-   - These are agent-agnostic and belong in AGENTS.md
+1. copy universal instructions into `AGENTS.md`
+2. create local AGENTS files for meaningful folders
+3. move Cursor-only globs or behaviors into `.cursor/rules/*.mdc`
+4. add companion `CLAUDE.md` files only if Claude support is needed
 
-3. **Identify Cursor-specific content**
-   - Look for Cursor-specific syntax, references to Cursor features
-   - These stay in `.cursor/rules/*.mdc` files
+### From no agent config
 
-4. **Create AGENTS.md**
-   - Write extracted universal content in AGENTS.md format
-   - Add Boundaries section with Always/Ask/Never pattern
+1. run Wave 1 discovery
+2. run Wave 2 on root candidates and meaningful `src/*` folders
+3. write the AGENTS hierarchy
+4. create companion entrypoints afterward
 
-5. **Create Cursor-specific rules**
-   ```
-   .cursor/
-   └── rules/
-       └── general.mdc    # Cursor-only settings with globs
-   ```
+## Update Diff Format
 
-6. **Clean up**
-   - Remove `.cursorrules` or reduce to a minimal pointer
-   - `.cursorrules` is deprecated but still read for backwards compatibility
+When proposing changes before applying them, show:
 
-7. **Verify** — test with both Cursor and at least one other agent
+````markdown
+### Update: ./src/api/AGENTS.md
 
-### From Standalone `CLAUDE.md` to Dual-File Pattern
+**Why:** The API folder has unique request-contract and test rules not captured at the repo root.
 
-**When to migrate:** Team adds a second AI agent (Cursor, Codex, Gemini, etc.).
-
-**Steps:**
-
-1. **Read existing `CLAUDE.md`**
-   ```bash
-   cat CLAUDE.md
-   ```
-
-2. **Separate content by type**
-
-   | Content Type | Destination |
-   |-------------|-------------|
-   | Project description, commands, conventions | `AGENTS.md` |
-   | `@import` lines | Remove from AGENTS.md, keep in CLAUDE.md |
-   | `.claude/rules/` references | Keep in CLAUDE.md only |
-   | Hooks, commands, agents references | Keep in CLAUDE.md only |
-   | Claude-specific preferences | Keep in CLAUDE.md only |
-
-3. **Create AGENTS.md** with universal content (inline everything — no imports)
-
-4. **Replace CLAUDE.md** with thin wrapper:
-   ```markdown
-   @AGENTS.md
-
-   ## Claude-Specific
-   <!-- Only add the next line if .claude/rules/ exists or you are creating rule files -->
-   - See `.claude/rules/` for path-scoped rules
-   - [Any remaining Claude-only features]
-   ```
-
-   If Claude has no extra requirements beyond shared instructions, `CLAUDE.md` may be just `@AGENTS.md`.
-
-5. **Verify** — no content duplication between files
-
-### From `copilot-instructions.md` to AGENTS.md
-
-**Steps:**
-
-1. Copy content from `.github/copilot-instructions.md` to `AGENTS.md`
-2. Remove any Copilot-specific references
-3. Replace `.github/copilot-instructions.md` with pointer: `"See AGENTS.md"`
-4. Move Copilot-specific instructions to `.github/instructions/*.instructions.md`
-
-### From No Agent Config (New Setup)
-
-**Steps:**
-
-1. **Explore the repository** (Phase 1 of the skill workflow)
-2. **Pick a template** from `references/project-templates.md`
-3. **Fill in project-specific details**
-4. **Verify every command** against actual config files
-5. **Trim ruthlessly** — remove anything the agent can infer
-6. **Test with your agent** — ask it to summarize its instructions
+```diff
++## Local Boundaries
++- Always: update request schemas and contract tests together
++- Never: bypass the shared error formatter in `src/api/errors`
+```
+````
 
 ## Common Migration Mistakes
 
 | Mistake | Problem | Fix |
 |---------|---------|-----|
-| Copy-pasting entire `.cursorrules` into AGENTS.md | Includes Cursor-specific syntax | Extract only universal content |
-| Keeping `@import` in AGENTS.md | Not supported — AGENTS.md is plain markdown | Inline all referenced content |
-| Duplicating content in both files | Wastes context budget | Thin wrapper pattern — import, don't copy |
-| Not verifying commands post-migration | Commands may not match new format | Run every command and confirm success |
-| Adding YAML frontmatter to AGENTS.md | Not supported by the format | Remove frontmatter, use plain markdown |
-| Losing boundary rules during migration | Critical warnings dropped | Scan for Never/Always/WARNING markers |
+| Updating `CLAUDE.md` but not `AGENTS.md` | Shared policy splits across files | Move the shared rule back into AGENTS |
+| Skipping nested folder files | Local risks stay undocumented | Use Wave 2 and create the folder files |
+| Creating wrapper files before AGENTS | Native file becomes source of truth | Build the AGENTS hierarchy first |
+| Guessing local commands | Folder file becomes misleading | Verify or mark `[unverified]` |
+| Leaving stale CLAUDE-first language | The repo still teaches the old model | Rewrite around AGENTS-first terminology |
 
-## Verification Checklist (Post-Migration)
+## Verification Checklist
 
-After any migration:
+After migration or audit updates:
 
-1. **Run every documented command** and confirm it succeeds
-2. **Confirm documented paths exist** (`ls src/api/` etc.)
-3. **Confirm conventions match actual code** (grep for counter-examples)
-4. **Confirm no linter-enforced rules** are repeated
-5. **Test with each agent** the team uses:
-   ```bash
-   [agent] "What project conventions should you follow?"
-   ```
-6. **Check file sizes** against targets
-7. **Confirm no content duplication** between AGENTS.md and agent-specific files
+1. run every documented command you changed, if feasible
+2. confirm every documented path exists
+3. confirm each `CLAUDE.md` points to the right sibling `AGENTS.md` or is an explicit fallback wrapper
+4. check that child files contain only folder-local content
+5. ask at least one agent to summarize the root instructions and one nested folder's instructions
 
-## Common Audit Pitfalls
+## Final Rule
 
-| Pitfall | What happens | Prevention |
-|---------|-------------|------------|
-| Rewriting a mostly-good config from scratch | Loses existing signal, introduces new errors | Switch to audit/tighten mode -- edit, don't replace |
-| Auditing a greenfield project | Wastes time looking for nonexistent config | Skip audit step (Step 6) for new setups |
-| Fixing style without fixing substance | Config looks better but still has wrong commands | Always verify commands first -- style is secondary |
-| Scoring without evidence | "Looks good" is not a score | Use the rubric dimensions with specific examples |
-| Missing AGENTS.md vs CLAUDE.md separation | Universal content stuck in CLAUDE.md | Check every line: is this Claude-specific or universal? |
-| Preserving stale boundary rules | `Never` rules that no longer apply to the codebase | Verify each boundary rule against current code |
-
-## Example Audit Score Calculation
-
-Given a project with this existing AGENTS.md:
-
-```
-Commands accuracy:    4/5 (one command uses wrong flag)
-Architecture docs:    3/5 (key boundaries documented but missing WHY)
-Non-obvious patterns: 2/5 (mostly restates what is obvious from code)
-Conciseness:          4/5 (short, but includes a few linter-duplicated rules)
-Actionability:        3/5 (some suggestions instead of directives)
-```
-
-**Score calculation:**
-- Commands: 4/5 x 25% x 100 = 20.0
-- Architecture: 3/5 x 25% x 100 = 15.0
-- Patterns: 2/5 x 20% x 100 = 8.0
-- Conciseness: 4/5 x 15% x 100 = 12.0
-- Actionability: 3/5 x 15% x 100 = 9.0
-- **Total: 64.0 / 100 = Grade C**
-
-**Findings summary:**
-- Fix the wrong command flag (Commands -> 5)
-- Add WHY context for architecture decisions (Architecture -> 4)
-- Remove obvious patterns, add non-obvious ones (Patterns -> 3)
-- Remove linter-duplicated rules (Conciseness -> 5)
-- Convert suggestions to directives (Actionability -> 4)
-- **Projected score after fixes: 84 = Grade B**
+If the audit says a file is mostly correct, tighten it. Do not rewrite it just to make it look cleaner. The goal is not prettier files. The goal is fewer agent mistakes.
