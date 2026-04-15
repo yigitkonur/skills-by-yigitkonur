@@ -1,38 +1,49 @@
-# Batch Wave Launcher
+# batch wave template
 
-Use this shell pattern to launch several Markdown prompts in parallel and keep a manifest for each thread.
+Use this as the parent-agent planning document when you want to dispatch several independent markdown task files in waves.
+
+~~~~md
+# Wave Plan
+
+## Wave 1 goal
+
+What can run independently right now?
+
+## Wave 1 tasks
+
+| Prompt file | Ownership | Label | Expected verification |
+|---|---|---|---|
+| prompts/wave-1/a.md | area A | wave-1 | npm test -- a |
+| prompts/wave-1/b.md | area B | wave-1 | npm test -- b |
+| prompts/wave-1/c.md | area C | wave-1 | npm test -- c |
+
+## Launch commands
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-mkdir -p .codex-wave
-
-for prompt in wave-1-auth.md wave-1-api.md wave-1-tests.md; do
-  name=$(basename "$prompt" .md)
-  codex-worker --output json run "$prompt" --async > ".codex-wave/$name.json"
-done
-
-for manifest in .codex-wave/*.json; do
-  job_id=$(jq -r '.job.id' "$manifest")
-  codex-worker wait --job-id "$job_id" || true
-done
-
-for manifest in .codex-wave/*.json; do
-  thread_id=$(jq -r '.threadId' "$manifest")
-  codex-worker read "$thread_id"
+for file in prompts/wave-1/*.md; do
+  codex-worker task start "$file" --label wave-1 --output json
 done
 ```
 
-## Manifest Fields To Keep
+## Completion gate
 
-- `.threadId`
-- `.turnId`
-- `.job.id`
-- `.status`
+Do not start wave 2 until:
 
-## When To Use
+- all wave 1 tasks are terminal
+- `codex-worker task list` shows no failed tasks with wave-1 label
+- any blocked requests have been answered
 
-- one wave of independent prompts
-- same repo, separate domains
-- no dependency between the prompts until after all waits finish
+## Wave 2 goal
+
+What depends on wave 1 being complete?
+
+## Recovery plan
+
+If one task fails:
+
+1. inspect `task read`
+2. inspect `task events`
+3. rerun only the failed branch or hand it off with a bundle
+~~~~
+
+Use one shared label per wave so `task list --label ...` stays useful.

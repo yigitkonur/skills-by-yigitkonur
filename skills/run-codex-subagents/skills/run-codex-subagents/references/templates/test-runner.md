@@ -1,30 +1,39 @@
-# Test Runner Template
+# test runner template
 
-Use this when a turn should only run tests and report the result.
+Copy this into a markdown file when you want a worker focused on verification, reproduction, or test execution rather than general implementation.
 
-```markdown
-## Context
+~~~~md
+---
+cwd: .
+---
 
-Why this test run matters right now.
+## Objective
 
-## Mission
+Run the required verification commands and explain the result precisely.
 
-Run the specified test command only. Do not edit files.
+## Label
 
-## Test Command
+replace-with-test-task-label
 
-`npm test`
+## Scope
 
-## Output Requirement
+- Commands to run:
+- Files to inspect if a check fails:
 
-If tests fail:
-- list each failing test
-- include file and line details when available
-- summarize the failure count
+## Constraints
 
-If tests pass:
-- report the total pass count or success summary line
-- report total duration when available
+- Prefer diagnosis over speculative fixes unless the task explicitly asks for repair.
+- Do not edit unrelated files.
+
+## Required checks
+
+```bash
+npm run test:unit
 ```
 
-If a failure needs fixing, start a separate coding turn after the report.
+## Deliverable
+
+- Report pass or fail.
+- Include the failing command when relevant.
+- Include the smallest useful file references or logs that explain the result.
+~~~~

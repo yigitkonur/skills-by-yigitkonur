@@ -1,33 +1,43 @@
-# Research Mission Template
+# research mission template
 
-Use this when the worker should inspect code, summarize findings, and not edit files.
+Copy this into a markdown file when you want a worker to inspect a codebase, trace a workflow, or summarize findings before any edits happen.
 
-```markdown
-## Context
+~~~~md
+---
+cwd: .
+---
 
-What needs to be understood and why.
+## Objective
 
-## Mission
+Investigate the target area and report concrete findings with file references.
 
-Produce a report only. Do not modify files.
+## Label
+
+replace-with-short-research-label
 
 ## Scope
 
-- Directories:
-- File types:
-- Exclude:
+- Focus on:
+- Ignore:
 
-## Required Output
+## Questions to answer
 
-### Findings
+1. What is the current behavior?
+2. Which files or modules control it?
+3. What risks or open questions remain?
 
-Each finding must include file paths and line references.
+## Constraints
 
-### Risks Or Gaps
+- Do not make code changes.
+- Prefer direct code evidence over guesses.
 
-What is unclear, missing, or inconsistent.
+## Required checks
 
-### Recommendations
+Run any read-only commands needed to support the findings.
 
-Concrete next steps based on the findings.
-```
+## Deliverable
+
+- Summarize the behavior.
+- Include exact file paths.
+- Call out risks, gaps, or likely next edits.
+~~~~

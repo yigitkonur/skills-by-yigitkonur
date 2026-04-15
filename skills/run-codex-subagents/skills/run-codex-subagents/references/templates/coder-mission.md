@@ -1,44 +1,47 @@
-# Coder Mission Template
+# coder mission template
 
-Save a prompt like this to `task.md`, then run:
+Copy this into a markdown file when you want a worker to implement or modify code.
 
-```bash
-codex-worker run task.md
-```
+~~~~md
+---
+cwd: .
+---
 
-## Template
+## Objective
 
-```markdown
-## Context
+Make the required code change and carry it through verification.
 
-What exists now. What changed recently. Which files to read first.
+## Label
 
-## Mission
+replace-with-short-task-label
 
-Describe the observable end-state. Name concrete files, exports, routes,
-commands, or tests that should exist after success.
+## Scope
+
+- Files or directories the worker owns:
+- Existing files it may edit:
+- New files it may create:
 
 ## Constraints
 
-- Which files may change
-- Which files must not change
-- Architecture, style, or dependency constraints
+- Do not touch:
+- Preserve:
+- Follow any repo conventions already present in the touched files.
 
-## Definition Of Done
+## Required checks
 
-- [ ] Binary, verifiable result
-- [ ] Binary, verifiable result
-
-## Verification Commands
-
-- `npm test`
-- `npm run build`
-```
-
-## Use `send` For Recovery
-
-If the first turn gets close but misses, keep the same thread:
+Run these commands before finishing:
 
 ```bash
-codex-worker send <thread-id> fix-only.md
+npm test
 ```
+
+## Deliverable
+
+- Implement the change.
+- Report the touched files.
+- Report the verification results.
+~~~~
+
+Tighten the scope before raising effort.
+
+Launch with: `codex-worker run mission.md --effort medium --label your-label`
