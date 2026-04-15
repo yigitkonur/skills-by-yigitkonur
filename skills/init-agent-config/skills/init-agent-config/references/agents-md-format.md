@@ -1,338 +1,288 @@
-# AGENTS.md Format Specification
+# AGENTS.md Authoring Guide
 
-Complete reference for AGENTS.md — the cross-agent configuration standard read by 20+ AI coding agents. Maintained by the Agentic AI Foundation under the Linux Foundation.
+How to design, write, and verify an AGENTS-first instruction hierarchy with the minimum number of files that still preserves folder-local signal.
 
-## What AGENTS.md Does
+## Purpose
 
-AGENTS.md is a plain markdown file placed at the repository root that provides project instructions to AI coding agents. Unlike agent-specific config files (CLAUDE.md, .cursorrules), AGENTS.md works across all major agents — making it the universal standard for multi-agent teams.
+`AGENTS.md` is the primary instruction surface in this skill's operating model.
 
-**Key properties:**
-- Plain markdown only — no YAML frontmatter, no `@import`, no special syntax
-- Read automatically by 20+ agents (Codex CLI, Cursor, VS Code Copilot, Devin, Jules, Amp, etc.)
-- Supports nested files in subdirectories for monorepos
-- Override mechanism via `AGENTS.override.md`
-- Maximum combined size: 32 KiB (Codex CLI enforced)
+Use it to capture:
+- commands agents must run correctly
+- architecture boundaries agents cannot infer safely
+- folder-local risks and conventions
+- Always/Ask/Never rules that prevent real mistakes
 
-## Adoption
+Do not use it for:
+- agent-native syntax
+- generic coding advice
+- duplicated README prose
+- comments about unresolved uncertainty
 
-Used by 60,000+ open-source projects. The standard is stewarded by the **Agentic AI Foundation** under the Linux Foundation. It is the closest thing to a universal agent configuration format.
+## Core Rules
 
-## Format Rules
+1. Plain markdown only.
+2. Root file first, folder files second.
+3. Each child file contains only the local delta from its parent.
+4. Default to local files for meaningful `src/*`, `apps/*`, `services/*`, or `packages/*` subtrees discovered in Wave 2.
+5. Every file must answer: `What does a coder working in this scope need to know to avoid mistakes?`
+6. If a line would not prevent a mistake, cut it.
+7. Companion agent files must point back to AGENTS rather than competing with it.
 
-1. **Plain markdown** — any headings and structure work
-2. **No YAML frontmatter** — agents parse raw text, not structured metadata
-3. **No `@import` syntax** — that is a CLAUDE.md feature; inline everything
-4. **No required fields** — write whatever sections are useful
-5. **No file size enforcement by format** — but Codex CLI stops at `project_doc_max_bytes`
+## Root vs Folder Scope
+
+| Scope | Include | Exclude |
+|------|---------|---------|
+| Root `AGENTS.md` | Verified repo-wide commands, top-level architecture, shared conventions, repo-wide boundaries | Folder-only entrypoints, deep implementation trivia, duplicated docs |
+| Folder `AGENTS.md` | Local entrypoints, folder-specific commands, non-obvious conventions, local risks, parent overrides | Generic advice, full root command list, repo-wide policy already stated above |
+
+## Authoring Mental Model
+
+Write for the coder standing in the current folder.
+
+Ask these questions before adding a line:
+- What mistake would happen here without this instruction?
+- Is this shared across the repo or only true in this subtree?
+- Is this a real command, boundary, or non-obvious design choice?
+- Does this belong in the parent file instead?
+
+## WHAT / WHY / HOW
+
+Every strong instruction belongs to one of these buckets:
+
+### WHAT
+
+Document technical reality the agent cannot infer safely.
+
+Good:
+- `src/app/ uses App Router, not Pages Router`
+- `packages/contracts/ owns public API schemas`
+
+Bad:
+- `This project uses TypeScript`
+- `Components live in src/components/`
+
+### WHY
+
+Explain the reason behind a non-obvious choice when it changes agent behavior.
+
+Good:
+- `Use sessions, not JWT, because SSR reads auth state server-side`
+- `Keep SQL in sqlc definitions because generated types are the contract`
+
+### HOW
+
+Document verified commands or workflows the agent must execute correctly.
+
+Good:
+- `Test API contracts: pnpm test -- src/api`
+- `Regenerate types with cargo build -p contracts`
+
+Bad:
+- guessed commands
+- vague steps like `run the usual tests`
 
 ## Recommended Sections
+
+Only create a section when repo evidence justifies it.
+
+### Root File
 
 ```markdown
 # Project Name
 
-Brief description of what this project does.
+## Commands
+- Dev: `verified command`
+- Test: `verified command`
+
+## Architecture
+- `src/api/` — API boundary
+- `src/web/` — UI boundary
+
+## Conventions
+- Project-specific rule
+
+## Boundaries
+- Always: repo-wide invariant
+- Ask: change that needs approval
+- Never: dangerous action
+```
+
+### Folder File
+
+```markdown
+# src/api
+
+## Local Focus
+- HTTP handlers, request validation, error shapes
+
+## Local Commands
+- Test: `verified folder-level command`
+
+## Local Conventions
+- Rule specific to this subtree
+
+## Local Boundaries
+- Always: action required in this folder
+- Never: local mistake to avoid
+```
+
+## Folder Coverage Strategy
+
+Start from the filesystem, not from templates.
+
+1. Run `tree -d .` or `tree -dL 2 .`.
+2. Mark the repo root plus each meaningful `src/*`, `apps/*`, `services/*`, or `packages/*` folder.
+3. After Wave 2, create a local `AGENTS.md` for each first-level subtree with its own workflow, entry points, or failure modes.
+4. If a folder has only a tiny local delta, keep the file short instead of skipping it.
+5. Add deeper nesting only when the second-level subtree has genuinely different rules from its parent.
+
+**Default bias:** if `src/` contains `api/`, `components/`, `lib/`, and `jobs/`, assume each of those needs its own file unless discovery proves otherwise.
+
+## Example Hierarchy
+
+```text
+repo/
+├── AGENTS.md
+├── CLAUDE.md -> AGENTS.md
+├── src/
+│   ├── api/
+│   │   ├── AGENTS.md
+│   │   └── CLAUDE.md -> AGENTS.md
+│   ├── components/
+│   │   ├── AGENTS.md
+│   │   └── CLAUDE.md -> AGENTS.md
+│   ├── lib/
+│   │   ├── AGENTS.md
+│   │   └── CLAUDE.md -> AGENTS.md
+│   └── jobs/
+│       ├── AGENTS.md
+│       └── CLAUDE.md -> AGENTS.md
+└── tests/
+    └── AGENTS.md
+```
+
+Use the same pattern at `apps/*`, `services/*`, or `packages/*` when those directories are the true architecture boundaries.
+
+## Size and Signal
+
+| File | Ideal | Good | Hard Ceiling |
+|------|-------|------|--------------|
+| Root `AGENTS.md` | <80 lines | <120 lines | 200 lines |
+| Folder `AGENTS.md` | <25 lines | <40 lines | 80 lines |
+
+For every line, ask:
+
+| Check | If true |
+|------|---------|
+| The agent can infer it from code | Cut it |
+| Tooling already enforces it | Cut it |
+| It belongs in the parent file | Move it up |
+| It belongs in one folder only | Move it down |
+| It is generic advice | Rewrite or cut it |
+| It would not prevent a mistake | Cut it |
+
+## Good vs Bad Nested Files
+
+### Bad: child file repeats the parent
+
+```markdown
+# src/api
 
 ## Commands
 - Dev: `pnpm dev`
 - Test: `pnpm test`
-- Build: `pnpm build`
-- Lint: `pnpm lint`
-
-## Structure
-- `src/` — Application source
-- `tests/` — Test suites
 
 ## Conventions
-- Critical convention 1
-- Critical convention 2
-
-## Boundaries
-- Always: Run tests before committing
-- Ask: Before adding production dependencies
-- Never: Modify migration files directly
-
-## Troubleshooting
-- Common issue → fix
+- Use pnpm
+- Run tests before committing
 ```
 
-### The Boundaries Section
+This wastes context because it mostly repeats root-level rules.
 
-The **Boundaries** section is the most impactful part of AGENTS.md. It uses the Always/Ask/Never pattern to define clear guardrails:
-
-| Level | Meaning | Example |
-|-------|---------|---------|
-| **Always** | Agent must do this every time | "Always run `pnpm typecheck && pnpm test` before committing" |
-| **Ask** | Agent must get human approval first | "Ask before adding new production dependencies" |
-| **Never** | Agent must never do this | "Never modify existing migration files" |
-
-This pattern works across all agents because it uses natural language — no special syntax required.
-
-## Discovery Algorithm (Codex CLI)
-
-Codex builds an instruction chain once per session:
-
-### Step 1: Global Scope
-
-Check `~/.codex/` for:
-1. `AGENTS.override.md` (if exists and non-empty) → use it
-2. Else `AGENTS.md` (if exists and non-empty) → use it
-
-At most one file at this level.
-
-### Step 2: Project Scope
-
-Starting at the project root (git root), walk down the directory tree to the current working directory. At each directory, check in order:
-
-1. `AGENTS.override.md`
-2. `AGENTS.md`
-3. Any name in `project_doc_fallback_filenames`
-
-Include at most one file per directory (first non-empty found).
-
-### Step 3: Merge
-
-Concatenate all discovered files from root → leaf, separated by blank lines. Files closer to the current directory appear later and **override** earlier content.
-
-### Step 4: Size Limit
-
-Stop adding files when combined size reaches `project_doc_max_bytes` (default: 32,768 bytes / 32 KiB). Empty files are skipped entirely.
-
-## Override Mechanism
-
-`AGENTS.override.md` takes precedence over `AGENTS.md` in the same directory.
-
-When both exist, only `AGENTS.override.md` is read. The base `AGENTS.md` is ignored for that directory level.
-
-**Use cases for overrides:**
-- Temporary instructions during a migration
-- Environment-specific rules (staging vs production)
-- Quick experiments without modifying the shared file
-- Sprint-specific priorities
-
-Remove the override file to restore shared guidance.
-
-## Codex CLI Configuration
-
-Settings in `~/.codex/config.toml`:
-
-```toml
-project_doc_max_bytes = 32768
-project_doc_fallback_filenames = ["TEAM_GUIDE.md", ".agents.md"]
-```
-
-| Setting | Default | Purpose |
-|---------|---------|---------|
-| `project_doc_max_bytes` | 32768 | Maximum combined instruction size |
-| `project_doc_fallback_filenames` | `[]` | Alternate filenames to check |
-
-Check order per directory: `AGENTS.override.md` → `AGENTS.md` → fallback filenames in order.
-
-## Monorepo Nesting
-
-Place nested AGENTS.md files in sub-packages. Agents that support nesting (Codex, Cursor, VS Code) read the nearest file.
-
-```
-repo/
-├── AGENTS.md                          # Root: universal instructions
-├── services/
-│   ├── payments/
-│   │   ├── AGENTS.md                  # Payment service specifics
-│   │   └── AGENTS.override.md         # Temporary migration rules
-│   └── auth/
-│       └── AGENTS.md                  # Auth service specifics
-└── packages/
-    └── shared/
-        └── AGENTS.md                  # Shared library rules
-```
-
-### What Codex Loads When Working in `services/payments/`
-
-1. `~/.codex/AGENTS.md` (global)
-2. `repo/AGENTS.md` (root)
-3. `repo/services/payments/AGENTS.override.md` (nearest — override wins)
-
-The base `services/payments/AGENTS.md` is skipped because the override exists.
-
-### Nesting Rules
-
-- Nested files should NOT repeat root-level instructions
-- Each nested file should contain only instructions specific to that directory
-- Root file: universal project conventions
-- Nested files: package/service-specific rules
-- Combined total across all levels must stay under 32 KiB
-
-## General Agent Discovery (Non-Codex)
-
-Most agents follow a simpler model:
-
-1. Look for `AGENTS.md` at the repository root
-2. Read it as context before starting work
-3. Explicit user prompts override file content
-
-| Agent | Reads Nested | Notes |
-|-------|-------------|-------|
-| Codex CLI | ✅ Full walk | Global → project → nested, with override support |
-| Cursor | ✅ Workspace | Auto-reads from workspace root and subdirectories |
-| VS Code Copilot | ✅ Workspace | Workspace-wide including subdirectories |
-| Devin | ❌ Root only | Reads root AGENTS.md only |
-| Jules | ❌ Root only | Reads root AGENTS.md only |
-| Amp | ❌ Root only | Reads root AGENTS.md only |
-| Gemini CLI | ❌ Root only | Also reads GEMINI.md natively |
-| Windsurf | ❌ Root only | Uses .windsurfrules primarily |
-| Aider | ❌ Root only | Requires `read: AGENTS.md` in config |
-
-**For agents that only read root:** Keep the root file comprehensive. For agents that support nesting, root + nested files give richer context.
-
-## Size Guidelines
-
-| Scope | Ideal | Good | Maximum |
-|-------|-------|------|---------|
-| Root AGENTS.md | <80 lines | <150 lines | 200 lines |
-| Nested AGENTS.md | <40 lines | <60 lines | 80 lines |
-| Combined total | — | — | 32 KiB |
-
-### Handling Large Projects
-
-When content exceeds targets:
-
-1. **Split into nested files** — move package-specific content to `packages/name/AGENTS.md`
-2. **Use pointer references** — `"See docs/api-design.md for API conventions"` instead of inlining
-3. **Trim ruthlessly** — apply the litmus test: "Would removing this cause the agent to make a mistake?"
-4. **Deduplicate** — if a linter enforces a rule, do not repeat it in AGENTS.md
-
-## Per-Agent Configuration Snippets
-
-### Aider
-
-```yaml
-# .aider.conf.yml
-read:
-  - AGENTS.md
-```
-
-### Gemini CLI
-
-```json
-// .gemini/settings.json
-{
-  "contextFileName": "AGENTS.md"
-}
-```
-
-### Cursor
-
-No configuration needed — auto-reads AGENTS.md from workspace root.
-
-### VS Code Copilot
-
-No configuration needed — reads AGENTS.md workspace-wide.
-
-### Claude Code
-
-Claude Code reads `CLAUDE.md`, not `AGENTS.md`. For compatibility:
+### Good: child file is local
 
 ```markdown
-@AGENTS.md
+# src/api
 
-## Claude-Specific
-<!-- Only add the next line if .claude/rules/ exists or you are creating rule files -->
-- See `.claude/rules/` for path-scoped rules
-- Add Claude-only memory or imports here only if needed
+## Local Focus
+- HTTP handlers, request validation, response contracts
+
+## Local Commands
+- Contract tests: `pnpm test -- src/api`
+
+## Local Boundaries
+- Always: update request schema and response contract together
+- Never: bypass the shared error formatter in `src/api/errors`
 ```
 
-If Claude needs no extra memory or features, the wrapper can be just `@AGENTS.md`. Use a symlink only when the repo truly wants identical content and the environment supports it.
+## Common Bloat Patterns
+
+| Pattern | Why it is bad | Better move |
+|--------|----------------|-------------|
+| Full directory tree dump | The agent can inspect the tree | Keep only meaningful boundaries |
+| README copy | Duplicates existing docs | Reference README instead |
+| Generic best practices | Too vague to change behavior | Use specific local rules |
+| Full dependency list | Package manifests already exist | Document only non-obvious choices |
+| Repeated root commands in child files | Wastes context twice | Keep only local commands in child files |
+
+## Discovery Handoff
+
+Do not draft from templates before discovery is complete.
+
+### Wave 1 must answer
+- repo-wide command sources
+- top-level architecture
+- current instruction surfaces
+- candidate local file boundaries
+
+### Wave 2 must answer
+- what a coder in this folder needs to know
+- folder-local commands and workflows
+- non-obvious patterns and WHY context
+- which rules belong in the parent instead
+
+### Writer prompts must include
+- target file path
+- folder ownership
+- parent-child boundary
+- verified commands and paths
+- relevant Wave 1 and Wave 2 findings
+
+## Companion File Rule
+
+After an `AGENTS.md` file is finalized:
+
+1. create sibling `CLAUDE.md -> AGENTS.md`
+2. if symlinks are impossible, use the fallback wrapper:
+   ```markdown
+   @AGENTS.md
+   ```
+3. keep agent-native behavior outside the AGENTS file
+
+See `agent-entrypoints.md` for the full policy and cross-agent behavior.
 
 ## Verification
 
-After creating AGENTS.md, verify agents read it:
-
 ```bash
-# Codex CLI
-codex "Summarize your current instructions"
-
-# Claude Code (with symlink or wrapper)
-claude "What instructions have you loaded?"
-
-# Gemini CLI
-gemini "What project conventions should you follow?"
-
-# Aider
-aider --message "List the project conventions you know about"
-
-# Generic (any agent)
-[agent] "What project conventions should you follow?"
+find . -name AGENTS.md | sort
+find . -name CLAUDE.md -maxdepth 6 -print
+find . -type l -name CLAUDE.md ! -exec test -e {} \; -print
 ```
 
-## Troubleshooting
+Then ask the target agents to summarize the instructions they see for a folder you touched.
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| No guidance loaded | File is empty or not at project root | Ensure file has content; check workspace root |
-| Wrong instructions | Override file in parent directory | Search upward for `AGENTS.override.md` files |
-| Fallback names ignored | Not listed in config | Add to `project_doc_fallback_filenames` |
-| Content truncated | Combined size exceeds 32 KiB | Trim content or split into nested directories |
-| Instructions from wrong level | Global file overriding project | Check `~/.codex/AGENTS.md` for conflicts |
-| Agent ignores AGENTS.md | Agent uses different filename | Check cross-agent-compat.md for agent-specific config |
-| Symlink not followed | OS or tool limitation | Use thin wrapper file instead of symlink |
-| Monorepo loads wrong file | Working directory mismatch | Verify `pwd` matches expected discovery path |
-| Sections feel like a generic template | Content not grounded in repo evidence | Every section needs 3+ repo-specific facts to justify its existence |
-| Commands fail when run | Commands were guessed, not verified | Re-verify every command against package.json/Makefile/CI |
-| Config file is 200+ lines | Too much noise, agents de-prioritize | Cut to <80 lines -- if that is not possible, use progressive disclosure |
+## Derailments
 
-## Good vs Bad Content Examples
-
-### Commands Section
-
-**Bad -- invented commands:**
-```markdown
-## Commands
-- Dev: `npm run dev`
-- Test: `npm test`
-- Build: `npm run build`
-```
-*(These look plausible but were never verified. The project actually uses pnpm and has different script names.)*
-
-**Good -- verified commands:**
-```markdown
-## Commands
-- Dev: `pnpm dev` (runs Next.js dev server on port 3000)
-- Test: `pnpm test:unit` (Jest, no watch mode in CI)
-- Build: `pnpm build` (outputs to .next/)
-- Lint: `pnpm lint` (ESLint + Prettier check)
-```
-
-### Conventions Section
-
-**Bad -- generic advice:**
-```markdown
-## Conventions
-- Write clean, readable code
-- Follow best practices
-- Use meaningful variable names
-- Handle errors properly
-```
-
-**Good -- project-specific rules:**
-```markdown
-## Conventions
-- Named exports only, no default exports
-- Use `Result<T, E>` for error handling, not try/catch
-- Route handlers in `src/app/api/` -- one file per endpoint
-- Database queries go through `src/lib/db.ts`, never direct SQL
-```
-
-## AGENTS.md vs CLAUDE.md Feature Comparison
-
-| Feature | AGENTS.md | CLAUDE.md |
-|---------|-----------|-----------|
-| Format | Plain markdown | Markdown + @import |
-| Cross-agent support | 20+ agents | Claude Code only |
-| Path-scoped rules | ❌ Use nested files | ✅ .claude/rules/ with paths: |
-| Override mechanism | AGENTS.override.md | CLAUDE.local.md |
-| Import syntax | ❌ Not supported | ✅ @file.md |
-| Frontmatter | ❌ Not supported | ✅ Optional YAML |
-| Size limit | 32 KiB (Codex) | ~50 KB post-import |
-| Discovery | Walk-up algorithm | Walk-up + on-demand |
-| Hooks/commands | ❌ | ✅ .claude/hooks/, .claude/commands/ |
-| Named agents | ❌ | ✅ .claude/agents/ |
-| Maintainer | Agentic AI Foundation | Anthropic |
+| Pattern | Trigger | Correction |
+|---------|---------|------------|
+| AGENTS-second drafting | Editing native files first | Write AGENTS first |
+| One-wave exploration | Writing after Wave 1 only | Complete Wave 2 first |
+| Weak explorer prompts | Short vague dispatches | Use substantive prompts with scope and deliverables |
+| Writers too early | Findings not merged | Synthesize before dispatch |
+| Missing folder coverage | Root-only file plan | Add local AGENTS files |
+| Root duplication | Child file repeats root | Keep child files local |
+| Invented commands | Unsure command syntax | Verify or mark `[unverified]` |
+| Missing WHY | Non-obvious choice documented | Pair WHAT with WHY |
+| Generic best practices | Vague advice shows up | Replace with measurable rules |
+| Unknowns in files | Caveats inside docs | Put caveats in the response |
+| Over-nesting | Too many empty local files | Keep only meaningful local files |

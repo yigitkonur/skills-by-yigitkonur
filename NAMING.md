@@ -144,9 +144,9 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 **Disambiguation:**
 - `init-` vs `build-` — `init-` produces config for external tools; `build-` produces application code
 - `init-` vs `run-` — `init-` generates files once; `run-` executes a tool repeatedly during a session
-- Multiple platforms for the same category can be combined into one skill (e.g. `init-review` covers Copilot, Devin, and Greptile)
+- Multiple related surfaces for one configuration problem can be combined into one skill (e.g. `init-agent-config` can own `AGENTS.md`, `REVIEW.md`, and native review adapters for one repo)
 
-**Current skills:** `init-agent-config`, `init-openclaw-agent`, `init-review`
+**Current skills:** `init-agent-config`, `init-openclaw-agent`
 
 ---
 
@@ -432,7 +432,6 @@ When renaming a published skill:
 - `extract-saas-design`
 - `init-agent-config`
 - `init-openclaw-agent`
-- `init-review`
 - `optimize-mcp-server`
 - `publish-npm-package`
 - `review-pr`
