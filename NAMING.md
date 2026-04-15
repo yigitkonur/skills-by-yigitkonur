@@ -180,7 +180,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 **Disambiguation:**
 - `plan-` vs `run-` — `plan-` is internal reasoning with structured methods; `run-research` is external information gathering via APIs and web scraping
 
-**Current skills:** *(none currently — prefix reserved for future use)*
+**Current skills:** *(none currently — prefix reserved for explicit decision/planning methodologies)*
 
 ---
 
@@ -255,6 +255,24 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 
 ---
 
+### `think-`
+
+**Definition:** Apply a general deep-thinking framework before or during non-trivial work. The skill teaches how to reason, compare options, trace bugs, plan execution, and keep moving without premature stopping.
+
+**Boundary:** The output is a *clearer mental model, chosen path, or execution handoff* — not direct code or tool configuration. If the skill is a named planning methodology with a plan artifact as the main output, it may fit `plan-` instead.
+
+**Use when:** The agent faces ambiguity, expensive reversibility, unknown root cause, hard tradeoffs, or a task that needs stronger reasoning before acting.
+**Not when:** The task is trivial or fully specified, the agent is mainly producing code (`build-`), or the agent is generating config (`init-`).
+
+**Disambiguation:**
+- `think-` vs `plan-` — `think-` is a general reasoning framework usable across bugs, refactors, planning, and execution; `plan-` is a narrower decision or prioritization methodology
+- `think-` vs `review-` — `think-` shapes the reasoning process; `review-` evaluates existing code quality
+- `think-` vs `debug-` — `think-` is tool-agnostic reasoning; `debug-` uses a specific diagnostic tool
+
+**Current skills:** `think-deeper`
+
+---
+
 ### `use-`
 
 **Definition:** Drive a specific CLI utility to accomplish a targeted workflow. The skill teaches the agent the correct commands, flags, and patterns for a particular utility.
@@ -315,6 +333,9 @@ What does the skill primarily do?
 │
 ├─ Runs verification/validation checks with pass/fail criteria?
 │  └─► test-
+│
+├─ Applies a general deep-thinking framework before or during hard work?
+│  └─► think-
 │
 ├─ Drives a single CLI utility for a focused workflow?
 │  └─► use-
@@ -446,3 +467,4 @@ When renaming a published skill:
 - `run-research`
 - `test-by-mcpc-cli`
 - `test-macos-snapshots`
+- `think-deeper`
