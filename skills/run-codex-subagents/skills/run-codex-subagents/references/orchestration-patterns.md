@@ -1,130 +1,96 @@
 # Orchestration patterns
 
-Use this file when you already know the task shape and need a reliable CLI execution loop.
-
-Assume `jq` is available when examples capture ids from JSON. If it is not, use any equivalent JSON parser.
+Use this file when you already know the task shape and need a reliable CLI loop.
 
 ## 1. One-shot blocking execution
-
-Use this when you want one command that starts the task and waits for the final result:
 
 ```bash
 codex-worker run task.md
 ```
 
-With live streaming:
-
-```bash
-codex-worker run task.md --follow --compact
-```
-
 Best for:
-
 - narrow implementation tasks
-- verification tasks
-- quick research tasks with a single output
+- quick research tasks
+- verification tasks with a single output
 
-## 2. Async start, then follow
-
-Use this when you want ids immediately and will monitor later:
+## 2. Async launch, then wait/read/logs
 
 ```bash
 START_JSON="$(codex-worker --output json run task.md --async)"
 THREAD_ID="$(printf '%s' "$START_JSON" | jq -r '.threadId')"
 
-codex-worker task follow "$THREAD_ID" --compact
+codex-worker wait --thread-id "$THREAD_ID" --timeout 300000
+codex-worker read "$THREAD_ID" --tail 50
+codex-worker logs "$THREAD_ID" --tail 100
 ```
 
-If you only want the final state later:
+## 3. Continue an existing thread
+
+Friendly continuation:
 
 ```bash
-codex-worker task wait "$THREAD_ID"
+codex-worker send "$THREAD_ID" followup.md
 ```
 
-## 3. Session continuity
-
-Use a session when multiple turns should share the same runtime thread, cwd, and evolving context:
+Protocol-first continuation:
 
 ```bash
-# Start first task
-START_JSON="$(codex-worker --output json run prompts/step-1.md --async)"
-THREAD_ID="$(printf '%s' "$START_JSON" | jq -r '.threadId')"
-
-codex-worker task wait "$THREAD_ID"
-
-# Continue in same session
-codex-worker task steer "$THREAD_ID" prompts/step-2.md --follow --compact
+TURN_ID="$(codex-worker --output json read "$THREAD_ID" | jq -r '.turns[0].id')"
+codex-worker turn steer "$THREAD_ID" "$TURN_ID" followup.md
 ```
-
-Or use `--session` on `run` or `task start`:
-
-```bash
-codex-worker task start prompts/step-2.md --session "$THREAD_ID" --follow --compact
-```
-
-Do not reuse a session casually across unrelated tasks.
 
 ## 4. Multi-wave parallel work
 
-Parallel tasks should not share one active session. Start them independently.
-
-Wave launch:
-
 ```bash
-IDS=()
+> state/threads.tsv
 for file in prompts/wave-1/*.md; do
-  START_JSON="$(codex-worker --output json run "$file" --async --label wave-1)"
-  IDS+=("$(printf '%s' "$START_JSON" | jq -r '.threadId')")
+  start_json="$(codex-worker --output json run "$file" --async)"
+  thread_id="$(printf '%s' "$start_json" | jq -r '.threadId')"
+  printf '%s\t%s\n' "$file" "$thread_id" >> state/threads.tsv
 done
 ```
 
-Wave monitor:
+Wait on the wave:
 
 ```bash
-for id in "${IDS[@]}"; do
-  codex-worker task wait "$id" || true
-done
-
-codex-worker --output json task list --status failed
+while IFS=$'\t' read -r file thread_id; do
+  codex-worker wait --thread-id "$thread_id" --timeout 300000 || true
+done < state/threads.tsv
 ```
 
-Only start the next wave after checking for failures.
+Check failures:
 
-## 5. Blocked-request loop
+```bash
+references/scripts/batch-status.sh --status failed --cwd "$PWD"
+```
 
-When a task stops in `waiting_request`:
+## 5. Blocked request loop
 
 ```bash
 codex-worker request list --status pending
-codex-worker request read req_123
-codex-worker request answer req_123 --decision accept
-codex-worker task follow thr_abc123 --compact
+codex-worker request read <request-id>
+codex-worker request respond <request-id> --decision accept
+codex-worker wait --thread-id <thread-id> --timeout 300000
 ```
-
-Treat this as normal control flow, not an exceptional state.
 
 ## 6. Recovery before retry
 
-If a task fails:
-
 ```bash
-codex-worker task read thr_abc123 --tail 40
-codex-worker task events thr_abc123 --tail 100
+codex-worker read <thread-id> --tail 50
+codex-worker logs <thread-id> --tail 100
 codex-worker doctor
 ```
 
-Decide whether to:
-
-- answer a request
-- tighten the prompt and rerun
-- use `task steer` with a focused follow-up
+Then choose one action:
+- answer the pending request
+- send a tighter follow-up prompt
+- use `turn steer`
 - restart cleanly
 
 ## Anti-patterns
 
 | Avoid | Why |
 |---|---|
-| sharing one active session across parallel tasks | the CLI protects active sessions and you lose clean isolation |
+| documenting or using `task` / `session` helper commands | they do not exist in the released CLI |
 | retrying immediately after failure | you throw away diagnostics |
-| using `task steer` on a still-running task | it is rejected by design |
-| parsing text output in scripts | `--output json`, `--field`, and `--quiet` are the stable contract |
+| parsing human output in scripts | the JSON contract already exists |

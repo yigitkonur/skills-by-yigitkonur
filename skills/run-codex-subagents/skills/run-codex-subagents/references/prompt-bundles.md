@@ -1,72 +1,47 @@
 # Prompt bundles
 
-Use this file when you need to understand how the CLI resolves and passes prompts to the Codex runtime.
+Use this file when you need to understand how `codex-worker` handles prompt files and follow-up prompts.
 
-## The task file is the contract
+## The prompt file is the contract
 
-`codex-worker` is file-first. Every task or follow-up message starts from a markdown file.
+`codex-worker` is file-first. `run`, `send`, `turn start`, and `turn steer` all start from a Markdown file.
 
-The prompt file should contain:
+Each prompt file should define:
+- the objective
+- the relevant files
+- constraints
+- verification
+- the expected deliverable
 
-- a non-empty markdown body
-- any reusable context inline or in the prompt text itself
+## How the CLI handles prompt files
 
-## How the CLI handles prompts
+The CLI reads the Markdown file content and sends that content to the Codex runtime.
 
-The CLI reads the markdown file content and passes it directly to the Codex app-server runtime. The runtime handles all prompt processing, context resolution, and `AGENTS.md` discovery.
+Important behavior:
+- the CLI does **not** parse frontmatter
+- the runtime handles `AGENTS.md` discovery
+- continuation happens by thread id, not by a separate `session` layer
 
-Key points:
+## Working directory
 
-- The CLI does **not** parse frontmatter — it sends raw file content
-- `AGENTS.md` auto-loading is handled by the Codex runtime, not the CLI
-- Developer instructions are generated from CLI flags (like `--plan`, `--effort`, `--label`) and prepended to the prompt content
-
-## Flag-based prompt enrichment
-
-The CLI enriches prompt content based on flags before sending:
-
-| Flag | What gets prepended |
-|---|---|
-| `--plan` | "Start by creating a plan before making any changes..." |
-| `--skip-plan` | "Skip planning and proceed directly with implementation." |
-| `--effort <level>` | "Reasoning effort level: {level}." |
-| `--label <text>` | "Task label: {text}." |
-
-These are prepended as developer hints to the raw prompt body.
-
-## Working directory resolution
-
-The `--cwd` flag determines the working directory for the Codex runtime. If not set, it defaults to `process.cwd()`.
+Use `--cwd` on `run` when the thread should start somewhere other than the current shell directory:
 
 ```bash
-codex-worker run task.md --cwd /absolute/path/to/project
-codex-worker task start task.md --cwd ./relative/path
+codex-worker run task.md --cwd /abs/project
 ```
 
-## Session continuity
+## Continuation patterns
 
-When you use `--session <threadId>`, the CLI sends the prompt to an existing thread instead of creating a new one. This preserves:
-
-- the existing thread context
-- the model selection from the original thread
-- the working directory from the original thread
+Friendly continuation:
 
 ```bash
-codex-worker task start followup.md --session thr_abc123 --follow --compact
+codex-worker send <thread-id> followup.md
 ```
 
-## Task steer vs new task
-
-`task steer` sends a follow-up to a completed/failed thread, reusing its turn history:
+Explicit turn continuation:
 
 ```bash
-codex-worker task steer thr_abc123 followup.md --follow --compact
+codex-worker turn steer <thread-id> <turn-id> followup.md
 ```
 
-A new `task start` with `--session` creates a fresh turn in the same thread:
-
-```bash
-codex-worker task start task.md --session thr_abc123
-```
-
-Both achieve session continuity, but `task steer` also carries forward the specific turn context.
+Use `thread resume` when you need to reconnect to the underlying runtime thread before more protocol-first operations.

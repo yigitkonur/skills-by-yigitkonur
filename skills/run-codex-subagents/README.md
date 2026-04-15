@@ -1,23 +1,26 @@
 # run-codex-subagents
 
-Orchestrate Codex coding agents with the `cli-codex-subagent` CLI. This skill is for file-backed task dispatch, async monitoring, blocked-request handling, session reuse, prompt-bundle handoff, and multi-wave CLI orchestration.
+Orchestrate Codex work through the released `codex-worker` CLI with file-backed prompts, explicit thread/turn control, request-response handling, runtime inspection, and recovery patterns.
 
-**Category:** workflow automation
-
-## Focus
-
-- CLI-only task orchestration with `run`, `task`, `session`, `request`, and `prompt`
-- file-backed prompts with resolved `AGENTS.md` and `--context-file` inputs
-- async-by-default execution with explicit `--wait` and `--follow`
-- recovery from local artifacts such as rendered prompts, event logs, timeline logs, summary logs, and stderr logs
-- handoff bundles for other coding agents
-
-This skill does not cover MCP tools, MCP resource URIs, or `mcpc` testing.
+**Category:** orchestration
 
 ## Requirements
 
-- `cli-codex-subagent` available in `PATH`, or
-- local-dev fallback: `node --import tsx src/cli.ts`
+- `codex-worker` available on `PATH`
+- `codex` CLI installed and authenticated
+- `jq` recommended for JSON-based shell flows
+
+Install `codex-worker` itself if needed:
+
+```bash
+sudo -v ; curl -fsSL https://github.com/yigitkonur/codex-worker/releases/latest/download/install.sh | sudo bash
+```
+
+Or user-local:
+
+```bash
+curl -fsSL https://github.com/yigitkonur/codex-worker/releases/latest/download/install.sh | bash -s -- --install-dir "$HOME/.local/bin"
+```
 
 ## Install
 

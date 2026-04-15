@@ -1,13 +1,12 @@
 # Request handling
 
-Use this file when a task becomes blocked and you need to inspect or answer a runtime request correctly.
+Use this file when a thread becomes blocked and you need to inspect or answer a runtime request correctly.
 
 ## Detect the blocked state
 
-Treat either of these as a blocked task:
-
-- the task status is `waiting_request`
-- `task wait`, `task follow`, or `run` exits with code `2`
+Treat either of these as a blocked run:
+- thread status is `waiting_request`
+- `request list --status pending` shows a request for that thread
 
 This is not a failure. The runtime is waiting for input.
 
@@ -15,72 +14,35 @@ This is not a failure. The runtime is waiting for input.
 
 ```bash
 codex-worker request list --status pending
-codex-worker request read <requestId>
-codex-worker request answer <requestId> ...
-codex-worker task follow <threadId> --compact
+codex-worker request read <request-id>
+codex-worker request respond <request-id> ...
+codex-worker wait --thread-id <thread-id> --timeout 300000
 ```
 
-If you do not know the thread id, `request read` returns the associated thread and session ids.
+## Supported response shapes
 
-## What `request answer` supports
-
-Use the smallest supported answer form:
-
-- `--choice <N>`
-  - best for numbered user-input options
-  - `1` means the first visible option
-- `--text-file <file>`
-  - best for a freeform textual answer you already wrote
-  - reads file content and sends as answer text
-- `--answer <text>`
-  - inline text answer for simple responses
-- `--decision <decision>`
-  - supported decisions: `accept`, `deny`
-- `--json <payload>`
-  - exact escape hatch for advanced payloads or unsupported request types
-
-## Safe defaults by request shape
-
-### User input
-
-When the runtime presents numbered choices:
+Approval-style response:
 
 ```bash
-codex-worker request answer req_123 --choice 1
+codex-worker request respond <request-id> --decision accept
+codex-worker request respond <request-id> --decision deny
 ```
 
-When you want to provide a custom textual answer:
+Text answer:
 
 ```bash
-codex-worker request answer req_123 --answer "Yes, proceed with the refactor"
+codex-worker request respond <request-id> --answer "Yes" --question-id <id>
 ```
 
-Or from a file:
+Raw escape hatch:
 
 ```bash
-codex-worker request answer req_123 --text-file answer.txt
+codex-worker request respond <request-id> --json '{"result":{"approved":true}}'
 ```
 
-### Command, file, and review approvals
+## Rules
 
-Common approval responses:
-
-```bash
-codex-worker request answer req_123 --decision accept
-codex-worker request answer req_123 --decision deny
-```
-
-### Custom or unknown request types
-
-When `request read` shows a method you do not recognize, stop guessing and use `--json` after inspecting the exact payload:
-
-```bash
-codex-worker request answer req_123 --json '{"result": {"approved": true}}'
-```
-
-## Recovery rules
-
-1. Read the request before answering it. Do not answer by guesswork.
-2. Prefer `--choice` over freeform text when numbered options exist.
-3. Resume with `task follow` or `task wait` after the answer.
-4. If the task blocks repeatedly, answer each request in sequence. A task can pause more than once.
+1. Always inspect the request before responding.
+2. Prefer the smallest specific flag that matches the request shape.
+3. Use `--json` only after reading the request payload and deciding the exact response.
+4. Resume monitoring after every response; one run can block more than once.

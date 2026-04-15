@@ -1,6 +1,6 @@
 # batch wave template
 
-Use this as the parent-agent planning document when you want to dispatch several independent markdown task files in waves.
+Use this as the parent-agent planning document when you want to dispatch several independent Markdown prompt files in waves.
 
 ~~~~md
 # Wave Plan
@@ -11,17 +11,20 @@ What can run independently right now?
 
 ## Wave 1 tasks
 
-| Prompt file | Ownership | Label | Expected verification |
-|---|---|---|---|
-| prompts/wave-1/a.md | area A | wave-1 | npm test -- a |
-| prompts/wave-1/b.md | area B | wave-1 | npm test -- b |
-| prompts/wave-1/c.md | area C | wave-1 | npm test -- c |
+| Prompt file | Ownership | Expected verification |
+|---|---|---|
+| prompts/wave-1/a.md | area A | npm test -- a |
+| prompts/wave-1/b.md | area B | npm test -- b |
+| prompts/wave-1/c.md | area C | npm test -- c |
 
 ## Launch commands
 
 ```bash
+> state/threads.tsv
 for file in prompts/wave-1/*.md; do
-  codex-worker task start "$file" --label wave-1 --output json
+  start_json="$(codex-worker --output json run "$file" --async)"
+  thread_id="$(printf '%s' "$start_json" | jq -r '.threadId')"
+  printf '%s\t%s\n' "$file" "$thread_id" >> state/threads.tsv
 done
 ```
 
@@ -29,21 +32,15 @@ done
 
 Do not start wave 2 until:
 
-- all wave 1 tasks are terminal
-- `codex-worker task list` shows no failed tasks with wave-1 label
+- every thread in `state/threads.tsv` is terminal
+- `references/scripts/batch-status.sh --status failed --cwd "$PWD"` reports no failures
 - any blocked requests have been answered
-
-## Wave 2 goal
-
-What depends on wave 1 being complete?
 
 ## Recovery plan
 
-If one task fails:
+If one branch fails:
 
-1. inspect `task read`
-2. inspect `task events`
-3. rerun only the failed branch or hand it off with a bundle
+1. inspect `read`
+2. inspect `logs`
+3. rerun only the failed branch or send a focused follow-up
 ~~~~
-
-Use one shared label per wave so `task list --label ...` stays useful.
