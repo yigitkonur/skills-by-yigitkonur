@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${SCRIPT_DIR}/skill-dl"
+BUNDLED_BINARY="${SCRIPT_DIR}/skill-dl-darwin-arm64"
+INSTALL_GUIDANCE='sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash'
+
+show_help() {
+  cat <<'EOF'
+Usage: bash scripts/skill-dl [--where|--tool-help] [skill-dl arguments...]
+
+Resolve and run the skill-dl CLI for build-skills research workflows.
+
+Resolution order:
+  1. Globally installed skill-dl from PATH
+  2. Bundled scripts/skill-dl-darwin-arm64 on macOS Apple Silicon
+
+Options:
+  --help       Show this wrapper help
+  --where      Emit JSON describing which executable will be used
+  --tool-help  Run the underlying skill-dl --help output
+
+Examples:
+  bash scripts/skill-dl --where
+  bash scripts/skill-dl --version
+  bash scripts/skill-dl --tool-help
+  bash scripts/skill-dl search typescript mcp server --top 20
+  bash scripts/skill-dl urls.txt -o ./research-corpus --no-auto-category -f
+EOF
+}
+
+emit_not_found() {
+  cat >&2 <<EOF
+Error: skill-dl is not available.
+Expected one of:
+  - skill-dl in PATH
+  - bundled scripts/skill-dl-darwin-arm64 on macOS Apple Silicon
+
+Install globally:
+  ${INSTALL_GUIDANCE}
+
+Then verify:
+  skill-dl --version
+EOF
+}
+
+resolve_skill_dl() {
+  local candidate=""
+
+  candidate="$(command -v skill-dl 2>/dev/null || true)"
+  if [[ -n "${candidate}" && ! "${candidate}" -ef "${SCRIPT_PATH}" ]]; then
+    RESOLVED_SOURCE="path"
+    RESOLVED_BINARY="${candidate}"
+    return 0
+  fi
+
+  case "$(uname -s):$(uname -m)" in
+    Darwin:arm64|Darwin:aarch64)
+      if [[ -x "${BUNDLED_BINARY}" ]]; then
+        RESOLVED_SOURCE="bundled-darwin-arm64"
+        RESOLVED_BINARY="${BUNDLED_BINARY}"
+        return 0
+      fi
+      ;;
+  esac
+
+  return 1
+}
+
+if [[ "${1:-}" == "--help" ]]; then
+  show_help
+  exit 0
+fi
+
+if ! resolve_skill_dl; then
+  emit_not_found
+  exit 2
+fi
+
+case "${1:-}" in
+  --where)
+    printf '{"status":"ready","source":"%s","path":"%s"}\n' "${RESOLVED_SOURCE}" "${RESOLVED_BINARY}"
+    ;;
+  --tool-help)
+    shift
+    exec "${RESOLVED_BINARY}" --help "$@"
+    ;;
+  *)
+    exec "${RESOLVED_BINARY}" "$@"
+    ;;
+esac

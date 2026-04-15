@@ -324,15 +324,31 @@ Skill problem?
 
 ```bash
 # Verify before first use
+bash scripts/skill-dl --where
+# or, if installed globally:
 skill-dl --version
 ```
 
-If missing, check `references/remote-sources.md` for installation instructions. If installation is not possible in the current environment, fall back to:
+If `skill-dl` is missing globally, install it with:
+
+```bash
+sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
+skill-dl --version
+```
+
+Use it after installation with commands like:
+
+```bash
+skill-dl search typescript mcp server --top 20
+skill-dl urls.txt -o ./research-corpus --no-auto-category -f
+```
+
+If installation is not possible in the current environment, check `references/remote-sources.md` for alternatives and fall back to:
 
 1. MCP tools (`skills-as-context-search-skills`, `skills-as-context-get-skill-details`)
 2. Manual GitHub search for repos containing SKILL.md files
 
-**Best practice:** Always verify tool prerequisites at the start of any workflow that depends on external CLIs. Do not assume availability.
+**Best practice:** Always verify tool prerequisites at the start of any workflow that depends on external CLIs. Do not assume availability. From inside this skill, `bash scripts/skill-dl ...` is the preferred portable entrypoint.
 
 ---
 
