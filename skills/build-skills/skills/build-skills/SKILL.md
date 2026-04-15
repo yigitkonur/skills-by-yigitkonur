@@ -32,6 +32,21 @@ Do not use this skill for:
 6. **Keep progressive disclosure clean.** Put trigger logic in frontmatter, workflow and decisions in `SKILL.md`, and bulky detail in `references/`.
 7. **Test before shipping.** Run trigger tests and at least one functional test before declaring done.
 
+## Available scripts
+
+Scripts are resolved relative to the skill directory root. Use these instead of
+inventing ad-hoc shell pipelines:
+
+- **`scripts/skill-dl`** — non-interactive wrapper for `skill-dl`; prefers the
+  globally installed CLI, and on macOS arm64 can fall back to the bundled
+  `scripts/skill-dl-darwin-arm64` binary. Run `bash scripts/skill-dl --help`.
+- **`scripts/skill-research.sh`** — end-to-end discovery, download, and corpus
+  inspection helper built on top of `scripts/skill-dl`. Run
+  `bash scripts/skill-research.sh --help`.
+- **`scripts/skill-dl-darwin-arm64`** — bundled macOS Apple Silicon `skill-dl`
+  binary. Invoke it via `bash scripts/skill-dl ...` rather than calling it
+  directly.
+
 ## Artifact output
 
 Intermediate artifacts (workspace scan, comparison table, success criteria) appear in conversation output as they are produced — show each one at the step that generates it. Persistent artifacts (`skills.markdown`, final SKILL.md, reference files) live together in the draft skill directory. Default that directory to `skills/<skill-name>/`; if that path is not writable yet, stage the whole skill folder elsewhere and move it into `skills/<skill-name>/` before declaring done.
@@ -76,9 +91,9 @@ Only execute this step if step 1 classified the job as **Full research path**. S
 > Tip: Downloaded skills frequently violate this skill’s own quality standards (line counts >1000, templates inline, no references). Treat quality problems as signal for your “avoid” column—see `references/research/source-verification.md`.
 
 - Read `references/research-workflow.md` for the complete research protocol.
-- Verify `skill-dl` is available: `skill-dl --version`. If missing, see `references/remote-sources.md` for installation. If unavailable and installation is not possible, use the `skills-as-context-search-skills` and `skills-as-context-get-skill-details` tools (requires the skills.sh MCP server), or search GitHub manually for repositories containing SKILL.md files.
-- Use `skill-dl search` with 3–20 space-separated keywords to discover candidates: `skill-dl search mcp server typescript sdk --top 20`. It outputs a prioritized markdown table to stdout.
-- Use `skill-dl` to download selected candidates, or run `bash references/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
+- Verify tool availability with `bash scripts/skill-dl --where` or `skill-dl --version`. If `skill-dl` is missing globally, install it with `sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash`. If installation is not possible, use the `skills-as-context-search-skills` and `skills-as-context-get-skill-details` tools (requires the skills.sh MCP server), or search GitHub manually for repositories containing SKILL.md files.
+- Use `bash scripts/skill-dl search` with 3–20 space-separated keywords to discover candidates: `bash scripts/skill-dl search mcp server typescript sdk --top 20`. It outputs a prioritized markdown table to stdout.
+- Use `bash scripts/skill-dl` to download selected candidates, or run `bash scripts/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
 - See `references/remote-sources.md` for more `skill-dl` usage patterns and download options.
 - Prefer a few diverse, relevant sources over many near-duplicates.
 - Create `skills.markdown` next to the draft `SKILL.md` in the draft skill directory, summarizing what was downloaded, what was shortlisted, and why, before moving on.
@@ -163,7 +178,7 @@ Before drafting, write down what success looks like:
 | add negative triggers when scope is broad | let the skill fire on every tangentially related query |
 | use validation scripts for deterministic checks | rely on prose like "validate properly" |
 | read each downloaded skill's SKILL.md fully, tree its references/, and read the 2–3 most relevant reference files | skim titles and match counts, then fabricate a comparison from memory |
-| verify tool prerequisites before using them (`skill-dl --version`) | assume tools are installed because the skill mentions them |
+| verify tool prerequisites before using them (`bash scripts/skill-dl --where` or `skill-dl --version`) | assume tools are installed because the skill mentions them |
 | show intermediate artifacts at the step that produces them | batch all output to the end or leave output location ambiguous |
 | distinguish creation vs. revision paths in testing | write test instructions that only work for one path |
 
@@ -210,7 +225,6 @@ Load the smallest relevant set for the branch of work you are in.
 |---|---|
 | `references/research-workflow.md` | Deciding whether remote research is mandatory or running the non-trivial research path. |
 | `references/remote-sources.md` | Searching remote skill sources, selecting candidates, or downloading a research corpus. |
-| `references/skill-research.sh` | Running end-to-end parallel discovery and download in one command. |
 | `references/comparison-workflow.md` | Building the comparison table or separating evidence, comparison, selection, and generation. |
 | `references/source-patterns.md` | Choosing what to inherit, simplify, or avoid from earlier skill patterns. |
 | `references/research/source-verification.md` | Filtering low-signal sources, assessing trust, or justifying candidate selection. |
@@ -249,6 +263,8 @@ Load the smallest relevant set for the branch of work you are in.
 - Do not ship without running at least basic trigger tests.
 - Do not use `<` or `>` in any frontmatter field.
 - Do not use "claude" or "anthropic" in the skill name.
+- Do not reference bundled scripts with absolute paths. Script paths stay
+  relative to the skill directory root.
 
 Recovery moves:
 

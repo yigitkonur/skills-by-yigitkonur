@@ -6,14 +6,18 @@
 
 `skill-dl search` is the primary discovery method. It queries Playbooks and returns a prioritized markdown table directly to stdout.
 
+Within this skill, prefer `bash scripts/skill-dl ...` so the same command works
+with either a global `skill-dl` install or the bundled macOS arm64 fallback.
+After a global install, the underlying CLI is the same.
+
 Tool home: https://github.com/yigitkonur/cli-skill-downloader
 
 ```bash
 # Basic search — pass 3–20 keywords
-skill-dl search "agent browser" "headless automation" "browser testing"
+bash scripts/skill-dl search "agent browser" "headless automation" "browser testing"
 
 # Broader coverage — more keywords surface different result clusters
-skill-dl search "typescript" "type safety" "strict mode" "ts config" "compilation"
+bash scripts/skill-dl search "typescript" "type safety" "strict mode" "ts config" "compilation"
 
 # Minimum required: at least 3 keywords
 # Maximum: 20 keywords per invocation
@@ -42,7 +46,10 @@ For each candidate, capture: skill name, owner/repo, detail URL, keywords matche
 Before using any remote source tools, verify availability:
 
 ```bash
-# Primary tool
+# Preferred inside this skill
+bash scripts/skill-dl --where
+
+# Global install check
 skill-dl --version 2>/dev/null && echo "skill-dl ready" || echo "NOT AVAILABLE"
 
 # MCP fallback
@@ -51,7 +58,7 @@ skill-dl --version 2>/dev/null && echo "skill-dl ready" || echo "NOT AVAILABLE"
 ```
 
 **Fallback chain:**
-1. `skill-dl` (preferred) — CLI tool for searching and downloading skills
+1. `bash scripts/skill-dl ...` or `skill-dl` (preferred) — CLI tool for searching and downloading skills
 2. `skills-as-context-search-skills` + `skills-as-context-get-skill-details` (MCP) — requires skills.sh MCP server
 3. Manual GitHub search — search for repositories containing SKILL.md files
 
@@ -65,24 +72,42 @@ Use the first available option. Document which method you used in your research 
 ### Install / verify
 
 ```bash
-# Check if installed
+# Install globally
+sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
+
+# Verify the global install
 skill-dl --version
 
-# Install from source if missing
-curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash
+# Or use the bundled wrapper from the skill root
+bash scripts/skill-dl --help
+bash scripts/skill-dl --where
+```
+
+After installation, use `skill-dl` directly:
+
+```bash
+skill-dl search typescript mcp server --top 20
+skill-dl urls.txt -o ./corpus --no-auto-category -f
+```
+
+From inside the skill directory, the wrapper uses the same interface:
+
+```bash
+bash scripts/skill-dl search typescript mcp server --top 20
+bash scripts/skill-dl urls.txt -o ./corpus --no-auto-category -f
 ```
 
 ### Quick start
 
 ```bash
 # Single skill
-skill-dl https://playbooks.com/skills/vercel-labs/agent-browser/agent-browser -o ./corpus
+bash scripts/skill-dl https://playbooks.com/skills/vercel-labs/agent-browser/agent-browser -o ./corpus
 
 # Batch from file
-skill-dl urls.txt -o ./corpus --no-auto-category -f
+bash scripts/skill-dl urls.txt -o ./corpus --no-auto-category -f
 
 # Dry run first
-skill-dl urls.txt --dry-run
+bash scripts/skill-dl urls.txt --dry-run
 ```
 
 ### Parallel download for large batches
@@ -100,14 +125,14 @@ while IFS= read -r url; do
   echo "$url" >> "${tmp}/${repo}.txt"
 done < urls.txt
 
-ls "${tmp}"/*.txt | xargs -P 6 -I {} skill-dl {} -o ./corpus --no-auto-category -f
+ls "${tmp}"/*.txt | xargs -P 6 -I {} bash scripts/skill-dl {} -o ./corpus --no-auto-category -f
 rm -rf "$tmp"
 ```
 
 **Option B — xargs one-URL-per-process** (simple but re-clones shared repos)
 
 ```bash
-grep -v '^#' urls.txt | grep -v '^$' | xargs -P 6 -I {} skill-dl {} -o ./corpus --no-auto-category -f
+grep -v '^#' urls.txt | grep -v '^$' | xargs -P 6 -I {} bash scripts/skill-dl {} -o ./corpus --no-auto-category -f
 ```
 
 > Use Option A for large corpora with many skills from the same repo. Use Option B for quick grabs across unique repos.
@@ -141,7 +166,7 @@ Fallback: full-repo search for SKILL.md with matching parent dir name, then root
 
 | Problem | Fix |
 |---|---|
-| `skill-dl: command not found` | Install: `curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh \| bash` |
+| `skill-dl: command not found` | Install globally: `sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh \| sudo bash`, then verify with `skill-dl --version`. |
 | `[ERR] Could not clone` | Repo is private, renamed, or deleted. Check URL manually. |
 | `[ERR] Not found in repo` | Skill name doesn't match any path in repo. Run with `-v` to see available skills. The skill may use a non-standard directory layout. |
 | Slow on many repos | Use parallel download (Option A above). |
@@ -165,13 +190,13 @@ After download:
 ### skill-dl search patterns
 ```bash
 # Broad discovery
-skill-dl search typescript mcp server --top 20
+bash scripts/skill-dl search typescript mcp server --top 20
 
 # Narrow by domain
-skill-dl search react testing component --top 10
+bash scripts/skill-dl search react testing component --top 10
 
 # Framework-specific
-skill-dl search nextjs app-router authentication --top 15
+bash scripts/skill-dl search nextjs app-router authentication --top 15
 ```
 
 ### MCP tool patterns

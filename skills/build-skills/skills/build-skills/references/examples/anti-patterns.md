@@ -451,7 +451,7 @@ These anti-patterns show up repeatedly when operators follow the workflow too lo
 
 **Why it fails:** First command fails, requiring backtracking and context recovery. Often leads to the agent fabricating results instead of using fallback methods.
 
-**Fix:** Run `skill-dl --version` before first use. Have the fallback chain ready: skill-dl > MCP tools > manual GitHub search.
+**Fix:** Run `bash scripts/skill-dl --where` or `skill-dl --version` before first use. If `skill-dl` is missing globally, install it with `sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash`. Have the fallback chain ready: skill-dl > MCP tools > manual GitHub search.
 
 **Detection:** A tool command fails with "command not found" during execution.
 
