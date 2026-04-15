@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-47 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+46 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -49,9 +49,9 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [enhance-prompt](skills/enhance-prompt/) | productivity | Turbocharge LLM prompts with steering, halt conditions, and failure pre-emption |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
-| [init-agent-config](skills/init-agent-config/) | configuration | AGENTS.md and CLAUDE.md generation |
+| [init-agent-config](skills/init-agent-config/) | configuration | AGENTS + REVIEW standardization hierarchies |
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
-| [init-review](skills/init-review/) | productivity | AI code review config for Copilot, Devin, and Greptile |
+| [optimize-mcp-server](skills/optimize-mcp-server/) | development | Audit, optimize, or architect new MCP servers |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | Audit, optimize, or architect new MCP servers |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
