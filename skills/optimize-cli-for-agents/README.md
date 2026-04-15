@@ -1,6 +1,6 @@
 # optimize-cli-for-agents
 
-Audit existing CLIs for agent-readiness and fix them, or design new CLIs with agent-first thinking — structured output, semantic exit codes, non-interactive modes, idempotency, JSONL streaming, and MCP vs CLI decisions.
+auditing a CLI for agent-readiness, designing agent-first command contracts, or adding iterative feedback loops for repairable machine-generated artifacts.
 
 **Category:** development
 
