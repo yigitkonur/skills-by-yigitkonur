@@ -47,7 +47,7 @@ Fields: `ts` (ISO), `dir` (direction tag), then any of `method`, `id`, `params`,
 
 | Question | Signal |
 |---|---|
-| Is the turn moving? | `tail -F "$RAW"` — any new line = alive. Silence ≥ `CODEX_WORKER_TURN_TIMEOUT_MS` = stuck. |
+| Is the turn moving? | `tail -n +1 -F "$RAW"` — replays history, then streams live. Any new line = alive. Silence ≥ `CODEX_WORKER_TURN_TIMEOUT_MS` = stuck. |
 | Is the turn blocked on me? | A `{"dir":"server_request"}` line in `$RAW`, or non-empty `pendingRequests` in `read`. |
 | What tool call ran last? | `jq 'select(.method=="item/completed" and .params.item.type=="commandExecution")' "$RAW"`. |
 | Why did the turn fail? | `jq 'select(.dir=="daemon" or .dir=="exit" or .method=="error" or .dir=="protocol_error")' "$RAW"`. |

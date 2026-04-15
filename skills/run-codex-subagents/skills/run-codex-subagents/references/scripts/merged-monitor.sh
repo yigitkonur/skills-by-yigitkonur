@@ -76,7 +76,9 @@ for thread_id in "$@"; do
   touch "$raw_path"
 
   short_id=${thread_id:0:8}
-  tail -F "$raw_path" 2>/dev/null \
+  # -n +1 replays the file from byte 0 so fast turns don't slip past the
+  # default 10-line tail before we attach; then live-tails as usual.
+  tail -n +1 -F "$raw_path" 2>/dev/null \
     | jq -rc --unbuffered "$FILTER" 2>/dev/null \
     | awk -v tag="[$short_id] " '{ print tag $0; fflush() }' &
   TAIL_PIDS+=("$!")
