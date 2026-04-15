@@ -1,98 +1,72 @@
 # Composability and exit codes
 
-Use this file when you need shell-safe orchestration, machine-readable output, or predictable failure handling.
+Use this file when you need shell-safe orchestration or machine-readable output.
 
 ## Output modes
 
-Available on the top-level CLI:
+- `--output text` — human-readable
+- `--output json` — machine-readable
 
-- `--output text` (default) — human-readable formatted output
-- `--output json` — machine-readable JSON
+Prefer JSON in shell scripts:
 
-For task monitoring:
-
-- `--follow` — stream events in real time (with `run`, `task start`, `task wait`)
-- `--compact` — concise emoji-prefixed event output (requires `--follow`)
-- `--quiet` — bare IDs, one per line (on `task list`)
-- `--field <path>` — extract single dotted-path field (on `task read`)
-- `--raw` — raw JSONL dump (on `task events`)
-
-## Bounded list behavior
-
-`task list`, `session list`, and `request list` are bounded by default and return the newest entries first.
-
-Useful controls:
-
-- `--limit <n>` — max results
-- `--status <status>` — filter by status (on `task list`, `request list`)
-- `--quiet` — output bare IDs only (on `task list`)
+```bash
+codex-worker --output json run task.md --async
+codex-worker --output json read <thread-id>
+codex-worker --output json thread list --cwd "$PWD"
+codex-worker --output json request list --status pending
+```
 
 ## Pipe-friendly examples
 
-Get all pending request ids:
+Extract the thread id from an async run:
 
 ```bash
-codex-worker --output json request list --status pending | jq -r '.data[].id'
+THREAD_ID="$(codex-worker --output json run task.md --async | jq -r '.threadId')"
 ```
 
-Get bare thread ids:
+Find failed threads in one cwd:
 
 ```bash
-codex-worker task list --quiet
+codex-worker --output json thread list --cwd "$PWD" \
+  | jq -r '.data[] | select(.status == "failed") | .id'
 ```
 
-Extract a field:
+## Inspection vs lifecycle commands
 
-```bash
-codex-worker task read thr_abc123 --field status
-```
-
-Check if a task is running:
-
-```bash
-STATUS="$(codex-worker task read thr_abc123 --field status)"
-if [ "$STATUS" = "running" ]; then
-  codex-worker task follow thr_abc123 --compact
-fi
-```
-
-## Exit-code contract
-
-Lifecycle commands use exit codes as control flow:
-
-- `0` — success
-- `1` — error (check stderr)
-- `2` — blocked on approval or user input
-
-## Read vs lifecycle commands
-
-Important distinction:
-
-- inspection commands succeed with exit `0` when the read itself succeeds, even if the underlying task is in a failed state
-- lifecycle commands reflect the underlying task outcome and may exit `1` or `2`
-
-Typical inspection commands:
-
-- `task read`
-- `task list`
-- `task events`
-- `session read`
-- `session list`
-- `request read`
+Inspection-style commands:
+- `read`
+- `logs`
+- `thread read`
+- `thread list`
 - `request list`
+- `request read`
+- `doctor`
 - `model list`
 - `account read`
 - `account rate-limits`
-- `doctor`
+- `skills list`
+- `app list`
 - `daemon status`
 
-Typical lifecycle commands:
-
+Lifecycle-style commands:
 - `run`
-- `task start`
-- `task steer`
-- `task follow`
-- `task wait`
-- `task cancel`
-- `request answer`
+- `send`
+- `thread start`
+- `thread resume`
+- `turn start`
+- `turn steer`
+- `turn interrupt`
 - `request respond`
+- `wait`
+- `daemon start`
+- `daemon stop`
+
+Do not rely on a special blocked-request exit code unless you verified it in the current runtime. Prefer JSON status and `request list`.
+
+## Anti-patterns
+
+| Avoid | Use instead |
+|---|---|
+| parsing human text output | `--output json` + `jq` |
+| assuming `task` or `session` helper commands exist | use `run`, `send`, `thread`, `turn`, `wait`, `request respond` |
+| assuming blocked runs auto-answer | inspect `request list --status pending` |

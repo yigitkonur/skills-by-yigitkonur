@@ -11,11 +11,11 @@
 #       CODEX_WORKER_TURN_TIMEOUT_MS=3600000 ./merged-monitor.sh <tid>
 #
 # Requires:
-#   - codex-worker on PATH  (see references/tool-reference.md for install)
+#   - codex-worker on PATH  (see ../command-reference.md for install)
 #   - jq  (brew install jq)
 #
-# See references/guides/log-artifacts.md for the full dir taxonomy and
-# references/guides/monitoring-patterns.md for the signal semantics.
+# See ../recovery-and-diagnostics.md for raw log paths and recovery workflow,
+# and ../orchestration-patterns.md for multi-thread monitoring patterns.
 
 set -euo pipefail
 

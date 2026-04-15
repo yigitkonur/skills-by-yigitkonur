@@ -4,69 +4,43 @@ Use this file when you need to understand how `codex-worker` inherits Codex runt
 
 ## Default source
 
-The CLI asks the Codex runtime for config defaults through `config/read`, which usually reflects `~/.codex/config.toml`.
+`codex-worker` relies on the installed Codex runtime and the active `CODEX_HOME` / `CODEX_HOME_DIRS` configuration.
 
-Relevant runtime defaults currently include:
-
-- `model`
-- `model_provider`
-- `approval_policy`
-- `sandbox_mode`
-- `service_tier`
-- `personality`
-
-## What the CLI inherits
-
-When starting or resuming sessions, the CLI carries through runtime defaults for:
-
+Relevant runtime defaults include:
+- model
 - model provider
 - approval policy
 - sandbox mode
-- service tier
-- personality
 
-This is why a working local Codex config matters. The CLI is a shell around the Codex runtime, not a separate model client.
+## What the CLI inherits
 
-## Override rules
+When starting or resuming threads, the worker carries through runtime defaults for:
+- provider selection
+- sandbox behavior
+- approval behavior
 
-### Task and prompt control
+## Explicit overrides
 
-Explicit CLI flags override defaults for:
+Common CLI overrides in the released surface:
+- `run --cwd <dir>`
+- `run --model <id>`
+- `run --timeout <ms>`
+- `thread start --developer-instructions <text>`
+- `thread start --base-instructions <text>`
 
-- `--cwd` — working directory
-- `--model` — model selection
-- `--effort` — reasoning effort level (low, medium, high)
-- `--label` — task label
-- `--plan` / `--skip-plan` — planning behavior
+## Continuation and reuse
 
-### Session reuse
+There is no `--session` flag in the released CLI.
 
-When you reuse a session via `--session <threadId>`:
+Reuse happens through:
+- `send <thread-id> <message.md>`
+- `thread resume <thread-id>`
+- `turn steer <thread-id> <turn-id> <prompt.md>`
 
-- the existing session pins the underlying thread and cwd
-- the CLI resumes that thread before starting the new turn
-- a new `--model` can only apply when the resumed turn supports it and the runtime accepts it
-- `task steer` keeps the anchor session and uses the terminal task as the continuation point
+These commands keep the existing thread context instead of creating a fresh thread.
 
-Use session reuse deliberately. It is good for continuity, but it also carries context forward.
+## Recommendations
 
-## Practical recommendations
-
-- Put stable environment defaults in `~/.codex/config.toml`
-- Put task-specific differences in CLI flags
-- Do not hardcode provider credentials or personal secrets into prompt files
-
-## Example config shape
-
-These are common settings the CLI can inherit:
-
-```toml
-model = "gpt-5.4"
-model_provider = "codex-lb"
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-service_tier = "fast"
-personality = "pragmatic"
-```
-
-Keep provider-specific secrets in the normal Codex config or environment, not in task files.
+- Put stable environment defaults in Codex config
+- Put task-specific differences in CLI flags or the prompt file
+- Keep provider secrets in Codex config or environment, not inside prompt files
