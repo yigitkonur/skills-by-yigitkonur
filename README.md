@@ -20,7 +20,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
 | Skill | Category | Description |
 |---|---|---|
-| [optimize-cli-for-agents](skills/optimize-cli-for-agents/) | development | Audit or design CLI tools to be reliably usable by AI agents |
+| [optimize-cli-for-agents](skills/optimize-cli-for-agents/) | development | Audit or design agent-ready CLIs with iterative feedback loops |
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
 | [build-convex-clerk-swiftui](skills/build-convex-clerk-swiftui/) | development | Convex + Clerk backends for SwiftUI iOS/macOS apps |
 | [build-copilot-sdk-app](skills/build-copilot-sdk-app/) | development | GitHub Copilot SDK apps in TypeScript |
