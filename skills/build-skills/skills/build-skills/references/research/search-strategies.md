@@ -2,6 +2,27 @@
 
 Read this file before the first `skill-dl search` in a session. Keyword choice is the main quality lever.
 
+Before the first search, verify the CLI is available:
+
+```bash
+bash scripts/skill-dl --where
+```
+
+If `skill-dl` is not installed globally, install it with:
+
+```bash
+sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
+```
+
+After installation, use it like:
+
+```bash
+skill-dl search typescript mcp server --top 20
+```
+
+From inside the skill directory, `bash scripts/skill-dl ...` uses the same
+interface and can fall back to the bundled macOS arm64 binary.
+
 ## Keyword formulation rules
 
 `skill-dl search` accepts 3-20 space-separated keywords and ranks results by how many keywords each skill matches. Cross-keyword overlap is the primary ranking signal.
@@ -41,7 +62,7 @@ For any search, aim to include keywords from at least 3 of these categories:
 Start with your core topic keywords. Review the result table.
 
 ```bash
-skill-dl search typescript mcp server --top 30
+bash scripts/skill-dl search typescript mcp server --top 30
 ```
 
 ### Round 2: Gap filling
@@ -49,7 +70,7 @@ skill-dl search typescript mcp server --top 30
 Identify what Round 1 missed. Add keywords from angles not covered.
 
 ```bash
-skill-dl search mcp authentication session transport streaming --top 20
+bash scripts/skill-dl search mcp authentication session transport streaming --top 20
 ```
 
 ### Round 3: Adjacent discovery
@@ -57,7 +78,7 @@ skill-dl search mcp authentication session transport streaming --top 20
 Search for related but not identical topics that may contain reusable patterns.
 
 ```bash
-skill-dl search agent browser automation headless testing --top 15
+bash scripts/skill-dl search agent browser automation headless testing --top 15
 ```
 
 ### Deduplication across rounds
@@ -105,5 +126,5 @@ When even the best results only match 1-2 keywords, the topic is niche on playbo
 Parse URLs from this table for batch download:
 
 ```bash
-skill-dl search react hooks testing | grep -oE 'https://playbooks\.com/skills/[^ |]+' | sort -u
+bash scripts/skill-dl search react hooks testing | grep -oE 'https://playbooks\.com/skills/[^ |]+' | sort -u
 ```

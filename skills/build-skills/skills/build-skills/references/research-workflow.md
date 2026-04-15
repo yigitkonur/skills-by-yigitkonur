@@ -6,16 +6,25 @@ The rule is simple: research happens before synthesis.
 
 ## Prerequisite
 
-Before starting, verify `skill-dl` is installed:
+Before starting, verify `skill-dl` is available:
 
 ```bash
+bash scripts/skill-dl --where
+# or, if installed globally:
 skill-dl --version
 ```
 
 If missing, install it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | bash
+sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
+```
+
+After installation, use it like:
+
+```bash
+skill-dl search typescript mcp server --top 20
+skill-dl urls.txt -o ./research-corpus --no-auto-category -f
 ```
 
 Also confirm you have classified the skill type (see SKILL.md step 2) before beginning research.
@@ -44,17 +53,17 @@ The local scan prevents you from importing outside patterns that conflict with t
 
 After the local scan:
 
-1. **Discover** — run `skill-dl search` with 3–20 keyword arguments covering the topic from multiple angles
-   - `skill-dl search` outputs a prioritized markdown table: rank, skill name, owner/repo, keywords matched, match count, URL
+1. **Discover** — run `bash scripts/skill-dl search` with 3–20 keyword arguments covering the topic from multiple angles
+   - `bash scripts/skill-dl search` outputs a prioritized markdown table: rank, skill name, owner/repo, keywords matched, match count, URL
    - Skills appearing across more keywords rank higher — cross-keyword overlap is the primary signal
    - Run multiple keyword sets in parallel for broader coverage; deduplicate by URL before proceeding because `skill-dl search` output can contain duplicate rows or formatting artifacts across overlapping queries
-   - Example: `skill-dl search "agent browser" "headless automation" "browser testing" "playwright"`
+   - Example: `bash scripts/skill-dl search "agent browser" "headless automation" "browser testing" "playwright"`
    - Requires at least 3 keywords; use varied phrasing to surface different result clusters
 2. **Triage large result sets** — if results exceed 50 rows, use `--min-match 2` to focus on cross-keyword hits, or `--top 20` to cap results. If the max match count is ≤2 (niche topics), broaden keyword variety or switch to manual curation from the full list
 3. **Select** — from the markdown table output, pick high-signal candidates; record skill name, source, URL, match count, rationale
 4. **Download** — choose one of two paths:
-   - **Manual path**: write a URL file (one Playbooks URL per line, `#` comments for grouping), then run `skill-dl urls.txt -o ./research-corpus --no-auto-category -f`
-   - **Automated path**: run the bundled script `bash references/skill-research.sh "kw1,kw2,kw3" ./research-corpus` — it discovers, downloads, and inspects in one command (note: keywords are comma-separated in the script but space-separated when calling `skill-dl search` directly)
+   - **Manual path**: write a URL file (one Playbooks URL per line, `#` comments for grouping), then run `bash scripts/skill-dl urls.txt -o ./research-corpus --no-auto-category -f`
+   - **Automated path**: run the bundled script `bash scripts/skill-research.sh "kw1,kw2,kw3" ./research-corpus` — it discovers, downloads, and inspects in one command (note: keywords are comma-separated in the script but space-separated when calling `skill-dl search` directly)
    - Large batches: split by repo and run parallel (see `references/remote-sources.md`)
 5. **Inspect** — the downloaded corpus is first-class evidence, not background noise
 
@@ -150,13 +159,13 @@ Research has three phases. Complete each gate before advancing:
 ### Phase 1: Discovery (budget: 10 minutes)
 **Goal:** Find candidate skills to compare.
 **Gate:** Have 5-15 candidate names/URLs identified.
-**Tools:** `skill-dl search`, `skills-as-context-search-skills`, GitHub search.
+**Tools:** `bash scripts/skill-dl search`, `skills-as-context-search-skills`, GitHub search.
 
 ### Phase 2: Download and triage (budget: 15 minutes)
 **Goal:** Download candidates and quick-assess quality.
 **Gate:** Have 3-8 downloaded skills with size/tier noted.
 **Actions:**
-1. Download top candidates: `skill-dl download <id>`
+1. Download top candidates: `bash scripts/skill-dl <playbooks-url> -o ./research-corpus --no-auto-category -f`
 2. For each: `wc -l SKILL.md` and `tree references/ 2>/dev/null`
 3. Assign quality tier (see `source-patterns.md`)
 4. Drop Tier 3 sources unless needed as anti-pattern examples
@@ -196,7 +205,7 @@ Before starting research, verify your tools are available:
 
 ```bash
 # Required for research
-skill-dl --version 2>/dev/null || echo "skill-dl not available - use MCP fallback"
+bash scripts/skill-dl --where 2>/dev/null || echo "skill-dl not available - use MCP fallback"
 
 # Optional but helpful
 which jq 2>/dev/null || echo "jq not available - JSON parsing will be manual"
