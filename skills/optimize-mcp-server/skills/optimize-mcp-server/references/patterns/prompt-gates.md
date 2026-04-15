@@ -183,3 +183,70 @@ Every tool response should include `_agent_guidance` with a consistent shape. Th
 **Note:** The `_agent_guidance` convention and `TOOL_GRAPH` validation are proposed patterns, not established standards. They represent a reasonable defense-in-depth approach but have not been widely adopted yet.
 
 **Source:** Proposed pattern inspired by prompt injection research; [Palo Alto Unit 42 MCP research](https://unit42.paloaltonetworks.com); [Invariant Labs -- MCP tool poisoning](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks)
+
+---
+
+## 5. Recommend the Next Tool or Query Frontier Explicitly
+
+Recommending the next tool in the tool response is not a smell by itself. It is often the correct design, especially for research, search, SEO, and investigation tools where the agent would otherwise waste turns deciding what obvious follow-up to run.
+
+The rule is: **recommend aggressively, execute conservatively**.
+
+Good response shape:
+
+```json
+{
+  "results": ["...current evidence..."],
+  "_agent_guidance": {
+    "source": "research_serp",
+    "mode": "advisory",
+    "next_action": {
+      "tool": "fetch_pages",
+      "reason": "The current SERP has enough signal to open the top two authoritative sources."
+    },
+    "recommended_queries": [
+      {
+        "query": "seo research mcp examples",
+        "reason": "Current results are heavy on general AI search posts and light on concrete MCP implementations.",
+        "confidence": 0.83
+      },
+      {
+        "query": "agentic cli seo workflow",
+        "reason": "Current results do not cover the CLI translation of the same steering pattern.",
+        "confidence": 0.78
+      }
+    ],
+    "stop_conditions": [
+      "Stop expanding when two consecutive waves add fewer than 2 novel authoritative domains.",
+      "Stop after 12 total searches."
+    ],
+    "server_actions_taken": [
+      {
+        "type": "internal_planner_turn",
+        "purpose": "generate the next query frontier from the current SERP"
+      }
+    ]
+  }
+}
+```
+
+**Why this is powerful:**
+- It turns each tool call into a local planner checkpoint.
+- It reduces drift in open-ended workflows.
+- It keeps the model focused on evidence gaps instead of generic "what should I do next?" behavior.
+
+**Strong example:** a research MCP does one search wave, then uses a bounded internal model call to identify the next highest-signal keywords. Instead of returning only the top 10 links, it returns:
+- the current SERP
+- the missing angles
+- the best next queries
+- the stop conditions for continued expansion
+
+That is much better steering than "here are 10 links, good luck."
+
+**Guardrails:**
+- `mode: advisory` means the server is steering, not silently taking external actions.
+- If the server already spent an internal planning turn, say so in `server_actions_taken`.
+- If the next action is mandatory for safety, mark it required and validate it against a server-side graph.
+- Keep recommended queries or next tools short and ranked. Five good options beats twenty mediocre ones.
+
+This is the right mental model for agentic MCPs: the response is not just the answer. It is the answer plus the best available continuation.

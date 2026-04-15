@@ -1,346 +1,253 @@
-# MCP vs CLI, Skills, and Bash: When Each Wins
+# MCP vs CLI: Should This Be An MCP Server?
 
-15 patterns for deciding when an MCP server is the right primitive and when to use CLI/bash/skills instead.
+Use this guide before optimizing an MCP server when the real question may be whether the workflow belongs in MCP at all.
 
-The 2025–2026 consensus moved from "wrap everything in MCP" to a layered model: **Skills teach the workflow, CLI/bash executes it, MCP is reserved for authenticated multi-tenant services and non-CLI integrations.** These patterns encode that shift, the measurements behind it, and the hybrids that survive the reframe. Raw token-budget numbers for tool definitions live in `context-engineering.md`; this file reuses them only to pick between primitives.
+Status: refreshed on April 15, 2026.
 
----
+## 1. Fast Recommendation
 
-## Pattern 1: Default to CLI When a Working CLI Already Exists
+Do not assume every agent-accessible integration should be an MCP server.
 
-If the target service ships a first-party CLI, wrapping it in an MCP server usually loses on every axis: context cost, latency, reviewability, and cost per conversation. A CLI's stdout is already a compressed, post-processed representation of the API; re-serializing it through JSON-RPC adds overhead without adding capability.
+Default recommendations:
+- keep the workflow in CLI when it is developer-facing, command-shaped, and already well served by a strong CLI
+- keep or build MCP when the requirement is governed remote access, typed discovery, or stateful sessions
+- choose a hybrid when MCP should own auth or approvals, but CLI should own execution
+- choose a skill when the missing piece is workflow guidance, not a new runtime surface
 
-Jannik Reinhard's "list all non-compliant Intune devices to CSV" benchmark measured a **35× context reduction** for the CLI path. MCP path over Microsoft Graph MCP: ~145,000 tokens for 50 devices across tool-definition injection, schema references, and response envelopes. Same task delegated to `mgc`, `az`, and PowerShell from a bash loop: ~4,150 tokens. On a 128K window, MCP left ~82K free; CLI left ~121K (95%) free for reasoning.
+If you are auditing an existing MCP server and any of the following are true, open this document before touching schemas or tool descriptions:
+- the repo already depends on a mature first-party CLI
+- the server mostly shells out to local commands
+- the tools are thin wrappers over REST endpoints
+- the workload is mostly one-shot and stateless
+- the pain is token cost, auth flakiness, or unused tool bloat
 
-```bash
-# CLI path — the agent writes and runs this directly
-mgc devices list --filter "complianceState eq 'noncompliant'" --top 50 \
-  | jq -r '.value[] | [.id,.deviceName,.operatingSystem] | @csv' \
-  > noncompliant.csv
-```
+## 2. What The Official Docs Establish
 
-**When to use:** any task where a `*`-suffixed CLI covers the endpoint set (`gh`, `az`, `mgc`, `aws`, `kubectl`, `gcloud`, `op`, `doctl`, `heroku`, `stripe`, `supabase`). Always check `allowed-tools: Bash(<cli>:*)` as a precondition before reaching for an MCP.
+| Documented fact | Why it matters |
+|---|---|
+| MCP is a JSON-RPC protocol with `stdio` and Streamable HTTP transports. | MCP is a protocol decision, not just a transport detail. It can be local or remote, but it always adds protocol semantics. |
+| MCP servers expose tools with typed `inputSchema`, plus resources and prompts. | Keep MCP when discoverable, typed tool contracts are part of the product value. |
+| HTTP-based MCP auth is specified around OAuth 2.1 style flows and metadata discovery; `stdio` should use environment credentials instead. | MCP is strongest for governed remote access. Local shell-style credential handling is not where it shines. |
+| Anthropic and OpenAI document approvals, allowlists, deferred loading, and strong warnings about untrusted third-party servers. | MCP deserves the overhead when trust boundaries and approvals are part of the requirement. |
+| Shell and local-shell tools execute in the caller's runtime, with safety coming from sandboxing, hooks, allowlists, and permission prompts. | CLI-first is operationally simpler, but the caller owns the local blast radius. |
 
-**Source:** [Jannik Reinhard — Why CLI tools are beating MCP for AI agents](https://jannikreinhard.com/2026/02/22/why-cli-tools-are-beating-mcp-for-ai-agents/), 2026-02.
+Primary docs:
+- [Model Context Protocol architecture](https://modelcontextprotocol.io/docs/learn/architecture)
+- [MCP transports spec, November 25, 2025](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+- [MCP authorization spec, June 18, 2025](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
+- [Claude Code MCP](https://docs.anthropic.com/en/docs/claude-code/mcp)
+- [Anthropic MCP connector](https://docs.anthropic.com/en/docs/agents-and-tools/mcp-connector)
+- [OpenAI MCP guide](https://developers.openai.com/api/docs/mcp)
+- [OpenAI MCP and connectors](https://developers.openai.com/api/docs/guides/tools-connectors-mcp)
+- [Claude Code security](https://docs.anthropic.com/en/docs/claude-code/security)
 
----
+## 3. Use MCP When The Protocol Features Are The Product
 
-## Pattern 2: Budget Per-Tool Cost at ~590 Tokens and Cap Exposed Surface
+An MCP server is justified when the protocol gives you something a CLI cannot give cleanly.
 
-Every MCP tool definition costs **500–750 tokens** on average before the first user turn. Jannik measured GitHub MCP at 93 tools / ~55K tokens (~590 tok/tool). Anthropic's advanced-tool-use post reports GitHub at 35 tools / ~26K tokens (~740 tok/tool) and a 58-tool / 5-server enterprise setup at ~55K tokens. `context-engineering.md` covers descriptor trimming; this pattern tells you the architectural cap.
+Strong MCP signals:
+- per-user OAuth, token refresh, approval, or revocation
+- multi-tenant SaaS or user-specific data boundaries
+- multiple clients or models need the same tool surface
+- the workflow depends on remote discovery and typed schemas
+- the tool maintains state across calls
+- the integration is remote-first and connector-like rather than process-like
 
-If a candidate MCP would push combined tool definitions past the Tool Search 10%-of-context threshold (≈12.8K tokens on a 128K window), you have three choices: ship Tool Search, switch to a meta-tool gateway (Pattern 11), or move the workflow out of MCP.
+Good MCP examples:
+- SaaS connectors where end users bring their own account
+- governed write operations with approval steps
+- browser or session-based automation
+- shared internal platform tools consumed by several agent runtimes
 
-| Exposed tools | Typical token cost | Safe? |
-|---------------|--------------------|-------|
-| ≤ 15          | 7K–11K             | Yes   |
-| 16–30         | 11K–22K            | Only with Tool Search or PTC |
-| 31–60         | 22K–45K            | Requires gateway/meta-tools |
-| 60+           | 45K–135K+          | Will trip descriptor bloat; migrate |
+If those requirements are absent, be skeptical that the server should exist.
 
-**Source:** [Jannik Reinhard — Why CLI tools are beating MCP for AI agents](https://jannikreinhard.com/2026/02/22/why-cli-tools-are-beating-mcp-for-ai-agents/), 2026-02; [Anthropic — Advanced tool use with Claude](https://www.anthropic.com/engineering/advanced-tool-use), 2025-11.
+## 4. Choose CLI Instead When The Work Is Really Command Execution
 
----
+Do not keep an MCP server just because the agent can call tools. Keep it only if the protocol layer is earning its keep.
 
-## Pattern 3: Watch the 134K-Token Baseline and Per-Conversation Dollar Cost
+Strong CLI signals:
+- a mature CLI already exists
+- the workflow is mostly stateless and one-shot
+- the operator is a developer in a trusted environment
+- shell composition, files, pipes, and redirects are central to the task
+- JSON output and non-interactive flags already solve the data contract
+- the main value is cheap execution, not typed remote discovery
 
-Anthropic's advanced-tool-use post reports an enterprise MCP configuration where tool definitions consumed **134K tokens before the first user turn** — more than a full 128K context window on older models. Dead Neurons priced this at ~$0.40 per conversation on input tokens for tool schemas alone, before any user message or tool call.
+Good CLI examples:
+- `gh`, `git`, `kubectl`, `aws`, `docker`, `jq`, `curl`, `stripe`
+- repo maintenance, deployment, infra inspection, CI helpers
+- batch transforms where the shell can do the mechanical work once the model decides the plan
 
-If your deployment leaves tool definitions static across every conversation, multiply that per-conversation cost by your call volume to decide whether protocol-level optimization (PTC, Tool Search, gateway) or moving to CLI/skills is the cheaper fix.
+If your MCP server mostly maps one remote endpoint to one tool, and a good CLI already exists, shrinking or replacing the MCP layer is usually the correct optimization.
 
-**When to use:** cost-model any MCP deployment that would exceed 50K tokens of tool definitions at steady state.
+## 5. Use A Skill Instead When The Missing Piece Is Workflow Knowledge
 
-**Source:** [Anthropic — Advanced tool use with Claude](https://www.anthropic.com/engineering/advanced-tool-use), 2025-11; [Dead Neurons — Forget MCP, Bash Is All You Need](https://deadneurons.substack.com/p/forget-mcp-bash-is-all-you-need), 2026-02.
+Do not build an MCP server to explain how to use existing tools.
 
----
+Use a skill when:
+- the runtime capability already exists as CLI or API
+- the agent needs a playbook, order of operations, or house rules
+- the problem is routing, not transport
+- the system only needs static guidance or lightweight dynamic context injection
 
-## Pattern 4: Enable Tool Search Before Migrating Off MCP
+Examples:
+- "When triaging GitHub issues, prefer `gh --json` with these fields."
+- "For deploy checks, run these five commands, then stop if this exit code appears."
 
-Claude Code v2.1.7 ships Tool Search, which auto-enables when tool definitions would exceed 10% of the context window. It reduces exposure from 77K → 8.7K tokens (**85% cut**) and lifts MCP-eval accuracy from 49% → 74% on Opus 4 and 79.5% → 88.1% on Opus 4.5. This is a protocol-native fix; try it before paying the cost of migrating a working MCP to CLI.
+That is a skill plus CLI problem, not an MCP server problem.
 
-```jsonc
-// claude-code settings — Tool Search kicks in above the descriptor budget
-{
-  "mcp": {
-    "toolSearch": { "enabled": true, "thresholdPercent": 10 }
-  }
-}
-```
+## 6. Hybrid Patterns That Usually Beat Pure MCP
 
-**When to use:** existing MCP with >15 tools and measurable descriptor bloat, before touching the server code.
-**When NOT to use:** per-tool cost is fine but each call's result envelope is the bottleneck (Pattern 7 instead).
+### 6.1 MCP Control Plane, CLI Execution Plane
 
-**Source:** [Layered — MCP tool schema bloat, the hidden token tax and how to fix it](https://layered.dev/mcp-tool-schema-bloat-the-hidden-token-tax-and-how-to-fix-it/), 2026-01.
+Use MCP for:
+- auth
+- approval
+- tool discovery
+- tenant isolation
 
----
+Use CLI for:
+- read-heavy operations
+- local transforms
+- batch processing
+- shell-native execution
 
-## Pattern 5: Use Programmatic Tool Calling for Fan-Out / Filter / Aggregate
+This is the right architecture when you need a governed remote interface for agents, but the real work is still cheap command execution.
 
-If the workflow is "call N tools, join their results, filter to a summary," use **Programmatic Tool Calling (PTC)** rather than sequential tool calls. Anthropic's expense-audit benchmark — 20 people × 2000+ line items / 50KB raw — compressed to 1KB results. Average tokens 43,588 → 27,297 (−37%). Internal-knowledge accuracy rose 25.6% → 28.5%; GIA 46.5% → 51.2%. The pattern eliminates 19+ inference passes in a 20-tool workflow by letting the model write one orchestration script that the MCP runtime executes.
+### 6.2 CLI First, MCP For Stateful Or Governed Calls
 
-PTC is a hybrid: MCP still exposes the primitives, but the model invokes them from inside generated code instead of through JSON-RPC round trips. This is the protocol-level answer to "too many sequential calls."
+Use CLI for:
+- simple reads
+- local automation
+- developer workflows
 
-**When to use:** fan-out across ≥5 records, any reduce/filter/join step, batch mutations with shared structure.
-**When NOT to use:** single-step lookup, human-approval gates between calls, operations that must be individually audited in the transcript.
+Use MCP only for:
+- session-heavy operations
+- governed writes
+- user-scoped remote access
 
-**Source:** [Anthropic — Advanced tool use with Claude](https://www.anthropic.com/engineering/advanced-tool-use), 2025-11.
+This is the most pragmatic split for coding agents.
 
----
+### 6.3 MCP Gateway With CLI Backend
 
-## Pattern 6: Measure Pipeline Length as a Cost Multiplier
+If the CLI is excellent but governance is mandatory, keep the CLI behind the wall and put the wall in MCP:
+- gateway handles auth, audit, policy, and approval
+- backend execution uses CLI or shell wrappers
+- agent sees a controlled tool surface instead of raw shell
 
-Every inference pass costs dollars; every bash pipe costs microseconds. Dead Neurons: *"A five-step pipeline that costs fractions of a cent in bash can cost dollars when each step requires a model inference pass."* ITFuture's reproducible benchmark made this concrete — a 5-record memory update via direct tool calls took **42.7s**; the same work expressed as generated code completed in **<1ms**. Tokens fell 6,000 → 300 (95%). Scaled to 50 records, the gap was 430,000×.
+This is better than exposing broad shell access through policy exceptions alone.
 
-Rule of thumb: for any workflow >3 dependent steps, cost-model both paths. If the steps are all deterministic data transforms, push them into bash or a single PTC call. If one step requires model judgment, keep that step as a tool call and bash the rest.
+## 7. Kill Criteria: Signs The MCP Server Is The Wrong Abstraction
 
-**When to use:** any transformation pipeline, any batch operation.
-**When NOT to use:** workflows where each step needs model reasoning on the previous step's semantics, not just its shape.
+Treat these as red flags, not automatic verdicts:
 
-**Source:** [ITFuture reproducible benchmark on r/ClaudeCode](https://reddit.com/r/ClaudeCode/comments/1qmv7ww/), 2025-11; [Dead Neurons — Forget MCP, Bash Is All You Need](https://deadneurons.substack.com/p/forget-mcp-bash-is-all-you-need), 2026-02.
+- the server is a thin wrapper around an existing CLI with no additional auth or discovery value
+- the server eagerly exposes dozens of endpoint-level tools that agents barely use
+- the workflow is local, single-tenant, and developer-only
+- the main problem is "the agent needs instructions" rather than "the system needs governed access"
+- tool definitions dominate context cost before the first call
+- most tool responses are raw upstream JSON instead of curated results
+- auth problems, timeouts, and schema bloat are the biggest complaints in practice
 
----
+If several of these are true, the best optimization may be to reduce the MCP surface, move parts back to CLI, or replace the server with a skill plus CLI workflow.
 
-## Pattern 7: Treat the 500–2000 Token MCP Call Floor as a Budget Line
+## 8. Keep Criteria: Signs The MCP Server Is Worth Optimizing
 
-Practitioner data from r/ClaudeAI measures every MCP call at **500–2000 tokens of overhead** (schema reference + serialized request + JSON envelope), even when the actual payload is ~200 tokens. A 20-fetch session carries 10K–40K of pure envelope. Switching the same workload to a CLI dropping results to disk: 45K → 3K overhead; agent completion rate rose from ~35% to 90%+.
+Invest in the server when several of these are true:
+- users connect personal or tenant-scoped accounts
+- the system needs approval and audit semantics at the tool layer
+- stateful sessions are central to the tool design
+- the same tool surface serves multiple clients or models
+- schema-driven discovery materially improves tool use
+- the operator cannot assume shell access or CLI literacy
 
-Use this as a threshold: if a common workflow involves >10 tool calls and each returns <500 tokens of real data, envelope cost dominates the real work and the primitive is wrong.
+In those cases, optimize the server rather than migrating away from MCP.
 
-**When to use:** auditing an existing MCP that feels "slow even though each call is small."
-**When NOT to use:** workflows with 1–3 tool calls per turn and substantial payloads.
+## 9. If You Keep MCP, Optimize In This Order
 
-**Source:** [r/ClaudeAI — MCP overhead measurements](https://reddit.com/r/ClaudeAI/comments/1sbz4zz/), 2025-11.
+1. Confirm the server is justified against the criteria above.
+2. Shrink the exposed tool surface before rewriting handlers.
+3. Add progressive discovery, lazy loading, or gateway filtering when tool count is high.
+4. Curate tool outputs so the model sees task-shaped responses, not raw upstream payloads.
+5. Fix auth, approval, and transport reliability before polishing descriptive text.
+6. Separate protocol errors from business-logic failures.
 
----
+This order matters. A beautifully described server with the wrong abstraction boundary is still the wrong server.
 
-## Pattern 8: Replace 30+ Schema Tools with One Code-Input Tool
+## 10. Current Evidence And Caveats
 
-Armin Ronacher's `pexpect-mcp` and `playwrightess` demonstrate the extreme consolidation path: a **single MCP tool that accepts Python or JS source**, maintains a stateful session, and returns stdout/stderr/console. Playwright MCP shrinks from ~30 tool definitions to 1. Initial debug drops from 45s with 7 tool calls to <5s with 1 call on replay.
+### 10.1 Benchmark signal
 
-```python
-@server.tool()
-async def playwright_exec(code: str, session_id: str | None = None) -> dict:
-    """Run JS against a stateful Playwright session. Return console, errors, page state."""
-    sess = sessions.get(session_id) or sessions.new()
-    return await sess.run(code)
-```
+The strongest current public benchmark I found is Scalekit's March 11, 2026 comparison of GitHub tasks using Claude Sonnet 4:
+- 75 total benchmark runs
+- same tasks and prompts, only the tool interface changed
+- CLI medians ranged from 1,365 to 8,750 tokens
+- direct MCP medians ranged from 32,279 to 82,835 tokens
+- CLI completed 25 of 25 runs in the reported setup
+- the tested direct MCP path completed 18 of 25 runs
 
-**When to use:** session-oriented domains (debuggers, browsers, REPLs, kernels), tools that share a single implicit context object, workflows where the model benefits from composing primitives.
-**When NOT to use:** untrusted code inputs without sandboxing, multi-tenant services where code-as-input becomes an injection vector, discoverability-sensitive APIs where each method needs its own contract.
+Source:
+- [Scalekit, March 11, 2026](https://www.scalekit.com/blog/mcp-vs-cli-use)
 
-**Source:** [Armin Ronacher — MCP is a prison; code is the way out](https://lucumr.pocoo.org/2025/8/18/code-mcps/), 2025-08.
+### 10.2 What that benchmark means
 
----
+It does not prove that "MCP is bad."
 
-## Pattern 9: Audit Tool Coverage vs Usage — Expect 70% Dead Weight
+It does show:
+- large, eagerly loaded MCP surfaces have real token and reliability cost
+- CLI is the better default when a strong CLI already exists
+- MCP needs filtering, deferred loading, or gateway patterns to stay competitive for developer tooling
 
-Speakeasy's Playwright-MCP analysis found that on a SauceDemo e-commerce run the agent **used 8 of 26 exposed tools and still took unnecessary screenshots** compared with a curated 3-tool subset. Frontier LLMs degrade around ~30 tools; smaller models around ~19. Most MCP servers expose a superset because the underlying API has that many endpoints, not because the agent needs them all.
+### 10.3 Practitioner signal from Reddit
 
-Audit rule: for each tool, count actual invocations in a week of real traces. Drop or gate any tool with <5% of total calls. Ronacher's version: *"many MCP servers don't need to exist. They're either bad API wrappers or truly replaceable by a skill."*
+Across the Reddit threads reviewed on April 15, 2026, the recurring pattern was:
 
-**When to use:** any MCP with >15 exposed tools.
-**When NOT to use:** server still in pre-1.0 and usage data is not meaningful yet.
+Common pro-CLI themes:
+- better debugging
+- lower token cost
+- stronger results for mature CLIs in coding workflows
 
-**Source:** [Speakeasy — Playwright tool proliferation](https://www.speakeasy.com/blog/playwright-tool-proliferation), 2025-01; [Speakeasy — Skills vs MCP](https://www.speakeasy.com/blog/skills-vs-mcp), 2026-02.
+Common pro-MCP themes:
+- OAuth and per-user access
+- customer-facing and non-technical surfaces
+- stateful tools and reusable connectors
 
----
+Common complaints about MCP:
+- auth drift
+- timeouts
+- schema bloat
+- low-quality community servers
 
-## Pattern 10: Use Skills for Workflow Knowledge, Not Tool Access
+Common complaints about CLI:
+- permission friction
+- quoting and shell expansion
+- broader local blast radius without strong controls
 
-Claude Code Skills — now a portable **Agent Skills Open Standard** across Claude Code, Cursor, Amp, goose, OpenCode, Letta, GitHub, VS Code, and OpenAI Codex (added 2025-12-20) — are the right primitive for "how to do X." Their budget profile beats MCP for static playbooks: 1,536-char description limit, 500-line SKILL.md cap, 5,000 tokens re-attached per invocation, 25K combined re-attach budget, 1% context window with 8,000-char fallback.
+Representative discussions:
+- [r/AI_Agents: The Truth About MCP vs CLI](https://www.reddit.com/r/AI_Agents/comments/1rjtp3q/the_truth_about_mcp_vs_cli/)
+- [r/ClaudeAI: Switched from MCPs to CLIs](https://www.reddit.com/r/ClaudeAI/comments/1sakut1/switched_from_mcps_to_clis_for_claude_code_and/)
+- [r/mcp: MCP vs CLI for AI agents](https://www.reddit.com/r/mcp/comments/1roc96a/mcp_vs_cli_for_ai_agents_when_to_use_each/)
+- [r/devsecops: Securing MCP in production](https://www.reddit.com/r/devsecops/comments/1py3qn8/securing_mcp_in_production/)
 
-Skills use progressive disclosure: metadata at startup, body on activation, scripts never enter context at all. Supporting scripts are *executed, not loaded*. Shell preprocessing with `` !`command` `` and fenced `!` blocks injects dynamic context without a tool call.
+Treat these threads as practitioner evidence, not controlled benchmarks.
 
-**When to use:** runbooks, coding-standard enforcement, evals playbooks, domain-specific review rules, "when X then Y" knowledge that doesn't need OAuth.
-**When NOT to use:** anything that requires per-user auth, per-call rate-limit accounting, or centralized observability. Those are MCP's job.
+## 11. Security Note
 
-**Source:** [code.claude.com — Agent Skills](https://code.claude.com/docs/en/skills), 2025-12; [Simon Willison — Agent Skills](https://simonwillison.net/2025/Dec/19/agent-skills/), 2025-12.
+MCP is not automatically safer than CLI, and CLI is not automatically simpler in production.
 
----
+The real distinction is where you want control:
+- CLI concentrates power in the local runtime, then constrains it with sandboxing, allowlists, hooks, and permissions
+- MCP concentrates control in a mediated protocol surface, then constrains it with auth, approvals, policy, and server trust
 
-## Pattern 11: Ship `allowed-tools`, `context: fork`, and Shell Preprocessing as a Unit
+If untrusted inputs, sensitive data, and state-changing actions can meet in one autonomous flow, apply a stricter security model. Meta's "Rule of Two" is a useful framing tool even though it is not MCP-specific:
+- [Meta, October 31, 2025](https://ai.meta.com/blog/practical-ai-agent-security/)
 
-Skills become serious alternatives to MCP once you use all three capabilities together:
+## 12. Decision Rules To Apply In This Skill
 
-- **`allowed-tools`** gives each skill a least-privilege capability manifest (e.g. `allowed-tools: Bash(git:*) Bash(jq:*) Read`). Pre-approved for the activation, no MCP auth overhead.
-- **`context: fork`** isolates a skill into a subagent; the parent pays only for the final summary. Any skill whose intermediate state would exceed ~25K tokens should fork.
-- **Shell preprocessing** injects live state into the skill body before the model reads it: `` !`gh pr view $ARGUMENTS --json` `` puts current PR state into the prompt with zero tool calls.
+When you are using `optimize-mcp-server`, apply these rules:
 
-```markdown
----
-name: triage-pr
-allowed-tools: Bash(gh:*) Bash(jq:*) Read
-context: fork
----
-
-Current PR state:
-!`gh pr view $ARGUMENTS --json title,body,files,reviews`
-
-Apply repo review rules from references/rules.md to the diff above.
-```
-
-This combination replaces a large class of MCP servers (GitHub, Linear, JIRA read-only queries, eval dashboards) with zero protocol overhead.
-
-**Source:** [code.claude.com — Agent Skills](https://code.claude.com/docs/en/skills), 2025-12; [Simon Willison — Agent Skills](https://simonwillison.net/2025/Dec/19/agent-skills/), 2025-12.
-
----
-
-## Pattern 12: Keep MCP for OAuth, Multi-Tenancy, and Non-CLI SaaS
-
-Speakeasy: *"under ~5 developers, skills + direct API calls beat MCP; past org scale, MCP wins on credential custody, blast radius, centralized updates, structured schema."* Dead Neurons, which otherwise argues against MCP: *"The one thing MCP does well is authentication. MCP may survive as an interface layer handling authentication in chat UIs."*
-
-Reserve MCP for workloads where at least one of these is true:
-
-- Multi-tenant SaaS with per-user OAuth (Linear, Notion, Figma, internal tools)
-- No credible first-party CLI and no reasonable path to `curl` the API directly
-- Centralized blast-radius control (one audit log, one kill switch, one update path)
-- Structured schema consumption by non-Claude agents that expect JSON-RPC
-
-**When NOT to use:** solo developer, CLI already covers the endpoints, static playbook with no per-user state.
-
-**Source:** [Speakeasy — Skills vs MCP](https://www.speakeasy.com/blog/skills-vs-mcp), 2026-02; [Dead Neurons — Forget MCP, Bash Is All You Need](https://deadneurons.substack.com/p/forget-mcp-bash-is-all-you-need), 2026-02.
-
----
-
-## Pattern 13: Track `tools/get_schema` + Lazy Hydration as the Protocol-Native Fix
-
-MCP Issue #1978 proposes a `minimal` flag on `tools/list` plus on-demand `tools/get_schema` fetches. Practical footprint: **~5K tokens upfront, ~400 tokens per schema fetched**. SEP-1576 analysis of GitHub's 60 tools shows 60% share identical `owner` and 65% share identical `repo` parameters, making `$ref` dedup a free win. A MySQL MCP using lazy hydration reported 91% savings (54,604 → 4,899 tokens for 106 tools).
-
-Track this before you commit to a bespoke gateway. If the protocol converges on lazy hydration, the gateway becomes redundant; if it doesn't, Pattern 14 is the fallback.
-
-**When to use:** future-proofing an MCP roadmap, choosing between protocol-native and home-grown solutions.
-
-**Source:** [Layered — MCP tool schema bloat](https://layered.dev/mcp-tool-schema-bloat-the-hidden-token-tax-and-how-to-fix-it/), 2026-01.
-
----
-
-## Pattern 14: Hybrid A — Skills Describe, MCP Executes, CLI Fills Gaps
-
-The production-grade layered architecture from Speakeasy and Block Goose. Skills encode judgment; MCP handles authenticated live-data fetch; CLI steps (`kubectl logs`, `jq`, `awk`) drop into shell blocks inside the skill.
-
-Example — an incident-triage skill:
-
-```markdown
----
-name: triage-incident
-allowed-tools: Bash(kubectl:*) Bash(jq:*)
----
-
-1. Call `list_recent_deploys` (MCP tool, needs auth) and pick the deploy window.
-2. Pull logs for the suspect pod:
-   !`kubectl logs -n prod <pod> --since=30m | tail -500`
-3. Apply references/playbook.md to the combined evidence.
-4. If mitigation is needed, call `create_rollback` (MCP tool, needs approval).
-```
-
-**When to use:** org-scale runbooks with live services, anything that mixes authenticated writes with free-text reasoning over logs.
-
-**Source:** [Speakeasy — Skills vs MCP](https://www.speakeasy.com/blog/skills-vs-mcp), 2026-02.
-
----
-
-## Pattern 15: Hybrid B — Code Execution with MCP (Anthropic Canonical)
-
-Expose MCP tools as TypeScript/Python files on disk. The agent discovers them via the filesystem and composes them in generated code; responses flow tool-to-tool **without re-entering the model context**. Anthropic's benchmarked reduction: 150K → 2K tokens (98.7%).
-
-```python
-# agent generates and runs this; MCP tools are imported, not round-tripped
-from mcp_tools.linear import search_issues
-from mcp_tools.github import list_prs
-
-issues = search_issues(status="open", label="regression")
-prs = list_prs(state="open")
-joined = [(i, next((p for p in prs if p.linked_issue == i.id), None)) for i in issues]
-return [(i.title, p.url if p else None) for i, p in joined][:10]
-```
-
-This is Hybrid A's more aggressive sibling: it keeps MCP's auth and discovery but eliminates envelope cost entirely.
-
-**When to use:** fan-out/aggregate/filter across multiple MCP services in one turn, data-heavy joins, any workflow currently burning >10 sequential tool calls.
-**When NOT to use:** workloads that require per-call human approval or audit entries.
-
-**Source:** [Anthropic — Code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp), 2025-11; [Simon Willison — Code execution with MCP](https://simonwillison.net/2025/Nov/4/code-execution-with-mcp/), 2025-11.
-
----
-
-## Pattern 16: Hybrid C — Meta-Tool Gateway for 100+ Tool Universes
-
-Bifrost's "meta-tool gateway" result: **508 tools behind 4 meta-tools** (`list_servers` / `get_tool_signature` / `get_docs` / `execute`). Input tokens 75.1M → 5.4M; $377 → $29 per test run. Scaling curve: 58% savings at 96 tools, 84% at 251, **92% at 508**.
-
-This is the pattern for enterprise MCP catalogs that can't be pruned. Until `tools/get_schema` lands (Pattern 13), a gateway is the only way to expose 100+ tools without descriptor bloat swamping the window.
-
-**When to use:** 100+ tool catalogs across multiple MCP servers, enterprise marketplaces, long-tail tool discovery where Tool Search's 10% threshold isn't enough.
-**When NOT to use:** under 30 tools total — the indirection costs more than it saves.
-
-**Source:** [r/Anthropic — We cut MCP token costs by 92%](https://reddit.com/r/Anthropic/comments/1skmbyp/we_cut_mcp_token_costs_by_92_by_not_sending_tool/), 2025-11.
-
----
-
-## Pattern 17: The MCP-vs-CLI-vs-Skills-vs-Hybrid Decision Rubric
-
-Score each axis 1–5. Higher score pushes toward that column. Sum columns; highest sum wins.
-
-| Axis | MCP | CLI/bash | Skills | Hybrid (MCP+skill / PTC) |
-|------|-----|----------|--------|--------------------------|
-| **Task type** — first-party CLI already exists                         | 1 | 5 | 2 | 3 |
-| **Task type** — static playbook / "how to do X"                        | 1 | 2 | 5 | 3 |
-| **Task type** — OAuth per user / multi-tenant SaaS                     | 5 | 1 | 1 | 4 |
-| **Task type** — fan-out / aggregate / filter across ≥5 records         | 1 | 3 | 2 | 5 |
-| **Context pressure** — tool defs would exceed 10% of window            | 1 | 5 | 4 | 4 |
-| **Context pressure** — loop ≥10 iterations in a single turn            | 1 | 4 | 3 | 5 |
-| **Latency budget** — sub-second step required                          | 1 | 5 | 4 | 3 |
-| **Latency budget** — pipeline ≥3 dependent steps                       | 1 | 4 | 3 | 5 |
-| **Reversibility** — must be replayable without re-inference            | 1 | 5 | 4 | 3 |
-| **Reversibility** — mutating with high blast radius                    | 5 | 1 | 2 | 4 |
-| **Auth surface** — multi-tenant, centralized observability needed      | 5 | 1 | 2 | 4 |
-| **Auth surface** — single dev, local credentials                       | 1 | 5 | 4 | 2 |
-| **Auth surface** — vendor has no CLI and no public API wrapper         | 5 | 1 | 2 | 4 |
-
-**Flowchart (prose):**
-
-1. Does a working first-party CLI exist? → **CLI**.
-2. Is it static guidance / a playbook? → **Skill**.
-3. Does it require OAuth plus multi-tenant access? → **MCP** (consider Hybrid A).
-4. Does it need ≥3 dependent tool calls, batch, or filter? → **PTC** (Hybrid B).
-5. Is it a recurring multi-step workflow with both judgment and live data? → **Hybrid A (skill + MCP + CLI)**.
-6. None of the above, and tool-def cost is already >10% of window? → **Tool Search** first, then migrate if still bloated.
-7. 100+ tool catalog? → **Meta-tool gateway** (Hybrid C).
-
----
-
-## Pattern 18: Contrarian Voices — Arguments FOR Keeping MCP
-
-The "kill MCP" consensus overshoots in two places. Both deserve to show up in any audit.
-
-- **Auth and governance are not bash's job.** Dead Neurons concedes: *"The one thing MCP does well is authentication. MCP may survive as an interface layer handling authentication in chat UIs."* Enterprise governance — audit trails, kill switches, SSO-bound credentials — has no free-tier equivalent in "just run bash." Source: [Dead Neurons — Forget MCP, Bash Is All You Need](https://deadneurons.substack.com/p/forget-mcp-bash-is-all-you-need), 2026-02.
-- **"X is all you need" is wrong.** Cra.mr 2026-01: MCP is a layer, not a competitor to skills or bash. *Real* problem: bad MCPs — thin API wrappers, over-exposed tool sets. Multi-tenant SaaS and non-CLI integrations (Figma, Notion, internal APIs) have no credible alternative. Source: [cra.mr — MCP, Skills, and Agents](https://cra.mr/mcp-skills-and-agents/), 2026-01.
-
----
-
-## Pattern 19: Contrarian Voices — Arguments AGAINST MCP
-
-Take these seriously before investing in a bespoke MCP:
-
-- **"The OS is the runtime MCP is reinventing"** — Dead Neurons 2026-02: the protocol *"keeps reinventing the OS."* Deferred loading is *"just running a binary when you need it."* PTC is *"what shell scripts have done since 1977."* *"The protocol isn't converging on bash specifically; it's converging on POSIX."* Source: [Dead Neurons — Forget MCP, Bash Is All You Need](https://deadneurons.substack.com/p/forget-mcp-bash-is-all-you-need), 2026-02.
-- **MCP is composability-hostile at the protocol level** — Ronacher 2025-07: *"It isn't truly composable. It demands too much context."* Every tool call is a model inference pass, so composition cost is multiplicative rather than free. Source: [Armin Ronacher — Tools: Code is all you need](https://lucumr.pocoo.org/2025/7/3/tools/), 2025-07.
-- **Simon Willison's declared stance** — *"I don't use MCP at all any more when working with coding agents. I find CLI utilities and libraries like Playwright Python to be a more effective way."* Reaffirmed 2025-12: *"the best possible tool for any situation is Bash."* Source: [Simon Willison — Code execution with MCP](https://simonwillison.net/2025/Nov/4/code-execution-with-mcp/), 2025-11; [Simon Willison — The year in LLMs](https://simonwillison.net/2025/Dec/31/the-year-in-llms/), 2025-12.
-- **Hamel Husain's evals-skills synthesis** — all major eval vendors (Braintrust, LangSmith, Phoenix, Truesight) ship MCP servers; Husain's skills pack (`eval-audit`, `error-analysis`) is explicitly complementary. *"MCP gives access to traces and experiments. Skills teach what to do with them."* OpenAI Harness datapoint: 3 engineers, 5 months, ~1M lines with Codex agents; infrastructure around the agent (skill design + tool choice) drove outcomes more than model upgrades. Source: [Hamel Husain — Evals and Skills](https://hamel.dev/blog/posts/evals-skills/), 2026-03.
-- **Unix-philosophy fit** — LLMs are text-native, so POSIX tools compose for free. Dead Neurons: *"Composition is free because the OS provides it. Strip out MCP and you still have a great agent; strip out bash and you have nothing."* Cowork shipped its agent with 4 engineers in 10 days; OpenClaw Pi runs a ~10-line system prompt. Source: [Korny Sietsma — LLMs and Unix tools](https://blog.korny.info/2025/07/11/llms-unix-tools), 2025-07; [Dead Neurons — Forget MCP, Bash Is All You Need](https://deadneurons.substack.com/p/forget-mcp-bash-is-all-you-need), 2026-02.
-
----
-
-## Summary Checklist
-
-Before you build or keep an MCP server, confirm every line:
-
-- [ ] No first-party CLI covers this endpoint set (Pattern 1).
-- [ ] Exposed tool count stays under the safe band for your window (Pattern 2).
-- [ ] Cost-per-conversation for static tool definitions is acceptable (Pattern 3).
-- [ ] Tool Search or a meta-tool gateway is enabled if descriptors exceed 10% (Patterns 4, 16).
-- [ ] Fan-out/aggregate paths use PTC or Code Execution, not sequential calls (Patterns 5, 15).
-- [ ] Per-call envelope cost vs payload ratio is reasonable (Pattern 7).
-- [ ] Tool-usage audit shows ≥30% of exposed tools actually get called (Pattern 9).
-- [ ] Static knowledge lives in a skill, not a tool (Patterns 10, 11).
-- [ ] OAuth / multi-tenant / centralized-governance justifies keeping MCP (Pattern 12).
-- [ ] Hybrid option (Pattern 14 or 15) has been scored against pure MCP.
-- [ ] The rubric (Pattern 17) was run with actual numbers, not intuition.
+1. Before optimizing the server, decide whether the workflow should remain in MCP at all.
+2. Recommend CLI when a mature CLI already covers the workflow and protocol features are not central.
+3. Recommend a skill when the missing piece is workflow guidance, not runtime capability.
+4. Recommend hybrid when auth and governance need MCP but execution still looks like deterministic command work.
+5. Recommend MCP only when protocol features are clearly justified by the user or deployment model.

@@ -80,6 +80,8 @@ def get_threat_framework(app_description: str):
 3. **Supply scaffolds, not conclusions** - Provide scoring criteria, not final scores
 4. **Templates, not reports** - Return `report_template` + raw data, not a finished document
 
+**Bounded exception:** If the workflow is read-only and the same follow-up reasoning loop repeats every time, a small server-side planner turn can be justified. Example: a research MCP that inspects the current SERP and returns `recommended_next_queries` or a prefetched next wave. If you do this, keep it explicit, bounded, and observable. Do not hide destructive actions or opaque scoring behind the server.
+
 The LLM is better at semantic analysis than your keyword matcher. Your server is better at data retrieval and structured output than the LLM. Play to each side's strengths.
 
 **Source:** [Matt Adams — MCP Server Design Principles](https://matt-adams.co.uk/2025/08/30/mcp-design-principles.html)

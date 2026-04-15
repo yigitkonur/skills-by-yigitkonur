@@ -2693,6 +2693,70 @@ program
 
 ---
 
+## 16. Continuation Modes for Research and SEO CLIs
+
+Research and SEO workflows often need more than one search wave. Apply the same agentic steering lessons from MCP to CLI design by making continuation an explicit execution mode, not an accidental side effect.
+
+Recommended modes:
+
+| Mode | What it does | When to use |
+|---|---|---|
+| `none` | Return current results only | Default, lowest surprise |
+| `suggest` | Return current results plus recommended next queries/actions | Best default for agent use |
+| `prefetch` | Execute a bounded next wave and return both current and prefetched results | Read-only research loops with strong evals |
+| `closed-loop` | Continue until stop conditions fire | Only in secure, bounded, well-observed environments |
+
+Example flags:
+
+```bash
+seo-research serp "technical seo agent workflows" --json --continuation-mode suggest --plan-next 3
+seo-research serp "technical seo agent workflows" --json --continuation-mode prefetch --plan-next 2 --max-waves 2 --budget-queries 8
+```
+
+Recommended response shape:
+
+```json
+{
+  "ok": true,
+  "result": {
+    "seed_query": "technical seo agent workflows",
+    "results": ["..."]
+  },
+  "guidance": {
+    "recommended_queries": [
+      {
+        "query": "agentic cli seo workflow examples",
+        "reason": "Current wave lacks concrete CLI implementation detail"
+      }
+    ],
+    "stop_conditions": [
+      "Stop after 8 total searches",
+      "Stop if two consecutive waves add no novel authoritative domains"
+    ],
+    "actions_taken": [
+      {
+        "type": "internal_planner_turn",
+        "purpose": "derive next-query frontier"
+      }
+    ],
+    "budget_remaining": {
+      "queries": 5,
+      "waves": 1
+    }
+  },
+  "error": null
+}
+```
+
+**Operational rules:**
+- Default to `suggest`, not `closed-loop`.
+- Cap waves, queries, time, and spend.
+- Keep continuation read-only unless the user explicitly asked for automation beyond planning.
+- Emit `actions_taken`, `budget_remaining`, and `stop_conditions` every time.
+- Make planner output reproducible enough to evaluate.
+
+This is how you apply agent steering to CLI deeply: the command should not just return the present state. It should expose the next frontier in a stable contract.
+
 ## Summary: Agent-Friendly Execution Patterns
 
 | Pattern | Key Benefit | Implementation Priority |
@@ -2709,6 +2773,8 @@ program
 | **Long-running tasks** | Async operation support | Medium |
 | **Transaction/rollback** | Atomic multi-step ops | Medium |
 | **Timeout/cancellation** | Graceful failure handling | Medium |
+| **Steering contract** | Better next-step selection | Medium |
+| **Bounded continuation** | Fewer turns in research/SEO loops | Medium |
 
 ### Standard Flag Reference
 
@@ -2718,6 +2784,7 @@ program
 | **Pagination** | `--per-page`, `--page`, `--cursor`, `--all`, `--max-pages`, `--sort-by`, `--sort-order` |
 | **Batch** | `--batch-size`, `--max-concurrent`, `--delay-between-batches`, `--continue-on-error`, `--fail-threshold` |
 | **Rate Limit** | `--rate-limit`, `--max-retries`, `--backoff-initial`, `--backoff-max`, `--respect-retry-after`, `--circuit-breaker-threshold` |
+| **Continuation** | `--continuation-mode`, `--plan-next`, `--max-waves`, `--budget-queries`, `--emit-guidance` |
 | **General** | `--dry-run`, `--yes`, `--force`, `--idempotency-key`, `--output`, `--quiet` |
 
 All patterns should:
