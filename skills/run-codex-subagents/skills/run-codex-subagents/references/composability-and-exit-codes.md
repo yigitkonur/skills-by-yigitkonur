@@ -2,14 +2,20 @@
 
 Use this file when you need shell-safe orchestration, machine-readable output, or predictable failure handling.
 
-## Preferred output modes
+## Output modes
 
-Default rules:
+Available on the top-level CLI:
 
-- use `--json` for one-shot inspection and lifecycle commands
-- use `--stream-json` for streaming commands
-- use `--field <path>` when you only need one value from a read/list command
-- use `--quiet` for bare one-value-per-line list output
+- `--output text` (default) — human-readable formatted output
+- `--output json` — machine-readable JSON
+
+For task monitoring:
+
+- `--follow` — stream events in real time (with `run`, `task start`, `task wait`)
+- `--compact` — concise emoji-prefixed event output (requires `--follow`)
+- `--quiet` — bare IDs, one per line (on `task list`)
+- `--field <path>` — extract single dotted-path field (on `task read`)
+- `--raw` — raw JSONL dump (on `task events`)
 
 ## Bounded list behavior
 
@@ -17,69 +23,63 @@ Default rules:
 
 Useful controls:
 
-- `--limit <n>`
-- `--all`
-- `--status ...`
-- command-specific filters such as `--label`, `--cwd`, `--task`, or `--method`
-
-JSON list output includes:
-
-- `count`
-- `returned`
-- `truncated`
-- `filters`
+- `--limit <n>` — max results
+- `--status <status>` — filter by status (on `task list`, `request list`)
+- `--quiet` — output bare IDs only (on `task list`)
 
 ## Pipe-friendly examples
 
 Get all pending request ids:
 
 ```bash
-cli-codex-subagent request list --status pending --field id --json
+codex-worker --output json request list --status pending | jq -r '.data[].id'
 ```
 
-Get bare task ids for a label:
+Get bare thread ids:
 
 ```bash
-cli-codex-subagent task list --label wave-1 --quiet
+codex-worker task list --quiet
 ```
 
-Extract a handoff path:
+Extract a field:
 
 ```bash
-cli-codex-subagent task read tsk_123 --field artifacts.handoffManifestPath --json
+codex-worker task read thr_abc123 --field status
+```
+
+Check if a task is running:
+
+```bash
+STATUS="$(codex-worker task read thr_abc123 --field status)"
+if [ "$STATUS" = "running" ]; then
+  codex-worker task follow thr_abc123 --compact
+fi
 ```
 
 ## Exit-code contract
 
 Lifecycle commands use exit codes as control flow:
 
-- `0` success
-- `1` terminal task failure
-- `2` blocked on approval or user input
-- `3` retryable runtime or backend failure
-- `4` invalid usage or malformed prompt bundle
-- `5` target not found
-- `6` conflict or invalid state transition
+- `0` — success
+- `1` — error (check stderr)
+- `2` — blocked on approval or user input
 
 ## Read vs lifecycle commands
 
 Important distinction:
 
-- inspection commands succeed with exit `0` when the read itself succeeds, even if the underlying task/session/request is in a failed state
-- lifecycle commands reflect the underlying task outcome and may exit `1`, `2`, `3`, or `6`
+- inspection commands succeed with exit `0` when the read itself succeeds, even if the underlying task is in a failed state
+- lifecycle commands reflect the underlying task outcome and may exit `1` or `2`
 
 Typical inspection commands:
 
 - `task read`
-- `task status`
 - `task list`
 - `task events`
 - `session read`
 - `session list`
 - `request read`
 - `request list`
-- `prompt inspect`
-- `prompt lint`
 - `model list`
 - `account read`
 - `account rate-limits`
@@ -95,19 +95,4 @@ Typical lifecycle commands:
 - `task wait`
 - `task cancel`
 - `request answer`
-
-## Structured errors
-
-In machine modes, failed commands return a structured error object with fields such as:
-
-- `ok`
-- `kind`
-- `status`
-- `error.code`
-- `error.category`
-- `error.message`
-- `error.retryable`
-- `suggestion`
-- `actions`
-
-Treat the structured error plus exit code as the contract. Do not rely on prose parsing first.
+- `request respond`

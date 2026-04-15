@@ -5,16 +5,15 @@ Copy this into a markdown file when you want a worker to implement or modify cod
 ~~~~md
 ---
 cwd: .
-label: replace-with-short-task-label
-effort: medium
-context_files:
-  - path/to/extra-context.md
-base_instructions_file: path/to/guardrails.md
 ---
 
 ## Objective
 
 Make the required code change and carry it through verification.
+
+## Label
+
+replace-with-short-task-label
 
 ## Scope
 
@@ -44,3 +43,5 @@ npm test
 ~~~~
 
 Tighten the scope before raising effort.
+
+Launch with: `codex-worker run mission.md --effort medium --label your-label`

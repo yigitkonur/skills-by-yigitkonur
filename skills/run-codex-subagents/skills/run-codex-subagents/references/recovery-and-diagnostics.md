@@ -7,118 +7,95 @@ Use this file when a task fails, is interrupted, or behaves unexpectedly.
 Do this before retrying:
 
 ```bash
-cli-codex-subagent task read <taskId> --tail 40 --json
-cli-codex-subagent task events <taskId> --tail 100 --json
-cli-codex-subagent doctor --json
+codex-worker task read <threadId> --tail 40
+codex-worker task events <threadId> --tail 100
+codex-worker doctor
 ```
 
 The task may already contain:
 
-- a good rendered prompt
 - useful partial file edits
 - a clear stderr failure reason
-- a recoverable handoff bundle
+- a recoverable state to continue from
 
 ## What `task read` gives you
 
 `task read` is the main recovery surface. It returns:
 
-- task status and metadata
-- related session and requests
-- `artifacts.*` paths
-- `artifacts.timelineTail`
-- `artifacts.summaryTail`
-- `artifacts.stderrTail`
-- suggested `actions`
+- thread status and metadata
+- related turns and their states
+- recent events
+- log tails (timeline, summary, stderr)
 
 Use `--field` when you only need one value:
 
 ```bash
-cli-codex-subagent task read tsk_123 --field artifacts.stderrPath --json
-cli-codex-subagent task read tsk_123 --field actions.steer --json
+codex-worker task read thr_abc123 --field status
+codex-worker task read thr_abc123 --field thread.model
 ```
 
-## Artifact files to inspect
+## Log artifacts to inspect
 
-These are the most useful recovery artifacts:
+These are the most useful recovery data:
 
-- `prompt.rendered.md`
-  - exact task body plus resolved context
-- `context.manifest.json`
-  - which prompt and context files were loaded
-- `timeline.log`
-  - compact one-line event stream
-- `events.jsonl`
-  - normalized event log
-- `summary.log`
-  - short task-level status trail
-- `stderr.log`
-  - runtime stderr, often the best source of auth or transport failures
-- `handoff.manifest.json`
-  - portable re-run or delegation bundle
+- `task events --raw` — raw JSONL event stream
+- `task events --tail 50` — recent formatted events
+- `logs <threadId>` — execution output logs
+- `read <threadId>` — thread state with turn details
 
-## Event tags
+## Event types in transcripts
 
-The normalized event stream uses compact tags:
+The event stream uses these types:
 
-- `TURN`
-- `PLAN`
-- `THINK`
-- `MSG`
-- `CMD`
-- `FILE`
-- `REQ`
-- `TOKENS`
-- `DONE`
-- `FAIL`
+- `user` — user prompt events
+- `assistant.delta` — streaming text (skipped in non-raw mode)
+- `request` — blocked runtime requests
+- `notification` with methods:
+  - `item/completed` — completed items (messages, commands, file changes)
+  - `item/agentMessage/delta` — agent message streaming
+  - `item/commandExecution/outputDelta` — command output streaming
+  - `turn/completed` — turn completion
+  - `error` — runtime errors
 
 Common readings:
 
-- repeated `REQ` means the task is blocked, not dead
-- `FAIL` plus stderr usually explains the terminal reason
-- `PLAN` and `THINK` help you see where the worker changed direction
-- `CMD` and `FILE` show what the worker actually touched
-
-## Raw vs normalized events
-
-Use normalized events first:
-
-```bash
-cli-codex-subagent task events tsk_123 --tail 80 --json
-```
-
-Use raw events only when the normalized log hides a runtime detail you need:
-
-```bash
-cli-codex-subagent task events tsk_123 --raw --tail 80 --json
-```
+- `request` events mean the task is blocked, not dead
+- `error` notifications explain the terminal reason
+- `item/completed` events show what the worker actually touched
 
 ## Recovery playbook
 
 ### Failed
 
-1. Read `task read --tail 40 --json`
-2. Inspect `stderrTail`, `summaryTail`, and `timelineTail`
-3. Open `prompt.rendered.md` and `context.manifest.json`
+1. Read `task read <threadId> --tail 40`
+2. Check logs: `logs <threadId> --tail 100`
+3. Check recent events: `task events <threadId> --tail 50`
 4. Decide whether the fix is:
-   - a prompt correction
    - a request answer
+   - a prompt correction
    - an environment/runtime issue
    - a follow-up `task steer`
    - a clean retry with better context
 
 ### Interrupted
 
-1. Read the artifacts
+1. Read the state: `task read <threadId>`
 2. Check whether the worker already produced useful files
 3. Decide whether to:
-   - resume via a fresh task from the same handoff bundle
-   - `task steer` with a tighter follow-up file
+   - resume via `task steer` with a follow-up
+   - start a fresh task
    - discard and restart cleanly
 
 ### Waiting request
 
 Switch to the request loop immediately. Do not misclassify it as a failure.
+
+```bash
+codex-worker request list --status pending
+codex-worker request read <requestId>
+codex-worker request answer <requestId> --decision accept
+codex-worker task follow <threadId> --compact
+```
 
 ## When `doctor` matters
 
@@ -127,7 +104,7 @@ Use `doctor` when the failure looks environmental:
 - authentication issues
 - rate limits
 - transport problems
-- daemon readiness questions
+- daemon readiness
 - runtime profile/config problems
 
-`doctor --json` is especially useful after repeated auth or websocket failures because it surfaces recent failure hints from local state.
+`doctor` is especially useful after repeated auth or connection failures because it surfaces recent failure hints from local state.

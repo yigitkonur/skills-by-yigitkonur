@@ -1,6 +1,6 @@
 # Runtime config
 
-Use this file when you need to understand how `cli-codex-subagent` inherits Codex runtime defaults and how explicit flags interact with them.
+Use this file when you need to understand how `codex-worker` inherits Codex runtime defaults and how explicit flags interact with them.
 
 ## Default source
 
@@ -20,7 +20,7 @@ Relevant runtime defaults currently include:
 When starting or resuming sessions, the CLI carries through runtime defaults for:
 
 - model provider
-- approval policy, unless an explicit CLI approval policy is set
+- approval policy
 - sandbox mode
 - service tier
 - personality
@@ -29,42 +29,32 @@ This is why a working local Codex config matters. The CLI is a shell around the 
 
 ## Override rules
 
-### Task and prompt resolution
+### Task and prompt control
 
-Explicit CLI flags beat prompt frontmatter for:
+Explicit CLI flags override defaults for:
 
-- `cwd`
-- `label`
-- `model`
-- `session`
-- `effort`
-- `context-file`
-- `base-instructions-file`
-- `output-schema`
+- `--cwd` — working directory
+- `--model` — model selection
+- `--effort` — reasoning effort level (low, medium, high)
+- `--label` — task label
+- `--plan` / `--skip-plan` — planning behavior
 
-### Runtime behavior
+### Session reuse
 
-- explicit `--approval-policy` beats runtime `approval_policy`
-- `--auto-approve` is shorthand for `--approval-policy never`
-- if you do not pass `--model` and the prompt file does not set `model`, the runtime default model decides the session start
-
-## Session reuse nuance
-
-When you reuse a session:
+When you reuse a session via `--session <threadId>`:
 
 - the existing session pins the underlying thread and cwd
 - the CLI resumes that thread before starting the new turn
 - a new `--model` can only apply when the resumed turn supports it and the runtime accepts it
 - `task steer` keeps the anchor session and uses the terminal task as the continuation point
 
-Use session reuse deliberately. It is good for continuity, but it also carries context and approvals forward.
+Use session reuse deliberately. It is good for continuity, but it also carries context forward.
 
 ## Practical recommendations
 
 - Put stable environment defaults in `~/.codex/config.toml`
-- Put task-specific differences in prompt frontmatter or CLI flags
-- Use `session create` when you want to freeze cwd/model context before dispatching multiple related tasks
-- Do not hardcode provider credentials or personal secrets into prompt bundles
+- Put task-specific differences in CLI flags
+- Do not hardcode provider credentials or personal secrets into prompt files
 
 ## Example config shape
 

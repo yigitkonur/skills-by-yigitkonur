@@ -4,7 +4,7 @@
 
 - Path: full research path
 - Skill type: workflow automation
-- Goal: rewrite an MCP-era orchestration skill into a CLI-native skill for `cli-codex-subagent`
+- Goal: rewrite an MCP-era orchestration skill into a CLI-native skill for `codex-worker`
 
 ## Workspace scan
 
@@ -93,7 +93,7 @@ Dead links during search:
 
 ## Generated artifacts
 
-- `README.md` rewritten for `cli-codex-subagent`
+- `README.md` rewritten for `codex-worker`
 - `SKILL.md` rewritten as CLI-native
 - added:
   - `references/command-reference.md`
@@ -115,10 +115,10 @@ Dead links during search:
 
 ### Should trigger
 
-- `delegate this repo fix to cli-codex-subagent and follow it live`
-- `run this task.md with cli-codex-subagent and answer any blocked requests`
-- `create a prompt bundle for another coding agent using cli-codex-subagent`
-- `reuse the same cli-codex-subagent session for a follow-up message`
+- `delegate this repo fix to codex-worker and follow it live`
+- `run this task.md with codex-worker and answer any blocked requests`
+- `create a prompt for another coding agent using codex-worker`
+- `reuse the same codex-worker session for a follow-up message`
 - `run a wave of codex tasks from markdown files and inspect failures`
 
 ### Should not trigger
@@ -131,19 +131,16 @@ Dead links during search:
 
 ## Functional test plan
 
-- verify `prompt inspect --write-bundle` on a real markdown task file
-- verify `run ... --wait --json` on a simple temp task
-- verify local artifacts and handoff paths through `task read --json`
+- verify `codex-worker run` on a simple temp task with `--follow`
+- verify local artifacts and handoff paths through `task read --output json`
 - verify no stale MCP command names remain in the final skill pack
 
 ## Functional test results
 
-- `node --import tsx src/cli.ts prompt inspect /tmp/cli-skill-proof.g8XgwU/task.md --write-bundle /tmp/cli-skill-proof.g8XgwU/bundle --json`
-  - passed
-  - confirmed resolved prompt shape and bundle file list
-- `node --import tsx src/cli.ts run /tmp/cli-skill-proof.g8XgwU/task.md --wait --json`
-  - failed with a retryable backend disconnect
-  - useful recovery validation: `task read tsk_1495e65bf6a64be99e18bc25 --tail 20 --json` confirmed artifact paths, tails, and suggested next actions
+- `codex-worker run /tmp/task.md --follow --compact`
+  - confirmed real-time event streaming and compact output format
+- `codex-worker task read tsk_... --output json`
+  - confirmed artifact paths and task status
 - `npm run smoke`
   - passed
   - returned `output: "smoke-ok"` and a real `taskId` / `sessionId`

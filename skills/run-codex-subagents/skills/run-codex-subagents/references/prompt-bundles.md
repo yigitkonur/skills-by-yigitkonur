@@ -1,127 +1,72 @@
 # Prompt bundles
 
-Use this file when you need to understand prompt resolution, frontmatter, `AGENTS.md` loading, or portable handoff bundles.
+Use this file when you need to understand how the CLI resolves and passes prompts to the Codex runtime.
 
 ## The task file is the contract
 
-`cli-codex-subagent` is file-first. Every task or follow-up message starts from a markdown file.
+`codex-worker` is file-first. Every task or follow-up message starts from a markdown file.
 
-The prompt file must contain:
+The prompt file should contain:
 
 - a non-empty markdown body
-- optional frontmatter
-- any reusable context as files, not inline shell arguments
+- any reusable context inline or in the prompt text itself
 
-## Supported frontmatter keys
+## How the CLI handles prompts
 
-These keys are currently recognized from the task file:
+The CLI reads the markdown file content and passes it directly to the Codex app-server runtime. The runtime handles all prompt processing, context resolution, and `AGENTS.md` discovery.
 
-| Key | Meaning |
+Key points:
+
+- The CLI does **not** parse frontmatter — it sends raw file content
+- `AGENTS.md` auto-loading is handled by the Codex runtime, not the CLI
+- Developer instructions are generated from CLI flags (like `--plan`, `--effort`, `--label`) and prepended to the prompt content
+
+## Flag-based prompt enrichment
+
+The CLI enriches prompt content based on flags before sending:
+
+| Flag | What gets prepended |
 |---|---|
-| `cwd` | Working directory for context discovery and runtime execution. Resolved relative to the prompt file unless absolute. |
-| `label` | Human-friendly task label. |
-| `model` | Requested model id. |
-| `session` | Session id to reuse. |
-| `effort` | Reasoning level for the turn. |
-| `context_files` | List of extra context files to include. |
-| `base_instructions_file` | File whose content becomes base instructions. |
-| `output_schema` | Inline JSON schema or a relative `.json` file path. |
+| `--plan` | "Start by creating a plan before making any changes..." |
+| `--skip-plan` | "Skip planning and proceed directly with implementation." |
+| `--effort <level>` | "Reasoning effort level: {level}." |
+| `--label <text>` | "Task label: {text}." |
 
-## Override order
+These are prepended as developer hints to the raw prompt body.
 
-High-level precedence:
+## Working directory resolution
 
-- explicit command flags override frontmatter
-- frontmatter overrides implicit defaults
-- runtime config fills remaining defaults when the CLI starts or resumes the session
-
-Important examples:
-
-- `--model` wins over frontmatter `model`
-- `--cwd` wins over frontmatter `cwd`
-- `--context-file` wins over frontmatter `context_files`
-- `--base-instructions-file` wins over frontmatter `base_instructions_file`
-- `--output-schema` wins over frontmatter `output_schema`
-
-## How context is resolved
-
-For `prompt inspect`, `run`, `task start`, and `task steer`, the CLI builds a resolved prompt bundle from:
-
-1. the prompt body
-2. auto-loaded `AGENTS.md` files from the resolved cwd up to filesystem root
-3. explicit `--context-file` files or frontmatter `context_files`
-4. optional base instructions from `--base-instructions-file` or frontmatter
-
-The rendered prompt appends:
-
-- repository instructions from auto-loaded `AGENTS.md`
-- additional context sections from explicit context files
-
-Developer instructions are generated separately and also include the same `AGENTS.md` and explicit context material.
-
-## Inspect before dispatch
-
-Use:
+The `--cwd` flag determines the working directory for the Codex runtime. If not set, it defaults to `process.cwd()`.
 
 ```bash
-cli-codex-subagent prompt inspect task.md --json
-cli-codex-subagent prompt lint task.md --json
+codex-worker run task.md --cwd /absolute/path/to/project
+codex-worker task start task.md --cwd ./relative/path
 ```
 
-`prompt inspect` returns:
+## Session continuity
 
-- `prompt`
-- `promptBody`
-- `renderedPrompt`
-- `resolvedCwd`
-- `label`
-- `model`
-- `session`
-- `developerInstructions`
-- `baseInstructions`
-- `contextManifest`
+When you use `--session <threadId>`, the CLI sends the prompt to an existing thread instead of creating a new one. This preserves:
 
-## Portable bundles
-
-Materialize a handoff bundle before execution:
+- the existing thread context
+- the model selection from the original thread
+- the working directory from the original thread
 
 ```bash
-cli-codex-subagent prompt inspect task.md --write-bundle ./bundle --json
+codex-worker task start followup.md --session thr_abc123 --follow --compact
 ```
 
-The bundle directory contains:
+## Task steer vs new task
 
-- `prompt.md`
-- `prompt.rendered.md`
-- `context.manifest.json`
-- `developer.instructions.md` when present
-- `base.instructions.md` when present
-- `handoff.manifest.json`
-
-## Task artifact bundles
-
-Started tasks write the same bundle shape into the task artifact directory. Read the paths with:
+`task steer` sends a follow-up to a completed/failed thread, reusing its turn history:
 
 ```bash
-cli-codex-subagent task read tsk_123 --json
-cli-codex-subagent task read tsk_123 --field artifacts.handoffManifestPath --json
+codex-worker task steer thr_abc123 followup.md --follow --compact
 ```
 
-Important task artifact fields:
+A new `task start` with `--session` creates a fresh turn in the same thread:
 
-- `artifacts.taskDir`
-- `artifacts.promptPath`
-- `artifacts.renderedPromptPath`
-- `artifacts.contextManifestPath`
-- `artifacts.developerInstructionsPath`
-- `artifacts.baseInstructionsPath`
-- `artifacts.handoffManifestPath`
+```bash
+codex-worker task start task.md --session thr_abc123
+```
 
-## When to use a handoff bundle
-
-Use a bundle when:
-
-- another coding agent should continue the same task later
-- you want a durable handoff with the exact rendered context
-- you need to compare the original prompt body with the fully resolved prompt
-- you want portable evidence of which `AGENTS.md` and context files were actually loaded
+Both achieve session continuity, but `task steer` also carries forward the specific turn context.

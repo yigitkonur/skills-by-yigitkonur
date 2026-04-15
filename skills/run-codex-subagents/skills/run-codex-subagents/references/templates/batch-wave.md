@@ -21,7 +21,7 @@ What can run independently right now?
 
 ```bash
 for file in prompts/wave-1/*.md; do
-  cli-codex-subagent task start "$file" --label wave-1 --json
+  codex-worker task start "$file" --label wave-1 --output json
 done
 ```
 
@@ -30,7 +30,7 @@ done
 Do not start wave 2 until:
 
 - all wave 1 tasks are terminal
-- `task list --label wave-1 --status failed --json` is empty
+- `codex-worker task list` shows no failed tasks with wave-1 label
 - any blocked requests have been answered
 
 ## Wave 2 goal

@@ -1,6 +1,6 @@
 # Prompt writing
 
-Use this file when you are writing the markdown task file that `cli-codex-subagent` will execute.
+Use this file when you are writing the markdown task file that `codex-worker` will execute.
 
 ## Core rule
 
@@ -30,21 +30,22 @@ You do not need all headings in every file, but the content should exist somewhe
 
 ## Useful frontmatter
 
-Use frontmatter only for runtime-relevant metadata:
+The CLI itself does not parse frontmatter — it passes raw markdown to the Codex runtime. The runtime may process frontmatter keys. If you use frontmatter, treat it as runtime-level configuration:
 
 ```md
 ---
 cwd: .
-label: auth-refactor
 model: gpt-5.4
-effort: medium
-context_files:
-  - docs/plan.md
-base_instructions_file: docs/guardrails.md
 ---
 ```
 
 Keep behavioral instructions in the prompt body, not in frontmatter.
+
+For CLI-level control, use command flags:
+
+```bash
+codex-worker run task.md --cwd . --model gpt-5.4 --effort medium --label auth-refactor
+```
 
 ## Delegation rules
 
@@ -73,13 +74,9 @@ When the worker is another coding agent:
 
 ## File-backed context strategy
 
-If the task needs long context, attach files:
+If the task needs long context, include it in the prompt file itself or as part of the `AGENTS.md` discovery that the Codex runtime handles automatically.
 
-- use `context_files` in frontmatter or `--context-file`
-- use `base_instructions_file` or `--base-instructions-file` for stable guardrails
-- let `AGENTS.md` provide repo-wide rules automatically
-
-Do not paste large reference blocks into a one-off shell command when the prompt file can carry them durably.
+Do not paste large reference blocks into shell commands when the prompt file can carry them durably.
 
 ## When to split work
 

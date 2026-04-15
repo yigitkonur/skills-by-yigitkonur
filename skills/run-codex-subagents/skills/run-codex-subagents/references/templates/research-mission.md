@@ -5,15 +5,15 @@ Copy this into a markdown file when you want a worker to inspect a codebase, tra
 ~~~~md
 ---
 cwd: .
-label: replace-with-short-research-label
-effort: low
-context_files:
-  - path/to/design-doc.md
 ---
 
 ## Objective
 
 Investigate the target area and report concrete findings with file references.
+
+## Label
+
+replace-with-short-research-label
 
 ## Scope
 

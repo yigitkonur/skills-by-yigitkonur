@@ -9,7 +9,13 @@ Assume `jq` is available when examples capture ids from JSON. If it is not, use 
 Use this when you want one command that starts the task and waits for the final result:
 
 ```bash
-cli-codex-subagent run task.md --wait --json
+codex-worker run task.md
+```
+
+With live streaming:
+
+```bash
+codex-worker run task.md --follow --compact
 ```
 
 Best for:
@@ -23,45 +29,52 @@ Best for:
 Use this when you want ids immediately and will monitor later:
 
 ```bash
-START_JSON="$(cli-codex-subagent task start task.md --json)"
-TASK_ID="$(printf '%s' "$START_JSON" | jq -r '.task_id')"
+START_JSON="$(codex-worker --output json run task.md --async)"
+THREAD_ID="$(printf '%s' "$START_JSON" | jq -r '.threadId')"
 
-cli-codex-subagent task follow "$TASK_ID"
+codex-worker task follow "$THREAD_ID" --compact
 ```
 
 If you only want the final state later:
 
 ```bash
-cli-codex-subagent task wait "$TASK_ID" --json
+codex-worker task wait "$THREAD_ID"
 ```
 
-## 3. Pre-create a session for continuity
+## 3. Session continuity
 
 Use a session when multiple turns should share the same runtime thread, cwd, and evolving context:
 
 ```bash
-SESSION_JSON="$(cli-codex-subagent session create --cwd /repo --model gpt-5.4 --json)"
-SESSION_ID="$(printf '%s' "$SESSION_JSON" | jq -r '.session_id')"
+# Start first task
+START_JSON="$(codex-worker --output json run prompts/step-1.md --async)"
+THREAD_ID="$(printf '%s' "$START_JSON" | jq -r '.threadId')"
 
-STEP1_JSON="$(cli-codex-subagent task start prompts/step-1.md --session "$SESSION_ID" --wait --json)"
-TASK1_ID="$(printf '%s' "$STEP1_JSON" | jq -r '.task_id')"
+codex-worker task wait "$THREAD_ID"
 
-cli-codex-subagent task steer "$TASK1_ID" prompts/step-2.md --follow
+# Continue in same session
+codex-worker task steer "$THREAD_ID" prompts/step-2.md --follow --compact
+```
+
+Or use `--session` on `run` or `task start`:
+
+```bash
+codex-worker task start prompts/step-2.md --session "$THREAD_ID" --follow --compact
 ```
 
 Do not reuse a session casually across unrelated tasks.
 
 ## 4. Multi-wave parallel work
 
-Parallel tasks should not share one active session. Start them without `--session`, or pre-create separate sessions.
+Parallel tasks should not share one active session. Start them independently.
 
 Wave launch:
 
 ```bash
 IDS=()
 for file in prompts/wave-1/*.md; do
-  START_JSON="$(cli-codex-subagent task start "$file" --label wave-1 --json)"
-  IDS+=("$(printf '%s' "$START_JSON" | jq -r '.task_id')")
+  START_JSON="$(codex-worker --output json run "$file" --async --label wave-1)"
+  IDS+=("$(printf '%s' "$START_JSON" | jq -r '.threadId')")
 done
 ```
 
@@ -69,11 +82,10 @@ Wave monitor:
 
 ```bash
 for id in "${IDS[@]}"; do
-  cli-codex-subagent task wait "$id" --json || true
+  codex-worker task wait "$id" || true
 done
 
-cli-codex-subagent task list --label wave-1 --json
-cli-codex-subagent task list --label wave-1 --status failed --json
+codex-worker --output json task list --status failed
 ```
 
 Only start the next wave after checking for failures.
@@ -83,38 +95,22 @@ Only start the next wave after checking for failures.
 When a task stops in `waiting_request`:
 
 ```bash
-cli-codex-subagent request list --status pending --json
-cli-codex-subagent request read req_123 --json
-cli-codex-subagent request answer req_123 --choice 1
-cli-codex-subagent task follow tsk_123
+codex-worker request list --status pending
+codex-worker request read req_123
+codex-worker request answer req_123 --decision accept
+codex-worker task follow thr_abc123 --compact
 ```
 
 Treat this as normal control flow, not an exceptional state.
 
-## 6. Portable handoff to another agent
-
-Before execution:
-
-```bash
-cli-codex-subagent prompt inspect task.md --write-bundle ./handoff/task --json
-```
-
-After execution:
-
-```bash
-cli-codex-subagent task read tsk_123 --field artifacts.handoffManifestPath --json
-```
-
-Use the bundle when another agent should continue from the exact resolved prompt and context.
-
-## 7. Recovery before retry
+## 6. Recovery before retry
 
 If a task fails:
 
 ```bash
-cli-codex-subagent task read tsk_123 --tail 40 --json
-cli-codex-subagent task events tsk_123 --tail 100 --json
-cli-codex-subagent doctor --json
+codex-worker task read thr_abc123 --tail 40
+codex-worker task events thr_abc123 --tail 100
+codex-worker doctor
 ```
 
 Decide whether to:
@@ -122,13 +118,13 @@ Decide whether to:
 - answer a request
 - tighten the prompt and rerun
 - use `task steer` with a focused follow-up
-- hand the work to another agent with the bundle artifacts
+- restart cleanly
 
 ## Anti-patterns
 
 | Avoid | Why |
 |---|---|
 | sharing one active session across parallel tasks | the CLI protects active sessions and you lose clean isolation |
-| retrying immediately after failure | you throw away the rendered prompt and diagnostics |
+| retrying immediately after failure | you throw away diagnostics |
 | using `task steer` on a still-running task | it is rejected by design |
-| scraping human text output in scripts | `--json`, `--stream-json`, `--field`, and `--quiet` are the stable contract |
+| parsing text output in scripts | `--output json`, `--field`, and `--quiet` are the stable contract |

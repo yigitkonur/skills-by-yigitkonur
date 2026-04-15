@@ -7,37 +7,36 @@ Use this file when a task becomes blocked and you need to inspect or answer a ru
 Treat either of these as a blocked task:
 
 - the task status is `waiting_request`
-- `task wait`, `task follow`, `run --wait`, or `task start --wait/--follow` exits with code `2`
+- `task wait`, `task follow`, or `run` exits with code `2`
 
 This is not a failure. The runtime is waiting for input.
 
 ## Standard loop
 
 ```bash
-cli-codex-subagent request list --status pending --json
-cli-codex-subagent request read <requestId> --json
-cli-codex-subagent request answer <requestId> ...
-cli-codex-subagent task follow <taskId>
+codex-worker request list --status pending
+codex-worker request read <requestId>
+codex-worker request answer <requestId> ...
+codex-worker task follow <threadId> --compact
 ```
 
-If you do not know the task id, `request read` returns the associated task and session ids.
+If you do not know the thread id, `request read` returns the associated thread and session ids.
 
 ## What `request answer` supports
 
 Use the smallest supported answer form:
 
-- `--choice <index>`
+- `--choice <N>`
   - best for numbered user-input options
   - `1` means the first visible option
 - `--text-file <file>`
   - best for a freeform textual answer you already wrote
-- `--custom-file <file>`
-  - best when the runtime expects JSON but you want a convenience path
-  - if the file parses as a JSON object, it is sent as JSON
-  - otherwise, the file body is treated as plain text
+  - reads file content and sends as answer text
+- `--answer <text>`
+  - inline text answer for simple responses
 - `--decision <decision>`
-  - supported decisions: `accept`, `accept-session`, `decline`, `cancel`
-- `--json-file <file>`
+  - supported decisions: `accept`, `deny`
+- `--json <payload>`
   - exact escape hatch for advanced payloads or unsupported request types
 
 ## Safe defaults by request shape
@@ -47,13 +46,19 @@ Use the smallest supported answer form:
 When the runtime presents numbered choices:
 
 ```bash
-cli-codex-subagent request answer req_123 --choice 1
+codex-worker request answer req_123 --choice 1
 ```
 
 When you want to provide a custom textual answer:
 
 ```bash
-cli-codex-subagent request answer req_123 --text-file answer.txt
+codex-worker request answer req_123 --answer "Yes, proceed with the refactor"
+```
+
+Or from a file:
+
+```bash
+codex-worker request answer req_123 --text-file answer.txt
 ```
 
 ### Command, file, and review approvals
@@ -61,42 +66,21 @@ cli-codex-subagent request answer req_123 --text-file answer.txt
 Common approval responses:
 
 ```bash
-cli-codex-subagent request answer req_123 --decision accept
-cli-codex-subagent request answer req_123 --decision accept-session
-cli-codex-subagent request answer req_123 --decision decline
+codex-worker request answer req_123 --decision accept
+codex-worker request answer req_123 --decision deny
 ```
-
-Use `accept-session` only when you intentionally want the approval to apply to later turns in the same session.
-
-### Permissions approvals
-
-The built-in mapping supports acceptance for the current turn or the whole session:
-
-```bash
-cli-codex-subagent request answer req_123 --decision accept
-cli-codex-subagent request answer req_123 --decision accept-session
-```
-
-For a declined or custom permissions payload, use `--json-file`. The convenience `--decision decline` mapping is not supported for that request family.
 
 ### Custom or unknown request types
 
-When `request read` shows a method you do not recognize, stop guessing and use `--json-file` after inspecting the exact payload.
+When `request read` shows a method you do not recognize, stop guessing and use `--json` after inspecting the exact payload:
+
+```bash
+codex-worker request answer req_123 --json '{"result": {"approved": true}}'
+```
 
 ## Recovery rules
 
 1. Read the request before answering it. Do not answer by guesswork.
 2. Prefer `--choice` over freeform text when numbered options exist.
-3. Prefer current-turn `accept` over `accept-session` unless session-wide approval is intentional.
-4. Resume with `task follow` or `task wait` after the answer.
-5. If the task blocks repeatedly, answer each request in sequence. A task can pause more than once.
-
-## Useful inspection commands
-
-```bash
-cli-codex-subagent request list --status pending --field id --json
-cli-codex-subagent request read req_123 --field method --json
-cli-codex-subagent task read tsk_123 --json
-```
-
-Use `task read` when you want the full picture: current request, previous requests, artifact paths, and suggested next commands.
+3. Resume with `task follow` or `task wait` after the answer.
+4. If the task blocks repeatedly, answer each request in sequence. A task can pause more than once.

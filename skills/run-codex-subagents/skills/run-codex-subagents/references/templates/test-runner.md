@@ -5,13 +5,15 @@ Copy this into a markdown file when you want a worker focused on verification, r
 ~~~~md
 ---
 cwd: .
-label: replace-with-test-task-label
-effort: low
 ---
 
 ## Objective
 
 Run the required verification commands and explain the result precisely.
+
+## Label
+
+replace-with-test-task-label
 
 ## Scope
 
