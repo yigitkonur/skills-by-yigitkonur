@@ -1,6 +1,6 @@
 # optimize-mcp-server
 
-Optimizing, auditing, or enhancing an MCP server's tool quality, error handling, security, context efficiency, or production readiness for any MCP SDK.
+Optimizing an existing MCP server or architecting a new one — framework pick, security posture, context budget, and companion toolchain.
 
 **Category:** development
 
