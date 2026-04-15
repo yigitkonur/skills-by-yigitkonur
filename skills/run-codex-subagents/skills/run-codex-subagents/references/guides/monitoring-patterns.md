@@ -13,8 +13,10 @@ All queries below assume `$RAW` is set. See `guides/log-artifacts.md` for the fi
 
 ## Is it moving?
 
+`tail -n +1 -F` replays the whole raw log first, then live-tails. Without `-n +1`, fast turns finish before the default 10-line tail catches them and you miss the lifecycle. The extra cost on first attach is a single batched notification — worth it.
+
 ```bash
-tail -F "$RAW" | jq -rc '
+tail -n +1 -F "$RAW" | jq -rc '
   select(
     .method == "turn/started"              or
     .method == "turn/completed"            or
