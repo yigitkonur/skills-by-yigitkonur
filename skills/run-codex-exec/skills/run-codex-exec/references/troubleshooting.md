@@ -15,7 +15,7 @@ Failure modes observed across real dispatches, in rough order of frequency.
 grep -iE "503|rate limit|tokens used|exit=" /tmp/codex-monitor/logs/<wt>.log | tail
 ```
 
-If you see `ERROR: unexpected status 503 Service Unavailable: Rate limit exceeded. Try again in ~806s` — that's the Codex backend's limiter. Wait ~13 minutes, then re-dispatch.
+If you see `ERROR: unexpected status 503 Service Unavailable: Rate limit exceeded. Try again in <N>s` — that's the Codex backend's limiter. Observed cool-off windows vary widely: ~800s (13 min) after a burst of ~10 dispatches on a mostly-fresh quota; ~2700s (45 min) on a quota already depleted earlier the same day. The `Try again in <N>s` value in the error message is authoritative — wait exactly that long before re-dispatching.
 
 **Second cause:** The agent read `using-superpowers` or a similar meta-skill and decided to "plan first" / "brainstorm" / write design docs. Evidence: look for large "thinking" blocks in the log with `hook: PreToolUse` / `hook: PostToolUse` but no actual file writes. Fix: ensure your prompt starts with the SUBAGENT-STOP prefix from `prompt-template.md`.
 

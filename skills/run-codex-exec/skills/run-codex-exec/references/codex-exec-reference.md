@@ -100,9 +100,10 @@ Codex's backend (OpenAI infrastructure) enforces per-account rate limits. When y
 ERROR: unexpected status 503 Service Unavailable: Rate limit exceeded. Try again in ~806s
 ```
 
-Observed reset windows:
-- **~13 minutes** after a burst of ~10 parallel high-reasoning dispatches.
-- Sometimes shorter (~5 min) for smaller bursts.
+Observed reset windows (trust the `Try again in <N>s` value from the error, not the averages):
+- **~13 minutes** after a burst of ~10 parallel high-reasoning dispatches on a mostly-fresh quota.
+- **~45 minutes** on a quota already depleted by a long session earlier the same day.
+- Occasionally much shorter (~5 min) for very small bursts.
 
 No reliable way to pre-check — just try and handle the 503. The wrapper's post-verify will show `no changes` and `exit=1` when this happens.
 
