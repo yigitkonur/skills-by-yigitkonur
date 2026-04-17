@@ -27,8 +27,41 @@ LOG_DIR="$MONITOR_ROOT/logs"
 COMMIT_LEVEL="${COMMIT_LEVEL:-3}"
 CODEX_MODEL="${CODEX_MODEL:-gpt-5.4}"
 CODEX_REASONING="${CODEX_REASONING:-high}"
-POST_VERIFY_CMD="${POST_VERIFY_CMD:-npx tsc --noEmit}"
-POST_VERIFY_TESTS="${POST_VERIFY_TESTS:-npx vitest run}"
+
+# ── Smart post-verify defaults ─────────────────────────────────
+# If POST_VERIFY_CMD / POST_VERIFY_TESTS aren't explicitly set, auto-detect
+# based on what the worktree actually contains. Running `npx tsc --noEmit`
+# in a non-TS project silently reports "0 errors" — a false-positive green
+# signal. Similarly vitest + no config ⇒ no tests found but exit 0.
+if [[ -z "${POST_VERIFY_CMD:-}" ]]; then
+  if [[ -f "$WORKTREE_DIR/tsconfig.json" ]]; then
+    POST_VERIFY_CMD="npx tsc --noEmit"
+  elif [[ -f "$WORKTREE_DIR/pyproject.toml" || -f "$WORKTREE_DIR/mypy.ini" ]]; then
+    POST_VERIFY_CMD="python3 -m mypy --strict . --no-error-summary"
+  elif [[ -f "$WORKTREE_DIR/Cargo.toml" ]]; then
+    POST_VERIFY_CMD="cargo check --quiet"
+  elif [[ -f "$WORKTREE_DIR/go.mod" ]]; then
+    POST_VERIFY_CMD="go vet ./..."
+  else
+    POST_VERIFY_CMD="echo 'post-verify: no known type-check config detected (override via POST_VERIFY_CMD)'"
+  fi
+fi
+if [[ -z "${POST_VERIFY_TESTS:-}" ]]; then
+  if [[ -f "$WORKTREE_DIR/vitest.config.ts" || -f "$WORKTREE_DIR/vitest.config.js" ]]; then
+    POST_VERIFY_TESTS="npx vitest run"
+  elif [[ -f "$WORKTREE_DIR/jest.config.js" || -f "$WORKTREE_DIR/jest.config.ts" ]]; then
+    POST_VERIFY_TESTS="npx jest --silent"
+  elif [[ -f "$WORKTREE_DIR/pytest.ini" || -f "$WORKTREE_DIR/pyproject.toml" ]] && \
+       grep -q "pytest\|tool.pytest" "$WORKTREE_DIR/pyproject.toml" 2>/dev/null; then
+    POST_VERIFY_TESTS="python3 -m pytest -q"
+  elif [[ -f "$WORKTREE_DIR/Cargo.toml" ]]; then
+    POST_VERIFY_TESTS="cargo test --quiet"
+  elif [[ -f "$WORKTREE_DIR/go.mod" ]]; then
+    POST_VERIFY_TESTS="go test ./..."
+  else
+    POST_VERIFY_TESTS="echo 'post-verify: no known test runner detected (override via POST_VERIFY_TESTS)'"
+  fi
+fi
 
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/${WORKTREE_NAME}.log"
@@ -60,9 +93,12 @@ echo "[wrapper $PLAN_SLUG] exit=$EXIT_CODE runtime=${ELAPSED}s" | tee -a "$LOG_F
 if git diff --quiet && git diff --cached --quiet; then
   echo "[wrapper $PLAN_SLUG] no changes detected, skipping commit" | tee -a "$LOG_FILE"
   rm -f "$OUTPUT_FILE"
-  # Post-verify still runs so the monitor has a tsc signal
-  TSC_ERRORS=$($POST_VERIFY_CMD 2>&1 | grep -c "error TS" || echo "0")
-  echo "[wrapper $PLAN_SLUG] post-verify tsc_errors=$TSC_ERRORS tests='skipped (no changes)'" | tee -a "$LOG_FILE"
+  # Post-verify still runs so the monitor has a signal (no-commit ≠ broken repo)
+  V_OUT=$($POST_VERIFY_CMD 2>&1)
+  V_EXIT=$?
+  ERR_COUNT=$(printf '%s' "$V_OUT" | grep -cE "error TS|: error:|^error\[|^ERROR" || echo "0")
+  [[ "$V_EXIT" -ne 0 && "$ERR_COUNT" == "0" ]] && ERR_COUNT="?"
+  echo "[wrapper $PLAN_SLUG] post-verify verify_errors=$ERR_COUNT tests='skipped (no changes)'" | tee -a "$LOG_FILE"
   exit "$EXIT_CODE"
 fi
 
@@ -111,11 +147,24 @@ rm -f "$OUTPUT_FILE"
 echo "[wrapper $PLAN_SLUG] committed" | tee -a "$LOG_FILE"
 
 # ── Post-verify — report-only; does not block commit ──────────
-TSC_ERRORS=$($POST_VERIFY_CMD 2>&1 | grep -c "error TS" || echo "0")
-TEST_TAIL="skipped"
-if [[ "$TSC_ERRORS" == "0" ]]; then
-  TEST_TAIL=$($POST_VERIFY_TESTS 2>&1 | grep -E "Test Files|Tests " | tail -1 | tr -d '\n')
+# Run the auto-detected or user-supplied type-check + test commands.
+# The count of "error" lines in the type-check output is our green/red signal.
+# Non-zero exit from the type-check itself also counts as failure.
+VERIFY_OUTPUT=$($POST_VERIFY_CMD 2>&1)
+VERIFY_EXIT=$?
+# Match both TypeScript-style "error TS" and mypy-style " error:" + cargo "error" + generic ERROR
+ERR_COUNT=$(printf '%s' "$VERIFY_OUTPUT" | grep -cE "error TS|: error:|^error\[|^ERROR" || echo "0")
+if [[ "$VERIFY_EXIT" -ne 0 && "$ERR_COUNT" == "0" ]]; then
+  # Type-checker exited non-zero without matched error lines — still a failure
+  ERR_COUNT="?"
 fi
-echo "[wrapper $PLAN_SLUG] post-verify tsc_errors=$TSC_ERRORS tests='$TEST_TAIL'" | tee -a "$LOG_FILE"
+TEST_TAIL="skipped"
+if [[ "$ERR_COUNT" == "0" ]]; then
+  TEST_TAIL=$($POST_VERIFY_TESTS 2>&1 | grep -E "Test Files|Tests |passed|failed|ok |FAIL" | tail -1 | tr -d '\n')
+  [[ -z "$TEST_TAIL" ]] && TEST_TAIL="no-summary-line"
+fi
+# Use label `verify_errors` (not `tsc_errors`) so the field reflects whichever
+# type-check actually ran. Monitor grep pattern should match either for backward compat.
+echo "[wrapper $PLAN_SLUG] post-verify verify_errors=$ERR_COUNT (cmd='$POST_VERIFY_CMD') tests='$TEST_TAIL' (cmd='$POST_VERIFY_TESTS')" | tee -a "$LOG_FILE"
 
 exit "$EXIT_CODE"

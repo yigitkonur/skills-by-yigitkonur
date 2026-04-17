@@ -40,11 +40,37 @@ The monitor runs the whole time. Each agent commits to its own branch. When the 
 
 ## Pre-flight, once per project
 
+**Fast path:** run the bootstrap script from the skill's `scripts/` directory with your project as cwd. It does all 5 manual steps, detects missing `.gitignore` / tsconfig excludes, and prints the next commands you need.
+
+```bash
+cd /path/to/your/repo
+bash /path/to/run-codex-exec/scripts/bootstrap.sh
+# or pass a custom monitor root:
+bash /path/to/run-codex-exec/scripts/bootstrap.sh /tmp/my-monitor
+```
+
+**Manual path** (what bootstrap does — do these by hand if you prefer):
+
 1. Decide on an observability root (e.g. `/tmp/my-project-monitor/`). Everything writes there — logs, baseline SHA, per-worktree output files.
-2. Pin the **baseline commit**. Everything after this is "work done". Monitor rules compute deltas from this.
+2. Pin the **baseline commit**: `git rev-parse HEAD > $MONITOR_ROOT/baseline.sha`. Monitor rules compute deltas from this.
 3. Make sure your project's `.gitignore` excludes whatever worktree directory you'll use (typically `.worktrees/`). Without this, `git status` pollutes. See `references/worktree-patterns.md`.
-4. Tighten `tsconfig.json` + `vitest.config.ts` + `eslint.config.*` to exclude `.worktrees/**` — otherwise sibling-worktree test/type-check noise bleeds into the main workspace.
-5. Copy `scripts/codex-monitor.sh`, `scripts/codex-wrapper.sh`, and `scripts/setup-worktree.sh` into your monitor root, `chmod +x` them.
+4. If your project uses TypeScript/vitest/eslint: exclude `.worktrees/**` from each of those configs — otherwise sibling-worktree noise bleeds into the main workspace. Not needed for Python/Rust/Go/static-HTML.
+5. Copy `scripts/codex-monitor.sh`, `scripts/codex-wrapper.sh`, `scripts/setup-worktree.sh`, and `scripts/codex-json-filter.sh` into your monitor root, `chmod +x` them.
+
+## Choose a mode: streaming OR auto-commit wrapper
+
+The skill supports two complementary orchestration modes. Pick one per run — they don't conflict but they serve different needs.
+
+| | Streaming (`--json` + filter) | Wrapper (`codex-wrapper.sh`) |
+|---|---|---|
+| **When** | Single interactive task; you want to see every agent step live | Fan-out N parallel agents and walk away |
+| **Observability** | Event-by-event notifications via Monitor tool | One line per tick from `codex-monitor.sh` |
+| **Completion signal** | Stream ends | Auto-commit + post-verify line |
+| **Parallelism** | One Monitor per agent | One Monitor for the whole fleet |
+| **Setup** | Just `codex exec --json ... | codex-json-filter.sh` | Needs a worktree + wrapper invocation |
+| **Reference** | `references/json-streaming.md` | `references/workflow-playbook.md` |
+
+Rule of thumb: 1 agent → streaming; 2+ agents → wrapper. Both lean on the same underlying `codex exec` CLI, so your task prompt is portable between them.
 
 ## Dispatching a single plan
 
@@ -171,8 +197,9 @@ See `references/troubleshooting.md` for the full catalogue.
 
 ## What you'll find in this skill
 
+- `scripts/bootstrap.sh` — one-command pre-flight: creates monitor root, copies scripts, pins baseline, flags missing .gitignore / tsconfig excludes
 - `scripts/codex-monitor.sh` — the observability loop (rule engine, osascript notifications, stdout stream)
-- `scripts/codex-wrapper.sh` — the per-agent wrapper (codex exec → auto-commit → post-verify)
+- `scripts/codex-wrapper.sh` — the per-agent wrapper (codex exec → auto-commit → post-verify); auto-detects TS/Python/Rust/Go projects
 - `scripts/setup-worktree.sh` — create a worktree, link shared node_modules + .env, regenerate Prisma
 - `scripts/codex-json-filter.sh` — pipe `codex exec --json` through this to get one compact line per event for the Monitor tool
 - `references/workflow-playbook.md` — the canonical 4-step orchestration recipe
@@ -183,6 +210,7 @@ See `references/troubleshooting.md` for the full catalogue.
 - `references/codex-exec-reference.md` — every `codex exec` flag that matters
 - `references/mission-gravity.md` — prompt-writing philosophy (gravity not walls, ceilings not floors)
 - `references/json-streaming.md` — how to pair `codex exec --json` + `codex-json-filter.sh` + Monitor tool for live event streams
+- `references/language-recipes.md` — `POST_VERIFY_CMD` / `POST_VERIFY_TESTS` overrides for Python, Rust, Go, static HTML, monorepos
 
 ## One-line summary
 
