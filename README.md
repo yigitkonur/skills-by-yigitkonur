@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-47 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+48 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
