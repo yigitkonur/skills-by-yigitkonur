@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-48 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+49 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -52,7 +52,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS + REVIEW standardization hierarchies |
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | Audit, optimize, or architect new MCP servers |
-| [optimize-mcp-server](skills/optimize-mcp-server/) | development | Audit, optimize, or architect new MCP servers |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
@@ -69,6 +68,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
 | [test-macos-snapshots](skills/test-macos-snapshots/) | testing | macOS app screenshot validation and drift checks |
 | [think-deeper](skills/think-deeper/) | productivity | Generic deep-thinking framework for hard tasks |
+| [use-railway](skills/use-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |
 
 ## Notes
 

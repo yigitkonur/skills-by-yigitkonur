@@ -1,0 +1,3821 @@
+{
+  "versionInfo": "railway 4.29.0",
+  "generatedAt": "2026-04-17T12:01:12.566Z",
+  "commands": [
+    {
+      "key": "railway",
+      "path": [],
+      "depth": 0,
+      "title": "Interact with Railway via CLI",
+      "intro": "Interact with Railway via CLI",
+      "usage": "railway [COMMAND]",
+      "commands": [
+        {
+          "name": "add",
+          "description": "Add a service to your project",
+          "aliases": []
+        },
+        {
+          "name": "completion",
+          "description": "Generate completion script",
+          "aliases": []
+        },
+        {
+          "name": "connect",
+          "description": "Connect to a database's shell (psql for Postgres, mongosh for MongoDB, etc.)",
+          "aliases": []
+        },
+        {
+          "name": "delete",
+          "description": "Delete a project",
+          "aliases": []
+        },
+        {
+          "name": "deploy",
+          "description": "Provisions a template into your project",
+          "aliases": []
+        },
+        {
+          "name": "deployment",
+          "description": "Manage deployments",
+          "aliases": []
+        },
+        {
+          "name": "dev",
+          "description": "Run Railway services locally",
+          "aliases": [
+            "develop"
+          ]
+        },
+        {
+          "name": "domain",
+          "description": "Add a custom domain or generate a railway provided domain for a service",
+          "aliases": []
+        },
+        {
+          "name": "docs",
+          "description": "Open Railway Documentation in default browser",
+          "aliases": []
+        },
+        {
+          "name": "down",
+          "description": "Remove the most recent deployment",
+          "aliases": []
+        },
+        {
+          "name": "environment",
+          "description": "Create, delete or link an environment",
+          "aliases": [
+            "env"
+          ]
+        },
+        {
+          "name": "init",
+          "description": "Create a new project",
+          "aliases": []
+        },
+        {
+          "name": "link",
+          "description": "Associate existing project with current directory, may specify projectId as an argument",
+          "aliases": []
+        },
+        {
+          "name": "list",
+          "description": "List all projects in your Railway account",
+          "aliases": []
+        },
+        {
+          "name": "login",
+          "description": "Login to your Railway account",
+          "aliases": []
+        },
+        {
+          "name": "logout",
+          "description": "Logout of your Railway account",
+          "aliases": []
+        },
+        {
+          "name": "logs",
+          "description": "View build or deploy logs from a Railway deployment",
+          "aliases": []
+        },
+        {
+          "name": "open",
+          "description": "Open your project dashboard",
+          "aliases": []
+        },
+        {
+          "name": "project",
+          "description": "Manage projects",
+          "aliases": []
+        },
+        {
+          "name": "run",
+          "description": "Run a local command using variables from the active environment",
+          "aliases": [
+            "local"
+          ]
+        },
+        {
+          "name": "service",
+          "description": "Manage services",
+          "aliases": []
+        },
+        {
+          "name": "shell",
+          "description": "Open a local subshell with Railway variables available",
+          "aliases": []
+        },
+        {
+          "name": "ssh",
+          "description": "Connect to a service via SSH",
+          "aliases": []
+        },
+        {
+          "name": "status",
+          "description": "Show information about the current project",
+          "aliases": []
+        },
+        {
+          "name": "unlink",
+          "description": "Disassociate project from current directory",
+          "aliases": []
+        },
+        {
+          "name": "up",
+          "description": "Upload and deploy project from the current directory",
+          "aliases": []
+        },
+        {
+          "name": "upgrade",
+          "description": "Upgrade the Railway CLI to the latest version",
+          "aliases": []
+        },
+        {
+          "name": "variable",
+          "description": "Manage environment variables for a service",
+          "aliases": [
+            "variables",
+            "vars",
+            "var"
+          ]
+        },
+        {
+          "name": "whoami",
+          "description": "Get the current logged in user",
+          "aliases": []
+        },
+        {
+          "name": "volume",
+          "description": "Manage project volumes",
+          "aliases": []
+        },
+        {
+          "name": "redeploy",
+          "description": "Redeploy the latest deployment of a service",
+          "aliases": []
+        },
+        {
+          "name": "restart",
+          "description": "Restart the latest deployment of a service (without rebuilding)",
+          "aliases": []
+        },
+        {
+          "name": "scale",
+          "description": "",
+          "aliases": []
+        },
+        {
+          "name": "check_updates",
+          "description": "Test the update check",
+          "aliases": []
+        },
+        {
+          "name": "functions",
+          "description": "Manage project functions",
+          "aliases": [
+            "function",
+            "func",
+            "fn",
+            "funcs",
+            "fns"
+          ]
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Interact with Railway via CLI\n\nUsage: railway [COMMAND]\n\nCommands:\n  add            Add a service to your project\n  completion     Generate completion script\n  connect        Connect to a database's shell (psql for Postgres, mongosh for MongoDB, etc.)\n  delete         Delete a project\n  deploy         Provisions a template into your project\n  deployment     Manage deployments\n  dev            Run Railway services locally [aliases: develop]\n  domain         Add a custom domain or generate a railway provided domain for a service\n  docs           Open Railway Documentation in default browser\n  down           Remove the most recent deployment\n  environment    Create, delete or link an environment [aliases: env]\n  init           Create a new project\n  link           Associate existing project with current directory, may specify projectId as an argument\n  list           List all projects in your Railway account\n  login          Login to your Railway account\n  logout         Logout of your Railway account\n  logs           View build or deploy logs from a Railway deployment\n  open           Open your project dashboard\n  project        Manage projects\n  run            Run a local command using variables from the active environment [aliases: local]\n  service        Manage services\n  shell          Open a local subshell with Railway variables available\n  ssh            Connect to a service via SSH\n  status         Show information about the current project\n  unlink         Disassociate project from current directory\n  up             Upload and deploy project from the current directory\n  upgrade        Upgrade the Railway CLI to the latest version\n  variable       Manage environment variables for a service [aliases: variables, vars, var]\n  whoami         Get the current logged in user\n  volume         Manage project volumes\n  redeploy       Redeploy the latest deployment of a service\n  restart        Restart the latest deployment of a service (without rebuilding)\n  scale          \n  check_updates  Test the update check\n  functions      Manage project functions [aliases: function, func, fn, funcs, fns]\n  help           Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway add",
+      "path": [
+        "add"
+      ],
+      "depth": 1,
+      "title": "Add a service to your project",
+      "intro": "Add a service to your project",
+      "usage": "railway add [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-d, --database <DATABASE>",
+          "aliases": [],
+          "description": "The name of the database to add",
+          "possibleValues": [
+            "postgres",
+            "mysql",
+            "redis",
+            "mongo"
+          ]
+        },
+        {
+          "spec": "-s, --service [<SERVICE>]",
+          "aliases": [],
+          "description": "The name of the service to create (leave blank for randomly generated)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-r, --repo <REPO>",
+          "aliases": [],
+          "description": "The repo to link to the service",
+          "possibleValues": []
+        },
+        {
+          "spec": "-i, --image <IMAGE>",
+          "aliases": [],
+          "description": "The docker image to link to the service",
+          "possibleValues": []
+        },
+        {
+          "spec": "-v, --variables <VARIABLES>",
+          "aliases": [],
+          "description": "The \"{key}={value}\" environment variable pair to set the service variables. Example:\n\nrailway add --service --variables \"MY_SPECIAL_ENV_VAR=1\" --variables \"BACKEND_PORT=3000\"",
+          "possibleValues": []
+        },
+        {
+          "spec": "--verbose [<VERBOSE>]",
+          "aliases": [],
+          "description": "Verbose logging",
+          "possibleValues": [
+            "true",
+            "false"
+          ]
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Add a service to your project\n\nUsage: railway add [OPTIONS]\n\nOptions:\n  -d, --database <DATABASE>\n          The name of the database to add\n          \n          [possible values: postgres, mysql, redis, mongo]\n\n  -s, --service [<SERVICE>]\n          The name of the service to create (leave blank for randomly generated)\n\n  -r, --repo <REPO>\n          The repo to link to the service\n\n  -i, --image <IMAGE>\n          The docker image to link to the service\n\n  -v, --variables <VARIABLES>\n          The \"{key}={value}\" environment variable pair to set the service variables. Example:\n          \n          railway add --service --variables \"MY_SPECIAL_ENV_VAR=1\" --variables \"BACKEND_PORT=3000\"\n\n      --verbose [<VERBOSE>]\n          Verbose logging\n          \n          [possible values: true, false]\n\n      --json\n          Output in JSON format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway check_updates",
+      "path": [
+        "check_updates"
+      ],
+      "depth": 1,
+      "title": "Test the update check",
+      "intro": "Test the update check",
+      "usage": "railway check_updates [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Test the update check\n\nUsage: railway check_updates [OPTIONS]\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway completion",
+      "path": [
+        "completion"
+      ],
+      "depth": 1,
+      "title": "Generate completion script",
+      "intro": "Generate completion script",
+      "usage": "railway completion <SHELL>",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "<SHELL>",
+          "aliases": [],
+          "description": "",
+          "possibleValues": [
+            "bash",
+            "elvish",
+            "fish",
+            "powershell",
+            "zsh"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Generate completion script\n\nUsage: railway completion <SHELL>\n\nArguments:\n  <SHELL>  [possible values: bash, elvish, fish, powershell, zsh]\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway connect",
+      "path": [
+        "connect"
+      ],
+      "depth": 1,
+      "title": "Connect to a database's shell (psql for Postgres, mongosh for MongoDB, etc.)",
+      "intro": "Connect to a database's shell (psql for Postgres, mongosh for MongoDB, etc.)",
+      "usage": "railway connect [OPTIONS] [SERVICE_NAME]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[SERVICE_NAME]",
+          "aliases": [],
+          "description": "The name of the database to connect to",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to pull variables from (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Connect to a database's shell (psql for Postgres, mongosh for MongoDB, etc.)\n\nUsage: railway connect [OPTIONS] [SERVICE_NAME]\n\nArguments:\n  [SERVICE_NAME]  The name of the database to connect to\n\nOptions:\n  -e, --environment <ENVIRONMENT>  Environment to pull variables from (defaults to linked environment)\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway delete",
+      "path": [
+        "delete"
+      ],
+      "depth": 1,
+      "title": "Delete a project",
+      "intro": "Delete a project",
+      "usage": "railway delete [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --project <PROJECT>",
+          "aliases": [],
+          "description": "The project ID or name to delete",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--2fa-code <TWO_FACTOR_CODE>",
+          "aliases": [],
+          "description": "2FA code for verification (required if 2FA is enabled in non-interactive mode)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Delete a project\n\nUsage: railway delete [OPTIONS]\n\nOptions:\n  -p, --project <PROJECT>           The project ID or name to delete\n  -y, --yes                         Skip confirmation dialog\n      --json                        Output in JSON format\n      --2fa-code <TWO_FACTOR_CODE>  2FA code for verification (required if 2FA is enabled in non-interactive mode)\n  -h, --help                        Print help\n  -V, --version                     Print version"
+    },
+    {
+      "key": "railway deploy",
+      "path": [
+        "deploy"
+      ],
+      "depth": 1,
+      "title": "Provisions a template into your project",
+      "intro": "Provisions a template into your project",
+      "usage": "railway deploy [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-t, --template <TEMPLATE>",
+          "aliases": [],
+          "description": "The code of the template to deploy",
+          "possibleValues": []
+        },
+        {
+          "spec": "-v, --variable <VARIABLE>",
+          "aliases": [],
+          "description": "The \"{key}={value}\" environment variable pair to set the template variables\n\nTo specify the variable for a single service prefix it with \"{service}.\" Example:\n\nrailway deploy -t postgres -v \"MY_SPECIAL_ENV_VAR=1\" -v \"Backend.Port=3000\"",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Provisions a template into your project\n\nUsage: railway deploy [OPTIONS]\n\nOptions:\n  -t, --template <TEMPLATE>\n          The code of the template to deploy\n\n  -v, --variable <VARIABLE>\n          The \"{key}={value}\" environment variable pair to set the template variables\n          \n          To specify the variable for a single service prefix it with \"{service}.\" Example:\n          \n          railway deploy -t postgres -v \"MY_SPECIAL_ENV_VAR=1\" -v \"Backend.Port=3000\"\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway deployment",
+      "path": [
+        "deployment"
+      ],
+      "depth": 1,
+      "title": "Manage deployments",
+      "intro": "Manage deployments",
+      "usage": "railway deployment <COMMAND>",
+      "commands": [
+        {
+          "name": "list",
+          "description": "List deployments for a service with IDs, statuses and other metadata",
+          "aliases": []
+        },
+        {
+          "name": "up",
+          "description": "Upload and deploy project from the current directory",
+          "aliases": []
+        },
+        {
+          "name": "redeploy",
+          "description": "Redeploy the latest deployment of a service",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Manage deployments\n\nUsage: railway deployment <COMMAND>\n\nCommands:\n  list      List deployments for a service with IDs, statuses and other metadata\n  up        Upload and deploy project from the current directory\n  redeploy  Redeploy the latest deployment of a service\n  help      Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway dev",
+      "path": [
+        "dev"
+      ],
+      "depth": 1,
+      "title": "Run Railway services locally",
+      "intro": "Run Railway services locally",
+      "usage": "railway dev [OPTIONS] [COMMAND]",
+      "commands": [
+        {
+          "name": "up",
+          "description": "Start services (default when no subcommand provided)",
+          "aliases": []
+        },
+        {
+          "name": "down",
+          "description": "Stop services",
+          "aliases": []
+        },
+        {
+          "name": "clean",
+          "description": "Stop services and remove volumes/data",
+          "aliases": []
+        },
+        {
+          "name": "configure",
+          "description": "Configure local code services",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-v, --verbose",
+          "aliases": [],
+          "description": "Show verbose domain replacement info (for default 'up' command)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Run Railway services locally\n\nUsage: railway dev [OPTIONS] [COMMAND]\n\nCommands:\n  up         Start services (default when no subcommand provided)\n  down       Stop services\n  clean      Stop services and remove volumes/data\n  configure  Configure local code services\n  help       Print this message or the help of the given subcommand(s)\n\nOptions:\n  -v, --verbose  Show verbose domain replacement info (for default 'up' command)\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway docs",
+      "path": [
+        "docs"
+      ],
+      "depth": 1,
+      "title": "Open Railway Documentation in default browser",
+      "intro": "Open Railway Documentation in default browser",
+      "usage": "railway docs",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Open Railway Documentation in default browser\n\nUsage: railway docs\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway domain",
+      "path": [
+        "domain"
+      ],
+      "depth": 1,
+      "title": "Add a custom domain or generate a railway provided domain for a service.",
+      "intro": "Add a custom domain or generate a railway provided domain for a service.\n\nThere is a maximum of 1 railway provided domain per service.",
+      "usage": "railway domain [OPTIONS] [DOMAIN]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[DOMAIN]",
+          "aliases": [],
+          "description": "Optionally, specify a custom domain to use. If not specified, a domain will be generated.\n\nSpecifying a custom domain will also return the required DNS records to add to your DNS settings",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-p, --port <PORT>",
+          "aliases": [],
+          "description": "The port to connect to the domain",
+          "possibleValues": []
+        },
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The name of the service to generate the domain for",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Add a custom domain or generate a railway provided domain for a service.\n\nThere is a maximum of 1 railway provided domain per service.\n\nUsage: railway domain [OPTIONS] [DOMAIN]\n\nArguments:\n  [DOMAIN]\n          Optionally, specify a custom domain to use. If not specified, a domain will be generated.\n          \n          Specifying a custom domain will also return the required DNS records to add to your DNS settings\n\nOptions:\n  -p, --port <PORT>\n          The port to connect to the domain\n\n  -s, --service <SERVICE>\n          The name of the service to generate the domain for\n\n      --json\n          Output in JSON format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway down",
+      "path": [
+        "down"
+      ],
+      "depth": 1,
+      "title": "Remove the most recent deployment",
+      "intro": "Remove the most recent deployment",
+      "usage": "railway down [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to remove the deployment from (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to remove the deployment from (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Remove the most recent deployment\n\nUsage: railway down [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>          Service to remove the deployment from (defaults to linked service)\n  -e, --environment <ENVIRONMENT>  Environment to remove the deployment from (defaults to linked environment)\n  -y, --yes                        Skip confirmation dialog\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway environment",
+      "path": [
+        "environment"
+      ],
+      "depth": 1,
+      "title": "Create, delete or link an environment",
+      "intro": "Create, delete or link an environment",
+      "usage": "railway environment [OPTIONS] [ENVIRONMENT] [COMMAND]",
+      "commands": [
+        {
+          "name": "link",
+          "description": "Link an environment to the current project",
+          "aliases": []
+        },
+        {
+          "name": "new",
+          "description": "Create a new environment",
+          "aliases": []
+        },
+        {
+          "name": "delete",
+          "description": "Delete an environment",
+          "aliases": []
+        },
+        {
+          "name": "edit",
+          "description": "Edit an environment's configuration",
+          "aliases": []
+        },
+        {
+          "name": "config",
+          "description": "Show environment configuration",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [
+        {
+          "spec": "[ENVIRONMENT]",
+          "aliases": [],
+          "description": "The environment to link to",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Create, delete or link an environment\n\nUsage: railway environment [OPTIONS] [ENVIRONMENT] [COMMAND]\n\nCommands:\n  link    Link an environment to the current project\n  new     Create a new environment\n  delete  Delete an environment\n  edit    Edit an environment's configuration\n  config  Show environment configuration\n  help    Print this message or the help of the given subcommand(s)\n\nArguments:\n  [ENVIRONMENT]  The environment to link to\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway functions",
+      "path": [
+        "functions"
+      ],
+      "depth": 1,
+      "title": "Manage project functions",
+      "intro": "Manage project functions",
+      "usage": "railway functions [OPTIONS] <COMMAND>",
+      "commands": [
+        {
+          "name": "list",
+          "description": "List functions",
+          "aliases": [
+            "ls"
+          ]
+        },
+        {
+          "name": "new",
+          "description": "Add a new function",
+          "aliases": [
+            "create"
+          ]
+        },
+        {
+          "name": "delete",
+          "description": "Delete a function",
+          "aliases": [
+            "remove",
+            "rm"
+          ]
+        },
+        {
+          "name": "push",
+          "description": "Push a new change to the function",
+          "aliases": [
+            "up"
+          ]
+        },
+        {
+          "name": "pull",
+          "description": "Pull changes from the linked function remotely",
+          "aliases": []
+        },
+        {
+          "name": "link",
+          "description": "Link a function manually",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment ID/name",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Manage project functions\n\nUsage: railway functions [OPTIONS] <COMMAND>\n\nCommands:\n  list    List functions [aliases: ls]\n  new     Add a new function [aliases: create]\n  delete  Delete a function [aliases: remove, rm]\n  push    Push a new change to the function [aliases: up]\n  pull    Pull changes from the linked function remotely\n  link    Link a function manually\n  help    Print this message or the help of the given subcommand(s)\n\nOptions:\n  -e, --environment <ENVIRONMENT>  Environment ID/name\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway init",
+      "path": [
+        "init"
+      ],
+      "depth": 1,
+      "title": "Create a new project",
+      "intro": "Create a new project",
+      "usage": "railway init [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-n, --name <NAME>",
+          "aliases": [],
+          "description": "Project name",
+          "possibleValues": []
+        },
+        {
+          "spec": "-w, --workspace <WORKSPACE>",
+          "aliases": [],
+          "description": "Workspace ID or name",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Create a new project\n\nUsage: railway init [OPTIONS]\n\nOptions:\n  -n, --name <NAME>            Project name\n  -w, --workspace <WORKSPACE>  Workspace ID or name\n      --json                   Output in JSON format\n  -h, --help                   Print help\n  -V, --version                Print version"
+    },
+    {
+      "key": "railway link",
+      "path": [
+        "link"
+      ],
+      "depth": 1,
+      "title": "Associate existing project with current directory, may specify projectId as an argument",
+      "intro": "Associate existing project with current directory, may specify projectId as an argument",
+      "usage": "railway link [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-p, --project <PROJECT>",
+          "aliases": [],
+          "description": "Project to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-t, --team <TEAM>",
+          "aliases": [],
+          "description": "The team to link to (deprecated: use --workspace instead)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-w, --workspace <WORKSPACE>",
+          "aliases": [],
+          "description": "The workspace to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Associate existing project with current directory, may specify projectId as an argument\n\nUsage: railway link [OPTIONS]\n\nOptions:\n  -e, --environment <ENVIRONMENT>  Environment to link to\n  -p, --project <PROJECT>          Project to link to\n  -s, --service <SERVICE>          The service to link to\n  -t, --team <TEAM>                The team to link to (deprecated: use --workspace instead)\n  -w, --workspace <WORKSPACE>      The workspace to link to\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway list",
+      "path": [
+        "list"
+      ],
+      "depth": 1,
+      "title": "List all projects in your Railway account",
+      "intro": "List all projects in your Railway account",
+      "usage": "railway list [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "List all projects in your Railway account\n\nUsage: railway list [OPTIONS]\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway login",
+      "path": [
+        "login"
+      ],
+      "depth": 1,
+      "title": "Login to your Railway account",
+      "intro": "Login to your Railway account",
+      "usage": "railway login [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-b, --browserless",
+          "aliases": [],
+          "description": "Browserless login",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Login to your Railway account\n\nUsage: railway login [OPTIONS]\n\nOptions:\n  -b, --browserless  Browserless login\n  -h, --help         Print help\n  -V, --version      Print version"
+    },
+    {
+      "key": "railway logout",
+      "path": [
+        "logout"
+      ],
+      "depth": 1,
+      "title": "Logout of your Railway account",
+      "intro": "Logout of your Railway account",
+      "usage": "railway logout",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Logout of your Railway account\n\nUsage: railway logout\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway logs",
+      "path": [
+        "logs"
+      ],
+      "depth": 1,
+      "title": "View build or deploy logs from a Railway deployment. This will stream logs by default, or fetch historical logs if the --lines, --since, or --until flags are provided.",
+      "intro": "View build or deploy logs from a Railway deployment. This will stream logs by default, or fetch historical logs if the --lines, --since, or --until flags are provided.",
+      "usage": "railway logs [OPTIONS] [DEPLOYMENT_ID]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[DEPLOYMENT_ID]",
+          "aliases": [],
+          "description": "Deployment ID to view logs from. Defaults to most recent successful deployment, or latest deployment if none succeeded",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to view logs from (defaults to linked service). Can be service name or service ID",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to view logs from (defaults to linked environment). Can be environment name or environment ID",
+          "possibleValues": []
+        },
+        {
+          "spec": "-d, --deployment",
+          "aliases": [],
+          "description": "Show deployment logs",
+          "possibleValues": []
+        },
+        {
+          "spec": "-b, --build",
+          "aliases": [],
+          "description": "Show build logs",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output logs in JSON format. Each log line becomes a JSON object with timestamp, message, and any other attributes",
+          "possibleValues": []
+        },
+        {
+          "spec": "-n, --lines <LINES>",
+          "aliases": [
+            "--tail"
+          ],
+          "description": "Number of log lines to fetch (disables streaming)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-f, --filter <FILTER>",
+          "aliases": [],
+          "description": "Filter logs using Railway's query syntax\n\nCan be a text search (\"error message\" or \"user signup\"), attribute filters (@level:error, @level:warn), or a combination with the operators AND, OR, - (not). See https://docs.railway.com/guides/logs for full syntax.",
+          "possibleValues": []
+        },
+        {
+          "spec": "--latest",
+          "aliases": [],
+          "description": "Always show logs from the latest deployment, even if it failed or is still building",
+          "possibleValues": []
+        },
+        {
+          "spec": "-S, --since <TIME>",
+          "aliases": [],
+          "description": "Show logs since a specific time (disables streaming). Accepts relative times (e.g., 30s, 5m, 2h, 1d, 1w) or ISO 8601 timestamps (e.g., 2024-01-15T10:30:00Z)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-U, --until <TIME>",
+          "aliases": [],
+          "description": "Show logs until a specific time (disables streaming). Same formats as --since",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "View build or deploy logs from a Railway deployment. This will stream logs by default, or fetch historical logs if the --lines, --since, or --until flags are provided.\n\nUsage: railway logs [OPTIONS] [DEPLOYMENT_ID]\n\nArguments:\n  [DEPLOYMENT_ID]\n          Deployment ID to view logs from. Defaults to most recent successful deployment, or latest deployment if none succeeded\n\nOptions:\n  -s, --service <SERVICE>\n          Service to view logs from (defaults to linked service). Can be service name or service ID\n\n  -e, --environment <ENVIRONMENT>\n          Environment to view logs from (defaults to linked environment). Can be environment name or environment ID\n\n  -d, --deployment\n          Show deployment logs\n\n  -b, --build\n          Show build logs\n\n      --json\n          Output logs in JSON format. Each log line becomes a JSON object with timestamp, message, and any other attributes\n\n  -n, --lines <LINES>\n          Number of log lines to fetch (disables streaming)\n          \n          [aliases: --tail]\n\n  -f, --filter <FILTER>\n          Filter logs using Railway's query syntax\n          \n          Can be a text search (\"error message\" or \"user signup\"), attribute filters (@level:error, @level:warn), or a combination with the operators AND, OR, - (not). See https://docs.railway.com/guides/logs for full syntax.\n\n      --latest\n          Always show logs from the latest deployment, even if it failed or is still building\n\n  -S, --since <TIME>\n          Show logs since a specific time (disables streaming). Accepts relative times (e.g., 30s, 5m, 2h, 1d, 1w) or ISO 8601 timestamps (e.g., 2024-01-15T10:30:00Z)\n\n  -U, --until <TIME>\n          Show logs until a specific time (disables streaming). Same formats as --since\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version\n\nExamples:\n\n  railway logs                                                       # Stream live logs from latest deployment\n  railway logs --build 7422c95b-c604-46bc-9de4-b7a43e1fd53d          # Stream build logs from a specific deployment\n  railway logs --lines 100                                           # Pull last 100 logs without streaming\n  railway logs --since 1h                                            # View logs from the last hour\n  railway logs --since 30m --until 10m                               # View logs from 30 minutes ago until 10 minutes ago\n  railway logs --since 2024-01-15T10:00:00Z                          # View logs since a specific timestamp\n  railway logs --service backend --environment production            # Stream latest deployment logs from a specific service in a specific environment\n  railway logs --lines 10 --filter \"@level:error\"                    # View 10 latest error logs\n  railway logs --lines 10 --filter \"@level:warn AND rate limit\"      # View 10 latest warning logs related to rate limiting\n  railway logs --json                                                # Get logs in JSON format\n  railway logs --latest                                              # Stream logs from the latest deployment (even if failed/building)"
+    },
+    {
+      "key": "railway open",
+      "path": [
+        "open"
+      ],
+      "depth": 1,
+      "title": "Open your project dashboard",
+      "intro": "Open your project dashboard",
+      "usage": "railway open [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --print",
+          "aliases": [],
+          "description": "Print the URL instead of opening it",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Open your project dashboard\n\nUsage: railway open [OPTIONS]\n\nOptions:\n  -p, --print    Print the URL instead of opening it\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway project",
+      "path": [
+        "project"
+      ],
+      "depth": 1,
+      "title": "Manage projects",
+      "intro": "Manage projects",
+      "usage": "railway project <COMMAND>",
+      "commands": [
+        {
+          "name": "list",
+          "description": "List all projects in your Railway account",
+          "aliases": []
+        },
+        {
+          "name": "link",
+          "description": "Link a project to the current directory",
+          "aliases": []
+        },
+        {
+          "name": "delete",
+          "description": "Delete a project",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Manage projects\n\nUsage: railway project <COMMAND>\n\nCommands:\n  list    List all projects in your Railway account\n  link    Link a project to the current directory\n  delete  Delete a project\n  help    Print this message or the help of the given subcommand(s)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway redeploy",
+      "path": [
+        "redeploy"
+      ],
+      "depth": 1,
+      "title": "Redeploy the latest deployment of a service",
+      "intro": "Redeploy the latest deployment of a service",
+      "usage": "railway redeploy [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service ID/name to redeploy from",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Redeploy the latest deployment of a service\n\nUsage: railway redeploy [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>  The service ID/name to redeploy from\n  -y, --yes                Skip confirmation dialog\n      --json               Output in JSON format\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway restart",
+      "path": [
+        "restart"
+      ],
+      "depth": 1,
+      "title": "Restart the latest deployment of a service (without rebuilding)",
+      "intro": "Restart the latest deployment of a service (without rebuilding)",
+      "usage": "railway restart [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service ID/name to restart",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Restart the latest deployment of a service (without rebuilding)\n\nUsage: railway restart [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>  The service ID/name to restart\n  -y, --yes                Skip confirmation dialog\n      --json               Output in JSON format\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway run",
+      "path": [
+        "run"
+      ],
+      "depth": 1,
+      "title": "Run a local command using variables from the active environment",
+      "intro": "Run a local command using variables from the active environment",
+      "usage": "railway run [OPTIONS] [ARGS]...",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to pull variables from (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to pull variables from (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-p, --project <PROJECT_ID>",
+          "aliases": [],
+          "description": "Project ID to use (defaults to linked project)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--no-local",
+          "aliases": [],
+          "description": "Skip local develop overrides even if docker-compose.yml exists",
+          "possibleValues": []
+        },
+        {
+          "spec": "-v, --verbose",
+          "aliases": [],
+          "description": "Show verbose domain replacement info",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Run a local command using variables from the active environment\n\nUsage: railway run [OPTIONS] [ARGS]...\n\nArguments:\n  [ARGS]...  Args to pass to the command\n\nOptions:\n  -s, --service <SERVICE>          Service to pull variables from (defaults to linked service)\n  -e, --environment <ENVIRONMENT>  Environment to pull variables from (defaults to linked environment)\n  -p, --project <PROJECT_ID>       Project ID to use (defaults to linked project)\n      --no-local                   Skip local develop overrides even if docker-compose.yml exists\n  -v, --verbose                    Show verbose domain replacement info\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway scale",
+      "path": [
+        "scale"
+      ],
+      "depth": 1,
+      "title": "",
+      "intro": "",
+      "usage": "railway scale [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to scale (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment the service is in (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--europe-west4-drams3a <INSTANCES>",
+          "aliases": [],
+          "description": "Number of instances to run on europe-west4-drams3a",
+          "possibleValues": []
+        },
+        {
+          "spec": "--us-west2 <INSTANCES>",
+          "aliases": [],
+          "description": "Number of instances to run on us-west2",
+          "possibleValues": []
+        },
+        {
+          "spec": "--asia-southeast1-eqsg3a <INSTANCES>",
+          "aliases": [],
+          "description": "Number of instances to run on asia-southeast1-eqsg3a",
+          "possibleValues": []
+        },
+        {
+          "spec": "--us-east4-eqdc4a <INSTANCES>",
+          "aliases": [],
+          "description": "Number of instances to run on us-east4-eqdc4a",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Usage: railway scale [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>\n          The service to scale (defaults to linked service)\n  -e, --environment <ENVIRONMENT>\n          The environment the service is in (defaults to linked environment)\n      --json\n          Output in JSON format\n      --europe-west4-drams3a <INSTANCES>\n          Number of instances to run on europe-west4-drams3a\n      --us-west2 <INSTANCES>\n          Number of instances to run on us-west2\n      --asia-southeast1-eqsg3a <INSTANCES>\n          Number of instances to run on asia-southeast1-eqsg3a\n      --us-east4-eqdc4a <INSTANCES>\n          Number of instances to run on us-east4-eqdc4a\n  -h, --help\n          Print help\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway service",
+      "path": [
+        "service"
+      ],
+      "depth": 1,
+      "title": "Manage services",
+      "intro": "Manage services",
+      "usage": "railway service [SERVICE] [COMMAND]",
+      "commands": [
+        {
+          "name": "link",
+          "description": "Link a service to the current project",
+          "aliases": []
+        },
+        {
+          "name": "status",
+          "description": "Show deployment status for services",
+          "aliases": []
+        },
+        {
+          "name": "logs",
+          "description": "View logs from a service",
+          "aliases": []
+        },
+        {
+          "name": "redeploy",
+          "description": "Redeploy the latest deployment of a service",
+          "aliases": []
+        },
+        {
+          "name": "restart",
+          "description": "Restart the latest deployment of a service",
+          "aliases": []
+        },
+        {
+          "name": "scale",
+          "description": "Scale a service across regions",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [
+        {
+          "spec": "[SERVICE]",
+          "aliases": [],
+          "description": "The service ID/name to link (deprecated: use 'service link' instead)",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Manage services\n\nUsage: railway service [SERVICE] [COMMAND]\n\nCommands:\n  link      Link a service to the current project\n  status    Show deployment status for services\n  logs      View logs from a service\n  redeploy  Redeploy the latest deployment of a service\n  restart   Restart the latest deployment of a service\n  scale     Scale a service across regions\n  help      Print this message or the help of the given subcommand(s)\n\nArguments:\n  [SERVICE]  The service ID/name to link (deprecated: use 'service link' instead)\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway shell",
+      "path": [
+        "shell"
+      ],
+      "depth": 1,
+      "title": "Open a local subshell with Railway variables available",
+      "intro": "Open a local subshell with Railway variables available",
+      "usage": "railway shell [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to pull variables from (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--silent",
+          "aliases": [],
+          "description": "Open shell without banner",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Open a local subshell with Railway variables available\n\nUsage: railway shell [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>  Service to pull variables from (defaults to linked service)\n      --silent             Open shell without banner\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway ssh",
+      "path": [
+        "ssh"
+      ],
+      "depth": 1,
+      "title": "Connect to a service via SSH",
+      "intro": "Connect to a service via SSH",
+      "usage": "railway ssh [OPTIONS] [COMMAND]...",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --project <PROJECT>",
+          "aliases": [],
+          "description": "Project to connect to (defaults to linked project)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to connect to (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to connect to (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-d, --deployment-instance <deployment-instance-id>",
+          "aliases": [],
+          "description": "Deployment instance ID to connect to (defaults to first active instance)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--session [<SESSION_NAME>]",
+          "aliases": [],
+          "description": "SSH into the service inside a tmux session. Installs tmux if it's not installed. Optionally, provide a session name (--session name)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Connect to a service via SSH\n\nUsage: railway ssh [OPTIONS] [COMMAND]...\n\nArguments:\n  [COMMAND]...  Command to execute instead of starting an interactive shell\n\nOptions:\n  -p, --project <PROJECT>\n          Project to connect to (defaults to linked project)\n  -s, --service <SERVICE>\n          Service to connect to (defaults to linked service)\n  -e, --environment <ENVIRONMENT>\n          Environment to connect to (defaults to linked environment)\n  -d, --deployment-instance <deployment-instance-id>\n          Deployment instance ID to connect to (defaults to first active instance)\n      --session [<SESSION_NAME>]\n          SSH into the service inside a tmux session. Installs tmux if it's not installed. Optionally, provide a session name (--session name)\n  -h, --help\n          Print help\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway status",
+      "path": [
+        "status"
+      ],
+      "depth": 1,
+      "title": "Show information about the current project",
+      "intro": "Show information about the current project",
+      "usage": "railway status [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Show information about the current project\n\nUsage: railway status [OPTIONS]\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway unlink",
+      "path": [
+        "unlink"
+      ],
+      "depth": 1,
+      "title": "Disassociate project from current directory",
+      "intro": "Disassociate project from current directory",
+      "usage": "railway unlink [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service",
+          "aliases": [],
+          "description": "Unlink a service",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation prompt",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Disassociate project from current directory\n\nUsage: railway unlink [OPTIONS]\n\nOptions:\n  -s, --service  Unlink a service\n  -y, --yes      Skip confirmation prompt\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway up",
+      "path": [
+        "up"
+      ],
+      "depth": 1,
+      "title": "Upload and deploy project from the current directory",
+      "intro": "Upload and deploy project from the current directory",
+      "usage": "railway up [OPTIONS] [PATH]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[PATH]",
+          "aliases": [],
+          "description": "",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-d, --detach",
+          "aliases": [],
+          "description": "Don't attach to the log stream",
+          "possibleValues": []
+        },
+        {
+          "spec": "-c, --ci",
+          "aliases": [],
+          "description": "Stream build logs only, then exit (equivalent to setting $CI=true)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to deploy to (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to deploy to (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-p, --project <PROJECT_ID>",
+          "aliases": [],
+          "description": "Project ID to deploy to (defaults to linked project)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--no-gitignore",
+          "aliases": [],
+          "description": "Don't ignore paths from .gitignore",
+          "possibleValues": []
+        },
+        {
+          "spec": "--path-as-root",
+          "aliases": [],
+          "description": "Use the path argument as the prefix for the archive instead of the project directory",
+          "possibleValues": []
+        },
+        {
+          "spec": "--verbose",
+          "aliases": [],
+          "description": "Verbose output",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output logs in JSON format (implies CI mode behavior)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-m, --message <MESSAGE>",
+          "aliases": [],
+          "description": "Message to attach to the deployment",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Upload and deploy project from the current directory\n\nUsage: railway up [OPTIONS] [PATH]\n\nArguments:\n  [PATH]  \n\nOptions:\n  -d, --detach                     Don't attach to the log stream\n  -c, --ci                         Stream build logs only, then exit (equivalent to setting $CI=true)\n  -s, --service <SERVICE>          Service to deploy to (defaults to linked service)\n  -e, --environment <ENVIRONMENT>  Environment to deploy to (defaults to linked environment)\n  -p, --project <PROJECT_ID>       Project ID to deploy to (defaults to linked project)\n      --no-gitignore               Don't ignore paths from .gitignore\n      --path-as-root               Use the path argument as the prefix for the archive instead of the project directory\n      --verbose                    Verbose output\n      --json                       Output logs in JSON format (implies CI mode behavior)\n  -m, --message <MESSAGE>          Message to attach to the deployment\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway upgrade",
+      "path": [
+        "upgrade"
+      ],
+      "depth": 1,
+      "title": "Upgrade the Railway CLI to the latest version",
+      "intro": "Upgrade the Railway CLI to the latest version",
+      "usage": "railway upgrade [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--check",
+          "aliases": [],
+          "description": "Check install method without upgrading",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Upgrade the Railway CLI to the latest version\n\nUsage: railway upgrade [OPTIONS]\n\nOptions:\n      --check    Check install method without upgrading\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway variable",
+      "path": [
+        "variable"
+      ],
+      "depth": 1,
+      "title": "Manage environment variables for a service",
+      "intro": "Manage environment variables for a service",
+      "usage": "railway variable [OPTIONS] [COMMAND]",
+      "commands": [
+        {
+          "name": "list",
+          "description": "List variables for a service",
+          "aliases": []
+        },
+        {
+          "name": "set",
+          "description": "Set a variable",
+          "aliases": []
+        },
+        {
+          "name": "delete",
+          "description": "Delete a variable",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to show/set variables for",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment to show/set variables for",
+          "possibleValues": []
+        },
+        {
+          "spec": "-k, --kv",
+          "aliases": [],
+          "description": "Show variables in KV format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--set <SET>",
+          "aliases": [],
+          "description": "The \"{key}={value}\" environment variable pair to set the service variables (legacy, use 'variable set' instead)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--set-from-stdin <KEY>",
+          "aliases": [],
+          "description": "Set a variable with the value read from stdin (legacy, use 'variable set --stdin' instead)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--skip-deploys",
+          "aliases": [],
+          "description": "Skip triggering deploys when setting variables",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Manage environment variables for a service\n\nUsage: railway variable [OPTIONS] [COMMAND]\n\nCommands:\n  list    List variables for a service\n  set     Set a variable\n  delete  Delete a variable\n  help    Print this message or the help of the given subcommand(s)\n\nOptions:\n  -s, --service <SERVICE>          The service to show/set variables for\n  -e, --environment <ENVIRONMENT>  The environment to show/set variables for\n  -k, --kv                         Show variables in KV format\n      --set <SET>                  The \"{key}={value}\" environment variable pair to set the service variables (legacy, use 'variable set' instead)\n      --set-from-stdin <KEY>       Set a variable with the value read from stdin (legacy, use 'variable set --stdin' instead)\n      --json                       Output in JSON format\n      --skip-deploys               Skip triggering deploys when setting variables\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway volume",
+      "path": [
+        "volume"
+      ],
+      "depth": 1,
+      "title": "Manage project volumes",
+      "intro": "Manage project volumes",
+      "usage": "railway volume [OPTIONS] <COMMAND>",
+      "commands": [
+        {
+          "name": "list",
+          "description": "List volumes",
+          "aliases": []
+        },
+        {
+          "name": "add",
+          "description": "Add a new volume",
+          "aliases": []
+        },
+        {
+          "name": "delete",
+          "description": "Delete a volume",
+          "aliases": []
+        },
+        {
+          "name": "update",
+          "description": "Update a volume",
+          "aliases": []
+        },
+        {
+          "name": "detach",
+          "description": "Detach a volume from a service",
+          "aliases": []
+        },
+        {
+          "name": "attach",
+          "description": "Attach a volume to a service",
+          "aliases": []
+        },
+        {
+          "name": "help",
+          "description": "Print this message or the help of the given subcommand(s)",
+          "aliases": []
+        }
+      ],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service ID",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment ID",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Manage project volumes\n\nUsage: railway volume [OPTIONS] <COMMAND>\n\nCommands:\n  list    List volumes\n  add     Add a new volume\n  delete  Delete a volume\n  update  Update a volume\n  detach  Detach a volume from a service\n  attach  Attach a volume to a service\n  help    Print this message or the help of the given subcommand(s)\n\nOptions:\n  -s, --service <SERVICE>          Service ID\n  -e, --environment <ENVIRONMENT>  Environment ID\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway whoami",
+      "path": [
+        "whoami"
+      ],
+      "depth": 1,
+      "title": "Get the current logged in user",
+      "intro": "Get the current logged in user",
+      "usage": "railway whoami [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Get the current logged in user\n\nUsage: railway whoami [OPTIONS]\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway deployment list",
+      "path": [
+        "deployment",
+        "list"
+      ],
+      "depth": 2,
+      "title": "List deployments for a service with IDs, statuses and other metadata",
+      "intro": "List deployments for a service with IDs, statuses and other metadata",
+      "usage": "railway deployment list [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service name or ID to list deployments for (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to list deployments from (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--limit <LIMIT>",
+          "aliases": [],
+          "description": "Maximum number of deployments to show (default: 20, max: 1000) [default: 20]",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "List deployments for a service with IDs, statuses and other metadata\n\nUsage: railway deployment list [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>          Service name or ID to list deployments for (defaults to linked service)\n  -e, --environment <ENVIRONMENT>  Environment to list deployments from (defaults to linked environment)\n      --limit <LIMIT>              Maximum number of deployments to show (default: 20, max: 1000) [default: 20]\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway deployment redeploy",
+      "path": [
+        "deployment",
+        "redeploy"
+      ],
+      "depth": 2,
+      "title": "Redeploy the latest deployment of a service",
+      "intro": "Redeploy the latest deployment of a service",
+      "usage": "railway deployment redeploy [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service ID/name to redeploy from",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Redeploy the latest deployment of a service\n\nUsage: railway deployment redeploy [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>  The service ID/name to redeploy from\n  -y, --yes                Skip confirmation dialog\n      --json               Output in JSON format\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway deployment up",
+      "path": [
+        "deployment",
+        "up"
+      ],
+      "depth": 2,
+      "title": "Upload and deploy project from the current directory",
+      "intro": "Upload and deploy project from the current directory",
+      "usage": "railway deployment up [OPTIONS] [PATH]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[PATH]",
+          "aliases": [],
+          "description": "",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-d, --detach",
+          "aliases": [],
+          "description": "Don't attach to the log stream",
+          "possibleValues": []
+        },
+        {
+          "spec": "-c, --ci",
+          "aliases": [],
+          "description": "Stream build logs only, then exit (equivalent to setting $CI=true)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to deploy to (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to deploy to (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-p, --project <PROJECT_ID>",
+          "aliases": [],
+          "description": "Project ID to deploy to (defaults to linked project)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--no-gitignore",
+          "aliases": [],
+          "description": "Don't ignore paths from .gitignore",
+          "possibleValues": []
+        },
+        {
+          "spec": "--path-as-root",
+          "aliases": [],
+          "description": "Use the path argument as the prefix for the archive instead of the project directory",
+          "possibleValues": []
+        },
+        {
+          "spec": "--verbose",
+          "aliases": [],
+          "description": "Verbose output",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output logs in JSON format (implies CI mode behavior)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-m, --message <MESSAGE>",
+          "aliases": [],
+          "description": "Message to attach to the deployment",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Upload and deploy project from the current directory\n\nUsage: railway deployment up [OPTIONS] [PATH]\n\nArguments:\n  [PATH]  \n\nOptions:\n  -d, --detach                     Don't attach to the log stream\n  -c, --ci                         Stream build logs only, then exit (equivalent to setting $CI=true)\n  -s, --service <SERVICE>          Service to deploy to (defaults to linked service)\n  -e, --environment <ENVIRONMENT>  Environment to deploy to (defaults to linked environment)\n  -p, --project <PROJECT_ID>       Project ID to deploy to (defaults to linked project)\n      --no-gitignore               Don't ignore paths from .gitignore\n      --path-as-root               Use the path argument as the prefix for the archive instead of the project directory\n      --verbose                    Verbose output\n      --json                       Output logs in JSON format (implies CI mode behavior)\n  -m, --message <MESSAGE>          Message to attach to the deployment\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway dev clean",
+      "path": [
+        "dev",
+        "clean"
+      ],
+      "depth": 2,
+      "title": "Stop services and remove volumes/data",
+      "intro": "Stop services and remove volumes/data",
+      "usage": "railway dev clean [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-o, --output <OUTPUT>",
+          "aliases": [],
+          "description": "Output path for docker-compose.yml (defaults to ~/.railway/develop/<project_id>/docker-compose.yml)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Stop services and remove volumes/data\n\nUsage: railway dev clean [OPTIONS]\n\nOptions:\n  -o, --output <OUTPUT>  Output path for docker-compose.yml (defaults to ~/.railway/develop/<project_id>/docker-compose.yml)\n  -h, --help             Print help\n  -V, --version          Print version"
+    },
+    {
+      "key": "railway dev configure",
+      "path": [
+        "dev",
+        "configure"
+      ],
+      "depth": 2,
+      "title": "Configure local code services",
+      "intro": "Configure local code services",
+      "usage": "railway dev configure [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--service <SERVICE>",
+          "aliases": [],
+          "description": "Specific service to configure (by name)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--remove [<REMOVE>]",
+          "aliases": [],
+          "description": "Remove configuration for a service (optionally specify service name)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Configure local code services\n\nUsage: railway dev configure [OPTIONS]\n\nOptions:\n      --service <SERVICE>  Specific service to configure (by name)\n      --remove [<REMOVE>]  Remove configuration for a service (optionally specify service name)\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway dev down",
+      "path": [
+        "dev",
+        "down"
+      ],
+      "depth": 2,
+      "title": "Stop services",
+      "intro": "Stop services",
+      "usage": "railway dev down [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-o, --output <OUTPUT>",
+          "aliases": [],
+          "description": "Output path for docker-compose.yml (defaults to ~/.railway/develop/<project_id>/docker-compose.yml)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Stop services\n\nUsage: railway dev down [OPTIONS]\n\nOptions:\n  -o, --output <OUTPUT>  Output path for docker-compose.yml (defaults to ~/.railway/develop/<project_id>/docker-compose.yml)\n  -h, --help             Print help\n  -V, --version          Print version"
+    },
+    {
+      "key": "railway dev up",
+      "path": [
+        "dev",
+        "up"
+      ],
+      "depth": 2,
+      "title": "Start services (default when no subcommand provided)",
+      "intro": "Start services (default when no subcommand provided)",
+      "usage": "railway dev up [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to use (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-o, --output <OUTPUT>",
+          "aliases": [],
+          "description": "Output path for docker-compose.yml (defaults to ~/.railway/develop/<project_id>/docker-compose.yml)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--dry-run",
+          "aliases": [],
+          "description": "Only generate docker-compose.yml, don't run docker compose up",
+          "possibleValues": []
+        },
+        {
+          "spec": "--no-https",
+          "aliases": [],
+          "description": "Disable HTTPS and pretty URLs (use localhost instead)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-v, --verbose",
+          "aliases": [],
+          "description": "Show verbose domain replacement info",
+          "possibleValues": []
+        },
+        {
+          "spec": "--no-tui",
+          "aliases": [],
+          "description": "Disable TUI, stream logs to stdout instead",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Start services (default when no subcommand provided)\n\nUsage: railway dev up [OPTIONS]\n\nOptions:\n  -e, --environment <ENVIRONMENT>  Environment to use (defaults to linked environment)\n  -o, --output <OUTPUT>            Output path for docker-compose.yml (defaults to ~/.railway/develop/<project_id>/docker-compose.yml)\n      --dry-run                    Only generate docker-compose.yml, don't run docker compose up\n      --no-https                   Disable HTTPS and pretty URLs (use localhost instead)\n  -v, --verbose                    Show verbose domain replacement info\n      --no-tui                     Disable TUI, stream logs to stdout instead\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway environment config",
+      "path": [
+        "environment",
+        "config"
+      ],
+      "depth": 2,
+      "title": "Show environment configuration",
+      "intro": "Show environment configuration",
+      "usage": "railway environment config [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to show config for (defaults to linked)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Show environment configuration\n\nUsage: railway environment config [OPTIONS]\n\nOptions:\n  -e, --environment <ENVIRONMENT>  Environment to show config for (defaults to linked)\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway environment delete",
+      "path": [
+        "environment",
+        "delete"
+      ],
+      "depth": 2,
+      "title": "Delete an environment",
+      "intro": "Delete an environment",
+      "usage": "railway environment delete [OPTIONS] [ENVIRONMENT]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[ENVIRONMENT]",
+          "aliases": [],
+          "description": "The environment to delete",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--2fa-code <TWO_FACTOR_CODE>",
+          "aliases": [],
+          "description": "2FA code for verification (required if 2FA is enabled in non-interactive mode)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Delete an environment\n\nUsage: railway environment delete [OPTIONS] [ENVIRONMENT]\n\nArguments:\n  [ENVIRONMENT]  The environment to delete\n\nOptions:\n  -y, --yes                         Skip confirmation dialog\n      --json                        Output in JSON format\n      --2fa-code <TWO_FACTOR_CODE>  2FA code for verification (required if 2FA is enabled in non-interactive mode)\n  -h, --help                        Print help\n  -V, --version                     Print version"
+    },
+    {
+      "key": "railway environment edit",
+      "path": [
+        "environment",
+        "edit"
+      ],
+      "depth": 2,
+      "title": "Edit an environment's configuration",
+      "intro": "Edit an environment's configuration",
+      "usage": "railway environment edit [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment to edit (defaults to linked environment)\n\n-s, --service-config <SERVICE> <PATH> <VALUE> Configure a service using dot-path notation\n\nFormat: --service-config <SERVICE> <PATH> <VALUE>\n\nExamples: --service-config backend variables.API_KEY.value \"secret\" --service-config api deploy.startCommand \"npm start\" --service-config web source.image \"nginx:latest\"",
+          "possibleValues": []
+        },
+        {
+          "spec": "-m, --message <MESSAGE>",
+          "aliases": [],
+          "description": "Commit message for the changes",
+          "possibleValues": []
+        },
+        {
+          "spec": "--stage",
+          "aliases": [],
+          "description": "Stage changes without committing",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Edit an environment's configuration\n\nUsage: railway environment edit [OPTIONS]\n\nOptions:\n  -e, --environment <ENVIRONMENT>\n          The environment to edit (defaults to linked environment)\n\n  -s, --service-config <SERVICE> <PATH> <VALUE>\n          Configure a service using dot-path notation\n          \n          Format: --service-config <SERVICE> <PATH> <VALUE>\n          \n          Examples: --service-config backend variables.API_KEY.value \"secret\" --service-config api deploy.startCommand \"npm start\" --service-config web source.image \"nginx:latest\"\n\n  -m, --message <MESSAGE>\n          Commit message for the changes\n\n      --stage\n          Stage changes without committing\n\n      --json\n          Output in JSON format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway environment link",
+      "path": [
+        "environment",
+        "link"
+      ],
+      "depth": 2,
+      "title": "Link an environment to the current project",
+      "intro": "Link an environment to the current project",
+      "usage": "railway environment link [OPTIONS] [ENVIRONMENT]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[ENVIRONMENT]",
+          "aliases": [],
+          "description": "The environment to link to",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Link an environment to the current project\n\nUsage: railway environment link [OPTIONS] [ENVIRONMENT]\n\nArguments:\n  [ENVIRONMENT]  The environment to link to\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway environment new",
+      "path": [
+        "environment",
+        "new"
+      ],
+      "depth": 2,
+      "title": "Create a new environment",
+      "intro": "Create a new environment",
+      "usage": "railway environment new [OPTIONS] [NAME]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[NAME]",
+          "aliases": [],
+          "description": "The name of the environment to create",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-d, --duplicate <DUPLICATE>",
+          "aliases": [],
+          "description": "The name/ID of the environment to duplicate\n\n[aliases: -c, --copy]\n\n-s, --service-config <SERVICE> <PATH> <VALUE> Configure a service using dot-path notation\n\nFormat: --service-config <SERVICE> <PATH> <VALUE>\n\nExamples: --service-config backend variables.API_KEY.value \"secret\" --service-config api deploy.startCommand \"npm start\" --service-config web source.image \"nginx:latest\"",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Create a new environment\n\nUsage: railway environment new [OPTIONS] [NAME]\n\nArguments:\n  [NAME]\n          The name of the environment to create\n\nOptions:\n  -d, --duplicate <DUPLICATE>\n          The name/ID of the environment to duplicate\n          \n          [aliases: -c, --copy]\n\n  -s, --service-config <SERVICE> <PATH> <VALUE>\n          Configure a service using dot-path notation\n          \n          Format: --service-config <SERVICE> <PATH> <VALUE>\n          \n          Examples: --service-config backend variables.API_KEY.value \"secret\" --service-config api deploy.startCommand \"npm start\" --service-config web source.image \"nginx:latest\"\n\n      --json\n          Output in JSON format\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version"
+    },
+    {
+      "key": "railway functions delete",
+      "path": [
+        "functions",
+        "delete"
+      ],
+      "depth": 2,
+      "title": "Delete a function",
+      "intro": "Delete a function",
+      "usage": "railway functions delete [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-f, --function <FUNCTION>",
+          "aliases": [],
+          "description": "The ID/name of the function you wish to delete",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes [<YES>]",
+          "aliases": [],
+          "description": "Skip confirmation for deleting",
+          "possibleValues": [
+            "true",
+            "false"
+          ]
+        },
+        {
+          "spec": "--2fa-code <TWO_FACTOR_CODE>",
+          "aliases": [],
+          "description": "2FA code for verification (required if 2FA is enabled in non-interactive mode)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Delete a function\n\nUsage: railway functions delete [OPTIONS]\n\nOptions:\n  -f, --function <FUNCTION>         The ID/name of the function you wish to delete\n  -y, --yes [<YES>]                 Skip confirmation for deleting [possible values: true, false]\n      --2fa-code <TWO_FACTOR_CODE>  2FA code for verification (required if 2FA is enabled in non-interactive mode)\n  -h, --help                        Print help\n  -V, --version                     Print version"
+    },
+    {
+      "key": "railway functions link",
+      "path": [
+        "functions",
+        "link"
+      ],
+      "depth": 2,
+      "title": "Link a function manually",
+      "intro": "Link a function manually",
+      "usage": "railway functions link [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --path <PATH>",
+          "aliases": [],
+          "description": "The path to the file",
+          "possibleValues": []
+        },
+        {
+          "spec": "-f, --function <FUNCTION>",
+          "aliases": [],
+          "description": "The ID/name of the function you wish to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Link a function manually\n\nUsage: railway functions link [OPTIONS]\n\nOptions:\n  -p, --path <PATH>          The path to the file\n  -f, --function <FUNCTION>  The ID/name of the function you wish to link to\n  -h, --help                 Print help\n  -V, --version              Print version"
+    },
+    {
+      "key": "railway functions list",
+      "path": [
+        "functions",
+        "list"
+      ],
+      "depth": 2,
+      "title": "List functions",
+      "intro": "List functions",
+      "usage": "railway functions list",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "List functions\n\nUsage: railway functions list\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway functions new",
+      "path": [
+        "functions",
+        "new"
+      ],
+      "depth": 2,
+      "title": "Add a new function",
+      "intro": "Add a new function",
+      "usage": "railway functions new [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --path <PATH>",
+          "aliases": [],
+          "description": "The path to the function locally",
+          "possibleValues": []
+        },
+        {
+          "spec": "-n, --name <NAME>",
+          "aliases": [],
+          "description": "The name of the function",
+          "possibleValues": []
+        },
+        {
+          "spec": "-c, --cron <CRON>",
+          "aliases": [],
+          "description": "Cron schedule to run the function",
+          "possibleValues": []
+        },
+        {
+          "spec": "--http [<HTTP>]",
+          "aliases": [],
+          "description": "Generate a domain",
+          "possibleValues": [
+            "true",
+            "false"
+          ]
+        },
+        {
+          "spec": "-s, --serverless [<SERVERLESS>]",
+          "aliases": [],
+          "description": "Serverless (a.k.a sleeping)",
+          "possibleValues": [
+            "true",
+            "false"
+          ]
+        },
+        {
+          "spec": "-w, --watch [<WATCH>]",
+          "aliases": [],
+          "description": "Watch for changes of the file and deploy upon save",
+          "possibleValues": [
+            "true",
+            "false"
+          ]
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Add a new function\n\nUsage: railway functions new [OPTIONS]\n\nOptions:\n  -p, --path <PATH>                The path to the function locally\n  -n, --name <NAME>                The name of the function\n  -c, --cron <CRON>                Cron schedule to run the function\n      --http [<HTTP>]              Generate a domain [possible values: true, false]\n  -s, --serverless [<SERVERLESS>]  Serverless (a.k.a sleeping) [possible values: true, false]\n  -w, --watch [<WATCH>]            Watch for changes of the file and deploy upon save [possible values: true, false]\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway functions pull",
+      "path": [
+        "functions",
+        "pull"
+      ],
+      "depth": 2,
+      "title": "Pull changes from the linked function remotely",
+      "intro": "Pull changes from the linked function remotely",
+      "usage": "railway functions pull [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --path <PATH>",
+          "aliases": [],
+          "description": "The path to the function",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Pull changes from the linked function remotely\n\nUsage: railway functions pull [OPTIONS]\n\nOptions:\n  -p, --path <PATH>  The path to the function\n  -h, --help         Print help\n  -V, --version      Print version"
+    },
+    {
+      "key": "railway functions push",
+      "path": [
+        "functions",
+        "push"
+      ],
+      "depth": 2,
+      "title": "Push a new change to the function",
+      "intro": "Push a new change to the function",
+      "usage": "railway functions push [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --path <PATH>",
+          "aliases": [],
+          "description": "The path to the function",
+          "possibleValues": []
+        },
+        {
+          "spec": "-w, --watch [<WATCH>]",
+          "aliases": [],
+          "description": "Watch for changes of the file and deploy upon save",
+          "possibleValues": [
+            "true",
+            "false"
+          ]
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Push a new change to the function\n\nUsage: railway functions push [OPTIONS]\n\nOptions:\n  -p, --path <PATH>      The path to the function\n  -w, --watch [<WATCH>]  Watch for changes of the file and deploy upon save [possible values: true, false]\n  -h, --help             Print help\n  -V, --version          Print version"
+    },
+    {
+      "key": "railway project delete",
+      "path": [
+        "project",
+        "delete"
+      ],
+      "depth": 2,
+      "title": "Delete a project",
+      "intro": "Delete a project",
+      "usage": "railway project delete [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-p, --project <PROJECT>",
+          "aliases": [],
+          "description": "The project ID or name to delete",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--2fa-code <TWO_FACTOR_CODE>",
+          "aliases": [],
+          "description": "2FA code for verification (required if 2FA is enabled in non-interactive mode)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Delete a project\n\nUsage: railway project delete [OPTIONS]\n\nOptions:\n  -p, --project <PROJECT>           The project ID or name to delete\n  -y, --yes                         Skip confirmation dialog\n      --json                        Output in JSON format\n      --2fa-code <TWO_FACTOR_CODE>  2FA code for verification (required if 2FA is enabled in non-interactive mode)\n  -h, --help                        Print help\n  -V, --version                     Print version"
+    },
+    {
+      "key": "railway project link",
+      "path": [
+        "project",
+        "link"
+      ],
+      "depth": 2,
+      "title": "Link a project to the current directory",
+      "intro": "Link a project to the current directory",
+      "usage": "railway project link [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-p, --project <PROJECT>",
+          "aliases": [],
+          "description": "Project to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "-t, --team <TEAM>",
+          "aliases": [],
+          "description": "The team to link to (deprecated: use --workspace instead)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-w, --workspace <WORKSPACE>",
+          "aliases": [],
+          "description": "The workspace to link to",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Link a project to the current directory\n\nUsage: railway project link [OPTIONS]\n\nOptions:\n  -e, --environment <ENVIRONMENT>  Environment to link to\n  -p, --project <PROJECT>          Project to link to\n  -s, --service <SERVICE>          The service to link to\n  -t, --team <TEAM>                The team to link to (deprecated: use --workspace instead)\n  -w, --workspace <WORKSPACE>      The workspace to link to\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway project list",
+      "path": [
+        "project",
+        "list"
+      ],
+      "depth": 2,
+      "title": "List all projects in your Railway account",
+      "intro": "List all projects in your Railway account",
+      "usage": "railway project list [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "List all projects in your Railway account\n\nUsage: railway project list [OPTIONS]\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway service link",
+      "path": [
+        "service",
+        "link"
+      ],
+      "depth": 2,
+      "title": "Link a service to the current project",
+      "intro": "Link a service to the current project",
+      "usage": "railway service link [SERVICE]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[SERVICE]",
+          "aliases": [],
+          "description": "The service ID/name to link",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Link a service to the current project\n\nUsage: railway service link [SERVICE]\n\nArguments:\n  [SERVICE]  The service ID/name to link\n\nOptions:\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway service logs",
+      "path": [
+        "service",
+        "logs"
+      ],
+      "depth": 2,
+      "title": "View logs from a service",
+      "intro": "View logs from a service",
+      "usage": "railway service logs [OPTIONS] [DEPLOYMENT_ID]",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "[DEPLOYMENT_ID]",
+          "aliases": [],
+          "description": "Deployment ID to view logs from. Defaults to most recent successful deployment, or latest deployment if none succeeded",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service to view logs from (defaults to linked service). Can be service name or service ID",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to view logs from (defaults to linked environment). Can be environment name or environment ID",
+          "possibleValues": []
+        },
+        {
+          "spec": "-d, --deployment",
+          "aliases": [],
+          "description": "Show deployment logs",
+          "possibleValues": []
+        },
+        {
+          "spec": "-b, --build",
+          "aliases": [],
+          "description": "Show build logs",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output logs in JSON format. Each log line becomes a JSON object with timestamp, message, and any other attributes",
+          "possibleValues": []
+        },
+        {
+          "spec": "-n, --lines <LINES>",
+          "aliases": [
+            "--tail"
+          ],
+          "description": "Number of log lines to fetch (disables streaming)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-f, --filter <FILTER>",
+          "aliases": [],
+          "description": "Filter logs using Railway's query syntax\n\nCan be a text search (\"error message\" or \"user signup\"), attribute filters (@level:error, @level:warn), or a combination with the operators AND, OR, - (not). See https://docs.railway.com/guides/logs for full syntax.",
+          "possibleValues": []
+        },
+        {
+          "spec": "--latest",
+          "aliases": [],
+          "description": "Always show logs from the latest deployment, even if it failed or is still building",
+          "possibleValues": []
+        },
+        {
+          "spec": "-S, --since <TIME>",
+          "aliases": [],
+          "description": "Show logs since a specific time (disables streaming). Accepts relative times (e.g., 30s, 5m, 2h, 1d, 1w) or ISO 8601 timestamps (e.g., 2024-01-15T10:30:00Z)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-U, --until <TIME>",
+          "aliases": [],
+          "description": "Show logs until a specific time (disables streaming). Same formats as --since",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help (see a summary with '-h')",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "View logs from a service\n\nUsage: railway service logs [OPTIONS] [DEPLOYMENT_ID]\n\nArguments:\n  [DEPLOYMENT_ID]\n          Deployment ID to view logs from. Defaults to most recent successful deployment, or latest deployment if none succeeded\n\nOptions:\n  -s, --service <SERVICE>\n          Service to view logs from (defaults to linked service). Can be service name or service ID\n\n  -e, --environment <ENVIRONMENT>\n          Environment to view logs from (defaults to linked environment). Can be environment name or environment ID\n\n  -d, --deployment\n          Show deployment logs\n\n  -b, --build\n          Show build logs\n\n      --json\n          Output logs in JSON format. Each log line becomes a JSON object with timestamp, message, and any other attributes\n\n  -n, --lines <LINES>\n          Number of log lines to fetch (disables streaming)\n          \n          [aliases: --tail]\n\n  -f, --filter <FILTER>\n          Filter logs using Railway's query syntax\n          \n          Can be a text search (\"error message\" or \"user signup\"), attribute filters (@level:error, @level:warn), or a combination with the operators AND, OR, - (not). See https://docs.railway.com/guides/logs for full syntax.\n\n      --latest\n          Always show logs from the latest deployment, even if it failed or is still building\n\n  -S, --since <TIME>\n          Show logs since a specific time (disables streaming). Accepts relative times (e.g., 30s, 5m, 2h, 1d, 1w) or ISO 8601 timestamps (e.g., 2024-01-15T10:30:00Z)\n\n  -U, --until <TIME>\n          Show logs until a specific time (disables streaming). Same formats as --since\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version\n\nExamples:\n\n  railway logs                                                       # Stream live logs from latest deployment\n  railway logs --build 7422c95b-c604-46bc-9de4-b7a43e1fd53d          # Stream build logs from a specific deployment\n  railway logs --lines 100                                           # Pull last 100 logs without streaming\n  railway logs --since 1h                                            # View logs from the last hour\n  railway logs --since 30m --until 10m                               # View logs from 30 minutes ago until 10 minutes ago\n  railway logs --since 2024-01-15T10:00:00Z                          # View logs since a specific timestamp\n  railway logs --service backend --environment production            # Stream latest deployment logs from a specific service in a specific environment\n  railway logs --lines 10 --filter \"@level:error\"                    # View 10 latest error logs\n  railway logs --lines 10 --filter \"@level:warn AND rate limit\"      # View 10 latest warning logs related to rate limiting\n  railway logs --json                                                # Get logs in JSON format\n  railway logs --latest                                              # Stream logs from the latest deployment (even if failed/building)"
+    },
+    {
+      "key": "railway service redeploy",
+      "path": [
+        "service",
+        "redeploy"
+      ],
+      "depth": 2,
+      "title": "Redeploy the latest deployment of a service",
+      "intro": "Redeploy the latest deployment of a service",
+      "usage": "railway service redeploy [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service ID/name to redeploy from",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Redeploy the latest deployment of a service\n\nUsage: railway service redeploy [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>  The service ID/name to redeploy from\n  -y, --yes                Skip confirmation dialog\n      --json               Output in JSON format\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway service restart",
+      "path": [
+        "service",
+        "restart"
+      ],
+      "depth": 2,
+      "title": "Restart the latest deployment of a service",
+      "intro": "Restart the latest deployment of a service",
+      "usage": "railway service restart [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service ID/name to restart",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Restart the latest deployment of a service\n\nUsage: railway service restart [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>  The service ID/name to restart\n  -y, --yes                Skip confirmation dialog\n      --json               Output in JSON format\n  -h, --help               Print help\n  -V, --version            Print version"
+    },
+    {
+      "key": "railway service scale",
+      "path": [
+        "service",
+        "scale"
+      ],
+      "depth": 2,
+      "title": "Scale a service across regions",
+      "intro": "Scale a service across regions",
+      "usage": "railway service scale [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to scale (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment the service is in (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Scale a service across regions\n\nUsage: railway service scale [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>          The service to scale (defaults to linked service)\n  -e, --environment <ENVIRONMENT>  The environment the service is in (defaults to linked environment)\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway service status",
+      "path": [
+        "service",
+        "status"
+      ],
+      "depth": 2,
+      "title": "Show deployment status for services",
+      "intro": "Show deployment status for services",
+      "usage": "railway service status [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "Service name or ID to show status for (defaults to linked service)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-a, --all",
+          "aliases": [],
+          "description": "Show status for all services in the environment",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "Environment to check status in (defaults to linked environment)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Show deployment status for services\n\nUsage: railway service status [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>          Service name or ID to show status for (defaults to linked service)\n  -a, --all                        Show status for all services in the environment\n  -e, --environment <ENVIRONMENT>  Environment to check status in (defaults to linked environment)\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway variable delete",
+      "path": [
+        "variable",
+        "delete"
+      ],
+      "depth": 2,
+      "title": "Delete a variable",
+      "intro": "Delete a variable",
+      "usage": "railway variable delete [OPTIONS] <KEY>",
+      "commands": [],
+      "arguments": [
+        {
+          "spec": "<KEY>",
+          "aliases": [],
+          "description": "The variable key to delete",
+          "possibleValues": []
+        }
+      ],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to delete the variable from",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment to delete the variable from",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Delete a variable\n\nUsage: railway variable delete [OPTIONS] <KEY>\n\nArguments:\n  <KEY>  The variable key to delete\n\nOptions:\n  -s, --service <SERVICE>          The service to delete the variable from\n  -e, --environment <ENVIRONMENT>  The environment to delete the variable from\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway variable list",
+      "path": [
+        "variable",
+        "list"
+      ],
+      "depth": 2,
+      "title": "List variables for a service",
+      "intro": "List variables for a service",
+      "usage": "railway variable list [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to list variables for",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment to list variables from",
+          "possibleValues": []
+        },
+        {
+          "spec": "-k, --kv",
+          "aliases": [],
+          "description": "Show variables in KV format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "List variables for a service\n\nUsage: railway variable list [OPTIONS]\n\nOptions:\n  -s, --service <SERVICE>          The service to list variables for\n  -e, --environment <ENVIRONMENT>  The environment to list variables from\n  -k, --kv                         Show variables in KV format\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway variable set",
+      "path": [
+        "variable",
+        "set"
+      ],
+      "depth": 2,
+      "title": "Set a variable",
+      "intro": "Set a variable",
+      "usage": "railway variable set [OPTIONS] <VARIABLES>...",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-s, --service <SERVICE>",
+          "aliases": [],
+          "description": "The service to set the variable for",
+          "possibleValues": []
+        },
+        {
+          "spec": "-e, --environment <ENVIRONMENT>",
+          "aliases": [],
+          "description": "The environment to set the variable in",
+          "possibleValues": []
+        },
+        {
+          "spec": "--stdin",
+          "aliases": [],
+          "description": "Read the value from stdin instead of the command line (only with single KEY)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--skip-deploys",
+          "aliases": [],
+          "description": "Skip triggering deploys when setting the variable",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Set a variable\n\nUsage: railway variable set [OPTIONS] <VARIABLES>...\n\nArguments:\n  <VARIABLES>...  Variable(s) in KEY=VALUE format, or just KEY when using --stdin\n\nOptions:\n  -s, --service <SERVICE>          The service to set the variable for\n  -e, --environment <ENVIRONMENT>  The environment to set the variable in\n      --stdin                      Read the value from stdin instead of the command line (only with single KEY)\n      --skip-deploys               Skip triggering deploys when setting the variable\n      --json                       Output in JSON format\n  -h, --help                       Print help\n  -V, --version                    Print version"
+    },
+    {
+      "key": "railway volume add",
+      "path": [
+        "volume",
+        "add"
+      ],
+      "depth": 2,
+      "title": "Add a new volume",
+      "intro": "Add a new volume",
+      "usage": "railway volume add [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-m, --mount-path <MOUNT_PATH>",
+          "aliases": [],
+          "description": "The mount path of the volume",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Add a new volume\n\nUsage: railway volume add [OPTIONS]\n\nOptions:\n  -m, --mount-path <MOUNT_PATH>  The mount path of the volume\n      --json                     Output in JSON format\n  -h, --help                     Print help\n  -V, --version                  Print version"
+    },
+    {
+      "key": "railway volume attach",
+      "path": [
+        "volume",
+        "attach"
+      ],
+      "depth": 2,
+      "title": "Attach a volume to a service",
+      "intro": "Attach a volume to a service",
+      "usage": "railway volume attach [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-v, --volume <VOLUME>",
+          "aliases": [],
+          "description": "The ID/name of the volume you wish to attach",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Attach a volume to a service\n\nUsage: railway volume attach [OPTIONS]\n\nOptions:\n  -v, --volume <VOLUME>  The ID/name of the volume you wish to attach\n  -y, --yes              Skip confirmation dialog\n      --json             Output in JSON format\n  -h, --help             Print help\n  -V, --version          Print version"
+    },
+    {
+      "key": "railway volume delete",
+      "path": [
+        "volume",
+        "delete"
+      ],
+      "depth": 2,
+      "title": "Delete a volume",
+      "intro": "Delete a volume",
+      "usage": "railway volume delete [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-v, --volume <VOLUME>",
+          "aliases": [],
+          "description": "The ID/name of the volume you wish to delete",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "--2fa-code <TWO_FACTOR_CODE>",
+          "aliases": [],
+          "description": "2FA code for verification (required if 2FA is enabled in non-interactive mode)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Delete a volume\n\nUsage: railway volume delete [OPTIONS]\n\nOptions:\n  -v, --volume <VOLUME>             The ID/name of the volume you wish to delete\n  -y, --yes                         Skip confirmation dialog\n      --json                        Output in JSON format\n      --2fa-code <TWO_FACTOR_CODE>  2FA code for verification (required if 2FA is enabled in non-interactive mode)\n  -h, --help                        Print help\n  -V, --version                     Print version"
+    },
+    {
+      "key": "railway volume detach",
+      "path": [
+        "volume",
+        "detach"
+      ],
+      "depth": 2,
+      "title": "Detach a volume from a service",
+      "intro": "Detach a volume from a service",
+      "usage": "railway volume detach [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-v, --volume <VOLUME>",
+          "aliases": [],
+          "description": "The ID/name of the volume you wish to detach",
+          "possibleValues": []
+        },
+        {
+          "spec": "-y, --yes",
+          "aliases": [],
+          "description": "Skip confirmation dialog",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Detach a volume from a service\n\nUsage: railway volume detach [OPTIONS]\n\nOptions:\n  -v, --volume <VOLUME>  The ID/name of the volume you wish to detach\n  -y, --yes              Skip confirmation dialog\n      --json             Output in JSON format\n  -h, --help             Print help\n  -V, --version          Print version"
+    },
+    {
+      "key": "railway volume list",
+      "path": [
+        "volume",
+        "list"
+      ],
+      "depth": 2,
+      "title": "List volumes",
+      "intro": "List volumes",
+      "usage": "railway volume list [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "List volumes\n\nUsage: railway volume list [OPTIONS]\n\nOptions:\n      --json     Output in JSON format\n  -h, --help     Print help\n  -V, --version  Print version"
+    },
+    {
+      "key": "railway volume update",
+      "path": [
+        "volume",
+        "update"
+      ],
+      "depth": 2,
+      "title": "Update a volume",
+      "intro": "Update a volume",
+      "usage": "railway volume update [OPTIONS]",
+      "commands": [],
+      "arguments": [],
+      "options": [
+        {
+          "spec": "-v, --volume <VOLUME>",
+          "aliases": [],
+          "description": "The ID/name of the volume you wish to update",
+          "possibleValues": []
+        },
+        {
+          "spec": "-m, --mount-path <MOUNT_PATH>",
+          "aliases": [],
+          "description": "The new mount path of the volume (optional)",
+          "possibleValues": []
+        },
+        {
+          "spec": "-n, --name <NAME>",
+          "aliases": [],
+          "description": "The new name of the volume (optional)",
+          "possibleValues": []
+        },
+        {
+          "spec": "--json",
+          "aliases": [],
+          "description": "Output in JSON format",
+          "possibleValues": []
+        },
+        {
+          "spec": "-h, --help",
+          "aliases": [],
+          "description": "Print help",
+          "possibleValues": []
+        },
+        {
+          "spec": "-V, --version",
+          "aliases": [],
+          "description": "Print version",
+          "possibleValues": []
+        }
+      ],
+      "rawHelp": "Update a volume\n\nUsage: railway volume update [OPTIONS]\n\nOptions:\n  -v, --volume <VOLUME>          The ID/name of the volume you wish to update\n  -m, --mount-path <MOUNT_PATH>  The new mount path of the volume (optional)\n  -n, --name <NAME>              The new name of the volume (optional)\n      --json                     Output in JSON format\n  -h, --help                     Print help\n  -V, --version                  Print version"
+    }
+  ]
+}

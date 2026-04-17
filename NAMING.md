@@ -286,7 +286,7 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 - `use-` vs `run-` — `use-` is a single-utility focused workflow; `run-` is broader external tool/API orchestration
 - `use-` vs `init-` — `use-` executes the tool repeatedly; `init-` generates files once
 
-**Current skills:** *(none currently — prefix reserved for future use)*
+**Current skills:** `use-railway`
 
 ---
 
