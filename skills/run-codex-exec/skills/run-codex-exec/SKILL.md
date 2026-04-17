@@ -174,6 +174,7 @@ See `references/troubleshooting.md` for the full catalogue.
 - `scripts/codex-monitor.sh` — the observability loop (rule engine, osascript notifications, stdout stream)
 - `scripts/codex-wrapper.sh` — the per-agent wrapper (codex exec → auto-commit → post-verify)
 - `scripts/setup-worktree.sh` — create a worktree, link shared node_modules + .env, regenerate Prisma
+- `scripts/codex-json-filter.sh` — pipe `codex exec --json` through this to get one compact line per event for the Monitor tool
 - `references/workflow-playbook.md` — the canonical 4-step orchestration recipe
 - `references/observability-rules.md` — every flag explained with what to do
 - `references/prompt-template.md` — the SUBAGENT-STOP prefix + DoD structure
@@ -181,6 +182,7 @@ See `references/troubleshooting.md` for the full catalogue.
 - `references/worktree-patterns.md` — naming, reset, delete, reuse
 - `references/codex-exec-reference.md` — every `codex exec` flag that matters
 - `references/mission-gravity.md` — prompt-writing philosophy (gravity not walls, ceilings not floors)
+- `references/json-streaming.md` — how to pair `codex exec --json` + `codex-json-filter.sh` + Monitor tool for live event streams
 
 ## One-line summary
 
