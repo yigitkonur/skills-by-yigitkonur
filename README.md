@@ -65,6 +65,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-openclaw-deploy](skills/run-openclaw-deploy/) | platform | OpenClaw production deployment |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
 | [run-research](skills/run-research/) | productivity | Technical research with web search, Reddit mining, and multi-agent orchestration |
+| [swift-quality-hooks](skills/swift-quality-hooks/) | development | Swift pre-commit hook with SwiftLint + SwiftFormat for Apple platforms |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
 | [test-macos-snapshots](skills/test-macos-snapshots/) | testing | macOS app screenshot validation and drift checks |
 | [think-deeper](skills/think-deeper/) | productivity | Generic deep-thinking framework for hard tasks |
