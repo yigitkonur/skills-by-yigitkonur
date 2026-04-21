@@ -26,7 +26,7 @@ Prefer another skill when:
 ## Non-negotiable rules
 
 1. **Commit dirty changes before opening the PR.** Not after. Not "I'll fix the commits in the PR comments later." Not on `main`. A PR against dirty tree is a broken handoff — the reviewer cannot tell what you meant to ship. See `references/rationalizations.md` for the counter to every excuse that shows up here.
-2. **Default mode is PR creation.** Markdown-table mode fires only when the user *explicitly* asks for "review doc only" / "no PR" / "just the text". Do not infer markdown mode from vagueness.
+2. **Default mode is PR creation.** Markdown-review-doc mode fires only when the user *explicitly* asks for "review doc only" / "no PR" / "just the text". Do not infer markdown mode from vagueness.
 3. **Never touch `main` directly.** Branch first. If the current branch is `main`, create a new branch from it before committing anything.
 4. **Review text is a self-review, not a changelog.** Explain every change with a rationale, surface weaknesses the author knows about, and ask for explicit review attention on uncertain areas.
 5. **PR body stays under 50,000 characters.** GitHub hard limit is 65,536; 50k leaves room for reviewer edits and quotes. If you're approaching it, split the PR.
@@ -58,7 +58,7 @@ git status --short
 git branch --show-current
 git log --oneline origin/main..HEAD 2>/dev/null || git log --oneline -5
 git remote -v
-gh pr list --head $(git branch --show-current) --json number,url
+gh pr list --repo <owner>/<repo> --head $(git branch --show-current) --json number,url
 ```
 
 Capture:
