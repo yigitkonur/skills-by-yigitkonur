@@ -110,7 +110,7 @@ One `web-search` per session is underuse. Normal is 2–4 rounds. Safe to fire o
 ### Parameters
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `urls` | `string[]` | Yes | HTTP/HTTPS URLs to fetch. Reddit post permalinks (`reddit.com/r/<sub>/comments/<id>/...`) are auto-detected and routed through the Reddit API; everything else flows through the HTTP scraper. Mix freely — both branches run in parallel. |
+| `urls` | `string[]` | Yes | Up to 100 HTTP/HTTPS URLs to fetch. Reddit post permalinks (`reddit.com/r/<sub>/comments/<id>/...`) are auto-detected and routed through the Reddit API; everything else flows through the HTTP scraper. Mix freely — both branches run in parallel. |
 | `extract` | `string` | Yes | Pipe-separated SHAPE of what to pull from each page |
 
 ### Reddit routing (v6)
