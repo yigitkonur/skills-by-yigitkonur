@@ -1,9 +1,9 @@
 ---
-name: audit-completion
-description: Use skill if you are auditing what's actually done vs. claimed done — classify every task by a 22-status taxonomy, then execute until every in-scope item reaches Implemented.
+name: check-completion
+description: Use skill if you are checking what's actually done vs. claimed done — classify every task by a 22-status taxonomy, then execute until every in-scope item reaches Implemented.
 ---
 
-# Audit Completion
+# Check Completion
 
 Two-phase skill. **Phase 1 — Audit**: scan the execution history, classify every task into one of 22 statuses, deliver a markdown audit table with evidence per row. **Phase 2 — Remediate**: execute against the audit until every in-scope task reaches `Implemented` — or is explicitly flagged as unresolvable with a concrete next step. No mid-task pauses. No defaulting to `Implemented` on faith.
 
