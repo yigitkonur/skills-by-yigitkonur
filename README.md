@@ -20,6 +20,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
 | Skill | Category | Description |
 |---|---|---|
+| [do-brainstorm](skills/do-brainstorm/) | productivity | Framework-aware, user-in-the-loop brainstorming; Cynefin-first classifier routes across 25 mental models |
 | [optimize-cli-for-agents](skills/optimize-cli-for-agents/) | development | Audit or design agent-ready CLIs with iterative feedback loops |
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
 | [build-convex-clerk-swiftui](skills/build-convex-clerk-swiftui/) | development | Convex + Clerk backends for SwiftUI iOS/macOS apps |
