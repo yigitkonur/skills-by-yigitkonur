@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-54 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+55 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -43,6 +43,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-supastarter-app](skills/build-supastarter-app/) | development | SupaStarter Next.js SaaS boilerplate |
 | [convert-snapshot-nextjs](skills/convert-snapshot-nextjs/) | design | HTML snapshots to Next.js projects |
 | [convert-vue-nextjs](skills/convert-vue-nextjs/) | development | Vue/Nuxt to Next.js App Router migration |
+| [debug-systematic](skills/debug-systematic/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to do-brainstorm |
 | [debug-tauri-devtools](skills/debug-tauri-devtools/) | development | Tauri debugging with CrabNebula DevTools |
 | [develop-clean-architecture](skills/develop-clean-architecture/) | development | Clean Architecture and DDD in TypeScript |
 | [develop-macos-hig](skills/develop-macos-hig/) | development | macOS HIG design system -- spacing, components, accessibility |
