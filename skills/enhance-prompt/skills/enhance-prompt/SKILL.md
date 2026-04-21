@@ -37,15 +37,19 @@ Read the prompt. Form an internal opinion on these questions — do NOT show thi
 
 **Default: run Round 1.** For non-trivial prompts, a short upfront planning round catches misalignment cheaper than rewriting after enhancement.
 
-Dispatch **one** user-question call with up to **4 bundled questions** covering the axes most likely to change the enhancement. The tool name depends on the runtime:
+Dispatch **one** user-question call with up to **4 bundled questions** covering the axes most likely to change the enhancement. The tool name depends on the runtime — here is a quick lookup, full table in `references/ask-user-tools.md`:
 
-- **Claude Code / Anthropic SDK** → `AskUserQuestion`
-- **OpenAI Codex** → `ask_user_question`
-- **Factory Droid CLI** → `ask_user`
-- **Gemini CLI** → `ask-user`
-- **Other / unknown runtime** → prose fallback (same options, presented as markdown)
+- **claude-code** / **kimi-cli** → `AskUserQuestion`
+- **codex** / **qwen-code** / **mistral-vibe** → `ask_user_question`
+- **gemini-cli** / **deepagents** / **github-copilot** / **pi** → `ask_user`
+- **cline** / **roo** → `ask_followup_question`
+- **cursor** / **continue** → `AskQuestion`
+- **droid** → `AskUser`
+- **antigravity** → `suggested_responses`
+- **opencode** → `question`
+- **Unknown runtime** → prose fallback (same options, presented as markdown)
 
-See `references/ask-user-tools.md` for the full runtime-to-tool table, invocation shape, and the prose fallback template. See `references/planning-questions.md` for the canonical axis bank + selection rules.
+See `references/ask-user-tools.md` for the full 16-runtime table with confidence notes, invocation shape, naming-convention lookup, and the prose fallback template. See `references/planning-questions.md` for the canonical axis bank + selection rules.
 
 Per question:
 - **2-4 options**, mutually exclusive unless `multiSelect: true` is clearly right (e.g., "which failure modes to block" — multiple is common)

@@ -4,29 +4,52 @@ This skill dispatches planning questions via a user-question tool. The tool's na
 
 ## Runtime → tool mapping
 
-| Runtime | Tool name | Invocation style |
-|---|---|---|
-| **Claude Code** (and Anthropic Agent SDK) | `AskUserQuestion` | 1-4 questions per call, 2-4 options each; first option marked `(Recommended)`; `multiSelect: true` for multi-choice; "Other" auto-provided |
-| **OpenAI Codex** | `ask_user_question` | Snake-case variant of the same pattern; payload fields parallel Claude Code's shape |
-| **Factory Droid CLI** | `ask_user` | Structured user-question flow; see Factory's hooks/tools reference for the exact schema |
-| **Gemini CLI** | `ask-user` | Kebab-case CLI tool; used the same way as the structured-question pattern above |
-| **GitHub Copilot CLI** | *(not clearly exposed in public docs)* | Public CLI docs describe approvals and interactive prompts but don't name a first-class ask-user tool; fall back to a prose prompt (see below) |
-| **Unknown / other** | N/A | Fall back to prose prompt (see "Fallback" below) |
+Detect the runtime first, then look up its tool name below. Invoke that tool with the shared payload shape in the next section.
 
-Sources for the mapping: Claude Code Agent SDK user-input docs; OpenAI Codex issue tracker referencing `ask_user_question`; Factory Droid CLI hooks reference mentioning `ask_user`; Gemini CLI tools docs mentioning `ask-user`. The GitHub Copilot CLI reference does not surface a direct equivalent name; treat as unknown.
+| Agent / runtime | Tool name | Confidence basis |
+|---|---|---|
+| **claude-code** | `AskUserQuestion` | All 3 docs agree |
+| **codex** | `ask_user_question` | All 3 docs agree |
+| **gemini-cli** | `ask_user` | All 3 docs agree |
+| **deepagents** | `ask_user` | All 3 docs agree |
+| **kimi-cli** | `AskUserQuestion` | 2 docs agree; 1 silent → positive wins |
+| **cline** | `ask_followup_question` | 2 docs agree; 1 silent → positive wins |
+| **droid** (Factory) | `AskUser` | Research overrode vote — Factory release notes use PascalCase exclusively across 6+ changelog entries |
+| **cursor** | `AskQuestion` | 2 docs agree + research confirmed native Plan Mode tool via official bug reports |
+| **github-copilot** | `ask_user` | Research overrode vote — changelog proves shipped Jan 2025, listed in official tool reference table |
+| **roo** | `ask_followup_question` | 1 doc positive; 2 silent → positive wins |
+| **opencode** | `question` | 1 doc positive; 2 silent → positive wins |
+| **continue** | `AskQuestion` | 1 doc positive; 2 silent → positive wins |
+| **antigravity** | `suggested_responses` | 1 doc positive; 2 silent → positive wins |
+| **pi** | `ask_user` | 1 doc positive; 2 silent → positive wins |
+| **qwen-code** | `ask_user_question` | 1 doc positive; 2 silent → positive wins |
+| **mistral-vibe** | `ask_user_question` | 1 doc positive; 2 silent → positive wins |
+| **unknown / other** | — | Prose fallback (see "Fallback" below) |
+
+### Fast lookup by naming convention
+
+When you know the runtime but forget the exact casing, the grouping below is a memory aid:
+
+| Pattern | Runtimes |
+|---|---|
+| PascalCase `AskUserQuestion` | claude-code, kimi-cli |
+| PascalCase `AskUser` | droid |
+| PascalCase `AskQuestion` | cursor, continue |
+| `ask_user_question` | codex, qwen-code, mistral-vibe |
+| `ask_user` | gemini-cli, deepagents, github-copilot, pi |
+| `ask_followup_question` | cline, roo |
+| `suggested_responses` | antigravity |
+| `question` | opencode |
+
+Casing matters — the tool is an exact-match lookup. `ask_user_question` and `AskUserQuestion` are different tools in different runtimes.
 
 ## Picking the right one at runtime
 
-Detect the runtime before invoking a tool:
+1. Look at the runtime table above; invoke the listed tool.
+2. If the runtime is not in the table → try `AskUserQuestion` (most common PascalCase) once; if it fails with "unknown tool," try `ask_user` (most common snake_case) once.
+3. If both fail → prose fallback. Do not skip the planning round.
 
-1. **If running under Claude Code / Anthropic SDK** → `AskUserQuestion` is available. Prefer it.
-2. **If running under OpenAI Codex** → `ask_user_question`.
-3. **If running under Factory Droid CLI** → `ask_user`.
-4. **If running under Gemini CLI** → `ask-user`.
-5. **If the runtime is unclear** → try `AskUserQuestion` first; if it fails with "unknown tool," fall back to prose.
-6. **If no tool works at all** → prose prompt.
-
-If you are writing this skill's instructions into an agent's system prompt, include the table above so the agent routes correctly without calling a missing tool.
+When writing this skill's instructions into an agent's system prompt on a specific runtime, pre-resolve the tool name so the agent does not have to route at runtime.
 
 ## Signature shape (common across structured-question tools)
 
