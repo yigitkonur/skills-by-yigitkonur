@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-49 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+51 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -53,6 +53,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-openclaw-agent](skills/init-openclaw-agent/) | platform | OpenClaw agent workspace configuration |
 | [optimize-mcp-server](skills/optimize-mcp-server/) | development | Audit, optimize, or architect new MCP servers |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
+| [request-code-review](skills/request-code-review/) | productivity | Hand off work as a PR with domain-aware self-review, or produce a markdown review doc |
 | [review-pr](skills/review-pr/) | productivity | Systematic pull request review |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
 | [run-athena-flow](skills/run-athena-flow/) | orchestration | Athena Flow CLI for AI workflow orchestration |
