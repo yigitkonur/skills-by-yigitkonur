@@ -217,7 +217,7 @@ Include timing hints in the output contract:
 
 | Artifact | Produced at | Format |
 |---|---|---|
-| Research summary | After Step 2 | `skills.markdown` |
+| Source shortlist | After Step 2 | Markdown list in output |
 | Comparison table | After Step 5 | Markdown table in output |
 | Draft SKILL.md | After Step 7 | File on disk |
 | Final checklist | After Step 9 | Inline checklist |

@@ -27,7 +27,7 @@ Planning and preparation before writing any files.
 - [ ] Identified target platforms (Claude.ai, Claude Code, API)
 - [ ] Assessed MCP dependencies and verified MCP server availability
 - [ ] Read the optimization guide or relevant references from this skill
-- [ ] If non-trivial: completed research workflow and produced `skills.markdown`
+- [ ] If non-trivial: completed research workflow, showed source shortlist inline, and produced the comparison table with inherit/avoid decisions
 
 ---
 

@@ -288,7 +288,7 @@ Use bullet points with "Do not" prefix:
 ## Guardrails
 
 - Do not draft the final skill before reading the current workspace.
-- Do not claim research happened unless `skills.markdown` exists.
+- Do not claim research happened unless the comparison table appears inline in output.
 - Do not compare sources mentally and hide the table.
 - Do not copy a source skill wholesale.
 ```
