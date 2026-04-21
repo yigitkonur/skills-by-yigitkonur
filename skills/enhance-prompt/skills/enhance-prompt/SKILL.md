@@ -33,11 +33,19 @@ Read the prompt. Form an internal opinion on these questions — do NOT show thi
 | Is this code-related? | If yes, the agent can see the filesystem, run commands, read files. Don't repeat what it can discover. |
 | What's the done signal? | How does the agent know to stop? Most prompts forget this and the agent spins. |
 
-### Step 2 — Plan via `AskUserQuestion` (Round 1, default)
+### Step 2 — Plan via the runtime's ask-user tool (Round 1, default)
 
 **Default: run Round 1.** For non-trivial prompts, a short upfront planning round catches misalignment cheaper than rewriting after enhancement.
 
-Dispatch **one** `AskUserQuestion` call with up to **4 bundled questions** (tool cap) covering the axes most likely to change the enhancement. Read `references/planning-questions.md` for the canonical axis bank + selection rules.
+Dispatch **one** user-question call with up to **4 bundled questions** covering the axes most likely to change the enhancement. The tool name depends on the runtime:
+
+- **Claude Code / Anthropic SDK** → `AskUserQuestion`
+- **OpenAI Codex** → `ask_user_question`
+- **Factory Droid CLI** → `ask_user`
+- **Gemini CLI** → `ask-user`
+- **Other / unknown runtime** → prose fallback (same options, presented as markdown)
+
+See `references/ask-user-tools.md` for the full runtime-to-tool table, invocation shape, and the prose fallback template. See `references/planning-questions.md` for the canonical axis bank + selection rules.
 
 Per question:
 - **2-4 options**, mutually exclusive unless `multiSelect: true` is clearly right (e.g., "which failure modes to block" — multiple is common)
@@ -62,7 +70,7 @@ After Round 1 answers come back, assess: did the answers surface a new ambiguity
 - Round 1 cleared the picture — go straight to Step 3
 - You are tempted to use Round 2 to "double-check" Round 1 answers → no, just proceed
 
-Round 2 is **one** `AskUserQuestion` call, **1-3 focused questions**. Total question budget across both rounds: **≤ 7**. If the budget is blown, make a reasoned default and proceed with a note.
+Round 2 is **one** call to the runtime's ask-user tool, **1-3 focused questions**. Total question budget across both rounds: **≤ 7**. If the budget is blown, make a reasoned default and proceed with a note.
 
 ### Step 3 — Enhance
 
@@ -129,7 +137,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 - No five-shot examples unless the user asks for them
 - No "agent writes its own prompt" meta-prompting
 - No 26-principle dumps or academic prompt engineering
-- No more than 2 `AskUserQuestion` rounds, ever — and no more than 4 questions per round (tool cap)
+- No more than 2 ask-user rounds, ever — and no more than 4 questions per round (Claude Code cap; keep portable)
 - No forcing Round 1 on surgical one-liners — skip it when Step 1 diagnosis is unambiguous
 - No "Option A / B / C" filler labels — every option must be a meaningful choice the user can compare
 - No manually-added "Other" option — the tool auto-provides it
@@ -140,6 +148,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 
 | File | Read when |
 |---|---|
+| `references/ask-user-tools.md` | Dispatching the planning round — picks the right tool name for the current runtime (AskUserQuestion / ask_user_question / ask_user / ask-user / prose fallback) |
 | `references/planning-questions.md` | Running Step 2 (Round 1) — canonical axis bank, picking the "(Recommended)" option, swap rules, worked examples |
 | `references/enhancement-layers.md` | Applying the 5 enhancement layers — detailed guidance per layer |
 | `references/code-prompt-patterns.md` | Prompt targets a coding agent — file paths, verification, tech-stack awareness |
