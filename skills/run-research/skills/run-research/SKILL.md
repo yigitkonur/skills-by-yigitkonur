@@ -30,7 +30,7 @@ Restart your session after installation. If MCP tools are denied at runtime, fal
 |---|---|---|---|
 | `start-research` | — | `goal` (string), `include_playbook` (bool, default false) | Yes — returns goal-tailored brief (`primary_branch`, `first_call_sequence`, 25–50 keyword seeds, `iteration_hints`, `gaps_to_watch`, `stop_criteria`) when `goal` + planner available |
 | `web-search` | `queries` (up to 50), `extract` (what you're looking for) | `raw` (skip classifier, default false), `scope` (`"web"` \| `"reddit"` \| `"both"`, default `"web"`), `verbose` (bool, default false) | Yes — tiered classifier (HIGHLY_RELEVANT / MAYBE_RELEVANT / OTHER) + synthesis + gaps + refine queries |
-| `scrape-links` | `urls` (up to N), `extract` (pipe-separated shape) | — | Yes — per-URL extraction. Auto-detects `reddit.com/r/.../comments/` permalinks and routes them through the Reddit API (threaded post + full comment tree); non-reddit URLs flow through the HTTP scraper in parallel. |
+| `scrape-links` | `urls` (up to 100), `extract` (pipe-separated shape) | — | Yes — per-URL extraction. Auto-detects `reddit.com/r/.../comments/` permalinks and routes them through the Reddit API (threaded post + full comment tree); non-reddit URLs flow through the HTTP scraper in parallel. |
 
 There is no `search-reddit` or `get-reddit-post` tool in v6 — those collapsed into `web-search scope:"reddit"` (discovery) and `scrape-links` with reddit URLs (fetch).
 
@@ -52,9 +52,11 @@ You research directly using the three tools. Read `references/tools.md` for para
 
 ### The research loop
 
-#### 0. Plan with `start-research` — always
+#### 0. Plan with `start-research` — default
 
-Every session begins with `start-research` using a 1–2 sentence `goal`. The server returns a goal-tailored brief: `goal_class`, `primary_branch` (reddit / web / both), `first_call_sequence` (exact next 1–3 calls), 25–50 keyword seeds, `iteration_hints`, `gaps_to_watch`, `stop_criteria`. Fire the `first_call_sequence` verbatim on round 1. If the planner is offline, the brief falls back to a compact stub — route manually by question shape.
+Begin most sessions with `start-research` using a 1–2 sentence `goal`. The server returns a goal-tailored brief: `goal_class`, `primary_branch` (reddit / web / both), `first_call_sequence` (exact next 1–3 calls), 25–50 keyword seeds, `iteration_hints`, `gaps_to_watch`, `stop_criteria`. Fire the `first_call_sequence` verbatim on round 1. If the planner is offline, the brief falls back to a compact stub — route manually by question shape.
+
+**Skip `start-research` only for:** production incidents (latency matters) and simple one-shot fact checks (overhead outweighs the brief). The `Matching depth to stakes` table below marks these rows.
 
 #### 1. Search — from the brief's primary_branch
 
@@ -87,7 +89,7 @@ Cross-check any claim that could change your recommendation. Stop when additiona
 
 | Situation | Typical path |
 |---|---|
-| Quick fact check | `start-research` → `web-search` (5 queries) → `scrape-links` 2–3 URLs |
+| Quick fact check | `web-search` (5 queries, skip planner) → `scrape-links` 2–3 URLs |
 | Error diagnosis | `start-research` → `web-search scope:"web"` (error in quotes) → `scrape-links` top 3–5 |
 | Library comparison | `start-research` → `web-search scope:"web"` (30 queries, 5 facets) → `scrape-links` on docs + benchmarks |
 | Migration / sentiment | `start-research` (→ `primary_branch:"reddit"`) → `web-search scope:"reddit"` → `scrape-links` on post permalinks |

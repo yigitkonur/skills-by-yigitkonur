@@ -76,14 +76,14 @@ These workflows show how the research loop adapts to different question types. T
        - '<A> problems issues production'
        - '<B> gotchas limitations'
        - '<A> regret complex queries performance'
-       - '"don\'t use <A>" OR "avoid <A>"'
+       - '"don't use <A>" OR "avoid <A>"'
        extract: "lived experience with <A> and <B> — migration drivers, regrets, dissent, production breakers"
 
 3. scrape-links (mixed batch: 3–5 comparison articles / READMEs / npm pages + 5–8 reddit permalinks)
    extract = "features | bundle size | performance benchmarks | limitations | maintenance activity | community size | migration drivers | verbatim quotes"
    # Reddit URLs auto-routed to the Reddit API; non-reddit URLs flow through the scraper in parallel
 
-4. Round 2 if confidence medium or gaps unclosed: use classifier's refine_queries + scrape ## Follow-up signals to build next web-search
+4. Round 2 if confidence medium or gaps unclosed: use web-search's `## Suggested follow-up searches` + scrape `## Follow-up signals` to build next web-search
 
 5. Output: Decision matrix + recommendation
 ```
