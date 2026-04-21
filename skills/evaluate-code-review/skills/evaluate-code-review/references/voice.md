@@ -17,7 +17,7 @@ These phrases are banned in any response — PR thread, conversation, markdown d
 | "Hope this helps!" | Hedge language. The work either helps or it doesn't; the body is evidence. |
 | "Please feel free to..." | Filler. Drop it. |
 | "I apologize for..." | Long apologies after pushback turn corrections into drama. State the correction factually. |
-| "No worries, I'll fix it" | "No worries" is a social fillers; "I'll fix it" is future-tense. Either fix it now or state the block. |
+| "No worries, I'll fix it" | "No worries" is social filler; "I'll fix it" is future-tense. Either fix it now or state the block. |
 
 If you catch yourself about to type any of the above, **delete mid-sentence** and replace with the appropriate pattern below.
 

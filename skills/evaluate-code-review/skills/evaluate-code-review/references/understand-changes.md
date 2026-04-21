@@ -67,7 +67,7 @@ File operations via Bash don't show in Edit/Write logs. Scan for:
 - `mkdir <dir>` — new directory
 - `touch <file>` — new empty file
 - `> <file>` or `>> <file>` (redirect) — overwrite/append
-- `sed -i ... <file>` — in-place edit (note: `sed -i` is banned by this repo's practices, but other agents may have used it)
+- `sed -i ... <file>` — in-place edit (some agents avoid this in favor of the Edit tool for auditability; still worth tracking as a file operation)
 - `git mv`, `git rm` — tracked move/delete
 
 Record these alongside the Edit/Write trail to get a full picture of file-level operations.

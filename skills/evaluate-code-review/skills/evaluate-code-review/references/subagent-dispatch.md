@@ -139,7 +139,8 @@ Files changed:
   /Users/alice/repo/src/session.ts
   /Users/alice/repo/README.md
 
-Read diff with: git diff e5f6a78..abc1234 -- /Users/alice/repo
+Read diff with: git diff e5f6a78..abc1234
+(Run from the repo root. `--` pathspec filters must be repo-relative, not absolute; omit them unless you actually need path filtering.)
 
 ## The feedback items to evaluate
 
