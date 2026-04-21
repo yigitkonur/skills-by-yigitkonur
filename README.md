@@ -69,6 +69,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
 | [test-macos-snapshots](skills/test-macos-snapshots/) | testing | macOS app screenshot validation and drift checks |
 | [think-deeper](skills/think-deeper/) | productivity | Generic deep-thinking framework for hard tasks |
+| [use-chezmoi-dotfiles](skills/use-chezmoi-dotfiles/) | platform | chezmoi-backed dotfiles with age-encrypted secrets, canonical MCP catalog, and CLI wrappers (`sync`/`skill`/`mcp-manage`/`mcp-verify`) fronting all 5 AI coding assistants |
 | [use-railway](skills/use-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |
 
 ## Notes
