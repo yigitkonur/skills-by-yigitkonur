@@ -1,6 +1,6 @@
 # Planning Questions — Round 1 Axis Bank
 
-Round 1 of `enhance-prompt` dispatches a single `AskUserQuestion` call with up to **4 questions** (tool cap) covering the axes most likely to change the final enhancement. This file is the canonical bank; swap axes when the prompt warrants.
+Round 1 of `enhance-prompt` dispatches a single ask-user call (`AskUserQuestion` on Claude Code, `ask_user_question` on Codex, `ask_user` on Gemini CLI / deepagents / pi / GitHub Copilot, `ask_followup_question` on Cline / Roo, etc. — see `references/ask-user-tools.md` for the 16-runtime table + prose fallback) with up to **4 questions** (Claude Code cap; portable across runtimes) covering the axes most likely to change the final enhancement. This file is the canonical bank; swap axes when the prompt warrants.
 
 ## The four canonical axes
 
@@ -106,7 +106,7 @@ User prompt: *"Make the login page faster, it's slow."*
 
 **Step 1 diagnosis**: vague (what's "slow"? what metric?), code-related (frontend), no verification criterion stated, no scope boundary.
 
-**Round 1 AskUserQuestion call** (4 bundled questions):
+**Round 1 ask-user-tool call** (4 bundled questions; the example below is the logical structure — the tool name depends on the runtime, see `references/ask-user-tools.md`):
 
 ```
 Questions:
@@ -146,7 +146,7 @@ Round 1 answers came back:
 
 **New axis emerged**: user picked "Plan of attack" → now the enhancement must produce *a plan*, not *working code*. Plan-shaping is an axis Round 1 didn't cover.
 
-**Round 2 AskUserQuestion call** (1 question, targeted):
+**Round 2 ask-user-tool call** (1 question, targeted; same runtime-dependent tool name as Round 1):
 
 ```
 Question:

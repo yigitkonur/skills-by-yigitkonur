@@ -55,7 +55,7 @@ Per question:
 - **2-4 options**, mutually exclusive unless `multiSelect: true` is clearly right (e.g., "which failure modes to block" — multiple is common)
 - **First option marked "(Recommended)"** based on your Step 1 diagnosis — not a static default
 - **Short labels** (1-5 words), one-line descriptions
-- **Do not manually add "Other"** — the tool auto-provides it
+- **Do not manually add "Other"** — Claude Code auto-provides it and most other runtimes mimic this convention; see `references/ask-user-tools.md` for per-runtime differences
 
 **Skip Round 1 only when:**
 - The prompt is a one-line surgical edit with unambiguous intent ("fix typo in README line 12")
@@ -144,7 +144,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 - No more than 2 ask-user rounds, ever — and no more than 4 questions per round (Claude Code cap; keep portable)
 - No forcing Round 1 on surgical one-liners — skip it when Step 1 diagnosis is unambiguous
 - No "Option A / B / C" filler labels — every option must be a meaningful choice the user can compare
-- No manually-added "Other" option — the tool auto-provides it
+- No manually-added "Other" option — Claude Code auto-provides it and most runtimes mimic this; see `references/ask-user-tools.md` if running on a runtime that differs
 - No rewriting the user's voice — enhance the content, preserve the tone
 - No spawning agents — this skill enhances a user message, period
 
@@ -152,7 +152,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 
 | File | Read when |
 |---|---|
-| `references/ask-user-tools.md` | Dispatching the planning round — picks the right tool name for the current runtime (AskUserQuestion / ask_user_question / ask_user / ask-user / prose fallback) |
+| `references/ask-user-tools.md` | Dispatching the planning round — picks the right tool name for the current runtime across 16 mapped agents (Claude Code / Codex / Factory Droid / Cursor / Gemini CLI / Cline / Roo / and 9 more), with a prose fallback when no structured tool is available |
 | `references/planning-questions.md` | Running Step 2 (Round 1) — canonical axis bank, picking the "(Recommended)" option, swap rules, worked examples |
 | `references/enhancement-layers.md` | Applying the 5 enhancement layers — detailed guidance per layer |
 | `references/code-prompt-patterns.md` | Prompt targets a coding agent — file paths, verification, tech-stack awareness |
