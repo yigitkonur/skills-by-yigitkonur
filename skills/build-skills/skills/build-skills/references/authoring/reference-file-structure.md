@@ -251,6 +251,42 @@ Load only the 3-5 reference files relevant to your current step. Use the SKILL.m
 
 **Rule of thumb:** If you have read more than 5 reference files before producing any output, you are over-loading.
 
+## Keep references one level deep
+
+References should be leaves, not branches. Readers enter via SKILL.md, load one reference, and act — without chasing a chain of further reads.
+
+```
+Good:   SKILL.md → references/authoring/testing-methodology.md → act
+
+Bad:    SKILL.md → references/authoring/testing-methodology.md
+             → references/authoring/pressure-scenarios.md
+             → references/authoring/rationalization-capture.md → act
+```
+
+If a reference file ends up routing to a second-tier reference, the content should live in one file, not be split across two. Splitting content only makes sense when the two files are independently useful — in which case SKILL.md should route to both directly.
+
+**Rule:** A reference file may *mention* another reference ("the related discipline is covered in X.md") but must not require reading it to act on the current content. If two files are coupled — you cannot act on A without also reading B — merge them.
+
+## Long files need a table of contents
+
+Reference files over 300 lines should open with a short TOC so the reader can scan for the section they need without reading top-to-bottom:
+
+```markdown
+# Testing Methodology
+
+How to test a skill before shipping.
+
+## Contents
+- [Testing tiers](#testing-tiers) — choose the tier matching your audience
+- [Trigger tests](#test-category-1-triggering-tests) — verify the skill loads
+- [Functional tests](#test-category-2-functional-tests) — verify outputs are correct
+- [Discipline skills: RED baseline](#discipline-enforcing-skills-need-the-red-phase) — for skills that enforce rules
+
+[Sections follow...]
+```
+
+TOCs are not decoration. Agents under context pressure read only the sections they need. A missing TOC forces either reading the whole file (wasteful) or guessing at section positions (unreliable).
+
 ## Size guard
 
 Before adding content to any reference file, check its current size:

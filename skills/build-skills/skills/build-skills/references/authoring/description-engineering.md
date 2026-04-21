@@ -239,6 +239,53 @@ Why: `<` and `>` can inject instructions into the agent's system prompt.
 - Descriptions appear in the system prompt — treat them as security-sensitive
 - YAML safe parsing prevents code execution in frontmatter
 
+## Descriptions as the agent's shortcut
+
+Agents under pressure skim descriptions and act without loading the body. This is a feature, not a bug — the body costs tokens. But it means the description must carry enough of the skill's discipline for the agent to at least pause and load the body when the skill actually applies.
+
+### Include about-to-violate symptoms
+
+For discipline-enforcing skills, include the symptoms of the moment when the agent is most likely to bypass the rule:
+
+```yaml
+# Weak — fires only when the task is labeled clearly
+description: Use skill if you are writing new code that requires tests.
+
+# Strong — fires when the agent is tempted to skip
+description: Use skill if you are writing new code, tempted to test after, or
+  just manually verified something — TDD is required even when the code works.
+```
+
+The second form triggers when the agent has already rationalized skipping the skill. The description becomes the last line of defense.
+
+### Put the distinguishing trigger first
+
+Agents quote descriptions back from memory. The first phrase anchors recall:
+
+```yaml
+# Generic first — blurs with neighboring skills
+description: Use skill if you are building applications and need auth flows.
+
+# Distinguishing first — anchors on the specific tool
+description: Use skill if you are building a Supastarter app with Better Auth.
+```
+
+Name the specific technology, workflow, or file pattern before the generic verb.
+
+### Keep it actionable, not descriptive
+
+Descriptions that describe the *body contents* rather than the *trigger condition* fail to fire reliably:
+
+```yaml
+# Describes the body — doesn't tell Claude when to use it
+description: This skill contains references on auth, billing, and storage.
+
+# Describes the trigger — tells Claude when to use it
+description: Use skill if you are building auth, billing, or storage features
+  in an existing Supastarter app.
+```
+
+If the description sounds like a table of contents, rewrite it as an if-you-are-doing-X statement.
 
 ---
 

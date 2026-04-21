@@ -26,7 +26,7 @@ Do not use this skill for:
 
 1. **Workspace first.** Inspect the current workspace before searching remotely or drafting anything.
 2. **Research before synthesis for non-trivial work.** New skills, major redesigns, multi-source merges, thin local evidence, or explicit comparison requests require remote research.
-3. **`skills.markdown` is the proof of research.** If non-trivial research happened, the artifact must exist before synthesis.
+3. **The comparison table is the proof of research.** If non-trivial research happened, the comparison table must appear in output before synthesis.
 4. **Comparison before combination.** Build the comparison table before proposing the design.
 5. **Original, repo-fit output only.** Distill patterns; do not rename-clone a source skill.
 6. **Keep progressive disclosure clean.** Put trigger logic in frontmatter, workflow and decisions in `SKILL.md`, and bulky detail in `references/`.
@@ -49,7 +49,7 @@ inventing ad-hoc shell pipelines:
 
 ## Artifact output
 
-Intermediate artifacts (workspace scan, comparison table, success criteria) appear in conversation output as they are produced — show each one at the step that generates it. Persistent artifacts (`skills.markdown`, final SKILL.md, reference files) live together in the draft skill directory. Default that directory to `skills/<skill-name>/`; if that path is not writable yet, stage the whole skill folder elsewhere and move it into `skills/<skill-name>/` before declaring done.
+Intermediate artifacts (workspace scan, source shortlist, comparison table, success criteria) appear in conversation output as they are produced — show each one at the step that generates it. Persistent artifacts (final SKILL.md, reference files) live together in the draft skill directory. Default that directory to `skills/<skill-name>/`; if that path is not writable yet, stage the whole skill folder elsewhere and move it into `skills/<skill-name>/` before declaring done.
 
 ## Required workflow
 
@@ -96,7 +96,7 @@ Only execute this step if step 1 classified the job as **Full research path**. S
 - Use `bash scripts/skill-dl` to download selected candidates, or run `bash scripts/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
 - See `references/remote-sources.md` for more `skill-dl` usage patterns and download options.
 - Prefer a few diverse, relevant sources over many near-duplicates.
-- Create `skills.markdown` next to the draft `SKILL.md` in the draft skill directory, summarizing what was downloaded, what was shortlisted, and why, before moving on.
+- Show the source shortlist inline in conversation output — list what was downloaded, what made the shortlist, and why — before moving on to Step 4a.
 
 ### 4a. Read the downloaded corpus thoroughly
 
@@ -142,6 +142,7 @@ Before drafting, write down what success looks like:
 - **Trigger tests:** Write 5+ should-trigger queries and 5+ should-NOT-trigger queries. For revisions, run each one by pasting it as a new message in Claude.ai (with only this skill enabled) or Claude Code, and record whether the skill loaded. For new skills, verify the description against your test queries manually; run live trigger tests after installation. See `references/authoring/testing-methodology.md` for the full testing guide.
 - **Functional test:** Run at least one complete functional test of the primary workflow end-to-end.
 - **Self-check:** Ask Claude "When would you use [skill-name]?" and verify the answer matches your intent.
+- **RED-GREEN-REFACTOR for discipline skills:** If the skill enforces a rule an agent could rationalize away (TDD, verification, research-before-synthesis), run at least one pressure scenario without the skill first, capture the rationalizations verbatim, then re-test with the skill loaded. See `references/authoring/tdd-for-skills.md` for the full cycle.
 
 > Tip: For a NEW skill, install the draft to the active runtime's skill directory before testing triggers. Trigger tests fail silently if the skill isn’t loaded. For REVISIONS, test against the currently installed version. If the runtime forbids writing to the installed skill directory, run manual trigger review plus a functional workflow test, report the installation block explicitly, and do not claim live trigger coverage.
 
@@ -170,7 +171,7 @@ Before drafting, write down what success looks like:
 | Do this | Not that |
 |---|---|
 | inventory the workspace and read local source files first | start from remote search results or a remembered template |
-| create `skills.markdown` for non-trivial research | claim research happened because you skimmed URLs |
+| capture per-source notes with exact relative paths before the comparison table | claim research happened because you skimmed URLs |
 | build a comparison table before drafting | mentally blend sources and jump to the final `SKILL.md` |
 | route detailed guidance to existing references | stuff `SKILL.md` with tutorials, examples, or duplicated checklists |
 | inherit patterns selectively with repo-fit reasoning | copy the most detailed source and rename it |
@@ -181,6 +182,8 @@ Before drafting, write down what success looks like:
 | verify tool prerequisites before using them (`bash scripts/skill-dl --where` or `skill-dl --version`) | assume tools are installed because the skill mentions them |
 | show intermediate artifacts at the step that produces them | batch all output to the end or leave output location ambiguous |
 | distinguish creation vs. revision paths in testing | write test instructions that only work for one path |
+| for discipline skills, run RED baseline and capture rationalizations verbatim | guess which excuses agents might invent |
+| pick freedom level per step (high/medium/low) based on what breaks when the agent deviates | write the whole skill in one tone — uniformly strict or uniformly loose |
 
 ## Output contract
 
@@ -188,7 +191,7 @@ Unless the user wants a different format, show work in this order:
 
 1. skill type classification (after Step 2)
 2. workspace scan summary (after Step 3)
-3. research summary with `skills.markdown` or explicit skip reason (after Step 4)
+3. source shortlist with selection rationale, or explicit skip reason (after Step 4)
 4. markdown comparison table (after Step 5, required for the full research path)
 5. success criteria (after Step 6)
 6. selection and synthesis strategy (after Step 7)
@@ -209,6 +212,9 @@ Load the smallest relevant set for the branch of work you are in.
 | `references/authoring/decision-tree-patterns.md` | Designing branch logic, routing labels, or decision-tree structure. |
 | `references/authoring/reference-file-structure.md` | Deciding what belongs in `SKILL.md` versus `references/`, or reorganizing reference layout. |
 | `references/authoring/testing-methodology.md` | Planning or running trigger tests, functional tests, or performance comparisons. |
+| `references/authoring/tdd-for-skills.md` | Writing a discipline-enforcing skill — run RED baseline before shipping to catch the rationalizations agents actually use. |
+| `references/authoring/persuasion-principles.md` | Deciding which persuasion principles to apply (authority, commitment, scarcity, social proof, unity) when a draft reads too soft or too strict for its skill type. |
+| `references/authoring/degrees-of-freedom.md` | Deciding how prescriptive each step should be — high/medium/low freedom by what breaks when the agent deviates. |
 
 ### Patterns
 
@@ -238,7 +244,8 @@ Load the smallest relevant set for the branch of work you are in.
 |---|---|
 | `references/checklists/master-checklist.md` | Running the full 90+ item quality checklist before shipping. |
 | `references/examples/annotated-examples.md` | Studying strong structural patterns from real skills without copying them. |
-| `references/examples/anti-patterns.md` | Auditing for bloat, overlap, weak triggers, copied structure, or missing tests. |
+| `references/examples/anti-patterns.md` | Auditing the skill's *content* for bloat, overlap, weak triggers, copied structure, or missing tests (AP-1 through AP-24). |
+| `references/examples/anti-patterns-authoring.md` | Auditing the *authoring process* for reference overload, output batching, tool assumption, path confusion, or discipline-skill failures (AP-25 through AP-34). |
 
 ### Iteration and troubleshooting
 
@@ -256,7 +263,7 @@ Load the smallest relevant set for the branch of work you are in.
 ## Guardrails and recovery
 
 - Do not draft the final skill before reading the current workspace.
-- Do not say research is complete unless `skills.markdown` exists for the non-trivial path.
+- Do not say research is complete unless the comparison table with inherit/avoid decisions has been produced for the non-trivial path.
 - Do not hide the comparison table inside prose or skip it because sources "look similar."
 - Do not copy a source skill wholesale, even as a temporary scaffold.
 - Do not add files to `references/` unless they are needed and routed.
