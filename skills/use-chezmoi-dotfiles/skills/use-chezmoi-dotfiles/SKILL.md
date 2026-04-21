@@ -1,11 +1,11 @@
 ---
 name: use-chezmoi-dotfiles
-description: Use skill if you are editing yigitkonur's dotfiles on any Mac — AI configs (Claude/Codex/Factory/Cursor/Copilot), MCP servers, skills, zsh, Homebrew, macOS defaults. The repo `yigitkonur/script-dotfiles` uses chezmoi + age-encrypted secrets. Use `sync`/`skill`/`mcp-manage`/`mcp-verify` wrappers instead of raw chezmoi.
+description: Use skill if you are editing yigitkonur's chezmoi-backed dotfiles on macOS — AI configs, MCP servers, skills, zsh, Homebrew, macOS defaults via `sync`/`skill`/`mcp-manage`/`mcp-verify` wrappers.
 ---
 
 # Use chezmoi dotfiles (yigitkonur/script-dotfiles)
 
-`yigitkonur` runs every Mac on a single private chezmoi repo with an age-encrypted secrets catalog. Everything routes through five CLI wrappers; never touch raw chezmoi commands unless you know exactly why.
+`yigitkonur` runs every Mac on a single private chezmoi repo with an age-encrypted secrets catalog. Everything routes through four CLI wrappers (`sync`, `skill`, `mcp-manage`, `mcp-verify`); never touch raw chezmoi commands unless you know exactly why.
 
 ## When to use
 
@@ -37,12 +37,12 @@ Trigger when asked to:
 
 ---
 
-## Command matrix — the 4 CLI wrappers
+## Command matrix — the 4 wrappers + aliases
 
 | Goal | Command |
 |---|---|
 | Resolve drift interactively | `sync` |
-| Add MCP server (all non-Claude providers) | `mcp-manage add <name> --stdio npx --arg '-y' --arg pkg [--env-secret KEY=secret_key] [--providers ...]` |
+| Add MCP server (all non-Claude providers) | `mcp-manage add <name> --stdio npx --arg '-y' --arg <pkg> [--env-secret KEY=secret_key] [--providers ...]` |
 | Add MCP HTTP server | `mcp-manage add <name> --http https://…` |
 | Remove MCP | `mcp-manage remove <name>` |
 | Set a secret | `mcp-manage secret set <key> <value>` |
@@ -77,7 +77,7 @@ MM      both changed                            sync → pick: keep live OR sour
  A      new source file                         chezmoi apply
 ```
 
-For a Claude edit to `~/.agents/agents/foo.md` that needs to land in the repo: **always `re-add`**, never naive `apply` (would overwrite the edit).
+For a Claude edit to `~/.agents/AGENTS.md` that needs to land in the repo: **always `re-add`**, never naive `apply` (would overwrite the edit).
 
 `sync` encodes this decision tree. Prefer it.
 

@@ -1,6 +1,6 @@
 # use-chezmoi-dotfiles
 
-Drive the `sync` / `skill` / `mcp-manage` / `mcp-verify` CLI wrappers that front a chezmoi-managed dotfiles repo unifying Claude Code, OpenAI Codex, Factory Droid, Cursor, and GitHub Copilot through one AGENTS.md + one skill library + one MCP catalog.
+Edit yigitkonur's chezmoi-backed dotfiles on macOS — AI configs, MCP servers, skills, zsh, Homebrew, macOS defaults via `sync`/`skill`/`mcp-manage`/`mcp-verify` wrappers.
 
 **Category:** platform
 
