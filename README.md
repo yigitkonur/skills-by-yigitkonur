@@ -20,6 +20,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
 | Skill | Category | Description |
 |---|---|---|
+| [check-completion](skills/check-completion/) | productivity | Check what's done vs. claimed done via a 22-status taxonomy; remediate until every in-scope task reaches a terminal status |
 | [do-brainstorm](skills/do-brainstorm/) | productivity | Framework-aware, user-in-the-loop brainstorming; Cynefin-first classifier routes across 25 mental models |
 | [optimize-cli-for-agents](skills/optimize-cli-for-agents/) | development | Audit or design agent-ready CLIs with iterative feedback loops |
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
