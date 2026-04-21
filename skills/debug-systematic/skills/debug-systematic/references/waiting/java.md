@@ -69,16 +69,25 @@ public class PollUtils {
 
     public static <T> T waitFor(Callable<T> condition, Duration timeout, Duration interval, String description) {
         if (description == null || description.isBlank()) description = "condition";
-        Instant deadline = Instant.now().plus(timeout);
-        Throwable last = null;
-        while (Instant.now().isBefore(deadline)) {
+        // Use System.nanoTime() for the deadline — monotonic, unaffected by NTP
+        // wall-clock adjustments. Instant.now() can jump and cause waits to
+        // timeout too early or hang past the intended deadline.
+        long deadlineNs = System.nanoTime() + timeout.toNanos();
+        Exception last = null;
+        while (System.nanoTime() < deadlineNs) {
             try {
                 T result = condition.call();
+                // Only null counts as "not ready". `false`, `0`, empty collections
+                // are legitimate ready signals for generic T.
                 if (result != null && !(result instanceof Boolean b && !b)) return result;
-            } catch (Throwable err) {
+            } catch (InterruptedException ie) {
+                // Propagate interrupt status; do not swallow it
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(ie);
+            } catch (Exception err) {  // narrower than Throwable; do not mask JVM Errors
                 last = err;
             }
-            try { Thread.sleep(interval.toMillis()); }
+            try { Thread.sleep(Math.max(1, interval.toMillis())); }
             catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new RuntimeException(ie); }
         }
         String msg = "waitFor timed out after " + timeout + ": " + description;
@@ -88,7 +97,7 @@ public class PollUtils {
 
     public static void waitForCount(Supplier<Integer> getCount, int expected, Duration timeout, Duration interval, String description) {
         if (description == null) description = "count >= " + expected;
-        waitFor(() -> getCount.get() >= expected ? Boolean.TRUE : Boolean.FALSE, timeout, interval, description);
+        waitFor(() -> getCount.get() >= expected ? Boolean.TRUE : null, timeout, interval, description);
     }
 }
 ```
@@ -107,4 +116,4 @@ public class PollUtils {
 | `Thread.sleep(500)` in a JUnit test | awaitility's `await().until(...)` |
 | `while(!condition) { Thread.sleep(10); }` with no timeout | Always set `atMost(...)` |
 | Missing `alias(description)` in awaitility | Failure messages become useless; always set alias |
-| Using `System.currentTimeMillis()` for the deadline | Use `Instant.now()` (monotonic-adjacent) or `java.time.Duration` comparisons |
+| Using `System.currentTimeMillis()` or `Instant.now()` for the deadline | Both are wall-clock and can jump under NTP adjustments. Use `System.nanoTime()` for elapsed-time deadlines. |

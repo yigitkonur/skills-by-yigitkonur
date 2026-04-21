@@ -90,7 +90,7 @@ What the 2 fails revealed about the real symptom: <what's actually different or 
 New repro conditions to include: <what was missing>
 ```
 
-Then re-run the Phase 1 workflow. The new symptom card should be measurably richer than the previous one; if it isn't, you're going in circles — route to `do-brainstorm` even at Fail 2.
+Then re-run the Phase 1 workflow. The new symptom card should be measurably richer than the previous one. If it isn't — if re-opening produced the same symptom card you started with — that's evidence the pattern families you're considering are exhausted. Proceed to **Fail 3 immediately** (don't wait for a third fix attempt) and route to `do-brainstorm` with the two-fails handoff template below. The 3-fails rule is the upper bound; hitting it earlier when the signal is clear is not a violation, it's a time-saver.
 
 ## Handoff format to `do-brainstorm`
 

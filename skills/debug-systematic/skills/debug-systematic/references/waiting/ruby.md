@@ -71,7 +71,7 @@ end
 **RSpec**: include the module globally via `RSpec.configure`; `wait_for` is available in every `describe`.
 **Minitest**: use as a mixin in the test base class; same API.
 **Capybara / system specs**: Capybara has its own `have_selector` matchers with auto-waiting; prefer those for UI assertions. Use `wait_for` for state-level polls not covered by Capybara.
-**Time mocks (`Timecop`, `ActiveSupport::Testing::TimeHelpers`)**: `Process.clock_gettime(Process::CLOCK_MONOTONIC)` is not affected by time mocks — the wait measures real wall-clock time, which is what you want.
+**Time mocks (`Timecop`, `ActiveSupport::Testing::TimeHelpers`)**: by default, `Process.clock_gettime(Process::CLOCK_MONOTONIC)` is not affected by `Timecop.freeze` / `travel_to` — the wait measures real wall-clock time, which is what you usually want in polling. Note: `Timecop` does offer `Timecop.mock_process_clock` (opt-in) that also mocks monotonic time; if a test sets that, `wait_for` will behave oddly. Disable `mock_process_clock` for tests that use `wait_for`.
 
 ## Anti-patterns
 

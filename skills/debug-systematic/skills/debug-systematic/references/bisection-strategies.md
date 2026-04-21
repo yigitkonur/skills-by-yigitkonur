@@ -20,9 +20,16 @@ When Phase 1's repro is not 10/10 or the failure space is too wide, bisection cu
 **Recipe**: use `scripts/find-polluter.sh` — the script auto-detects the test runner (jest/vitest/pytest/cargo/gotest/rspec/mvn/gradle) from the project's manifest files, then binary-searches the test list to find the smallest subset of pre-running tests that causes the target to fail.
 
 ```bash
-# From the repo root
+# From the repo root. `--target` is a runner-native selector, NOT a test title:
+#   Jest/Vitest: a test-file path or module pattern (e.g., tests/auth.test.ts)
+#   pytest:      a nodeid (e.g., tests/test_auth.py::test_missing_token)
+#   cargo:       a test function name (e.g., auth::missing_token)
+#   gotest:      a regex for -run (e.g., ^TestAuth_MissingToken$)
+#   rspec:       a file:line selector (e.g., spec/auth_spec.rb:42)
+#   mvn/gradle:  a test class (e.g., com.example.AuthTest)
+
 bash scripts/find-polluter.sh \
-  --target "auth.test.ts > handles missing token" \
+  --target "tests/auth.test.ts" \
   --runner auto
 ```
 
@@ -77,14 +84,23 @@ Git checks out the middle commit, runs the script; exit 0 = good, non-zero = bad
 
 **Mechanism**: binary search the flag set.
 
-**Recipe**:
+**Recipe** (single-flag culprit — simplest case):
 
-1. List all recently-toggled flags (N flags, 2^N combinations — do NOT enumerate all).
-2. Split the flags into two halves. Enable half-A-on, half-B-off. Reproduce. Enable half-A-off, half-B-on. Reproduce.
+1. List all recently-toggled flags (N flags).
+2. Split the flags into two halves. Enable half-A, disable half-B; reproduce. Then enable half-B, disable half-A; reproduce.
 3. Whichever half reproduces: the culprit is in there. Recurse.
 4. After log2(N) rounds, you have the minimal flag set that triggers the failure.
 
 **Example**: 16 flags toggled recently. Split into sets of 8. Group A (flags 1-8) triggers the bug; group B (flags 9-16) does not. Group A splits into 1-4 and 5-8. Group 5-8 triggers. Split 5-6 and 7-8. Group 7-8 triggers. Split 7 and 8. Flag 7 alone reproduces. Root cause: flag 7's code path.
+
+**Important — cross-half interactions**: if NEITHER half reproduces alone but the bug fires when BOTH groups are enabled, the mechanism requires flags from both halves interacting. The simple binary search fails. In that case:
+
+1. Keep the A-on/B-off and A-off/B-on probes as the first split; both will be green.
+2. Run A-on+B-on (the original failing state). Confirm it reproduces.
+3. Pair-bisect: hold one flag from half A on; toggle half B in halves. Find the smallest subset of B that co-triggers with the held A flag.
+4. Repeat for each A-flag until you identify the minimum pair (or triple) that reproduces.
+
+Cross-half interactions are uncommon but they do happen — often when two unrelated flags both feature-gate code paths that share a data structure. Spot the "neither half alone fails" symptom and switch to pair-bisection instead of concluding "can't be reproduced."
 
 **Tooling**: most feature-flag systems (LaunchDarkly, Unleash, in-house) support environment overrides. Use an override environment for the bisection; do not toggle in production.
 

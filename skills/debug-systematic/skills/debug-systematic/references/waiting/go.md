@@ -23,10 +23,12 @@ type WaitOpts struct {
 
 func WaitFor(t *testing.T, condition func() bool, opts WaitOpts) {
 	t.Helper()
-	if opts.Timeout == 0 {
+	if opts.Timeout <= 0 {
 		opts.Timeout = 5 * time.Second
 	}
-	if opts.Interval == 0 {
+	if opts.Interval <= 0 {
+		// time.NewTicker panics on zero or negative intervals. Default rather
+		// than let the caller surface a panic during Phase 1 repro attempts.
 		opts.Interval = 10 * time.Millisecond
 	}
 	if opts.Description == "" {

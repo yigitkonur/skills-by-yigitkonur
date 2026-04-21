@@ -29,7 +29,7 @@ Prefer another skill when:
 ## Non-negotiable rules
 
 1. **Iron Law.** No fix before root cause. Fix attempts with unverified mechanism are forbidden.
-2. **Diagnosis and repair are separate steps.** You do not edit product code during Phases 1-3.
+2. **Diagnosis and repair are separate steps.** During Phases 1-3, the only edits allowed are *diagnostic* — temporary logs, probes, tests that reproduce the bug, instrumentation. No *fixes* to product logic until Phase 4, after Phase 3 has confirmed a mechanism.
 3. **Evidence per claim.** Every hypothesis cites a trace, log, diff, test run, or config value.
 4. **One hypothesis at a time.** Testing two fixes simultaneously discards the falsification signal of both.
 5. **Escalate at 3.** Three failed fixes triggers the `do-brainstorm` handoff (see Escalation gate).

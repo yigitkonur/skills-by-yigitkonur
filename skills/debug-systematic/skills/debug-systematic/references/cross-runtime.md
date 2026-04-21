@@ -51,9 +51,8 @@ questions: [
     multiSelect: false,
     options: [
       { label: "Route to do-brainstorm (Recommended)", description: "Hand off with the full 3-fails template; do-brainstorm investigates the architectural question" },
-      { label: "Re-open Phase 2 once more", description: "Try one more pattern family before escalating" },
-      { label: "Defer to a human", description: "Document and stop; surface the question to a named owner" },
-      { label: "Abandon the session", description: "Document all three fails and close without a fix" }
+      { label: "Defer to a human owner", description: "Document the architectural question and stop; surface to a named owner for decision" },
+      { label: "Abandon the session", description: "Document all three fails and close without a fix (last resort)" }
     ]
   }
 ]
@@ -77,18 +76,14 @@ The skill has reached the 3-fails gate. Full handoff template is below. Pick one
 Hand off with the 3-fails template; do-brainstorm investigates the architectural
 question surfaced by the three fails.
 
-**2. Re-open Phase 2 once more**
-Try one more pattern family. Only do this if the three fails all trace to the
-same pattern-family assumption and you have an alternative family in mind.
-
-**3. Defer to a human**
+**2. Defer to a human owner**
 Document the architectural question and stop. A named owner picks it up.
 
-**4. Abandon the session**
-Close without a fix. Document all three fails so the next session does not
-repeat them.
+**3. Abandon the session**
+Close without a fix (last resort). Document all three fails so the next session
+does not repeat them.
 
-Reply with "1", "2", "3", "4", or "other: <your note>".
+Reply with "1", "2", "3", or "other: <your note>".
 ```
 
 ## Mirroring the enhance-prompt convention

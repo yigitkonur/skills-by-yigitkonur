@@ -41,16 +41,27 @@ where
     Fut: Future<Output = Option<T>>,
 {
     let deadline = Instant::now() + opts.timeout;
-    while Instant::now() < deadline {
-        if let Some(result) = condition().await {
-            return Ok(result);
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Err(WaitError::Timeout {
+                timeout: opts.timeout,
+                description: opts.description,
+            });
         }
-        sleep(opts.interval).await;
+        // Enforce the deadline even while awaiting `condition()`. A stuck condition
+        // future would otherwise block indefinitely.
+        match tokio::time::timeout(remaining, condition()).await {
+            Ok(Some(result)) => return Ok(result),
+            Ok(None) => sleep(opts.interval.min(remaining)).await,
+            Err(_) => {
+                return Err(WaitError::Timeout {
+                    timeout: opts.timeout,
+                    description: opts.description,
+                })
+            }
+        }
     }
-    Err(WaitError::Timeout {
-        timeout: opts.timeout,
-        description: opts.description,
-    })
 }
 
 pub async fn wait_for_count<F, Fut>(
@@ -117,16 +128,29 @@ where
     Fut: Future<Output = Option<T>>,
 {
     loop {
+        // `biased;` ensures the cancel branch is checked before every poll
+        // (and wraps `condition()` so cancellation interrupts an in-flight
+        // condition future, not just the sleep).
         tokio::select! {
+            biased;
             _ = cancel.cancelled() => return Err(WaitError::Timeout {
                 timeout: Duration::ZERO,
                 description: "cancelled".into(),
             }),
-            _ = sleep(interval) => {
-                if let Some(result) = condition().await {
+            res = condition() => {
+                if let Some(result) = res {
                     return Ok(result);
                 }
             }
+        }
+        // Sleep is also cancellable by the token.
+        tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(WaitError::Timeout {
+                timeout: Duration::ZERO,
+                description: "cancelled".into(),
+            }),
+            _ = sleep(interval) => {}
         }
     }
 }

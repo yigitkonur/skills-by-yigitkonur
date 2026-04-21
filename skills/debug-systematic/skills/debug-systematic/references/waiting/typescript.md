@@ -21,7 +21,9 @@ export async function waitFor<T>(
   while (Date.now() < deadline) {
     try {
       const result = await condition();
-      if (result) return result as T;
+      // Treat `null` / `undefined` as "not ready". Values like `0`, `''`, `false`
+      // are legitimate ready signals for generic T; do not truthy-filter them.
+      if (result !== null && result !== undefined) return result as T;
     } catch (err) {
       lastError = err;
     }
@@ -31,6 +33,17 @@ export async function waitFor<T>(
     `waitFor timed out after ${timeoutMs}ms: ${description}${
       lastError ? ` (last error: ${String(lastError)})` : ''
     }`,
+  );
+}
+
+// Convenience wrapper for boolean predicates. Returns when the predicate is true.
+export async function waitUntil(
+  predicate: () => boolean | Promise<boolean>,
+  opts: WaitOptions = {},
+): Promise<void> {
+  await waitFor(
+    async () => ((await predicate()) ? true : null),
+    { ...opts, description: opts.description ?? 'predicate to hold' },
   );
 }
 

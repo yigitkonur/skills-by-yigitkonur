@@ -52,12 +52,12 @@ Evidence: the `payment.ts:L203` stack trace, the PR #892 diff, the recent logs.
 Trace: `L203` throws because `this.stripeClient.config.apiKey` is `undefined`. Walk back:
 
 - Frame 1: `L203` (throws).
-- Frame 2: `init()` at module load. Reads `process.env.STRIPE_API_KEY`.
-- Frame 3: the env var. Look at the deploy manifest from 14:41.
+- Frame 2: `init()` at module load. After PR #892, reads `process.env.STRIPE_SECRET_KEY` — but the running pods' env still has only `STRIPE_API_KEY` set, not `STRIPE_SECRET_KEY`.
+- Frame 3: the env var. The deploy manifest at 14:41 sets `STRIPE_API_KEY`; nothing sets `STRIPE_SECRET_KEY`.
 
 Candidate mechanisms:
 
-1. PR #892 renamed `STRIPE_API_KEY` to `STRIPE_SECRET_KEY` in code; deploy config still sets the old name. Evidence: the PR diff shows the code change; the running pods still have `STRIPE_API_KEY` set (check `/proc/<pid>/environ` or `kubectl describe`).
+1. PR #892 renamed the env-var reference in code (`STRIPE_API_KEY` → `STRIPE_SECRET_KEY`) without updating the deploy manifest. The pods still expose `STRIPE_API_KEY` but the new code reads `STRIPE_SECRET_KEY`, which is undefined. Evidence: the PR diff shows the code change; `kubectl describe pod` shows `STRIPE_API_KEY` set and `STRIPE_SECRET_KEY` missing.
 2. PR #892 introduced async init that races with the first request on pod startup. Evidence: the PR diff shows an `async init()` change; check request timing on pod-boot.
 3. Config drift unrelated to the PR. Evidence: check the env diff between last pod restart and now.
 
@@ -67,13 +67,13 @@ Ranked by disprovability: #1 (one `env` check), #2 (one timing check), #3 (env d
 
 Top candidate: #1.
 
-False-case prediction: if #1 is wrong, setting `STRIPE_API_KEY` in the running config should NOT restore service.
+False-case prediction: if #1 is wrong, setting `STRIPE_SECRET_KEY` (the new name the code now reads) in the running config should NOT restore service.
 
-Experiment: set `STRIPE_API_KEY` to the same value as `STRIPE_SECRET_KEY` via hot-patch (one config push; no rolling deploy). Watch error rate for 60s.
+Experiment: hot-patch the running config to set `STRIPE_SECRET_KEY` to the same value currently held in `STRIPE_API_KEY` (one config push; no rolling deploy, no code change). Watch error rate for 60s.
 
-**Observed** (expected): error rate drops from >50% back to <1% within 30s. #1 confirmed.
+**Observed** (expected): error rate drops from >50% back to <1% within 30s. #1 confirmed — the code-vs-config rename mismatch is the mechanism.
 
-If #1 were wrong (error rate stays high), the hot-patch is also cheap to revert — you haven't modified code, only config.
+If #1 were wrong (error rate stays high after `STRIPE_SECRET_KEY` is set), the hot-patch is cheap to revert — you haven't modified code, only config.
 
 ### Phase 4 — Implementation (target: minute 20 — right when CFO joins)
 

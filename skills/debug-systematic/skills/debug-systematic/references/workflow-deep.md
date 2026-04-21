@@ -234,6 +234,7 @@ if (!session) {
   return res.status(401).json({ error: 'session expired' });
 }
 req.session = session;
+next();  // continue to the downstream handler
 ```
 
 Test fixture:
@@ -261,7 +262,11 @@ async def upsert(key, delta):
     async with db.transaction():
         row = await db.fetchrow("SELECT * FROM items WHERE key=$1 FOR UPDATE", key)
         new_value = merge(row, delta) if row else delta
-        await db.execute("UPSERT items (key, value) VALUES ($1, $2)", key, new_value)
+        await db.execute(
+            "INSERT INTO items (key, value) VALUES ($1, $2) "
+            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+            key, new_value,
+        )
 ```
 
 **Regression guard**: the existing `pytest -n 8` test IS the guard — it failed before the fix, passes after.

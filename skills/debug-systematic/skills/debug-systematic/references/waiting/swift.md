@@ -31,6 +31,10 @@ func waitFor<T>(
     options: WaitOptions = .init()
 ) async throws -> T {
     let deadline = Date().addingTimeInterval(options.timeout)
+    // Guard against negative intervals; UInt64 conversion of a negative Double
+    // traps at runtime.
+    let intervalNs = max(0, options.interval) * 1_000_000_000
+    let sleepNanos = UInt64(intervalNs.rounded())
     var lastError: Error?
     while Date() < deadline {
         do {
@@ -40,7 +44,7 @@ func waitFor<T>(
         } catch {
             lastError = error
         }
-        try await Task.sleep(nanoseconds: UInt64(options.interval * 1_000_000_000))
+        try await Task.sleep(nanoseconds: sleepNanos)
     }
     throw WaitError.timeout(options.timeout, options.description + (lastError.map { " (last error: \($0))" } ?? ""))
 }

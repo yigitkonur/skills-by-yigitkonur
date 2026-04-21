@@ -17,6 +17,9 @@ class WaitTimeout(AssertionError):
     pass
 
 
+_SENTINEL = object()  # distinct from None so None is a valid "not ready" signal
+
+
 def wait_for(
     condition: Callable[[], Optional[T]],
     *,
@@ -25,13 +28,15 @@ def wait_for(
     description: str = "condition",
 ) -> T:
     deadline = time.monotonic() + timeout
-    last_error: Optional[BaseException] = None
+    last_error: Optional[Exception] = None
     while time.monotonic() < deadline:
         try:
             result = condition()
-            if result:
+            # Only `None` means "not ready". Falsy values (0, "", False, []) are
+            # legitimate ready signals for generic T; do not truthy-filter.
+            if result is not None:
                 return result
-        except BaseException as err:
+        except Exception as err:  # do not swallow BaseException (KeyboardInterrupt/SystemExit)
             last_error = err
         time.sleep(interval)
     msg = f"wait_for timed out after {timeout}s: {description}"
@@ -48,13 +53,13 @@ async def wait_for_async(
     description: str = "condition",
 ) -> T:
     deadline = time.monotonic() + timeout
-    last_error: Optional[BaseException] = None
+    last_error: Optional[Exception] = None
     while time.monotonic() < deadline:
         try:
             result = await condition()
-            if result:
+            if result is not None:
                 return result
-        except BaseException as err:
+        except Exception as err:
             last_error = err
         await asyncio.sleep(interval)
     msg = f"wait_for_async timed out after {timeout}s: {description}"
@@ -68,8 +73,23 @@ def wait_for_count(
     expected: int,
     **opts,
 ) -> None:
+    # predicate wrapper: returns True when satisfied, None when not yet.
     wait_for(
-        lambda: get_count() >= expected,
+        lambda: True if get_count() >= expected else None,
+        description=opts.pop("description", f"count >= {expected}"),
+        **opts,
+    )
+
+
+async def wait_for_count_async(
+    get_count: Callable[[], Awaitable[int]],
+    expected: int,
+    **opts,
+) -> None:
+    async def predicate():
+        return True if (await get_count()) >= expected else None
+    await wait_for_async(
+        predicate,
         description=opts.pop("description", f"count >= {expected}"),
         **opts,
     )
@@ -90,7 +110,10 @@ def test_cleanup_completes(global_store):
 
 
 async def test_both_workers_commit(commit_log):
-    wait_for_count(lambda: len(commit_log), 2, timeout=10.0)
+    # async tests MUST use the async waiter — the sync wait_for_count blocks
+    # the event loop and starves the workers. Use wait_for_count_async or
+    # wait_for_async directly in async tests.
+    await wait_for_count_async(lambda: _async_len(commit_log), 2, timeout=10.0)
     assert len({c.worker_id for c in commit_log}) == 2
 ```
 
