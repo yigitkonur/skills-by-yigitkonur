@@ -1,11 +1,11 @@
 ---
 name: check-completion
-description: Use skill if you are checking what's actually done vs. claimed done — classify every task by a 22-status taxonomy, then execute until every in-scope item reaches Implemented.
+description: Use skill if you are checking what's actually done vs. claimed done — classify every task by a 22-status taxonomy, then remediate until every in-scope item reaches a terminal status.
 ---
 
 # Check Completion
 
-Two-phase skill. **Phase 1 — Audit**: scan the execution history, classify every task into one of 22 statuses, deliver a markdown audit table with evidence per row. **Phase 2 — Remediate**: execute against the audit until every in-scope task reaches `Implemented` — or is explicitly flagged as unresolvable with a concrete next step. No mid-task pauses. No defaulting to `Implemented` on faith.
+Two-phase skill. **Phase 1 — Audit**: scan the execution history, classify every task into one of 22 statuses, deliver a markdown audit table with evidence per row. **Phase 2 — Remediate**: execute against the audit until every in-scope task reaches a **terminal status** — `Implemented` for work finished, or one of the deliberate-stop statuses (`Deferred to Human`, `Deprioritized`, `Cancelled`, `Out of Scope`, `Superseded` with replacement verified, or `Blocked — unresolvable` with a concrete next step). No mid-task pauses. No defaulting to `Implemented` on faith.
 
 ## Trigger boundary
 
@@ -33,7 +33,7 @@ Prefer another skill when:
 5. **Evidence before status.** Each `Implemented` row names the specific evidence (test output, commit SHA, file state, observed behavior). No evidence → no `Implemented`.
 6. **Remediation order is blockers → broken → missing → untested.** Not the order the tasks were written.
 7. **Remediation does not pause mid-task for confirmation.** The only halt conditions: (a) the work is complete, (b) a blocker is genuinely unresolvable and has been documented with a concrete next step.
-8. **Terminal state is total coverage.** Every in-scope task ends as `Implemented`, or as explicitly-flagged unresolvable with a concrete next step. Partial coverage is a failure of this skill.
+8. **Terminal state is total coverage.** Every in-scope task ends at a terminal status per `status-taxonomy.md`: `Implemented` (work done with evidence), `Deferred to Human` / `Deprioritized` / `Cancelled` / `Out of Scope` (deliberate stop with rationale), `Superseded` (replacement verified `Implemented`), or `Blocked — unresolvable` (with concrete next step per `blocker-handling.md`). Rows left at non-terminal statuses (e.g., `Partially Implemented`, `Stalled`) are a failure of this skill.
 
 ## The 22-status taxonomy
 

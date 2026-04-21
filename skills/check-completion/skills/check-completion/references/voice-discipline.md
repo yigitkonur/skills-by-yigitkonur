@@ -2,7 +2,7 @@
 
 The audit table and completion report are written artifacts. The voice — word choice, phrasing, what's included, what's forbidden — is part of the discipline. Sloppy voice hides sloppy classification; precise voice forces precise thinking.
 
-Borrowed in spirit from `obra/verification-before-completion` and `evaluate-code-review/voice.md`.
+Borrowed in spirit from obra's `verification-before-completion` skill and the voice rules shared across the code-review-related skills in this pack.
 
 ## The principle
 

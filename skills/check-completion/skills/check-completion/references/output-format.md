@@ -142,11 +142,13 @@ The status from the Phase 1 audit table. Helps the reader see the starting state
 #### `Ended`
 The terminal status reached by the end of Phase 2. One of:
 - `Implemented`
-- `Blocked — unresolvable` (per `blocker-handling.md`)
+- `Implemented`
 - `Deferred to Human`
 - `Deprioritized`
 - `Cancelled`
 - `Out of Scope`
+- `Superseded` (only when the canonical replacement is verified `Implemented`)
+- `Blocked — unresolvable` (per `blocker-handling.md`; this is the terminal form of `Blocked`, not a 23rd status)
 
 Non-terminal statuses in the Ended column indicate an incomplete audit — re-read `remediation-workflow.md` and finish.
 

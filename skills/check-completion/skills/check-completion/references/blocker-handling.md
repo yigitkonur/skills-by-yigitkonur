@@ -1,6 +1,6 @@
 # Blocker Handling — Documenting the Truly Unresolvable
 
-Blockers are the one place Phase 2 is allowed to leave a row at a non-`Implemented` terminal state. This file defines the bar for "genuinely unresolvable" and the documentation format.
+Blockers are one of several deliberate-stop terminal states (see `status-taxonomy.md` for the full terminal set: `Deferred to Human`, `Deprioritized`, `Cancelled`, `Out of Scope`, `Superseded` with replacement verified, and `Blocked — unresolvable`). This file focuses specifically on the `Blocked` → `Blocked — unresolvable` transition: the bar for "genuinely unresolvable" and the documentation format.
 
 ## The two types of blocker
 

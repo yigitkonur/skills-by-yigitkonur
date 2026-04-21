@@ -76,17 +76,22 @@ Some tasks live on the boundary between two statuses. Common judgment zones:
 
 ### `Implemented` vs. `Implemented but Untested`
 
-If the change is trivial enough that running a test would be ceremonial (e.g., a one-word typo fix in a comment), and the file state can be verified by inspection — `Implemented` is defensible. But **every non-trivial change requires a test run** before `Implemented`.
+Non-trivial changes need fresh evidence from one of the forms accepted in `evidence-patterns.md` — a test run, a build exit code, a manual verification with observable behavior, or a commit + independent confirmation. Absence of any of these → `Implemented but Untested`.
 
-Trivial means: no logic, no side effects, no downstream consumers. If in doubt, it's not trivial.
+A trivial change (no logic, no side effects, no downstream consumers — e.g., a one-word typo fix in a comment) can be confirmed by file-state inspection alone. If in doubt about whether a change is trivial, it isn't.
 
 ### `Implemented` vs. `Assumed Complete`
 
-The distinction is verification this session. If the test was run in a prior session (not visible in the current session's output), re-run it. Past verification does not count as current evidence.
+The distinction is **verification this session**. Evidence from a prior session (not visible in the current session's output or not reproducible now) is stale. Re-verify, then upgrade or downgrade.
 
 ### `Blocked` vs. `Stalled`
 
-Ongoing pressure matters. `Blocked` implies "still trying / still waiting for the dependency"; `Stalled` implies "abandoned and moved on." If the task hasn't been touched in 10+ messages and nothing in the session is actively unblocking it, it is `Stalled`, not `Blocked`.
+The distinction is the **dependency state**, not a message-count heuristic:
+
+- `Blocked`: an explicit unresolved dependency is currently named and pending (waiting on a credential, an answer, an external service). The author would act if the dependency resolved.
+- `Stalled`: started; hit an obstacle; no ongoing attempt to resolve. The task was dropped, not actively blocked.
+
+Ambiguous cases (the dependency exists but nobody is working on it) lean `Stalled` — `Blocked` implies active waiting.
 
 ### `Forgotten` vs. `Skipped`
 

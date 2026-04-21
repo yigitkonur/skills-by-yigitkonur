@@ -4,7 +4,7 @@ After the audit table exists, Phase 2 executes until every in-scope row reaches 
 
 ## The core rule
 
-**Do not stop, pause, or ask for confirmation mid-remediation unless a blocker is genuinely unresolvable.** This is an intentional divergence from obra's `executing-plans` skill, which stops and asks on every blocker. Audit-completion is designed to maximize progress through a fixed backlog; halting on every friction point defeats that.
+**Do not stop, pause, or ask for confirmation mid-remediation unless a blocker is genuinely unresolvable.** This is an intentional divergence from obra's `executing-plans` skill, which stops and asks on every blocker. `check-completion` is designed to maximize progress through a fixed backlog; halting on every friction point defeats that.
 
 When a blocker is encountered: document per `blocker-handling.md`, then continue with the next task.
 
@@ -13,41 +13,41 @@ When a blocker is encountered: document per `blocker-handling.md`, then continue
 Work through non-terminal statuses in this order. Not the order they appeared in the audit table.
 
 ```
-1. Blockers (Blocked rows where Blocking=Yes)
-   → resolve if possible; document with concrete next step if not
+1. `Blocked` (rows where Blocking=Yes)
+   → resolve if possible; upgrade to `Blocked — unresolvable` with concrete next step if not
 
-2. Implemented but Broken / Implemented but Outdated
+2. `Implemented but Broken` / `Implemented but Outdated`
    → fix the regression or update to current spec
 
-3. Incorrectly Implemented
+3. `Incorrectly Implemented`
    → correct the misunderstanding
 
-4. Stalled / Crashed / Timed Out
+4. `Stalled` / `Crashed` / `Timed Out`
    → re-spawn and run to completion
 
-5. Partially Implemented
+5. `Partially Implemented`
    → finish the missing edges, error handling, sub-steps
 
-6. Forgotten / Not Planned (relevant) / Planned / Queued
+6. `Forgotten` / `Not Planned` (relevant) / `Planned / Queued`
    → implement from zero
 
-7. Implemented but Untested / Assumed Complete
-   → run the verification; upgrade to Implemented or downgrade
+7. `Implemented but Untested` / `Assumed Complete`
+   → run the verification; upgrade to `Implemented` or downgrade
 
-8. Skipped (no valid reason)
-   → either implement, or re-classify as Out of Scope with rationale
+8. `Skipped` (no valid reason)
+   → either implement, or re-classify as `Out of Scope` with rationale
 
-9. Ambiguous
+9. `Ambiguous`
    → disambiguate (ask, or pick with explicit justification), then execute
 
-10. Duplicate
-    → verify canonical row; mark duplicate as Superseded with canonical reference
+10. `Duplicate`
+    → verify canonical row; mark duplicate as `Superseded` with canonical reference
 
-11. Superseded
-    → verify replacement is Implemented; if not, recurse on the replacement
+11. `Superseded`
+    → verify replacement is `Implemented`; if not, recurse on the replacement
 
-12. Deferred to Human / Deprioritized / Cancelled
-    → already terminal; confirm documentation is concrete
+12. `Deferred to Human` / `Deprioritized` / `Cancelled` / `Out of Scope`
+    → already terminal; confirm documentation is concrete (named question / resumption trigger / rationale)
 ```
 
 ## Why this order

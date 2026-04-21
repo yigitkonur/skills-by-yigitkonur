@@ -72,7 +72,13 @@ Example: `TodoList item 3 toggled to completed at 14:15; no pnpm test or manual 
 - Observed behavior
 - Specific mismatch between the two
 
-Example: `Task: "return 404 when user not found". Observed: `curl -s /api/user/unknown` returns 200 with empty body. The implementation returned success-with-empty rather than 404.`
+Example:
+
+```
+Task: "return 404 when user not found"
+Observed: curl -s /api/user/unknown returns 200 with empty body
+Mismatch: the implementation returned success-with-empty rather than 404
+```
 
 ### Evidence for `Stalled`
 

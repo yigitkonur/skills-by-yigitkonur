@@ -1,6 +1,6 @@
 # check-completion
 
-Check what's actually done vs. claimed done — classify every task by a 22-status taxonomy, then execute until every in-scope item reaches Implemented.
+Check what's actually done vs. claimed done — classify every task by a 22-status taxonomy, then remediate until every in-scope item reaches a terminal status (Implemented, or one of the deliberate-stop outcomes).
 
 **Category:** productivity
 

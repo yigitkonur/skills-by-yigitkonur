@@ -58,7 +58,7 @@ If a TodoList exists for this session:
 - Note any task stuck at `in_progress` with no recent updates — `Stalled` or `Timed Out` candidate
 - Tasks marked `pending` → `Planned / Queued`
 
-**Output**: Per-task status mapped from TodoList state to audit-completion status.
+**Output**: Per-task status mapped from TodoList state to `check-completion` status.
 
 **Gotcha**: TodoList statuses map noisily to audit statuses. `completed` in a TodoList means "agent toggled it"; that's `Assumed Complete` at best until verified independently.
 

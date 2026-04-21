@@ -10,18 +10,38 @@ Every task in the audit table gets exactly one status from this list. This file 
 
 ## Terminal vs. non-terminal
 
-A status is **terminal** if it is valid in the Phase 2 completion report. A status is **non-terminal** if encountering it in Phase 2 means more work is required.
+All rows in the completion report must reach a **terminal** status. A status is terminal if encountering it at Phase 2's end means no more work is expected from this audit. Non-terminal statuses mean the row still needs remediation.
 
-| Terminal statuses | Non-terminal statuses |
-|---|---|
-| `Implemented` | `Partially Implemented`, `Implemented but Untested`, `Implemented but Broken`, `Implemented but Outdated`, `Assumed Complete`, `Incorrectly Implemented`, `Stalled`, `Timed Out`, `Crashed`, `Skipped`, `Forgotten`, `Blocked`, `Ambiguous`, `Planned / Queued`, `Not Planned`, `Duplicate`, `Superseded` (only if replacement is verified `Implemented`) |
-| `Deferred to Human` | — |
-| `Deprioritized` | — |
-| `Cancelled` | — |
-| `Out of Scope` | — |
-| `Blocked — unresolvable` (see `blocker-handling.md`) | — |
+**Terminal statuses** (valid outcomes in the completion report):
 
-In Phase 2, every non-terminal row must move to a terminal one. `Assumed Complete` is never terminal — it must be re-verified to become `Implemented` or downgraded.
+- `Implemented` — the work is done with evidence
+- `Deferred to Human` — handed off to a human with a named open question
+- `Deprioritized` — explicit decision to do this later, with a named resumption trigger
+- `Cancelled` — explicitly removed from scope with a rationale
+- `Out of Scope` — excluded from this audit with a rationale
+- `Superseded` — **only** if the replacement task is itself verified `Implemented`; otherwise non-terminal and the replacement is in scope
+- `Blocked — unresolvable` — a qualifier on `Blocked` applied after the five-check test in `blocker-handling.md` confirms the dependency cannot be met with available resources. `Blocked — unresolvable` is not a 23rd status; it is the terminal form of `Blocked`.
+
+**Non-terminal statuses** (Phase 2 must move these to terminal):
+
+- `Partially Implemented`
+- `Implemented but Untested`
+- `Implemented but Broken`
+- `Implemented but Outdated`
+- `Assumed Complete` — never terminal; always re-verify to upgrade or downgrade
+- `Incorrectly Implemented`
+- `Stalled`
+- `Timed Out`
+- `Crashed`
+- `Skipped`
+- `Forgotten`
+- `Blocked` — terminal only after upgrade to `Blocked — unresolvable`
+- `Ambiguous`
+- `Duplicate` — resolve the canonical; mark this row `Superseded (canonical: #N)`
+- `Planned / Queued`
+- `Not Planned`
+
+In Phase 2, every non-terminal row must move to a terminal one. The remediation order in `remediation-workflow.md` defines priority.
 
 ## The 22 statuses
 
