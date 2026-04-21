@@ -2,6 +2,17 @@
 
 How to test a skill before shipping, at the right level of rigor for your audience.
 
+## Contents
+- [Before you test live triggers](#before-you-test-live-triggers) — identify runtime and install path first
+- [Testing tiers](#testing-tiers) — choose the tier matching your audience
+- [The iterate-on-one principle](#the-iterate-on-one-principle) — fastest signal: one hard case, worked to success
+- [Defining success criteria](#defining-success-criteria) — what "done" looks like before you test
+- [Using skill-creator for review](#using-skill-creator-for-review) — automated review tooling
+- [Iteration after testing](#iteration-after-testing) — what to do when tests fail
+- [Test checklist](#test-checklist) — final checklist before shipping
+- [Creation vs. revision testing paths](#creation-vs-revision-testing-paths) — different steps for new vs. updated skills
+- [Discipline-enforcing skills need the RED phase](#discipline-enforcing-skills-need-the-red-phase) — RED-GREEN-REFACTOR for rules agents can rationalize away
+
 ## Before you test live triggers
 
 Identify the active runtime before you install or test anything. New and revised skills must be tested in the runtime that will actually load them.
@@ -292,7 +303,7 @@ Revisions test against the currently installed version in that same runtime. The
 | Testing only creation OR revision | Other path untested | Document which path you tested |
 | No should-NOT-trigger queries | Over-triggering undetected | Always include 5+ negative queries |
 | Skipping functional test | Workflow bugs ship | Run at least one end-to-end |
-| Writing a discipline skill without RED baseline | Skill prevents failures you imagined, not the ones agents actually produce | Run pressure scenarios without the skill first — see `tdd-for-skills.md` |
+| Writing a discipline skill without RED baseline | Skill prevents failures you imagined, not the ones agents actually produce | Run pressure scenarios without the skill first — see `references/authoring/tdd-for-skills.md` |
 
 ---
 

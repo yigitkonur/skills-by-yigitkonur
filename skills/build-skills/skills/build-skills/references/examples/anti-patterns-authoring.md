@@ -30,7 +30,7 @@ These anti-patterns show up repeatedly when operators follow the build-skills wo
 
 **Why it fails:** First command fails, requiring backtracking and context recovery. Often leads to the agent fabricating results instead of using fallback methods.
 
-**Fix:** Run `bash scripts/skill-dl --where` or `skill-dl --version` before first use. If `skill-dl` is missing globally, install it with `sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash`. Have the fallback chain ready: skill-dl > MCP tools > manual GitHub search.
+**Fix:** Run `bash scripts/skill-dl --where` or `skill-dl --version` before first use. If `skill-dl` is missing globally, install it following the instructions in the cli-skill-downloader repo README. Have the fallback chain ready: skill-dl > MCP tools > manual GitHub search.
 
 **Detection:** A tool command fails with "command not found" during execution.
 

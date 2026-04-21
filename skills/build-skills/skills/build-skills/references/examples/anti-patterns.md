@@ -409,7 +409,7 @@ Before publishing, verify none of these apply:
 - [ ] Outdated API references (AP-14)
 - [ ] Prose where tables work better (AP-15)
 - [ ] No research for non-trivial skill (AP-16)
-- [ ] Research without artifacts (AP-17)
+- [ ] Research without a visible trail (AP-17)
 - [ ] Comparison without decisions (AP-18)
 - [ ] No testing before shipping (AP-19)
 - [ ] No success criteria defined (AP-20)

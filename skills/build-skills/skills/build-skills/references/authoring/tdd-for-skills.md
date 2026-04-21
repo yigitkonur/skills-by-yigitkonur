@@ -168,7 +168,7 @@ If the skill you are building enforces discipline, add these artifacts to the ou
 3. **REFACTOR log** — new rationalizations found and counters added.
 4. **Bulletproof confirmation** — at least one maximum-pressure scenario where the agent picks correctly.
 
-This replaces the generic "run at least one trigger test" for discipline-enforcing skills. Reference-style skills still use the simpler trigger-and-functional-test pattern in `references/authoring/testing-methodology.md`.
+This is required **in addition to** trigger and functional tests for discipline-enforcing skills — not a replacement. Trigger tests confirm the skill loads; RED-GREEN-REFACTOR confirms it holds under pressure. Reference-style skills only need the simpler trigger-and-functional-test pattern in `references/authoring/testing-methodology.md`.
 
 ## Common mistakes
 
@@ -186,4 +186,4 @@ This replaces the generic "run at least one trigger test" for discipline-enforci
 
 If the skill has rules an agent could violate, you do not know whether it works until you have watched an agent try to violate it. RED-GREEN-REFACTOR for prose works the same way it does for code: write the failing test first, then fix it.
 
-The research citation: Meincke et al. (2025) tested persuasion on N=28,000 LLM conversations and more than doubled compliance rates (33% → 72%) using the same principles this cycle closes. Authority, commitment, and scarcity are the primary levers — see `references/authoring/persuasion-principles.md`.
+The research citation: Meincke et al. (2025) tested persuasion on N=28,000 LLM conversations and more than doubled compliance rates (33% → 72%) using the same principles this cycle closes. Authority and commitment are the primary levers for discipline-skill compliance; scarcity handles time-bound verification steps — see `references/authoring/persuasion-principles.md`.
