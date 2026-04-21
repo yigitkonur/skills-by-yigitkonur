@@ -65,18 +65,19 @@ Each prefix has a **definition**, a **boundary** (what falls outside it), and **
 
 ### `debug-`
 
-**Definition:** Inspect, diagnose, or troubleshoot a running or built application using a specific debugging tool or observability platform. The skill teaches the agent how to use the tool to find and understand problems.
+**Definition:** Inspect, diagnose, or troubleshoot a running or built application — either by driving a specific diagnostic tool / observability platform, OR by applying a language-agnostic debugging methodology (hypothesis formation, falsification, root-cause tracing) when tools alone are not enough.
 
-**Boundary:** The skill connects the agent to a *diagnostic tool*. If the agent is fixing code directly without a diagnostic tool, that's normal coding, not a skill. If the agent is running a test suite, that's `test-`.
+**Boundary:** The skill either connects the agent to a *diagnostic tool* (tool-specific variant) or enforces a *debugging methodology* that the agent follows across any language or runtime (method-specific variant). If the agent is fixing code directly without diagnosis, that's normal coding. If the agent is running a test suite, that's `test-`.
 
-**Use when:** The agent uses a dedicated debugging/observability tool (DevTools, profilers, tracers) to investigate issues.
+**Use when:** The agent uses a dedicated debugging/observability tool (DevTools, profilers, tracers) to investigate issues, OR the agent needs a structured method (investigation → pattern analysis → hypothesis testing → implementation) for a bug whose mechanism is unknown.
 **Not when:** The agent runs a test suite (`test-`), reviews code for issues (`review-`), or writes code to fix a known bug (`build-`).
 
 **Disambiguation:**
-- `debug-` vs `test-` — `debug-` uses diagnostic tools to investigate unknowns; `test-` runs a verification suite against known expectations
-- `debug-` vs `review-` — `debug-` is live inspection of a running/built app; `review-` is static analysis of source diffs
+- `debug-` vs `test-` — `debug-` investigates unknowns; `test-` runs a verification suite against known expectations
+- `debug-` vs `review-` — `debug-` is live inspection or runtime-failure investigation; `review-` is static analysis of source diffs
+- `debug-` (tool-specific) vs `debug-` (method-specific) — tool-specific skills (e.g., `debug-tauri-devtools`) teach the agent a specific DevTools/profiler; method-specific skills (e.g., `debug-systematic`) teach a language-agnostic methodology
 
-**Current skills:** `debug-tauri-devtools`
+**Current skills:** `debug-tauri-devtools`, `debug-systematic`
 
 ---
 
@@ -443,6 +444,7 @@ When renaming a published skill:
 - `build-supastarter-app`
 - `convert-snapshot-nextjs`
 - `convert-vue-nextjs`
+- `debug-systematic`
 - `debug-tauri-devtools`
 - `develop-clean-architecture`
 - `develop-macos-hig`
