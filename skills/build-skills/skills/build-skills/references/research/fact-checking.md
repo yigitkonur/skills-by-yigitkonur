@@ -53,7 +53,7 @@ Invalid:  Contradicted by official docs or source code
 
 ### Step 4: Document the verification
 
-In your research artifact (`skills.markdown`), record:
+Show the verification table inline in conversation output:
 
 ```markdown
 | Claim | Source | Verified | Notes |

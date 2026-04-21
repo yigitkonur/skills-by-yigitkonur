@@ -87,7 +87,7 @@ For must-read candidates:
 
 ### Phase 4: Document findings
 
-Record findings in `skills.markdown` before synthesis:
+Record findings inline in conversation output before synthesis, using this format for each candidate:
 
 ```markdown
 ## Candidate: build-copilot-sdk-app

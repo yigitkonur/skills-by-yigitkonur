@@ -288,7 +288,7 @@ Use bullet points with "Do not" prefix:
 ## Guardrails
 
 - Do not draft the final skill before reading the current workspace.
-- Do not claim research happened unless `skills.markdown` exists.
+- Do not claim research happened unless the comparison table appears inline in output.
 - Do not compare sources mentally and hide the table.
 - Do not copy a source skill wholesale.
 ```
@@ -372,5 +372,5 @@ Not every skill needs MCP. Category 1 skills add value through embedded expertis
 | Micro-skill | 50-120 | 1-3 | 2-4 |
 | Standard skill | 150-250 | 4-8 | 5-10 |
 | Comprehensive skill | 250-400 | 10-40 | 12-45 |
-| This skill (build-skills) | ~250 | 21 | 23 |
+| This skill (build-skills) | ~310 | 27 | 29 |
 | Model skill (copilot-sdk) | ~340 | 40+ | 45+ |

@@ -69,11 +69,11 @@ After the local scan:
 
 Treat the downloaded corpus as a second source tree that deserves the same attention as local files.
 
-## Phase 3 — write `skills.markdown`
+## Phase 3 — capture the source shortlist inline
 
-Before synthesis, write `skills.markdown` to disk next to the draft `SKILL.md` in the draft skill directory. Default to `skills/<skill-name>/`; if you are staging elsewhere, keep `skills.markdown` in that staging directory and move it with the skill folder later. This is the durable research artifact.
+Before moving to the corpus read, show the shortlist inline in conversation output. This is how the research trail becomes visible — not as a file artifact, but as a visible output block tied to a specific step.
 
-At minimum it should record:
+Capture at minimum:
 
 - search query or topic
 - pages or source coverage
@@ -81,9 +81,8 @@ At minimum it should record:
 - selected downloads
 - destination paths
 - downloaded tree output
-- next-use note telling the reader to compare the downloaded corpus before drafting
 
-If `skills.markdown` is missing, the research phase is incomplete.
+If the shortlist never appears in output, the research phase is not yet complete — the comparison table in Phase 5 will be fabricated from memory.
 
 ## Phase 4 — read the downloaded corpus thoroughly
 
@@ -95,13 +94,13 @@ Do not move directly from search results to a final design. Reading the corpus i
 2. **Tree the `references/` directory** — run `tree <skill-dir>/references/` or equivalent listing to see what reference files exist, how they are named, and how deeply they are nested. This reveals the skill's structural philosophy.
 3. **Read the most relevant reference files** — pick based on the file names and the skill's stated routing logic. Read them fully, not just the headings. Scale: 2–3 files for skills with fewer than 8 references; 4–5 for skills with 8+ references.
 4. **Check `scripts/` if present** — script files reveal automation patterns, validation logic, and tooling choices that prose cannot fully convey.
-5. **Capture notes per skill in `skills.markdown`** under a `## Per-skill notes` heading — record: overall structure (flat vs. layered), workflow style (sequential, branching, iterative), reference organization, size (SKILL.md line count + reference file count), what it does well, what it does poorly, and 1–2 direct quotes or patterns worth inheriting.
+5. **Capture per-skill notes inline** in conversation output under a `## Per-skill notes` heading — record: overall structure (flat vs. layered), workflow style (sequential, branching, iterative), reference organization, size (SKILL.md line count + reference file count), what it does well, what it does poorly, and 1–2 direct quotes or patterns worth inheriting.
 
 **What "reading" means here:**
 
 - Load the file contents, not just the filenames.
 - Note section headings, decision rules, and anti-patterns sections specifically.
-- Record exact relative paths when citing evidence in `skills.markdown`.
+- Record exact relative paths when citing evidence in your per-skill notes.
 
 **What to capture in your notes:**
 
@@ -144,7 +143,7 @@ Avoid these mistakes:
 
 - treating local evidence as sufficient for a non-trivial design task
 - downloading by keyword match only
-- researching without leaving a durable artifact
+- researching without showing the source shortlist and per-skill notes inline
 - copying downloaded skills instead of distilling them
 - packaging the transient research corpus into the final skill by default
 - skipping the downloaded corpus scan and pretending the research already happened

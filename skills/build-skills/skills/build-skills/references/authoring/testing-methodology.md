@@ -2,6 +2,17 @@
 
 How to test a skill before shipping, at the right level of rigor for your audience.
 
+## Contents
+- [Before you test live triggers](#before-you-test-live-triggers) — identify runtime and install path first
+- [Testing tiers](#testing-tiers) — choose the tier matching your audience
+- [The iterate-on-one principle](#the-iterate-on-one-principle) — fastest signal: one hard case, worked to success
+- [Defining success criteria](#defining-success-criteria) — what "done" looks like before you test
+- [Using skill-creator for review](#using-skill-creator-for-review) — automated review tooling
+- [Iteration after testing](#iteration-after-testing) — what to do when tests fail
+- [Test checklist](#test-checklist) — final checklist before shipping
+- [Creation vs. revision testing paths](#creation-vs-revision-testing-paths) — different steps for new vs. updated skills
+- [Discipline-enforcing skills need the RED phase](#discipline-enforcing-skills-need-the-red-phase) — RED-GREEN-REFACTOR for rules agents can rationalize away
+
 ## Before you test live triggers
 
 Identify the active runtime before you install or test anything. New and revised skills must be tested in the runtime that will actually load them.
@@ -292,3 +303,55 @@ Revisions test against the currently installed version in that same runtime. The
 | Testing only creation OR revision | Other path untested | Document which path you tested |
 | No should-NOT-trigger queries | Over-triggering undetected | Always include 5+ negative queries |
 | Skipping functional test | Workflow bugs ship | Run at least one end-to-end |
+| Writing a discipline skill without RED baseline | Skill prevents failures you imagined, not the ones agents actually produce | Run pressure scenarios without the skill first — see `references/authoring/tdd-for-skills.md` |
+
+---
+
+## Discipline-enforcing skills need the RED phase
+
+For skills that enforce a rule an agent can rationalize away (TDD, research-before-synthesis, verification requirements), trigger and functional tests are not enough. The skill can trigger correctly and still be bypassed under pressure.
+
+Run the RED-GREEN-REFACTOR cycle before shipping:
+
+1. **RED** — run a pressure scenario *without* the skill. Watch the agent fail. Capture its exact rationalizations verbatim.
+2. **GREEN** — write the skill addressing those specific rationalizations. Re-run.
+3. **REFACTOR** — any new rationalization that emerges? Add a counter. Re-test.
+
+Full protocol, including scenario templates and the meta-test, is in `references/authoring/tdd-for-skills.md`.
+
+### Pressure scenario template
+
+```
+IMPORTANT: This is a real scenario. Choose and act.
+
+[Context with 3+ pressures: time, sunk cost, authority, exhaustion, consequence.]
+
+Options:
+A) [The disciplined choice]
+B) [The expedient choice]
+C) [A compromise]
+
+Choose A, B, or C. Be honest.
+```
+
+Combine at least three pressure sources — single-pressure scenarios produce single-pressure data.
+
+### Rationalization capture
+
+When the agent violates the rule, record its exact words:
+
+| Rationalization | Counter to add |
+|---|---|
+| "I already manually tested it" | State explicitly that manual testing is not a substitute, with the reason. |
+| "Being pragmatic, not dogmatic" | State that following the rule *is* the pragmatic choice. Name the cost of the shortcut. |
+| "I will add tests after" | State that "after" almost always means "never" and cite the specific failure mode. |
+
+Add one row per excuse observed. Generic counters ("do not cheat") prevent nothing. Specific counters ("do not keep the file open while writing tests") prevent the specific failure.
+
+### When a discipline skill is bulletproof
+
+1. Agent picks the correct option under the maximum-pressure scenario.
+2. Agent cites specific sections of the skill as justification.
+3. Agent acknowledges the temptation but follows the rule anyway.
+4. Meta-testing returns "skill was clear, I should follow it."
+5. No new rationalizations emerge across multiple runs on different scenarios.

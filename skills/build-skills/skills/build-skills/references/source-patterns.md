@@ -14,9 +14,9 @@ A skill builder should inspect the local tree, read the real source files, and u
 
 For new skills, large redesigns, or multi-source merges, outside research should be part of the method, not an optional extra.
 
-### 3. `skills.markdown` as proof of research
+### 3. Inline research output as proof
 
-The research phase should leave behind a durable artifact that shows what was searched, what was selected, and what was downloaded.
+The research phase should leave a visible trail in conversation output: source shortlist with rationale, per-skill notes with relative paths, and the comparison table — all shown at the step that produces them.
 
 ### 4. Comparison before synthesis
 

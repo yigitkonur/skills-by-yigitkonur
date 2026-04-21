@@ -85,7 +85,7 @@ If the corpus will feed into a `build-skills` workflow:
 2. Identify 2-3 skills that are closest to your target design
 3. Note specific file paths for patterns you want to inherit
 4. Flag quality violations as "avoid" signals
-5. Save notes to `skills.markdown` in the workspace root — this is the required research artifact for `build-skills`
+5. Show per-skill notes and quality-tier assessments inline in conversation output — this is the required evidence trail for `build-skills`
 
 ## Batch quality check
 
