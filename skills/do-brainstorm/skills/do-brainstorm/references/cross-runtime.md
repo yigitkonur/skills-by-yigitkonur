@@ -2,7 +2,7 @@
 
 This skill is written natively for Claude Code but is designed to work on any runtime that supports an ask-user tool. This file covers runtime compatibility, the compact runtime lookup table, and the prose fallback for runtimes without structured tools.
 
-For the fullest runtime-to-tool mapping and the payload-shape details, see `skills/enhance-prompt/skills/enhance-prompt/references/ask-user-tools.md` — this skill mirrors that convention deliberately.
+The table below is self-contained. If the `enhance-prompt` skill is also installed in this pack, its `ask-user-tools.md` reference uses the same convention — the two are intentionally kept in sync.
 
 ## Runtime compatibility matrix
 
@@ -154,11 +154,11 @@ A few runtimes are text-completion only (no tool calls). In that case:
 
 This works but is friction-heavy. If the user is on such a runtime, suggest they switch to a tool-capable runtime for this particular skill. The skill still works; it's just less fluid.
 
-## Mirroring enhance-prompt
+## Mirroring the enhance-prompt convention
 
-The table above is a snapshot of `skills/enhance-prompt/.../references/ask-user-tools.md`, intentionally. Both skills face the same problem: dispatching user questions across runtimes. Duplicating the table here means this skill is usable standalone (one-level-deep rule); updating either should eventually propagate to both via a shared-state convention.
+If the `enhance-prompt` skill is installed in this pack, its ask-user-tool reference uses the same convention and the two files contain equivalent runtime mappings. Duplicating the table locally means this skill is usable standalone (one-level-deep rule).
 
-If the upstream `enhance-prompt/ask-user-tools.md` gains a new runtime, this file should be updated too. The tables are small enough that propagation is cheap.
+When a new runtime emerges with its own ask-user tool, update both files. The tables are small enough that manual propagation is cheap; single-source coupling across skills would break the one-level-deep rule.
 
 ## Common mistakes
 

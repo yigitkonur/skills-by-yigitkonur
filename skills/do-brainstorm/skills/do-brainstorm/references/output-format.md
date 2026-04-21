@@ -324,8 +324,8 @@ Above 3,000 words, the brainstorm is probably too large — re-scope to a sub-pr
 - **Bulleted lists** for assumptions, blind spots, options
 - **Bold** for section headlines (`**Option A:**`)
 - **Italic** for emphasis within prose
-- Backticks for framework names on first reference (``` `Six Thinking Hats` ```)
-- Backticks for skill names (``` `build-skills` ```)
+- Backticks for framework names on first reference — use a single pair of backticks (for example, `Six Thinking Hats`)
+- Backticks for skill names (for example, `build-skills`)
 - Inline citations use `file:line` format when referencing code
 
 ## Anti-patterns

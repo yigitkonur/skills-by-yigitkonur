@@ -21,7 +21,7 @@ Use this skill when the task is to:
 Prefer another skill when:
 
 - a specific design is already agreed → go implement (`build-*`, `develop-*`)
-- a PR exists to evaluate → `review-pr` / `evaluate-code-review`
+- a PR exists to evaluate → `review-pr` (or the companion `evaluate-code-review` skill if installed)
 - the task is narrowly "design this feature before coding it" with no exploration needed → direct design + skip this skill
 - the agent is reasoning alone with no user in the loop → `think-deeper`
 - the work is executing pre-decided tasks at scale → `run-issue-tree`
@@ -134,7 +134,7 @@ Produce the full output (see `references/output-format.md`). Minto-style: conclu
 Every session ends with:
 
 - A **ranked summary** table
-- A **recommended next step** with the right next-skill pointer (`build-skills` / `request-code-review` / `run-issue-tree` / direct implementation / further research)
+- A **recommended next step** with the right next-skill or action pointer (e.g., `build-skills` to implement, `run-issue-tree` to plan, `run-research` to gather more evidence, direct implementation, or the companion `request-code-review` skill if installed)
 - An **explicit user question** naming the next fork — not "let me know what you think"
 
 ## Output contract

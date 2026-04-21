@@ -133,7 +133,7 @@ The output is a technical artifact. Voice rules:
 | Use tables for scoring / ranking | Prose for what's really a table |
 | Keep prose dense — one idea per paragraph | Multi-paragraph rambles |
 
-Forbidden phrases (borrowed from `evaluate-code-review/voice.md`):
+Forbidden phrases (shared convention across the code-review-related skills in this pack):
 
 - "Thanks for the great discussion"
 - "Hope this helps"
@@ -148,7 +148,7 @@ Good next-step formats:
 
 - "Run `build-skills` to implement the chosen architecture as a draft."
 - "Create a GitHub Issue via `run-issue-tree` with the plan and assign."
-- "Open a PR for the migration with the Phase 1 changes; use `request-code-review` to generate the self-review body."
+- "Open a PR for the migration with the Phase 1 changes; include a self-review body (if you have the `request-code-review` skill installed, use it; otherwise follow the PR-body convention in the `review-pr` skill)."
 - "Schedule a 30-minute decision meeting with <stakeholders> using the Conflict Resolution Diagram above as the discussion document."
 - "Raise confidence on the low-confidence scores in Step 4 by running a cheap benchmark; re-evaluate if the scores move."
 

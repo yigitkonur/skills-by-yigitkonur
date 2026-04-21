@@ -51,7 +51,7 @@ Dispatch ONE ask-user-tool call with these 3 questions (see `cross-runtime.md` f
 | Fully reversible, low-stakes | Favor quicker routes (Big Choice or No-brainer in Hard Choice Model) |
 | Adjustable with effort | Normal routing |
 | Costly to reverse | Extra weight on Step 5 (stress-test) |
-| One-shot (migration, irreversible deploy) | Extra weight on Step 5; also surface this in the output contract's Risks section |
+| One-shot (migration, irreversible deploy) | Extra weight on Step 5; surface one-shot nature in the **Assumptions** section of the output contract and fold mitigations into the ranked summary |
 
 Reversibility doesn't change Cynefin domain but does change how much time to spend in Step 5 (stress-test) — irreversible calls get more Inversion + Second-Order Thinking.
 
