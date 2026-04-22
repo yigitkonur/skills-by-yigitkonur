@@ -27,7 +27,7 @@ A single combined skills pack — not a loose collection. Every skill must feel 
 │   └── validate-skill-references.yml  # CI: validates on push/PR
 ├── .githooks/
 │   └── pre-push                    # Blocks push on validation failure
-├── NAMING.md                       # Verb-first prefix registry with full disambiguation rules
+├── NAMING.md                       # Intent-verb naming principle, rules, and canonical names
 ├── CONTRIBUTING.md                 # Skill structure, quality checklist, contribution guide
 └── README.md                       # Skill table, install commands, notes
 ```
@@ -44,75 +44,62 @@ git config core.hooksPath .githooks
 
 ---
 
-## Verb-first naming
+## Naming
 
-Every skill name follows the pattern **`verb-object`** in `kebab-case`:
-- **verb** — a prefix from the registry below that tells the user *what the skill does*
-- **object** — a short noun phrase that tells the user *what it acts on*
+Every skill name follows **`verb-object`** in `kebab-case`. The verb is the most important word — users scan by what they want to *do*.
 
-The verb is the most important word. Users scan by verb: "I want to build something" → `build-*`, "I need to set something up" → `init-*`.
+### Intent verb test
 
-### Prefix registry
+The verb in a skill name must be the verb you'd say out loud when reaching for it. Test by completing: *"I want to ___ ___"*. If the natural verb isn't in the name, rename.
 
-| Prefix | When to use | Not when |
+Memory beats taxonomy. The right verb is the one that pops into your head when you need the skill — not the one a maintainer files it under.
+
+Anchor on this set of plain-English verbs:
+
+| Verb | Use when | Example |
 |---|---|---|
-| `build-` | Agent writes application code using a framework/SDK/library | Agent generates config (`init-`), runs a tool (`run-`), or reviews code (`review-`) |
-| `convert-` | Agent transforms an existing artifact into a different format | Agent creates from scratch (`build-`), or produces documentation only (`extract-`) |
-| `debug-` | Agent uses a diagnostic tool (DevTools, profiler, tracer) to investigate runtime issues | Agent runs a test suite (`test-`), reviews source code (`review-`) |
-| `develop-` | Agent applies language-level standards — types, idioms, compiler config | Agent works within a specific framework (`build-`), or reviews a PR (`review-`) |
-| `enhance-` | Agent tests and improves a skill's instructional quality | Agent creates a new skill (`build-skills`), reviews code (`review-`) |
-| `extract-` | Agent reads code/CSS/assets and produces design documentation or structured data | Agent produces a buildable project (`convert-`), writes new code (`build-`) |
-| `init-` | Agent generates config/instruction files consumed by an external tool | Agent writes application code (`build-`), or runs the tool interactively (`run-`) |
-| `optimize-` | Agent audits and improves an existing system's quality | Agent writes new code (`build-`), runs diagnostics (`debug-`) |
-| `plan-` | Agent frames a problem, compares options, or applies a decision methodology | Agent writes code (`build-`), generates config (`init-`), researches externally (`run-`) |
-| `publish-` | Agent sets up automated publishing to a registry or creates release CI/CD | Agent writes the application itself (`build-`), generates non-CI config (`init-`) |
-| `review-` | Agent evaluates existing code for quality, security, correctness | Agent generates review rules (`init-`), writes new code (`develop-`) |
-| `run-` | Agent drives an external CLI tool, browser, or API for a productive task | Agent generates static config (`init-`), writes app code (`build-`), diagnoses bugs (`debug-`) |
-| `test-` | Agent runs verification/validation checks with pass/fail expectations | Agent investigates unknowns (`debug-`), reviews source code (`review-`) |
-| `use-` | Agent drives a CLI utility or external tool for a specific workflow | Agent writes app code (`build-`), generates config (`init-`) |
+| `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-mcp-server-sdk-v1` |
+| `do` | Generic "let me do this" entry-point skill | `do-brainstorm`, `do-debug`, `do-think`, `do-review` |
+| `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture`, `apply-macos-hig`, `apply-liquid-glass` |
+| `ask` | Hand off / request something | `ask-review` |
+| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
+| `convert` | Transform A to B | `convert-url-to-nextjs` |
+| `check` | Audit for completeness | `check-completion` |
+| `evaluate` | Triage existing feedback or input | `evaluate-code-review` |
+| `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
+| `init` | Generate config or instruction files | `init-agent-config` |
+| `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
+| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
+| `develop` | Apply language-level patterns and standards | `develop-typescript` |
+| `publish` | Release to a registry | `publish-npm-package` |
+| `test` | Verify with pass/fail | `test-by-mcpc-cli`, `test-macos-snapshots` |
+| `use` | Drive a CLI utility for ongoing operations | `use-railway` |
 
-### Choosing a prefix — decision tree
+### Object rules
 
-```
-What does the skill primarily do?
-│
-├─ Writes application code using a framework/SDK?          → build-
-├─ Transforms an existing artifact into a different format? → convert-
-├─ Uses a diagnostic tool to investigate runtime behavior?  → debug-
-├─ Applies language-level patterns and standards?           → develop-
-├─ Tests and improves a skill's instructional quality?      → enhance-
-├─ Reads a codebase and produces design documentation?      → extract-
-├─ Generates config/instruction files for an external tool? → init-
-├─ Audits and improves an existing system?                  → optimize-
-├─ Applies structured thinking methods to frame a decision? → plan-
-├─ Automates package releasing and CI/CD publishing?        → publish-
-├─ Evaluates existing code for quality/security/correctness?→ review-
-├─ Drives an external CLI tool or API for a productive task?→ run-
-├─ Runs verification checks with pass/fail criteria?        → test-
-├─ Drives a CLI utility for a specific workflow?            → use-
-└─ None of the above? → Propose a new prefix via PR
-```
+1. **Name the thing acted on** — not the technique. `build-supastarter-app`, not `build-with-orpc-and-prisma`.
+2. **Preserve distinctive methodology names** in the object (e.g. `-by-derailment`, `-by-mcpc-cli`, `-to-nextjs`, `-for-agents`, `-sdk-v1`) — strip only the generic verb category, never the named technique.
+3. **Use the ecosystem's own name** — `mcpc`, `liquid-glass`, `daisyui`.
+4. **Keep it short** — 2-3 words max after the verb.
+5. **No generic suffixes** — no `-guide`, `-helper`, `-util`.
+6. **No version suffixes** unless the version is the point — `-sdk-v1` is OK because v1 and v2 are genuinely different SDKs.
 
-### Object naming rules
+### When two skills overlap, use distinct verbs to disambiguate
 
-1. **Name the thing acted on**, not the technique — `build-supastarter-app` not `build-with-orpc-and-prisma`
-2. **Use the ecosystem's own name** — `daisyui-mcp` not `component-library-server`
-3. **Keep it short** — 2-3 words max after the verb
-4. **No generic suffixes** — no `-guide`, `-helper`, `-util`, `-tool`, `-v2`, `-final`
-5. **No redundancy with the verb** — `test-mcp-server` not `test-mcp-server-tests`
-6. **Prefer specificity** — `publish-npm-package` not `publish-package`
+- `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
+- `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
+- `run-codex-exec` (parallel codex exec orchestration) vs `run-codex-bridge` (delegate to Codex via bridge)
+- `optimize-agentic-cli` (CLI for agents) vs `optimize-agentic-mcp` (MCP server for agents)
 
-### Naming anti-patterns
+### Anti-patterns
 
 | Anti-pattern | Fix |
 |---|---|
-| No verb prefix (`agent-browser`) | `run-agent-browser` |
-| Noun-first (`typescript-develop`) | `develop-typescript` |
-| Generic suffix (`mcp-guide`) | `build-mcp-sdk-server` |
-| Version suffix (`snapshot-nextjs-v2`) | `convert-snapshot-nextjs` |
-| Marketing name as primary ID (`soul`) | Use verb-object for directory; marketing name in SKILL.md title only |
-| Mismatched names across files | One canonical name everywhere: directory = frontmatter = README |
-| Overly broad (`build-app`, `run-tool`) | `build-supastarter-app`, `run-playwright` |
+| No verb prefix (`agent-browser`) | Add the natural intent verb (`run-agent-browser`) |
+| Awkward verb (`do-X` when a better verb fits) | Use the better verb (`extract-saas-design`, not `do-extract-design`) |
+| Stripping a distinctive method (`enhance-skill` instead of `enhance-skill-by-derailment`) | Keep the method, normalize the verb only |
+| Generic noun-only object (`build-app`) | Specific noun (`build-supastarter-app`) |
+| Mismatched names | Directory = frontmatter `name` = README label, all identical |
 
 ---
 
@@ -228,15 +215,15 @@ Every skill needs a `README.md` at its root (`skills/<skill-name>/README.md`) wi
 
 Install this skill individually:
 
-\`\`\`bash
+​```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
-\`\`\`
+​```
 
 Or install the full pack:
 
-\`\`\`bash
+​```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
-\`\`\`
+​```
 ```
 
 ### Category map
@@ -249,7 +236,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 | `design` | Skills that extract or convert visual designs |
 | `testing` | Skills that automate browser testing or verification |
 | `orchestration` | Skills for multi-agent coordination |
-| `platform` | Skills for a specific platform ecosystem (e.g., OpenClaw) |
+| `platform` | Skills for a specific platform ecosystem (e.g., Railway) |
 
 ---
 
@@ -265,36 +252,34 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (45 skills)
+## Current canonical skill names (44 skills)
 
 Use this list to check for naming collisions:
 
 ```
-build-chrome-extension      build-convex-clerk-swiftui   build-copilot-sdk-app
-build-daisyui-mcp           build-hcom-systems           build-langchain-ts-app
-build-mcp-use-agent         build-mcp-use-apps-widgets   build-mcp-use-client
-build-mcp-sdk               build-mcp-sdk-v2             build-mcp-use-server
-build-openclaw-plugin
-build-openclaw-skill
-build-openclaw-workflow      build-raycast-script-command build-skills
-build-supastarter-app       convert-snapshot-nextjs       convert-vue-nextjs
-debug-tauri-devtools        develop-clean-architecture    develop-macos-hig
-develop-macos-liquid-glass  develop-typescript            enhance-prompt
-enhance-skill-by-derailment extract-saas-design           init-agent-config
-init-openclaw-agent         init-review                   optimize-mcp-server
-publish-npm-package         review-pr                     run-agent-browser
-run-athena-flow             run-codex-subagents           run-github-scout
-run-hcom-agents             run-issue-tree                run-openclaw-agents
-run-openclaw-deploy         run-playwright                run-research
-test-by-mcpc-cli
+apply-clean-architecture     apply-liquid-glass           apply-macos-hig
+ask-review                   build-chrome-extension       build-convex-clerk-swiftui
+build-copilot-sdk-app        build-langchain-ts-app       build-mcp-server-sdk-v1
+build-mcp-server-sdk-v2      build-mcp-use-agent          build-mcp-use-apps-widgets
+build-mcp-use-client         build-mcp-use-server         build-raycast-script-command
+build-skills                 build-supastarter-app        check-completion
+convert-url-to-nextjs        develop-typescript           do-brainstorm
+do-debug                     do-review                    do-think
+enhance-prompt               enhance-skill-by-derailment  evaluate-code-review
+extract-saas-design          init-agent-config            optimize-agentic-cli
+optimize-agentic-mcp         publish-npm-package          run-agent-browser
+run-athena-flow              run-codex-bridge             run-codex-exec
+run-github-scout             run-issue-tree               run-playwright
+run-research                 swift-quality-hooks          test-by-mcpc-cli
+test-macos-snapshots         use-railway
 ```
 
 ---
 
 ## Creating a new skill
 
-1. **Choose the canonical name** using the prefix registry and decision tree above
-2. **Verify no naming collision** with the 44 existing skills
+1. **Choose the canonical name** using the intent verb test and the verb table above
+2. **Verify no naming collision** with the existing skills in this pack
 3. **Research before writing** — for non-trivial skills, use `skill-dl` to search and download existing skills as evidence:
    ```bash
    skill-dl search typescript mcp server sdk patterns --top 20
@@ -335,7 +320,7 @@ Use the `enhance-skill-by-derailment` workflow: launch a Sonnet subagent with a 
 
 Before finishing any skill work, verify **all** of the following:
 
-- [ ] Directory name is canonical `kebab-case`, starts with a verb prefix
+- [ ] Directory name is canonical `kebab-case`, starts with an intent verb
 - [ ] SKILL.md is at `skills/<name>/skills/<name>/SKILL.md` (required for Claude Code activation)
 - [ ] Frontmatter `name` exactly matches the directory name
 - [ ] Frontmatter `description` starts with `Use skill if you are`
@@ -353,7 +338,7 @@ Before finishing any skill work, verify **all** of the following:
 - [ ] `README.md` exists at skill root with install command
 - [ ] Root README row added in alphabetical order with short description
 - [ ] `python3 scripts/validate-skills.py` passes
-- [ ] The skill reads like it belongs in the same repo family as the existing 43 skills
+- [ ] The skill reads like it belongs in the same repo family as the other skills in this pack
 
 ---
 

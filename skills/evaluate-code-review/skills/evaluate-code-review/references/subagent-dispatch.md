@@ -232,6 +232,6 @@ If the change set is large or spans domains:
 
 - > 1500 lines of diff → split by logical cluster (one per domain or file-group)
 - > 10 feedback items → split by item group (e.g., "items 1-5" and "items 6-10")
-- multi-domain diff (backend + frontend + MCP) → dispatch one per domain; see the request-code-review skill's subagent-dispatch pattern for the fan-out approach
+- multi-domain diff (backend + frontend + MCP) → dispatch one per domain; see the ask-review skill's subagent-dispatch pattern for the fan-out approach
 
 Combine the N subagent outputs in the parent agent per the merge rules above.

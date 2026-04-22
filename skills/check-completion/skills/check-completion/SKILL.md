@@ -22,7 +22,7 @@ Prefer another skill when:
 - verifying a single claim before making it → `verification-before-completion` pattern (inlined here for audit gates, but for a per-commit gate use that style directly)
 - evaluating external review feedback (not internal audit) → `evaluate-code-review`
 - planning upcoming work → `plan-*`, `run-issue-tree`, or the obra writing-plans pattern
-- reviewing someone else's PR → `review-pr`
+- reviewing someone else's PR → `do-review`
 
 ## Non-negotiable rules (discipline)
 

@@ -11,7 +11,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 | Rule | Example | Why |
 |---|---|---|
 | Kebab-case only | `build-copilot-sdk-app` | Consistent, URL-safe, command-line friendly |
-| Lowercase letters and numbers | `review-pr` | Case sensitivity varies across platforms |
+| Lowercase letters and numbers | `do-review` | Case sensitivity varies across platforms |
 | Hyphens as separators | `create-component` | Underscores and spaces are non-standard |
 | No leading/trailing hyphens | `my-skill` not `-my-skill-` | Breaks parsing in some systems |
 | No consecutive hyphens | `my-skill` not `my--skill` | Ambiguous in URLs and CLIs |
@@ -23,12 +23,12 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 | Skill type | Pattern | Examples |
 |---|---|---|
 | Builder/creator | `build-{thing}` or `create-{thing}` | `build-mcp-server`, `create-component` |
-| Reviewer/analyzer | `review-{thing}` | `review-pr`, `review-security` |
-| Runner/executor | `run-{thing}` | `run-playwright`, `run-tests` |
-| Initializer | `init-{thing}` | `init-project`, `init-config` |
-| Converter | `convert-{source}-{target}` | `convert-snapshot-nextjs` |
-| Research/exploration | `research-{topic}` | `research-powerpack` |
-| Debugging | `debug-{tool}` | `debug-tauri-devtools` |
+| Reviewer/analyzer | `do-review` or `review-{thing}` | `do-review`, `evaluate-code-review` |
+| Runner/executor | `run-{thing}` | `run-playwright`, `run-research` |
+| Initializer | `init-{thing}` or `setup-{thing}` | `init-agent-config` |
+| Converter | `convert-{source}-{target}` | `convert-url-to-nextjs` |
+| Research/exploration | `research-{topic}` or `run-research` | `run-research` |
+| Debugging | `do-debug` or `debug-{tool}` | `do-debug` |
 
 ### Common naming mistakes
 
@@ -173,7 +173,7 @@ Decision tree branch:        Subdirectory:
 When one skill mentions another (in description or body):
 
 ```markdown
-For MCP server setup, see the `build-mcp-sdk-server` skill.
+For MCP server setup, see the `build-mcp-server-sdk-v1` skill.
 ```
 
 Always use the target skill's `name` field, not its directory path. The agent resolves the name to the correct location.

@@ -19,7 +19,7 @@ Use this skill when you need to:
 - compare a local stdio server with a deployed HTTP target
 
 Do not use this skill when the main job is building the server or client itself.
-Use `build-mcp-sdk`, `build-mcp-sdk-v2`, `build-mcp-use-server`, or `build-mcp-use-client` for implementation work.
+Use `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, `build-mcp-use-server`, or `build-mcp-use-client` for implementation work.
 
 ## Prerequisites
 

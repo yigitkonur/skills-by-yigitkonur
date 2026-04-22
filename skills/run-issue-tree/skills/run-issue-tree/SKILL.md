@@ -12,7 +12,7 @@ Plan and execute wave-based project plans as GitHub Issue trees with sub-issue n
 Use when planning any project, feature, or complex task using GitHub Issues with sub-issues and wave labels, OR executing an existing issue tree with subagent dispatches.
 
 Do NOT use when:
-- Reviewing a PR (use `review-pr`)
+- Reviewing a PR (use `do-review`)
 - General planning without GitHub Issues
 
 ## Mode routing

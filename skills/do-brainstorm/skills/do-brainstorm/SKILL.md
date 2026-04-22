@@ -5,7 +5,7 @@ description: Use skill if you are brainstorming before committing — architectu
 
 # Do Brainstorm
 
-A framework-aware, user-in-the-loop brainstorming session. Not a feature-design linear flow (see obra/brainstorming) and not solo reasoning (see the repo's `think-deeper` skill). This skill classifies the problem first (Cynefin), then routes to the right combination of 25 mental-model frameworks, pausing at forks to bring the user along.
+A framework-aware, user-in-the-loop brainstorming session. Not a feature-design linear flow (see obra/brainstorming) and not solo reasoning (see the repo's `do-think` skill). This skill classifies the problem first (Cynefin), then routes to the right combination of 25 mental-model frameworks, pausing at forks to bring the user along.
 
 ## Trigger boundary
 
@@ -21,9 +21,9 @@ Use this skill when the task is to:
 Prefer another skill when:
 
 - a specific design is already agreed → go implement (`build-*`, `develop-*`)
-- a PR exists to evaluate → `review-pr` (or the companion `evaluate-code-review` skill if installed)
+- a PR exists to evaluate → `do-review` (or the companion `evaluate-code-review` skill if installed)
 - the task is narrowly "design this feature before coding it" with no exploration needed → direct design + skip this skill
-- the agent is reasoning alone with no user in the loop → `think-deeper`
+- the agent is reasoning alone with no user in the loop → `do-think`
 - the work is executing pre-decided tasks at scale → `run-issue-tree`
 
 ## Non-negotiable rules
@@ -134,7 +134,7 @@ Produce the full output (see `references/output-format.md`). Minto-style: conclu
 Every session ends with:
 
 - A **ranked summary** table
-- A **recommended next step** with the right next-skill or action pointer (e.g., `build-skills` to implement, `run-issue-tree` to plan, `run-research` to gather more evidence, direct implementation, or the companion `request-code-review` skill if installed)
+- A **recommended next step** with the right next-skill or action pointer (e.g., `build-skills` to implement, `run-issue-tree` to plan, `run-research` to gather more evidence, direct implementation, or the companion `ask-review` skill if installed)
 - An **explicit user question** naming the next fork — not "let me know what you think"
 
 ## Output contract

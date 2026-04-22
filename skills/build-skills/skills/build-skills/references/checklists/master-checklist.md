@@ -49,7 +49,7 @@ The frontmatter determines whether Claude ever loads your skill.
 - [ ] `name` matches the directory name
 - [ ] No leading, trailing, or consecutive hyphens
 - [ ] Name does not contain "claude" or "anthropic" (reserved by Anthropic)
-- [ ] Name follows verb-noun pattern (`build-mcp-server`, `review-pr`)
+- [ ] Name follows verb-noun pattern (`build-mcp-server`, `do-review`)
 
 ### Description field
 - [ ] `description` field is present

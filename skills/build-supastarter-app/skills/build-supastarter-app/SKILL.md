@@ -18,7 +18,7 @@ Use this skill when the user is changing a real Supastarter monorepo and the ans
 ## Do not use this skill for
 
 - generic TypeScript quality work with no Supastarter-specific patterns; use `develop-typescript`
-- pull request review or review-only work; use `review-pr`
+- pull request review or review-only work; use `do-review`
 - framework-agnostic Next.js advice that ignores this repo's routing, guards, and package boundaries
 
 ## Core operating rule

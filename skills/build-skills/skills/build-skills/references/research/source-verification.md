@@ -136,7 +136,7 @@ When multiple skills cover similar ground, build a comparison table before synth
 | Source | Focus | Strengths | Gaps | Inherit / avoid |
 |---|---|---|---|---|
 | copilot-sdk skill | SDK reference | Excellent decision tree, typed patterns | No research methodology | Inherit tree structure, avoid SDK-specific content |
-| review-pr skill | PR review | Strong workflow discipline | No reference organization guidance | Inherit phase-based routing |
+| do-review skill | PR review | Strong workflow discipline | No reference organization guidance | Inherit phase-based routing |
 | init-agent-config | Config files | Good file-format coverage | Thin on decision-making | Inherit config spec format |
 
 ### Decision language

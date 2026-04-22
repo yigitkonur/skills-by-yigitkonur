@@ -5,7 +5,7 @@ description: Use skill if you are evaluating code review feedback — PR comment
 
 # Evaluate Code Review
 
-The opposite side of `request-code-review`. You have feedback in hand — from a human reviewer, one or more AI review bots, a previous self-review, or a markdown audit doc — and need to decide what to act on, what to push back on, and what to ask about. Discipline: **verify before implementing, technical correctness over social comfort, no performative agreement.**
+The opposite side of `ask-review`. You have feedback in hand — from a human reviewer, one or more AI review bots, a previous self-review, or a markdown audit doc — and need to decide what to act on, what to push back on, and what to ask about. Discipline: **verify before implementing, technical correctness over social comfort, no performative agreement.**
 
 ## Trigger boundary
 
@@ -19,8 +19,8 @@ Use this skill when the task is to:
 
 Prefer another skill when:
 
-- doing the review yourself (reviewer-side) → `review-pr`
-- preparing a PR for review (author-side) → `request-code-review`
+- doing the review yourself (reviewer-side) → `do-review`
+- preparing a PR for review (author-side) → `ask-review`
 - tidying a dirty tree → `run-repo-cleanup`
 - debugging runtime behavior via tools → `debug-*`
 

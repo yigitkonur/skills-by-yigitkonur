@@ -148,7 +148,7 @@ Good next-step formats:
 
 - "Run `build-skills` to implement the chosen architecture as a draft."
 - "Create a GitHub Issue via `run-issue-tree` with the plan and assign."
-- "Open a PR for the migration with the Phase 1 changes; include a self-review body (if you have the `request-code-review` skill installed, use it; otherwise follow the PR-body convention in the `review-pr` skill)."
+- "Open a PR for the migration with the Phase 1 changes; include a self-review body (if you have the `ask-review` skill installed, use it; otherwise follow the PR-body convention in the `do-review` skill)."
 - "Schedule a 30-minute decision meeting with <stakeholders> using the Conflict Resolution Diagram above as the discussion document."
 - "Raise confidence on the low-confidence scores in Step 4 by running a cheap benchmark; re-evaluate if the scores move."
 
