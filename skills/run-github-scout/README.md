@@ -1,6 +1,6 @@
 # run-github-scout
 
-Finding the best GitHub repos for a technology need: searches, evaluates, and ranks repos using subagent swarms with automatic retry when results are weak.
+Finding, shortlisting, or comparing GitHub repos for a concrete need with adaptive discovery, relevance filtering, and optional deeper comparison.
 
 **Category:** productivity
 

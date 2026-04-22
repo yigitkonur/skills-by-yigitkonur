@@ -1,99 +1,65 @@
 # Search Methodology
 
-Operating manual for search subagents. Covers hypothesis generation, search execution, and result formatting.
+Adaptive repo discovery is a short loop: search broadly, filter internally, refine once, then stop when the shortlist stabilizes.
 
-## Phase 1: Generate Search Hypotheses (NO subagents)
+## Default loop
 
-Before touching `gh`, THINK about search diversity. Generate a **MAXIMUM of 20 search hypotheses**. Each hypothesis is a different ANGLE, not a keyword synonym.
+1. Restate the need in one sentence.
+2. Choose 3-6 first-pass angles.
+3. Run short, broad searches.
+4. Classify results as relevant, maybe relevant, or off-topic.
+5. Extract better terms from the relevant and maybe-relevant set.
+6. Run one refinement pass only where the first pass was thin or noisy.
+7. Stop when new results mostly repeat known repos.
 
-**Hypothesis angles to consider:**
+## First-pass angles
 
-| Angle | Example for "WebAssembly table processing" |
-|---|---|
-| Direct name | `"webassembly table" OR "wasm table"` |
-| Curated lists | `awesome-wasm` OR `awesome-webassembly` |
-| Language variants | `"wasm" language:Rust`, `"wasm" language:C++` |
-| Framework combos | `"wasm" "react"`, `"wasm" "vue"` |
-| Use-case variants | `"wasm data grid"`, `"wasm spreadsheet"` |
-| Known orgs | `org:aspect-build`, `org:nicolo-ribaudo` |
-| Alt terminology | `"WASM" vs "WebAssembly"` vs `"wasm-bindgen"` |
-| Compound OR | `termA OR termB OR termC` (single terms only, NOT quoted phrases) |
-| README search | `"topic" in:readme stars:>10` for repos with different names |
-| Topic tags | `--topic=webassembly` |
-| Broad sweep | `"mcp server" --sort=stars --limit=100` then filter by description |
-| Generic category | Search the broader CATEGORY, not just the specific product |
-| Known org/author | `--owner=BeehiveInnovations` or `user:torvalds` |
-| Plugin/skill packages | `"claude plugin" OR "claude code plugin" multi-model` |
-| Former/renamed projects | `"zen mcp"`, `"claude-flow"` — repos change names |
+| Angle | When to use it | Example query |
+|---|---|---|
+| Direct phrasing | Always | `gh search repos 'notion alternative fork:false archived:false' --limit 20 --sort=stars` |
+| Broader category | Always | `gh search repos 'self-hosted wiki fork:false archived:false' --limit 20 --sort=stars` |
+| Known examples | When the user names tools or the category has obvious leaders | `gh search repos 'outline OR affine fork:false archived:false' --limit 20 --sort=stars` |
+| Unexpected naming | When repo names may not match user wording | `gh search repos 'block editor collaborative docs fork:false archived:false' --limit 20 --sort=stars` |
+| Constraint-specific | Only if a hard constraint matters | `gh search repos 'self-hosted notes language:TypeScript fork:false archived:false' --limit 20 --sort=stars` |
+| Curated/meta | When you need landscape discovery, not final ranking | `gh search repos 'awesome self-hosted notes fork:false archived:false' --limit 20 --sort=stars` |
 
-**CEILING RULES:**
-- Maximum 20 hypotheses total
-- Maximum 5 per angle type
-- STOP generating when new hypotheses would return >=80% duplicates of existing results
-- Shorter, broader queries find more. `"codex mcp"` finds 20 results. `"mcp server codex cli tool"` finds 0.
-- For niche topics, 7-10 productive hypotheses often exhaust the space. Don't pad to 20.
+Keep the first pass intentionally small. Four good angles beats twenty padded ones.
 
-**CRITICAL: OR operator rules (P0 — wrong usage returns 0 results):**
-- OR works as BARE terms with no outer quotes: `gh search repos codex OR claude OR gemini` — WORKS
-- OR INSIDE a quoted string FAILS: `gh search repos "codex OR claude"` — 0 results
-- OR between QUOTED PHRASES FAILS: `"codex bridge" OR "codex wrapper"` — 0 results
-- **Rule: NEVER put OR inside quotes. Always bare:** `gh search repos termA OR termB --sort=stars`
-- For multi-word concepts, run SEPARATE searches
+## Internal filtering rules
 
-Read `search-hypothesis-thinking.md` for worked examples.
+Use search results as candidate generation, then classify internally:
 
-## Phase 2: Execute Searches (max 100 gh API calls)
+| Class | Meaning | What to do |
+|---|---|---|
+| Relevant | Clearly matches the job to be done | Keep for shortlist and maybe deeper inspection |
+| Maybe relevant | Adjacent or promising but still uncertain | Read the README intro or repo topics |
+| Off-topic | Wrong category, template, abandoned, or obvious mismatch | Drop and use the mismatch to improve queries |
 
-**Standard search command:**
-```bash
-gh search repos "QUERY" --limit 30 --sort=stars \
-  --json fullName,stargazersCount,description,language,updatedAt \
-  --jq '.[] | [.fullName, (.stargazersCount|tostring), .language // "?", (.updatedAt[:10]), (.description // "" | .[:60])] | @tsv'
-```
+Prioritize these signals before reading more:
+- repo name and description
+- stars and recent activity
+- archived status
+- license
+- topics if easy to inspect
 
-**EXECUTION RULES:**
-- Maximum 100 total `gh search repos` calls
-- **Pace: max 10 searches per 2 minutes** to avoid GitHub API throttling
-- Always `--sort=stars` (never `--sort=updated`)
-- Always `--json ... --jq ...` (never raw JSON)
-- If a hypothesis returns 0 results: try unquoting, splitting OR terms, or broadening
+## Refinement patterns
 
-**MANDATORY: Broad sweep hypotheses (always include 2-3):**
-```bash
-gh search repos "BROAD_TERM" --sort=stars --limit=100 \
-  --json fullName,stargazersCount,description \
-  --jq '.[] | select(.description // "" | test("KEYWORD1|KEYWORD2";"i")) | "\(.fullName) \(.stargazersCount)★ \(.description // "" | .[:60])"'
-```
+Good refinement uses words you observed in the candidate set:
+- rename the problem using repo vocabulary
+- search the parent category, then filter harder
+- add one hard constraint that separates the good from the noisy
+- search known alternatives discovered in the first pass
 
-**Supplement with web search** (max 5 web searches):
-- Always append `site:github.com` for repo discovery
-- Try Reddit: `"topic" github site:reddit.com` for community-validated picks
+Bad refinement:
+- piling on extra words because the first pass felt too broad
+- re-running the same search with tiny wording changes
+- launching multiple waves before classifying what you already have
 
-Read `gh-search-syntax-cheatsheet.md` for qualifier reference.
-Read `output-format-recipes.md` for jq patterns.
+## Stop rules
 
-## Phase 3: Deduplicate, Rank & Output
+Stop after the first pass when the shortlist is already strong.
 
-1. Merge all results. Deduplicate by repo fullName (case-insensitive)
-2. Sort by stars descending
-3. **CEILING: Report a maximum of 50 candidates.**
-
-**Output format — markdown table:**
-
-```markdown
-| # | Repo | Stars | Lang | Updated | Description |
-|---|------|-------|------|---------|-------------|
-| 1 | owner/name | 1234 | TS | 2026-03 | Short desc... |
-```
-
-Separate collections/meta-repos from implementations. After the table, provide:
-- **Total found:** N unique repos across M searches
-- **Search effectiveness:** Which hypotheses found the most unique results
-- **Categories:** Group repos into 3-5 natural categories if patterns emerge
-
-## Decision rules
-
-- Well-known topic: fewer hypotheses (8-12), focus on sub-niches
-- Niche topic: more hypotheses (15-20), broader OR queries
-- <5 results after all hypotheses: the topic may not exist on GitHub. Say so honestly.
-- User provides example repos: reverse-engineer better search terms from their topics/description/README
+Stop after the refinement pass when any of these is true:
+- new searches mostly repeat the same repos
+- remaining gaps are about uncertainty, not discovery
+- the user can already make a reasonable choice from the shortlist

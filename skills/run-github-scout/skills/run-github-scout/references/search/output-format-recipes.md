@@ -1,61 +1,50 @@
 # Output Format Recipes
 
-Token-efficient --jq patterns for gh search repos. Copy-paste ready.
+Token-efficient `gh` output patterns for candidate collection.
 
-## Recipes by Use Case
+## 1. Quick scan
 
-### 1. Enumeration Only (26 bytes/result)
-When you just need names for dedup or piping:
+Good default when you want to see name, stars, freshness, and description.
+
 ```bash
---json fullName --jq '.[].fullName'
+gh search repos 'QUERY' --limit 20 --sort=stars           --json fullName,stargazersCount,updatedAt,description,url           --jq '.[] | [.fullName, (.stargazersCount|tostring), (.updatedAt[:10]), (.description // "" | .[:80]), .url] | @tsv'
 ```
 
-### 2. Quick Scan (32 bytes/result) — RECOMMENDED DEFAULT
-Name + stars. Enough to decide what to investigate:
+## 2. Markdown-ready rows
+
 ```bash
---json fullName,stargazersCount \
---jq '.[] | "\(.fullName) \(.stargazersCount)★"'
+gh search repos 'QUERY' --limit 20 --sort=stars           --json fullName,stargazersCount,updatedAt,description           --jq '.[] | "| \(.fullName) | \(.stargazersCount) | \(.updatedAt[:10]) | \(.description // "" | .[:60]) |"'
 ```
 
-### 3. Full Detail TSV (68 bytes/result)
-Name, stars, language, date, description:
+## 3. Candidate name capture only
+
 ```bash
---json fullName,stargazersCount,language,description,updatedAt \
---jq '.[] | [.fullName, (.stargazersCount|tostring), .language // "?", (.updatedAt[:10]), (.description // "" | .[:60])] | @tsv'
+gh search repos 'QUERY' --limit 20 --sort=stars           --json fullName --jq '.[].fullName'
 ```
 
-### 4. Markdown Table Row
-For direct copy into reports:
-```bash
---json fullName,stargazersCount,language,description,updatedAt \
---jq '.[] | "| \(.fullName) | \(.stargazersCount) | \(.language // "?") | \(.updatedAt[:10]) | \(.description // "" | .[:50]) |"'
-```
-
-## Dedup Across Multiple Searches
+## 4. Merge a few first-pass searches
 
 ```bash
 {
-  gh search repos "query1" --limit 30 --sort=stars --json fullName,stargazersCount --jq '.[] | "\(.fullName)\t\(.stargazersCount)"';
-  gh search repos "query2" --limit 30 --sort=stars --json fullName,stargazersCount --jq '.[] | "\(.fullName)\t\(.stargazersCount)"';
-  gh search repos "query3" --limit 30 --sort=stars --json fullName,stargazersCount --jq '.[] | "\(.fullName)\t\(.stargazersCount)"';
-} | sort -t$'\t' -k1,1 -u | sort -t$'\t' -k2 -rn
+  gh search repos 'query one' --limit 20 --sort=stars --json fullName --jq '.[].fullName';
+  gh search repos 'query two' --limit 20 --sort=stars --json fullName --jq '.[].fullName';
+  gh search repos 'query three' --limit 20 --sort=stars --json fullName --jq '.[].fullName';
+} | sort -u
 ```
 
-## Token Efficiency Comparison (20 results)
+## 5. Compact shortlist scratchpad
 
-| Format | Bytes | Ratio |
-|---|---|---|
-| Raw --json (no --jq) | 3,734 | 7.1x (NEVER use) |
-| Default table (no flags) | 2,551 | 4.8x |
-| Full detail TSV | 1,363 | 2.6x |
-| Quick scan (name+stars) | 644 | 1.2x |
-| Names only | 529 | 1.0x (baseline) |
+After you inspect the top candidates, reformat them into a shortlist-friendly table:
 
-**RULE: Always use --jq. Never output raw JSON.**
+```markdown
+| Repo | Class | Why it is here | Signals |
+|---|---|---|---|
+| owner/repo | relevant | Strong fit for self-hosted docs | 12k stars, pushed 2026-04 |
+| owner/repo2 | maybe relevant | More wiki-like than docs platform | MIT, active |
+```
 
-## Null Handling in jq
+## Rules
 
-Always handle nulls for optional fields:
-- `(.description // "")` — empty string fallback
-- `(.language // "?")` — question mark fallback
-- `(.description // "" | .[:50])` — truncate with null safety
+- Prefer TSV or markdown rows over raw JSON.
+- Capture URLs when you expect to open repo pages next.
+- Do not over-format the first pass; the classification step matters more than pretty output.

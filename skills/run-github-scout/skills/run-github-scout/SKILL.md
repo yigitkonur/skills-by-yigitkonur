@@ -1,269 +1,221 @@
 ---
 name: run-github-scout
-description: "Use skill if you are finding the best GitHub repos for a technology need: searches, evaluates, and ranks repos using subagent swarms with automatic retry when results are weak."
+description: "Use skill if you are finding, shortlisting, or comparing GitHub repos for a concrete need and want adaptive discovery, relevance filtering, and optional deeper comparison."
 ---
 
-# GitHub Scout
+# GitHub Repo Scout
 
-Find the best GitHub repos for any technology need. Orchestrates search and evaluation subagents, reads their results, retries when quality is low, and produces a ranked recommendation.
+Find and shortlist the best-fit GitHub repos for a concrete user need. Default to adaptive discovery, internal relevance filtering, and a markdown shortlist. Deeper comparison, feature matrices, and HTML export are optional end-stage branches.
 
 ## Trigger boundary
 
-**Use when:** "find the best X on GitHub", "what should I use for Y", "compare all Z options", "landscape survey for W"
-**Do NOT use when:** you already have scored evaluation data and just need to re-read it, or a completely unrelated task
+**Use when:** "find the best open-source X for Y", "what GitHub repos fit this use case?", "compare repos for this stack/problem", "I need a shortlist of tools like this", or "find similar repos on GitHub".
 
-## Workflow
+**Do NOT use when:** the task is generic technical research without repo-discovery intent, a codebase-local question, or a non-GitHub product comparison. Use `run-research` for broad web research that is not centered on GitHub repositories.
 
-### Phase 0: Understand the Need (max 4 questions)
+## Default stance
 
-Before any search, nail down what the user actually wants. Use the `AskUserQuestion` tool — no open-ended chat.
+- **Shortlist first.** The default deliverable is an in-conversation markdown shortlist.
+- **Search small, then refine.** Start with 3-6 broad angles, then run at most one refinement round unless results are still materially weak.
+- **Filter before expanding.** Read descriptions, names, topics, stars, and recent activity before inventing more searches.
+- **Research Power Pack / MCP web tools are optional.** Use them when they help naming or landscape discovery. Never require them.
+- **Keep deep work top-N only.** Feature matrices, code reads, and HTML export happen only after a useful shortlist exists.
 
-**Questions to consider (pick 2-4 that matter for THIS request):**
+## Capability check
 
-| Header | Question | When to ask |
+Choose the leanest path that can still answer the request.
+
+| Path | Use when | Default tools |
 |---|---|---|
-| Need | "What problem are you solving?" | Always — clarifies the use case |
-| Constraints | "Any hard requirements? (language, license, self-hosted, etc.)" | When the domain has many options |
-| Scale | "Quick comparison or exhaustive landscape?" | When scope is ambiguous |
-| Context | "Any repos you already know about or are currently using?" | When user mentions a specific tool |
+| **GitHub-only** | The problem is clearly named, the category is repo-centric, or GitHub search already surfaces relevant candidates. | `gh search repos`, GitHub web/API, repo READMEs |
+| **Augmented** | Naming is fuzzy, the landscape is broad, category labels are unclear, or first-pass GitHub search is thin/noisy. | GitHub search plus optional MCP/web research to learn better terms |
 
-**Do NOT ask if the user already specified these in their request.** Read what they said first. If they said "find me a self-hosted Notion alternative in TypeScript with real-time collab" — that answers Need, Constraints, and implicitly Scale. Skip straight to Phase 1.
+Rules:
+- If MCP/web research is unavailable, continue on the GitHub-only path.
+- If web research is available, use it to discover better names, categories, and community-curated alternatives, then map those back to GitHub repos and filter there.
+- Do not ask the user to install a research tool just to run this skill.
 
-### Phase 1: Generate Seed Strategy (orchestrator does this, NOT subagents)
+## Default workflow
 
-Based on the user's answers, produce:
+### 1. Interpret the request
 
-1. **Seed keywords** — 5-10 search terms that cover the space
-2. **Known competitors** — any repos the user mentioned or you recognize
-3. **Feature checklist** — 3-5 must-have features for scoring (becomes custom Feature Fit criteria)
-4. **Search scope estimate** — will this find 10 repos or 200?
+Extract the search contract before touching GitHub:
+- core problem or job to be done
+- must-haves
+- exclusions
+- ecosystem or language constraints
+- maturity expectations (production-ready, active, permissive license, etc.)
+- known examples or anti-examples
 
-Write this strategy to `.githubresearch/strategy.md` in the working directory. This file is the orchestrator's memory — subagents don't need it, but you'll re-read it if retrying.
+Ask clarifying questions only when the answer would materially change the search. If the user's request already pins the use case and constraints, skip questions entirely.
 
-### Phase 2: Search (dispatch subagent)
+### 2. Choose the search path
 
-Launch ONE search subagent (Sonnet). Use the prompt template from `references/subagent-prompts.md` (Search Subagent section), filling in the topic and context. The subagent reads `references/search/search-methodology.md` and its supporting references.
+- Use the **GitHub-only** path by default.
+- Switch to the **Augmented** path if you hit ambiguous naming, broad category noise, or community terminology problems.
+- Read `references/search/web-search-patterns.md` only if you need the augmented branch.
 
-**Agent config:** model `sonnet`, mode `bypassPermissions`, `run_in_background: true`.
+### 3. Run a small first pass
 
-Wait for completion. Read `.githubresearch/search-findings/wave-01.md`.
+Start with **3-6 search angles**, not a giant hypothesis list.
 
-**Quality gate — decide what happens next:**
+Minimum useful angle set:
+1. direct phrasing of the user's need
+2. broader category phrasing
+3. known examples or well-known alternatives
+4. one unexpected-naming branch
 
-| Result | Action |
-|---|---|
-| 20+ relevant repos found | Proceed to Phase 3 |
-| 5-19 repos found | Acceptable — proceed, but note thin coverage |
-| <5 repos found | **Retry**: tell a new subagent what was wrong and which angles to try. Write to `wave-02.md`. Max 2 retries. |
-| Results are off-topic | **Retry with feedback**: "These are wrong because X. Try searching for Y instead." |
+Add a fifth or sixth angle only when a hard constraint matters (language, deployment model, self-hosted, etc.).
 
-**Retry:** Use the Search Retry Subagent template from `references/subagent-prompts.md`, providing feedback on what was missed and new angles to try.
+Use short, broad queries first. Read `references/search/search-methodology.md`, `references/search/gh-search-syntax-cheatsheet.md`, and `references/search/output-format-recipes.md` if you need exact search patterns.
 
-**Max 3 search waves total.** If still <5 after 3 waves, tell the user the topic may be too niche.
+### 4. Filter internally before searching again
 
-### Phase 3: Evaluate (dispatch subagent swarm)
+Treat the first pass as raw material, not the final answer.
 
-Take ALL unique repos from all search waves. Decide swarm size:
+For each candidate, classify it as:
+- **relevant** — clearly fits the job
+- **maybe relevant** — plausible but needs more evidence
+- **off-topic** — wrong category, dead end, or obvious mismatch
 
-**Swarm sizing formula:**
+Filter using the cheapest signals first:
+- repo name
+- description
+- topics
+- stars
+- recent activity or pushed date
+- archived status
+- license presence
 
-| Total repos | Agents | Repos per agent | Strategy |
-|---|---|---|---|
-| 1-5 | 1 | All | Single agent evaluates inline |
-| 6-15 | 2-3 | ~5 each | Small swarm |
-| 16-30 | 3-5 | ~6-10 each | Medium swarm |
-| 31-60 | 5 | ~6-12 each | Full swarm (cap) |
-| 61-150 | 5 | ~12-30 each | Full swarm, batch by stars (top repos get deeper eval) |
-| 150+ | 5 | 30 each (top 150 by stars) | Cap at 150. Drop tail. |
+Read README intros only for borderline or high-potential candidates. Harvest better terms from relevant and maybe-relevant repos before expanding search.
 
-**HARD CAP: Never more than 5 evaluation agents.**
+Use `references/search/dedup-and-rank.md` when you need a repeatable shortlist assembly step.
 
-Each eval subagent gets the Evaluation Subagent prompt from `references/subagent-prompts.md`, with the repo list and feature checklist filled in. Subagents read `references/evaluation/evaluation-methodology.md` and its supporting references for the full evaluation workflow.
+### 5. Run one refinement pass
 
-Launch all agents in parallel. Wait for all to complete.
+Refine only after the first classification pass tells you what is missing.
 
-### Phase 3.5: Feature Detection (dispatch subagent swarm)
+Good reasons to refine:
+- too few relevant repos
+- too much off-topic noise
+- naming mismatch between user language and repo language
+- a promising subcategory emerged from candidate descriptions or topics
 
-After evaluation completes, build a cross-repo feature comparison matrix.
+Refinement rules:
+- use 1-4 better queries, not a whole new search machine
+- expand only the gaps you observed
+- stop when new searches mostly repeat known repos
 
-**Step 1: Discover canonical features.** Read all `batch-*.md` review files and the Phase 1 feature checklist. Identify 5-15 features that appear across repos. Write the list to `.githubresearch/feature-matrix/features.md`.
+Use `references/search/search-diversity-examples.md` for worked examples of first-pass plus refinement loops.
 
-**Step 2: Dispatch feature-detection agents.** Same swarm sizing as Phase 3, max 5 agents. Each agent gets a batch of repos + the canonical feature list. Prompt template: see `references/subagent-prompts.md` section "Feature Detection Subagent".
+### 6. Produce the default output
 
-Each agent writes to `.githubresearch/feature-matrix/batch-{N}.md` with structured JSON per repo (present/absent + evidence + confidence).
+Default output is **markdown in the conversation**, not mandatory files.
 
-**Step 3: Collect results.** Build the `FEATURE_MATRIX` JSON object for the HTML template.
+Deliver:
+1. a one-paragraph recommendation or framing note
+2. a compact markdown table
+3. a grouped shortlist (`Best fits`, `Worth a look`, `Ruled out / why`)
+4. notable gaps or uncertainty
 
-**Skip condition:** If the user said "quick comparison" or there are <=5 repos, skip this phase.
-
-### Phase 4: Synthesize (orchestrator reads everything)
-
-Read ALL files in `.githubresearch/repo-reviews/`. The orchestrator does this solo — no subagents.
-
-**For each repo reviewed, check:**
-1. Does the score make sense given the raw data?
-2. Are there inconsistencies between batches? (same repo scored differently by different agents)
-3. Did any agent miss critical data? (score says "no CI" but another agent found CI runs)
-4. Does the Feature Fit checklist match the user's stated needs?
-
-**Inconsistency handling:**
-
-| Issue | Fix |
-|---|---|
-| Same repo scored by 2 agents with >15 point difference | Re-evaluate that repo yourself inline |
-| Agent scored "no data" for a signal | Run the specific API call yourself to fill the gap |
-| Feature Fit doesn't match user's checklist | Adjust score manually based on your reading of the repo |
-
-### Phase 5: Final Report
-
-Write `.githubresearch/summary.md`:
+Recommended table:
 
 ```markdown
-# GitHub Scout: {TOPIC}
-Date: {DATE}
-
-## Recommendation
-{1-3 sentences: which repo(s) to use and why}
-
-## Ranked Results
-| # | Repo | Score | Stars | Key Strength | Key Risk | Feature Fit |
-|---|------|-------|-------|-------------|----------|-------------|
-
-## Per-Repo Analysis (top 5-10)
-### 1. owner/repo (Score: X)
-{2-3 sentences}
-
-## Categories
-{3-5 natural groupings}
-
-## Search Coverage
-- Waves: N | Total unique repos: N | Evaluated: N | Agents used: N
-- Hypotheses that found the most: {list}
-- Gaps: {anything the search might have missed}
+| Repo | Why it fits | Useful signals | Caveat |
+|---|---|---|---|
+| owner/repo | Best match for X because Y | 4.2k stars, pushed 2026-04, MIT | Docs thin |
 ```
 
-**Generate HTML report** by copying `references/report-template.html` to `.githubresearch/report.html` and replacing all placeholders with real data.
+If the user is satisfied with the markdown shortlist, stop there.
 
-Placeholder reference:
+### 7. Offer optional deepen
 
-| Placeholder | What to replace with |
-|---|---|
-| `[TOPIC]`, `[DATE]`, `[TOTAL_REPOS]`, etc. | Simple string substitution |
-| `ROW_START`/`ROW_END` blocks | Duplicate per repo in ranked table |
-| `CARD_START`/`CARD_END` blocks | Duplicate per top 5-10 repos for deep dive cards |
-| `FEATURE_HEADER_START`/`END` | Duplicate per feature column in matrix |
-| `MATRIX_ROW_START`/`END` + `MATRIX_CELL_START`/`END` | Duplicate per repo × feature |
-| `CAT_START`/`CAT_END` | Duplicate per category chip |
-| `[DRILL_DOWN_JSON]` | JSON object with per-repo H/A/C metric breakdowns (from Phase 4 synthesis) |
-| `[FEATURE_MATRIX_JSON]` | JSON object with features and per-repo evidence (from Phase 3.5) |
-| `[PUBLISH_ENDPOINT]` | Already hardcoded to `https://scout-reports.seodoold.workers.dev/publish` in template |
+Only deepen after the markdown shortlist is useful.
 
-Score classes for bars: `excellent` (80+), `good` (60-79), `fair` (40-59), `weak` (20-39), `avoid` (<20).
-Feature matrix cells: `yes` (present), `no` (absent), `partial` (medium confidence).
+Optional branches:
+- **light deeper comparison** — compare the top 3-5 repos side by side
+- **code-level evaluation** — verify feature evidence and implementation maturity in the top few repos
+- **feature matrix** — only if the user wants explicit capability coverage
+- **HTML/export** — only if the user wants a persistent artifact
 
-**Open the report in the user's browser:**
-```bash
-# Cross-platform open
-case "$(uname)" in
-  Darwin*) open .githubresearch/report.html ;;
-  Linux*)  xdg-open .githubresearch/report.html ;;
-  MINGW*|MSYS*|CYGWIN*) start .githubresearch/report.html ;;
-esac
-```
+If the user asks for files, create them from the **final shortlisted dataset only**. Do not create `.githubresearch/` or other artifact trees unless the user wants export or report output.
 
-**Then tell the user:** brief summary in conversation + path to the full report.
+## Default evaluation rules
 
-### Phase 6: User Feedback Loop (optional)
+Use light, fast, rate-limit-aware signals by default:
+- topic, description, or README match to the user's need
+- stars
+- recent activity or pushed date
+- rough maintainer or commit activity
+- archived or disabled status
+- license presence
+- README clarity
+- tests or CI presence when cheap to detect
 
-If the user isn't satisfied:
+Do **not** default to:
+- author follower scoring
+- org prestige heuristics
+- "AI-wave-only author" style filters
+- a giant multi-metric rubric
+- mandatory per-repo GraphQL or REST drills across the whole candidate set
 
-| User says | Action |
-|---|---|
-| "These aren't what I wanted" | Go back to Phase 0, re-clarify need |
-| "You missed X" | Add X to known repos, re-run Phase 3 for just that repo |
-| "Go deeper on the top 3" | Run code-level analysis on those 3 repos (read their source code) |
-| "Try different search terms" | Go back to Phase 2 with user's new angles |
-| "Looks good" | Done |
+If the user wants more confidence, deepen only on the top few repos. Read:
+- `references/evaluation/evaluation-methodology.md` for the light default path and deepen triggers
+- `references/evaluation/rest-unique-signals.md` for cheap repo signals
+- `references/evaluation/graphql-repo-deep-dive.md` for optional single-repo deep evidence
+- `references/evaluation/code-level-analysis.md` for optional code-level checks
 
-**No infinite loops.** Max actions per session:
-- 3 search waves
-- 2 evaluation rounds
-- 1 re-clarification
+## Orchestration rules
 
-After that, present what you have and let the user decide.
+Default execution model: **hybrid lean**.
 
-## File structure
+- The main agent owns intent parsing, search strategy, filtering, and synthesis.
+- Batch or parallelize queries when helpful, but keep the reasoning central.
+- Use subagents only for:
+  - very large landscapes
+  - explicit deep-dive requests
+  - optional feature-matrix generation
+  - top-N code-level review
 
-```
-.githubresearch/
-├── strategy.md              # Phase 1 output: seed keywords, features, scope
-├── search-findings/
-│   ├── wave-01.md           # First search results
-│   ├── wave-02.md           # Retry (if needed)
-│   └── wave-03.md           # Final retry (if needed)
-├── repo-reviews/
-│   ├── batch-01.md          # Eval agent 1 results
-│   ├── batch-02.md          # Eval agent 2 results
-│   └── ...                  # Up to batch-05.md
-├── feature-matrix/
-│   ├── features.md
-│   ├── batch-01.md, ...
-├── summary.md               # Final ranked report
-└── report.html
-```
+If you dispatch help, read `references/subagent-prompts.md`. Subagents gather evidence; the main agent still writes the final shortlist or comparison.
 
-Create `.githubresearch/` at the start. If it already exists from a prior run, archive it to `.githubresearch.bak.{timestamp}/` first.
+## Output contract
 
-## Decision rules
+Unless the user asks for a different format, show work in this order:
 
-- User's request is crystal clear → skip Phase 0 questions entirely
-- User provides example repos → use those to seed hypothesis generation AND as benchmark scores
-- <5 total repos after 3 waves → tell user honestly, present what exists
-- >150 repos → cap at 150 by stars, note truncation
-- Single dominant repo (10x more stars than #2) → flag it as category leader but still evaluate alternatives
-- All repos are <1 month old → warn user about volatility risk
+1. interpreted need summary
+2. chosen search path and why
+3. first-pass shortlist result
+4. refined shortlist and recommendation
+5. optional deepen choices if more confidence or export is useful
 
 ## Reference routing
 
-### Orchestration
-| File | Read when |
-|---|---|
-| `references/subagent-prompts.md` | Phase 2/3/3.5 — launching search, eval, or feature-detection subagents |
-| `references/quality-gates.md` | After any search wave, evaluation, or feature detection — deciding retry vs proceed |
-| `references/report-template.html` | Phase 5 — copy and fill with data to generate the HTML report |
+Load only the branch you need.
 
-### Search (subagent reads these)
 | File | Read when |
 |---|---|
-| `references/search/search-methodology.md` | Entry point — full search workflow for subagents |
-| `references/search/search-hypothesis-thinking.md` | Generating hypotheses — worked examples |
-| `references/search/gh-search-syntax-cheatsheet.md` | Building queries — qualifier reference |
-| `references/search/output-format-recipes.md` | Formatting gh output — jq patterns |
-| `references/search/search-diversity-examples.md` | Need more angle inspiration |
-| `references/search/web-search-patterns.md` | Supplementing gh search with web search |
-| `references/search/dedup-and-rank.md` | Merging results from multiple searches |
-
-### Evaluation (subagent reads these)
-| File | Read when |
-|---|---|
-| `references/evaluation/evaluation-methodology.md` | Entry point — full evaluation workflow for subagents |
-| `references/evaluation/graphql-repo-deep-dive.md` | Single repo deep query |
-| `references/evaluation/graphql-batch-repos.md` | Batch screening query |
-| `references/evaluation/graphql-user-profile.md` | Author assessment |
-| `references/evaluation/rest-unique-signals.md` | REST-only endpoints |
-| `references/evaluation/code-level-analysis.md` | README, files, source sampling |
-| `references/evaluation/scoring-rubric.md` | Scoring metrics and scales |
-| `references/evaluation/author-red-flags.md` | Red flag detection |
-| `references/evaluation/api-gotchas.md` | Known API pitfalls |
-| `references/evaluation/eval-subagent-dispatch.md` | Exact subagent prompt template and metrics format |
+| `references/search/search-methodology.md` | Default starting point for first-pass plus refinement search. |
+| `references/search/search-diversity-examples.md` | You need examples of good first-pass angles or refinement pivots. |
+| `references/search/gh-search-syntax-cheatsheet.md` | You need valid `gh search repos` qualifiers or OR rules. |
+| `references/search/output-format-recipes.md` | You want token-efficient `gh` output or markdown-ready capture. |
+| `references/search/web-search-patterns.md` | GitHub-only search is thin or noisy, or naming is fuzzy and web augmentation would help. |
+| `references/search/dedup-and-rank.md` | You are turning raw candidates into a grouped shortlist. |
+| `references/evaluation/evaluation-methodology.md` | You are checking repo quality signals or deciding whether to deepen. |
+| `references/evaluation/rest-unique-signals.md` | You need cheap repo signals beyond the initial search output. |
+| `references/evaluation/graphql-repo-deep-dive.md` | You need a single-repo deep evidence query for a top candidate. |
+| `references/evaluation/code-level-analysis.md` | You need README, file-tree, or source evidence for the top few repos. |
+| `references/subagent-prompts.md` | The landscape is large, or the user explicitly wants deeper comparison work delegated. |
+| `references/quality-gates.md` | Decide whether to stop, refine once, or deepen. |
+| `references/report-template.html` | The user explicitly wants an HTML export after the shortlist is stable. |
 
 ## Guardrails
 
-- Never more than 5 evaluation agents. Period.
-- Never more than 3 search waves.
-- Never more than 2 evaluation rounds.
-- Always write files to `.githubresearch/` — never to the user's source tree.
-- The orchestrator reads ALL agent output personally. No subagent-of-subagent chains.
-- Use AskUserQuestion for requirements, not open-ended chat.
-- If a subagent's output file is empty or missing, re-run that agent once. If still empty, proceed without it.
-
+- Do not treat Research Power Pack or MCP web research as mandatory.
+- Do not default to `.githubresearch/` or any persistent artifact tree.
+- Do not pad searches with 20 hypotheses, 100-call ceilings, or wave theater.
+- Do not escalate to deep evaluation before you have filtered the first-pass results.
+- Do not read whole READMEs for every candidate; read intros or targeted sections for the top few.
+- Do not let optional deep-dive work become the default path by accident.
+- Stop when the shortlist is good enough and new searches mostly repeat the same field.
+- Be explicit about gaps, uncertainty, and what you did **not** verify.

@@ -1,53 +1,40 @@
-# Web Search Patterns
+# Optional Web Search Patterns
 
-When and how to supplement gh search with web search.
+Use this branch only when GitHub-only search is not enough.
 
-## When to Use Web Search
+## When augmentation helps
 
-- gh search returns <10 results (niche topic)
-- You want community-validated picks (Reddit, HN opinions)
-- You suspect repos exist but use unexpected naming
-- You need context about the landscape (blog posts, comparisons)
+- the category has fuzzy or shifting names
+- the user describes a problem, not a product label
+- GitHub search returns thin or noisy results
+- community-curated alternatives matter
+- you need to answer "what do people call this?"
 
-## Rules
+## Capability-aware paths
 
-- **Maximum 5 web searches** per skill invocation (token budget)
-- Always append `site:github.com` for repo discovery
-- Use search tools available in your environment, not curl
-- Extract repo URLs from results, then use gh CLI for data
+| Capability | What to do |
+|---|---|
+| Research Power Pack / MCP web search available | Use semantic web discovery to learn names, alternatives, and curated lists, then map those results back to GitHub repos |
+| Built-in web search or browser available | Search the open web for category language, comparison posts, Reddit threads, and `site:github.com` results |
+| No web tooling available | Stay GitHub-only and widen the category phrasing instead |
 
-## Search Patterns
+## Good augmented searches
 
-### GitHub-specific
-```
-"topic keyword" site:github.com
-"topic keyword" "mcp server" site:github.com
-"topic" "awesome" site:github.com
-```
+Discovery searches:
+- `best self-hosted knowledge base github`
+- `what do people call browser agents github`
+- `site:github.com collaborative docs self hosted`
+- `site:reddit.com best open source code review bot github`
 
-### Reddit (community validation)
-```
-"topic" github site:reddit.com
-"best topic tool" site:reddit.com
-"topic" recommendations site:reddit.com
-```
+Follow-up rule: web results are naming clues, not the final shortlist. Convert useful names or categories back into GitHub repo searches and filter there.
 
-### Hacker News (Show HN / launches)
-```
-"topic" site:news.ycombinator.com
-"Show HN" "topic" site:news.ycombinator.com
-```
+## Research Power Pack note
 
-### Blog/Tutorial (adoption signal)
-```
-"topic" tutorial github 2025 OR 2026
-"how to use" "topic" github
-```
+If your environment exposes Research Power Pack or similar tools (for example `start-research`, `web-search`, or `scrape-links`), use them for naming disambiguation or landscape context. They are an enhancement, not a prerequisite.
 
-## Extracting Repos from Web Results
+## Stop rules
 
-Web search returns URLs. Extract GitHub repo URLs and feed them to gh CLI:
-```bash
-# For each repo URL found, get quick stats
-gh api repos/owner/name --jq '{stars: .stargazers_count, desc: .description, lang: .language}'
-```
+Stop augmenting when:
+- you learned the missing category language
+- you discovered a few new candidate names to test on GitHub
+- additional web results mostly repeat known repos or lists

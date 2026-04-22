@@ -1,82 +1,73 @@
-# Search Diversity Examples
+# Adaptive Search Examples
 
-Five complete worked examples showing hypothesis generation for different domains.
+Each example shows a small first pass, an internal filter, and one refinement.
 
-## Example 1: "MCP server for Codex CLI" (niche, emerging)
+## Example 1: Self-hosted Notion alternative
 
-Hypotheses that WORKED:
-```
-1. "codex mcp" --sort=stars                              → 20 results (best)
-2. "codex mcp server" --sort=stars                       → 10 results
-3. "codex bridge" OR "codex wrapper" --sort=stars        → 8 results, 4 unique
-4. "codex subagent" OR "codex orchestrat" --sort=stars   → 12 results, 6 unique
-5. "codex" "claude" "mcp" --sort=stars                   → 15 results, 2 unique
-6. "codex mcp" language:TypeScript --sort=stars           → 10 results, 0 unique
-7. "codex mcp" language:Python --sort=stars               → 10 results, 1 unique
-```
+**Need:** collaborative self-hosted docs or knowledge base
 
-Hypotheses that FAILED (0 results):
-```
-"mcp server codex cli"           → too specific
-"codex agent mcp"                → wrong combo
-"model context protocol codex"   → too formal
-```
+**First pass**
+1. `notion alternative`
+2. `self-hosted wiki`
+3. `outline OR affine`
+4. `block editor collaborative docs`
 
-**Takeaway:** 7 hypotheses, ~40 unique repos. Broad + OR patterns dominated.
+**What to harvest from results**
+- repo wording like `knowledge base`, `wiki`, `collaborative docs`, `workspace`
+- likely product names that dominate the space
 
-## Example 2: "WebAssembly table data processing" (cross-cutting)
+**Refinement**
+- `knowledge base self-hosted`
+- `collaborative wiki self-hosted`
 
-```
-1. "webassembly table" OR "wasm table" --sort=stars
-2. "wasm data grid" OR "wasm spreadsheet" --sort=stars
-3. awesome-wasm OR awesome-webassembly --sort=stars
-4. "wasm" language:Rust "table" OR "grid" --sort=stars
-5. "emscripten" "table" OR "grid" --sort=stars
-6. "wasm" "react" "table" --sort=stars
-7. "ag-grid wasm" OR "handsontable wasm" --sort=stars
-8. "wasm-bindgen" table OR grid --sort=stars
-9. "WASM" "csv" OR "parquet" OR "dataframe" --sort=stars
-```
+## Example 2: AI code review bot
 
-**Dimensions explored:** naming (wasm/webassembly/emscripten), languages (Rust/C++), frameworks (React), use-cases (table/grid/spreadsheet/csv/parquet), toolchain (wasm-bindgen)
+**Need:** repos that review pull requests with AI assistance
 
-## Example 3: "Self-hosted Notion alternative" (product replacement)
+**First pass**
+1. `ai code review`
+2. `pull request review bot`
+3. `coderabbit OR greptile`
+4. `llm pr review`
 
-```
-1. "notion alternative" OR "notion clone" --sort=stars
-2. "self-hosted" "notes" OR "wiki" OR "knowledge base" --sort=stars
-3. awesome-selfhosted --sort=stars
-4. "outline" OR "appflowy" OR "affine" OR "anytype" --sort=stars
-5. "block editor" OR "notion-like" --sort=stars
-6. "self-hosted" "workspace" OR "collaboration" --sort=stars
-```
+**What to harvest from results**
+- whether the field uses `code review bot`, `PR review`, `review agent`, or `GitHub App`
+- whether promising repos position themselves as review bots, linters, or agents
 
-**Key angle:** Search by known product names (hypothesis 4) often finds more than generic terms.
+**Refinement**
+- `review agent github app`
+- `ai pull request bot`
 
-## Example 4: "Rust HTTP framework" (well-known, saturated space)
+## Example 3: TypeScript MCP server framework
 
-```
-1. "http framework" language:Rust --sort=stars
-2. "web framework" language:Rust --sort=stars
-3. "actix" OR "axum" OR "rocket" OR "warp" --sort=stars
-4. awesome-rust "http" OR "web" --sort=stars
-5. "rest api" language:Rust --sort=stars
-```
+**Need:** frameworks or starter repos for building MCP servers in TypeScript
 
-**Takeaway:** For saturated spaces, fewer hypotheses (5-8). Focus on known names + curated lists.
+**First pass**
+1. `mcp server typescript`
+2. `model context protocol typescript`
+3. `mcp framework typescript`
+4. `mcp sdk typescript`
 
-## Example 5: "AI code review bot" (emerging, many synonyms)
+**What to harvest from results**
+- whether repos call themselves `sdk`, `framework`, `starter`, or `boilerplate`
+- whether relevant repos are libraries, example packs, or full applications
 
-```
-1. "code review" "ai" OR "llm" OR "gpt" --sort=stars
-2. "code review bot" OR "code review agent" --sort=stars
-3. "coderabbit" OR "greptile" OR "codex review" --sort=stars
-4. "pr review" "ai" OR "automated" --sort=stars
-5. "pull request" "review" "bot" --sort=stars
-6. "static analysis" "llm" OR "ai" --sort=stars
-7. "code review" --topic=artificial-intelligence --sort=stars
-8. "code review" language:TypeScript stars:>50 --sort=stars
-9. "code review" language:Python stars:>50 --sort=stars
-```
+**Refinement**
+- `mcp starter typescript`
+- `mcp boilerplate typescript`
 
-**Key angles:** synonyms (code review/pr review/pull request review), known products, AI terms (ai/llm/gpt), modality (bot/agent/automated)
+## Example 4: Fuzzy naming problem
+
+**Need:** repos for "browser agents" where projects may use other labels
+
+**First pass**
+1. `browser agent`
+2. `web automation agent`
+3. `browser copilots`
+4. `playwright ai agent`
+
+**Observed issue:** repo names may use `automation`, `operator`, `assistant`, or `copilot` instead of `agent`.
+
+**Refinement**
+- pivot to the discovered naming cluster that showed up in repo descriptions
+- optionally use web/MCP search to learn community labels, then return to GitHub search

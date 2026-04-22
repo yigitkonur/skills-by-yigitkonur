@@ -1,86 +1,54 @@
-# gh search repos — Syntax Cheatsheet
+# gh search repos Cheatsheet
 
-Copy-paste reference. Not a tutorial.
+Copy-paste reference for valid, compact GitHub repo searches.
 
-## Command Structure
+## Command structure
+
 ```bash
-gh search repos "QUERY" [FLAGS] --json FIELDS --jq 'EXPRESSION'
+gh search repos 'QUERY' --limit 20 --sort=stars --json fullName,description,stargazersCount,updatedAt,url --jq '...'
 ```
 
-## Search Qualifiers (inside "QUERY" string)
+Use shell quotes around the whole query string when helpful. Inside that query string, GitHub still parses search operators and qualifiers.
 
-### Numbers
-| Qualifier | Example | Notes |
+## Useful qualifiers
+
+| Qualifier | Example | Use |
 |---|---|---|
-| `stars:>N` | `stars:>100` | Greater than N |
-| `stars:N..M` | `stars:10..500` | Range |
-| `forks:>=N` | `forks:>=50` | |
-| `size:>N` | `size:>10000` | Repo size in KB |
-| `topics:>N` | `topics:>3` | Number of topics |
-| `good-first-issues:>N` | `good-first-issues:>5` | |
+| `stars:>N` | `stars:>200` | Suppress tiny repos when the space is noisy |
+| `pushed:>DATE` | `pushed:>2025-01-01` | Bias toward active repos |
+| `language:X` | `language:TypeScript` | Hard language constraint |
+| `fork:false` | `fork:false` | Drop forks from discovery |
+| `archived:false` | `archived:false` | Drop archived repos |
+| `license:mit` | `license:mit` | Filter by license when needed |
+| `in:name` | `agent in:name` | Name-only check |
+| `in:description` | `knowledge base in:description` | Description-only check |
+| `in:readme` | `playwright in:readme` | Use sparingly for naming mismatches |
+| `topic:X` | `topic:mcp` | Helpful for shortlisted repos, noisy for broad discovery |
 
-### Dates
-| Qualifier | Example | Notes |
-|---|---|---|
-| `pushed:>DATE` | `pushed:>2025-01-01` | Last push after date |
-| `created:<DATE` | `created:<2020-01-01` | Created before date |
-| `created:DATE..DATE` | `created:2024-01-01..2025-01-01` | Range |
+## OR rules
 
-### Scope
-| Qualifier | Example | Notes |
-|---|---|---|
-| `language:X` | `language:TypeScript` | Primary language |
-| `user:X` | `user:torvalds` | Owner is user |
-| `org:X` | `org:microsoft` | Owner is org |
-| `in:name` | `react in:name` | Search in repo name |
-| `in:description` | `mcp in:description` | Search in description |
-| `in:readme` | `codex in:readme` | Search in README (noisy!) |
-| `topic:X` | `topic:mcp` | Has this topic tag |
-| `license:X` | `license:mit` | License SPDX key |
+- **Good:** OR between single terms inside the query string.
+- **Bad:** OR between quoted phrases.
 
-### Boolean
-| Qualifier | Example | Notes |
-|---|---|---|
-| `archived:false` | | Exclude archived |
-| `is:public` | | Only public |
-| `fork:false` | | Exclude forks |
+Examples:
 
-### Operators
-| Op | Example | Notes |
-|---|---|---|
-| OR | `"codex OR claude"` | Either term |
-| AND | `codex claude` | Implicit AND (space) |
-| NOT | `-topic:linux` | Exclude |
+```bash
+# Good
+gh search repos 'outline OR affine fork:false archived:false' --limit 20 --sort=stars
 
-## Flags
+# Good
+gh search repos 'agent OR copilot browser automation fork:false' --limit 20 --sort=stars
 
-| Flag | Default | Recommended |
-|---|---|---|
-| `--sort=` | best-match | **Always `stars`** for discovery |
-| `--limit N` | 30 | 30 is good. Max 1000. |
-| `--json FIELDS` | — | Always use with --jq |
-| `--jq EXPR` | — | Always use for token efficiency |
-| `--language X` | — | Alternative to `language:X` in query |
-| `--topic X` | — | Alternative to `topic:X` in query |
-| `--archived` | — | `false` to exclude archived |
-
-## Available JSON Fields
-
-```
-fullName, stargazersCount, description, language, updatedAt,
-pushedAt, forksCount, openIssuesCount, license, isArchived,
-owner, createdAt, defaultBranch, hasIssues, hasWiki, hasPages,
-hasProjects, hasDownloads, size, visibility, watchersCount, url
+# Bad
+gh search repos '"code review bot" OR "review agent"' --limit 20 --sort=stars
 ```
 
-## Warnings
+When the concept is multi-word, separate searches are usually clearer than phrase-OR gymnastics.
 
-- **OR only works between single terms**: `codex OR claude` WORKS. `"codex bridge" OR "codex wrapper"` → 0 results
-- `--sort=updated` surfaces forks and junk. **Always use `--sort=stars`**
-- Multi-word exact phrases often return 0: `"mcp server codex cli"` → 0
-- `in:readme` is noisy — add `stars:>10` to suppress megarepos
-- `--topic=X` is too broad for discovery — finds megarepos tangentially
-- Raw `--json` without `--jq` is 7x more tokens than filtered output
-- Maximum 1000 results total per search (GitHub API limit)
-- **Rate limit**: max ~10 searches per 2 minutes before throttling
-- `--owner=X` flag is equivalent to `user:X` or `org:X` in the query string
+## Heuristics
+
+- Start broad, then filter internally.
+- Prefer 20-30 results per search over giant dumps.
+- Use `--sort=stars` for discovery; use recency as a later signal, not the primary sort.
+- Always use `--json` with `--jq`; raw JSON is noisy and expensive.
+- If you need repo topics or README intros, inspect only the top few candidates after the first pass.

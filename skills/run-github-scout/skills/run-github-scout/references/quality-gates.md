@@ -1,54 +1,45 @@
 # Quality Gates
 
-Decision points where the orchestrator checks results and decides whether to retry or proceed.
+Lean stop-or-refine checkpoints for repo scouting.
 
-## Search Quality Gate (after each wave)
+## 1. After interpreting the request
 
-| Signal | Verdict | Action |
+| Signal | Action |
+|---|---|
+| Problem, constraints, and exclusions are clear enough to search | Start discovery immediately |
+| One missing answer would materially change search direction | Ask 1-2 targeted questions, then continue |
+| User already named examples or anti-examples | Use them as seed terms and skip extra clarification |
+
+## 2. After the first pass
+
+| Result shape | Verdict | Next move |
 |---|---|---|
-| 20+ relevant repos, diverse categories | PASS | Proceed to evaluation |
-| 10-19 repos, mostly relevant | PASS with note | Proceed, note thin coverage in summary |
-| 5-9 repos, relevant | MARGINAL | Proceed if 2+ waves done; retry if wave 1 |
-| <5 repos total | FAIL | Retry with different angles (max 3 waves) |
-| Most results are off-topic (wrong domain) | FAIL | Retry with feedback explaining what went wrong |
-| Results are all from same org/author | FAIL | Retry broadening to competitors |
-| All results are forks of same repo | FAIL | Retry with `-fork:true` or different terms |
+| 3-8 clearly relevant repos, or a clear top cluster | Strong | Shortlist now, or run one narrow refinement only if a known gap remains |
+| 1-2 relevant repos plus several maybes | Thin | Run one refinement pass using the wording from relevant and maybe-relevant repos |
+| Mostly off-topic results | Noisy | Broaden to the category term or switch to augmented search for naming help |
+| Repos look adjacent but not exact | Ambiguous | Read README intros for the best 3-5 and extract better terms before refining |
 
-## Evaluation Quality Gate (after all agents complete)
+## 3. After the refinement pass
 
-| Signal | Verdict | Action |
-|---|---|---|
-| All repos scored, no gaps | PASS | Proceed to synthesis |
-| 1-2 repos have "no data" for a signal | MINOR GAP | Orchestrator fills gaps inline |
-| Same repo scored by 2 agents with >15pt difference | INCONSISTENCY | Orchestrator re-evaluates that repo |
-| Agent output file is empty/missing | AGENT FAILURE | Re-run that one agent |
-| Feature Fit checklist doesn't match user needs | MISMATCH | Orchestrator adjusts scores manually |
-| All repos score <40 | WEAK FIELD | Note in summary — the space is immature |
+| Signal | Action |
+|---|---|
+| New results mostly repeat known repos | Stop and synthesize |
+| The field is still thin but the top few are plausible | Deliver the shortlist with explicit uncertainty |
+| The field is still noisy because naming is fuzzy | Use optional web/MCP augmentation, then stop after one more targeted sweep |
+| The user explicitly wants higher confidence | Deepen only on the top 3-5 repos |
 
-## Retry Budget
+## 4. Before deeper evaluation
 
-| Resource | Max | After exhaustion |
-|---|---|---|
-| Search waves | 3 | Present what you have, note gaps |
-| Evaluation rounds | 2 | Present scores, flag low confidence |
-| Agent re-runs (failure recovery) | 1 per agent | Score as "insufficient data" |
-| User re-clarifications | 1 | Work with current understanding |
+Deepen only when at least one is true:
+- the user asked for deeper comparison
+- the top options are close and need feature evidence
+- the shortlist would materially improve with README, test, or release verification
+- the user asked for export, report, or a reusable artifact
 
-## Feature Detection Quality Gate (after Phase 3.5)
+## Stop conditions
 
-| Signal | Verdict | Action |
-|---|---|---|
-| All repos have all features checked | PASS | Proceed to synthesis |
-| 1-2 repos missing feature data | MINOR GAP | Orchestrator fills inline |
-| >50% of cells are "low" confidence | LOW QUALITY | Re-run with more targeted file reads |
-| Agent returned no FEATURES_JSON block | AGENT FAILURE | Re-run that agent once |
-| Feature list has >15 features | TOO BROAD | Orchestrator trims to top 15 by prevalence |
-
-## When to Stop
-
-Stop and present results when ANY of these is true:
-- Search found 20+ repos AND evaluation completed for all
-- 3 search waves exhausted
-- 2 evaluation rounds completed
-- User said "looks good" or "that's enough"
-- Total session has dispatched 15+ subagents (cost guard)
+Stop when any of these is true:
+- the shortlist answers the user's need well enough to act
+- new searches are mostly duplicates
+- the remaining gaps are better stated as caveats than solved by more searching
+- the user is satisfied with the markdown result
