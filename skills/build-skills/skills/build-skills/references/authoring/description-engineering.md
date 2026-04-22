@@ -267,7 +267,7 @@ Agents quote descriptions back from memory. The first phrase anchors recall:
 description: Use skill if you are building applications and need auth flows.
 
 # Distinguishing first — anchors on the specific tool
-description: Use skill if you are building a Supastarter app with Better Auth.
+description: Use skill if you are building a SwiftUI app with Convex and Clerk auth.
 ```
 
 Name the specific technology, workflow, or file pattern before the generic verb.
@@ -281,8 +281,8 @@ Descriptions that describe the *body contents* rather than the *trigger conditio
 description: This skill contains references on auth, billing, and storage.
 
 # Describes the trigger — tells Claude when to use it
-description: Use skill if you are building auth, billing, or storage features
-  in an existing Supastarter app.
+description: Use skill if you are building auth, schema, or reactive-query features
+  in an existing Convex + Clerk SwiftUI app.
 ```
 
 If the description sounds like a table of contents, rewrite it as an if-you-are-doing-X statement.

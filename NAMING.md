@@ -35,7 +35,7 @@ If none of these fit, propose a new verb in a PR alongside the new skill.
 
 ## Object Rules
 
-1. **Name the thing acted on** — not the technique. `build-supastarter-app`, not `build-with-orpc-and-prisma`.
+1. **Name the thing acted on** — not the technique. `build-chrome-extension`, not `build-with-manifest-v3`.
 2. **Preserve distinctive methodology names** in the object. `enhance-skill-by-derailment` keeps "derailment". `test-by-mcpc-cli` keeps "mcpc". `convert-url-to-nextjs` keeps "to-nextjs". Strip only the generic verb category — never the named technique.
 3. **Use the ecosystem's own name** — `mcpc`, `liquid-glass`, `daisyui`.
 4. **Keep it short** — 2-3 words max after the verb.
@@ -66,7 +66,7 @@ When two skills overlap, use distinct verbs:
 | No verb prefix (`agent-browser`) | `run-agent-browser` |
 | Awkward verb (`do-X` when a better verb fits) | Use the better verb (`extract-saas-design`, not `do-extract-design`) |
 | Stripping a distinctive method (`enhance-skill` instead of `enhance-skill-by-derailment`) | Keep the method, normalize the verb only |
-| Generic noun-only object (`build-app`) | Specific noun (`build-supastarter-app`) |
+| Generic noun-only object (`build-app`) | Specific noun (`build-chrome-extension`) |
 | Mismatched names | Directory = frontmatter `name` = README label, all identical |
 | Version suffix as decoration (`-v2`, `-final`) | Drop unless the version is the point (`-sdk-v1`) |
 | Marketing name as primary ID (`soul`, `powerpack`) | Use `verb-object` for the directory; marketing name in SKILL.md title only |
@@ -85,7 +85,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (44)
+## Current Canonical Skill Names (42)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -103,7 +103,6 @@ When renaming a published skill:
 - `build-mcp-use-server`
 - `build-raycast-script-command`
 - `build-skills`
-- `build-supastarter-app`
 - `check-completion`
 - `convert-url-to-nextjs`
 - `develop-typescript`
@@ -120,7 +119,6 @@ When renaming a published skill:
 - `optimize-agentic-mcp`
 - `publish-npm-package`
 - `run-agent-browser`
-- `run-athena-flow`
 - `run-codex-bridge`
 - `run-codex-exec`
 - `run-github-scout`

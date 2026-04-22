@@ -1,6 +1,6 @@
 # AGENTS.md — skills-by-yigitkonur
 
-This repository is a curated skills pack for AI coding agents — 44 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
+This repository is a curated skills pack for AI coding agents — 42 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
 
 ## What this repo is
 
@@ -77,7 +77,7 @@ Anchor on this set of plain-English verbs:
 
 ### Object rules
 
-1. **Name the thing acted on** — not the technique. `build-supastarter-app`, not `build-with-orpc-and-prisma`.
+1. **Name the thing acted on** — not the technique. `build-chrome-extension`, not `build-with-manifest-v3`.
 2. **Preserve distinctive methodology names** in the object (e.g. `-by-derailment`, `-by-mcpc-cli`, `-to-nextjs`, `-for-agents`, `-sdk-v1`) — strip only the generic verb category, never the named technique.
 3. **Use the ecosystem's own name** — `mcpc`, `liquid-glass`, `daisyui`.
 4. **Keep it short** — 2-3 words max after the verb.
@@ -98,7 +98,7 @@ Anchor on this set of plain-English verbs:
 | No verb prefix (`agent-browser`) | Add the natural intent verb (`run-agent-browser`) |
 | Awkward verb (`do-X` when a better verb fits) | Use the better verb (`extract-saas-design`, not `do-extract-design`) |
 | Stripping a distinctive method (`enhance-skill` instead of `enhance-skill-by-derailment`) | Keep the method, normalize the verb only |
-| Generic noun-only object (`build-app`) | Specific noun (`build-supastarter-app`) |
+| Generic noun-only object (`build-app`) | Specific noun (`build-chrome-extension`) |
 | Mismatched names | Directory = frontmatter `name` = README label, all identical |
 
 ---
@@ -161,8 +161,8 @@ actionable findings.
 ```
 
 ```
-Use skill if you are building or extending a Supastarter app and need project-grounded
-patterns for routing, auth, API, billing, UI, storage, or deployment.
+Use skill if you are building or extending a Convex + Clerk SwiftUI app and need
+project-grounded patterns for reactive queries, auth, schema, or iOS/macOS integration.
 ```
 
 ```
@@ -252,7 +252,7 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (44 skills)
+## Current canonical skill names (42 skills)
 
 Use this list to check for naming collisions:
 
@@ -262,16 +262,15 @@ ask-review                   build-chrome-extension       build-convex-clerk-swi
 build-copilot-sdk-app        build-langchain-ts-app       build-mcp-server-sdk-v1
 build-mcp-server-sdk-v2      build-mcp-use-agent          build-mcp-use-apps-widgets
 build-mcp-use-client         build-mcp-use-server         build-raycast-script-command
-build-skills                 build-supastarter-app        check-completion
-convert-url-to-nextjs        develop-typescript           do-brainstorm
-do-debug                     do-review                    do-think
-enhance-prompt               enhance-skill-by-derailment  evaluate-code-review
-extract-saas-design          init-agent-config            optimize-agentic-cli
-optimize-agentic-mcp         publish-npm-package          run-agent-browser
-run-athena-flow              run-codex-bridge             run-codex-exec
-run-github-scout             run-issue-tree               run-playwright
-run-research                 swift-quality-hooks          test-by-mcpc-cli
-test-macos-snapshots         use-railway
+build-skills                 check-completion             convert-url-to-nextjs
+develop-typescript           do-brainstorm                do-debug
+do-review                    do-think                     enhance-prompt
+enhance-skill-by-derailment  evaluate-code-review         extract-saas-design
+init-agent-config            optimize-agentic-cli         optimize-agentic-mcp
+publish-npm-package          run-agent-browser            run-codex-bridge
+run-codex-exec               run-github-scout             run-issue-tree
+run-playwright               run-research                 swift-quality-hooks
+test-by-mcpc-cli             test-macos-snapshots         use-railway
 ```
 
 ---
