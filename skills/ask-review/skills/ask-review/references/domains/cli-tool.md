@@ -69,7 +69,7 @@ For specific tooling ecosystems:
 | Agent-readiness audit | `optimize-agentic-cli` |
 | Raycast Script Commands | `build-raycast-script-command` |
 | GitHub CLI scripting | `run-github-scout` |
-| Codex CLI orchestration | `run-codex-exec`, `run-codex-bridge` |
+| Codex CLI orchestration | `run-codex-exec` |
 | Playwright CLI | `run-playwright` |
 | Railway CLI | `use-railway` |
 
