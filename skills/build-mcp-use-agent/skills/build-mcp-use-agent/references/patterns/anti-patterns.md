@@ -229,7 +229,9 @@ app.post("/query", async (req, res) => {
 ```
 
 ```typescript
-// ✅ GOOD — create a fresh agent per request to isolate conversations
+// ✅ GOOD (simple) — fresh agent AND fresh client per request: isolates conversation,
+// but spawns a new stdio subprocess on every request. Fine for one-shot CLIs and dev;
+// expensive (~50-200ms per request, plus extra OS process per stdio server) for HTTP services.
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
 import express from "express";
@@ -248,7 +250,7 @@ const serverConfig = {
 const app = express();
 
 app.post("/query", async (req, res) => {
-  const client = new MCPClient(serverConfig);
+  const client = new MCPClient(serverConfig);   // spawns subprocess per request
   const agent = new MCPAgent({
     llm: new ChatOpenAI({ model: "gpt-4o" }),
     client,
@@ -263,9 +265,59 @@ app.post("/query", async (req, res) => {
     res.status(500).json({ error: "Agent execution failed" });
   } finally {
     await agent.close();
+    await client.closeAllSessions();   // tear down the subprocess for this request
   }
 });
 ```
+
+```typescript
+// ✅ GOOD (production) — share ONE MCPClient at module scope, create a fresh MCPAgent
+// per request. Each request gets its own conversation state and tool-execution context,
+// but the expensive stdio subprocesses (and any backend pools they hold open) survive.
+import { MCPAgent, MCPClient } from "mcp-use";
+import { ChatOpenAI } from "@langchain/openai";
+import express from "express";
+
+// At module scope — spawn MCP servers ONCE for the lifetime of the process
+const client = new MCPClient({
+  mcpServers: {
+    database: {
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-postgres"],
+      env: { DATABASE_URL: process.env.DATABASE_URL! },
+    },
+  },
+});
+
+const app = express();
+
+app.post("/query", async (req, res) => {
+  // Per-request — cheap; no process spawn, just a new agent on top of the shared client
+  const agent = new MCPAgent({
+    llm: new ChatOpenAI({ model: "gpt-4o" }),
+    client,                          // SHARED — no respawn
+    memoryEnabled: false,            // still isolate conversation state per request
+    maxSteps: 10,
+  });
+
+  try {
+    const result = await agent.run({ prompt: req.body.prompt });
+    res.json({ result });
+  } catch (err) {
+    res.status(500).json({ error: "Agent execution failed" });
+  } finally {
+    await agent.close();             // closes this agent only; client stays alive
+  }
+});
+
+// On process shutdown — release the shared subprocesses
+process.on("SIGTERM", async () => {
+  await client.closeAllSessions();
+  process.exit(0);
+});
+```
+
+> **Why two variants?** `new MCPClient(...)` followed by `agent.run()` triggers `child_process.spawn()` for every stdio server in the config (`@modelcontextprotocol/server-postgres` here). Spawning per HTTP request adds ~50-200ms of process-startup latency and forks an OS process per server per request — under load (e.g., 100 RPS × 3 servers ≈ 300 forks/s) this becomes the dominant cost. The shared-client variant trades a small amount of code complexity (module-level state + SIGTERM handler) for a large drop in p99 latency and lets backend MCP servers reuse their connection pools. For URL-based (SSE/HTTP) MCP servers no subprocess is spawned, so the simple variant is fine — but for stdio servers always prefer the shared-client pattern in production.
 
 ---
 
@@ -753,7 +805,7 @@ const agent = new MCPAgent({
 });
 
 try {
-  const result = await agent.run("Search the web and save results to /data/results.md");
+  const result = await agent.run({ prompt: "Search the web and save results to /data/results.md" });
   console.log(result);
 } finally {
   await agent.close();
@@ -780,7 +832,7 @@ const agent = new MCPAgent({
 });
 
 try {
-  const result = await agent.run("Search the web and save results to /data/results.md");
+  const result = await agent.run({ prompt: "Search the web and save results to /data/results.md" });
   console.log(result);
 } finally {
   await agent.close();
@@ -1075,7 +1127,7 @@ const client = new MCPClient({
 });
 
 const agent = new MCPAgent({
-  llm: new ChatAnthropic({ model: "claude-3-5-sonnet-20241022" }),
+  llm: new ChatAnthropic({ model: "claude-sonnet-4-6" }),
   client,
   maxSteps: 10,
 });
@@ -1107,7 +1159,7 @@ const client = new MCPClient({
 });
 
 const agent = new MCPAgent({
-  llm: new ChatAnthropic({ model: "claude-3-5-sonnet-20241022" }),
+  llm: new ChatAnthropic({ model: "claude-sonnet-4-6" }),
   client,
   maxSteps: 10,
 });
@@ -1119,6 +1171,8 @@ try {
   await agent.close();
 }
 ```
+
+> **Note — model IDs drift.** As of April 2026, `claude-sonnet-4-6` is current. Always check https://docs.anthropic.com/en/docs/about-claude/models before pinning a model — retired IDs return `model_not_found` from the provider API.
 
 ### 17. Mixing Simplified and Explicit Mode — TypeScript Type Violation
 
@@ -1162,10 +1216,12 @@ const agentSimplified = new MCPAgent({
   maxSteps: 10,
 });
 
-// Other valid simplified mode strings:
-// llm: "anthropic/claude-3-5-sonnet-20241022"
-// llm: "groq/llama-3.1-70b-versatile"
-// llm: "google/gemini-pro"
+// Other valid simplified mode strings (April 2026 — verify against provider catalogs):
+// llm: "anthropic/claude-sonnet-4-6"
+// llm: "groq/llama-3.3-70b-versatile"
+// llm: "google/gemini-2.5-pro"
+// llm: "openai/gpt-4o-mini"
+// Model names drift — if you get model_not_found, update against the provider's current catalog.
 
 try {
   const result = await agentSimplified.run({ prompt: "List files" });
@@ -1224,7 +1280,7 @@ const client = new MCPClient({
     },
     shell: {
       command: "npx",
-      args: ["-y", "@modelcontextprotocol/server-shell"],
+      args: ["-y", "mcp-shell-server"],   // community shell-capable MCP server (no @modelcontextprotocol/server-shell exists)
     },
   },
 });
@@ -1268,8 +1324,8 @@ const agent = new MCPAgent({
     "delete_file",
     "move_file",
     "write_file",       // read-only access only
-    "execute_command",
-    "run_shell",
+    "run_command",      // mcp-shell-server's command-execution tool
+    "execute_command",  // common alias used by other shell-capable servers
   ],
 });
 
@@ -1395,9 +1451,31 @@ try {
 ```
 
 ```typescript
-// ✅ GOOD — enable verbose mode and use callbacks for production observability
+// ✅ GOOD — enable verbose mode and use callbacks for production observability.
+// MCPAgent's `callbacks` option is typed as `BaseCallbackHandler[]` from
+// @langchain/core. Extend the abstract class and set `name` — passing a plain
+// object literal fails strict TypeScript and makes Langfuse / OTel group every
+// trace under "unknown_handler".
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
+import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
+
+class AgentObservabilityHandler extends BaseCallbackHandler {
+  name = "agent-observability";   // required — used by LangChain tracing and observability platforms
+
+  async handleLLMStart(_llm: unknown, prompts: string[]) {
+    console.log(`[LLM] Starting with ${prompts.length} prompt(s)`);
+  }
+  async handleToolStart(tool: { name: string }, input: string) {
+    console.log(`[Tool] ${tool.name} called with: ${input.slice(0, 100)}`);
+  }
+  async handleLLMError(err: Error) {
+    console.error(`[LLM Error] ${err.message}`);
+  }
+  async handleToolError(err: Error) {
+    console.error(`[Tool Error] ${err.message}`);
+  }
+}
 
 const client = new MCPClient({
   mcpServers: {
@@ -1413,22 +1491,7 @@ const agent = new MCPAgent({
   client,
   maxSteps: 15,
   verbose: true, // logs each step, tool call, and LLM interaction
-  callbacks: [
-    {
-      handleLLMStart: async (_llm: any, prompts: string[]) => {
-        console.log(`[LLM] Starting with ${prompts.length} prompt(s)`);
-      },
-      handleToolStart: async (tool: any, input: string) => {
-        console.log(`[Tool] ${tool.name} called with: ${input.slice(0, 100)}`);
-      },
-      handleLLMError: async (err: Error) => {
-        console.error(`[LLM Error] ${err.message}`);
-      },
-      handleToolError: async (err: Error) => {
-        console.error(`[Tool Error] ${err.message}`);
-      },
-    },
-  ],
+  callbacks: [new AgentObservabilityHandler()],
 });
 
 try {
@@ -1566,9 +1629,17 @@ try {
 ```
 
 ```typescript
-// ✅ GOOD — decompose into focused agents, each with minimal server access
+// ✅ GOOD — decompose into focused agents, each with minimal server access.
+// Use a Zod schema with run({ prompt, schema }) to get a typed, validated result.
+// Calling JSON.parse on a plain run() result is unsafe — LLMs often wrap JSON in
+// prose ("Here are the files: ```json [...] ```"), which throws SyntaxError.
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
+import { z } from "zod";
+
+const DeprecatedFilesSchema = z.object({
+  files: z.array(z.string()).describe("Absolute paths of files with deprecated API usage"),
+});
 
 async function analyzeDeprecations(): Promise<string[]> {
   const client = new MCPClient({
@@ -1581,10 +1652,13 @@ async function analyzeDeprecations(): Promise<string[]> {
   });
   const agent = new MCPAgent({ llm: new ChatOpenAI({ model: "gpt-4o" }), client, maxSteps: 15 });
   try {
+    // Schema overload: run<T>(options: RunOptions<T>) → Promise<T>
+    // mcp-use retries the LLM up to 3x until output validates against the schema.
     const result = await agent.run({
-      prompt: "Read all TypeScript files in /project/src and list any deprecated API usages. Return as JSON array of file paths.",
+      prompt: "Read all TypeScript files in /project/src and list any files using deprecated APIs.",
+      schema: DeprecatedFilesSchema,
     });
-    return JSON.parse(result);
+    return result.files;
   } finally {
     await agent.close();
   }
@@ -1668,3 +1742,145 @@ try {
   console.log("Cleanup complete");
 }
 ```
+
+---
+
+## Remote Agents and OAuth
+
+mcp-use 1.x exports three first-party features that previously had no anti-pattern guidance: `RemoteAgent` (cloud-managed agent execution), `BrowserOAuthClientProvider` + `onMcpAuthorization` (browser OAuth for MCP servers like Linear or Slack). These are real public exports — confirmed in `dist/index.d.ts` of the published `mcp-use@1.25.0` tarball:
+
+```typescript
+export { BrowserOAuthClientProvider, onMcpAuthorization, probeAuthParams } from "./src/auth/index.js";
+export { RemoteAgent } from "./src/agents/remote.js";
+```
+
+### 24. Forgetting `apiKey` When Constructing a `RemoteAgent`
+
+```typescript
+// ❌ BAD — no apiKey: the first run() returns a cryptic 401 from the runtime
+import { RemoteAgent } from "mcp-use";
+
+const agent = new RemoteAgent({
+  agentId: "agent_abc",
+  baseUrl: "https://runtime.mcp-use.com",
+  // apiKey omitted — RemoteAgent constructor accepts this, but the runtime rejects every call
+});
+
+await agent.run({ prompt: "List my open tasks" });
+// → 401 Unauthorized — buried inside an mcp-use error stack
+```
+
+```typescript
+// ✅ GOOD — always pass apiKey from a server-side env var; never inline secrets
+import { RemoteAgent } from "mcp-use";
+
+const apiKey = process.env.MCP_USE_API_KEY;
+if (!apiKey) {
+  throw new Error("MCP_USE_API_KEY is required for RemoteAgent");
+}
+
+const agent = new RemoteAgent({
+  agentId: "agent_abc",
+  apiKey,
+  baseUrl: "https://runtime.mcp-use.com",
+});
+
+try {
+  const result = await agent.run({ prompt: "List my open tasks" });
+  console.log(result);
+} finally {
+  await agent.close();
+}
+```
+
+> RemoteAgent's `run()` and `stream()` accept the same `RunOptions` object form as MCPAgent — `{ prompt, maxSteps, schema, ... }`. The positional-string overload exists but is `@deprecated` (verified in `dist/src/agents/remote.d.ts`).
+
+### 25. Re-creating `BrowserOAuthClientProvider` Per Request
+
+`BrowserOAuthClientProvider` is a browser-only OAuth helper that stores tokens, code verifiers, and PKCE state in `localStorage`. It expects to be instantiated once per (server URL, browser session) and reused — every fresh constructor call resets cached metadata and may trigger a new authorization round-trip when the SDK calls back through it.
+
+```typescript
+// ❌ BAD — instantiating the provider inside every component / handler
+// triggers a fresh consent loop each time the user clicks "connect"
+import { BrowserOAuthClientProvider } from "mcp-use";
+
+function ConnectButton() {
+  // New provider object every render — token cache is invalidated as soon as state changes
+  const provider = new BrowserOAuthClientProvider("https://mcp.example.com", {
+    clientName: "My App",
+    callbackUrl: "https://app.example.com/oauth/callback",
+  });
+
+  return <button onClick={() => provider.redirectToAuthorization(/* ... */)}>Connect</button>;
+}
+```
+
+```typescript
+// ✅ GOOD — hoist the provider to module scope (or memoize per server URL)
+// so cached tokens, client info, and code verifiers persist across renders.
+import { BrowserOAuthClientProvider } from "mcp-use";
+
+// One provider per remote MCP server URL — re-used for the lifetime of the tab.
+const linearAuthProvider = new BrowserOAuthClientProvider("https://mcp.linear.app", {
+  clientName: "My App",
+  clientUri: "https://app.example.com",
+  callbackUrl: "https://app.example.com/oauth/callback",
+});
+
+function ConnectButton() {
+  return (
+    <button onClick={async () => {
+      // Provider keeps OAuth state in localStorage between clicks
+      const tokens = await linearAuthProvider.tokens();
+      if (!tokens) {
+        await linearAuthProvider.redirectToAuthorization(/* URL from MCP SDK */);
+      }
+    }}>
+      Connect Linear
+    </button>
+  );
+}
+```
+
+> `BrowserOAuthClientProvider` is browser-only — it relies on `localStorage` and `window.location`. Don't import it from server code; on Node it will throw at first method call. For server-side OAuth, drive the MCP SDK's `auth()` helper directly with your own provider implementation.
+
+### 26. Forgetting to Mount `onMcpAuthorization` on the OAuth Callback Page
+
+`onMcpAuthorization` is the callback handler the OAuth provider redirects to with `?code=...&state=...` query params. It exchanges the code for tokens and persists them via the same storage prefix the `BrowserOAuthClientProvider` uses. If you never call it on the callback URL, the redirect lands but tokens are never stored — the next `provider.tokens()` returns `undefined` and the consent loop repeats forever.
+
+```typescript
+// ❌ BAD — callback page just renders "Connecting…" but never finishes the OAuth flow
+// pages/oauth/callback.tsx
+export default function CallbackPage() {
+  return <div>Connecting…</div>;
+  // The ?code= param is silently discarded; tokens never get saved.
+}
+```
+
+```typescript
+// ✅ GOOD — call onMcpAuthorization() on mount; it reads ?code= / ?state= from the URL,
+// exchanges them with the MCP server, and writes tokens to localStorage under the same
+// storageKeyPrefix that BrowserOAuthClientProvider uses. Then redirect or notify opener.
+// pages/oauth/callback.tsx
+import { useEffect, useState } from "react";
+import { onMcpAuthorization } from "mcp-use";
+
+export default function CallbackPage() {
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onMcpAuthorization()
+      .then(() => {
+        // Tokens are now persisted. Close the popup or navigate back.
+        window.opener?.postMessage({ type: "mcp-oauth-complete" }, window.location.origin);
+        window.close();
+      })
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (error) return <div>OAuth failed: {error}</div>;
+  return <div>Connecting…</div>;
+}
+```
+
+> `onMcpAuthorization()` returns `Promise<void>` and must run on the page registered as the provider's `callbackUrl`. It cannot be called from a server route or a different origin — the storage it writes to is scoped to the browser's `localStorage` for that origin.

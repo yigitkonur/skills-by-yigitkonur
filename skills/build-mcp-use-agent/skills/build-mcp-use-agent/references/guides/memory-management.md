@@ -48,19 +48,21 @@ import { ChatOpenAI } from "@langchain/openai";
 | Method | Signature | Return | Purpose |
 |---|---|---|---|
 | `clearConversationHistory()` | `(): void` | `void` | Clear all stored messages (system message preserved if present) |
-| `getConversationHistory()` | `(): Message[]` | `Message[]` | Returns a copy of the current conversation history as an array of message objects |
+| `getConversationHistory()` | `(): BaseMessage[]` | `BaseMessage[]` | Returns a copy of the current conversation history. `BaseMessage` (re-exported from `mcp-use/agents`) is a union of `AIMessage \| HumanMessage \| ToolMessage \| SystemMessage` from `langchain`. |
 
 ### `run` method signature
 
 `run` accepts either an options object (preferred) or a plain string (deprecated):
 
 ```typescript
-// Options object — preferred form
+// Options object — preferred form (matches the published RunOptions interface)
 async run<T = string>(options: {
-  prompt: string;           // user query
-  schema?: ZodSchema<T>;    // optional Zod schema for structured typed output
-  maxSteps?: number;        // override constructor maxSteps for this call only
-  signal?: AbortSignal;     // cancel the run via AbortController
+  prompt: string;                  // user query
+  maxSteps?: number;               // override constructor maxSteps for this call only
+  manageConnector?: boolean;       // auto-initialize/close MCP connectors for this call
+  externalHistory?: BaseMessage[]; // override agent memory for this call only (see below)
+  schema?: ZodSchema<T>;           // optional Zod schema for structured typed output
+  signal?: AbortSignal;            // cancel the run via AbortController
 }): Promise<T>
 
 // Plain string — still works but deprecated
@@ -69,7 +71,39 @@ await agent.run("Summarize the project");
 
 When `schema` is provided, the return value is typed according to the Zod schema. When omitted, the return is a `string`.
 
-Memory state is controlled by the constructor `memoryEnabled` option, not by a per-call flag. To get a stateless result from a stateful agent, use a separate agent instance with `memoryEnabled: false`.
+Memory state is controlled by the constructor `memoryEnabled` option, not by a per-call flag. To get a stateless result from a stateful agent, either use a separate agent instance with `memoryEnabled: false`, or pass `externalHistory` (see next section) to override the buffer for one call without mutating it.
+
+### `externalHistory` — per-call history override
+
+`externalHistory` is a first-class field on `RunOptions` (and accepted by `stream`, `streamEvents`, and `prettyStreamEvents` too). When supplied, it temporarily replaces the agent's internal `conversationHistory` for that single call only — the agent's stored buffer is **not mutated**.
+
+```typescript
+import { HumanMessage, AIMessage } from "langchain";
+
+const result = await agent.run({
+  prompt: "Continue that plan",
+  externalHistory: [
+    new HumanMessage("What's our plan?"),
+    new AIMessage("Step 1: Gather inputs..."),
+  ],
+});
+// agent.getConversationHistory() is unchanged after this call
+```
+
+Use it to:
+
+- Inject saved or replayed history without touching the live agent buffer
+- Run a one-off stateless call from a stateful agent
+- Drive memory entirely from an external store while keeping `memoryEnabled` semantics
+
+Behavior summary:
+
+| `memoryEnabled` | `externalHistory` | History used for the call | Buffer after the call |
+|---|---|---|---|
+| `true` | omitted | internal `conversationHistory` | grows by user + assistant messages |
+| `true` | provided | `externalHistory` only | unchanged |
+| `false` | omitted | none | none |
+| `false` | provided | `externalHistory` only | none |
 
 ---
 
@@ -122,6 +156,9 @@ const agent = new MCPAgent({
 
 await agent.run("Summarize the repository");
 await agent.run("Now list the top 5 risks from that summary");
+
+// Canonical cleanup — closes every active MCP server session.
+await client.closeAllSessions();
 ```
 
 ---
@@ -134,13 +171,17 @@ Use `memoryEnabled: false` to make every `run` independent.
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
 
+const client = new MCPClient({ mcpServers: {} });
+
 const agent = new MCPAgent({
   llm: new ChatOpenAI({ model: "gpt-4.1" }),
-  client: new MCPClient({ mcpServers: {} }),
+  client,
   memoryEnabled: false,
 });
 
 const response = await agent.run("Explain the token budget for this single request only");
+
+await client.closeAllSessions();
 ```
 
 ---
@@ -173,7 +214,7 @@ If you need durable state across sessions, store it explicitly in your own syste
 
 ## Inspecting memory
 
-Use `getConversationHistory()` to view the memory buffer. It returns a copy of the stored `Message[]` array.
+Use `getConversationHistory()` to view the memory buffer. It returns a copy of the stored `BaseMessage[]` array (from LangChain core, re-exported as `BaseMessage` from `mcp-use/agents`).
 
 ```typescript
 const history = agent.getConversationHistory();
@@ -289,6 +330,9 @@ Use memory to coordinate longer flows. Each pattern below assumes `memoryEnabled
 await agent.run("Draft a one‑page migration plan");
 await agent.run("Now add rollout phases and rollback criteria");
 await agent.run("Review for missing risks");
+
+// Canonical cleanup once the multi-turn flow is complete.
+await client.closeAllSessions();
 ```
 
 ### Pattern 2: Progressive constraints
@@ -664,15 +708,24 @@ Yes. Memory is global to the agent instance.
 
 ### Can I disable memory temporarily?
 
-`memoryEnabled` is a constructor option, not a per-call option. To get a stateless single call, create a separate agent with `memoryEnabled: false`:
+`memoryEnabled` is a constructor option, not a per-call option. You have two options for a stateless single call:
 
 ```typescript
+// Option A — pass externalHistory: [] (or any explicit history) to override the buffer for one call
+const result = await agent.run({
+  prompt: "One-off stateless query",
+  externalHistory: [],
+});
+// agent.getConversationHistory() is unchanged
+
+// Option B — create a separate agent with memoryEnabled: false sharing the same client
 const statelessAgent = new MCPAgent({ llm, client, memoryEnabled: false });
 const result = await statelessAgent.run({ prompt: "One-off stateless query" });
-await statelessAgent.close();
+// Cleanup at the application level — closes all sessions on the shared client
+await client.closeAllSessions();
 ```
 
-If you need both stateful and stateless behavior from the same session, maintain two agent instances pointing to the same `MCPClient`.
+If you need both stateful and stateless behavior from the same session, maintain two agent instances pointing to the same `MCPClient` and clean up via `await client.closeAllSessions()` once.
 
 ---
 

@@ -1070,7 +1070,9 @@ main().catch((err) => {
 
 ## 10. Agent with Tool Restrictions
 
-Uses `setDisallowedTools()` to block specific tools at runtime. Demonstrates environment-based restrictions (e.g., blocking write operations in production) and dynamic restriction changes during agent lifecycle.
+Uses `setDisallowedTools()` to block specific tools. Demonstrates environment-based restrictions (e.g., blocking write operations in production) and how to apply restriction changes during the agent lifecycle.
+
+> **Important — restrictions are bound at `initialize()` time.** `setDisallowedTools()` only updates the stored list; the bound `AgentExecutor` and tool list are not rebuilt. If the agent is already initialized (e.g., a previous `run()` ran), you MUST call `await agent.initialize()` after `setDisallowedTools()` for the change to take effect. Source code logs `"Agent already initialized. Changes will take effect on next initialization."` in this case.
 
 ---
 
@@ -1079,9 +1081,13 @@ Uses `setDisallowedTools()` to block specific tools at runtime. Demonstrates env
  * Recipe 10 — Agent with Tool Restrictions
  *
  * Shows how to restrict which tools an agent can use:
- *   - setDisallowedTools(tools) — block a list of tool names
+ *   - setDisallowedTools(tools) — set the disallowed list
  *   - getDisallowedTools()      — inspect current restrictions
  *   - Environment-based restrictions (prod vs dev)
+ *
+ * IMPORTANT: setDisallowedTools() must be called BEFORE the first run()
+ * (or initialize()), OR followed by an explicit initialize() call to
+ * rebuild the executor's tool bindings.
  *
  * Requirements:
  *   OPENAI_API_KEY in environment
@@ -1117,7 +1123,8 @@ async function main(): Promise<void> {
     "move_file",
   ];
 
-  // Apply restrictions based on environment
+  // Apply restrictions BEFORE first initialize()/run() — these will be bound
+  // when the agent is initialized inside the first run() call.
   const blockedTools = isProduction ? prodBlockedTools : devBlockedTools;
   agent.setDisallowedTools(blockedTools);
 
@@ -1125,7 +1132,8 @@ async function main(): Promise<void> {
   console.log(`🚫 Blocked tools: ${agent.getDisallowedTools().join(", ")}\n`);
 
   try {
-    // Task 1: Read-only operation (should work in both environments)
+    // Task 1: Read-only operation (first run() — initializes the agent
+    // with the restrictions defined above)
     console.log("--- Task 1: Read-only operation ---\n");
     const readResult = await agent.run({
       prompt: "List the files in the current directory and read any README.md.",
@@ -1133,7 +1141,7 @@ async function main(): Promise<void> {
     });
     console.log(readResult);
 
-    // Task 2: Write operation (blocked in production)
+    // Task 2: Write operation (blocked in production by the bound list)
     console.log("\n--- Task 2: Attempting write operation ---\n");
     const writeResult = await agent.run({
       prompt: `Try to create a file called "test-output.txt" with the content
@@ -1142,10 +1150,14 @@ async function main(): Promise<void> {
     });
     console.log(writeResult);
 
-    // Dynamic restriction change — unlock write for a specific task
+    // Dynamic restriction change — unlock write for a specific task.
+    // The agent is ALREADY initialized at this point, so updating the
+    // disallowed list alone is a no-op. We must re-initialize to rebuild
+    // the bound LangChain tool list and AgentExecutor.
     if (isProduction) {
       console.log("\n--- Temporarily unlocking write for a specific task ---\n");
-      agent.setDisallowedTools([]); // Clear all restrictions
+      agent.setDisallowedTools([]);          // update internal list
+      await agent.initialize();              // REBUILD executor + tool bindings
       console.log(`🔓 Restrictions cleared: ${agent.getDisallowedTools().length} blocked tools`);
 
       const unlocked = await agent.run({
@@ -1154,8 +1166,9 @@ async function main(): Promise<void> {
       });
       console.log(unlocked);
 
-      // Re-apply restrictions
+      // Re-apply restrictions — again, must re-initialize for it to take effect.
       agent.setDisallowedTools(prodBlockedTools);
+      await agent.initialize();
       console.log(`\n🔒 Restrictions re-applied: ${agent.getDisallowedTools().join(", ")}`);
     }
   } finally {
@@ -1171,11 +1184,11 @@ main().catch((err) => {
 
 **Key takeaways:**
 
-- `setDisallowedTools([...])` blocks specific tool names — the agent will refuse to call them.
-- `getDisallowedTools()` returns the current list of blocked tools.
-- Use environment variables (`NODE_ENV`) to apply different restriction profiles.
-- Restrictions can be changed dynamically between `run()` calls.
-- Clearing restrictions with `setDisallowedTools([])` unlocks all tools.
+- `setDisallowedTools([...])` updates the stored list; the bound `AgentExecutor` is NOT rebuilt automatically. Call `await agent.initialize()` afterwards to apply changes on an already-initialized agent.
+- The simplest pattern is to call `setDisallowedTools()` once, BEFORE the first `run()` — the first run will initialize the agent with the restrictions in place.
+- `getDisallowedTools()` returns the current stored list (regardless of whether it has been bound to the executor yet).
+- Use environment variables (`NODE_ENV`) to choose a restriction profile at construction time.
+- Clearing restrictions with `setDisallowedTools([])` followed by `await agent.initialize()` unlocks all tools.
 
 ---
 
@@ -1251,6 +1264,8 @@ agent.setTags(["tag1", "tag2"])              // Add trace tags (deduplicates)
 agent.getTags()                              // Get current tags copy
 
 // Tool restrictions (also settable at construction via disallowedTools: [...])
-agent.setDisallowedTools(["tool1", "tool2"]) // Block tools at runtime (call initialize() after)
-agent.getDisallowedTools()                   // Get blocked list
+agent.setDisallowedTools(["tool1", "tool2"]) // Update stored list. NOTE: only takes effect at initialize() time —
+                                             // call BEFORE first run(), or follow with `await agent.initialize()`
+                                             // to rebuild the executor on an already-initialized agent.
+agent.getDisallowedTools()                   // Get current stored list
 ```

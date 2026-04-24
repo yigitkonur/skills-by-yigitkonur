@@ -234,7 +234,7 @@ The `maxSteps` parameter controls how many LLM reasoning + tool-call cycles the 
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
 
-// Guideline: default maxSteps is 5 — always set explicitly for non-trivial tasks
+// default maxSteps is 5 — far too low for most tasks; always set explicitly
 // simple lookup = 5-10, multi-step = 15-30, complex workflows = 30-50
 
 // Simple: single tool call, direct answer
@@ -1136,6 +1136,7 @@ interface AgentConfig {
   maxSteps: number;
   verbose: boolean;
   memoryEnabled: boolean;
+  observabilityEnabled: boolean;
   mcpFilesystemRoot: string;
   rateLimitRpm: number;
 }
@@ -1182,6 +1183,7 @@ function loadConfig(): AgentConfig {
     maxSteps: optionalInt("AGENT_MAX_STEPS", 20),
     verbose: optionalBool("AGENT_VERBOSE", false),
     memoryEnabled: optionalBool("AGENT_MEMORY", true),
+    observabilityEnabled: optionalBool("AGENT_OBSERVABILITY", true),
     mcpFilesystemRoot: required("AGENT_FS_ROOT"),
     rateLimitRpm: optionalInt("AGENT_RATE_LIMIT_RPM", 30),
   };
@@ -1232,6 +1234,7 @@ function createAgentFromConfig(config: AgentConfig): { agent: MCPAgent; client: 
     maxSteps: config.maxSteps,
     verbose: config.verbose,
     memoryEnabled: config.memoryEnabled,
+    observe: config.observabilityEnabled,  // explicit opt-out via AGENT_OBSERVABILITY=false
   });
 
   return { agent, client };
@@ -1272,6 +1275,7 @@ main().catch(console.error);
 | `AGENT_MAX_STEPS` | No | `20` | Max reasoning steps |
 | `AGENT_VERBOSE` | No | `false` | Enable verbose logging |
 | `AGENT_MEMORY` | No | `true` | Enable conversation memory |
+| `AGENT_OBSERVABILITY` | No | `true` | Auto-emit traces to Langfuse / configured platform; set `false` to opt out |
 | `AGENT_FS_ROOT` | **Yes** | — | Root directory for filesystem MCP server |
 | `AGENT_RATE_LIMIT_RPM` | No | `30` | Max requests per minute |
 
@@ -1281,6 +1285,7 @@ main().catch(console.error);
 - Use sensible defaults for everything except security-sensitive values (API keys, filesystem roots).
 - Never log API keys or secrets — only log the structure of the config.
 - For production, consider using `dotenv` for local development and real env vars in deployment.
+- `observe` defaults to `true`, so every agent emits traces if Langfuse / OTel env vars are set. For high-throughput batch jobs or cost-sensitive deployments, pass `observe: false` explicitly to opt out — this is the only way to silence the auto-init "ObservabilityManager: Observability disabled" debug log on initialize.
 
 ---
 

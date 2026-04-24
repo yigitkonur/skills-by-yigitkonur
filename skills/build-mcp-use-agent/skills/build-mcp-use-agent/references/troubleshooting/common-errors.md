@@ -86,15 +86,16 @@ console.log("Provider package loaded successfully");
 ```
 3. If using a monorepo, make sure the package is installed in the correct workspace.
 
-**Prevention:** Add the provider package to your `dependencies` (not `devDependencies`) so it is always available in production. Pin the version to avoid breaking changes:
+**Prevention:** Add the provider package to your `dependencies` (not `devDependencies`) so it is always available in production. Pin to current stable versions — note that `mcp-use` jumped from the `0.1.x` line directly to `1.x` (no `0.6.x` ever existed on npm), so any range like `^0.6.0` will fail to install:
 ```json
 {
   "dependencies": {
-    "mcp-use": "^0.6.0",
-    "@langchain/openai": "^0.5.0"
+    "mcp-use": "^1.25.0",
+    "@langchain/openai": "^1.4.0"
   }
 }
 ```
+Verify the current latest with `npm view mcp-use version` before committing — versions drift over time.
 
 ---
 
@@ -239,7 +240,7 @@ const agent = new MCPAgent({
 });
 ```
 
-**Prevention:** Monitor your API usage dashboards. Set billing alerts. Use `gpt-4o-mini` or `claude-3-5-haiku` for tasks that do not require top-tier reasoning. Batch requests where possible rather than making many small agent runs.
+**Prevention:** Monitor your API usage dashboards. Set billing alerts. Use `gpt-4o-mini` or `claude-haiku-4-5` for tasks that do not require top-tier reasoning. Batch requests where possible rather than making many small agent runs.
 
 ---
 
@@ -250,15 +251,17 @@ const agent = new MCPAgent({
 **Cause:** Default timeout settings in the HTTP client are too short for the request payload size. Provider-side load spikes can also cause slowdowns beyond the timeout threshold.
 
 **Fix:**
-1. Increase the timeout via explicit mode configuration:
+1. Increase the timeout via explicit mode configuration. In `@langchain/openai@1.x`, the canonical placement is under `configuration: { ... }` (forwarded to the underlying `openai` SDK client). The top-level `timeout` and `maxRetries` are still accepted as backwards-compatible aliases, but `configuration` is the form you want for new code:
 ```typescript
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
 
 const llm = new ChatOpenAI({
   model: "gpt-4o",
-  timeout: 120_000, // 120 seconds
-  maxRetries: 3,
+  configuration: {
+    timeout: 120_000,   // 120 seconds — forwarded to the OpenAI SDK
+    maxRetries: 3,      // forwarded to the OpenAI SDK
+  },
 });
 
 const client = new MCPClient({
@@ -471,38 +474,52 @@ const result2 = await agent.run({ prompt: `Analyze these files: ${result1}` });
 
 ### Error: "Agent not initialized — call initialize() first"
 
-**When:** You call `agent.run()` or `agent.stream()` on an agent that has not been initialized, when `autoInitialize` is set to `false`.
+**When:** You call `agent.run({ prompt, manageConnector: false })` (or `stream` / `streamEvents` / `prettyStreamEvents` with `manageConnector: false`) on an agent that was never initialized, AND `autoInitialize` is left at its default of `false`.
 
-**Cause:** `autoInitialize` defaults to `false`. When it is `false`, you must call `await agent.initialize()` before any run calls. Setting `autoInitialize: true` makes the agent initialize automatically on the first `run()` call. If you leave the default and forget to initialize, you get this error.
+**Cause:** Normal `agent.run({ prompt })` usage **never** triggers this error: `run` delegates to `stream`, whose default `manageConnector` is `true`, which auto-initializes on first call. The error only fires when **all three** of these are simultaneously true:
+1. You explicitly pass `manageConnector: false` in the `RunOptions` (opting out of automatic init), AND
+2. `autoInitialize: false` (the default), AND
+3. You never called `await agent.initialize()` manually.
 
 **Fix:**
-1. Either set `autoInitialize: true` to initialize automatically on first `run()`:
+1. The simplest fix is to drop `manageConnector: false` and let the default (`true`) handle initialization automatically:
 ```typescript
 import { MCPAgent } from "mcp-use";
 
 const agent = new MCPAgent({
   llm: "openai/gpt-4o",
-  autoInitialize: true,  // initialize automatically on first run()
   mcpServers: { /* ... */ },
 });
 
+// No `manageConnector: false` — the agent auto-initializes on first run.
 const result = await agent.run({ prompt: "Hello" });
 ```
-2. Or explicitly initialize before calling run (this is the default behavior):
+2. If you intentionally pass `manageConnector: false` (e.g. to share lifecycle across multiple runs), call `initialize()` once up-front:
 ```typescript
 import { MCPAgent } from "mcp-use";
 
-// autoInitialize defaults to false — must call initialize() manually
 const agent = new MCPAgent({
   llm: "openai/gpt-4o",
   mcpServers: { /* ... */ },
 });
 
 await agent.initialize();
-const result = await agent.run({ prompt: "Hello" });
+const r1 = await agent.run({ prompt: "Task 1", manageConnector: false });
+const r2 = await agent.run({ prompt: "Task 2", manageConnector: false });
+await agent.close();
+```
+3. Or set `autoInitialize: true` so the agent initializes on first call even when `manageConnector: false`:
+```typescript
+const agent = new MCPAgent({
+  llm: "openai/gpt-4o",
+  autoInitialize: true,            // fallback init when manageConnector is false
+  mcpServers: { /* ... */ },
+});
+
+const result = await agent.run({ prompt: "Hello", manageConnector: false });
 ```
 
-**Prevention:** `autoInitialize` defaults to `false`. Either always call `await agent.initialize()` before `run()`, or set `autoInitialize: true` to have the agent initialize on first use.
+**Prevention:** Hitting this error almost always means `manageConnector: false` was set somewhere in the call. Audit your call sites for that flag. Default `run({ prompt })` usage initializes automatically — if you have not opted out, look elsewhere for the bug.
 
 ---
 
@@ -683,7 +700,7 @@ const SimpleSchema = z.object({
 });
 ```
 2. Break complex outputs into multiple agent runs with simpler schemas.
-3. Use `gpt-4o` or `claude-sonnet-4` — they have the best structured output adherence.
+3. Use `gpt-4o` or `claude-sonnet-4-5` — they have the best structured output adherence.
 
 **Prevention:** Design schemas with the LLM's capabilities in mind. Test with the cheapest model first — if `gpt-4o-mini` can handle it, any model can.
 
@@ -929,12 +946,29 @@ mcpServers: {
 ```bash
 npm install @modelcontextprotocol/server-filesystem
 ```
-Then use the local installation:
+Then use the package's direct JS entry (resolved against the current working directory). Do **not** point `node` at `node_modules/.bin/<name>` — `.bin` entries are shebang-script symlinks on Unix and `.cmd` wrappers on Windows, so `node` will throw `SyntaxError: Unexpected token` on the first line:
 ```typescript
+import path from "node:path";
+
 mcpServers: {
   filesystem: {
     command: "node",
-    args: ["node_modules/.bin/mcp-server-filesystem", "/tmp"],
+    args: [
+      path.resolve(
+        process.cwd(),
+        "node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+      ),
+      "/tmp",
+    ],
+  },
+}
+```
+Or, simpler: keep `npx` but pass `--no-install` so it uses the locally installed copy without touching the registry:
+```typescript
+mcpServers: {
+  filesystem: {
+    command: "npx",
+    args: ["--no-install", "@modelcontextprotocol/server-filesystem", "/tmp"],
   },
 }
 ```
@@ -1001,7 +1035,7 @@ async function runWithRecovery(config: any, prompt: string) {
 }
 ```
 
-**Prevention:** Stress-test your MCP server with large payloads and concurrent requests. Set memory limits and add global error handlers in the server process. Use `useServerManager: true` in the agent config if available for automatic reconnection.
+**Prevention:** Stress-test your MCP server with large payloads and concurrent requests. Set memory limits and add global error handlers in the server process. To handle mid-task crashes, use the recovery pattern shown above — catch `EPIPE` / connection errors from `agent.run()` and recreate the agent (which re-spawns the server process via a fresh `initialize()` call). Note that `useServerManager: true` provides **dynamic server selection** (the LLM picks which configured server to connect to via management tools), not automatic reconnection of crashed processes.
 
 ---
 
@@ -1115,13 +1149,27 @@ const agent = new MCPAgent({
   },
 });
 ```
-2. For SSE-based (remote) servers:
+2. For remote servers, declare both the URL and the `transport` explicitly. mcp-use defaults to Streamable HTTP (`transport: "http"`) — pass `transport: "sse"` only when targeting a legacy SSE server:
 ```typescript
-const agent = new MCPAgent({
+// Modern Streamable HTTP server (recommended for new code)
+const httpAgent = new MCPAgent({
   llm: "openai/gpt-4o",
   mcpServers: {
-    remoteServer: {
-      url: "http://localhost:3001/sse",   // SSE endpoint
+    modernServer: {
+      url: "https://mcp.example.com/mcp",
+      transport: "http",                  // default — this is the current MCP standard
+      headers: { Authorization: `Bearer ${process.env.MCP_TOKEN}` },
+    },
+  },
+});
+
+// Legacy SSE server (older reference servers)
+const sseAgent = new MCPAgent({
+  llm: "openai/gpt-4o",
+  mcpServers: {
+    legacyServer: {
+      url: "http://localhost:3001/sse",
+      transport: "sse",                   // required — without this, mcp-use tries Streamable HTTP
     },
   },
 });
@@ -1276,34 +1324,49 @@ import type { MCPAgentOptions } from "mcp-use";
 **Cause:** The `callbacks` option expects LangChain-compatible callback handlers. Passing a plain object or incorrect structure causes runtime errors when the agent tries to invoke callback methods.
 
 **Fix:**
-1. Use the correct callback handler structure (simplified mode shown; works the same in explicit mode):
+1. Use the correct callback handler structure. The `callbacks` option is typed as `BaseCallbackHandler[]` — `BaseCallbackHandler` is an **abstract class** (not an interface), so subclass it instead of passing a plain object literal (which fails under `strict: true` with `Property 'name' is missing`):
 ```typescript
 import { MCPAgent } from "mcp-use";
+import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
+
+class AgentCallbacks extends BaseCallbackHandler {
+  name = "agent-callbacks";
+
+  async handleLLMStart(_llm: unknown, prompts: string[]) {
+    console.log("LLM started with", prompts.length, "prompts");
+  }
+  async handleLLMEnd(_output: unknown) {
+    console.log("LLM finished");
+  }
+  async handleToolStart(tool: { name: string }, _input: string) {
+    console.log("Tool called:", tool.name);
+  }
+  async handleToolEnd(output: string) {
+    console.log("Tool result:", output.substring(0, 100));
+  }
+}
 
 const agent = new MCPAgent({
   llm: "openai/gpt-4o",
   mcpServers: { /* ... */ },
-  callbacks: [
-    {
-      handleLLMStart: async (llm: any, prompts: string[]) => {
-        console.log("LLM started with", prompts.length, "prompts");
-      },
-      handleLLMEnd: async (output: any) => {
-        console.log("LLM finished");
-      },
-      handleToolStart: async (tool: any, input: string) => {
-        console.log("Tool called:", tool.name);
-      },
-      handleToolEnd: async (output: string) => {
-        console.log("Tool result:", output.substring(0, 100));
-      },
-    },
-  ],
+  callbacks: [new AgentCallbacks()],
 });
 ```
-2. Each callback method is optional — only implement the ones you need.
+2. Each callback method is optional — only override the ones you need.
+3. If you want a plain-object form for minimal boilerplate, cast it explicitly. Note that handlers without a `name` get grouped as `unknown_handler` in observability platforms like Langfuse:
+```typescript
+import type { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 
-**Prevention:** Define callbacks as a separate typed object and validate its shape before passing it to the agent constructor.
+callbacks: [
+  {
+    handleLLMStart: async (_llm, prompts: string[]) => {
+      console.log("LLM started with", prompts.length, "prompts");
+    },
+  } as unknown as BaseCallbackHandler,
+],
+```
+
+**Prevention:** Subclass `BaseCallbackHandler` and set a `name` property — this satisfies strict TypeScript and gives observability tools a clear handler identity.
 
 ---
 
@@ -1461,18 +1524,29 @@ const agent = new MCPAgent({
 
 **Step 2: Enable debug-level logging**
 
-For even more detail, enable the mcp-use logger's debug mode:
+For even more detail, enable the mcp-use logger's debug mode. `setDebug` accepts either a boolean or a numeric level (`0` silent, `1` info, `2` debug):
 
 ```typescript
 import { MCPAgent, Logger } from "mcp-use";
 
+// Quick: turn on debug logs (equivalent to Logger.setDebug(2))
 Logger.setDebug(true);
+
+// Or use the richer API for finer control:
+//   level:  "silent" | "error" | "warn" | "info" | "http" | "verbose" | "debug" | "silly"
+//   format: "minimal" | "detailed" | "emoji"
+Logger.configure({ level: "debug", format: "minimal" });
+
+// To silence in production:
+// Logger.configure({ level: "warn" });
 
 const agent = new MCPAgent({
   llm: "openai/gpt-4o",
   mcpServers: { /* ... */ },
 });
 ```
+
+Use `Logger.configure({ format: "minimal" })` in CI environments — emoji-formatted logs can break some log aggregators.
 
 **Step 3: Inspect the tool discovery**
 
@@ -1533,21 +1607,31 @@ const agent = new MCPAgent({
 
 **Step 7: Use prettyStreamEvents for visual debugging**
 
-The `prettyStreamEvents` method formats and displays all events in a human-readable way:
+The `prettyStreamEvents` method formats and displays all events in a human-readable way. It returns an `AsyncGenerator<void, string, void>` — you must iterate it with `for await`. Writing `await agent.prettyStreamEvents(...)` silently does nothing because awaiting an async-generator expression returns the generator object without running its body:
 
 ```typescript
-await agent.prettyStreamEvents({ prompt: "List files in /tmp" });
+// ✅ Correct — iterate the async generator
+for await (const _ of agent.prettyStreamEvents({ prompt: "List files in /tmp" })) {
+  // prettyStreamEvents yields void; pretty-printed output goes to stdout as a side effect
+}
 ```
 
 **Step 8: Check Node.js version and dependencies**
 
-Ensure you are running a supported Node.js version and all dependencies are up to date:
+Ensure you are running a supported Node.js version and all dependencies are up to date. `mcp-use@1.25.0` declares `"engines": { "node": "^20.19.0 || >=22.12.0" }` — Node 18.x and 21.x are NOT supported, and Node 20.x must be at least `20.19.0`:
 
 ```bash
-node --version          # Should be >= 18.0.0
+node --version          # mcp-use@1.25.0 requires ^20.19.0 || >=22.12.0
 npm list mcp-use        # Check installed version
 npm outdated mcp-use    # Check for updates
 ```
+
+A more precise check:
+```bash
+node -e "const [maj, min] = process.versions.node.split('.').map(Number); console.log((maj === 20 && min >= 19) || maj >= 22 ? 'OK: ' + process.versions.node : 'UPGRADE REQUIRED: ' + process.versions.node);"
+```
+
+If you see unexpected errors, confirm the engine constraint with `cat node_modules/mcp-use/package.json | grep -A1 engines`.
 
 **Step 9: Verify network connectivity**
 
