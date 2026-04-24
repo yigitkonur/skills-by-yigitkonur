@@ -58,8 +58,8 @@ mcp-use client connect http://localhost:3000/mcp
 # 2. List tools
 mcp-use client tools list
 
-# 3. Call a tool
-mcp-use client tools call search-users --args '{"q":"acme"}'
+# 3. Call a tool — args is the POSITIONAL 2nd argument (JSON string), not a flag
+mcp-use client tools call search-users '{"q":"acme"}'
 
 # 4. Read a resource
 mcp-use client resources read ui://widget/chart
@@ -80,7 +80,7 @@ mcp-use client interactive
 
 ### Gotchas
 
-- Session state is **project-scoped** — `sessions.json` lives under the `cwd`'s `.mcp-use/` unless you override the store path programmatically. Different project dirs = different session caches.
+- Session state is **user-global**, not project-local. The CLI persists REPL sessions to `~/.mcp-use/cli-sessions.json` (verified in `cli/src/utils/session-storage.ts`: `SESSION_FILE_PATH = join(homedir(), ".mcp-use", "cli-sessions.json")`). This is a different file from the server-side `FileSystemSessionStore` artifact at `<cwd>/.mcp-use/sessions.json` documented in `config-files/20-env-and-sessions.md` — they are different stores owned by different code paths.
 - `connect` against a server requiring OAuth will route through the browser auth flow before the session is usable.
 - The REPL does not auto-reconnect when a server drops; re-run `connect` after network hiccups.
 
@@ -108,11 +108,12 @@ Options:
 ```
 
 - Installs the mcp-use skill bundle (the `build-mcp-use-*` family) into the target project.
-- Detects the target agent from file markers:
-  - `.claude/` → Claude Code skills
-  - `.cursor/` → Cursor rules
-  - `.codex/` → Codex skills
+- Detects the target agent from file markers in the project root and installs to the agent's skills dir. Verified mapping from `cli/src/commands/skills.ts`:
+  - `cursor` → installs to `.cursor/skills/`
+  - `claude-code` → installs to `.claude/skills/`
+  - `codex` → installs to `.agent/skills/` (note: marker file is `.codex/` but install target is `.agent/skills/`)
 - Defaults to `cwd` when `-p` is omitted.
+- Live log line confirms: `"Downloading from github.com/mcp-use/mcp-use → .cursor/skills, .claude/skills, .agent/skills"`.
 
 ### Use cases
 

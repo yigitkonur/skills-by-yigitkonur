@@ -125,7 +125,7 @@ Mostly yes, with care:
 
 - Safe: rotate `apiKey` manually after revoking it server-side, flip `apiUrl`, change `orgSlug/orgId/orgName` all together.
 - Dangerous: leaving `orgId` pointing at one org but `orgSlug` pointing at another — some code paths prefer id, others prefer slug. If you edit, change all three (or run `mcp-use org switch` instead).
-- Legacy: if you see `profileId/profileName/profileSlug` keys only, the file is pre-rename. Run any CLI command to force a migration write (e.g. `mcp-use whoami`).
+- Legacy: if you see `profileId/profileName/profileSlug` keys only, the file is pre-rename. Run a write-triggering command (e.g. `mcp-use org switch` or re-`mcp-use login`) to force a migration write — `mcp-use whoami` is read-only and will NOT persist the rename.
 
 ---
 

@@ -22,7 +22,7 @@ export interface FileSystemSessionStoreConfig {
 
 | Field | Default | Purpose |
 |---|---|---|
-| `path` | `<cwd>/.mcp-use/sessions.json` | Override file location. Point at a shared volume if multiple replicas need to reconcile. |
+| `path` | `<cwd>/.mcp-use/sessions.json` | Override file location. **Single-writer only** — `FileSystemSessionStore` is unsafe for concurrent multi-replica writes (race on the JSON file can lose sessions). For multi-replica deployments use `RedisSessionStore` instead. |
 | `debounceMs` | `100` | Coalesces rapid writes (each session touch) into one disk write. |
 | `maxAgeMs` | `86_400_000` (24h) | Entries older than this are pruned on next load. |
 
@@ -85,7 +85,7 @@ Skipped when `NODE_ENV=production` for `dev` and `build`. Rationale: production 
 
 ### Gotchas
 
-- Gitignored by default. If a teammate's IDE can't find tool types, make sure they ran `mcp-use dev` or `mcp-use generate-types` at least once.
+- Gitignored only **after the first successful `mcp-use deploy`** from this `cwd` (where `saveProjectLink()` appends `.mcp-use` to the project's `.gitignore`). **Pre-deploy**, `tool-registry.d.ts` and `sessions.json` can leak into git — add `.mcp-use/` to `.gitignore` manually before running `mcp-use dev` for the first time. If a teammate's IDE can't find tool types, make sure they ran `mcp-use dev` or `mcp-use generate-types` at least once.
 - If `tsconfig.json` has a restrictive `include` that excludes `.mcp-use/`, you'll get "cannot find name" errors for the generated types. Either unrestrict the include or reference the file via a triple-slash directive in a file that's included.
 - `mcp-use generate-types --server` defaults to `index.ts`. Next.js drop-in projects need `--server src/mcp/index.ts`.
 - Regeneration is content-addressed; no-op if the registry hasn't changed.

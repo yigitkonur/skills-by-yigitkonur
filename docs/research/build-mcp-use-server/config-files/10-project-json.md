@@ -40,7 +40,7 @@ Fields:
 | `deploymentId` | Yes | UUID the CLI calls `restart`/`get`/etc. against. If this stops resolving server-side → HTTP 404 on redeploy. |
 | `deploymentName` | Yes | Used in CLI output so the user sees the name, not just the id. |
 | `deploymentUrl` | No | Stored for convenience (`--open`, copy in logs). |
-| `linkedAt` | Yes | ISO 8601 timestamp of the initial link. |
+| `linkedAt` | Yes | ISO 8601 timestamp of the **most recent (re)link** to this deployment. Bumped on every successful `mcp-use deploy` from this `cwd` (see Lifecycle § "When it's written"). |
 | `serverId` | No | When present, short-circuits the "find server by deployment" API call. |
 
 ---
