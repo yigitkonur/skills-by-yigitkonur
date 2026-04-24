@@ -7,3 +7,13 @@ DERAILMENT_TEST_INVENTION/
 derail-notes/
 derailment-notes/
 derail-results/
+
+# Scratch audit output (per-skill fact-check inventories). Not shipped with the pack.
+violations/
+
+# Temporary holding area for files whose fate has not yet been decided.
+to-delete/
+
+# Session artifacts from AI coding tools.
+.continues-handoff.md
+*.claude-session*

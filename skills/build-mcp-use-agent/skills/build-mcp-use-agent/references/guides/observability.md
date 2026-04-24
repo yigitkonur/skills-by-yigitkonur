@@ -29,8 +29,11 @@ When observability is enabled, mcp-use automatically captures:
 export LANGFUSE_PUBLIC_KEY="pk-lf-..."
 export LANGFUSE_SECRET_KEY="sk-lf-..."
 
-# Optional: specify a custom Langfuse host
+# Optional: specify a custom Langfuse host. mcp-use reads LANGFUSE_HOST first
+# and falls back to LANGFUSE_BASEURL (the standard Langfuse SDK env var name)
+# if LANGFUSE_HOST is unset. Set whichever your existing config uses.
 export LANGFUSE_HOST="https://your-langfuse.com"
+# export LANGFUSE_BASEURL="https://your-langfuse.com"   # accepted as fallback
 
 # Set to "false" to disable Langfuse even when env vars are present
 export MCP_USE_LANGFUSE="false"

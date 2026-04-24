@@ -69,7 +69,6 @@ interface SimplifiedModeOptions {
   // plus all CommonAgentOptions fields above (except client/connectors)
 }
 ```
-```
 
 ### Options table
 
@@ -97,13 +96,27 @@ interface SimplifiedModeOptions {
 
 ### MCPAgent public methods
 
+> **Awaitable vs generator-returning methods.** `run()` and lifecycle methods return a `Promise` and must be `await`ed. The streaming methods (`stream`, `streamEvents`, `prettyStreamEvents`) return `AsyncGenerator` objects **synchronously** — do **not** `await` the call itself; consume the generator with `for await`. The two groups are listed together below; check the Return Type column.
+
+#### Awaitable methods
+
 | Method | Signature | Return Type | Description |
 |---|---|---|---|
-| `run` | `run(prompt: string)` or `run({ prompt, schema?, maxSteps?, signal? })` | `Promise<string>` or `Promise<T>` | Execute a prompt; plain string form is deprecated but works. |
+| `run` | `run(prompt: string)` or `run({ prompt, schema?, maxSteps?, signal?, manageConnector?, externalHistory? })` | `Promise<string>` or `Promise<T>` | Execute a prompt; plain string form is deprecated but works. |
+| `initialize` | `initialize(): Promise<void>` | `Promise<void>` | Async setup; called automatically when `autoInitialize: true` or when `manageConnector` is true at runtime. |
+
+#### Streaming methods (return generators synchronously — do not `await` the call)
+
+| Method | Signature | Return Type | Description |
+|---|---|---|---|
 | `stream` | `stream(prompt: string)` or `stream({ prompt, schema?, maxSteps?, signal? })` | `AsyncGenerator<AgentStep, string \| T, void>` | Yield step objects; generator return value is the final result. |
 | `streamEvents` | `streamEvents(prompt: string)` or `streamEvents({ prompt, schema?, maxSteps?, signal? })` | `AsyncGenerator<StreamEvent, void, void>` | Yield raw LangChain events; plain string form is deprecated. |
 | `prettyStreamEvents` | `prettyStreamEvents(prompt: string)` or `prettyStreamEvents({ prompt, maxSteps?, schema? })` | `AsyncGenerator<void, string, void>` | Formatted, colored CLI output. Plain-string form is deprecated; prefer the options object. |
-| `initialize` | `initialize(): Promise<void>` | `Promise<void>` | Async setup; called automatically when `autoInitialize: true` or when `manageConnector` is true at runtime. |
+
+#### Other methods
+
+| Method | Signature | Return Type | Description |
+|---|---|---|---|
 | `setDisallowedTools` | `setDisallowedTools(tools: string[]): void` | `void` | Update restricted tools at runtime. Changes take effect on next `initialize()` call. |
 | `getDisallowedTools` | `getDisallowedTools(): string[]` | `string[]` | Retrieve current restricted tool list. |
 | `getConversationHistory` | `getConversationHistory(): BaseMessage[]` | `BaseMessage[]` | Returns copy of current conversation history. |
@@ -119,14 +132,14 @@ interface SimplifiedModeOptions {
 
 | Method | Signature | Return Type | Description |
 |---|---|---|---|
-| `createAllSessions` | `createAllSessions(): Promise<void>` | `Promise<void>` | Connect all configured MCP servers upfront. |
+| `createAllSessions` | `createAllSessions(autoInitialize?: boolean)` | `Promise<Record<string, MCPSession>>` | Connect all configured MCP servers upfront; resolves to a map of server name → `MCPSession`. Pass `false` to skip auto-initialization. |
 | `closeAllSessions` | `closeAllSessions(): Promise<void>` | `Promise<void>` | Gracefully close all active server sessions. |
 
 ---
 
 ## LLM integration
 
-All four supported providers share the same constructor shape: `{ model, temperature, apiKey }`. The `apiKey` is optional when the corresponding environment variable is set.
+Each of the four providers below accepts a `{ model, temperature, apiKey }` core, and `apiKey` is optional when the corresponding environment variable is set. Beyond that core, each provider exposes its own options — for example `safetySettings` and `maxOutputTokens` (Google), `thinking` (Anthropic v4+), and `maxTokens` vs `maxOutputTokens` (OpenAI vs Google). For anything past the basics, check the matching `@langchain/<provider>` README.
 
 ```typescript
 // OpenAI
@@ -139,10 +152,10 @@ const llm = new ChatOpenAI({
 ```
 
 ```typescript
-// Anthropic
+// Anthropic (current generation as of April 2026)
 import { ChatAnthropic } from "@langchain/anthropic";
 const llm = new ChatAnthropic({
-  model: "claude-3-5-sonnet-20241022",
+  model: "claude-sonnet-4-6",   // or "claude-opus-4-7" for hardest reasoning
   temperature: 0.7,
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -152,7 +165,7 @@ const llm = new ChatAnthropic({
 // Google Gemini
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 const llm = new ChatGoogleGenerativeAI({
-  model: "gemini-pro",
+  model: "gemini-2.5-pro",      // or "gemini-2.0-flash" for lower latency
   temperature: 0.7,
   apiKey: process.env.GOOGLE_API_KEY,
 });
@@ -162,13 +175,15 @@ const llm = new ChatGoogleGenerativeAI({
 // Groq
 import { ChatGroq } from "@langchain/groq";
 const llm = new ChatGroq({
-  model: "llama-3.1-70b-versatile",
+  model: "llama-3.3-70b-versatile",
   temperature: 0.7,
   apiKey: process.env.GROQ_API_KEY,
 });
 ```
 
 All LLM instances are passed directly to `MCPAgent` as `llm`. Tool calling, structured output, and streaming are available for any provider that supports these features through LangChain's unified interface.
+
+> Model IDs drift. If you see `model_not_found` / `404`, check the provider's current model list (Anthropic, Google AI Studio, Groq) — the snapshots above were current as of April 2026.
 
 ---
 
@@ -501,42 +516,56 @@ await agent.close();
 
 ### Streaming to Vercel AI SDK (Next.js)
 
-`mcp-use` does not export a Vercel AI SDK adapter. Write a local helper to bridge `streamEvents` to `createTextStreamResponse`.
+`mcp-use` exports three Vercel AI SDK helpers from the package root (re-exported via `./src/agents/utils/index.js`):
+
+- `streamEventsToAISDK(events)` — yields plain text chunks from `on_chat_model_stream` events.
+- `streamEventsToAISDKWithTools(events)` — same, plus surface tool start/end markers in the output.
+- `createReadableStreamFromGenerator(gen)` — wrap an `AsyncGenerator<string>` as a `ReadableStream<string>`.
+
+Use them directly instead of writing a local bridge helper:
 
 ```typescript
-import type { StreamEvent } from "@langchain/core/tracers/log_stream";
+import {
+  streamEventsToAISDK,
+  // streamEventsToAISDKWithTools,  // alternative — adds 🔧 / ✅ tool markers
+} from "mcp-use";
 import { createTextStreamResponse } from "ai";
 import { MCPAgent, MCPClient } from "mcp-use";
+import { ChatOpenAI } from "@langchain/openai";
 
-// Local helper — not exported from mcp-use
-async function* streamEventsToText(
-  events: AsyncIterable<StreamEvent>
-): AsyncGenerator<string> {
-  for await (const event of events) {
-    if (event.event === "on_chat_model_stream") {
-      const text = event.data?.chunk?.text || event.data?.chunk?.content;
-      if (typeof text === "string" && text.length > 0) {
-        yield text;
-      }
-    }
-  }
-}
+const client = new MCPClient({ mcpServers: { /* ... */ } });
+const agent = new MCPAgent({ llm: new ChatOpenAI({ model: "gpt-4o" }), client });
 
 export async function POST(req: Request) {
   const { prompt } = await req.json();
-  const events = agent.streamEvents(prompt);
-  return createTextStreamResponse(streamEventsToText(events));
+  const events = agent.streamEvents({ prompt });
+  return createTextStreamResponse(streamEventsToAISDK(events));
 }
 ```
 
+Pick `streamEventsToAISDKWithTools` when you want the user to see `🔧 tool_name` and `✅` markers around tool calls in the streamed output; pick `streamEventsToAISDK` for raw text only.
+
 ### Streaming with persistence
 
+When you need to persist events as they arrive (DB writes, logs, audit trail), inline the loop and re-use the same `createTextStreamResponse` plumbing:
+
 ```typescript
+import { createTextStreamResponse } from "ai";
+import { MCPAgent, MCPClient } from "mcp-use";
+import { ChatOpenAI } from "@langchain/openai";
+
+const client = new MCPClient({ mcpServers: { /* ... */ } });
+const agent = new MCPAgent({ llm: new ChatOpenAI({ model: "gpt-4o" }), client });
+
+function persistEvent(event: unknown) {
+  // your logging / DB code
+}
+
 export async function POST(req: Request) {
   const { prompt } = await req.json();
 
   const stream = (async function* () {
-    for await (const event of agent.streamEvents(prompt)) {
+    for await (const event of agent.streamEvents({ prompt })) {
       persistEvent(event);   // write to DB / log
       if (event.event === "on_chat_model_stream") {
         const text = event.data?.chunk?.text || event.data?.chunk?.content;

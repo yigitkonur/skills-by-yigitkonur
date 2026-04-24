@@ -34,7 +34,11 @@ import { z } from "zod";
 | `prompt` | `string` | – | Natural‑language instruction to the agent |
 | `schema` | `z.ZodSchema<T>` | `undefined` | Validates and types the final response |
 | `maxSteps` | `number` | agent default | Override tool‑calling steps for this run |
-| `stream` | `boolean` | `false` | If `true`, returns a streaming iterator instead of a resolved value |
+| `manageConnector` | `boolean` | `undefined` | Auto-initialize/close MCP connectors for this call |
+| `externalHistory` | `BaseMessage[]` | `undefined` | Per-call history override (does not mutate agent buffer) |
+| `signal` | `AbortSignal` | `undefined` | Cancel the run via `AbortController` |
+
+> **`run()` does not stream.** There is no `stream` boolean on `RunOptions` — `run()` always returns a resolved `Promise`. To stream, call `agent.stream()`, `agent.streamEvents()`, or `agent.prettyStreamEvents()` instead. They return `AsyncGenerator` objects you consume with `for await`.
 
 ### Return type
 
@@ -536,9 +540,9 @@ for await (const event of agent.streamEvents({ prompt: "Produce JSON only", sche
 - Both `stream()` and `streamEvents()` accept either a plain `string` prompt (deprecated but supported) or a `RunOptions` object `{ prompt, schema?, maxSteps?, signal? }`.
 - The system retries formatting up to **3 times** before throwing an error.
 - Use `.describe()` on Zod fields to give the agent guidance on what each field should contain.
-- Call `client.closeAllSessions()` when done.
+- Call `await client.closeAllSessions()` at the application level when done — this is the canonical cleanup and matches the official examples.
 - Use `agent.clearConversationHistory()` to reset memory between runs.
-- Use `await agent.close()` to clean up background processes when finished.
+- `agent.close()` is a superset of `client.closeAllSessions()` (it also resets internal agent state). Pick **one** of the two — calling both in sequence is redundant and will attempt session cleanup twice.
 
 
 ---
@@ -551,18 +555,21 @@ These methods manage agent state and resources; they are not specific to structu
 // Reset conversation memory between independent runs
 agent.clearConversationHistory();
 
-// Clean up background processes (MCP server subprocesses, etc.)
-await agent.close();
-
-// Close all active MCP server sessions
+// Canonical cleanup at the application level — closes all active MCP server sessions
 await client.closeAllSessions();
+
+// Alternative: agent.close() is a superset of closeAllSessions() that also
+// resets agent state. Pick ONE; calling both is redundant.
+// await agent.close();
 ```
 
 | Method | On | Purpose |
 |---|---|---|
 | `clearConversationHistory()` | `MCPAgent` | Wipes stored conversation memory |
-| `close()` | `MCPAgent` | Cleans up resources (e.g., spawned background processes) |
-| `closeAllSessions()` | `MCPClient` | Terminates all active MCP server sessions |
+| `closeAllSessions()` | `MCPClient` | Canonical cleanup — terminates all active MCP server sessions. Use when you own the `MCPClient` lifecycle (most common; matches official examples). |
+| `close()` | `MCPAgent` | Superset of `client.closeAllSessions()` that also resets internal agent state. Use when you own only the agent and want a single-method cleanup. |
+
+> Pick **one** of `client.closeAllSessions()` or `agent.close()` per shutdown — they are not complementary. Calling both will attempt session cleanup twice.
 
 ---
 

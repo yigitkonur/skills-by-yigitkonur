@@ -6,66 +6,71 @@ Examples of integrating MCPAgent with external frameworks and services. Each rec
 
 ## 1. Vercel AI SDK — Next.js API Route with Streaming
 
-Stream MCPAgent responses through a Next.js App Router API route using the Vercel AI SDK. This uses a manual adapter that bridges `agent.streamEvents({ prompt })` output to the Vercel AI SDK's `ReadableStream<string>` format. Note: prefer passing a `RunOptions` object `{ prompt, maxSteps?, schema?, signal? }` to `streamEvents()` — the plain-string form is deprecated. There is no official mcp-use/Vercel AI SDK integration package — this is a hand-written bridge.
+Stream MCPAgent responses through a Next.js App Router API route using the Vercel AI SDK. This recipe shows the pattern used in mcp-use's own [`examples/client/ai_sdk_example.ts`](https://github.com/mcp-use/mcp-use-ts/blob/main/packages/mcp-use/examples/client/ai_sdk_example.ts) — `streamEventsToAISDK` and `createReadableStreamFromGenerator` are exported directly from `mcp-use`. The frontend uses `useChat` from `@ai-sdk/react` (the legacy `'ai/react'` subpath was removed in AI SDK v5+).
+
+> **AI SDK version note:** mcp-use's `examples/client/ai_sdk_example.ts` uses `LangChainAdapter.toDataStreamResponse(...)` imported from the `ai` package — that path works on AI SDK `4.x`. In AI SDK `5.x` and `6.x` (current), `LangChainAdapter` was removed; the equivalent is `toUIMessageStream` (from `@ai-sdk/langchain@^2`) wrapped in `createUIMessageStreamResponse` (from `ai@^6`). Both variants are shown below — pick the one matching your installed `ai` version.
 
 ---
 
+### Variant A — AI SDK v6 + `@ai-sdk/langchain@^2` (current as of 2026)
+
 ```typescript
+// Install: npm install ai@^6 @ai-sdk/react@^3 @ai-sdk/langchain@^2 mcp-use
 // app/api/chat/route.ts
-import type { StreamEvent } from "@langchain/core/tracers/log_stream";
-import { createTextStreamResponse } from "ai";
+import { createUIMessageStreamResponse } from "ai";
+import { toUIMessageStream } from "@ai-sdk/langchain";
 import { MCPAgent, MCPClient } from "mcp-use";
 
-// Adapter: converts LangChain StreamEvents into plain text chunks
-// that the Vercel AI SDK createTextStreamResponse can consume.
-async function* streamEventsToAISDK(
-  events: AsyncGenerator<StreamEvent, void, void>,
-  options?: { includeToolCalls?: boolean }
-): AsyncGenerator<string, void, void> {
-  for await (const event of events) {
-    // Emit LLM token chunks
-    // Note: chunk property may be 'text' or 'content' depending on LLM provider
-    if (event.event === "on_chat_model_stream") {
-      const text = event.data?.chunk?.text || event.data?.chunk?.content;
-      if (typeof text === "string" && text.length > 0) {
-        yield text;
-      }
-    }
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const lastMessage = messages[messages.length - 1]?.content ?? "";
 
-    // Optionally emit tool invocation markers so the frontend
-    // can render tool call / tool result boundaries.
-    if (options?.includeToolCalls) {
-      if (event.event === "on_tool_start") {
-        const name = event.name ?? "unknown_tool";
-        const input = JSON.stringify(event.data?.input ?? {});
-        yield `\n[tool_call: ${name}] ${input}\n`;
-      }
-      if (event.event === "on_tool_end") {
-        const output = JSON.stringify(event.data?.output ?? {});
-        yield `\n[tool_result] ${output}\n`;
-      }
-    }
-  }
-}
-
-// Convert an async generator into a ReadableStream for the Response.
-function createReadableStreamFromGenerator(
-  gen: AsyncGenerator<string, void, void>
-): ReadableStream<string> {
-  return new ReadableStream<string>({
-    async start(controller) {
-      try {
-        for await (const chunk of gen) {
-          controller.enqueue(chunk);
-        }
-      } catch (err) {
-        controller.error(err);
-      } finally {
-        controller.close();
-      }
+  const client = new MCPClient({
+    mcpServers: {
+      filesystem: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/data"],
+      },
     },
   });
+
+  const agent = new MCPAgent({
+    llm: "openai/gpt-4o",
+    client,
+    maxSteps: 20,
+  });
+
+  try {
+    // streamEvents() yields LangChain StreamEvent objects.
+    // toUIMessageStream auto-converts them into the UI-message-chunk
+    // protocol that @ai-sdk/react's useChat consumes.
+    const events = agent.streamEvents({ prompt: lastMessage });
+    return createUIMessageStreamResponse({ stream: toUIMessageStream(events) });
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: "Agent execution failed" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  } finally {
+    await agent.close();
+  }
 }
+```
+
+### Variant B — AI SDK v4 + `LangChainAdapter` from `ai` (matches mcp-use's official example verbatim)
+
+```typescript
+// Install: npm install ai@^4 mcp-use
+// app/api/chat/route.ts
+import { LangChainAdapter } from "ai";
+// streamEventsToAISDK and createReadableStreamFromGenerator are exported
+// directly from mcp-use (see packages/mcp-use/src/agents/utils/ai_sdk.ts).
+import {
+  MCPAgent,
+  MCPClient,
+  streamEventsToAISDK,
+  createReadableStreamFromGenerator,
+} from "mcp-use";
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
@@ -88,16 +93,10 @@ export async function POST(req: Request) {
 
   try {
     const events = agent.streamEvents({ prompt: lastMessage });
-    const textStream = streamEventsToAISDK(events, {
-      includeToolCalls: true,
-    });
+    const textStream = streamEventsToAISDK(events);
     const readable = createReadableStreamFromGenerator(textStream);
-
-    return createTextStreamResponse({
-      status: 200,
-      headers: { "X-Agent-Id": "mcp-use" },
-      stream: readable,
-    });
+    // Returns a Response in the data-stream protocol useChat understands.
+    return LangChainAdapter.toDataStreamResponse(readable);
   } catch (error) {
     return new Response(
       JSON.stringify({ error: "Agent execution failed" }),
@@ -109,12 +108,15 @@ export async function POST(req: Request) {
 }
 ```
 
-**Frontend usage with `useChat`:**
+> **About the text-stream path** — the `createTextStreamResponse({ textStream })` helper from `ai` is still exported in v6 and accepts a `ReadableStream<string>`, but it produces plain text suitable only for `useCompletion`. It is NOT consumed correctly by `useChat`, which expects the UI-message-chunk protocol. Use Variant A or B above for `useChat`-paired backends.
+
+**Frontend usage with `useChat` (AI SDK v5+):**
 
 ```typescript
+// Install: npm install @ai-sdk/react ai
 // app/page.tsx
 "use client";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 
 export default function ChatPage() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
@@ -142,46 +144,114 @@ export default function ChatPage() {
 
 ## 2. Langfuse Observability
 
-Attach Langfuse tracing to every MCPAgent run for cost tracking, latency monitoring, and per-request trace filtering. Pass a `CallbackHandler` via the `callbacks: [handler]` constructor option. Uses `agent.setMetadata()` and `agent.setTags()` to enrich traces with arbitrary key-value data and tag strings.
+Attach Langfuse tracing to every MCPAgent run for cost tracking, latency monitoring, and per-request filtering.
+
+> **mcp-use auto-initializes a Langfuse handler from environment variables.** When `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set (and `MCP_USE_LANGFUSE` is not `"false"`), mcp-use dynamically loads `langfuse-langchain` and registers a `LoggingCallbackHandler` through its internal `ObservabilityManager`. You do NOT need to pass `callbacks: [...]` manually for the common case. The recommended pattern is env vars + `agent.setMetadata()` + `agent.setTags()`. Pass a manual `CallbackHandler` only when you need per-request `traceId`/`userId` binding — and disable the auto-init first to avoid duplicate traces.
 
 ---
 
-```typescript
-// observability.ts
-import { CallbackHandler as LangfuseHandler } from "langfuse-langchain";
-import { MCPAgent, MCPClient } from "mcp-use";
-import { Logger } from "mcp-use";
-import { randomUUID } from "node:crypto";
+### Sub-recipe A — Zero-config auto-init (recommended default)
 
-// Enable framework-level debug logging alongside Langfuse traces.
+This matches mcp-use's own [`examples/client/observability.ts`](https://github.com/mcp-use/mcp-use-ts/blob/main/packages/mcp-use/examples/client/observability.ts).
+
+```typescript
+// .env:
+//   LANGFUSE_PUBLIC_KEY=pk-...
+//   LANGFUSE_SECRET_KEY=sk-...
+//   LANGFUSE_HOST=https://cloud.langfuse.com   # or your self-hosted URL
+//   MCP_USE_LANGFUSE=true                       # optional; auto-init is on by default
+
+import { config } from "dotenv";
+import { Logger, MCPAgent, MCPClient } from "mcp-use";
+
+config();
+
+// Optional — see what env vars Langfuse will pick up.
 Logger.setDebug(true);
 
-// Reusable function that creates a Langfuse callback handler
-// scoped to a single request trace.
+async function main() {
+  const client = new MCPClient({
+    mcpServers: {
+      everything: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-everything"],
+      },
+    },
+  });
+
+  // No callbacks needed — mcp-use auto-detects env vars and registers the handler.
+  const agent = new MCPAgent({
+    llm: "openai/gpt-4o",
+    client,
+    maxSteps: 15,
+  });
+
+  // Enrich every trace this agent emits.
+  agent.setMetadata({
+    feature: "web-search",
+    costCenter: "product-team",
+    environment: process.env.NODE_ENV ?? "development",
+  });
+  agent.setTags(["production", "web-search"]);
+
+  try {
+    const result = await agent.run({
+      prompt: "Search for the latest TypeScript 5.6 features and summarize them",
+      maxSteps: 15,
+    });
+    console.log("Result:", result);
+  } finally {
+    // In serverless, flush traces before the function exits.
+    await agent.flush();
+    await agent.close();
+  }
+}
+
+main().catch(console.error);
+```
+
+### Sub-recipe B — Per-request manual handler (when you need `traceId`/`userId` binding)
+
+Use this only when you need a deterministic `traceId` or `userId` scoped to a single run (e.g. correlating a trace with a specific HTTP request). To prevent double-tracing, you MUST disable the auto-init by setting `MCP_USE_LANGFUSE=false`.
+
+```typescript
+// Required env:
+//   LANGFUSE_PUBLIC_KEY=pk-...
+//   LANGFUSE_SECRET_KEY=sk-...
+//   LANGFUSE_HOST=https://cloud.langfuse.com   # or your self-hosted URL
+//   MCP_USE_LANGFUSE=false                      # disable ambient auto-init
+
+import { CallbackHandler as LangfuseHandler } from "langfuse-langchain";
+import { MCPAgent, MCPClient } from "mcp-use";
+import { randomUUID } from "node:crypto";
+
 function createLangfuseHandler(traceId: string, userId?: string) {
   return new LangfuseHandler({
     publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
     secretKey: process.env.LANGFUSE_SECRET_KEY!,
-    baseUrl: process.env.LANGFUSE_BASE_URL ?? "https://cloud.langfuse.com",
+    // mcp-use reads LANGFUSE_HOST (with LANGFUSE_BASEURL — note: no underscore
+    // between BASE and URL — as the only documented fallback). LANGFUSE_BASE_URL
+    // is NOT a recognized env var.
+    baseUrl: process.env.LANGFUSE_HOST ?? "https://cloud.langfuse.com",
     traceId,
     userId,
     sessionId: traceId,
-    metadata: {
-      environment: process.env.NODE_ENV ?? "development",
-    },
+    metadata: { environment: process.env.NODE_ENV ?? "development" },
   });
 }
 
-// Per-request traced agent execution
 async function runTracedAgent(prompt: string, userId?: string) {
   const traceId = randomUUID();
   const langfuseHandler = createLangfuseHandler(traceId, userId);
 
   const client = new MCPClient({
     mcpServers: {
+      // The Brave Search reference server lives under @modelcontextprotocol.
+      // Note: as of late 2024 it is marked deprecated on npm — replace with
+      // a community-maintained or self-hosted equivalent if it stops working.
       brave: {
         command: "npx",
-        args: ["-y", "@anthropic/mcp-server-brave"],
+        args: ["-y", "@modelcontextprotocol/server-brave-search"],
         env: { BRAVE_API_KEY: process.env.BRAVE_API_KEY! },
       },
     },
@@ -191,18 +261,16 @@ async function runTracedAgent(prompt: string, userId?: string) {
     llm: "openai/gpt-4o",
     client,
     maxSteps: 15,
-    callbacks: [langfuseHandler],
+    callbacks: [langfuseHandler],   // explicit per-request handler
   });
 
-  // Enrich the trace with metadata and tags for filtering
-  // in the Langfuse dashboard.
+  // Per-run metadata + tags for filtering.
   agent.setMetadata({
     traceId,
     userId: userId ?? "anonymous",
     feature: "web-search",
     costCenter: "product-team",
   });
-
   agent.setTags([
     "production",
     "web-search",
@@ -222,15 +290,13 @@ async function runTracedAgent(prompt: string, userId?: string) {
   }
 }
 
-// Example: run with observability
 async function main() {
   const { result, traceId } = await runTracedAgent(
     "Search for the latest TypeScript 5.6 features and summarize them",
     "user-42"
   );
-
   console.log("Result:", result);
-  console.log(`View trace: https://cloud.langfuse.com/trace/${traceId}`);
+  console.log(`View trace: ${process.env.LANGFUSE_HOST ?? "https://cloud.langfuse.com"}/trace/${traceId}`);
 }
 
 main().catch(console.error);
@@ -242,7 +308,8 @@ main().catch(console.error);
 - Use the `costCenter` metadata field to attribute spend.
 - The `userId` on the handler links every span to a user timeline.
 - Latency breakdown per tool call is automatic — each MCP tool invocation appears as a child span under the agent trace.
-- Set `LANGFUSE_BASE_URL` to your self-hosted instance if not using Langfuse Cloud.
+- Set `LANGFUSE_HOST` (not `LANGFUSE_BASE_URL`) to point at a self-hosted instance — e.g. `export LANGFUSE_HOST=https://langfuse.internal.example.com`. mcp-use reads `LANGFUSE_HOST` first and falls back to `LANGFUSE_BASEURL` (no underscore between `BASE` and `URL`).
+- Set `MCP_USE_LANGFUSE=false` if you want only the manual per-request handler to run, with no ambient auto-init.
 
 ---
 
@@ -474,9 +541,11 @@ router.post("/agent/stream", async (req: Request, res: Response) => {
 
   const client = new MCPClient({
     mcpServers: {
-      weather: {
+      // The Everything reference server is actively maintained and ships
+      // a broad sample of tools, resources, and prompts — useful for demos.
+      everything: {
         command: "npx",
-        args: ["-y", "@anthropic/mcp-server-weather"],
+        args: ["-y", "@modelcontextprotocol/server-everything"],
       },
     },
   });
@@ -960,7 +1029,11 @@ async function dynamicServerDemo() {
         '   serverName: "brave-search"',
         '   serverConfig: {',
         '     command: "npx",',
-        '     args: ["-y", "@anthropic/mcp-server-brave"],',
+        // The official Brave Search reference server lives under
+        // @modelcontextprotocol — there is NO @anthropic/mcp-server-* npm scope.
+        // Note: this package is marked deprecated on npm as of late 2024;
+        // substitute a community-maintained equivalent if it stops working.
+        '     args: ["-y", "@modelcontextprotocol/server-brave-search"],',
         `     env: { "BRAVE_API_KEY": "${process.env.BRAVE_API_KEY}" }`,
         "   }",
         "3. Use the newly added brave-search server to look up",

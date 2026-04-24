@@ -55,7 +55,7 @@ Check for context: is there an existing application that could benefit from an a
 
 **If no context exists:** Ask the user up to 10 questions, each with 5+ concrete options:
 
-1. **What LLM provider?** (OpenAI `gpt-4o`, Anthropic `claude-3-5-sonnet-20241022`, Google `gemini-pro`, Groq `llama-3.3-70b-versatile`, other)
+1. **What LLM provider?** (OpenAI `gpt-4o`, Anthropic `claude-sonnet-4-6` or `claude-opus-4-7`, Google `gemini-2.5-flash` or `gemini-2.5-pro`, Groq `llama-3.3-70b-versatile`, other)
 2. **Initialization mode?** (Explicit — hand-built LLM and client, Simplified — `"provider/model"` string shorthand)
 3. **What MCP servers to connect?** (filesystem, database, custom stdio, remote HTTP/SSE, none yet)
 4. **Output format?** (plain text via `run()`, structured Zod schema, streaming steps, streaming tokens, pretty terminal)
@@ -63,7 +63,7 @@ Check for context: is there an existing application that could benefit from an a
 6. **Need observability?** (Langfuse auto-init, Langfuse custom endpoint, custom callbacks, none)
 7. **Execution environment?** (CLI script, HTTP handler, serverless function, Next.js route, REPL/chat loop)
 8. **Max steps?** (5 default, 10-20 for complex tasks, 30+ for code-mode workflows)
-9. **Tool restrictions?** (block dangerous tools via `disallowedTools`, narrow tool set via `toolsUsedNames`, no restrictions)
+9. **Tool restrictions?** (block dangerous tools via `disallowedTools`, inject extra tools via `additionalTools`, control resource/prompt surface via `exposeResourcesAsTools` / `exposePromptsAsTools`, no restrictions)
 10. **Advanced needs?** (code mode, server manager for multi-server routing, provider failover, none)
 
 Then build the agent using the quick start patterns below and the relevant references.
@@ -110,6 +110,8 @@ Use when you need full control over the model instance, `MCPClient`, callbacks, 
 import { MCPAgent, MCPClient } from "mcp-use";
 import { ChatOpenAI } from "@langchain/openai";
 
+// MCPClient accepts a second MCPClientOptions argument for codeMode,
+// onSampling, onElicitation, onNotification handlers. Omit it for plain agents.
 const client = new MCPClient({
   mcpServers: {
     filesystem: {
@@ -195,23 +197,35 @@ For the full options table with all defaults, read `references/guides/agent-conf
 |---|---|---|---|
 | `llm` | LangChain model or `"provider/model"` | required | The LLM to use (must support tool calling) |
 | `client` / `connectors` | `MCPClient` / `BaseConnector[]` | — | MCP server connection (explicit mode) |
-| `mcpServers` | server config record | — | Inline server config (simplified mode) |
+| `mcpServers` | server config record | — | Inline server config (simplified mode only) |
+| `llmConfig` | `LLMConfig` | — | Simplified mode only — `{ apiKey, temperature, maxTokens, topP, ... }` forwarded to the LLM constructor |
 | `maxSteps` | `number` | `5` | Cap on tool-call loops |
 | `autoInitialize` | `boolean` | `false` | Pre-connect sessions on construction |
 | `memoryEnabled` | `boolean` | `true` | Stateful conversation across turns |
 | `systemPrompt` | `string \| null` | `null` | Full prompt override |
+| `systemPromptTemplate` | `string \| null` | `null` | Override the default prompt template while keeping the tools/instructions scaffolding |
 | `additionalInstructions` | `string \| null` | `null` | Layer extra behavior on default prompt |
-| `disallowedTools` | `string[]` | `[]` | Block dangerous or irrelevant tools |
+| `disallowedTools` | `string[]` | `[]` | Block dangerous or irrelevant tools (real access filter) |
+| `additionalTools` | `StructuredToolInterface[]` | `[]` | Inject extra LangChain tools alongside MCP-sourced tools |
+| `exposeResourcesAsTools` | `boolean` | provider default | Expose MCP resources as callable tools |
+| `exposePromptsAsTools` | `boolean` | provider default | Expose MCP prompts as callable tools |
 | `useServerManager` | `boolean` | `false` | Multi-server routing (advanced) |
+| `serverManagerFactory` | `(client: MCPClient) => ServerManager` | default | Inject a custom `ServerManager` implementation |
+| `adapter` | `LangChainAdapter` | default | Override the MCP-tool → LangChain-tool adapter |
+| `observe` | `boolean` | `true` | Toggle observability manager wiring; set `false` to skip Langfuse even if env vars are set |
 | `callbacks` | `BaseCallbackHandler[]` | `[]` | Langfuse or custom callback hooks |
 | `verbose` | `boolean` | `false` | Debug logging |
+| `agentId` / `apiKey` / `baseUrl` | strings | — | Switch to **remote mode** — proxies run/stream to an mcp-use remote runtime instead of executing locally (no local LLM or client needed) |
+| `toolsUsedNames` | `string[]` | `[]` | Reporting field — seeds the post-run tools-used list. **Not** an access filter; use `disallowedTools` for that |
 
 ### `run()` signatures
 
 | Style | Example | When |
 |---|---|---|
-| Plain string | `await agent.run("Summarize...")` | Simple one-shot |
-| Object form | `await agent.run({ prompt, maxSteps, schema, tags, metadata, signal })` | Production, typed output, cancellation |
+| Plain string | `await agent.run("Summarize...")` | Simple one-shot (deprecated overload) |
+| Object form | `await agent.run({ prompt, maxSteps, manageConnector, externalHistory, schema, signal })` | Production, typed output, cancellation |
+
+`RunOptions` fields: `prompt` (required), `maxSteps`, `manageConnector` (defaults to `true` — pass `false` when the caller owns connector lifetime), `externalHistory` (override conversation history for this call), `schema` (Zod schema for typed output), `signal` (`AbortSignal`). Tags and metadata are **agent-wide**, not per-call — set them via `agent.setTags([...])` and `agent.setMetadata({...})` before calling `run()`.
 
 ### Streaming methods
 
@@ -230,13 +244,15 @@ Each step yielded by `stream()` represents one tool-call cycle. `step.observatio
 ```typescript
 interface AgentStep {
   action: {
-    tool: string;            // Tool selected by the agent
-    toolInput: Record<string, any>; // Arguments passed to the tool
-    log: string;             // LLM reasoning before tool selection
+    tool: string;     // Tool selected by the agent
+    toolInput: any;   // Arguments passed to the tool (any — could be string, object, etc.)
+    log: string;      // LLM reasoning text — often empty in tool-calling agents
   };
-  observation: string;       // Always "" at yield time
+  observation: string;  // Always "" at yield time
 }
 ```
+
+`step.action.log` is often empty in tool-calling agents because the model emits the intent through structured tool calls rather than reasoning text. The underlying LangChain runtime sometimes attaches `messageLog: BaseMessage[]` and `toolCallId: string` to the same `action` object — they are not declared on mcp-use's `AgentStep`, so cast to `any` to inspect them. Prefer those for correlating tool calls with `on_tool_start` / `on_tool_end` events emitted by `streamEvents()`. Also: do not `JSON.stringify(step.action.toolInput)` blindly — when it's already a string the result is double-encoded.
 
 #### `streamEvents()` example
 
@@ -312,25 +328,50 @@ For advanced code-mode patterns, read `references/guides/advanced-patterns.md`.
 
 ### Companion packages
 
+`mcp-use@1.25.0` requires LangChain v1 and Zod v4 as peers. The full `mcp-use` surface includes: `MCPAgent`, `MCPClient`, `MCPSession`, `RemoteAgent`, connector classes (`StdioConnector`, `HttpConnector`, `BaseConnector`), `loadConfigFile`, `ServerManager`, `ObservabilityManager`, `Telemetry`, OAuth helpers (`BrowserOAuthClientProvider`, `onMcpAuthorization`, `probeAuthParams`), code-execution ancillaries (`BaseCodeExecutor`, `E2BCodeExecutor`, `VMCodeExecutor`), elicitation helpers (`accept`, `decline`, `reject`, `validate`), and `PROMPTS`.
+
+#### Declared peer dependencies
+
+| Package | Required version | Purpose |
+|---|---|---|
+| `@langchain/core` | `^1.1.0` | LangChain v1 core types and message classes |
+| `@langchain/openai` | `^1.2.0` | `ChatOpenAI` — pair with `OPENAI_API_KEY` |
+| `@langchain/anthropic` | `^1.3.0` | `ChatAnthropic` — pair with `ANTHROPIC_API_KEY` |
+| `langchain` | `^1.2.10` | LangChain v1 runtime |
+| `langfuse`, `langfuse-langchain` | `^3.38.6` | Observability (auto-init when env vars set) |
+| `zod` | **`^4.0.0`** | Structured-output schemas (Zod v4 required) |
+| `@e2b/code-interpreter` | `^2.2.0` | Code-execution sandbox |
+| `react`, `react-router` | `^18 || ^19`, `^7.12.0` | React widget exports |
+
+All `@langchain/*`, `langchain`, `langfuse`, `langfuse-langchain`, and `@e2b/code-interpreter` are marked optional in `peerDependenciesMeta` — install only the providers you actually use. `zod`, `react`, and `react-router` are strictly required.
+
+#### Optional LLM adapters (NOT peer-declared)
+
+| Package | Purpose | Note |
+|---|---|---|
+| `@langchain/google-genai` | `ChatGoogleGenerativeAI` — `GOOGLE_API_KEY` | Not a peer dep — install only if using Gemini |
+| `@langchain/groq` | `ChatGroq` — `GROQ_API_KEY` | Not a peer dep — install only if using Groq |
+
+Both must remain LangChain v1 compatible. The `"google/..."` and `"groq/..."` simplified-mode shorthands fail at runtime if the matching adapter is missing.
+
+#### Other helpers
+
 | Package | Purpose |
 |---|---|
-| `mcp-use` | `MCPAgent`, `MCPClient`, streaming helpers |
-| `@langchain/openai` | `ChatOpenAI` — pair with `OPENAI_API_KEY` |
-| `@langchain/anthropic` | `ChatAnthropic` — pair with `ANTHROPIC_API_KEY` |
-| `@langchain/google-genai` | `ChatGoogleGenerativeAI` — pair with `GOOGLE_API_KEY` |
-| `@langchain/groq` | `ChatGroq` — pair with `GROQ_API_KEY` |
-| `zod` | Structured output schemas |
-| `langfuse-langchain` | Custom Langfuse endpoint callbacks only |
 | `dotenv` | Local dev env loading |
+
+If your codebase is on LangChain v0.x or Zod v3, plan the upgrade before adopting `mcp-use@1.25.0` — peer-dep mismatches surface as runtime tool-calling failures and JSON-schema serialization bugs.
 
 ## Provider quick reference
 
-| Provider | Model | String shorthand | Package | Env var |
-|---|---|---|---|---|
-| OpenAI | `gpt-4o` | `"openai/gpt-4o"` | `@langchain/openai` | `OPENAI_API_KEY` |
-| Anthropic | `claude-3-5-sonnet-20241022` | `"anthropic/claude-3-5-sonnet-20241022"` | `@langchain/anthropic` | `ANTHROPIC_API_KEY` |
-| Google | `gemini-pro` | `"google/gemini-pro"` | `@langchain/google-genai` | `GOOGLE_API_KEY` |
-| Groq | `llama-3.3-70b-versatile` | `"groq/llama-3.3-70b-versatile"` | `@langchain/groq` | `GROQ_API_KEY` |
+| Provider | Model | String shorthand | Package | Peer? | Env var |
+|---|---|---|---|---|---|
+| OpenAI | `gpt-4o` | `"openai/gpt-4o"` | `@langchain/openai` | peer (optional) | `OPENAI_API_KEY` |
+| Anthropic | `claude-sonnet-4-6` | `"anthropic/claude-sonnet-4-6"` | `@langchain/anthropic` | peer (optional) | `ANTHROPIC_API_KEY` |
+| Google | `gemini-2.5-flash` | `"google/gemini-2.5-flash"` | `@langchain/google-genai` | NOT a peer dep | `GOOGLE_API_KEY` |
+| Groq | `llama-3.3-70b-versatile` | `"groq/llama-3.3-70b-versatile"` | `@langchain/groq` | NOT a peer dep | `GROQ_API_KEY` |
+
+`@langchain/google-genai` and `@langchain/groq` are not declared peers of `mcp-use@1.25.0`; install them separately if you use those providers. Anthropic models: prefer `claude-opus-4-7` for deep reasoning, `claude-sonnet-4-6` for general MCP-agent workloads. Verify Google and Groq model IDs against their respective consoles before shipping — model IDs are deprecated frequently.
 
 For full provider details, failover, and custom adapters, read `references/guides/llm-integration.md`.
 
@@ -385,6 +426,8 @@ For dynamic server switching and multi-server patterns, read `references/guides/
 | Manual `CallbackHandler` for basic Langfuse | Unnecessary boilerplate | Use env var auto-initialization |
 | Enabling `useServerManager` by default | Adds complexity to simple agents | Enable only for multi-server routing |
 | Forgetting `client.closeAllSessions()` | Orphaned server processes | Call in `finally` when you own the client |
+| Passing `tags` / `metadata` inside `RunOptions` | Not fields of `RunOptions` — TypeScript rejects them, Langfuse never receives them | Use `agent.setTags([...])` / `agent.setMetadata({...})` once, before `run()` |
+| Using `toolsUsedNames` to narrow allowed tools | It is a reporting field populated as the agent runs, not an access filter | Use `disallowedTools` to remove tools, `additionalTools` to add, `exposeResourcesAsTools` / `exposePromptsAsTools` for the resource/prompt surface |
 
 ## Do / Don't
 
