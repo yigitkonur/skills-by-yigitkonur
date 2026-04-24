@@ -193,7 +193,7 @@ See `references/troubleshooting.md` for the full catalogue.
 ## Two honest gotchas
 
 1. **Codex will load its own installed skills.** If your project has `superpowers:*` or similar meta-skills installed for Codex, they will be invoked on every `codex exec`. This wastes 20k–80k tokens on rumination before any code is written. The SUBAGENT-STOP prefix in your prompt helps but isn't a guarantee. If you see agents consistently ruminating for 10+ minutes without writing, consider a stripped codex config (remove ~/.codex/skills or similar).
-2. **Auto-commit is a load-bearing design decision.** Without it, you need a separate signal for "this codex run is done" (normal exit isn't enough — agents can exit clean after bailing). The commit IS the signal. Without auto-commit, use the MCP-based `run-codex-bridge` skill instead — it has `wait-task`.
+2. **Auto-commit is a load-bearing design decision.** Without it, you need a separate signal for "this codex run is done" (normal exit isn't enough — agents can exit clean after bailing). The commit IS the signal.
 
 ## What you'll find in this skill
 

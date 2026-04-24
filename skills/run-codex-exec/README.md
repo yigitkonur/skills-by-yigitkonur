@@ -1,6 +1,6 @@
 # run-codex-exec
 
-Orchestrate multiple parallel `codex exec` CLI agents in git worktrees with auto-commit wrappers and a live stream monitor for observability — the CLI-only cousin of `run-codex-bridge` (no MCP server required).
+Orchestrate multiple parallel `codex exec` CLI agents in git worktrees with auto-commit wrappers and a live stream monitor for observability.
 
 **Category:** orchestration
 

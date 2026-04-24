@@ -22,7 +22,7 @@ Default Claude compatibility model: every finalized `AGENTS.md` gets a sibling `
 
 - reviewing a PR directly
 - writing generic "AI coding guidelines" without inspecting a real repository
-- runtime subagent orchestration unrelated to repo instruction files -> use `run-codex-bridge` or the matching orchestration skill
+- runtime subagent orchestration unrelated to repo instruction files -> use the matching orchestration skill
 
 ## Review context and native adapters
 
