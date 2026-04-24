@@ -1805,7 +1805,12 @@ try {
 import { BrowserOAuthClientProvider } from "mcp-use";
 
 function ConnectButton() {
-  // New provider object every render — token cache is invalidated as soon as state changes
+  // New provider object every render — instance state lost on each render:
+  // - PKCE pendingCodeVerifier (instance field, NOT localStorage) — current auth flow breaks
+  // - _cachedMetadata / _refreshPromise / _lastOriginalResource (instance) — refresh dedup is reset
+  // - fetch interceptor state — repeated install/uninstall churn
+  // (Tokens themselves are safe — they live in localStorage keyed on serverUrl hash and survive
+  //  re-instantiation. The cost is in-flight auth/refresh state, not the cached token.)
   const provider = new BrowserOAuthClientProvider("https://mcp.example.com", {
     clientName: "My App",
     callbackUrl: "https://app.example.com/oauth/callback",
