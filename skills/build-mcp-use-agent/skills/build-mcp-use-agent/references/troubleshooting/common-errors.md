@@ -1628,7 +1628,7 @@ npm outdated mcp-use    # Check for updates
 
 A more precise check:
 ```bash
-node -e "const [maj, min] = process.versions.node.split('.').map(Number); console.log((maj === 20 && min >= 19) || maj >= 22 ? 'OK: ' + process.versions.node : 'UPGRADE REQUIRED: ' + process.versions.node);"
+node -e "const [maj, min] = process.versions.node.split('.').map(Number); console.log((maj === 20 && min >= 19) || (maj === 22 && min >= 12) || maj >= 23 ? 'OK: ' + process.versions.node : 'UPGRADE REQUIRED: ' + process.versions.node);"
 ```
 
 If you see unexpected errors, confirm the engine constraint with `cat node_modules/mcp-use/package.json | grep -A1 engines`.

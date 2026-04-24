@@ -49,9 +49,9 @@ import { z } from "zod";
 
 | Method | Parameters | Returns |
 |---|---|---|
-| `run` | `{ prompt: string; schema?: z.ZodSchema<T>; maxSteps?: number; signal?: AbortSignal }` | `Promise<T>` (typed if `schema` provided, else `string`) |
-| `stream` | `{ prompt: string; maxSteps?: number; schema?: z.ZodSchema<T>; signal?: AbortSignal }` or plain `string` | `AsyncGenerator<AgentStep, string \| T, void>` |
-| `prettyStreamEvents` | `{ prompt: string; maxSteps?: number; schema?: z.ZodSchema<T> }` | `AsyncGenerator<void, string, void>` |
+| `run` | `{ prompt: string; schema?: z.ZodSchema<T>; maxSteps?: number; manageConnector?: boolean; externalHistory?: BaseMessage[]; signal?: AbortSignal }` | `Promise<T>` (typed if `schema` provided, else `string`) |
+| `stream` | `{ prompt: string; maxSteps?: number; schema?: z.ZodSchema<T>; manageConnector?: boolean; externalHistory?: BaseMessage[]; signal?: AbortSignal }` or plain `string` | `AsyncGenerator<AgentStep, string \| T, void>` |
+| `prettyStreamEvents` | `{ prompt: string; maxSteps?: number; schema?: z.ZodSchema<T>; manageConnector?: boolean; externalHistory?: BaseMessage[] }` | `AsyncGenerator<void, string, void>` |
 | `streamEvents` | `{ prompt: string; schema?: z.ZodSchema<T>; maxSteps?: number; signal?: AbortSignal }` or plain `string` | `AsyncGenerator<StreamEvent, void, void>` |
 | `clearConversationHistory` | `()` | `void` |
 | `close` | `()` | `Promise<void>` |
