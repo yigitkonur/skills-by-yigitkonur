@@ -527,6 +527,7 @@ Use them directly instead of writing a local bridge helper:
 ```typescript
 import {
   streamEventsToAISDK,
+  createReadableStreamFromGenerator,
   // streamEventsToAISDKWithTools,  // alternative — adds 🔧 / ✅ tool markers
 } from "mcp-use";
 import { createTextStreamResponse } from "ai";
@@ -539,7 +540,11 @@ const agent = new MCPAgent({ llm: new ChatOpenAI({ model: "gpt-4o" }), client })
 export async function POST(req: Request) {
   const { prompt } = await req.json();
   const events = agent.streamEvents({ prompt });
-  return createTextStreamResponse(streamEventsToAISDK(events));
+  // createTextStreamResponse expects a ReadableStream<string>, not an AsyncGenerator —
+  // wrap with createReadableStreamFromGenerator before passing.
+  return createTextStreamResponse({
+    textStream: createReadableStreamFromGenerator(streamEventsToAISDK(events)),
+  });
 }
 ```
 
