@@ -88,7 +88,6 @@ Anchor on this set of plain-English verbs:
 
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
-- `run-codex-exec` (parallel codex exec orchestration) vs `run-codex-bridge` (delegate to Codex via bridge)
 - `optimize-agentic-cli` (CLI for agents) vs `optimize-agentic-mcp` (MCP server for agents)
 
 ### Anti-patterns
@@ -252,7 +251,7 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (42 skills)
+## Current canonical skill names (41 skills)
 
 Use this list to check for naming collisions:
 
@@ -267,10 +266,10 @@ develop-typescript           do-brainstorm                do-debug
 do-review                    do-think                     enhance-prompt
 enhance-skill-by-derailment  evaluate-code-review         extract-saas-design
 init-agent-config            optimize-agentic-cli         optimize-agentic-mcp
-publish-npm-package          run-agent-browser            run-codex-bridge
-run-codex-exec               run-github-scout             run-issue-tree
-run-playwright               run-research                 swift-quality-hooks
-test-by-mcpc-cli             test-macos-snapshots         use-railway
+publish-npm-package          run-agent-browser            run-codex-exec
+run-github-scout             run-issue-tree               run-playwright
+run-research                 swift-quality-hooks          test-by-mcpc-cli
+test-macos-snapshots         use-railway
 ```
 
 ---

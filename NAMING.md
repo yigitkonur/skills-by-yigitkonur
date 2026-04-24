@@ -48,7 +48,6 @@ When two skills overlap, use distinct verbs:
 
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
-- `run-codex-exec` (parallel codex exec orchestration) vs `run-codex-bridge` (delegate to Codex via bridge)
 - `optimize-agentic-cli` vs `optimize-agentic-mcp`
 
 ## Canonical Rules
@@ -119,7 +118,6 @@ When renaming a published skill:
 - `optimize-agentic-mcp`
 - `publish-npm-package`
 - `run-agent-browser`
-- `run-codex-bridge`
 - `run-codex-exec`
 - `run-github-scout`
 - `run-issue-tree`
