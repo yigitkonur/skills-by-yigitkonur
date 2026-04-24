@@ -6,7 +6,7 @@ Examples of integrating MCPAgent with external frameworks and services. Each rec
 
 ## 1. Vercel AI SDK — Next.js API Route with Streaming
 
-Stream MCPAgent responses through a Next.js App Router API route using the Vercel AI SDK. This recipe shows the pattern used in mcp-use's own [`examples/client/ai_sdk_example.ts`](https://github.com/mcp-use/mcp-use-ts/blob/main/packages/mcp-use/examples/client/ai_sdk_example.ts) — `streamEventsToAISDK` and `createReadableStreamFromGenerator` are exported directly from `mcp-use`. The frontend uses `useChat` from `@ai-sdk/react` (the legacy `'ai/react'` subpath was removed in AI SDK v5+).
+Stream MCPAgent responses through a Next.js App Router API route using the Vercel AI SDK. This recipe shows the pattern used in mcp-use's own examples (see the `examples/` directory under `libraries/typescript/packages/mcp-use/` in the canonical [`mcp-use/mcp-use`](https://github.com/mcp-use/mcp-use) repo) — `streamEventsToAISDK` and `createReadableStreamFromGenerator` are exported directly from `mcp-use`. The frontend uses `useChat` from `@ai-sdk/react` (the legacy `'ai/react'` subpath was removed in AI SDK v5+).
 
 > **AI SDK version note:** mcp-use's `examples/client/ai_sdk_example.ts` uses `LangChainAdapter.toDataStreamResponse(...)` imported from the `ai` package — that path works on AI SDK `4.x`. In AI SDK `5.x` and `6.x` (current), `LangChainAdapter` was removed; the equivalent is `toUIMessageStream` (from `@ai-sdk/langchain@^2`) wrapped in `createUIMessageStreamResponse` (from `ai@^6`). Both variants are shown below — pick the one matching your installed `ai` version.
 
@@ -152,7 +152,7 @@ Attach Langfuse tracing to every MCPAgent run for cost tracking, latency monitor
 
 ### Sub-recipe A — Zero-config auto-init (recommended default)
 
-This matches mcp-use's own [`examples/client/observability.ts`](https://github.com/mcp-use/mcp-use-ts/blob/main/packages/mcp-use/examples/client/observability.ts).
+This matches the observability pattern shipped in mcp-use's own examples (canonical [`mcp-use/mcp-use`](https://github.com/mcp-use/mcp-use) repo, `libraries/typescript/packages/mcp-use/examples/`).
 
 ```typescript
 // .env:

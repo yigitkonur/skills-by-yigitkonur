@@ -207,8 +207,8 @@ For the full options table with all defaults, read `references/guides/agent-conf
 | `additionalInstructions` | `string \| null` | `null` | Layer extra behavior on default prompt |
 | `disallowedTools` | `string[]` | `[]` | Block dangerous or irrelevant tools (real access filter) |
 | `additionalTools` | `StructuredToolInterface[]` | `[]` | Inject extra LangChain tools alongside MCP-sourced tools |
-| `exposeResourcesAsTools` | `boolean` | provider default | Expose MCP resources as callable tools |
-| `exposePromptsAsTools` | `boolean` | provider default | Expose MCP prompts as callable tools |
+| `exposeResourcesAsTools` | `boolean` | `true` | Expose MCP resources as callable tools |
+| `exposePromptsAsTools` | `boolean` | `true` | Expose MCP prompts as callable tools |
 | `useServerManager` | `boolean` | `false` | Multi-server routing (advanced) |
 | `serverManagerFactory` | `(client: MCPClient) => ServerManager` | default | Inject a custom `ServerManager` implementation |
 | `adapter` | `LangChainAdapter` | default | Override the MCP-tool → LangChain-tool adapter |

@@ -1185,6 +1185,7 @@ main().catch((err) => {
 **Key takeaways:**
 
 - `setDisallowedTools([...])` updates the stored list; the bound `AgentExecutor` is NOT rebuilt automatically. Call `await agent.initialize()` afterwards to apply changes on an already-initialized agent.
+- **Simplified-mode hazard**: in **simplified mode** (passing `mcpServers` config to `MCPAgent` rather than a constructed `MCPClient`), each call to `agent.initialize()` constructs a NEW `MCPClient` and overwrites `this.client` without closing the old one. Repeatedly re-initializing in simplified mode leaks stdio child processes and connections — only the most recent client is closed by `agent.close()`. **For long-running servers that re-initialize, use explicit mode**: construct your own `MCPClient` once, pass it via `client:`, and call `await client.close()` at shutdown. Re-initialize binds new tools without spawning new connections. Source: `mcp-use@1.25.0` `dist/src/browser.js:1683-1690`.
 - The simplest pattern is to call `setDisallowedTools()` once, BEFORE the first `run()` — the first run will initialize the agent with the restrictions in place.
 - `getDisallowedTools()` returns the current stored list (regardless of whether it has been bound to the executor yet).
 - Use environment variables (`NODE_ENV`) to choose a restriction profile at construction time.
