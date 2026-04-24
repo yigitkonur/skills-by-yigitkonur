@@ -84,7 +84,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (42)
+## Current Canonical Skill Names (41)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`

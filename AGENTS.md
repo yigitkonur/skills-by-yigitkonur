@@ -1,6 +1,6 @@
 # AGENTS.md — skills-by-yigitkonur
 
-This repository is a curated skills pack for AI coding agents — 42 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
+This repository is a curated skills pack for AI coding agents — 41 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
 
 ## What this repo is
 
