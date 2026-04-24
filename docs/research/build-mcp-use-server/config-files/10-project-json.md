@@ -53,7 +53,7 @@ Fields:
 - Not created by `mcp-use login`, `mcp-use whoami`, or any local build command.
 - Creation flow:
   1. `mkdir -p .mcp-use/` if missing
-  2. Write `.mcp-use/project.json` with the four required fields
+  2. Write `.mcp-use/project.json` with the three required fields (`deploymentId`, `deploymentName`, `linkedAt`)
   3. Append `.mcp-use` to `.gitignore` (with a `# mcp-use deployment` comment header) if not already present
 
 ### When it's read

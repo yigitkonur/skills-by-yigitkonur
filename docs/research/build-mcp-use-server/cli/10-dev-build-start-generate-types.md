@@ -76,7 +76,7 @@ Options:
 
 - `.mcp-use/tool-registry.d.ts` is regenerated on server init, HMR, and widget file changes in dev. It's gitignored via the `.mcp-use` auto-append described in `config-files/00-overview.md`.
 - When Next.js is detected, the CLI auto-shims `server-only`, `client-only`, `next/cache`, `next/headers`, `next/navigation`, `next/server`. If a widget transitively imports any of these, the **widget build fails fast** — the error explicitly names the offending module.
-- Next.js env cascade (`.env.local` → `.env.development` → `.env`) is loaded the same way `next dev` loads it, in dev only.
+- Next.js env cascade (`.env.development.local` → `.env.local` → `.env.development` → `.env`) is loaded the same way `next dev` loads it, in dev only.
 
 ---
 

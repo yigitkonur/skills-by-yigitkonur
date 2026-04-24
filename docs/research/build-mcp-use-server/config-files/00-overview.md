@@ -62,7 +62,7 @@ When Next.js is detected (presence of `next.config.{js,mjs,ts}` or `next` in `pa
 
 - CLI defaults `--mcp-dir` to `src/mcp/` — reads MCP entry + resources from there.
 - Auto-shims the Next.js surfaces (`server-only`, `client-only`, `next/cache`, `next/headers`, `next/navigation`, `next/server`) — widget builds fail fast if a widget transitively imports any of these.
-- Next.js env cascade is loaded the same way `next dev` would (`.env.local` then `.env.development` then `.env`), so `mcp-use dev` sees the same vars as the Next.js host.
+- Next.js env cascade is loaded the same way `next dev` would (`.env.development.local` then `.env.local` then `.env.development` then `.env`), so `mcp-use dev` sees the same vars as the Next.js host.
 - None of this changes the file layout of `.mcp-use/` — `tool-registry.d.ts` and `sessions.json` still live under `./.mcp-use/` relative to `cwd`.
 
 Source: `libraries/typescript/packages/cli/src/utils/next-shims.ts`.

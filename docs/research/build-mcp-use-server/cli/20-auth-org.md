@@ -54,11 +54,12 @@ Resolves to an org membership before writing. Accepts slug, UUID, or human-reada
 ### `--api-key` for CI
 
 ```bash
-MCP_USE_API_KEY= mcp-use login --api-key "$CI_MCP_API_KEY" --org acme
+mcp-use login --api-key "$CI_MCP_API_KEY" --org acme
 ```
 
 - Writes the same file shape as the device flow.
 - Combine with `--org` to avoid interactive org selection on first run.
+- Do NOT inline `MCP_USE_API_KEY=` on this command. Setting the env var to an empty string in the same line shadows any previously set value for the process and can mask config-file auth on subsequent commands. If `MCP_USE_API_KEY` is set in the runner, `unset MCP_USE_API_KEY` first or run `login` in a fresh shell.
 - In pure CI where no state should be persisted, prefer the env var `MCP_USE_API_KEY` (see below) and skip `login` entirely.
 
 ### `MCP_USE_API_KEY` env var
