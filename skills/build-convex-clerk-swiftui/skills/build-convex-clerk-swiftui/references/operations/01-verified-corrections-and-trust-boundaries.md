@@ -1,7 +1,7 @@
 # Verified Corrections And Trust Boundaries
 
 ## Use This When
-- Translating the research corpus into hard claims.
+- Translating repo-local guidance into hard claims.
 - Deciding which claims are verified in source versus inferred from documentation or ecosystem discussion.
 - Preventing overstatement about support, features, or patterns.
 
@@ -45,10 +45,10 @@
 - Prefer verified implementation facts over ecosystem speculation.
 - Present community metrics and adoption claims as snapshots, not timeless truths.
 - Mark roadmap-adjacent statements as possible future direction, not current capability.
-- Where the corpus was partially corrected, preserve the nuance instead of flattening it.
+- Where earlier guidance was partially corrected, preserve the nuance instead of flattening it.
 
 ## Safe Language Patterns
-- Say "the research corpus indicates" for maturity, ecosystem, and usage observations.
+- Say "the current source snapshot indicates" for maturity, ecosystem, and usage observations.
 - Say "verified in source" for API shape, auth behavior, connection behavior, and XCFramework support facts.
 - Say "current limitation" for missing offline persistence, optimistic updates, or unsupported platform slices.
 

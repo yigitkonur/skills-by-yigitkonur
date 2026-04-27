@@ -7,9 +7,9 @@
 - Loading only the narrowest reference needed instead of dumping the entire research set into context.
 
 ## Source Boundary
-- Ground broad product and architecture guidance in `docs/research/convex-swift-best-practices/**` and the corrected claims in `docs/research/convex-swift-best-practices/verification/01-verification-report.md`.
-- Treat Clerk-specific implementation facts in this skill as additionally verified against the official `clerk-convex-swift` package and its `Example/WorkoutTracker` sample, as summarized in the auth, client-sdk, playbook, and operations docs here.
-- Treat this corpus as opinionated toward the March 28, 2026 research snapshot and ConvexMobile `0.8.1`.
+- Ground broad product and architecture guidance in the repo-local references listed below.
+- Treat Clerk-specific implementation facts in this skill as verified against the official `clerk-convex-swift` package and its `Example/WorkoutTracker` sample, as summarized in the auth, client-sdk, playbook, and operations docs here.
+- Treat this reference set as opinionated toward the March 28, 2026 source snapshot and ConvexMobile `0.8.1`.
 - Present ecosystem and feature gaps honestly. Do not market around them.
 
 ## Start Here
@@ -60,7 +60,7 @@
 - Treat subscription errors as terminal unless you explicitly rebuild the pipeline.
 - Treat iOS as online-only with reconnect, not offline-first.
 - Treat macOS support as Apple Silicon only.
-- Use verification notes to correct stale or overstated claims from the research corpus.
+- Use verification notes to correct stale or overstated claims.
 
 ## Corrected Claims To Remember
 - `TabView` does cancel `.task` on tab switch; do not write guidance that says the opposite.

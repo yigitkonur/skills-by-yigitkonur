@@ -14,7 +14,7 @@
 ## Operational Limits To Keep Visible
 - Upload URLs expire after one hour.
 - Upload POSTs time out after two minutes.
-- Custom HTTP-action upload flows have their own size ceiling noted in the research corpus.
+- Custom HTTP-action upload flows have their own size ceiling; verify the current limit before promising support for large uploads.
 - These are product constraints, not just transport trivia.
 
 ## Serving Rule

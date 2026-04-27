@@ -6,7 +6,7 @@ description: "Use skill if you are building a SwiftUI app with Convex backend an
 # Build Convex With Clerk Backend For SwiftUI Devs
 
 Use this skill to keep Swift-side guidance and Convex-backend guidance aligned.
-Use the research corpus for the broad Convex/Swift mental model, and use the verified Clerk facts captured in the auth, client-sdk, playbook, and operations docs here for official `clerk-convex-swift` / `WorkoutTracker` behavior.
+Use the repo-local references for the broad Convex/Swift mental model, and use the verified Clerk facts captured in the auth, client-sdk, playbook, and operations docs here for official `clerk-convex-swift` / `WorkoutTracker` behavior.
 
 ## Workflow
 1. Decide whether Convex fits the product.
