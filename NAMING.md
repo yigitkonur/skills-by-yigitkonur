@@ -84,7 +84,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (41)
+## Current Canonical Skill Names (43)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -119,9 +119,11 @@ When renaming a published skill:
 - `publish-npm-package`
 - `run-agent-browser`
 - `run-codex-exec`
+- `run-codex-review`
 - `run-github-scout`
 - `run-issue-tree`
 - `run-playwright`
+- `run-repo-cleanup`
 - `run-research`
 - `swift-quality-hooks`
 - `test-by-mcpc-cli`
