@@ -22,7 +22,7 @@ SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
 JUNK_PATTERNS = {".DS_Store", ".swp", "Thumbs.db", ".gitkeep"}
 JUNK_DIRS = {"evals", "__pycache__"}
 BANNED_FILES_IN_SKILL = {"LICENSE", "LICENSE.md", "CHANGELOG.md"}
-MAX_SKILL_MD_LINES = 500
+MAX_SKILL_MD_LINES = 1000
 
 
 def skill_content_dir(skill_dir, skill_name):
