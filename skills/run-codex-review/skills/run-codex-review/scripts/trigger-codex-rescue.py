@@ -1,44 +1,98 @@
 #!/usr/bin/env python3
-"""Trigger /codex:resc --background --fresh --model gpt-5.5 --effort xhigh on a PR.
+"""Trigger codex rescue for a PR via the OpenAI Codex Claude Code plugin.
 
-Codex rescue is Codex's own background sub-agent (not a Claude Agent dispatched
-by us). We hand it the PR link; Codex's infrastructure spawns the review job;
-the review lands on the PR like any other reviewer's comments.
-
-This script invokes the codex CLI's rescue form, captures the rescue job id,
-and updates the manifest entry for the branch with rescue_review_id /
-rescue_started_at. Returns immediately — does not poll. Phase 6's
-await-pr-reviews.py owns the wait.
+Wraps `node codex-companion.mjs task --background --write --fresh
+--model gpt-5.5 --effort xhigh --prompt-file <path> --json` — the same
+code path the `/codex:resc` slash command runs internally. The companion's
+`task --background` is the one subcommand that actually honors `--background`:
+it spawns a detached Codex worker and returns
+`{ jobId, status: "queued", title, logFile }` immediately. Phase 6's
+`await-pr-reviews.py` (or this script's `--wait` flag) owns the wait.
 
 Usage:
-    python3 trigger-codex-rescue.py --pr 42 --branch feat/foo
-    python3 trigger-codex-rescue.py --pr 42 --branch feat/foo --dry-run
-    python3 trigger-codex-rescue.py --pr 42 --branch feat/foo \\
-        --model gpt-5.5 --effort xhigh
+    # Default: queue rescue, write rescue_review_id + rescue_started_at to manifest, return.
+    python3 trigger-codex-rescue.py \\
+        --pr 42 --branch feat/foo \\
+        --worktree /path/to/wt \\
+        --prompt-file /tmp/rescue-prompt-pr-42.md
+
+    # If main agent has the prompt in stdin:
+    cat prompt.md | python3 trigger-codex-rescue.py \\
+        --pr 42 --branch feat/foo --worktree /path/to/wt
+
+    # Block until the rescue job completes (default cap 30 min):
+    python3 trigger-codex-rescue.py \\
+        --pr 42 --branch feat/foo --worktree /path/to/wt \\
+        --prompt-file /tmp/p.md --wait --timeout-ms 1800000
+
+    # Optional: write to a non-default manifest:
+    python3 trigger-codex-rescue.py ... --manifest /repo/.codex-review-manifest.json
 
 Exit codes:
-    0  rescue triggered; manifest updated
-    1  triggered but couldn't parse a job id (synthetic id used; manifest still updated)
-    2  codex CLI failed; manifest marked rescue_status=failed
+    0  rescue queued (and completed if --wait); manifest updated
+    1  --wait specified but the job timed out before terminal status
+    2  rescue queue failed (codex CLI error, manifest update failed)
+  127  codex plugin not installed (caller surfaces FAILED)
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_MANIFEST = "/tmp/codex-review-manifest.json"
 DEFAULT_MODEL = "gpt-5.5"
 DEFAULT_EFFORT = "xhigh"
+DEFAULT_TIMEOUT_MS = 1_800_000  # 30 min — matches Phase 6 total cap
 
+
+# ─── codex-companion.mjs discovery (version-agnostic) ─────────────────────────
+# (Same shape as run-codex-review.py — duplicated by design; one shared helper
+# for two callers was overengineering and would force sys.path hacks.)
+
+def _find_codex_companion() -> Path:
+    """Discover the OpenAI Codex plugin's codex-companion.mjs.
+
+    Resolution order:
+      1. ${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs (set by Claude Code harness).
+      2. Latest semver-sorted version under
+         ~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs.
+
+    Plugin source: https://github.com/openai/codex-plugin-cc/tree/main/plugins/codex
+    """
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if plugin_root:
+        candidate = Path(plugin_root) / "scripts" / "codex-companion.mjs"
+        if candidate.is_file():
+            return candidate
+
+    cache = Path.home() / ".claude" / "plugins" / "cache" / "openai-codex" / "codex"
+    if cache.is_dir():
+        def _key(p: Path) -> tuple:
+            m = re.match(r"^(\d+)\.(\d+)\.(\d+)", p.name)
+            return (1, int(m[1]), int(m[2]), int(m[3])) if m else (0, p.name)
+        for v in sorted((p for p in cache.iterdir() if p.is_dir()), key=_key, reverse=True):
+            candidate = v / "scripts" / "codex-companion.mjs"
+            if candidate.is_file():
+                return candidate
+
+    raise FileNotFoundError(
+        "codex-companion.mjs not found. Install the OpenAI Codex Claude Code plugin "
+        "(https://github.com/openai/codex-plugin-cc) — expected at "
+        "$CLAUDE_PLUGIN_ROOT/scripts/codex-companion.mjs or at "
+        "~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs."
+    )
+
+
+# ─── Generic helpers ──────────────────────────────────────────────────────────
 
 def sh(cmd, cwd=None, timeout=None):
     try:
@@ -81,137 +135,300 @@ def load_manifest(path: str) -> dict | None:
         return None
 
 
-def update_manifest_entry(path: str, branch: str, updates: dict) -> bool:
-    manifest = load_manifest(path)
-    if manifest is None:
-        return False
-    found = False
-    for entry in manifest.get("branches", []):
-        if entry.get("branch") == branch:
-            entry.update(updates)
-            entry["updated_at"] = utc_now_iso()
-            found = True
-            break
-    if not found:
-        return False
-    atomic_write(path, json.dumps(manifest, indent=2))
-    return True
-
-
-# ─── Codex rescue invocation — adjustment point per environment ──────────────
-
-def invoke_rescue(pr: int, model: str, effort: str, wt: Path) -> tuple[int, str, str]:
-    """Launch codex rescue in --background mode. Return (rc, stdout, stderr).
-
-    Adjust the command form here to match the codex CLI in your environment.
-    Common forms (try in order):
-      - codex review --rescue --background --fresh --model <m> --effort <e> --pr <n>
-      - codex rescue --background --fresh --model <m> --effort <e> --pr <n>
-      - codex resc --background --fresh --model <m> --effort <e> --pr <n>
+@contextlib.contextmanager
+def _manifest_lock(manifest_path: str):
+    """fcntl.LOCK_EX around manifest read-modify-write. Required because
+    Phase 6 queues N parallel rescues that all touch the same manifest;
+    without the lock, simultaneous writers clobber each other and lose
+    updates. Mirrors the recipe in parallel-subagent-protocol.md.
     """
-    candidates = [
-        ["codex", "review", "--rescue", "--background", "--fresh",
-         "--model", model, "--effort", effort, "--pr", str(pr)],
-        ["codex", "rescue", "--background", "--fresh",
-         "--model", model, "--effort", effort, "--pr", str(pr)],
-        ["codex", "resc", "--background", "--fresh",
-         "--model", model, "--effort", effort, "--pr", str(pr)],
-    ]
-    for cmd in candidates:
-        rc, out, err = sh(cmd, cwd=wt, timeout=120)
-        if rc != 127:  # found the binary, even if it failed for other reasons
-            return rc, out, err
-    return 127, "", "no codex rescue CLI form succeeded; check codex install / PATH"
+    lock_path = manifest_path + ".lock"
+    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+    with open(lock_path, "w") as lock_fp:
+        fcntl.flock(lock_fp, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_fp, fcntl.LOCK_UN)
 
 
-def parse_rescue_job_id(stdout: str) -> str | None:
-    """Extract a rescue job id from launch stdout. Adjust regex per CLI output."""
-    patterns = [
-        r"\brescue[- ]?job[- ]?id[:=]\s*([A-Za-z0-9_-]+)",
-        r"\b(cdx[- ]?rescue[- ]?[A-Za-z0-9_-]+)",
-        r"\bjob[- ]?id[:=]\s*([A-Za-z0-9_-]+)",
-        r"\bbackground job[:=]\s*([A-Za-z0-9_-]+)",
+def update_manifest_entry(path: str, branch: str, updates: dict) -> bool:
+    """Lock-safe read-modify-write. Returns True iff a matching branch entry
+    was found and updated. Caller must check the return value."""
+    with _manifest_lock(path):
+        manifest = load_manifest(path)
+        if manifest is None:
+            return False
+        found = False
+        for entry in manifest.get("branches", []):
+            if entry.get("branch") == branch:
+                entry.update(updates)
+                entry["updated_at"] = utc_now_iso()
+                found = True
+                break
+        if not found:
+            return False
+        atomic_write(path, json.dumps(manifest, indent=2))
+        return True
+
+
+def repo_local_default(wt: Path, name: str) -> str:
+    rc, out, _ = sh(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=wt)
+    if rc == 0 and out:
+        return str(Path(out).parent / name)
+    return f"/tmp/{name}"
+
+
+# ─── Codex rescue invocation ─────────────────────────────────────────────────
+
+def write_prompt_file(prompt: str, pr: int) -> Path:
+    """Persist the rescue prompt to a stable path so codex-companion can read it.
+    Returns the path. /tmp is fine for the prompt — it's input, not state."""
+    path = Path(f"/tmp/codex-rescue-prompt-pr-{pr}.md")
+    path.write_text(prompt)
+    return path
+
+
+def invoke_rescue(pr: int, model: str, effort: str, prompt_file: Path,
+                  wt: Path, timeout: int = 120) -> tuple[int, str, str]:
+    """Spawn codex-companion task --background. Returns (rc, stdout, stderr).
+
+    The companion's `task` subcommand DOES honor --background — unlike `review`,
+    which runs synchronously regardless. Background returns
+    `{ jobId, status: "queued", title, logFile }` on stdout immediately.
+    """
+    try:
+        companion = _find_codex_companion()
+    except FileNotFoundError as e:
+        return 127, "", str(e)
+
+    cmd = [
+        "node", str(companion), "task",
+        "--background",
+        "--write",
+        "--fresh",
+        "--model", model,
+        "--effort", effort,
+        "--prompt-file", str(prompt_file),
+        "--json",
     ]
-    for pat in patterns:
-        m = re.search(pat, stdout, flags=re.IGNORECASE)
-        if m:
-            return m.group(1)
-    return None
+    return sh(cmd, cwd=wt, timeout=timeout)
+
+
+def wait_for_rescue(job_id: str, wt: Path, timeout_ms: int) -> tuple[int, dict | None, str]:
+    """Poll codex-companion status <job-id> --wait until terminal.
+
+    Returns (rc, parsed_status_payload, stderr).
+    """
+    try:
+        companion = _find_codex_companion()
+    except FileNotFoundError as e:
+        return 127, None, str(e)
+
+    cmd = [
+        "node", str(companion), "status", job_id,
+        "--wait",
+        "--timeout-ms", str(timeout_ms),
+        "--json",
+    ]
+    rc, out, err = sh(cmd, cwd=wt, timeout=(timeout_ms / 1000) + 60)
+    if rc != 0:
+        return rc, None, err or out
+    try:
+        return rc, json.loads(out), err
+    except (ValueError, TypeError):
+        return rc, None, f"could not parse status JSON: {out[:500]}"
+
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
+
+def read_prompt(args) -> str:
+    if args.prompt_file:
+        return Path(args.prompt_file).read_text()
+    if not sys.stdin.isatty():
+        return sys.stdin.read()
+    raise SystemExit("provide --prompt-file <path> or pipe the prompt on stdin")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--pr", type=int, required=True, help="PR number")
     ap.add_argument("--branch", required=True, help="branch name (manifest entry key)")
-    ap.add_argument("--manifest", default=DEFAULT_MANIFEST)
+    ap.add_argument("--worktree", required=True, help="worktree path; codex runs from here")
+    ap.add_argument("--prompt-file",
+                    help="Path to the comprehensive review prompt for Codex. If absent, reads stdin.")
+    ap.add_argument("--manifest",
+                    help="Manifest path. Default: <repo-root>/.codex-review-manifest.json")
     ap.add_argument("--model", default=DEFAULT_MODEL)
-    ap.add_argument("--effort", default=DEFAULT_EFFORT)
+    ap.add_argument("--effort", default=DEFAULT_EFFORT,
+                    help="Codex reasoning effort: none|minimal|low|medium|high|xhigh")
+    ap.add_argument("--wait", action="store_true",
+                    help="Block until the rescue job terminates (status ∈ completed|failed|cancelled). "
+                         "Default: queue and return immediately.")
+    ap.add_argument("--timeout-ms", type=int, default=DEFAULT_TIMEOUT_MS,
+                    help=f"Total wall-clock cap when --wait is set. Default {DEFAULT_TIMEOUT_MS} ms (30 min).")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    manifest = load_manifest(args.manifest)
-    if manifest is None:
-        print(f"manifest absent or unreadable: {args.manifest}", file=sys.stderr)
-        return 2
-
-    entry = next((e for e in manifest.get("branches", []) if e.get("branch") == args.branch), None)
-    if entry is None:
-        print(f"branch {args.branch} not in manifest", file=sys.stderr)
-        return 2
-
-    wt = Path(entry.get("worktree_path", ""))
+    wt = Path(args.worktree)
     if not wt.is_dir():
         print(f"worktree not found: {wt}", file=sys.stderr)
         return 2
 
+    manifest_path = args.manifest or repo_local_default(wt, ".codex-review-manifest.json")
+
     if args.dry_run:
-        print(f"DRY-RUN: would invoke codex rescue for PR #{args.pr} in {wt}")
-        print(f"  branch: {args.branch}")
-        print(f"  model:  {args.model}")
-        print(f"  effort: {args.effort}")
-        print(f"  manifest entry would be updated with rescue_review_id (synthetic if no parse)")
+        try:
+            companion = _find_codex_companion()
+        except FileNotFoundError as e:
+            print(f"DRY-RUN: {e}", file=sys.stderr)
+            return 127
+        print(f"DRY-RUN: would invoke")
+        print(f"  node {companion} task --background --write --fresh "
+              f"--model {args.model} --effort {args.effort} --prompt-file <prompt> --json")
+        print(f"  cwd:        {wt}")
+        print(f"  PR:         #{args.pr}")
+        print(f"  branch:     {args.branch}")
+        print(f"  manifest:   {manifest_path}")
+        print(f"  wait:       {args.wait}")
+        if args.wait:
+            print(f"  timeout-ms: {args.timeout_ms}")
         return 0
 
-    print(f"triggering codex rescue: PR #{args.pr} in {wt} ({args.model}, effort={args.effort})...")
+    # Read the rescue prompt (file or stdin) and persist to /tmp so codex-companion
+    # can --prompt-file it. Multiline content survives this round-trip.
+    prompt = read_prompt(args)
+    if not prompt.strip():
+        print("rescue prompt is empty; aborting", file=sys.stderr)
+        return 2
+    prompt_path = write_prompt_file(prompt, args.pr)
+
+    # Pre-resolve the companion path so rc=127 from invoke_rescue can be
+    # attributed to a missing `node` binary, not a missing plugin.
+    try:
+        _find_codex_companion()
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        return 127
+
+    # Manifest is optional — if absent, we still queue the rescue but skip the update.
+    manifest_present = load_manifest(manifest_path) is not None
+    if not manifest_present:
+        print(f"⚠  manifest not found at {manifest_path}; rescue will queue but no manifest update", file=sys.stderr)
+
     started_at = utc_now_iso()
-    rc, out, err = invoke_rescue(args.pr, args.model, args.effort, wt)
+    print(f"queueing codex rescue: PR #{args.pr} in {wt} ({args.model}, effort={args.effort})...")
+    rc, out, err = invoke_rescue(args.pr, args.model, args.effort, prompt_path, wt)
 
     if rc == 127:
-        print(f"✗ codex CLI not found: {err}", file=sys.stderr)
-        update_manifest_entry(args.manifest, args.branch, {
-            "rescue_status": "failed",
-            "rescue_error": "codex CLI not on PATH",
-            "rescue_started_at": started_at,
-        })
+        # Plugin path was already verified above — so 127 here means `node` is missing
+        print(f"✗ `node` not on PATH (codex-companion.mjs requires Node.js): {err[:500]}", file=sys.stderr)
+        if manifest_present:
+            update_manifest_entry(manifest_path, args.branch, {
+                "rescue_status": "failed",
+                "rescue_error": "node not on PATH",
+                "rescue_started_at": started_at,
+            })
+        return 127
+
+    if rc != 0:
+        print(f"✗ codex task --background failed (rc={rc}): {err[:500]}", file=sys.stderr)
+        if manifest_present:
+            update_manifest_entry(manifest_path, args.branch, {
+                "rescue_status": "failed",
+                "rescue_error": (err or out)[:500],
+                "rescue_started_at": started_at,
+            })
         return 2
 
-    if rc not in (0, 1):  # 0 = ok, 1 sometimes used for "submitted with warnings"
-        print(f"✗ codex rescue failed (rc={rc}): {err}", file=sys.stderr)
-        update_manifest_entry(args.manifest, args.branch, {
-            "rescue_status": "failed",
-            "rescue_error": (err or out)[:500],
-            "rescue_started_at": started_at,
-        })
+    # Parse the queued-job descriptor: { jobId, status: "queued", title, logFile, summary? }
+    try:
+        payload = json.loads(out)
+    except (ValueError, TypeError):
+        print(f"✗ could not parse codex queue response: {out[:500]}", file=sys.stderr)
+        if manifest_present:
+            update_manifest_entry(manifest_path, args.branch, {
+                "rescue_status": "failed",
+                "rescue_error": "unparseable queue response",
+                "rescue_started_at": started_at,
+            })
         return 2
 
-    job_id = parse_rescue_job_id(out) or parse_rescue_job_id(err)
-    parse_failure = False
+    job_id = payload.get("jobId") or ""
     if not job_id:
-        job_id = f"cdx-rescue-unknown-{int(time.time())}"
-        parse_failure = True
-        print(f"⚠  no recognizable rescue job id in launch output; using synthetic: {job_id}")
+        print(f"✗ no jobId in queue response: {payload}", file=sys.stderr)
+        return 2
 
-    update_manifest_entry(args.manifest, args.branch, {
-        "rescue_review_id": job_id,
-        "rescue_started_at": started_at,
-        "rescue_status": "running",
-        "rescue_pr_number": args.pr,
-        "rescue_model": args.model,
-        "rescue_effort": args.effort,
-    })
-    print(f"  ✓ rescue triggered: job id = {job_id}")
-    print(f"  ✓ manifest updated: {args.manifest}")
-    return 1 if parse_failure else 0
+    queued_status = payload.get("status", "queued")
+    title = payload.get("title", "")
+    log_file = payload.get("logFile", "")
+    print(f"  ✓ queued: jobId={job_id} status={queued_status}")
+    if log_file:
+        print(f"    logFile: {log_file}")
+
+    if manifest_present:
+        updated = update_manifest_entry(manifest_path, args.branch, {
+            "rescue_review_id": job_id,
+            "rescue_started_at": started_at,
+            "rescue_status": "running",
+            "rescue_pr_number": args.pr,
+            "rescue_model": args.model,
+            "rescue_effort": args.effort,
+            "rescue_title": title,
+            "rescue_log_file": log_file,
+        })
+        if updated:
+            print(f"  ✓ manifest updated: {manifest_path}")
+        else:
+            # Rescue is QUEUED on Codex's side but manifest didn't update.
+            # Common cause: --branch mistyped. Surface so caller can correlate.
+            print(f"⚠  rescue queued (jobId={job_id}) but manifest entry "
+                  f"for branch '{args.branch}' not found at {manifest_path}", file=sys.stderr)
+
+    if not args.wait:
+        return 0
+
+    # --wait: block on status --wait until terminal
+    print(f"  waiting up to {args.timeout_ms / 1000:.0f}s for rescue to finish...")
+    rc, status_payload, err = wait_for_rescue(job_id, wt, args.timeout_ms)
+    finished_at = utc_now_iso()
+
+    if rc == 127:
+        print(err, file=sys.stderr)
+        return 127
+    if rc != 0 or status_payload is None:
+        print(f"✗ status --wait failed: rc={rc}: {err[:500]}", file=sys.stderr)
+        if manifest_present:
+            update_manifest_entry(manifest_path, args.branch, {
+                "rescue_status": "failed",
+                "rescue_error": (err or "wait failed")[:500],
+                "rescue_finished_at": finished_at,
+            })
+        return 2
+
+    job = status_payload.get("job") or {}
+    final_status = job.get("status", "unknown")
+    if final_status == "completed":
+        print(f"  ✓ rescue completed (jobId={job_id})")
+    elif final_status in {"failed", "cancelled"}:
+        print(f"✗ rescue {final_status} (jobId={job_id})", file=sys.stderr)
+    else:
+        # Could be 'queued' or 'running' if status --wait timed out
+        print(f"⚠  rescue not terminal yet: status={final_status} (jobId={job_id})", file=sys.stderr)
+
+    if manifest_present:
+        update_manifest_entry(manifest_path, args.branch, {
+            "rescue_status": final_status,
+            "rescue_finished_at": finished_at,
+            "rescue_phase": job.get("phase", ""),
+            "rescue_elapsed": job.get("elapsed", ""),
+        })
+
+    if final_status == "completed":
+        return 0
+    if final_status in {"queued", "running"}:
+        return 1  # timed out before terminal
+    return 2  # failed or cancelled
 
 
 if __name__ == "__main__":
