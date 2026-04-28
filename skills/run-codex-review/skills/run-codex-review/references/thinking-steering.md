@@ -127,7 +127,7 @@ Asking is not failure. Wrong moves on these are irreversible.
 
 ## The decompose → step back → watch reflex
 
-The single most important shift from `run-repo-cleanup`'s flow to this one: **after Phase 2, the main agent stops editing files** but stays in the driver's seat for orchestration. Phase 3: main agent runs codex review wrappers, evaluates major items via `Skill(do-review)` in own context, dispatches per-round Appliers. Phase 5: main agent dispatches PR-Creators; waits. Phase 7: main agent dispatches Evaluators; waits. Phase 8: main agent applies the evaluator's accepted subset directly. Editing inside worktrees is sub-agent territory; orchestration is main agent's territory throughout.
+The single most important shift from `run-repo-cleanup`'s flow to this one: **after Phase 2, the main agent stops editing.** Phase 3 dispatches coordinators; main agent monitors. Phase 5 dispatches PR-Creators; main agent waits. Phase 7 dispatches Evaluators; main agent waits. Only Phase 8 brings main agent back in as actor.
 
 If you find yourself opening a worktree to "check on it" or "fix something quickly", you've already broken the protocol. The sub-agent's writes and yours can race. The classifier's exit code, the worker's handback, the evaluator's JSON — those are the only signals you should be acting on.
 
@@ -150,28 +150,6 @@ Before every Agent dispatch, run the brief discipline checklist (in `parallel-su
 - [ ] Brief ≤ 5,000 words.
 
 If any unchecked, revise. Cost: 1 minute. Saves: hours of wrong work.
-
-## Forbidden inventions
-
-Do **not**, under any phase, propose:
-
-- **A "smoke test" or pilot before Phase 3 fan-out.** The skill prescribes parallel dispatch from round 1. A smoke test is not in the workflow. If the codex plugin is unavailable, you find out at dispatch time and surface FAILED — you do not pre-test.
-- **Re-introducing a Coordinator sub-agent layer.** That pattern was tried; it does not work in production (long-lived sub-agents drift, depth-2 dispatch is brittle). Main agent IS the coordinator across all branches — see `parallel-subagent-protocol.md` "Coordinator role". If your instinct says "I should dispatch a coordinator subagent per branch", you are recreating the old pattern.
-- **Writing a custom MISSION_PROTOCOL brief inline** rather than instantiating one of the four templates in `parallel-subagent-protocol.md` (Coordinator / Worker / PR-Creator / Evaluator). If the brief feels off, fix the *template*; do not bypass it.
-- **A shim, wrapper, or fallback for any slash command.** `/codex:review`, `/codex:resc`, `/ask-review`, `/do-review` either exist (use them via `Skill(...)`) or do not (surface and stop). There is no third path.
-- **Confirming a pinned default with the user.** Defaults in the Pinned Defaults table are pinned. Auto-detect (repo mode, manifest path) or proceed. Only ask when a destructive choice is genuinely ambiguous and not derivable from local state.
-- **Reading `scripts/run-codex-review.py` or `scripts/trigger-codex-rescue.py` looking for the "real" invocation.** The wrappers ARE the active path: `run-codex-review.py` is what sub-agents call (it bridges to `codex-companion.mjs review --json` because `/codex:review` is `disable-model-invocation: true` for sub-agents). For main agent, `/codex:resc` is the slash command for Phase 6. Either way, do not invent a parallel script.
-- **Multi-question opening confirmations** ("OK to proceed with B1–B5? Max rounds 20? Codex CLI ready?"). The user's first prompt is the authorization. Detect what's detectable and execute.
-- **Pre-flight environment probing for tool reachability.** No `codex login status`, `codex --version`, `codex doctor`, `ls .../node_modules`, `command -v <tool>`, or other "is the environment ready" probes. Such probes assume a default configuration (one specific auth path, one package manager, one project layout) that often doesn't match the user's actual setup — users routinely run with custom providers, alternate auth, or atypical layouts where the probe reports "broken" while the real workflow runs fine. The slash-command dispatch and the worker's own validation step are the only valid tests; if they truly fail you hand back FAILED with `terminal_reason` and surface to the user. **Never** present a multi-option resolution menu (A/B/C…) to fix an environment configuration the user did not ask you to touch.
-- **Bridging plugin-internal scripts with a "small shim".** Shims are forbidden by invariant 17. The right path per surface is in the SKILL.md invocation matrix.
-- **End-of-phase option menus** ("Full Phase 5-8 / Phase 5 only / Foundation only / Pause"). The user authorized full flow at skill invocation. Proceed phase-to-phase without checkpoint. (See SKILL.md "Authorization rule".)
-- **Cost-and-time paralysis prefaces** ("multi-hour, multi-thousand-token operation"). The user knows; the user authorized. Stating it again is stalling, not transparency. Just execute.
-- **Verbose end-of-phase state tables.** The Final Deliverable in Phase 9 is the place for per-branch summaries. Mid-flight, one sentence: "Phase X complete; entering X+1."
-- **Inventing terminal states** like `DONE-PRAGMATIC`, `READY-ENOUGH`, `MOSTLY-DONE`. The taxonomy is fixed: `DONE`, `CONVERGED-AT-CAP`, `CAP-REACHED`, `BLOCKED`, `FAILED`. If reality doesn't fit, surface a real `BLOCKED` with `terminal_reason`.
-- **`/do-review` framing in worker briefs.** Empirically causes 100% decision-only failure. Decisions are made by main agent before dispatch; workers are appliers.
-- **Hand-rolled bash polling loops** (`until grep -qE "Reviewer (finished|failed)" …`) for codex review status. Use the wrapper script's exit code; use Monitor for terminal markers; use Bash `run_in_background` for the dispatch itself. Polling loops are a sign the wrapper contract is broken — fix the wrapper, don't paper it over.
-
-These inventions cost the user 10–15 minutes per session in the wild. Don't.
 
 ## The bottom line
 
