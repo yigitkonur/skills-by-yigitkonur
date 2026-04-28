@@ -1,6 +1,6 @@
 # run-industry-research
 
-Researching an industry, market, SaaS, open-source, or product category and need a source-backed corpus with comparisons.
+Researching an industry, market, or vendor category with 5+ entities and need a multi-file evidence corpus with per-entity packs, cross-entity comparisons, and source ledgers.
 
 **Category:** productivity
 

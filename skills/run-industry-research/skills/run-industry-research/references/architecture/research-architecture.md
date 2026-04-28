@@ -15,36 +15,39 @@ A strong industry corpus has four layers:
 
 Use top-level `[entity].md` files when the user wants readable main pages. These should summarize and link to the detailed evidence pack, not duplicate every detail.
 
-## File Budget
+## File-count expectation
 
-The default hard cap is 1000 persistent files.
+There is **no fixed hard cap** on file count. The comprehensiveness boundary comes from the Phase 2 templates (`_meta/_PRODUCT_TEMPLATE.md` plus the per-criterion comparison templates), not from a numeric cap. The file-count expectation is derived from the templates and used as a planning estimate, not a constraint.
 
-Before writing, estimate:
+Compute the estimate after Phase 2 (templates locked):
 
 ```text
-total_files =
+total_files ≈
   root_and_meta_files
-  + entity_count * average_entity_files
-  + cross_context_count * average_cross_files
-  + top_level_profile_count
+  + core_entity_count × product_template_section_count
+  + secondary_entity_count × (compact_section_count)
+  + cross_criterion_count × cross_template_required_file_count
+  + profile_page_count
+  + discovery / claims-ledger / open-gaps files
 ```
 
-Recommended budgets:
+Reasonable expectations by corpus scale:
 
-| Corpus scale | Entity count | Full entities | Avg files per full entity | Cross files | Target total |
+| Corpus scale | Entity count | Core entities | Avg files per core entity | Cross-criterion folders | Typical total range |
 |---|---:|---:|---:|---:|---:|
-| Compact | 1-10 | all | 8-20 | 10-30 | 15-80 |
-| Standard | 10-40 | 10-25 | 10-25 | 30-80 | 80-350 |
-| Deep | 40-100 | 20-60 | 10-30 | 50-150 | 250-900 |
-| Tiered | 100+ | top 20-50 | 10-25 | 50-150 | under 1000 |
+| Compact | 1-10 | all | 8-20 | 5-8 | 80-200 |
+| Standard | 10-40 | 10-25 | 12-25 | 8-12 | 150-500 |
+| Deep | 40-100 | 20-60 | 15-30 | 10-15 | 500-2000 |
+| Tiered | 100+ | top 20-50 | 15-30 | 10-15 | 1000-3000 |
 
-If the estimate exceeds 1000:
+If the estimate is much larger than the user expected:
 
-1. Tier entities into `core`, `secondary`, and `discovered-only`.
-2. Give full evidence packs only to `core`.
-3. Give compact profiles to `secondary`.
-4. Put discovered-only entities in `_meta/discovered-entities.md`.
-5. Combine narrow context files into one broader file only when it stays independently useful.
+1. **Tier aggressively.** Demote entities from `core` to `secondary` if their evidence is thin. Demote `secondary` to `discovered-only` if surfaces are vendor-marketing-only.
+2. **Tighten the templates.** A truly maximalist template still has a ceiling — if your `_PRODUCT_TEMPLATE.md` lists 80 sections, ask whether 30 of them could collapse without losing the buyer's decision.
+3. **Combine narrow files.** If two adjacent template sections each have 1-2 paragraphs of evidence, fold them into one file with two H2 headers.
+4. **Move long-tail discovery to `_meta/discovered-entities.md`.** Don't build packs for entities that don't deserve them.
+
+The orchestrator sets the user's expectation in Phase 0 (`compact` / `standard` / `deep` / `tiered`) and adjusts in Phase 3 once templates are locked. **The templates' minimum coverage is the discipline; the file count is the consequence.**
 
 ## Standard Tree
 
@@ -147,9 +150,11 @@ RUBY
 
 | Failure | Fix |
 |---|---|
-| Every product has identical empty folders. | Create only evidence-justified files. |
-| Cross-product comparisons repeat product summaries. | Compare by buyer criterion and cite product packs. |
+| Every product has identical empty folders. | Create only evidence-justified files. Address every template section in content OR explicit "insufficient evidence" entry. |
+| Cross-product comparisons repeat product summaries. | Compare by buyer criterion and cite product packs. Comparison template prescribes axes; agents follow the template. |
 | Pricing is copied from pages without unit economics. | Preserve native units, normalize where possible, state missing variables. |
 | Reddit evidence is summarized as consensus. | Preserve thread, username, date, quote, and bias label. |
 | Source verification is missing. | Add source maps, claims ledgers, contradictions, and open test backlogs. |
-| Tree exceeds 1000 files. | Tier entities and collapse long-tail into discovery lists. |
+| Templates skipped or written after entity research. | Phase 2 first, Phase 4 second. Always. Re-author templates from the deep category pre-pass if they were written prematurely. |
+| Subagents skip template sections silently. | Mission brief explicitly requires every template section addressed in content or in an "insufficient evidence" entry. |
+| Tree size surprises the user. | Set expectation in Phase 0; refine after Phase 2 templates lock; adjust by tiering or template tightening, not by file-cap pressure. |
