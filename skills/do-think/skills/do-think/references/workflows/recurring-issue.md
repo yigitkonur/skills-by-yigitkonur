@@ -101,8 +101,9 @@ Why:
 - Loop classification: <reinforcing/balancing> at <which elements>
 - Weakest link: <where to intervene + why>
 
-Stress-test passes:
+Stress-test passes (SenseMaking trio — required for this Op variant):
 - Inversion: <H × H failure mode + mitigation>
+- Ladder of Inference: <jumped rungs found in the chosen intervention's reasoning, or "none found">
 - Second-Order: <10-month chain — does the intervention create a new loop?>
 
 Verification: <metric to watch + threshold + observation window — typically 2-3 release cycles>

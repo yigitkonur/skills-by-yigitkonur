@@ -1,6 +1,6 @@
 # Decision Matrix (and Impact-Effort, Eisenhower, Hard Choice classifier)
 
-Library entry. Routed from the SKILL.md master table, `foundations/effort-calibration.md`, or `modes/interactive-brainstorm.md` Step 4.
+Library entry. Routed from the SKILL.md master table or `modes/interactive-brainstorm.md` Step 4.
 
 Pick the right tool by the decision's *shape*. Use the Hard Choice Model as classifier; it routes to Decision Matrix, Impact-Effort, Eisenhower, or "just pick."
 

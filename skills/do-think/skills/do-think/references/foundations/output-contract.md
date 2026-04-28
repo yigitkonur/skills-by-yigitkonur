@@ -84,7 +84,7 @@ Chosen frameworks + one-sentence rationale per. The Minto headline of the docume
 
 Chosen frameworks: <framework 1>, <framework 2>, <framework 3>.
 Why: <framework 1> for <reason>; <framework 2> for <reason>; <framework 3> for <reason>.
-Cynefin domain: <domain>. Output mode: <Interactive | One-shot>.
+Cynefin domain: <domain>. Op: <op>. Emit style: <progressive | one-shot> (Interactive only — Solo emits as a single Minto artifact).
 ```
 
 #### 2. Problem shape (Cynefin) (3-5 lines)
@@ -102,7 +102,7 @@ Rationale: <one-sentence why this domain>
 ```
 
 #### 3. Decomposition (10-30 lines, scale to complexity)
-The tree / fishbone / iceberg / ladder / connection-circle from `frameworks/decomposition-tools.md` or `frameworks/systems-tools.md`, with priority markers.
+The decomposition artifact (tree, fishbone, iceberg, ladder, or connection-circle) produced in Phase A — see SKILL.md master table for the framework that was selected.
 
 #### 4. Options explored (1 paragraph per option, ≥3 options)
 Each option: label, rationale, key tradeoff, Cynefin-fit.

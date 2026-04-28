@@ -168,8 +168,8 @@ Full spec at `references/modes/interactive-brainstorm.md`. The 4-phase loop maps
 | 1 — Classify | A1 | Cynefin classifier (3 questions to user) | **Fork 1**: domain correct? |
 | 2 — Decompose | A2 (extended) | `frameworks/decomposition-tools.md` or `foundations/reframing.md` | **Fork 2**: decomposition captures the problem? |
 | 3 — Explore | C1 | `frameworks/six-thinking-hats.md` / `first-principles.md` / `zwicky-box.md` / `systems-tools.md` | **Fork 3**: options resonate? |
-| 4 — Evaluate | B1 + scoring | Hard Choice classifier → `frameworks/decision-matrix.md` | **Fork 4**: factors + weights right? |
-| 5 — Stress-test | C2 | `foundations/stress-test-trio.md` | **Fork 5**: blind spots change the pick? |
+| 4 — Evaluate | B2 (op-specific grounding) + scoring | Hard Choice classifier → `frameworks/decision-matrix.md` (Tier was set in Step 1 alongside Op + Cynefin so the opening contract emits all four fields) | **Fork 4**: factors + weights right? |
+| 5 — Stress-test | C2 | Op-specific stress-test from `references/foundations/operation-classification.md` (use `foundations/stress-test-trio.md` only when `Op: SenseMaking`) | **Fork 5**: blind spots change the pick? |
 | 6 — Communicate | D | `foundations/output-contract.md` (10-section deliverable) | (no fork) |
 
 Skip-fork policy and one-question-at-a-time discipline live in `references/interaction-patterns.md`.

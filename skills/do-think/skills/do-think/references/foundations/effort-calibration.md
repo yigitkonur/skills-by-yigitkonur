@@ -26,10 +26,11 @@ Two axes: **confidence the problem matters** (evidence-based) × **confidence th
 
 | Problem confidence | Solution confidence | Posture |
 |---|---|---|
-| Low | Any | **Speed-first.** Ship the cheapest possible probe; learn fast. Quality polish is wasted on an unvalidated problem. |
+| Low (but not extremely low) | Any | **Speed-first.** Ship the cheapest possible probe; learn fast. Quality polish is wasted on an unvalidated problem. |
 | High | Low | **Balanced.** Iterate, but with rigor. Ship a small version; measure; refine. |
 | High | High | **Quality-first.** The certainty earns the time. Build it right. |
-| Low | Low | **Stop and reframe.** You're not ready. Re-enter Phase A2. |
+
+**Special case — Low/Low (both extremely low)**: don't pick a posture. Stop and reframe. Re-enter Phase A3 (`reframing.md`); if reframing doesn't lift problem-confidence, the work isn't ready and the right move is to surface to the user (Solo → Interactive).
 
 Confidence is graded, not binary. "Moderately high" + "low" → lean toward speed.
 
@@ -38,8 +39,8 @@ Confidence is graded, not binary. "Moderately high" + "low" → lean toward spee
 Combine both calibrations:
 
 - **Tier Low** = No-brainer / Apples-&-Oranges OR (Low problem-confidence with reversible outcome). Skip extensive grounding; one-pass thinking; optional stress-test.
-- **Tier Medium** = Big Choice OR (High problem / Low solution confidence). Decision Matrix in C2; mandatory stress-test trio; standard grounding.
-- **Tier High** = Hard Choice OR (High both with irreversible / one-shot outcome). Strict stress-test trio; explicit rollback path; full grounding.
+- **Tier Medium** = Big Choice OR (High problem / Low solution confidence). Decision Matrix in C2 (when `Op: SenseMaking`); mandatory **op-specific** stress-test; standard grounding.
+- **Tier High** = Hard Choice OR (High both with irreversible / one-shot outcome). Strict **op-specific** stress-test; explicit rollback path; full grounding.
 
 Default to Medium when uncertain. Inflate to High only when the cost of being wrong is genuinely high.
 
@@ -58,8 +59,8 @@ Do not read everything to feel thorough. The minimum grounding set is the smalle
 | Tier | Stress-test |
 |---|---|
 | Low | Optional. Brief inversion check ("could this fail badly?"). |
-| Medium | Mandatory trio: Inversion + Ladder of Inference + Second-Order. Standard depth. |
-| High | Strict trio. Inversion with named mitigations baked into the plan. Explicit rollback path. Second-Order at 10-min/10-mo/10-yr scales. |
+| Medium | Mandatory **op-specific** stress-test. Standard depth. When `Op: SenseMaking`, this is the trio: Inversion + Ladder of Inference + Second-Order. For other ops see `operation-classification.md` (Extraction → coverage + edge + schema-fit; Composition → form-substance + voice + audience; etc.). |
+| High | Strict **op-specific** stress-test. Bake mitigations into the plan and include explicit rollback. When `Op: SenseMaking`, apply the trio strictly, including Second-Order at 10-min/10-mo/10-yr scales. For other ops, apply the same depth to that op's C2 axes. |
 
 ## When to re-calibrate mid-session
 
@@ -76,7 +77,7 @@ Set tier silently using both matrices, write the tier in the opening contract, p
 
 ## Interactive mode application
 
-Tier is set via the Hard Choice classifier in `modes/interactive-brainstorm.md` Step 4 (Evaluate); see also `frameworks/decision-matrix.md` for the full Decision Matrix mechanics.
+Tier is set via **both axes** (Hard Choice classifier + Confidence-vs-Quality posture) in `modes/interactive-brainstorm.md` Step 1 (alongside Cynefin and Op classification, so the opening contract can emit Tier on the first line). The Hard Choice quadrant maps to Tier Low/Medium/High; the Confidence-vs-Quality posture (speed-first / balanced / quality-first) modulates how aggressively the tier's grounding/stress-test budget is spent. See `frameworks/decision-matrix.md` for the full Decision Matrix mechanics used at Step 4 (Evaluate).
 
 ## Anti-patterns
 

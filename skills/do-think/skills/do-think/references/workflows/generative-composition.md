@@ -109,4 +109,4 @@ Re-classify when the inner operation begins. The opening contract may be re-emit
 | Treating Composition like Sense-Making (3 finished drafts) | 3 drafts is wasteful. Generate at the outline level, then commit to one. |
 | Length creep — the artifact ends up 2-3× the target length | Length budget is a form constraint. If you're over, cut sections that don't serve the audience's decision. |
 | Skipping pre-ship checklist on Tier Medium/High | The 3 checks take 2 minutes. Misshipped Tier-High artifacts cost reputation. |
-| "While here" scope creep ("I also added a section on X") | Scope was defined at A1. New sections need to earn their place against the audience's decision. |
+| "While here" scope creep ("I also added a section on X") | Scope was defined in Phase A (A1 domain + A2 op + A3 reframe if needed). New sections need to earn their place against the audience's decision. |

@@ -66,7 +66,7 @@ Three checks, all written:
 ## Phase D — Commit
 
 - **D1**: hand off the filled schema. If the receiving system needs validation, run that validation now.
-- **D2**: verification check — the receiving system accepts the records (no validation errors), AND the ambiguity log was reviewed by a human if any high-confidence fields were ambiguous.
+- **D2**: verification check — the receiving system accepts the records (no validation errors), AND the ambiguity log was reviewed by a human if it has any entries (any field flagged ambiguous OR low-confidence).
 
 ## Output contract
 

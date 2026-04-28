@@ -29,7 +29,7 @@ Rotate through six hats. Per hat, generate ideas/observations from that stance o
 ## Order: Blue → White → Yellow → Black → Green → Red → Blue
 
 - Start + end with Blue (orchestration).
-- Generate (Green) AFTER risks (Black) so creativity isn't pre-filtered by negativity.
+- Generate (Green) AFTER risks (Black) so downside constraints are explicit before wild ideation.
 - Red last so emotion doesn't anchor analysis.
 - Each hat: 1-3 minutes for compact session, longer for deep.
 

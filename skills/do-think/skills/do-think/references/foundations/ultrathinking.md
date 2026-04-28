@@ -4,7 +4,7 @@ Use ultrathinking only when the change is hard to reverse, the blast radius is b
 
 Ultrathinking is not maximal analysis. It is **disciplined analysis scaled to irreversible or high-cost decisions**. The discipline lives in the foundations:
 - Effort tier set to **High** (`effort-calibration.md`)
-- Stress-test trio runs strict (`stress-test-trio.md`) — Inversion with named mitigations baked into the plan; Ladder of Inference depth audit; Second-Order at 10-min/10-mo/10-yr scales
+- Op-specific stress-test runs strict — see `operation-classification.md` for the per-op C2 focus. When `Op: SenseMaking`, this is the trio in `stress-test-trio.md` (Inversion with named mitigations baked into the plan; Ladder of Inference depth audit; Second-Order at 10-min/10-mo/10-yr scales). For other ops, the same depth applies to that op's C2 axes.
 - Verification path defined before action; rollback named explicitly
 
 ## When to escalate to ultrathink
@@ -23,7 +23,7 @@ Standard Tier-High already runs strict trio + full grounding. Ultrathink adds:
    - What problem am I really solving?
    - What outcome actually matters?
    - What am I assuming about constraints, users, the system?
-   Re-enter Phase A2 (reframe) if the widened frame exposes a different problem.
+   Re-enter Phase A3 (reframe) if the widened frame exposes a different problem.
 
 2. **Compare real options.** Do not compare one real option to two strawmen. Keep 2-3 *serious* options alive through Phase C1. Use the SKILL.md routing to reach `frameworks/zwicky-box.md` if option generation is dry.
 
@@ -33,7 +33,7 @@ Standard Tier-High already runs strict trio + full grounding. Ultrathink adds:
 
 ## Solo mode application
 
-In Solo mode, ultrathink is what you do when the opening contract reads `Tier: High`. The discipline is silent but visible in the artifact: stress-test outputs are written, mitigations are baked in, rollback is named.
+In Solo mode, ultrathink is what you do when the opening contract reads `Tier: High`. The discipline is silent but visible in the artifact: op-specific stress-test outputs are written, mitigations are baked in, rollback is named. (Trio outputs when `Op: SenseMaking`; per-op C2 outputs otherwise — see `operation-classification.md`.)
 
 ## Interactive mode application
 

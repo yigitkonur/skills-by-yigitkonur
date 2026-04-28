@@ -14,7 +14,7 @@ Solo is the default. Switch to Interactive only when the triggers in SKILL.md fi
 
 The 4-phase loop in `foundations/core-loop.md` runs end-to-end without pause.
 
-1. Emit the opening contract (`Mode: Solo  Cynefin: <domain>  Tier: <tier>`) on the first response line.
+1. Emit the opening contract (`Mode: Solo  Op: <op>  Cynefin: <domain>  Tier: <tier>`) on the first response line.
 2. Phase A → B → C → D, internally. Each phase exit criterion must be satisfied before the next.
 3. Emit the Solo output (Minto Pyramid — `foundations/output-contract.md`).
 
@@ -24,7 +24,7 @@ The user sees the *output*, not the full Phase A → D trace. Trace is internal.
 
 1. **No silent skipping.** If you skip Phase A1 (Cynefin), the opening contract reveals it (no domain emitted = process broken). Same for Tier (Phase B1).
 2. **No mid-loop user prompts.** If you find yourself wanting to ask the user a question, you have hit the escalation gate — switch to Interactive.
-3. **Phase C2 trio is mandatory at Tier Medium/High.** Outputs are written, not implied. See `foundations/stress-test-trio.md`.
+3. **Phase C2 op-specific stress-test is mandatory at Tier Medium/High.** Outputs are written, not implied. The trio (Inversion + Ladder + Second-Order) applies when `Op: SenseMaking` — see `foundations/stress-test-trio.md`. For other ops, use the C2 focus from `foundations/operation-classification.md` (Extraction → coverage + edge + schema-fit; Composition → form-substance + voice + audience; etc.).
 4. **Verification before action.** Phase D2 verification check is written before Phase D1 action is executed.
 5. **Anti-stall.** If a phase is hard, do the smallest local move that changes certainty. See `references/workflows/continuous-execution.md`.
 

@@ -95,7 +95,7 @@ The trio (Inversion + Ladder of Inference + Second-Order — see `stress-test-tr
 | Orchestration | partial-failure scan + transaction boundary check + retry safety |
 | SelfVerify | loop bound + oracle accuracy + escape condition |
 
-**Phase C exit criterion**: op-specific C1 output written AND op-specific C2 stress-test written. Outputs are written, not implied.
+**Phase C exit criterion**: op-specific C1 output written AND op-specific C2 stress-test written (mandatory at Tier Medium/High; at Tier Low only the brief inversion check from `effort-calibration.md` is required). Outputs are written, not implied.
 
 **Escalation gate**: if C2 kills all options/candidates/attempts, **switch Mode to Interactive** — do not silently pick the least-bad option.
 
@@ -127,8 +127,8 @@ Write the verification check before acting. Unwritten = skipped under pressure.
 | Discovery | Re-enter |
 |---|---|
 | Evidence flips an assumption you wrote in B2 | Phase A2 (re-classify op) or Phase A3 (reframe) or Phase B2 (more grounding) |
-| Stress-test kills 2 of 3 options/candidates in C2 | Phase C1 (regenerate) |
-| Stress-test kills all 3 in C2 | Switch Mode to Interactive |
+| Stress-test kills the leading C1 output / partial death (e.g., 2 of 3 SenseMaking options fail; the proposed Extraction schema fit fails; the Composition outline fails the form-substance check) | Phase C1 (regenerate the op-appropriate output) |
+| Stress-test kills all C1 outputs and no operationally viable next move remains | Switch Mode to Interactive |
 | Verification fails in D2 | Phase C1 with the verification result as new evidence |
 | Domain shifts mid-session (e.g. Complicated → Chaotic) | Phase A1 (re-classify) and re-emit the opening contract |
 | Operation shifts mid-session (e.g. Sense-Making analysis reveals it's actually Composition work) | Phase A2 (re-classify) and re-emit the opening contract |

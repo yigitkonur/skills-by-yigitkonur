@@ -53,4 +53,4 @@ Whole-system options that didn't appear in linear brainstorming. The constraint 
 | 8+ dimensions | Combinatorial explosion. Cap at 5. Merge or drop dimensions that aren't actually independent. |
 | Filtering values for feasibility before combining | Feasibility check is *after* combination. Filtering early loses the non-obvious good ones. |
 | Generating only "systematic" combinations | Include 2-3 *strange* combinations. The surprises are where the value is. |
-| Treating Zwicky Box output as final answer | It's option generation. Combinations still go through evaluation (`decision-matrix.md`) and stress-test (`foundations/stress-test-trio.md`). |
+| Treating Zwicky Box output as final answer | It's option generation. Combinations still go through the calling workflow's op-specific evaluation and stress-test (Decision Matrix + the trio when `Op: SenseMaking`; per-op C2 from `operation-classification.md` otherwise). |

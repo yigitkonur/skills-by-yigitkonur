@@ -90,7 +90,7 @@ Stop decomposing when one of these holds:
 ## Interactions
 
 - Issue Trees: pair with `first-principles.md` on the priority branches; feed `decision-matrix.md` to evaluate solutions across branches.
-- Ishikawa: complements `frameworks/systems-tools.md` Iceberg Model — Ishikawa enumerates siblings at the same level; Iceberg descends levels.
+- Ishikawa: complements the Iceberg Model in `workflows/recurring-issue.md` — Ishikawa enumerates siblings at the same level; Iceberg descends levels.
 - If the problem statement itself feels wrong, route to `foundations/reframing.md` (Abstraction Laddering) before decomposing.
 
 ## Anti-patterns

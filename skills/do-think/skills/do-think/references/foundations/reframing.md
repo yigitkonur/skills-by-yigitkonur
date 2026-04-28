@@ -1,6 +1,6 @@
 # Reframing — Abstraction Laddering
 
-Phase A2. Run when the problem statement feels wrong, too narrow, solution-shaped, or when Phase A1 returned **Disorder**.
+Phase A3. Run when the problem statement feels wrong, too narrow, solution-shaped, or when Phase A1 returned **Disorder**.
 
 LLMs default to accepting the user's framing as the problem to solve. Most "wrong" answers are correct answers to the wrong problem. Abstraction Laddering catches that.
 
@@ -29,7 +29,7 @@ Down rung (how):     a more concrete statement or solution
    - If the up rung exposes a problem the original was a narrow approach to, the original was solution-shaped — climb up.
    - If the down rung is the only one that's actionable in the current context, climb down.
 
-5. **Re-run Phase A1 (domain classification) on the chosen rung** — the classifier may now return a different domain than it did on the original framing. Re-emit the opening contract if it changed.
+5. **Re-run Phase A1 (domain classification) and A2 (operation classification) on the chosen rung** — the classifiers may now return a different domain and/or operation than they did on the original framing. Re-emit the opening contract if either changed.
 
 ## Worked example
 
@@ -68,7 +68,7 @@ If Phase A1 returned Disorder, this file is the escape. Ladder up and down from 
 - The original is already concrete, scoped, and matches a clear domain.
 - Repeated reframing has produced no change (signals over-laddering).
 
-Reframing is a *check*, not a *step you always run*. Default in Phase A2: skip unless the signals above fire.
+Reframing is a *check*, not a *step you always run*. Default in Phase A3: skip unless the signals above fire.
 
 ## Anti-patterns
 

@@ -1,6 +1,6 @@
 # Interactive Brainstorm Mode
 
-User-in-the-loop variant of the core loop. The 4-phase Phase A → D structure is preserved, but each phase ends in a **fork** where the user approves, redirects, or expands. Five forks total.
+User-in-the-loop variant of the core loop. The 4-phase Phase A → D structure is preserved as a 6-step session with 5 user forks (steps 1-5 each end in a fork; step 6 emits the final output without a fork).
 
 This was previously the standalone `do-brainstorm` skill; it now lives inside `do-think` as one of two operating modes.
 
@@ -23,14 +23,14 @@ The 4-phase loop maps to a 6-step session with 5 forks (the original `do-brainst
 
 | Step | Phase | What runs | Fork question |
 |---|---|---|---|
-| **Step 1** — Classify | A1 | Cynefin classifier (3 questions to user) | **Fork 1**: domain correct? Route right? |
-| **Step 2** — Decompose | A2 (extended) | `frameworks/decomposition-tools.md` (Issue Trees / Ishikawa / Iceberg / Abstraction Laddering) — pick one based on problem signature | **Fork 2**: decomposition captures the problem? Branches missing? |
-| **Step 3** — Explore | C1 | `frameworks/six-thinking-hats.md` / `first-principles.md` / `zwicky-box.md` / `systems-tools.md` — generate ≥3 options | **Fork 3**: options resonate? Add / drop / expand? |
-| **Step 4** — Evaluate | B1 (deferred) + scoring | Hard Choice Model classifier → Decision Matrix / Impact-Effort / Eisenhower (`frameworks/decision-matrix.md`) | **Fork 4**: factors + weights right? Anything over- or under-weighted? |
-| **Step 5** — Stress-test | C2 | `foundations/stress-test-trio.md` — Inversion + Ladder + Second-Order, all three | **Fork 5**: blind spots change the pick? Loop back? |
+| **Step 1** — Classify + Calibrate | A1 + A2 + B1 | Cynefin classifier (3 questions to user) **plus** Op classification (1 question if not obvious from the user's prompt) **plus** Hard Choice × Confidence-vs-Quality tiering (1-2 questions). The opening contract `Mode: Interactive  Op: <op>  Cynefin: <domain>  Tier: <tier>` is emitted at the close of this step. | **Fork 1**: domain + op + tier all correct? Route right? |
+| **Step 2** — Decompose (+ A3 reframe if needed) | A3 + decomposition | `frameworks/decomposition-tools.md` (Issue Trees / Ishikawa / Abstraction Laddering / Iceberg via `workflows/recurring-issue.md`) — pick one based on problem signature; if the user's framing fails the why-up test, run Abstraction Laddering first, re-emit contract if A1/A2 changed | **Fork 2**: decomposition captures the problem? Branches missing? |
+| **Step 3** — Explore | C1 | Op-appropriate generators (when `Op: SenseMaking`: Six Thinking Hats / First Principles / Zwicky Box / systems-tools — generate ≥3 options. For other Ops, generate the op-appropriate C1 output: filled-schema-draft for Extraction, outline + assumption list for Composition, retrieved evidence for GroundedQA, etc.) | **Fork 3**: outputs resonate? Add / drop / expand? |
+| **Step 4** — Evaluate | B2 (op-specific grounding) + scoring | When `Op: SenseMaking`: Hard Choice classifier → Decision Matrix / Impact-Effort / Eisenhower (`frameworks/decision-matrix.md`). For other Ops: op-specific evaluation per the workflow file (e.g., schema-fit verification for Extraction, form-substance match for Composition). | **Fork 4**: factors + weights right? Anything over- or under-weighted? |
+| **Step 5** — Stress-test | C2 | **Op-specific stress-test** from `foundations/operation-classification.md`. When `Op: SenseMaking`: the trio in `foundations/stress-test-trio.md` (Inversion + Ladder of Inference + Second-Order). For other Ops: that op's C2 axes (Extraction → coverage + edge + schema-fit; Composition → form-substance + voice + audience; GroundedQA → hallucination scan + citation completeness + out-of-scope flag; SelfVerify → loop bound + oracle accuracy + escape condition; etc.) | **Fork 5**: blind spots change the pick? Loop back? |
 | **Step 6** — Communicate | D | `foundations/output-contract.md` — assemble the 10-section deliverable | (no fork — final output) |
 
-Note the Phase mapping: in Interactive, calibration (B1) shifts to Step 4 because the Hard Choice classifier wraps the entire evaluation; the user explicitly weighs in on tier via the matrix.
+Note the Phase mapping: in Interactive, the opening contract's four fields (Mode/Op/Cynefin/Tier) are all set in Step 1 — A1 (Cynefin) and A2 (Op) are user-facing classifier questions, and B1 (Tier) follows from the Hard Choice × Confidence-vs-Quality answers. A3 (reframe) is conditional and runs at the start of Step 2 only when the framing fails the why-up test. B2 grounding is gathered op-specifically during Steps 2-4.
 
 ## Fork mechanics
 
@@ -100,7 +100,7 @@ Interactive steps 2-5 dispatch into the frameworks library:
 | Step 2 (Decompose) | `frameworks/decomposition-tools.md` (Issue Trees, Ishikawa) · `frameworks/systems-tools.md` (Iceberg, Connection Circles) · `foundations/reframing.md` (Abstraction Laddering) |
 | Step 3 (Explore) | `frameworks/six-thinking-hats.md` · `frameworks/first-principles.md` · `frameworks/zwicky-box.md` · `frameworks/systems-tools.md` |
 | Step 4 (Evaluate) | `frameworks/decision-matrix.md` (Decision Matrix, Impact-Effort, Eisenhower, Hard Choice classifier) |
-| Step 5 (Stress-test) | `foundations/stress-test-trio.md` (Inversion, Ladder of Inference, Second-Order) |
+| Step 5 (Stress-test) | `foundations/operation-classification.md` (per-op C2 focus) · `foundations/stress-test-trio.md` (Inversion, Ladder of Inference, Second-Order — only when `Op: SenseMaking`) |
 | Step 6 (Communicate) | `foundations/output-contract.md` (Minto + 10-section) · `frameworks/interpersonal-tools.md` (SBI, Conflict Resolution Diagram — when feedback or stakeholder conflict surfaced) |
 
 Meta-pacing for the session itself (when pacing wrong, when full execution plan needed, when speed-vs-quality posture must be explicit): `frameworks/productive-thinking-drive.md`.
@@ -120,10 +120,12 @@ Meta-pacing for the session itself (when pacing wrong, when full execution plan 
 Before declaring the Interactive session done, confirm:
 
 - [ ] Cynefin classification confirmed at Fork 1
+- [ ] **Op classification confirmed at Fork 1** (the most consequential setting — selects the rest of the loop)
+- [ ] **Tier set at Fork 1** so the opening contract carries all four fields
 - [ ] Decomposition approved at Fork 2
-- [ ] ≥3 options presented at Fork 3
+- [ ] Op-appropriate ≥3 outputs presented at Fork 3 (≥3 options for SenseMaking; outline + assumptions for Composition; filled-schema-draft for Extraction; etc.)
 - [ ] Evaluation factors + weights approved at Fork 4
-- [ ] Stress-test trio (Inversion + Ladder + Second-Order) all run at Step 5; user responded at Fork 5
+- [ ] **Op-specific stress-test** run at Step 5 (trio when `Op: SenseMaking`; per-op C2 axes otherwise); user responded at Fork 5
 - [ ] Output contract includes all 10 sections (Approach / Problem shape / Decomposition / Options / Evaluation / Assumptions / Blind spots / Second-order / Ranked summary / Recommended next step)
 - [ ] Recommended next step names a specific follow-on skill or concrete action
 - [ ] Explicit user question at the end — not "let me know"

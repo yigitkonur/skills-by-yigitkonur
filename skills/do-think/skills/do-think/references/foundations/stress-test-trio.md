@@ -14,12 +14,15 @@ Skipping the trio converts deep thinking into "prettier rationalization of the f
 
 ## Phase C2 exit criterion
 
-Three named options surfaced (from C1) AND three stress-test outputs written:
-- one Inversion failure mode (with likelihood × severity)
-- one Ladder of Inference data-to-assumption walk (with at least one jumped rung named or "none found")
-- one Second-Order chain (consequence-chain or 10-min/10-mo/10-yr timeline)
+Two requirements, both must hold:
 
-Outputs are written, not implied. If you cannot write all three, you have not stress-tested.
+1. **C1 input present**: three named candidate options surfaced from C1 (the prerequisite — without options, there is nothing to stress-test).
+2. **Three trio outputs written for the leading option**:
+   - one Inversion failure mode (with likelihood × severity)
+   - one Ladder of Inference data-to-assumption walk (with at least one jumped rung named or "none found")
+   - one Second-Order chain (consequence-chain or 10-min/10-mo/10-yr timeline)
+
+The "three options" and the "three trio tools" are **independent counts** — three options come from C1; the trio runs once on the leader (each of its three tools producing one output). Outputs are written, not implied. If you cannot write all three trio outputs on the leading option, you have not stress-tested.
 
 ## Inversion — pre-mortem
 
