@@ -48,6 +48,7 @@ When two skills overlap, use distinct verbs:
 
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
+- `run-research` (answer a technical research question) vs `run-industry-research` (build a full market/category research corpus)
 - `optimize-agentic-cli` vs `optimize-agentic-mcp`
 
 ## Canonical Rules
@@ -84,7 +85,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (42)
+## Current Canonical Skill Names (43)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -120,6 +121,7 @@ When renaming a published skill:
 - `run-codex-exec`
 - `run-codex-review`
 - `run-github-scout`
+- `run-industry-research`
 - `run-issue-tree`
 - `run-playwright`
 - `run-repo-cleanup`

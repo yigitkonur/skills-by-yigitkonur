@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-42 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+43 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -54,6 +54,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-codex-exec](skills/run-codex-exec/) | orchestration | Parallel codex exec agents in git worktrees with auto-commit + live monitor |
 | [run-codex-review](skills/run-codex-review/) | orchestration | Per-branch /codex:review fix loops + /ask-review PR + codex rescue + multi-bot /do-review evaluation |
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
+| [run-industry-research](skills/run-industry-research/) | productivity | Industry research corpora with evidence packs and comparisons |
 | [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub Issue trees with sub-issues and waves |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
 | [run-repo-cleanup](skills/run-repo-cleanup/) | productivity | Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies |
