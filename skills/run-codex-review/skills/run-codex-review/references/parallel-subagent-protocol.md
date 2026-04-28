@@ -2,57 +2,34 @@
 
 This file specifies the four sub-agent types this skill dispatches and the **mission brief template** for each. Every brief follows the MISSION_PROTOCOL skeleton (`~/MISSION_PROTOCOL.md` — see `mission-protocol-integration.md`).
 
-## Invocation matrix per brief
-
-The codex plugin marks `/codex:review` as `disable-model-invocation: true`. Sub-agents physically cannot call it via `Skill(...)` — they must invoke the underlying companion script via Bash. `/codex:resc` requires the `Agent` tool which forked sub-agents do not have. Use the matrix below in every brief:
-
-| Surface | Worker / PR-Creator / Evaluator | How to invoke from the brief |
-|---|---|---|
-| Codex review | Worker (Phase 3) | `python3 <this-skill>/scripts/run-codex-review.py --branch … --base … --worktree … --output …` (wrapper internally calls `codex-companion.mjs review --json`). |
-| Codex rescue | NOT for sub-agents | Phase 6 trigger is main-agent-only; sub-agents do not call it. |
-| `/ask-review` | PR-Creator (Phase 5) | `Skill(skill="ask-review", args="…")` — model-invocable. |
-| `/do-review` | Evaluator (Phase 7) | `Skill(skill="do-review", args="…")` — model-invocable. |
-| `/do-review` | Worker (Phase 3) | **Never.** Workers are appliers; decisions are pre-made before dispatch. See "Mission Brief: Worker" below. |
-
-**Forbidden in every brief:**
-
-- Direct shell invocation of `codex`, `codex review`, `codex review --background`, or any other `codex …` form (no such CLI flags exist).
-- Inventing a "shim" or wrapper because the codex CLI doesn't accept some flag.
-- Inventing a coordinator/worker pattern that diverges from the templates below.
-- Calling `Skill(codex:review)` or `Skill(codex:resc)` from a sub-agent context — both will fail; the plugin disables them.
-
-If `<this-skill>/scripts/run-codex-review.py` cannot find a working `codex-companion.mjs`, the codex plugin is missing. Sub-agent hands back FAILED with `terminal_reason: "codex plugin unavailable"`. Main agent surfaces to the user and stops.
-
 ## Sub-agent inventory
 
 | Phase | Sub-agent | Dispatched by | Lifecycle |
 |---|---|---|---|
-| 3 | **Applier** | Main agent | Fresh per round per branch; applies pre-decided fixes, validates, pushes, exits. |
+| 3 | **Coordinator** | Main agent | One per branch; lives entire convergence loop. |
+| 3 | **Worker** | Coordinator | Fresh per round; one round of work, then exits. |
 | 5 | **PR-Creator** | Main agent | One per DONE branch; opens the PR, then exits. |
 | 7 | **Evaluator** | Main agent | One per PR; reads gathered reviews, returns decisions JSON. |
 
-**Main agent is the coordinator across all branches** — it owns the round cadence, runs codex review wrappers in parallel, evaluates major items via `Skill(do-review)` in its own context, and dispatches per-round Appliers. Phase 8 is also main-agent direct.
-
-> **Why main-agent-as-coordinator (load-bearing):** older versions of this skill used a per-branch Coordinator sub-agent that held the convergence loop. In practice these long-lived sub-agents (5+ hours, dozens of rounds) drift, lose context, or hit harness session limits. Main agent is the only stable owner of the multi-hour cadence. Sub-agents are short-lived single-purpose appliers / PR-creators / evaluators.
+**Phase 8 is main-agent direct** — no sub-agent. Main agent uses `/do-review` skill in its own context.
 
 ## Ownership boundary (hard rule)
 
 ```
-1 worktree  =  1 branch  =  N rounds driven by main agent (cap 20)
-1 round-per-branch  =  1 fresh Applier sub-agent
-1 DONE PR  =  1 PR-Creator → 1 codex rescue (main-agent direct) → 1 Evaluator
+1 worktree  =  1 coordinator  =  N rounds (cap 20)
+1 round     =  1 fresh worker
+1 DONE PR   =  1 PR-creator (then 1 codex rescue handoff, then 1 evaluator)
 ```
 
-- An Applier mutates ONLY files inside its branch's worktree path.
-- An Applier NEVER touches another branch, another worktree, or the manifest entries of other branches.
-- An Applier NEVER opens PRs, merges, or retires branches — those are PR-Creator (5), main-agent (8), or cleanup-worktrees (9) jobs.
-- An Applier does NOT run codex review or classify — main agent does that before the dispatch.
-- Main agent NEVER edits inside a worktree while an Applier is running.
-- Different branches can have concurrent Appliers (parallel rounds across branches), physically isolated by separate worktrees.
+- A worker mutates ONLY files inside its branch's worktree path.
+- A worker NEVER touches another branch, another worktree, or the manifest entries of other branches.
+- A worker NEVER opens PRs, merges, or retires branches — those are PR-creator (5), main-agent (8), or cleanup-worktrees (9) jobs.
+- The main agent NEVER edits inside a worktree while a worker is running.
+- Branches A and B can have concurrent coordinators (parallel inner loops), but their workers are physically isolated by separate worktrees.
 
 ## Communication contract: manifest as message bus
 
-All sub-agents in this skill report state via atomic, lock-guarded writes to the repo-local manifest (`<repo-root>/.codex-review-manifest.json` by default; `--manifest <path>` to override). No chat-based handbacks for state. The wrapper scripts (`run-codex-review.py`, `trigger-codex-rescue.py`) implement the lock recipe below; sub-agents call the wrappers rather than rolling their own.
+All sub-agents in this skill report state via atomic writes to `/tmp/codex-review-manifest.json`. No chat-based handbacks for state.
 
 ### Atomic write recipe
 
@@ -86,195 +63,274 @@ def update_manifest_entry(manifest_path, branch, updates, history_entry=None):
 
 `os.replace` is atomic on POSIX. `flock` provides mutual exclusion across concurrent writers.
 
-## Brief templating (mandatory for parallel dispatches)
-
-When dispatching N parallel sub-agents (N appliers in Phase 3, N PR-Creators in Phase 5, N evaluators in Phase 7), **never hand-write N separate briefs via N `Write` tool calls**. That pattern burns thousands of tokens, drifts copy-paste errors across briefs, and adds 5+ minutes of wall-time per phase.
-
-**Mandatory pattern:**
-
-1. Write **one** template file with `{{PLACEHOLDER}}` slots, e.g. `/tmp/applier-brief-template.md`.
-2. Render N concrete briefs from the template + a per-branch decisions JSON in **one Python invocation**:
-
-```python
-import json, pathlib
-template = pathlib.Path("/tmp/applier-brief-template.md").read_text()
-decisions = json.loads(pathlib.Path("<rounds-dir>/decisions.json").read_text())
-for branch_slug, payload in decisions.items():
-    body = template
-    for k, v in payload.items():
-        body = body.replace(f"{{{{{k}}}}}", v if isinstance(v, str) else json.dumps(v, indent=2))
-    pathlib.Path(f"/tmp/applier-brief-{branch_slug}.md").write_text(body)
-print(f"rendered {len(decisions)} briefs")
-```
-
-Then dispatch:
-
-```
-for branch_slug in decisions:
-    Agent(
-        prompt=f"Read /tmp/applier-brief-{branch_slug}.md and execute.",
-        subagent_type="general-purpose",
-        run_in_background=True,
-    )
-```
-
-**Why mandatory**: production trace showed an agent writing 7+5+9 = 21 briefs across Phases 3 and 5 via 21 separate Write calls. Each brief was 50-140 lines of mostly-identical text with per-branch decisions varying. Template + render in one shot is ~3 tool calls vs. 21; cuts orchestration cost by ~85%.
-
-**Brief content rules** (apply per template type):
-
-- Applier briefs: one template per round (`/tmp/applier-brief-template-r<N>.md`); placeholders for branch, worktree, base, prior-round commits, this-round decisions.
-- PR-Creator briefs: one template; placeholders for branch, worktree, base, status, round_history summary, concern.
-- Evaluator briefs: one template; placeholders for PR number, gathered-reviews JSON path, taxonomy reference.
-
-The template ITSELF must be revised when its corresponding "Mission Brief" template skeleton in this file changes. The two are versioned together.
-
 ## Heartbeat
 
-Liveness is inferred from manifest mtime + round-log mtime. If an Applier has not updated its branch's `updated_at` in `--stale-minutes` (default 60), it's presumed crashed. The sub-agent doesn't write explicit heartbeats — manifest writes ARE the heartbeat.
+Liveness is inferred from manifest mtime + round-log mtime. If a coordinator has not updated its branch's `updated_at` in `--stale-minutes` (default 60), it's presumed crashed. Same for workers — round-log mtime is the heartbeat.
+
+The sub-agent doesn't write explicit heartbeats. Manifest writes ARE the heartbeat.
 
 ---
 
-## Coordinator role (main-agent self-direction)
+## Mission Brief: Coordinator (Phase 3)
 
-There is **no Coordinator sub-agent** in this skill. Older drafts dispatched a per-branch Coordinator subagent that held the convergence loop; in production those long-lived sub-agents drift, lose context, or hit harness session limits. **Main agent is the coordinator across all branches** — it owns the round cadence directly.
+Dispatched by main agent at the start of Phase 3. One coordinator per branch. Coordinators run in parallel across branches.
 
-Main agent's coordinator self-direction (no brief — main reads this section as its own playbook):
+### Skeleton (fill in `<...>`)
 
-- **Per round across all active branches:**
-  1. In parallel, launch `python3 <this-skill>/scripts/run-codex-review.py --branch <b> --base <base> --worktree <wt> --output <rounds-dir>/<slug>.<round>.json` for every active branch via Bash background tasks.
-  2. As each review completes (Monitor or Bash run_in_background callbacks), run `python3 <this-skill>/scripts/classify-review-feedback.py --review-json <path>`.
-     - Exit 1 (no major) → mark branch DONE with `terminal_reason: "no major in round <N>"`.
-     - Exit 0 (≥1 major) → continue.
-  3. For each major item, read cited code (Read tool, ±25 lines around `file:line`), then call `Skill(skill="do-review", args="--item <body> --code <cited_code>")` in main's own context. Record decision per `references/review-evaluation-protocol.md`.
-  4. For each branch with at least one accepted decision: dispatch ONE Applier sub-agent with the brief in "Mission Brief: Applier" below. Pre-decided fixes baked in.
-  5. As Appliers hand back, update manifest's `round_history[<N>]` per branch.
-  6. Increment per-branch round counter; loop until all branches terminal.
+```markdown
+# Mission: Drive branch `<branch>` to convergence
 
-- **Terminal states** (`manifest.status`):
-  - `DONE` — no major after a round (classifier exit 1).
-  - `CONVERGED-AT-CAP` — `<this-skill>'s` configured `max_rounds_per_branch` exhausted with at least one round of fixes pushed; remaining items captured in PR body. (See SKILL.md "Convergence taxonomy".)
-  - `CAP-REACHED` — 20 rounds (or configured cap) with no convergence. Surface for human.
-  - `BLOCKED` — oscillation (3 consecutive all-rejected rounds → reclassify as DONE; persistent ambiguous items → BLOCKED) or cross-source contradictions.
-  - `FAILED` — tooling crash past retry budget; codex plugin unavailable; Applier failed to push.
+## Context
 
-- **Non-negotiables:**
-  - Never edit inside a worktree while its Applier is running.
-  - Never `--force`. Never push to upstream.
-  - Decisions stay with main agent; appliers stay mechanical.
-  - Read the manifest, not the worktree, for state — Appliers update the manifest atomically.
+You are the coordinator for branch `<branch>` in worktree `<worktree-path>`. The
+run-codex-review skill is running on repo `<repo-root>`. The
+private fork is `<fork-owner-repo>`; upstream `<upstream-owner-repo>` is
+read-only — never push, never PR there.
 
-- **Cost / wall-time expectations** (do not be surprised; do not invent shortcuts):
-  - Each codex review wrapper call: ~3–15 minutes wall.
-  - Each Applier dispatch: ~3–10 minutes wall.
-  - Round per branch: ~10–25 minutes serial. With N parallel branches: same wall, N× quota.
-  - Typical convergence: 3–6 rounds per branch (per `references/major-vs-minor-policy.md`).
-  - Round-2+ commonly find new items (refinements of round-1 fixes). 6/8 branches in production runs needed round-2 fixes. **This is normal — do not invent `DONE-PRAGMATIC` to shortcut.**
+This branch holds one coherent concern: `<concern-one-liner>`.
+
+The skill follows `~/MISSION_PROTOCOL.md` for every sub-agent dispatch you make
+(workers, in your case).
+
+You live in the host harness as a sub-agent dispatched by the main agent. You
+own this branch end-to-end through Phase 3 only — Phases 5–8 are the main
+agent's job.
+
+What you must read before acting:
+- `<this-skill>/SKILL.md` — phase semantics and invariants.
+- `<this-skill>/references/per-branch-fix-loop.md` — the loop pseudocode you
+  implement.
+- `<this-skill>/references/review-evaluation-protocol.md` — what your workers
+  must do per round.
+- `skills/run-repo-cleanup/references/fork-safety.md` — origin vs upstream rules.
+- The manifest entry for `<branch>` at `<manifest-path>` — current rounds,
+  last_review_id, etc.
+
+Mental model after reading:
+- The convergence loop reviews → classifies → dispatches a fresh worker → waits
+  for handback → repeats. You orchestrate; workers act.
+- Terminal states: `DONE` (no major after a round), `CAP-REACHED` (20 rounds
+  with major still present), `BLOCKED` (oscillation or contradictory feedback),
+  `FAILED` (tooling crash past retry budget).
+- 3 consecutive all-rejected rounds = `DONE` (Codex stuck on items the worker
+  evaluator rejected).
+
+## Mission Objective
+
+Drive `<branch>`'s manifest entry to a terminal state with full round history.
+Every round produces a round-log file at `<rounds-dir>/<slug>.<round>.json`,
+the worker subagent's handback is recorded in `round_history`, and the
+manifest's `status` is one of {DONE, CAP-REACHED, BLOCKED, FAILED} when you
+exit.
+
+Hard constraints:
+- Never edit files in `<worktree-path>` directly. Workers do that.
+- 20-round hard cap.
+- Always invoke `/codex:review --background` (via the wrapper script). Never inline.
+- Never `--force` push.
+- Never push to upstream.
+- Always evaluate Codex's items via worker's `/do-review` — never apply directly
+  by skipping the worker.
+
+Known risks:
+- Codex CLI may rate-limit. The wrapper retries; you escalate after 3 failures.
+- A worker may crash. Its heartbeat (round-log mtime) tells you. Redispatch up
+  to 2 times; else FAILED.
+- Cross-source contradictions across rounds → BLOCKED with `terminal_reason`.
+
+Priority signal: correctness over speed. A FAILED branch is not a disaster — a
+silently-wrong DONE is.
+
+You own this mission. The destination is fixed; the path is yours.
+
+## Research & Tool Guidance
+
+- Use `<this-skill>/scripts/run-codex-review.py` for each round's review.
+- Use `<this-skill>/scripts/classify-review-feedback.py` to partition major/minor.
+- Dispatch each round's worker via the host's Agent tool (subagent_type =
+  "general-purpose" — needs Skill access for /do-review).
+- The worker's brief is the template later in this file under "Mission Brief:
+  Worker". Customize for the round.
+- After dispatch, wait for the worker's handback — it writes to
+  `<rounds-dir>/<slug>.<round>.json` and updates the manifest entry.
+- Use `loop-status.py` to inspect state (read-only).
+
+Ceilings (release valves applied):
+- Up to 20 rounds per branch (most branches converge in 3–6).
+- Up to 2 worker redispatches per round on transient failure.
+- Up to 3 codex CLI retries per round before failing the round.
+
+## Definition of Done
+
+- `<branch>`'s manifest entry has `status` ∈ {DONE, CAP-REACHED, BLOCKED, FAILED}.
+- `manifest[branch].rounds` matches `len(round_history)`.
+- Every entry in `round_history` has `{round, review_id, major_n, minor_n, completed_at}`.
+- `terminal_reason` is set, citing the trigger (e.g. "no major in round 4",
+  "20 rounds with 2 major remaining", "oscillation in round 6").
+- `<branch>`'s remote tip on `origin/<branch>` matches the worker's last
+  reported `head_sha_current`.
+
+You must achieve 100% of every criterion above before reporting completion.
+Partial completion = not complete. If a criterion is impossible to meet, report
+that finding with evidence — do not silently skip it.
+
+## Verification
+
+For DoD:
+- `python3 <this-skill>/scripts/loop-status.py --manifest <path>` — branch
+  appears with terminal state.
+- `git -C <worktree-path> log origin/<branch>..HEAD --oneline` — empty (all
+  commits pushed).
+- `wc -l < <rounds-dir>/<slug>.<round>.json` for each round entry exists.
+
+## Failure Protocol
+
+If blocked:
+1. What was attempted: round numbers, codex job ids, worker dispatches.
+2. What was discovered: any pattern (oscillation, contradictions, persistent
+   tooling failure).
+3. Why it failed: the specific blocker.
+4. What to try next: split branch / extend cap / human triage.
+
+Mark the manifest entry `status: FAILED` (or BLOCKED for semantic ambiguity)
+with `terminal_reason` citing the above. Never silently exit without updating
+the manifest.
+
+## Handback
+
+When you complete this mission, respond with:
+1. **Summary**: branch + terminal state + rounds used (one paragraph).
+2. **Changes**: list of round-log files written, last commit SHA pushed.
+3. **Evidence**: loop-status.py output showing terminal state.
+4. **Observations**: anything notable (oscillation patterns, classifier
+   misclassifications, codex flakiness).
+```
+
+### Tuning the coordinator brief
+
+- For a small branch (1 commit, low complexity): the brief above is overkill.
+  You can trim Context to ~200 words. Don't trim DoD or Verification — those
+  are the contract.
+- For a complex branch (mixed concerns, large diff): expand the Known risks
+  section with specific pitfalls (e.g. "this branch touches the auth middleware
+  — false positives are common; trust the worker evaluator").
 
 ---
 
-## Mission Brief: Applier (Phase 3, per round)
+## Mission Brief: Worker (Phase 3, per round)
 
-Dispatched by **main agent** (not by a coordinator subagent — that role was dropped) at the start of each round, after main agent has:
-1. Run the codex review wrapper for this branch.
-2. Run the classifier to partition major/minor.
-3. Evaluated each major item itself using `Skill(do-review)` in main's own context.
-4. Composed the per-item fix specs (file, line, intended code shape, rationale).
-
-The applier's job is **mechanical**: apply the pre-decided fixes, validate, push. It is not an evaluator. The brief MUST NOT mention `/do-review` — that framing pulls the agent into evaluator-mode and produces decision-only failure.
+Dispatched by the coordinator at the start of each round (after `run-codex-review.py` produces the round JSON and `classify-review-feedback.py` returns major[] non-empty).
 
 ### Skeleton
 
 ```markdown
-# Mission: Round <N> of `<branch>` — apply N pre-decided fixes, validate, push
-
-You are an APPLIER for branch `<branch>` in worktree `<worktree-path>`. The
-decisions below were made before this dispatch. Your only job is BINARY
-EXECUTION: apply, validate, push. **Anything short of pushed commits is FAILED.**
-
-This is NOT an evaluation task. Do NOT invoke `/do-review`. Do NOT propose
-alternative fixes. Do NOT produce decision JSON. Do NOT stop at "Verdict:
-apply" — apply IS the deliverable.
+# Mission: Apply round `<N>` of branch `<branch>`
 
 ## Context
 
-- **Worktree**: `<worktree-path>`
-- **Branch**: `<branch>` (on `origin/<branch>`)
-- **Base**: `<base-ref>`
-- **Round**: <N> of up to 20. Prior rounds (if any): <commit SHAs>.
-- **You own this worktree's setup.** If validation needs `node_modules` /
-  `.venv` / build artifacts that don't exist yet, install them yourself
-  (`pnpm install`, `npm install`, `bun install`, `pip install -r ...`).
-  Main agent does NOT preflight dependencies.
+You are the per-round worker for branch `<branch>` in worktree
+`<worktree-path>`, round `<N>` of up to 20. The coordinator (your dispatcher)
+expects a single round of work: evaluate this round's Codex items, apply the
+accepted subset, validate, push, hand back.
 
-## Pre-decided fixes (apply each exactly)
+This is a FRESH dispatch — you have no prior context from earlier rounds. The
+coordinator's brief (which you are reading) carries everything you need.
 
-### Fix 1: <one-line summary>
-- **File**: `<worktree-path>/<file>`
-- **Around line**: <line>
-- **Current shape** (verbatim from current code):
-  ```
-  <existing code excerpt>
-  ```
-- **Intended shape** (apply this; preserve indentation):
-  ```
-  <new code excerpt>
-  ```
-- **Rationale**: <why — main agent's evaluator decision summary>
-- **Commit message**: `<emoji> <type>(<scope>): <subject>` per
+This round's Codex review JSON is at `<round-json-path>`. The classifier's
+output (which items are `major[]`, which are `minor[]`, which are
+`unclassified_treated_as_major[]`) is the input you must act on. The
+classifier's exit code was 0 (≥1 major), so you have work to do.
+
+Prior rounds in this branch's history (summary):
+<insert prior rounds' major_n / minor_n / decisions if available>
+
+You must read before acting:
+- `<round-json-path>` — Codex's review for this round.
+- `<this-skill>/references/review-evaluation-protocol.md` — accepted/rejected/ambiguous taxonomy.
+- `skills/run-repo-cleanup/references/diff-walk-discipline.md` — staging discipline.
+- `skills/run-repo-cleanup/references/conventional-commits.md` — commit format.
+
+Mental model after reading:
+- For each `major` item, evaluate it against the actual code in
+  `<worktree-path>` using the `/do-review` skill (Skill tool with
+  skill='do-review').
+- accepted → apply the fix, commit one concern at a time.
+- rejected → record reason; skip.
+- ambiguous → record question; do NOT apply; coordinator will surface.
+
+## Mission Objective
+
+For round `<N>` of branch `<branch>`: every `major` item in `<round-json-path>`
+has a decision (accepted / rejected / ambiguous), accepted items are
+applied + committed + pushed, validation passes, and the round-log JSON
+records all decisions.
+
+Hard constraints:
+- Use `/do-review` (Skill tool) to evaluate every `major` item before applying.
+- Never apply an item without a decision — never default to accepting.
+- One concern per commit. Conventional commits + gitmoji per
   `skills/run-repo-cleanup/references/conventional-commits.md`.
-
-### Fix 2: …
-(repeat per item)
-
-## Hard constraints
-
-- One concern per commit. N fixes = N commits.
-- `git diff` before staging. `git diff --cached` before committing. No `git commit -am`.
-- Validate BEFORE push (e.g. `pnpm run build && pnpm test`, `bun run type-check`,
-  `cargo check`, or whatever the repo's `CONTRIBUTING.md` / `AGENTS.md` says).
+- `git diff` before staging. `git diff --cached` before committing. No
+  `git commit -am`.
+- Validation BEFORE push (e.g. `python3 -m py_compile <changed-files>`,
+  `bun run type-check`, `cargo check`, or repo-local check).
 - Push to `origin/<branch>` only. Never `--force`. Never to upstream.
 - Stay inside `<worktree-path>`. Do not `cd` elsewhere.
 
-## Definition of Done (binary)
+Known risks:
+- Codex sometimes loops on items the prior round's evaluator already rejected.
+  If this round contains an item that's identical to a prior-round rejected
+  item, mark it ambiguous (oscillation signal for the coordinator).
+- Codex's suggested fix may be technically correct but break a downstream
+  caller. The /do-review evaluator should catch this; if uncertain, mark
+  ambiguous.
 
-- N new commits exist on local HEAD with conventional + gitmoji messages.
-- `git -C <worktree-path> diff --cached` returns empty.
+Priority: correctness over volume. A round with 1 carefully-evaluated accept
+is better than a round with 5 sloppy accepts.
+
+You own this round. The coordinator orchestrates; you decide the per-item
+fate.
+
+## Research & Tool Guidance
+
+- Read `<round-json-path>` — find every item with id, severity_raw, file, line, body.
+- Use `/do-review` (Skill tool: skill='do-review') to evaluate. Pass it the
+  cited code from `<worktree-path>/<file>` around `<line>` (you may need to
+  read 20–50 lines of context).
+- For each item, decide per `references/review-evaluation-protocol.md`:
+  - accepted → produce the fix; apply via Edit tool inside the worktree.
+  - rejected → record `decision: rejected, reason: <why>`.
+  - ambiguous → record `decision: ambiguous, question: <what needs human>`.
+- Commit accepted fixes one concern at a time:
+  - `git -C <worktree> add <files-for-this-concern>`
+  - `git -C <worktree> diff --cached`
+  - `git -C <worktree> commit -m "<emoji> <type>(<scope>): <subject>"`
+- Validate (language-appropriate fast check) before push.
+- Push: `git -C <worktree> push origin <branch>` (no `--force`).
+
+Ceilings:
+- Up to 5 distinct fix approaches per major item. If the first approach lands
+  cleanly, you're done with that item.
+- Up to 50 lines of cited code read per item. If the answer needs more, mark
+  ambiguous (the item is too entangled).
+- Up to 1 retry on validation failure (revert + retry once). After that,
+  rejected with `reason: "post-fix validation failed"`.
+
+## Definition of Done
+
+- Every `major` item has a decision in your round-log output: `accepted` /
+  `rejected` / `ambiguous`.
+- Every accepted item produced one or more commits with conventional + gitmoji
+  format.
+- `git diff --cached` returns empty (no leftover staged changes).
 - Validation command exits 0.
-- `git -C <worktree-path> push origin <branch>` succeeded.
-- `git -C <worktree-path> rev-parse origin/<branch>` matches local HEAD.
-- Manifest entry updated: `head_sha_current`, `round_history[<N>]`.
+- `git push origin <branch>` succeeded (no rejection, no force).
+- Round-log JSON at `<rounds-dir>/<slug>.<N>.json` has been updated with
+  per-item decisions and final HEAD SHA.
+- Manifest entry's `last_classifier_summary`, `head_sha_current`, and
+  `round_history[<N>]` reflect this round's outcome.
 
-Anything short of all of the above = FAILED. Hand back FAILED with
-`terminal_reason` naming the specific gate that did not pass.
-
-## Failure protocol
-
-- If a fix's intended shape doesn't apply cleanly (file moved, line shifted,
-  current shape mismatch): STOP, do NOT improvise. Hand back FAILED with
-  `terminal_reason: "fix N intended-shape mismatch — main agent re-evaluate"`.
-  Main agent will re-decide and re-dispatch.
-- If validation fails after a fix: revert the offending commit, hand back
-  FAILED with the validation output.
-- If push is rejected (non-fast-forward, hook failure): hand back FAILED with
-  the rejection output. NEVER `--force`.
-
-## Handback shape
-
-```json
-{
-  "applied": <N>,
-  "pushed": true | false,
-  "head_sha": "<sha>",
-  "validation_exit": 0 | <nonzero>,
-  "commit_shas": ["<sha1>", ...],
-  "terminal_reason": null | "<one-sentence>"
-}
-```
-```
-
-### Why no `/do-review` in this brief
-
-Empirically verified across multiple production runs: when the worker brief mentions `/do-review`, ~100% of dispatched workers stop after producing decision JSON without applying or pushing. The /do-review framing pulls the agent into evaluator-mode; "Verdict: apply" feels like the deliverable to the agent. Splitting evaluation (main agent) from application (worker, with explicit pre-decided fix specs and binary push DoD) is the empirical fix. Do not re-introduce eval framing into the worker brief.
+100% required. Partial = incomplete.
 
 ## Verification
 

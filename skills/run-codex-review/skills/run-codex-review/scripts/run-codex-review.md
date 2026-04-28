@@ -1,40 +1,27 @@
 # run-codex-review.py
 
-Wrapper around `node codex-companion.mjs review --json` (or `adversarial-review --json`) for one branch in one worktree. Runs the review synchronously, normalizes output to the JSON schema in `references/codex-review-contract.md`, writes the round log, and updates the manifest.
+Wrapper around `/codex:review --background` for one branch in one worktree. Launches the background review, polls to completion, fetches the artifact, normalizes to the JSON schema in `references/codex-review-contract.md`, writes the round log, and updates the manifest.
 
 **This is the single entry point for "do one round of review on this branch".** Subagents call it once per round.
-
-The wrapper invokes the OpenAI Codex Claude Code plugin's companion script — it discovers `codex-companion.mjs` automatically (version-agnostic), so no per-environment adjustment is required.
 
 ## Usage
 
 ```bash
-# Default: native review (free-form text parsed via regex)
 python3 scripts/run-codex-review.py --branch feat/foo --worktree /Users/.../wt-feat-foo
-
-# Pick base branch
 python3 scripts/run-codex-review.py --branch feat/foo --worktree /path --base canary
-
-# Wall-clock cap (Codex review can hang on remote tools)
-python3 scripts/run-codex-review.py --branch feat/foo --worktree /path --timeout 1500
-
-# Adversarial mode — structured findings with severities critical|high|medium|low
-python3 scripts/run-codex-review.py --branch feat/foo --worktree /path --mode adversarial
-
-# Dry-run prints the resolved codex-companion.mjs path + the planned invocation
+python3 scripts/run-codex-review.py --branch feat/foo --worktree /path --timeout 600
 python3 scripts/run-codex-review.py --branch feat/foo --worktree /path --dry-run
 ```
 
 ## Behavior
 
 1. Pre-flight: verify `--worktree` exists and is on `--branch`.
-2. Discover `codex-companion.mjs` (env-var first, then `~/.claude/plugins/cache/openai-codex/codex/<latest>/`).
-3. Invoke `node codex-companion.mjs <review|adversarial-review> --base <ref> --scope branch --json` synchronously inside the worktree.
-4. Parse the JSON envelope:
-   - **`review` mode**: extract `codex.stdout` (free-form text) and regex-parse `[severity] Title — file:line` items.
-   - **`adversarial` mode**: read `result.findings[]` directly (structured; no regex).
-5. Write `<rounds-dir>/<slug>.<round>.json` with the round-log schema.
-6. Update the manifest entry's `last_review_id`, `last_review_at`, `last_status`, `rounds`, `head_sha_current`, and append a `round_history` entry.
+2. `cd` into the worktree.
+3. Invoke the codex CLI form (see "Adjustment point" below).
+4. Parse the launch output for the background job id.
+5. Poll the job status every `--poll-interval` seconds until completion or `--timeout`.
+6. On completion: fetch the artifact, normalize to the schema, write `<rounds-dir>/<slug>.<round>.json`.
+7. Update the manifest entry's `last_review_id`, `last_review_at`, `last_status`, `rounds`, `head_sha_current`, and append a `round_history` entry.
 
 ## Flags
 
@@ -42,31 +29,37 @@ python3 scripts/run-codex-review.py --branch feat/foo --worktree /path --dry-run
 |---|---|---|
 | `--branch <b>` | required | Branch under review. Must match the worktree's HEAD. |
 | `--worktree <path>` | required | Worktree directory; codex runs from here. |
-| `--base <ref>` | `main` | Base ref for the diff. |
-| `--mode review\|adversarial` | `review` | `review` = native (free-form text parsed); `adversarial` = adversarial-review (structured `findings[]`). |
-| `--manifest <path>` | `<repo-root>/.codex-review-manifest.json` | Manifest to update. Defaults to repo-local (no `/tmp` cross-repo collisions). |
-| `--rounds-dir <path>` | `<repo-root>/.codex-review-rounds/` | Round-log directory. Same defaulting logic. |
-| `--output <path>` | (computed) | Override the round-log output path. If unset, computed from `<rounds-dir>` + branch slug + round number. |
-| `--timeout <n>` | `1500` (25 min) | Wall-clock cap. On hang, exit 1 with `last_status: "timeout"` and `terminal_reason: "review-hang past wall-clock cap"`. |
-| `--dry-run` | off | Resolve `codex-companion.mjs` path, validate worktree state, print the intended invocation. Don't run codex. |
+| `--base <ref>` | `main` | Base passed to the codex CLI (if it accepts one). |
+| `--manifest <path>` | `/tmp/codex-review-manifest.json` | Manifest to update. |
+| `--rounds-dir <path>` | `/tmp/codex-review-rounds/` | Round-log directory. |
+| `--timeout <n>` | `1800` (30 min) | Seconds to wait for the background job to complete. |
+| `--poll-interval <n>` | `30` | Seconds between status polls. |
+| `--dry-run` | off | Print the plan; don't invoke codex. |
 
 ## Exit codes
 
 | Code | Meaning | Caller (subagent) action |
 |---|---|---|
 | `0` | Review available; round log written | Run `classify-review-feedback.py` next. |
-| `1` | Timeout (wall-clock cap; manifest marked `timeout`) | Retry the round once; else mark FAILED. |
-| `2` | Codex CLI failed (manifest marked `failed`) | Retry the round once; else mark FAILED. |
-| `127` | Codex plugin not installed | Surface to user; install via Claude Code plugin manager. |
+| `1` | Timeout (manifest marked `timeout`) | Retry the round (max 3); else mark FAILED. |
+| `2` | Codex/CLI failed (manifest marked `failed`) | Retry the round (max 3); else mark FAILED. |
 
-## Plugin discovery
+## Adjustment point — codex CLI form
 
-The wrapper discovers `codex-companion.mjs` automatically:
+The exact CLI form depends on your Codex installation. Edit `invoke_codex()` in the script to match.
 
-1. **`${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs`** — set by Claude Code when the plugin is loaded in a live session.
-2. **Latest version under `~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs`** — fallback for when the env var isn't set. Versions are sorted semver-ascending; the latest installed wins. Non-semver directory names sort first (so `1.0.4` beats `dev`).
+Default attempts (in order):
 
-If neither path resolves, the wrapper exits with code 127 and a message pointing at https://github.com/openai/codex-plugin-cc.
+```python
+candidates = [
+    ["codex", "review", "--background", "--branch", branch, "--base", base],
+    ["codex", "review", "--background"],
+]
+```
+
+If your install uses a different form (e.g. `claude codex review`, `cdx review`, `gh codex`), update the list. The script picks the first form that doesn't return `127` (command not found).
+
+Same for the **status** poll (`codex review --status <id>`) and **fetch** (`codex review --fetch <id>`) — adjust if your install uses different subcommands.
 
 ## Schema of the round-log JSON
 
@@ -74,115 +67,95 @@ Per `references/codex-review-contract.md`:
 
 ```json
 {
-  "review_id": "<codex thread id>",
+  "review_id": "cdx-job-abc123",
   "branch": "feat/foo",
   "head_sha": "deadbeef1234...",
   "started_at": "2026-04-26T10:00:00Z",
   "finished_at": "2026-04-26T10:04:32Z",
   "raw_text": "<full Codex output verbatim>",
   "items": [
-    { "id": "cdx-0", "severity_raw": "P1", "file": "src/foo.ts", "line": 42, "body": "..." }
+    { "id": "...", "severity_raw": "...", "file": "...", "line": 42, "body": "..." }
   ]
 }
 ```
 
-In `review` mode, `items[]` is populated by regex-parsing `codex.stdout`. Token recognized in the severity slot: `P1` / `P2` / `P3` / `P4` / `critical` / `high` / `medium` / `low` (case-insensitive).
+`items` is populated when the artifact is structured JSON. When unstructured (free text), `items` is `[]` and the classifier scans `raw_text` instead.
 
-In `adversarial` mode, `items[]` is populated by mapping `result.findings[]`:
-- `severity_raw` ← `severity` (`critical | high | medium | low`)
-- `file` ← `file`
-- `line` ← `line_start`
-- `body` ← `title + body + recommendation` joined with blank lines
+## Job-id parsing
 
-## codex-companion.mjs JSON shapes
+The script tries these patterns on launch stdout (case-insensitive):
 
-`review --json`:
-```json
-{
-  "review": "Review",
-  "target": { "mode": "branch", "label": "...", "baseRef": "main" },
-  "threadId": "...",
-  "codex": { "status": 0, "stdout": "<free-form text>", "stderr": "...", "reasoning": null }
-}
+```
+\bjob[- ]?id[:=]\s*([A-Za-z0-9_-]+)
+\b(cdx[- ]?job[- ]?[A-Za-z0-9_-]+)
+\bbackground job[:=]\s*([A-Za-z0-9_-]+)
 ```
 
-`adversarial-review --json`:
-```json
-{
-  "review": "Adversarial Review",
-  "result": {
-    "verdict": "approve|needs-attention",
-    "summary": "...",
-    "findings": [
-      { "severity": "critical|high|medium|low", "title": "...", "body": "...",
-        "file": "src/foo.ts", "line_start": 42, "line_end": 42,
-        "confidence": 0.0, "recommendation": "..." }
-    ],
-    "next_steps": [...]
-  },
-  "rawOutput": "...",
-  "parseError": null
-}
+If none match, a synthetic id `cdx-job-unknown-<unix-ts>` is generated and a warning is printed. The synthetic id is still recorded in the manifest so the round-log filename is unique.
+
+## Polling loop
+
 ```
+status = "running"
+while elapsed < timeout:
+    rc, out, _ = sh(["codex", "review", "--status", job_id])
+    if "completed" in out: status = "completed"; fetch; break
+    if "failed" in out:    status = "failed"; break
+    sleep(poll_interval)
+```
+
+If polling exceeds `--timeout`, the script returns exit 1 with `last_status: "timeout"` in the manifest. The subagent decides whether to retry (max 3 retries per round).
 
 ## Concurrency safety
 
-`run-codex-review.py` is invoked **once per round per branch** by exactly **one subagent**. No file-locking on the round-log write (each round-log filename is unique by `slug.round.json`). Manifest updates use `tempfile + os.replace` for atomicity, but the protocol assumes one subagent per branch — concurrent invocations on the same branch are an error.
+`run-codex-review.py` is invoked **once per round per branch** by exactly **one subagent**. No file-locking is needed for the round-log write (each round-log filename is unique by `slug.round.json`). Manifest updates use `tempfile + os.replace` for atomicity, but the protocol assumes one subagent per branch — concurrent invocations on the same branch are an error.
 
-Multiple branches can be reviewed in parallel: each branch's invocation is independent. Parallelism comes from concurrent subprocesses, not from a `--background` flag (the companion's `review` and `adversarial-review` subcommands ignore `--background` — they always run synchronously).
-
-## Sample output (success, native review)
+## Sample output (success)
 
 ```
-running codex-companion review (sync) in /Users/.../wt-feat-foo ... timeout=1500s
-  ✓ round log written: /Users/.../repo/.codex-review-rounds/feat-foo.03.json (items=4)
+launching /codex:review --background in /Users/.../myrepo-wt-feat-foo ...
+  job id: cdx-job-7f8a9c; polling every 30s up to 1800s...
+  ✓ round log written: /tmp/codex-review-rounds/feat-foo.03.json
   ✓ manifest updated: rounds=3
 ```
 
 ## Sample output (timeout)
 
 ```
-running codex-companion review (sync) in /Users/.../wt-feat-foo ... timeout=1500s
-✗ codex review timed out after 1500s
+launching /codex:review --background in /Users/.../myrepo-wt-feat-foo ...
+  job id: cdx-job-7f8a9c; polling every 30s up to 1800s...
+✗ job cdx-job-7f8a9c timed out after 1800s
 ```
 
-(exit 1; manifest `last_status: "timeout"`, `terminal_reason: "review-hang past wall-clock cap"`)
-
-## Sample output (plugin missing)
-
-```
-codex-companion.mjs not found. Install the OpenAI Codex Claude Code plugin
-(https://github.com/openai/codex-plugin-cc) — expected at $CLAUDE_PLUGIN_ROOT/scripts/codex-companion.mjs
-or at ~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs.
-```
-
-(exit 127; manifest `last_status: "plugin-missing"`)
+(exit 1; manifest `last_status: "timeout"`)
 
 ## Failure modes
 
 | Failure | Wrapper behavior | Recovery |
 |---|---|---|
-| Plugin not installed | Exit 127; `last_status: "plugin-missing"` | Install plugin; resume. |
+| `codex` CLI not on PATH | Exit 2; `last_status: "failed"` | Install codex; resume. |
 | Worktree not on the right branch | Exit 2 with stderr; no manifest update | `git -C <wt> checkout <branch>`; retry. |
-| codex-companion ran but exited non-zero with no stdout | Exit 2; `last_status: "failed"` | Subagent retries once. |
-| codex-companion ran with non-zero exit but stdout has parseable JSON | Wrapper logs warning, normalizes anyway | Round log written; loop continues. |
-| Wall-clock timeout | Exit 1; `last_status: "timeout"` | Subagent retries once OR mark FAILED. |
-| Output doesn't match expected JSON envelope | Exit 0 with `items: []`, raw text in `raw_text` | Classifier falls back to regex over `raw_text`. |
-| Branch HEAD changed mid-review | Not detected by wrapper; review may be stale | Subagent discards round, retries from current HEAD. |
+| Network failure mid-launch | Exit 2; `last_status: "failed"` | Subagent retries (max 3). |
+| Job stuck `running` past timeout | Exit 1; `last_status: "timeout"` | Subagent retries OR raises timeout. |
+| Job `completed` but no artifact | Exit 2; `last_status: "failed"` | Investigate codex install; surface to human. |
+| Artifact malformed JSON | Exit 0; `items: []`, `raw_text` populated | Classifier falls back to regex; loop continues. |
+| Branch HEAD changed mid-review | Wrapper warns via raw_text comparison; review may be stale | Subagent discards round, retries from current HEAD. |
 
 ## When to run
 
 - Per round, by exactly one subagent per branch.
-- Never invoke twice in parallel on the same branch (use a different worktree if you need parallel branches).
+- Never invoke twice in parallel on the same branch.
+- Never invoke from outside the branch's worktree.
 
 ## Read/write surface
 
-- **Reads**: `<worktree>/...`, manifest, the codex-companion script.
+- **Reads**: `<worktree>/...`, manifest, codex CLI status/fetch endpoints.
 - **Writes**: `<rounds-dir>/<slug>.<round>.json` (new each round), manifest entry for this branch.
 - **Does NOT**: push, commit, modify the worktree, open PRs, edit other branches' entries.
 
-## See also
+## Extending
 
-- `scripts/trigger-codex-rescue.py` — the Phase 6 sibling that wraps `codex-companion.mjs task --background` for the rescue review on an open PR.
-- `references/codex-review-contract.md` — the round-log schema this wrapper produces.
-- `references/event-driven-orchestration.md` — how main agent dispatches this wrapper in parallel across N branches via `Bash run_in_background`.
+- Replace `invoke_codex()`'s body with your codex CLI form. Keep the return contract `(rc, stdout, stderr)`.
+- Replace `parse_job_id()`'s patterns with your codex's launch-output convention.
+- Replace `poll_job()`'s status/fetch with your codex's polling contract.
+- Add a per-call `--policy <path>` flag if you want to override the classifier policy from this script (currently the classifier is invoked separately).
