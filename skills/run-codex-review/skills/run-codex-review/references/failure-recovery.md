@@ -27,18 +27,18 @@ Codex CLI crashed, push was rejected, validation kept failing past retry budget.
 2. Common causes:
    - **codex CLI not on PATH**: install / fix shell. Re-run `audit-review-state.py` to confirm the environment is sound.
    - **Push rejected (non-fast-forward)**: someone else pushed to the branch. `git fetch origin && git pull --rebase` (only on this branch in its worktree); resume from current HEAD.
-   - **Validation kept failing**: usually a syntax error introduced by the worker's last fix. Look at the diff of the last commit; the worker should have caught this and reverted; if not, manual revert + restart.
-3. Decide: redispatch the coordinator (resumes from `rounds + 1` if state is recoverable), or split-and-restart, or abandon.
-4. Never retry a `FAILED` round more than once at the wrapper level. Cap subagent-level retries at 3.
+   - **Validation kept failing**: usually a syntax error introduced by the Applier's last fix. Look at the diff of the last commit; the Applier should have caught this and reverted; if not, manual revert + restart.
+3. Decide: re-run the round (resumes from current `rounds`), or split-and-restart, or abandon.
+4. Never retry a `FAILED` round more than once at the wrapper level. Cap Applier-level retries at 3.
 
-### BLOCKED — coordinator-level
+### BLOCKED — main agent decision
 
-The coordinator marks BLOCKED when worker's `/do-review` evaluator marks items ambiguous in 2+ consecutive rounds, OR an oscillation pattern emerges.
+Main agent marks BLOCKED when its `/do-review` evaluation returns ambiguous items in 2+ consecutive rounds, OR an oscillation pattern emerges.
 
-**Trigger conditions** (coordinator sets BLOCKED on any of these):
-- Two consecutive rounds where worker emitted ambiguous items.
-- Same major item recurs after the worker (and `/do-review`) accepted it (oscillation: applied fix didn't satisfy Codex; second attempt also failed).
-- A major item requires a decision outside this branch's scope (worker marked it ambiguous with a question).
+**Trigger conditions** (main agent sets BLOCKED on any of these):
+- Two consecutive rounds where main-agent decisions emitted ambiguous items.
+- Same major item recurs after main-agent accepted it (oscillation: applied fix didn't satisfy Codex; second attempt also failed).
+- A major item requires a decision outside this branch's scope (main-agent marked it ambiguous with a question).
 
 **Recovery**:
 1. Read `terminal_reason` for the contradiction or oscillation cause.
@@ -48,23 +48,24 @@ The coordinator marks BLOCKED when worker's `/do-review` evaluator marks items a
    - Split the branch so the conflicting concerns separate.
 3. Document the decision in the manifest's `terminal_reason` for posterity.
 
-### Worker sub-agent crash mid-round
+### Applier sub-agent crash mid-round
 
-The worker dies before writing its handback. Coordinator detects via heartbeat (round-log mtime / manifest write timestamp).
-
-**Recovery**:
-1. Coordinator reads round-log file (if any) to determine partial state.
-2. Redispatch a fresh worker for the same round (rounds counter not incremented).
-3. After 2 worker redispatches without progress, mark FAILED for the branch.
-
-### Coordinator sub-agent crash
-
-Main agent detects via stale `updated_at` on the manifest entry.
+The Applier dies before writing its handback. Main agent detects via heartbeat (round-log mtime / manifest write timestamp).
 
 **Recovery**:
-1. Main agent reads manifest entry to determine state (which round was active).
-2. Redispatch the coordinator with the same brief; it resumes from `rounds + 1` (or from the current round if no round-log written).
-3. After 2 redispatches without progress, mark FAILED for the branch.
+1. Main agent reads round-log file (if any) to determine partial state.
+2. Redispatch a fresh Applier for the same round (rounds counter not incremented).
+3. After 2 Applier redispatches without progress, mark FAILED for the branch.
+
+### Main-agent session interrupted mid-loop
+
+Main agent IS the coordinator; if its session is interrupted (host reboot, fresh chat), the manifest carries enough state to resume.
+
+**Recovery**:
+1. Re-invoke the skill; Phase 0 audit detects the in-progress manifest.
+2. For each branch with `status: IN-LOOP` (or no terminal state set), main agent reads manifest entry to determine which round was active.
+3. Resume from `rounds + 1` (or re-run the current round if no round-log was written).
+4. After 2 resumes without progress on the same branch, mark FAILED for that branch.
 
 ### Lost worktree
 
@@ -76,7 +77,7 @@ git worktree prune                           # clean up dangling refs
 git worktree add <expected-path> <branch>    # recreate from manifest
 ```
 
-The coordinator resumes from `rounds + 1` because all round logs and state are external to the worktree (in `<rounds-dir>` and the manifest).
+Main agent resumes from `rounds + 1` because all round logs and state are external to the worktree (in `<rounds-dir>` and the manifest).
 
 If the branch itself is also lost (only existed locally, no `origin/<branch>`), it's gone. Mark `FAILED`; surface for human; recover from `backup/codex-review/<branch>/<timestamp>` ref if Phase 1 redistribution created one.
 
@@ -89,7 +90,7 @@ A worker's worktree shows uncommitted changes from a prior round failure.
 2. `git status` and `git diff` to inspect.
 3. If the changes are recoverable: complete the commit, push, resume.
 4. If not: `git stash push -u -m "phase-3-recovery-<branch>-<round>"`, restore from manifest's `head_sha_current`, re-classify the last round to decide whether to retry.
-5. If the worktree is irrecoverably mangled, `git worktree remove --force <path>`, recreate per "Lost worktree" recovery above. Mark the round failed; let the coordinator decide redispatch.
+5. If the worktree is irrecoverably mangled, `git worktree remove --force <path>`, recreate per "Lost worktree" recovery above. Mark the round failed; main agent decides redispatch.
 
 ---
 

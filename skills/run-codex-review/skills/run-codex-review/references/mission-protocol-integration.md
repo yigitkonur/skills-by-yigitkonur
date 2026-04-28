@@ -179,30 +179,32 @@ Before sending any brief, ask:
 
 If any answer is no, revise the brief before dispatch. The brief is the lever — wrong brief = wrong work, no matter how capable the agent is.
 
-## The two-level pattern in Phase 3
+## Eval-vs-apply role split in Phase 3
 
-The coordinator dispatches a fresh worker per round. The coordinator's brief and the worker's brief are different:
+Main agent runs the convergence loop directly (it IS the coordinator across all branches; there is no Coordinator sub-agent). Per round per branch, main agent:
+1. Runs the codex review wrapper (Bash background).
+2. Runs the classifier.
+3. Evaluates each major item via `Skill(do-review)` in own context.
+4. Dispatches a fresh **Applier** sub-agent with the decisions baked in as pre-decided fix specs.
 
-- **Coordinator** orchestrates over time (loop counter, terminal-state decision, dispatch).
-- **Worker** acts in a moment (one round, one fix-set, one push).
+The Applier brief is the only brief in Phase 3. Its DoD is **binary**: "N pre-decided fixes applied; tests pass; commits pushed to `origin/<branch>`". The brief does NOT mention `/do-review` — that framing causes systematic decision-only failure.
 
-Both follow MISSION_PROTOCOL. The coordinator's DoD is "branch reaches terminal state with all rounds logged"; the worker's DoD is "this round's accepted items applied, validated, pushed".
-
-The two-level structure ensures:
-- Each round's worker is fresh (no stale context).
-- Each round's brief gets the full protocol treatment (no degraded discipline over time).
-- The coordinator owns the convergence decision, not any single worker.
-- Failure of one worker doesn't compound across rounds (next round = fresh worker).
+This eval-vs-apply split ensures:
+- Each round's Applier is fresh (no stale context).
+- Each round's brief gets the full MISSION_PROTOCOL treatment.
+- Decisions live with main agent (which has the cross-branch context); application lives with the short-lived Applier.
+- Workers reliably push (binary DoD) instead of stopping at "Verdict: apply" (which is what happens when the brief contains `/do-review`).
 
 ## Common sub-agent dispatch failures (skill-specific)
 
 | Failure | Brief defect |
 |---|---|
-| Worker over-applies items the user would have rejected | DoD didn't require evaluator-style accepted / rejected / ambiguous decision |
-| PR body has no reviewer questions | Brief didn't make "explicit questions ≥ 3" a BSV criterion |
-| PR body exceeds 50k chars | Brief didn't include the wc -c verification step |
-| Evaluator marks everything accepted | Brief didn't include the rejection criteria + ambiguous escape valve |
-| Coordinator never marks DONE despite no major items | Brief didn't make the classifier exit-1 condition a BSV terminal trigger |
+| Applier produces decision JSON but never pushes | Brief mentioned `/do-review` — pulled the agent into evaluator-mode. Remove `/do-review` from worker briefs entirely. |
+| Applier applies items main agent already rejected | Brief baked in items beyond the accepted subset. Filter before dispatch. |
+| PR body has no reviewer questions | PR-Creator brief didn't make "explicit questions ≥ 3" a BSV criterion |
+| PR body exceeds 50k chars | PR-Creator brief didn't include the `wc -c` verification step |
+| Evaluator marks everything accepted | Phase 7 brief didn't include the rejection criteria + ambiguous escape valve |
+| Loop never marks DONE despite no major items | Main agent's loop pseudocode skipped the classifier-exit-1 short-circuit |
 
 When you see one of these, fix the brief, not the agent.
 

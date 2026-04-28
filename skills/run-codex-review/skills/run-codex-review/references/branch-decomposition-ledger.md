@@ -144,11 +144,11 @@ Transitions:
                  (created)
                     │
                     ▼
-                SPAWNED  ──(main agent dispatches coordinator)──▶  IN-LOOP
-                                                                    │
-            ┌──────────────────────────────────────────────┬────────┼──────────────────┐
-            ▼                                              ▼        ▼                  ▼
-          DONE                                        CAP-REACHED  BLOCKED          FAILED
+                SPAWNED  ──(main agent enters Phase 3 loop, round 1)──▶  IN-LOOP
+                                                                          │
+            ┌────────────────────────────┬──────────────────────┬────────┼─────────┬──────────┐
+            ▼                            ▼                      ▼        ▼         ▼          ▼
+          DONE              CONVERGED-AT-CAP              CAP-REACHED  BLOCKED  FAILED
             │                                                 │      │                │
             │ (Phase 5: PR-Creator dispatched)                └──────┴────────────────┘
             ▼                                                       (no further phases;
