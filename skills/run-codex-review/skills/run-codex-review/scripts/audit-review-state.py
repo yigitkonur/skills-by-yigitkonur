@@ -3,15 +3,19 @@
 
 Detects:
   - Orphan worktrees matching <repo>-wt-* that aren't in the manifest.
-  - Stale or missing /tmp/codex-review-manifest.json.
+  - Stale or missing manifest at the repo-local default path.
   - Round logs whose mtime is older than --stale-minutes.
   - In-flight Codex jobs from prior runs (best-effort via manifest entries).
 
+Manifest defaults to the repo-local path `<repo-root>/.codex-review-manifest.json`
+(matches the wrappers). Override with `--manifest <path>` if you've placed the
+manifest elsewhere.
+
 Usage:
-    python3 audit-review-state.py
+    python3 audit-review-state.py                                 # repo-local defaults
     python3 audit-review-state.py --json
-    python3 audit-review-state.py --manifest /tmp/codex-review-manifest.json
-    python3 audit-review-state.py --rounds-dir /tmp/codex-review-rounds/
+    python3 audit-review-state.py --manifest /custom/path.json
+    python3 audit-review-state.py --rounds-dir /custom/rounds-dir/
     python3 audit-review-state.py --stale-minutes 60
 
 Exit codes:
@@ -31,8 +35,11 @@ import sys
 import time
 from pathlib import Path
 
-DEFAULT_MANIFEST = "/tmp/codex-review-manifest.json"
-DEFAULT_ROUNDS_DIR = "/tmp/codex-review-rounds/"
+# Defaults are computed lazily from the repo root when args are parsed —
+# see _resolve_default_paths() below. The /tmp legacy paths are checked
+# only as a fallback for older skill versions' state files.
+LEGACY_TMP_MANIFEST = "/tmp/codex-review-manifest.json"
+LEGACY_TMP_ROUNDS_DIR = "/tmp/codex-review-rounds/"
 DEFAULT_STALE_MINUTES = 60
 TERMINAL_STATES = {"DONE", "CAP-REACHED", "BLOCKED", "FAILED"}
 
@@ -252,8 +259,10 @@ def render(report: dict, audit_output: str, audit_rc: int) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--manifest", default=DEFAULT_MANIFEST)
-    ap.add_argument("--rounds-dir", default=DEFAULT_ROUNDS_DIR)
+    ap.add_argument("--manifest", default=None,
+                    help="Path to manifest. Default: <repo-root>/.codex-review-manifest.json (repo-local).")
+    ap.add_argument("--rounds-dir", default=None,
+                    help="Path to round-logs dir. Default: <repo-root>/.codex-review-rounds/")
     ap.add_argument("--stale-minutes", type=int, default=DEFAULT_STALE_MINUTES)
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
@@ -262,6 +271,21 @@ def main() -> int:
     if root is None:
         print("not inside a git repository", file=sys.stderr)
         return 2
+
+    # Repo-local defaults (matches the wrappers); fall back to legacy /tmp paths
+    # only if a stale manifest exists there.
+    if args.manifest is None:
+        repo_local = str(root / ".codex-review-manifest.json")
+        if Path(repo_local).is_file() or not Path(LEGACY_TMP_MANIFEST).is_file():
+            args.manifest = repo_local
+        else:
+            args.manifest = LEGACY_TMP_MANIFEST  # legacy, surface as actionable
+    if args.rounds_dir is None:
+        repo_local_rounds = str(root / ".codex-review-rounds")
+        if Path(repo_local_rounds).is_dir() or not Path(LEGACY_TMP_ROUNDS_DIR).is_dir():
+            args.rounds_dir = repo_local_rounds
+        else:
+            args.rounds_dir = LEGACY_TMP_ROUNDS_DIR
 
     audit_path = find_run_repo_cleanup_audit()
     audit_output, audit_rc = "", 0
