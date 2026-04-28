@@ -4,9 +4,11 @@ This skill is written natively for Claude Code but is designed to work on any ru
 
 The table below is self-contained. If the `enhance-prompt` skill is also installed in this pack, its `ask-user-tools.md` reference uses the same convention — the two are intentionally kept in sync.
 
+Used by `modes/interactive-brainstorm.md`. Solo mode does not need this file (no ask-user tool required).
+
 ## Runtime compatibility matrix
 
-This skill requires ONE capability: the ability to ask the user a structured question mid-workflow. The tool's name and signature vary by runtime; the workflow logic is identical.
+`modes/interactive-brainstorm.md` requires ONE capability: the ability to ask the user a structured question mid-workflow. The tool's name and signature vary by runtime; the workflow logic is identical.
 
 ### Full runtime → tool lookup
 
@@ -67,7 +69,7 @@ questions: [
 
 ## The five forks mapped to the ask-user tool
 
-Each fork in the workflow dispatches one tool call:
+Each fork in `modes/interactive-brainstorm.md` dispatches one tool call:
 
 | Fork | Typical question count | multiSelect? |
 |---|---|---|
@@ -130,7 +132,7 @@ Other forks follow the same pattern: same question content, same option set, ren
 When running on Claude Code specifically, a few things work extra well:
 
 - **Markdown tables** render cleanly in the user's terminal — use them freely for the Evaluation matrix and Ranked summary
-- **Code blocks** render with syntax highlighting — use for ASCII decomposition trees and Concept Maps
+- **Code blocks** render with syntax highlighting — use for ASCII decomposition trees and Connection Circles
 - **The `(Recommended)` suffix** is a rendering convention — highlighted in Claude Code's UI
 - **`multiSelect: true`** is first-class in AskUserQuestion
 
@@ -154,6 +156,8 @@ A few runtimes are text-completion only (no tool calls). In that case:
 
 This works but is friction-heavy. If the user is on such a runtime, suggest they switch to a tool-capable runtime for this particular skill. The skill still works; it's just less fluid.
 
+**Do NOT silently degrade Interactive into Solo.** If the runtime can't support forks at all and the user wants Interactive, surface the limitation explicitly and offer Solo with a note that user co-authorship was requested but not feasible.
+
 ## Mirroring the enhance-prompt convention
 
 If the `enhance-prompt` skill is installed in this pack, its ask-user-tool reference uses the same convention and the two files contain equivalent runtime mappings. Duplicating the table locally means this skill is usable standalone (one-level-deep rule).
@@ -169,3 +173,4 @@ When a new runtime emerges with its own ask-user tool, update both files. The ta
 | Skipping a fork because the tool call failed | Never skip — fall back to prose; a fork missed is a fork failed |
 | Proliferating 5+ questions in a single tool call | Cap at 4 — Claude Code's limit and most portable |
 | Manually adding "Other" to the options list | Most runtimes auto-add it; mimicking keeps prompts clean |
+| Silently degrading Interactive to Solo when ask-user fails | Use prose fallback or surface the limitation; don't change Mode without telling the user |

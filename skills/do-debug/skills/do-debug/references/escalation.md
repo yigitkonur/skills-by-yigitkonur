@@ -1,6 +1,6 @@
 # Escalation — The 3-Fails Gate
 
-Three failed fixes means you are in the wrong frame. This file defines what counts as a "failed fix," how to re-enter the prior phase cleanly, when to route out to `do-brainstorm`, and how to write the handoff so the receiving skill has the context.
+Three failed fixes means you are in the wrong frame. This file defines what counts as a "failed fix," how to re-enter the prior phase cleanly, when to route out to `do-think` (Mode: Interactive), and how to write the handoff so the receiving skill has the context.
 
 ## What "one failed fix" means
 
@@ -23,7 +23,7 @@ The distinction matters because the 3-fails counter must reflect real hypothesis
 ```
 Fail 1 → re-open Phase 2. The pattern family was likely wrong.
 Fail 2 → re-open Phase 1. The symptom definition or repro was probably incomplete.
-Fail 3 → STOP. Route to do-brainstorm. The problem is architecture-shaped.
+Fail 3 → STOP. Route to do-think (Mode: Interactive). The problem is architecture-shaped.
 ```
 
 ### Fail 1 — re-open Phase 2
@@ -59,7 +59,7 @@ Three failures with three different hypotheses means the problem is structurally
 - Two independent bugs are interacting; single-fix attempts each address one but not both
 - The code path has no correct fix — it needs to be removed or rewritten
 
-Route to `do-brainstorm` with the handoff template below. Do not try a 4th fix.
+Route to `do-think` (Mode: Interactive) with the handoff template below. Do not try a 4th fix.
 
 ## How to re-enter Phase 2 or Phase 1 cleanly
 
@@ -90,14 +90,14 @@ What the 2 fails revealed about the real symptom: <what's actually different or 
 New repro conditions to include: <what was missing>
 ```
 
-Then re-run the Phase 1 workflow. The new symptom card should be measurably richer than the previous one. If it isn't — if re-opening produced the same symptom card you started with — that's evidence the pattern families you're considering are exhausted. Proceed to **Fail 3 immediately** (don't wait for a third fix attempt) and route to `do-brainstorm` with the two-fails handoff template below. The 3-fails rule is the upper bound; hitting it earlier when the signal is clear is not a violation, it's a time-saver.
+Then re-run the Phase 1 workflow. The new symptom card should be measurably richer than the previous one. If it isn't — if re-opening produced the same symptom card you started with — that's evidence the pattern families you're considering are exhausted. Proceed to **Fail 3 immediately** (don't wait for a third fix attempt) and route to `do-think` (Mode: Interactive) with the two-fails handoff template below. The 3-fails rule is the upper bound; hitting it earlier when the signal is clear is not a violation, it's a time-saver.
 
-## Handoff format to `do-brainstorm`
+## Handoff format to `do-think` (Mode: Interactive)
 
-At Fail 3, dispatch to `do-brainstorm` with this exact template. Drop it into the conversation or, on runtimes with an ask-user tool, into the initial prompt:
+At Fail 3, dispatch to `do-think` Interactive with this exact template. Drop it into the conversation or, on runtimes with an ask-user tool, into the initial prompt:
 
 ```
-## Handoff from do-debug → do-brainstorm
+## Handoff from do-debug → do-think (Mode: Interactive)
 
 ### Symptom card
 <the Phase 1 card from the most recent round>
@@ -112,15 +112,15 @@ At Fail 3, dispatch to `do-brainstorm` with this exact template. Drop it into th
 <one paragraph: what the three failures have in common, if anything>
 
 ### Architectural question surfaced
-<one sentence: the question do-brainstorm should investigate — e.g., "Is our session
+<one sentence: the question do-think Interactive should investigate — e.g., "Is our session
 store assumption still valid?" or "Should this code path exist at all?">
 
 ### Constraints / non-negotiables
-<anything do-brainstorm should know — deadlines, deployment constraints, user-facing
+<anything do-think Interactive should know — deadlines, deployment constraints, user-facing
 commitments>
 ```
 
-`do-brainstorm` picks up from "architectural question surfaced" — its Cynefin classifier will usually route this to Complex (unknown unknowns) and run the full 6-phase brainstorm. When it returns a recommendation, re-enter at Phase 2 with the new framing. Do not restart `do-debug` from Phase 1 — the Phase 1 card is still valid.
+`do-think` Interactive picks up from "architectural question surfaced" — its Cynefin classifier will usually route this to Complex (unknown unknowns) and run the full 6-step interactive session. When it returns a recommendation, re-enter at Phase 2 with the new framing. Do not restart `do-debug` from Phase 1 — the Phase 1 card is still valid.
 
 ## Pressure-scenario sidebars (abridged)
 
@@ -134,7 +134,7 @@ No pressure. If the skill works here, the 3-fails rule is load-bearing. If the a
 
 $15k/min outage. Fail 1 happens at minute 15, Fail 2 at minute 28. Temptation: try fix #3 fast, skip the re-open-Phase-1 block.
 
-**Counter**: the re-open block takes 2 minutes. If you skip it and fix #3 also fails, you are now at minute 35, Fail 3, and routing to `do-brainstorm` with incomplete context. The 2-minute re-open is the cheaper path even under outage pressure.
+**Counter**: the re-open block takes 2 minutes. If you skip it and fix #3 also fails, you are now at minute 35, Fail 3, and routing to `do-think` Interactive with incomplete context. The 2-minute re-open is the cheaper path even under outage pressure.
 
 ### Sunk cost
 
@@ -146,7 +146,7 @@ $15k/min outage. Fail 1 happens at minute 15, Fail 2 at minute 28. Temptation: t
 
 Senior engineer diagnosed the bug as pattern X. You ran Phase 2 with X as the lead candidate, it failed (Fail 1). Temptation: the senior is rarely wrong; fix #2 within the same pattern family ("maybe I applied X wrong").
 
-**Counter**: the senior's diagnosis is a *candidate mechanism*, not a *confirmed one*. If your experiment on X falsified it, X is out. Re-open Phase 2 with a genuinely different pattern family. If the senior pushes back, route to `do-brainstorm` early — the architectural question is now social as well as technical.
+**Counter**: the senior's diagnosis is a *candidate mechanism*, not a *confirmed one*. If your experiment on X falsified it, X is out. Re-open Phase 2 with a genuinely different pattern family. If the senior pushes back, route to `do-think` Interactive early — the architectural question is now social as well as technical.
 
 ## Anti-patterns at the escalation gate
 
@@ -154,6 +154,6 @@ Senior engineer diagnosed the bug as pattern X. You ran Phase 2 with X as the le
 |---|---|
 | Trying a 4th, 5th, 6th fix because "one of them has to work" | No. Three fails = route. |
 | Skipping the re-open block ("I know what went wrong, just let me try X") | Write the block anyway. The act of writing catches hidden assumptions. |
-| Routing to `do-brainstorm` with only the most recent fix's context | Full handoff template above. All three fixes. |
-| Restarting `do-debug` from Phase 1 after `do-brainstorm` returns | No — re-enter at Phase 2 with the new framing. Infinite regress otherwise. |
+| Routing to `do-think` Interactive with only the most recent fix's context | Full handoff template above. All three fixes. |
+| Restarting `do-debug` from Phase 1 after `do-think` Interactive returns | No — re-enter at Phase 2 with the new framing. Infinite regress otherwise. |
 | Counting compile errors toward the 3-fails budget | Only count hypothesis-driven attempts. Mechanical failures don't. |

@@ -21,9 +21,9 @@ Prefer another skill when:
 
 - a specific diagnostic tool is available and loaded (Chrome DevTools, profiler, language-specific debugger) → use the tool's specific skill if available
 - the task is "reason about a design tradeoff" with no bug to reproduce → `do-think`
-- the user explicitly wants a user-in-the-loop brainstorm about architecture → `do-brainstorm` (this skill routes there at the 3-fails gate)
+- the user explicitly wants a user-in-the-loop brainstorm about architecture → `do-think` (Mode: Interactive — this skill routes there at the 3-fails gate)
 - only "confirm what's actually done" is needed on already-fixed items → `check-completion`
-- the code is not running yet — pure design or scoping work → `do-think` or `do-brainstorm`
+- the code is not running yet — pure design or scoping work → `do-think` (Solo or Interactive depending on user presence)
 - the bug is an external-service outage the agent cannot inspect → out of scope; surface the fact and stop
 
 ## Non-negotiable rules
@@ -32,7 +32,7 @@ Prefer another skill when:
 2. **Diagnosis and repair are separate steps.** During Phases 1-3, the only edits allowed are *diagnostic* — temporary logs, probes, tests that reproduce the bug, instrumentation. No *fixes* to product logic until Phase 4, after Phase 3 has confirmed a mechanism.
 3. **Evidence per claim.** Every hypothesis cites a trace, log, diff, test run, or config value.
 4. **One hypothesis at a time.** Testing two fixes simultaneously discards the falsification signal of both.
-5. **Escalate at 3.** Three failed fixes triggers the `do-brainstorm` handoff (see Escalation gate).
+5. **Escalate at 3.** Three failed fixes triggers the `do-think` Interactive handoff (see Escalation gate).
 6. **Verify before declaring fixed.** The same symptom reproduction that failed must now pass with evidence captured.
 7. **Regression-proof before commit.** The fix lands with a test, guard, or assertion that proves the mechanism stays dead.
 8. **Keep the diagnosis trace.** Reasoning from Phase 1 → Phase 4 attaches to the fix (commit body, issue comment, or a plan file).
@@ -118,9 +118,9 @@ This skill does not handle everything alone. The matrix below is the first-class
 | Phase 3: "confirmation" also fits a different mechanism | Stay | Back to Phase 2; write the distinguishing test | Do not hand off |
 | Fail #1 (first fix didn't stick) | Stay | Re-open Phase 2 inline | Pattern was wrong |
 | Fail #2 (second fix didn't stick) | Stay | Re-open Phase 1 inline | Symptom was wrong or repro was fake |
-| Fail #3 (third fix didn't stick) | **Out — stop fixing** | `do-brainstorm` with handoff template in `references/integration.md` | Architecture-shaped, not a bug |
+| Fail #3 (third fix didn't stick) | **Out — stop fixing** | `do-think` (Mode: Interactive) with handoff template in `references/integration.md` | Architecture-shaped, not a bug |
 | Phase 4: fix applied, verification passed | Out | `check-completion` | Audit for related-but-forgotten scope |
-| "Bug" is a design disagreement, not a bug | **Do not start** | `do-think` or `do-brainstorm` | Not a runtime failure |
+| "Bug" is a design disagreement, not a bug | **Do not start** | `do-think` (Solo or Interactive) | Not a runtime failure |
 | No way to run code (env/repo missing) | **Do not start** | Ask user for a repro, or exit | Phase 1 cannot complete |
 
 Full decision tree with edge cases: `references/integration.md`.
@@ -131,7 +131,7 @@ A "failed fix" = a hypothesis-driven change that did not make Phase 1's repro pa
 
 - **Fail 1** → re-open Phase 2. The pattern family was likely wrong.
 - **Fail 2** → re-open Phase 1. The symptom definition or repro was probably incomplete.
-- **Fail 3** → **Stop fixing.** Route to `do-brainstorm`. Three failures means the problem is architecture-shaped, not a bug. Full handoff format in `references/escalation.md` and `references/integration.md`.
+- **Fail 3** → **Stop fixing.** Route to `do-think` (Mode: Interactive). Three failures means the problem is architecture-shaped, not a bug. Full handoff format in `references/escalation.md` and `references/integration.md`.
 
 The rule is load-bearing under pressure. See `references/rationalizations.md` for the verbatim excuses agents generate to skip it.
 
@@ -170,7 +170,7 @@ Debugging-specific forbidden phrases (distinct from `check-completion`'s general
 | `references/bisection-strategies.md` | "Fails in CI only" / "worked last week" / "broken only with feature X" / intermittent without code change |
 | `references/instrumentation.md` | Phase 2-3 — print/log/stack-trace patterns per language |
 | `references/escalation.md` | Any failed fix — the 3-fails protocol, pressure-scenario sidebars, handoff format |
-| `references/integration.md` | Unsure whether to stay in-skill or route to `do-think` / `do-brainstorm` / `check-completion` |
+| `references/integration.md` | Unsure whether to stay in-skill or route to `do-think` (Solo or Interactive) / `check-completion` |
 | `references/rationalizations.md` | The urge to skip Phase 1 or Phase 3 — 15-row counter table + 5 pressure scenarios |
 | `references/voice.md` | Writing progress updates to the user — forbidden phrases, required forms |
 | `references/cross-runtime.md` | Running on a non-Claude runtime — ask-user-tool lookup for the 3-fails handoff |
@@ -217,7 +217,7 @@ Each artifact is visible in the session transcript. Do not batch them to the end
 | Separate diagnosis from repair (Phases 1-3 are read-only on product code) | Edit product code while "investigating" |
 | Write the false-case prediction before running the experiment | Run the experiment, then decide what "confirms" the hypothesis |
 | Cite a trace/log/diff/test/config for every claim | "It seems like…" / "I think it's…" |
-| On fail #1-#2, re-open prior phases; on fail #3, route to `do-brainstorm` | Try fix #4, #5, #6 |
+| On fail #1-#2, re-open prior phases; on fail #3, route to `do-think` (Mode: Interactive) | Try fix #4, #5, #6 |
 | Add a regression guard before declaring done | "The tests pass, shipping" |
 | Treat the senior's diagnosis as a candidate, not a verdict | Skip Phase 1 because "they already figured it out" |
 
@@ -227,13 +227,13 @@ Each artifact is visible in the session transcript. Do not batch them to the end
 - Do not declare "fixed" without a passing Phase 1 repro + regression guard.
 - Do not recommend `do-debug` as the next-step (no infinite regress). If more debugging is needed, state which phase to re-enter.
 - Do not skip the 3-fails handoff "just this once." See `references/rationalizations.md`.
-- Do not consume `do-think` or `do-brainstorm` as substitutes for Phase 1. They are handoffs, not shortcuts.
+- Do not consume `do-think` (in either mode) as a substitute for Phase 1. It is a handoff, not a shortcut.
 
 Recovery moves:
 
 - **Phase 1 repro not 10/10** → input-space bisection (`references/bisection-strategies.md`); do not proceed with a flaky repro
 - **Phase 3 experiment ambiguous** → design a distinguishing test; two mechanisms fitting the same evidence means the experiment was not falsifying
-- **3 fails hit** → hand off to `do-brainstorm` with the template in `references/integration.md`; do not retry
+- **3 fails hit** → hand off to `do-think` (Mode: Interactive) with the template in `references/integration.md`; do not retry
 - **Post-fix regression detected** → Phase 1 on the new symptom; do not paper over with a second fix on top of the first
 
 ## Final checks

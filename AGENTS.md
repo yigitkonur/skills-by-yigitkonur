@@ -59,7 +59,7 @@ Anchor on this set of plain-English verbs:
 | Verb | Use when | Example |
 |---|---|---|
 | `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-mcp-server-sdk-v1` |
-| `do` | Generic "let me do this" entry-point skill | `do-brainstorm`, `do-debug`, `do-think`, `do-review` |
+| `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
 | `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture`, `apply-macos-hig`, `apply-liquid-glass` |
 | `ask` | Hand off / request something | `ask-review` |
 | `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
@@ -262,8 +262,8 @@ build-copilot-sdk-app        build-langchain-ts-app       build-mcp-server-sdk-v
 build-mcp-server-sdk-v2      build-mcp-use-agent          build-mcp-use-apps-widgets
 build-mcp-use-client         build-mcp-use-server         build-raycast-script-command
 build-skills                 check-completion             convert-url-to-nextjs
-develop-typescript           do-brainstorm                do-debug
-do-review                    do-think                     enhance-prompt
+develop-typescript           do-debug                     do-review
+do-think                     enhance-prompt               enhance-skill-by-derailment
 enhance-skill-by-derailment  evaluate-code-review         extract-saas-design
 init-agent-config            optimize-agentic-cli         optimize-agentic-mcp
 publish-npm-package          run-agent-browser            run-codex-exec

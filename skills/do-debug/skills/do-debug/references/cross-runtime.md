@@ -1,6 +1,6 @@
 # Cross-Runtime — Portability Notes
 
-This skill runs on any runtime that supports an ask-user tool (needed at the 3-fails handoff fork, per `references/escalation.md`) or a prose fallback. Most debugging work is solo — the user is invoked only when the skill hands off to `do-brainstorm`.
+This skill runs on any runtime that supports an ask-user tool (needed at the 3-fails handoff fork, per `references/escalation.md`) or a prose fallback. Most debugging work is solo — the user is invoked only when the skill hands off to `do-think` (Mode: Interactive).
 
 If the `enhance-prompt` skill is installed in this pack, its `ask-user-tools.md` reference is the canonical source and uses the same mapping. The two are intentionally kept in sync.
 
@@ -37,7 +37,7 @@ At the handoff:
 1. The skill has already written the handoff template (see `references/escalation.md` and `references/integration.md`).
 2. The skill uses the runtime's ask-user tool to present 1-4 options:
    - Continue investigating (re-enter Phase 2 with a new framing)
-   - Route to `do-brainstorm` (recommended at Fail 3)
+   - Route to `do-think` (Mode: Interactive — recommended at Fail 3)
    - Defer and surface the architectural question to a human
    - Abandon the session (document the failed hypotheses and stop)
 
@@ -50,7 +50,7 @@ questions: [
     header: "3-fails fork",
     multiSelect: false,
     options: [
-      { label: "Route to do-brainstorm (Recommended)", description: "Hand off with the full 3-fails template; do-brainstorm investigates the architectural question" },
+      { label: "Route to do-think Interactive (Recommended)", description: "Hand off with the full 3-fails template; do-think Interactive investigates the architectural question" },
       { label: "Defer to a human owner", description: "Document the architectural question and stop; surface to a named owner for decision" },
       { label: "Abandon the session", description: "Document all three fails and close without a fix (last resort)" }
     ]
@@ -62,7 +62,7 @@ Portability constraints (tightest across runtimes):
 
 - 1-4 questions per call (Claude Code cap)
 - 2-4 options per question
-- First option marked `(Recommended)` in label, based on the current state (at Fail 3, "Route to do-brainstorm" is the recommended option)
+- First option marked `(Recommended)` in label, based on the current state (at Fail 3, "Route to do-think Interactive" is the recommended option)
 - Do NOT manually add "Other" — Claude Code auto-adds it; other runtimes may differ, but mimicking keeps the prompt clean
 
 ## Prose fallback — when no ask-user tool is available
@@ -72,8 +72,8 @@ Portability constraints (tightest across runtimes):
 
 The skill has reached the 3-fails gate. Full handoff template is below. Pick one:
 
-**1. Route to do-brainstorm (Recommended)**
-Hand off with the 3-fails template; do-brainstorm investigates the architectural
+**1. Route to do-think Interactive (Recommended)**
+Hand off with the 3-fails template; do-think Interactive investigates the architectural
 question surfaced by the three fails.
 
 **2. Defer to a human owner**

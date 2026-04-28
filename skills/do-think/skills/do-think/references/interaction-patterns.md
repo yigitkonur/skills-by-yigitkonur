@@ -1,10 +1,10 @@
 # Interaction Patterns — How to Bring the User Along
 
-The skill's whole premise is "user in the loop." This file is the how-to: when to pause, how to phrase questions, when to push back on a user who wants to shortcut a fork, and the "one question at a time" discipline.
+Used by `modes/interactive-brainstorm.md`. The Interactive mode's whole premise is "user in the loop." This file is the how-to: when to pause, how to phrase questions, when to push back on a user who wants to shortcut a fork, and the "one question at a time" discipline.
 
 ## The five forks (recap)
 
-Every interactive session pauses five times, one per step:
+Every Interactive session pauses five times, one per step:
 
 | Fork | After | User answers |
 |---|---|---|
@@ -18,7 +18,7 @@ No more, no fewer. Combining forks reduces user control; splitting them into mor
 
 ## One question at a time
 
-When asking **open-ended** questions in a session, bundle only when the questions are truly parallel (choices along different dimensions). If a topic needs more exploration, split into multiple questions across messages.
+When asking **open-ended** questions, bundle only when the questions are truly parallel (choices along different dimensions). If a topic needs more exploration, split into multiple messages.
 
 **Good** (one per message):
 
@@ -43,7 +43,7 @@ The user picks one to answer and ignores the rest. Four of five questions go una
 
 When the question has **discrete choices**, use the runtime's ask-user tool (see `cross-runtime.md`). Rules:
 
-- **Up to 4 questions per call** — AskUserQuestion's cap; keep portable
+- **Up to 4 questions per call** — Claude Code AskUserQuestion's cap; keep portable
 - **2-4 options per question** — structured; more is noise
 - **First option marked `(Recommended)`** based on your analysis (not always the same option)
 - **"Other" auto-provided** — don't add manually

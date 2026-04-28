@@ -1,5 +1,7 @@
 # Task Planning
 
+Operation: **universal** — any Op can need planning when the work is large or fuzzy enough to need slicing. The slicing primitive (MECE-clean, verifiable, small-enough-to-reason-about) applies regardless of Op.
+
 Planning is the act of turning a large or fuzzy task into a sequence of clear moves without pretending that uncertainty does not exist.
 
 ## Plan Around These Fields
@@ -26,11 +28,15 @@ A good slice is:
 - small enough to reason about
 - large enough to matter
 - verifiable on its own
+- **MECE-clean** with its siblings — mutually exclusive (no overlap), collectively exhaustive (covers the work)
 
 Bad slices are:
 - vague
 - bundled across unrelated concerns
 - impossible to verify independently
+- overlapping with other slices (leaks ownership, double-counts effort)
+
+For complex plans where MECE is hard to confirm, route via the SKILL.md master table to `frameworks/decomposition-tools.md` (Issue Trees with the MECE constraint, or Ishikawa for multi-category breakdowns).
 
 ## Replanning Rule
 

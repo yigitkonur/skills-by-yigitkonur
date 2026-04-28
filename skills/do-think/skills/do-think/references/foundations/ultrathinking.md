@@ -1,48 +1,49 @@
-# Ultrathinking
+# Ultrathinking — When the Cost of Being Wrong is High
 
-Use ultrathinking only when the cost of being wrong is unusually high.
+Use ultrathinking only when the change is hard to reverse, the blast radius is broad, or the team will inherit this decision for a long time.
 
-## When to Use It
+Ultrathinking is not maximal analysis. It is **disciplined analysis scaled to irreversible or high-cost decisions**. The discipline lives in the foundations:
+- Effort tier set to **High** (`effort-calibration.md`)
+- Stress-test trio runs strict (`stress-test-trio.md`) — Inversion with named mitigations baked into the plan; Ladder of Inference depth audit; Second-Order at 10-min/10-mo/10-yr scales
+- Verification path defined before action; rollback named explicitly
 
-- the change is hard to reverse
-- the task could alter architecture or workflow
-- the blast radius is broad
-- the team may inherit this decision for a long time
-- weak assumptions would be expensive to discover late
+## When to escalate to ultrathink
 
-## Ultrathink Pass
+- The change is hard to reverse
+- The change could alter architecture or workflow
+- The blast radius is broad (multiple teams, customers, services)
+- The team will inherit this decision for a long time
+- Weak assumptions would be expensive to discover late
 
-### 1. Widen the frame
+## The ultrathink pass — what changes vs. standard Tier-High
 
-Ask:
-- what problem am I really solving?
-- what outcome actually matters?
-- what am I assuming about constraints, users, or the system?
+Standard Tier-High already runs strict trio + full grounding. Ultrathink adds:
 
-### 2. Compare real options
+1. **Widen the frame.** Ask:
+   - What problem am I really solving?
+   - What outcome actually matters?
+   - What am I assuming about constraints, users, the system?
+   Re-enter Phase A2 (reframe) if the widened frame exposes a different problem.
 
-Do not compare one real option to two strawmen. Keep 2-3 serious options alive.
+2. **Compare real options.** Do not compare one real option to two strawmen. Keep 2-3 *serious* options alive through Phase C1. Use the SKILL.md routing to reach `frameworks/zwicky-box.md` if option generation is dry.
 
-For each option, evaluate:
-- reversibility
-- complexity cost
-- operational burden
-- failure modes
-- verification path
+3. **Force the simplest adequate path.** Reject solutions that are technically clever but operationally heavier than the problem needs. The path with the smallest surface area that still solves the problem usually wins on long-horizon costs.
 
-### 3. Run a pre-mortem
+4. **Define the rollback explicitly.** If the chosen path fails in production, what is the safest recovery move? Write it. If the answer is "we can't roll back," that's a fact about the option, not a quirk — surface it.
 
-Ask:
-- if this fails in production, what was the likely mistake?
-- what did I optimize too early?
-- what coupling or hidden dependency did I underestimate?
+## Solo mode application
 
-### 4. Force the simplest adequate path
+In Solo mode, ultrathink is what you do when the opening contract reads `Tier: High`. The discipline is silent but visible in the artifact: stress-test outputs are written, mitigations are baked in, rollback is named.
 
-Reject solutions that are technically clever but operationally heavier than the problem needs.
+## Interactive mode application
 
-### 5. Define the rollback
+In Interactive mode, ultrathink runs through the 5 forks (`modes/interactive-brainstorm.md`) with the user validating each phase. The forks are *especially* load-bearing at this tier; do not compress.
 
-If the chosen path fails, what is the safest recovery move?
+## Anti-patterns
 
-Ultrathinking is not maximal analysis. It is disciplined analysis scaled to irreversible or high-cost decisions.
+| Anti-pattern | Counter |
+|---|---|
+| Treating every decision as ultrathink-worthy | Tier inflation. Run the calibration matrices; reserve ultrathink for genuine High-tier work. |
+| Ultrathinking with no rollback path | If you cannot name the rollback, you have not finished. Either find a rollback, or accept the path as one-shot and surface that explicitly. |
+| Strawman options ("Option A vs. nothing") | Compare *real* options. Use Zwicky Box or Six Thinking Hats to widen if generation is dry. |
+| Over-engineering "the right" solution when a smaller path solves the problem | The simplest adequate path is the ultrathink answer most of the time. Clever ≠ correct under operational load. |
