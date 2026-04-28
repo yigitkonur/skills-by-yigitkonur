@@ -143,38 +143,54 @@ Key brief points:
 - **Verification**: `git status` in worktree returns empty (no drift); JSON has decisions for all items.
 - **Failure**: missing decision → mark ambiguous; stale citation → reject; can't determine → ambiguous (never silently accept).
 
-## Phase 8 — main-agent direct apply
+## Phase 8a — main-agent direct apply
 
-After the evaluator sub-agent hands back, **main agent acts directly** (no further sub-agent). Use `/do-review` skill in main agent's context for sanity-checking each apply.
+After the evaluator sub-agent hands back, **main agent acts directly** (no further sub-agent). The evaluator's JSON is the authority; main agent applies each accepted item mechanically. `/do-review` re-eval per item is optional and off by default because the evaluator already used `/do-review` in Phase 7.
 
-### Apply flow
+### Apply flow (per PR)
 
 ```
-Read evaluator's output JSON.
-For each accepted item (deduplicated across sources):
-    1. Read cited code (Read tool) at <worktree>/<file>:<line> ± context.
-    2. Compose the fix per evaluator's rationale + Codex/source's suggested fix.
-    3. Sanity-check via /do-review skill (in main agent's context):
-       - Does the fix align with the evaluator's rationale?
-       - Does the fix introduce regressions?
-    4. Apply via Edit (with diff-walk discipline).
-    5. git add <files>.
-    6. git diff --cached (verify only intended hunks).
-    7. git commit -m "<emoji> <type>(<scope>): apply <source>'s <item-id>"
-       — or one commit per logical concern (better; matches inner-loop discipline).
+Read <repo>/.codex-review-rounds/pr-<n>.evaluation.json.
 
+# AMBIGUOUS GATE — read this before any apply
 If ambiguous[] non-empty:
-    Mark PR BLOCKED in manifest with terminal_reason citing the items.
-    Surface in deliverable.
-    Do NOT merge.
-    Optional: open a fresh PR with the patches applied (if changes are too divergent for an in-place amendment).
+    Mark PR BLOCKED in manifest:
+      terminal_reason: "ambiguous: <item-id>: <evaluator's question>"
+    Do NOT apply this PR's accepted items either.
+    Surface in deliverable. Do NOT merge.
+    Move to next PR.
 
-Else:
-    git push origin <branch>
-    Wait for CI green.
-    gh pr merge <number> --repo <fork>/<repo> --squash | --merge | --rebase
-       (per repo policy)
+# ACCEPTED ITEMS — only when ambiguous[] is empty
+For each accepted item (deduplicated across sources, first-seen rationale wins):
+    1. Read cited code at <worktree>/<file>:<line> ± 25 lines.
+    2. Apply the evaluator's intended-shape fix via Edit.
+       If it does not apply cleanly:
+         record `apply_failed_after_evaluation: <item-id>` in manifest;
+         continue with remaining items; surface at the end of Phase 8a.
+    3. Stage by concern from the start:
+         git -C <worktree> add <files-for-this-concern>
+         # do NOT stage all then `git restore --staged .`
+    4. git -C <worktree> diff --cached
+    5. git -C <worktree> commit -m "<emoji> <type>(<scope>): <subject> (#<pr>)"
+    6. Validate with repo-equivalent build/test.
+    7. git -C <worktree> push origin <branch>   # no --force
 ```
+
+Process PRs in any order in 8a. Foundation→leaf merge order is enforced after apply.
+
+### Phase 8a apply recipe (one-shot helper)
+
+The helper script derives the repetitive queue from evaluator JSON:
+
+```bash
+python3 <this-skill>/scripts/apply-evaluator-decisions.py \
+  --pr <n> \
+  --worktree <worktree> \
+  --eval <repo>/.codex-review-rounds/pr-<n>.evaluation.json \
+  --print-queue
+```
+
+Output: ordered apply queue with ambiguous items at the top (BLOCKED warning), then accepted items with `file:line:intended-shape:rationale`. The script is read-only: it does not modify worktrees, commit, or push.
 
 ### Why main-agent direct, not sub-agent
 
@@ -213,9 +229,11 @@ The Phase 7 evaluator handles a single source (or no source) gracefully. If the 
 
 `await-pr-reviews.py` terminates with `wait_terminated_by: "total_cap"`. The current state is gathered. Phase 7 evaluates what we have. Late-arriving comments after evaluation are surfaced for human attention but don't block merge — the bot will still see them on the merged commit if it cares.
 
-### Evaluator marks everything ambiguous
+### Evaluator marks anything ambiguous
 
-Surface for human triage. Do not merge. Likely cause: PR is too broad or too cross-cutting; consider splitting in a follow-up.
+A single ambiguous item blocks the entire PR. Do not half-apply accepted items and defer ambiguous ones; that ships unreviewed code with half-decided intent. Record the evaluator's exact question in `manifest.pr.terminal_reason`, surface it in the final deliverable, and do not merge.
+
+If the evaluator marks everything ambiguous, surface the whole PR for human triage. Likely cause: PR is too broad or too cross-cutting; consider splitting in a follow-up.
 
 ### Evaluator's accepted fix breaks CI
 

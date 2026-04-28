@@ -178,6 +178,56 @@ def find_or_create_entry(manifest: dict, branch: str) -> dict:
     return entry
 
 
+# ─── Dependency installation per worktree ─────────────────────────────────────
+
+def detect_package_manager(wt: Path) -> tuple[str, list[str]] | None:
+    """Detect which package manager the project uses based on lockfile / config.
+    Returns (label, install command) or None when no install step is needed.
+
+    Detection order matters when multiple lockfiles coexist (e.g. pnpm + npm) —
+    prefer the more specific one. Cargo/Go are no-ops because their toolchains
+    handle vendoring transparently.
+    """
+    if (wt / "pnpm-lock.yaml").is_file():
+        return ("pnpm", ["pnpm", "install", "--frozen-lockfile"])
+    if (wt / "bun.lockb").is_file() or (wt / "bun.lock").is_file():
+        return ("bun", ["bun", "install", "--frozen-lockfile"])
+    if (wt / "yarn.lock").is_file():
+        return ("yarn", ["yarn", "install", "--frozen-lockfile"])
+    if (wt / "package-lock.json").is_file():
+        return ("npm", ["npm", "ci"])
+    if (wt / "package.json").is_file():
+        # No lockfile but a package.json — fall back to plain install
+        return ("npm", ["npm", "install"])
+    if (wt / "requirements.txt").is_file():
+        return ("pip", ["pip", "install", "-r", "requirements.txt"])
+    if (wt / "pyproject.toml").is_file() and (wt / "poetry.lock").is_file():
+        return ("poetry", ["poetry", "install"])
+    if (wt / "pyproject.toml").is_file() and (wt / "uv.lock").is_file():
+        return ("uv", ["uv", "sync"])
+    if (wt / "Gemfile.lock").is_file():
+        return ("bundler", ["bundle", "install"])
+    # Cargo, Go modules, etc. handle deps in-toolchain — no install step needed.
+    return None
+
+
+def install_deps(wt: Path) -> tuple[bool, str]:
+    """Install dependencies in worktree if a recognized package manager is in
+    use. Returns (success, message). success=True when the install ran cleanly
+    OR when the project doesn't need an install step (Cargo, Go, etc.).
+    """
+    detected = detect_package_manager(wt)
+    if detected is None:
+        return True, "no install step (Cargo / Go / no recognized manifest)"
+    label, cmd = detected
+    rc, _, err = sh(cmd, cwd=wt)
+    if rc == 0:
+        return True, f"{label} install ok ({' '.join(cmd)})"
+    if rc == 127:
+        return False, f"{label} install failed — `{cmd[0]}` not on PATH"
+    return False, f"{label} install failed (rc={rc}): {err[:200]}"
+
+
 def process_branch(branch: str, root: Path, args, manifest: dict) -> tuple[str, str]:
     """Returns (action, message). action ∈ {'spawned', 'reused', 'skipped', 'failed', 'planned'}."""
     repo_name = root.name
@@ -225,6 +275,17 @@ def process_branch(branch: str, root: Path, args, manifest: dict) -> tuple[str, 
     if rc != 0:
         return "failed", f"git push -u {args.remote} {branch} failed: {err}"
 
+    # Optionally install dependencies (--prep-deps) so Phase 3 / Phase 8 don't
+    # discover missing node_modules / .venv mid-flight.
+    deps_msg = ""
+    if args.prep_deps:
+        ok, msg = install_deps(Path(wt))
+        deps_msg = f"; deps: {msg}"
+        if not ok:
+            # Surface but do not fail spawn — the worktree itself is valid;
+            # the user can install deps manually if the auto-install couldn't.
+            return action, f"{action} worktree at {wt}; pushed -u {args.remote} {branch}{deps_msg}"
+
     # Update manifest
     entry = find_or_create_entry(manifest, branch)
     sha = head_sha(wt)
@@ -236,7 +297,7 @@ def process_branch(branch: str, root: Path, args, manifest: dict) -> tuple[str, 
         "status": "SPAWNED",
         "updated_at": utc_now_iso(),
     })
-    return action, f"{action} worktree at {wt}; pushed -u {args.remote} {branch}"
+    return action, f"{action} worktree at {wt}; pushed -u {args.remote} {branch}{deps_msg}"
 
 
 def main() -> int:
@@ -247,6 +308,14 @@ def main() -> int:
     ap.add_argument("--manifest", default=DEFAULT_MANIFEST)
     ap.add_argument("--worktree-prefix", default=None,
                     help="custom worktree path prefix (default: ../<repo>-wt-)")
+    ap.add_argument("--prep-deps", action="store_true",
+                    help="After creating each worktree, detect the package manager "
+                         "(pnpm-lock.yaml, package-lock.json, bun.lockb, yarn.lock, "
+                         "requirements.txt, pyproject.toml + poetry.lock/uv.lock, Gemfile.lock) "
+                         "and run the corresponding install. Cargo and Go are no-ops. "
+                         "Use for any project whose validate command (Phase 3 build, Phase 8 test) "
+                         "needs node_modules / .venv / equivalent. If install fails, the worktree "
+                         "itself is left intact and a warning is surfaced.")
     ap.add_argument("--dry-run", action="store_true", help="print plan without doing anything")
     ap.add_argument("--execute", action="store_true", help="actually create worktrees and push")
     args = ap.parse_args()
