@@ -28,6 +28,8 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import re
@@ -143,18 +145,48 @@ def load_manifest(path: str) -> dict | None:
         return None
 
 
-def update_manifest_entry(path: str, branch: str, updates: dict, history_entry: dict | None = None):
-    manifest = load_manifest(path)
-    if manifest is None:
-        return
-    for entry in manifest.get("branches", []):
-        if entry.get("branch") == branch:
-            entry.update(updates)
-            entry["updated_at"] = utc_now_iso()
-            if history_entry is not None:
-                entry.setdefault("round_history", []).append(history_entry)
-            break
-    atomic_write(path, json.dumps(manifest, indent=2))
+@contextlib.contextmanager
+def _manifest_lock(manifest_path: str):
+    """Hold an fcntl.LOCK_EX on `<manifest>.lock` for the duration of a
+    read-modify-write. Required because parallel branches/PRs write to the
+    same manifest concurrently — without the lock, simultaneous writers
+    clobber each other and lose updates.
+
+    The lock file is created next to the manifest (not inside it) and is
+    safe to leave around between runs.
+    """
+    lock_path = manifest_path + ".lock"
+    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+    with open(lock_path, "w") as lock_fp:
+        fcntl.flock(lock_fp, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_fp, fcntl.LOCK_UN)
+
+
+def update_manifest_entry(path: str, branch: str, updates: dict, history_entry: dict | None = None) -> bool:
+    """Atomic read-modify-write under flock. Returns True iff the manifest
+    existed AND a branch entry matching `branch` was found and updated.
+    Callers should check the return value before reporting success.
+    """
+    with _manifest_lock(path):
+        manifest = load_manifest(path)
+        if manifest is None:
+            return False
+        found = False
+        for entry in manifest.get("branches", []):
+            if entry.get("branch") == branch:
+                entry.update(updates)
+                entry["updated_at"] = utc_now_iso()
+                if history_entry is not None:
+                    entry.setdefault("round_history", []).append(history_entry)
+                found = True
+                break
+        if not found:
+            return False
+        atomic_write(path, json.dumps(manifest, indent=2))
+        return True
 
 
 def get_round_for_branch(path: str, branch: str) -> int:
@@ -204,6 +236,27 @@ _FREEFORM_PATTERN = re.compile(
     re.MULTILINE | re.IGNORECASE,
 )
 
+# Map Codex's P1/P2/P3/P4 priority tokens to the severity labels the
+# classifier recognizes (`SEVERITY_MAJOR = {"critical","high","error","blocker","must-fix"}`
+# in classify-review-feedback.py). Without this mapping, P1 items lowercase
+# to "p1" — a token the classifier doesn't recognize as major — and a
+# branch with only P1 findings can be classified DONE. Verified against
+# classify-review-feedback.py:79.
+_PRIORITY_TO_SEVERITY = {
+    "p1": "critical",
+    "p2": "high",
+    "p3": "medium",
+    "p4": "low",
+}
+
+
+def _normalize_severity(token: str) -> str:
+    """Lowercase the matched severity token; map P1-P4 priorities to
+    critical/high/medium/low so the classifier recognizes them.
+    """
+    lower = token.lower()
+    return _PRIORITY_TO_SEVERITY.get(lower, lower)
+
 
 def parse_freeform_items(text: str) -> list[dict]:
     """Regex-parse Codex's free-form review text into items[].
@@ -216,13 +269,14 @@ def parse_freeform_items(text: str) -> list[dict]:
         [P2] Next item — src/bar.ts:13-15
         ...
 
-    Severity tokens: P1 / P2 / P3 / P4 / critical / high / medium / low.
+    Severity tokens: P1 / P2 / P3 / P4 (mapped to critical/high/medium/low) or
+    critical / high / medium / low (preserved as-is).
     """
     items: list[dict] = []
     for i, m in enumerate(_FREEFORM_PATTERN.finditer(text)):
         items.append({
             "id": f"cdx-{i}",
-            "severity_raw": m["sev"].lower(),
+            "severity_raw": _normalize_severity(m["sev"]),
             "file": m["file"],
             "line": int(m["line_start"]),
             "body": (m["body"] or "").strip() or m["title"].strip(),
@@ -377,14 +431,28 @@ def main() -> int:
         print(f"  mode:        {args.mode}")
         return 0
 
+    # Pre-resolve the companion path so we can distinguish "plugin missing"
+    # (codex-companion.mjs not on disk) from "node missing" (sh returns 127
+    # because `node` itself isn't on PATH).
+    try:
+        companion_path = _find_codex_companion()
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {"last_status": "plugin-missing"})
+        return 127
+
     print(f"running codex-companion {args.mode} (sync) in {wt} ... timeout={args.timeout}s")
     rc, stdout, stderr = invoke_codex(args.branch, args.base, wt, args.mode, args.timeout)
     finished_at = utc_now_iso()
 
     if rc == 127:
-        # Plugin missing — caller surfaces FAILED with the install instructions in stderr
-        print(stderr or "codex plugin unavailable", file=sys.stderr)
-        update_manifest_entry(manifest_path, args.branch, {"last_status": "plugin-missing"})
+        # node binary not on PATH (plugin path was already verified above)
+        print(f"✗ `node` not on PATH (codex-companion.mjs requires Node.js): {stderr[:500]}", file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {
+            "last_status": "node-missing",
+            "last_error": "node not on PATH",
+            "last_review_at": finished_at,
+        })
         return 127
 
     if rc == 124:
@@ -396,19 +464,32 @@ def main() -> int:
         })
         return 1
 
+    # Decide whether stdout is parseable. Don't normalize if it doesn't look
+    # like the JSON envelope — that previously masked codex errors by writing
+    # an empty round-log marked "reviewed".
+    stdout_looks_jsonish = stdout.strip().startswith("{")
+
     if rc != 0:
-        # Companion exited non-zero; could be a Codex error or a parser error.
-        # The JSON envelope might still be on stdout; if so, fall through to
-        # normalize. Otherwise mark failed.
-        if not stdout.strip():
+        if not stdout_looks_jsonish:
             print(f"✗ codex review failed (rc={rc}): {stderr[:500]}", file=sys.stderr)
             update_manifest_entry(manifest_path, args.branch, {
                 "last_review_at": finished_at,
                 "last_status": "failed",
             })
             return 2
-        # Try to normalize; some Codex paths exit non-zero even on usable output
-        print(f"⚠  codex review exited rc={rc}; attempting to parse stdout anyway", file=sys.stderr)
+        # Some Codex paths exit non-zero even on usable JSON output; try to parse
+        print(f"⚠  codex review exited rc={rc}; stdout looks JSON-ish, attempting to parse", file=sys.stderr)
+
+    if not stdout_looks_jsonish:
+        # rc was 0 but stdout isn't a JSON envelope — degenerate path; surface
+        # the failure rather than write a stub round-log.
+        print(f"✗ codex review returned rc=0 but stdout is not a JSON envelope (first 200 chars: {stdout[:200]!r})", file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {
+            "last_review_at": finished_at,
+            "last_status": "failed",
+            "last_error": "stdout-not-json",
+        })
+        return 2
 
     review = normalize_review(stdout, args.branch, head, started_at, finished_at)
     round_n = get_round_for_branch(manifest_path, args.branch) + 1
@@ -427,14 +508,22 @@ def main() -> int:
         "completed_at": finished_at,
         "items_found": len(review["items"]),
     }
-    update_manifest_entry(manifest_path, args.branch, {
+    manifest_updated = update_manifest_entry(manifest_path, args.branch, {
         "last_review_id": review["review_id"],
         "last_review_at": finished_at,
         "last_status": "reviewed",
         "rounds": round_n,
         "head_sha_current": head,
     }, history_entry=history_entry)
-    print(f"  ✓ manifest updated: rounds={round_n}")
+    if manifest_updated:
+        print(f"  ✓ manifest updated: rounds={round_n}")
+    else:
+        # Round-log is on disk; manifest didn't update. Common cause: --branch
+        # mistyped, or manifest doesn't have a branches[] entry for this branch.
+        # Don't claim success — surface so caller doesn't double-write rounds.
+        print(f"⚠  round-log written but manifest entry for branch '{args.branch}' "
+              f"not found at {manifest_path} (round counter not incremented)", file=sys.stderr)
+        return 2
     return 0
 
 

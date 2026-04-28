@@ -38,6 +38,8 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import re
@@ -133,21 +135,41 @@ def load_manifest(path: str) -> dict | None:
         return None
 
 
+@contextlib.contextmanager
+def _manifest_lock(manifest_path: str):
+    """fcntl.LOCK_EX around manifest read-modify-write. Required because
+    Phase 6 queues N parallel rescues that all touch the same manifest;
+    without the lock, simultaneous writers clobber each other and lose
+    updates. Mirrors the recipe in parallel-subagent-protocol.md.
+    """
+    lock_path = manifest_path + ".lock"
+    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+    with open(lock_path, "w") as lock_fp:
+        fcntl.flock(lock_fp, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_fp, fcntl.LOCK_UN)
+
+
 def update_manifest_entry(path: str, branch: str, updates: dict) -> bool:
-    manifest = load_manifest(path)
-    if manifest is None:
-        return False
-    found = False
-    for entry in manifest.get("branches", []):
-        if entry.get("branch") == branch:
-            entry.update(updates)
-            entry["updated_at"] = utc_now_iso()
-            found = True
-            break
-    if not found:
-        return False
-    atomic_write(path, json.dumps(manifest, indent=2))
-    return True
+    """Lock-safe read-modify-write. Returns True iff a matching branch entry
+    was found and updated. Caller must check the return value."""
+    with _manifest_lock(path):
+        manifest = load_manifest(path)
+        if manifest is None:
+            return False
+        found = False
+        for entry in manifest.get("branches", []):
+            if entry.get("branch") == branch:
+                entry.update(updates)
+                entry["updated_at"] = utc_now_iso()
+                found = True
+                break
+        if not found:
+            return False
+        atomic_write(path, json.dumps(manifest, indent=2))
+        return True
 
 
 def repo_local_default(wt: Path, name: str) -> str:
@@ -281,6 +303,14 @@ def main() -> int:
         return 2
     prompt_path = write_prompt_file(prompt, args.pr)
 
+    # Pre-resolve the companion path so rc=127 from invoke_rescue can be
+    # attributed to a missing `node` binary, not a missing plugin.
+    try:
+        _find_codex_companion()
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        return 127
+
     # Manifest is optional — if absent, we still queue the rescue but skip the update.
     manifest_present = load_manifest(manifest_path) is not None
     if not manifest_present:
@@ -291,11 +321,12 @@ def main() -> int:
     rc, out, err = invoke_rescue(args.pr, args.model, args.effort, prompt_path, wt)
 
     if rc == 127:
-        print(err or "codex plugin unavailable", file=sys.stderr)
+        # Plugin path was already verified above — so 127 here means `node` is missing
+        print(f"✗ `node` not on PATH (codex-companion.mjs requires Node.js): {err[:500]}", file=sys.stderr)
         if manifest_present:
             update_manifest_entry(manifest_path, args.branch, {
                 "rescue_status": "failed",
-                "rescue_error": "codex plugin unavailable",
+                "rescue_error": "node not on PATH",
                 "rescue_started_at": started_at,
             })
         return 127
@@ -336,7 +367,7 @@ def main() -> int:
         print(f"    logFile: {log_file}")
 
     if manifest_present:
-        update_manifest_entry(manifest_path, args.branch, {
+        updated = update_manifest_entry(manifest_path, args.branch, {
             "rescue_review_id": job_id,
             "rescue_started_at": started_at,
             "rescue_status": "running",
@@ -346,7 +377,13 @@ def main() -> int:
             "rescue_title": title,
             "rescue_log_file": log_file,
         })
-        print(f"  ✓ manifest updated: {manifest_path}")
+        if updated:
+            print(f"  ✓ manifest updated: {manifest_path}")
+        else:
+            # Rescue is QUEUED on Codex's side but manifest didn't update.
+            # Common cause: --branch mistyped. Surface so caller can correlate.
+            print(f"⚠  rescue queued (jobId={job_id}) but manifest entry "
+                  f"for branch '{args.branch}' not found at {manifest_path}", file=sys.stderr)
 
     if not args.wait:
         return 0

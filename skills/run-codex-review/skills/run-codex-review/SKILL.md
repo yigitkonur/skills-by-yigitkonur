@@ -5,9 +5,9 @@ description: "Use skill if you are running parallel per-branch /codex:review fix
 
 # Prepare and Run Codex Review
 
-The job: turn a messy repo into a clean per-branch decomposition; converge each branch through Codex's per-round review loop with `/do-review`-evaluated worker sub-agents; open a comprehensive PR per branch via a sub-agent that uses `/ask-review`; trigger `/codex:resc --background --fresh --model gpt-5.5 --effort xhigh` on each PR as a last check; wait adaptively (900s base + 5-min extensions if bots still talking + 3-min quiet to terminate, capped at 30 min) for external review bots (Copilot, Greptile, Devin, cubic-dev-ai); dispatch a `/do-review` evaluator sub-agent per PR over all gathered streams; have the main agent apply the evaluator's accepted subset directly using `/do-review` in its own context; merge foundation→leaf on the private fork only; tidy. End state: every branch DONE-merged or surfaced (CAP-REACHED / BLOCKED / FAILED), no stale worktrees, manifest deleted, `audit-review-state.py` exits 0.
+The job: turn a messy repo into a clean per-branch decomposition; converge each branch through Codex's per-round review loop driven by **main agent as coordinator** (with per-round Applier sub-agents and main-agent `/do-review` evaluation); open a comprehensive PR per branch via a sub-agent that uses `/ask-review`; trigger codex rescue on each PR (`/codex:resc` slash for chat, or `scripts/trigger-codex-rescue.py` wrapping `codex-companion.mjs task --background` for programmatic loops); wait adaptively (900s base + 5-min extensions if bots still talking + 3-min quiet to terminate, capped at 30 min) for external review bots (Copilot, Greptile, Devin, cubic-dev-ai, copilot-pull-request-reviewer); dispatch a `/do-review` Evaluator sub-agent per PR over all gathered streams; have the main agent apply the evaluator's accepted subset directly via Edit + per-concern commits (Phase 8a); merge foundation→leaf with `git rebase --onto` mechanics for squash-merged stacks (Phase 8b); tidy. End state: every branch MERGED or surfaced (BLOCKED / CONVERGED-AT-CAP / CAP-REACHED / FAILED), no stale worktrees, no stale local/remote branches, manifest deleted, `audit-review-state.py` exits 0.
 
-This skill **layers on top of** `run-repo-cleanup`. Read that skill's `SKILL.md` first; its references and scripts are canonical for diff-walk, conventional commits, fork safety, worktrees, merge ordering. This skill adds: commit redistribution on committed history; the two-level coordinator+worker inner loop; `/ask-review`-based PR creation by sub-agent; `/codex:resc` orchestration with adaptive wait; multi-source review evaluation via `/do-review` sub-agents; main-agent direct apply; review-aware cleanup.
+This skill **layers on top of** `run-repo-cleanup`. Read that skill's `SKILL.md` first; its references and scripts are canonical for diff-walk, conventional commits, fork safety, worktrees, merge ordering. This skill adds: commit redistribution on committed history; the **main-agent-coordinator + per-round Applier** inner loop with `/do-review` evaluation in main's context; `/ask-review`-based PR creation by sub-agent; codex-rescue orchestration with adaptive wait; multi-source review evaluation via Evaluator sub-agents; main-agent direct apply (Phase 8a) followed by foundation→leaf serial merge (Phase 8b); review-aware cleanup with hard exit gate.
 
 Every sub-agent in this skill is dispatched per **`~/MISSION_PROTOCOL.md`** — Context Block → Mission Objective → Research & Tool Guidance → BSV Definition of Done → Verification → Failure Protocol → Handback. See `references/mission-protocol-integration.md`. Brief discipline is the lever; without it, parallel sub-agents drift toward mediocre.
 
@@ -92,8 +92,8 @@ End-of-phase reports must be **one sentence**: "Phase X complete; entering X+1."
     Detect from `git remote -v` in Phase 0. **Do not present options or ask the user when the detection is unambiguous.**
 2. Read every diff before staging. No `git commit -am`. (See `skills/run-repo-cleanup/references/diff-walk-discipline.md`.)
 3. Never `rm` an unknown file. Quarantine to `to-delete/` first. (See `skills/run-repo-cleanup/references/to-delete-folder.md`.)
-4. **One worktree per branch. One coordinator per worktree. One fresh worker per round.** No two agents mutate the same branch concurrently.
-5. **`/codex:review` always runs `--background`.** Never inline.
+4. **One worktree per branch. Main agent is the only coordinator (across all branches). One fresh Applier sub-agent per round per branch.** No two agents mutate the same branch concurrently. (The older "Coordinator sub-agent per worktree" pattern was dropped — long-lived sub-agents drift past harness session limits; main-agent-as-coordinator is empirically reliable. See `references/parallel-subagent-protocol.md` "Coordinator role".)
+5. **Codex review runs synchronously per round.** `codex-companion.mjs review` ignores `--background`; per-branch parallelism comes from concurrent subprocess invocations across branches, not from a background flag. (`task --background` IS honored — that's how Phase 6 codex rescue works; see Phase 6.)
 6. **20-round hard cap per branch.** Branches converge independently; one capping does not stop siblings.
 7. **Never `--force` push** a branch under active review. Stack commits on top.
 8. **Never push to upstream. Never touch `main` directly.**
@@ -348,7 +348,7 @@ Live table: branch, rounds, last status, state. **No editing while sub-agents ar
 
 Once every branch is terminal, the main agent:
 
-1. Reads `/tmp/codex-review-manifest.json`.
+1. Reads `<repo-root>/.codex-review-manifest.json` (the repo-local default; pass `--manifest <path>` if a custom location was used).
 2. Builds the deliverable's first table (Branch | Worktree | Concern | Rounds | Final status).
 3. Recomputes merge order with `python3 skills/run-repo-cleanup/scripts/suggest-merge-order.py --base main`. Override the heuristic for semantic dependencies; write the rationale into the manifest.
 4. Surfaces non-`DONE` branches: each with its remaining major feedback and a suggested human action.
@@ -526,95 +526,32 @@ Process PRs in any order in 8a (foundation-first OR leaves-first OR interleaved 
 
 ## Phase 8b — Merge in foundation→leaf strict serial
 
-**Think first**: *Apply is done. Now merge in dependency order. Foundation merges first; squash-merging foundation collapses N foundation commits into 1 squashed commit on main with a different SHA, which means leaves still carrying the original foundation commits will conflict on plain `git rebase origin/main` — they need `git rebase --onto` to skip the now-duplicated foundation history. After leaves are rebased and retargeted, they merge to main individually with CI-wait between.*
+**Think first**: *Apply is done. Now merge in dependency order with squash-merge-aware leaf rebases.*
 
-### Step-by-step
+The full merge recipe (foundation pre-merge tip capture, `git rebase --onto` for leaves, retargeting via `gh pr edit --base main`, sequential merge with CI-wait between, `--delete-branch` on merge) is documented in detail in **`references/post-pr-review-protocol.md` "Phase 8b — merge in foundation→leaf strict serial"**. Follow that recipe verbatim. Key points to keep in this skill body:
 
-1. Order PRs per `manifest.merge_order` (foundation first, then sibling leaves in dependency order).
-2. **Capture foundation's pre-merge tip BEFORE merging foundation** (load-bearing for the leaf-rebase math below):
-   ```bash
-   foundation_tip=$(git -C <foundation-worktree> rev-parse HEAD)
-   # Persist in manifest for resilience across session restarts:
-   # manifest.foundation_pre_merge_tip = <sha>
-   ```
-3. **Foundation merge:**
-   - Wait CI green via `Bash(run_in_background=True)`:
-     ```bash
-     until [ "$(gh pr checks <foundation-pr> --json bucket --jq 'all(.[]; .bucket != "pending")')" = "true" ]; do
-       sleep 30
-     done
-     gh pr checks <foundation-pr>
-     ```
-   - If any check is `failure` or `cancelled`: mark foundation `BLOCKED` and **STOP — do NOT merge any leaves; foundation is their base.** Surface foundation BLOCKED for human resolution.
-   - Else: `gh pr merge <foundation-pr> --repo <fork>/<repo> --squash --delete-branch` (the `--delete-branch` flag deletes the remote branch on merge, halving Phase 9 cleanup work).
-   - `git fetch --all --prune` to pull the new `origin/main`.
-4. **Retarget + rebase + push every leaf** (one batch, in parallel since leaves are siblings under foundation):
-   ```bash
-   for leaf_pr in <leaf-prs>; do
-       leaf_branch=$(gh pr view "$leaf_pr" --json headRefName --jq .headRefName)
-       leaf_worktree=<from-manifest>
-
-       # Retarget leaf's PR base from feat/handoff-foundation → main
-       gh pr edit "$leaf_pr" --base main
-
-       # Rebase leaf onto new main, SKIPPING the now-redundant foundation commits.
-       # Plain `git rebase origin/main` would re-apply foundation's originals on top of
-       # main's squashed equivalent → conflicts. --onto fast-forwards past the original
-       # foundation tip and replays only the leaf-specific commits.
-       git -C "$leaf_worktree" fetch origin
-       git -C "$leaf_worktree" rebase --onto origin/main "$foundation_tip" "$leaf_branch"
-       git -C "$leaf_worktree" push --force-with-lease origin "$leaf_branch"
-   done
-   ```
-5. **Merge each leaf in order** (sequential, NOT `--auto`; `--auto` queues but doesn't dequeue cleanly when stack still diverges in some repo configs):
-   ```bash
-   for leaf_pr in <leaf-prs-in-order>; do
-       # CI-wait per leaf
-       until [ "$(gh pr checks "$leaf_pr" --json bucket --jq 'all(.[]; .bucket != "pending")')" = "true" ]; do
-           sleep 30
-       done
-       gh pr checks "$leaf_pr"
-
-       # Check + merge
-       if any check is failure/cancelled:
-           mark leaf BLOCKED with terminal_reason: "CI failure: <check-name>"
-           continue   # do NOT halt for leaves; only foundation failure halts
-       else:
-           gh pr merge "$leaf_pr" --repo <fork>/<repo> --squash --delete-branch
-           git fetch --all --prune   # refresh main for next leaf's CI checks
-   done
-   ```
-
-### Auto-merge note
-
-`gh pr merge --auto` works for the **foundation** PR (single-step merge) but is unreliable for the **leaf** PRs — when a leaf is queued for auto-merge before its rebase is fully ready or when the squashed foundation diverges the stack, `--auto` silently waits forever or no-ops. **Use sequential merge without `--auto` for leaves.** Each leaf merges only after its rebase + force-push lands and CI passes.
-
-### When --delete-branch can't run
-
-If the repo policy requires PRs to be merged via web UI or branch-protection rules block `--delete-branch`, drop the flag and let Phase 9 handle remote-branch cleanup explicitly:
-```bash
-gh pr merge "$leaf_pr" --squash
-# Phase 9 will: gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<leaf-branch>
-```
+- **Capture foundation's pre-merge tip BEFORE merging foundation** (`foundation_tip=$(git -C <foundation-worktree> rev-parse HEAD)`). Required for the `git rebase --onto origin/main <foundation_tip> <leaf>` math below.
+- **Foundation must succeed first.** If foundation CI fails, STOP — leaves are based on foundation; do not merge any of them. Surface foundation BLOCKED.
+- **Squash-merging foundation collapses N foundation commits into 1 commit on main with a different SHA.** Plain `git rebase origin/main` on leaves conflicts on every foundation hunk. Use `git rebase --onto origin/main <foundation_tip> <leaf-branch>` to skip the duplicated history.
+- **Retarget each leaf** (`gh pr edit <leaf-pr> --base main`) before merging — leaves were originally based on foundation.
+- **`gh pr merge --squash --delete-branch`** (the `--delete-branch` flag halves Phase 9 cleanup).
+- **`gh pr merge --auto` works for foundation, unreliable for leaves on divergent stacks.** Use sequential explicit merge with CI-wait between.
+- **`--force-with-lease`, NOT `--force`** when pushing rebased leaves.
 
 ### Phase 8b hard exit gate
 
-**Phase 8b does NOT exit until every non-BLOCKED PR is MERGED.** Manifest field `merged_at` set per branch. `gh pr list --repo <fork>/<repo>` shows ONLY:
-- BLOCKED branches (`terminal_reason` set), or
-- `apply_failed_after_evaluation` branches (surfaced for human).
+**Phase 8b does NOT exit until every non-BLOCKED PR is MERGED.** `gh pr list --repo <fork>/<repo>` should show ONLY BLOCKED or `apply_failed_after_evaluation` branches. If a PR is neither and isn't merged, 8b is incomplete — re-attempt the merge (in `/loop` mode, `ScheduleWakeup(delaySeconds=600)` and re-check). Do NOT proceed to Phase 9 with un-resolved PRs.
 
-If `gh pr list` still shows a PR that is neither BLOCKED nor `apply_failed_after_evaluation`, **8b is incomplete — re-attempt the merge for that PR**. In `/loop` dynamic mode, `ScheduleWakeup(delaySeconds=600)` and re-check on the next firing. Do NOT proceed to Phase 9 with un-resolved PRs.
+### Red flags (8b)
 
-**Red flags (8b)**:
-- "Merge foundation before its CI is green." → No. Foundation merges only when CI is green.
-- "Skip CI-wait, just merge fast." → No. CI-wait is mandatory in 8b.
-- "Foundation CI failed — merge the leaves anyway." → No. Foundation is their base. Halt all leaf merges.
+- "Merge foundation before CI green." → No. CI-wait is mandatory.
+- "Foundation CI failed — merge the leaves anyway." → No. Halt all leaf merges; surface foundation BLOCKED.
+- "Plain `git rebase origin/main` the leaves." → No. `--onto <foundation_tip>` is non-negotiable for squash-merged stacks.
+- "Skip capturing `foundation_pre_merge_tip`." → No. Capture BEFORE merging foundation; the local HEAD may move after.
+- "Skip retargeting leaves to main." → No. PR `--base` is independent of the rebased branch.
+- "Use `gh pr merge --auto` to chain leaf merges." → No. Sequential explicit merge with CI-wait between.
+- "Force-push leaves with `--force` instead of `--force-with-lease`." → No. `--force-with-lease` is the safety mechanism.
 - "Merge the BLOCKED PR anyway." → No. Human decides.
-- "After merging foundation, plain `git rebase origin/main` the leaves." → No. Plain rebase replays foundation's originals on top of the squashed equivalent → conflicts. Use `git rebase --onto origin/main <foundation_pre_merge_tip> <leaf>`.
-- "Skip capturing `foundation_pre_merge_tip` — I'll figure it out later." → No. Once foundation merges, the local foundation worktree's HEAD may move and `git log` may show only the squash. Capture the tip BEFORE merging foundation.
-- "Skip retargeting leaves to main; let GitHub auto-figure-out the new base." → No. The `--base` field on a PR is independent of the rebased branch. Retarget explicitly with `gh pr edit <leaf-pr> --base main`.
-- "Use `gh pr merge --auto` to chain all leaf merges in one shot." → No. Auto-merge is unreliable for divergent stacks. Sequential explicit merge with CI-wait between.
-- "Force-push leaves with `--force` instead of `--force-with-lease`." → No. `--force-with-lease` is the safety mechanism (refuses if remote moved unexpectedly). Plain `--force` can clobber concurrent activity.
 - "Open a fresh PR for the apply_failed_after_evaluation items." → Acceptable but optional; surface for human first. Don't auto-cycle.
 
 ---
@@ -623,74 +560,37 @@ If `gh pr list` still shows a PR that is neither BLOCKED nor `apply_failed_after
 
 **Think first**: *What state did I start in? Have I returned to it, plus the intended delta — nothing more, nothing less? No stale worktree, no stale local branch, no stale remote branch, no stale temp file.*
 
-### Cleanup steps (do all four; the audit fails if any is skipped)
+### Cleanup checklist (do ALL four; the hard gate fails if any is skipped)
 
-1. **Worktrees** — remove every review worktree:
-   ```bash
-   python3 <this-skill>/scripts/cleanup-worktrees.py --base main --execute
-   ```
-   The script enumerates every `<repo>-wt-*` worktree and runs `git worktree remove <path>`. Refuses worktrees whose branch is not merged unless `--force-abandon <branch>` is passed.
-
-2. **Local branches** — delete every merged review branch:
-   ```bash
-   python3 skills/run-repo-cleanup/scripts/retire-merged-branches.py --base main --execute
-   ```
-   The script runs `git branch -d <name>` for each branch fully merged into `main`. Branches that are NOT merged (BLOCKED, `apply_failed_after_evaluation`) are skipped — those stay around for human follow-up.
-
-3. **Remote branches** — only needed for branches that weren't deleted by `gh pr merge --delete-branch` in 8b. For BLOCKED / failed branches, leave them on origin so the human can resume:
-   ```bash
-   # Only run for branches we created and that survived 8b without --delete-branch.
-   # The retire-merged-branches.py script handles this when run with --remote.
-   python3 skills/run-repo-cleanup/scripts/retire-merged-branches.py --base main --remote --execute
-   ```
-
-4. **Temp files** — every brief and manifest gets cleaned up:
-   ```bash
-   rm -f <repo>/.codex-review-manifest.json{,.lock}
-   rm -rf <repo>/.codex-review-rounds/
-   rm -f /tmp/applier-brief-*.md
-   rm -f /tmp/evaluator-brief-*.md
-   rm -f /tmp/evaluator-brief-template.md
-   rm -f /tmp/pr-creator-brief-*.md
-   rm -f /tmp/pr-creator-brief-template.md
-   rm -f /tmp/applier-brief-template*.md
-   ```
-   (Legacy `/tmp/codex-review-manifest.json{,.lock}` from older skill runs may also exist; remove if present and pointing at the same `repo_root`. Leave alone if pointing elsewhere — that's a different session's state.)
+1. **Worktrees** — `python3 <this-skill>/scripts/cleanup-worktrees.py --base main --execute`. Removes every `<repo>-wt-*` worktree whose branch is merged. Refuses unmerged worktrees unless `--force-abandon <branch>`.
+2. **Local branches** — `python3 skills/run-repo-cleanup/scripts/retire-merged-branches.py --base main --execute`. `git branch -d <name>` for each fully-merged branch; leaves BLOCKED / `apply_failed_after_evaluation` alone.
+3. **Remote branches** — only for branches that survived 8b without `--delete-branch`. Same script with `--remote --execute`.
+4. **Temp files** — `rm -f <repo>/.codex-review-manifest.json{,.lock} && rm -rf <repo>/.codex-review-rounds/ && rm -f /tmp/applier-brief-*.md /tmp/evaluator-brief-*.md /tmp/pr-creator-brief-*.md /tmp/*-brief-template*.md`. (Legacy `/tmp/codex-review-manifest.json{,.lock}` from older runs: remove only if its `repo_root` matches the current session's; leave alone if pointing elsewhere.)
 
 ### Independent re-audit (mandatory)
 
-Dispatch a **fresh subagent** for an independent re-audit (per `skills/run-repo-cleanup/references/post-pr-verification.md`). The subagent runs read-only:
+Dispatch a fresh sub-agent for read-only re-audit (per `skills/run-repo-cleanup/references/post-pr-verification.md`). The audit runs `audit-state.py` + `audit-review-state.py` + verifies: `git worktree list` shows only main; `git branch -vv` shows only main + BLOCKED branches; `gh pr list` shows only BLOCKED PRs; `gh api repos/<fork>/branches` shows only main + BLOCKED; `.codex-review-*` files absent; `/tmp/*-brief-*.md` absent.
 
-- `python3 skills/run-repo-cleanup/scripts/audit-state.py` → must exit 0.
-- `python3 <this-skill>/scripts/audit-review-state.py` → must exit 0.
-- `git worktree list` → ONLY main; no `*-wt-*` review worktrees.
-- `git branch -vv` → ONLY `main` and any open-PR (BLOCKED / `apply_failed_after_evaluation`) branches.
-- `git for-each-ref refs/heads/feat/* refs/heads/fix/* refs/heads/chore/* refs/heads/docs/*` → ONLY un-merged BLOCKED ones (or empty).
-- `gh pr list --repo <fork>/<repo>` → matches expected (only BLOCKED / `apply_failed_after_evaluation` PRs, or empty).
-- `gh api repos/<fork>/<repo>/branches --jq '.[].name' | grep -vE '^(main|<BLOCKED-list>)$'` → empty.
-- `gh pr list --repo <upstream>/<upstream-repo> --author @me` → empty (single-owner mode skips this check).
-- Repo-local `.codex-review-manifest.json` and `.codex-review-rounds/` → don't exist.
-- `/tmp/{applier,evaluator,pr-creator}-brief-*.md` → don't exist.
+### Phase 9 hard exit gate (the "no stale anything" condition)
 
-### Phase 9 hard gate (the "no stale anything" exit condition)
+Phase 9 does NOT exit until ALL six are true:
 
-Phase 9 does NOT exit until ALL of:
-1. Every non-BLOCKED branch is **MERGED** to main (verify in manifest + `gh pr list`).
-2. Every review **worktree** is removed (`git worktree list` shows only main).
-3. Every merged **local branch** is deleted (`git branch -vv` shows only main + BLOCKED).
-4. Every merged **remote branch** is deleted (`gh api repos/.../branches` shows only main + BLOCKED).
-5. Every **temp brief / manifest / round-log** is cleaned (no `.codex-review-*` files in repo; no `*-brief-*.md` in `/tmp/`).
-6. Independent re-audit subagent reports **TIDY**.
+1. Every non-BLOCKED branch is **MERGED** to main.
+2. Every review **worktree** is removed.
+3. Every merged **local branch** is deleted.
+4. Every merged **remote branch** is deleted.
+5. Every **temp brief / manifest / round-log** is cleaned.
+6. Independent re-audit sub-agent reports **TIDY**.
 
-If any of (1)-(5) fails, Phase 9 is incomplete. In `/loop` dynamic mode, retry with `ScheduleWakeup(delaySeconds=600)` if the failure is transient (CI still pending on a leaf, GitHub rate-limit blocking branch deletion). If the failure is structural (BLOCKED PR with ambiguous items), surface the exact list and stop — the human takes over.
+If any fails, Phase 9 is incomplete. In `/loop` dynamic mode, `ScheduleWakeup(delaySeconds=600)` and re-check on transient failures (CI still pending, rate-limit blocking branch deletion). On structural failures (BLOCKED PRs), surface the exact list and stop — human takes over.
 
-**Red flags (Phase 9)**:
+### Red flags (Phase 9)
+
 - "I'll clean up next time." → No. Tidy is binary.
-- "I'll keep the worktrees in case." → No. Stale worktrees are debris.
-- "Local branches deleted; remote branches don't matter — they're on the fork." → No. Stale remote branches accumulate on every run; future runs see them as "in-flight" and refuse to spawn worktrees with the same name.
-- "Just `git worktree remove --force <path>` everything." → No. The skill's `cleanup-worktrees.py` refuses unmerged worktrees by default to protect un-pushed work; bypass with `--force-abandon <branch>` only when explicitly intended.
-- "Skip the independent re-audit; I'll just trust my own state." → No. The audit subagent is fresh-context; it catches state drift main agent's context can mask.
-- "Skip cleaning `/tmp/{applier,evaluator,pr-creator}-brief-*.md` — they're tiny." → No. Future runs may create briefs with the same names and read stale data; clean now, not later.
+- "Local branches deleted; remote branches don't matter." → No. Stale remote branches accumulate; future runs see them as "in-flight" and refuse to spawn worktrees with the same name.
+- "`git worktree remove --force <path>` everything." → No. `cleanup-worktrees.py` refuses unmerged worktrees by default to protect un-pushed work; use `--force-abandon <branch>` only when explicitly intended.
+- "Skip the independent re-audit." → No. Fresh-context audit catches state drift main agent's own context can mask.
+- "Skip cleaning `/tmp/*-brief-*.md`." → No. Future runs may create briefs with the same names and read stale data.
 
 ---
 
@@ -735,76 +635,9 @@ Full recipes: `references/failure-recovery.md`.
 
 ## Final Deliverable
 
-The wrap-up at end of Phase 9. **Phase 9 cannot exit until every section below is producible from manifest state** — this is the "all merged or surfaced" hard exit gate the user requires.
+The wrap-up at end of Phase 9. **Phase 9 cannot exit until every section below is producible from manifest state** — this is the "all merged or surfaced" hard exit gate.
 
-```markdown
-## 🎉 Full skill flow complete — N PRs merged to main (or M surfaced as BLOCKED)
-
-### Final state on <fork-owner>/<repo>
-
-<output of: git log --oneline origin/main~N..origin/main>
-
-E.g.:
-a12dd4e fix(antigravity): protobuf sessions + RPC + cache (#51)
-cf8d3cd feat(parsers/gemini): JSONL + rewind reconciliation (#52)
-…
-3f15720 feat(handoff): structured timeline + verbosity controls (#53)
-
-### Per-branch summary
-| Branch | Concern | Rounds | Phase 3 status | PR | Phase 7 (a/r/x) | Phase 8a apply | Merged at | Notes |
-|---|---|---:|---|---|---|---|---|---|
-
-### Per-PR review breakdown
-| PR | codex-rescue (a/r/x) | copilot (a/r/x) | copilot-pr-reviewer (a/r/x) | greptile (a/r/x) | devin (a/r/x) | cubic-dev-ai (a/r/x) | Total accepted | Total ambiguous |
-|---|---|---|---|---|---|---|---:|---:|
-
-### What ran across all 10 phases
-| Phase | What happened |
-|---|---|
-| 0 | Pre-flight audit — all scripts present, MISSION_PROTOCOL loaded, /ask-review + /do-review available; manifest path repo-local. |
-| 1 | Decomposed N-file dirty tree into M per-concern branches. |
-| 2 | M worktrees spawned with --prep-deps, M branches pushed, manifest emitted. |
-| 3 | K rounds × M codex reviews; main agent evaluated, dispatched M appliers per round; J fixes applied across rounds. |
-| 4 | Merge order computed: foundation, then leaves. |
-| 5 | M PR-Creators (throttled ≤4) opened PRs via REST `gh api repos/.../pulls`. |
-| 6 | M codex:rescue jobs + M Monitors armed; external bots landed reviews; adaptive 900s base + 3-min quiet windows closed cleanly per PR. |
-| 7 | M Evaluator sub-agents used /do-review over gathered streams; produced decisions JSON (≈X items: A accepted, R rejected, U ambiguous). |
-| 8a | Main agent direct-applied accepted decisions across M worktrees; validated build+tests; pushed N commits. |
-| 8b | Captured foundation_pre_merge_tip; squash-merged foundation with --delete-branch; rebased leaves with `git rebase --onto`; retargeted leaves to main; merged sequentially with CI-wait. |
-| 9 | M worktrees removed, M local branches deleted, M remote branches deleted (mostly via --delete-branch in 8b), manifest + round-logs + briefs cleaned; final audit: TIDY. |
-
-### Loop tools that kept this autonomous
-- **Monitor** (M instances): per-PR comment poller; emitted one event per new bot/human comment; terminated on `[PR-N-DONE quiet]` or `[PR-N-DONE cap]`.
-- **ScheduleWakeup** (X fires): cache-aware 1200-1800s fallback tickers covering the 900s adaptive-wait floor.
-- **Agent run_in_background=true** (~K dispatches): appliers, PR-Creators, Evaluators — each fired a handback notification on completion.
-- **Bash run_in_background=true** (~K launches): per-branch codex review jobs, codex:rescue invocations, CI-wait pollers.
-
-### Lessons captured during execution (only include genuinely novel learnings; not boilerplate)
-
-### Tidy audit
-<output from audit-state.py + audit-review-state.py — both must show CLEAN>
-- git worktree list → only main
-- git branch -vv → only main + any BLOCKED branches
-- gh pr list → only BLOCKED branches (or empty)
-
-### Per-branch round history (appendix)
-### feat/foo (DONE in 4 rounds, merged as #42)
-- Round 1: 3 major (3 accepted) → committed + pushed
-- Round 2: 1 major (1 accepted) → committed + pushed
-- Round 3: 1 major (0 accepted, 1 rejected) → all-rejected round
-- Round 4: no major → DONE
-- Phase 8a fixes: abc123, def456 (merged as squash 2026-04-26T11:40:00Z)
-
-### feat/bar (CONVERGED-AT-CAP at 20 rounds, merged as #43 with deferred items in PR body)
-- 20 rounds, 8 accepted, 14 rejected, 0 ambiguous
-- Remaining major items in last round: <listed in PR body>
-
-### feat/baz (BLOCKED — surfaced for human; NOT merged)
-- terminal_reason: "ambiguous: <item-id>: <evaluator's question>"
-- Suggested human action: <e.g. split into 2 branches, re-run per concern>
-```
-
-The format is rendered from manifest entries; see `references/branch-decomposition-ledger.md`.
+The full Final Deliverable template (per-branch summary, per-PR review breakdown across 6 bot sources, what-ran-across-all-10-phases table, loop-tools used, per-branch round-history appendix) lives in `references/branch-decomposition-ledger.md` "Final Deliverable template" — render it from manifest entries at end of Phase 9.
 
 ### "All merged or surfaced" hard exit gate
 
@@ -812,94 +645,69 @@ The Final Deliverable can be produced ONLY when every branch in the manifest rea
 
 | Terminal state | Acceptable for clean exit? |
 |---|---|
-| `MERGED` (with `merged_at` timestamp) | ✅ yes — happy path |
-| `BLOCKED` (with `terminal_reason` set) | ✅ yes — surfaced for human; clean exit |
-| `apply_failed_after_evaluation` (with item list) | ✅ yes — surfaced for human; clean exit |
-| `CAP-REACHED` (no fixes pushed) | ✅ yes — surfaced for human |
-| `IN-LOOP` / `SPAWNED` / unset / `applying` | ❌ NO — incomplete; re-attempt or surface the specific blocker |
+| `MERGED` (with `merged_at` timestamp) | ✅ happy path |
+| `BLOCKED` (with `terminal_reason` set) | ✅ surfaced for human; clean exit |
+| `apply_failed_after_evaluation` (with item list) | ✅ surfaced for human |
+| `CONVERGED-AT-CAP` (round budget hit; fixes pushed; deferred items in PR body) | ✅ surfaced; clean exit if PR is merged or BLOCKED |
+| `CAP-REACHED` (round budget hit; no fixes pushed) | ✅ surfaced for human |
+| `FAILED` (tooling crash past retry budget) | ✅ surfaced for human |
+| `IN-LOOP` / `SPAWNED` / unset / `applying` | ❌ incomplete; re-attempt or surface the specific blocker |
 
-If any branch is in an incomplete state when Phase 9 audit runs, **the audit fails**. Re-attempt the merge for that branch (in `/loop` mode, ScheduleWakeup 600s and re-check). Do NOT produce the Final Deliverable until every branch is terminal.
+If any branch is in an incomplete state when Phase 9 audit runs, **the audit fails**. Re-attempt the merge for that branch (in `/loop` mode, `ScheduleWakeup(delaySeconds=600)` and re-check). Do NOT produce the Final Deliverable until every branch is terminal.
 
 ## Smell Test — forbidden internal thoughts
 
-If any of these fires, stop and re-run `python3 <this-skill>/scripts/audit-review-state.py`:
+If any of these fires, stop and re-run `python3 <this-skill>/scripts/audit-review-state.py`. The full annotated list lives in `references/thinking-steering.md` "Forbidden inventions"; the highest-leverage entries are below.
 
-**Phase 3:**
-- "I'll just squash these reviews into one round."
-- "Good enough after 3 rounds, ship it."
-- "I'll skip /do-review for the obvious items."
-- "Let me have one worker fix two rounds."
-- "Let me have the coordinator do the work itself."
-- "I'll skip the validation step before re-review."
+**Phase 3 (loop discipline)**:
+- "Squash these reviews into one round" / "Good enough after 3 rounds, ship it" → no; classifier + main-agent decisions are the arbiters of DONE.
+- "Let me dispatch a Coordinator sub-agent per branch like the older docs said" → main agent IS the coordinator. Long-lived sub-agents drift past harness session limits.
+- "Let me write the worker brief asking it to `/do-review` then apply" → highest-leverage failure pattern. Workers stop at decision-only. Decisions stay with main agent; workers are appliers.
+- "Let me have one worker fix two rounds" → workers are fresh per round.
 
-**Phase 5:**
-- "I'll just open the PR myself."
-- "I'll hand-roll the body — /ask-review is overhead."
-- "Skip the explicit reviewer questions."
-- "The body is over 50k, let me trim by removing the per-commit section."
+**Phase 5-7 (PR + bots + evaluator)**:
+- "I'll open the PR myself" / "Hand-roll the body — `/ask-review` is overhead" → invariant 13: PR creator MUST be a sub-agent using `/ask-review`.
+- "Skip the wait" / "Wait less than 900s" → 900s base + adaptive end is the contract.
+- "Trust copilot blindly" / "The evaluator is overhead" → every item passes through `/do-review` evaluation.
 
-**Phase 6:**
-- "Skip the wait, merge fast."
-- "Run codex rescue inline."
-- "Wait less than 900s — the bots are fast."
+**Phase 7-8 (apply + merge)**:
+- "Apply the ambiguous items just in case" / "Half-apply: ship the accepted items, defer the ambiguous ones" → ambiguous = the WHOLE PR is BLOCKED.
+- "Skip CI-wait" → CI-wait is mandatory in 8b before any merge.
+- "Foundation CI failed — merge the leaves anyway" → foundation is their base; halt all leaf merges.
+- "Plain `git rebase origin/main` the leaves after foundation squash-merged" → no; `git rebase --onto origin/main <foundation_pre_merge_tip> <leaf>` is non-negotiable for squash-merged stacks.
+- "Skip retargeting leaves to main" / "Use `gh pr merge --auto` to chain leaf merges" → retarget via `gh pr edit --base main`; sequential explicit merge with CI-wait between.
+- "Stage everything, peek with `git diff --cached`, then `git restore --staged .`" → diff-walk per concern from the first `git add`.
+- "Phase 8a evaluator's intended-shape doesn't apply cleanly; let me improvise" → mark `apply_failed_after_evaluation`, continue, surface.
+- "Force-push leaves with `--force` instead of `--force-with-lease`" → use `--force-with-lease`.
 
-**Phase 7:**
-- "Trust copilot blindly because it's usually right."
-- "The evaluator is overhead; just apply what the bots say."
-- "Auto-resolve the cross-source contradiction."
+**Phase 9 (cleanup)**:
+- "I'll clean up next time" / "I'll keep the worktrees in case" → tidy is binary.
+- "Local branches deleted; remote branches don't matter" → stale remote branches accumulate; future runs see them as "in-flight".
+- "Skip the independent re-audit" → fresh-context audit catches state drift.
 
-**Phase 7-8:**
-- "Let me dispatch a sub-agent for the apply step too." → No. Phase 8a is main-agent direct.
-- "Apply the ambiguous items just in case." → No. Ambiguous = the WHOLE PR is BLOCKED; do not apply any items.
-- "Half-apply: ship the accepted items, defer the ambiguous ones." → No. Defer the entire PR to keep apply intent coherent.
-- "Re-trigger Codex review after apply." → No. Phase 8a's commits are post-evaluator.
-- "Merge the BLOCKED PR anyway." → No. Human decides.
-- "Skip CI-wait, just push and move on to the next PR." → No in 8b — CI-wait gates merge. Within 8a (apply), pushing without CI-wait is fine; merging without CI-wait is forbidden.
-- "Foundation CI failed — let me merge the leaves anyway." → No. Foundation is their base; halt all leaf merges and surface foundation BLOCKED.
-- "Combine 9 PRs' commits into one mega-commit at merge time." → No. One PR = one (or N concern-scoped) commits squashed at merge. Cross-PR squashing destroys per-concern audit trail.
-- "Re-do `/do-review` per item in Phase 8 even when the evaluator already accepted." → No (default). The evaluator's JSON is the authority; re-eval is opt-in for borderline confidence cases only.
-- "Stage all files first, peek with `git diff --cached`, then `git restore --staged .` to re-stage by concern." → No. Diff-walk per concern from the first `git add`. Two extra git ops × 9 PRs = wasted overhead.
-- "Phase 8 evaluator's intended-shape doesn't apply cleanly; let me improvise the fix." → No. Mark `apply_failed_after_evaluation`, continue with remaining items, surface for human.
-- "Force-push leaves after foundation merge without rebasing first." → No. `git fetch && git rebase origin/main` per leaf, then `--force-with-lease` (NOT plain `--force`).
-- "After Evaluator returns ambiguous, retry the evaluation with a different prompt." → No. Ambiguous means the evaluator couldn't decide; another eval pass won't help. Surface for human.
-- "All decisions are accepted/rejected; ambiguous handling won't fire." → It might. Read every PR's evaluation.json; if `ambiguous` count > 0, that PR is BLOCKED.
-
-**Cross-phase:**
-- "I'll start fresh and ignore the prior session's manifest."
-- "I'll write the brief later — this dispatch is simple."
-- "Soft DoD ('clean code') — agents understand."
-- "I can skip the failure protocol — the agent will figure it out."
-- "I'll just run `codex --help` to verify the CLI flags." → No. Slash commands are not shell programs.
-- "Let me write a shim because `codex review --background` doesn't exist." → No. The `--background`/`--fresh`/`--effort` are slash-command arguments, not CLI flags. Re-read `references/codex-review-contract.md`.
-- "I'll dispatch a coordinator subagent per branch like the older docs said." → No. Main agent IS the coordinator (the older per-branch coordinator subagent was dropped; long-lived sub-agents drift). The current pattern is main-agent-coordinator + per-round Applier sub-agents. Read `references/parallel-subagent-protocol.md` "Coordinator role".
-- "Let me run a smoke test before fanning out." → No. The skill prescribes Phase 3 dispatch in parallel from round 1. Smoke tests are not in the workflow.
-- "Re-confirming the user's defaults — fork mode, max rounds, decomposition." → No. Defaults are pinned. Auto-detect and proceed. Only ask when a destructive choice is genuinely ambiguous.
-- "I'll just rebuild the manifest by hand because it has stale entries." → No. Phase 0 auto-namespaces it.
-- "Let me invoke `codex-companion.mjs` directly since the slash command is awkward." → No. The companion script is plugin-internal and forbidden.
-- "Let me run `codex login status` / `codex --version` / `codex doctor` / any health probe before dispatching." → **No.** Slash-command dispatch is the only valid test. Underlying-CLI probes assume a default provider/auth configuration that may not apply — users with custom backends, alternate auth, or non-default providers commonly see probes report "not logged in" while the real flow works. Trust the user's environment; if `Skill(codex:review)` actually fails at dispatch time, hand back FAILED with `terminal_reason` and surface to the user. Never present a multi-option auth-resolution menu (A/B/C…) for an environment the user didn't ask you to configure.
-- "Let me `ls <worktree>/node_modules` (or any dependency check) before dispatching workers." → No. Workers own their worktree setup — they run their own `npm install` / `pnpm install` / equivalent before validation. Pre-checking from main agent is over-stepping and assumes one specific package manager / project layout.
-- "I'll write a small shim that wraps `node codex-companion.mjs review`." → No. The wrapper script `scripts/run-codex-review.py` exists for this purpose. Sub-agents call it; do not invent parallel scripts.
-- "Decision point: how would you like to proceed? Option A / B / C / D." → **No.** If the user's prompt authorized full flow, this is a stall. Proceed to the next phase. (See "Authorization rule".)
-- "Before dispatching N parallel coordinators (which will run for several hours), let me do one smoke test on a single branch first." → No. The skill's Phase 0 already validates the dispatch surface (verifying skills are registered, manifest collision detected, repo mode auto-detected). Smoke tests beyond that are unsanctioned deviations and signal cost-anxiety.
-- "I'm proposing a small deviation from the skill's two-level pattern." → No deviation. Main agent IS the coordinator (the older two-level pattern was dropped because long-lived coordinator subagents drift). Read `references/parallel-subagent-protocol.md` "Coordinator role" — main agent owns the cadence directly.
-- "Phase 3 is taking forever; let me invent `DONE-PRAGMATIC` to ship round-2 work without round-3 verification." → No. The taxonomy is `DONE` / `CONVERGED-AT-CAP` / `CAP-REACHED` / `BLOCKED` / `FAILED`. If you ran out of round budget, set `CONVERGED-AT-CAP` and surface remaining items in the PR body. Inventing states forks the skill.
-- "Round-2 found new items refining round-1 fixes — is the loop converging?" → Yes, that's normal. 6/8 branches in production runs need round-2. Convergence in 3-6 rounds is expected (per `references/major-vs-minor-policy.md`).
-- "Let me write the worker brief asking it to evaluate via `/do-review` then apply." → **No.** This is the highest-leverage failure pattern: workers stop at decision-only and never push. Decisions stay with main agent (Phase 3 step 3 of the loop). Workers receive pre-decided fix specs and apply mechanically. (See invariant 11 + `references/parallel-subagent-protocol.md` "Mission Brief: Applier" — note especially the "Why no `/do-review` in this brief" subsection.)
-- "Let me write 7 separate applier briefs, one per branch, via 7 `Write` tool calls." → **No.** Mandatory: write ONE template with `{{PLACEHOLDER}}` slots; render N briefs from template + decisions JSON in ONE Python invocation. Hand-writing N briefs burns thousands of tokens and drifts copy-paste errors. (See `references/parallel-subagent-protocol.md` "Brief templating".)
-- "I'll inline the comment-poller bash command directly in N separate `Monitor` calls." → No. Render N Monitor commands from one parameterized poller (or use `scripts/await-pr-reviews.py --pr <n>` which encapsulates the poll logic). The poller logic is ~40 lines; duplicating it 9× across briefs is unmaintainable.
+**Cross-phase (anti-stalls)**:
+- "Decision point: how would you like to proceed? Option A / B / C / D" → if user authorized full flow, this is a stall. Proceed.
+- "Before dispatching N parallel coordinators, let me do one smoke test first" → smoke tests are not in the workflow; Phase 0 already validates the dispatch surface.
+- "Let me run `codex --help` / `codex login status` / `codex doctor`" → never probe the underlying CLI; users with custom providers/auth see misleading "not logged in" probes while the real flow works.
+- "Let me `ls <worktree>/node_modules` before dispatching" → workers own their worktree setup.
+- "I'll write a shim that wraps `node codex-companion.mjs review`" → that's what `scripts/run-codex-review.py` is. Use it.
+- "I'll write 7 separate applier briefs via 7 `Write` calls" → mandatory: ONE template + render N from JSON in ONE Python invocation.
+- "Phase 3 is taking forever; let me invent `DONE-PRAGMATIC`" → taxonomy is fixed (`DONE`, `CONVERGED-AT-CAP`, `CAP-REACHED`, `BLOCKED`, `FAILED`). Use `CONVERGED-AT-CAP` for round-budget exhausted.
+- "I'll start fresh and ignore the prior session's manifest" / "I'll rebuild the manifest by hand" → Phase 0 auto-namespaces; do not delete or hand-edit other sessions' state.
 
 ## How to Think — meta-cognition per phase
 
 - **Phase 0**: *What surprises me? Are MISSION_PROTOCOL + ask-review + do-review available?*
 - **Phase 1**: *Can each branch be described in one sentence?*
 - **Phase 2**: *Worktree AND remote ref on origin for each branch?*
-- **Phase 3**: *Coordinator dispatched per branch; per round it dispatches a fresh worker that uses /do-review. Have I stepped back?*
+- **Phase 3**: *I am the coordinator across all branches. Per round per branch: codex review wrapper → classifier → /do-review per major item in my own context → dispatch fresh Applier with pre-decided fix specs. Have I stepped back from the worktrees while Appliers run?*
 - **Phase 4**: *Which branches are mergeable? What's the merge order rationale?*
-- **Phase 5**: *PR opened by sub-agent using /ask-review? Body ≤ 50k? ≥ 3 reviewer questions?*
-- **Phase 6**: *Codex rescue triggered? Wait window in progress with adaptive end?*
-- **Phase 7**: *Evaluator decided every item via /do-review? Cross-source contradictions flagged?*
-- **Phase 8**: *Applying directly via /do-review? Ambiguous items surfaced (BLOCKED), not silently merged?*
-- **Phase 9**: *Returned to clean state plus the intended delta?*
+- **Phase 5**: *PR opened by sub-agent using /ask-review? Body ≤ 50k? ≥ 3 reviewer questions? Throttled to ≤4 parallel?*
+- **Phase 6**: *Codex rescue triggered (wrapper or slash)? Wait window in progress with adaptive end?*
+- **Phase 7**: *Evaluator decided every item via /do-review? Cross-source contradictions flagged as ambiguous?*
+- **Phase 8a**: *Reading evaluator decisions; applying accepted items directly via Edit; ambiguous → BLOCKED for the whole PR?*
+- **Phase 8b**: *Captured `foundation_pre_merge_tip` BEFORE merging foundation? Using `git rebase --onto` for leaves? Sequential merge with CI-wait between?*
+- **Phase 9**: *Returned to clean state plus the intended delta? 0 stale worktrees / local branches / remote branches / temp files? Independent audit said TIDY?*
 
 See `references/thinking-steering.md` for full red-flag list. See `skills/run-repo-cleanup/references/agent-thinking-steering.md` for the general decompose/order/verify pattern. See `references/mission-protocol-integration.md` for brief-writing doctrine.
 

@@ -52,7 +52,7 @@ If `<this-skill>/scripts/run-codex-review.py` cannot find a working `codex-compa
 
 ## Communication contract: manifest as message bus
 
-All sub-agents in this skill report state via atomic writes to `/tmp/codex-review-manifest.json`. No chat-based handbacks for state.
+All sub-agents in this skill report state via atomic, lock-guarded writes to the repo-local manifest (`<repo-root>/.codex-review-manifest.json` by default; `--manifest <path>` to override). No chat-based handbacks for state. The wrapper scripts (`run-codex-review.py`, `trigger-codex-rescue.py`) implement the lock recipe below; sub-agents call the wrappers rather than rolling their own.
 
 ### Atomic write recipe
 

@@ -56,7 +56,8 @@ These are arguments passed to the `/codex:resc` slash command, not shell flags:
 - **`--fresh`**: no prior session bias. Codex rescue evaluates the PR cold; it doesn't carry over the inner-loop's context.
 - **`--model gpt-5.5`**: stronger reasoning than the inner-loop's default model. The rescue is a last check; it deserves the heavier model.
 - **`--effort xhigh`**: Codex spends more compute. Acceptable here because rescue is one-shot per PR, not per round.
-- Background execution is governed by the codex plugin itself (rescue runs out-of-band by default); there is no `--background` argument to set explicitly.
+- **`--background`**: codex-companion's `task` subcommand DOES honor `--background` (unlike `review`, which always runs synchronously). With `--background`, the wrapper returns `{ jobId, status: "queued", title, logFile }` immediately and the rescue review runs in a detached worker. The wrapper script `trigger-codex-rescue.py` always passes `--background`; without it the wrapper would block for the entire rescue duration (1-5 minutes per PR × N PRs serially).
+- **`--write`**: instructs Codex to post the rescue review back to the PR as a comment.
 
 ## Phase 6 — adaptive review window
 
@@ -237,39 +238,57 @@ Main agent applying directly keeps the chain tight: evaluator decides → main a
 
 ## Phase 8b — merge in foundation→leaf strict serial
 
-Apply is done; now merge in dependency order. Foundation merges first; each leaf rebases onto the new main between merges.
+Apply is done; now merge in dependency order. Foundation merges first; each leaf retargets to main and rebases with `--onto` to skip the squashed foundation commits before merging individually.
+
+### Why `--onto` (not plain `git rebase origin/main`)
+
+Squash-merging foundation collapses N foundation commits into 1 squashed commit on main with a different SHA. Plain `git rebase origin/main` on a leaf branch tries to re-apply both copies of foundation (the original N commits in leaf history AND the squashed commit on main) — git can't detect the equivalence and conflicts on every foundation hunk. `git rebase --onto origin/main <foundation_pre_merge_tip> <leaf>` fast-forwards past the original foundation tip and replays only the leaf-specific commits onto the new main.
 
 ### Merge flow
 
 ```
 Order PRs per manifest.merge_order (foundation first, then leaves).
 
-For each PR in order:
-    # CI-WAIT GATE
+# 0. Capture foundation's pre-merge tip BEFORE merging — required for --onto below.
+foundation_tip=$(git -C <foundation-worktree> rev-parse HEAD)
+manifest['foundation_pre_merge_tip']=$foundation_tip
+
+# 1. Merge foundation
+Wait CI green for foundation:
     Bash(run_in_background=True):
-      until [ "$(gh pr checks <n> --json bucket --jq 'all(.[]; .bucket != "pending")')" = "true" ]; do
+      until [ "$(gh pr checks <foundation-pr> --json bucket --jq 'all(.[]; .bucket != "pending")')" = "true" ]; do
         sleep 30
       done
-      gh pr checks <n>
-    # Notification fires when all checks land terminal state.
+      gh pr checks <foundation-pr>
 
-    If any check is `failure` or `cancelled`:
-        Mark PR BLOCKED with terminal_reason: "CI failure: <check-name>"
-        Surface; do NOT merge; continue with next PR.
-        Exception: if THIS is foundation, STOP — do not merge any leaves.
+If any check is `failure` or `cancelled` for foundation:
+    STOP — do not merge any leaves. Surface foundation BLOCKED.
+Else:
+    gh pr merge <foundation-pr> --repo <fork>/<repo> --squash --delete-branch
+    git fetch --all --prune
 
+# 2. Retarget + rebase --onto + push every leaf (one batch, parallelizable across leaves)
+for leaf_pr in <leaf-prs>:
+    leaf_branch=$(gh pr view "$leaf_pr" --json headRefName --jq .headRefName)
+    leaf_worktree=<from manifest>
+
+    gh pr edit "$leaf_pr" --base main
+    git -C "$leaf_worktree" fetch origin
+    git -C "$leaf_worktree" rebase --onto origin/main "$foundation_tip" "$leaf_branch"
+    git -C "$leaf_worktree" push --force-with-lease origin "$leaf_branch"
+    # --force-with-lease (NOT --force); safe because Phase 1's backup ref
+    # preserves the original commits.
+
+# 3. Merge each leaf in order (sequential; NOT --auto)
+for leaf_pr in <leaf-prs-in-order>:
+    Wait CI green for leaf
+    If failure/cancelled: mark leaf BLOCKED; continue (do NOT halt; only foundation halts)
     Else:
-        gh pr merge <n> --repo <fork>/<repo> --squash
-          (or --merge / --rebase per repo policy from AGENTS.md)
-
-    After merge:
+        gh pr merge "$leaf_pr" --repo <fork>/<repo> --squash --delete-branch
         git fetch --all --prune
-        For every leaf PR not yet merged:
-            git -C <leaf-worktree> rebase origin/main
-            git -C <leaf-worktree> push --force-with-lease origin <leaf-branch>
-            (--force-with-lease, NOT --force; safe because no review is in flight
-             and Phase 1's backup ref preserves the original commits.)
 ```
+
+`--auto` works for foundation (single-step) but is unreliable for leaves on divergent stacks. Use sequential explicit merge with CI-wait between leaves.
 
 ### Foundation must succeed first
 

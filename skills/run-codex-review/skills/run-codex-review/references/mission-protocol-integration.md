@@ -30,12 +30,13 @@ Maximum **5,000 words** per brief — a ceiling, not a target.
 
 | Phase | Sub-agent | Brief lives in |
 |---|---|---|
-| 3 | Coordinator (per branch, parallel) | `parallel-subagent-protocol.md` |
-| 3 | Worker (per round, fresh) | `parallel-subagent-protocol.md` |
+| 3 | Applier (per round, per branch, fresh) | `parallel-subagent-protocol.md` |
 | 5 | PR-Creator (per DONE branch) | `parallel-subagent-protocol.md` |
 | 7 | Evaluator (per PR) | `parallel-subagent-protocol.md` |
 
-Phase 8 is **main-agent direct** — no sub-agent. Main agent invokes `/do-review` skill in its own context to apply the evaluator's accepted subset.
+Phase 3 has **no Coordinator sub-agent** — main agent IS the coordinator across all branches (older skill versions had a per-branch Coordinator subagent; long-lived sub-agents drifted past harness session limits in production runs and the pattern was dropped). Main agent runs the codex review wrapper, evaluates major items via `/do-review` in own context, and dispatches one fresh Applier sub-agent per round per branch with the pre-decided fix specs.
+
+Phase 8a is **main-agent direct apply** — main agent walks the Phase 7 Evaluator's decisions JSON and applies each accepted item via Edit + per-concern commits. Phase 8b (merge) is also main-agent direct, with `git rebase --onto` mechanics for squash-merged stacks.
 
 ## The mindset shift
 
@@ -63,8 +64,7 @@ Then identify the **heavy layers** (Framing / Discovery / Evidence / Execution /
 
 | Sub-agent | Ambiguity | Familiarity | Stakes | Heavy layers |
 |---|---|---|---|---|
-| Coordinator | Low | Familiar (the protocol is fixed) | Medium (one branch) | Execution + Verification |
-| Worker (per round) | Medium (Codex's items vary) | Unfamiliar (each round may touch new code) | Medium-High (real fixes) | Framing + Evidence + Execution + Verification |
+| Applier (per round, per branch) | Low (decisions are pre-made) | Unfamiliar (each round may touch new code) | Medium-High (real fixes pushed) | Framing + Execution + Verification |
 | PR-Creator | Low (the deliverable is fixed) | Unfamiliar (must read all changes) | Medium (PR is shared) | Discovery + Evidence + Execution + Verification |
 | Evaluator | Medium-High (multiple sources contradict) | Unfamiliar (PR's changes are new context) | High (decisions drive Phase 8 apply) | Framing + Evidence + Verification |
 
@@ -98,8 +98,8 @@ Where ceilings show up in this skill's briefs:
 
 | Where | Ceiling | Release valve |
 |---|---|---|
-| Worker brief | "Up to 20 rounds total per branch" | "Most branches converge in 3–6 rounds" |
-| Worker brief | "Up to 5 distinct fix approaches per major item" | "If the first approach lands cleanly, you're done with that item" |
+| Phase 3 loop (main agent) | "Up to 20 rounds total per branch" | "Most branches converge in 3–6 rounds" |
+| Applier brief | "Up to 5 distinct fix approaches per accepted item" | "If the first approach lands cleanly, you're done with that item" |
 | PR-Creator brief | "Body up to 50,000 characters" | "Coming in well under is fine; comprehensive ≠ verbose" |
 | PR-Creator brief | "Up to 10 explicit reviewer questions" | "3–5 sharp questions outperform 10 mediocre ones" |
 | Evaluator brief | "Up to 100 distinct review items across all sources" | "Group duplicates; one decision per logical item" |
@@ -113,19 +113,14 @@ Floors I deliberately do **not** set:
 
 ## The Five Layers — applied per sub-agent
 
-### Coordinator
-- **Framing**: light (the protocol is fixed).
-- **Discovery**: light (the protocol files are referenced).
-- **Evidence**: medium (read manifest, classifier output, round logs).
-- **Execution**: heavy (orchestrates the loop).
-- **Verification**: heavy (must show terminal state with evidence).
+(Phase 3 has no sub-agent for orchestration — main agent IS the coordinator. Only the per-round Applier is dispatched.)
 
-### Worker (per round)
-- **Framing**: medium-high (each round's items may have multiple interpretations).
-- **Discovery**: medium-high (must trace cited code).
-- **Evidence**: heavy (extract specific code citations, behavior, contracts).
-- **Execution**: heavy (apply fixes via diff-walk).
-- **Verification**: heavy (validate, push, confirm round-log update).
+### Applier (per round, per branch)
+- **Framing**: low (decisions are pre-made; brief contains the fix specs verbatim).
+- **Discovery**: low (the brief tells the Applier exactly which file:line and intended shape).
+- **Evidence**: light (Read cited code as a sanity check; diff-walk before staging).
+- **Execution**: heavy (apply fixes via Edit; commit per concern; validate; push).
+- **Verification**: heavy (commits exist on origin/<branch>; tests pass; round-log updated).
 
 ### PR-Creator
 - **Framing**: light (the deliverable is fixed: a comprehensive PR).
@@ -145,8 +140,8 @@ Floors I deliberately do **not** set:
 
 The `what_to_extract` mindset (from the protocol's Tool Intelligence section) applies here:
 
-- **Coordinator brief** specifies: extract status transitions, round numbers, terminal_reason text, head SHA after push.
-- **Worker brief** specifies: extract per-item decisions, per-item rationales, per-item commit SHAs (if accepted), validation output.
+- **Main agent's Phase 3 self-direction** specifies: extract status transitions, round numbers, terminal_reason text, head SHA after each round.
+- **Applier brief** specifies: extract per-fix commit SHAs, validation output, final pushed HEAD SHA, list of items that didn't apply cleanly (`apply_failed_after_evaluation`).
 - **PR-Creator brief** specifies: extract PR number, PR URL, body length, list of explicit reviewer questions.
 - **Evaluator brief** specifies: extract per-item decisions per source, deduplication map, cross-source contradictions.
 

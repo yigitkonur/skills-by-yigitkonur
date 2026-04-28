@@ -103,22 +103,32 @@ Never sit in a `while true; do …; sleep N; done` loop **inside the main agent'
          CAP=1800          # 30 min hard cap
 
          emit_new_items() {
-           # Issue comments
+           # Issue comments — --paginate is REQUIRED. Default page is 30 items;
+           # PRs with 4+ active bots routinely cross 30 comments and the poller
+           # would silently miss everything past page 1 without it.
            while IFS=$'\\t' read id user body; do
              [ -z "$id" ] && continue
              echo "$seen_ids" | grep -q "i$id" && continue
              seen_ids="$seen_ids i$id"
              last_event=$(date -u +%s)
              echo "PR #$pr [$user]: $(echo "$body" | head -c 200 | tr '\\n' ' ')"
-           done < <(gh api "repos/$repo/issues/$pr/comments" --jq '.[] | "\\(.id)\\t\\(.user.login)\\t\\(.body)"' 2>/dev/null || true)
-           # Review comments
+           done < <(gh api --paginate "repos/$repo/issues/$pr/comments" --jq '.[] | "\\(.id)\\t\\(.user.login)\\t\\(.body)"' 2>/dev/null || true)
+           # Review comments — same --paginate requirement
            while IFS=$'\\t' read id user state body; do
              [ -z "$id" ] && continue
              echo "$seen_ids" | grep -q "r$id" && continue
              seen_ids="$seen_ids r$id"
              last_event=$(date -u +%s)
              echo "PR #$pr REVIEW [$user $state]: $(echo "$body" | head -c 200 | tr '\\n' ' ')"
-           done < <(gh api "repos/$repo/pulls/$pr/reviews" --jq '.[] | "\\(.id)\\t\\(.user.login)\\t\\(.state)\\t\\(.body // "")"' 2>/dev/null || true)
+           done < <(gh api --paginate "repos/$repo/pulls/$pr/reviews" --jq '.[] | "\\(.id)\\t\\(.user.login)\\t\\(.state)\\t\\(.body // "")"' 2>/dev/null || true)
+           # Inline review comments (line-level findings — Devin & cubic-dev-ai use these heavily)
+           while IFS=$'\\t' read id user body; do
+             [ -z "$id" ] && continue
+             echo "$seen_ids" | grep -q "p$id" && continue
+             seen_ids="$seen_ids p$id"
+             last_event=$(date -u +%s)
+             echo "PR #$pr INLINE [$user]: $(echo "$body" | head -c 200 | tr '\\n' ' ')"
+           done < <(gh api --paginate "repos/$repo/pulls/$pr/comments" --jq '.[] | "\\(.id)\\t\\(.user.login)\\t\\(.body)"' 2>/dev/null || true)
          }
 
          # Initial seed pass (don't emit pre-existing comments)
@@ -142,7 +152,7 @@ Never sit in a `while true; do …; sleep N; done` loop **inside the main agent'
            sleep 30
          done
        ''',
-       description="PR #<n> review comments (codex/copilot/copilot-pr-reviewer/greptile/devin/cubic/human)",
+       description="PR #<n> review comments (codex/copilot/copilot-pull-request-reviewer/greptile/devin/cubic-dev-ai/human)",
        persistent=False,
        timeout_ms=2700000,   # 45 min hard ceiling
      )

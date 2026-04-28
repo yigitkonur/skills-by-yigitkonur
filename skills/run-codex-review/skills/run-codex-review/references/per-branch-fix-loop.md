@@ -84,43 +84,51 @@ while round <= 20:
         cited_code = read(<worktree>/<item.file>, around <item.line>, ±25)
         decision = Skill(skill="do-review",
                          args=f"--item {item.body} --code {cited_code}")
-        # decision ∈ {accepted, rejected, ambiguous}
+        # decision is a string enum: "accepted" | "rejected" | "ambiguous"
         decisions.append(decision)
 
-    if all(d == "ambiguous" for d in decisions) and persistent_ambiguity():
-        manifest[branch].status = "BLOCKED"
-        terminal_reason = f"persistent ambiguous items in round {round}"
-        break
+    accepted  = [d for d in decisions if d == "accepted"]
+    rejected  = [d for d in decisions if d == "rejected"]
+    ambiguous = [d for d in decisions if d == "ambiguous"]
 
-    accepted = [d for d in decisions if d.kind == "accepted"]
-    rejected = [d for d in decisions if d.kind == "rejected"]
-
-    # 4. ALL-REJECTED-STREAK detection (skip Applier dispatch this round
-    #    since there are no fixes to apply).
-    if not accepted and rejected:
-        all_rejected_streak += 1
-        if all_rejected_streak >= 3:
-            manifest[branch].status = "DONE"
-            terminal_reason = ("3 consecutive all-rejected rounds; "
-                               "Codex stuck on items main agent rejected")
+    # 4. AMBIGUOUS GATE — even one ambiguous item BLOCKS the round.
+    #    Don't half-apply: ship-some + defer-some leaves an inconsistent state.
+    if ambiguous:
+        if persistent_ambiguity():
+            manifest[branch].status = "BLOCKED"
+            terminal_reason = f"persistent ambiguous items in round {round}"
             break
+        # Non-persistent ambiguous (one round): defer the entire round, retry
+        round += 1
+        continue
+
+    # 5. ALL-REJECTED-STREAK detection (skip Applier dispatch this round
+    #    since there are no fixes to apply).
+    if not accepted:
+        if rejected:
+            all_rejected_streak += 1
+            if all_rejected_streak >= 3:
+                manifest[branch].status = "DONE"
+                terminal_reason = ("3 consecutive all-rejected rounds; "
+                                   "Codex stuck on items main agent rejected")
+                break
         round += 1
         continue
     else:
         all_rejected_streak = 0
 
-    # 5. DISPATCH APPLIER — fresh sub-agent for this round.
+    # 6. DISPATCH APPLIER — fresh sub-agent for this round.
     #    Brief contains pre-decided fix specs; NO /do-review invocation.
     brief = build_applier_brief(branch, worktree, round, accepted)
     handback = Agent(prompt=brief, subagent_type="general-purpose")
 
-    # 6. INTERPRET HANDBACK (binary)
+    # 7. INTERPRET HANDBACK (binary)
     if not handback.pushed:
         manifest[branch].status = "FAILED"
         terminal_reason = f"applier failed to push round {round}: {handback.terminal_reason}"
         break
 
-    # 7. NEXT ROUND
+    # 8. NEXT ROUND
     round += 1
 
 if round > 20:
