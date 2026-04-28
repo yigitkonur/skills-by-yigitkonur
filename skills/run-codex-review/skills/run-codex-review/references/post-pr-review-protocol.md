@@ -2,7 +2,7 @@
 
 Phases 6–8 of this skill. After a PR is opened (Phase 5), this protocol governs:
 - Triggering Codex rescue as the last automated check.
-- Waiting for external review bots (Copilot, Greptile, Devin, plus any humans).
+- Waiting for external review bots (Copilot, copilot-pull-request-reviewer, Greptile, Devin, cubic-dev-ai, plus any humans). Bot list expands over time as new code-review bots are installed on the repo; the comment-poller works against the GitHub API and surfaces whatever lands, so adding a new bot does not require skill changes.
 - Adaptive end condition: 900s base + extension if comments still flowing + termination on quiet.
 - Hand-off to Phase 7 evaluator sub-agent.
 - Phase 8 main-agent direct apply.
@@ -24,23 +24,40 @@ Codex rescue is **Codex's own background sub-agent**, not a Claude sub-agent we 
 python3 scripts/trigger-codex-rescue.py --pr <number> --branch <b>
 ```
 
-The script:
+There are two valid invocation paths for Phase 6 rescue from main agent. Pick by context:
+
+**A. Interactive context (chat directive):** Type `/codex:resc --fresh --model gpt-5.5 --effort xhigh --pr <number>` in the chat. The slash command dispatches a Codex sub-agent via the `Agent` tool internally. Use this when main agent has a few PRs and you're not in a parallel loop.
+
+**B. Programmatic loop context (sanctioned for Phase 6 with N PRs):**
+
+```bash
+Bash(run_in_background=True):
+  cd <worktree-path> && \
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" task \
+       --write --fresh --effort xhigh \
+       "<comprehensive review prompt for PR #<n>>"
+```
+
+This is the **same code path** the `/codex:resc` slash command runs internally — `/codex:resc`'s frontmatter dispatches a Codex sub-agent via `node codex-companion.mjs task`. In a programmatic loop where main agent dispatches N rescue jobs in parallel, the Bash invocation is cleaner than typing N slash-command directives. Both are sanctioned; the companion-script path is NOT a workaround.
+
+The `task` subcommand is the public interface for "run a Codex sub-agent on this prompt". `--write` means "post the review back to the PR thread"; `--fresh` means "no prior session bias"; `--effort xhigh` is the heaviest reasoning budget for one-shot last-check rescues.
+
+`scripts/trigger-codex-rescue.py` wraps this for batch use; it:
 1. Reads the manifest entry for `<branch>` to get `worktree_path`.
-2. Inside that worktree, invokes the Codex rescue CLI form:
-   ```
-   codex review --rescue --background --fresh --model gpt-5.5 --effort xhigh --pr <number>
-   ```
-   (Adjustment point in the script; the actual CLI form depends on your Codex install.)
-3. Captures the rescue job id from stdout.
+2. Inside that worktree, dispatches `node codex-companion.mjs task --write --fresh --effort xhigh "<prompt>"` via Bash run_in_background.
+3. Captures the resulting Codex job id.
 4. Writes `rescue_review_id` and `rescue_started_at` to the branch's manifest entry.
 5. Returns immediately (does not poll).
 
 ### Why "fresh" and "xhigh effort"
 
+These are arguments passed to the `/codex:resc` slash command, not shell flags:
+
 - **`--fresh`**: no prior session bias. Codex rescue evaluates the PR cold; it doesn't carry over the inner-loop's context.
 - **`--model gpt-5.5`**: stronger reasoning than the inner-loop's default model. The rescue is a last check; it deserves the heavier model.
 - **`--effort xhigh`**: Codex spends more compute. Acceptable here because rescue is one-shot per PR, not per round.
-- **`--background`**: Codex queues the job; we don't block waiting for it.
+- **`--background`**: codex-companion's `task` subcommand DOES honor `--background` (unlike `review`, which always runs synchronously). With `--background`, the wrapper returns `{ jobId, status: "queued", title, logFile }` immediately and the rescue review runs in a detached worker. The wrapper script `trigger-codex-rescue.py` always passes `--background`; without it the wrapper would block for the entire rescue duration (1-5 minutes per PR × N PRs serially).
+- **`--write`**: instructs Codex to post the rescue review back to the PR as a comment.
 
 ## Phase 6 — adaptive review window
 
@@ -143,44 +160,62 @@ Key brief points:
 - **Verification**: `git status` in worktree returns empty (no drift); JSON has decisions for all items.
 - **Failure**: missing decision → mark ambiguous; stale citation → reject; can't determine → ambiguous (never silently accept).
 
-## Phase 8a — main-agent direct apply
+## Phase 8a — main-agent direct apply (per-PR sequential; cross-PR order irrelevant)
 
-After the evaluator sub-agent hands back, **main agent acts directly** (no further sub-agent). The evaluator's JSON is the authority; main agent applies each accepted item mechanically. `/do-review` re-eval per item is optional and off by default because the evaluator already used `/do-review` in Phase 7.
+After the evaluator sub-agent hands back, **main agent acts directly** (no further sub-agent). The evaluator's JSON is the authority; main agent applies each accepted item mechanically. **`/do-review` re-eval per item is OPTIONAL and OFF by default** — the evaluator already used /do-review in Phase 7; double-eval is rarely worth the cost. Reserve for borderline-confidence cases.
 
 ### Apply flow (per PR)
 
 ```
 Read <repo>/.codex-review-rounds/pr-<n>.evaluation.json.
 
-# AMBIGUOUS GATE — read this before any apply
+# AMBIGUOUS GATE — read this FIRST, before any apply
 If ambiguous[] non-empty:
     Mark PR BLOCKED in manifest:
       terminal_reason: "ambiguous: <item-id>: <evaluator's question>"
-    Do NOT apply this PR's accepted items either.
+    DO NOT apply this PR's accepted items either —
+      partial-apply ships unreviewed code with half-decided intent.
     Surface in deliverable. Do NOT merge.
     Move to next PR.
 
-# ACCEPTED ITEMS — only when ambiguous[] is empty
+# ACCEPTED ITEMS — only reached when ambiguous[] is empty
 For each accepted item (deduplicated across sources, first-seen rationale wins):
-    1. Read cited code at <worktree>/<file>:<line> ± 25 lines.
+    1. Read cited code at <worktree>/<file>:<line> ± 25 lines (Read tool).
     2. Apply the evaluator's intended-shape fix via Edit.
-       If it does not apply cleanly:
-         record `apply_failed_after_evaluation: <item-id>` in manifest;
-         continue with remaining items; surface at the end of Phase 8a.
+       If it doesn't apply cleanly (file moved, line shifted, current shape mismatch):
+         DO NOT improvise. Record `apply_failed_after_evaluation: <item-id>` in manifest.
+         Continue with remaining items. Surface at end of Phase 8a.
     3. Stage by concern from the start:
          git -C <worktree> add <files-for-this-concern>
-         # do NOT stage all then `git restore --staged .`
-    4. git -C <worktree> diff --cached
+         (do NOT stage all then `git restore --staged .` to peek and restage)
+    4. git -C <worktree> diff --cached  # verify only intended hunks
     5. git -C <worktree> commit -m "<emoji> <type>(<scope>): <subject> (#<pr>)"
-    6. Validate with repo-equivalent build/test.
-    7. git -C <worktree> push origin <branch>   # no --force
+       — Note the (#<pr>) suffix for traceability.
+       — One concern per commit by default.
+       — Multi-concern allowed IFF tightly coupled to same file AND
+         message lists each concern as a bullet (the bullets are the
+         accountability — they document the audit trail).
+
+# OPTIONAL sanity-check
+For borderline confidence items only (not by default):
+    Skill(skill="do-review", args="--item <body> --code <cited_code>")
+    If main agent disagrees with the evaluator's accept decision:
+      Mark item ambiguous; revert; surface — do not push the disagreement.
+
+# VALIDATE before push
+pnpm run build && pnpm test  # or repo-equivalent per AGENTS.md/CONTRIBUTING.md
+If validation fails:
+    Revert the offending commit. Mark item ambiguous. Surface — do not retry blindly.
+
+# PUSH (no merge yet)
+git -C <worktree> push origin <branch>   # NEVER --force
 ```
 
-Process PRs in any order in 8a. Foundation→leaf merge order is enforced after apply.
+Process PRs in any order in 8a. Foundation→leaf is enforced in 8b.
 
 ### Phase 8a apply recipe (one-shot helper)
 
-The helper script derives the repetitive queue from evaluator JSON:
+A wrapper script encapsulates the repetitive bits:
 
 ```bash
 python3 <this-skill>/scripts/apply-evaluator-decisions.py \
@@ -190,7 +225,7 @@ python3 <this-skill>/scripts/apply-evaluator-decisions.py \
   --print-queue
 ```
 
-Output: ordered apply queue with ambiguous items at the top (BLOCKED warning), then accepted items with `file:line:intended-shape:rationale`. The script is read-only: it does not modify worktrees, commit, or push.
+Output: ordered apply queue with ambiguous items at the top (BLOCKED warning), then accepted items each with `file:line:intended-shape:rationale`. Read-only — does NOT modify worktree, does NOT commit, does NOT push. Main agent walks the queue, applies via Edit, validates, commits, pushes — but the queue derivation is mechanical and offloaded to the script.
 
 ### Why main-agent direct, not sub-agent
 
@@ -201,17 +236,72 @@ The evaluator's structured output is already in main agent's context. Re-dispatc
 
 Main agent applying directly keeps the chain tight: evaluator decides → main agent applies. The user's stated principle: "do-review is healthier when answers come straight back".
 
-### Optional: open a fresh PR
+## Phase 8b — merge in foundation→leaf strict serial
 
-If the evaluator's accepted set is so large or divergent that amending the current PR would muddy its history, main agent has the option to:
+Apply is done; now merge in dependency order. Foundation merges first; each leaf retargets to main and rebases with `--onto` to skip the squashed foundation commits before merging individually.
 
-1. Mark the current PR as "superseded by #<new>".
-2. Branch from main again.
-3. Cherry-pick the original branch's commits + apply the accepted items.
-4. Open a new PR with `/ask-review` (Phase 5 redux for this branch).
-5. Close the original PR.
+### Why `--onto` (not plain `git rebase origin/main`)
 
-This is the user's "we'll ask for a new PR if needed" path. Use sparingly — most of the time, in-place commits are simpler.
+Squash-merging foundation collapses N foundation commits into 1 squashed commit on main with a different SHA. Plain `git rebase origin/main` on a leaf branch tries to re-apply both copies of foundation (the original N commits in leaf history AND the squashed commit on main) — git can't detect the equivalence and conflicts on every foundation hunk. `git rebase --onto origin/main <foundation_pre_merge_tip> <leaf>` fast-forwards past the original foundation tip and replays only the leaf-specific commits onto the new main.
+
+### Merge flow
+
+```
+Order PRs per manifest.merge_order (foundation first, then leaves).
+
+# 0. Capture foundation's pre-merge tip BEFORE merging — required for --onto below.
+foundation_tip=$(git -C <foundation-worktree> rev-parse HEAD)
+manifest['foundation_pre_merge_tip']=$foundation_tip
+
+# 1. Merge foundation
+Wait CI green for foundation:
+    Bash(run_in_background=True):
+      until [ "$(gh pr checks <foundation-pr> --json bucket --jq 'all(.[]; .bucket != "pending")')" = "true" ]; do
+        sleep 30
+      done
+      gh pr checks <foundation-pr>
+
+If any check is `failure` or `cancelled` for foundation:
+    STOP — do not merge any leaves. Surface foundation BLOCKED.
+Else:
+    gh pr merge <foundation-pr> --repo <fork>/<repo> --squash --delete-branch
+    git fetch --all --prune
+
+# 2. Retarget + rebase --onto + push every leaf (one batch, parallelizable across leaves)
+for leaf_pr in <leaf-prs>:
+    leaf_branch=$(gh pr view "$leaf_pr" --json headRefName --jq .headRefName)
+    leaf_worktree=<from manifest>
+
+    gh pr edit "$leaf_pr" --base main
+    git -C "$leaf_worktree" fetch origin
+    git -C "$leaf_worktree" rebase --onto origin/main "$foundation_tip" "$leaf_branch"
+    git -C "$leaf_worktree" push --force-with-lease origin "$leaf_branch"
+    # --force-with-lease (NOT --force); safe because Phase 1's backup ref
+    # preserves the original commits.
+
+# 3. Merge each leaf in order (sequential; NOT --auto)
+for leaf_pr in <leaf-prs-in-order>:
+    Wait CI green for leaf
+    If failure/cancelled: mark leaf BLOCKED; continue (do NOT halt; only foundation halts)
+    Else:
+        gh pr merge "$leaf_pr" --repo <fork>/<repo> --squash --delete-branch
+        git fetch --all --prune
+```
+
+`--auto` works for foundation (single-step) but is unreliable for leaves on divergent stacks. Use sequential explicit merge with CI-wait between leaves.
+
+### Foundation must succeed first
+
+Leaves are based on foundation. If foundation can't merge (CI fails, conflict): STOP — do not merge any leaves; surface foundation BLOCKED to the human. The human resolves foundation, then re-runs Phase 8b on the leaves.
+
+### Optional: open a fresh PR for `apply_failed_after_evaluation`
+
+If Phase 8a recorded items as `apply_failed_after_evaluation` (intended-shape didn't apply because file/line drifted), surface them at end of 8a. The human decides:
+
+1. Re-run Phase 7 evaluator with current code (preferred), OR
+2. Branch from main again, cherry-pick the original branch's commits + apply the failed items by hand, open a new PR (Phase 5 redux), close the original PR.
+
+Don't auto-cycle — surface and let the human pick.
 
 ## Failure modes
 
@@ -229,15 +319,31 @@ The Phase 7 evaluator handles a single source (or no source) gracefully. If the 
 
 `await-pr-reviews.py` terminates with `wait_terminated_by: "total_cap"`. The current state is gathered. Phase 7 evaluates what we have. Late-arriving comments after evaluation are surfaced for human attention but don't block merge — the bot will still see them on the merged commit if it cares.
 
-### Evaluator marks anything ambiguous
+### Evaluator marks anything ambiguous (the BLOCKED gate)
 
-A single ambiguous item blocks the entire PR. Do not half-apply accepted items and defer ambiguous ones; that ships unreviewed code with half-decided intent. Record the evaluator's exact question in `manifest.pr.terminal_reason`, surface it in the final deliverable, and do not merge.
+**An item marked `ambiguous` by the evaluator means**: real issue OR false positive can't be determined without human input.
 
-If the evaluator marks everything ambiguous, surface the whole PR for human triage. Likely cause: PR is too broad or too cross-cutting; consider splitting in a follow-up.
+**Rule**: a single ambiguous item BLOCKS the entire PR. Do NOT half-apply (don't ship the accepted items and defer the ambiguous ones — that ships unreviewed code with a half-decided intent). Defer the entire PR.
+
+Per ambiguous item, main agent records:
+1. `manifest.pr.terminal_reason: "ambiguous: <item-id>: <evaluator's exact question>"`.
+2. Skip apply for that PR's accepted items too.
+3. Surface in final deliverable with the evaluator's exact question.
+4. Do NOT merge.
+
+If the evaluator marks **everything** ambiguous, surface the whole PR for human triage. Likely cause: PR is too broad or too cross-cutting; consider splitting in a follow-up.
 
 ### Evaluator's accepted fix breaks CI
 
-Phase 8 push fails CI. Revert the bad commit on the branch (don't force-push; commit a revert), mark the item ambiguous in the manifest with `terminal_reason: "post-apply CI failure: <details>"`, surface for human.
+Phase 8a push fails CI in 8b. Revert the bad commit on the branch (don't force-push; commit a revert), mark the item `apply_failed_validation` in the manifest with `terminal_reason: "post-apply CI failure: <details>"`, surface for human.
+
+### Phase 8a intended-shape doesn't apply cleanly (`apply_failed_after_evaluation`)
+
+The evaluator's `intended-shape` references a file:line that has drifted (file moved, line shifted, surrounding code refactored between Phase 7 and Phase 8a). DO NOT improvise a fix.
+
+Record `apply_failed_after_evaluation: <item-id>` in manifest. Continue with remaining items. Surface at end of Phase 8a. Human decides:
+1. Re-run Phase 7 evaluator with current code (preferred), OR
+2. Apply by hand and open a fresh PR (Phase 5 redux for that branch).
 
 ### Cross-source contradiction can't be resolved
 
@@ -289,7 +395,8 @@ The 900s+ wait exceeds the 5-minute prompt cache TTL. After the wait, the next a
 |---|---|
 | Skip Phase 6, merge fast | Loses the value of external review entirely. The whole skill exists to harvest reviewer feedback. |
 | Trust copilot's items blindly | Copilot is a reviewer like any other. Evaluator first. |
-| Run codex rescue inline (not `--background`) | Blocks the agent for 1–5 min. Defeats the parallel orchestration. |
+| Invoke codex rescue from Bash (`codex review --rescue …`) | There is no such CLI surface. Use `Skill(codex:resc, …)` — slash command, not shell. |
+| `node …/codex-companion.mjs task …` directly from a sub-agent brief | The wrapper does that, plus discovery + manifest update + (optional) status polling. Use the wrapper. |
 | Wait less than 900s by default | Bots that arrive at minute 13 are missed; their feedback is lost. |
 | Wait more than total_cap | Indefinite wait = dead session. Cap is the safety. |
 | Auto-merge after Phase 8 even with ambiguous items | Ambiguous means human-in-the-loop. Auto-merge defeats the gate. |
