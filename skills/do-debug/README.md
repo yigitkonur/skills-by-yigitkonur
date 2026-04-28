@@ -1,6 +1,6 @@
 # do-debug
 
-Language-agnostic systematic debugging method. Four mandatory phases before any fix — Investigation, Pattern analysis, Hypothesis testing, Implementation — with an Iron Law ("no fix before root cause") and a 3-fails gate that hands off to `do-brainstorm` when the problem is architecture-shaped.
+Language-agnostic systematic debugging method. Four mandatory phases before any fix — Investigation, Pattern analysis, Hypothesis testing, Implementation — with an Iron Law ("no fix before root cause") and a 3-fails gate that hands off to `do-think` (Mode: Interactive) when the problem is architecture-shaped.
 
 **Category:** productivity
 

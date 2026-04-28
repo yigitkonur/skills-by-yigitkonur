@@ -15,7 +15,7 @@ Anchor on this set of plain-English intent verbs:
 | Verb | Use when | Example |
 |---|---|---|
 | `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-mcp-server-sdk-v1` |
-| `do` | Generic "let me do this" entry-point skill | `do-brainstorm`, `do-debug`, `do-think`, `do-review` |
+| `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
 | `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture`, `apply-macos-hig`, `apply-liquid-glass` |
 | `ask` | Hand off / request something | `ask-review` |
 | `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
@@ -84,7 +84,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (43)
+## Current Canonical Skill Names (42)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -105,7 +105,6 @@ When renaming a published skill:
 - `check-completion`
 - `convert-url-to-nextjs`
 - `develop-typescript`
-- `do-brainstorm`
 - `do-debug`
 - `do-review`
 - `do-think`

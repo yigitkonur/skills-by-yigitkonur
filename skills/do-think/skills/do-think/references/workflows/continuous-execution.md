@@ -1,5 +1,7 @@
 # Continuous Execution
 
+Operation: **universal** — applies regardless of Op. The anti-stall discipline (don't stop early; only halt at real external blockers) is the same whether you're doing Sense-Making, Extraction, Composition, Reshape, Q&A, or SelfVerify.
+
 Use this workflow when the task should keep moving without frequent human intervention.
 
 ## Core Rule

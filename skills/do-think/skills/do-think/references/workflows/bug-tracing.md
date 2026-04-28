@@ -1,5 +1,7 @@
 # Bug Tracing
 
+Operation: **Sense-Making** (`Op: SenseMaking`), bug variant. For generic Sense-Making (research, judgment, evaluation), use `sense-making.md`. For recurring or systemic bugs where point fixes haven't worked, use `recurring-issue.md`.
+
 Bug reasoning starts with the symptom and ends at the smallest causal fix.
 
 ## Bug Trace Loop
