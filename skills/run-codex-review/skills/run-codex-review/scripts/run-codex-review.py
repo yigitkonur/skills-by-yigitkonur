@@ -1,43 +1,88 @@
 #!/usr/bin/env python3
-"""Wrap /codex:review --background for one branch; normalize output to JSON.
+"""Wrap the OpenAI Codex Claude Code plugin's review for one branch; normalize
+output to the round-log JSON schema in references/codex-review-contract.md.
 
-Invokes the Codex CLI inside the branch's worktree, polls the background job
-to completion, fetches the review artifact, normalizes to the JSON schema in
-references/codex-review-contract.md, and writes the round log + manifest update.
-
-The exact codex CLI form is environment-dependent; see invoke_codex() for the
-adjustment point.
+Invokes `node codex-companion.mjs review --json` (or `adversarial-review --json`)
+inside the branch's worktree. The companion script ignores `--background` for
+review subcommands — it always runs synchronously. Each parallel coordinator
+runs its own subprocess; parallelism comes from concurrent invocations, not
+from background flags.
 
 Usage:
     python3 run-codex-review.py --branch feat/foo --worktree /path/to/wt
     python3 run-codex-review.py --branch feat/foo --worktree /path/to/wt --dry-run
     python3 run-codex-review.py --branch feat/foo --worktree /path/to/wt \\
-        --timeout 1800 --poll-interval 30
+        --base main --timeout 1500 --mode review
+
+    # Adversarial mode (structured findings — no regex, severities are
+    # critical|high|medium|low):
+    python3 run-codex-review.py --branch feat/foo --worktree /path/to/wt --mode adversarial
 
 Exit codes:
     0  review available; round log written
     1  timeout (manifest marked 'timeout'; caller decides retry)
     2  codex/CLI failed (manifest marked 'failed'; caller decides FAILED)
+  127  codex plugin not installed (caller surfaces FAILED)
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_MANIFEST = "/tmp/codex-review-manifest.json"
-DEFAULT_ROUNDS_DIR = "/tmp/codex-review-rounds/"
-DEFAULT_TIMEOUT = 1800
-DEFAULT_POLL_INTERVAL = 30
+DEFAULT_TIMEOUT = 1500  # 25 min wall-clock cap; Codex review can hang on remote tools
+DEFAULT_MODE = "review"  # native (free-form parsed). "adversarial" → structured findings.
 
+
+# ─── codex-companion.mjs discovery (version-agnostic) ─────────────────────────
+
+def _find_codex_companion() -> Path:
+    """Discover the OpenAI Codex plugin's codex-companion.mjs.
+
+    Resolution order:
+      1. ${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs (env var set by Claude
+         Code harness when the plugin is loaded).
+      2. Latest installed version under
+         ~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs
+         (semver-sorted; latest wins; falls back to lex-sort for non-semver dirs).
+
+    Raises FileNotFoundError if neither resolves. Plugin source:
+      https://github.com/openai/codex-plugin-cc/tree/main/plugins/codex
+    """
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if plugin_root:
+        candidate = Path(plugin_root) / "scripts" / "codex-companion.mjs"
+        if candidate.is_file():
+            return candidate
+
+    cache = Path.home() / ".claude" / "plugins" / "cache" / "openai-codex" / "codex"
+    if cache.is_dir():
+        def _key(p: Path) -> tuple:
+            m = re.match(r"^(\d+)\.(\d+)\.(\d+)", p.name)
+            return (1, int(m[1]), int(m[2]), int(m[3])) if m else (0, p.name)
+        for v in sorted((p for p in cache.iterdir() if p.is_dir()), key=_key, reverse=True):
+            candidate = v / "scripts" / "codex-companion.mjs"
+            if candidate.is_file():
+                return candidate
+
+    raise FileNotFoundError(
+        "codex-companion.mjs not found. Install the OpenAI Codex Claude Code plugin "
+        "(https://github.com/openai/codex-plugin-cc) — expected at "
+        "$CLAUDE_PLUGIN_ROOT/scripts/codex-companion.mjs or at "
+        "~/.claude/plugins/cache/openai-codex/codex/<version>/scripts/codex-companion.mjs."
+    )
+
+
+# ─── Generic helpers ──────────────────────────────────────────────────────────
 
 def sh(cmd, cwd=None, env=None, timeout=None):
     try:
@@ -79,6 +124,17 @@ def atomic_write(path: str, content: str):
         raise
 
 
+def repo_local_default(wt: Path, name: str) -> str:
+    """Repo-local default for state files; main agent's session may pass --manifest
+    explicitly. This default prevents cross-repo /tmp collisions."""
+    # Find repo root from the worktree path (handle the worktree's own .git file)
+    rc, out, _ = sh(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=wt)
+    if rc == 0 and out:
+        # git-common-dir points at the main checkout's .git directory; its parent is repo root
+        return str(Path(out).parent / name)
+    return f"/tmp/{name}"  # last-resort fallback
+
+
 def load_manifest(path: str) -> dict | None:
     if not os.path.isfile(path):
         return None
@@ -89,18 +145,48 @@ def load_manifest(path: str) -> dict | None:
         return None
 
 
-def update_manifest_entry(path: str, branch: str, updates: dict, history_entry: dict | None = None):
-    manifest = load_manifest(path)
-    if manifest is None:
-        return
-    for entry in manifest.get("branches", []):
-        if entry.get("branch") == branch:
-            entry.update(updates)
-            entry["updated_at"] = utc_now_iso()
-            if history_entry is not None:
-                entry.setdefault("round_history", []).append(history_entry)
-            break
-    atomic_write(path, json.dumps(manifest, indent=2))
+@contextlib.contextmanager
+def _manifest_lock(manifest_path: str):
+    """Hold an fcntl.LOCK_EX on `<manifest>.lock` for the duration of a
+    read-modify-write. Required because parallel branches/PRs write to the
+    same manifest concurrently — without the lock, simultaneous writers
+    clobber each other and lose updates.
+
+    The lock file is created next to the manifest (not inside it) and is
+    safe to leave around between runs.
+    """
+    lock_path = manifest_path + ".lock"
+    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+    with open(lock_path, "w") as lock_fp:
+        fcntl.flock(lock_fp, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_fp, fcntl.LOCK_UN)
+
+
+def update_manifest_entry(path: str, branch: str, updates: dict, history_entry: dict | None = None) -> bool:
+    """Atomic read-modify-write under flock. Returns True iff the manifest
+    existed AND a branch entry matching `branch` was found and updated.
+    Callers should check the return value before reporting success.
+    """
+    with _manifest_lock(path):
+        manifest = load_manifest(path)
+        if manifest is None:
+            return False
+        found = False
+        for entry in manifest.get("branches", []):
+            if entry.get("branch") == branch:
+                entry.update(updates)
+                entry["updated_at"] = utc_now_iso()
+                if history_entry is not None:
+                    entry.setdefault("round_history", []).append(history_entry)
+                found = True
+                break
+        if not found:
+            return False
+        atomic_write(path, json.dumps(manifest, indent=2))
+        return True
 
 
 def get_round_for_branch(path: str, branch: str) -> int:
@@ -113,82 +199,165 @@ def get_round_for_branch(path: str, branch: str) -> int:
     return 0
 
 
-# ─── Codex invocation — adjustment point per environment ──────────────────────
+# ─── Codex invocation ─────────────────────────────────────────────────────────
 
-def invoke_codex(branch: str, base: str, wt: Path) -> tuple[int, str, str]:
-    """Launch /codex:review --background. Return (rc, stdout, stderr).
+def invoke_codex(branch: str, base: str, wt: Path, mode: str, timeout: int) -> tuple[int, str, str]:
+    """Spawn codex-companion.mjs <mode> --base <ref> --json synchronously.
 
-    Adjust the command form here to match the codex CLI in your environment.
-    Common forms (try in order):
-      - codex review --background --branch <b> --base <base>
-      - codex review --background
-      - claude codex review --background
+    The companion script's review and adversarial-review subcommands always run
+    foreground regardless of any --background flag. Returns (rc, stdout, stderr).
     """
-    candidates = [
-        ["codex", "review", "--background", "--branch", branch, "--base", base],
-        ["codex", "review", "--background"],
-    ]
-    for cmd in candidates:
-        rc, out, err = sh(cmd, cwd=wt, timeout=120)
-        if rc != 127:  # found and ran (even if it failed for other reasons)
-            return rc, out, err
-    return 127, "", "no codex CLI form succeeded; check codex install / PATH"
-
-
-def parse_job_id(stdout: str) -> str | None:
-    """Extract a background job id from launch stdout.
-
-    Adjust this regex to match what your codex CLI prints.
-    """
-    patterns = [
-        r"\bjob[- ]?id[:=]\s*([A-Za-z0-9_-]+)",
-        r"\b(cdx[- ]?job[- ]?[A-Za-z0-9_-]+)",
-        r"\bbackground job[:=]\s*([A-Za-z0-9_-]+)",
-    ]
-    for pat in patterns:
-        m = re.search(pat, stdout, flags=re.IGNORECASE)
-        if m:
-            return m.group(1)
-    return None
-
-
-def poll_job(job_id: str, wt: Path, poll_interval: int, timeout: int) -> tuple[str, str]:
-    """Poll the codex job until completion. Returns (status, raw_artifact)."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        rc, out, err = sh(["codex", "review", "--status", job_id], cwd=wt, timeout=60)
-        if rc == 127:
-            return "failed", f"codex --status not available: {err}"
-        text = out.lower()
-        if "completed" in text or "done" in text or "finished" in text:
-            # fetch artifact
-            rc2, art, err2 = sh(["codex", "review", "--fetch", job_id], cwd=wt, timeout=120)
-            if rc2 == 0:
-                return "completed", art
-            return "failed", f"fetch failed: {err2}"
-        if "failed" in text or "cancelled" in text or "errored" in text:
-            return "failed", out
-        time.sleep(poll_interval)
-    return "timeout", ""
-
-
-def normalize_review(raw: str, review_id: str, branch: str, head: str,
-                     started_at: str, finished_at: str) -> dict:
-    """Best-effort normalization of the artifact to the schema in
-    references/codex-review-contract.md. If the artifact is structured JSON,
-    parse it. Otherwise treat as unstructured text and let the classifier
-    fall back to regex over raw_text.
-    """
-    items = []
-    parsed = None
     try:
-        parsed = json.loads(raw)
+        companion = _find_codex_companion()
+    except FileNotFoundError as e:
+        return 127, "", str(e)
+
+    subcmd = "review" if mode == "review" else "adversarial-review"
+    cmd = [
+        "node", str(companion), subcmd,
+        "--base", base,
+        "--scope", "branch",
+        "--json",
+    ]
+    return sh(cmd, cwd=wt, timeout=timeout)
+
+
+# ─── Output normalization ─────────────────────────────────────────────────────
+
+# Severity tokens we recognize in free-form review output. Codex's native review
+# emits items as `[Px] Title — file:line` or `[severity] Title — file:line`.
+_SEV_TOKEN = r"P\d+|critical|high|medium|low"
+
+_FREEFORM_PATTERN = re.compile(
+    rf"^\s*\[(?P<sev>{_SEV_TOKEN})\]\s*"
+    r"(?P<title>.+?)\s*[—–-]+\s*"
+    r"(?P<file>[^\s:]+):(?P<line_start>\d+)(?:-(?P<line_end>\d+))?\s*$"
+    rf"(?P<body>(?:\n(?!\s*\[(?:{_SEV_TOKEN})\]).*)*)",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+# Map Codex's P1/P2/P3/P4 priority tokens to the severity labels the
+# classifier recognizes (`SEVERITY_MAJOR = {"critical","high","error","blocker","must-fix"}`
+# in classify-review-feedback.py). Without this mapping, P1 items lowercase
+# to "p1" — a token the classifier doesn't recognize as major — and a
+# branch with only P1 findings can be classified DONE. Verified against
+# classify-review-feedback.py:79.
+_PRIORITY_TO_SEVERITY = {
+    "p1": "critical",
+    "p2": "high",
+    "p3": "medium",
+    "p4": "low",
+}
+
+
+def _normalize_severity(token: str) -> str:
+    """Lowercase the matched severity token; map P1-P4 priorities to
+    critical/high/medium/low so the classifier recognizes them.
+    """
+    lower = token.lower()
+    return _PRIORITY_TO_SEVERITY.get(lower, lower)
+
+
+def parse_freeform_items(text: str) -> list[dict]:
+    """Regex-parse Codex's free-form review text into items[].
+
+    Matches header lines like:
+        [P1] Title here — src/foo.ts:42
+        <body line 1>
+        <body line 2>
+
+        [P2] Next item — src/bar.ts:13-15
+        ...
+
+    Severity tokens: P1 / P2 / P3 / P4 (mapped to critical/high/medium/low) or
+    critical / high / medium / low (preserved as-is).
+    """
+    items: list[dict] = []
+    for i, m in enumerate(_FREEFORM_PATTERN.finditer(text)):
+        items.append({
+            "id": f"cdx-{i}",
+            "severity_raw": _normalize_severity(m["sev"]),
+            "file": m["file"],
+            "line": int(m["line_start"]),
+            "body": (m["body"] or "").strip() or m["title"].strip(),
+        })
+    return items
+
+
+def normalize_review(raw_json: str, branch: str, head: str,
+                     started_at: str, finished_at: str) -> dict:
+    """Convert codex-companion's --json output to the round-log schema.
+
+    Two input shapes:
+
+    1. review (native):
+        {
+          "review": "Review",
+          "target": {...}, "threadId": "...",
+          "codex": { "status": 0, "stdout": "<free-form text>", "stderr": "...", "reasoning": null }
+        }
+
+    2. adversarial-review (structured):
+        {
+          "review": "Adversarial Review",
+          "result": {
+            "verdict": "approve|needs-attention",
+            "summary": "...",
+            "findings": [{ "severity": "critical|high|medium|low",
+                           "title": "...", "body": "...",
+                           "file": "...", "line_start": N, "line_end": N,
+                           "confidence": 0.0..1.0,
+                           "recommendation": "..." }],
+            "next_steps": [...]
+          },
+          "rawOutput": "...", "parseError": null, ...
+        }
+
+    Output (round-log per references/codex-review-contract.md):
+        {
+          "review_id", "branch", "head_sha",
+          "started_at", "finished_at",
+          "raw_text", "items": [{ "id", "severity_raw", "file", "line", "body" }]
+        }
+    """
+    try:
+        payload = json.loads(raw_json)
     except (ValueError, TypeError):
-        parsed = None
-    if isinstance(parsed, dict) and isinstance(parsed.get("items"), list):
-        items = parsed["items"]
-    elif isinstance(parsed, list):
-        items = parsed
+        # Companion didn't emit valid JSON — degenerate path; pass raw text through
+        # so the classifier's regex fallback can still try.
+        return {
+            "review_id": "",
+            "branch": branch,
+            "head_sha": head,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "raw_text": raw_json,
+            "items": [],
+        }
+
+    review_id = str(payload.get("threadId") or "")
+
+    if payload.get("review") == "Adversarial Review":
+        result = payload.get("result") or {}
+        findings = result.get("findings") or []
+        items = []
+        for i, f in enumerate(findings):
+            title = (f.get("title") or "").strip()
+            body = (f.get("body") or "").strip()
+            recommendation = (f.get("recommendation") or "").strip()
+            combined = "\n\n".join(p for p in (title, body, recommendation) if p)
+            items.append({
+                "id": f"adv-{i}",
+                "severity_raw": str(f.get("severity") or "unknown").lower(),
+                "file": f.get("file") or "",
+                "line": int(f.get("line_start") or 0),
+                "body": combined or title,
+            })
+        raw_text = payload.get("rawOutput") or json.dumps(result, indent=2)
+    else:
+        # Native review — free-form text in codex.stdout.
+        raw_text = (payload.get("codex") or {}).get("stdout") or ""
+        items = parse_freeform_items(raw_text)
 
     return {
         "review_id": review_id,
@@ -196,28 +365,44 @@ def normalize_review(raw: str, review_id: str, branch: str, head: str,
         "head_sha": head,
         "started_at": started_at,
         "finished_at": finished_at,
-        "raw_text": raw,
+        "raw_text": raw_text,
         "items": items,
     }
 
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--branch", required=True)
     ap.add_argument("--worktree", required=True)
     ap.add_argument("--base", default="main")
-    ap.add_argument("--manifest", default=DEFAULT_MANIFEST)
-    ap.add_argument("--rounds-dir", default=DEFAULT_ROUNDS_DIR)
+    ap.add_argument("--manifest",
+                    help="Path to the manifest JSON. Default: <repo-root>/.codex-review-manifest.json")
+    ap.add_argument("--rounds-dir",
+                    help="Directory for round-log JSON files. Default: <repo-root>/.codex-review-rounds/")
+    ap.add_argument("--output",
+                    help="Override round-log output path. If set, overrides --rounds-dir + --branch + round-N path computation.")
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
-                    help="seconds to wait for the background job to complete")
-    ap.add_argument("--poll-interval", type=int, default=DEFAULT_POLL_INTERVAL)
-    ap.add_argument("--dry-run", action="store_true")
+                    help=f"Wall-clock cap in seconds. Default {DEFAULT_TIMEOUT}s. "
+                         "Codex review can hang on remote tools (codebase-search APIs etc.); "
+                         "on hang, exit non-zero with terminal_reason 'review-hang past wall-clock cap'.")
+    ap.add_argument("--mode", choices=["review", "adversarial"], default=DEFAULT_MODE,
+                    help="codex-companion subcommand. 'review' = native (free-form text parsed via regex; "
+                         "default). 'adversarial' = adversarial-review (structured findings; severities are "
+                         "critical|high|medium|low).")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="Resolve the codex-companion path, validate worktree state, print intended invocation. Don't run codex.")
     args = ap.parse_args()
 
     wt = Path(args.worktree)
     if not wt.is_dir():
         print(f"worktree not found: {wt}", file=sys.stderr)
         return 2
+
+    # Default manifest + rounds-dir to repo-local paths (avoids /tmp cross-repo collisions)
+    manifest_path = args.manifest or repo_local_default(wt, ".codex-review-manifest.json")
+    rounds_dir = args.rounds_dir or repo_local_default(wt, ".codex-review-rounds")
 
     # Pre-flight: branch is checked out in the worktree
     rc, branch_at_wt, _ = sh(["git", "symbolic-ref", "--short", "HEAD"], cwd=wt)
@@ -229,69 +414,116 @@ def main() -> int:
     started_at = utc_now_iso()
 
     if args.dry_run:
-        print(f"DRY-RUN: would invoke codex review --background in {wt}")
+        try:
+            companion = _find_codex_companion()
+        except FileNotFoundError as e:
+            print(f"DRY-RUN: {e}", file=sys.stderr)
+            return 127
+        subcmd = "review" if args.mode == "review" else "adversarial-review"
+        print(f"DRY-RUN: would invoke")
+        print(f"  node {companion} {subcmd} --base {args.base} --scope branch --json")
+        print(f"  cwd:         {wt}")
         print(f"  branch:      {args.branch}")
-        print(f"  base:        {args.base}")
         print(f"  head:        {head}")
-        print(f"  manifest:    {args.manifest}")
-        print(f"  rounds-dir:  {args.rounds_dir}")
-        print(f"  timeout:     {args.timeout}s, poll {args.poll_interval}s")
+        print(f"  manifest:    {manifest_path}")
+        print(f"  rounds-dir:  {rounds_dir}")
+        print(f"  timeout:     {args.timeout}s")
+        print(f"  mode:        {args.mode}")
         return 0
 
-    print(f"launching /codex:review --background in {wt} ...")
-    rc, out, err = invoke_codex(args.branch, args.base, wt)
-    if rc not in (0, 1):  # 0=ok, 1 sometimes used for "submitted with warnings"
-        print(f"✗ codex launch failed (rc={rc}): {err}", file=sys.stderr)
-        update_manifest_entry(args.manifest, args.branch, {"last_status": "failed"})
-        return 2
+    # Pre-resolve the companion path so we can distinguish "plugin missing"
+    # (codex-companion.mjs not on disk) from "node missing" (sh returns 127
+    # because `node` itself isn't on PATH).
+    try:
+        companion_path = _find_codex_companion()
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {"last_status": "plugin-missing"})
+        return 127
 
-    job_id = parse_job_id(out) or parse_job_id(err)
-    if not job_id:
-        # Heuristic: if codex returned 0 but no recognizable id, use a synthetic one
-        job_id = f"cdx-job-unknown-{int(time.time())}"
-        print(f"⚠  no recognizable job id in launch output; using synthetic: {job_id}")
-
-    print(f"  job id: {job_id}; polling every {args.poll_interval}s up to {args.timeout}s...")
-    status, raw = poll_job(job_id, wt, args.poll_interval, args.timeout)
+    print(f"running codex-companion {args.mode} (sync) in {wt} ... timeout={args.timeout}s")
+    rc, stdout, stderr = invoke_codex(args.branch, args.base, wt, args.mode, args.timeout)
     finished_at = utc_now_iso()
 
-    if status == "timeout":
-        print(f"✗ job {job_id} timed out after {args.timeout}s", file=sys.stderr)
-        update_manifest_entry(args.manifest, args.branch, {
-            "last_review_id": job_id,
+    if rc == 127:
+        # node binary not on PATH (plugin path was already verified above)
+        print(f"✗ `node` not on PATH (codex-companion.mjs requires Node.js): {stderr[:500]}", file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {
+            "last_status": "node-missing",
+            "last_error": "node not on PATH",
+            "last_review_at": finished_at,
+        })
+        return 127
+
+    if rc == 124:
+        print(f"✗ codex review timed out after {args.timeout}s", file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {
             "last_review_at": finished_at,
             "last_status": "timeout",
+            "terminal_reason": "review-hang past wall-clock cap",
         })
         return 1
-    if status == "failed":
-        print(f"✗ job {job_id} failed: {raw[:200]}", file=sys.stderr)
-        update_manifest_entry(args.manifest, args.branch, {
-            "last_review_id": job_id,
+
+    # Decide whether stdout is parseable. Don't normalize if it doesn't look
+    # like the JSON envelope — that previously masked codex errors by writing
+    # an empty round-log marked "reviewed".
+    stdout_looks_jsonish = stdout.strip().startswith("{")
+
+    if rc != 0:
+        if not stdout_looks_jsonish:
+            print(f"✗ codex review failed (rc={rc}): {stderr[:500]}", file=sys.stderr)
+            update_manifest_entry(manifest_path, args.branch, {
+                "last_review_at": finished_at,
+                "last_status": "failed",
+            })
+            return 2
+        # Some Codex paths exit non-zero even on usable JSON output; try to parse
+        print(f"⚠  codex review exited rc={rc}; stdout looks JSON-ish, attempting to parse", file=sys.stderr)
+
+    if not stdout_looks_jsonish:
+        # rc was 0 but stdout isn't a JSON envelope — degenerate path; surface
+        # the failure rather than write a stub round-log.
+        print(f"✗ codex review returned rc=0 but stdout is not a JSON envelope (first 200 chars: {stdout[:200]!r})", file=sys.stderr)
+        update_manifest_entry(manifest_path, args.branch, {
             "last_review_at": finished_at,
             "last_status": "failed",
+            "last_error": "stdout-not-json",
         })
         return 2
 
-    # status == "completed"
-    review = normalize_review(raw, job_id, args.branch, head, started_at, finished_at)
-    round_n = get_round_for_branch(args.manifest, args.branch) + 1
-    log_path = os.path.join(args.rounds_dir, f"{slug(args.branch)}.{round_n:02d}.json")
+    review = normalize_review(stdout, args.branch, head, started_at, finished_at)
+    round_n = get_round_for_branch(manifest_path, args.branch) + 1
+
+    if args.output:
+        log_path = args.output
+    else:
+        log_path = os.path.join(rounds_dir, f"{slug(args.branch)}.{round_n:02d}.json")
+
     atomic_write(log_path, json.dumps(review, indent=2))
-    print(f"  ✓ round log written: {log_path}")
+    print(f"  ✓ round log written: {log_path} (items={len(review['items'])})")
 
     history_entry = {
         "round": round_n,
-        "review_id": job_id,
+        "review_id": review["review_id"],
         "completed_at": finished_at,
+        "items_found": len(review["items"]),
     }
-    update_manifest_entry(args.manifest, args.branch, {
-        "last_review_id": job_id,
+    manifest_updated = update_manifest_entry(manifest_path, args.branch, {
+        "last_review_id": review["review_id"],
         "last_review_at": finished_at,
         "last_status": "reviewed",
         "rounds": round_n,
         "head_sha_current": head,
     }, history_entry=history_entry)
-    print(f"  ✓ manifest updated: rounds={round_n}")
+    if manifest_updated:
+        print(f"  ✓ manifest updated: rounds={round_n}")
+    else:
+        # Round-log is on disk; manifest didn't update. Common cause: --branch
+        # mistyped, or manifest doesn't have a branches[] entry for this branch.
+        # Don't claim success — surface so caller doesn't double-write rounds.
+        print(f"⚠  round-log written but manifest entry for branch '{args.branch}' "
+              f"not found at {manifest_path} (round counter not incremented)", file=sys.stderr)
+        return 2
     return 0
 
 
