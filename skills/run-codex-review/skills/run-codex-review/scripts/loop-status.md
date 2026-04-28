@@ -41,8 +41,8 @@ Columns:
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--manifest <path>` | `/tmp/codex-review-manifest.json` | Source-of-truth manifest. |
-| `--rounds-dir <path>` | `/tmp/codex-review-rounds/` | Per-branch round-log directory. |
+| `--manifest <path>` | `<repo-root>/.codex-review-manifest.json` (repo-local default) | Source-of-truth manifest. |
+| `--rounds-dir <path>` | `<repo-root>/.codex-review-rounds/` | Per-branch round-log directory. |
 | `--stale-minutes <n>` | `60` | Heartbeat threshold for `STALE` flagging. |
 | `--watch` | off | Redraw on a timer. |
 | `--refresh <n>` | `10` | Seconds between redraws (only with `--watch`). |

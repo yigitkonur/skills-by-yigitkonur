@@ -4,7 +4,7 @@ The manifest is the durable cross-process state for the entire skill. Every sub-
 
 ## File location
 
-Default: `/tmp/codex-review-manifest.json`. Override with `--manifest <path>` on every script. If the manifest needs to survive reboots, set the path to something under the repo (e.g. `<repo-root>/.codex-review/manifest.json`) and add it to `.gitignore`.
+Default: `<repo-root>/.codex-review-manifest.json` (the wrappers compute this from the worktree's git common-dir and add `.codex-review-manifest.json` next to it). Override with `--manifest <path>` on every script. The repo-local default keeps concurrent skill sessions across different repos from clobbering each other (older skill versions defaulted to `/tmp/codex-review-manifest.json` and concurrent sessions caused lost-update bugs in production). Add `.codex-review-manifest.json{,.lock}` and `.codex-review-rounds/` to `.gitignore`.
 
 ## Schema (top-level)
 
@@ -129,9 +129,10 @@ Notes on fields:
 |---|---|---|
 | `SPAWNED` | `spawn-review-worktrees.py` | Worktree created, branch pushed to origin, no coordinator dispatched yet. |
 | `IN-LOOP` | Main agent on Phase 3 dispatch | Coordinator owns this branch; rounds in progress. |
-| `DONE` | Coordinator | Last classifier output had `major == []`, OR 3 consecutive all-rejected rounds. Ready for Phase 5. |
-| `CAP-REACHED` | Coordinator | 20 rounds reached with major items still present. Surface for human; **no Phase 5**. |
-| `BLOCKED` | Coordinator OR evaluator (Phase 7) | Persistent ambiguity (worker-level or evaluator-level). Surface for human; **no merge**. |
+| `DONE` | Main agent (Phase 3 loop) | Last classifier output had `major == []`, OR 3 consecutive all-rejected rounds. Ready for Phase 5. |
+| `CONVERGED-AT-CAP` | Main agent (Phase 3 loop) | Configured `max_rounds_per_branch` exhausted with at least one round of fixes pushed; remaining items captured for the PR body. Ready for Phase 5; PR body documents the deferred items. |
+| `CAP-REACHED` | Main agent (Phase 3 loop) | 20 rounds reached with major items still present AND no successful round of pushed fixes (every round had failures). Surface for human; **no Phase 5**. |
+| `BLOCKED` | Main agent (Phase 3) OR evaluator (Phase 7) | Persistent ambiguity, oscillation, or contradictions. Surface for human; **no merge**. |
 | `FAILED` | Coordinator OR main agent OR any script | Tooling failure (codex, push, validation, evaluator) past retry budget. |
 | `PR-OPEN` | PR-Creator (Phase 5) | PR has been opened on the fork; pending Phase 6 wait + Phase 7 evaluation. |
 | `PR-EVALUATED` | Evaluator (Phase 7) | Evaluator's decisions JSON written; pending Phase 8 apply. |
@@ -144,11 +145,11 @@ Transitions:
                  (created)
                     │
                     ▼
-                SPAWNED  ──(main agent dispatches coordinator)──▶  IN-LOOP
-                                                                    │
-            ┌──────────────────────────────────────────────┬────────┼──────────────────┐
-            ▼                                              ▼        ▼                  ▼
-          DONE                                        CAP-REACHED  BLOCKED          FAILED
+                SPAWNED  ──(main agent enters Phase 3 loop, round 1)──▶  IN-LOOP
+                                                                          │
+            ┌────────────────────────────┬──────────────────────┬────────┼─────────┬──────────┐
+            ▼                            ▼                      ▼        ▼         ▼          ▼
+          DONE              CONVERGED-AT-CAP              CAP-REACHED  BLOCKED  FAILED
             │                                                 │      │                │
             │ (Phase 5: PR-Creator dispatched)                └──────┴────────────────┘
             ▼                                                       (no further phases;
@@ -264,3 +265,75 @@ After Phase 9 cleanup, a complete branch entry might look like:
 ```
 
 Every phase's contribution is visible. The trace is complete: one round of work → one round of review → one round of decision → final merged state.
+
+## Final Deliverable template
+
+Render at end of Phase 9 from manifest state. Each section maps to specific manifest fields — the template below shows where each value comes from. Phase 9 cannot exit until every section is producible.
+
+```markdown
+## 🎉 Full skill flow complete — N PRs merged to main (or M surfaced as BLOCKED)
+
+### Final state on <fork-owner>/<repo>
+<output of: git log --oneline origin/main~N..origin/main>
+
+E.g.:
+a12dd4e fix(antigravity): protobuf sessions + RPC + cache (#51)
+cf8d3cd feat(parsers/gemini): JSONL + rewind reconciliation (#52)
+…
+3f15720 feat(handoff): structured timeline + verbosity controls (#53)
+
+### Per-branch summary
+| Branch | Concern | Rounds | Phase 3 status | PR | Phase 7 (a/r/x) | Phase 8a apply | Merged at | Notes |
+|---|---|---:|---|---|---|---|---|---|
+
+### Per-PR review breakdown
+| PR | codex-rescue (a/r/x) | Copilot (a/r/x) | copilot-pull-request-reviewer (a/r/x) | greptile (a/r/x) | devin-ai-integration (a/r/x) | cubic-dev-ai (a/r/x) | Total accepted | Total ambiguous |
+|---|---|---|---|---|---|---|---:|---:|
+
+### What ran across all 10 phases
+| Phase | What happened |
+|---|---|
+| 0 | Pre-flight audit — all scripts present, MISSION_PROTOCOL loaded, /ask-review + /do-review available; manifest path repo-local. |
+| 1 | Decomposed N-file dirty tree into M per-concern branches. |
+| 2 | M worktrees spawned with `--prep-deps`, M branches pushed, manifest emitted. |
+| 3 | K rounds × M codex reviews; main agent evaluated, dispatched M Appliers per round; J fixes applied across rounds. |
+| 4 | Merge order computed: foundation, then leaves. |
+| 5 | M PR-Creators (throttled ≤4) opened PRs via REST `gh api repos/.../pulls`. |
+| 6 | M codex-rescue jobs + M Monitors armed; external bots landed reviews; adaptive 900s base + 3-min quiet windows closed cleanly per PR. |
+| 7 | M Evaluator sub-agents used /do-review over gathered streams; produced decisions JSON (≈X items: A accepted, R rejected, U ambiguous). |
+| 8a | Main agent direct-applied accepted decisions across M worktrees; validated build+tests; pushed N commits. |
+| 8b | Captured `foundation_pre_merge_tip`; squash-merged foundation with `--delete-branch`; rebased leaves with `git rebase --onto`; retargeted leaves to main; merged sequentially with CI-wait. |
+| 9 | M worktrees removed, M local branches deleted, M remote branches deleted (mostly via `--delete-branch` in 8b), manifest + round-logs + briefs cleaned; final audit: TIDY. |
+
+### Loop tools that kept this autonomous
+- **Monitor** (M instances): per-PR comment poller; emitted one event per new bot/human comment; terminated on `[PR-N-DONE quiet]` or `[PR-N-DONE cap]`.
+- **ScheduleWakeup** (X fires): cache-aware 1200-1800s fallback tickers covering the 900s adaptive-wait floor.
+- **Agent run_in_background=true** (~K dispatches): Appliers, PR-Creators, Evaluators — each fired a handback notification on completion.
+- **Bash run_in_background=true** (~K launches): per-branch codex review jobs, codex-rescue invocations, CI-wait pollers.
+
+### Lessons captured during execution
+(Only include genuinely novel learnings — not boilerplate. Examples: rate-limit pivot to REST, squash-merge `--onto` mechanic, brief-templating discipline, `/do-review` decision-only failure mode.)
+
+### Tidy audit
+<output from `audit-state.py` + `audit-review-state.py` — both must show CLEAN>
+- `git worktree list` → only main
+- `git branch -vv` → only main + any BLOCKED branches
+- `gh pr list` → only BLOCKED PRs (or empty)
+
+### Per-branch round history (appendix)
+
+#### feat/foo (DONE in 4 rounds, merged as #42)
+- Round 1: 3 major (3 accepted) → committed + pushed
+- Round 2: 1 major (1 accepted) → committed + pushed
+- Round 3: 1 major (0 accepted, 1 rejected) → all-rejected round
+- Round 4: no major → DONE
+- Phase 8a fixes: abc123, def456 (merged as squash 2026-04-26T11:40:00Z)
+
+#### feat/bar (CONVERGED-AT-CAP at 20 rounds, merged as #43 with deferred items in PR body)
+- 20 rounds, 8 accepted, 14 rejected, 0 ambiguous
+- Remaining major items in last round: <listed in PR body>
+
+#### feat/baz (BLOCKED — surfaced for human; NOT merged)
+- terminal_reason: "ambiguous: <item-id>: <evaluator's question>"
+- Suggested human action: <e.g. split into 2 branches, re-run per concern>
+```
