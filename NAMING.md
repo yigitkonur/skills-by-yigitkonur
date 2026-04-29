@@ -85,7 +85,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (43)
+## Current Canonical Skill Names (44)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -129,4 +129,5 @@ When renaming a published skill:
 - `swift-quality-hooks`
 - `test-by-mcpc-cli`
 - `test-macos-snapshots`
+- `use-linear-cli`
 - `use-railway`

@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-43 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+44 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -62,6 +62,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [swift-quality-hooks](skills/swift-quality-hooks/) | development | Swift pre-commit hook with SwiftLint + SwiftFormat for Apple platforms |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
 | [test-macos-snapshots](skills/test-macos-snapshots/) | testing | macOS app screenshot validation and drift checks |
+| [use-linear-cli](skills/use-linear-cli/) | platform | linear-cli for Linear issue lifecycle, bulk creation, git/PR loops, and automation |
 | [use-railway](skills/use-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |
 
 ## Notes
