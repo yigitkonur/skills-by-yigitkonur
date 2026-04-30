@@ -81,7 +81,9 @@ Each element returned by `listTools()` has the following structure:
 
 ## Calling Tools
 
-Pass the tool name and a parameter object to `session.callTool()`. The client serializes the arguments, sends the request, and returns a structured result.
+Pass the tool name and a parameter object to `session.callTool()`. The client serializes the arguments, sends the request, and returns a result that may include `content`, `structuredContent`, and `_meta`.
+
+For broad interoperability, prefer `content` as the default human/model-facing answer, but preserve `structuredContent` when it exists. Some MCP clients and adapters are content-first, some are structured-first, and some drop one surface. Client code should not assume `content[0].text` is the only successful payload.
 
 ```typescript
 import { MCPClient } from "mcp-use";
@@ -121,6 +123,8 @@ Every call returns a `CallToolResult` (from `@modelcontextprotocol/sdk/types.js`
 ```typescript
 interface CallToolResult {
   content: Array<TextContent | ImageContent | EmbeddedResource>;
+  structuredContent?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
   isError?: boolean; // true when the tool reported an error (may be absent on success)
 }
 
@@ -133,9 +137,27 @@ interface EmbeddedResource { type: "resource"; resource: { uri: string; mimeType
 | Field | Type | Description |
 |---|---|---|
 | `content` | `Array<TextContent \| ImageContent \| EmbeddedResource>` | Array of content items. Text responses appear as `{ type: "text", text: "..." }` entries. |
+| `structuredContent` | `Record<string, unknown> \| undefined` | Typed JSON result when the server provides structured output. Treat as model-visible unless the exact host proves otherwise. |
+| `_meta` | `Record<string, unknown> \| undefined` | Private/client-only metadata. Do not forward to the model by default. |
 | `isError` | `boolean \| undefined` | Present and `true` when the tool executed but reported an error. Absent or `false` on success. |
 
 Always inspect `isError` before consuming `content`. When `isError` is `true`, content items typically carry a text error message.
+
+When normalizing a result for an LLM or UI, keep both compatible surfaces available:
+
+```typescript
+const result = await session.callTool("search_web", { query: "MCP protocol" });
+
+const textContent = result.content
+  .filter((item) => item.type === "text")
+  .map((item) => item.text)
+  .join("\n");
+
+const normalized = {
+  text: textContent || JSON.stringify(result.structuredContent ?? result.content),
+  structuredContent: result.structuredContent,
+};
+```
 
 ```typescript
 const result = await session.callTool("search_web", { query: "MCP protocol" });

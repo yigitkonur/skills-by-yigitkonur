@@ -486,8 +486,10 @@ All commands support these global flags.
 >
 > ```bash
 > RESULT=$(npx mcp-use client tools call get_data '{}' --json)
-> echo "$RESULT" | jq '.content[0].text'
+> echo "$RESULT" | jq '{text: .content[0].text, structuredContent}'
 > ```
+
+For scripting, prefer `.content[0].text` as the human-readable fallback but preserve `.structuredContent` when present. Do not assume all successful tools return only text.
 
 ---
 

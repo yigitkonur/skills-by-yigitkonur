@@ -333,19 +333,19 @@ server.uiResource({
 
 ## Data Flow: props vs toolInput vs metadata
 
-The tool result has three fields with different visibility. Understanding them prevents a common mistake of using the wrong field in a widget.
+The tool result has three fields with different visibility. Understanding them prevents a common mistake of using the wrong field in a widget. In ChatGPT/OpenAI Apps, `structuredContent` is model-visible, so use `props` only for model-safe widget data and use `_meta` for private or bulky UI hydration.
 
 | Field | LLM sees it? | Widget sees it? | Purpose |
 |-------|-------------|-----------------|---------|
 | `content` | Yes | Yes | Text summary for the model's context |
-| `structuredContent` | No | Yes (as `props`) | Rendering data for the widget |
+| `structuredContent` | Yes in ChatGPT/OpenAI Apps; host-dependent elsewhere | Yes (as `props`) | Rendering data for the widget |
 | `_meta` | No | Yes (as `metadata`) | Protocol and custom metadata |
 
 ```typescript
-// Server side — split between what the LLM sees and what the widget sees
+// Server side — keep props model-safe; put private hydration in metadata/_meta
 return widget({
-  props: { query: "mango", results: [...] }, // → useWidget().props (LLM does NOT see this)
-  metadata: { totalCount: 1000, nextCursor: "abc123" }, // → useWidget().metadata
+  props: { query: "mango", results: [...] }, // → useWidget().props (structuredContent)
+  metadata: { totalCount: 1000, nextCursor: "abc123" }, // → useWidget().metadata (_meta)
   output: text(`Found 16 products matching "mango"`), // → content (LLM sees this)
 });
 

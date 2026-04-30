@@ -18,9 +18,10 @@ Server fetches weather data, returns widget({ props, output })
 Client renders WeatherWidget with temperature, conditions, etc.
 ```
 
-The server controls two independent channels:
-- **`content`** (LLM sees) — text/markdown the LLM uses for conversation
-- **`structuredContent`** (Widget sees) — JSON props the React widget renders
+The server controls three channels:
+- **`content`** — text/markdown used by the conversation and by text-only clients; keep it concise and complete.
+- **`structuredContent`** — JSON props the React widget renders; treat it as potentially model-visible, especially in ChatGPT/OpenAI Apps.
+- **`_meta`** — private, bulky, or UI-only widget hydration data.
 
 ### Dual-Protocol Support
 
@@ -239,16 +240,16 @@ The `widget()` function creates a `CallToolResult` with three visibility channel
 | Field | LLM sees? | Widget sees? | Populated by |
 |-------|-----------|-------------|-------------|
 | `content` | **Yes** | Yes | `output`, `message`, or `text()` |
-| `structuredContent` | **No** | Yes (as `props`) | `props` |
+| `structuredContent` | **Host-dependent; yes in ChatGPT/OpenAI Apps** | Yes (as `props`) | `props` |
 | `_meta` | **No** | Yes (as `metadata`) | `metadata` |
 
 ```typescript
 import { widget, text } from "mcp-use/server";
 
 return widget({
-  props: { city: "Paris", temperature: 22 },       // → useWidget().props
+  props: { city: "Paris", temperature: 22 },       // → useWidget().props; model-safe
   output: text("Weather in Paris: 22°C, Sunny"),    // → LLM sees this
-  metadata: { lastUpdated: Date.now() },            // → useWidget().metadata
+  metadata: { lastUpdated: Date.now() },            // → useWidget().metadata; private/client-only
 });
 
 // Shorthand — message is equivalent to text()
@@ -449,7 +450,7 @@ return widget({ props: data, output: text(`Found ${data.length} results`) });
 // Message shorthand (equivalent to text)
 return widget({ props: data, message: `Found ${data.length} items` });
 
-// Structured JSON output
+// Structured JSON output: use only when the model/client needs typed fields
 return widget({ props: data, output: object({ count: data.length, summary }) });
 ```
 

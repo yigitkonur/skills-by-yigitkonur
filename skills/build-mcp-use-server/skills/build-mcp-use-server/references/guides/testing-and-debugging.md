@@ -138,6 +138,18 @@ curl -s -X POST http://localhost:3000/mcp \
   -H "MCP-Protocol-Version: 2025-11-25" \
   -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"greet","arguments":{"name":"World"}},"id":3}' | jq .
 
+# For tools with outputSchema or custom structuredContent, verify both surfaces.
+# content[0].text should be readable, and structuredContent must include the
+# same essential result body, not only metadata. Do not put secrets in
+# structuredContent; use _meta for private/client-only data.
+curl -s -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <session-id>" \
+  -H "MCP-Protocol-Version: 2025-11-25" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"greet","arguments":{"name":"World"}},"id":6}' \
+  | jq '.result | {text: .content[0].text, structuredContent, metaKeys: (._meta // {} | keys)}'
+
 # 4. Resources and prompts
 curl -s -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \

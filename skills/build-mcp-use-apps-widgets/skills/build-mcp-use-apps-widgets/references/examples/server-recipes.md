@@ -555,9 +555,9 @@ await server.listen();
 **widget() response** — always use `message` (not `output`) for the LLM-visible summary:
 ```typescript
 return widget({
-  props: { ... },           // → structuredContent (widget only)
+  props: { ... },           // → structuredContent (model-safe widget props)
   message: "Summary...",    // → content[0].text (LLM sees this)
-  metadata: { ... },        // → _meta (optional extra data)
+  metadata: { ... },        // → _meta (private/client-only widget data)
 });
 ```
 

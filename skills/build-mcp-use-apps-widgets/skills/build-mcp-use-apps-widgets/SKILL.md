@@ -97,16 +97,17 @@ Do not use this skill when:
 
 1. `tool.widget.name` must match `resources/<name>/widget.tsx` exactly.
 2. Always give the LLM and text-only clients a useful `message` or `output`; `props` alone is not enough.
-3. Always guard widget rendering with `isPending` before you trust `props`.
-4. Treat streaming preview as optional. ChatGPT does not expose `partialToolInput`, so the widget must still work with only `isPending`.
-5. Use `useCallTool()` or `useWidget().callTool()` for widget-to-tool calls. Do not use raw `fetch()` against MCP endpoints.
-6. Wrap the widget root in `McpUseProvider`. If the widget uses React Router, add `BrowserRouter` manually inside that provider.
-7. Declare every external domain in `widgetMetadata.metadata.csp`. Missing domains fail silently in hosted widget iframes.
-8. Set `baseUrl` or `MCP_URL` for deployed builds so widget assets and CSP resolve correctly.
-9. Use `Image` for files from `public/` instead of raw `<img>`.
-10. Keep secrets, tokens, and other sensitive data out of widget props and widget state.
-11. Prefer `type: "mcpApps"` for dual-protocol compatibility; do not start new work with `type: "appsSdk"`.
-12. Keep shared code browser-safe if you import it into widget bundles; otherwise keep it server-only in `src/lib/`.
+3. Treat `props`/`structuredContent` as potentially model-visible, especially in ChatGPT/OpenAI Apps. Put only model-safe data there; put private, bulky, or UI-only hydration data in `metadata`/`_meta`.
+4. Always guard widget rendering with `isPending` before you trust `props`.
+5. Treat streaming preview as optional. ChatGPT does not expose `partialToolInput`, so the widget must still work with only `isPending`.
+6. Use `useCallTool()` or `useWidget().callTool()` for widget-to-tool calls. Do not use raw `fetch()` against MCP endpoints.
+7. Wrap the widget root in `McpUseProvider`. If the widget uses React Router, add `BrowserRouter` manually inside that provider.
+8. Declare every external domain in `widgetMetadata.metadata.csp`. Missing domains fail silently in hosted widget iframes.
+9. Set `baseUrl` or `MCP_URL` for deployed builds so widget assets and CSP resolve correctly.
+10. Use `Image` for files from `public/` instead of raw `<img>`.
+11. Keep secrets, tokens, and other sensitive data out of widget props and widget state.
+12. Prefer `type: "mcpApps"` for dual-protocol compatibility; do not start new work with `type: "appsSdk"`.
+13. Keep shared code browser-safe if you import it into widget bundles; otherwise keep it server-only in `src/lib/`.
 
 ## Reference routing
 

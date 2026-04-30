@@ -121,7 +121,7 @@ const { isStreaming, partialToolInput, isPending, props, toolInput } = useWidget
 |-------|---------------|----------|
 | `partialToolInput` | During streaming (`isStreaming = true`) | Growing partial args from the LLM |
 | `toolInput` | After streaming ends | Complete args the model sent to the tool |
-| `props` | After server responds | Server-computed data (`structuredContent`) — LLM does not see this |
+| `props` | After server responds | Server-computed widget data (`structuredContent`); keep model-safe because some hosts expose it |
 
 ### Field Arrival Order
 
