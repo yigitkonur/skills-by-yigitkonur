@@ -52,7 +52,7 @@ Header row required.
 | `priority` | no | `0`–`4` (0=no priority, 1=urgent, 4=low) |
 | `status` | no | Workflow state name (resolved by name in the team) |
 | `assignee` | no | User name or email (resolved by name) |
-| `labels` | no | `;`-separated list, names (resolved by name) |
+| `labels` | no | Multi-value separator (check your version: newer releases use `;`, older may use `,`). Names are resolved by label name in the team. |
 | `estimate` | no | Story points (integer) |
 | `dueDate` | no | ISO date `YYYY-MM-DD` |
 
@@ -109,7 +109,8 @@ When the upstream tool isn't programmatically editable but Linear is, export, ed
 
 ```bash
 linear-cli exp json -t ENG -f stale.json
-jq '.[] | select(.priority == 4) | .priority = 3' stale.json > bumped.json
+# Filter and modify; wrap result in an array for import
+jq '[.[] | select(.priority == 4) | .priority = 3]' stale.json > bumped.json
 linear-cli im json bumped.json -t ENG --dry-run
 ```
 

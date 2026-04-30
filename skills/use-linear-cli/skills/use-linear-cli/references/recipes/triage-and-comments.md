@@ -14,11 +14,12 @@ linear-cli tr list --output json --compact \
 For each item:
 
 ```bash
-# Read the body + any attachments
+# Read the body and issue metadata
 linear-cli i get LIN-501 --output json --fields title,description,labels.nodes.name
 
-# Read existing comments
+# Read existing comments and attachments
 linear-cli cm list LIN-501 --output json
+linear-cli att list LIN-501 --output json
 ```
 
 Then act:
@@ -62,9 +63,9 @@ linear-cli att delete ATTACHMENT_ID --force
 Linear stores user-uploaded images at `https://uploads.linear.app/...`. Use `up fetch` to bring one local for inspection.
 
 ```bash
-# Find URLs in the issue body or comments
-linear-cli i get LIN-501 --output json | jq -r '..|strings|select(test("uploads.linear.app"))'
-linear-cli cm list LIN-501 --output json | jq -r '..|strings|select(test("uploads.linear.app"))'
+# Find URLs in the issue body or comments (dots in regex must be escaped)
+linear-cli i get LIN-501 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'
+linear-cli cm list LIN-501 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'
 
 # Download to file
 linear-cli up fetch "https://uploads.linear.app/<org>/<id>/screenshot.png" -f /tmp/screenshot.png

@@ -132,14 +132,19 @@ linear-cli i list --mine -s "In Progress" -l bug \
 ## Recipe: "issues stale > 14 days, group by assignee"
 
 ```bash
-linear-cli i list -t ENG -s "In Progress" --since 14d --group-by assignee
+# Find issues last updated more than 14 days ago (use --before, not --since)
+linear-cli i list -t ENG -s "In Progress" --before 14d --group-by assignee
 ```
 
-## Recipe: "fail the build if there are no open bugs"
+## Recipe: "fail CI if there are no open bugs"
 
 ```bash
-linear-cli i list -l bug -s "In Progress" --fail-on-empty \
-  || echo "no open bugs — nothing to triage"
+if linear-cli i list -l bug -s "In Progress" --fail-on-empty --quiet; then
+  echo "Found open bugs — triage required"
+else
+  echo "No open bugs — stopping"
+  exit 1
+fi
 ```
 
 ## Common confusions

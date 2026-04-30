@@ -125,7 +125,8 @@ linear-cli wh create "https://my-bridge.example.com/linear" --events Issue
 linear-cli wh listen --port 8080 --secret "$SECRET" \
   | jq --unbuffered -r 'select(.action == "create") | .data.identifier' \
   | while read -r id; do
-      curl -X POST -d "{\"text\":\"new issue: $id\"}" "$SLACK_WEBHOOK"
+      curl -X POST -H "Content-Type: application/json" \
+        -d "{\"text\":\"new issue: $id\"}" "$SLACK_WEBHOOK"
     done
 ```
 

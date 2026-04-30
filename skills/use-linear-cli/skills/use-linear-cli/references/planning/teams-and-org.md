@@ -77,15 +77,14 @@ linear-cli fav remove LIN-123
 linear-cli fav list --output json
 ```
 
-## Recipe: "list every team I belong to"
+## Recipe: "list all teams in my workspace"
 
 ```bash
-linear-cli u me --output json --fields id --compact \
-  | jq -r .id \
-  | xargs -I{} linear-cli u get {} --output json
-# Or simpler:
+# List all teams accessible in the current workspace
 linear-cli t list --output json
 ```
+
+Note: This lists all teams in the workspace, not just those you belong to. `linear-cli` does not currently expose a "teams I'm a member of" filter; to check membership, review the `members` field in the JSON output for each team.
 
 ## Recipe: "resolve a label by name to its UUID"
 

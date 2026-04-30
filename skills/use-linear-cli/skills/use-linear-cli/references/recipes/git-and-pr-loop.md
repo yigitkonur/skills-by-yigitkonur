@@ -108,12 +108,12 @@ linear-cli cm create "$PARENT" -b "Split out retry-helper extraction → $CHILD.
 If you start work but realize it's the wrong issue or the work isn't viable:
 
 ```bash
-linear-cli i stop LIN-123              # unassign + reset to previous state
-git checkout main                      # leave the branch
-git branch -D <user>/lin-123-...       # optional cleanup
+linear-cli i stop LIN-123                           # unassign + reset to previous state
+git checkout "$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')"
+git branch -D "$BRANCH_NAME"                        # optional cleanup
 ```
 
-`i stop` is the inverse of `i start` (without the `--checkout`).
+`i stop` is the inverse of `i start` (without the `--checkout`). Use `git symbolic-ref` to detect the workspace's default branch rather than hardcoding `main`.
 
 ## Jujutsu (jj) support
 

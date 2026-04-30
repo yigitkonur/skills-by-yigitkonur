@@ -57,7 +57,7 @@ linear-cli b label --add bug LIN-1 LIN-2 LIN-3
 linear-cli b label --add urgent --add bug LIN-1 LIN-2
 ```
 
-To remove a label, use the dedicated label delete or `i update` against each issue with the label removed (Linear's API does not currently expose a "remove specific label" bulk; confirm with `linear-cli b label --help` on your binary version).
+To remove a label from an issue, use `i update` with the remaining labels explicitly listed. Warning: `l delete` deletes the label definition globally (not just from issues); use it only to remove obsolete label types, not to remove labels from specific issues.
 
 ### Color hex format
 

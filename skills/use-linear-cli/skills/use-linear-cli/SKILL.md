@@ -81,9 +81,13 @@ For workflows that produce a batch of issues from a spec, checklist, CSV, JSON, 
 
 ```bash
 # Pattern A — capture IDs in a loop (markdown checklist → many issues)
-while read -r line; do
-  ID=$(linear-cli i create "$line" -t ENG --id-only --quiet)
-  echo "$ID"
+# Extract only checklist items (lines starting with "- [ ] ")
+while IFS= read -r line; do
+  if [[ "$line" =~ ^-\ \[\ \]\ (.*)$ ]]; then
+    title="${BASH_REMATCH[1]}"
+    ID=$(linear-cli i create "$title" -t ENG --id-only --quiet)
+    echo "$ID"
+  fi
 done < TODO.md
 
 # Pattern B — CSV import (preview then commit)

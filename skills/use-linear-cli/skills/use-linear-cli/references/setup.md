@@ -151,7 +151,7 @@ linear-cli config workspace-current
 linear-cli u me                    # who am I in this workspace?
 
 # 4. Confirm default team
-linear-cli config get default_team || linear-cli t list --output json
+TEAM=$(linear-cli config get default_team || echo "ENG")
 
 # 5. Confirm we can read
 linear-cli i list --mine --limit 1 --output json --compact

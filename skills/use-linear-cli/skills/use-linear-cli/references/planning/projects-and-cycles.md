@@ -166,9 +166,12 @@ linear-cli sp burndown -t ENG
 ```bash
 linear-cli c current -t ENG --output json
 linear-cli sp carry-over -t ENG --force
+
+# Cross-platform 14-day-ahead date calculation
+END_DATE=$(node -e "console.log(new Date(Date.now() + 14*86400000).toISOString().split('T')[0])")
 linear-cli c create -t ENG --name "Sprint $(date +%V)" \
   --starts-at "$(date +%Y-%m-%d)" \
-  --ends-at "$(date -v +14d +%Y-%m-%d)"
+  --ends-at "$END_DATE"
 ```
 
 ## Recipe: "post a project health update"

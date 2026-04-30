@@ -100,11 +100,11 @@ JSON error envelope (when `--output json` is set on a failing command):
 Agent retry pattern (rate limit only):
 
 ```bash
-out=$(linear-cli i list --output json 2>/dev/null)
+out=$(linear-cli i list --output json 2>&1)
 code=$?
 if [ "$code" = 4 ]; then
   sleep "$(echo "$out" | jq -r '.retry_after // 5')"
-  out=$(linear-cli i list --output json)
+  out=$(linear-cli i list --output json 2>&1)
 fi
 ```
 

@@ -190,7 +190,7 @@ linear-cli config workspace-current
 linear-cli cache status
 ```
 
-…and surface all five results in the bug report.
+…and surface all six results in the bug report.
 
 ## See also
 
