@@ -59,7 +59,7 @@ linear-cli i list                                    # all open issues
 linear-cli i list --mine -t ENG                      # my open issues on team ENG
 linear-cli i list -s "In Progress" --output json --compact --fields identifier,title,state.name
 linear-cli i get LIN-123                             # one issue
-linear-cli i get LIN-1 LIN-2 LIN-3 --output json     # batch fetch
+linear-cli i get LIN-1 LIN-2 LIN-3 --output json     # batch fetch (one API call, not three)
 linear-cli s issues "auth bug" --limit 10            # search
 linear-cli context --output json                     # issue from current git branch
 ```

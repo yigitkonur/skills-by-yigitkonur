@@ -57,16 +57,30 @@ linear-cli config workspace-switch <profile>
 
 See `setup.md` for the full auth model.
 
+### OAuth token refresh during long scripts
+
+If a script pauses between commands and the OAuth token expires before the next command:
+- **Transparent refresh:** Newer releases of linear-cli auto-refresh before the token is fully expired; no agent action needed.
+- **Manual refresh:** If you see exit code 3 mid-script after a long pause, the token expired during the gap.
+  ```bash
+  linear-cli auth status                    # check current token + expiry
+  linear-cli auth oauth                     # refresh with OAuth flow
+  # or (if using LINEAR_API_KEY):
+  export LINEAR_API_KEY=lin_api_xxx         # set a fresh API key
+  ```
+
+For agent loops, prefer `LINEAR_API_KEY` from the environment (it doesn't expire) over OAuth tokens.
+
 ## Rate-limit recovery (exit 4)
 
 The JSON error envelope contains `retry_after` (seconds). Sleep and retry once.
 
 ```bash
 attempt() {
-  out=$(linear-cli "$@" --output json 2>/dev/null) ; code=$?
+  out=$(linear-cli "$@" --output json 2>&1) ; code=$?
   if [ "$code" = 4 ]; then
     sleep "$(echo "$out" | jq -r '.retry_after // 5')"
-    out=$(linear-cli "$@" --output json) ; code=$?
+    out=$(linear-cli "$@" --output json 2>&1) ; code=$?
   fi
   echo "$out"
   return $code

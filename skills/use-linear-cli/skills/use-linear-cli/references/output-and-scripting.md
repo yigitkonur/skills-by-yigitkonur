@@ -71,7 +71,7 @@ linear-cli i list --all --page-size 100
 linear-cli i list --after CURSOR_TOKEN
 ```
 
-Use `--all` cautiously — large workspaces produce many pages. Prefer narrow filters first.
+Use `--all` cautiously — large workspaces can produce hundreds of pages. Prefer narrow filters first (e.g., `-s "In Progress" -t ENG`). If you must use `--all`, prefer higher `--page-size N` (e.g., 500) to reduce the number of API calls.
 
 ## Exit codes (contract)
 
