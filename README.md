@@ -49,6 +49,9 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [evaluate-code-review](skills/evaluate-code-review/) | productivity | Evaluate PR/session/markdown review feedback with verify-before-implement discipline and multi-agent consolidation |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS + REVIEW standardization hierarchies |
+| [make-local](skills/make-local/) | workflow | `make local` / `make tunnel` for Next.js/Node — Tailscale Serve, portless, LAN bind |
+| [make-railway](skills/make-railway/) | workflow | `make prod` Railway deploy with parallel multi-service uploads + git-hook CI/CD |
+| [make-vercel](skills/make-vercel/) | workflow | `make deploy` Vercel with find-or-create, env scoping, 50MB function limit |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit or design agent-ready CLIs with iterative feedback loops |
 | [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, or architect new MCP servers |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
