@@ -263,7 +263,7 @@ When answering a Linear question, return:
 
 - **Auth fails (exit 3):** `linear-cli auth status` → re-run `auth login` or `auth oauth`. See `references/setup.md`.
 - **Rate-limited (exit 4):** read `retry_after` from the JSON envelope, sleep that many seconds, retry once. See `references/troubleshooting.md`.
-- **Bulk mutation hit a partial failure:** capture exit code per item with a JSON loop; rollback by inverting the mutation (e.g. `b update-state -s "In Progress"` to undo). See `references/recipes/creating-many-issues.md`.
+- **Bulk mutation hit a partial failure:** capture exit code per item with a JSON loop; rollback by inverting the mutation (e.g. `b update-state "In Progress" -i LIN-1,LIN-2` to undo). See `references/recipes/creating-many-issues.md`.
 - **Pager left terminal in raw mode (macOS):** `reset` or `stty sane`; rerun with `--no-pager`. See `references/troubleshooting.md`.
 - **Command in upstream docs but not in your binary:** `linear-cli update` (or `linear-cli update --check` first). See `references/troubleshooting.md`.
 

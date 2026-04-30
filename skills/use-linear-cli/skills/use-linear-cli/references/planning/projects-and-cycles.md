@@ -26,9 +26,9 @@ linear-cli p archive PROJECT_ID
 linear-cli p unarchive PROJECT_ID
 linear-cli p delete PROJECT_ID --force
 
-linear-cli p add-labels PROJECT_ID -l label1 -l label2
-linear-cli p remove-labels PROJECT_ID -l label1
-linear-cli p set-labels PROJECT_ID -l label1 -l label2
+linear-cli p add-labels PROJECT_ID label1 label2
+linear-cli p remove-labels PROJECT_ID label1
+linear-cli p set-labels PROJECT_ID label1 label2
 
 linear-cli p members PROJECT_ID
 ```

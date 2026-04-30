@@ -117,14 +117,14 @@ git branch -D "$BRANCH_NAME"                        # optional cleanup
 
 ## Jujutsu (jj) support
 
-For jj users, every Git command has a parallel:
+For jj users, use the existing `git` commands and force `--vcs jj` when auto-detection is not enough:
 
 ```bash
-linear-cli j checkout LIN-123          # bookmark + check out
-linear-cli j bookmark LIN-123          # show bookmark name
-linear-cli j create LIN-123            # bookmark without check out
-linear-cli j pr LIN-123                # PR via jj git push
-linear-cli g commits                   # show commits with Linear trailers
+linear-cli g checkout LIN-123 --vcs jj       # bookmark + check out
+linear-cli g branch LIN-123 --vcs jj         # show bookmark name
+linear-cli g create LIN-123 --vcs jj         # bookmark without check out
+linear-cli g pr LIN-123                      # PR via GitHub CLI
+linear-cli g commits --vcs jj                # show commits with Linear trailers
 ```
 
 ## Draft → ready

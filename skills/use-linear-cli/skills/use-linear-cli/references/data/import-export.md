@@ -8,8 +8,8 @@ Round-trip Linear data through CSV, JSON, and Markdown. Use for migrations, bulk
 linear-cli exp csv -t ENG                          # human-friendly
 linear-cli exp csv -t ENG -f issues.csv            # to file
 linear-cli exp csv --all -t ENG                    # paginate every page
-linear-cli exp csv -t ENG -s "In Progress"
-linear-cli exp csv -t ENG --assignee me
+linear-cli exp csv -t ENG --include-completed
+linear-cli exp csv -t ENG --limit 100
 
 linear-cli exp markdown -t ENG
 linear-cli exp markdown -t ENG -f issues.md
@@ -23,8 +23,10 @@ linear-cli exp projects-csv -f projects.csv
 | `-f FILE` | Output to file (otherwise stdout) |
 | `--all` | Walk every page |
 | `-t TEAM` | Filter by team |
-| `-s STATE` | Filter by state |
-| `--assignee USER` | Filter by assignee |
+| `--include-completed` | Include completed issues |
+| `--limit N` | Limit number of issues |
+
+Export commands do not accept issue-list filters like `-s`, `--assignee`, or `--since`. For filtered subsets, use `i list --output json` and shape the export with `jq` / CSV tooling.
 
 ## Import
 
@@ -84,7 +86,7 @@ JSON is round-trip compatible: an export → import recreates issues with the sa
 Best for human-readable archives or pasting a summary into a doc.
 
 ```bash
-linear-cli exp markdown -t ENG --since 30d -f sprint-archive.md
+linear-cli exp markdown -t ENG --all -f sprint-archive.md
 ```
 
 ## Recipe: migrate from another tracker (CSV-driven)

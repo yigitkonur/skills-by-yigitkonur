@@ -53,8 +53,9 @@ linear-cli l delete LABEL_ID --force
 Already covered in `lifecycle.md` for single issues. Bulk variant:
 
 ```bash
-linear-cli b label --add bug LIN-1 LIN-2 LIN-3
-linear-cli b label --add urgent --add bug LIN-1 LIN-2
+linear-cli b label bug -i LIN-1,LIN-2,LIN-3
+linear-cli b label urgent -i LIN-1,LIN-2
+linear-cli b label bug -i LIN-1,LIN-2
 ```
 
 To remove a label from an issue, use `i update` with the remaining labels explicitly listed. Warning: `l delete` deletes the label definition globally (not just from issues); use it only to remove obsolete label types, not to remove labels from specific issues.
@@ -100,7 +101,7 @@ linear-cli tpl delete bug
 linear-cli tpl remote-list
 linear-cli tpl remote-list --output json
 linear-cli tpl remote-get TEMPLATE_ID
-linear-cli tpl remote-create "Bug Report" -t ENG
+linear-cli tpl remote-create --name "Bug Report" --type issue -t ENG
 linear-cli tpl remote-update TEMPLATE_ID --name "Updated"
 linear-cli tpl remote-delete TEMPLATE_ID --force
 ```

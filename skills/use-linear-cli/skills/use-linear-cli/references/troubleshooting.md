@@ -162,7 +162,7 @@ The listener defaults to `127.0.0.1`, verifies HMAC-SHA256, and enforces header/
 
 1. Re-run with `--dry-run` to confirm which IDs would be touched again.
 2. Inspect each via `linear-cli i get <ID> --output json` to see actual state.
-3. Roll back by inverting the mutation (e.g. `b update-state -s "In Progress"` after a botched `Done` run).
+3. Roll back by inverting the mutation (e.g. `b update-state "In Progress" -i LIN-1,LIN-2` after a botched `Done` run).
 4. Use `recipes/creating-many-issues.md` "atomicity" pattern next time.
 
 ## OAuth callback never returns

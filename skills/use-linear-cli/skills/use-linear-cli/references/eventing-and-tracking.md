@@ -5,10 +5,10 @@ Watching for changes, webhooks (CRUD + local listener), notifications, metrics, 
 ## Watch — poll for live changes
 
 ```bash
-linear-cli watch LIN-123                       # poll every 10 seconds (default)
-linear-cli watch LIN-123 --interval 30         # every 30 seconds
-linear-cli watch LIN-123 -i 60
-linear-cli watch LIN-123 --output json         # stream changes as JSON
+linear-cli watch issue LIN-123                       # poll every 10 seconds (default)
+linear-cli watch issue LIN-123 --interval 30         # every 30 seconds
+linear-cli watch issue LIN-123 -i 60
+linear-cli watch issue LIN-123 --output json         # stream changes as JSON
 ```
 
 Use sparingly — polling consumes API quota. For real-time, use webhooks instead.
@@ -114,7 +114,7 @@ Duration format: `30m`, `1h`, `2h30m`, `1d` (= 8 hours).
 ## Recipe: watch for status changes on a critical issue
 
 ```bash
-linear-cli watch LIN-901 --interval 30 --output json \
+linear-cli watch issue LIN-901 --interval 30 --output json \
   | jq -r 'select(.event == "stateChanged") | "\(.timestamp) → \(.new.state.name)"'
 ```
 
@@ -133,7 +133,9 @@ linear-cli wh listen --port 8080 --secret "$SECRET" \
 ## Recipe: "what changed today on this issue?"
 
 ```bash
-linear-cli hist issue LIN-123 --since 1d --output json
+since="$(date -u -v-1d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)"
+linear-cli hist issue LIN-123 --limit 100 --output json \
+  | jq --arg since "$since" '[.[] | select((.createdAt // .timestamp // "") >= $since)]'
 ```
 
 ## Common confusions

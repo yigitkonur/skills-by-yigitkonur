@@ -60,7 +60,8 @@ for ID in "${CREATED[@]}"; do
 done
 
 # Batch label
-linear-cli b label --add backlog "${CREATED[@]}"
+IDS=$(IFS=,; echo "${CREATED[*]}")
+linear-cli b label backlog -i "$IDS"
 
 # Report
 printf 'Created %d issues:\n' "${#CREATED[@]}"
@@ -72,8 +73,8 @@ printf '  %s\n' "${CREATED[@]}"
 There is **no transactional create**. If item 7/12 fails, items 1–6 are already in Linear. Three mitigations:
 
 1. **Always dry-run first** to confirm titles, team, priority.
-2. **Capture IDs as you go** so you can roll back with `b update-state -s "Cancelled"` or `i archive`.
-3. **Set a single batch label** (e.g. `--add batch:2026-04-28`) so you can find every issue from the run later.
+2. **Capture IDs as you go** so you can roll back with `b update-state "Cancelled" -i "$IDS"` or `i archive`.
+3. **Set a single batch label** (e.g. `b label batch:2026-04-28 -i "$IDS"`) so you can find every issue from the run later.
 
 ## Pattern B — CSV import
 
@@ -161,7 +162,7 @@ linear-cli tpl delete bug
 
 ```bash
 # Create a remote template tied to a team
-linear-cli tpl remote-create "Bug Report" -t ENG
+linear-cli tpl remote-create --name "Bug Report" --type issue -t ENG
 
 # List + get
 linear-cli tpl remote-list
@@ -228,10 +229,11 @@ done
 If you've already created the issues and just want to retro-fit a label:
 
 ```bash
-linear-cli b label --add review LIN-101 LIN-102 LIN-103
+linear-cli b label review -i LIN-101,LIN-102,LIN-103
 # or pipe IDs from a query
 linear-cli i list -t ENG -s "Backlog" --id-only \
-  | linear-cli b label --add unreviewed
+  | paste -sd, \
+  | xargs -I {} linear-cli b label unreviewed -i {}
 ```
 
 ## Rollback
@@ -241,10 +243,11 @@ If a run goes wrong:
 ```bash
 # Capture the IDs from the run
 BATCH=( "${CREATED[@]}" )
+IDS=$(IFS=,; echo "${BATCH[*]}")
 
 # Mark them cancelled (preserves history)
-linear-cli b update-state -s "Cancelled" "${BATCH[@]}" --dry-run
-linear-cli b update-state -s "Cancelled" "${BATCH[@]}"
+linear-cli b update-state "Cancelled" -i "$IDS" --dry-run
+linear-cli b update-state "Cancelled" -i "$IDS"
 
 # Or archive (heavier — hides from default views)
 for ID in "${BATCH[@]}"; do linear-cli i archive "$ID"; done

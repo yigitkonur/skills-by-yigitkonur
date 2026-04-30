@@ -40,7 +40,7 @@ export LINEAR_CLI_YES=1           # auto-confirm prompts (dangerous if mutating;
 | `linear-cli i create "Title" -t ENG --data -` | Read a **full JSON object** as the issue body. Useful for templated batch creation. |
 | `linear-cli i update LIN-123 --data -` | Same JSON-body pattern for updates. |
 | `linear-cli api query -` | Read a GraphQL query from stdin. |
-| `linear-cli b assign --user me -` | Read whitespace-separated IDs from stdin (combine with `i list --id-only`). |
+| `linear-cli i list --id-only \| paste -sd, \| xargs -I {} linear-cli b assign me -i {}` | Collect IDs from stdin, convert to comma-separated form, then pass them via `-i`. |
 
 Example chains:
 
@@ -59,7 +59,8 @@ EOF
 
 # IDs piped from one command into another
 linear-cli i list -t ENG -s "In Progress" --id-only \
-  | linear-cli b label --add review
+  | paste -sd, \
+  | xargs -I {} linear-cli b label review -i {}
 ```
 
 ## Pagination
@@ -149,7 +150,8 @@ linear-cli i list -t ENG --format '{{identifier}} {{state.name}} {{title}}'
 ```bash
 linear-cli s issues "stale" --output json --fields identifier --compact \
   | jq -r '.[].identifier' \
-  | linear-cli b label --add stale -
+  | paste -sd, \
+  | xargs -I {} linear-cli b label stale -i {}
 ```
 
 ### Fail loudly on empty result

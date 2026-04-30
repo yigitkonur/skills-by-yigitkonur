@@ -83,11 +83,12 @@ linear-cli i list -t ENG -s "In Progress" --id-only
 linear-cli i list -t ENG --format '{{identifier}} {{state.name}} {{title}}'
 ```
 
-Pipe `--id-only` straight into `b ...` for bulk mutations:
+For bulk mutations, convert `--id-only` output to a comma-separated `-i` value:
 
 ```bash
 linear-cli i list -t ENG -l stale --id-only \
-  | linear-cli b update-state -s "Cancelled" -
+  | paste -sd, \
+  | xargs -I {} linear-cli b update-state "Cancelled" -i {}
 ```
 
 ## Saved views

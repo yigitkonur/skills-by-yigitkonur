@@ -6,7 +6,7 @@ The escape hatch when no `linear-cli` subcommand fits, plus Linear's `Document` 
 
 ```bash
 linear-cli api query '{ viewer { id name email } }'
-linear-cli api query -v teamId=abc '{ team(id: $teamId) { name } }'
+linear-cli api query -v teamId=abc 'query($teamId: String!) { team(id: $teamId) { name } }'
 
 linear-cli api mutate -v title="Bug" '
   mutation($title: String!) {
@@ -52,7 +52,7 @@ Always pass user-provided values via `-v` rather than splicing into the query bo
 
 ```bash
 # Good
-linear-cli api query -v id="$ISSUE_ID" '{ issue(id: $id) { title } }'
+linear-cli api query -v id="$ISSUE_ID" 'query($id: String!) { issue(id: $id) { title } }'
 
 # Bad — quoting hazards, GraphQL injection risk
 linear-cli api query "{ issue(id: \"$ISSUE_ID\") { title } }"
