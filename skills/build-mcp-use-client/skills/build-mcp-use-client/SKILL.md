@@ -36,7 +36,7 @@ When you do use subagents, write each prompt as a bounded audit brief: why the a
 Explore constructor options, server entries, transport types, `loadConfigFile` / `MCPClient.fromConfigFile` / `MCPClient.fromDict` usage, environment-specific imports. Cross-reference with `references/guides/client-configuration.md` and `references/guides/environments.md`. Surface: what is correctly configured, what violates best practices, what is missing.
 
 **Subagent 2 — Tool, resource, and prompt usage audit**
-Explore how tools are listed/called, how resources are read, how prompts are retrieved, completion usage, timeout/abort config. Cross-reference with `references/guides/tools.md`, `references/guides/resources.md`, `references/guides/prompts.md`, and `references/guides/completion.md`. Surface: correct patterns, missing error handling, timeout gaps.
+Explore how tools are listed/called, how tool results handle both `content` and `structuredContent`, how resources are read, how prompts are retrieved, completion usage, timeout/abort config. Cross-reference with `references/guides/tools.md`, `references/guides/resources.md`, `references/guides/prompts.md`, and `references/guides/completion.md`. Surface: correct patterns, missing error handling, timeout gaps, and clients that accidentally drop one result surface.
 
 **Subagent 3 — Callbacks and lifecycle audit**
 Explore sampling callbacks, elicitation callbacks, notification handlers, logging setup, session cleanup, reconnection config. Cross-reference with `references/guides/sampling.md`, `references/guides/elicitation.md`, `references/guides/notifications-and-logging.md`, and `references/guides/authentication.md`. Surface: missing callbacks, wrong precedence, cleanup gaps.
@@ -94,7 +94,7 @@ Each trigger below tells you exactly when and why to open a reference file. Read
 
 **Core protocol operations:**
 
-- If you are listing or calling tools, setting timeouts, using AbortSignal, or handling `CallToolResult` — read `references/guides/tools.md`. It has `CallToolOptions`, `maxTotalTimeout`, `resetTimeoutOnProgress`, and the `isError` handling pattern.
+- If you are listing or calling tools, setting timeouts, using AbortSignal, or handling `CallToolResult` — read `references/guides/tools.md`. It has `CallToolOptions`, `maxTotalTimeout`, `resetTimeoutOnProgress`, result-surface handling for `content` / `structuredContent` / `_meta`, and the `isError` handling pattern.
 - If you are reading resources, working with resource templates, or handling binary vs text content — read `references/guides/resources.md`. It has `listResources()`, `readResource()`, `ResourceContent[]` shape, and MIME type handling.
 - If you are retrieving prompt templates with arguments or building multi-message prompt flows — read `references/guides/prompts.md`. It has `listPrompts()`, `getPrompt()`, `PromptResult` structure, and argument passing.
 - If you are implementing autocomplete for prompt arguments or resource template URIs — read `references/guides/completion.md`. It has `session.complete()`, `CompleteRequestParams`, debouncing strategy, and capability checking.

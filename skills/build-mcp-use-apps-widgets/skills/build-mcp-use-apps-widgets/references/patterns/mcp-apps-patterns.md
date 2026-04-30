@@ -170,7 +170,7 @@ server.tool(
     return widget({
       // LLM-visible text summary (goes into conversation context)
       output: text(`Current weather in ${city}: ${weather.conditions}, ${weather.temperature}°C`),
-      // Widget-only data (goes into structuredContent; the LLM never sees this)
+      // Model-safe widget data (goes into structuredContent)
       props: { city, ...weather },
     });
   }
@@ -182,8 +182,8 @@ server.tool(
 | Field | LLM sees? | Widget sees? | Purpose |
 |-------|-----------|--------------|---------|
 | `output` (via `content`) | Yes | Yes (`props` fallback) | Text summary for model context |
-| `props` (via `structuredContent`) | No | Yes (as `props`) | Rich data for widget rendering |
-| `_meta` | No | Yes (as `metadata`) | Protocol metadata |
+| `props` (via `structuredContent`) | Host-dependent; yes in ChatGPT/OpenAI Apps | Yes (as `props`) | Model-safe data for widget rendering |
+| `_meta` | No | Yes (as `metadata`) | Private/client-only protocol metadata |
 
 ---
 

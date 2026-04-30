@@ -283,14 +283,14 @@ When returning `widget()`, the tool result has three fields with different visib
 | Field | LLM sees it? | Widget sees it? | Purpose |
 |---|---|---|---|
 | `content` (from `output` / `message`) | **Yes** | Yes | Text summary for the model's context window |
-| `structuredContent` (from `props`) | **No** | Yes (as `props`) | Rich rendering data for the widget |
+| `structuredContent` (from `props`) | **Host-dependent; yes in ChatGPT/OpenAI Apps** | Yes (as `props`) | Rich rendering data for the widget |
 | `_meta` | **No** | Yes (as `metadata`) | Protocol + custom metadata |
 
-This separation lets you pass rich data to the widget without polluting the model's context.
+This separation gives the widget rich data, but it is not a privacy boundary. Keep `props` model-safe and put private, bulky, or UI-only hydration data in `_meta`.
 
 ```typescript
 return widget({
-  // Widget rendering data — LLM does NOT see this
+  // Widget rendering data — model-safe structuredContent
   props: { city, temperature, humidity },
   // Text summary — LLM sees this (use `message` or `output: text(...)`)
   message: `Weather in ${city}: ${temperature}°C`,

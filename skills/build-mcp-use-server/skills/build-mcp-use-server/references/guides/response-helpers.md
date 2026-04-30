@@ -90,7 +90,7 @@ server.resource({ name: "script", uri: "asset://main.js" }, async () =>
 
 ### `object(data)`
 
-Typed JSON with both pretty-printed text and `structuredContent`. Preferred when the LLM will process the data.
+Typed JSON with both pretty-printed text and `structuredContent`. Use it when a typed client, widget, Code Mode workflow, or downstream parser needs fields. For broad conversational compatibility, prefer concise `text()` or `markdown()` unless structured output has a real consumer.
 
 ```typescript
 import { object } from "mcp-use/server";
@@ -105,6 +105,58 @@ server.tool(
 ```
 
 **Return type:** `TypedCallToolResult<T>` — MIME: `application/json`
+
+### Structured Visibility Contract
+
+MCP tool responses have two result surfaces that may become model-visible depending on the host:
+
+- `content[0].text` — text/markdown that full MCP clients usually show.
+- `structuredContent` — typed JSON that many agent hosts, bridges, and tool adapters prefer or exclusively surface.
+
+For broad conversational compatibility, default to a concise, complete `content` response. Add `structuredContent` only when you need typed/programmatic output: `outputSchema`, Code Mode, machine parsing, widget props, or a client contract that explicitly consumes structured data.
+
+The 2025-11-25 MCP spec says structured results belong in `structuredContent`, and for backward compatibility servers that return structured content SHOULD also return serialized JSON in a `TextContent` block. It does not guarantee a universal model-visibility policy. Current hosts differ, so when both fields are present, the safest server pattern is semantic equivalence: both surfaces contain the essential answer in the best form for that surface.
+
+| Host / source | Observed or documented pattern | Server-side implication |
+|---|---|---|
+| [MCP spec 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) | `structuredContent` is the typed result; `content` is the backward-compatible/unstructured result | Use `content` by default; when structured output is needed, return both and validate `structuredContent` against `outputSchema` |
+| [ChatGPT / OpenAI Apps SDK](https://developers.openai.com/apps-sdk/reference) | `content` and `structuredContent` appear in the transcript; `_meta` is hidden from the model | Never put secrets in `structuredContent`; use `_meta` for private widget hydration |
+| [VS Code issue report](https://github.com/microsoft/vscode/issues/290063) | `structuredContent` can override `content[].text` for model input | Put the answer body in `structuredContent`, not just metadata |
+| [Claude Code](https://github.com/anthropics/claude-code/issues/15412) / [Codex](https://github.com/openai/codex/issues/10334) issue reports | Some versions display or surface `structuredContent` while hiding `content[]` when both exist | Duplicate essential text and media references into structured output when possible |
+| [LangChain adapter issue report](https://github.com/langchain-ai/langchain-mcp-adapters/issues/283) | Some adapters process only `content` and drop `structuredContent` | Keep `content` readable and complete enough for content-only clients |
+| [MCP SEP-1624 proposal](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1624) | Cursor/Claude Code/Windsurf/VS Code behavior diverged; clients should choose one surface, not forward both verbatim | Do not rely on a single client behavior; make both surfaces equivalent |
+
+If a tool defines `outputSchema`, returns custom `structuredContent`, or will be consumed through bridge clients, do not leave the primary result only in `content[0].text` while `structuredContent` contains only counters or metadata. That shape is valid MCP, but structured-first clients will see a successful call as metadata-only. The inverse is also risky: structured-only answers can disappear in content-first adapters.
+
+❌ **BAD** — scraped body only in markdown text, structured output only metadata:
+
+```typescript
+const markdownBody = renderScrape(results);
+
+return {
+  ...markdown(markdownBody),
+  structuredContent: {
+    metadata: { successful: results.length },
+  },
+};
+```
+
+✅ **GOOD** — mirror essential result data into structured output:
+
+```typescript
+const markdownBody = renderScrape(results);
+
+return {
+  ...markdown(markdownBody),
+  structuredContent: {
+    content: markdownBody,
+    results,
+    metadata: { successful: results.length },
+  },
+};
+```
+
+When the whole result is naturally JSON, prefer `object({ ... })`. When you need readable markdown plus machine-readable fields, use `mix(markdown(summary), object({ ... }))` or return a typed result with matching `outputSchema`. The structured object must contain the essential answer body, not just counts, pagination, status, or timing metadata; the text/markdown content must remain useful without parsing `structuredContent`.
 
 ### `array(items)`
 
@@ -260,9 +312,9 @@ Creates a response for tools that render UI widgets (MCP Apps spec). Handles **r
 
 | Field | Type | Required | Visibility |
 |---|---|---|---|
-| `props` | `Record<string, any>` | No | Widget only (`structuredContent`) — LLM does **not** see |
+| `props` | `Record<string, any>` | No | Widget props (`structuredContent`) — treat as model-visible unless the exact host proves otherwise |
 | `output` | `CallToolResult` | No | LLM sees (`content`) — use any response helper |
-| `metadata` | `Record<string, unknown>` | No | Widget only (`_meta`) |
+| `metadata` | `Record<string, unknown>` | No | Private/client-only widget data (`_meta`) |
 | `message` | `string` | No | LLM sees — text override instead of `output` |
 
 ```typescript
@@ -326,7 +378,7 @@ server.resourceTemplate(
 
 | Helper | Signature | Return Type | MIME / Notes |
 |---|---|---|---|
-| `text` | `text(str)` | `CallToolResult` | `text/plain` |
+| `text` | `text(str)` | `CallToolResult` | `text/plain`; use only when the result is not meant to be parsed as structured data |
 | `markdown` | `markdown(str)` | `CallToolResult` | `text/markdown` |
 | `html` | `html(str)` | `CallToolResult` | `text/html` |
 | `xml` | `xml(str)` | `CallToolResult` | `text/xml` |
@@ -339,8 +391,8 @@ server.resourceTemplate(
 | `binary` | `binary(base64, mime)` | `CallToolResult` | Any binary MIME type |
 | `resource` | `resource(uri, mime, text)` or `resource(uri, helper)` | `CallToolResult` | Embedded resource content |
 | `error` | `error(str)` | `CallToolResult` | Sets `isError: true` |
-| `mix` | `mix(...results)` | `CallToolResult` | Merges content, structuredContent, _meta |
-| `widget` | `widget({ props?, output?, metadata?, message? })` | `CallToolResult` | Props hidden from LLM; `props` defaults to `{}` if omitted |
+| `mix` | `mix(...results)` | `CallToolResult` | Merges content, structuredContent, _meta; ensure the object part carries essential result fields |
+| `widget` | `widget({ props?, output?, metadata?, message? })` | `CallToolResult` | `props` become `structuredContent`; treat them as model-visible unless the exact host proves otherwise. Use `metadata`/`_meta` for private widget data |
 
 ---
 
@@ -348,8 +400,11 @@ server.resourceTemplate(
 
 | Mistake | Problem | Fix |
 |---|---|---|
-| Returning raw objects without a helper | Missing MIME types, no `structuredContent` | Use `object()` for data, `text()` for messages |
-| Using `text()` for structured data | LLM can't parse free-text JSON reliably | Use `object()` — provides both text and `structuredContent` |
+| Returning raw objects without a helper | Missing MCP content wrappers and MIME metadata | Use `text()` / `markdown()` by default; use `object()` when typed consumers need structured fields |
+| Using `text()` for data a program must parse | Downstream code may need stable fields instead of prose | Use `object()` only when a typed client, widget, Code Mode workflow, or parser needs it |
+| Putting the primary result only in `content[0].text` while `structuredContent` has metadata only | Structured-first clients see an empty-looking success | Mirror essential content/results into `structuredContent`, or use `object()` / `mix(markdown(...), object(...))` |
+| Putting the primary result only in `structuredContent` | Content-first adapters and older clients can lose the answer | Add readable `content` with the same essential facts |
+| Putting secrets or bulky UI hydration in `structuredContent` | Some hosts expose `structuredContent` to the model/transcript | Put private or large UI-only data in `_meta` |
 | Throwing instead of `error()` for expected failures | Server exception vs. graceful tool failure | `return error("...")` for not-found, validation, limits |
 | Forgetting to `await` file-based `audio()` | Returns a Promise instead of the result | Always `await audio("./path/to/file.wav")` |
 | Building `CallToolResult` manually | Verbose, easy to miss fields | Use helpers — they exist to prevent this |
@@ -497,7 +552,7 @@ return xml('<?xml version="1.0"?><status><state>ok</state></status>')
 return text(JSON.stringify({ total: 42 }))
 ```
 
-✅ **GOOD** — Use `object()` for structured data:
+✅ **GOOD** — Use `object()` when a typed client, widget, Code Mode workflow, or downstream parser needs structured fields:
 
 ```typescript
 return object({ total: 42 })
@@ -739,6 +794,7 @@ server.tool(
 |---|---|
 | Do I want the model to reason over typed data? | `object()` or `array()` |
 | Do I want the user to read a concise summary? | `text()` or `markdown()` |
+| Will a bridge or agent host consume `structuredContent`? | Include all essential result fields in `structuredContent` |
 | Do I need a file-like binary payload? | `binary()`, `image()`, or `audio()` |
 | Is this a known failure? | `error()` |
 | Do I need more than one content form? | `mix()` |
@@ -747,8 +803,8 @@ server.tool(
 
 ## Recommended defaults
 
-1. Use `object()` for data.
-2. Use `text()` or `markdown()` for summaries.
+1. Use `text()` or `markdown()` for the default conversational answer.
+2. Use `object()` only when typed/programmatic consumers need structured fields.
 3. Use `error()` for expected failures.
 4. Use `mix()` sparingly and intentionally.
 5. Let helpers set `_meta.mimeType` for you.

@@ -187,6 +187,32 @@ server.tool({
 });
 ```
 
+### Metadata-Only or Contentless Structured Results
+
+```typescript
+// ❌ BAD — structured-first clients see only bookkeeping, not the answer body
+const body = renderMarkdown(results);
+return {
+  ...markdown(body),
+  structuredContent: { metadata: { count: results.length } },
+};
+
+// ❌ BAD — content-first clients and older adapters can lose the answer
+return {
+  structuredContent: { content: body, results },
+};
+
+// ✅ GOOD — both surfaces carry the same essential result
+return {
+  ...markdown(body),
+  structuredContent: {
+    content: body,
+    results,
+    metadata: { count: results.length },
+  },
+};
+```
+
 ---
 
 ## 3. Schema Anti-Patterns

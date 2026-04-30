@@ -6,7 +6,7 @@ Guide to building interactive UI widgets (MCP Apps) on the server and consuming 
 
 ## Server-Side: MCP Apps / Widgets
 
-MCP Apps are interactive UI widgets returned by tools. The LLM calls a tool, the server returns structured data, and a client-side widget renders it. The server controls what the LLM sees (`content`) separately from what the widget sees (`structuredContent`).
+MCP Apps are interactive UI widgets returned by tools. The LLM calls a tool, the server returns structured data, and a client-side widget renders it. Host visibility differs, so treat `content` and `structuredContent` as potentially model-visible. Use `_meta`/`metadata` for private, large, or widget-only hydration data.
 
 ### The `widget()` Response Helper
 
@@ -15,14 +15,14 @@ Import from `mcp-use/server`. Returns a `CallToolResult` with three visibility c
 | Field | LLM sees? | Widget sees? | Populated by |
 |---|---|---|---|
 | `content` | **Yes** | Yes | `output` or `message` |
-| `structuredContent` | **No** | Yes (as `props`) | `props` |
+| `structuredContent` | **Host-dependent; yes in ChatGPT/OpenAI Apps** | Yes (as `props`) | `props` |
 | `_meta` | **No** | Yes (as `metadata`) | `metadata` |
 
 ```typescript
 import { widget, text } from "mcp-use/server";
 
 return widget({
-  props: { city: "Paris", temperature: 22 },       // → useWidget().props
+  props: { city: "Paris", temperature: 22 },       // → useWidget().props; not secret
   output: text("Weather in Paris: 22°C, Sunny"),    // → LLM sees this
   metadata: { lastUpdated: Date.now() },            // → useWidget().metadata
   message: undefined,                               // optional text override (instead of output)
@@ -203,10 +203,12 @@ This single configuration automatically generates metadata for **both protocols*
 
 ### Data Flow: What the LLM Sees vs What the Widget Sees
 
+This table describes widget delivery, not a privacy boundary. ChatGPT/OpenAI Apps documents `structuredContent` as model-visible; other hosts vary. Put only model-safe data in `props`.
+
 | Field | LLM sees it? | Widget sees it? | Purpose |
 |---|---|---|---|
 | `content` | **Yes** | Yes | Text summary for the model's context |
-| `structuredContent` | **No** | Yes (as `props`) | Rendering data for the widget |
+| `structuredContent` | **Host-dependent; yes in ChatGPT/OpenAI Apps** | Yes (as `props`) | Rendering data for the widget |
 | `_meta` | **No** | Yes (as `metadata`) | Protocol + custom metadata |
 
 ```typescript
@@ -219,7 +221,7 @@ server.tool({
   const results = await db.search(query);
 
   return widget({
-    // Widget rendering data — LLM does NOT see this
+    // Widget rendering data — model-safe; do not include secrets or bulky private state
     props: { query, results },
     // Text summary — LLM sees this
     output: text(`Found ${results.length} products matching "${query}"`),
@@ -286,7 +288,7 @@ When running inside ChatGPT (Apps SDK), only the text content of the blocks is u
 
 ### Response Metadata
 
-The tool result's `_meta` field is available as `metadata` in `useWidget`. Use the `metadata` option in the `widget()` helper to pass extra data that doesn't belong in `structuredContent`:
+The tool result's `_meta` field is available as `metadata` in `useWidget`. Use the `metadata` option in the `widget()` helper to pass private, large, or UI-only data that the model should not read:
 
 ```typescript
 // Server side
@@ -1118,10 +1120,10 @@ Most widgets won't need the bridge directly. The `useWidget()` hook provides a s
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `props` | `Record<string, any>` | No | Sent to the widget as `props`. Stored in `structuredContent`. LLM does NOT see this. Defaults to `{}` if omitted. |
+| `props` | `Record<string, any>` | No | Sent to the widget as `props`. Stored in `structuredContent`; treat as model-visible unless the exact host proves otherwise. Defaults to `{}` if omitted. |
 | `output` | `CallToolResult` | No | LLM-visible content (`text`, `object`, etc.). If neither `output` nor `message` is set, an empty text content block is used. |
 | `message` | `string` | No | Shorthand for a plain text content entry. Takes precedence over `output` when both are set. |
-| `metadata` | `Record<string, unknown>` | No | Extra data for the widget. Exposed as `useWidget().metadata`. Stored in `_meta`. |
+| `metadata` | `Record<string, unknown>` | No | Private, large, or UI-only data for the widget. Exposed as `useWidget().metadata`. Stored in `_meta`. |
 
 ---
 

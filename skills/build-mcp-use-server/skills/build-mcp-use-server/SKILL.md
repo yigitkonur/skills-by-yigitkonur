@@ -164,6 +164,9 @@ For plan-only runs, provide:
 - Prefer improving an existing server over replacing it.
 - Keep the host app's entrypoint when adding MCP to an existing app; use `src/mcp-server.ts` unless there is a strong reason not to.
 - Use `text()`, `object()`, `error()`, `mix()`, `widget()`, and the other helpers instead of hand-built MCP payloads.
+- Default to a concise, complete `content` response for broad conversational compatibility. Add `structuredContent` only when the tool has an `outputSchema`, typed/programmatic consumers, Code Mode, widget props, or another real downstream parser requirement.
+- If a tool returns both `content` and `structuredContent`, keep them semantically equivalent and put every essential result in both surfaces. MCP hosts diverge: some prefer `content`, some prefer `structuredContent`, some expose both, and some drop one.
+- Use `_meta` only for private, large, or UI-only data. Treat `structuredContent` as potentially model-visible, including for ChatGPT/OpenAI Apps.
 - Use `error()` for expected failures and `throw` for truly unexpected failures.
 - Treat notifications as stateful-only unless you have explicitly verified the transport model supports them.
 - Guard `ctx.elicit()` with `ctx.client.can("elicitation")`.
@@ -180,6 +183,7 @@ For plan-only runs, provide:
 - Never claim success in a blocked environment.
 - Never put secrets in source or logs.
 - Never skip `allowedOrigins` and CORS decisions for public HTTP servers.
+- Never put the primary answer only in one result surface when returning both `content` and `structuredContent`; mirror the essential fields so content-first and structured-first clients see the same answer.
 
 ## Output contract
 

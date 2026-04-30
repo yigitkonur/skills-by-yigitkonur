@@ -70,15 +70,15 @@ The `widget()` helper maps to different transport fields:
 
 ```typescript
 return widget({
-  props: { city, temperature, conditions },     // → structuredContent (widget only, LLM does NOT see)
+  props: { city, temperature, conditions },     // → structuredContent (model-safe widget props)
   message: `Weather in ${city}: ${conditions}`, // → content[0].text (LLM sees this)
-  metadata: { totalCount: 5, cursor: "abc" },   // → _meta (accessible as useWidget().metadata)
+  metadata: { totalCount: 5, cursor: "abc" },   // → _meta (private/client-only widget data)
 });
 ```
 
-- **`props`** → available in `useWidget().props` — the data the widget renders.
+- **`props`** → available in `useWidget().props` — model-safe data the widget renders.
 - **`message`** → the human-readable summary passed to the LLM as `content`.
-- **`metadata`** → optional extra data accessible via `useWidget().metadata`.
+- **`metadata`** → private, bulky, or UI-only data accessible via `useWidget().metadata`.
 
 ---
 

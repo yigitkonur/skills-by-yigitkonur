@@ -90,7 +90,7 @@ server.resource({ name: "script", uri: "asset://main.js" }, async () =>
 
 ### `object(data)`
 
-Typed JSON with both pretty-printed text and `structuredContent`. Preferred when the LLM will process the data.
+Typed JSON with both pretty-printed text and `structuredContent`. Use it when a typed client, widget, Code Mode workflow, or downstream parser needs fields. For broad conversational compatibility, a concise `text()` or `markdown()` response is usually the default.
 
 ```typescript
 import { object } from "mcp-use/server";
@@ -260,9 +260,9 @@ Creates a response for tools that render UI widgets (MCP Apps spec). Handles **r
 
 | Field | Type | Required | Visibility |
 |---|---|---|---|
-| `props` | `Record<string, any>` | Yes | Widget only (`structuredContent`) — LLM does **not** see |
+| `props` | `Record<string, any>` | Yes | Widget props (`structuredContent`) — treat as model-visible unless the exact host proves otherwise |
 | `output` | `CallToolResult` | No* | LLM sees (`content`) — use any response helper |
-| `metadata` | `Record<string, unknown>` | No | Widget only (`_meta`) |
+| `metadata` | `Record<string, unknown>` | No | Private/client-only widget data (`_meta`) |
 | `message` | `string` | No* | LLM sees — plain-text shorthand instead of `output` |
 
 *Provide either `output` or `message` to give text-only clients (and the LLM) a meaningful description. If both are omitted, the LLM sees no tool output text.
@@ -337,7 +337,7 @@ server.resourceTemplate(
 | `xml` | `xml(str)` | `CallToolResult` | `text/xml` |
 | `css` | `css(str)` | `CallToolResult` | `text/css` |
 | `javascript` | `javascript(str)` | `CallToolResult` | `text/javascript` |
-| `object` | `object(obj)` | `TypedCallToolResult<T>` | `application/json` — includes `structuredContent` |
+| `object` | `object(obj)` | `TypedCallToolResult<T>` | `application/json` — includes `structuredContent`; use when typed/programmatic consumers need it |
 | `array` | `array(items)` | `TypedCallToolResult<{ data: T }>` | `application/json` — wraps in `{ data }` |
 | `image` | `image(base64, mime?)` | `CallToolResult` | Default `image/png` |
 | `audio` | `audio(dataOrPath, mime?)` | `CallToolResult \| Promise<…>` | Async for file paths; infers MIME |
@@ -345,7 +345,7 @@ server.resourceTemplate(
 | `resource` | `resource(uri, mime, text)` or `resource(uri, helper)` | `CallToolResult` | Embedded resource content |
 | `error` | `error(str)` | `CallToolResult` | Sets `isError: true` |
 | `mix` | `mix(...results)` | `CallToolResult` | Merges content, structuredContent, _meta |
-| `widget` | `widget({ props, output?, message?, metadata? })` | `CallToolResult` | Props hidden from LLM; use `message` or `output` for LLM-visible text |
+| `widget` | `widget({ props, output?, message?, metadata? })` | `CallToolResult` | Props become `structuredContent`; keep them model-safe. Use `message` or `output` for content-first clients |
 
 ---
 
@@ -353,8 +353,10 @@ server.resourceTemplate(
 
 | Mistake | Problem | Fix |
 |---|---|---|
-| Returning raw objects without a helper | Missing MIME types, no `structuredContent` | Use `object()` for data, `text()` for messages |
-| Using `text()` for structured data | LLM can't parse free-text JSON reliably | Use `object()` — provides both text and `structuredContent` |
+| Returning raw objects without a helper | Missing MCP content wrappers and MIME metadata | Use `text()` / `markdown()` by default; use `object()` when typed consumers need structured fields |
+| Using `text()` for data a program must parse | Downstream code may need stable fields instead of prose | Use `object()` only when a typed client, widget, Code Mode workflow, or parser needs it |
+| Putting private widget data in `props` | ChatGPT/OpenAI Apps may expose `structuredContent` to the model/transcript | Put private, bulky, or UI-only data in `metadata` / `_meta` |
+| Returning only `props` with no `message` or `output` | Text-only and content-first clients lose useful context | Always include a concise `message` or `output` |
 | Throwing instead of `error()` for expected failures | Server exception vs. graceful tool failure | `return error("...")` for not-found, validation, limits |
 | Forgetting to `await` file-based `audio()` | Returns a Promise instead of the result | Always `await audio("./path/to/file.wav")` |
 | Building `CallToolResult` manually | Verbose, easy to miss fields | Use helpers — they exist to prevent this |
@@ -754,8 +756,8 @@ server.tool(
 
 ## Recommended defaults
 
-1. Use `object()` for data.
-2. Use `text()` or `markdown()` for summaries.
+1. Use `text()` or `markdown()` for the default conversational answer.
+2. Use `object()` only when typed/programmatic consumers need structured fields.
 3. Use `error()` for expected failures.
 4. Use `mix()` sparingly and intentionally.
 5. Let helpers set `_meta.mimeType` for you.

@@ -746,7 +746,7 @@ npx @mcp-use/inspector --url http://localhost:3000/mcp
 - **Tool Listing**: Ensure `tools/list` returns what you expect. Check `schema` structures.
 - **Tool Execution**: Call a tool. Watch the JSON-RPC trace.
   - **Request**: `tools/call`. Check `name` and `arguments`.
-  - **Response**: `content` array. Check `type` ("text", "image", "resource").
+  - **Response**: Check both `content` and `structuredContent`. For tools with `outputSchema` or custom structured output, both surfaces should carry the same essential result; `_meta` should contain only private/client-only data.
   - **Error**: Check `code` and `message`.
 
 ### 3. Common Traces
@@ -756,6 +756,19 @@ npx @mcp-use/inspector --url http://localhost:3000/mcp
 -> {"jsonrpc": "2.0", "method": "tools/call", "params": { ... }, "id": 1}
 <- {"jsonrpc": "2.0", "result": { "content": [{ "type": "text", "text": "OK" }] }, "id": 1}
 ```
+
+**Success that looks empty in structured-output clients:**
+```json
+<- {
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [{ "type": "text", "text": "# Full scraped markdown..." }],
+    "structuredContent": { "metadata": { "successful": 1 } }
+  },
+  "id": 1
+}
+```
+Fix by mirroring the primary result into `structuredContent` and covering it in `outputSchema`, for example `{ "content": "...", "results": [...], "metadata": {...} }`. Also keep `content[0].text` useful, because content-first clients and adapters may ignore `structuredContent`.
 
 **Failure (Application Error):**
 ```json

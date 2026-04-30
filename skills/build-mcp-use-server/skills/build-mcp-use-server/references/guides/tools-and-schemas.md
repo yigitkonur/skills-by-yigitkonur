@@ -88,7 +88,7 @@ server.tool(
 | `outputSchema` | `z.ZodTypeAny` | No | Zod schema for structured output; enables type inference in `useCallTool()` |
 | `annotations` | `ToolAnnotations` | No | Behavioral hints for clients (read-only, destructive, etc.) |
 | `cb` | `ToolCallback` | No | Inline handler (alternative to separate callback argument) |
-| `_meta` | `Record<string, unknown>` | No | Opaque metadata passed through to MCP protocol (used for OpenAI Apps SDK integration) |
+| `_meta` | `Record<string, unknown>` | No | Opaque private/client metadata passed through MCP; use for OpenAI Apps wiring and widget-only data |
 | `widget` | `ToolWidgetConfig` | No | Widget config for tools returning `widget()` responses |
 | `inputs` | `InputDefinition[]` | No | **Deprecated.** Use `schema` (Zod) instead. |
 
@@ -337,7 +337,7 @@ server.tool({
 
   // Return widget with runtime data only
   return widget({
-    props: weatherData,              // Widget-only data passed to useWidget().props (hidden from model)
+    props: weatherData,              // Model-safe data passed to useWidget().props (structuredContent)
     output: text(`Weather in ${city}: ${weatherData.temp}°C`),  // What the model sees
     message: `Current weather in ${city}`  // Optional text message override
   });
@@ -350,7 +350,9 @@ See the [UI Widgets guide](./ui-widgets) for complete widget creation and regist
 
 ## OpenAI Apps SDK Integration (`_meta`)
 
-For ChatGPT and OpenAI-compatible clients, use `_meta` on the tool definition and in the handler return value to wire up widget rendering:
+For ChatGPT and OpenAI-compatible clients, use `_meta` on the tool definition and in the handler return value to wire up widget rendering or private widget hydration. Keep model-visible data in `content` and `structuredContent`; keep secrets, large lookup maps, and UI-only state in `_meta`.
+
+For maximum client compatibility, do not add `outputSchema` or `structuredContent` just because JSON is convenient. Use them when a typed consumer, widget, Code Mode workflow, or downstream parser needs structured fields. Otherwise return concise `content` with `text()` or `markdown()`.
 
 ```typescript
 server.tool({
@@ -685,6 +687,8 @@ server.tool({
 | Generic names: `process`, `handle` | LLM can't choose the right tool | Specific verbs: `search-users`, `create-ticket` |
 | Missing `.describe()` on fields | LLM guesses at field purposes | Add `.describe()` to every schema field |
 | Returning raw API responses | Bloated context, confusing nesting | Curate with `object()` — only relevant fields |
+| Declaring `outputSchema` but returning only metadata in `structuredContent` | Structured-first clients may hide `content[0].text`, so the model sees no result body | Put the essential answer/result body in `structuredContent` and cover it in `outputSchema` |
+| Returning structured data without readable `content` | Content-first clients and older adapters can lose the result | Include a concise text/markdown representation with the same essential facts |
 | No error handling in handler | Unhandled throws crash the server | Wrap in `try/catch`, return `error()` |
 | Too many parameters (>6) | LLM struggles with complex schemas | Split into multiple focused tools |
 | Giant catch-all tools | One tool doing 5 things via "mode" param | One tool per action |
