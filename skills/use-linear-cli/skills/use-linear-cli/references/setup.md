@@ -150,8 +150,12 @@ linear-cli auth status || linear-cli auth login
 linear-cli config workspace-current
 linear-cli u me                    # who am I in this workspace?
 
-# 4. Confirm default team
-TEAM=$(linear-cli config get default_team || echo "ENG")
+# 4. Confirm default team, or resolve the first visible team key
+TEAM=$(linear-cli config get default_team 2>/dev/null)
+if [ -z "$TEAM" ]; then
+  TEAM=$(linear-cli t list --output json --compact --fields key | jq -r '.[0].key // empty')
+fi
+[ -n "$TEAM" ] || { echo "No team key found; run linear-cli t list and choose one"; exit 1; }
 
 # 5. Confirm we can read
 linear-cli i list --mine --limit 1 --output json --compact

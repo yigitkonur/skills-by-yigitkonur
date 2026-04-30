@@ -34,7 +34,7 @@ Do not use this skill when:
 4. **Always `--output json`** (or `LINEAR_CLI_OUTPUT=json`) when chaining or parsing. Never grep the human table format.
 5. **`--id-only` for chaining.** Capture IDs into shell variables; do not re-parse JSON for an identifier you already produced.
 6. **Treat the exit-code map as a contract**: `0` success, `1` general error, `2` not found, `3` auth, `4` rate-limited (`retry_after` is in the JSON body).
-7. **Resolve names before using them.** Do not hardcode team keys, label names, or assignees. Pull them with `linear-cli t list`, `linear-cli l list`, `linear-cli u list` and confirm before write paths.
+7. **Resolve names before using them.** Do not invent unknown team keys, label names, or assignees. Pull them with `linear-cli t list`, `linear-cli l list`, `linear-cli u list` and confirm before write paths; once resolved, using those concrete values in commands is fine.
 8. **Be explicit about scope.** State whether each command is read-only or mutating. Bulk mutations get a one-line confirmation cue.
 
 ## Quick orientation
@@ -95,7 +95,8 @@ linear-cli im csv issues.csv -t ENG --dry-run
 linear-cli im csv issues.csv -t ENG
 
 # Pattern C — JSON spec
-cat plan.json | linear-cli i create "$(jq -r .title plan.json)" -t ENG --data -
+TITLE=$(jq -r .title plan.json)
+linear-cli i create "$TITLE" -t ENG --data - < plan.json
 ```
 
 ### Update

@@ -84,11 +84,11 @@ There is **no transactional create**. If item 7/12 fails, items 1–6 are alread
 
 ```csv
 title,description,priority,status,assignee,labels,estimate,dueDate
-Fix login redirect,"Multi-line\ndescription",1,Backlog,ada@example.com,bug;auth,3,2026-05-01
+Fix login redirect,"Multi-line\ndescription",1,Backlog,ada@example.com,"bug,auth",3,2026-05-01
 Add 429 retry headers,"",2,Backlog,,api,2,
 ```
 
-`status`, `assignee`, and `labels` resolve by name automatically. Multi-value cells are `;`-separated.
+`status`, `assignee`, and `labels` resolve by name automatically. Multi-value label cells use comma separation inside a quoted CSV cell.
 
 ### Recipe
 

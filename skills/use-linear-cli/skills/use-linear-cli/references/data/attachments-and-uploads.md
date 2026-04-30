@@ -51,8 +51,8 @@ linear-cli up fetch "https://uploads.linear.app/..." | base64
 
 Upload URLs appear in:
 
-- Issue descriptions: `linear-cli i get LIN-123 --output json | jq -r '..|strings|select(test("uploads.linear.app"))'`
-- Comments: `linear-cli cm list LIN-123 --output json | jq -r '..|strings|select(test("uploads.linear.app"))'`
+- Issue descriptions: `linear-cli i get LIN-123 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'`
+- Comments: `linear-cli cm list LIN-123 --output json | jq -r '..|strings|select(test("uploads\\.linear\\.app"))'`
 
 URL pattern: `https://uploads.linear.app/{org}/{upload}/{filename}`.
 
@@ -61,7 +61,7 @@ URL pattern: `https://uploads.linear.app/{org}/{upload}/{filename}`.
 ```bash
 # 1. Discover
 URL=$(linear-cli i get LIN-501 --output json \
-  | jq -r '..|strings|select(test("uploads.linear.app"))' | head -1)
+  | jq -r '..|strings|select(test("uploads\\.linear\\.app"))' | head -1)
 
 # 2. Download
 linear-cli up fetch "$URL" -f /tmp/repro.png
@@ -75,7 +75,7 @@ linear-cli up fetch "$URL" -f /tmp/repro.png
 ```bash
 mkdir -p /tmp/lin-501
 linear-cli i get LIN-501 --output json \
-  | jq -r '..|strings|select(test("uploads.linear.app"))' \
+  | jq -r '..|strings|select(test("uploads\\.linear\\.app"))' \
   | while read -r url; do
       name=$(basename "$url")
       linear-cli up fetch "$url" -f "/tmp/lin-501/$name"
