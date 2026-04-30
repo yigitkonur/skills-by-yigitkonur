@@ -110,11 +110,12 @@ linear-cli cm create LIN-123 -b "Root cause: missing null check"
 ### Bulk mutate
 
 ```bash
-linear-cli b update-state -s Done LIN-1 LIN-2 LIN-3 --dry-run
-linear-cli b update-state -s Done LIN-1 LIN-2 LIN-3
-linear-cli b assign --user me LIN-1 LIN-2
-linear-cli b label --add bug LIN-1 LIN-2
-linear-cli i list -t ENG --id-only | linear-cli b assign --user me -
+linear-cli b update-state Done -i LIN-1,LIN-2,LIN-3 --dry-run
+linear-cli b update-state Done -i LIN-1,LIN-2,LIN-3
+linear-cli b assign me -i LIN-1,LIN-2
+linear-cli b label bug -i LIN-1,LIN-2
+# Piping to bulk: collect IDs, then pass via -i
+linear-cli i list -t ENG --id-only | paste -sd, | xargs -I {} linear-cli b assign me -i {}
 ```
 
 ### Git / PR loop
@@ -184,11 +185,13 @@ Full matrix: `references/output-and-scripting.md`.
 |---|---|---|
 | 0 | success | continue |
 | 1 | general error | parse stderr / JSON error envelope; surface to user |
-| 2 | not found | the ID does not exist; do not retry |
+| 2 | not found **or parser error** | If JSON envelope with `details.status: 404`, the ID doesn't exist. If plain text stderr (e.g. `unexpected argument`), it's a CLI argument-parsing failure — check `--help` and fix the syntax |
 | 3 | auth error | route to `references/setup.md` and `references/troubleshooting.md` |
 | 4 | rate limited | sleep `retry_after` seconds (in JSON body), retry once |
 
 JSON error envelope: `{"error": true, "message": "...", "code": N, "details": {...}, "retry_after": N}` — see `references/json-shapes.md`.
+
+**Parser vs. API distinction:** Always check stdout/stderr format. Parser errors are plain text (e.g. `Usage: ...`, `unexpected argument`). Linear API errors are JSON envelopes with a `code` field and `details.status` HTTP status. Treat parser errors as mistakes to fix immediately, not transient failures to retry.
 
 ## Output contract
 

@@ -132,8 +132,12 @@ linear-cli i list --mine -s "In Progress" -l bug \
 ## Recipe: "issues stale > 14 days, group by assignee"
 
 ```bash
-# Find issues last updated more than 14 days ago (use --before, not --since)
-linear-cli i list -t ENG -s "In Progress" --before 14d --group-by assignee
+# Fetch all In Progress issues with updatedAt, then filter client-side
+CUTOFF=$(node -e "console.log(new Date(Date.now() - 14*86400000).toISOString())")
+linear-cli i list -t ENG -s "In Progress" --output json --all \
+  --fields identifier,title,updatedAt,assignee.name \
+  | jq ".[] | select(.updatedAt < \"$CUTOFF\")" \
+  | jq -rs 'group_by(.assignee.name)[] | {assignee: .[0].assignee.name, issues: map(.identifier)}'
 ```
 
 ## Recipe: "fail CI if there are no open bugs"
