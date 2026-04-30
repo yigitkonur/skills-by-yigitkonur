@@ -1,6 +1,6 @@
 # AGENTS.md — skills-by-yigitkonur
 
-This repository is a curated skills pack for AI coding agents — 42 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
+This repository is a curated skills pack for AI coding agents — 44 skills sharing one naming system, one tone, one structure. Your job is to maintain that consistency when adding or editing skills.
 
 ## What this repo is
 
@@ -251,7 +251,7 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (42 skills)
+## Current canonical skill names (44 skills)
 
 Use this list to check for naming collisions:
 
@@ -267,9 +267,10 @@ do-think                     enhance-prompt               enhance-skill-by-derai
 evaluate-code-review         extract-saas-design          init-agent-config
 optimize-agentic-cli         optimize-agentic-mcp         publish-npm-package
 run-agent-browser            run-codex-exec               run-codex-review
-run-github-scout             run-issue-tree               run-playwright
-run-repo-cleanup             run-research                 swift-quality-hooks
-test-by-mcpc-cli             test-macos-snapshots         use-railway
+run-github-scout             run-industry-research        run-issue-tree
+run-playwright               run-repo-cleanup             run-research
+swift-quality-hooks          test-by-mcpc-cli             test-macos-snapshots
+use-linear-cli               use-railway
 ```
 
 ---
