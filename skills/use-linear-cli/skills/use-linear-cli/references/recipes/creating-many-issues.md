@@ -16,7 +16,8 @@ End-to-end patterns for "I have a spec / checklist / CSV / JSON, create N Linear
 ## Setup gate (do this first, every time)
 
 ```bash
-linear-cli auth status                              # exit 0 required
+linear-cli auth status --validate --output json     # exit 0 required
+linear-cli config workspace-current                 # confirm intended workspace/profile
 TEAM=ENG                                            # team key
 linear-cli t get "$TEAM" --output json --fields id,key,name   # confirm team exists
 export LINEAR_CLI_OUTPUT=json
@@ -47,6 +48,11 @@ for t in "${TITLES[@]}"; do
   linear-cli i create "$t" -t "$TEAM" --dry-run
 done
 
+if [ "${#TITLES[@]}" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to create ${#TITLES[@]} issues."
+  exit 0
+fi
+
 # Commit + capture IDs
 CREATED=()
 for t in "${TITLES[@]}"; do
@@ -61,6 +67,11 @@ done
 
 # Batch label
 IDS=$(IFS=,; echo "${CREATED[*]}")
+linear-cli b label backlog -i "$IDS" --dry-run
+if [ "${#CREATED[@]}" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to execute: linear-cli b label backlog -i \"$IDS\""
+  exit 0
+fi
 linear-cli b label backlog -i "$IDS"
 
 # Report
@@ -229,11 +240,22 @@ done
 If you've already created the issues and just want to retro-fit a label:
 
 ```bash
+linear-cli b label review -i LIN-101,LIN-102,LIN-103 --dry-run
 linear-cli b label review -i LIN-101,LIN-102,LIN-103
-# or pipe IDs from a query
-linear-cli i list -t ENG -s "Backlog" --id-only \
-  | paste -sd, \
-  | xargs -I {} linear-cli b label unreviewed -i {}
+
+# Or capture IDs from a query
+linear-cli i list -t ENG -s "Backlog" --limit 25 --output json --compact \
+  --fields identifier,title > /tmp/linear-backlog.json
+jq -r '.[] | "\(.identifier)\t\(.title)"' /tmp/linear-backlog.json
+COUNT=$(jq 'length' /tmp/linear-backlog.json)
+IDS=$(jq -r '.[].identifier' /tmp/linear-backlog.json | paste -sd,)
+[ "$COUNT" -gt 0 ] && [ "$COUNT" -le 25 ] || { echo "Unexpected count: $COUNT"; exit 1; }
+linear-cli b label unreviewed -i "$IDS" --dry-run
+if [ "$COUNT" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to execute: linear-cli b label unreviewed -i \"$IDS\""
+  exit 0
+fi
+linear-cli b label unreviewed -i "$IDS"
 ```
 
 ## Rollback
@@ -247,6 +269,10 @@ IDS=$(IFS=,; echo "${BATCH[*]}")
 
 # Mark them cancelled (preserves history)
 linear-cli b update-state "Cancelled" -i "$IDS" --dry-run
+if [ "${#BATCH[@]}" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to execute: linear-cli b update-state \"Cancelled\" -i \"$IDS\""
+  exit 0
+fi
 linear-cli b update-state "Cancelled" -i "$IDS"
 
 # Or archive (heavier — hides from default views)

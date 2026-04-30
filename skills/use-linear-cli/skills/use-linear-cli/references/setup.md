@@ -38,7 +38,7 @@ Get an API key at <https://linear.app/settings/api>.
 linear-cli auth oauth                    # opens browser
 linear-cli auth oauth --secure           # store tokens in OS keyring
 linear-cli auth oauth --client-id ID     # custom OAuth app
-linear-cli auth status                   # show auth type, expiry
+linear-cli auth status --validate --output json  # show auth type and validate API access
 linear-cli auth revoke                   # revoke tokens
 linear-cli auth logout                   # remove credentials
 ```
@@ -111,8 +111,9 @@ For agent runs, the canonical opener:
 ```bash
 export LINEAR_CLI_OUTPUT=json
 export LINEAR_CLI_NO_PAGER=1
-export LINEAR_CLI_YES=1            # only when you're sure no destructive prompts
-linear-cli auth status             # gate on exit code 0
+# Leave LINEAR_CLI_YES unset until a specific destructive command needs it.
+linear-cli auth status --validate --output json  # gate writes on exit code 0
+linear-cli config workspace-current              # confirm intended profile/workspace
 ```
 
 ## Shell completions
@@ -143,12 +144,15 @@ linear-cli completions dynamic powershell >> $PROFILE
 # 1. Confirm binary
 linear-cli --version
 
-# 2. Confirm or set auth
-linear-cli auth status || linear-cli auth login
+# 2. Confirm or set auth, then validate live API access
+linear-cli auth status --validate --output json || {
+  linear-cli auth login
+  linear-cli auth status --validate --output json
+}
 
 # 3. Confirm workspace
 linear-cli config workspace-current
-linear-cli u me                    # who am I in this workspace?
+linear-cli u me --output json       # who am I in this workspace?
 
 # 4. Confirm default team, or resolve the first visible team key
 TEAM=$(linear-cli config get default_team 2>/dev/null)

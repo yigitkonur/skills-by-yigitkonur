@@ -8,8 +8,8 @@ Failure-mode catalog for `linear-cli`. Diagnose by exit code first; route to the
 |---|---|---|
 | 0 | success | n/a |
 | 1 | general error | parse JSON error envelope; check the `details.request_id` and surface it |
-| 2 | not found | the ID/key/name doesn't exist in this workspace; verify with `i get`, `t list`, `l list` |
-| 3 | auth error | `linear-cli auth status` → re-auth (see Auth recovery) |
+| 2 | not found or parser error | JSON with `details.status: 404` means missing object; plain usage/stderr means fix command syntax via `--help` |
+| 3 | auth error | `linear-cli auth status --validate --output json` → re-auth (see Auth recovery) |
 | 4 | rate limited | sleep `retry_after`, retry once (see Rate-limit recovery) |
 
 Always combine `--output json` with `2>&1` capture so you have the envelope:
@@ -22,15 +22,33 @@ if [ $code -ne 0 ]; then
 fi
 ```
 
+If exit 2 returns plain stderr like `unexpected argument`, `a value is required`, or `Usage: ...`, it is not a missing Linear object. Correct the command flags before retrying:
+
+```bash
+linear-cli i list --help
+linear-cli b assign --help
+```
+
+Small regression check for this distinction:
+
+```bash
+set +e
+out=$(linear-cli i list --state 2>&1)
+code=$?
+set -e
+test "$code" = 2
+printf '%s\n' "$out" | grep -E "value is required|Usage:|unexpected argument"
+```
+
 ## Auth recovery (exit 3)
 
 ```bash
-linear-cli auth status                      # show current auth + expiry
+linear-cli auth status --validate --output json  # validate current auth + API access
 # If empty / expired:
 linear-cli auth login                       # API key
 #   or
 linear-cli auth oauth                       # OAuth + PKCE
-linear-cli u me                             # confirm
+linear-cli u me --output json               # confirm identity/workspace
 ```
 
 For agent runs, prefer the `LINEAR_API_KEY` env var (highest priority) over keyring or config-file storage:
@@ -63,7 +81,7 @@ If a script pauses between commands and the OAuth token expires before the next 
 - **Transparent refresh:** Newer releases of linear-cli auto-refresh before the token is fully expired; no agent action needed.
 - **Manual refresh:** If you see exit code 3 mid-script after a long pause, the token expired during the gap.
   ```bash
-  linear-cli auth status                    # check current token + expiry
+  linear-cli auth status --validate --output json  # check token + live API access
   linear-cli auth oauth                     # refresh with OAuth flow
   # or (if using LINEAR_API_KEY):
   export LINEAR_API_KEY=lin_api_xxx         # set a fresh API key
@@ -183,9 +201,9 @@ When in doubt, run:
 
 ```bash
 linear-cli --version
-linear-cli auth status
+linear-cli auth status --validate --output json
 linear-cli doctor
-linear-cli u me
+linear-cli u me --output json
 linear-cli config workspace-current
 linear-cli cache status
 ```

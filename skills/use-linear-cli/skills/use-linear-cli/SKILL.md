@@ -29,11 +29,11 @@ Do not use this skill when:
 ## Non-negotiable rules
 
 1. **CLI > MCP.** Never call a Linear MCP tool when `linear-cli` can do the same thing.
-2. **Verify auth before any mutating command** — at the top of an agent session run `linear-cli auth status` (or `LINEAR_API_KEY=... linear-cli u me`) and only proceed on exit code 0.
+2. **Validate auth before any mutating command** — run `linear-cli auth status --validate --output json` or `LINEAR_API_KEY=... linear-cli u me --output json` and only proceed on exit code 0. Confirm the intended workspace/profile before bulk writes.
 3. **`--dry-run` first** for any bulk create or any mutation across more than 5 IDs. Confirm the plan, then execute.
 4. **Always `--output json`** (or `LINEAR_CLI_OUTPUT=json`) when chaining or parsing. Never grep the human table format.
 5. **`--id-only` for chaining.** Capture IDs into shell variables; do not re-parse JSON for an identifier you already produced.
-6. **Treat the exit-code map as a contract**: `0` success, `1` general error, `2` not found, `3` auth, `4` rate-limited (`retry_after` is in the JSON body).
+6. **Treat the exit-code map as a contract**: `0` success, `1` general error, `2` not found or parser error, `3` auth, `4` rate-limited (`retry_after` is in the JSON body).
 7. **Resolve names before using them.** Do not invent unknown team keys, label names, or assignees. Pull them with `linear-cli t list`, `linear-cli l list`, `linear-cli u list` and confirm before write paths; once resolved, using those concrete values in commands is fine.
 8. **Be explicit about scope.** State whether each command is read-only or mutating. Bulk mutations get a one-line confirmation cue.
 
@@ -82,16 +82,25 @@ For workflows that produce a batch of issues from a spec, checklist, CSV, JSON, 
 ```bash
 # Pattern A — capture IDs in a loop (markdown checklist → many issues)
 # Extract only checklist items (lines starting with "- [ ] ")
-while IFS= read -r line; do
-  if [[ "$line" =~ ^-\ \[\ \]\ (.*)$ ]]; then
-    title="${BASH_REMATCH[1]}"
-    ID=$(linear-cli i create "$title" -t ENG --id-only --quiet)
-    echo "$ID"
-  fi
-done < TODO.md
+mapfile -t TITLES < <(grep -E '^- \[ \] ' TODO.md | sed -E 's/^- \[ \] //')
+for title in "${TITLES[@]}"; do
+  linear-cli i create "$title" -t ENG --dry-run
+done
+if [ "${#TITLES[@]}" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to create ${#TITLES[@]} issues."
+  exit 0
+fi
+for title in "${TITLES[@]}"; do
+  ID=$(linear-cli i create "$title" -t ENG --id-only --quiet)
+  echo "$ID"
+done
 
-# Pattern B — CSV import (preview then commit)
+# Pattern B — CSV import (preview, confirm, then commit)
 linear-cli im csv issues.csv -t ENG --dry-run
+if [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to import issues.csv."
+  exit 0
+fi
 linear-cli im csv issues.csv -t ENG
 
 # Pattern C — JSON spec
@@ -111,12 +120,25 @@ linear-cli cm create LIN-123 -b "Root cause: missing null check"
 ### Bulk mutate
 
 ```bash
+# Small, explicit set
 linear-cli b update-state Done -i LIN-1,LIN-2,LIN-3 --dry-run
 linear-cli b update-state Done -i LIN-1,LIN-2,LIN-3
+linear-cli b assign me -i LIN-1,LIN-2 --dry-run
 linear-cli b assign me -i LIN-1,LIN-2
-linear-cli b label bug -i LIN-1,LIN-2
-# Piping to bulk: collect IDs, then pass via -i
-linear-cli i list -t ENG --id-only | paste -sd, | xargs -I {} linear-cli b assign me -i {}
+
+# Generated set: capture, inspect, dry-run, then execute the same IDs
+linear-cli i list -t ENG -l stale --limit 25 --output json --compact \
+  --fields identifier,title,state.name > /tmp/linear-stale.json
+jq -r '.[] | "\(.identifier)\t\(.state.name)\t\(.title)"' /tmp/linear-stale.json
+COUNT=$(jq 'length' /tmp/linear-stale.json)
+IDS=$(jq -r '.[].identifier' /tmp/linear-stale.json | paste -sd,)
+[ "$COUNT" -gt 0 ] && [ "$COUNT" -le 25 ] || { echo "Unexpected count: $COUNT"; exit 1; }
+linear-cli b assign me -i "$IDS" --dry-run
+if [ "$COUNT" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to execute: linear-cli b assign me -i \"$IDS\""
+  exit 0
+fi
+linear-cli b assign me -i "$IDS"
 ```
 
 ### Git / PR loop
@@ -262,7 +284,7 @@ When answering a Linear question, return:
 
 ## Recovery moves
 
-- **Auth fails (exit 3):** `linear-cli auth status` → re-run `auth login` or `auth oauth`. See `references/setup.md`.
+- **Auth fails (exit 3):** `linear-cli auth status --validate --output json` → re-run `auth login` or `auth oauth`. See `references/setup.md`.
 - **Rate-limited (exit 4):** read `retry_after` from the JSON envelope, sleep that many seconds, retry once. See `references/troubleshooting.md`.
 - **Bulk mutation hit a partial failure:** capture exit code per item with a JSON loop; rollback by inverting the mutation (e.g. `b update-state "In Progress" -i LIN-1,LIN-2` to undo). See `references/recipes/creating-many-issues.md`.
 - **Pager left terminal in raw mode (macOS):** `reset` or `stty sane`; rerun with `--no-pager`. See `references/troubleshooting.md`.
@@ -270,7 +292,8 @@ When answering a Linear question, return:
 
 ## Final checks before declaring done
 
-- [ ] auth verified (`auth status` exit 0) before mutations
+- [ ] auth validated (`auth status --validate --output json` or `u me --output json`) before mutations
+- [ ] intended workspace/profile confirmed before bulk mutations
 - [ ] `--dry-run` previewed for any bulk operation > 5 IDs
 - [ ] every chained command used `--output json` and `--id-only` where appropriate
 - [ ] exit code interpreted (especially 2/3/4)

@@ -68,7 +68,7 @@ Add 429 retry headers,"",2,Backlog,,api,2,
 
 ### Name resolution
 
-`status`, `assignee`, and `labels` are resolved by name within the target team. If a name doesn't match, the row fails with exit 2 (not found). Always run `--dry-run` first to surface name-resolution errors before writing.
+`status`, `assignee`, and `labels` are resolved by name within the target team. If a name doesn't match, the row fails with an exit-2 JSON not-found envelope. Always run `--dry-run` first to surface name-resolution errors before writing.
 
 ## JSON round-trip
 

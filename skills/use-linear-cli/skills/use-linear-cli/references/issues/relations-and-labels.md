@@ -75,7 +75,7 @@ linear-cli st get "In Progress" -t ENG             # one state's details
 linear-cli st update STATE_ID --name "Reviewing" --color "#3B82F6"
 ```
 
-When a team has custom states (e.g. `In Beta`, `Blocked`), confirm names with `st list` before using them in `i update -s ...` — typos return exit 2 (not found).
+When a team has custom states (e.g. `In Beta`, `Blocked`), confirm names with `st list` before using them in `i update -s ...` — typos return an exit-2 JSON not-found envelope.
 
 ## Templates
 

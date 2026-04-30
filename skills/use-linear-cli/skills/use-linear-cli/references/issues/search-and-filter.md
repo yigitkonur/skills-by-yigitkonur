@@ -83,12 +83,21 @@ linear-cli i list -t ENG -s "In Progress" --id-only
 linear-cli i list -t ENG --format '{{identifier}} {{state.name}} {{title}}'
 ```
 
-For bulk mutations, convert `--id-only` output to a comma-separated `-i` value:
+For bulk mutations, capture and inspect the generated ID set before passing it to `-i`:
 
 ```bash
-linear-cli i list -t ENG -l stale --id-only \
-  | paste -sd, \
-  | xargs -I {} linear-cli b update-state "Cancelled" -i {}
+linear-cli i list -t ENG -l stale --limit 25 --output json --compact \
+  --fields identifier,title,state.name > /tmp/linear-stale.json
+jq -r '.[] | "\(.identifier)\t\(.state.name)\t\(.title)"' /tmp/linear-stale.json
+COUNT=$(jq 'length' /tmp/linear-stale.json)
+IDS=$(jq -r '.[].identifier' /tmp/linear-stale.json | paste -sd,)
+[ "$COUNT" -gt 0 ] && [ "$COUNT" -le 25 ] || { echo "Unexpected count: $COUNT"; exit 1; }
+linear-cli b update-state "Cancelled" -i "$IDS" --dry-run
+if [ "$COUNT" -gt 5 ] && [ "${CONFIRMED_BULK_LINEAR:-}" != 1 ]; then
+  echo "Review the dry-run output, then rerun with CONFIRMED_BULK_LINEAR=1 to execute: linear-cli b update-state \"Cancelled\" -i \"$IDS\""
+  exit 0
+fi
+linear-cli b update-state "Cancelled" -i "$IDS"
 ```
 
 ## Saved views
