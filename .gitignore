@@ -17,3 +17,4 @@ to-delete/
 # Session artifacts from AI coding tools.
 .continues-handoff.md
 *.claude-session*
+.claude/
