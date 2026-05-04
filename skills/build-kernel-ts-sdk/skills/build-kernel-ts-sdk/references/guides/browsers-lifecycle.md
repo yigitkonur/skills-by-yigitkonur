@@ -49,11 +49,14 @@ const ctx = browser.contexts()[0];          // never browser.newContext()
 const page = ctx.pages()[0];                // never ctx.newPage()
 await page.goto('https://example.com');
 
-// 2. Playwright-execute inside the browser VM — hot paths, no CDP roundtrip
-const { result } = await kernel.browsers.playwright.execute(session.session_id, {
+// 2. Playwright-execute inside the browser VM — hot paths, no CDP roundtrip.
+// Response is { success, error?, result, stderr, stdout } — check success first.
+const res = await kernel.browsers.playwright.execute(session.session_id, {
   code: 'await page.goto("https://example.com"); return await page.title();',
-  timeout_sec: 60,                              // default 60
+  timeout_sec: 60,                              // default 60, max 300
 });
+if (!res.success) throw new Error(res.error);
+const title = res.result;
 
 // 3. Computer-controls — vision-loop / VLM driven, no CDP at all
 await kernel.browsers.computer.captureScreenshot(session.session_id);
@@ -67,7 +70,7 @@ After **5 seconds** with no CDP or live-view connection, the browser enters **st
 
 - VM state is preserved.
 - Compute usage drops to zero.
-- The `timeout_seconds` countdown to deletion **continues running**.
+- The `timeout_seconds` countdown to deletion **starts** at the moment the browser enters standby (not at create time). When the next CDP/live-view connection lands, the countdown resets.
 - GPU browsers do not standby.
 
 Reconnecting (CDP open or live-view load) wakes the browser. There is no API to force standby; it is purely connection-driven.

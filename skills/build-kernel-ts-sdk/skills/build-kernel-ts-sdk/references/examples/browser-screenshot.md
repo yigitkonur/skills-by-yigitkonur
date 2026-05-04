@@ -66,14 +66,16 @@ npx tsx screenshot.ts
 **In-VM execution (no CDP roundtrip):**
 
 ```ts
-const { result } = await kernel.browsers.playwright.execute(session.session_id, {
+const res = await kernel.browsers.playwright.execute(session.session_id, {
   code: `
     await page.goto('https://example.com', { waitUntil: 'networkidle' });
     const buf = await page.screenshot();
     return { title: await page.title(), bytes: buf.length };
   `,
-  timeout_sec: 60,
+  timeout_sec: 60,                  // default 60, max 300
 });
+if (!res.success) throw new Error(res.error);
+const { title, bytes } = res.result;
 ```
 
 `result` is the JSON-serialised return value. To get the screenshot bytes back, write to the browser VM's `fs` and read out via `kernel.browsers.fs.readFile`:
@@ -100,9 +102,10 @@ fs.writeFileSync('./shot.png', Buffer.from(await resp.arrayBuffer()));
 For navigation via computer-controls, type the URL into the address bar:
 
 ```ts
+// Kernel browsers run Linux Chromium — use Control+L (NOT Meta+L) to focus the address bar.
 await kernel.browsers.computer.batch(session.session_id, {
   actions: [
-    { type: 'press_key', press_key: { keys: ['Meta', 'l'] } }, // or ['Control', 'l']
+    { type: 'press_key', press_key: { keys: ['Control', 'l'] } },
     { type: 'type_text', type_text: { text: 'https://example.com' } },
     { type: 'press_key', press_key: { keys: ['Enter'] } },
   ],

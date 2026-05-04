@@ -88,7 +88,7 @@ const deployment = await kernel.deployments.create({
 
 // Stream the deployment build:
 for await (const evt of await kernel.deployments.follow(deployment.id)) {
-  // evt.event: 'log' | 'deployment_state' | 'error' | 'heartbeat'
+  // evt.event: 'log' | 'deployment_state' | 'app_version_summary' | 'error' | 'heartbeat'
 }
 ```
 
@@ -158,7 +158,7 @@ for await (const evt of events) {
 }
 ```
 
-`deployments.follow` uses the same shape with `deployment_state` instead of `invocation_state`.
+`deployments.follow` uses the same shape but emits `deployment_state` instead of `invocation_state`, and adds an `app_version_summary` event when the build completes — handle five event kinds, not four.
 
 ## Stop
 
@@ -187,7 +187,8 @@ Apps are a **read view** of deployed code — the SDK exposes `apps.list` and th
 
 ```ts
 for await (const app of kernel.apps.list({ limit: 50 })) {
-  console.log(app.name);
+  // Field is `app_name` (not `name`); apps also expose `id`, `version`, `region`, `actions`, `env_vars`, `deployment`.
+  console.log(app.app_name);
 }
 ```
 

@@ -18,13 +18,13 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Fix:** Set `timeout_seconds: 300` minimum for real automation, up to `259200` (72h). The clock counts down only while the browser is idle (no CDP / live-view connection).
 
-## 3. Standby is automatic but does not reset the timeout
+## 3. Standby starts the timeout countdown — don't expect open-but-idle to be free
 
 **Symptom:** A long-idle session is suddenly gone.
 
-**Cause:** After 5 seconds of no CDP / live-view connection, the browser standby's (zero compute cost). The `timeout_seconds` countdown to deletion **continues** during standby. GPU browsers do not standby.
+**Cause:** After 5 seconds of no CDP / live-view connection, the browser enters standby (zero compute cost). The `timeout_seconds` countdown to deletion **begins at standby entry**; when a connection reattaches, the countdown resets. GPU browsers do not standby — they keep running and bill compute the whole time.
 
-**Fix:** Keep one connection open for "long idle" sessions, OR make `timeout_seconds` long enough to outlast the idle period.
+**Fix:** Keep one connection open for "long idle" sessions, OR make `timeout_seconds` long enough to outlast the expected gap. For GPU browsers, accept the higher floor cost or terminate explicitly.
 
 ## 4. Headful vs headless trade-off
 
@@ -108,11 +108,11 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 ## 14. Idle pool-cost model
 
-**Symptom:** Surprise on bill — assumed pools were free while idle.
+**Symptom:** Confusion about pool billing — "is the idle pool charging me?"
 
-**Cause:** Pool browsers are billed only on **acquire** for compute. But a pool occupies disk and may have a Start-Up plan tier requirement.
+**Cause:** Per kernel.sh/docs/info/pricing, idle browsers in a pool incur **no disk charges**; you pay compute only when a browser is actively in use (i.e. acquired). Pools do require the Start-Up plan or higher (Developer/Hobbyist tiers cap reserved browsers at 0).
 
-**Fix:** Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and right-size the `size:` parameter. Use `flush()` to reset after a config change.
+**Fix:** Don't oversize pools "just in case" — there is no idle disk cost, but the `size` cap consumes plan quota. Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and tune accordingly. Use `flush()` to reset after a config change.
 
 ## 15. Payload max 4.5 MB JSON-encoded
 

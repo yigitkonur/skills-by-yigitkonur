@@ -41,15 +41,20 @@ Cost: every call is a network round-trip from your service to the browser VM. Fo
 ## Surface 2 — Playwright execute (in-VM)
 
 ```ts
-const { result } = await kernel.browsers.playwright.execute(session.session_id, {
+const res = await kernel.browsers.playwright.execute(session.session_id, {
   code: `
     await page.goto('https://example.com');
     const title = await page.title();
     const links = await page.$$eval('a', els => els.map(el => el.href));
     return { title, links };
   `,
-  timeout_sec: 60,                            // default 60 seconds
+  timeout_sec: 60,                            // default 60, max 300
 });
+
+// Response is { success, error?, result, stderr, stdout } — always check `success`
+// before using `result`. `stderr` / `stdout` are captured from the script's logs.
+if (!res.success) throw new Error(`playwright.execute failed: ${res.error}`);
+const { title, links } = res.result;
 ```
 
 When to use:
@@ -84,8 +89,11 @@ await kernel.browsers.computer.typeText(session.session_id, {
   text: 'hello world',
   delay: 30,                  // optional ms between keystrokes
 });
-// pressKey takes an ARRAY of keys (chord supported via hold_keys)
-await kernel.browsers.computer.pressKey(session.session_id, { keys: ['Enter'] });
+// pressKey takes a `keys` array of keystrokes to emit in sequence. To send a
+// chord (e.g. Ctrl+L), pass the modifiers + key together in `keys`. Use
+// `hold_keys` ONLY when you want a separate set of keys held down across
+// the whole `keys` sequence (e.g. hold Shift while typing arrows).
+await kernel.browsers.computer.pressKey(session.session_id, { keys: ['Control', 'l'] });
 
 // Scroll requires anchor coordinates plus delta_x/delta_y
 await kernel.browsers.computer.scroll(session.session_id, {
@@ -100,13 +108,17 @@ await kernel.browsers.computer.readClipboard(session.session_id);
 // Cursor visibility uses `hidden`, not `visible`
 await kernel.browsers.computer.setCursorVisibility(session.session_id, { hidden: true });
 
-// Batch — actions are a discriminated union: { type, <type>: { ... } }
+// Batch — actions are a discriminated union { type, <type>: { ... } }
+// with eight valid types: 'click_mouse' | 'move_mouse' | 'type_text' |
+// 'press_key' | 'scroll' | 'drag_mouse' | 'set_cursor' | 'sleep'.
 await kernel.browsers.computer.batch(session.session_id, {
   actions: [
-    { type: 'move_mouse', move_mouse: { x: 100, y: 200 } },
-    { type: 'click_mouse', click_mouse: { x: 100, y: 200, button: 'left' } },
-    { type: 'type_text',  type_text:  { text: 'search query' } },
-    { type: 'press_key',  press_key:  { keys: ['Enter'] } },
+    { type: 'move_mouse',   move_mouse:   { x: 100, y: 200 } },
+    { type: 'click_mouse',  click_mouse:  { x: 100, y: 200, button: 'left' } },
+    { type: 'type_text',    type_text:    { text: 'search query' } },
+    { type: 'press_key',    press_key:    { keys: ['Enter'] } },
+    { type: 'sleep',        sleep:        { ms: 250 } },              // pause between actions
+    { type: 'set_cursor',   set_cursor:   { hidden: true } },         // hide cursor for clean screenshots
   ],
 });
 ```

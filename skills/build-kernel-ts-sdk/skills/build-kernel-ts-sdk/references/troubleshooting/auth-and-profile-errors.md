@@ -54,9 +54,9 @@ const conn = await kernel.auth.connections.create({ domain, profile_name });
 
 **Symptom:** Loading the embedded `<KernelManagedAuth />` (or hitting `hosted_url` directly) returns "session expired".
 
-**Cause:** The `code` query-param has a short TTL. If the user lingers, copies the URL, or you cache the response, the handoff dies.
+**Cause:** Per kernel.sh/docs/auth/hosted-ui, the hosted login session expires after **20 minutes** total, and the flow times out after **10 minutes** of user inactivity. If the user lingers, copies the URL, or you cache the response, the handoff dies.
 
-**Fix:** Re-call `kernel.auth.connections.login(id)` to get a fresh `hosted_url` (and embedded `code`). Then re-mount the React component or redirect again.
+**Fix:** Re-call `kernel.auth.connections.login(id)` to get a fresh `hosted_url` (and embedded `code`). Then re-mount the React component or redirect again. Don't cache the `hosted_url` longer than the 10-minute idle window.
 
 ## React component does not render
 

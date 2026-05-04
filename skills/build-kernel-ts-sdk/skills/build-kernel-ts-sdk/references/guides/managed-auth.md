@@ -18,7 +18,7 @@ Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on beh
 | `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential? })` | Create a connection scoping a `domain` to a browser `profile_name`. |
 | `kernel.auth.connections.login(id)` | Start a login session; returns `{ hosted_url }` for redirect/embed (Hosted UI) or starts the polling loop (Programmatic). |
 | `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, and (in programmatic mode) `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
-| `kernel.auth.connections.submit(id, { fields, sso_provider?, mfa_option_id? })` | Programmatic only: submit user-collected values. |
+| `kernel.auth.connections.submit(id, { fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. Pick the single field that matches the current `flow_step` — for `AWAITING_INPUT` it's `fields`; for SSO it's `sso_provider` or `sso_button_selector`; for MFA it's `mfa_option_id`; for sign-in pickers it's `sign_in_option_id`. |
 | `kernel.auth.connections.update(id, …)` | Edit a connection (e.g. switch credential). |
 | `kernel.auth.connections.list()` / `delete(id)` / `follow(id)` | Standard list/delete plus an SSE feed for state. |
 
@@ -28,7 +28,7 @@ Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on beh
 
 **`flow_status`:** `IN_PROGRESS` | `SUCCESS` | `FAILED` | `EXPIRED` | `CANCELED`. Anything other than `IN_PROGRESS` is terminal — stop polling.
 
-**`flow_step`** (programmatic): `DISCOVERING` → `AWAITING_INPUT` → `SUBMITTING` → `AWAITING_EXTERNAL_ACTION` (push approval / hardware key) → `COMPLETED`.
+**`flow_step`** (programmatic): `DISCOVERING`, `AWAITING_INPUT`, `SUBMITTING`, `AWAITING_EXTERNAL_ACTION` (push approval / hardware key), `COMPLETED`. The flow can move between these in any order — `AWAITING_EXTERNAL_ACTION` can precede `SUBMITTING` for SSO, and the loop may revisit `AWAITING_INPUT` multiple times. Branch on the current `flow_step`, do not assume a fixed sequence.
 
 **Connection `status`:** `AUTHENTICATED` (logged in, browsers using `profile_name` are ready) | `NEEDS_AUTH` (re-auth required).
 
@@ -42,7 +42,7 @@ const kernel = new Kernel();
 const conn = await kernel.auth.connections.create({
   domain: 'netflix.com',
   profile_name: `netflix-${userId}`,
-  save_credentials: true,
+  save_credentials: true,                  // default true — set false to opt out of credential capture
 });
 
 const { hosted_url } = await kernel.auth.connections.login(conn.id);
@@ -105,8 +105,14 @@ while (state.flow_status === 'IN_PROGRESS') {
     await kernel.auth.connections.submit(conn.id, { sso_provider: choice.provider });
   }
   if (state.mfa_options?.length) {
-    const choice = await pickMfa(state.mfa_options); // each option carries an id + display fields
-    await kernel.auth.connections.submit(conn.id, { mfa_option_id: choice.id });
+    // Each option is { type, label, description?, target? } — pick by `type`
+    // and pass it as `mfa_option_id` (Kernel uses the type as the option id).
+    const choice = await pickMfa(state.mfa_options);
+    await kernel.auth.connections.submit(conn.id, { mfa_option_id: choice.type });
+  }
+  if (state.sign_in_options?.length) {
+    const account = await pickSignIn(state.sign_in_options);
+    await kernel.auth.connections.submit(conn.id, { sign_in_option_id: account.id });
   }
   await new Promise(r => setTimeout(r, 2000));
   state = await kernel.auth.connections.retrieve(conn.id);

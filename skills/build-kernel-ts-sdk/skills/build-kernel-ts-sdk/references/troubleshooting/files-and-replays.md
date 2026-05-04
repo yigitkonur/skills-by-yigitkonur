@@ -30,13 +30,17 @@ await kernel.browsers.fs.move(id, { src_path: '/tmp/a', dest_path: '/tmp/b' });
 await kernel.browsers.fs.deleteFile(id, { path: '/tmp/a' });
 await kernel.browsers.fs.createDirectory(id, { path: '/tmp/dir' });
 await kernel.browsers.fs.deleteDirectory(id, { path: '/tmp/dir' });
-await kernel.browsers.fs.setFilePermissions(id, { path: '/tmp/a', mode: 0o644 });
+// `mode` is a string (chmod-style), NOT a JS octal number. '0644' or '644', not 0o644.
+await kernel.browsers.fs.setFilePermissions(id, { path: '/tmp/a', mode: '0644' });
 
-// Watch for changes — note watch.events and watch.stop take watch_id
-// as the FIRST positional arg (the browser session id goes in params).
+// Watch for changes — note watch.events and watch.stop take watch_id as
+// the FIRST positional arg (the browser session id goes in params). Also
+// note: `watch.start` returns `watch_id` as OPTIONAL — guard before use.
 const watch = await kernel.browsers.fs.watch.start(id, { path: '/tmp' });
+if (!watch.watch_id) throw new Error('watch.start did not return a watch_id');
 for await (const evt of await kernel.browsers.fs.watch.events(watch.watch_id, { id })) {
-  // … evt.type, evt.path …
+  // evt.type is the uppercase enum: 'CREATE' | 'WRITE' | 'DELETE' | 'RENAME'
+  // evt.path is the affected absolute path.
 }
 await kernel.browsers.fs.watch.stop(watch.watch_id, { id });
 ```

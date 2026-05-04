@@ -133,7 +133,10 @@ export async function POST() {
   const session = await kernel.browsers.create({
     stealth: true,
     timeout_seconds: 600,
-    profile: { name: `netflix-${userId}` },               // SAME profile name from the connection
+    // SAME profile name from the connection. Set save_changes: true if you
+    // want any new auth state (refreshed cookies, MFA tokens) captured back
+    // into the profile when the browser is deleted.
+    profile: { name: `netflix-${userId}`, save_changes: true },
   });
 
   try {

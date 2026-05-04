@@ -7,7 +7,7 @@ Most third-party agent libraries connect to a Kernel browser via the **CDP WebSo
 | **Playwright** (`playwright`) | TS | `chromium.connectOverCDP(session.cdp_ws_url)` — see `references/patterns/playwright-stagehand-integration.md` |
 | **Stagehand** (`@browserbasehq/stagehand`) | TS | `new Stagehand({ env: 'LOCAL', localBrowserLaunchOptions: { cdpUrl: session.cdp_ws_url } })` — see `references/patterns/playwright-stagehand-integration.md` |
 | **Puppeteer** (`puppeteer`) | TS | `puppeteer.connect({ browserWSEndpoint: session.cdp_ws_url })` |
-| **Claude Agent SDK** (`@anthropic-ai/agent-sdk`) | TS | Template-driven via `kernel create --template claude-agent-sdk`. Internally exposes an MCP tool that calls `kernel.browsers.playwright.execute(sessionId, { code })` against a stealth-mode browser. |
+| **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) | TS | Template-driven via `kernel create --template claude-agent-sdk`. Internally exposes an `execute_playwright` MCP tool that calls Kernel's Playwright Execution API (`kernel.browsers.playwright.execute`) against a stealth-mode browser. |
 | **Browser Use** | Python only | No TS binding. Deploy a Python Kernel App that hosts Browser Use; invoke from TS via `kernel.invocations.create`. |
 | **Vibium** | TS | WebDriver BiDi — pass `session.webdriver_ws_url` instead of `cdp_ws_url`. |
 | **Notte** | TS | CDP via `cdp_ws_url`. |
@@ -15,7 +15,7 @@ Most third-party agent libraries connect to a Kernel browser via the **CDP WebSo
 | **Laminar** | TS | CDP via `cdp_ws_url`. |
 | **Val Town** | TS | Run a Val that calls `@onkernel/sdk` directly; CDP from the Val to the Kernel browser. |
 | **Vercel Agent Browser** | TS | `agent-browser -p kernel open <url>` reads `KERNEL_API_KEY`, `KERNEL_HEADLESS`, `KERNEL_STEALTH`, `KERNEL_TIMEOUT_SECONDS`, `KERNEL_PROFILE_NAME`. Programmatic: spawn `agent-browser connect "${session.cdp_ws_url}"`. |
-| **1Password** | TS | Credential provider via `kernel.credentialProviders.create({ type: '1password' })`. See `references/patterns/profiles-pools-credentials.md`. |
+| **1Password** | TS | Credential provider — register via *Integrations → Connect 1Password* in the Kernel dashboard (recommended) or `kernel.credentialProviders.create({ type: '1password', config: { service_account_token } })`. Reference in `auth.connections.create({ credential: { provider: '<name>', auto: true } })`. See `references/patterns/profiles-pools-credentials.md`. |
 | **Computer Use** (Anthropic, OpenAI, custom VLM) | Any | Skip CDP entirely. Use `kernel.browsers.computer.captureScreenshot/clickMouse/typeText/scroll/dragMouse`. |
 
 ## Patterns common to most CDP integrations

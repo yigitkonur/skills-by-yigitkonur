@@ -53,6 +53,7 @@ You can mix — most production setups deploy long-running browser work as a Ker
 - **Headful** when you need live view, replays, or GPU. **Headless** for fast scripted scrapes (~8× cheaper, faster boot, but more detectable).
 - Prefer `kernel.browsers.playwright.execute(id, { code })` for hot paths (it runs in the browser VM with no CDP roundtrip). Reserve raw CDP for long-lived interactive sessions.
 - Use Kernel **profiles** for any flow that needs login state across sessions; reach for **Managed Auth** when those credentials belong to your end-users.
+- A connected browser is "active". After 5s with no CDP/live-view connection it enters **standby** (zero compute cost) and only THEN does its `timeout_seconds` countdown to deletion start. Don't expect long-idle-but-open sessions to be free — keep a connection live.
 
 ## Workflow
 

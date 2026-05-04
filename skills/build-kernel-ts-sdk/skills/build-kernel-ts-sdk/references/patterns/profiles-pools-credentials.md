@@ -115,6 +115,11 @@ Partial credentials (some fields missing) are allowed; missing fields prompt the
 
 Drive credentials from a 1Password vault via service-account token. Avoids storing user-managed credentials in Kernel directly.
 
+**Two setup paths — pick one:**
+
+- **Dashboard (recommended in docs):** Go to *Integrations → Connect 1Password* in the Kernel dashboard. Paste the service-account token there; the provider is registered with the name you choose. No SDK call needed for setup. Reference it later via `credential: { provider: '<name>' }`.
+- **SDK:** `kernel.credentialProviders.create(...)` for fully programmatic provisioning (e.g. CI bootstrap):
+
 ```ts
 const provider = await kernel.credentialProviders.create({
   name: 'my-1p',
