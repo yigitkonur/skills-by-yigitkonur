@@ -26,7 +26,7 @@ Full options:
 
 ```ts
 new Kernel({
-  apiKey: process.env.KERNEL_API_KEY,        // optional override; env wins if both missing
+  apiKey: process.env.KERNEL_API_KEY,        // explicit value; if omitted, the SDK falls back to KERNEL_API_KEY env. Throws if both missing.
   baseURL: undefined,                        // override the base URL outright
   environment: 'production',                 // 'production' | 'development'
   timeout: 60_000,                           // ms; default Kernel.DEFAULT_TIMEOUT

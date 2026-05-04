@@ -5,9 +5,9 @@ Each browser exposes a VM filesystem (`kernel.browsers.fs.*`) and a recording AP
 ## File I/O surface
 
 ```ts
-await kernel.browsers.fs.writeFile(id, {
+// writeFile takes `contents` as a positional second arg, then params:
+await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), {
   path: '/tmp/data.json',
-  contents: JSON.stringify(obj),
   encoding: 'utf8',                    // 'utf8' | 'base64'
 });
 
@@ -27,12 +27,13 @@ await kernel.browsers.fs.createDirectory(id, { path: '/tmp/dir' });
 await kernel.browsers.fs.deleteDirectory(id, { path: '/tmp/dir' });
 await kernel.browsers.fs.setFilePermissions(id, { path: '/tmp/a', mode: 0o644 });
 
-// Watch for changes
+// Watch for changes — note watch.events and watch.stop take watch_id
+// as the FIRST positional arg (the browser session id goes in params).
 const watch = await kernel.browsers.fs.watch.start(id, { path: '/tmp' });
-for await (const evt of await kernel.browsers.fs.watch.events(id, { watch_id: watch.watch_id })) {
+for await (const evt of await kernel.browsers.fs.watch.events(watch.watch_id, { id })) {
   // … evt.type, evt.path …
 }
-await kernel.browsers.fs.watch.stop(id, { watch_id: watch.watch_id });
+await kernel.browsers.fs.watch.stop(watch.watch_id, { id });
 ```
 
 ## Common file-I/O issues
@@ -89,16 +90,14 @@ await kernel.browsers.fs.upload(id, {
 
 ```ts
 // Binary
-await kernel.browsers.fs.writeFile(id, {
+await kernel.browsers.fs.writeFile(id, buf.toString('base64'), {
   path: '/tmp/img.png',
-  contents: buf.toString('base64'),
   encoding: 'base64',
 });
 
 // Text
-await kernel.browsers.fs.writeFile(id, {
+await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), {
   path: '/tmp/data.json',
-  contents: JSON.stringify(obj),
   encoding: 'utf8',
 });
 ```

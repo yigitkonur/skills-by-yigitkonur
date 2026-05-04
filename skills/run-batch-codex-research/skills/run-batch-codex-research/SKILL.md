@@ -160,7 +160,7 @@ The skip-existing guard auto-handles the rest. Move archived versions back if th
 
 4. **Codex non-determinism.** A retry of the same prompt can produce a smaller output than the original — codex output varies run-to-run. Archive the prior answer (`answers/.prev/`) before retrying so you can compare and revert.
 
-5. **Naming collisions silently overwrite.** If two inputs slugify to the same name, the second prompt file overwrites the first. The render script warns on this — don't ignore the warning.
+5. **Naming collisions are skipped, not overwritten.** If two inputs slugify to the same name, the render script writes a stderr warning and **skips** the second one — the first file wins, the second is dropped. Disambiguate the input (add a discriminator) before re-rendering, or you'll lose work silently to the skip.
 
 ## Output contract
 

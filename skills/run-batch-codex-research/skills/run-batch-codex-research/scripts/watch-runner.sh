@@ -33,9 +33,13 @@ done
 
 # tail -F follows truncation/recreation; awk's fflush() on every output is
 # critical so events surface immediately rather than being buffered. The
-# size-injection per event uses `wc -c` via a piped command, which is cheap.
+# size-injection per event uses `wc -c` via a piped command. Defense-in-depth:
+# the `sizeof` function rejects any name outside the render-prompts.sh slug
+# charset [A-Za-z0-9._-] before splicing it into the shell, so a hand-edited
+# log with metacharacters cannot inject commands.
 exec tail -F "$LOG" 2>/dev/null | awk -v ANS="$ANSWERS" -v MIN="$MIN" '
 function sizeof(name,   cmd, n) {
+  if (name !~ /^[A-Za-z0-9._-]+$/) return 0
   cmd = "wc -c < " ANS "/" name ".md 2>/dev/null"
   cmd | getline n
   close(cmd)

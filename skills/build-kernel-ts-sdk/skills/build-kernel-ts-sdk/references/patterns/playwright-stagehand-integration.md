@@ -47,6 +47,7 @@ Stagehand connects to Kernel via its **local-CDP** entry-point, **not** the Brow
 ```ts
 import Kernel from '@onkernel/sdk';
 import { Stagehand } from '@browserbasehq/stagehand';
+import { z } from 'zod';
 
 const kernel = new Kernel();
 const session = await kernel.browsers.create({ stealth: true, timeout_seconds: 600 });

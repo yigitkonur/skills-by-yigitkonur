@@ -170,8 +170,7 @@ Then `kernel.invocations.update(id, { status: 'failed' })` (or a graceful stop) 
 
 Each browser VM exposes more than the Chromium surface:
 
-- `kernel.browsers.curl(id, { url, method, headers, body, timeout_ms })` — HTTP through Chrome's TLS fingerprint
-- `kernel.browsers.fetch(id, input, init?)` — same idea, fetch-style
+- `kernel.browsers.curl(id, { url, method, headers, body, timeout_ms, response_encoding })` — HTTP through Chrome's TLS fingerprint
 - `kernel.browsers.fs.*` — read/write files, watch directories
 - `kernel.browsers.process.*` — exec/spawn inside the VM (PTY, stdin/stdout streaming)
 - `kernel.browsers.logs.stream(id)` — VM-level log events

@@ -17,20 +17,26 @@ You can mix: have your service embed `@onkernel/sdk` and `invocations.create` to
 
 ```ts
 // app.ts
-import Kernel from '@onkernel/sdk';
+import Kernel, { type KernelContext } from '@onkernel/sdk';
 
 const kernel = new Kernel();
 const app = kernel.app('my-agent');
 
-app.action('analyze', async (ctx, payload: { url: string }) => {
-  const session = await kernel.browsers.create({ stealth: true, invocation_id: ctx.invocation.id });
-  try {
-    // …work…
-    return { ok: true, title: 'example' };
-  } finally {
-    await kernel.browsers.deleteByID(session.session_id);
+app.action(
+  'analyze',
+  async (ctx: KernelContext, payload: { url: string }) => {
+    const session = await kernel.browsers.create({
+      stealth: true,
+      invocation_id: ctx.invocation.id,
+    });
+    try {
+      // …work…
+      return { ok: true, title: 'example' };
+    } finally {
+      await kernel.browsers.deleteByID(session.session_id);
+    }
   }
-});
+);
 ```
 
 `package.json` for a TS app:
@@ -177,12 +183,11 @@ console.log(inv.status, inv.status_reason);
 
 ## Apps surface
 
-Apps are a **read view** of deployed code:
+Apps are a **read view** of deployed code — the SDK exposes `apps.list` and that's it:
 
 ```ts
-const apps = await kernel.apps.list({ limit: 50 });
-for await (const app of apps) {
-  console.log(app.name, app.actions.map(a => a.name));
+for await (const app of kernel.apps.list({ limit: 50 })) {
+  console.log(app.name);
 }
 ```
 

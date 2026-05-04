@@ -86,9 +86,9 @@ echo "Recommendation:"
 if [ "$flagged" -gt 0 ]; then
   echo "  Read the head of each flagged answer before retrying. Some are"
   echo "  legitimately concise (thin source, parked domain). For real retries:"
-  echo "    mkdir -p answers/.prev"
-  echo "    mv answers/<name>.md answers/.prev/"
-  echo "    JOBS=10 ./bin/run-batch.sh > logs/_runner.log 2>&1 &"
+  echo "    mkdir -p $ANSWERS/.prev"
+  echo "    mv $ANSWERS/<name>.md $ANSWERS/.prev/"
+  echo "    JOBS=10 ./bin/run-batch.sh > $LOG 2>&1 &"
   echo "  After retry, compare sizes — codex is non-deterministic, retries"
   echo "  can be worse. Restore from .prev/ if needed."
 else

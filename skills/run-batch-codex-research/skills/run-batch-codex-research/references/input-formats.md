@@ -82,7 +82,8 @@ Examples:
 | `aibrandtracking.com` | `aibrandtracking-com` |
 | `profound/` | `profound` |
 | `My Product Name!` | `My-Product-Name` |
-| `___` | (empty → skipped with warning) |
+| `___` | `___` (underscores survive — they're in the keep set) |
+| `!!!` | (no kept characters → empty after dash-strip → skipped with warning) |
 
 ## Collision handling
 

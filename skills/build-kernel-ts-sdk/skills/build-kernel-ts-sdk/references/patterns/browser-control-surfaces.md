@@ -13,7 +13,7 @@ What are you doing?
 ├── Vision-loop / VLM-driven agent (computer use)
 │   └─► `kernel.browsers.computer.*` — screenshot + mouse/keyboard primitives
 ├── HTTP from the browser's TLS fingerprint (no DOM needed)
-│   └─► `kernel.browsers.curl(id, { url })` or `kernel.browsers.fetch(id, input, init?)`
+│   └─► `kernel.browsers.curl(id, { url })`
 └── WebDriver BiDi client (Vibium etc.)
     └─► Pass `session.webdriver_ws_url` instead of CDP
 ```
@@ -123,11 +123,13 @@ const res = await kernel.browsers.curl(session.session_id, {
   timeout_ms: 30_000,
 });
 
-// Fetch-style alias
-const res2 = await kernel.browsers.fetch(session.session_id, 'https://example.com', {
+// POST a JSON body — same shape, just set method + body
+const res2 = await kernel.browsers.curl(session.session_id, {
+  url: 'https://api.example.com/submit',
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ q: 'test' }),
+  response_encoding: 'utf8',
 });
 ```
 

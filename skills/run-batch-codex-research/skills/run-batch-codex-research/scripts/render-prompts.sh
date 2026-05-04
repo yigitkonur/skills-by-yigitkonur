@@ -6,8 +6,10 @@
 #
 #   INPUT_LIST    path to file. Two formats accepted:
 #                   (a) tab-delimited "name<TAB>content" (one per line)
-#                   (b) plain lines — each line becomes both slug and content,
-#                       sequentially numbered if a sanitised slug clashes.
+#                   (b) plain lines — each line becomes both slug and content.
+#                   Collisions on the resulting slug are skipped (with a stderr
+#                   warning) — the first occurrence wins; disambiguate the
+#                   input list and re-render to recover dropped entries.
 #   TEMPLATE      path to template file containing PLACEHOLDER.
 #   PROMPTS_DIR   directory to write rendered prompts into (created if missing).
 #   PLACEHOLDER   token to replace in the template. Default: XXXXXXXXXXXXX.

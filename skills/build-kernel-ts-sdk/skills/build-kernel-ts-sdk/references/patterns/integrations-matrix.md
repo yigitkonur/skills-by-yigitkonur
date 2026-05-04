@@ -1,6 +1,6 @@
 # Integrations matrix
 
-All third-party agent libraries connect to a Kernel browser via the **CDP WebSocket URL** (`session.cdp_ws_url`) returned from `kernel.browsers.create`. There is no vendor lock-in.
+Most third-party agent libraries connect to a Kernel browser via the **CDP WebSocket URL** (`session.cdp_ws_url`) returned from `kernel.browsers.create`. WebDriver BiDi clients use `session.webdriver_ws_url` instead; vision-loop / VLM agents (Computer Use) bypass CDP entirely and go through `kernel.browsers.computer.*`. The matrix below names the right transport per integration. There is no vendor lock-in.
 
 | Lib | Language | TS hookup |
 |---|---|---|

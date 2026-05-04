@@ -42,9 +42,13 @@ The "archive don't delete" rule is the most important one. Codex output is non-d
 ## Retrying many at once
 
 ```bash
+# Create the archive dir BEFORE moving — without it, mv fails silently
+# and the rerun's skip-existing guard keeps the stale answers in place.
+mkdir -p answers/.prev
+
 # Move all flagged answers aside in one go
 for f in $(./bin/audit-sizes.sh | awk '/Below absolute floor/,0 { if (NF==2) print $2 }'); do
-  mv "answers/$f" "answers/.prev/" 2>/dev/null
+  mv "answers/$f" "answers/.prev/"
 done
 
 # Rerun

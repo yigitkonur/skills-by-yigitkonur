@@ -68,4 +68,6 @@ multi-section structured report  | 5000–15000 bytes
 deep research dump               | 15000+ bytes
 ```
 
-After your first batch, look at the size distribution. If the bottom 10% are all healthy on inspection, raise the floor. If you're missing genuine failures, lower it.
+After your first batch, look at the size distribution.
+- If the bottom 10% are all healthy on inspection (false-positive flags), **lower the floor** so it stops flagging legitimate small answers.
+- If genuine failures slipped past the floor unflagged, **raise the floor** so the next batch catches them.

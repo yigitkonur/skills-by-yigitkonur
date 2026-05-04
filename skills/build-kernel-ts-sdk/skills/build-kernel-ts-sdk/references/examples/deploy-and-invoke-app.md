@@ -5,7 +5,7 @@ Full walk-through: write an action, deploy it, invoke it from another TypeScript
 ## The app (`app.ts`)
 
 ```ts
-import Kernel from '@onkernel/sdk';
+import Kernel, { type KernelContext } from '@onkernel/sdk';
 import { chromium } from 'playwright';
 
 const kernel = new Kernel();
@@ -21,34 +21,40 @@ interface AnalyzeOutput {
   screenshotPath: string;
 }
 
-app.action<AnalyzePayload, AnalyzeOutput>('analyze', async (ctx, payload) => {
-  const session = await kernel.browsers.create({
-    stealth: true,
-    timeout_seconds: 600,
-    invocation_id: ctx.invocation.id,         // tag for cleanup-on-stop
-  });
-
-  try {
-    const browser = await chromium.connectOverCDP(session.cdp_ws_url);
-    const page = browser.contexts()[0].pages()[0];
-    await page.goto(payload.url, { waitUntil: 'networkidle' });
-
-    const title = await page.title();
-    const links = await page.$$eval('a', els => els.length);
-
-    const buf = await page.screenshot();
-    const screenshotPath = `/tmp/${ctx.invocation.id}.png`;
-    await kernel.browsers.fs.writeFile(session.session_id, {
-      path: screenshotPath,
-      contents: buf.toString('base64'),
-      encoding: 'base64',
+app.action(
+  'analyze',
+  async (
+    ctx: KernelContext,
+    payload: AnalyzePayload,
+  ): Promise<AnalyzeOutput> => {
+    const session = await kernel.browsers.create({
+      stealth: true,
+      timeout_seconds: 600,
+      invocation_id: ctx.invocation.id, // tag for cleanup-on-stop
     });
 
-    return { title, links, screenshotPath };
-  } finally {
-    await kernel.browsers.deleteByID(session.session_id);
-  }
-});
+    try {
+      const browser = await chromium.connectOverCDP(session.cdp_ws_url);
+      const page = browser.contexts()[0].pages()[0];
+      await page.goto(payload.url, { waitUntil: 'networkidle' });
+
+      const title = await page.title();
+      const links = await page.$$eval('a', els => els.length);
+
+      const buf = await page.screenshot();
+      const screenshotPath = `/tmp/${ctx.invocation.id}.png`;
+      await kernel.browsers.fs.writeFile(
+        session.session_id,
+        buf.toString('base64'),
+        { path: screenshotPath, encoding: 'base64' },
+      );
+
+      return { title, links, screenshotPath };
+    } finally {
+      await kernel.browsers.deleteByID(session.session_id);
+    }
+  },
+);
 ```
 
 `package.json`:
@@ -139,9 +145,8 @@ If your action's `browsers.create` calls did not set `invocation_id`, those brow
 
 ```ts
 // Inside the action
-await kernel.browsers.fs.writeFile(session.session_id, {
+await kernel.browsers.fs.writeFile(session.session_id, JSON.stringify(bigResult), {
   path: '/tmp/result.json',
-  contents: JSON.stringify(bigResult),
   encoding: 'utf8',
 });
 return { artifactPath: '/tmp/result.json' };
@@ -149,8 +154,9 @@ return { artifactPath: '/tmp/result.json' };
 // In the caller
 const inv = await kernel.invocations.retrieve(invId);
 const browsers = await kernel.invocations.listBrowsers(invId);
-const sessionId = browsers.items[0].session_id;
-const resp = await kernel.browsers.fs.readFile(sessionId, { path: '/tmp/result.json' });
+const first = browsers.items[0];
+if (!first) throw new Error(`no browsers tagged to invocation ${invId}`);
+const resp = await kernel.browsers.fs.readFile(first.session_id, { path: '/tmp/result.json' });
 const bigResult = JSON.parse(await resp.text());
 ```
 

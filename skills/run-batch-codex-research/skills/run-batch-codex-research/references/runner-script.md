@@ -26,7 +26,7 @@ The runner's stdout is a structured event log: `START`, `DONE`, `FAIL`, `SKIP`, 
 |---|---|---|
 | Available | Yes (POSIX, ships with macOS/Linux) | Often missing on minimal images |
 | Concurrency cap | `-P N` | `-j N` |
-| NUL-safe filenames | `-0` | Yes (default) |
+| NUL-safe filenames | `-0` | `--null` / `-0` (newline-delimited by default) |
 | Output ordering | Interleaved | Optional `--keep-order` |
 | Citation banner | None | `--citation` nag |
 
@@ -34,9 +34,9 @@ xargs is enough. No reason to add a dependency.
 
 ## Why -n 1 (one prompt per bash invocation)
 
-Without `-n 1`, xargs batches as many filenames as fit in a single command line, then invokes the function once with all of them as arguments. That breaks the "one event per state transition" promise — start/done would interleave per-batch instead of per-prompt.
+Our invocation is `bash -c 'run_one "$0"'` — only `$0` is consumed. Without `-n 1`, xargs would pack as many filenames as fit on the command line into a single `bash -c` call, where filenames 2..N land in `$1`, `$2`, … and `run_one "$0"` simply ignores them. The result: prompts get **silently dropped**, not "batched".
 
-`-n 1` ensures every invocation handles exactly one prompt, producing exactly one START and one DONE/FAIL/SKIP line.
+`-n 1` forces xargs to invoke `bash -c` once per filename, so every prompt runs exactly once and emits exactly one START and one DONE/FAIL/SKIP line.
 
 ## Why the `-print0 | xargs -0` pair
 
