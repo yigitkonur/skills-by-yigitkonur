@@ -18,7 +18,7 @@ Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on beh
 | `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential? })` | Create a connection scoping a `domain` to a browser `profile_name`. |
 | `kernel.auth.connections.login(id)` | Start a login session; returns `{ hosted_url }` for redirect/embed (Hosted UI) or starts the polling loop (Programmatic). |
 | `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, and (in programmatic mode) `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
-| `kernel.auth.connections.submit(id, { fields, sso_provider?, mfa_option? })` | Programmatic only: submit user-collected values. |
+| `kernel.auth.connections.submit(id, { fields, sso_provider?, mfa_option_id? })` | Programmatic only: submit user-collected values. |
 | `kernel.auth.connections.update(id, …)` | Edit a connection (e.g. switch credential). |
 | `kernel.auth.connections.list()` / `delete(id)` / `follow(id)` | Standard list/delete plus an SSE feed for state. |
 
@@ -105,8 +105,8 @@ while (state.flow_status === 'IN_PROGRESS') {
     await kernel.auth.connections.submit(conn.id, { sso_provider: choice.provider });
   }
   if (state.mfa_options?.length) {
-    const mfa = await pickMfa(state.mfa_options); // 'sms' | 'email' | 'totp' | 'push' | 'call' | 'security_key'
-    await kernel.auth.connections.submit(conn.id, { mfa_option: mfa });
+    const choice = await pickMfa(state.mfa_options); // each option carries an id + display fields
+    await kernel.auth.connections.submit(conn.id, { mfa_option_id: choice.id });
   }
   await new Promise(r => setTimeout(r, 2000));
   state = await kernel.auth.connections.retrieve(conn.id);

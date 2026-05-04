@@ -48,7 +48,7 @@ const { result } = await kernel.browsers.playwright.execute(session.session_id, 
     const links = await page.$$eval('a', els => els.map(el => el.href));
     return { title, links };
   `,
-  timeout_ms: 60_000,
+  timeout_sec: 60,                            // default 60 seconds
 });
 ```
 
@@ -71,34 +71,42 @@ Caveats:
 const resp = await kernel.browsers.computer.captureScreenshot(session.session_id);
 const png = Buffer.from(await resp.arrayBuffer());
 
-// Mouse — Bezier-curve smoothing built in
+// Mouse
 await kernel.browsers.computer.clickMouse(session.session_id, { x: 100, y: 200, button: 'left' });
-await kernel.browsers.computer.moveMouse(session.session_id, { x: 400, y: 300, smooth: true });
+await kernel.browsers.computer.moveMouse(session.session_id, { x: 400, y: 300 });
+// dragMouse takes an ordered path of [x, y] pairs (>= 2 points)
 await kernel.browsers.computer.dragMouse(session.session_id, {
-  start: { x: 100, y: 100 }, end: { x: 300, y: 300 }, smooth: true,
+  path: [[100, 100], [300, 300]],
 });
 
-// Keyboard — human-like typing with optional typo simulation
+// Keyboard
 await kernel.browsers.computer.typeText(session.session_id, {
   text: 'hello world',
-  smooth: true,
-  typo_chance: 0.02,        // 0–0.10
+  delay: 30,                  // optional ms between keystrokes
 });
-await kernel.browsers.computer.pressKey(session.session_id, { key: 'Enter' });
+// pressKey takes an ARRAY of keys (chord supported via hold_keys)
+await kernel.browsers.computer.pressKey(session.session_id, { keys: ['Enter'] });
 
-// Scroll, clipboard, cursor visibility
-await kernel.browsers.computer.scroll(session.session_id, { delta_y: 500, smooth: true });
+// Scroll requires anchor coordinates plus delta_x/delta_y
+await kernel.browsers.computer.scroll(session.session_id, {
+  x: 400, y: 300,
+  delta_y: 500,
+});
+
+// Clipboard
 await kernel.browsers.computer.writeClipboard(session.session_id, { text: 'pasted' });
 await kernel.browsers.computer.readClipboard(session.session_id);
-await kernel.browsers.computer.setCursorVisibility(session.session_id, { visible: false });
 
-// Batch — execute multiple actions in a single call
+// Cursor visibility uses `hidden`, not `visible`
+await kernel.browsers.computer.setCursorVisibility(session.session_id, { hidden: true });
+
+// Batch — actions are a discriminated union: { type, <type>: { ... } }
 await kernel.browsers.computer.batch(session.session_id, {
   actions: [
-    { type: 'move_mouse', x: 100, y: 200, smooth: true },
-    { type: 'click_mouse', button: 'left' },
-    { type: 'type_text', text: 'search query', smooth: true },
-    { type: 'press_key', key: 'Enter' },
+    { type: 'move_mouse', move_mouse: { x: 100, y: 200 } },
+    { type: 'click_mouse', click_mouse: { x: 100, y: 200, button: 'left' } },
+    { type: 'type_text',  type_text:  { text: 'search query' } },
+    { type: 'press_key',  press_key:  { keys: ['Enter'] } },
   ],
 });
 ```

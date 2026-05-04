@@ -49,7 +49,7 @@ new Kernel({
 | `KERNEL_LOG` | Log level (`debug` / `info` / `warn` (default) / `error` / `off`). |
 | `KERNEL_CUSTOM_HEADERS` | Newline-separated `Header: value` pairs added to every request. |
 | `KERNEL_SUPPRESS_BUN_WARNING` | Suppress Bun + Playwright CDP warning (set when intentional). |
-| `KERNEL_PROJECT` | Default project. Sets `X-Kernel-Project-Id` on every request when used with project-scoped keys. |
+| `KERNEL_PROJECT` | **User convention only** — the SDK does not read this env var directly. Wire it through `defaultHeaders: { 'X-Kernel-Project-Id': process.env.KERNEL_PROJECT }` in the constructor (see "Project scoping" below). |
 
 ## Environments
 

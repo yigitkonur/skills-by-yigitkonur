@@ -72,7 +72,7 @@ const { result } = await kernel.browsers.playwright.execute(session.session_id, 
     const buf = await page.screenshot();
     return { title: await page.title(), bytes: buf.length };
   `,
-  timeout_ms: 60_000,
+  timeout_sec: 60,
 });
 ```
 
@@ -102,9 +102,9 @@ For navigation via computer-controls, type the URL into the address bar:
 ```ts
 await kernel.browsers.computer.batch(session.session_id, {
   actions: [
-    { type: 'press_key', key: 'Meta+L' },           // focus address bar (or Ctrl+L)
-    { type: 'type_text', text: 'https://example.com' },
-    { type: 'press_key', key: 'Enter' },
+    { type: 'press_key', press_key: { keys: ['Meta', 'l'] } }, // or ['Control', 'l']
+    { type: 'type_text', type_text: { text: 'https://example.com' } },
+    { type: 'press_key', press_key: { keys: ['Enter'] } },
   ],
 });
 ```

@@ -52,13 +52,13 @@ await page.goto('https://example.com');
 // 2. Playwright-execute inside the browser VM — hot paths, no CDP roundtrip
 const { result } = await kernel.browsers.playwright.execute(session.session_id, {
   code: 'await page.goto("https://example.com"); return await page.title();',
-  timeout_ms: 60_000,
+  timeout_sec: 60,                              // default 60
 });
 
 // 3. Computer-controls — vision-loop / VLM driven, no CDP at all
 await kernel.browsers.computer.captureScreenshot(session.session_id);
 await kernel.browsers.computer.clickMouse(session.session_id, { x: 100, y: 200, button: 'left' });
-await kernel.browsers.computer.typeText(session.session_id, { text: 'hello', smooth: true });
+await kernel.browsers.computer.typeText(session.session_id, { text: 'hello' });
 ```
 
 ## Standby (automatic)
@@ -161,7 +161,7 @@ See `references/troubleshooting/files-and-replays.md` for download timing and si
 If you are inside a Kernel App action, tag every browser you create with the parent `invocation_id`:
 
 ```ts
-await kernel.browsers.create({ invocation_id: ctx.invocation.id, stealth: true });
+await kernel.browsers.create({ invocation_id: ctx.invocation_id, stealth: true });
 ```
 
 Then `kernel.invocations.update(id, { status: 'failed' })` (or a graceful stop) reaps every browser tagged to that invocation. Without the tag, an aborted invocation leaves orphan browsers running until their `timeout_seconds` elapses.

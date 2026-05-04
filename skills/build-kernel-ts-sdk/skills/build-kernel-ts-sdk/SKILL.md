@@ -42,9 +42,9 @@ You can mix — most production setups deploy long-running browser work as a Ker
 3. **Never use `browser.close()` as cleanup.** Playwright/Puppeteer `close()` only severs the local CDP connection. Always call `kernel.browsers.deleteByID(session_id)` (or rely on `timeout_seconds`).
 4. **Sync invocation cap is ~100s.** Anything longer must use `async: true` with `async_timeout_seconds` (10–3600) and `invocations.follow(id)` for SSE.
 5. **Default browser context only.** Kernel browsers ship with one default context and one open page. Use `browser.contexts()[0]` and `pages()[0]` — do not call `browser.newContext()` / `context.newPage()` to make a "fresh" one.
-6. **Project scoping is header-driven.** With an org-wide API key, scope to a project via `X-Kernel-Project-Id` (`KERNEL_PROJECT` env or `defaultHeaders`). OAuth (CLI) is always org-wide.
+6. **Project scoping is header-driven.** With an org-wide API key, scope to a project by passing `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` to the constructor (the SDK does NOT auto-read a `KERNEL_PROJECT` env var — that's a user convention you have to wire through). OAuth (CLI) is always org-wide.
 7. **Runtime requirements.** Node 20+, TypeScript ≥ 4.9. Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge supported. No React Native.
-8. **Payload max 64 KB.** `invocation.payload` and `invocation.output` are JSON-encoded strings — caller must `JSON.parse`. Bigger artifacts go through `browsers.fs.*`.
+8. **Payload max 4.5 MB.** `invocation.payload` and `invocation.output` are JSON-encoded strings — caller must `JSON.parse`. Larger artifacts (e.g. screenshots, multi-MB blobs) go through `browsers.fs.*` or your own object store.
 
 ## Default stance
 
@@ -57,7 +57,7 @@ You can mix — most production setups deploy long-running browser work as a Ker
 ## Workflow
 
 1. **Classify** the operating mode (A vs B). If mixed, name which surface each piece is on.
-2. **Construct the client.** `import Kernel from '@onkernel/sdk'`. Verify env (`KERNEL_API_KEY`, optional `KERNEL_PROJECT`, `KERNEL_LOG`). For local development hitting `https://localhost:3001/`, pass `environment: 'development', baseURL: null`. See `references/guides/client-and-config.md`.
+2. **Construct the client.** `import Kernel from '@onkernel/sdk'`. Verify env (`KERNEL_API_KEY` is the only required one; `KERNEL_LOG`, `KERNEL_BASE_URL`, `KERNEL_CUSTOM_HEADERS`, `KERNEL_SUPPRESS_BUN_WARNING` are optional). For local development hitting `https://localhost:3001/`, pass `environment: 'development', baseURL: null`. For project-scoped API keys, wire `X-Kernel-Project-Id` through `defaultHeaders`. See `references/guides/client-and-config.md`.
 3. **Pick the browser-control surface** — raw CDP / Playwright-inside-VM / computer-controls / browser-curl. See `references/patterns/browser-control-surfaces.md`.
 4. **Wire profiles or Managed Auth** if the agent needs persistent login. See `references/patterns/profiles-pools-credentials.md` and `references/guides/managed-auth.md`.
 5. **Handle lifecycle.** Always pair `browsers.create` with `browsers.deleteByID`, even on error paths. Use `try/finally`. See `references/guides/browsers-lifecycle.md`.
@@ -107,14 +107,14 @@ You can mix — most production setups deploy long-running browser work as a Ker
 | `browsers.create({ profile: { name } })` after Managed Auth completes | re-prompt the user every session |
 | Pin `@onkernel/sdk` to a minor range and bump deliberately | track `latest` (Stainless regenerates frequently) |
 | `kernel.browsers.curl(id, { url })` for HTTP from inside the browser's TLS fingerprint | spin up a separate Playwright `request` context and lose the fingerprint |
-| Set `KERNEL_PROJECT` (or `X-Kernel-Project-Id`) for project-scoped API keys | rely on key scope and get cross-project lists |
+| Wire `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` for project-scoped API keys | rely on key scope and get cross-project lists |
 
 ## Verification
 
 End-to-end checks for any Kernel-TS task:
 
 1. The SDK is installed at a pinned version; `node_modules/@onkernel/sdk/api.md` exists and matches the methods you call.
-2. `KERNEL_API_KEY` resolves at runtime; `KERNEL_PROJECT` is set if using an org-wide key.
+2. `KERNEL_API_KEY` resolves at runtime; if the key is org-wide, `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` is wired through the constructor.
 3. Every `browsers.create` is paired with a `deleteByID` in a `finally` (grep the diff).
 4. Long-running invocations use `async: true` and consume `invocations.follow(id)` events (`log`, `invocation_state`, `error`, `heartbeat`).
 5. Stagehand/Playwright wiring uses `browser.contexts()[0]` not `newContext()`.

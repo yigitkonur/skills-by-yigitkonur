@@ -27,7 +27,7 @@ app.action(
   async (ctx: KernelContext, payload: { url: string }) => {
     const session = await kernel.browsers.create({
       stealth: true,
-      invocation_id: ctx.invocation.id,
+      invocation_id: ctx.invocation_id,
     });
     try {
       // …work…
@@ -115,12 +115,12 @@ const async_inv = await kernel.invocations.create({
   action_name: 'analyze',
   version: '1.0.0',
   async: true,
-  async_timeout_seconds: 1800, // 10–3600
+  async_timeout_seconds: 1800, // default 900 (15 min); max 3600 (1 hour)
   payload: JSON.stringify({ url: 'https://example.com' }),
 });
 ```
 
-`payload` is a string. Stringify on the way in, parse on the way out. Max 64 KB encoded — bigger artifacts go through `kernel.browsers.fs.*` (write inside the action, read from outside via the same `session_id`).
+`payload` is a string. Stringify on the way in, parse on the way out. Max **4.5 MB** encoded — bigger artifacts go through `kernel.browsers.fs.*` (write inside the action, read from outside via the same `session_id`).
 
 ## Stream status and logs
 
@@ -217,4 +217,4 @@ For VM-level logs (everything inside the browser VM, not just your action's `con
 
 - Full end-to-end deploy + invoke walk-through: `references/examples/deploy-and-invoke-app.md`
 - Why your invocation hangs at exactly 100s: `references/troubleshooting/pitfalls.md`
-- Pulling an invocation's output as a file (>64 KB): `references/troubleshooting/files-and-replays.md`
+- Pulling an invocation's output as a file (>4.5 MB): `references/troubleshooting/files-and-replays.md`

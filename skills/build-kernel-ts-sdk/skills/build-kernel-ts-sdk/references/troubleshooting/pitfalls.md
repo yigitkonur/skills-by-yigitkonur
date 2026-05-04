@@ -80,7 +80,7 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Cause:** Org-wide API keys are not project-scoped by default. OAuth (CLI) is always org-wide.
 
-**Fix:** Pass `X-Kernel-Project-Id` on every request, either via `KERNEL_PROJECT` env var (auto-attached) or `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` in the constructor.
+**Fix:** Pass `X-Kernel-Project-Id` on every request — the SDK does not auto-read any project env var. Wire it via `defaultHeaders: { 'X-Kernel-Project-Id': process.env.KERNEL_PROJECT }` in the constructor, or per-request `headers`.
 
 ## 11. `browsers.delete` (singular) is deprecated
 
@@ -114,13 +114,13 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Fix:** Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and right-size the `size:` parameter. Use `flush()` to reset after a config change.
 
-## 15. Payload max 64 KB JSON-encoded
+## 15. Payload max 4.5 MB JSON-encoded
 
 **Symptom:** `invocations.create` rejects a fat payload, or `output` is truncated.
 
-**Cause:** `payload` and `output` are JSON-encoded strings, max 64 KB each.
+**Cause:** `payload` and `output` are JSON-encoded strings, max **4.5 MB** each (per kernel.sh/docs/apps/invoke).
 
-**Fix:** Move large artifacts through `kernel.browsers.fs.*` (write inside the action, read out from the caller via `session_id`) or PUT them to your own object store and pass a URL.
+**Fix:** Move multi-MB artifacts (screenshots, archives, harvested HTML) through `kernel.browsers.fs.*` (write inside the action, read out from the caller via `session_id`) or PUT them to your own object store and pass a URL. For payloads under 4.5 MB, JSON-encode directly.
 
 ## 16. Cleanup is your responsibility
 
@@ -128,7 +128,7 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Cause:** Kernel deletes browsers when (a) `timeout_seconds` elapses idle, (b) `deleteByID` is called, or (c) an invocation tagged via `invocation_id` is reaped via `invocations.update({status:'failed'})` / `invocations.deleteBrowsers`. Free-standing browsers ignore the parent's lifecycle.
 
-**Fix:** Tag every `browsers.create` inside an action with `invocation_id: ctx.invocation.id`. From outside an action, wrap `create` with a `try/finally` calling `deleteByID`. For belt-and-suspenders: a periodic cleanup job that lists `browsers.list()` and deletes anything older than expected.
+**Fix:** Tag every `browsers.create` inside an action with `invocation_id: ctx.invocation_id`. From outside an action, wrap `create` with a `try/finally` calling `deleteByID`. For belt-and-suspenders: a periodic cleanup job that lists `browsers.list()` and deletes anything older than expected.
 
 ## Where to look next
 

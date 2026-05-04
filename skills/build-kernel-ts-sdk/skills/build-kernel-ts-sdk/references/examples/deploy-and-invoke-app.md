@@ -30,7 +30,7 @@ app.action(
     const session = await kernel.browsers.create({
       stealth: true,
       timeout_seconds: 600,
-      invocation_id: ctx.invocation.id, // tag for cleanup-on-stop
+      invocation_id: ctx.invocation_id, // tag for cleanup-on-stop
     });
 
     try {
@@ -42,11 +42,13 @@ app.action(
       const links = await page.$$eval('a', els => els.length);
 
       const buf = await page.screenshot();
-      const screenshotPath = `/tmp/${ctx.invocation.id}.png`;
+      const screenshotPath = `/tmp/${ctx.invocation_id}.png`;
+      // writeFile takes raw bytes/strings as the positional `contents`;
+      // there is no `encoding` parameter — pass the value as-is.
       await kernel.browsers.fs.writeFile(
         session.session_id,
-        buf.toString('base64'),
-        { path: screenshotPath, encoding: 'base64' },
+        buf,
+        { path: screenshotPath },
       );
 
       return { title, links, screenshotPath };
@@ -139,22 +141,23 @@ await kernel.invocations.update(inv.id, { status: 'failed' });
 
 If your action's `browsers.create` calls did not set `invocation_id`, those browsers are NOT reaped — they live until their `timeout_seconds`.
 
-## Pull large outputs (>64 KB)
+## Pull large outputs (>4.5 MB)
 
-`payload` and `output` are JSON-encoded strings, max 64 KB each. For larger results:
+`payload` and `output` are JSON-encoded strings, max 4.5 MB each. For results over that limit (multi-MB screenshots, large HTML dumps):
 
 ```ts
 // Inside the action
-await kernel.browsers.fs.writeFile(session.session_id, JSON.stringify(bigResult), {
-  path: '/tmp/result.json',
-  encoding: 'utf8',
-});
+await kernel.browsers.fs.writeFile(
+  session.session_id,
+  JSON.stringify(bigResult),
+  { path: '/tmp/result.json' },
+);
 return { artifactPath: '/tmp/result.json' };
 
 // In the caller
 const inv = await kernel.invocations.retrieve(invId);
-const browsers = await kernel.invocations.listBrowsers(invId);
-const first = browsers.items[0];
+const tagged = await kernel.invocations.listBrowsers(invId);
+const first = tagged.browsers[0];
 if (!first) throw new Error(`no browsers tagged to invocation ${invId}`);
 const resp = await kernel.browsers.fs.readFile(first.session_id, { path: '/tmp/result.json' });
 const bigResult = JSON.parse(await resp.text());

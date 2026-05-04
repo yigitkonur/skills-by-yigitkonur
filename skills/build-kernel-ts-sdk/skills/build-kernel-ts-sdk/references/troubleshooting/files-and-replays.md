@@ -5,23 +5,28 @@ Each browser exposes a VM filesystem (`kernel.browsers.fs.*`) and a recording AP
 ## File I/O surface
 
 ```ts
-// writeFile takes `contents` as a positional second arg, then params:
-await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), {
-  path: '/tmp/data.json',
-  encoding: 'utf8',                    // 'utf8' | 'base64'
-});
+// writeFile takes `contents` as a positional second arg (raw bytes/string,
+// sent as application/octet-stream — no encoding param). For text, pass the
+// string directly; for binary, pass a Buffer/Uint8Array.
+await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), { path: '/tmp/data.json' });
 
 const resp = await kernel.browsers.fs.readFile(id, { path: '/tmp/data.json' });
 const text = await resp.text();        // Response object — pick text/arrayBuffer/blob
 
-const list = await kernel.browsers.fs.listFiles(id, { path: '/tmp' });
+// listFiles returns a bare Array<...> (no `.items` wrapper)
+const files = await kernel.browsers.fs.listFiles(id, { path: '/tmp' });
 const info = await kernel.browsers.fs.fileInfo(id, { path: '/tmp/data.json' });
 
-await kernel.browsers.fs.upload(id, { path: '/tmp/upload.zip', file: fs.createReadStream('./local.zip') });
-await kernel.browsers.fs.uploadZip(id, { path: '/tmp/extract', file: zip });
+// upload takes a `files` array of { dest_path, file }
+await kernel.browsers.fs.upload(id, {
+  files: [{ dest_path: '/tmp/upload.zip', file: fs.createReadStream('./local.zip') }],
+});
+// uploadZip uses `dest_path` + `zip_file`
+await kernel.browsers.fs.uploadZip(id, { dest_path: '/tmp/extract', zip_file: zip });
 const dl = await kernel.browsers.fs.downloadDirZip(id, { path: '/tmp/extract' });
 
-await kernel.browsers.fs.move(id, { from: '/tmp/a', to: '/tmp/b' });
+// move uses `src_path` + `dest_path` (not from/to)
+await kernel.browsers.fs.move(id, { src_path: '/tmp/a', dest_path: '/tmp/b' });
 await kernel.browsers.fs.deleteFile(id, { path: '/tmp/a' });
 await kernel.browsers.fs.createDirectory(id, { path: '/tmp/dir' });
 await kernel.browsers.fs.deleteDirectory(id, { path: '/tmp/dir' });
@@ -50,8 +55,8 @@ async function waitForFile(id: string, path: string, timeoutMs = 10_000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     try {
-      const list = await kernel.browsers.fs.listFiles(id, { path: '/tmp' });
-      if (list.items.some(i => i.path === path)) return;
+      const files = await kernel.browsers.fs.listFiles(id, { path: '/tmp' });
+      if (files.some(i => i.path === path)) return;   // listFiles returns bare array
     } catch { /* ignore */ }
     await new Promise(r => setTimeout(r, 200));
   }
@@ -69,37 +74,29 @@ async function waitForFile(id: string, path: string, timeoutMs = 10_000) {
 import Kernel, { toFile } from '@onkernel/sdk';
 import fs from 'node:fs';
 
-// Stream — fastest for large files
+// Upload accepts a `files` array — each entry is { dest_path, file }
 await kernel.browsers.fs.upload(id, {
-  path: '/tmp/big.zip',
-  file: fs.createReadStream('./big.zip'),
-});
-
-// Buffer / Uint8Array — wrap with toFile
-await kernel.browsers.fs.upload(id, {
-  path: '/tmp/data.bin',
-  file: await toFile(buf, 'data.bin'),
+  files: [
+    // Stream — fastest for large files
+    { dest_path: '/tmp/big.zip', file: fs.createReadStream('./big.zip') },
+    // Buffer / Uint8Array — wrap with toFile
+    { dest_path: '/tmp/data.bin', file: await toFile(buf, 'data.bin') },
+  ],
 });
 ```
 
-### Encoding mismatch on `writeFile`
+### Binary vs text on `writeFile`
 
-**Cause:** Writing binary as UTF-8 corrupts bytes. Writing text as base64 produces nonsense files.
+**Cause:** `writeFile` accepts `contents` as a positional argument and ships it as raw `application/octet-stream`. There is no `encoding` parameter — pass a Buffer/Uint8Array for binary, or a string for text.
 
 **Fix:**
 
 ```ts
-// Binary
-await kernel.browsers.fs.writeFile(id, buf.toString('base64'), {
-  path: '/tmp/img.png',
-  encoding: 'base64',
-});
+// Binary — pass a Buffer/Uint8Array directly
+await kernel.browsers.fs.writeFile(id, buf, { path: '/tmp/img.png' });
 
-// Text
-await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), {
-  path: '/tmp/data.json',
-  encoding: 'utf8',
-});
+// Text — pass a string directly
+await kernel.browsers.fs.writeFile(id, JSON.stringify(obj), { path: '/tmp/data.json' });
 ```
 
 ### File watch is silent
