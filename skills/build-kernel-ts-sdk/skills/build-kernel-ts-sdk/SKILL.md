@@ -43,7 +43,7 @@ You can mix — most production setups deploy long-running browser work as a Ker
 4. **Sync invocation cap is ~100s.** Anything longer must use `async: true` with `async_timeout_seconds` (10–3600) and `invocations.follow(id)` for SSE.
 5. **Default browser context only.** Kernel browsers ship with one default context and one open page. Use `browser.contexts()[0]` and `pages()[0]` — do not call `browser.newContext()` / `context.newPage()` to make a "fresh" one.
 6. **Project scoping is header-driven.** With an org-wide API key, scope to a project by passing `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` to the constructor (the SDK does NOT auto-read a `KERNEL_PROJECT` env var — that's a user convention you have to wire through). OAuth (CLI) is always org-wide.
-7. **Runtime requirements.** Node 20+, TypeScript ≥ 4.9. Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge supported. No React Native.
+7. **Runtime requirements.** TypeScript ≥ 4.9. Per `@onkernel/sdk` README, supported runtimes are: Web browsers (up-to-date Chrome, Firefox, Safari, Edge), Node 20 LTS+, Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge Runtime, Jest 28+ (with the `"node"` environment), and Nitro v2.6+. React Native is unsupported.
 8. **Payload max 4.5 MB.** `invocation.payload` and `invocation.output` are JSON-encoded strings — caller must `JSON.parse`. Larger artifacts (e.g. screenshots, multi-MB blobs) go through `browsers.fs.*` or your own object store.
 
 ## Default stance
