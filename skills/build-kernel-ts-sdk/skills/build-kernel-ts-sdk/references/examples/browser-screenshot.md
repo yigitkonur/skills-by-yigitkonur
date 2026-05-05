@@ -75,7 +75,8 @@ const res = await kernel.browsers.playwright.execute(session.session_id, {
   timeout_sec: 60,                  // default 60, max 300
 });
 if (!res.success) throw new Error(res.error);
-const { title, bytes } = res.result;
+// `res.result` is typed `unknown`; assert the runtime shape returned by the script.
+const { title, bytes } = res.result as { title: string; bytes: number };
 ```
 
 `result` is the JSON-serialised return value. To get the screenshot bytes back, write to the browser VM's `fs` and read out via `kernel.browsers.fs.readFile`:

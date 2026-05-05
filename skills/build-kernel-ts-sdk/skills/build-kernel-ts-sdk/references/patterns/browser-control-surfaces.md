@@ -54,7 +54,8 @@ const res = await kernel.browsers.playwright.execute(session.session_id, {
 // Response is { success, error?, result, stderr, stdout } — always check `success`
 // before using `result`. `stderr` / `stdout` are captured from the script's logs.
 if (!res.success) throw new Error(`playwright.execute failed: ${res.error}`);
-const { title, links } = res.result;
+// `res.result` is typed `unknown` and may be undefined — assert the runtime shape.
+const { title, links } = res.result as { title: string; links: string[] };
 ```
 
 When to use:
@@ -117,7 +118,7 @@ await kernel.browsers.computer.batch(session.session_id, {
     { type: 'click_mouse',  click_mouse:  { x: 100, y: 200, button: 'left' } },
     { type: 'type_text',    type_text:    { text: 'search query' } },
     { type: 'press_key',    press_key:    { keys: ['Enter'] } },
-    { type: 'sleep',        sleep:        { ms: 250 } },              // pause between actions
+    { type: 'sleep',        sleep:        { duration_ms: 250 } },     // pause between actions
     { type: 'set_cursor',   set_cursor:   { hidden: true } },         // hide cursor for clean screenshots
   ],
 });

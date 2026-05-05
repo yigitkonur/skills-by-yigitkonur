@@ -117,7 +117,7 @@ End-to-end checks for any Kernel-TS task:
 1. The SDK is installed at a pinned version; `node_modules/@onkernel/sdk/api.md` exists and matches the methods you call.
 2. `KERNEL_API_KEY` resolves at runtime; if the key is org-wide, `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` is wired through the constructor.
 3. Every `browsers.create` is paired with a `deleteByID` in a `finally` (grep the diff).
-4. Long-running invocations use `async: true` and consume `invocations.follow(id)` events (`log`, `invocation_state`, `error`, `heartbeat`).
+4. Long-running invocations use `async: true` and consume `invocations.follow(id)` events (`log`, `invocation_state`, `error`, `sse_heartbeat`).
 5. Stagehand/Playwright wiring uses `browser.contexts()[0]` not `newContext()`.
 6. Stealth is on (`stealth: true`) for anything user-facing or against a real SaaS.
 7. For Managed Auth: `<KernelManagedAuth />` is a client component (`"use client"`), the backend route calls `auth.connections.create` and `auth.connections.login`, and downstream `browsers.create` uses the same `profile.name`.

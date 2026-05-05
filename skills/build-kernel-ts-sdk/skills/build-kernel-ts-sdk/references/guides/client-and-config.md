@@ -185,7 +185,7 @@ Multipart is wired automatically — do not hand-build a `FormData`.
 ```ts
 const events = await kernel.invocations.follow(invocation.id);
 for await (const evt of events) {
-  // evt.event: 'log' | 'invocation_state' | 'error' | 'heartbeat'
+  // evt.event: 'log' | 'invocation_state' | 'error' | 'sse_heartbeat'
 }
 ```
 

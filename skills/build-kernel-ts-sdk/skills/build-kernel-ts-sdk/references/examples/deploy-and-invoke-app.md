@@ -25,8 +25,9 @@ app.action(
   'analyze',
   async (
     ctx: KernelContext,
-    payload: AnalyzePayload,
+    payload?: AnalyzePayload,
   ): Promise<AnalyzeOutput> => {
+    if (!payload?.url) throw new Error('payload.url is required');
     const session = await kernel.browsers.create({
       stealth: true,
       timeout_seconds: 600,
@@ -120,7 +121,7 @@ async function analyzeSite(url: string) {
       }
       case 'error':
         throw new Error(evt.error.message);
-      case 'heartbeat':
+      case 'sse_heartbeat':
         // keepalive
         break;
     }
@@ -143,10 +144,19 @@ If your action's `browsers.create` calls did not set `invocation_id`, those brow
 
 ## Pull large outputs (>4.5 MB)
 
-`payload` and `output` are JSON-encoded strings, max 4.5 MB each. For results over that limit (multi-MB screenshots, large HTML dumps):
+`payload` and `output` are JSON-encoded strings, max 4.5 MB each. For results over that limit (multi-MB screenshots, large HTML dumps), the action must NOT delete the browser in `finally` — the caller has to read the file before the browser goes away. Two patterns:
+
+**Pattern A — Caller reads the browser fs, then explicitly reaps:**
 
 ```ts
-// Inside the action
+// Inside the action — note: NO `kernel.browsers.deleteByID` in finally.
+// Tag with invocation_id so the caller can reap via the invocation.
+const session = await kernel.browsers.create({
+  stealth: true,
+  timeout_seconds: 600,
+  invocation_id: ctx.invocation_id,
+});
+// … work that produces `bigResult` …
 await kernel.browsers.fs.writeFile(
   session.session_id,
   JSON.stringify(bigResult),
@@ -155,15 +165,18 @@ await kernel.browsers.fs.writeFile(
 return { artifactPath: '/tmp/result.json' };
 
 // In the caller
-const inv = await kernel.invocations.retrieve(invId);
 const tagged = await kernel.invocations.listBrowsers(invId);
 const first = tagged.browsers[0];
 if (!first) throw new Error(`no browsers tagged to invocation ${invId}`);
 const resp = await kernel.browsers.fs.readFile(first.session_id, { path: '/tmp/result.json' });
 const bigResult = JSON.parse(await resp.text());
+// Now reap — the browser idles (and bills) until you do.
+await kernel.invocations.deleteBrowsers(invId);
 ```
 
-Note: the caller must read the file *before* the browser is reaped. Keep the browser alive (extend `timeout_seconds`) or pull artifacts inside the action and PUT them to your own object store.
+**Pattern B — Action uploads to your own object store, deletes the browser as usual:**
+
+Inside the action, `PUT` the artifact to S3/GCS/R2 and return only the URL. The action's `finally { deleteByID }` stays. This is the safer default for production: no live-browser bill while the caller fetches.
 
 ## Sync invocation pattern (only for sub-100s actions)
 

@@ -24,7 +24,8 @@ const app = kernel.app('my-agent');
 
 app.action(
   'analyze',
-  async (ctx: KernelContext, payload: { url: string }) => {
+  async (ctx: KernelContext, payload?: { url: string }) => {
+    if (!payload?.url) throw new Error('payload.url is required');
     const session = await kernel.browsers.create({
       stealth: true,
       invocation_id: ctx.invocation_id,
@@ -83,12 +84,12 @@ const deployment = await kernel.deployments.create({
   },
   region: 'aws.us-east-1a',         // currently the only region
   version: '1.0.0',
-  force: false,                      // overwrite same version
+  force: true,                       // overwrite same version (false → fail if version exists)
 });
 
 // Stream the deployment build:
 for await (const evt of await kernel.deployments.follow(deployment.id)) {
-  // evt.event: 'log' | 'deployment_state' | 'app_version_summary' | 'error' | 'heartbeat'
+  // evt.event: 'log' | 'deployment_state' | 'app_version_summary' | 'error' | 'sse_heartbeat'
 }
 ```
 
@@ -132,7 +133,7 @@ const events = await kernel.invocations.follow(async_inv.id);
 for await (const evt of events) {
   switch (evt.event) {
     case 'log':
-      console.log(`[${evt.timestamp}] ${evt.level} ${evt.message}`);
+      console.log(`[${evt.timestamp}] ${evt.message}`);
       break;
 
     case 'invocation_state': {
@@ -151,7 +152,7 @@ for await (const evt of events) {
     case 'error':
       throw new Error(evt.error.message);
 
-    case 'heartbeat':
+    case 'sse_heartbeat':
       // keepalive — no action needed
       break;
   }
@@ -212,7 +213,7 @@ const inv = await kernel.invocations.retrieve(id);
 // inv.logs is undefined for ongoing invocations; consume `follow` for live tails.
 ```
 
-For VM-level logs (everything inside the browser VM, not just your action's `console.log`), use `kernel.browsers.logs.stream(session_id)`.
+For VM-level logs (everything inside the browser VM, not just your action's `console.log`), use `kernel.browsers.logs.stream(session_id, { source: 'supervisor', follow: true })` (supervisor process logs) or `kernel.browsers.logs.stream(session_id, { source: 'path', path: '/var/log/…', follow: true })` (a specific file). `source` is required.
 
 ## Where to look next
 

@@ -8,8 +8,13 @@ Three persistence and reuse mechanisms. They compose:
 
 ## Profiles
 
+Direct `browsers.create({ profile: { name } })` requires the profile to already exist. Either call `profiles.create` first, or take the Managed Auth path (`auth.connections.create` auto-creates the profile if `profile_name` is new).
+
 ```ts
-// Create or reuse on browser create
+// 1. One-time setup
+await kernel.profiles.create({ name: 'user-123' });
+
+// 2. First session — log in and persist changes
 await kernel.browsers.create({
   profile: { name: 'user-123', save_changes: true },
 });
@@ -20,7 +25,6 @@ await kernel.browsers.create({
 Direct profile API:
 
 ```ts
-await kernel.profiles.create({ name: 'user-123' });
 await kernel.profiles.list();
 const p = await kernel.profiles.retrieve('user-123');       // by name or id
 const archive = await kernel.profiles.download('user-123'); // download archive for backup
@@ -49,10 +53,18 @@ const pool = await kernel.browserPools.create({
   viewport: { width: 1280, height: 800 },
 });
 
-// Acquire on demand — returns immediately if available, else waits
-const session = await kernel.browserPools.acquire('my-pool', {
-  acquire_timeout_seconds: 30,
-});
+// Acquire is a long-poll. If no browser is free in the poll window,
+// the response is empty (HTTP 204) and you must retry until your own deadline.
+async function acquireWithDeadline(name: string, deadlineMs: number) {
+  const end = Date.now() + deadlineMs;
+  while (Date.now() < end) {
+    const res = await kernel.browserPools.acquire(name, { acquire_timeout_seconds: 30 });
+    if (res?.session_id) return res;
+  }
+  throw new Error(`pool ${name}: no browser available before deadline`);
+}
+
+const session = await acquireWithDeadline('my-pool', 5 * 60_000);
 try {
   // … use session.cdp_ws_url like any Kernel browser …
 } finally {
@@ -68,7 +80,7 @@ Operations:
 
 - `kernel.browserPools.create({ name, size, … })` — define a pool with browser-create params baked in.
 - `kernel.browserPools.retrieve(name)` — current `available_count`, `acquired_count`, etc.
-- `kernel.browserPools.acquire(name, { acquire_timeout_seconds })` — wait up to N seconds for a browser; throws on timeout.
+- `kernel.browserPools.acquire(name, { acquire_timeout_seconds })` — long-poll for a browser. Returns `204 No Content` (an empty response, not a throw) when the poll window elapses; **the client must retry** until your own outer deadline.
 - `kernel.browserPools.release(name, { session_id, reuse })` — return a browser to the pool. `reuse: false` destroys and rebuilds (useful after credential changes or sensitive flows).
 - `kernel.browserPools.flush(name)` — destroy all idle browsers; the pool refills automatically.
 - `kernel.browserPools.update / delete / list` — standard.
@@ -123,8 +135,9 @@ Drive credentials from a 1Password vault via service-account token. Avoids stori
 ```ts
 const provider = await kernel.credentialProviders.create({
   name: 'my-1p',
-  type: '1password',
-  config: { service_account_token: process.env.OP_TOKEN! },
+  provider_type: 'onepassword',
+  token: process.env.OP_TOKEN!,
+  // cache_ttl_seconds: 300, // optional, defaults to 300
 });
 
 // Validate the connection

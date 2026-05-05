@@ -24,7 +24,7 @@ The runner's stdout is a structured event log: `START`, `DONE`, `FAIL`, `SKIP`, 
 
 | | xargs -P | GNU parallel |
 |---|---|---|
-| Available | Yes (POSIX, ships with macOS/Linux) | Often missing on minimal images |
+| Available | Ships with macOS/BSD and Linux out of the box (`-P`/`-0` are GNU/BSD extensions, not strict POSIX) | Often missing on minimal images |
 | Concurrency cap | `-P N` | `-j N` |
 | NUL-safe filenames | `-0` | `--null` / `-0` (newline-delimited by default) |
 | Output ordering | Interleaved | Optional `--keep-order` |
@@ -42,7 +42,7 @@ Our invocation is `bash -c 'run_one "$0"'` — only `$0` is consumed. Without `-
 
 If any prompt filename contains spaces, newlines, or unusual characters, the default whitespace-separated xargs input breaks. `-print0`/`-0` uses NUL bytes as separators, which can never appear in filenames.
 
-In practice, the rendering script sanitises slugs to `[a-zA-Z0-9._-]` so spaces won't appear. But the NUL-safe pair costs nothing and survives if a user pre-creates prompt files with weird names.
+In practice, the rendering script sanitises slugs to `[a-zA-Z0-9._-]` so spaces won't appear. The NUL-safe pair costs nothing and survives if a user pre-creates prompt files with weird names — but note that the structured event protocol downstream (`DONE <name>` etc.) is still whitespace-delimited, and the watcher `sizeof()` helper rejects names outside `[A-Za-z0-9._-]`. **If you hand-author prompt files, keep filenames within that charset** or the watcher will report `0 bytes` for files it cannot safely look up.
 
 ## Why `bash -c 'run_one "$0"'`
 
@@ -84,9 +84,11 @@ JOBS=10 MODEL=gpt-5.5 EFFORT=medium ./run-batch.sh
 
 ## Exit codes
 
-The runner itself always exits 0 even if individual jobs failed — failures are surfaced via FAIL lines in the runner log, not via an aggregate exit code. This is intentional: the runner's job is to produce the event stream, not to gate downstream tooling on per-job results.
+The runner exits 0 on a successful pass even if individual jobs FAIL — per-job failures are surfaced via FAIL lines in the runner log, not via an aggregate exit code. This is intentional: the runner's job is to produce the event stream, not to gate downstream tooling on per-job results.
 
-If you need a hard fail on any FAIL, post-process the runner log:
+The runner exits 1 only on configuration errors detected before fanout (e.g. missing `PROMPTS` directory, no `*.md` prompts present). Those cases print `FATAL …` to stderr and skip the `--- all jobs finished ---` sentinel — no Monitor watcher will mistake them for a clean run.
+
+If you need a hard fail on any per-job FAIL, post-process the runner log:
 
 ```bash
 if grep -q '^FAIL ' logs/_runner.log; then
@@ -97,7 +99,7 @@ fi
 
 ## Common modifications
 
-- **Different LLM CLI.** Replace the `codex exec` invocation with whatever your CLI is. Keep the stdin-redirect + `-o`-style output-file pattern if available; otherwise capture stdout to a temp file and `mv` it to `$answer` only on success.
+- **Different LLM CLI.** Replace the `codex exec` invocation with whatever your CLI is. The runner already does atomic writes via `$tmp` → `mv $tmp $answer` on success, so a CLI that produces output via stdout is fine — pipe to `$tmp` instead of using `-o`. Keep the rule: never write directly to `$answer`, or a partial-then-fail will poison the next idempotent rerun.
 - **Per-prompt model overrides.** Embed model hints in the prompt filename (`gpt-5.5__foo.md` vs `haiku__bar.md`) and parse the prefix in `run_one`. Most users don't need this.
 - **Cooldown between jobs.** Add a `sleep` inside `run_one` to throttle. Better: lower `JOBS` instead — sleep doesn't help when 10 are concurrent anyway.
 

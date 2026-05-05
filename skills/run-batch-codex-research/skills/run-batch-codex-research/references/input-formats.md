@@ -103,10 +103,10 @@ After rendering, do a quick sanity check:
 # Count
 ls prompts/ | wc -l
 
-# Inspect a random sample
-ls prompts/ | shuf -n 3 | while read f; do
+# Inspect the first few rendered prompts (portable; no `shuf` on stock macOS)
+find prompts -maxdepth 1 -name '*.md' -type f | sort | sed -n '1,3p' | while read -r f; do
   echo "=== $f ==="
-  head -8 "prompts/$f"
+  head -8 "$f"
   echo
 done
 

@@ -70,9 +70,11 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 
   # Substitute placeholder. Use awk for safe literal replacement
-  # (no regex interpretation of either side).
-  awk -v ph="$PLACEHOLDER" -v val="$content" '
-    BEGIN { lp = length(ph) }
+  # (no regex interpretation of either side). Pass `val` via ENVIRON so awk
+  # does NOT interpret backslash escapes (`-v val=...` corrupts inputs like
+  # `C:\new\path` — `\n` would expand to a newline).
+  PROMPT_VAL="$content" awk -v ph="$PLACEHOLDER" '
+    BEGIN { val = ENVIRON["PROMPT_VAL"]; lp = length(ph) }
     {
       out = ""; line = $0
       while ( (i = index(line, ph)) > 0 ) {
@@ -87,4 +89,7 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$INPUT_LIST"
 
 echo "rendered: $written file(s) into $PROMPTS_DIR"
-[ "$skipped" -gt 0 ] && echo "skipped:  $skipped (collisions or empty slugs — see warnings)" >&2
+if [ "$skipped" -gt 0 ]; then
+  echo "skipped:  $skipped (collisions or empty slugs — see warnings)" >&2
+fi
+exit 0

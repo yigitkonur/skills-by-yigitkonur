@@ -123,9 +123,12 @@ Live view counts as an active connection — opening it prevents standby.
 
 ## Profiles
 
-A profile stores cookies, localStorage, IndexedDB, and login state across sessions:
+A profile stores cookies, localStorage, IndexedDB, and login state across sessions. Direct `browsers.create({ profile: { name } })` requires the profile to already exist — call `kernel.profiles.create` first, or use Managed Auth (`auth.connections.create` auto-creates the profile if `profile_name` does not exist):
 
 ```ts
+// One-time setup
+await kernel.profiles.create({ name: 'user-123' });
+
 // First session — log in and save changes
 await kernel.browsers.create({
   profile: { name: 'user-123', save_changes: true },
@@ -176,7 +179,7 @@ Each browser VM exposes more than the Chromium surface:
 - `kernel.browsers.curl(id, { url, method, headers, body, timeout_ms, response_encoding })` — HTTP through Chrome's TLS fingerprint
 - `kernel.browsers.fs.*` — read/write files, watch directories
 - `kernel.browsers.process.*` — exec/spawn inside the VM (PTY, stdin/stdout streaming)
-- `kernel.browsers.logs.stream(id)` — VM-level log events
+- `kernel.browsers.logs.stream(id, { source: 'supervisor' \| 'path', path?, supervisor_process?, follow? })` — VM-level log events (`source` is required)
 
 See `references/troubleshooting/files-and-replays.md` for `fs` patterns.
 
