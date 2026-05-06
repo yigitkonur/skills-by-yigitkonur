@@ -81,7 +81,7 @@ Set the orchestrator's grace period longer than your maximum tool call duration.
 | Platform | Default grace | How to tune |
 |---|---|---|
 | Kubernetes | 30 s | `terminationGracePeriodSeconds` |
-| Docker | 10 s | `--stop-timeout` or `STOPSIGNAL`/`STOPGRACEPERIOD` |
+| Docker | 10 s | `docker run --stop-timeout` (CLI) / Dockerfile `STOPSIGNAL` (signal, not duration) / Compose `stop_grace_period` (YAML key) |
 | Railway / Fly | platform-dependent | Check provider docs |
 
 ## Uncaught errors

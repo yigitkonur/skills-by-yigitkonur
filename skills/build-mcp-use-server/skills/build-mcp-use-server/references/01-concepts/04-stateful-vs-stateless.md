@@ -7,8 +7,8 @@ Transport (`03-transports-overview.md`) tells you *how* clients reach the server
 Each request is independent. No session ID, no per-client state, no notifications, no sampling, no elicitation, no resource subscriptions. The server is a pure function of input.
 
 - Default for serverless deployments (Vercel, Cloudflare Workers, Supabase Edge, AWS Lambda).
-- Auto-detected by `mcp-use` when running under a serverless adapter.
-- Can be forced via `MCPServer({ stateless: true })`.
+- Auto-detected by `mcp-use` **only when running under Deno** (per the `MCPServer` constructor docs: `stateless` is "auto-detected for Deno"). Every other serverless runtime — Vercel, Cloudflare Workers, Supabase Edge, AWS Lambda — needs `stateless: true` set explicitly.
+- Can be forced via `new MCPServer({ stateless: true })`.
 
 ## Stateful
 

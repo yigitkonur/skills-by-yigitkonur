@@ -46,8 +46,17 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   throw new Error(`Unknown tool: ${req.params.name}`);
 });
 
-await server.connect(new StdioServerTransport());
+async function main() {
+  await server.connect(new StdioServerTransport());
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
 ```
+
+Top-level `await` would also work but only with `target: ES2022+` and `module: ES2022+` (or `Node16`/`NodeNext`); the `async function main()` wrapper compiles under TypeScript defaults. See `08-tsconfig-and-types.md` if you prefer top-level await.
 
 `package.json`:
 

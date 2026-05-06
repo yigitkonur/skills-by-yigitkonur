@@ -40,7 +40,7 @@ This is auto-detection and applies per request on Node.js. To force JSON/statele
 
 ## GET stream behavior
 
-A stateful client opens `GET /mcp` with its `mcp-session-id` header. The server keeps the connection open and pushes:
+A stateful client opens `GET /mcp` with two required headers — `Accept: text/event-stream` (otherwise the SSE stream is not established) and `mcp-session-id` (issued during init). The server keeps the connection open and pushes:
 
 - Server-to-client notifications (`server.sendNotification(...)`)
 - Progress events from in-flight tool calls

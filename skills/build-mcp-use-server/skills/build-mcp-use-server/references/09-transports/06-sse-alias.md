@@ -12,7 +12,7 @@ The older split-route MCP protocol used separate write and stream URLs. Streamab
 |---|---|---|---|
 | Pre-Streamable HTTP | Separate write route | `GET /sse` | Migrate away |
 | Transitional | `POST /mcp` or `POST /sse` | `GET /mcp` or `GET /sse` | Acceptable during migration |
-| Current spec-aligned | `POST /mcp`, `GET /mcp` | `GET /mcp` | Preferred |
+| Current spec-aligned | `POST /mcp` | `GET /mcp` | Preferred |
 
 Benefits of the unified `/mcp`:
 

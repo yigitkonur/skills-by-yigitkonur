@@ -5,7 +5,7 @@ What happens between the client sending `tools/call` and your handler running. K
 ## Pipeline
 
 1. **Receive request.** The transport (stdio, Streamable HTTP, SSE) parses the incoming JSON-RPC envelope. Malformed JSON or unknown methods are rejected here as protocol errors — your handler is never called.
-2. **Resolve tool by `name`.** The server looks up the registered `ToolDefinition`. An unknown name returns `MethodNotFound` (`-32601`) without invoking any handler.
+2. **Resolve tool by `name`.** The server looks up the registered `ToolDefinition`. An unknown tool name is a **parameter** problem, not a JSON-RPC method problem (the JSON-RPC method `tools/call` was found and dispatched). Per the MCP spec the server SHOULD return a `CallToolResult` with `isError: true` so the model can self-correct; some implementations instead surface JSON-RPC `-32602 Invalid params`. Either way, your handler is never called.
 3. **Validate arguments against `schema`.** The Zod schema parses `params.arguments`. Failures emit a structured validation error; the handler does not run. The client sees a message like:
    ```
    Validation Error:
@@ -23,7 +23,7 @@ What happens between the client sending `tools/call` and your handler running. K
 | Failure | Caught at step | Client sees |
 |---|---|---|
 | Malformed JSON | 1 | JSON-RPC parse error. |
-| Unknown tool name | 2 | `MethodNotFound`. |
+| Unknown tool name | 2 | `CallToolResult` with `isError: true` (preferred) or JSON-RPC `-32602 Invalid params`. |
 | Missing required field | 3 | Structured validation error per field. |
 | Wrong type | 3 | Structured validation error per field. |
 | Unknown field on a `.strict()` schema | 3 | Structured validation error. |

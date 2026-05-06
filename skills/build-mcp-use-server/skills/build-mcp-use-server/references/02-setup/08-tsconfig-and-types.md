@@ -36,21 +36,25 @@ The TypeScript settings that keep `mcp-use/server` ESM resolution working, plus 
 | `skipLibCheck: true` | Skips `node_modules` types — speeds compile, avoids upstream type clashes. |
 | `resolveJsonModule: true` | Lets you `import pkg from "../package.json"`. |
 
-Project root (scaffolded) projects use `index.ts` at the root, not `src/index.ts`. Adjust `include`:
+Project root (scaffolded) projects use `index.ts` at the root, not `src/index.ts`. Adjust **both** `rootDir` and `include` — leaving `rootDir: "./src"` in place fires `TS6059: File '<root>/index.ts' is not under 'rootDir'`:
 
 ```json
 {
+  "compilerOptions": {
+    "rootDir": "."
+  },
   "include": ["index.ts", "resources/**/*", ".mcp-use/**/*"]
 }
 ```
 
 ## With React widgets
 
-Widgets need JSX support and the `resources/` folder included:
+Widgets need JSX support, the `resources/` folder included, and `rootDir` set to `.` so `index.ts` and `resources/` both fall under it:
 
 ```json
 {
   "compilerOptions": {
+    "rootDir": ".",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },

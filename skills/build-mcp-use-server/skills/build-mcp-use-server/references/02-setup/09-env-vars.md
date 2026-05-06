@@ -9,7 +9,7 @@ Every env var the running `mcp-use` server reads. CLI-only env vars (auth tokens
 | `PORT` | HTTP listen port | `3000` |
 | `HOST` | Bind hostname | `localhost` |
 | `NODE_ENV` | Disables dev-only features (Inspector, type generation) when set to `production` | `development` |
-| `MCP_URL` | Full public base URL — overrides `baseUrl` constructor option. Used to rewrite widget asset paths behind reverse proxies and CDNs. | `http://{HOST}:{PORT}` |
+| `MCP_URL` | Full public base URL. **Fallback only** — used when the `MCPServer({ baseUrl })` constructor option is unset. The constructor option always wins (per `mcp-use@1.26.0` `getServerBaseUrl()`). Used to rewrite widget asset paths behind reverse proxies and CDNs. | `http://{HOST}:{PORT}` |
 | `MCP_BASE_URL` | Alias accepted by some integrations; prefer `MCP_URL` | — |
 | `MCP_SERVER_URL` | Build-time public URL for widget asset paths (read by `mcp-use build`, baked into the manifest) | — |
 

@@ -35,7 +35,8 @@ Throw when the handler hits a state that isn't supposed to happen: bug, infrastr
 try {
   return text(await db.query());
 } catch (err) {
-  await ctx.log("error", `DB failed: ${err.message}`);
+  const message = err instanceof Error ? err.message : String(err);
+  await ctx.log("error", `DB failed: ${message}`);
   return error("Database temporarily unavailable. Try again shortly.");
 }
 
@@ -82,7 +83,8 @@ server.tool(
       if (!order) return error(`Order ${orderId} not found.`);
       return object({ id: order.id, status: order.status, items: order.items });
     } catch (err) {
-      await ctx.log("error", `Failed to fetch order ${orderId}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      await ctx.log("error", `Failed to fetch order ${orderId}: ${message}`);
       return error("Failed to retrieve order. Please try again.");
     }
   }
