@@ -72,7 +72,9 @@ Vercel auto-generates the store ID. URLs are stable across deploys.
 ```typescript
 images: {
   remotePatterns: [
-    { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+    // Pin to your specific Blob store hostname rather than a wildcard so you
+    // don't allow arbitrary other Vercel Blob stores to serve through your CDN.
+    { protocol: 'https', hostname: '<your-store-id>.public.blob.vercel-storage.com' },
   ],
 }
 ```

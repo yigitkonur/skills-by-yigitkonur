@@ -50,8 +50,9 @@ tinacms build [options]
 | `--skip-search-indexing` | Skip search index |
 | `--no-client-build-cache` | Disable query caching |
 | `--tina-graphql-version <ver>` | Pin API version |
-| `--clean` | Submit GraphQL mutations to the filesystem; **purges fields not in the current schema**. Commit first; destructive on misconfig. |
 | `-v` | Verbose |
+
+> Note: `--clean` is a `tinacms audit` flag, **not** `tinacms build`. See `references/cli/04-graphql-commands.md` for the audit command's destructive option.
 
 ## CI usage
 

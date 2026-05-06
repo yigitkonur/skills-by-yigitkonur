@@ -120,7 +120,7 @@ cat tina/__generated__/queries.gql
 
 ## Versioning
 
-`@tinacms/cli` is versioned alongside `tinacms`. Mismatched majors break the build. Pin both to the same major:
+`@tinacms/cli` and `tinacms` are released together but track **different major version lines** (their majors are not synchronized — `tinacms@3.x` ships alongside `@tinacms/cli@2.x`). Pin both to the **release pair** TinaCMS publishes for a given window — don't mix a `tinacms` from one release with a CLI from a different release.
 
 ```json
 {
@@ -129,7 +129,7 @@ cat tina/__generated__/queries.gql
 }
 ```
 
-Group them in RenovateBot/Dependabot.
+Group them in RenovateBot/Dependabot so they upgrade together — that's the real safety guarantee, not the major number itself.
 
 ## CI integration
 

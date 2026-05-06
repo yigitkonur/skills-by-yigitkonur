@@ -98,9 +98,9 @@ Renderers branch on `post.kind`. No `_template` required, no multi-shape collect
 If you started with `templates` and realized you only have one shape, migrate:
 
 1. Move `templates[0].fields` to `collection.fields`
-2. Remove `_template:` lines from all documents:
+2. Remove `_template:` lines from all documents (target both `*.md` and `*.mdx`):
    ```bash
-   find content/posts -name '*.md' -exec sed -i '' '/^_template:/d' {} \;
+   find content/posts \( -name '*.md' -o -name '*.mdx' \) -exec sed -i '' '/^_template:/d' {} \;
    ```
 3. Run `pnpm tinacms build` and verify content still loads
 
@@ -109,9 +109,9 @@ If you started with `templates` and realized you only have one shape, migrate:
 If you started with `fields` and now need `templates`:
 
 1. Move `collection.fields` into `templates[0].fields` with a `name`/`label`
-2. Add `_template: <name>` to existing documents:
+2. Add `_template: <name>` to existing documents (target both `*.md` and `*.mdx`):
    ```bash
-   find content/pages -name '*.md' -exec sed -i '' '1a\
+   find content/pages \( -name '*.md' -o -name '*.mdx' \) -exec sed -i '' '1a\
    _template: landing\
    ' {} \;
    ```

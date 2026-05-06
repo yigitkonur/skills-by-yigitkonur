@@ -125,7 +125,7 @@ If validation fails, the mutation throws. Wrap in try/catch.
 
 ## Conflicts
 
-If a document with the same `relativePath` already exists, `createPost` fails. Use `updatePost` (see `references/graphql/10-update-document.md`) to upsert.
+If a document with the same `relativePath` already exists, `createPost` fails. **Neither mutation is a true upsert** — `updatePost` also fails when the document doesn't exist. For upsert behavior implement it yourself: try `updatePost`, narrow ONLY on a "document not found" error, fall through to `createPost`. See `references/graphql/10-update-document.md`.
 
 ## When NOT to use
 

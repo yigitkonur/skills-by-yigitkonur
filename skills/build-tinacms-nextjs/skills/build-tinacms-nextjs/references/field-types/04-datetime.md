@@ -117,13 +117,14 @@ ui: {
   filename: {
     slugify: (values) => {
       const date = (values.date || new Date().toISOString()).split('T')[0]
-      return `${date}-${values.title?.toLowerCase().replace(/\s+/g, '-')}`
+      const title = (values.title ?? 'untitled').toLowerCase().replace(/\s+/g, '-')
+      return `${date}-${title}`
     },
   },
 }
 ```
 
-Produces `2026-05-08-my-post.md`.
+Produces `2026-05-08-my-post.md`. Default the title (and any other optional input) before calling `.replace()` — `slugify` runs while editors are still typing, so values can be `undefined`.
 
 ## Querying / sorting
 

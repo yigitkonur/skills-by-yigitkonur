@@ -101,9 +101,13 @@ After `pnpm tinacms build`:
 ```bash
 ls tina/__generated__/
 # Should show: client.ts types.ts frags.gql queries.gql schema.gql + 3 .json files
+```
 
+After `pnpm tinacms dev` (the dev server is what writes/updates `tina-lock.json` per the official `/tina` folder docs):
+
+```bash
 cat tina/tina-lock.json | head -3
 # Should be valid JSON with version + schema metadata
 ```
 
-If `__generated__/` is missing, the build never ran. If `tina/tina-lock.json` is missing, the schema didn't compile — read `tinacms build` output for the actual error.
+If `__generated__/` is missing, the build never ran. If `tina/tina-lock.json` is missing or stale, run `tinacms dev` locally — that's the command that maintains the compiled-schema lock file.

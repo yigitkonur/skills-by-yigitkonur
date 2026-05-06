@@ -84,7 +84,11 @@ In DO Console → Spaces → your-bucket → Settings → enable CDN. Use the `c
 ```typescript
 images: {
   remotePatterns: [
-    { protocol: 'https', hostname: '*.digitaloceanspaces.com' },
+    // DO Spaces URLs have two subdomain levels: <bucket>.<region>.digitaloceanspaces.com
+    // `*` matches one level; `**` matches multiple. Use `**` here.
+    { protocol: 'https', hostname: '**.digitaloceanspaces.com' },
+    // Or pin to your specific bucket+region (preferred for production):
+    // { protocol: 'https', hostname: '<bucket>.<region>.digitaloceanspaces.com' },
   ],
 }
 ```

@@ -29,8 +29,8 @@ Toggle switch. Stores `true` or `false`.
 |---|---|
 | `draft` | Hide doc from production renders |
 | `featured` | Promote in lists |
-| `noIndex` | SEO — exclude from sitemap and add `<meta name="robots" noindex>` |
-| `noFollow` | SEO — `<meta name="robots" nofollow>` |
+| `noIndex` | SEO — exclude from sitemap and add `<meta name="robots" content="noindex">` |
+| `noFollow` | SEO — `<meta name="robots" content="nofollow">` |
 | `published` | Inverse of draft |
 | `pinned` | Pin to top of listing |
 | `openInNewTab` | For link fields |

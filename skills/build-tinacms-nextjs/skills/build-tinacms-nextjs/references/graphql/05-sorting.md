@@ -10,25 +10,38 @@ const result = await client.queries.postConnection({
 })
 ```
 
-Default direction depends on the field type:
-
-- Numeric/datetime fields: descending (newest first)
-- String fields: ascending (alphabetical)
+**Results are returned in ascending order by default** (per the official docs — applies regardless of field type). For descending iteration use reverse pagination (`last` + `before`) — see `references/graphql/06-pagination.md`.
 
 ## Reverse direction
 
 ```tsx
 const result = await client.queries.postConnection({
   sort: 'date',
-  last: 50,         // last 50 (in ascending order = oldest first when sorted descending)
+  last: 50,         // reverse pagination — newest first when 'date' sorted ascending
 })
 ```
 
-`last: N` reverses the iteration order. For most blog/post listings you want newest-first, which is the default behavior with `first: N`.
+`last: N` walks the connection from the end. For "newest blog post first" with a `date` field sorted ascending, `last: 50` returns the most recent posts. Reverse iteration is the canonical descending pattern.
 
-## Multiple-field sort (not supported natively)
+## Multiple-field sort
 
-GraphQL sort accepts a single field. For secondary sorts (e.g. featured first, then by date), do it in JS:
+For secondary sorts (e.g. featured first, then by date), TinaCMS supports **multi-field indexes** declared in the schema. Define an `indexes` array on the collection, then reference the index name in `sort`:
+
+```typescript
+{
+  name: 'post',
+  // ...
+  indexes: [
+    { name: 'featuredThenDate', fields: [{ name: 'featured' }, { name: 'date' }] },
+  ],
+}
+```
+
+```tsx
+const result = await client.queries.postConnection({ sort: 'featuredThenDate', first: 50 })
+```
+
+For ad-hoc tie-breaks where you don't want a permanent index, sort the result in JS after fetch:
 
 ```tsx
 const result = await client.queries.postConnection({ sort: 'date', first: 50 })

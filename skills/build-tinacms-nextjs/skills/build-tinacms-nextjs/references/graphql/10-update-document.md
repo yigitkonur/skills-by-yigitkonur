@@ -104,13 +104,16 @@ Same as create — needs a write-capable token (TinaCloud) or pass through the s
 
 ## What if the doc doesn't exist?
 
-`updatePost` errors with "Document not found." Check first or use create+update pattern:
+`updatePost` errors with "Document not found." Don't catch every error and fall through to `createPost` — that masks auth, validation, and network failures. Narrow on the not-found error only:
 
 ```tsx
 async function upsertPost(relativePath: string, params: any) {
   try {
     await client.queries.updatePost({ relativePath, params })
-  } catch {
+  } catch (e: any) {
+    const msg = String(e?.message || e)
+    // Only fall through for "document not found" — re-throw everything else
+    if (!/document not found|cannot be found|no such document/i.test(msg)) throw e
     await client.queries.createPost({ relativePath, params })
   }
 }

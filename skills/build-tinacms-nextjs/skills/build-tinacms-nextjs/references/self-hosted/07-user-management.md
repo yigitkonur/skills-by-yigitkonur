@@ -94,11 +94,11 @@ This is a UX gap — `tinacms-authjs` doesn't provide a "create user with passwo
 
 ## Removing users
 
-Delete the JSON file:
+Delete the JSON file (filename matches the user's email per the `<email>.json` convention above):
 
 ```bash
-rm content/users/jane-doe.json
-git add content/users/jane-doe.json && git commit && git push
+rm content/users/jane@example.com.json
+git add content/users/jane@example.com.json && git commit && git push
 ```
 
 Or via the admin UI (if `delete: true` in `allowedActions`).

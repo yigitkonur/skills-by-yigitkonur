@@ -86,12 +86,17 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  // Verify signature (custom; not TinaCloud's standard)
-  const body = await req.json()
-  // body shape depends on your trigger source
+  // 1. Auth check FIRST — never process the body of an unauthenticated request.
+  //    Shared bearer token (rotate periodically):
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+  // For GitHub-style HMAC, verify x-hub-signature-256 with crypto.timingSafeEqual.
 
+  const body = await req.json()
   for (const path of body.paths ?? []) {
-    revalidatePath(`/${path.replace('content/', '').replace(/\.md$/, '')}`)
+    revalidatePath(`/${path.replace('content/', '').replace(/\.(md|mdx)$/, '')}`)
   }
   return NextResponse.json({ ok: true })
 }

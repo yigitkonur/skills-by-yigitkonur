@@ -26,7 +26,7 @@ const components = {
 
 ```tsx
 // components/MdxComponents.tsx
-import type { Components, TinaMarkdownContent } from 'tinacms/dist/rich-text'
+import { TinaMarkdown, type Components, type TinaMarkdownContent } from 'tinacms/dist/rich-text'
 import { CalloutBox } from './CalloutBox'
 
 export const mdxComponents: Components<{

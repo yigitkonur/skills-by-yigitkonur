@@ -87,7 +87,7 @@ Better than Vercel KV for large datasets due to:
 
 ## Connection limits on Vercel
 
-Each Vercel function invocation can open a new Mongo connection. With many concurrent requests, you can hit Atlas's 500-connection limit (Hobby) or 5,000 (Pro).
+Each Vercel function invocation can open a new Mongo connection. The M0 free tier caps at **100 concurrent connections** (consistent with the table above). With many concurrent function invocations you can exhaust the pool. Paid tiers (M10+) raise the cap to several thousand depending on tier; check Atlas docs for the exact ceiling per cluster size.
 
 Mitigate via connection pooling (`mongodb-level` should handle this automatically). Monitor in Atlas dashboard.
 

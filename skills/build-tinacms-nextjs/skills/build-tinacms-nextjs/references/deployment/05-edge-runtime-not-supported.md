@@ -52,14 +52,13 @@ For pages that fetch TinaCMS data, App Router Server Components run on Node by d
 These DO run on Node by default:
 
 - `proxy.ts` (Next.js 16 — Node runtime)
-- `middleware.ts` (Next.js 15 — could be Edge but defaults to Node when needed)
 - Server Components (App Router — Node by default)
 - Server Actions (Node by default)
 
 These DO run on Edge by default:
 
-- Edge Functions explicitly marked
-- Edge Middleware (`middleware.ts` with `runtime: 'edge'`)
+- `middleware.ts` (Next.js 15 — **Edge by default**; this is the trap. If you import `@tinacms/datalayer` or any Node-only module from middleware without `export const runtime = 'nodejs'`, the build fails or middleware errors at runtime.)
+- Edge Functions explicitly marked with `export const runtime = 'edge'`
 
 If you're unsure, check Vercel's "Functions" tab in the dashboard. Each function shows its runtime.
 

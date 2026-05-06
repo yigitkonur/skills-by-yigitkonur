@@ -13,31 +13,31 @@ media: {
   tina: {
     mediaRoot: 'uploads',
     publicFolder: 'public',
-    accept: 'image/jpeg,image/png,image/webp',  // images only
   },
+  accept: ['image/jpeg', 'image/png', 'image/webp'],  // List<String> at media.accept (NOT inside media.tina)
 }
 ```
 
 ## `accept` syntax
 
-Same as HTML `<input type="file" accept="...">`:
+`accept` is a **`List<String>`** at the top of `media`, not inside `media.tina`. Each entry is a MIME type or extension pattern (same vocabulary as HTML `<input type="file" accept>`).
 
 ```typescript
 // Specific MIMEs
-accept: 'image/jpeg,image/png'
+accept: ['image/jpeg', 'image/png']
 
 // MIME wildcards
-accept: 'image/*'        // any image
-accept: 'image/*,application/pdf'  // images + PDFs
+accept: ['image/*']                       // any image
+accept: ['image/*', 'application/pdf']    // images + PDFs
 
 // File extensions
-accept: '.jpg,.png,.webp'  // by extension
+accept: ['.jpg', '.png', '.webp']         // by extension
 ```
 
 For most projects, MIME wildcards are clearest:
 
 ```typescript
-accept: 'image/jpeg,image/png,image/webp'
+accept: ['image/jpeg', 'image/png', 'image/webp']
 ```
 
 ## Per-field accept (override globally)

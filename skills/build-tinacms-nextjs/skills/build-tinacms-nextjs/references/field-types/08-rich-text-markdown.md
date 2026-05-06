@@ -39,13 +39,17 @@ The AST roundtrips to standard markdown. Edit-then-save produces clean markdown 
 
 ## Toolbar customization
 
+Use `overrides.toolbar` to restrict toolbar items (the older `toolbarOverride` top-level prop is deprecated):
+
 ```typescript
 {
   name: 'body',
   type: 'rich-text',
   isBody: true,
-  toolbarOverride: ['heading', 'bold', 'italic', 'link', 'ul', 'ol'],
-  // OR omit entirely to use the default toolbar
+  overrides: {
+    toolbar: ['heading', 'bold', 'italic', 'link', 'ul', 'ol'],
+  },
+  // OR omit `overrides` entirely to use the default toolbar
 }
 ```
 
@@ -72,11 +76,15 @@ Per-collection customization: trim the toolbar for blog posts, expand for landin
 
 ## Floating toolbar
 
+`showFloatingToolbar` lives inside `overrides`:
+
 ```typescript
 {
   type: 'rich-text',
   isBody: true,
-  showFloatingToolbar: false,    // disable the floating toolbar
+  overrides: {
+    showFloatingToolbar: false,    // disable the floating toolbar
+  },
 }
 ```
 

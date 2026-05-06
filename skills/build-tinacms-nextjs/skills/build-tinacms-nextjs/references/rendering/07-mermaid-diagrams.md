@@ -135,6 +135,6 @@ Test diagram syntax at https://mermaid.live before saving complex diagrams.
 | Mistake | Effect | Fix |
 |---|---|---|
 | Mermaid in code_block override but no detection on `lang` | All code blocks try to render as mermaid | Branch on `props.lang === 'mermaid'` |
-| Mermaid initialized at module top in Server Component | SSR error | Initialize inside `useEffect` |
+| Mermaid initialized at module top in a Server Component | SSR error | `useEffect` is Client-only — move the renderer into a Client Component (`"use client"`) and initialize inside `useEffect`, or import dynamically with `next/dynamic` and `{ ssr: false }` |
 | Including Mermaid on every page | Bundle bloat | Lazy-load with `dynamic` |
 | Server-side mermaid render without headless browser | Empty output | Either use client-side or set up SSR rendering pipeline |
