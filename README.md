@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-47 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
+48 skills for AI coding agents -- code review, planning, research, browser automation, multi-agent orchestration, framework guides, SDK guides, design extraction, and more.
 
 ## Install
 
@@ -27,6 +27,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
 | [build-convex-clerk-swiftui](skills/build-convex-clerk-swiftui/) | development | Convex + Clerk backends for SwiftUI iOS/macOS apps |
 | [build-copilot-sdk-app](skills/build-copilot-sdk-app/) | development | GitHub Copilot SDK apps in TypeScript |
+| [build-effect-ts-v3](skills/build-effect-ts-v3/) | development | Effect-TS v3 apps — typed errors, services, layers, Schema, Stream, HTTP, SQL |
 | [build-kernel-ts-sdk](skills/build-kernel-ts-sdk/) | development | Build browser-automation agents and apps with the Kernel TypeScript SDK |
 | [build-langchain-ts-app](skills/build-langchain-ts-app/) | development | LangChain.js agents, RAG, and tool-calling |
 | [build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/) | development | MCP servers with @modelcontextprotocol/sdk v1.x |
