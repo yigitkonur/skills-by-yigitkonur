@@ -1,6 +1,6 @@
 ---
 name: build-effect-ts-v3
-description: Use skill if you are building, refactoring, debugging, or testing TypeScript applications with Effect-TS v3 — typed errors, services, layers, schemas, fibers, streams, scheduling, observability, HTTP servers, SQL, RPC, CLI, React Atom, and the @effect/* ecosystem. Strictly v3 only.
+description: Use skill if you are building or maintaining TypeScript applications with Effect-TS v3 — typed errors, services, layers, Schema, fibers, Stream, HTTP, SQL, RPC, CLI, React Atom; strictly v3.
 ---
 
 # Build Effect-TS v3
@@ -90,6 +90,11 @@ For the full structured index of every reference file, read [references/00-refer
 - Do not use `Option.getOrThrow` — use `Option.match`. See [references/anti-patterns/11-option-getorthrow.md](references/anti-patterns/11-option-getorthrow.md).
 - Do not write `yield fx` (no `*`) inside `Effect.gen` — it yields the Effect object, not its value. Always `yield* fx`. See [references/anti-patterns/02-yield-without-star.md](references/anti-patterns/02-yield-without-star.md).
 - Do not use `as never` / `as any` / `as unknown` to silence Effect type errors. Find the real cause. See [references/anti-patterns/17-type-assertions.md](references/anti-patterns/17-type-assertions.md).
+- Do not catch errors with `catchAll` when `catchTag` / `catchTags` would preserve narrowing — losing the typed-error channel breaks the type system's contract. See [references/anti-patterns/06-catchall-vs-catchtag.md](references/anti-patterns/06-catchall-vs-catchtag.md).
+- Do not invent generic error names (`NotFoundError`, `ValidationError`, `Error`) — use specific tagged errors (`UserNotFoundError`, `InvalidEmailError`) so `catchTag` can dispatch precisely. See [references/anti-patterns/07-generic-error-types.md](references/anti-patterns/07-generic-error-types.md).
+- Do not call `Effect.runSync` / `Effect.runPromise` inside service methods — they break fiber tracing and tear the error channel. See [references/anti-patterns/12-runsync-in-services.md](references/anti-patterns/12-runsync-in-services.md).
+- Do not call parameterized layer constructors inline at provide-sites — store layers in module-level constants so reference-equality memoization can deduplicate them. See [references/anti-patterns/14-inline-layer-construction.md](references/anti-patterns/14-inline-layer-construction.md).
+- For the full anti-pattern catalog index, read [references/anti-patterns/01-overview.md](references/anti-patterns/01-overview.md).
 
 ## Recovery moves
 
