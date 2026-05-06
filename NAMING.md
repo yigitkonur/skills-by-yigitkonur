@@ -98,7 +98,6 @@ When renaming a published skill:
 - `build-mcp-server-sdk-v1`
 - `build-mcp-server-sdk-v2`
 - `build-mcp-use-agent`
-- `build-mcp-use-apps-widgets`
 - `build-mcp-use-client`
 - `build-mcp-use-server`
 - `build-raycast-script-command`

@@ -32,9 +32,9 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/) | development | MCP servers with @modelcontextprotocol/sdk v1.x |
 | [build-mcp-server-sdk-v2](skills/build-mcp-server-sdk-v2/) | development | MCP servers with @modelcontextprotocol/server v2 |
 | [build-mcp-use-agent](skills/build-mcp-use-agent/) | development | AI agents with mcp-use MCPAgent |
-| [build-mcp-use-apps-widgets](skills/build-mcp-use-apps-widgets/) | development | MCP apps with React widget rendering |
+| [build-mcp-use-apps-widgets](skills/build-mcp-use-apps-widgets/) | development | Deprecated shim for the consolidated mcp-use server skill |
 | [build-mcp-use-client](skills/build-mcp-use-client/) | development | MCP clients with mcp-use SDK |
-| [build-mcp-use-server](skills/build-mcp-use-server/) | development | MCP servers with mcp-use library |
+| [build-mcp-use-server](skills/build-mcp-use-server/) | development | MCP servers with mcp-use — tools, schemas, responses, auth, sessions, transports, MCP Apps widgets, ChatGPT Apps, Inspector, deploy |
 | [build-raycast-script-command](skills/build-raycast-script-command/) | development | Raycast Script Commands in Python/Bash |
 | [build-skills](skills/build-skills/) | productivity | Claude skill creation and research methodology |
 | [build-tinacms-nextjs](skills/build-tinacms-nextjs/) | development | Next.js App Router sites with TinaCMS — git-backed MDX, schemas, visual editing, dynamic pages |

@@ -7,7 +7,7 @@ description: Use skill if you are building MCP client applications with the mcp-
 
 Build production-grade MCP client applications with the `mcp-use` TypeScript library (v1.21+, Node 18+ supported, Node 22 LTS recommended). The library provides `MCPClient` for multi-server management, `MCPSession` for per-server protocol operations, `useMcp`/`McpClientProvider` React hooks, CLI client, code mode, and environment-specific entry points (`mcp-use`, `mcp-use/browser`, `mcp-use/react`).
 
-> **Building an MCP server?** Use `build-mcp-use-server`. **Building an AI agent?** Use `build-mcp-use-agent`. **Building widget-based MCP Apps?** Use `build-mcp-use-apps-widgets`.
+> **Building an MCP server?** Use `build-mcp-use-server` (covers tools, schemas, MCP Apps widgets, OAuth, transports, deploy). **Building an AI agent?** Use `build-mcp-use-agent`.
 
 ---
 

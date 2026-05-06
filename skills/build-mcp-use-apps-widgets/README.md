@@ -1,6 +1,6 @@
 # build-mcp-use-apps-widgets
 
-Building or fixing an mcp-use server that renders React widgets and needs useWidget, useCallTool, streaming, CSP, or ChatGPT/MCP Apps compatibility.
+Deprecated compatibility shim for the former mcp-use widgets skill. Use `build-mcp-use-server` for MCP Apps widgets, ChatGPT Apps, `useWidget`, `useCallTool`, streaming, CSP, and production server work.
 
 **Category:** development
 
@@ -16,4 +16,12 @@ Or install the full pack:
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+```
+
+## Replacement
+
+Use the consolidated skill instead:
+
+```bash
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-server
 ```
