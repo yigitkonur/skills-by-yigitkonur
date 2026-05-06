@@ -90,10 +90,12 @@ the wrong format.
 ```typescript
 import { Effect, Logger } from "effect"
 
+declare const flushBatch: (
+  messages: Array<string>
+) => Effect.Effect<void>
+
 const batchedLogger = Logger.stringLogger.pipe(
-  Logger.batched("1 second", (messages) =>
-    Effect.logInfo("flushed log batch", { count: messages.length })
-  )
+  Logger.batched("1 second", flushBatch)
 )
 
 const BatchedLoggerLive = Logger.replaceScoped(
