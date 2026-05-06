@@ -86,7 +86,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (44)
+## Current Canonical Skill Names (47)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -114,6 +114,9 @@ When renaming a published skill:
 - `evaluate-code-review`
 - `extract-saas-design`
 - `init-agent-config`
+- `make-local`
+- `make-railway`
+- `make-vercel`
 - `optimize-agentic-cli`
 - `optimize-agentic-mcp`
 - `publish-npm-package`

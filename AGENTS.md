@@ -69,6 +69,7 @@ Anchor on this set of plain-English verbs:
 | `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
+| `make` | Author Makefile targets / `make X` deployment & workflow scaffolding | `make-local`, `make-railway`, `make-vercel` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
 | `develop` | Apply language-level patterns and standards | `develop-typescript` |
 | `publish` | Release to a registry | `publish-npm-package` |
@@ -236,6 +237,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 | `testing` | Skills that automate browser testing or verification |
 | `orchestration` | Skills for multi-agent coordination |
 | `platform` | Skills for a specific platform ecosystem (e.g., Railway) |
+| `workflow` | Skills that author Makefile targets / multi-step scaffolding workflows for deployment, CI, or local dev |
 
 ---
 
@@ -251,7 +253,7 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ---
 
-## Current canonical skill names (45 skills)
+## Current canonical skill names (48 skills)
 
 Use this list to check for naming collisions:
 
@@ -265,6 +267,7 @@ build-skills                 check-completion             convert-url-to-nextjs
 develop-typescript           do-debug                     do-review
 do-think                     enhance-prompt               enhance-skill-by-derailment
 evaluate-code-review         extract-saas-design          init-agent-config
+make-local                   make-railway                 make-vercel
 optimize-agentic-cli         optimize-agentic-mcp         publish-npm-package
 run-agent-browser            run-batch-codex-research     run-codex-exec
 run-codex-review             run-github-scout             run-industry-research
