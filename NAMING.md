@@ -24,6 +24,7 @@ Anchor on this set of plain-English intent verbs:
 | `evaluate` | Triage existing feedback or input | `evaluate-code-review` |
 | `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
 | `init` | Generate config or instruction files | `init-agent-config` |
+| `make` | Author Makefile targets / `make X` workflow scaffolding | `make-local`, `make-railway`, `make-vercel` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
 | `develop` | Apply language-level patterns and standards | `develop-typescript` |
@@ -85,7 +86,7 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (44)
+## Current Canonical Skill Names (47)
 
 - `apply-clean-architecture`
 - `apply-liquid-glass`
@@ -113,6 +114,9 @@ When renaming a published skill:
 - `evaluate-code-review`
 - `extract-saas-design`
 - `init-agent-config`
+- `make-local`
+- `make-railway`
+- `make-vercel`
 - `optimize-agentic-cli`
 - `optimize-agentic-mcp`
 - `publish-npm-package`
