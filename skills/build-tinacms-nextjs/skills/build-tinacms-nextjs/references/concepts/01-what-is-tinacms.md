@@ -26,7 +26,7 @@ TinaCMS is a **git-backed, schema-driven, headless CMS** with a visual editor. T
 |---|---|
 | `tina/config.ts` (schema + config) | `tina/__generated__/client.{ts,js}` (GraphQL client) |
 | `content/**/*.{md,mdx,json}` (your data) | `tina/__generated__/types.{ts,js}` (TS types) |
-| `tina-lock.json` (commit this — pinned schema) | `tina/__generated__/{schema,graphql,lookup}.json` |
+| `tina/tina-lock.json` (commit this — pinned schema) | `tina/__generated__/{schema,graphql,lookup}.json` |
 | Block components, page renderers, UI | `tina/__generated__/{frags,queries,schema}.gql` |
 
 ## What TinaCMS is not

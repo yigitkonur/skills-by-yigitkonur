@@ -38,6 +38,7 @@ The `tinacms` CLI from `@tinacms/cli`. Two main commands plus init helpers.
 | `--skip-cloud-checks` | Skip TinaCloud connectivity (dangerous) |
 | `--skip-search-indexing` | Skip search index build |
 | `--no-client-build-cache` | Disable query caching in client build |
+| `--clean` | Run schema-strict GraphQL mutations against content files; **purges fields not in the current schema** (commit first) |
 
 ## Reading order
 

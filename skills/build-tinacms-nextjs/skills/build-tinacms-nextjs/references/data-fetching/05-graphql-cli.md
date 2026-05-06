@@ -29,7 +29,7 @@ Compiles `tina/config.ts` into:
 - `tina/__generated__/{schema,graphql,lookup}.json`
 - `tina/__generated__/{client,types}.{js,ts}`
 - `tina/__generated__/{frags,queries,schema}.gql`
-- `tina-lock.json` (compiled schema)
+- `tina/tina-lock.json` (compiled schema)
 
 Run after every schema change. `pnpm dev` does this automatically; for CI you do it manually.
 

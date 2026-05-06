@@ -89,7 +89,7 @@ import type { HeroProps } from '@/components/blocks/Hero'  // ✅ types only
 ```
 tina/
 ├── config.ts                  ← thin top-level config
-├── tina-lock.json
+├── tina/tina-lock.json
 ├── blocks/
 │   ├── hero.ts                ← block schema only (no React)
 │   ├── content.ts

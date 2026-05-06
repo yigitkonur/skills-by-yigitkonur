@@ -127,11 +127,11 @@ Then run `pnpm tinacms build`.
 
 ## "Schema not found" at runtime
 
-**Cause:** `tina-lock.json` missing in deployed environment.
+**Cause:** `tina/tina-lock.json` missing in deployed environment.
 
 **Fix:**
 
-- Verify `tina-lock.json` is committed to git (it should be — never gitignore it)
+- Verify `tina/tina-lock.json` is committed to git (it should be — never gitignore it)
 - Re-deploy
 
 ## CI build succeeds but admin breaks in production
@@ -168,4 +168,4 @@ Bump to 4 GB or more.
 | Committed `__generated__/` | Gitignore + delete |
 | Mismatched `tinacms` and `@tinacms/cli` versions | Pin to same major |
 | Used `--skip-cloud-checks` in CI | Remove unless absolutely necessary |
-| Empty `tina-lock.json` after build | Schema didn't compile — read build logs |
+| Empty `tina/tina-lock.json` after build | Schema didn't compile — read build logs |

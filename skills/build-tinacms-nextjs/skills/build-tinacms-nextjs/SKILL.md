@@ -41,7 +41,7 @@ For the full structured index of every reference file, read [references/00-refer
 - **Always pass `revalidate`** to client queries on Vercel to defeat the data cache caveat.
 - **Always set `ui.router`** on every content collection for visual editing.
 - **Always include `defaultItem`** on block templates and `ui.itemProps` on list fields.
-- **Always commit `tina-lock.json`**. Always gitignore `tina/__generated__/`.
+- **Always commit `tina/tina-lock.json`**. Always gitignore `tina/__generated__/`.
 
 ## Hard Rules
 

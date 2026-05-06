@@ -85,7 +85,7 @@ This gives you the **Tina NextJS Starter** — full-featured: Tailwind, blocks p
 
 ```bash
 ls tina/
-# Should show: config.ts (or config.tsx), tina-lock.json after first build
+# Should show: config.ts (or config.tsx), tina/tina-lock.json after first build
 ls content/
 # Should show: posts/ (or whatever sample collection init created)
 ls app/admin/

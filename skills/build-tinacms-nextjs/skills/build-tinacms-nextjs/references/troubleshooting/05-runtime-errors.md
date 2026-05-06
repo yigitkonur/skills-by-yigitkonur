@@ -62,11 +62,11 @@ Already covered in `references/troubleshooting/06-visual-editing-issues.md`.
 
 ## "Schema not found" at runtime
 
-**Cause:** `tina-lock.json` missing from deployed environment.
+**Cause:** `tina/tina-lock.json` missing from deployed environment.
 
 **Fix:**
 
-- Verify it's committed: `git ls-files tina-lock.json` should show the file
+- Verify it's committed: `git ls-files tina/tina-lock.json` should show the file
 - If missing, don't gitignore it
 - Re-deploy after committing
 
@@ -140,5 +140,5 @@ Pro tier allows up to 3008 MB.
 | Edge runtime | Build/runtime fails | Remove |
 | Sub-path deploy | Admin assets 404 | Deploy at root |
 | `tinacms dev` in CI | Localhost in production HTML | Use `tinacms build` |
-| Missing `tina-lock.json` | "Schema not found" | Commit it |
+| Missing `tina/tina-lock.json` | "Schema not found" | Commit it |
 | Vercel timeout on indexing | Function fails | Upgrade tier or background job |

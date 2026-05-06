@@ -13,7 +13,7 @@ Move an existing TinaCloud project to self-hosted. Content stays the same — on
 
 - `tina/config.ts` schema (mostly)
 - All content files in git
-- `tina-lock.json`
+- `tina/tina-lock.json`
 - Editor workflows (with caveats — see below)
 - Visual editing patterns
 

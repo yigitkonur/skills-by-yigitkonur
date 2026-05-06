@@ -30,7 +30,7 @@ tina/
 | `tina/config.ts` | yes | Your schema source of truth |
 | `tina/queries/*` | yes | Custom queries you authored |
 | `tina/database.ts` | yes (if self-hosted) | Backend wiring |
-| `tina-lock.json` | **YES** | Pinned compiled schema for resolution |
+| `tina/tina-lock.json` | **YES** | Pinned compiled schema for resolution |
 | `tina/__generated__/` | **NO** | Rebuilt on every `tinacms build` |
 
 `.gitignore` snippet:
@@ -72,13 +72,13 @@ Raw GraphQL the client uses internally. Useful for debugging when a query is wro
 
 Internal representations the GraphQL server uses. Don't read or edit them.
 
-## `tina-lock.json`
+## `tina/tina-lock.json`
 
 This file is the **compiled schema** — a serialized representation of `tina/config.ts` after esbuild compiles it. Tina uses it to resolve document content. Commit it.
 
 When you change the schema and run `tinacms dev`, this file regenerates. The git diff is normal. Don't manually edit it.
 
-If `tina-lock.json` is missing from a deployed environment, queries will return errors like "schema not found" or "collection unknown."
+If `tina/tina-lock.json` is missing from a deployed environment, queries will return errors like "schema not found" or "collection unknown."
 
 ## When to read `tina/queries/`
 
@@ -102,8 +102,8 @@ After `pnpm tinacms build`:
 ls tina/__generated__/
 # Should show: client.ts types.ts frags.gql queries.gql schema.gql + 3 .json files
 
-cat tina-lock.json | head -3
+cat tina/tina-lock.json | head -3
 # Should be valid JSON with version + schema metadata
 ```
 
-If `__generated__/` is missing, the build never ran. If `tina-lock.json` is missing, the schema didn't compile — read `tinacms build` output for the actual error.
+If `__generated__/` is missing, the build never ran. If `tina/tina-lock.json` is missing, the schema didn't compile — read `tinacms build` output for the actual error.

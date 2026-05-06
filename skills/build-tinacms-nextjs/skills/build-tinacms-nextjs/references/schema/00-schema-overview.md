@@ -98,7 +98,7 @@ Editors add/reorder/remove blocks of different types within one document. This i
 
 ## Naming rules (must follow)
 
-Field and collection `name` values must be **alphanumeric + underscores only**. No hyphens, spaces, or special chars. Reserved names: `children`, `mark`, `_template`. See `references/schema/03-naming-rules.md`.
+Field and collection `name` values must be **alphanumeric + underscores only**. No hyphens, spaces, or special chars. Reserved names: `children` (inside rich-text templates only), `mark`, `_template`, `_sys`, `id`, `__typename`. See `references/schema/03-naming-rules.md`.
 
 ## Default-shape collections to start with
 

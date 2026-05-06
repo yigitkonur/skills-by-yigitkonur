@@ -29,7 +29,7 @@ const result = await client.queries.PostsForListing({ first: 10 })
 
 TinaCMS indexes documents into the database (Vercel KV or MongoDB for self-hosted; managed for TinaCloud). Indexed fields are fast for filtering and sorting.
 
-By default **all fields are indexed**. For very large collections, you can opt out per-field via `searchable: false`:
+By default **all field types except `image` are included in the search index**. For very large collections, you can opt out per-field via `searchable: false`:
 
 ```typescript
 {

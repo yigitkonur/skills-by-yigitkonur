@@ -30,7 +30,7 @@ Or in `package.json`:
    - `types.{ts,js}` (TypeScript types)
    - `frags.gql`, `queries.gql`, `schema.gql`
    - `_graphql.json`, `_lookup.json`, `_schema.json`
-4. Updates `tina-lock.json` (compiled schema)
+4. Updates `tina/tina-lock.json` (compiled schema)
 5. (Optional) Validates against TinaCloud
 6. (Optional) Builds search index
 
@@ -50,6 +50,7 @@ tinacms build [options]
 | `--skip-search-indexing` | Skip search index |
 | `--no-client-build-cache` | Disable query caching |
 | `--tina-graphql-version <ver>` | Pin API version |
+| `--clean` | Submit GraphQL mutations to the filesystem; **purges fields not in the current schema**. Commit first; destructive on misconfig. |
 | `-v` | Verbose |
 
 ## CI usage
@@ -113,7 +114,7 @@ pnpm tinacms build
 ls tina/__generated__/
 # client.ts  databaseClient.ts  types.ts  frags.gql  queries.gql  schema.gql  _graphql.json  ...
 
-cat tina-lock.json | head -3
+cat tina/tina-lock.json | head -3
 # Should be valid JSON
 ```
 
