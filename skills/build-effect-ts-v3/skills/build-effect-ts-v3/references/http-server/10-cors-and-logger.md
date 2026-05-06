@@ -107,6 +107,7 @@ Use ordinary Effect configuration to choose CORS options at the edge. Keep the
 API contract independent of deployment origin policy.
 
 ```typescript
+import { HttpApiBuilder } from "@effect/platform"
 import { Config, Effect, Layer } from "effect"
 
 const CorsLive = Layer.unwrapEffect(

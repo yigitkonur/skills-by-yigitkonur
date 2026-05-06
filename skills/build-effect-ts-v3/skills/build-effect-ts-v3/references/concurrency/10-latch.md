@@ -45,7 +45,7 @@ wrap a whole effect behind the gate.
 ## `whenOpen`
 
 ```typescript
-import { Effect } from "effect"
+import { Effect, Fiber } from "effect"
 
 const program = Effect.gen(function* () {
   const latch = yield* Effect.makeLatch(false)

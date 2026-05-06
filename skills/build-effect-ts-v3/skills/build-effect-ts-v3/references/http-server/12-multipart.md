@@ -93,7 +93,7 @@ The handler receives `payload` as a `Stream.Stream<Multipart.Part, ...>`.
 ## Streaming Handler
 
 ```typescript
-import { Multipart } from "@effect/platform"
+import { HttpApiBuilder, Multipart } from "@effect/platform"
 import { Chunk, Effect, Stream } from "effect"
 
 const UploadsLive = HttpApiBuilder.group(Api, "uploads", (handlers) =>

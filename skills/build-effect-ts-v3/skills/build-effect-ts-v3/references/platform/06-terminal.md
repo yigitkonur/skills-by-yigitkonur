@@ -111,9 +111,11 @@ can be useful for applications where a specific key combination quits.
 
 ```typescript
 import { Layer } from "effect"
+import { Terminal } from "@effect/platform"
 import { NodeTerminal } from "@effect/platform-node"
 
 export const TerminalLive = Layer.scoped(
+  Terminal.Terminal,
   NodeTerminal.make((input) => input.key.ctrl && input.key.name === "d")
 )
 ```

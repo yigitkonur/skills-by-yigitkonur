@@ -49,16 +49,17 @@ property signatures. Use them sparingly because optional path segments can make
 routes harder to reason about.
 
 ```typescript
-import { HttpApiEndpoint } from "@effect/platform"
+import { HttpApiEndpoint, HttpApiSchema } from "@effect/platform"
 import { Schema } from "effect"
 
-const maybeSlug = Schema.optional(Schema.String)
+const maybeSlug = HttpApiSchema.param("slug", Schema.optional(Schema.String))
 
 const route = HttpApiEndpoint.get("readPage")`/pages/${maybeSlug}`
 ```
 
-When a parameter is optional, the generated route segment uses an optional
-marker internally.
+Always wrap the optional schema in `HttpApiSchema.param("name", …)`. Interpolating
+`Schema.optional(...)` directly produces an auto-indexed param name (for example
+`:0?`) and the handler cannot read the value by a stable field name.
 
 ## Multiple Parameters
 

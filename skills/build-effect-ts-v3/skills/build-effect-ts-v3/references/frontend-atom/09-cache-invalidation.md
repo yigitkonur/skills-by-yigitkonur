@@ -47,7 +47,7 @@ const incrementAtom = runtime.fn(
 )
 ```
 
-When `incrementAtom` finishes, the `"count"` query key is invalidated.
+When `incrementAtom` succeeds, the `"count"` query key is invalidated. Failed mutations do not invalidate — bind error UI to the result instead and let the user retry.
 
 ## Structured Keys
 

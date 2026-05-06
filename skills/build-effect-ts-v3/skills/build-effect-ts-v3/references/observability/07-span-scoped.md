@@ -84,15 +84,23 @@ For ordinary nested traces, use `Effect.withSpan`.
 
 ## Resource Pattern
 
+`acquireConnection` returns a scoped effect — the span lives as long as the surrounding scope, not as long as the gen body. Apply `Effect.scoped` at the boundary that owns the resource lifetime, not around the acquisition itself.
+
 ```typescript
 import { Effect } from "effect"
 
-const acquireConnection = Effect.scoped(
+const acquireConnection = Effect.gen(function* () {
+  const span = yield* Effect.makeSpanScoped("Database.connection")
+  span.attribute("db.system", "postgresql")
+  yield* Effect.logInfo("connection acquired")
+  return { close: Effect.logInfo("connection closed") }
+})
+
+const useConnection = Effect.scoped(
   Effect.gen(function* () {
-    const span = yield* Effect.makeSpanScoped("Database.connection")
-    span.attribute("db.system", "postgresql")
-    yield* Effect.logInfo("connection acquired")
-    return { close: Effect.logInfo("connection closed") }
+    const conn = yield* acquireConnection
+    yield* Effect.logInfo("running query under the open span")
+    yield* conn.close
   })
 )
 ```
