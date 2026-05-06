@@ -20,7 +20,7 @@ media: {
 
 ## `accept` syntax
 
-`accept` is a **`List<String>`** at the top of `media`, not inside `media.tina`. Each entry is a MIME type or extension pattern (same vocabulary as HTML `<input type="file" accept>`).
+`accept` is a **`List<String>`** at the top of `media` — not inside `media.tina`, and **not** a comma-separated string. Each entry is a single MIME type or extension pattern (same vocabulary as HTML `<input type="file" accept>`, but expressed as a list).
 
 ```typescript
 // Specific MIMEs
@@ -74,7 +74,7 @@ Workaround: add validation on the field:
 SVGs can contain `<script>` tags — XSS risk if served untrusted. If editors are trusted, allow SVG. If not, block:
 
 ```typescript
-accept: 'image/jpeg,image/png,image/webp'  // exclude svg
+accept: ['image/jpeg', 'image/png', 'image/webp']  // exclude svg
 ```
 
 For SVGs needing strict sanitization, use a library like `dompurify` server-side before serving.

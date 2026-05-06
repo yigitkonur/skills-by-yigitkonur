@@ -57,7 +57,7 @@ These DO run on Node by default:
 
 These DO run on Edge by default:
 
-- `middleware.ts` (Next.js 15 — **Edge by default**; this is the trap. If you import `@tinacms/datalayer` or any Node-only module from middleware without `export const runtime = 'nodejs'`, the build fails or middleware errors at runtime.)
+- `middleware.ts` (Next.js 15 — **Edge by default**; this is the trap. If you import `@tinacms/datalayer` or any Node-only module from middleware without opting into the Node runtime, the build fails or middleware errors at runtime. Middleware uses `export const config = { runtime: 'nodejs' }` (NOT the route-handler `export const runtime = 'nodejs'`) to opt out of Edge.)
 - Edge Functions explicitly marked with `export const runtime = 'edge'`
 
 If you're unsure, check Vercel's "Functions" tab in the dashboard. Each function shows its runtime.

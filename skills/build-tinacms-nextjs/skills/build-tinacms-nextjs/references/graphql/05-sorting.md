@@ -105,5 +105,5 @@ For navigation/menu items, use a numeric `order` field rather than alphabetical.
 |---|---|---|
 | `sort: { date: 'desc' }` (object syntax) | Type error | Sort accepts only a field name string |
 | Sorted by a non-indexed field | Returns unsorted | Field must be indexed |
-| Trying to sort with multiple fields | No native syntax | Sort by primary, tie-break in JS |
+| Trying to sort with multiple fields | Use a multi-field index | Declare `indexes` on the collection and pass the index name to `sort` (see "Multiple-field sort" above). JS tie-break is a fallback for ad-hoc cases only. |
 | Forgot `sort` argument entirely | Default may not be deterministic | Always specify when order matters |

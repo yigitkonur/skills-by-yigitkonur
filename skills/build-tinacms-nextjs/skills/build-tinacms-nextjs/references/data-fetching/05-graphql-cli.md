@@ -153,6 +153,6 @@ Or rely on the `package.json` `build` script:
 |---|---|---|
 | Skipping `tinacms build` in CI | "Cannot find module '../tina/__generated__/client'" | Run `pnpm tinacms build` first |
 | Using `tinacms dev` in CI | Loads localhost-pointing admin into production | Always use `tinacms build` for CI |
-| Mismatched `tinacms` and `@tinacms/cli` versions | Build errors, schema drift | Pin to matching majors |
+| `tinacms` and `@tinacms/cli` from different release windows | Build errors, schema drift | Pin both to the same release pair TinaCMS publishes together (their majors are not synchronized) — group in RenovateBot/Dependabot |
 | Forgot `--noTelemetry` in CI | Reports build to TinaCloud (no actual issue, just opt-out) | Add the flag |
 | Used `--skip-cloud-checks` in production | Deploys with broken cloud config | Don't use in production CI |
