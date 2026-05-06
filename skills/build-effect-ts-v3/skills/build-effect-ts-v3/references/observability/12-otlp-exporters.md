@@ -49,11 +49,13 @@ The source builds these paths from the provided `baseUrl`.
 ```typescript
 import { Otlp } from "@effect/opentelemetry"
 
+declare const headers: {
+  readonly Authorization: string
+}
+
 const OtlpLive = Otlp.layerJson({
   baseUrl: "https://otel-collector.internal",
-  headers: {
-    Authorization: "Bearer local-token"
-  },
+  headers,
   resource: {
     serviceName: "report-worker",
     serviceVersion: "2026.05.05",

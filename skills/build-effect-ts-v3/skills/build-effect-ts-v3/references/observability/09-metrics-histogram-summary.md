@@ -43,7 +43,7 @@ Use linear buckets when the expected range is narrow and evenly distributed.
 ## Exponential Histogram
 
 ```typescript
-import { Effect, Metric, MetricBoundaries } from "effect"
+import { Duration, Effect, Metric, MetricBoundaries } from "effect"
 
 const requestLatency = Metric.histogram(
   "http_request_latency_ms",
