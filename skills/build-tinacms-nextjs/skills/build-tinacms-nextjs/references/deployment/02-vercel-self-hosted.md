@@ -87,12 +87,16 @@ import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   // 1. Auth check FIRST — never process the body of an unauthenticated request.
-  //    Shared bearer token (rotate periodically):
+  //    Fail closed if WEBHOOK_SECRET is missing, otherwise `Bearer undefined`
+  //    becomes a valid token by accident.
+  const expected = process.env.WEBHOOK_SECRET
+  if (!expected) return new Response('Server misconfigured', { status: 500 })
   const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
+  if (auth !== `Bearer ${expected}`) {
     return new Response('Unauthorized', { status: 401 })
   }
-  // For GitHub-style HMAC, verify x-hub-signature-256 with crypto.timingSafeEqual.
+  // For GitHub-style HMAC, verify x-hub-signature-256 with crypto.timingSafeEqual
+  // (same fail-closed pattern — refuse if WEBHOOK_SECRET is missing).
 
   const body = await req.json()
   for (const path of body.paths ?? []) {
