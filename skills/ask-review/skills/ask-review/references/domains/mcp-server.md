@@ -64,7 +64,7 @@ If the server uses a specific framework, route additionally:
 | Bare `@modelcontextprotocol/sdk` v1.x | `build-mcp-server-sdk-v1` |
 | `@modelcontextprotocol/server` v2 | `build-mcp-server-sdk-v2` |
 | `mcp-use` (server side) | `build-mcp-use-server` |
-| `mcp-use` with React widgets | `build-mcp-use-apps-widgets` |
+| `mcp-use` with React widgets | `build-mcp-use-server` (cluster `18-mcp-apps/`) |
 | Optimizing an existing server | `optimize-agentic-mcp` |
 
 Name the specific framework in your PR body so the reviewer pulls the right context.

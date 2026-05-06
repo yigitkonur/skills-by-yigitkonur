@@ -68,4 +68,4 @@ Author-side checklist for PRs that touch client-side TS/JS — React/Vue/Svelte/
 | Solid | Fine-grained reactivity — no `useState` equivalents; signals and `createEffect` |
 | React Native | Platform differences (iOS vs. Android); `FlatList` vs. `ScrollView` at scale |
 
-If the project uses framework-specific skills (e.g., `build-mcp-use-apps-widgets`), route additionally to those for framework details.
+If the project uses framework-specific skills (e.g., `build-mcp-use-server` for MCP Apps widgets), route additionally to those for framework details.

@@ -1,6 +1,6 @@
 # build-mcp-use-server
 
-Building or extending TypeScript MCP servers with the mcp-use library — tools, Zod schemas, resources, prompts, transports, OAuth, sessions, testing, and deployment.
+Building or extending TypeScript MCP servers with mcp-use — tools, schemas, responses, auth, sessions, transports, MCP Apps widgets, ChatGPT Apps, Inspector, deploy.
 
 **Category:** development
 
