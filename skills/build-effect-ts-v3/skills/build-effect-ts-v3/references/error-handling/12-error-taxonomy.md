@@ -3,7 +3,7 @@ Use this taxonomy to decide what kind of error you are modeling and which recove
 
 ## Taxonomy table
 
-| Error category | Examples | Should retry? | How to handle |
+| error category | examples | should retry? | how to handle |
 |---|---|---:|---|
 | Domain absence | `UserNotFound`, `OrderMissing` | No | Return a typed tagged error; caller chooses fallback or user response |
 | Domain rejection | `PaymentDeclined`, `Unauthorized` | No | Keep distinct tags; do not collapse into infrastructure errors |
