@@ -5,12 +5,13 @@ description: "Use skill if you are building or maintaining MCP servers with @mod
 
 # Build MCP Server (SDK v2)
 
-Build and maintain MCP servers using the v2 split-package SDK: `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, `@modelcontextprotocol/core`. Node.js 20+, ESM-only, Zod v4. Released Q1 2026, community adoption still early.
+Build and maintain MCP servers using the v2 split-package SDK: `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, `@modelcontextprotocol/core`. Node.js 20+, ESM-only, Zod v4. v2 is in pre-release alpha as of 2026-05-08 (`2.0.0-alpha.2`, milestone `v2.0.0-bc`) — most production servers still run v1. Use this skill for new v2 builds and v2 maintenance; use `convert-mcp-server-sdk-v1-to-v2` to port an existing v1 server.
 
 **When to use a different skill instead:**
 
-- `@modelcontextprotocol/sdk` (single package) in `package.json` → use `build-mcp-server-sdk-v1`
+- `@modelcontextprotocol/sdk` (single package, v1) in `package.json` → use `build-mcp-server-sdk-v1`
 - Handlers use `(args, extra)` with `extra.sendNotification` / `extra.authInfo` → that's v1, use `build-mcp-server-sdk-v1`
+- Existing v1 server that needs to be ported to v2 → use `convert-mcp-server-sdk-v1-to-v2`
 - Uses the `mcp-use` wrapper library → use `build-mcp-use-server`
 
 **How to detect v2:** Look for split package imports (`@modelcontextprotocol/server`, `@modelcontextprotocol/client`), handlers using `(args, ctx)` with `ctx.mcpReq.log()` / `ctx.mcpReq.signal`, and `"type": "module"` in `package.json`.
@@ -21,7 +22,7 @@ Core rules:
 - Always use `registerTool` / `registerResource` / `registerPrompt` — positional overloads removed
 - Always use Zod v4 full schemas (`z.object({...})`) — raw shapes not accepted in v2
 - Always use `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node` for HTTP
-- Server-side OAuth is removed — use `better-auth` or a dedicated auth library
+- Server-side OAuth is removed from the SDK — wire HTTP-layer auth (jose, Passport, custom Bearer) and forward `req.auth` into `ctx.http?.authInfo`; for OAuth-heavy servers that can't drop the v1 router, use the frozen `@modelcontextprotocol/server-auth-legacy` package as a transition
 - SSE server transport is removed — use Streamable HTTP
 - ESM-only — no CommonJS support
 - Node.js 20+ required
@@ -231,6 +232,7 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 | Reference | When to read |
 |---|---|
 | `references/guides/resources-and-prompts.md` | Resources (static/template URI) and prompts |
+| `references/guides/authentication.md` | Server-side auth: JWT/Passport middleware, server-auth-legacy, scope checks, DNS rebinding |
 | `references/guides/client-api.md` | Building MCP clients, auth providers, middleware |
 | `references/guides/framework-adapters.md` | Express and Hono adapters, DNS rebinding protection |
 | `references/guides/context-and-lifecycle.md` | ServerContext fields, sampling, elicitation, sessions, shutdown |
@@ -241,13 +243,19 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 |---|---|
 | `references/examples/server-recipes.md` | Complete v2 server examples |
 | `references/patterns/deployment.md` | Docker, serverless, Cloudflare Workers |
+| `references/patterns/production-patterns.md` | Logging, error handling, rate limits, timeouts, AbortSignal, graceful shutdown |
 | `references/patterns/anti-patterns.md` | Common mistakes — including v1 patterns to avoid |
 
-## Community adoption note
+## Compatibility and adoption note
 
-v2 shipped Q1 2026. Most production MCP servers still run v1.x. You may encounter:
-- Fewer community examples and Stack Overflow answers
-- Some MCP clients not yet supporting v2-specific features
-- Third-party tools still targeting v1 patterns
+v2 is in pre-release alpha as of 2026-05-08 — latest published version is `2.0.0-alpha.2`, the milestone label is `v2.0.0-bc` (backwards-compat PR series). Most production MCP servers still run v1.x and should until v2 publishes a non-alpha stable release.
 
-The SDK itself is stable and actively maintained on the `main` branch.
+What this means in practice:
+
+- **Pin alpha versions exactly** (no `^` ranges) — alphas can break between patches.
+- **Plan rollback** before deploying — keep the v1 branch deployable.
+- **The `@modelcontextprotocol/sdk` meta-package** preserves v1 import paths under v2 internals as a transitional on-ramp; see `convert-mcp-server-sdk-v1-to-v2` for staged migration.
+- **`@modelcontextprotocol/server-auth-legacy`** publishes the frozen v1 OAuth router for users who can't drop server-side OAuth on the migration path.
+- Some MCP clients and third-party tooling still target v1 patterns; verify your host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
+
+The SDK is actively maintained on the `main` branch (which is now the v2 branch). Subscribe to release notes for the duration of any v2 work.
