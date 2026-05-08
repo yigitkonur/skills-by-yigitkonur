@@ -68,7 +68,7 @@ sed -i '' 's/allowedDevOrigins:.*$/allowedDevOrigins: ["new-host"],/' next.confi
 # Use a proper TS-aware edit, not regex
 ```
 
-In the build-skills context, edit the file with `Edit` tool's `old_string`/`new_string` mode, matching enough surrounding context to insert into the existing array literal.
+In the synthesize-skills context, edit the file with `Edit` tool's `old_string`/`new_string` mode, matching enough surrounding context to insert into the existing array literal.
 
 ## Hostname rename procedure
 

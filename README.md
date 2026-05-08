@@ -31,11 +31,9 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/) | development | MCP servers with @modelcontextprotocol/sdk v1.x |
 | [build-mcp-server-sdk-v2](skills/build-mcp-server-sdk-v2/) | development | MCP servers with @modelcontextprotocol/server v2 |
 | [build-mcp-use-agent](skills/build-mcp-use-agent/) | development | AI agents with mcp-use MCPAgent |
-| [build-mcp-use-apps-widgets](skills/build-mcp-use-apps-widgets/) | development | Deprecated shim for the consolidated mcp-use server skill |
 | [build-mcp-use-client](skills/build-mcp-use-client/) | development | MCP clients with mcp-use SDK |
 | [build-mcp-use-server](skills/build-mcp-use-server/) | development | MCP servers with mcp-use — tools, schemas, responses, auth, sessions, transports, MCP Apps widgets, ChatGPT Apps, Inspector, deploy |
 | [build-raycast-script-command](skills/build-raycast-script-command/) | development | Raycast Script Commands in Python/Bash |
-| [build-skills](skills/build-skills/) | productivity | Claude skill creation and research methodology |
 | [build-tinacms-nextjs](skills/build-tinacms-nextjs/) | development | Next.js App Router sites with TinaCMS — git-backed MDX, schemas, visual editing, dynamic pages |
 | [check-completion](skills/check-completion/) | productivity | Check what's done vs. claimed done via a 22-status taxonomy; remediate until every in-scope task reaches a terminal status |
 | [convert-mcp-server-sdk-v1-to-v2](skills/convert-mcp-server-sdk-v1-to-v2/) | development | Port v1 MCP servers to the v2 split-package SDK |
@@ -65,6 +63,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
 | [run-repo-cleanup](skills/run-repo-cleanup/) | productivity | Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies |
 | [run-research](skills/run-research/) | productivity | Technical research with web search, Reddit mining, and multi-agent orchestration |
+| [synthesize-skills](skills/synthesize-skills/) | productivity | Claude skill creation and research methodology |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
 | [use-linear-cli](skills/use-linear-cli/) | platform | linear-cli for Linear issue lifecycle, bulk creation, and git/PR loops |
 | [use-railway](skills/use-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |

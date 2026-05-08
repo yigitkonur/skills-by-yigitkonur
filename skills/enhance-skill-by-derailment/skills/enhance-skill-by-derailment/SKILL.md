@@ -11,7 +11,7 @@ Improve a skill by making a subagent use it on a real task, reading the executio
 ## Trigger boundary
 
 **Use when:** testing, hardening, or improving any skill's instructional quality
-**Do NOT use when:** building a new skill from scratch (use `build-skills`)
+**Do NOT use when:** building a new skill from scratch (use `synthesize-skills`)
 
 ## Non-negotiable rules
 

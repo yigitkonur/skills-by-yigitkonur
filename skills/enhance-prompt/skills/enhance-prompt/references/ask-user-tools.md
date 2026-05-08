@@ -125,7 +125,7 @@ This reference is primarily consumed by:
 
 - **`enhance-prompt`** — during Step 2 (Round 1 planning), the skill dispatches a question tool. The tool name depends on the runtime.
 
-Other skills in this pack that occasionally ask user questions (e.g. `check-completion` when scope is unclear, `build-skills` when design tradeoffs need user input) can reuse the table above without a cross-skill dependency — the table is short enough to inline by reference when needed.
+Other skills in this pack that occasionally ask user questions (e.g. `check-completion` when scope is unclear, `synthesize-skills` when design tradeoffs need user input) can reuse the table above without a cross-skill dependency — the table is short enough to inline by reference when needed.
 
 ## Update policy
 

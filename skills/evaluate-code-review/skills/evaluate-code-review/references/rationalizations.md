@@ -2,7 +2,7 @@
 
 The core discipline in this skill is **verify before implementing, no performative agreement**. Under pressure (time, sunk cost, social pressure to agree), agents skip verification and default to "the reviewer is probably right, let me just implement." This file is the RED baseline: verbatim rationalizations and counters.
 
-See the `build-skills` skill's `tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
+See the `synthesize-skills` skill's `tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
 
 ## Why the discipline breaks
 

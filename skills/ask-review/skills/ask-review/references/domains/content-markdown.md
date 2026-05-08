@@ -70,7 +70,7 @@ If the PR touches SKILL.md files (for Claude skills), additional rules apply:
 - Frontmatter `description` is 30 words or fewer
 - SKILL.md body under 500 lines; split detail into `references/` files
 - No junk files, no stale sibling-skill names
-- Route to `build-skills` for the authoring workflow if creating a new skill
+- Route to `synthesize-skills` for the authoring workflow if creating a new skill
 
 If the PR touches blog posts or long-form content, consider whether a sibling research/citation doc is expected.
 
@@ -79,7 +79,7 @@ If the PR touches blog posts or long-form content, consider whether a sibling re
 | Content type | Skill |
 |---|---|
 | Product Requirements Documents | `github/awesome-copilot/prd` (external) |
-| Skill creation | `build-skills` |
+| Skill creation | `synthesize-skills` |
 | CLAUDE.md / AGENTS.md maintenance | `init-agent-config`, `claude-md-management:revise-claude-md` |
 
 Name the specific doc type in the PR body so the reviewer loads the right lens.

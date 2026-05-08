@@ -100,7 +100,6 @@ When renaming a published skill:
 - `build-mcp-use-client`
 - `build-mcp-use-server`
 - `build-raycast-script-command`
-- `build-skills`
 - `check-completion`
 - `convert-mcp-server-sdk-v1-to-v2`
 - `convert-url-to-nextjs`
@@ -128,6 +127,7 @@ When renaming a published skill:
 - `run-playwright`
 - `run-repo-cleanup`
 - `run-research`
+- `synthesize-skills`
 - `test-by-mcpc-cli`
 - `use-linear-cli`
 - `use-railway`

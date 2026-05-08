@@ -2,7 +2,7 @@
 
 The Iron Law ("no fix before root cause") is bypassable under pressure. This file catalogs the verbatim excuses agents generate to skip Phase 1 or Phase 3, each paired with a counter. Seeded from obra's three pressure scenarios + two extensions observed in this pack's other discipline skills.
 
-See `build-skills/references/authoring/tdd-for-skills.md` for the RED-GREEN-REFACTOR pattern that produced this table.
+See `synthesize-skills/references/authoring/tdd-for-skills.md` for the RED-GREEN-REFACTOR pattern that produced this table.
 
 ## Why the discipline breaks
 

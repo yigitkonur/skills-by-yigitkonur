@@ -193,7 +193,7 @@ Above 3,000 words, the brainstorm is too large — re-scope to a sub-problem.
 - Tables for matrices, ranked lists, scoring
 - Code blocks for ASCII diagrams (trees, iceberg levels)
 - Bulleted lists for assumptions, blind spots, options
-- Backticks on first reference for framework names (e.g., `Six Thinking Hats`) and skill names (e.g., `build-skills`)
+- Backticks on first reference for framework names (e.g., `Six Thinking Hats`) and skill names (e.g., `synthesize-skills`)
 - `file:line` for code references
 
 ## Voice rules (both modes)

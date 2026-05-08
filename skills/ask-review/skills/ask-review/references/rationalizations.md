@@ -2,7 +2,7 @@
 
 The core discipline in this skill is **"commit dirty changes before opening the PR, not after."** It is bypassable under pressure. This file captures the verbatim excuses agents generate to skip that rule, each paired with a counter.
 
-See `skills/build-skills/skills/build-skills/references/authoring/tdd-for-skills.md` for the RED-GREEN-REFACTOR pattern that produced this table.
+See `skills/synthesize-skills/skills/synthesize-skills/references/authoring/tdd-for-skills.md` for the RED-GREEN-REFACTOR pattern that produced this table.
 
 ## Why this discipline matters
 

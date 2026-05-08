@@ -262,17 +262,17 @@ apply-clean-architecture         ask-review                       build-chrome-e
 build-copilot-sdk-app            build-effect-ts-v3               build-kernel-ts-sdk
 build-langchain-ts-app           build-macos-app                  build-mcp-server-sdk-v1
 build-mcp-server-sdk-v2          build-mcp-use-agent              build-mcp-use-client
-build-mcp-use-server             build-raycast-script-command     build-skills
-check-completion                 convert-mcp-server-sdk-v1-to-v2  convert-url-to-nextjs
-develop-typescript               do-debug                         do-review
-do-think                         enhance-prompt                   enhance-skill-by-derailment
-evaluate-code-review             extract-saas-design              init-agent-config
-make-local                       make-railway                     make-vercel
-optimize-agentic-cli             optimize-agentic-mcp             publish-npm-package
-run-agent-browser                run-batch-codex-research         run-codex-exec
-run-codex-review                 run-github-scout                 run-industry-research
-run-issue-tree                   run-playwright                   run-repo-cleanup
-run-research                     test-by-mcpc-cli                 use-linear-cli
+build-mcp-use-server             build-raycast-script-command     check-completion
+convert-mcp-server-sdk-v1-to-v2  convert-url-to-nextjs            develop-typescript
+do-debug                         do-review                        do-think
+enhance-prompt                   enhance-skill-by-derailment      evaluate-code-review
+extract-saas-design              init-agent-config                make-local
+make-railway                     make-vercel                      optimize-agentic-cli
+optimize-agentic-mcp             publish-npm-package              run-agent-browser
+run-batch-codex-research         run-codex-exec                   run-codex-review
+run-github-scout                 run-industry-research            run-issue-tree
+run-playwright                   run-repo-cleanup                 run-research
+synthesize-skills                test-by-mcpc-cli                 use-linear-cli
 use-railway
 ```
 
