@@ -23,7 +23,7 @@ Core rules:
 - Always use `zod` for input/output schemas — the SDK converts them to JSON Schema 2020-12 automatically
 - Always use `StreamableHTTPServerTransport` for HTTP — `SSEServerTransport` is deprecated
 - Access `server.server` only for sampling, elicitation, resource subscriptions, or custom protocol extensions
-- Tool names SHOULD be 1-128 chars using letters, digits, underscore, hyphen, dot
+- Tool names SHOULD be 1-64 chars using `A-Z`, `a-z`, `0-9`, `_`, `-`, `.`, `/` (per SEP-986)
 - Input validation errors SHOULD be returned as tool execution errors (`isError: true`) not protocol errors — enables LLM self-correction
 
 ## Workflow
@@ -203,7 +203,7 @@ Every handler receives `extra` as the last argument:
 }
 ```
 
-Note: In v2 alpha, this becomes `ServerContext` with a restructured API. See `references/guides/v2-migration.md`.
+Note: In v2, this becomes `ServerContext` with a restructured API. To port an existing v1 server to v2, use the `convert-mcp-server-sdk-v1-to-v2` skill.
 
 ### Error handling
 
@@ -230,7 +230,7 @@ Per spec: input validation errors SHOULD use `isError: true` (tool execution err
 - Set `annotations` on every tool — LLMs use them to decide execution safety; treat annotations as untrusted unless from a trusted server
 - Use `server.server` (the underlying `Server`) only when `McpServer` lacks the method you need
 - Use `outputSchema` when the tool must return validated structured data alongside text content
-- Tool names: use `service_action_resource` format (e.g. `github_search_repos`), 1-128 characters
+- Tool names: use `service_action_resource` format (e.g. `github_search_repos`), 1-64 characters per SEP-986
 
 ## Guardrails
 
@@ -267,7 +267,6 @@ Use the smallest relevant set for the branch of work.
 | `references/guides/sessions-and-lifecycle.md` | Managing sessions, sampling, elicitation, resumability, graceful shutdown |
 | `references/guides/experimental-tasks.md` | Durable long-running tool operations — registerToolTask, InMemoryTaskStore, callToolStream |
 | `references/guides/protocol-spec.md` | Understanding protocol lifecycle, capabilities, message format, security requirements |
-| `references/guides/v2-migration.md` | Planning for v2 alpha migration — package split, Standard Schema, ServerContext, framework adapters |
 
 ### Build and ship
 
@@ -290,17 +289,17 @@ Use the smallest relevant set for the branch of work.
 
 ## Why migrate to v2?
 
-v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/client`) shipped in early 2026. Key benefits over v1:
+v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/client`) is in pre-release alpha — `2.0.0-alpha.2` as of 2026-05-08, milestone `v2.0.0-bc` (backwards-compat PR series). Key changes over v1:
 
 - **Structured handler context** — `ctx.mcpReq.log()`, `ctx.mcpReq.elicitInput()`, `ctx.mcpReq.requestSampling()` replace manual `extra.sendRequest()` calls
 - **Framework adapters** — `createMcpExpressApp()` and `createMcpHonoApp()` from dedicated packages instead of manual wiring
-- **Standard Schema support** — use Zod v4, Valibot, or ArkType for tool schemas (not locked to Zod)
+- **Zod v4 only** — v1 supports v3 + v4 via a runtime shim; v2 drops the shim
 - **JSON Schema 2020-12 by default** — v1 defaults to Draft-7 via `zod-to-json-schema`; v2 uses native `z.toJSONSchema()`
-- **Better auth** — client middleware system (`withOAuth`, `withLogging`, `applyMiddlewares`), grant-agnostic `prepareTokenRequest()`, discovery caching
+- **Client middleware** — `withOAuth`, `withLogging`, `applyMiddlewares`, grant-agnostic `prepareTokenRequest()`, discovery caching
 - **Smaller bundles** — split packages mean you only install what you use
 - **ESM-only** — cleaner module resolution, no CJS baggage
 
-Community adoption is still early (Q1 2026 release). Most production servers remain on v1.x. See `references/guides/v2-migration.md` for the full source-verified migration guide, or use `build-mcp-server-sdk-v2` for new v2 projects.
+Most production servers should remain on v1.x until v2 publishes a non-alpha stable release. To plan or stage a port, use `convert-mcp-server-sdk-v1-to-v2`. To start fresh on v2 (no existing code to port), use `build-mcp-server-sdk-v2`.
 
 ## Compatibility note
 

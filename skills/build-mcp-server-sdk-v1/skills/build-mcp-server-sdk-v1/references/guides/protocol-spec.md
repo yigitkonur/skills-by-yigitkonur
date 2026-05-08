@@ -83,7 +83,7 @@ Sub-capabilities:
 
 ## Tool specification requirements
 
-- Tool name: 1-128 characters, letters/digits/underscore/hyphen/dot, case-sensitive
+- Tool name: 1-64 characters (per SEP-986), allowed `A-Z`, `a-z`, `0-9`, `_`, `-`, `.`, `/`, case-sensitive
 - `inputSchema` MUST be valid JSON Schema (defaults to 2020-12 dialect if no `$schema`)
 - For parameterless tools: use `{"type": "object", "additionalProperties": false}` (SDK handles this when no `inputSchema` is provided)
 - `outputSchema`: optional, when set the handler MUST return `structuredContent` conforming to it
