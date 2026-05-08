@@ -323,27 +323,20 @@ Skill problem?
 **Fix**:
 
 ```bash
-# Verify before first use
+# Verify the bundled script resolves and required commands are present
 bash scripts/skill-dl --where
-# or, if installed globally:
-skill-dl --version
+for cmd in bash git curl npx; do command -v "$cmd" >/dev/null || echo "MISSING: $cmd"; done
 ```
 
-If `skill-dl` is missing globally, install it with:
+Use it like:
 
 ```bash
-sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
-skill-dl --version
+export SERPER_API_KEY=...   # optional; layers Google playbooks.com hits
+bash scripts/skill-dl search typescript mcp server --top 20
+bash scripts/skill-dl urls.txt -o ./research-corpus --no-auto-category -f
 ```
 
-Use it after installation with commands like:
-
-```bash
-skill-dl search typescript mcp server --top 20
-skill-dl urls.txt -o ./research-corpus --no-auto-category -f
-```
-
-If installation is not possible in the current environment, check `references/remote-sources.md` for alternatives and fall back to:
+If `npx` is missing and you cannot install Node.js, fall back to:
 
 1. MCP tools (`skills-as-context-search-skills`, `skills-as-context-get-skill-details`)
 2. Manual GitHub search for repos containing SKILL.md files

@@ -1,9 +1,9 @@
 ---
-name: build-skills
+name: synthesize-skills
 description: Use skill if you are creating or substantially revising a Claude skill and need workspace-first evidence, remote comparison, and repo-fit synthesis before writing SKILL.md.
 ---
 
-# Build Skills
+# Synthesize Skills
 
 Build or revise Claude skills from evidence, not instinct.
 
@@ -35,17 +35,33 @@ Do not use this skill for:
 ## Available scripts
 
 Scripts are resolved relative to the skill directory root. Use these instead of
-inventing ad-hoc shell pipelines:
+inventing ad-hoc shell pipelines. Everything below is **pure bash** — no
+install step, no proxy keys, just `bash`, `git`, `curl`, and `npx` (Node.js).
 
-- **`scripts/skill-dl`** — non-interactive wrapper for `skill-dl`; prefers the
-  globally installed CLI, and on macOS arm64 can fall back to the bundled
-  `scripts/skill-dl-darwin-arm64` binary. Run `bash scripts/skill-dl --help`.
+- **`scripts/skill-dl`** — pure-bash discovery & download. Searches via
+  `npx skills find` (primary, no key required) and optionally layers Serper
+  Google results when `SERPER_API_KEY` is set. Downloads via
+  `git clone --depth 1` from `github.com/<owner>/<repo>`. Run
+  `bash scripts/skill-dl --help`.
 - **`scripts/skill-research.sh`** — end-to-end discovery, download, and corpus
   inspection helper built on top of `scripts/skill-dl`. Run
   `bash scripts/skill-research.sh --help`.
-- **`scripts/skill-dl-darwin-arm64`** — bundled macOS Apple Silicon `skill-dl`
-  binary. Invoke it via `bash scripts/skill-dl ...` rather than calling it
-  directly.
+
+### Optional: Serper API key (broader search coverage)
+
+`skill-dl search` works fine with no key — `npx skills find` already covers the
+`skills.sh` registry. Adding a Serper key layers Google-indexed `playbooks.com`
+hits on top, which broadens recall:
+
+```bash
+export SERPER_API_KEY=your_serper_key   # optional; without it, npx-only
+bash scripts/skill-dl search typescript mcp server --top 20
+```
+
+Get a key at https://serper.dev (the free tier covers research-scale use).
+**Scrapedo is not used and not required.** When you ask the user whether to
+enable richer search, frame it as: "search via npx skills only (default), or
+also enable Serper if you have an API key?"
 
 ## Artifact output
 
@@ -91,7 +107,7 @@ Only execute this step if step 1 classified the job as **Full research path**. S
 > Tip: Downloaded skills frequently violate this skill’s own quality standards (line counts >1000, templates inline, no references). Treat quality problems as signal for your “avoid” column—see `references/research/source-verification.md`.
 
 - Read `references/research-workflow.md` for the complete research protocol.
-- Verify tool availability with `bash scripts/skill-dl --where` or `skill-dl --version`. If `skill-dl` is missing globally, install it with `sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash`. If installation is not possible, use the `skills-as-context-search-skills` and `skills-as-context-get-skill-details` tools (requires the skills.sh MCP server), or search GitHub manually for repositories containing SKILL.md files.
+- Verify tool availability with `bash scripts/skill-dl --where`. The script is bundled — no install required — but it depends on `bash`, `git`, `curl`, and `npx`. If `npx` is missing, install Node.js, or fall back to the `skills-as-context-search-skills` / `skills-as-context-get-skill-details` MCP tools, or a manual GitHub `filename:SKILL.md` search.
 - Use `bash scripts/skill-dl search` with 3–20 space-separated keywords to discover candidates: `bash scripts/skill-dl search mcp server typescript sdk --top 20`. It outputs a prioritized markdown table to stdout.
 - Use `bash scripts/skill-dl` to download selected candidates, or run `bash scripts/skill-research.sh "keyword1,keyword2,keyword3"` for end-to-end parallel discovery and download in one command.
 - See `references/remote-sources.md` for more `skill-dl` usage patterns and download options.
@@ -179,7 +195,7 @@ Before drafting, write down what success looks like:
 | add negative triggers when scope is broad | let the skill fire on every tangentially related query |
 | use validation scripts for deterministic checks | rely on prose like "validate properly" |
 | read each downloaded skill's SKILL.md fully, tree its references/, and read the 2–3 most relevant reference files | skim titles and match counts, then fabricate a comparison from memory |
-| verify tool prerequisites before using them (`bash scripts/skill-dl --where` or `skill-dl --version`) | assume tools are installed because the skill mentions them |
+| verify tool prerequisites before using them (`bash scripts/skill-dl --where` plus `command -v npx`) | assume tools are installed because the skill mentions them |
 | show intermediate artifacts at the step that produces them | batch all output to the end or leave output location ambiguous |
 | distinguish creation vs. revision paths in testing | write test instructions that only work for one path |
 | for discipline skills, run RED baseline and capture rationalizations verbatim | guess which excuses agents might invent |

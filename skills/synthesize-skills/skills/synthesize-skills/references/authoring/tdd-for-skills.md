@@ -159,7 +159,7 @@ Signs you are *not* done:
 - Agent follows the letter but violates the spirit.
 - Agent asks permission but argues strongly for violation.
 
-## Mapping to the build-skills output contract
+## Mapping to the synthesize-skills output contract
 
 If the skill you are building enforces discipline, add these artifacts to the output shown in conversation:
 

@@ -10,21 +10,17 @@ Before starting, verify `skill-dl` is available:
 
 ```bash
 bash scripts/skill-dl --where
-# or, if installed globally:
-skill-dl --version
 ```
 
-If missing, install it:
+The script is bundled — no install step. It depends on `bash`, `git`, `curl`,
+and `npx` (Node.js). To layer Google-indexed `playbooks.com` results on top of
+the default `npx skills find` channel, optionally export `SERPER_API_KEY`
+before running search:
 
 ```bash
-sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
-```
-
-After installation, use it like:
-
-```bash
-skill-dl search typescript mcp server --top 20
-skill-dl urls.txt -o ./research-corpus --no-auto-category -f
+export SERPER_API_KEY=your_serper_key   # optional
+bash scripts/skill-dl search typescript mcp server --top 20
+bash scripts/skill-dl urls.txt -o ./research-corpus --no-auto-category -f
 ```
 
 Also confirm you have classified the skill type (see SKILL.md step 2) before beginning research.

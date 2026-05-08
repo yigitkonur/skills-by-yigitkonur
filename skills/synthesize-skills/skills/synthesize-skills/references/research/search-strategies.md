@@ -2,26 +2,21 @@
 
 Read this file before the first `skill-dl search` in a session. Keyword choice is the main quality lever.
 
-Before the first search, verify the CLI is available:
+Before the first search, verify the bundled CLI resolves and that `npx` is on PATH:
 
 ```bash
 bash scripts/skill-dl --where
+command -v npx
 ```
 
-If `skill-dl` is not installed globally, install it with:
+The script is bundled — no install step. Search uses `npx skills find` as the
+primary channel and optionally layers Serper Google results when
+`SERPER_API_KEY` is exported. Example:
 
 ```bash
-sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
+export SERPER_API_KEY=...   # optional
+bash scripts/skill-dl search typescript mcp server --top 20
 ```
-
-After installation, use it like:
-
-```bash
-skill-dl search typescript mcp server --top 20
-```
-
-From inside the skill directory, `bash scripts/skill-dl ...` uses the same
-interface and can fall back to the bundled macOS arm64 binary.
 
 ## Keyword formulation rules
 

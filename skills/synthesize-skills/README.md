@@ -1,4 +1,4 @@
-# build-skills
+# synthesize-skills
 
 Creating or substantially revising a Claude skill and need workspace-first evidence, remote comparison, and repo-fit synthesis before writing SKILL.md.
 
@@ -9,7 +9,7 @@ Creating or substantially revising a Claude skill and need workspace-first evide
 Install this skill individually:
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-skills
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/synthesize-skills
 ```
 
 Or install the full pack:
@@ -20,32 +20,31 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 
 ## Remote Skill Search Helper
 
-`build-skills` uses `skill-dl` for remote discovery and download during the
-full research path.
-
-Install `skill-dl` globally:
-
-```bash
-sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
-```
-
-Use it after installation:
+`synthesize-skills` ships a **pure-bash** `skill-dl` for remote discovery and
+download during the full research path. No install step, no proxy keys —
+just `bash`, `git`, `curl`, and `npx` (Node.js).
 
 ```bash
-skill-dl --version
-skill-dl search typescript mcp server --top 20
-skill-dl urls.txt -o ./research-corpus --no-auto-category -f
-```
-
-The skill also bundles helper scripts under
-`skills/build-skills/skills/build-skills/scripts/`:
-
-```bash
-cd skills/build-skills/skills/build-skills
+cd skills/synthesize-skills/skills/synthesize-skills
 bash scripts/skill-dl --help
+bash scripts/skill-dl search typescript mcp server --top 20
+bash scripts/skill-dl urls.txt -o ./research-corpus --no-auto-category -f
 bash scripts/skill-research.sh --help
 ```
 
-On macOS Apple Silicon, `bash scripts/skill-dl ...` can fall back to the
-bundled `scripts/skill-dl-darwin-arm64` binary when `skill-dl` is not already
-installed in `PATH`.
+### Search channels
+
+- **Primary** — `npx skills find <kw>` (no API key, covers the `skills.sh`
+  registry).
+- **Optional** — Serper Google API. Set `SERPER_API_KEY` to layer
+  `playbooks.com` results on top:
+
+  ```bash
+  export SERPER_API_KEY=your_serper_key
+  bash scripts/skill-dl search typescript mcp server --top 20
+  ```
+
+  Get a key at https://serper.dev. Without it, search runs npx-only and
+  still works.
+
+Scrapedo is **not used** and not required.

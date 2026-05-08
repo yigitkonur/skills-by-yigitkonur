@@ -1,45 +1,24 @@
 #!/usr/bin/env bash
 
 # ============================================================================
-# USAGE
+# skill-research.sh — Skill discovery, download, and corpus inspection
 # ============================================================================
-# This script automates the research phase of skill building.
+# Drives the bundled pure-bash scripts/skill-dl through the full research
+# phase: discovery → download → corpus inspection. No install step.
 #
-# Prerequisites:
-#   - Use bash scripts/skill-dl --where to resolve the CLI
-#   - If skill-dl is missing globally, install it with:
-#       sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
-#   - If installation is not possible, see references/remote-sources.md for alternatives
-#
-# Basic usage:
-#   bash scripts/skill-research.sh "keyword1,keyword2,keyword3" [output-dir] [max-parallel]
+# Usage:
+#   bash scripts/skill-research.sh "<kw1>,<kw2>,<kw3>[,...]" [output-dir] [max-parallel]
 #
 # Examples:
 #   bash scripts/skill-research.sh "typescript,mcp,server"
 #   bash scripts/skill-research.sh "react,testing,components,hooks" ./corpus
 #   bash scripts/skill-research.sh "python,fastapi,authentication" ./corpus 6
 #
-# What it does:
-#   1. Searches for skills matching your keywords using skill-dl
-#   2. Downloads the top candidates in parallel
-#   3. Outputs a summary of what was found
+# Discovery channels (handled by scripts/skill-dl):
+#   - Primary: `npx skills find <kw>` (no API key)
+#   - Optional: Serper API if SERPER_API_KEY is exported
 #
-# Output:
-#   Downloaded skills are saved to the output directory.
-#   Review them using the quality assessment from source-patterns.md.
-# ============================================================================
-# skill-research.sh — Skill discovery, download, and corpus inspection
-# Usage: bash scripts/skill-research.sh "<keyword1>,<keyword2>,<keyword3>[,...]" [output-dir] [max-parallel]
-#
-# Example:
-#   bash scripts/skill-research.sh "agent browser,headless automation,browser testing" ./corpus 6
-#   bash scripts/skill-research.sh "typescript,type safety,strict mode,ts config" ./corpus
-#
-# Discovery: uses `skill-dl search` (outputs a prioritized markdown table to stdout)
-# Download:  pipes discovered URLs into skill-dl with repo-level parallelism
-# Inspect:   trees the corpus and shows per-skill file counts after download
-#
-# Requires: bash scripts/skill-dl ... or a global skill-dl install
+# Dependencies: bash, git, curl, npx (Node.js).
 
 set -euo pipefail
 
@@ -50,7 +29,7 @@ show_help() {
   cat <<'EOF'
 Usage: bash scripts/skill-research.sh "<keyword1>,<keyword2>,<keyword3>[,...]" [output-dir] [max-parallel]
 
-Discover, download, and inspect skills for the build-skills research phase.
+Discover, download, and inspect skills for the synthesize-skills research phase.
 
 Arguments:
   "<keywords>"    Comma-separated keywords. Minimum 3, maximum 20.
@@ -63,8 +42,9 @@ Examples:
   bash scripts/skill-research.sh "python,fastapi,authentication" ./corpus 6
 
 Prerequisites:
-  bash scripts/skill-dl --where
-  sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
+  bash scripts/skill-dl --where     # bundled, no install required
+  command -v npx                    # required for npx skills find
+  export SERPER_API_KEY=...         # optional, layered Google search
 EOF
 }
 
@@ -107,13 +87,18 @@ echo "Output:   ${OUTPUT_DIR}" >&2
 echo "Parallel: ${MAX_PARALLEL}" >&2
 echo "" >&2
 
-# Check skill-dl is available through the wrapper
+# Check the bundled skill-dl resolves and that npx is available.
 if ! bash "${SKILL_DL_WRAPPER}" --where >/dev/null; then
-  echo "ERROR: skill-dl is not available." >&2
-  echo "Install globally with:" >&2
-  echo "  sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash" >&2
-  echo "Or, on macOS arm64, verify the bundled scripts/skill-dl-darwin-arm64 binary exists and retry via bash scripts/skill-dl --where." >&2
+  echo "ERROR: bundled scripts/skill-dl is missing or not executable." >&2
+  echo "Expected at: ${SKILL_DL_WRAPPER}" >&2
   exit 1
+fi
+if ! command -v npx >/dev/null 2>&1; then
+  echo "WARNING: npx not found. The primary search channel ('npx skills find') will be skipped." >&2
+  if [[ -z "${SERPER_API_KEY:-}" ]]; then
+    echo "         No fallback channel either — set SERPER_API_KEY or install Node.js." >&2
+    exit 1
+  fi
 fi
 
 # --- Phase 1: Discovery via skill-dl search ---

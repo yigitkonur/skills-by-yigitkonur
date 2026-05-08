@@ -63,7 +63,7 @@ The `name` in frontmatter usually matches the directory name. When it differs, t
 
 ```yaml
 ---
-name: build-skills          # This becomes /build-skills
+name: synthesize-skills          # This becomes /synthesize-skills
 description: Use skill if...
 ---
 ```
@@ -71,7 +71,7 @@ description: Use skill if...
 ### When name ≠ directory name
 
 Acceptable when:
-- The directory name is scoped (e.g., `skills/build-skills/` → name: `build-skills`)
+- The directory name is scoped (e.g., `skills/synthesize-skills/` → name: `synthesize-skills`)
 - The repo organizes skills under a prefix the skill shouldn't inherit
 
 Never:

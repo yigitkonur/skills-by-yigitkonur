@@ -83,17 +83,17 @@ The primary discovery platform for Claude skills.
 Users can install skills directly from GitHub:
 
 ```bash
-# Install skill-dl first
-sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
-skill-dl --version
+# The bundled scripts/skill-dl is pure bash — no install. Run from the
+# skill directory after cloning the host repo:
+bash scripts/skill-dl --version
 
-# Using skill-dl CLI
-skill-dl https://playbooks.com/skills/owner/repo/skill-name -o ~/.claude/skills/
+# Download a skill into ~/.claude/skills/
+bash scripts/skill-dl https://playbooks.com/skills/owner/repo/skill-name -o ~/.claude/skills/
 
-# Discover candidate skills before downloading
-skill-dl search skill creation research comparison --top 20
+# Discover candidate skills before downloading (npx-only by default)
+bash scripts/skill-dl search skill creation research comparison --top 20
 
-# Using git clone
+# Or git clone directly
 git clone https://github.com/owner/repo.git
 cp -r repo/skills/my-skill ~/.claude/skills/
 

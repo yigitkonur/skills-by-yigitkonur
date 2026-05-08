@@ -77,15 +77,15 @@ For each skill worth noting, capture:
 - **Avoid:** [specific patterns to reject, with reasoning]
 ```
 
-## Preparing notes for build-skills
+## Preparing notes for synthesize-skills
 
-If the corpus will feed into a `build-skills` workflow:
+If the corpus will feed into a `synthesize-skills` workflow:
 
 1. Complete the note-taking template for every Tier 1 skill
 2. Identify 2-3 skills that are closest to your target design
 3. Note specific file paths for patterns you want to inherit
 4. Flag quality violations as "avoid" signals
-5. Show per-skill notes and quality-tier assessments inline in conversation output — this is the required evidence trail for `build-skills`
+5. Show per-skill notes and quality-tier assessments inline in conversation output — this is the required evidence trail for `synthesize-skills`
 
 ## Batch quality check
 

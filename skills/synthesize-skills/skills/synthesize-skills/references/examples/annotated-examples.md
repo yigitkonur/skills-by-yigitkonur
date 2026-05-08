@@ -119,7 +119,7 @@ This example shows a skill that guides a multi-step workflow rather than documen
 ### Structure
 
 ```
-build-skills/
+synthesize-skills/
 ├── SKILL.md                              # ~300 lines
 └── references/
     ├── authoring/
@@ -372,5 +372,5 @@ Not every skill needs MCP. Category 1 skills add value through embedded expertis
 | Micro-skill | 50-120 | 1-3 | 2-4 |
 | Standard skill | 150-250 | 4-8 | 5-10 |
 | Comprehensive skill | 250-400 | 10-40 | 12-45 |
-| This skill (build-skills) | ~310 | 27 | 29 |
+| This skill (synthesize-skills) | ~310 | 27 | 29 |
 | Model skill (copilot-sdk) | ~340 | 40+ | 45+ |

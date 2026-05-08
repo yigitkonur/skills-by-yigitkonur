@@ -2,7 +2,7 @@
 
 Anti-patterns in *how* a skill gets built, separated from anti-patterns in the skill's content itself. See `anti-patterns.md` for frontmatter, structure, content, and lifecycle anti-patterns.
 
-These anti-patterns show up repeatedly when operators follow the build-skills workflow too loosely or make assumptions the skill does not support.
+These anti-patterns show up repeatedly when operators follow the synthesize-skills workflow too loosely or make assumptions the skill does not support.
 
 ### AP-25: Reference overload
 
@@ -26,11 +26,11 @@ These anti-patterns show up repeatedly when operators follow the build-skills wo
 
 ### AP-27: Tool assumption
 
-**Pattern:** Assuming `skill-dl` or other tools are installed because the skill mentions them.
+**Pattern:** Assuming external tools are installed because the skill mentions them.
 
 **Why it fails:** First command fails, requiring backtracking and context recovery. Often leads to the agent fabricating results instead of using fallback methods.
 
-**Fix:** Run `bash scripts/skill-dl --where` or `skill-dl --version` before first use. If `skill-dl` is missing globally, install it following the instructions in the cli-skill-downloader repo README. Have the fallback chain ready: skill-dl > MCP tools > manual GitHub search.
+**Fix:** Run `bash scripts/skill-dl --where` and `command -v npx` before the first search. The script itself is bundled (no install), but the primary search channel needs `npx`. Fallback chain: bundled skill-dl > MCP tools > manual GitHub search.
 
 **Detection:** A tool command fails with "command not found" during execution.
 

@@ -120,7 +120,7 @@ Liking language undermines honest feedback culture, which is the opposite of wha
 
 Do not try to stack all seven. Two or three principles working together beat seven watered-down ones.
 
-## Application to the build-skills output
+## Application to the synthesize-skills output
 
 When drafting a discipline skill in Step 7 (synthesis):
 

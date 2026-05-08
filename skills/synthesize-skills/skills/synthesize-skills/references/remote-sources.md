@@ -4,19 +4,26 @@
 
 ### skill-dl search
 
-`skill-dl search` is the primary discovery method. It queries Playbooks and returns a prioritized markdown table directly to stdout.
+`skill-dl search` is the primary discovery method. It is bundled at
+`scripts/skill-dl` as a **pure-bash** script (no install step) and emits a
+prioritized markdown table to stdout.
 
-Within this skill, prefer `bash scripts/skill-dl ...` so the same command works
-with either a global `skill-dl` install or the bundled macOS arm64 fallback.
-After a global install, the underlying CLI is the same.
+Discovery channels:
 
-Tool home: https://github.com/yigitkonur/cli-skill-downloader
+1. **Primary** — `npx -y skills find <keyword>` per keyword. No API key
+   required; covers the `skills.sh` registry.
+2. **Optional** — Serper Google API. If `SERPER_API_KEY` is exported,
+   `playbooks.com` hits are layered on top of the npx results, broadening
+   recall. Without the key, search still works (npx-only).
+
+Scrapedo is not used and not required.
 
 ```bash
 # Basic search — pass 3–20 keywords
 bash scripts/skill-dl search "agent browser" "headless automation" "browser testing"
 
-# Broader coverage — more keywords surface different result clusters
+# Layer Serper on top (optional)
+export SERPER_API_KEY=your_serper_key
 bash scripts/skill-dl search "typescript" "type safety" "strict mode" "ts config" "compilation"
 
 # Minimum required: at least 3 keywords
@@ -43,56 +50,32 @@ For each candidate, capture: skill name, owner/repo, detail URL, keywords matche
 
 ## Prerequisites
 
-Before using any remote source tools, verify availability:
-
 ```bash
-# Preferred inside this skill
+# The bundled script is the canonical entry point — no install needed.
 bash scripts/skill-dl --where
 
-# Global install check
-skill-dl --version 2>/dev/null && echo "skill-dl ready" || echo "NOT AVAILABLE"
-
-# MCP fallback
-# skills-as-context-search-skills — available if skills.sh MCP server is configured
-# skills-as-context-get-skill-details — available if skills.sh MCP server is configured
+# Required commands: bash, git, curl, npx (Node.js).
+for cmd in bash git curl npx; do command -v "$cmd" >/dev/null || echo "MISSING: $cmd"; done
 ```
 
-**Fallback chain:**
-1. `bash scripts/skill-dl ...` or `skill-dl` (preferred) — CLI tool for searching and downloading skills
-2. `skills-as-context-search-skills` + `skills-as-context-get-skill-details` (MCP) — requires skills.sh MCP server
-3. Manual GitHub search — search for repositories containing SKILL.md files
+**Fallback chain (when `npx` is unavailable):**
+1. `bash scripts/skill-dl ...` (default) — pure-bash, requires `npx` for search.
+2. `skills-as-context-search-skills` + `skills-as-context-get-skill-details` (MCP) — requires the skills.sh MCP server.
+3. Manual GitHub search — `filename:SKILL.md` plus topic keywords.
 
 Use the first available option. Document which method you used in your research summary.
 
 
 ## Downloading with skill-dl
 
-`skill-dl` is the CLI tool for batch-downloading skills from Playbooks URLs.
-
-### Install / verify
+`skill-dl` batch-downloads skills via `git clone --depth 1` against
+`github.com/<owner>/<repo>`. URLs may be playbooks.com, skills.sh, or a raw
+`<owner>/<repo>/<skill>` triple.
 
 ```bash
-# Install globally
-sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh | sudo bash
-
-# Verify the global install
-skill-dl --version
-
-# Or use the bundled wrapper from the skill root
+# Pure-bash, bundled. No install. No proxy keys.
 bash scripts/skill-dl --help
 bash scripts/skill-dl --where
-```
-
-After installation, use `skill-dl` directly:
-
-```bash
-skill-dl search typescript mcp server --top 20
-skill-dl urls.txt -o ./corpus --no-auto-category -f
-```
-
-From inside the skill directory, the wrapper uses the same interface:
-
-```bash
 bash scripts/skill-dl search typescript mcp server --top 20
 bash scripts/skill-dl urls.txt -o ./corpus --no-auto-category -f
 ```
@@ -166,9 +149,10 @@ Fallback: full-repo search for SKILL.md with matching parent dir name, then root
 
 | Problem | Fix |
 |---|---|
-| `skill-dl: command not found` | Install globally: `sudo -v ; curl -fsSL https://raw.githubusercontent.com/yigitkonur/cli-skill-downloader/main/install.sh \| sudo bash`, then verify with `skill-dl --version`. |
-| `[ERR] Could not clone` | Repo is private, renamed, or deleted. Check URL manually. |
-| `[ERR] Not found in repo` | Skill name doesn't match any path in repo. Run with `-v` to see available skills. The skill may use a non-standard directory layout. |
+| `bash: scripts/skill-dl: No such file` | Run from inside `skills/synthesize-skills/skills/synthesize-skills/`. The script is bundled at that path; nothing needs installing. |
+| Search returns 0 results | Check `npx` is installed (`command -v npx`). Without `npx`, search has no channels unless `SERPER_API_KEY` is exported. |
+| `[ERR] could not clone` | Repo is private, renamed, or deleted. Check the URL manually. |
+| `[ERR] not found in repo` | Skill name doesn't match any path in the repo. Run with `-v` to see resolved paths; the skill may use a non-standard layout. |
 | Slow on many repos | Use parallel download (Option A above). |
 | Need to retry failures | Pipe failed URLs from summary into a new file, re-run. |
 
@@ -231,5 +215,7 @@ Skills failing 3+ checks are Tier 3 — use only as anti-pattern examples.
 
 | Variable | Purpose | Notes |
 |---|---|---|
-| `SERPER_API_KEY` | Google search via Serper | Built-in default included; override for higher quota |
-| `SCRAPEDO_API_KEY` | Proxy fallback for scraping | Built-in default included; override if rate-limited |
+| `SERPER_API_KEY` | Layered Serper Google channel for `playbooks.com` hits | **Optional.** Without it, search runs npx-only and still works. Get one at https://serper.dev. |
+
+Scrapedo is no longer used. The previous proxy fallback has been removed in
+favor of direct curl + the `npx skills find` channel.
