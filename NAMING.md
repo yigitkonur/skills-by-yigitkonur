@@ -14,9 +14,9 @@ Anchor on this set of plain-English intent verbs:
 
 | Verb | Use when | Example |
 |---|---|---|
-| `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-mcp-server-sdk-v1` |
+| `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-macos-app`, `build-mcp-server-sdk-v1` |
 | `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
-| `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture`, `apply-macos-hig`, `apply-liquid-glass` |
+| `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture` |
 | `ask` | Hand off / request something | `ask-review` |
 | `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
@@ -29,7 +29,7 @@ Anchor on this set of plain-English intent verbs:
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
 | `develop` | Apply language-level patterns and standards | `develop-typescript` |
 | `publish` | Release to a registry | `publish-npm-package` |
-| `test` | Verify with pass/fail | `test-by-mcpc-cli`, `test-macos-snapshots` |
+| `test` | Verify with pass/fail | `test-by-mcpc-cli` |
 | `use` | Drive a CLI utility for ongoing operations | `use-railway` |
 
 If none of these fit, propose a new verb in a PR alongside the new skill.
@@ -86,16 +86,14 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (47)
+## Current Canonical Skill Names (43)
 
 - `apply-clean-architecture`
-- `apply-liquid-glass`
-- `apply-macos-hig`
 - `ask-review`
 - `build-chrome-extension`
-- `build-convex-clerk-swiftui`
 - `build-copilot-sdk-app`
 - `build-langchain-ts-app`
+- `build-macos-app`
 - `build-mcp-server-sdk-v1`
 - `build-mcp-server-sdk-v2`
 - `build-mcp-use-agent`
@@ -104,6 +102,7 @@ When renaming a published skill:
 - `build-raycast-script-command`
 - `build-skills`
 - `check-completion`
+- `convert-mcp-server-sdk-v1-to-v2`
 - `convert-url-to-nextjs`
 - `develop-typescript`
 - `do-debug`
@@ -129,8 +128,6 @@ When renaming a published skill:
 - `run-playwright`
 - `run-repo-cleanup`
 - `run-research`
-- `swift-quality-hooks`
 - `test-by-mcpc-cli`
-- `test-macos-snapshots`
 - `use-linear-cli`
 - `use-railway`
