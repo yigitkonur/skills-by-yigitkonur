@@ -157,7 +157,7 @@ See `references/output-format.md` for full formatting rules.
 9. `Ambiguous` — resolve the ambiguity (ask or pick with justification) then execute
 10. `Duplicate` — verify the canonical version is `Implemented`; mark the duplicate as `Superseded` with the canonical reference
 11. `Superseded` — verify replacement is `Implemented`; if not, recurse on the replacement
-12. `Deferred to Human` / `Deprioritized` / `Cancelled` — document and leave as terminal
+12. `Deferred to Human` / `Deprioritized` / `Cancelled` / `Out of Scope` — document and leave as terminal
 ```
 
 See `references/remediation-workflow.md` for the full order + one-at-a-time discipline.
@@ -175,17 +175,18 @@ After remediation, produce the completion report — the audit table with every 
 ```markdown
 ## Completion Report
 
-Started: <N tasks audited, M needing remediation>
-Finished: <X now Implemented, Y unresolvable (documented), Z out of scope>
+Started: <N tasks audited, M rows needing remediation at Phase 1>
+Status totals: audited tasks=<N>; Phase 1 rows needing remediation=<M>; rows remediated to `Implemented`=<X>; terminal non-`Implemented` rows=<Y>; non-terminal rows remaining=0
 
 | # | Task | Started | Ended | Evidence |
 |---|------|---------|-------|----------|
 | 1 | <task> | `Implemented but Broken` | `Implemented` | <test output showing green> |
 | 2 | <task> | `Blocked` | `Blocked — unresolvable` | <next step documented> |
+| 3 | <task> | `Deferred to Human` | `Deferred to Human` | <named open question + owner> |
 | … | … | … | … | … |
 ```
 
-Every row ends at a terminal status: `Implemented`, or explicit-unresolvable-with-next-step.
+Every row ends at a terminal status: `Implemented`, `Deferred to Human`, `Deprioritized`, `Cancelled`, `Out of Scope`, `Superseded` with the replacement verified `Implemented`, or `Blocked — unresolvable` with a concrete next step.
 
 ## Output contract
 
@@ -271,5 +272,6 @@ Before declaring done, confirm:
 - [ ] every `Implemented` row cites specific evidence (command output, commit SHA, file state, observable behavior)
 - [ ] blockers documented with concrete next steps; remediation did not halt on first blocker
 - [ ] completion report shows every row at a terminal status
+- [ ] completion report status totals show non-terminal rows remaining = 0
 - [ ] zero forbidden phrases in the report (grep-checked)
 - [ ] rationalizations table consulted before declaring "everything looks done"

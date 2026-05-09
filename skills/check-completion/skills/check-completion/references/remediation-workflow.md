@@ -194,7 +194,7 @@ This prevents scope creep from being invisible. The audit table grows as remedia
 Remediation is complete when:
 
 - Every row in the audit table has a terminal status
-- Every terminal status with a non-Implemented outcome (Blocked-unresolvable, Deferred, Deprioritized, Cancelled, Out of Scope) has concrete documentation
+- Every terminal status with a non-`Implemented` outcome (`Deferred to Human`, `Deprioritized`, `Cancelled`, `Out of Scope`, `Superseded` with replacement verified, `Blocked — unresolvable`) has concrete documentation
 
 If you are tempted to declare Phase 2 complete with rows still at non-terminal statuses, re-read `rationalizations.md`. The answer is: either finish the row, or document it as unresolvable with a concrete next step.
 
