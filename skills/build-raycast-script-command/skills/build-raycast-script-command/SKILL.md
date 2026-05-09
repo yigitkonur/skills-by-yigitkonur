@@ -5,7 +5,7 @@ description: Use skill if you are building or repairing Raycast Script Commands 
 
 # Build Raycast Script Command
 
-Build Raycast Script Commands with correct metadata, mode selection, argument wiring, and runtime behavior.
+Build Python or Bash Raycast Script Commands with correct metadata, output mode, argument wiring, discovery behavior, and runtime validation.
 
 ## Trigger boundary
 
@@ -21,13 +21,14 @@ Use this skill when the task involves:
 
 Do NOT use this skill for:
 
-- Full Raycast Extensions API work with `@raycast/api`, React, List, Grid, Form, or Detail views
-- General shell scripting that is not intended for Raycast
-- General Python scripting that has no Raycast integration
+- Raycast Extensions API work: `@raycast/api`, React views, List/Grid/Form/Detail, `ray build`, `ray develop`, or extension-style `package.json` scaffolding
+- Chrome extensions; use `build-chrome-extension`
+- Browser automation or test flows; use `run-playwright` or `run-agent-browser` when available
+- General Python or shell scripts with no Raycast Script Command integration
 
-If the project already imports `@raycast/api` or uses `ray build` / `ray develop`, stop and use a Raycast Extensions skill instead.
+If the project is a Raycast Extension, do not use this skill; use project-specific Raycast Extension guidance if available.
 
-## Behavioral flow
+## Workflow
 
 ### Step 1: Detect what exists
 
@@ -40,74 +41,28 @@ Look for:
 - a request for a greenfield command vs a repair task
 - whether the command is Python-first, Bash-first, or undecided
 
-### Step 2: Choose the branch
+### Step 2: Route by task
 
-Use this decision tree:
+Read only the branch-relevant references first.
 
-```text
-User request
-├─ "Create a new command from scratch"
-│  ├─ Python is the best fit or unspecified
-│  │  → Read references/foundations/workflow.md
-│  │  → Read references/python/file-anatomy.md
-│  │  → Read references/metadata/mode-selection.md
-│  │  → Read references/python/python-recipes.md
-│  └─ Bash is clearly the best fit
-│     → Read references/foundations/workflow.md
-│     → Read references/bash/bash-script-patterns.md
-│     → Read references/metadata/mode-selection.md
-│     → Read references/bash/bash-recipes.md
-│
-├─ "Convert an existing script into a Raycast command"
-│  → Read references/foundations/workflow.md
-│  → Read references/metadata/required-fields.md
-│  → Read references/foundations/dependencies-and-portability.md
-│  → Read references/troubleshooting/discovery-checklist.md
-│
-├─ "Choose or change the output mode"
-│  → Read references/metadata/mode-selection.md
-│  → Read references/metadata/inline-refresh-and-errors.md
-│
-├─ "Add or fix arguments"
-│  → Read references/metadata/typed-arguments.md
-│  → Read references/python/implementation-patterns.md or references/bash/bash-script-patterns.md
-│
-├─ "Why doesn't this command show up in Raycast?"
-│  → Read references/troubleshooting/discovery-checklist.md
-│  → Read references/metadata/required-fields.md
-│
-├─ "Why does runtime behavior/output feel wrong?"
-│  → Read references/troubleshooting/runtime-and-output-issues.md
-│  → Read references/metadata/mode-selection.md
-│  → Read references/metadata/inline-refresh-and-errors.md
-│
-├─ "Should this be Python or Bash?"
-│  → Read references/foundations/language-selection.md
-│
-└─ "Make this repo-ready or shareable"
-   → Read references/foundations/community-repo-conventions.md
-   → Read references/foundations/dependencies-and-portability.md
-```
+| Task | Read |
+|---|---|
+| New Python command | `references/foundations/workflow.md`, `references/python/file-anatomy.md`, `references/python/implementation-patterns.md`, `references/metadata/mode-selection.md`, `references/python/python-recipes.md` |
+| New Bash command | `references/foundations/workflow.md`, `references/bash/bash-script-patterns.md`, `references/metadata/mode-selection.md`, `references/bash/bash-recipes.md` |
+| Convert existing script | `references/foundations/workflow.md`, `references/metadata/required-fields.md`, `references/foundations/dependencies-and-portability.md`, `references/troubleshooting/discovery-checklist.md` |
+| Choose or fix mode | `references/metadata/mode-selection.md`, `references/metadata/inline-refresh-and-errors.md`, `references/troubleshooting/runtime-and-output-issues.md` |
+| Add or fix arguments | `references/metadata/typed-arguments.md`, plus `references/python/implementation-patterns.md` or `references/bash/bash-script-patterns.md` |
+| Command does not appear | `references/troubleshooting/discovery-checklist.md`, `references/metadata/required-fields.md` |
+| Runtime/output is wrong | `references/troubleshooting/runtime-and-output-issues.md`, `references/metadata/mode-selection.md`, `references/metadata/inline-refresh-and-errors.md` |
+| Choose Python vs Bash | `references/foundations/language-selection.md` |
+| Make it shareable | `references/foundations/community-repo-conventions.md`, `references/foundations/dependencies-and-portability.md` |
 
-### Step 3: Implement directly
+### Step 3: Build or repair
 
-Once the branch is clear:
-
-1. Read only the routed references for that branch.
-2. Build or edit the Script Command directly.
-3. Use the templates in `assets/templates/` only as starting points, not rigid output.
-4. Keep the implementation minimal and aligned with Raycast's documented behavior.
-
-### Step 4: Validate before stopping
-
-Always verify these:
-
-- required metadata exists
-- chosen `mode` matches the shape of output
-- `inline` commands include `refreshTime`
-- arguments match how the script reads positional inputs
-- failure paths print a human-readable final line and exit non-zero
-- dependency instructions exist when the command depends on extra tools or packages
+- Use `assets/templates/python-script-command.py` or `assets/templates/bash-script-command.sh` only as starting points.
+- Keep metadata directly below the shebang and use `# @raycast.*` for Python/Bash.
+- Add dependency notes and readable missing-dependency failures when the command needs extra tools or packages.
+- Keep failure paths user-readable: print a final useful line and exit non-zero.
 
 ## Core defaults
 
@@ -116,104 +71,6 @@ Always verify these:
 - Default to `fullOutput` if the result is meant to be read.
 - Default to `compact` or `silent` for single-line confirmations or actions.
 - Use `inline` only for dashboard-style, one-line status commands.
-
-## Key patterns
-
-### Pattern 1: minimal Python command
-
-```python
-#!/usr/bin/env python3
-
-# @raycast.schemaVersion 1
-# @raycast.title Example Python Command
-# @raycast.mode fullOutput
-# @raycast.packageName Examples
-
-print("Hello from Raycast")
-```
-
-### Pattern 2: safe optional arguments in Python
-
-```python
-import sys
-
-def arg(index: int, default: str = "") -> str:
-    return sys.argv[index] if len(sys.argv) > index else default
-
-query = arg(1)
-```
-
-### Pattern 3: clean failure path
-
-```python
-print("Missing API token")
-raise SystemExit(1)
-```
-
-### Pattern 4: minimal Bash command
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-# @raycast.schemaVersion 1
-# @raycast.title Example Bash Command
-# @raycast.mode compact
-# @raycast.packageName Examples
-
-echo "Done"
-```
-
-## Minimal reading sets
-
-### "Create a new Python Script Command"
-
-- `references/foundations/workflow.md`
-- `references/python/file-anatomy.md`
-- `references/python/implementation-patterns.md`
-- `references/metadata/mode-selection.md`
-- `references/python/python-recipes.md`
-
-### "Create a new Bash Script Command"
-
-- `references/foundations/workflow.md`
-- `references/bash/bash-script-patterns.md`
-- `references/metadata/mode-selection.md`
-- `references/bash/bash-recipes.md`
-
-### "Convert an existing script"
-
-- `references/foundations/workflow.md`
-- `references/metadata/required-fields.md`
-- `references/foundations/dependencies-and-portability.md`
-- `references/troubleshooting/discovery-checklist.md`
-
-### "Add arguments"
-
-- `references/metadata/typed-arguments.md`
-- `references/python/implementation-patterns.md`
-- `references/bash/bash-script-patterns.md`
-
-### "Fix inline/compact/silent/fullOutput behavior"
-
-- `references/metadata/mode-selection.md`
-- `references/metadata/inline-refresh-and-errors.md`
-- `references/troubleshooting/runtime-and-output-issues.md`
-
-### "Make it community-repo ready"
-
-- `references/foundations/community-repo-conventions.md`
-- `references/foundations/dependencies-and-portability.md`
-- `references/troubleshooting/discovery-checklist.md`
-
-## Templates
-
-When a user wants a quick scaffold, start from:
-
-- `assets/templates/python-script-command.py`
-- `assets/templates/bash-script-command.sh`
-
-Then adapt the template to the user's exact mode, arguments, and dependencies.
 
 ## Scripts
 
@@ -224,16 +81,15 @@ Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
 | `scripts/check-raycast-script-metadata.sh` | Validate shebang, required metadata, mode, inline refresh, and typed argument JSON. See `scripts/check-raycast-script-metadata.md`. | No |
 | `scripts/preview-script.sh` | Run a command and preview the Raycast stdout display contract for its mode. See `scripts/preview-script.md`. | No |
 
-## Common pitfalls
+## Validation flow
 
-| Pitfall | Fix |
-|---|---|
-| Using Extensions API concepts in a Script Command | Stop and switch skills; Script Commands are metadata plus normal script execution |
-| Choosing `compact` for multi-line output | Move to `fullOutput` |
-| Choosing `inline` without `refreshTime` | Add `refreshTime` or switch modes |
-| Reading optional args unsafely | Guard Python `sys.argv` and Bash positional params |
-| Leaving user-specific placeholders in a runnable file | Use `.template.` or fully configure the command |
-| Missing dependency instructions | Add top-of-file dependency notes and readable missing-dependency failures |
+When possible, validate the actual command file:
+
+1. Run `scripts/check-raycast-script-metadata.sh path/to/command.py` or `.sh`.
+2. Run `scripts/preview-script.sh path/to/command.py [args...]` or `.sh [args...]`.
+3. If metadata/discovery fails, read `references/troubleshooting/discovery-checklist.md`.
+4. If mode/output/failure behavior fails, read `references/troubleshooting/runtime-and-output-issues.md`.
+5. Report the exact verification rung reached. Do not treat "looks plausible" as a smoke test.
 
 ## Reference files
 
@@ -260,7 +116,8 @@ Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
 ## Guardrails
 
 - Do not invent metadata fields that are not verified in Raycast-owned sources.
-- Do not use Extensions API components or `@raycast/api` patterns in a Script Command.
+- Do not import Raycast Extensions API, AI extension, or Form argument schemas into Script Commands.
+- Do not add unsupported argument types such as `select` or `file`; Script Commands support `text`, `password`, and `dropdown`.
 - Do not choose `inline` without `refreshTime`.
 - Do not emit noisy multi-line progress output for `compact`, `silent`, or `inline`.
 - Do not read optional arguments unsafely; guard Python `sys.argv` access and shell `$2` / `$3` usage.
@@ -268,12 +125,15 @@ Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
 - Do not leave `.template.` in a filename unless the command intentionally requires user edits before use.
 - Do not bloat the response with generic shell or Python tutorials when the routed references already cover the needed pattern.
 
-## Final check
+## Output contract
 
-Before stopping, make sure the command would pass a practical smoke test:
+When finished, report:
 
-- visible metadata at the top
-- plausible mode
-- consistent argument count
-- readable success/failure output
-- no obvious mismatch between implementation language and task
+- command file path
+- selected mode and why it matches the output shape
+- metadata fields present
+- supported arguments and how they map to `$1..$3` or `sys.argv[1..3]`
+- dependencies and setup notes
+- validation run: metadata checker result and preview result
+- Raycast install/use instruction, including adding the script directory when relevant
+- verification rung reached
