@@ -23,15 +23,19 @@ const client = new CopilotClient(options?: CopilotClientOptions);
 | `autoStart` | `boolean` | `true` | Auto-start CLI on first use |
 | `autoRestart` | `boolean` | `true` | Auto-restart if CLI crashes |
 | `env` | `Record<string, string\|undefined>` | `process.env` | Environment for CLI process |
-| `githubToken` | `string` | — | GitHub token (passed as `COPILOT_SDK_AUTH_TOKEN` env var) |
-| `useLoggedInUser` | `boolean` | `true` (`false` when `githubToken` set) | Use stored OAuth/gh-cli tokens |
+| `gitHubToken` | `string` | — | GitHub token (passed as `COPILOT_SDK_AUTH_TOKEN` env var) |
+| `useLoggedInUser` | `boolean` | `true` (`false` when `gitHubToken` set) | Use stored OAuth/gh-cli tokens |
 | `onListModels` | `() => Promise<ModelInfo[]> \| ModelInfo[]` | — | Custom model listing (BYOK mode) |
 
 ### Mutual exclusion rules
 
 - `cliUrl` cannot be used with `useStdio: true` or `cliPath`
 - `isChildProcess` requires `useStdio` and cannot be used with `cliUrl`
-- `githubToken` and `useLoggedInUser` cannot be used with `cliUrl`
+- `gitHubToken` and `useLoggedInUser` cannot be used with `cliUrl`
+
+## CLI prerequisite
+
+The stable package depends on `@github/copilot` and defaults `cliPath` to the bundled CLI when no `cliUrl` is used. A global `copilot` binary is useful for interactive auth (`copilot login`) and for externally managed server workflows, but it is not always a separate installation prerequisite for stdio clients.
 
 ## Transport modes
 

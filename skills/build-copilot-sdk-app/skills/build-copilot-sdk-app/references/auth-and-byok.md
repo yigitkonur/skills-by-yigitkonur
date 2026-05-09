@@ -1,65 +1,65 @@
 # Authentication and BYOK
 
-## Authentication methods
+Check the installed package before copying auth code. As of the 2026-05-08 audit baseline, the npm `latest` package is `0.3.0`, `prerelease` is `1.0.0-beta.3`, and the TypeScript option is `gitHubToken` with a capital `H`. Some GitHub Docs pages still show `githubToken`; code must follow the installed `dist/types.d.ts`.
 
-| Method | Use Case | Copilot Subscription Required |
-|--------|----------|-------------------------------|
-| Signed-in user (default) | Interactive apps | Yes |
-| GitHub OAuth | Apps on behalf of users | Yes |
-| Environment variables | CI/CD, automation | Yes |
-| BYOK (Bring Your Own Key) | Own API keys | No |
+## Supported auth paths
 
-## Default: signed-in user
+| Method | Use case | Copilot subscription |
+|---|---|---|
+| Signed-in GitHub user | Local apps and development | Required |
+| OAuth GitHub App user token | Apps acting for users | Required |
+| Environment GitHub token | CI, containers, automation | Required |
+| BYOK provider credentials | Own OpenAI-compatible, Azure, Anthropic, or local model provider | Not required |
 
-User signs in with the current Copilot CLI command. SDK uses stored credentials automatically.
+Official docs also describe direct API token environment variables (`GITHUB_COPILOT_API_TOKEN` with `COPILOT_API_URL`) in the auth priority list. The current stable package exposes no constructor option for that path; do not build undocumented internal guidance around it unless the current package and docs for the chosen deployment path explicitly require it.
+
+## Default signed-in user
+
+The SDK uses stored Copilot CLI credentials when no explicit token or provider is configured:
+
+```typescript
+const client = new CopilotClient();
+```
+
+For interactive setup, authenticate with the Copilot CLI available to the project or globally:
 
 ```bash
+npx copilot login
+# or, when installed globally:
 copilot login
 ```
 
+The package includes bundled CLI support through `@github/copilot`, so a global `copilot` command is not automatically required for every app. External server and local interactive workflows still need a CLI process that is authenticated.
+
+Preflight with the SDK, not by parsing CLI output:
+
 ```typescript
-const client = new CopilotClient(); // no config needed
+const auth = await client.getAuthStatus();
+if (!auth.isAuthenticated) {
+  throw new Error("Authenticate with Copilot CLI or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN.");
+}
 ```
 
-For a machine-readable preflight, call `await client.getAuthStatus()` before `createSession()`.
+## OAuth GitHub App token
 
-## GitHub OAuth
-
-Pass user access token from OAuth flow:
+Use `gitHubToken`, not `githubToken`, in current TypeScript:
 
 ```typescript
 const client = new CopilotClient({
-  githubToken: userAccessToken, // gho_xxx or ghu_xxx
+  gitHubToken: userAccessToken,
   useLoggedInUser: false,
 });
 ```
 
-### Supported token types
+Supported token prefixes from GitHub Docs:
 
-| Prefix | Type | Supported |
-|--------|------|-----------|
-| `gho_` | OAuth user access tokens | Yes |
-| `ghu_` | GitHub App user access tokens | Yes |
-| `github_pat_` | Fine-grained PATs | Yes |
-| `ghp_` | Classic PATs (deprecated) | **No** |
+| Prefix | Token |
+|---|---|
+| `gho_` | OAuth user access token |
+| `ghu_` | GitHub App user access token |
+| `github_pat_` | Fine-grained personal access token |
 
-### OAuth callback handler
-
-```typescript
-async function handleOAuthCallback(code: string): Promise<string> {
-  const response = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      client_id: process.env.GITHUB_CLIENT_ID,
-      client_secret: process.env.GITHUB_CLIENT_SECRET,
-      code,
-    }),
-  });
-  const data = await response.json();
-  return data.access_token; // gho_xxx
-}
-```
+Classic `ghp_` PATs are not a supported path in the current GitHub Docs.
 
 ### Per-user client pattern
 
@@ -67,63 +67,110 @@ async function handleOAuthCallback(code: string): Promise<string> {
 const clients = new Map<string, CopilotClient>();
 
 function getClientForUser(userId: string, token: string): CopilotClient {
-  if (!clients.has(userId)) {
-    clients.set(userId, new CopilotClient({
-      githubToken: token,
-      useLoggedInUser: false,
-    }));
+  let client = clients.get(userId);
+  if (!client) {
+    client = new CopilotClient({ gitHubToken: token, useLoggedInUser: false });
+    clients.set(userId, client);
   }
-  return clients.get(userId)!;
+  return client;
 }
+```
+
+Session-level `gitHubToken` also exists in current types. Use it for multi-tenant sessions when the CLI process has one auth context but each session should use a different GitHub identity:
+
+```typescript
+await client.createSession({
+  gitHubToken: userAccessToken,
+  model: "gpt-5",
+  onPermissionRequest: approveAll,
+});
 ```
 
 ## Environment variables
 
-Priority order (checked automatically):
+GitHub Docs list this priority for environment tokens:
 
-1. `COPILOT_GITHUB_TOKEN` (recommended)
-2. `GH_TOKEN` (GitHub CLI compatible)
-3. `GITHUB_TOKEN` (GitHub Actions compatible)
+1. `COPILOT_GITHUB_TOKEN`
+2. `GH_TOKEN`
+3. `GITHUB_TOKEN`
 
-No code changes needed — SDK auto-detects.
+Set the variable before starting Node. Do not log token values.
 
-Set the environment variable before you start the Node.js process. This is the safest path for CI, containers, and other non-interactive runs.
+## Practical auth order
 
-### Practical auth order for app builders
+For implementation work, resolve auth in this order:
 
-1. Explicit `githubToken` in constructor
-2. Env var tokens (`COPILOT_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN`)
-3. Stored CLI credentials from `copilot login`
+1. BYOK `provider` plus `model`, when the app intentionally bypasses GitHub Copilot auth.
+2. Explicit `gitHubToken` in `CopilotClientOptions` or `SessionConfig`, when acting for a user.
+3. Environment token (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`).
+4. Stored CLI credentials from `copilot login` or equivalent project/global CLI auth.
 
-If you are writing app code, rely on the public flows above instead of undocumented internal auth environment variables.
+## BYOK requirements
 
-## BYOK (Bring Your Own Key)
+BYOK uses your provider credentials and does not require a GitHub Copilot subscription. Provider billing, quotas, model availability, and rate limits apply.
 
-Use your own API keys. No Copilot subscription required.
+Every BYOK session needs both:
 
-### ProviderConfig
+- `provider`: endpoint and credentials
+- `model`: the provider model or deployment name
+
+Current package README says the SDK throws if `provider` is set without `model`. Verify this against the selected runtime, but never omit `model`.
+
+```typescript
+const session = await client.createSession({
+  model: process.env.COPILOT_MODEL ?? "gpt-4.1",
+  provider: {
+    type: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    apiKey: process.env.OPENAI_API_KEY,
+  },
+  onPermissionRequest: approveAll,
+});
+```
+
+## ProviderConfig fields
+
+Stable `0.3.0` fields from `dist/types.d.ts`:
 
 ```typescript
 interface ProviderConfig {
-  type?: "openai" | "azure" | "anthropic";  // default "openai"
-  wireApi?: "completions" | "responses";     // default "completions"
-  baseUrl: string;                           // REQUIRED
+  type?: "openai" | "azure" | "anthropic";
+  wireApi?: "completions" | "responses";
+  baseUrl: string;
   apiKey?: string;
-  bearerToken?: string;                      // takes precedence over apiKey
-  azure?: {
-    apiVersion?: string;                     // default "2024-10-21"
-  };
+  bearerToken?: string;
+  azure?: { apiVersion?: string };
+  headers?: Record<string, string>;
 }
 ```
 
-### Wire API formats
+Prerelease `1.0.0-beta.3` also adds provider-level model mapping and token budget fields:
 
-- `"completions"` (default) — Chat Completions API (`/chat/completions`). Use for most models.
-- `"responses"` — Responses API. Use for GPT-5 series models.
+```typescript
+interface ProviderConfig {
+  modelId?: string;
+  wireModel?: string;
+  maxInputTokens?: number;
+}
+```
 
-### Provider examples
+Only use prerelease-only fields when the selected package version includes them.
 
-**OpenAI:**
+## Provider env vars
+
+| Provider path | Required env vars | Session `model` |
+|---|---|---|
+| OpenAI direct | `OPENAI_API_KEY` | OpenAI model ID, for example `gpt-4.1` |
+| Azure OpenAI native | `AZURE_OPENAI_KEY`, `AZURE_OPENAI_ENDPOINT`, optional `AZURE_OPENAI_API_VERSION` | Azure deployment name |
+| Azure AI Foundry OpenAI-compatible | `FOUNDRY_API_KEY`, `FOUNDRY_BASE_URL` | Foundry deployment/model name |
+| Anthropic | `ANTHROPIC_API_KEY` | Claude model ID |
+| Ollama | optional `OLLAMA_BASE_URL` | Local Ollama model name |
+| vLLM/LiteLLM/OpenAI-compatible | provider-specific key, `OPENAI_COMPAT_BASE_URL` | Provider model name |
+
+## Provider examples
+
+### OpenAI direct
+
 ```typescript
 provider: {
   type: "openai",
@@ -132,25 +179,40 @@ provider: {
 }
 ```
 
-**Azure OpenAI (native endpoint):**
+### Azure OpenAI native endpoint
+
+Use the GitHub Docs native Azure path when the endpoint is only the Azure resource host:
+
 ```typescript
 provider: {
   type: "azure",
-  baseUrl: "https://my-resource.openai.azure.com", // just the host
-  apiKey: process.env.AZURE_API_KEY,
+  baseUrl: process.env.AZURE_OPENAI_ENDPOINT!, // https://RESOURCE.openai.azure.com
+  apiKey: process.env.AZURE_OPENAI_KEY,
+  azure: {
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21",
+  },
 }
 ```
 
-**Azure AI Foundry (OpenAI-compatible):**
+For this path, do not append `/openai/v1`; the SDK handles native Azure paths.
+
+### Azure AI Foundry OpenAI-compatible endpoint
+
+Use the GitHub Docs OpenAI-compatible path when Azure gives an `/openai/v1/` endpoint:
+
 ```typescript
 provider: {
   type: "openai",
-  baseUrl: "https://your-resource.openai.azure.com/openai/v1/",
-  apiKey: process.env.AZURE_API_KEY,
+  baseUrl: process.env.FOUNDRY_BASE_URL!, // https://RESOURCE.openai.azure.com/openai/v1/
+  apiKey: process.env.FOUNDRY_API_KEY,
+  wireApi: "responses",
 }
 ```
 
-**Anthropic:**
+This is intentionally `type: "openai"` because the endpoint speaks the OpenAI-compatible API.
+
+### Anthropic
+
 ```typescript
 provider: {
   type: "anthropic",
@@ -159,49 +221,37 @@ provider: {
 }
 ```
 
-**Ollama (local, no key):**
+### Ollama
+
 ```typescript
 provider: {
   type: "openai",
-  baseUrl: "http://localhost:11434/v1",
+  baseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1",
 }
 ```
 
-**vLLM / LiteLLM:**
+### Static bearer token or custom headers
+
 ```typescript
 provider: {
   type: "openai",
-  baseUrl: "http://localhost:8000/v1",
-  apiKey: process.env.VLLM_API_KEY,
+  baseUrl: process.env.OPENAI_COMPAT_BASE_URL!,
+  bearerToken: process.env.PROVIDER_BEARER_TOKEN,
+  headers: { "X-Provider-Feature": "enabled" },
 }
 ```
 
-### BYOK requires `model`
+`bearerToken` takes precedence over `apiKey`.
 
-```typescript
-// WRONG — will error:
-await client.createSession({
-  provider: { type: "openai", baseUrl: "..." },
-  onPermissionRequest: approveAll,
-});
+## Custom model listing
 
-// CORRECT:
-await client.createSession({
-  model: "gpt-4",
-  provider: { type: "openai", baseUrl: "..." },
-  onPermissionRequest: approveAll,
-});
-```
-
-### Custom model listing
-
-Override `client.listModels()` for BYOK:
+For BYOK, provide `onListModels` when the CLI cannot discover your provider's models:
 
 ```typescript
 const client = new CopilotClient({
   onListModels: () => [{
     id: "my-model",
-    name: "My Custom Model",
+    name: "My Model",
     capabilities: {
       supports: { vision: false, reasoningEffort: false },
       limits: { max_context_window_tokens: 128000 },
@@ -210,66 +260,20 @@ const client = new CopilotClient({
 });
 ```
 
-Results are cached after first call.
+Results are cached after the first call.
 
-### BYOK limitations
+## BYOK limitations
 
-- Static API keys or bearer tokens only (no Entra ID / Managed Identity auto-refresh)
-- `bearerToken` is static — no automatic refresh for short-lived tokens
-- Rate limits are provider-specific
-- Usage tracked by your provider, not GitHub
-- Premium request quotas are not consumed
-
-## Auth status check
-
-```typescript
-const auth = await client.getAuthStatus();
-// {
-//   isAuthenticated: true,
-//   authType: "user" | "env" | "gh-cli" | "hmac" | "api-key" | "token",
-//   host: "github.com",
-//   login: "username",
-//   statusMessage: "Authenticated via user credentials"
-// }
-```
-
-### Headless preflight
-
-Use this pattern before your first `createSession()` in automation:
-
-```typescript
-const client = new CopilotClient();
-const auth = await client.getAuthStatus();
-
-if (!auth.isAuthenticated) {
-  throw new Error(
-    "Authenticate with `copilot login` or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN before starting the process."
-  );
-}
-```
-
-## Quota check
-
-```typescript
-const quota = await client.rpc.account.getQuota();
-// { quotaSnapshots: { "chat": { entitlementRequests, usedRequests, remainingPercentage, ... } } }
-```
+- Static API key or static bearer token only.
+- No automatic Managed Identity, Entra ID, OIDC, SAML, or service-principal refresh unless current docs and package types add a refresh mechanism.
+- Short-lived bearer tokens can expire mid-session; rotate in application code by creating new sessions with fresh credentials.
+- Provider billing, rate limits, model availability, and regional constraints apply.
+- BYOK usage is tracked by the provider, not GitHub, and does not consume Copilot premium request quotas.
+- Copilot SDK is public preview; do not claim production readiness beyond current GitHub statements.
 
 ## Steering notes
 
-> Common mistakes agents make with authentication and BYOK.
-
-- **Default auth (no config) works out of the box** if the user has the Copilot CLI installed and authenticated with `copilot login`. For a code-level preflight, call `await client.getAuthStatus()` before `createSession()`.
-- **For non-interactive runs, prefer env-var auth** (`COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN`) over waiting for the CLI to prompt for login.
-- **Use `client.getAuthStatus()` for automation checks**. The current public CLI auth surface is `copilot login` plus env-var tokens, so use the SDK call for a machine-readable preflight instead of shelling out to a separate auth-status command.
-- **BYOK requires BOTH `provider` and `model`** in `createSession`. Omitting `model` creates the session successfully but `sendAndWait` will fail with an unhelpful error. Always pair them:
-  ```typescript
-  const session = await client.createSession({
-    provider: { type: "openai", baseUrl: "...", apiKey: "..." },
-    model: "gpt-4.1",  // REQUIRED with provider
-    onPermissionRequest: approveAll,
-  });
-  ```
-- **BYOK tokens are static** — the SDK doesn't refresh them. If your token expires mid-session, requests fail. For long-running apps, implement token rotation at the application level.
-- **`GITHUB_TOKEN` env var** is checked automatically. You don't need to pass it in code. But if set, it takes priority over OAuth tokens.
-- **GitHub App user tokens still go through `githubToken`**. If you mint a `ghu_` user access token outside the SDK, pass it as `githubToken`; the public SDK surface shown here does not expose a separate `authConfig.appAuth` object.
+- Always spell current TypeScript token options as `gitHubToken`.
+- Use `client.getAuthStatus()` for GitHub-auth preflight; BYOK provider credentials are validated by provider calls.
+- For BYOK, fail fast if the required provider env var or `model` is missing.
+- Prefer `type: "azure"` only for native Azure OpenAI host endpoints; use `type: "openai"` for `/openai/v1/` OpenAI-compatible endpoints.

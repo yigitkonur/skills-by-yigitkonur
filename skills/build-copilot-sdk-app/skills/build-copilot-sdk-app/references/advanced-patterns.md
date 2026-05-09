@@ -360,7 +360,7 @@ class CLIPool {
   async getClient(userId: string, token: string): Promise<CopilotClient> {
     if (!this.servers.has(userId)) {
       const client = new CopilotClient({
-        githubToken: token,
+        gitHubToken: token,
         useLoggedInUser: false,
       });
       await client.start();

@@ -34,7 +34,7 @@ interface CopilotClientOptions {
   autoStart?: boolean;
   autoRestart?: boolean;
   env?: Record<string, string | undefined>;
-  githubToken?: string;
+  gitHubToken?: string;
   useLoggedInUser?: boolean;
   onListModels?: () => Promise<ModelInfo[]> | ModelInfo[];
 }
@@ -74,6 +74,7 @@ interface SessionConfig {
   disabledSkills?: string[];
   infiniteSessions?: InfiniteSessionConfig;
   onEvent?: SessionEventHandler;
+  gitHubToken?: string;
 }
 ```
 
@@ -345,8 +346,11 @@ interface ProviderConfig {
   apiKey?: string;
   bearerToken?: string;
   azure?: { apiVersion?: string };
+  headers?: Record<string, string>;
 }
 ```
+
+Prerelease `1.0.0-beta.3` also includes `modelId`, `wireModel`, and `maxInputTokens` on `ProviderConfig`; do not use them against stable `0.3.0`.
 
 ## Model types
 
