@@ -45,4 +45,4 @@ Do not confuse that repo policy with runtime requirements.
 
 ## Placement Rule
 
-For Python and Bash, metadata should live directly below the shebang and use `#` comments.
+For this skill's Python and Bash scope, metadata should live directly below the shebang and use `# @raycast.*` comments. Raycast supports other comment syntaxes for other languages, but do not expand this skill beyond Python and Bash to use them.

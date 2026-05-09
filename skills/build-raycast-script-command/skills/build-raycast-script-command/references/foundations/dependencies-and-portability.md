@@ -28,14 +28,17 @@ command -v jq >/dev/null 2>&1 || { echo "jq is required"; exit 1; }
 
 ## Shell Environment Rules
 
-Raycast's official docs say Script Commands run in a non-login shell, and the community repo does not accept scripts that rely on login-shell behavior for portability reasons.
+Separate local Raycast behavior from community-repo contribution policy:
 
-The README also notes Raycast appends `/usr/local/bin` to `PATH`.
+- Local Script Commands run through the interpreter named by the shebang. The Script Commands README notes that a local Bash script can opt into login-shell behavior with a shebang argument such as `#!/bin/bash -l`.
+- Raycast also appends `/usr/local/bin` to `PATH`.
+- The `raycast/script-commands` community repo does not accept commands that rely on login-shell behavior, so shared commands must work without shell profile side effects.
 
 Implications:
 
 - do not assume shell startup files ran
 - document any required runtime or binary explicitly
+- avoid `#!/bin/bash -l` for commands intended for the community repo
 - prefer explicit setup over hidden environment magic
 
 ## Portability checklist

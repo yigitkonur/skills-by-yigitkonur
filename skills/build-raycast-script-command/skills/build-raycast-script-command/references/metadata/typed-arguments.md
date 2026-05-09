@@ -10,6 +10,8 @@ Raycast Script Commands support up to three typed arguments:
 - `@raycast.argument2`
 - `@raycast.argument3`
 
+Supported Script Command argument types are `text`, `password`, and `dropdown`. Do not import `select`, `file`, Extension Form, AI extension, or `@raycast/api` argument schemas into Script Commands unless Raycast's Script Command docs add them.
+
 ## JSON Fields
 
 Per Raycast's `ARGUMENTS.md`:
@@ -52,6 +54,8 @@ Guard optional access with parameter expansion:
 query="${1:-}"
 lang="${2:-en}"
 ```
+
+Do not read `$2`, `$3`, `sys.argv[2]`, or `sys.argv[3]` unless the matching metadata exists or the access is guarded.
 
 ## Good Example
 
