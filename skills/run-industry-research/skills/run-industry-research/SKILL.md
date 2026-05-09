@@ -101,6 +101,7 @@ Clarify outcome if missing:
    - `deep` — 40-100 entities, ~500-2000 files
    - `tiered` — 100+ entities, full packs for top tier only
    - 1-4 entities use this skill only when the user explicitly requests the corpus folder structure.
+4. After the topic slug is known, optional deterministic scaffold: `bash scripts/init-corpus.sh <topic-slug> [entity-slug ...]`. It creates root/meta starter files and empty directories only; no entity evidence placeholders.
 
 **Artifact:** one-paragraph scope statement with chosen scale, presented to user before Phase 1.
 
@@ -309,6 +310,7 @@ Load only the references whose phase is active. Loading all references at once e
 | `references/workflow/worked-example-cloud-browsers.md` | Any phase — an annotated walkthrough of the cloud-browsers corpus, including the actual `_meta/comparison-template.md` and `_meta/product-folder-research-brief.md` artifacts. Use to mirror the *discipline*; do not copy slugs. |
 | `references/agents/mission-briefs.md` | Phase 1, 4, 5 — writing prompts for discovery, entity-pack, cross-comparison, audience, source-verification, and profile-writer agents. |
 | `references/agents/research-powerpack-and-explore.md` | Phase 1, 4, 5 — portable Research Power Pack API shapes (`start-research`, smart/raw search and scrape) plus web-capable research agent and local-corpus Explore patterns (≤20 per wave). |
+| `scripts/init-corpus.md` | Phase 0 or 3 — deterministic corpus scaffolding with `scripts/init-corpus.sh`; creates root/meta starter files only, never entity evidence placeholders. |
 
 ## Guardrails
 
