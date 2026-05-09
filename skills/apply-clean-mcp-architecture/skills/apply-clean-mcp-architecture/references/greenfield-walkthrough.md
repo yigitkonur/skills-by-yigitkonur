@@ -1,6 +1,6 @@
 # Greenfield Walkthrough
 
-> SKILL.md routes here when you pick the **Greenfield** mode — an empty repo (or one with only a `package.json` and an entry stub) and no `src/` layout yet. After working through this file, you should be able to walk a new TypeScript MCP server from `git init` to a tool that responds correctly through the `mcp-use` Inspector, with every guardrail from SKILL.md already enforced and every step gated by an observable check. Each step is small, independently revertable, and lists the deeper reference to read when the step needs more detail.
+> SKILL.md routes here when **Greenfield** mode applies: an empty repo (or one with only a `package.json` and an entry stub) and no `src/` layout yet. After working through this file, the agent should be able to walk a new TypeScript MCP server from `git init` to a tool that responds correctly through the `mcp-use` Inspector, with every guardrail from SKILL.md already enforced and every step gated by an observable check. Each step is small, independently revertable, and lists the deeper reference to read when the step needs more detail.
 
 The pace is on purpose: every gate fires before the next step. If a gate fails, fix the failure before moving forward — do not stack a second mistake on top of the first. The exit gates use real shell commands (`pnpm tsc --noEmit`, `pnpm exec depcruise --validate`, `mcpc tools-call`) so a fresh-context reviewer can replay them.
 
@@ -12,9 +12,9 @@ Files created:
 - `package.json`
 - `pnpm-lock.yaml`
 - `.gitignore`
-- `.npmrc` (optional, only if your registry needs it)
+- `.npmrc` (optional, only if the registry needs it)
 
-Required `package.json` shape (verbatim keys; values follow your project):
+Required `package.json` shape (verbatim keys; values follow the project):
 - `"type": "module"`
 - `"engines": { "node": ">=20.11" }`
 - `"packageManager": "pnpm@10.x"`
@@ -308,7 +308,7 @@ mcp-use inspect ./dist/index.js
 # mcpc --json @smoke tools-call <tool-name> '{"<arg>":"<value>"}'
 ```
 
-Exit gate: the Inspector shows the tool listed; calling the tool returns a `CallToolResult` whose `content` and `structuredContent` reflect what the use case produced; the gateway was actually called (logged via the structured logger to stderr — never stdout). Liveness alone (`/health/live` if you wired one) is not enough; a real `tools-call` must round-trip.
+Exit gate: the Inspector shows the tool listed; calling the tool returns a `CallToolResult` whose `content` and `structuredContent` reflect what the use case produced; the gateway was actually called (logged via the structured logger to stderr — never stdout). Liveness alone (`/health/live` if present) is not enough; a real `tools-call` must round-trip.
 
 Reference: SKILL.md "Use case ↔ MCP tool flow"; the `build-mcp-use-server` skill for transport, session, and Inspector specifics.
 
@@ -335,7 +335,7 @@ Exit gate: every command exits 0. The contract test suite runs each port impleme
 
 Reference: SKILL.md "Testing expectations"; `references/audit-checklist.md` for the test-pyramid expectations.
 
-## What you must verify before finishing
+## Verification checklist
 
 Use these as a fresh-context replay. Each is a single command whose exit code is the answer.
 

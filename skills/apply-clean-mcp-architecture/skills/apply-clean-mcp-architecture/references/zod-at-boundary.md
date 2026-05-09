@@ -218,7 +218,7 @@ Why this lives in the gateway, not in `shared/`:
 
 The handler-boundary schema and the gateway-response schema are separate concerns. Do not import handler schemas into a gateway, and do not import gateway response schemas into a handler.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] Every Zod schema in `src/` lives under `handlers/`, `handlers/schemas/`, `infrastructure/config/`, or inside a single gateway file. `grep -rln "from 'zod'" src/domain src/application` returns zero hits.
 - [ ] Every handler's `execute` function is shaped `parse(input) → command → useCase.invoke(command) → presenter.render(response)`; no use case imports Zod.

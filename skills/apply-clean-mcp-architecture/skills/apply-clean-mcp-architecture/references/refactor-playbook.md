@@ -1,10 +1,10 @@
 # Refactor Playbook
 
-> SKILL.md routes here when you pick the **Refactor** mode — an MCP server with a `src/` tree that has drifted from the standard. The canonical drift example is `mcp-ads-meta` (monolithic `src/tools/<feature>.ts` files like `src/tools/lead-forms.ts` at ~459 lines and `src/tools/accounts.ts` at ~477 lines, inline `server.tool(...)` registrations across 154 files importing `mcp-use`, no `handlers/` folder at all, a thin `application/` / `use-cases/` layer that covers only `analytics`, `insights`, and `shared/`, and `process.env` reads scattered through `src/infrastructure/config.ts` and `src/infrastructure/auth/config.ts`). After working through this file, you should be able to land seven small PRs that flip the architecture inside-out — config seam first, gateways next, then use cases, handlers, bootstrap, presenter and error contracts, and finally the TypeScript quality bar — each PR independently revertable, each gated by a fresh `dependency-cruiser` rule that activates only after the PR merges.
+> SKILL.md routes here when **Refactor** mode applies: an MCP server with a `src/` tree that has drifted from the standard. The canonical drift example is `mcp-ads-meta` (monolithic `src/tools/<feature>.ts` files like `src/tools/lead-forms.ts` at ~459 lines and `src/tools/accounts.ts` at ~477 lines, inline `server.tool(...)` registrations across 154 files importing `mcp-use`, no `handlers/` folder at all, a thin `application/` / `use-cases/` layer that covers only `analytics`, `insights`, and `shared/`, and `process.env` reads scattered through `src/infrastructure/config.ts` and `src/infrastructure/auth/config.ts`). After working through this file, the agent should be able to land seven small PRs that flip the architecture inside-out — config seam first, gateways next, then use cases, handlers, bootstrap, presenter and error contracts, and finally the TypeScript quality bar — each PR independently revertable, each gated by a fresh `dependency-cruiser` rule that activates only after the PR merges.
 
 The order is fixed because the order is architectural. Every later PR depends on the seams the earlier PRs introduced. Resist the urge to merge them out of order or to combine two — that is exactly the big-bang the playbook is here to prevent.
 
-Before you start: read `mcp-ads-meta/src/tools/lead-forms.ts`, `mcp-ads-meta/src/tools/accounts.ts`, and `mcp-ads-meta/src/index.ts` so you have a concrete picture of the drift. The patterns named below are visible there.
+Before starting: read `mcp-ads-meta/src/tools/lead-forms.ts`, `mcp-ads-meta/src/tools/accounts.ts`, and `mcp-ads-meta/src/index.ts` for a concrete picture of the drift. The patterns named below are visible there.
 
 ## PR 1 — Config seam
 
@@ -29,7 +29,7 @@ Dependency-cruiser rule activated after merge:
 }
 ```
 
-Smoke test (proves no behaviour regressed): start the server with the same `.env` you used before the PR and call one read-only tool through `mcpc --no-profile` (or the `mcp-use` Inspector). The response shape and content match the pre-PR baseline. Capture both runs to a file and `diff`.
+Smoke test (proves no behaviour regressed): start the server with the same `.env` used before the PR and call one read-only tool through `mcpc --no-profile` (or the `mcp-use` Inspector). The response shape and content match the pre-PR baseline. Capture both runs to a file and `diff`.
 
 Rollback path: revert PR 1. Inner layers go back to reading `process.env` directly. The depcruise rule is removed with the revert. Nothing later depends on this PR yet, so the working tree compiles cleanly.
 
@@ -223,7 +223,7 @@ Smoke test: `pnpm typecheck && pnpm lint && pnpm test && pnpm exec depcruise src
 
 Rollback path: revert PR 7. The locked flags relax to whatever the repo had before. Code that depended on the new strict semantics (e.g. `pickDefined()` helpers, branded IDs) keeps working at runtime; only the compile-time guarantees regress.
 
-## What you must verify before finishing
+## Verification checklist
 
 These are the fresh-context checkpoints. Each is observable; none requires reading the diff.
 

@@ -1,6 +1,6 @@
 # Gateways and Ports
 
-> SKILL.md's *Gateways and ports* section routes here. After reading you should be able to write a port interface in `domain/ports/`, an adapter that implements it in `gateways/`, and the decorator stack that wraps it; you should know exactly how upstream errors classify into `DomainError` subclasses, what must never leak past the port boundary, and why each decorator is its own class rather than a closure or a method.
+> SKILL.md's *Gateways and ports* section routes here. After reading the agent should be able to write a port interface in `domain/ports/`, an adapter that implements it in `gateways/`, and the decorator stack that wraps it; the agent should know exactly how upstream errors classify into `DomainError` subclasses, what must never leak past the port boundary, and why each decorator is its own class rather than a closure or a method.
 
 ## Vocabulary, locked
 
@@ -53,7 +53,7 @@ export interface ICache<TValue> {
 }
 ```
 
-Ports stay small. Start with only the methods one use case needs. Resist defining a generic `Repository<T>` until you have three real consumers. A speculative wide port quickly turns into a second copy of the SDK inside the codebase — equivalent surface, equivalent churn, no real decoupling.
+Ports stay small. Start with only the methods one use case needs. Resist defining a generic `Repository<T>` until three real consumers exist. A speculative wide port quickly turns into a second copy of the SDK inside the codebase — equivalent surface, equivalent churn, no real decoupling.
 
 ## Adapter shape
 
@@ -181,9 +181,9 @@ Read inside-out: the use case calls `cached.fetch(...)`; the cache checks Redis;
 
 - **Each decorator implements the same port.** A closure cannot declare `implements`, so type-checking the wrapping is weaker.
 - **Each decorator is unit-testable in isolation.** A test instantiates the decorator with a fake inner port and asserts only the decorator's behaviour. With closures, the only test is end-to-end through the chain.
-- **Each decorator surfaces in stack traces and logs.** A class name in a stack frame tells you which layer raised the error; an anonymous closure does not.
+- **Each decorator surfaces in stack traces and logs.** A class name in a stack frame identifies which layer raised the error; an anonymous closure does not.
 - **Each decorator is reusable.** `CachingGateway`, `RetryingGateway`, and `SanitisingGateway` are written once and applied to every port that needs them. A closure embedded in `bootstrap.ts` is single-use by construction.
-- **Decorator order is visible at the call site.** Reading the constructor chain in `bootstrap.ts`, you can see the layering. Closures collapse the order into a single deeply-nested function, which is exactly the readability problem the decorator pattern fixes.
+- **Decorator order is visible at the call site.** Reading the constructor chain in `bootstrap.ts`, the layering is visible the layering. Closures collapse the order into a single deeply-nested function, which is exactly the readability problem the decorator pattern fixes.
 
 ### Skeleton: `CachingProviderGateway`
 
@@ -289,7 +289,7 @@ The redaction rules live next to the gateway, not in the use case. The use case 
 
 The handler-input shape, the use-case command, the gateway request, the gateway response, the presenter row, and the MCP response shape are six distinct types. Do not collapse them. A type that crosses every layer is the single biggest decay path the codebase will experience and the most reliable way provenance fields slip onto the wire — cache-hit metadata leaking into tool responses, provider field renames cascading into the model's view. Map between the types explicitly. Compile-time mapping is cheap; the bug surface from a collapsed type is enormous.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] Every external system the server talks to (provider API, persistence, OAuth, sampling/elicitation, downstream MCP client capabilities) is reached through a port in `domain/ports/` and an adapter in `gateways/`. No use case calls an SDK directly.
 - [ ] Every gateway class explicitly declares `implements I<Capability>`. `grep -rE "class [A-Z][A-Za-z]+ implements I" src/gateways/` shows one hit per gateway.

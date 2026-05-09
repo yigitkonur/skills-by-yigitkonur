@@ -48,9 +48,9 @@ The intentional-side-effect carve-out: **domain events**. Entities collect event
 
 ## Immutability for domain entities and DTOs
 
-Cross-layer DTOs use `readonly` on every field and `ReadonlyArray<T>` for collections. Catalog tables use `as const`. Function arguments are `readonly`. `Object.freeze` is reserved for runtime guarantees you can prove you need; the compile-time `readonly` is the standard.
+Cross-layer DTOs use `readonly` on every field and `ReadonlyArray<T>` for collections. Catalog tables use `as const`. Function arguments are `readonly`. `Object.freeze` is reserved for runtime guarantees with a proven need; the compile-time `readonly` is the standard.
 
-Mutation idioms that are forbidden across layer boundaries: `arr.push()` on a value you did not own, `delete obj.prop`, in-place sort. Use `[...arr, item]` and destructure-rest to remove properties; use `[...arr].sort(…)` to copy before sorting.
+Mutation idioms that are forbidden across layer boundaries: `arr.push()` on a value not owned by the current function, `delete obj.prop`, in-place sort. Use `[...arr, item]` and destructure-rest to remove properties; use `[...arr].sort(…)` to copy before sorting.
 
 **MCP failure mode the rule prevents.** A long-lived MCP process serves concurrent requests from one Node instance. Accidental mutation of a "shared" config object — a runtime-config snapshot, a capability catalog, a per-session cache key list — is the textbook race condition. Symptom: the second concurrent request sees the first request's input. With `readonly` DTOs and `as const` catalogs, the mutation is a compile error.
 
@@ -133,7 +133,7 @@ JSDoc on port interfaces and `defineTool()` configs is encouraged: those are bou
 
 **MCP failure mode the rule prevents.** A comment on a use-case helper that says "fetches the cached value" is helpful exactly until the helper is rewritten to fetch from a different store. The next reader believes the comment, the test passes (because the test mock matches the comment), and the production behaviour silently changes. JSDoc on the port stays accurate because the port shape is the contract — when it changes, every consumer breaks.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] No `console.*` call exists in `src/`; `grep -rn "console\." src/` returns zero hits, and the project's ESLint configuration has `no-console` enabled with no per-file suppressions.
 - [ ] Every cross-layer DTO field is `readonly`; collections use `ReadonlyArray<T>`; entities use `#` private fields, never `private`.

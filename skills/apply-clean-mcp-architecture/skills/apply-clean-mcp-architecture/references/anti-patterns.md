@@ -1,8 +1,8 @@
 # Anti-patterns observed across the reference repos
 
-> This reference expands the SKILL.md sections "Common mistakes" and "Hard guardrails — non-negotiable." It catalogues the concrete drift observed in the reference repos (`mcp-ads-meta` is the primary source; `mcp-d4s`, `mcp-ads-google`, and `mcp-gsc` contributed lower-grade smells). After reading it you should be able to recognise each anti-pattern in a code review, justify why it is wrong, point at a concrete repo file that exhibits it, and apply a fix that lands the code on the canonical pattern in `references/define-tool-pattern.md` and `references/handler-context.md`.
+> This reference expands the SKILL.md sections "Common mistakes" and "Hard guardrails — non-negotiable." It catalogues the concrete drift observed in the reference repos (`mcp-ads-meta` is the primary source; `mcp-d4s`, `mcp-ads-google`, and `mcp-gsc` contributed lower-grade smells). After reading it the agent should be able to recognise each anti-pattern in a code review, justify why it is wrong, point at a concrete repo file that exhibits it, and apply a fix that lands the code on the canonical pattern in `references/define-tool-pattern.md` and `references/handler-context.md`.
 
-Every entry follows the same shape: **Anti-pattern**, **Why it's bad**, **Concrete repo example**, **Fix**, **How to detect**. If an entry has no concrete repo example, it does not appear here. Audit signals (greps, `dependency-cruiser` rules) target patterns visible in the reference repos at the time of writing — adapt path globs to your own repo before pasting them into CI.
+Every entry follows the same shape: **Anti-pattern**, **Why it's bad**, **Concrete repo example**, **Fix**, **How to detect**. If an entry has no concrete repo example, it does not appear here. Audit signals (greps, `dependency-cruiser` rules) target patterns visible in the reference repos at the time of writing — adapt path globs to a familiar repo before pasting them into CI.
 
 ## Handlers
 
@@ -160,12 +160,12 @@ Every entry follows the same shape: **Anti-pattern**, **Why it's bad**, **Concre
 - **Fix:** Replace `private fieldName` with `#fieldName`. Update accessors. The transition is mechanical.
 - **How to detect:** `grep -rn "^[[:space:]]*private " src/domain` — every hit on an entity (not a port) is a finding.
 
-## What you must verify before finishing
+## Verification checklist
 
-Before claiming you have caught a repo's drift, observe each of these.
+Before claiming the audit caught a repo drift, observe each of these.
 
-- For every anti-pattern flagged in your audit report, you cite a file path that exists. `ls <path>` resolves; the line numbers are within the current file length.
-- The grep / `dependency-cruiser` detection rule for each finding actually returns the cited hit. You ran it; you did not assume.
+- For every anti-pattern flagged in the audit report, audit output cites a file path that exists. `ls <path>` resolves; the line numbers are within the current file length.
+- The grep / `dependency-cruiser` detection rule for each finding actually returns the cited hit. The audit ran it; no assumption.
 - Every finding maps to a specific fix in `references/define-tool-pattern.md`, `references/handler-context.md`, `references/composition-root.md`, `references/gateways-and-ports.md`, or this file. No "vague refactor" findings.
-- The fix path is independently revertable (one PR, one layer) per the refactor playbook in `references/refactor-playbook.md`. You did not bundle handler splits with gateway re-typing in one diff.
-- When the cited example is from a reference repo (not the user's), you flagged it as a comparison anchor, not as the user's bug. The user's repo gets its own anti-pattern citations from its own grep output.
+- The fix path is independently revertable (one PR, one layer) per the refactor playbook in `references/refactor-playbook.md`. Do not bundle handler splits with gateway re-typing in one diff.
+- When the cited example is from a reference repo (not the user's), the report flags it as a comparison anchor, not as the target repo.s bug. The user's repo gets its own anti-pattern citations from its own grep output.

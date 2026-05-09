@@ -1,8 +1,8 @@
 # Audit Checklist
 
-> SKILL.md routes here when you pick the **Review** mode — you have an MCP server (yours or unfamiliar) and need to grade it against the standard. This checklist is layer-grouped, every item has a unique ID, a binary yes/no question, a P0/P1/P2 priority, and a concrete "How to verify" instruction. After working through this file, you should be able to walk through any TypeScript MCP server in this pack, score every item, and produce a graded report whose verdict (merge / merge with follow-up issues / block) is determined mechanically by the P0 and P1 counts. Every item is answerable from inspection alone — no special tooling beyond `grep`, `find`, `node`, and (where listed) `pnpm exec`.
+> SKILL.md routes here when the **Review** mode applies: a familiar or unfamiliar MCP server must be graded against the standard. This checklist is layer-grouped, every item has a unique ID, a binary yes/no question, a P0/P1/P2 priority, and a concrete "How to verify" instruction. After working through this file, the agent should be able to walk through any TypeScript MCP server in this pack, score every item, and produce a graded report whose verdict (merge / merge with follow-up issues / block) is determined mechanically by the P0 and P1 counts. Every item is answerable from inspection alone — no special tooling beyond `grep`, `find`, `node`, and (where listed) `pnpm exec`.
 
-The checklist is the same regardless of whether you are reviewing a pull request, an existing repo at a point in time, or a refactor's incremental commit. Use the priority field to triage: P0 items block merge, P1 items require a follow-up issue tracked in the PR description, P2 items are informational and noted in the report's "Nits" section without gating.
+The checklist is the same regardless of whether the task is reviewing a pull request, an existing repo at a point in time, or a refactor's incremental commit. Use the priority field to triage: P0 items block merge, P1 items require a follow-up issue tracked in the PR description, P2 items are informational and noted in the report's "Nits" section without gating.
 
 ## Layout
 
@@ -131,13 +131,13 @@ For a sub-50-tool MCP server with the standard layout, an audit completes in rou
 
 1. **Inventory** (5 min): `find src -maxdepth 2 -type d` and `find src -name "*.ts" | wc -l` to size the surface; open one handler, one use case, one gateway, and `bootstrap.ts` to get a feel for naming and shape.
 2. **Boundary sweep** (10 min): run the boundary `grep` checks above. The four results — `process.env` outside config, `mcp-use` in inner layers, monolithic `tools/` files, `new MCPServer` outside bootstrap — predict 80% of the eventual P0 count.
-3. **Layer-by-layer line items** (15 min): walk the checklist top to bottom, recording yes / no / not applicable in your notes.
+3. **Layer-by-layer line items** (15 min): walk the checklist top to bottom, recording yes / no / not applicable in working notes.
 4. **Spot-read three random handlers** (5 min): confirm the schema discipline (TYPESCRIPT-02, MCP-05) and the use-case delegation (no business logic in the handler). Three is enough; the patterns repeat.
 5. **Render the report** (5 min): fill in the template above. Resist the urge to soften priorities; a P0 count is a verdict, not an opinion.
 
 ## Anti-patterns the boundary sweep should catch on the first pass
 
-These are the patterns that produced the drift in the canonical example (`mcp-ads-meta`). When the boundary sweep finds any of them, the report's P0 section will be non-empty before you reach the line-item walk.
+These are the patterns that produced the drift in the canonical example (`mcp-ads-meta`). When the boundary sweep finds any of them, the report's P0 section will be non-empty before the full line-item walk.
 
 - **Monolithic `src/tools/<feature>.ts` with `server.tool(...)` called inline.** A file at `src/tools/lead-forms.ts` of ~459 lines or `src/tools/accounts.ts` of ~477 lines, importing `mcp-use/server` directly and registering several tools in one file, is the highest-signal failure mode. It violates LAYOUT-02, BOUNDARY-02, and MCP-01 simultaneously.
 - **`process.env` reads in `src/infrastructure/config.ts` plus `src/infrastructure/auth/config.ts` plus a sprinkle inside business code.** The `BOUNDARY-03` `grep` will find them all. A repo that has the seam in one place but is leaking through `auth/config.ts` is mid-refactor and needs a follow-up issue, not a fresh audit.
@@ -206,9 +206,9 @@ grep -rn "ctx\\.elicit\\|ctx\\.sample\\|extra\\.elicit\\|extra\\.sample" src/app
 
 Empty output is the desired state for everything except `find src/handlers ... wc -l` (which should print short numbers) and `grep -rn "outputSchema" src/handlers` (which should match every handler). When any "should be empty" command produces output, copy that output into the report's evidence column verbatim — paraphrasing it makes the report harder to replay.
 
-## What you must verify before finishing
+## Verification checklist
 
-These are the closing checkpoints. Each is an observable command whose output backs your verdict.
+These are the closing checkpoints. Each is an observable command whose output backs the verdict.
 
 - Every checklist item has a recorded answer (yes / no / not applicable). The total count of items answered is at least 28; the per-category counts meet or exceed the minimums (Layout ≥ 4, Boundary ≥ 5, TypeScript quality ≥ 6, MCP wiring ≥ 4, Errors and responses ≥ 4, Request context ≥ 2, Tests ≥ 3).
 - The verdict at the top of the report is consistent with the rubric: P0 = 0 yields merge; P0 ≥ 1 yields block; any P1 ≥ 1 with a merge verdict has follow-up issue links in the PR description.

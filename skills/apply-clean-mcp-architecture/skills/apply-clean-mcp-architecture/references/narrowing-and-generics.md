@@ -64,7 +64,7 @@ export function hasStringField<K extends string>(
 Three rules every guard obeys:
 
 - Check `value !== null && typeof value === 'object'` before anything else (`in` on a primitive throws).
-- Use `in` to assert the discriminating property exists; do not rely on `value.kind` directly until you have proven `kind in value`.
+- Use `in` to assert the discriminating property exists; do not rely on `value.kind` directly until `kind in value` has been checked.
 - The return type is `value is T`, not `boolean`. The reviewer's grep for `: boolean` followed by an `if (...)` narrowing block surfaces broken guards.
 
 Always prefer narrowing with a guard or a Zod parse over a non-null assertion (`!`). The non-null assertion collapses to a runtime crash, which the MCP error mapper turns into a generic `internal_error`; an explicit throw lets the gateway emit a typed `DomainError` with a `recoveryHint`.
@@ -196,7 +196,7 @@ export function compose<TContext extends object>(
 
 The same rule covers factories that build literal-shaped registries: the factory takes a `const T extends …` parameter so call-site object literals retain their string-literal types into the inferred handler type.
 
-## Branded constructors — narrow before you brand
+## Branded constructors — narrow before branding
 
 Brands are how the type system catches "wrong-id-in-the-right-slot" mistakes. The brand is only as strong as the constructor that mints it: a brand without a validating constructor is a comment, not a guarantee.
 
@@ -232,7 +232,7 @@ See `typescript-quality-bar.md` for the full branded-ID pattern, including the `
 
 ## `as const` literal lookup tables
 
-For closed sets — data types, modes, sort directions, internal status codes — the codebase uses an `as const` literal array plus a `typeof X[number]` union. Numeric `enum` is forbidden; string `enum` is dispreferred (use `as const` and brand it via `satisfies` if you want shape validation).
+For closed sets — data types, modes, sort directions, internal status codes — the codebase uses an `as const` literal array plus a `typeof X[number]` union. Numeric `enum` is forbidden; string `enum` is dispreferred (use `as const` and brand it via `satisfies` when shape validation is needed).
 
 ```typescript
 const BACKLINKS_DATA_TYPES = [
@@ -298,9 +298,9 @@ The two cases where phantom types earn their keep in this pack:
 
 Skip phantom types for everything else. A `pending → ready → expired` dataset status is fine as a discriminated union; pushing it into phantom types makes the test code unreadable for no extra safety.
 
-When you do use a phantom type, hide the brand symbol behind a `unique symbol` in the same module, and only expose state-changing functions that produce the next phantom variant — never expose the cast.
+When using a phantom type, hide the brand symbol behind a `unique symbol` in the same module, and only expose state-changing functions that produce the next phantom variant — never expose the cast.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] Every guard that narrows `unknown` returns `value is T`, never bare `boolean`; `grep -rn ": boolean " src/shared/utils/type-guards.ts` finds zero non-`is` predicates.
 - [ ] Every config catalog inside `src/shared/` is built with `as const` (and, where shape validation is needed, `as const satisfies T`); no `: Record<string, X>` annotation widens a literal lookup table.

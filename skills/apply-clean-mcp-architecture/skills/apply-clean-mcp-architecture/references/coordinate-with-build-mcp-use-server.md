@@ -1,6 +1,6 @@
 # Coordinating `apply-clean-mcp-architecture` with `build-mcp-use-server`
 
-> This reference expands the SKILL.md section "Coordinate with `build-mcp-use-server`" and the closing line of the same section: "the new skill answers structural questions; `build-mcp-use-server` answers protocol-mechanics questions." After reading it you should be able to look at any incoming request and route it to the right skill in one step, instead of pulling both and reconciling. The two skills are designed to compose, not overlap; this file is the seam.
+> This reference expands the SKILL.md section "Coordinate with `build-mcp-use-server`" and the closing line of the same section: "the new skill answers structural questions; `build-mcp-use-server` answers protocol-mechanics questions." After reading it the agent should be able to look at any incoming request and route it to the right skill in one step, instead of pulling both and reconciling. The two skills are designed to compose, not overlap; this file is the seam.
 
 ## The two questions
 
@@ -73,9 +73,9 @@ Use this rubric when the request does not fit a row above.
 5. **"How do I configure / call / declare X with `mcp-use`?"** — `build-mcp-use-server`.
 6. **"Should I use `error()` or `throw`?"** — `build-mcp-use-server` (mechanics rule), but model the error using `apply-clean-mcp-architecture`'s `DomainError` first.
 7. **"Why is this rule absolute?"** — read the **Why** line. If it cites a layer-boundary failure mode, this skill owns it. If it cites a wire-level or capability-detection failure mode, the neighbour skill owns it.
-8. **"Both skills seem to mention this."** — read each skill's section. If one says "deferred to the other," follow the route. If neither defers, you found a missed handoff — surface it instead of guessing.
+8. **"Both skills seem to mention this."** — read each skill's section. If one says "deferred to the other," follow the route. If neither defers, the agent found a missed handoff — surface it instead of guessing.
 
-A practical heuristic: if the answer's destination is a **file path** in your repo, you are answering a structural question. If the answer's destination is an **API call** to `mcp-use`, you are answering a mechanical question.
+A practical heuristic: if the answer's destination is a **file path** in the target repo, the answer is a structural question. If the answer's destination is an **API call** to `mcp-use`, the answer is a mechanical question.
 
 ## Worked routing examples
 
@@ -101,7 +101,7 @@ Each example below is a request the agent might receive. The right move is to sp
 - Structural: confirm the schema lives at the handler boundary, not deeper. Confirm no use case re-validates. Confirm the gateway classifies the upstream 4xx into a `DomainError` with a useful `recoveryHint`.
 - Mechanical: rewrite the field-level Zod (bounds, regex, enums, `.describe()`, `.strict()`). Switch to `build-mcp-use-server` `references/04-tools/` for the field-authoring rules and `references/26-anti-patterns/` for the catalogue of unbounded-input failure modes.
 
-The pattern is the same in every example: structural first (where, what shape, who owns), mechanical second (which API, which field, which flag). If you ever find yourself answering the mechanical half before the structural half is settled, stop and route the structural question through this skill first.
+The pattern is the same in every example: structural first (where, what shape, who owns), mechanical second (which API, which field, which flag). Mechanical answers wait until the structural question has been routed through this skill.
 
 ## Forbidden duplication
 
@@ -148,12 +148,12 @@ When the agent is about to load this skill, the neighbour skill, or both, run th
 
 A common mistake is loading the neighbour skill alone for a "small" change and then watching the change cascade because the new code landed in the wrong layer. If the change touches files outside the test directory, this skill is in scope.
 
-## What you must verify before finishing
+## Verification checklist
 
 Before claiming a handoff is correct, observe each of these.
 
-- Every cross-skill route in your output names the destination skill explicitly (`build-mcp-use-server` or `apply-clean-mcp-architecture`) and the section / cluster within it. No bare "see the other skill."
-- No part of your answer paraphrases content from the neighbour skill's SKILL.md or its references. If you wrote more than one sentence about an `mcp-use` API, you are paraphrasing.
-- Every rule you stated has a **why** line that names the failure mode. If the failure mode is "the SDK requires it," the rule should not be in your answer at all — it belongs in the neighbour skill.
-- The user can act on your answer using exactly one skill at a time. They never have to flip between both for a single decision.
-- When the request blends layers and mechanics, you split it explicitly: "for X, follow `apply-clean-mcp-architecture`; for Y, follow `build-mcp-use-server`."
+- Every cross-skill route in the output names the destination skill explicitly (`build-mcp-use-server` or `apply-clean-mcp-architecture`) and the section / cluster within it. No bare "see the other skill."
+- No part of the answer paraphrases content from the neighbour skill's SKILL.md or its references. If the answer contains more than one sentence about an `mcp-use` API, the answer is paraphrasing.
+- Every stated rule has a **why** line that names the failure mode. If the failure mode is "the SDK requires it," the rule should not be in the answer at all — it belongs in the neighbour skill.
+- The user can act on the answer using exactly one skill at a time. No context flip is required between both for a single decision.
+- When the request blends layers and mechanics, split it explicitly: "for X, follow `apply-clean-mcp-architecture`; for Y, follow `build-mcp-use-server`."

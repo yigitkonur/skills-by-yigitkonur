@@ -1,10 +1,10 @@
 # Dependency Rules
 
-> SKILL.md's *Layer boundaries (the import matrix)* section routes here. After reading, you should be able to score any import statement in any file against the matrix; you should be able to drop the `dependency-cruiser.cjs` config below into a fresh repo and see the build fail on the first `domain/` → `gateways/` violation. The matrix is not a recommendation — it is the build gate that survives staff turnover.
+> SKILL.md's *Layer boundaries (the import matrix)* section routes here. After reading, the agent should be able to score any import statement in any file against the matrix; the agent should be able to drop the `dependency-cruiser.cjs` config below into a fresh repo and see the build fail on the first `domain/` → `gateways/` violation. The matrix is not a recommendation — it is the build gate that survives staff turnover.
 
 ## Why imports are a build gate, not a review gate
 
-Documented architecture rots in two sprints. A reviewer who waves through "one tiny `mcp-use` import in a use case" will not be the reviewer six months later when twelve more have followed. Tool-enforced rules survive that drift. Inward-only direction is the rule that, when broken, makes every other Clean Architecture investment in the codebase worthless: once a use case imports a concrete gateway, you can no longer test or evolve either one independently. So the matrix runs as `dependency-cruiser` in CI, and a violation fails the build like any type error.
+Documented architecture rots in two sprints. A reviewer who waves through "one tiny `mcp-use` import in a use case" will not be the reviewer six months later when twelve more have followed. Tool-enforced rules survive that drift. Inward-only direction is the rule that, when broken, makes every other Clean Architecture investment in the codebase worthless: once a use case imports a concrete gateway, independent testing and evolution are no longer possible. So the matrix runs as `dependency-cruiser` in CI, and a violation fails the build like any type error.
 
 ## The matrix in full
 
@@ -21,7 +21,7 @@ For each row, "May import" lists everything allowed; "Forbidden" calls out the i
 | `resources/`, `prompts/` | `domain/`, `application/`, `mcp-use` types, `shared/` | Direct gateway use, `process.env`, instantiating gateways. |
 | `shared/` | `domain/` only | Side effects, business logic, framework imports, any other layer. |
 
-## Edge cases the matrix decides for you
+## Edge cases the matrix decides
 
 - **A type-only import across a forbidden boundary** is still forbidden. The fact that `verbatimModuleSyntax: true` makes it zero-cost at runtime does not undo the architectural coupling. Move the type to `domain/` or `shared/types/` instead.
 - **A test file** mirrors its layer's rules but may import from `__tests__/doubles/` and from any layer it directly tests. The cruiser config below excludes `__tests__/` from the inner-layer rules and applies a separate test-only rule.
@@ -316,7 +316,7 @@ Run it in CI alongside `tsc --noEmit`, `eslint`, and the test suite. Treat findi
 
 `dependency-cruiser` catches cross-layer imports. TypeScript's `verbatimModuleSyntax: true` (required by the locked `tsconfig`) catches the case where a value-import from an outer layer accidentally pulls runtime code into an inner layer. The two work together: the cruiser sees the edge in the import graph; TypeScript sees that the edge is value, not type. Use `import type` for every type-only cross-layer import, and the runtime dependency direction is provable at compile time.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] The `dependency-cruiser.cjs` block above is at the repo root, named exactly `dependency-cruiser.cjs`, and is reachable by `pnpm exec dependency-cruiser src`.
 - [ ] `pnpm deps:validate` runs to completion and reports zero `error`-severity findings on a clean tree.

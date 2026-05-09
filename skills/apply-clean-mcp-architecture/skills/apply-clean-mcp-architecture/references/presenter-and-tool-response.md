@@ -1,6 +1,6 @@
 # Presenter and ToolResponse
 
-> SKILL.md's *Use case ↔ MCP tool flow* section routes here. After reading you should be able to write a `ToolResponse` builder in `domain/`, an `IMcpPresenter` port in `presenters/`, and the `McpPresenter` implementation that turns a domain response into an MCP `CallToolResult` envelope using `mcp-use`'s `mix(text(...), object(...))` helpers — including the secrets sanitisation policy, `_meta` filtering, and preview-rendering rules.
+> SKILL.md's *Use case ↔ MCP tool flow* section routes here. After reading the agent should be able to write a `ToolResponse` builder in `domain/`, an `IMcpPresenter` port in `presenters/`, and the `McpPresenter` implementation that turns a domain response into an MCP `CallToolResult` envelope using `mcp-use`'s `mix(text(...), object(...))` helpers — including the secrets sanitisation policy, `_meta` filtering, and preview-rendering rules.
 
 ## The split between domain and wire
 
@@ -13,7 +13,7 @@ The presenter is the only component allowed to construct `CallToolResult`. The u
 
 ## `ToolResponse` builder
 
-The cite is `mcp-d4s: src/domain/tool-response/tool-response.ts`. The shape is fluent, immutable, and chainable; every method returns a new instance. The constructor is private; factories or static `create()` are how you start.
+The cite is `mcp-d4s: src/domain/tool-response/tool-response.ts`. The shape is fluent, immutable, and chainable; every method returns a new instance. The constructor is private; factories or static `create()` start the chain.
 
 ```ts
 // domain/tool-response/tool-response.ts
@@ -141,7 +141,7 @@ Why immutable + fluent: the use case never has to ask "did anything mutate this 
 
 ## `IMcpPresenter` port
 
-The presenter is reached through a port — the handler depends on the port, never on the implementation. This keeps the handler test simple (mock the presenter) and lets you swap the rendering policy without touching every handler.
+The presenter is reached through a port — the handler depends on the port, never on the implementation. This keeps the handler test simple (mock the presenter) and allows rendering-policy swaps without touching every handler.
 
 ```ts
 // presenters/presenter.port.ts
@@ -157,7 +157,7 @@ export interface IMcpPresenter {
 
 ## `McpPresenter` implementation
 
-The presenter is a humble object: `ToolResponse` in, `McpToolResult` out. No business logic. No gateway calls. No conditional branches that depend on which use case produced the response. If you can't write the test as data-in / data-out, the logic does not belong here.
+The presenter is a humble object: `ToolResponse` in, `McpToolResult` out. No business logic. No gateway calls. No conditional branches that depend on which use case produced the response. Logic that cannot be tested as data-in / data-out does not belong here.
 
 The composition uses `mcp-use`'s response helpers — `markdown`, `object`, `mix` — so the framework owns `content`, `structuredContent`, and `_meta` defaults. Our own `_meta` overrides spread last and win.
 
@@ -330,7 +330,7 @@ The transport-meta keys that surface in `_meta` (e.g. `handler_id`, `totalRows`,
 - **Format hints (`format: 'markdown' | 'csv' | 'tsv' | 'prose'`) live in `_meta` and the presenter dispatches on them.** The use case sets the hint; the presenter renders.
 - **Footer text says what was truncated.** "Showing 20 of 1,234 rows. Use `query` or `export` with the handler_id to continue with the full staged result."
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] `ToolResponse` is in `domain/tool-response/`; it is immutable, every `with*` method returns a new instance, the constructor is private, and there is a static factory (`create()`).
 - [ ] `IMcpPresenter` is in `presenters/presenter.port.ts`. Handlers depend on this port, not on the concrete `McpPresenter` class. `grep -rE "import .* McpPresenter " src/handlers/` returns no hits; only `IMcpPresenter` is imported.

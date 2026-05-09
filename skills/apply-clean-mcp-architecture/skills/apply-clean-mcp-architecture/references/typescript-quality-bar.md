@@ -231,7 +231,7 @@ These are non-negotiable rules 7 and 9 from the SKILL.md, restated here for comp
 - `class`-as-data is banned. Plain DTOs are `interface`/`type` shapes plus a factory function. Reserve classes for behaviour (entities with invariants, gateways, error hierarchy).
 - `Function`, bare `object`, and `{}` are banned in public signatures. Use a specific call signature or `Record<string, unknown>`.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] `tsconfig.json` matches the locked flag list above; running `tsc --noEmit` is wired as a blocking step in the merge gate.
 - [ ] `grep -rn ": any\b" src/` and `grep -rn "@ts-ignore" src/` both return zero hits, or each remaining hit has a written justification.

@@ -1,6 +1,6 @@
 # The `defineTool()` Factory Pattern
 
-> This reference expands the SKILL.md section "Use case <-> MCP tool flow" and the `Where MCP primitives live` table. It is for the `Implementing` mode: you already have a working clean-architecture repo and you are adding (or auditing) a tool. After reading it you should know what shape the factory has, where its file lives, what its config object carries, how the registration pipeline wraps it, and how `bootstrap.ts` plugs the result into the `MCPServer`. Schema-authoring rules (`.strict()`, `.describe()`, banning `z.any()` / `z.unknown()`) are deferred to `build-mcp-use-server` — this file owns the *placement* of the schema and the architectural shape of the factory, not the field-level Zod rules.
+> This reference expands the SKILL.md section "Use case <-> MCP tool flow" and the `Where MCP primitives live` table. It is for the `Implementing` mode: an existing clean-architecture repo is adding or auditing a tool. After reading it the agent should know what shape the factory has, where its file lives, what its config object carries, how the registration pipeline wraps it, and how `bootstrap.ts` plugs the result into the `MCPServer`. Schema-authoring rules (`.strict()`, `.describe()`, banning `z.any()` / `z.unknown()`) are deferred to `build-mcp-use-server` — this file owns the *placement* of the schema and the architectural shape of the factory, not the field-level Zod rules.
 
 ## Why a factory at all
 
@@ -207,7 +207,7 @@ const keywordResearchUC = new KeywordResearchUseCase(seoGateway, datasetStore, l
 registerNative(server, createResearchKeywordsHandler(keywordResearchUC, presenter));
 ```
 
-`withPipeline` is the typed middleware composer. It threads the request-context `AsyncLocalStorage` binding, attaches the structured logger, classifies thrown `DomainError`s into JSON-RPC envelopes, and records usage. The handler does not import `withPipeline` — only the composition root does. **Why:** if handlers wired their own middleware, you would have twelve different auth implementations across twelve handlers. The architectural seam is here.
+`withPipeline` is the typed middleware composer. It threads the request-context `AsyncLocalStorage` binding, attaches the structured logger, classifies thrown `DomainError`s into JSON-RPC envelopes, and records usage. The handler does not import `withPipeline` — only the composition root does. **Why:** if handlers wired their own middleware, the result would be twelve different auth implementations across twelve handlers. The architectural seam is here.
 
 Bootstrap order around tool registration is fixed: gateways first, then use cases, then handlers via factories, then `MCPServer` instantiation, then middleware pipeline registration, then tools (`registerNative` per handler), then resources, then prompts, then error mapping installation, then `server.start()`. Re-ordering breaks observability or auth coverage. See `references/composition-root.md` for the full sequence.
 
@@ -218,11 +218,11 @@ This file deliberately stops at the architectural shape of the factory. The prot
 - Field-level Zod rules (which kinds of fields, how `.describe()` and `.strict()` are written, why concrete schemas beat catch-all types) — `build-mcp-use-server` `references/04-tools/`.
 - Response helpers (`text`, `object`, `mix`, `error`, `widget`) used inside `presenter.render(...)` — `build-mcp-use-server` `references/05-responses/`.
 - `ctx.elicit`, `ctx.sample`, `ctx.client.can()` invocation patterns inside `execute` — `build-mcp-use-server` `references/12-elicitation/`, `references/13-sampling/`, `references/16-client-introspection/`.
-- Output-schema authoring (what `ToolResultOutputSchema` should look like for your repo) — `build-mcp-use-server` `references/04-tools/` plus `references/05-responses/`.
+- Output-schema authoring (what `ToolResultOutputSchema` should look like for the target repo) — `build-mcp-use-server` `references/04-tools/` plus `references/05-responses/`.
 
-If you find yourself adding rules about which Zod field types a tool may use, stop and route the rule to the other skill. This file is the placement spec; that file is the field-content spec.
+If the agent starts adding rules about which Zod field types a tool may use, stop and route the rule to the other skill. This file is the placement spec; that file is the field-content spec.
 
-## What you must verify before finishing
+## Verification checklist
 
 Before claiming a handler is correctly wired with `defineTool()`, observe each of these. Not "intend to satisfy" — observe.
 

@@ -1,6 +1,6 @@
 # `HandlerContext` — the dependency-injection seam for handlers
 
-> This reference expands the SKILL.md section "Use case <-> MCP tool flow" — specifically the rule that the handler "may invoke `ctx.elicit` / `ctx.sample` / `ctx.client.can()` — handler-only" and the row in the `Where MCP primitives live` table that says `ctx.elicit()` and `ctx.sample()` belong only in `handlers/<feature>/<tool>.handler.ts`. After reading it you should be able to write a `HandlerContext` interface from scratch in a fresh repo, decide what to inject and what to keep out, and route `ctx.client.can()`-gated capabilities through the handler without leaking them into use cases.
+> This reference expands the SKILL.md section "Use case <-> MCP tool flow" — specifically the rule that the handler "may invoke `ctx.elicit` / `ctx.sample` / `ctx.client.can()` — handler-only" and the row in the `Where MCP primitives live` table that says `ctx.elicit()` and `ctx.sample()` belong only in `handlers/<feature>/<tool>.handler.ts`. After reading it the agent should be able to write a `HandlerContext` interface from scratch in a fresh repo, decide what to inject and what to keep out, and route `ctx.client.can()`-gated capabilities through the handler without leaking them into use cases.
 
 ## What `HandlerContext` is, and is not
 
@@ -29,11 +29,11 @@ Forbidden contents:
 - **Environment values directly.** No `ctx.redisUrl`, no `ctx.supabaseServiceRoleKey`. The handler should never see config that isn't already a typed gate. **Why:** that is what `infrastructure/config/runtime-config.ts` is for; threading env into `HandlerContext` re-introduces the scattered-config decay.
 - **Mutable state.** No `ctx.sessionsCount`, no shared in-memory map. The MCP server is concurrent; mutable state in a long-lived context object is the textbook race. **Why:** request-scoped state belongs in the per-request `AsyncLocalStorage` request-context, not on `HandlerContext`.
 - **Use-case implementations.** Handlers receive the use case directly as a constructor argument to the factory (`createXHandler(useCase, presenter)`), not via `ctx.useCase`. **Why:** keeps the dependency graph readable in `bootstrap.ts` — one line per (handler, use case, presenter) triple.
-- **Logger as a free-form bag.** If you inject a logger, it's a typed `Logger` port with named methods (`info`, `warn`, `error`). No `ctx.log: any`. **Why:** unstructured logger handles attract `console.log`-style ad hoc keys that break observability.
+- **Logger as a free-form bag.** If a logger is injected, it's a typed `Logger` port with named methods (`info`, `warn`, `error`). No `ctx.log: any`. **Why:** unstructured logger handles attract `console.log`-style ad hoc keys that break observability.
 
 ## A canonical `HandlerContext`
 
-Below is a complete `HandlerContext` shape modelled after `mcp-ads-google/src/handlers/context.ts` and adapted to the locked rules of this skill. Drop unused fields rather than padding the interface — only the lines you actually need belong.
+Below is a complete `HandlerContext` shape modelled after `mcp-ads-google/src/handlers/context.ts` and adapted to the locked rules of this skill. Drop unused fields rather than padding the interface — only the required lines belong.
 
 ```ts
 // src/handlers/context.ts
@@ -198,7 +198,7 @@ export function createSeoSerpHandler(
 What this illustrates:
 
 - `extra` is typed (`McpUseToolContext`) but only its handler-relevant fields (`client.can`, the bag the middleware decoded) are read. **Why:** handlers do not unwrap auth payloads, request ids, or session ids by hand — those are read via `ctx.resolveRequesterScope(extra)` and the structured logger.
-- `ctx.client.can('elicitation')` is checked **before** invoking `ctx.elicit`. **Why:** clients without the capability throw or hang if you call it; gating is non-optional.
+- `ctx.client.can('elicitation')` is checked **before** invoking `ctx.elicit`. **Why:** clients without the capability throw or hang if invoked; gating is non-optional.
 - The use case is invoked once with a typed input including `requester`. The use case has no idea elicitation happened — it just receives an authenticated request. **Why:** that is the boundary this skill defends.
 - Failure paths render through `ctx.presenter.render(...)`, never via raw `error()` calls. **Why:** the presenter is the only layer that knows how to shape error envelopes consistent with the success envelope.
 
@@ -224,7 +224,7 @@ The architectural reason for the asymmetry is the same in every row: the **use c
 
 - `mcp-d4s/src/handlers/define-tool.ts` — the factory pattern this skill was distilled from.
 - `mcp-d4s/src/shared/types/mcp-tool-context.ts` — the local structural mirror of `ToolContext` from `mcp-use/server`. Handlers depend on this, not on `mcp-use`'s exported type, so SDK churn touches one file.
-- `mcp-ads-google/src/handlers/context.ts` — the canonical `HandlerContext` shape with optional `sample`, `elicit`, `progress` adapters and a typed `HandlerConfig`. Read it before designing yours.
+- `mcp-ads-google/src/handlers/context.ts` — the canonical `HandlerContext` shape with optional `sample`, `elicit`, `progress` adapters and a typed `HandlerConfig`. Read it before designing a local context.
 - `mcp-ads-google/src/handlers/seo/serp.ts` — a handler that consumes `HandlerContext`, gates on `ctx.client.can`, and never lets the per-request context reach the use case.
 
 ## Cross-references
@@ -234,7 +234,7 @@ The architectural reason for the asymmetry is the same in every row: the **use c
 - `ctx.elicit`, `ctx.sample`, `ctx.client.can` mechanics, request-shape rules, capability detection — `build-mcp-use-server` `references/12-elicitation/`, `references/13-sampling/`, `references/16-client-introspection/`.
 - Port naming and gateway construction: `references/gateways-and-ports.md`.
 
-## What you must verify before finishing
+## Verification checklist
 
 Before claiming the handler-context wiring is correct, observe each of these.
 

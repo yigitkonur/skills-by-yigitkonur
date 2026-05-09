@@ -1,6 +1,6 @@
 # Composition Root
 
-> SKILL.md's *Composition root (bootstrap.ts)* section routes here. After reading you should be able to write a `bootstrap.ts` from scratch in the locked order, justify each step against what would break if it ran earlier or later, and recognise the manual-wiring pattern as the only sanctioned form of dependency injection in this skill. There are no DI containers in this standard. There is one `bootstrap.ts`, one ordered sequence, and the rest of the codebase trusts it.
+> SKILL.md's *Composition root (bootstrap.ts)* section routes here. After reading the agent should be able to write a `bootstrap.ts` from scratch in the locked order, justify each step against what would break if it ran earlier or later, and recognise the manual-wiring pattern as the only sanctioned form of dependency injection in this skill. There are no DI containers in this standard. There is one `bootstrap.ts`, one ordered sequence, and the rest of the codebase trusts it.
 
 ## Why one composition root, manually wired
 
@@ -154,9 +154,9 @@ export async function bootstrap(): Promise<void> {
 - **Error mapping before `listen()`.** The `errorBoundary` middleware needs the mapping table loaded; in this skeleton both are wired through the pipeline, so the requirement is "the pipeline is composed before `listen()` returns" — which the explicit `await server.listen()` at the bottom enforces.
 - **`listen()` last.** The transport binds; the server starts accepting traffic. Any uninitialised dependency at this point crashes during the first request, not at boot.
 
-## Things you must not do in `bootstrap.ts`
+## Forbidden bootstrap patterns
 
-- **No business logic.** Bootstrap wires; it does not compute. If you find yourself writing an `if (provider === 'X')` inside `bootstrap.ts`, the branch belongs in a factory function or a config-driven gateway selection, not in the wiring.
+- **No business logic.** Bootstrap wires; it does not compute. If the agent starts writing an `if (provider === 'X')` inside `bootstrap.ts`, the branch belongs in a factory function or a config-driven gateway selection, not in the wiring.
 - **No `process.env` reads.** Even in `bootstrap.ts`. Every env read goes through `runtimeConfig`. Bootstrap reads `runtimeConfig.x.y`; the config seam reads `process.env`.
 - **No DI container.** No `inversify`, `tsyringe`, `awilix`, or hand-rolled service locator. Manual constructor injection is the convention.
 - **No global singletons.** Every dependency a use case or handler needs comes through its constructor. Singletons (logger, Redis client) are created once *in bootstrap* and passed in; they are not imported as module-level globals from inside a use case.
@@ -166,7 +166,7 @@ export async function bootstrap(): Promise<void> {
 
 Every phase number above maps to a real production regression observed in one of the five reference repos. When a reviewer says a phase is "load-bearing", they mean the build still passes, the tests still pass, but the next traffic spike or the next provider rename surfaces a bug that bisects to a phase reorder. Treat the phase ordering as a contract, not a style choice.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] `bootstrap.ts` is the only file in `src/` that calls `new MCPServer(...)`. `grep -rn "new MCPServer" src/` returns exactly one hit.
 - [ ] `bootstrap.ts` is the only file in `src/` that calls `new <Concrete>Gateway(...)` for any gateway. `grep -rnE "new [A-Z][A-Za-z]*Gateway" src/ | grep -v "infrastructure/server/bootstrap.ts"` returns nothing.

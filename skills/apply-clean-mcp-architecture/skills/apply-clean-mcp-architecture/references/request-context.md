@@ -1,14 +1,14 @@
 # Request Context
 
-> SKILL.md's *Request context* section routes here. After reading you should be able to set up `AsyncLocalStorage` in `shared/request-context.ts`, bind a context in middleware once per tool call, and read it from anywhere downstream without DI threading — and you should know exactly which fields belong in the context (cross-cutting metadata only) and which do not (mutable application state, business inputs, results).
+> SKILL.md's *Request context* section routes here. After reading the agent should be able to set up `AsyncLocalStorage` in `shared/request-context.ts`, bind a context in middleware once per tool call, and read it from anywhere downstream without DI threading — and the agent should know exactly which fields belong in the context (cross-cutting metadata only) and which do not (mutable application state, business inputs, results).
 
 ## Why `AsyncLocalStorage` instead of DI threading
 
 Every tool call carries a small bag of cross-cutting metadata: who is calling, which session they are part of, which request id this is, how much the call has cost so far. This metadata is read by the logger, the usage recorder, the cost summariser, and occasionally by a gateway that needs to scope a cache key. Threading it through every function signature is noisy, error-prone, and the kind of mechanical refactor that tempts an agent to skip a callsite.
 
-Node's `AsyncLocalStorage` (stable since Node 16, hardened in 18 and beyond) keeps the metadata in scope for the entire async tree of a tool call. The middleware binds it once at the top of the call; downstream code reads it on demand. The context survives `await`, `Promise.all`, `setImmediate`, and timer callbacks — which is exactly what an MCP request looks like once you account for parallel gateway fanout.
+Node's `AsyncLocalStorage` (stable since Node 16, hardened in 18 and beyond) keeps the metadata in scope for the entire async tree of a tool call. The middleware binds it once at the top of the call; downstream code reads it on demand. The context survives `await`, `Promise.all`, `setImmediate`, and timer callbacks, matching MCP request shape once parallel gateway fanout is included.
 
-The alternative — passing a `RequestContext` argument through every function — costs a sizeable refactor every time you add a new field, and one missed callsite produces a hard-to-reproduce production bug where a downstream lookup silently uses the wrong session.
+The alternative — passing a `RequestContext` argument through every function — costs a sizeable refactor for every new field, and one missed callsite produces a hard-to-reproduce production bug where a downstream lookup silently uses the wrong session.
 
 ## What goes IN the context
 
@@ -20,7 +20,7 @@ Cross-cutting metadata only:
 - **Cost accumulator** — if billing is tracked, a mutable counter that gateways increment on every paid upstream call. The cost-summary middleware reads it at the end of the call.
 - **Abort signal** — the `AbortSignal` for the call, so a downstream timeout middleware can propagate cancellation.
 
-That is the entire allow-list. If you find yourself reaching for a field that isn't on this list, the answer is almost always "use a constructor argument or a function parameter, not the context".
+That is the entire allow-list. If the agent starts reaching for a field that isn't on this list, the answer is almost always "use a constructor argument or a function parameter, not the context".
 
 ## What does NOT go in the context
 
@@ -168,7 +168,7 @@ export function requestContext(): Middleware {
  * populates these on the ToolContext). Raw bearer payloads and
  * client-reported user ids are forgeable; never read identity from those.
  *
- * The exact lookup paths depend on how `mcp-use` exposes auth in your
+ * The exact lookup paths depend on how `mcp-use` exposes auth in the
  * version; the rule is "verified path only".
  */
 function resolveRequesterScopeFromAuth(_ctx: ToolContext): {
@@ -247,15 +247,15 @@ The use case rarely reads the context — a use case has its inputs through its 
 
 ## Concurrency and the parallel-call trap
 
-`AsyncLocalStorage` survives `Promise.all` and `Promise.allSettled` — every leg sees the same context that was bound at the top. This is what makes it correct for parallel gateway fanout. It does *not* survive across calls to `setTimeout`/`setImmediate` that re-enter the event loop without the binder; in normal MCP server code that case does not arise (every async path begins with an awaited or returned promise), but if you ever bridge into a global queue or a worker thread, re-bind explicitly with `runWithActiveRequestContext`.
+`AsyncLocalStorage` survives `Promise.all` and `Promise.allSettled` — every leg sees the same context that was bound at the top. This makes it correct for parallel gateway fanout. It does *not* survive across calls to `setTimeout`/`setImmediate` that re-enter the event loop without the binder; in normal MCP server code that case does not arise because every async path begins with an awaited or returned promise. Work that bridges into a global queue or worker thread must re-bind explicitly with `runWithActiveRequestContext`.
 
 For request-scoped *adapters* (a sampling adapter that needs a per-request `client.sample()` handle, an elicitation adapter likewise), the convention is to expose a `runWithContext(extra, fn)` method on the adapter and have the handler compose it once at the top of `execute`. Each adapter's per-request binding plugs into its own `AsyncLocalStorage`; the request-context binder sits above and outside those.
 
 ## Local-auth-bypass is a config decision, not a code-path decision
 
-If you support a loopback dev mode, the bypass is resolved in `infrastructure/config/runtime-config.ts` and surfaces as a flag. The middleware reads the flag and either resolves identity from the bypass scope or from verified auth — but the use case and the gateway never see the flag. The moment a bypass branch lives inside a use case, the production path and the dev path stop being the same path, and your tests stop telling you anything about production behaviour.
+If the server supports a loopback dev mode, the bypass is resolved in `infrastructure/config/runtime-config.ts` and surfaces as a flag. The middleware reads the flag and either resolves identity from the bypass scope or from verified auth — but the use case and the gateway never see the flag. The moment a bypass branch lives inside a use case, the production path and the dev path stop being the same path, and tests stop proving production behaviour.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] `shared/request-context.ts` defines exactly one `AsyncLocalStorage<ActiveRequestContext>` instance. No other file constructs one for cross-cutting metadata.
 - [ ] The context is bound by exactly one middleware (`infrastructure/middleware/request-context.ts`), and that middleware is the **first** stage of the pipeline.

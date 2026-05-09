@@ -1,6 +1,6 @@
 # Error Contracts
 
-> SKILL.md's *Error handling* section routes here. After reading you should be able to write `domain/errors.ts` from scratch with the full hierarchy, build the lookup table in `infrastructure/errors/error-contracts.ts` that maps `code` → MCP JSON-RPC envelope, and explain why this codebase throws/catches instead of returning Result types. Every guardrail in the SKILL.md error section should land here, on observable code.
+> SKILL.md's *Error handling* section routes here. After reading the agent should be able to write `domain/errors.ts` from scratch with the full hierarchy, build the lookup table in `infrastructure/errors/error-contracts.ts` that maps `code` → MCP JSON-RPC envelope, and explain why this codebase throws/catches instead of returning Result types. Every guardrail in the SKILL.md error section should land here, on observable code.
 
 ## Two-error model
 
@@ -13,7 +13,7 @@ Separating expected from unexpected is what lets the boundary mapper give the mo
 
 This codebase uses throw / catch with structured `cause` chains — composition through thrown errors, not through monadic chaining. Combining throw-style with a return-typed-result discipline inside one codebase produces twice the bug surface (forgotten handling on one side, double-wrapping on the other). Pick one, apply uniformly. The pick is locked here as throw / catch.
 
-Every `catch` block uses `catch (err: unknown)` and narrows explicitly. With `useUnknownInCatchVariables` enabled (part of `strict`), the compiler forces a narrowing step — and that narrowing is exactly what catches the case where you assumed `.message` on a value that was never an `Error`. Wrapping always preserves the original via `cause`:
+Every `catch` block uses `catch (err: unknown)` and narrows explicitly. With `useUnknownInCatchVariables` enabled (part of `strict`), the compiler forces a narrowing step — and that narrowing is exactly what catches the case where a caller assumed `.message` on a value that was never an `Error`. Wrapping always preserves the original via `cause`:
 
 ```ts
 try {
@@ -161,7 +161,7 @@ export class PermissionError extends DomainError {
     super(
       message,
       'PERMISSION_DENIED',
-      recoveryHint ?? 'Check your account permissions for this resource.',
+      recoveryHint ?? 'Check the account permissions for this resource.',
     );
     this.name = 'PermissionError';
     this.resourceId = resourceId;
@@ -249,7 +249,7 @@ Subclasses can extend further as the domain demands (e.g. a `CapabilityError` fo
 
 ## The lookup table — `infrastructure/errors/error-contracts.ts`
 
-The mapper is symmetric, table-driven, and easy to extend. One entry per `code`. The cite is `mcp-d4s: src/infrastructure/errors/error-contracts.ts` (in d4s the table additionally enriches the payload with `how_to_fix` / `try_instead` / `next_steps`; the new-skill version below is the simpler structural shape — extend it as your server grows).
+The mapper is symmetric, table-driven, and easy to extend. One entry per `code`. The cite is `mcp-d4s: src/infrastructure/errors/error-contracts.ts` (in d4s the table additionally enriches the payload with `how_to_fix` / `try_instead` / `next_steps`; the new-skill version below is the simpler structural shape — extend it as the server grows).
 
 ```ts
 // infrastructure/errors/error-contracts.ts
@@ -452,7 +452,7 @@ A `ToolResponse` may carry next-step hints that the LLM acts on. Those hints, li
 
 Pre-commit dispatch is the canonical "two systems disagree" failure: the agent is told the export is staged, and seconds later the storage write fails or is rolled back. The use case constructs the `ToolResponse` (with `nextSteps`) only after the durable side effect commits.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] `domain/errors.ts` defines the `DomainError` base with `code`, `recoveryHint`, and `isRetryable`. The `name` property is set to the class name on every subclass.
 - [ ] At least these subclasses exist: `ValidationError`, `NotFoundError`, `ProviderError`, `AuthError`, `PermissionError`, `RateLimitError`, `QuotaExhaustedError`, `ConflictError`, `RetryableError`. Every one has a stable `code` literal and a default `recoveryHint`.

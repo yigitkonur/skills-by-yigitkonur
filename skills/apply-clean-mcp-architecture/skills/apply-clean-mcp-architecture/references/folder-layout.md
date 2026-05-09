@@ -1,6 +1,6 @@
 # Folder Layout
 
-> SKILL.md's *Standard folder layout* section routes here. This reference is the canonical map of `src/` for a TypeScript MCP server built on `mcp-use/server`. After reading it, you should be able to scaffold an empty repo, place any new file in the right folder on the first try, justify each folder against a concrete failure mode, and use co-located `AGENTS.md` files to keep layer-specific guard rules next to the code they govern.
+> SKILL.md's *Standard folder layout* section routes here. This reference is the canonical map of `src/` for a TypeScript MCP server built on `mcp-use/server`. After reading it, the agent should be able to scaffold an empty repo, place any new file in the right folder on the first try, justify each folder against a concrete failure mode, and use co-located `AGENTS.md` files to keep layer-specific guard rules next to the code they govern.
 
 ## The tree, in full
 
@@ -82,7 +82,7 @@ These rules are enforceable by glob; a `dependency-cruiser` rule or a CI grep ca
 
 ## Why each folder exists — the failure modes prevented
 
-Every line in the tree pays back a real bug. If you find yourself questioning a folder, read this list before deleting it.
+Every line in the tree pays back a real bug. If the agent starts questioning a folder, read this list before deleting it.
 
 - **`domain/`** — *Why:* an MCP server that buries business rules inside `handlers/` re-couples the JSON-RPC wire shape to business invariants; the next provider rename or SDK upgrade rewrites entities along with imports. *Failure prevented:* SDK churn cascading into business logic.
 - **`domain/ports/`** — *Why:* ports are owned by the layer that *calls* them, not the layer that *implements* them. *Failure prevented:* ports renamed to mirror an adapter (`IRedisRepository<Dataset>` instead of `IDatasetStore`), which leaks storage semantics into use cases.
@@ -94,8 +94,8 @@ Every line in the tree pays back a real bug. If you find yourself questioning a 
 - **`gateways/`** — *Why:* every external system goes behind a port; every adapter classifies upstream errors before the error crosses the port. *Failure prevented:* SDK error types leaking into use cases and presenters.
 - **`gateways/caching-<port>.ts`** — *Why:* cache, retry, and sanitise are decorators of the same port. *Failure prevented:* cache-as-method on the gateway, which welds caching behaviour to provider-specific code.
 - **`presenters/`** — *Why:* the presenter is a humble object — `ToolResponse` in, `CallToolResult` out. *Failure prevented:* presenter logic that calls a gateway "just to fetch one more thing" and ends up un-testable.
-- **`infrastructure/server/bootstrap.ts`** — *Why:* one wiring file is what lets you swap a provider, substitute a gateway under test, or add a new tool by editing a single place. *Failure prevented:* ad-hoc `new ConcreteGateway()` calls inside use cases that destroy testability.
-- **`infrastructure/config/runtime-config.ts`** — *Why:* `process.env` reads are scattered the moment you tolerate two of them. *Failure prevented:* tests that cannot run without a populated `.env` and request-scoped config that silently leaks across tenants.
+- **`infrastructure/server/bootstrap.ts`** — *Why:* one wiring file is what lets provider swaps, substitute a gateway under test, or add a new tool by editing a single place. *Failure prevented:* ad-hoc `new ConcreteGateway()` calls inside use cases that destroy testability.
+- **`infrastructure/config/runtime-config.ts`** — *Why:* `process.env` reads are scattered the moment two are tolerated. *Failure prevented:* tests that cannot run without a populated `.env` and request-scoped config that silently leaks across tenants.
 - **`infrastructure/middleware/`** — *Why:* the request pipeline (request context → metrics → error boundary → usage → rate limit → timeout → circuit breaker → cost summary → report capture) is load-bearing and ordered. *Failure prevented:* an error boundary that runs before request context binds, dropping the request id from every log line.
 - **`infrastructure/errors/error-contracts.ts`** — *Why:* one symmetric mapping table, easy to extend, easy to audit. *Failure prevented:* a new error subclass added without updating the mapper, leaking raw `Error.message` (often containing DSNs) to the model.
 - **`infrastructure/observability/`** — *Why:* the logger is a port. JSON to stderr only. *Failure prevented:* a stray `console.log` corrupting the JSON-RPC stdout wire and killing the connection.
@@ -137,11 +137,11 @@ Tests live at `src/__tests__/<layer>/<feature>.test.ts`. The mirror is not cosme
 
 ## Why "small server" is not a reason to skip layers
 
-A one-tool MCP server still has all the layers; some layers are simply thin. The reason is concrete: the layout is what lets you grow from one tool to twenty-five without rewriting. d4s started small and grew; the only reason that growth did not require an architectural overhaul is that every layer was already in place from day one. A "small server" exception is a debt promise that nobody pays back — by the time the third tool lands, the file you should be editing is the file someone deleted as "ceremony".
+A one-tool MCP server still has all the layers; some layers are simply thin. The reason is concrete: the layout supports growth from one tool to twenty-five without rewriting. d4s started small and grew; the only reason that growth did not require an architectural overhaul is that every layer was already in place from day one. A "small server" exception is a debt promise that nobody pays back — by the time the third tool lands, the needed file is the file someone deleted as "ceremony".
 
 The cost of laying out the full tree on day one is roughly an hour of work and seven near-empty `AGENTS.md` files. The cost of retrofitting it after twelve tools have been written without it is a multi-PR refactor under production traffic. Pick the cheap version.
 
-## What you must verify before finishing
+## Verification checklist
 
 - [ ] Every top-level folder listed above exists in `src/`, even if some are thin (a one-tool server still has all the layers).
 - [ ] No top-level folder is missing an `AGENTS.md`. Each `AGENTS.md` is under ~120 lines and includes the required content for its layer.
