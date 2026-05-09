@@ -1,16 +1,18 @@
 ---
 name: run-batch-codex-research
-description: Use skill if you are following the deprecated batch codex research install path and need orchestrate-codex batch mode.
+description: Use skill if you are migrating from retired run-batch-codex-research to orchestrate-codex batch mode for codex template fanout.
 ---
 
 # run-batch-codex-research
 
-This is a deprecated compatibility shim. Do not restore the old implementation here.
+This is a retired compatibility shim. Do not restore the old standalone implementation here.
 
-Use `orchestrate-codex` instead:
+Install and use `orchestrate-codex` batch mode instead:
 
 ```bash
-node skills/orchestrate-codex/skills/orchestrate-codex/scripts/orchestrate-codex.mjs batch --inputs <inputs.txt> --template <template.md>
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/orchestrate-codex
 ```
 
-Read `skills/orchestrate-codex/skills/orchestrate-codex/references/modes/batch.md` for the active batch contract.
+For template-by-input codex fanout, load `orchestrate-codex` and choose batch mode. Read `skills/orchestrate-codex/skills/orchestrate-codex/references/modes/batch.md` for the active batch contract.
+
+If older notes mention `--cmd`, treat it as an internal migration detail, not a public trigger.

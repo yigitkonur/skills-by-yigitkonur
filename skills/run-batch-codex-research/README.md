@@ -1,15 +1,15 @@
 # run-batch-codex-research
 
-Redirecting deprecated batch codex research installs to orchestrate-codex batch mode.
+Migrating from retired run-batch-codex-research to orchestrate-codex batch mode for codex template fanout.
 
 **Category:** orchestration
 
 ## Install
 
-Install this compatibility stub individually:
+Install the active replacement:
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-batch-codex-research
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/orchestrate-codex
 ```
 
 Or install the full pack:
@@ -17,3 +17,5 @@ Or install the full pack:
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 ```
+
+This old skill path is a compatibility redirect only. Use `orchestrate-codex` batch mode for template-by-input codex fanout.
