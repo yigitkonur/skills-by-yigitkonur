@@ -98,6 +98,14 @@ As you work, only flag moments where the skill text changes your path:
 - [GUESSED] if you had to invent a decision the skill should have made explicit; point to the section that should have answered it
 - [BROKE] if following the skill led you to a command or pattern that failed; include the command and the instruction that led you there
 - [NICE] if a specific sentence, example, or routing cue saved you from a mistake
+
+Valid marker shapes:
+| Marker | Example shape |
+|---|---|
+| [STUCK] | [STUCK] references/fix-patterns.md says to run X, but no install step or fallback exists. |
+| [GUESSED] | [GUESSED] Step 2 says "large skill" but gives no threshold; I chose 10 files. |
+| [BROKE] | [BROKE] Command from Step 4 failed: ...; the documented output path did not exist. |
+| [NICE] | [NICE] The routing table sent me to friction-classification.md before editing. |
 PROMPT
 }
 

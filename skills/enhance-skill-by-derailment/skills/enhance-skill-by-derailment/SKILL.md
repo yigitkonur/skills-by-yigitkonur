@@ -75,7 +75,7 @@ Look for the paragraph, example, missing precondition, or routing cue that would
 
 ### 3. Launch the subagent
 
-Spin up one capable subagent. The prompt should read like a real user request.
+Launch one fresh-context subagent. The prompt should read like a real user request.
 
 **Prompt template:**
 
@@ -90,9 +90,23 @@ As you work, only flag moments where the skill text changes your path:
 - [GUESSED] if you had to invent a decision the skill should have made explicit; point to the section that should have answered it
 - [BROKE] if following the skill led you to a command or pattern that failed; include the command and the instruction that led you there
 - [NICE] if a specific sentence, example, or routing cue saved you from a mistake
+
+Valid marker shapes:
+| Marker | Example shape |
+|---|---|
+| [STUCK] | [STUCK] references/fix-patterns.md says to run X, but no install step or fallback exists. |
+| [GUESSED] | [GUESSED] Step 2 says "large skill" but gives no threshold; I chose 10 files. |
+| [BROKE] | [BROKE] Command from Step 4 failed: ...; the documented output path did not exist. |
+| [NICE] | [NICE] The routing table sent me to friction-classification.md before editing. |
 ```
 
-**Agent config:** use a capable general-purpose subagent, keep permissions aligned with the real task, and run it in the background if your platform supports that.
+**Dispatch protocol:**
+- Use a fresh-context Sonnet-class or equivalent capable general-purpose subagent by default.
+- Use a stronger model only when the target task itself is high-risk or repeated P0s remain after a normal pass.
+- Do not fix a weak skill by escalating the model; fix the skill text.
+- Keep subagent permissions aligned with the real task.
+- Do not leak the expected answer, suspected bug, or intended fix into the derailment prompt.
+- Preserve the trace path or transcript location before editing.
 
 ### 4. Read the execution trace
 
