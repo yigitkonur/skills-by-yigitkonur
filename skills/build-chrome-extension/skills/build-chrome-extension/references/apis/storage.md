@@ -1,5 +1,7 @@
 # Storage API Reference
 
+Verified: 2026-05-09 against the official `chrome.storage` API reference.
+
 ## Storage Areas Overview
 
 Chrome extensions have four storage areas, each with distinct scope and persistence:
@@ -8,16 +10,16 @@ Chrome extensions have four storage areas, each with distinct scope and persiste
 |---|---|---|---|---|
 | `chrome.storage.local` | `storage` | Per device | Survives browser restart, extension update | Large data, caches, user preferences |
 | `chrome.storage.sync` | `storage` | Synced across devices via Chrome account | Survives restart, syncs with account | Small user settings that follow the user |
-| `chrome.storage.session` | `storage` | Per browser session, per extension | Cleared on browser close; not accessible from content scripts by default | Temporary tokens, session state |
+| `chrome.storage.session` | `storage` | Per browser session, per extension | In-memory; cleared on browser close; not accessible from content scripts by default | Temporary tokens, session state |
 | `chrome.storage.managed` | `storage` | Read-only, set by enterprise policy | Managed by IT admin via policy JSON | Enterprise-managed configuration |
 
 ### Quota Limits
 
 | Area | Total Quota | Per-Item Limit | Max Items | Write Ops/Min | Notes |
 |---|---|---|---|---|---|
-| `local` | 10 MB | No per-item limit | No limit | ~120 sustained | Use `unlimitedStorage` permission to remove 10 MB cap |
-| `sync` | 100 KB total | 8 KB per item | 512 items | 120 / min, 1,800 / hour | Values exceeding 8 KB fail silently in older versions |
-| `session` | 10 MB | No per-item limit | No limit | No enforced limit | In-memory only; fast but ephemeral |
+| `local` | 10 MB | No per-item limit | No limit | N/A | Use `unlimitedStorage` permission to remove 10 MB cap |
+| `sync` | 100 KB total | 8 KB per item | 512 items | 120 / min, 1,800 / hour | Sustained write quota is deprecated in current docs |
+| `session` | 10 MB | No per-item limit | No limit | No enforced limit | Chrome 102+ MV3+; in-memory only; fast but ephemeral |
 | `managed` | N/A | N/A | N/A | Read-only | Schema declared in `storage.managed_schema` manifest key |
 
 ---
@@ -105,7 +107,7 @@ chrome.storage.onChanged.addListener(
 );
 ```
 
-### Area-Specific Listener (Chrome 104+)
+### Area-Specific Listener
 
 ```typescript
 // Only fires for chrome.storage.local changes

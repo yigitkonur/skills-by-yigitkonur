@@ -2,6 +2,8 @@
 
 Quick-reference for the most-used Manifest V3 APIs. Each section covers key methods, a practical code snippet, required permissions, and when to reach for the API.
 
+Verified: 2026-05-09 against official Chrome API docs for service worker lifecycle, declarativeNetRequest, sidePanel, webRequest, storage, and permissions where version-sensitive limits appear.
+
 ---
 
 ## chrome.tabs
@@ -418,15 +420,29 @@ await chrome.declarativeNetRequest.updateDynamicRules({
 });
 ```
 
-**Rule limits:** 30,000 static rules (across all rulesets), 5,000 dynamic rules, 5,000 session rules.
+**Rule limits (Chrome docs, Verified: 2026-05-09):**
+
+| Rule type | Current limit |
+|---|---|
+| Static rulesets in manifest | 100 total |
+| Enabled static rulesets | 50 enabled at once |
+| Guaranteed static rules | 30,000 across enabled static rulesets |
+| Session rules | 5,000 |
+| Dynamic rules | at least 5,000 unsafe dynamic rules; Chrome 121+ allows 30,000 safe dynamic rules |
+
+Chrome 128+ no longer counts static rules from disabled extensions against the global static rule limit. Re-enabled extensions may have less available static quota than before.
 
 **When to use:** Ad/tracker blocking, URL redirects, header modification, CORS workarounds -- all without reading request/response bodies.
+
+**MV3 migration rule:** Blocking `webRequest` is unavailable to most MV3 extensions except policy-installed extensions. Use `declarativeNetRequest` for request blocking, redirects, and header changes. Keep `webRequest` only for observing/analyzing traffic when no blocking behavior is needed.
 
 ---
 
 ## chrome.sidePanel
 
 **Permission:** `"sidePanel"` (manifest key)
+
+**Availability (Verified: 2026-05-09):** `chrome.sidePanel` is Chrome 114+ MV3+. `sidePanel.open()` is Chrome 116+ and must be called from a user gesture. Newer methods/events have newer minimums, including `close()` in Chrome 141+, `onOpened` in Chrome 141+, and `onClosed` in Chrome 142+.
 
 **Manifest:**
 

@@ -1,5 +1,7 @@
 # Content Script Patterns (Manifest V3)
 
+Verified: 2026-05-09 against Chrome's official [cross-origin network requests](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests) guidance.
+
 ## Injection Methods
 
 ### 1. Static Declaration (manifest.json)
@@ -123,6 +125,13 @@ const port = chrome.runtime.connect({ name: "stream" });
 port.postMessage({ type: "subscribe", channel: "updates" });
 port.onMessage.addListener((msg) => console.log("Received:", msg));
 ```
+
+## Cross-Origin Requests
+
+- Extension pages and service workers can `fetch()` cross-origin URLs when the origin is covered by `host_permissions`.
+- Content scripts initiate requests on behalf of the page origin and remain subject to the page's same-origin policy, even when the extension has host permissions.
+- Route privileged cross-origin fetches through the service worker, but never let a content script pass an arbitrary URL. Pass a constrained ID or path and construct the URL in the extension context.
+- Prefer HTTPS for remote data. Treat fetched data as untrusted and avoid injecting it with `innerHTML`.
 
 ### ISOLATED <-> MAIN world bridging
 

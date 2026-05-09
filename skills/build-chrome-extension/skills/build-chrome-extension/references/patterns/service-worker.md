@@ -1,5 +1,7 @@
 # Service Worker Patterns (Manifest V3)
 
+Verified: 2026-05-09 against Chrome's official [extension service worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle).
+
 ## Lifecycle Overview
 
 MV3 replaces persistent background pages with event-driven service workers.
@@ -11,7 +13,9 @@ install → activate → idle → TERMINATED (after ~30s inactivity)
 ```
 
 - No DOM, no `window`, no `document` — use `self` or `chrome.offscreen`.
-- Terminated after **30 seconds** of inactivity. Re-launched from scratch on next event.
+- Normally terminated after **30 seconds** of inactivity. Re-launched from scratch on next event.
+- A single event/API request has a **5 minute** processing limit; a `fetch()` response has a **30 second** first-response limit.
+- Chrome lifetime behavior changed across Chrome 105, 109, 110, 114, 116, 118, and 120. Use `minimum_chrome_version` if relying on a newer lifetime behavior.
 - All in-memory state is gone on termination.
 - Listeners **must** be registered synchronously at the top level of the script.
 
@@ -51,19 +55,20 @@ setup();
 
 ## The 30-Second Termination Rule
 
-Chrome terminates the SW when these are all true for ~30s: no pending `chrome.*` event
-callbacks, no active `fetch()`, no open `chrome.runtime.connect()` ports.
+Chrome normally terminates the SW after roughly 30 seconds without events or extension API calls.
+Queued events, running handlers, extension API calls, and active network work reset or extend timers.
 
 | Action | Keeps SW alive? |
 |---|---|
-| Active `chrome.runtime.Port` connection | Yes, while port is open |
+| Sending messages over a long-lived `Port` | Yes; Chrome 114+ keeps alive when messages are sent |
+| Opening a `Port` and leaving it idle | No; Chrome 114+ no longer resets timers just for opening the port |
 | Pending `fetch()` request | Yes, until response completes |
 | `chrome.alarms` handler executing | Yes, for handler duration |
 | `setTimeout` / `setInterval` | **No** — does not prevent termination |
 | `chrome.storage` async call in progress | Yes, until callback |
 | `waitUntil()` (ExtendableEvent) | Yes (install/activate only) |
 
-**5-minute hard limit:** Even with active work, Chrome kills the SW after 5 minutes.
+**5-minute hard limit:** Most active work is killed after 5 minutes. Chrome 116+ allows selected prompt-style APIs such as `identity.launchWebAuthFlow()` and `permissions.request()` to exceed this limit.
 
 ## State Persistence via chrome.storage
 
@@ -206,7 +211,7 @@ Only **one** offscreen document can exist at a time per extension.
 | Strategy | Tradeoff |
 |---|---|
 | `chrome.alarms` heartbeat (30s) | Minimum 30s gap; SW still dies between alarms |
-| Long-lived `Port` from popup/sidepanel | Only works while that UI surface is open |
+| Long-lived `Port` with active messages from popup/sidepanel | Only works while that UI surface is open and messages continue |
 | Offscreen document holding a port | Adds complexity; offscreen doc can also be closed |
 | Periodic `fetch` to slow endpoint | Wastes bandwidth; 5-min hard limit still applies |
 | **Design for termination** (recommended) | Persist state, use alarms, accept restarts — most robust |

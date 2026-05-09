@@ -2,6 +2,8 @@
 
 Ask for the smallest permission set that makes the feature work.
 
+Verified: 2026-05-09 against the official [`chrome.permissions` API](https://developer.chrome.com/docs/extensions/reference/api/permissions).
+
 ## Core rule
 
 - use install-time permissions only when the extension cannot function without them
@@ -25,6 +27,26 @@ Ask for the smallest permission set that makes the feature work.
 - prefer exact origins over wildcards
 - separate `host_permissions` from generic API permissions
 - if a feature is user-triggered, consider requesting host access at runtime
+- declare `optional_host_permissions` for hosts requested later
+- request optional permissions from a user gesture with `chrome.permissions.request()`
+- for Chrome 133+ MV3, `chrome.permissions.addHostAccessRequest()` can surface a host access request tied to a tab or top-level document; remove stale prompts with `removeHostAccessRequest()`
+
+## Runtime Grant Pattern
+
+```jsonc
+{
+  "optional_permissions": ["tabs"],
+  "optional_host_permissions": ["https://*.example.com/*"]
+}
+```
+
+```typescript
+const granted = await chrome.permissions.request({
+  permissions: ["tabs"],
+  origins: ["https://app.example.com/*"],
+});
+if (!granted) return;
+```
 
 ## Review checklist
 

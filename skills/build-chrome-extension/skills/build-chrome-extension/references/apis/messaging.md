@@ -1,5 +1,7 @@
 # Messaging API Reference
 
+Verified: 2026-05-09 against Chrome's official extension service worker lifecycle for long-lived messaging behavior.
+
 ## Architecture Overview
 
 Manifest V3 extensions have four isolated execution contexts that communicate exclusively through message passing:
@@ -209,7 +211,7 @@ chrome.runtime.onMessage.addListener((msg: TypedMessage, sender, sendResponse) =
 
 ## Long-Lived Connections (Ports)
 
-Use ports when you need a persistent bidirectional channel -- for example, streaming progress updates from background to popup.
+Use ports for bidirectional channels such as streaming progress updates from background to popup. In Chrome 114+, **sending a message** with long-lived messaging keeps the service worker alive; merely opening a port no longer resets service-worker timers. Design port users to reconnect and resume from storage.
 
 ### Opening a Port from Popup
 
@@ -288,7 +290,7 @@ chrome.runtime.onConnect.addListener((port) => {
 |---|---|---|
 | `port.onDisconnect` fires on one side | The other side called `port.disconnect()` | Channel closed, further `postMessage` throws |
 | `port.onDisconnect` fires automatically | Popup/tab closed | Same as above |
-| Service worker suspends | Chrome idles the SW | All ports disconnect; SW wakes on next `onConnect` |
+| Service worker suspends | Chrome idles the SW | Ports can disconnect; reconnect and resume from persisted state |
 | `chrome.runtime.lastError` set on disconnect | Error during disconnect | Check inside `onDisconnect` handler |
 
 ---
@@ -425,7 +427,7 @@ Alternatively, in Manifest V3 you can use `chrome.scripting.executeScript` with 
 1. **Always define a `type` field** on every message. Route with a `switch` or handler map -- never rely on the shape of the payload alone.
 2. **Use the typed messaging wrapper** above to get compile-time safety on both sender and receiver.
 3. **Prefer one-time messages** for simple request/response. Use ports only when you need streaming or high-frequency updates.
-4. **Handle service worker suspension.** Ports disconnect when the SW goes idle. Design for reconnection or fall back to one-time messages with storage-based state.
+4. **Handle service worker suspension.** Ports are not durable storage and idle ports do not keep Chrome 114+ service workers alive. Design for reconnection or fall back to one-time messages with storage-based state.
 5. **Validate `sender`** in `onMessage` and `onMessageExternal`. Check `sender.id` (extension ID), `sender.url`, or `sender.tab` to prevent spoofing.
 6. **Never assume the other end exists.** Wrap `sendMessage` in try/catch. Check for `chrome.runtime.lastError` in callbacks.
 7. **Avoid large payloads** in messages (soft limit ~64 MB, but large messages block the event loop). For large data, write to storage and send a key.

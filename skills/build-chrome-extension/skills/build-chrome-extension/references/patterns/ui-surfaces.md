@@ -1,5 +1,7 @@
 # UI Surfaces Patterns (Manifest V3)
 
+Verified: 2026-05-09 against the official [`chrome.sidePanel` API](https://developer.chrome.com/docs/extensions/reference/api/sidePanel).
+
 ## Extension UI Surface Types
 
 | Surface | Entry point | Lifecycle | Max dimensions | Min Chrome |
@@ -7,7 +9,7 @@
 | Popup | `action.default_popup` | Destroyed on close/blur | ~800x600 | All MV3 |
 | Options (embedded) | `options_ui.page` | Destroyed on tab close | ~680px width (iframe) | All MV3 |
 | Options (full tab) | `options_ui` + `open_in_tab: true` | Destroyed on tab close | Full tab | All MV3 |
-| Side panel | `side_panel.default_path` | Destroyed on panel close | ~400px wide (adjustable) | 114+ |
+| Side panel | `side_panel.default_path` | Destroyed on panel close | ~400px wide (adjustable) | 114+ MV3+ |
 | DevTools panel | `devtools_page` | Destroyed when DevTools closes | Full panel | All MV3 |
 | New tab override | `chrome_url_overrides.newtab` | Fresh on each new tab | Full tab | All MV3 |
 
@@ -104,7 +106,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 ```
 
-## Side Panel (Chrome 114+)
+## Side Panel (Chrome 114+ MV3+)
+
+`sidePanel.open()` requires Chrome 116+ and a user action. Newer APIs have newer minimums: `close()` is Chrome 141+, `onOpened` is Chrome 141+, and `onClosed` is Chrome 142+. Check the official API page before recommending those newer methods.
 
 ```jsonc
 { "permissions": ["sidePanel"], "side_panel": { "default_path": "sidepanel.html" } }
