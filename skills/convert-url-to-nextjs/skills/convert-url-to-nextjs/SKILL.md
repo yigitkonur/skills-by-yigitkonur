@@ -119,6 +119,15 @@ Think first:
 - Preserve extracted interaction behavior, but only if it can be grounded from CSS or documented JS/runtime behavior specs.
 - For inline `style=""` attributes or JS-driven states, extract the base CSS and the trigger separately; do not freeze computed runtime values into guessed static styles.
 
+## Next.js output decisions
+
+- **Package policy:** create `package.json` from a current official Next.js App Router scaffold or verify package compatibility against official Next.js docs at execution time. Do not independently pin `latest` package versions by guesswork.
+- **Static routes by default:** marketing and brochure pages should be Server Components/static output unless grounded interactions require browser APIs.
+- **Client Components only with evidence:** use Client Components for captured behaviors such as menus, accordions, billing toggles, carousels, scroll observers, or form state.
+- **Third-party scripts:** do not recreate analytics, chat, tag managers, or embeds unless the user explicitly requests that behavior.
+- **Route structure:** preserve the source route structure and generate one App Router route for each in-scope route.
+- **Images:** use local images with known dimensions, meaningful alt text, `sizes`, and `priority` for LCP/hero imagery. Do not add `next.config.js` remote image domains unless a temporary verification-only exception is documented.
+
 ## Recovery rules
 
 - **Live site available:** capture desktop, tablet, and mobile screenshots plus scroll slices before building. Preserve final DOM, script URLs, runtime metadata, mirrored stylesheets, and exposed asset URLs.

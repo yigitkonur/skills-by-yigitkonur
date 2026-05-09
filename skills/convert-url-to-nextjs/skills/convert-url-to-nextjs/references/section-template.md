@@ -586,7 +586,7 @@ The EXACT CSS needed to recreate this section. This is the PRIMARY build referen
 |--------|----------|
 | **Component type** | {Server / Client — and why} |
 | **Shared components to use** | {from Wave 1 inventory: `Button`, `Container`, etc.} |
-| **Image handling** | {`next/image` with `priority` for hero, `sizes` attribute, local path} |
+| **Image handling** | {`next/image` with local path, width/height, alt text, `sizes`, and `priority` for LCP/hero imagery} |
 | **Animation approach** | {CSS-only / `useScrollAnimation` hook / `useEffect` + IntersectionObserver} |
 | **Key Tailwind classes** | {`grid grid-cols-2 gap-16 items-center max-w-[1200px] mx-auto py-[120px]`} |
 | **Font loading** | {Uses `--font-display` → loaded via `next/font/local` in root layout} |
@@ -708,7 +708,7 @@ A Wave 4 agent building this page MUST verify ALL of the following before declar
 - [ ] Only Tailwind utilities + `tokens.ts` values used (no magic numbers)
 - [ ] Component imports match the Component Manifest above
 - [ ] `next build` succeeds with zero errors
-- [ ] All images use `next/image` with appropriate `sizes` and `priority` attributes
+- [ ] All images use local paths and include dimensions, alt text, `sizes`, and `priority` for LCP/hero imagery
 
 ### The Self-Containment Test
 

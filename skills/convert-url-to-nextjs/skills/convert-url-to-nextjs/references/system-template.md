@@ -92,9 +92,18 @@ export default function PricingPage() {
 
 Every stub MUST use tokens from the design system so `npm run build` validates token wiring.
 
+### Static vs Dynamic Output
+
+| Source evidence | Output decision |
+|---|---|
+| Static marketing or brochure route | Server Component/static App Router page by default |
+| Captured menu, accordion, toggle, carousel, form state, scroll observer, or browser API behavior | Small Client Component around the interactive element only |
+| Third-party analytics, chat, tag manager, or embedded widget | Document only; do not recreate unless explicitly requested |
+| Source route exists in scope | Preserve the pathname and create one App Router route for it |
+
 ### Package.json Dependencies (HARD LIMIT)
 
-Use one internally compatible version set. Do not independently pin every package to `latest`. The safest path is to start from one fresh Next.js App Router scaffold for the chosen Next major, then prune every package outside the allowlist below.
+Use one internally compatible version set. Do not independently pin every package to `latest`. The safest path is to start from a current official Next.js App Router scaffold or verify package compatibility against official Next.js docs at execution time, then prune every package outside the allowlist below.
 
 ```json
 {

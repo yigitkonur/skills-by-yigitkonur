@@ -709,6 +709,8 @@ Decision guidance for building extracted patterns in Next.js App Router.
 | Team photos | `next/image` with `sizes="(max-width: 768px) 50vw, 25vw"` |
 | Blog thumbnails | `next/image` with `sizes="(max-width: 768px) 100vw, 33vw"` |
 
+All raster images use local `/assets/images/...` paths, explicit dimensions or a stable fill container, meaningful alt text, and `sizes`. Do not add remote image domains to `next.config.js` unless documenting a temporary verification-only exception.
+
 ### Font Loading Strategy
 
 1. Download all fonts to `public/assets/fonts/`
