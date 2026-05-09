@@ -1,0 +1,135 @@
+# Rescue mode — resume a partial run
+
+Inspect an existing manifest, classify each entry's true state, ask the user which subset to redo, then re-spawn through the original mode's runner.
+
+## When rescue triggers
+
+- A prior orchestrate-codex run ended with non-terminal entries.
+- The user explicitly invokes rescue: `node orchestrate-codex.mjs rescue [--manifest <path>]`.
+- The detection algorithm Q1 fires (manifest exists + resume keyword in prompt).
+
+Rescue never auto-runs. Always operator-confirmed.
+
+## Inputs
+
+```
+node orchestrate-codex.mjs rescue [--manifest /abs/path/to/manifest.json]
+```
+
+If `--manifest` omitted, the dispatcher resolves from cwd via the universal slug+hash function (matches codex-companion's `resolveStateDir`). If no manifest at the resolved path, rescue refuses with `error.code="no_manifest_found"` and stops.
+
+## Pre-flight
+
+1. Manifest path resolved and parses.
+2. `manifest.schema_version <= skill_schema_version`. If newer, refuse with "skill upgrade needed."
+3. `manifest.mode` field present and valid (`exec | batch | single | review`).
+4. Manifest freshness ≤ 7 days OR user passes `--accept-stale`. Older manifests may reference deleted branches, removed files, or codex-companion job records that have aged out (MAX_JOBS=50 prune).
+5. Original mode's pre-flight runs (e.g. for review-mode rescue, `codex login status` is checked).
+
+## Classification flow
+
+`scripts/rescue-detect.py --manifest <path> --json` reads the manifest plus filesystem state plus codex-companion job records under `~/.../jobs/<id>.json`, and classifies each entry into one of:
+
+| Class | Definition |
+|---|---|
+| `done` | `manifest.status=="done"` AND log file exists AND (answer file non-empty if applicable) AND (worktree committed past baseline if applicable) |
+| `failed` | `manifest.status=="failed"` OR `exit_code != 0` OR worktree dirty + no commits + worker pid dead |
+| `never_started` | `manifest.status=="queued"` AND no log file AND (no worktree if exec/review) |
+| `in_flight` | `manifest.status=="running"` AND worker pid alive AND log file growing in last N ticks |
+| `unknown` | Anything else (e.g. `running` but pid gone — codex-companion state pruned past MAX_JOBS=50) |
+
+Output (JSON):
+```json
+{
+  "manifest_path": "...",
+  "run_id": "...",
+  "mode": "exec",
+  "by_status": {
+    "done": ["01-search-rewrite", "03-cache-eviction"],
+    "failed": ["02-config-editor"],
+    "never_started": ["04-alert-fsm"],
+    "in_flight": [],
+    "unknown": []
+  },
+  "total": 4,
+  "recommendations": [
+    "Redo 1 failed entry",
+    "Dispatch 1 never-started entry",
+    "Investigate 0 unknown entries"
+  ]
+}
+```
+
+## User decision
+
+After classification, the dispatcher emits a JSON envelope with the classification embedded. The skill SKILL.md instructs the agent to surface a 3-option `AskUserQuestion`:
+
+```
+Which subset do you want to redo?
+  - Redo failures only (1 entry: 02-config-editor)
+  - Redo never-started only (1 entry: 04-alert-fsm)
+  - Redo all non-done (2 entries: 02-config-editor, 04-alert-fsm)
+  - Stop, don't redo anything
+```
+
+Never auto-pick. Rescue is operator-confirmed.
+
+## Pre-rescue cleanup
+
+For each entry the user chose to redo, the runner does:
+
+1. **`in_flight` with stale pid.** `kill -TERM <pid>`; wait; `kill -KILL` if alive; mark entry `last_error="killed_by_rescue"`.
+2. **Stale worktree (exec/review mode).** If `worktree_path` exists in manifest but `git worktree list` doesn't show it: `git worktree prune`; recreate via `setup-worktree.sh`.
+3. **Dirty worktree (exec/review mode).** `git -C <wt> stash --include-untracked`; record stash ref into `manifest.entries[i].mode_state.pre_rescue_stash`. Do NOT abandon work silently.
+4. **Stale partial answer (batch mode).** `rm -f answers/<slug>.partial` or any `<slug>.tmp`. Skip-existing guard reads `answers/<slug>.md` (the canonical path), so partials shouldn't matter, but clean for hygiene.
+5. **Stale codex thread.** If `codex_thread_id` is present, the rescue can pass it to `codex exec resume <id>` for single-mode entries. For exec/batch/review, start fresh (no resume).
+
+After cleanup, flip the entry to `queued`, increment `attempts`, clear `finished_at` / `exit_code` / `last_error`. History row appended for the cleanup + flip.
+
+## Re-spawn
+
+Rescue does not re-implement the runners. It dispatches the original mode's runner with the chosen subset of entries marked `queued`. Skip-existing guards do the rest:
+
+- exec mode: `bash run-fleet.sh --manifest <path>` skips `done`, picks up `queued`.
+- batch mode: same.
+- single mode: re-spawns the one entry via `run-single.sh`.
+- review mode: continues per-branch loops where they left off (round counter preserved in manifest).
+
+The user's chosen subset's entries are flipped to `queued` first; everything else stays as-is.
+
+## Edge cases
+
+| Case | Handling |
+|---|---|
+| Manifest schema_version newer than skill | Refuse; surface "upgrade skill before resuming." |
+| `manifest.mode == "rescue"` | Refuse; rescue-of-rescue is not a thing. The original mode is what we resume. |
+| All entries are `done` | Print "nothing to rescue" and exit cleanly. Manifest can be tidied. |
+| All entries are `unknown` | Surface; the codex-companion state aged out. Rescue can still try (filesystem signals only) but warn the user the context is limited. |
+| Manifest references a worktree path that no longer exists AND no stash recorded | Treat as `never_started` for that entry; recreate via setup-worktree.sh on dispatch. |
+| Manifest references a branch that no longer exists locally OR remotely | Surface; ask user to recreate the branch from `codex_thread_id` (if present) or to skip the entry. |
+| Manifest is older than 7 days | Surface freshness warning; user passes `--accept-stale` to proceed. Old manifests may reference deleted branches, ignored issues, or aged-out codex-companion state. |
+| User chose "redo all non-done" but `unknown` entries exist | Treat `unknown` as `failed` for redispatch purposes. Log the assumption in history. |
+| The original mode is not implemented in this skill version | Refuse; surface the manifest's mode field and the supported modes. Skill upgrade or downgrade needed. |
+
+## Success gate
+
+Rescue inherits the original mode's success gate:
+- exec / batch / single: every chosen entry reaches a terminal status (`done` or `failed`); the original cleanup runs.
+- review: every chosen branch reaches a terminal state (`converged` / `cap_reached_*` / `blocked`).
+
+## Recovery
+
+If rescue itself fails (the dispatcher crashes, the runner crashes mid-redispatch):
+1. The manifest is preserved. Rescue is restartable.
+2. `audit-fleet-state.py --manifest <path>` shows the current entry-by-entry truth.
+3. Re-invoke rescue. The freshly-re-classified entries reflect any progress made before the crash.
+
+Full failure taxonomy: `references/universal/failure-modes.md`.
+
+## Anti-patterns
+
+- Auto-rescue. Always confirm with the user.
+- Silent overwrite of `done` entries. Skip-existing protects them; never bypass.
+- Abandoning a dirty worktree without stashing. Stash and surface the stash ref so the user can `git stash pop` if they want to recover.
+- Resuming a manifest from a different machine. Manifest paths are local; rescue is local-only by design.
+- Hand-editing the manifest to "fix" rescue's classification. Use `manifest-update.py` if you must, but inspect with `audit-fleet-state.py` first.
