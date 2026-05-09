@@ -35,7 +35,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 | Mistake | Problem | Better |
 |---|---|---|
 | `skill` or `my-skill` | Not descriptive | `build-react-app` |
-| `typescript` | Too broad — what does it do? | `develop-typescript` |
+| `mcp-server` | Too broad — what does it do? | `build-mcp-use-server` |
 | `v2-new-auth-handler` | Version in name | `handle-auth` |
 | `SKILL` (uppercase dir) | Case-sensitive platforms fail | `skill` (lowercase) |
 | `build_mcp_server` | Underscores non-standard | `build-mcp-server` |

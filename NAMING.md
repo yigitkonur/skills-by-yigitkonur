@@ -16,7 +16,7 @@ Anchor on this set of plain-English intent verbs:
 |---|---|---|
 | `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-macos-app`, `build-mcp-server-sdk-v1` |
 | `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
-| `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture` |
+| `apply` | Apply a methodology or standard to a codebase | `apply-clean-mcp-architecture` |
 | `ask` | Hand off / request something | `ask-review` |
 | `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
@@ -27,7 +27,7 @@ Anchor on this set of plain-English intent verbs:
 | `make` | Author Makefile targets / `make X` workflow scaffolding | `make-local`, `make-railway`, `make-vercel` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
-| `develop` | Apply language-level patterns and standards | `develop-typescript` |
+| `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
 | `use` | Drive a CLI utility for ongoing operations | `use-railway` |
@@ -88,7 +88,6 @@ When renaming a published skill:
 
 ## Current Canonical Skill Names
 
-- `apply-clean-architecture`
 - `apply-clean-mcp-architecture`
 - `ask-review`
 - `build-chrome-extension`
@@ -104,7 +103,6 @@ When renaming a published skill:
 - `check-completion`
 - `convert-mcp-server-sdk-v1-to-v2`
 - `convert-url-to-nextjs`
-- `develop-typescript`
 - `do-debug`
 - `do-review`
 - `do-think`

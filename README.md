@@ -20,7 +20,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
 | Skill | Category | Description |
 |---|---|---|
-| [apply-clean-architecture](skills/apply-clean-architecture/) | development | Clean Architecture and DDD in TypeScript |
 | [apply-clean-mcp-architecture](skills/apply-clean-mcp-architecture/) | development | Clean Architecture standard for TypeScript MCP servers — folder layout, layer boundaries, mcp-use placement, TS quality |
 | [ask-review](skills/ask-review/) | productivity | Hand off work as a PR with domain-aware self-review, or produce a markdown review doc |
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
@@ -39,7 +38,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [check-completion](skills/check-completion/) | productivity | Check what's done vs. claimed done via a 22-status taxonomy; remediate until every in-scope task reaches a terminal status |
 | [convert-mcp-server-sdk-v1-to-v2](skills/convert-mcp-server-sdk-v1-to-v2/) | development | Port v1 MCP servers to the v2 split-package SDK |
 | [convert-url-to-nextjs](skills/convert-url-to-nextjs/) | design | Live URLs or HTML snapshots to Next.js projects |
-| [develop-typescript](skills/develop-typescript/) | development | Strict TypeScript patterns and config |
 | [do-debug](skills/do-debug/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to do-think Interactive |
 | [do-review](skills/do-review/) | productivity | Systematic pull request review |
 | [do-think](skills/do-think/) | productivity | Deep-thinking framework — Solo or user-in-the-loop Interactive modes; 4-phase loop with mandatory stress-test trio |

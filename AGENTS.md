@@ -60,7 +60,7 @@ Anchor on this set of plain-English verbs:
 |---|---|---|
 | `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-macos-app`, `build-mcp-server-sdk-v1` |
 | `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
-| `apply` | Apply a methodology or standard to a codebase | `apply-clean-architecture` |
+| `apply` | Apply a methodology or standard to a codebase | `apply-clean-mcp-architecture` |
 | `ask` | Hand off / request something | `ask-review` |
 | `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
@@ -71,7 +71,7 @@ Anchor on this set of plain-English verbs:
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
 | `make` | Author Makefile targets / `make X` deployment & workflow scaffolding | `make-local`, `make-railway`, `make-vercel` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
-| `develop` | Apply language-level patterns and standards | `develop-typescript` |
+| `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
 | `use` | Drive a CLI utility for ongoing operations | `use-railway` |
@@ -258,22 +258,22 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 Use this list to check for naming collisions:
 
 ```
-apply-clean-architecture         apply-clean-mcp-architecture     ask-review
-build-chrome-extension           build-copilot-sdk-app            build-effect-ts-v3
-build-kernel-ts-sdk              build-langchain-ts-app           build-macos-app
-build-mcp-server-sdk-v1          build-mcp-server-sdk-v2          build-mcp-use-agent
-build-mcp-use-client             build-mcp-use-server             build-raycast-script-command
-build-tinacms-nextjs             check-completion                 convert-mcp-server-sdk-v1-to-v2
-convert-url-to-nextjs            develop-typescript               do-debug
-do-review                        do-think                         enhance-prompt
-enhance-skill-by-derailment      evaluate-code-review             extract-saas-design
-init-agent-config                make-local                       make-railway
-make-vercel                      optimize-agentic-cli             optimize-agentic-mcp
-publish-npm-package              run-agent-browser                run-batch-codex-research
-run-codex-exec                   run-codex-review                 run-github-scout
-run-industry-research            run-issue-tree                   run-playwright
-run-repo-cleanup                 run-research                     synthesize-skills
-test-by-mcpc-cli                 use-linear-cli                   use-railway
+apply-clean-mcp-architecture     ask-review                       build-chrome-extension
+build-copilot-sdk-app            build-effect-ts-v3               build-kernel-ts-sdk
+build-langchain-ts-app           build-macos-app                  build-mcp-server-sdk-v1
+build-mcp-server-sdk-v2          build-mcp-use-agent              build-mcp-use-client
+build-mcp-use-server             build-raycast-script-command     build-tinacms-nextjs
+check-completion                 convert-mcp-server-sdk-v1-to-v2  convert-url-to-nextjs
+do-debug                         do-review                        do-think
+enhance-prompt                   enhance-skill-by-derailment      evaluate-code-review
+extract-saas-design              init-agent-config                make-local
+make-railway                     make-vercel                      optimize-agentic-cli
+optimize-agentic-mcp             publish-npm-package              run-agent-browser
+run-batch-codex-research         run-codex-exec                   run-codex-review
+run-github-scout                 run-industry-research            run-issue-tree
+run-playwright                   run-repo-cleanup                 run-research
+synthesize-skills                test-by-mcpc-cli                 use-linear-cli
+use-railway
 ```
 
 ---
