@@ -3,6 +3,14 @@
 ## Event subscription API
 
 ```typescript
+// Early catch-all handler registered before session.create returns
+const session = await client.createSession({
+  onPermissionRequest: approveAll,
+  onEvent: (event) => {
+    if (event.type === "session.start") console.log(event.data.sessionId);
+  },
+});
+
 // Typed — fires only for the specific event type
 const unsub = session.on("assistant.message", (event) => {
   console.log(event.data.content);
@@ -117,12 +125,15 @@ session.on("tool.execution_complete", (event) => {
 
 ## All event types by category
 
+Regenerate or verify this catalog from `dist/generated/session-events.d.ts` for the selected package. As of stable `0.3.0`, the `SessionEvent` union includes newer surfaces such as MCP sampling/OAuth, command execution, capabilities updates, and session resource status events. Avoid hard-coded event-count claims.
+
 ### Session lifecycle
 
 | Type | Ephemeral | Key Data |
 |------|-----------|----------|
 | `session.start` | no | `sessionId, version, selectedModel?, context?` |
 | `session.resume` | no | `resumeTime, eventCount, context?` |
+| `session.remote_steerable_changed` | no | remote steering availability |
 | `session.idle` | **yes** | `backgroundTasks?: { agents: [], shells: [] }` |
 | `session.error` | no | `errorType, message, stack?, statusCode?` |
 | `session.title_changed` | **yes** | `title: string` |
@@ -141,6 +152,13 @@ session.on("tool.execution_complete", (event) => {
 | `session.compaction_start` | no | `data: {}` |
 | `session.compaction_complete` | no | `success, tokensRemoved?, checkpointPath?` |
 | `session.task_complete` | no | `summary?` |
+| `session.tools_updated` | no | current available tool metadata |
+| `session.background_tasks_changed` | no | background task status |
+| `session.skills_loaded` | no | loaded skill metadata |
+| `session.custom_agents_updated` | no | custom agent metadata |
+| `session.mcp_servers_loaded` | no | loaded MCP server metadata |
+| `session.mcp_server_status_changed` | no | MCP server status |
+| `session.extensions_loaded` | no | loaded extension metadata |
 
 ### User / pending messages
 
@@ -243,6 +261,17 @@ Tool result types in `tool.execution_complete`:
 | `elicitation.requested` | **yes** | `requestId, message, requestedSchema` |
 | `elicitation.completed` | **yes** | `requestId` |
 
+Observation is not enough for elicitation. Register `onElicitationRequest` on `createSession` or `resumeSession` when this client should answer structured form prompts.
+
+### Sampling and MCP OAuth
+
+| Type | Ephemeral | Key Data |
+|------|-----------|----------|
+| `sampling.requested` | **yes** | MCP sampling request fields |
+| `sampling.completed` | **yes** | `requestId` |
+| `mcp.oauth_required` | **yes** | MCP server OAuth details |
+| `mcp.oauth_completed` | **yes** | `requestId` |
+
 ### External tool (v3 broadcast)
 
 | Type | Ephemeral | Key Data |
@@ -255,7 +284,12 @@ Tool result types in `tool.execution_complete`:
 | Type | Ephemeral | Key Data |
 |------|-----------|----------|
 | `command.queued` | **yes** | `requestId, command` |
+| `command.execute` | **yes** | command name and args |
 | `command.completed` | **yes** | `requestId` |
+| `commands.changed` | **yes** | current registered SDK commands |
+| `auto_mode_switch.requested` | **yes** | requested mode switch |
+| `auto_mode_switch.completed` | **yes** | `requestId` |
+| `capabilities.changed` | **yes** | session capabilities, such as elicitation availability |
 | `exit_plan_mode.requested` | **yes** | `requestId, summary, planContent, actions, recommendedAction` |
 | `exit_plan_mode.completed` | **yes** | `requestId` |
 
@@ -304,6 +338,7 @@ session.on("session.shutdown", (event) => {
 > Learned from real-world testing — common mistakes agents make with streaming.
 
 - **Register handlers before `send()`**. Handlers attached after `send()` may miss early events like the first `assistant.message_delta`.
+- **Use `onEvent` for creation-time events**. It is registered before `session.create` RPC returns.
 - **`deltaContent` is always defined** on `assistant.message_delta` events. No need for null checks.
 - **`session.idle` fires once per turn** — after all tool calls complete and the final assistant message is sent. It does NOT fire between individual tool calls.
 - **Parallel tools**: When the model invokes multiple tools at once, events for different tools interleave. Use `toolCallId` from the event data to correlate `tool.execution_start` with its `tool.execution_complete`.

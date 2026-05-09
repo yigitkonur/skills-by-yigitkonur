@@ -1,5 +1,7 @@
 # Agents, MCP, and Skills
 
+Use Copilot SDK custom agents when the application itself is built on `@github/copilot-sdk` and should let the Copilot runtime orchestrate sub-agents inside one session. Use `build-langchain-ts-app` or `build-mcp-use-agent` when the app is not a Copilot SDK app.
+
 ## Custom agents
 
 Define agents with specialized personas, tool sets, and MCP servers:
@@ -7,6 +9,10 @@ Define agents with specialized personas, tool sets, and MCP servers:
 ```typescript
 const session = await client.createSession({
   onPermissionRequest: approveAll,
+  includeSubAgentStreamingEvents: true,
+  defaultAgent: {
+    excludedTools: ["dangerous_write_tool"],
+  },
   customAgents: [
     {
       name: "code-reviewer",
@@ -15,6 +21,7 @@ const session = await client.createSession({
       prompt: "You are a senior code reviewer. Focus on security, performance, and maintainability.",
       tools: ["bash", "view", "grep"],  // restrict available tools
       infer: true,                       // model auto-routes to this agent
+      skills: ["repo-review-rules"],      // preload named skills from skillDirectories
     },
     {
       name: "test-writer",
@@ -34,6 +41,7 @@ const session = await client.createSession({
     },
   ],
   agent: "code-reviewer",  // activate this agent at session start
+  skillDirectories: ["/path/to/skills"],
 });
 ```
 
@@ -48,8 +56,25 @@ interface CustomAgentConfig {
   prompt: string;                            // system prompt for this agent
   mcpServers?: Record<string, MCPServerConfig>; // agent-specific MCP servers
   infer?: boolean;                           // default true — auto-route based on user intent
+  skills?: string[];                         // named skills to preload for this agent
 }
 ```
+
+### Session-level agent controls
+
+Current stable `SessionConfig` includes:
+
+```typescript
+customAgents?: CustomAgentConfig[];
+agent?: string; // select a custom agent at session start
+defaultAgent?: { excludedTools?: string[] };
+includeSubAgentStreamingEvents?: boolean; // default true in current types
+```
+
+- `customAgents`: registers sub-agents for runtime orchestration.
+- `agent`: starts the session with a named custom agent selected.
+- `defaultAgent.excludedTools`: hides tools from the built-in/default agent while keeping them available to custom agents that explicitly list them.
+- `includeSubAgentStreamingEvents`: forwards sub-agent `assistant.message_delta`, `assistant.reasoning_delta`, and `assistant.streaming_delta` events with sub-agent parent metadata. Set `false` only when the UI wants lifecycle events but not token deltas.
 
 ### Agent RPC methods
 
@@ -316,4 +341,7 @@ extensions_reload({})
 - **Extension tool names must be globally unique**. If two extensions define a tool with the same name, the second one silently overwrites the first.
 - **MCP server configuration** follows the standard MCP protocol. The SDK passes the config directly to the CLI, which spawns the MCP server process.
 - **Custom agents** are configured with `customAgents` and can be activated at start with `agent` or switched at runtime with `session.rpc.agent.select(...)`.
+- **Sub-agent streaming** is controlled by `includeSubAgentStreamingEvents`; lifecycle events still exist separately as `subagent.*`.
+- **Default agent scoping** uses `defaultAgent.excludedTools`, not a second custom agent named `"default"`.
+- **Agent skills** are explicit via `CustomAgentConfig.skills`; they resolve by name from `skillDirectories`.
 - **Skills are loaded from `skillDirectories`** and can be disabled with `disabledSkills`. They are not referenced through a separate `sessionConfig.skills` field in the API shown here.

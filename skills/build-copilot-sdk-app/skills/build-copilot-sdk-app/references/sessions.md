@@ -15,22 +15,29 @@ const session: CopilotSession = await client.createSession(config: SessionConfig
 | `clientName` | `string` | no | — | Included in User-Agent header |
 | `model` | `string` | no | — | Model ID (e.g. `"gpt-4.1"`, `"gpt-5"`) |
 | `reasoningEffort` | `ReasoningEffort` | no | — | `"low"\|"medium"\|"high"\|"xhigh"` |
+| `modelCapabilities` | `ModelCapabilitiesOverride` | no | — | Per-property model capability override |
 | `configDir` | `string` | no | — | Override config directory |
+| `enableConfigDiscovery` | `boolean` | no | `false` | Discover MCP config and skill directories from working directory |
 | `tools` | `Tool<any>[]` | no | `[]` | Custom tools |
+| `commands` | `CommandDefinition[]` | no | — | Slash commands registered for CLI TUI users |
 | `systemMessage` | `SystemMessageConfig` | no | — | System prompt config |
 | `availableTools` | `string[]` | no | — | Tool allowlist (overrides `excludedTools`) |
 | `excludedTools` | `string[]` | no | — | Tool blocklist |
 | `provider` | `ProviderConfig` | no | — | BYOK provider |
 | `onUserInputRequest` | `UserInputHandler` | no | — | Handler for `ask_user` tool |
+| `onElicitationRequest` | `ElicitationHandler` | no | — | Handler for structured form elicitation |
 | `hooks` | `SessionHooks` | no | — | Lifecycle hooks |
 | `workingDirectory` | `string` | no | — | Session working directory |
 | `streaming` | `boolean` | no | `false` | Enable streaming events |
+| `includeSubAgentStreamingEvents` | `boolean` | no | `true` | Forward sub-agent streaming delta events |
 | `mcpServers` | `Record<string, MCPServerConfig>` | no | — | MCP servers |
 | `customAgents` | `CustomAgentConfig[]` | no | — | Custom agents |
+| `defaultAgent` | `DefaultAgentConfig` | no | — | Hide tools from the built-in default agent |
 | `agent` | `string` | no | — | Agent to activate at start |
 | `skillDirectories` | `string[]` | no | — | Skill directories to load |
 | `disabledSkills` | `string[]` | no | — | Skills to disable |
 | `infiniteSessions` | `InfiniteSessionConfig` | no | — | Auto-compaction config |
+| `gitHubToken` | `string` | no | — | Per-session GitHub identity token |
 | `onEvent` | `SessionEventHandler` | no | — | Early event handler (registered before `session.create` RPC) |
 
 ## Resume a session
