@@ -1,6 +1,14 @@
 # Scenario detection — classify before you scaffold
 
-Pick exactly one scenario per project (or per app, in monorepos). Run the signal commands top-to-bottom, take the first match, and stop. Ambiguity is resolved with one targeted question — never a guess.
+Pick exactly one scenario per deployable app. Single-app projects get one final tag. Monorepos get one tag per deployable app plus a dominant root orchestration tag. Run the signal commands top-to-bottom, take the first supported match, and stop. Ambiguity is resolved with one targeted question — never a guess.
+
+Before applying this reference, run the bundled read-only helper from the skill directory:
+
+```bash
+bash scripts/scenario-detect.sh /path/to/project
+```
+
+Use its observed signals as evidence, not as the final answer.
 
 ## How to read this file
 
@@ -12,6 +20,21 @@ For each scenario A–G:
 - **Typical config files** — what to check for on disk.
 
 All commands assume the project root as `cwd`. Replace nothing — copy and paste.
+
+## Classification result contract
+
+Before generating files, print this block:
+
+```text
+Scenario: <A-G, or C+D for supported combined shape>
+Scope: <repo root or per-app paths>
+Confidence: <high|medium>
+Signals: <observed files/deps/commands>
+Excluded scenarios: <why the near misses were rejected>
+Provider scope: <Vercel/Railway/Supabase/MacBook/local-only>
+Makefiles to generate: <root + app paths, max 4>
+Ambiguity resolved: <none or the answered question>
+```
 
 ## Scenario A — Frontend-only
 
@@ -182,7 +205,7 @@ ssh -G macbook 2>/dev/null | awk '/^hostname / {print $2}'   # not literally "ma
    NO → continue
 4. Frontend signals AND supabase/ dir?
    YES → custom backend dir also present?
-         YES → ask (C+D ambiguity, see below)
+        YES → C+D only if backend deploys separately; otherwise ask (see below)
          NO  → Scenario D
    NO → continue
 5. Frontend signals AND backend dir with HTTP framework?
@@ -203,7 +226,7 @@ If the repo is a monorepo (`apps/` or `packages/` plus `pnpm-workspace.yaml` / `
 1. Run the decision tree against EACH app directory independently. Each app gets its own scenario tag.
 2. Pick the **dominant scenario** for the root Makefile (usually the highest-traffic public-facing app — frontend > backend > tooling).
 3. Generate one root `Makefile` plus up to three app sub-Makefiles, each scoped to its app. The root delegates via `$(MAKE) -C apps/<name> <target>`. See `makefile-base.md` for the helper convention and the monorepo reference for delegation patterns.
-4. If the monorepo has more than four apps total, ask the user to pick three for now. The "max 4 Makefiles" ceiling is hard.
+4. If the monorepo has more than three deployable apps, ask the user to pick three for now. The "max 4 Makefiles" ceiling is hard: root + up to three app Makefiles.
 
 ```bash
 # Monorepo signal
@@ -232,7 +255,7 @@ Pick: (a) → Scenario C; (b) → not Scenario C — usually D with workers fold
 
 > "I see Next.js + Supabase + a custom backend at `apps/api`. Does the backend deploy to Railway in addition to Supabase, or is `apps/api` only a build-time script? (a) deploys to Railway / (b) build-time only"
 
-Pick: (a) → C+D combined (rare; treat as C with Supabase added) — surface explicitly; (b) → Scenario D.
+Pick: (a) → C+D combined (rare; root orchestrates frontend + backend + Supabase; provider scope is Vercel + Railway + Supabase; generate only the Makefiles allowed by the 4-file ceiling); (b) → Scenario D.
 
 ### 3. `Package.swift` with both CLI and macOS targets
 
@@ -276,7 +299,8 @@ Map: (a) → A; (b) → C or E depending on follow-up; (c) → F; (d) → G; (e)
 After classifying:
 
 - [ ] Scenario tag recorded (A–G)
+- [ ] If C+D: custom backend deploys separately and Supabase is also in scope
 - [ ] If monorepo: per-app tags recorded; dominant scenario picked for root; ≤3 sub-Makefile slots assigned
 - [ ] Exclusion signals double-checked (no Supabase config in a C-tagged repo without Supabase deps; no `*.xcodeproj` in an F-tagged repo)
 - [ ] Disambiguation answered if any ambiguous case applied
-- [ ] User informed of the chosen scenario before any file is written
+- [ ] Classification result block printed before any file is written
