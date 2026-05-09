@@ -1,6 +1,6 @@
 # run-agent-browser
 
-Driving the agent-browser CLI for browser navigation, DOM-grounded interaction, session/tab management, screenshots, data extraction, or repeatable web app workflows.
+Driving agent-browser CLI @ref snapshots for stateful sessions, browser navigation, forms, screenshots, extraction, or provider/stealth runs.
 
 **Category:** testing
 

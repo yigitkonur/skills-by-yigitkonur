@@ -1,22 +1,36 @@
 ---
 name: run-agent-browser
-description: Use skill if you are driving the agent-browser CLI for browser navigation, DOM-grounded interaction, session/tab management, screenshots, data extraction, or repeatable web app workflows.
+description: Use skill if you are driving agent-browser CLI @ref snapshots for stateful sessions, browser navigation, forms, screenshots, extraction, or provider/stealth runs.
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 ---
 
 # Browser Automation with agent-browser
 
-Use this skill when the task should be executed through the `agent-browser` CLI. If the user explicitly wants `playwright-cli`, use `run-playwright` instead. If the task is diagnosis in DevTools rather than browser automation, use the relevant debug skill.
+Use this skill when the task should be executed through the `agent-browser` CLI: `@ref` snapshots, stateful sessions, providers, screenshots, DOM-grounded extraction, headed/stealth runs, or cloud-backed browser flows. If the task is diagnosis in DevTools rather than browser automation, use the relevant debug skill.
+
+## Decision gate
+
+| Need | Skill |
+|---|---|
+| `agent-browser`, `@ref`, `snapshot -i --json`, provider/stealth/session-name/profile flows | `run-agent-browser` |
+| `@anthropic-ai/playwright-cli`, `playwright-cli snapshot`, Playwright CLI console/network artifacts | `run-playwright` |
+| TypeScript browser automation code with `@onkernel/sdk` or Kernel Apps | `build-kernel-ts-sdk` |
+| Rebuild a captured site into Next.js | `convert-url-to-nextjs` owns the build; call this skill only for capture |
+| Document an existing SaaS/admin visual system | `extract-saas-design` owns the docs; call this skill only for browser evidence |
 
 ## Trigger boundaries
 
 Use this skill for:
 - terminal-driven browser automation with `agent-browser`
-- form filling, login flows, data extraction, screenshots, and DOM-grounded web app checks
-- multi-tab or multi-session workflows where ref snapshots and deterministic verification matter
+- form filling, login flows, data extraction, screenshots, and DOM-grounded web app checks with `@ref` snapshots
+- multi-tab or multi-session workflows where `snapshot -i --json`, refs, and deterministic verification matter
+- hosted, headed, stealth, profile, session-name, or provider-backed browser runs through the `agent-browser` CLI
 
 Do not use this skill for:
 - tasks explicitly asking for `playwright-cli`, Browserbase `browse`, or another browser CLI
+- writing Playwright test code or running Playwright CLI workflows; use `run-playwright` or the repo's coding skill as appropriate
+- Kernel SDK implementation work; use `build-kernel-ts-sdk`
+- full site conversion or design-system extraction deliverables; return browser artifacts to `convert-url-to-nextjs` or `extract-saas-design`
 - static research that does not require active browser interaction
 - DevTools-first debugging or profiling unless the task still centers on `agent-browser`
 
