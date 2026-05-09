@@ -27,6 +27,7 @@ Before coding, inspect the target repo and record:
 - `package.json`: module type, scripts, framework, existing LangChain packages, and test command.
 - Runtime: Node.js 20+ and TypeScript 5+; stop and fix lower versions before debugging LangChain behavior.
 - Installed versions: `npm ls langchain @langchain/core @langchain/langgraph @langchain/openai` when dependencies are installed; use `references/start/version-discipline.md` for drift checks.
+- Version script: run `scripts/check-langchain-versions.sh` for a read-only package report; docs live in `scripts/check-langchain-versions.sh.md`.
 - Provider environment: `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, Anthropic/Google/Azure keys, LangSmith keys, MCP credentials.
 - Work mode: greenfield scaffold vs existing app integration; for existing apps, follow local file layout and test conventions.
 
@@ -71,6 +72,8 @@ Use path-specific package subsets and pin compatible versions in real apps:
 | LangSmith eval/tracing | `langsmith` plus `openevals` only when evaluation workflows need it |
 
 Use `@latest` only in update commands or exploratory refreshes, not as the documented tested state. When package APIs matter, verify the current package matrix before editing examples and record the research date. See `references/start/version-discipline.md`.
+
+For existing apps, run `scripts/check-langchain-versions.sh` before diagnosing API drift or changing package pins. The paired docs are `scripts/check-langchain-versions.sh.md`.
 
 ## Reliability guardrails
 
