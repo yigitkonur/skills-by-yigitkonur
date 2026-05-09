@@ -1,33 +1,36 @@
 ---
 name: run-research
-description: This skill should be used when the user asks to "research", "look up", "compare libraries", "investigate a bug across versions", "audit dependencies", "find community sentiment", "decide between X and Y", "check Reddit for", "what's new in", or any technical question that requires web evidence, Reddit practitioner experience, and multi-source synthesis. Use whenever the answer depends on information published or changed after training cutoff. Skip when the question is local-codebase only, when a single docs page already in context is sufficient, or when the user has explicitly asked you not to search the web.
+description: "Use skill if you are answering one technical research question with current web evidence, Reddit practitioner experience, and source-backed markdown synthesis."
 version: 1.0.0
 ---
 
 # Technical Research
 
-Drive the research-powerpack toolkit (`start-research` plus the 2×2 of
-raw/smart × search/scrape) to answer technical questions whose accurate
-answer requires web evidence, Reddit practitioner experience, and
-multi-source synthesis.
+Research one technical question with current web evidence, Reddit
+practitioner experience, and source-backed synthesis.
 
 ## Trigger boundary
 
-Use this skill when:
+Use `run-research` for one technical question:
 
-- The answer depends on information published or changed since training
-  cutoff (libraries, APIs, prices, models, security advisories).
-- The user wants community sentiment, lived experience, migration reports,
-  or post-incident retrospectives — not just docs.
-- Any non-trivial claim should be triangulated across three or more
-  independent sources.
-- The question is comparative ("X vs Y") and the comparison axes span
-  multiple sources.
+- bug diagnosis, root-cause research, or version-specific behavior
+- API, library, framework, model, CVE, pricing, or changelog lookup
+- architecture or migration decision with web evidence
+- security or performance investigation
+- fact check that could be stale or contested
+- practitioner experience, migration reports, regrets, production
+  gotchas, or post-incident retrospectives
 
 Skip when:
 
-- The question is local-codebase only (use Explore-class agents).
-- A single docs page already in context is sufficient (use WebFetch).
+- The task is industry, market, vendor-category, buyer comparison, or
+  5+ entity corpus research with per-entity packs, comparison templates,
+  or reusable source ledgers. Use `run-industry-research`; in this repo,
+  route the same corpus-shaped work to `run-corpus-research`.
+- The task is GitHub repo discovery, shortlisting, or repo comparison.
+  Use `run-github-scout`.
+- The question is local-codebase only or answerable without web evidence.
+- A single docs page already in context is sufficient.
 - The user explicitly asked not to search the web.
 
 ## The toolkit at a glance
