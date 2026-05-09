@@ -1,6 +1,6 @@
 # apply-clean-mcp-architecture
 
-Applying a Clean Architecture standard to a TypeScript MCP server — folder layout, layer boundaries, MCP-primitive placement, TypeScript quality bar, and audit/refactor/review workflows.
+Placing, refactoring, or reviewing `mcp-use/server` TypeScript MCP code with layer boundaries, folder layout, TypeScript gates, and audit/refactor/review workflows.
 
 **Category:** development
 

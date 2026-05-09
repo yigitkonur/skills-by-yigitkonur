@@ -1,34 +1,35 @@
 ---
 name: apply-clean-mcp-architecture
-description: Use skill if you are designing, refactoring, or auditing a TypeScript MCP server and need a Clean-Architecture standard for folder layout, layer boundaries, mcp-use placement, and TypeScript quality.
+description: Use skill if you are placing, refactoring, or reviewing mcp-use/server TypeScript MCP code and need layer boundaries, folder layout, and TypeScript gates.
 ---
 
 # Apply Clean MCP Architecture
 
-This skill is the architectural standard for **TypeScript MCP servers built with `mcp-use/server`**. It tells you where every file goes, what each layer may import, how MCP primitives connect to use cases, and what the TypeScript quality bar is. It is opinionated and strict on purpose. If you are working on a TypeScript MCP server, follow it. If something below feels uncomfortable, the skill is the answer, not the question — read the **Why** lines, not just the rules.
+This skill is the architectural standard for **TypeScript MCP servers built with `mcp-use/server`**. It defines where every file goes, what each layer may import, how MCP primitives connect to use cases, and what TypeScript quality gates apply. It is strict on purpose. For TypeScript `mcp-use/server` work, follow this standard. If something below feels uncomfortable, the skill is the answer, not the question — read the **Why** lines, not just the rules.
 
 For the actual mechanics of `mcp-use` — tool registration, response helpers, sessions, auth flows, transports, capability gating — defer to `build-mcp-use-server`. This skill answers **where & with what discipline**; `build-mcp-use-server` answers **how**.
 
 ## Trigger boundary
 
 Use this skill when:
-- Designing a new TypeScript MCP server.
-- Auditing or reviewing an existing TypeScript MCP server (your own or an unfamiliar one).
-- Refactoring an MCP server that has drifted: monolithic tool files, scattered `process.env` reads, inline `mcp-use` imports across business logic, missing application layer.
-- Adding a new tool, resource, or prompt to an existing MCP server and you want it to land in the right place.
-- Reviewing a pull request against an MCP server and you want a checklist with teeth.
+- Designing a new TypeScript `mcp-use/server` MCP server.
+- Auditing or reviewing an existing TypeScript `mcp-use/server` MCP server.
+- Refactoring a TypeScript `mcp-use/server` MCP server that has drifted: monolithic tool files, scattered `process.env` reads, inline `mcp-use` imports across business logic, missing application layer.
+- Adding a tool, resource, or prompt to an existing TypeScript `mcp-use/server` MCP server and placing it in the right layer.
+- Reviewing a pull request against a TypeScript `mcp-use/server` MCP server and needing a structural checklist with teeth.
 
 Do NOT use this skill for:
 - Servers built directly with `@modelcontextprotocol/sdk` and no `mcp-use` — see `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2`.
 - MCP **client** apps (`build-mcp-use-client`) or `MCPAgent` orchestration (`build-mcp-use-agent`).
-- MCP Apps **widget** (browser-side React/JSX) work — see `build-mcp-use-apps-widgets`.
-- Non-MCP TypeScript work. There is no general-purpose Clean Architecture or TypeScript skill in this pack any longer; the load-bearing rules from the deleted `apply-clean-architecture` and `develop-typescript` are absorbed here for MCP servers only. For a non-MCP project, port the rules from this skill yourself or pick one of the framework-specific `build-*` skills.
+- MCP Apps **widget** mechanics, React-side widget patterns, CSP, auth, sessions, transports, deploy, or Inspector work — see `build-mcp-use-server`.
+- General agentic optimization, token-cost, tool-description quality, security posture, or runtime usability audits where the question is not folder layout or layer boundaries — see `optimize-agent-ergonomics`.
+- Non-MCP TypeScript work. Use the relevant framework skill or the repo's own patterns.
 
 ## Neighbors and when to also load
 
 - **Always load `build-mcp-use-server` alongside this skill** when MCP wiring is involved (tool registration, response helpers, sessions, transports, auth, capability gating, deploy). This skill never duplicates that one.
-- Load `build-mcp-use-apps-widgets` if the server ships a widget.
-- This skill replaces the deleted `apply-clean-architecture` and `develop-typescript` for MCP-server work; do not look for them.
+- Load `build-mcp-use-server` for MCP Apps/widget mechanics, including React-side widget patterns and CSP.
+- Use this skill only for TypeScript `mcp-use/server` structural placement. For non-MCP TypeScript projects, use the relevant framework skill or the repo's own patterns.
 
 ## Mode detection — pick one before doing anything
 
