@@ -62,14 +62,14 @@ Anchor on this set of plain-English verbs:
 | `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
 | `apply` | Apply a methodology or standard to a codebase | `apply-clean-mcp-architecture` |
 | `ask` | Hand off / request something | `ask-review` |
-| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
+| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-playwright`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
 | `check` | Audit for completeness | `check-completion` |
 | `evaluate` | Triage existing feedback or input | `evaluate-code-review` |
 | `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
-| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
+| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agent-ergonomics` |
 | `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
@@ -88,7 +88,7 @@ Anchor on this set of plain-English verbs:
 
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
-- `optimize-agentic-cli` (CLI for agents) vs `optimize-agentic-mcp` (MCP server for agents)
+- `optimize-agent-ergonomics` covers both CLI and MCP surfaces (replaces former `optimize-agentic-cli` + `optimize-agentic-mcp`)
 
 ### Anti-patterns
 
@@ -254,25 +254,13 @@ Keep descriptions short (under 80 chars). Match the terse style of existing rows
 
 ## Current canonical skill names
 
-Use this list to check for naming collisions:
+To check for naming collisions, list the live skill directories:
 
+```bash
+ls skills/
 ```
-apply-clean-mcp-architecture     ask-review                       build-chrome-extension
-build-copilot-sdk-app            build-effect-ts-v3               build-kernel-ts-sdk
-build-langchain-ts-app           build-macos-app                  build-mcp-server-sdk-v1
-build-mcp-server-sdk-v2          build-mcp-use-agent              build-mcp-use-client
-build-mcp-use-server             build-raycast-script-command     build-tinacms-nextjs
-check-completion                 convert-mcp-server-sdk-v1-to-v2  convert-url-to-nextjs
-do-debug                         do-review                        do-think
-enhance-prompt                   enhance-skill-by-derailment      evaluate-code-review
-extract-saas-design              init-agent-config                init-makefiles
-optimize-agent-ergonomics        optimize-agentic-cli             optimize-agentic-mcp
-orchestrate-codex
-publish-npm-package              run-agent-browser                run-github-scout
-run-industry-research            run-issue-tree                   run-playwright
-run-repo-cleanup                 run-research                     synthesize-skills
-test-by-mcpc-cli                 use-linear-cli                   use-railway
-```
+
+The canonical name is the directory name; do not maintain a hard-coded list here.
 
 ---
 

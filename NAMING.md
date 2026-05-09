@@ -18,7 +18,7 @@ Anchor on this set of plain-English intent verbs:
 | `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
 | `apply` | Apply a methodology or standard to a codebase | `apply-clean-mcp-architecture` |
 | `ask` | Hand off / request something | `ask-review` |
-| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-codex-exec`, `run-research` |
+| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-playwright`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
 | `check` | Audit for completeness | `check-completion` |
 | `evaluate` | Triage existing feedback or input | `evaluate-code-review` |
@@ -26,7 +26,7 @@ Anchor on this set of plain-English intent verbs:
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
 | `orchestrate` | Coordinate N parallel agents under one policy and one observability surface | `orchestrate-codex` |
-| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
+| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agent-ergonomics` |
 | `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
@@ -50,7 +50,7 @@ When two skills overlap, use distinct verbs:
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
 - `run-research` (answer a technical research question) vs `run-industry-research` (build a full market/category research corpus)
-- `optimize-agentic-cli` vs `optimize-agentic-mcp`
+- `optimize-agent-ergonomics` covers both CLI and MCP surfaces
 
 ## Canonical Rules
 
@@ -113,8 +113,6 @@ When renaming a published skill:
 - `init-agent-config`
 - `init-makefiles`
 - `optimize-agent-ergonomics`
-- `optimize-agentic-cli`
-- `optimize-agentic-mcp`
 - `orchestrate-codex`
 - `publish-npm-package`
 - `run-agent-browser`
