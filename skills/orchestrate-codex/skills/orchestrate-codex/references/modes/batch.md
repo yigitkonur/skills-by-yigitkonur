@@ -252,6 +252,8 @@ done
 
 Each bucket runs to completion in series (the loop is sequential); within each bucket the dispatcher's normal concurrency applies. Rendering 4 separate templates is the simplest path; if the only per-bucket variable is the language tag, build the templates from a shared base in the same script. Audit each bucket independently — the per-run manifest is what `audit-fleet-state.py` and `audit-sizes.sh` operate on.
 
+Per-bucket `MIN_BYTES`: the dispatcher does not expose `--min-bytes`; only the standalone `run-batch.sh` does (see flag table above). To set heterogeneous size floors per bucket, prefix each dispatcher call with `MIN_BYTES=<N>` as an env var — `spawnRunnerDetached` inherits the parent env and forwards it to the runner (`run-batch.sh:94`). For example: `MIN_BYTES=200 node orchestrate-codex.mjs batch --run-id julia-bucket … ; MIN_BYTES=1500 node orchestrate-codex.mjs batch --run-id notes-bucket …`.
+
 Do not try to encode the output dimension into the slug (`<input>-en`, `<input>-es`, …) inside one run. That makes one logical row produce N entries with N different slugs, defeats the skip-existing guard per-language, and pollutes the per-run manifest with entries that share an input but differ in a hidden axis.
 
 ## Anti-patterns

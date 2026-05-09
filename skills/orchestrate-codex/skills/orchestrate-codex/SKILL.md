@@ -147,7 +147,7 @@ Created by `scripts/setup-worktree.sh`. Symlinks `node_modules` and `.env.local`
 
 If cwd is already inside a worktree and the chosen mode is `single`, do NOT create another — set `mode_state.reuse=true` and run codex inside the existing worktree. For exec / review, every entry gets its own worktree regardless of cwd.
 
-Cleanup gate: `scripts/cleanup-worktrees.py --execute` removes worktrees whose entries are `done` AND whose branches are merged. Refuses dirty/unmerged worktrees unless `--force-abandon <id>`. Read `references/universal/worktree-contract.md`.
+Cleanup gate: `scripts/cleanup-worktrees.py --execute` removes worktrees whose entries are `done` AND whose branches are merged. Refuses dirty / unmerged / non-terminal-status (`running` or `queued`) worktrees unless `--force-abandon <id>`. Read `references/universal/worktree-contract.md`.
 
 ## Universal: manifest contract
 

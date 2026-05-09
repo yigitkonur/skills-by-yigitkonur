@@ -105,6 +105,7 @@ Refuses to remove:
 - Dirty worktrees (`git status --short` non-empty) — unless `--force-abandon <id>` for that specific entry.
 - Worktrees whose branches are not yet merged.
 - Worktrees not registered in the manifest (these are someone else's; do not touch).
+- Worktrees whose manifest entry is non-terminal (`status` in {`running`, `queued`}) — the entry may be in active use by another runner, or about to be claimed. Same `--force-abandon <id>` escape hatch applies if the operator has confirmed the entry is genuinely orphaned.
 
 Default behavior is dry-run. `--execute` is the gate. `--force-abandon <id>` is per-entry and surfaces in the audit trail (history row records the abandon).
 

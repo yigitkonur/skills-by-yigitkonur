@@ -108,6 +108,10 @@ A single task is `done` when ALL of:
 
 The runner does NOT inspect the JSONL stream for `turn.completed` before declaring `done`; non-empty `-o` is enough. If the JSONL stream is empty (MCP dropout) but `-o` is non-empty, that's still `done` — the answer file is canonical.
 
+### Audit-style / findings-only tasks
+
+This success gate makes single mode the right route for findings-only deliverables (audit reports, code reviews stored as markdown, analysis writeups, scoped recommendation docs). Unlike exec mode (which requires ≥1 commit on the worktree's branch and trips `codex_exit_0_no_changes` for non-code deliverables — see `references/modes/exec.md` "Audit-style" subsection), single mode's gate is just "non-empty `-o`". No commit required, no worktree dance, no `tasks.json`. Pass `--out audit-report.md` (relative paths resolve against `--cwd`, default cwd) to land the deliverable where the operator wants it. The expected verbose stream for an audit task is `[THINK]`-heavy with one long `[SAID]` and few-or-no `[CMD]` markers — different shape from a coding task and worth knowing for live-watch sanity-checking.
+
 A single task is `failed` when ANY of:
 - `codex exit code != 0` (runner exits 1).
 - `codex exit 0` but `-o` answer file is empty (runner exits 2).

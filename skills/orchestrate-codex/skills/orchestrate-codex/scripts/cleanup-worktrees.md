@@ -74,7 +74,8 @@ Output markers:
 
 ## Behavior
 
-- Reads the manifest. For each entry, computes:
+- Reads the manifest. For each entry, computes (in this order):
+  - whether the manifest entry's `status` is non-terminal (`running` or `queued`) — if so, refuse with `[REFUSE]` and `manifest_status` field on the action; the entry may be owned by another runner. Override is per-id `--force-abandon <id>`.
   - whether the worktree is present on disk (`os.path.isdir`)
   - whether the worktree's branch is merged into `--base` (`git branch --merged`)
   - whether the worktree is dirty (`git status --porcelain`). A `git status` non-zero exit surfaces as a `[FAIL]` action — never as silent dirtiness.
