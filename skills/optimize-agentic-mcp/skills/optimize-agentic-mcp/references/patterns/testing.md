@@ -2,6 +2,8 @@
 
 Patterns for testing MCP servers: evaluation-driven development with realistic workflows, using MCP Inspector for isolated debugging, auto-refactoring from transcripts, LLM-based usability evaluation, systematic tool selection evals with PromptFoo, and file hashing to prevent agent reprocessing loops.
 
+After any applied optimization, pick one live verification route and state it in the audit output. Use `test-by-mcpc-cli` for repeatable stdio or Streamable HTTP smoke checks and JSON scripting; use MCP Inspector for interactive protocol debugging; use unit/integration tests for deterministic code paths.
+
 ---
 
 ## 1. Use Evaluation-Driven Development with Realistic Multi-Step Tasks
