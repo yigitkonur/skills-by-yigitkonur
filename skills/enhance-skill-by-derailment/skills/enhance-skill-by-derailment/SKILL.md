@@ -30,6 +30,7 @@ Scripts are resolved relative to the skill directory root.
 | Script | Use |
 |---|---|
 | `scripts/launch-derailment.sh` | Render the Step 3 prompt, optionally pipe it to a runtime-neutral agent command, and tee output to a trace. See `scripts/launch-derailment.sh.md`. |
+| `scripts/parse-derailment-trace.sh` | Parse a saved JSONL or plain-text trace into marker counts, marker context, and tool/failure snippets. See `scripts/parse-derailment-trace.sh.md`. |
 
 ## Workflow
 
@@ -97,7 +98,12 @@ As you work, only flag moments where the skill text changes your path:
 
 When the subagent completes, its output is at the path shown in the launch response (JSONL format).
 
-**Quick extraction:**
+**Preferred extraction:**
+```bash
+bash {SKILL_PATH}/scripts/parse-derailment-trace.sh AGENT_OUTPUT_PATH
+```
+
+**Fallback extraction if the script is unavailable:**
 ```bash
 python3 -c "
 import json, sys
