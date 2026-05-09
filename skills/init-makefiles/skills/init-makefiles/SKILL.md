@@ -1,41 +1,67 @@
 ---
 name: init-makefiles
-description: Use skill if you are generating scenario-specific Makefile control planes, safely replacing old scaffolds, syncing Make targets, or optionally wiring deploy CI.
+description: Use skill if you are scaffolding or refreshing a project's Makefile control plane (`make local`, `make tunnel`, `make deploy`) for Next.js, Node, Railway, Vercel, Supabase, or Mac-ship workflows.
 ---
 
 # init-makefiles
 
-Make is the project's control plane. One generated Makefile (or up to four in monorepos), zero required arguments, scenario-appropriate targets only.
+Make is the project's control plane. Generate one Makefile per app (root + up to 3 sub-Makefiles in monorepos), zero required arguments, scenario-appropriate targets only, with safe replacement of any prior scaffold.
 
-Run this skill when an agent must scaffold or refresh `make` targets in a project. The skill inspects the repo, classifies it into one of seven scenarios, snapshots and replaces approved prior scaffolding, generates the right Makefile(s), syncs the `AGENTS.md` `## Make targets` contract, and optionally wires GitHub Actions for push-to-main deploys.
+This is the consolidated successor to the old `make-local`, `make-railway`, and `make-vercel` direction. Do not recreate provider-specific Makefile skills — classify the project's scenario here, then generate only the targets that scenario needs.
 
-## Compatibility note
+## When to use this skill
 
-`init-makefiles` is the consolidated successor to the older make-local, make-railway, and make-vercel direction. Do not recreate provider-specific Makefile skills; classify the project scenario here, then generate only scenario-appropriate targets.
+Trigger on any of these:
 
-## How to think about this
+- *"set up make for this project"* / *"scaffold a Makefile"* / *"init Makefile targets"*
+- *"add a make deploy target"* / *"wire deploy via make"* / *"give me `make local` and `make prod`"*
+- *"my `make local` is broken / port-stuck / out of date"* — refresh stale targets
+- *"this monorepo has three different Makefiles"* — unify them under one banner
+- *"ship this Mac app to my macbook over rsync"* — Scenario G
+- *"add `make tunnel` / `make funnel`"* for Tailscale exposure
+- *"sync the AGENTS.md make-targets section"* after editing the Makefile
+- *"generate the GitHub Actions deploy workflow that backs `make deploy`"*
 
-Three principles, applied without exception:
-
-1. **Scenarios beat providers.** Don't ask "is this a Vercel project?" — ask "what is this project?" The provider stack (Vercel, Railway, Supabase, etc.) falls out of the scenario, never the other way around.
-2. **Local = real dev builds, never toy builds.** Next.js / Turborepo / monorepo projects use the actual dev pipeline. No shortcuts that diverge from production behaviour.
-3. **Exposure is opt-in.** `make local` binds `127.0.0.1`. `make local-lan` binds `0.0.0.0`. `make tunnel` runs Tailscale Serve (tailnet-only). `make funnel` is PUBLIC and gated behind explicit `PUBLIC_FUNNEL=1`. Funnel never enables as a side effect of any other command.
-
-## Use this skill when
-
-- The user asks to "set up make for this project", "wire deploy via make", "fix make local", "ship this Mac app to my macbook"
-- An existing Makefile has bit-rotted (stale targets, no port hygiene, hardcoded provider commands)
-- A monorepo has three Makefiles with three different banners and the user wants consistency
-- A new project needs a control plane and the user wants `make` to be it
-- The project's `AGENTS.md` / `CLAUDE.md` doesn't list its make targets and an agent needs to know what's available
-
-## Do not use this skill when
+Do NOT use this skill when:
 
 - The user wants a one-off shell script — use bash, not make
-- The project is purely a CI pipeline with no local control plane — use `.github/workflows/` directly
-- Railway logs, scale, restart, env edits, or one-off CLI operations are the job — use `use-railway`
-- AGENTS hierarchy, REVIEW.md, folder-scoped agent config, or broad repo governance is the job — use `init-agent-config`
-- Hosted MCP architecture beyond a local MCP control target is the job — use `build-mcp-use-server`
+- Railway logs, scale, restart, env edits, or ad-hoc CLI ops are the job → use `use-railway`
+- The job is broad AGENTS hierarchy / REVIEW.md / folder-scoped agent config → use `init-agent-config`
+- The job is hosted-MCP architecture beyond a local MCP control target → use `build-mcp-use-server`
+
+## Three principles (apply without exception)
+
+1. **Scenarios beat providers.** Don't ask "is this a Vercel project?" — ask "what is this project?" The provider stack (Vercel, Railway, Supabase) falls out of the scenario, never the other way around.
+2. **Local = real dev builds, never toy builds.** Next.js / Turborepo / monorepo projects use the actual dev pipeline. No shortcuts that diverge from production behavior.
+3. **Exposure is opt-in.** `make local` binds `127.0.0.1`. `make local-lan` binds `0.0.0.0`. `make tunnel` runs Tailscale Serve (tailnet-only). `make funnel` is PUBLIC and gated behind explicit `PUBLIC_FUNNEL=1`. Funnel never enables as a side effect of any other command.
+
+## Hard rules baked into every generated Makefile
+
+- **Max 4 Makefiles per project** — root + up to 3 app sub-Makefiles. If a monorepo has more apps, ask which three.
+- **Every target works with zero arguments.** Env vars are overridable (`make local PORT=4000`) but defaults must work. Sole exception: `make supabase-migrate-new name=<n>`.
+- **Universal preamble** — `SHELL := bash`, `.SHELLFLAGS := -eu -o pipefail -c`, `.ONESHELL:`, `.DELETE_ON_ERROR:`, `MAKEFLAGS += --warn-undefined-variables --no-builtin-rules`, `.DEFAULT_GOAL := help`. Full preamble in `references/makefile-base.md`.
+- **Port hygiene mandatory** — use the `_free-port-%` helper from `references/port-hygiene.md`. Only kill our own dev processes (`node|next-server|turbo|turbopack|next|bun|deno`); refuse foreign holders, suggest `+10` port.
+- **Localhost binding by default.** LAN binding via `make local-lan`. Tailscale Serve via `make tunnel` (tailnet-only). Tailscale Funnel via `make funnel` (PUBLIC, opt-in only).
+- **Helper targets prefix with `_`** (`_check-vercel-tokens`, `_free-port-%`, `_print-banner-*`). They do not appear in `make help`.
+- **Replace, don't edit.** Never edit a Makefile incrementally — preview, manifest, snapshot, delete, regenerate. The targeted snapshot commit is the safety net.
+
+## Scenario classification
+
+Pick exactly one scenario per deployable app. The seven:
+
+| # | Scenario | Primary signal | What's in scope |
+|---|---|---|---|
+| **A** | Frontend-only | `next.config.*` / `vite.config.*` / etc.; no backend dir; no Supabase | Local, LAN, tunnel; Vercel deploy |
+| **B** | MCP server | `@modelcontextprotocol/sdk` or `mcp-use` in deps | Local; no deploy; `inspect` target |
+| **C** | Frontend + backend | A signals + `apps/api` (or similar) with Express/Hono/Fastify | Frontend + Vercel + Railway |
+| **D** | Frontend + Supabase | A signals + `@supabase/supabase-js` + `supabase/` dir | Frontend + Vercel + Supabase CLI ops |
+| **E** | Multi-service Railway | Multiple service dirs / `railway.toml` files | Railway only; parallel deploy where safe |
+| **F** | Build-artifact | Cargo / Go / Swift / native CLI; no HTTP framework, no remote target | Build + run locally; no deploy |
+| **G** | MacBook ship | `.xcodeproj` / `Package.swift` Mac target + remote-Mac SSH alias | Build + ship via `rsync` + atomic swap + verify |
+
+For single-app projects, the final classification has one tag. For monorepos, each deployable app gets one tag and the root gets a dominant orchestration tag. Use the supported combined tag **C+D** only when a custom backend deploys separately and Supabase is also in scope.
+
+If detection is ambiguous → **ask one targeted question, never guess.** Sample disambiguation prompts in `references/scenario-detection.md`.
 
 ## Workflow
 
@@ -85,21 +111,7 @@ The detector is read-only and heuristic-only; it prints observed signals and can
 
 If a precondition fails (no `package.json`, no dev script, no SSH alias for Mac scenario), surface it before generating. Do not generate something that breaks on first run.
 
-### 2. Classify
-
-Pick exactly one scenario per deployable app. The seven:
-
-| # | Scenario | Primary signal | What's in scope |
-|---|---|---|---|
-| **A** | Frontend-only | `next.config.*` / `vite.config.*` / etc.; no backend dir; no Supabase | Local, LAN, tunnel; Vercel deploy |
-| **B** | MCP server | `@modelcontextprotocol/sdk` or `mcp-use` in deps | Local; no deploy; `inspect` target |
-| **C** | Frontend + backend | A signals + `apps/api` (or similar) with Express/Hono/Fastify | Frontend + Vercel + Railway |
-| **D** | Frontend + Supabase | A signals + `@supabase/supabase-js` + `supabase/` dir | Frontend + Vercel + Supabase CLI ops |
-| **E** | Multi-service Railway | Multiple service dirs / `railway.toml` files | Railway only; parallel deploy where safe |
-| **F** | Build-artifact | Cargo / Go / Swift / native CLI; no HTTP framework, no remote target | Build + run locally; no deploy |
-| **G** | MacBook ship | `.xcodeproj` / `Package.swift` Mac target + remote-Mac SSH alias | Build + ship via `rsync` + atomic swap + verify |
-
-For single-app projects, the final classification has one tag. For monorepos, each deployable app gets one tag and the root gets a dominant orchestration tag. For the rare frontend + backend + Supabase shape, use the supported combined tag **C+D** only when the custom backend deploys separately and Supabase is also in scope.
+### 2. Classify and announce
 
 Before generating files, print this block:
 
@@ -114,8 +126,6 @@ Makefiles to generate: <root + app paths, max 4>
 Ambiguity resolved: <none or the answered question>
 ```
 
-If detection is ambiguous → **ask one targeted question, never guess**. Sample prompts in `references/scenario-detection.md`.
-
 ### 3. Preview and read existing scaffolding
 
 Run the bundled wipe preview before touching files. Resolve `scripts/preview-makefile-wipe.sh` relative to this skill directory and pass the downstream project root:
@@ -127,7 +137,7 @@ bash scripts/preview-makefile-wipe.sh /path/to/project --paths-only > /tmp/init-
 
 The script is read-only. It prints exact paths, match reasons, tracked state, and uncommitted status; implementation notes live in `scripts/preview-makefile-wipe.md`.
 
-For every candidate `Makefile`, `*.mk`, `make-*.sh`, `scripts/dev.sh`, and `scripts/deploy.sh`: read the file before classifying it as scaffold. Note useful patterns the user encoded (custom env handling, project-specific port choices, framework-specific dev commands) because those inform regenerated targets.
+For every candidate `Makefile`, `*.mk`, `make-*.sh`, `scripts/dev.sh`, and `scripts/deploy.sh`: read the file before classifying it as scaffold. Note useful patterns the user encoded (custom env handling, project-specific port choices, framework-specific dev commands) — those inform regenerated targets.
 
 Write a deletion manifest containing only paths approved for replacement:
 
@@ -172,16 +182,18 @@ done < "$DELETION_MANIFEST"
 
 ### 5. Generate core Makefiles
 
-Compose the new Makefile(s) from the scenario's references. Universal preamble in `references/makefile-base.md`. Scenario sections live in `references/makefile-frontend.md`, `references/makefile-backend.md`, `references/makefile-supabase.md`, and `references/makefile-macbook.md`. Monorepo delegation in `references/makefile-monorepo.md`.
+Compose the new Makefile(s) from the scenario's references:
 
-**Hard rules baked into every generated Makefile:**
+- Universal preamble + ANSI palette + helper conventions: `references/makefile-base.md` (every Makefile uses this)
+- Scenario A / C / D frontend targets: `references/makefile-frontend.md` (`local`, `local-lan`, `tunnel`, `deploy-vercel`, `verify`, `env-pull`, `build-check`)
+- Scenario C / E backend targets: `references/makefile-backend.md` (Railway deploy, multi-service parallel, healthcheck rules, `railway.toml` baseline)
+- Scenario D Supabase targets: `references/makefile-supabase.md` (`supabase-link`, `-migrate-*`, `-functions`, `-types`, `-secrets-*`)
+- Scenario G ship pipeline: `references/makefile-macbook.md` (preflights, rsync, atomic swap, kill-then-launch, verify)
+- Monorepo delegation and 4-file ceiling: `references/makefile-monorepo.md`
 
-- **Max 4 Makefiles per project** — root + up to 3 app sub-Makefiles. If a monorepo has more apps, ask the user to pick three.
-- **Every target works with zero arguments.** Env vars overridable (`make local PORT=4000`) but defaults must work. Sole exception: `make supabase-migrate-new name=<n>`.
-- **Universal preamble** — `SHELL := bash`, `.SHELLFLAGS := -eu -o pipefail -c`, `.ONESHELL:`, `.DELETE_ON_ERROR:`, `MAKEFLAGS += --warn-undefined-variables --no-builtin-rules`, `.DEFAULT_GOAL := help`.
-- **Port hygiene mandatory** — use `_free-port-%` from `references/port-hygiene.md`. Only kill our own dev processes (`node|next-server|turbo|turbopack|next|bun|deno`); refuse foreign holders, suggest `+10` port.
-- **Localhost binding by default.** LAN binding via `make local-lan`. Tailscale Serve via `make tunnel` (tailnet-only). Tailscale Funnel via `make funnel` (PUBLIC, opt-in only).
-- **Helper targets prefix with `_`** (`_check-vercel-tokens`, `_free-port-%`, `_print-banner-*`). They don't appear in `make help`.
+Always pull tunnel/funnel rules from `references/tailscale-funnel-rules.md` (macOS DNS quirks, Funnel port restrictions, ACL preflight) and port-kill behavior from `references/port-hygiene.md` (kill-only-our-own pattern, default-port squat list, SIGTERM-then-SIGKILL escalation).
+
+Env conventions per scenario live in `references/env-vars-conventions.md` (`.env.local` vs `.env.railway`, Vercel sensitivity defaults, Railway built-in vars).
 
 ### 6. Update AGENTS.md / CLAUDE.md
 
@@ -189,10 +201,10 @@ Apply the 5-state machine in `references/agents-md-update.md`. The contract:
 
 - AGENTS.md is the source of truth
 - CLAUDE.md is a symlink → AGENTS.md (or absent)
-- Only the downstream project `## Make targets` section is written/updated, listing every generated target, env-var knob, and what the skill will and will not do
+- Only the downstream project's `## Make targets` section is written/updated, listing every generated target, env-var knob, and what the skill will and will not do
 - Same-directory `CLAUDE.md → AGENTS.md` compatibility links are in scope
 - Hand-written `## Make targets` sections require explicit replacement consent
-- The rewrite is skipped if the existing section is already accurate (no churn)
+- Skip the rewrite if the existing section is already accurate (no churn)
 - Broad AGENTS-first governance, nested folder instructions, and REVIEW.md remain the job of `init-agent-config`
 
 ### 7. Verify core generation
@@ -208,7 +220,7 @@ Per scenario:
 
 Core generation is complete when Makefiles, AGENTS.md sync, and verification are done. The skill remains useful and complete if CI/CD is declined.
 
-### 8. Optional: CI/CD
+### 8. Optional — CI/CD
 
 Ask first: "Generate GitHub Actions deploy wiring locally? (y/n)". If yes, follow `references/ci-cd-workflow.md`:
 
@@ -234,9 +246,7 @@ If declined, leave `.github/workflows/` untouched. No half-baked YAML.
 - **Max 4 Makefiles.** Ask if there are more apps than slots.
 - **Detection ambiguous → ask one question, never guess.**
 
-## Recovery paths
-
-### Recovery from wipe
+## Recovery from wipe
 
 ```bash
 git log --oneline -- Makefile
@@ -245,6 +255,8 @@ git revert <snapshot-sha>
 # or restore a single file:
 git restore --source=<snapshot-sha> -- path/to/Makefile
 ```
+
+## Failure modes (and where to fix them)
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -297,7 +309,7 @@ Manual verification still required: <targets, especially rung 6>
 
 ## Cross-skill handoffs
 
-- **`use-railway`** — for ad-hoc Railway CLI operations not covered by deploy targets (logs, scale, restart, env management beyond what the Makefile exposes)
+- **`use-railway`** — for ad-hoc Railway CLI ops not covered by deploy targets (logs, scale, restart, env management beyond what the Makefile exposes)
 - **`build-mcp-use-server`** — for hosted-MCP scenarios beyond local-only MCP servers (Scenario B is for local-facing MCP only)
 - **`build-macos-app`** — for Mac-app development standards (this skill only does Make scaffolding; framework choice and SwiftUI patterns belong there)
 - **`init-agent-config`** — for AGENTS hierarchy, REVIEW.md, folder-scoped agent config, and broad repo governance

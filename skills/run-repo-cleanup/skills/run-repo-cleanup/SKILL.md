@@ -1,11 +1,30 @@
 ---
 name: run-repo-cleanup
-description: Use skill if you are sweeping dirty working tree, unpushed commits, or multiple worktrees into conventional commits grouped into contextually separated private-fork pull requests with self-review bodies.
+description: Use skill if you are sweeping a dirty working tree, unpushed commits, or multiple worktrees into focused private-fork PRs with conventional commits and self-review bodies.
 ---
 
 # Run Repo Cleanup
 
-The job: turn a messy repo — dirty working tree, unpushed commits, possibly multiple worktrees from parallel subagents — into a small number of focused PRs on the **private fork only**, each with diff-read commits inside and a comprehensive self-review body outside. End state must be **tidy**: no stale branches local or remote, no stale worktrees, working tree clean.
+Turn a messy repo — dirty working tree, unpushed commits, possibly multiple worktrees from parallel subagents — into a small number of focused PRs on the **private fork only**, each with diff-read commits inside and a comprehensive self-review body outside. End state must be **tidy**: no stale branches local or remote, no stale worktrees, working tree clean.
+
+## When To Use
+
+Trigger on phrases and git states like:
+
+- *"clean up this repo"*, *"tidy up before I push"*, *"land my work in PRs"*
+- *"my working tree is a mess — sort it out"*, *"sweep these uncommitted changes"*
+- *"I have N worktrees from the parallel subagents — merge them in order"*
+- *"open the cleanup PRs against the fork, not upstream"*
+- *"split this dirty branch into commits and a self-review body"*
+- *"retire merged branches and worktrees"*, *"prune the stale branches"*
+- Git state: `git status` is dirty + unpushed commits, *or* `git worktree list` shows ≥2 entries, *or* a fork-vs-upstream `origin` setup is active.
+
+Do **NOT** use this skill for:
+
+- *Reviewing someone else's PR* for merge readiness — use `do-review`.
+- *A single feature branch handoff* with one clean PR and a self-review body — use `ask-review`.
+- *Triaging review feedback* already posted on a PR (human or bot comments) — use `evaluate-code-review`.
+- *Runtime debugging* of failing logs or repros — use `do-debug`.
 
 ## Pinned Defaults
 
@@ -23,12 +42,15 @@ If the repo has its own `AGENTS.md` / `CLAUDE.md` / `CONTRIBUTING.md`, those win
 
 ## Non-Negotiable Safety Rails
 
-1. **`origin` is the private fork. `upstream` is read-only.** Every mutating `gh` command takes `--repo <fork-owner>/<fork-repo>` explicitly. `gh` CLI defaults are wrong often enough that you never rely on them.
+Load-bearing. Do not skip even on "small" cleanups.
+
+1. **`origin` is the private fork. `upstream` is read-only.** Every mutating `gh` command takes `--repo <fork-owner>/<fork-repo>` explicitly. `gh` CLI defaults are wrong often enough that you never rely on them. See `references/fork-safety.md`.
 2. **No `.env`, no secrets, no session artifacts in git.** `.env`, `*.pem`, `id_rsa*`, `.continues-handoff.md`, `*.claude-session*`, `derailment-notes/`. If project policy forbids `.env`, hardcode values into the scripts that need them — only when the repo is confirmed private.
-3. **Never commit without reading `git diff` first.** Diff → stage → `git diff --cached` → commit. No `git commit -am`. No blind stage-everything. (See `references/diff-walk-discipline.md`.)
+3. **Never commit without reading `git diff` first.** Diff → stage → `git diff --cached` → commit. No `git commit -am`. No blind stage-everything. See `references/diff-walk-discipline.md`.
 4. **Never touch `main` directly.** Branch first, always.
 5. **Never force-push or amend published commits** unless the user explicitly asks. A revert commit beats a history rewrite almost every time.
 6. **One concern per commit. One intent per PR.** If you can't describe a commit in one sentence, split it. If you can't describe a PR in one line, split it.
+7. **Move, don't `rm`.** Anything you didn't create this session goes to `to-delete/` (gitignored). See `references/to-delete-folder.md`.
 
 ## The Five Phases
 
@@ -50,19 +72,19 @@ If the repo has its own `AGENTS.md` / `CLAUDE.md` / `CONTRIBUTING.md`, those win
                    tidy repo, reviewable PRs, nothing stale
 ```
 
-Each phase has a checkpoint. Do not skip forward. If you find yourself tempted to skip, that is a red flag — re-audit.
+Each phase has a checkpoint. Do not skip forward. If you find yourself tempted to skip, that is a red flag — re-audit. Per-phase mental models live in `references/agent-thinking-steering.md`.
 
 ---
 
 ## Phase 0 — Pre-flight Audit
 
-**Think first:** "What state am I actually in? What would surprise me?"
+**Think first:** *"What state am I actually in? What would surprise me?"*
 
-1. **Read `.gitignore`.** Know what's already ignored. Extend it (once) with session artifacts + `to-delete/`. See `references/pre-flight-audit.md` and `references/to-delete-folder.md`.
-2. **Run `python3 scripts/audit-state.py`** — read-only state dump: current branch, remotes, dirty files grouped by domain, unpushed commit count, worktrees, open PRs on fork vs upstream. See `scripts/audit-state.md`.
-3. **List worktrees** explicitly if the output above is unclear: `python3 scripts/list-worktrees.py`. See `scripts/list-worktrees.md`.
-4. **Initialize the `to-delete/` pattern** if not present: `python3 scripts/init-to-delete.py`. Idempotent. See `scripts/init-to-delete.md` and `references/to-delete-folder.md`.
-5. **Verify remotes.** `git remote -v` must show `origin` = private fork, `upstream` = read-only source. If not, stop and fix before anything else. See `references/fork-safety.md`.
+1. **Read `.gitignore`.** Know what's already ignored. Extend it (once) with session artifacts + `to-delete/`. Mechanics in `references/pre-flight-audit.md`.
+2. **Run `python3 scripts/audit-state.py`** — read-only state dump: current branch, remotes, dirty files grouped by domain, unpushed commit count, worktrees, open PRs on fork vs upstream.
+3. **List worktrees** explicitly if the output above is unclear: `python3 scripts/list-worktrees.py`.
+4. **Initialize the `to-delete/` pattern** if not present: `python3 scripts/init-to-delete.py`. Idempotent.
+5. **Verify remotes.** `git remote -v` must show `origin` = private fork, `upstream` = read-only source. If not, stop and fix before anything else.
 
 **Gate:** enter Phase 1 only when (a) no in-progress rebase / merge / cherry-pick / bisect, (b) `origin` is verified as the fork, (c) `.gitignore` is up to date.
 
@@ -76,7 +98,7 @@ Each phase has a checkpoint. Do not skip forward. If you find yourself tempted t
 
 ## Phase 1 — Dirty Tree → Conventional Commits (Diff-Walk)
 
-**Think first:** "For each hunk, which logical concern does it belong to? If I can't name the concern, I don't understand the change yet."
+**Think first:** *"For each hunk, which logical concern does it belong to? If I can't name the concern, I don't understand the change yet."*
 
 ### 1.1 Read before you stage
 
@@ -90,7 +112,7 @@ Typical split for a feature branch:
 - Env / config / scripts scaffolding.
 - Drive-by fixes unrelated to the feature → **separate branch/PR**.
 
-If one file contains two unrelated concerns, split with `git add -p`. See `references/diff-walk-discipline.md`.
+If one file contains two unrelated concerns, split with `git add -p`. Recipes in `references/diff-walk-discipline.md`.
 
 ### 1.3 Move uncertain files to `to-delete/`
 
@@ -107,7 +129,7 @@ git diff --cached
 git commit -m "<emoji> <type>(<scope>): <imperative subject>"
 ```
 
-`git diff --cached` before commit catches "oops, that hunk wasn't supposed to be in this commit". See `references/conventional-commits.md` for the full type + scope registry.
+`git diff --cached` before commit catches "oops, that hunk wasn't supposed to be in this commit". Type + scope registry, gitmoji table, body/footer, breaking-change notation: `references/conventional-commits.md`.
 
 ### 1.5 Sweep loose scripts and docs into the project layout
 
@@ -115,7 +137,7 @@ If cleanup uncovered scripts or docs sitting outside the repo's conventions, rel
 - **Scripts:** `scripts/<comprehensive-name>.<ext>` paired with `scripts/<comprehensive-name>.md` (same base name). Every script gets a doc.
 - **Docs:** `docs/<context>/NN-title-slug.md` — numbered atomic docs per context. `NN` is a zero-padded integer enforcing read order.
 
-See `references/scripts-and-docs-layout.md`.
+Full convention in `references/scripts-and-docs-layout.md`.
 
 **Phase 1 gate:** `git status --short` returns empty (or only deliberate untracked items under `to-delete/`). Every commit message passes "describe in one sentence".
 
@@ -129,7 +151,7 @@ See `references/scripts-and-docs-layout.md`.
 
 ## Phase 2 — Multi-Worktree Merge Ordering
 
-**Think first:** "If I merge worktree A first, does worktree B need a rebase? Which worktree is the foundation?"
+**Think first:** *"If I merge worktree A first, does worktree B need a rebase? Which worktree is the foundation?"*
 
 Skip to Phase 3 if you have only one worktree. If you have two or more (typical when parallel subagents have been at work):
 
@@ -139,7 +161,7 @@ Skip to Phase 3 if you have only one worktree. If you have two or more (typical 
 4. **Agent decides.** The script suggests; you verify against your understanding. Foundation-first means later branches can rebase on a more-complete base. Leaf-last means the last PR is the smallest and most isolated.
 5. **Execute in order.** For each worktree, run Phases 1, 3, 4, 5 inside it. Push + PR the first before starting the second so reviewers see the stack in order.
 
-See `references/multi-worktree-merge-order.md` for the full decomposition and the worked example.
+Full decomposition + worked example in `references/multi-worktree-merge-order.md`.
 
 **Phase 2 red flags:**
 - "I'll just merge them in whatever order I finish." → No. Order matters when branches overlap.
@@ -150,7 +172,7 @@ See `references/multi-worktree-merge-order.md` for the full decomposition and th
 
 ## Phase 3 — Commits → Contextually Separated PRs
 
-**Think first:** "If the reviewer reads only the title and summary, do they know what to review?"
+**Think first:** *"If the reviewer reads only the title and summary, do they know what to review?"*
 
 ### 3.1 Boundaries by reviewer cognitive load
 
@@ -160,7 +182,7 @@ Split when commits touch different domains, have different risk profiles, or a s
 
 **Flat** (default): every PR branches off `main` independently. Simpler to review.
 
-**Stacked** (only when PR N genuinely depends on PR N-1's content): child branch's base is the parent branch. Child PR body says "stacked on #N". See `references/worktree-and-stash.md`.
+**Stacked** (only when PR N genuinely depends on PR N-1's content): child branch's base is the parent branch. Child PR body says "stacked on #N". Recipes in `references/worktree-and-stash.md`.
 
 ### 3.3 Push and open — fork only
 
@@ -179,18 +201,18 @@ Verify immediately:
 ```bash
 gh pr view <number> --repo <fork-owner>/<fork-repo> --json url,baseRefName
 ```
-URL must point to the fork, not upstream. See `references/fork-safety.md`.
+URL must point to the fork, not upstream. Recovery if it lands on upstream: `references/fork-safety.md`.
 
 **Phase 3 red flags:**
 - "One big PR is easier for me to track." → Split by reviewer load.
 - `gh pr create` without `--repo`. → Stop.
-- PR opened on upstream. → Close it immediately, reopen on fork. See `references/fork-safety.md`.
+- PR opened on upstream. → Close it immediately, reopen on fork.
 
 ---
 
 ## Phase 4 — PR Body Is a Self-Review
 
-**Think first:** "What would the reviewer ask? Answer it in the body now."
+**Think first:** *"What would the reviewer ask? Answer it in the body now."*
 
 The PR body is not a changelog. It is you reviewing your own work for the reviewer — same tone, same rigor as a good external review. Make "LGTM" easier than "here are five questions".
 
@@ -210,11 +232,11 @@ Use `python3 scripts/draft-pr-body.py --base <base> --head <head>` to get a skel
 ## Follow-ups                     — explicit "not in scope"
 ```
 
-Stay under **50,000 characters**. See `references/pr-body-template.md` and the worked example there.
+Stay under **50,000 characters**. Worked example in `references/pr-body-template.md`.
 
 ### 4.2 Self-review voice — receiving-code-review discipline inlined
 
-**Forbidden anywhere in the body:** "You're absolutely right!", "Great point!", "Thanks for …", "Hope this helps", "Please feel free to …", any gratitude or hedging. Use instead: "Fixed. X."  "Pushed back because Y." "Can't verify without Z." Actions over words.
+**Forbidden anywhere in the body:** "You're absolutely right!", "Great point!", "Thanks for …", "Hope this helps", "Please feel free to …", any gratitude or hedging. Use instead: "Fixed. X." "Pushed back because Y." "Can't verify without Z." Actions over words.
 
 **Verify before you claim.** "Type-check passes" ≠ "tests pass" ≠ "production verified". Say exactly what you ran.
 
@@ -222,7 +244,7 @@ Stay under **50,000 characters**. See `references/pr-body-template.md` and the w
 
 **Pre-empt objections.** If you expect "why not X?", answer it in the body with evidence.
 
-Full pattern set (what to verify before implementing external suggestions, how to gracefully correct your own pushback, GitHub thread replies vs top-level): see `references/receiving-review-patterns.md`. That file is a full inlining of the receiving-code-review discipline — no external skill required.
+Full pattern set (verifying external suggestions before implementing, gracefully correcting your own pushback, GitHub thread replies vs top-level): `references/receiving-review-patterns.md`. That file is a full inlining of the receiving-code-review discipline — no external skill required.
 
 **Phase 4 red flags:**
 - "Thanks for reviewing!" in the body. → Delete.
@@ -234,11 +256,11 @@ Full pattern set (what to verify before implementing external suggestions, how t
 
 ## Phase 5 — Post-PR Verification + Tidy
 
-**Think first:** "What state did I start in? Have I returned to it, plus the intended delta?"
+**Think first:** *"What state did I start in? Have I returned to it, plus the intended delta?"*
 
 ### 5.1 Dispatch a subagent for an independent re-audit
 
-After the last PR opens, launch a subagent to verify the repo is tidy. It reports pass/fail on each item. Brief the subagent with the checklist below and a short context paragraph naming the fork, upstream, and open-PR numbers. See `references/post-pr-verification.md` for the full subagent prompt.
+After the last PR opens, launch a subagent to verify the repo is tidy. It reports pass/fail on each item. Brief the subagent with the checklist below and a short context paragraph naming the fork, upstream, and open-PR numbers. Full subagent prompt + expected report shape: `references/post-pr-verification.md`.
 
 ### 5.2 Tidy checklist — all must be true
 
@@ -267,7 +289,7 @@ git worktree list
 git worktree remove <path-to-retired-worktree>
 ```
 
-See `scripts/retire-merged-branches.md`. The script refuses to delete `main` / `master` / `default` and refuses to delete branches that are NOT merged to `--base`.
+The script refuses to delete `main` / `master` / `default` and refuses to delete branches that are NOT merged to `--base`.
 
 ### 5.4 Final cleanliness probe
 
@@ -276,20 +298,7 @@ Re-run `scripts/audit-state.py`. If it says "state is CLEAN", you are done. If n
 **Phase 5 red flags:**
 - "The repo is mostly clean." → No. Tidy is binary. Finish or flag.
 - Retire script errored; I ran it with `--force`. → Don't. Retire refuses for a reason.
-- Open PR on upstream that wasn't there before. → See `references/fork-safety.md` recovery section.
-
----
-
-## How To Think — meta-cognition per phase
-
-- **Phase 0:** *What surprises me in this state? Does any of it block safe Phase 1 entry?*
-- **Phase 1:** *For each hunk, which of the N concerns does it belong to? If I can't say, I don't understand the change yet — read the code.*
-- **Phase 2:** *If I merge worktree A first, do B and C need rebase? The answer tells me which is the foundation.*
-- **Phase 3:** *If the reviewer reads only the title + summary, do they know what to review and what to skip?*
-- **Phase 4:** *What would the reviewer ask? Pre-empt every foreseeable question.*
-- **Phase 5:** *What state did I start in? Have I returned to it plus the intended delta — nothing more, nothing less?*
-
-See `references/agent-thinking-steering.md` for the full mental-model guide (decomposition, ordering, verification, when to stop, when to escalate).
+- Open PR on upstream that wasn't there before. → Recovery in `references/fork-safety.md`.
 
 ---
 
@@ -309,22 +318,11 @@ See `references/agent-thinking-steering.md` for the full mental-model guide (dec
 | Merging worktrees in arbitrary order | Foundation → leaves. |
 | Retiring a not-merged branch with `--force` | Refuse. Merge first. |
 
-## Red Flags
-
-If you catch yourself thinking any of these, stop and re-audit:
-
-- "Let me just squash these together."
-- "I'll open this on upstream as a courtesy."
-- "This commit is close enough."
-- "I'll amend real quick."
-- "The reviewer will figure it out from the diff."
-- "Thanks for the great PR template!"
-- "I'll clean up the worktrees later."
-- "The to-delete folder can wait."
+If you catch yourself thinking *"let me just squash these together"*, *"I'll open this on upstream as a courtesy"*, *"this commit is close enough"*, *"I'll amend real quick"*, *"the reviewer will figure it out from the diff"*, or *"I'll clean up the worktrees later"* — stop and re-audit.
 
 ## Scripts
 
-Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
+Every script lives in `scripts/` and has a paired `<name>.md` doc next to it. All scripts are Python 3 stdlib only — no dependencies, no `.env`, no secrets.
 
 | Script | Purpose | Mutates? |
 |---|---|---|
@@ -334,8 +332,6 @@ Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
 | `scripts/suggest-merge-order.py` | Phase 2: propose foundation→leaf merge order for N branches. | No |
 | `scripts/draft-pr-body.py` | Phase 4: PR body skeleton from a commit range. | No |
 | `scripts/retire-merged-branches.py` | Phase 5: delete local + remote branches merged to `<base>`. Dry-run by default. | Yes (with `--execute`) |
-
-All scripts are Python 3 stdlib only. No dependencies, no `.env`, no secrets. Per-script docs at `scripts/<name>.md`.
 
 ## References
 

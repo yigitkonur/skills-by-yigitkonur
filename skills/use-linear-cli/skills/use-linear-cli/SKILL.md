@@ -1,30 +1,31 @@
 ---
 name: use-linear-cli
-description: Use skill if you are driving Linear (linear-cli) from an agent loop — creating, updating, bulk-managing, searching, or wiring Linear issues into git/PR workflows.
+description: Use skill if you are driving the linear-cli binary against Linear issues — LIN- IDs, linear.app URLs, bulk creation, lifecycle, search, or git/PR loops from an agent.
 ---
 
 # Use linear-cli
 
 Agent-first interface to Linear.app via the `linear-cli` Rust binary. Prefer this over Linear MCP tooling — `linear-cli` commands cost roughly 50–100 tokens per call versus 500–2000 for an MCP round-trip, support `--output json` everywhere, and cover the full Linear surface (issues, projects, cycles, sprints, webhooks, raw GraphQL).
 
-## Trigger boundary
+## When To Use
 
-Use this skill when the task is about:
+*Trigger on any of these tells:*
 
-- creating, reading, updating, or moving Linear issues, projects, cycles, or comments
-- generating many issues at once from a spec, checklist, CSV, JSON, or template
-- linking the current git branch / PR to a Linear issue, or driving the start-work / done loop
-- searching the Linear backlog, applying saved views, or filtering issues for an agent
-- bulk operations across issues (status, assign, label, transfer)
-- exporting/importing Linear data, fetching attachments, or downloading uploaded images
-- diagnosing auth, rate-limit, or pager problems with `linear-cli`
+- *user pastes a `LIN-123` (or any `[A-Z]+-\d+`) identifier or a `https://linear.app/...` URL*
+- *user invokes `linear-cli`, `lc`, or any `i create / i list / i update / b assign / b update-state / im csv / s issues` subcommand*
+- *user wants to create many Linear issues from a spec, checklist, CSV, JSON, or template — "create N issues", "import this list", "spawn issues from this TODO"*
+- *user wants to start work on an issue and ship a PR, or close the issue tied to the current branch — "start LIN-123", "open a PR for this issue", "mark done"*
+- *user asks to bulk-mutate Linear issues — assign, label, transfer, status-change, archive across many IDs*
+- *user wants to search the Linear backlog, apply a saved view, or filter for an agent — "find stale issues", "what's in triage", "list my open ENG tickets"*
+- *user is wiring webhooks, watch-polling, attachments, or raw GraphQL against Linear*
+- *user hits an auth, rate-limit, or pager problem with `linear-cli` and needs the recovery move*
 
-Do not use this skill when:
+**Do NOT use when:**
 
-- the user explicitly mandates the Linear MCP server (rare — flag and warn)
-- the work is GitHub Issues, not Linear (`run-issue-tree`, `gh` CLI, etc.)
-- the task is webhook *server* work where the payload contract dominates and `linear-cli` is incidental
-- the user is asking a math question about "linear" anything
+- *the user explicitly mandates the Linear MCP server* — flag the cost gap (50–100 vs 500–2000 tokens) once, then comply
+- *the work is GitHub Issues, not Linear* — route to `run-issue-tree`, `gh issue`, or `do-review`
+- *the task is webhook server / payload-contract design where `linear-cli` is incidental* — payload schema dominates
+- *the user is asking a math or geometry question about "linear" anything* — not a Linear.app task
 
 ## Non-negotiable rules
 
@@ -34,8 +35,22 @@ Do not use this skill when:
 4. **Always `--output json`** (or `LINEAR_CLI_OUTPUT=json`) when chaining or parsing. Never grep the human table format.
 5. **`--id-only` for chaining.** Capture IDs into shell variables; do not re-parse JSON for an identifier you already produced.
 6. **Treat the exit-code map as a contract**: `0` success, `1` general error, `2` not found or parser error, `3` auth, `4` rate-limited (`retry_after` is in the JSON body).
-7. **Resolve names before using them.** Do not invent unknown team keys, label names, or assignees. Pull them with `linear-cli t list`, `linear-cli l list`, `linear-cli u list` and confirm before write paths; once resolved, using those concrete values in commands is fine.
+7. **Resolve names before using them.** Do not invent unknown team keys, label names, or assignees. Pull them with `linear-cli t list`, `linear-cli l list`, `linear-cli u list` and confirm before write paths.
 8. **Be explicit about scope.** State whether each command is read-only or mutating. Bulk mutations get a one-line confirmation cue.
+
+## Exit codes (contract)
+
+| Code | Meaning | Agent action |
+|---|---|---|
+| 0 | success | continue |
+| 1 | general error | parse stderr / JSON error envelope; surface to user |
+| 2 | not found **or parser error** | If JSON envelope with `details.status: 404`, the ID doesn't exist. If plain text stderr (e.g. `unexpected argument`), it's a CLI argument-parsing failure — check `--help` and fix the syntax |
+| 3 | auth error | route to `references/setup.md` and `references/troubleshooting.md` |
+| 4 | rate limited | sleep `retry_after` seconds (in JSON body), retry once |
+
+JSON error envelope: `{"error": true, "message": "...", "code": N, "details": {...}, "retry_after": N}` — see `references/json-shapes.md`.
+
+**Parser vs. API distinction:** Parser errors are plain text (e.g. `Usage: ...`, `unexpected argument`). Linear API errors are JSON envelopes with a `code` field and `details.status` HTTP status. Treat parser errors as mistakes to fix immediately, not transient failures to retry.
 
 ## Quick orientation
 
@@ -48,9 +63,30 @@ Do not use this skill when:
 | Pagination | `--limit N`, `--all`, `--page-size N`, `--after CURSOR`. |
 | Self-help | `linear-cli agent` prints an agent-focused capability summary; `linear-cli --help` and `linear-cli <cmd> --help` for everything. |
 
+## Agent-critical flags (cheat sheet)
+
+| Flag | Use |
+|---|---|
+| `--output json` / `--output ndjson` | Machine-readable output. |
+| `--compact` | Strip pretty-print whitespace. |
+| `--fields a,b.c` | Whitelist fields (dot paths supported). |
+| `--sort field` / `--order asc\|desc` | Stable sort for JSON arrays. |
+| `--filter k=v` / `k!=v` / `k~=v` | Client-side filter (case-insensitive, dot paths). |
+| `--format tpl` | Template output, e.g. `"{{identifier}} {{title}}"`. |
+| `--id-only` | Print only the created/updated ID. |
+| `--quiet` / `-q` | Suppress decoration. |
+| `--fail-on-empty` | Non-zero exit when list is empty (great for `set -e` agents). |
+| `--dry-run` | Preview without writing. |
+| `--yes` | Auto-confirm prompts. |
+| `--no-pager` / `--no-cache` | Disable auto-pager / read-through cache. |
+| `-d -` / `--data -` | Read description body / full JSON object from stdin. |
+| `--limit N` / `--all` / `--page-size N` / `--after CURSOR` | Pagination. |
+
+Full matrix: `references/output-and-scripting.md`.
+
 ## Agentic hot path
 
-These are the commands an agent reaches for in 80% of Linear work. Memorize them; route the rest through references.
+The 80% of Linear work an agent reaches for. Memorize; route the rest through references.
 
 ### Read
 
@@ -81,7 +117,6 @@ For workflows that produce a batch of issues from a spec, checklist, CSV, JSON, 
 
 ```bash
 # Pattern A — capture IDs in a loop (markdown checklist → many issues)
-# Extract only checklist items (lines starting with "- [ ] ")
 mapfile -t TITLES < <(grep -E '^- \[ \] ' TODO.md | sed -E 's/^- \[ \] //')
 for title in "${TITLES[@]}"; do
   linear-cli i create "$title" -t ENG --dry-run
@@ -181,41 +216,6 @@ linear-cli tr snooze LIN-123 --duration 1w
 | Concrete JSON payload shapes for issues / comments / context / errors | `references/json-shapes.md` |
 | Auth failure, rate limit, broken pager, stale cache, missing command | `references/troubleshooting.md` |
 
-## Agent-critical flags (cheat sheet)
-
-| Flag | Use |
-|---|---|
-| `--output json` / `--output ndjson` | Machine-readable output. |
-| `--compact` | Strip pretty-print whitespace. |
-| `--fields a,b.c` | Whitelist fields (dot paths supported). |
-| `--sort field` / `--order asc\|desc` | Stable sort for JSON arrays. |
-| `--filter k=v` / `k!=v` / `k~=v` | Client-side filter (case-insensitive, dot paths). |
-| `--format tpl` | Template output, e.g. `"{{identifier}} {{title}}"`. |
-| `--id-only` | Print only the created/updated ID. |
-| `--quiet` / `-q` | Suppress decoration. |
-| `--fail-on-empty` | Non-zero exit when list is empty (great for `set -e` agents). |
-| `--dry-run` | Preview without writing. |
-| `--yes` | Auto-confirm prompts. |
-| `--no-pager` / `--no-cache` | Disable auto-pager / read-through cache. |
-| `-d -` / `--data -` | Read description body / full JSON object from stdin. |
-| `--limit N` / `--all` / `--page-size N` / `--after CURSOR` | Pagination. |
-
-Full matrix: `references/output-and-scripting.md`.
-
-## Exit codes (contract)
-
-| Code | Meaning | Agent action |
-|---|---|---|
-| 0 | success | continue |
-| 1 | general error | parse stderr / JSON error envelope; surface to user |
-| 2 | not found **or parser error** | If JSON envelope with `details.status: 404`, the ID doesn't exist. If plain text stderr (e.g. `unexpected argument`), it's a CLI argument-parsing failure — check `--help` and fix the syntax |
-| 3 | auth error | route to `references/setup.md` and `references/troubleshooting.md` |
-| 4 | rate limited | sleep `retry_after` seconds (in JSON body), retry once |
-
-JSON error envelope: `{"error": true, "message": "...", "code": N, "details": {...}, "retry_after": N}` — see `references/json-shapes.md`.
-
-**Parser vs. API distinction:** Always check stdout/stderr format. Parser errors are plain text (e.g. `Usage: ...`, `unexpected argument`). Linear API errors are JSON envelopes with a `code` field and `details.status` HTTP status. Treat parser errors as mistakes to fix immediately, not transient failures to retry.
-
 ## Output contract
 
 When answering a Linear question, return:
@@ -226,49 +226,6 @@ When answering a Linear question, return:
 4. **Exit-code interpretation** — only when relevant (auth, not-found, rate-limit).
 5. **Near-neighbor distinction** — call it out when commands are easy to confuse (`b update-state` vs `i update`, `i start` vs `g checkout`, `tpl` local vs `tpl remote-*`, `cm` issue comments vs `pu` project updates).
 6. **Dry-run note** — required for any bulk create or any mutation across >5 IDs.
-
-## Reference routing
-
-### Recipes
-
-| File | When to read |
-|---|---|
-| `references/recipes/creating-many-issues.md` | Spec → many issues. Markdown checklist, CSV, JSON spec, template-driven, parent/child wiring, label batching, atomicity, idempotency. |
-| `references/recipes/git-and-pr-loop.md` | start → code → PR → done. Branch naming, `context`, jj support, draft-PR pattern, finding-comment pattern, abort-and-revert path. |
-| `references/recipes/triage-and-comments.md` | Process the triage queue, leave findings, link or fetch attachments, download upload images for multimodal review. |
-
-### Issues
-
-| File | When to read |
-|---|---|
-| `references/issues/lifecycle.md` | Full create / update / start / stop / done / move / transfer / close / archive / open / link / delete flag matrix, including `--data -` JSON shape and priority/due-date shortcuts. |
-| `references/issues/relations-and-labels.md` | `rel` parent/child/blocks/duplicates/related, label CRUD with hex colors, `st` workflow-state CRUD, template CRUD (local + Linear API). |
-| `references/issues/search-and-filter.md` | `s issues` / `s projects`, the full `i list` flag matrix, client-side `--filter`, `--group-by`, `--count-only`, saved views (`v`) CRUD + apply, favorites. |
-
-### Planning
-
-| File | When to read |
-|---|---|
-| `references/planning/projects-and-cycles.md` | Project CRUD with full create flags, project labels/members/archive, project-updates with `--health onTrack/atRisk/offTrack`, cycles, `c current`, `c complete`, sprint analytics (status / progress / plan / carry-over / burndown / velocity), milestones, roadmaps, initiatives. |
-| `references/planning/teams-and-org.md` | Teams CRUD + members, users (`u list` / `u me` / `whoami`), custom views CRUD + apply across `i list` / `p list`, favorites. |
-
-### Data
-
-| File | When to read |
-|---|---|
-| `references/data/import-export.md` | CSV column schema, JSON round-trip, Markdown export, `--dry-run` first, name-based field resolution for status/assignee/labels, projects export. |
-| `references/data/attachments-and-uploads.md` | Attachment CRUD, URL linking, `up fetch` to file vs stdout, multimodal pattern (download then `Read` tool), `uploads.linear.app` host restriction. |
-
-### Eventing, advanced, setup, output, troubleshooting
-
-| File | When to read |
-|---|---|
-| `references/eventing-and-tracking.md` | `watch` polling, webhook CRUD + local HMAC-SHA256 listener (`wh listen`), notifications (`n list/count/read/archive/read-all/archive-all`), `mt` metrics (cycle/project/velocity), `hist` issue activity, `tm` time tracking. |
-| `references/advanced.md` | `api query` / `api mutate` raw GraphQL with variables and stdin, `issueCreate` mutation example, `d` document CRUD. |
-| `references/setup.md` | First-run setup, API key vs OAuth (PKCE), `auth status/login/oauth/revoke/logout`, `--profile` and workspace switching, `doctor` / `doctor --fix`, static + dynamic shell completions, full env-var table, macOS keyring caveats. |
-| `references/output-and-scripting.md` | Every agent-relevant flag, `LINEAR_CLI_OUTPUT=json` session default, stdin patterns, pagination, chaining recipes, `--fail-on-empty` for `set -e`. |
-| `references/json-shapes.md` | Concrete JSON payloads for issue list/get, comments list, `context`, and the error envelope. |
-| `references/troubleshooting.md` | Exit code dispatch, rate-limit retry, auth recovery, the macOS pager-broken-state recovery, cache reset, "command in docs but not installed" → `linear-cli update`. |
 
 ## Guardrails
 

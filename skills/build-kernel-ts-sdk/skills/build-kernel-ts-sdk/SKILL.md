@@ -1,40 +1,41 @@
 ---
 name: build-kernel-ts-sdk
-description: Use skill if you are building TypeScript code with Kernel browsers, Apps, profiles, Managed Auth, browser pools, or CDP/Playwright wiring via @onkernel/sdk.
+description: Use skill if you are building TypeScript browser-automation agents or apps on the Kernel SDK (`@onkernel/sdk`) — browsers, Apps, profiles, Managed Auth, pools, Playwright/CDP wiring.
 ---
 
 # Build Kernel TS SDK
 
-Build with the Kernel TypeScript SDK (`@onkernel/sdk`, generated from Kernel's OpenAPI spec by Stainless) and the React helper `@onkernel/managed-auth-react`. Kernel runs each browser as a unikernel-isolated VM and co-locates your code with the browser to remove CDP latency.
+Build with the Kernel TypeScript SDK (`@onkernel/sdk`, generated from Kernel's OpenAPI spec by Stainless) and the React helper `@onkernel/managed-auth-react`. Kernel runs each browser as a unikernel-isolated VM and co-locates your code with the browser to remove CDP latency. The SDK and CLI surface the **same** API.
 
-The SDK and CLI surface the **same** API. Pick one operating mode early and stay in it.
+## When to use this skill
 
-## Trigger boundary
+Use this skill if the task involves any of:
 
-Use this skill when work involves the Kernel TypeScript SDK or a Kernel-deployed app:
+- _building or extending TypeScript code that imports `@onkernel/sdk` or constructs `new Kernel(...)`_
+- _driving a Kernel browser via `kernel.browsers.create`, `cdp_ws_url`, `kernel.browsers.playwright.execute`, or `kernel.browsers.computer.*`_
+- _deploying a Kernel App with `kernel deploy` and invoking it via `kernel.invocations.create` (sync or async with `invocations.follow`)_
+- _wiring Playwright, Stagehand, Browser Use, Claude Agent SDK, Vibium, Notte, Magnitude, Laminar, or Val Town to a Kernel browser_
+- _using profiles (`profiles.*`), browser pools (`browserPools.*`), credentials (`credentials.*`), or replays/file I/O (`browsers.fs.*`, `browsers.replays.*`)_
+- _implementing Managed Auth with `auth.connections.*` and the React `<KernelManagedAuth />` component_
+- _scoping `KERNEL_API_KEY` per project via `defaultHeaders: { 'X-Kernel-Project-Id': '…' }`_
+- _debugging Kernel-specific failures: `browser.close()` not cleaning up, sync-invocation 100 s timeout, default-context confusion, 409 profile conflicts_
 
-- Driving Kernel browsers from a Node/Bun/Deno service (`@onkernel/sdk`)
-- Deploying a Kernel App (`kernel deploy`) and invoking it sync or async
-- Wiring Playwright, Stagehand, Browser Use, Claude Agent SDK, Vibium, Notte, Magnitude, Laminar, or Val Town to a Kernel browser
-- Profile-backed sessions, browser pools, replays, file I/O, or computer-controls
-- Managed Auth (`auth.connections.*` + `<KernelManagedAuth />`)
+Do **NOT** use this skill for:
 
-Do not use this skill for:
-
-- Local Playwright without Kernel — use `run-playwright`
-- The `agent-browser` CLI directly without the Kernel provider — use `run-agent-browser`
-- Python Kernel SDK
-- Building a GitHub Copilot SDK app — use `build-copilot-sdk-app`
+- _Local Playwright tests, `@playwright/cli` driving, screenshots/forms/snapshots outside Kernel — use `run-playwright`._
+- _Terminal-driving the `agent-browser` CLI (`agent-browser -p kernel`, `@ref` snapshots, `snapshot -i --json`) — use `run-agent-browser`. This skill owns Kernel-SDK code; `run-agent-browser` owns the CLI._
+- _Python Kernel SDK (`kernel-python-sdk`), or Browser Use's Python framework — no native TS package._
+- _LangChain.js / LangGraph agents that may incidentally call browser tools but are not Kernel-specific (`build-langchain-ts-app`); GitHub Copilot SDK apps (`build-copilot-sdk-app`)._
 
 ## Cross-skill disambiguation
 
 | Situation | Use |
 |---|---|
-| Build TypeScript code using `@onkernel/sdk` or deploy/invoke Kernel Apps | `build-kernel-ts-sdk` |
-| Terminal-drive a browser through `agent-browser`, including `agent-browser -p kernel` command loops | `run-agent-browser` for CLI operation; this skill only for Kernel SDK/provider wiring |
-| Drive local/generic Playwright CLI workflows, browser inspection, forms, screenshots, or live debugging outside Kernel | `run-playwright` |
-| Build a GitHub Copilot SDK TypeScript app | `build-copilot-sdk-app` |
-| Build a LangChain.js/LangGraph agent that may call browser tools but is not Kernel-specific | `build-langchain-ts-app` |
+| TypeScript code importing `@onkernel/sdk` or deploying a Kernel App | `build-kernel-ts-sdk` |
+| `agent-browser` CLI loops, including `agent-browser -p kernel` | `run-agent-browser` |
+| Local/generic `playwright-cli`, `@playwright/test`, live-debug sessions outside Kernel | `run-playwright` |
+| GitHub Copilot SDK TypeScript app | `build-copilot-sdk-app` |
+| LangChain.js/LangGraph agent where browser tools are optional | `build-langchain-ts-app` |
 
 ## Two operating modes — decide first
 
@@ -43,16 +44,37 @@ Do not use this skill for:
 | **A. Embed** | Drive Kernel from your own service (Next.js route, worker, CLI tool) | Your repo | `new Kernel()` → `browsers.create` → CDP / `playwright.execute` / `computer.*` |
 | **B. Deploy** | Long-running, browser-co-located actions; want zero CDP latency or per-invocation isolation | A Kernel App (your repo, deployed via `kernel deploy`) | Register actions → `kernel deploy` → `kernel.invocations.create({ app_name, action_name, payload })` |
 
-You can mix — most production setups deploy long-running browser work as a Kernel App and invoke it from an embedding service. Don't try to make a single function do both.
+Mixing is fine — most production setups deploy long-running browser work as a Kernel App and invoke it from an embedding service. Don't try to make a single function do both.
 
-## Deploy vs invoke mini-glossary
+### Deploy vs invoke glossary
 
 - **App:** named deployed codebase containing one or more actions.
 - **Action:** named function registered inside an app.
 - **Deployment:** build/version event that creates or updates an app version; track `deployment.id`, app name, and version.
 - **Invocation:** one execution of one action; track `invocation.id`, sync/async mode, status, logs/events, and output handling.
 
-## Quick start / first runnable path
+## Hard rules — load-bearing
+
+1. **`KERNEL_API_KEY` from env.** Never hardcode. Env wins over `apiKey:` option only when the option is omitted; passing both is allowed.
+2. **Pin the SDK.** `@onkernel/sdk` is auto-generated by Stainless and rev's frequently. Pin a minor version range; verify method names from the installed `node_modules/@onkernel/sdk/api.md` if unsure.
+3. **Never use `browser.close()` as cleanup.** Playwright/Puppeteer `close()` only severs the local CDP connection. Always call `kernel.browsers.deleteByID(session_id)` (or rely on `timeout_seconds`).
+4. **Sync invocation cap is ~100 s.** Anything longer must use `async: true` with `async_timeout_seconds` (10–3600) and `invocations.follow(id)` for SSE. Switching after the fact requires re-deploying.
+5. **Default browser context only.** Kernel browsers ship with one default context and one open page. Use `browser.contexts()[0]` and `pages()[0]` — do not call `browser.newContext()` / `context.newPage()` to make a "fresh" one.
+6. **Project scoping is header-driven.** With an org-wide API key, scope to a project by passing `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` to the constructor. The SDK does NOT auto-read `KERNEL_PROJECT` — wire it through. OAuth (CLI) is always org-wide.
+7. **Runtime requirements.** TypeScript ≥ 4.9. Supported runtimes: up-to-date browsers, Node 20 LTS+, Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge Runtime, Jest 28+ (`"node"` env), Nitro v2.6+. React Native is unsupported.
+8. **Payload limits are doc-conflicted.** App development and CLI docs say 64 KB; app invocation docs say 4.5 MB. Verify live docs before relying on large payloads; route multi-MB artifacts through `browsers.fs.*` or object storage.
+
+## Default stance
+
+- `stealth: true` for any non-trivial site — bot detection is the rule, not the exception.
+- `timeout_seconds: 300` minimum; the 60 s default is too aggressive for real automation. Max is `259200` (72 h).
+- **Headful** when you need live view, replays, or GPU. **Headless** for fast scripted scrapes (~8× cheaper, faster boot, but more detectable).
+- Prefer `kernel.browsers.playwright.execute(id, { code })` for hot paths (runs in the browser VM with no CDP roundtrip). Reserve raw CDP for long-lived interactive sessions.
+- Use Kernel **profiles** for any flow that needs login state across sessions; create named profiles explicitly. Reach for **Managed Auth** when those credentials belong to your end-users.
+- Only one parallel browser should write the same profile with `save_changes: true`; other parallel browsers should load it read-only.
+- A connected browser is "active". After 5 s with no CDP/live-view connection it enters **standby** (zero compute cost) and only THEN does its `timeout_seconds` countdown to deletion start.
+
+## Quick start
 
 For a new scratch project, use the scaffold script so package pins come from npm at generation time:
 
@@ -60,7 +82,7 @@ For a new scratch project, use the scaffold script so package pins come from npm
 bash scripts/scaffold-kernel-app.sh --mode embed --dir ./kernel-embed-demo
 cd ./kernel-embed-demo
 npm install
-export KERNEL_API_KEY=...   # never commit this; use .env.example only as a template
+export KERNEL_API_KEY=...   # never commit; use .env.example only as template
 npm run check
 npm run start
 ```
@@ -77,8 +99,8 @@ First browser creation must print the `session_id`, do the work, then call `kern
 ## Current-doc/version check
 
 - Existing repo: run `scripts/check-kernel-sdk-version.sh` before changing Kernel code. Read `scripts/check-kernel-sdk-version.sh.md` for output interpretation.
-- New repo: run `npm view @onkernel/sdk version dist-tags --json` before pinning `@onkernel/sdk`; prefer a minor range for scaffolds, not `latest`.
-- Installed SDK: read `node_modules/@onkernel/sdk/api.md` when present because the SDK is generated by Stainless and method names move quickly.
+- New repo: run `npm view @onkernel/sdk version dist-tags --json` before pinning; prefer a minor range for scaffolds, not `latest`.
+- Installed SDK: read `node_modules/@onkernel/sdk/api.md` when present — Stainless regenerates frequently and method names move.
 - Live docs: for pricing, billing, Managed Auth, profiles, browser pools, deployment/invocation, or payload-size claims, check `https://www.kernel.sh/docs/llms.txt` and the linked page before changing code.
 
 ## Cost-facing preflight
@@ -93,88 +115,14 @@ Before running code, name every operation that may create paid or quota-bound re
 
 For each resource, decide the cleanup path before running: `deleteByID`, pool `release`, invocation/browser cleanup by `invocation_id`, deployment terminal state, or explicit timeout with reason. Report anything left alive.
 
-## Hard rules
-
-1. **`KERNEL_API_KEY` from env.** Never hardcode. Env wins over `apiKey:` option only when the option is omitted; passing both is allowed.
-2. **Pin the SDK.** `@onkernel/sdk` is auto-generated by Stainless and rev's frequently. Pin a minor version range; verify method names from the installed `node_modules/@onkernel/sdk/api.md` if unsure.
-3. **Never use `browser.close()` as cleanup.** Playwright/Puppeteer `close()` only severs the local CDP connection. Always call `kernel.browsers.deleteByID(session_id)` (or rely on `timeout_seconds`).
-4. **Sync invocation cap is ~100s.** Anything longer must use `async: true` with `async_timeout_seconds` (10–3600) and `invocations.follow(id)` for SSE.
-5. **Default browser context only.** Kernel browsers ship with one default context and one open page. Use `browser.contexts()[0]` and `pages()[0]` — do not call `browser.newContext()` / `context.newPage()` to make a "fresh" one.
-6. **Project scoping is header-driven.** With an org-wide API key, scope to a project by passing `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` to the constructor (the SDK does NOT auto-read a `KERNEL_PROJECT` env var — that's a user convention you have to wire through). OAuth (CLI) is always org-wide.
-7. **Runtime requirements.** TypeScript ≥ 4.9. Per `@onkernel/sdk` README, supported runtimes are: Web browsers (up-to-date Chrome, Firefox, Safari, Edge), Node 20 LTS+, Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge Runtime, Jest 28+ (with the `"node"` environment), and Nitro v2.6+. React Native is unsupported.
-8. **Payload limits are doc-conflicted.** Kernel docs currently disagree: app development and CLI docs say 64 KB, while app invocation docs say 4.5 MB. Verify live docs before relying on large payloads; put multi-MB artifacts through `browsers.fs.*` or object storage.
-
-## Default stance
-
-- `stealth: true` for any non-trivial site (bot detection is the rule, not the exception).
-- `timeout_seconds: 300` minimum; the 60s default is too aggressive for real automation. Max is `259200` (72h).
-- **Headful** when you need live view, replays, or GPU. **Headless** for fast scripted scrapes (~8× cheaper, faster boot, but more detectable).
-- Prefer `kernel.browsers.playwright.execute(id, { code })` for hot paths (it runs in the browser VM with no CDP roundtrip). Reserve raw CDP for long-lived interactive sessions.
-- Use Kernel **profiles** for any flow that needs login state across sessions; create named profiles explicitly for direct profile use. Reach for **Managed Auth** when those credentials belong to your end-users.
-- Only one parallel browser should write the same profile with `save_changes: true`; other parallel browsers should load it read-only.
-- A connected browser is "active". After 5s with no CDP/live-view connection it enters **standby** (zero compute cost) and only THEN does its `timeout_seconds` countdown to deletion start. Don't expect long-idle-but-open sessions to be free — keep a connection live.
-
 ## Workflow
 
 1. **Classify** the operating mode (A vs B). If mixed, name which surface each piece is on.
-2. **Construct the client.** `import Kernel from '@onkernel/sdk'`. Verify env (`KERNEL_API_KEY` is the only required one; `KERNEL_LOG`, `KERNEL_BASE_URL`, `KERNEL_CUSTOM_HEADERS`, `KERNEL_SUPPRESS_BUN_WARNING` are optional). For local development hitting `https://localhost:3001/`, pass `environment: 'development', baseURL: null`. For project-scoped API keys, wire `X-Kernel-Project-Id` through `defaultHeaders`. See `references/guides/client-and-config.md`.
-3. **Pick the browser-control surface** — raw CDP / Playwright-inside-VM / computer-controls / browser-curl. See `references/patterns/browser-control-surfaces.md`.
-4. **Wire profiles or Managed Auth** if the agent needs persistent login. See `references/patterns/profiles-pools-credentials.md` and `references/guides/managed-auth.md`.
-5. **Handle lifecycle.** Always pair `browsers.create` with `browsers.deleteByID`, even on error paths. Use `try/finally`. See `references/guides/browsers-lifecycle.md`.
-6. **Deploy or run.** For Mode B, `kernel deploy` and consume invocations; for Mode A, run inside your service. See `references/guides/apps-deploy-invoke.md` and `references/examples/deploy-and-invoke-app.md`.
-
-## Output contract
-
-When finishing a Kernel task, report only fields that apply:
-
-- operating mode: embed, deploy, or mixed
-- package versions checked and package range pinned
-- created browser `session_id` values and whether each was deleted, pool-released, intentionally timed out, or left running with reason
-- live view URL or replay/artifact path when relevant
-- profile name/id and whether `save_changes` was used
-- Managed Auth connection id, final `flow_status`/`status`, and profile name
-- deployment id, app name, version, and action name
-- invocation id, sync/async mode, terminal status, and how logs/events were consumed
-- payload/output size strategy for large artifacts
-- verification rung actually reached: typecheck, script run, live browser run, deployment/invocation observed
-
-## Bundled scripts
-
-| Script | Use |
-|---|---|
-| `scripts/check-kernel-sdk-version.sh` | Preflight Node/npm, installed Kernel package versions, npm latest versions, local `api.md`, and `KERNEL_API_KEY` presence. See `scripts/check-kernel-sdk-version.sh.md`. |
-| `scripts/scaffold-kernel-app.sh` | Generate a minimal embedded SDK example or deployable Kernel App in an empty directory. See `scripts/scaffold-kernel-app.sh.md`. |
-
-## Reference routing
-
-| Document | What it contains | Load when |
-|---|---|---|
-| `references/guides/client-and-config.md` | Env vars, environments, retries, idempotency, pagination, error taxonomy, request options | Constructing the client, debugging auth/network errors, handling pagination |
-| `references/guides/browsers-lifecycle.md` | `browsers.create` params, `BrowserCreateResponse`, standby, termination, viewport, timeout semantics | Creating, configuring, or terminating browsers |
-| `references/guides/apps-deploy-invoke.md` | `deployments.*`, `invocations.create` sync vs async, `invocations.follow` SSE, secrets, logs | Deploying a Kernel App or invoking it from another service |
-| `references/guides/managed-auth.md` | 3-piece architecture, `auth.connections.*`, `<KernelManagedAuth />` props, profile interop | Authenticating an agent on a user's behalf into a SaaS |
-| `references/patterns/browser-control-surfaces.md` | Decision tree across CDP, `playwright.execute`, `computer.*`, `curl` | Picking the right control surface for a task |
-| `references/patterns/playwright-stagehand-integration.md` | `connectOverCDP` idiom, default-context warning, Stagehand v3 launch options, `kernel create --template` | Wiring Playwright or Stagehand to a Kernel browser |
-| `references/patterns/profiles-pools-credentials.md` | `profiles.*`, `browserPools.*`, `credentials.*`, `credentialProviders.*` (1Password) | Persistent login state, pool warm-starts, credential providers |
-| `references/patterns/integrations-matrix.md` | Hookup snippets per integration (Stagehand, Browser Use, Claude Agent SDK, Vibium, etc.) | Connecting a third-party agent framework to a Kernel browser |
-| `references/examples/browser-screenshot.md` | Minimal end-to-end TS example | Sanity-check first run; copy as a starting scaffold |
-| `references/examples/deploy-and-invoke-app.md` | `kernel deploy` + `invocations.create` + `invocations.follow` walkthrough | Building or invoking a Kernel App |
-| `references/examples/managed-auth-flow.md` | Full Next.js page + backend route + browser launch | Implementing the Managed Auth handoff end-to-end |
-| `references/troubleshooting/pitfalls.md` | The 16 production gotchas in priority order | Debugging unexpected behavior or before shipping |
-| `references/troubleshooting/files-and-replays.md` | `browsers.fs.*`, `browsers.replays.*`, download timing, multipart | File I/O or replay download is failing or slow |
-| `references/troubleshooting/auth-and-profile-errors.md` | 409 conflict, profile not found, hosted-page handoff failures | Managed Auth or profile errors |
-
-## Steering experience
-
-> **`browser.close()` is not cleanup.** Closing the Playwright `Browser` only disconnects CDP. The Kernel browser keeps running until `timeout_seconds` elapses or you call `kernel.browsers.deleteByID(session_id)`. Always pair `create` with `deleteByID` in a `finally` block.
-
-> **There is already a default context and page.** Calling `browser.newContext()` makes a *second* context; the cookies, storage, and profile state live on the default one. Use `browser.contexts()[0].pages()[0]`.
-
-> **Sync invocations time out at ~100s.** If your action does any non-trivial browser work, set `async: true` and `invocations.follow(id)` instead. Switching after the fact requires re-deploying.
-
-> **Stagehand connects via local-CDP, not Browserbase.** When using `@browserbasehq/stagehand` with Kernel, set `env: 'LOCAL'` and `localBrowserLaunchOptions.cdpUrl: session.cdp_ws_url`. Do **not** set `apiKey` or `projectId` — those are Browserbase-only.
-
-> **`browsers.delete` (singular) is deprecated.** Use `browsers.deleteByID(id)`. The plural form takes a `persistent_id` and belongs to the deprecated persistence model.
+2. **Construct the client.** `import Kernel from '@onkernel/sdk'`. Verify env (`KERNEL_API_KEY` is the only required one; `KERNEL_LOG`, `KERNEL_BASE_URL`, `KERNEL_CUSTOM_HEADERS`, `KERNEL_SUPPRESS_BUN_WARNING` are optional). For local dev hitting `https://localhost:3001/`, pass `environment: 'development', baseURL: null`. For project-scoped API keys, wire `X-Kernel-Project-Id` through `defaultHeaders`. See [references/guides/client-and-config.md](references/guides/client-and-config.md).
+3. **Pick the browser-control surface** — raw CDP / Playwright-inside-VM / computer-controls / browser-curl. See [references/patterns/browser-control-surfaces.md](references/patterns/browser-control-surfaces.md).
+4. **Wire profiles or Managed Auth** if the agent needs persistent login. See [references/patterns/profiles-pools-credentials.md](references/patterns/profiles-pools-credentials.md) and [references/guides/managed-auth.md](references/guides/managed-auth.md).
+5. **Handle lifecycle.** Always pair `browsers.create` with `browsers.deleteByID`, even on error paths. Use `try/finally`. See [references/guides/browsers-lifecycle.md](references/guides/browsers-lifecycle.md).
+6. **Deploy or run.** For Mode B, `kernel deploy` and consume invocations; for Mode A, run inside your service. See [references/guides/apps-deploy-invoke.md](references/guides/apps-deploy-invoke.md) and [references/examples/deploy-and-invoke-app.md](references/examples/deploy-and-invoke-app.md).
 
 ## Do this, not that
 
@@ -191,6 +139,59 @@ When finishing a Kernel task, report only fields that apply:
 | `kernel.browsers.curl(id, { url })` for HTTP from inside the browser's TLS fingerprint | spin up a separate Playwright `request` context and lose the fingerprint |
 | Wire `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` for project-scoped API keys | rely on key scope and get cross-project lists |
 
+## Steering callouts
+
+> **`browser.close()` is not cleanup.** Closing the Playwright `Browser` only disconnects CDP. The Kernel browser keeps running until `timeout_seconds` elapses or you call `kernel.browsers.deleteByID(session_id)`. Always pair `create` with `deleteByID` in a `finally` block.
+
+> **There is already a default context and page.** Calling `browser.newContext()` makes a *second* context; cookies, storage, and profile state live on the default one. Use `browser.contexts()[0].pages()[0]`.
+
+> **Sync invocations time out at ~100 s.** If your action does any non-trivial browser work, set `async: true` and `invocations.follow(id)` instead. Switching after the fact requires re-deploying.
+
+> **Stagehand connects via local-CDP, not Browserbase.** With `@browserbasehq/stagehand` and Kernel, set `env: 'LOCAL'` and `localBrowserLaunchOptions.cdpUrl: session.cdp_ws_url`. Do **not** set `apiKey` or `projectId` — those are Browserbase-only.
+
+> **`browsers.delete` (singular) is deprecated.** Use `browsers.deleteByID(id)`. The plural form takes a `persistent_id` and belongs to the deprecated persistence model.
+
+## Bundled scripts
+
+| Script | Use |
+|---|---|
+| `scripts/check-kernel-sdk-version.sh` | Preflight Node/npm, installed Kernel package versions, npm latest versions, local `api.md`, and `KERNEL_API_KEY` presence. See `scripts/check-kernel-sdk-version.sh.md`. |
+| `scripts/scaffold-kernel-app.sh` | Generate a minimal embedded SDK example or deployable Kernel App in an empty directory. See `scripts/scaffold-kernel-app.sh.md`. |
+
+## Reference routing
+
+| Document | What it contains | Load when |
+|---|---|---|
+| [references/guides/client-and-config.md](references/guides/client-and-config.md) | Env vars, environments, retries, idempotency, pagination, error taxonomy, request options | Constructing the client, debugging auth/network errors, handling pagination |
+| [references/guides/browsers-lifecycle.md](references/guides/browsers-lifecycle.md) | `browsers.create` params, `BrowserCreateResponse`, standby, termination, viewport, timeout semantics | Creating, configuring, or terminating browsers |
+| [references/guides/apps-deploy-invoke.md](references/guides/apps-deploy-invoke.md) | `deployments.*`, `invocations.create` sync vs async, `invocations.follow` SSE, secrets, logs | Deploying a Kernel App or invoking it from another service |
+| [references/guides/managed-auth.md](references/guides/managed-auth.md) | 3-piece architecture, `auth.connections.*`, `<KernelManagedAuth />` props, profile interop | Authenticating an agent on a user's behalf into a SaaS |
+| [references/patterns/browser-control-surfaces.md](references/patterns/browser-control-surfaces.md) | Decision tree across CDP, `playwright.execute`, `computer.*`, `curl` | Picking the right control surface for a task |
+| [references/patterns/playwright-stagehand-integration.md](references/patterns/playwright-stagehand-integration.md) | `connectOverCDP` idiom, default-context warning, Stagehand v3 launch options, `kernel create --template` | Wiring Playwright or Stagehand to a Kernel browser |
+| [references/patterns/profiles-pools-credentials.md](references/patterns/profiles-pools-credentials.md) | `profiles.*`, `browserPools.*`, `credentials.*`, `credentialProviders.*` (1Password) | Persistent login state, pool warm-starts, credential providers |
+| [references/patterns/integrations-matrix.md](references/patterns/integrations-matrix.md) | Hookup snippets per integration (Stagehand, Browser Use, Claude Agent SDK, Vibium, etc.) | Connecting a third-party agent framework to a Kernel browser |
+| [references/examples/browser-screenshot.md](references/examples/browser-screenshot.md) | Minimal end-to-end TS example | Sanity-check first run; copy as a starting scaffold |
+| [references/examples/deploy-and-invoke-app.md](references/examples/deploy-and-invoke-app.md) | `kernel deploy` + `invocations.create` + `invocations.follow` walkthrough | Building or invoking a Kernel App |
+| [references/examples/managed-auth-flow.md](references/examples/managed-auth-flow.md) | Full Next.js page + backend route + browser launch | Implementing the Managed Auth handoff end-to-end |
+| [references/troubleshooting/pitfalls.md](references/troubleshooting/pitfalls.md) | The 16 production gotchas in priority order | Debugging unexpected behavior or before shipping |
+| [references/troubleshooting/files-and-replays.md](references/troubleshooting/files-and-replays.md) | `browsers.fs.*`, `browsers.replays.*`, download timing, multipart | File I/O or replay download is failing or slow |
+| [references/troubleshooting/auth-and-profile-errors.md](references/troubleshooting/auth-and-profile-errors.md) | 409 conflict, profile not found, hosted-page handoff failures | Managed Auth or profile errors |
+
+## Output contract
+
+When finishing a Kernel task, report only fields that apply:
+
+- operating mode: embed, deploy, or mixed
+- package versions checked and package range pinned
+- created browser `session_id` values and whether each was deleted, pool-released, intentionally timed out, or left running with reason
+- live view URL or replay/artifact path when relevant
+- profile name/id and whether `save_changes` was used
+- Managed Auth connection id, final `flow_status`/`status`, and profile name
+- deployment id, app name, version, and action name
+- invocation id, sync/async mode, terminal status, and how logs/events were consumed
+- payload/output size strategy for large artifacts
+- verification rung actually reached: typecheck, script run, live browser run, deployment/invocation observed
+
 ## Verification
 
 End-to-end checks for any Kernel-TS task:
@@ -205,7 +206,7 @@ End-to-end checks for any Kernel-TS task:
 
 ## Cost cleanup check
 
-- List open browsers when the SDK/CLI is available; created `session_id` values must be deleted, released back to a pool, intentionally timed out, or left running with a reason.
+- List open browsers when SDK/CLI is available; created `session_id` values must be deleted, released back to a pool, intentionally timed out, or left running with a reason.
 - For browser pools, release every acquired browser or explain why it was destroyed/rebuilt.
 - For deployments/invocations, report deployment/invocation ids, app/action/version, terminal status, and how logs/events were consumed.
 - For large artifacts, report whether they moved through `browsers.fs.*`, replay download, or object storage before browser cleanup.
@@ -228,6 +229,7 @@ End-to-end checks for any Kernel-TS task:
 This skill covers `@onkernel/sdk` and `@onkernel/managed-auth-react` in TypeScript. It does not cover:
 
 - The Python SDK (`kernel-python-sdk`)
-- Building generic Playwright tests against your own infra (use `run-playwright`)
+- Generic Playwright tests against your own infra (use `run-playwright`)
+- Terminal-driving the `agent-browser` CLI (use `run-agent-browser`)
 - The full `kernel` CLI surface beyond `deploy` and `invoke` (read `kernel --help` directly)
 - Browser Use's Python framework — there is no native TS package

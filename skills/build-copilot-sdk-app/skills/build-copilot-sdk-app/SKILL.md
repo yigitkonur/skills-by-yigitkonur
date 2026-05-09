@@ -1,43 +1,69 @@
 ---
 name: build-copilot-sdk-app
-description: Use skill if you are building directly on @github/copilot-sdk for Copilot SDK sessions, tools, streaming, hooks, custom agents, or BYOK.
+description: Use skill if you are building a TypeScript or Node app on @github/copilot-sdk with sessions, custom tools, hooks, agents, BYOK providers, or streaming events.
 ---
 
 # Build Copilot SDK App
 
-Build Node/TypeScript apps directly on `@github/copilot-sdk`, the GitHub Copilot SDK agent runtime. The SDK is public preview, so treat installed package types as the API contract and use docs for product/auth policy context.
+Build Node/TypeScript apps directly on `@github/copilot-sdk` — the GitHub Copilot SDK agent runtime. The package is in **public preview**, so the installed `dist/*.d.ts` files are the API contract, not the docs page.
 
-## Trigger boundary
+## When to use
 
-Use this skill only for applications that import `@github/copilot-sdk` and create Copilot SDK clients, sessions, tools, commands, hooks, custom agents, MCP-backed agents, streaming UIs, or BYOK provider sessions.
+*Italicized phrases below match real triggers. If any one fits, the skill applies.*
 
-Do not use this skill for:
+- *importing `@github/copilot-sdk` or constructing `new CopilotClient(...)`*
+- *creating `client.createSession({ model, onPermissionRequest })` or calling `session.sendAndWait`*
+- *registering custom tools, slash `commands`, hooks (`onToolUse`, `onSessionStart`, etc.), or sub-agents*
+- *streaming Copilot events (`session.onEvent`, `session-events.d.ts`) into a UI*
+- *wiring BYOK providers (`provider` + `model`) — Anthropic, OpenAI, Azure, Bedrock, Vertex*
+- *using `gitHubToken` / `COPILOT_GITHUB_TOKEN` / external `copilot` CLI as the auth path*
+- *adding agent-level MCP servers or skills via Copilot SDK custom agents*
+- *writing fleet-mode, multi-client, plan/autopilot, or backend-service patterns on Copilot SDK*
 
-- LangChain.js or LangGraph TypeScript agents — use `build-langchain-ts-app`
-- `mcp-use` `MCPAgent` applications — use `build-mcp-use-agent`
-- Kernel browser automation via `@onkernel/sdk` — use `build-kernel-ts-sdk`
-- Effect-TS applications without Copilot SDK — use `build-effect-ts-v3`
-- Generic OpenAI, Vercel AI SDK, or provider-SDK chatbots that do not import `@github/copilot-sdk`
+### Do NOT use when
 
-## Source-of-truth gate
+- the project imports **LangChain.js / LangGraph TS** instead → use `build-langchain-ts-app`
+- the project uses **`mcp-use` `MCPAgent`** → use `build-mcp-use-agent`
+- the project uses **`@onkernel/sdk`** for browser automation → use `build-kernel-ts-sdk`
+- the project is **generic OpenAI / Vercel AI SDK / Anthropic SDK** without `@github/copilot-sdk` → use a generic SDK skill, not this one
 
-Before writing version-sensitive code, check the selected package:
+If `package.json` does not list `@github/copilot-sdk` and no source file imports from it, this skill is the wrong tool.
+
+## Source-of-truth gate (run before writing version-sensitive code)
 
 ```bash
 npm view @github/copilot-sdk version dist-tags engines --json
-npm pack @github/copilot-sdk@latest
+ls node_modules/@github/copilot-sdk/dist/*.d.ts || npm pack @github/copilot-sdk@latest
 ```
 
-Source priority:
+Source priority — in order:
 
-1. Installed `node_modules/@github/copilot-sdk/dist/*.d.ts`, or a freshly packed npm package, for TypeScript signatures.
+1. Installed `node_modules/@github/copilot-sdk/dist/*.d.ts` (or freshly packed `latest`) for TypeScript signatures.
 2. The package `README.md` for package-specific examples.
-3. Official GitHub Docs for public-preview status, availability, auth concepts, and BYOK policy.
-4. These references only after freshness has been checked.
+3. Official GitHub Docs for public-preview status, auth concepts, BYOK policy.
+4. The `references/` files in this skill — only after freshness has been checked.
 
-Audit baseline: on 2026-05-08, npm reported `latest = 0.3.0`, `prerelease = 1.0.0-beta.3`, and `engines.node = >=20.0.0`. Do not bake those in as permanent facts. Prefer the installed package engine over docs snippets when they disagree.
+Audit baseline (2026-05-08): npm reported `latest = 0.3.0`, `prerelease = 1.0.0-beta.3`, `engines.node = >=20.0.0`. Do not bake these in. When the installed package and a docs snippet disagree, the installed package wins.
 
-The package includes bundled CLI support via `@github/copilot`; a global `copilot` command is useful for interactive auth and external server workflows, but is not always a separate prerequisite for stdio clients.
+## Non-negotiable rules
+
+These are the rules that break apps when ignored. Keep them at the top of mind.
+
+| # | Rule | Why |
+|---|---|---|
+| 1 | Stay inside Copilot SDK; route other agent frameworks to sibling skills. | This skill assumes Copilot SDK semantics. |
+| 2 | Use Node satisfying `engines.node` (currently `>=20`). | Older Node breaks `dist/*` imports. |
+| 3 | `await client.start()` before `client.getAuthStatus()`. | `createSession` may auto-start, but status needs a connected client. |
+| 4 | Always pass `onPermissionRequest` on `createSession` and `resumeSession`. | Without it, permission events block the loop. |
+| 5 | Spell the GitHub token option as `gitHubToken` when the installed types require it. | Docs sometimes show `githubToken`; types win. |
+| 6 | For BYOK, always pass both `provider` **and** `model`. | The SDK throws without `model`. |
+| 7 | Treat BYOK credentials as static key/bearer — no refresh API today. | Provider billing & rate limits apply. |
+| 8 | `approveAll` is for local demos only — it green-lights writes, shells, MCP, URLs, custom tools, memory. | Never ship it. |
+| 9 | Register event handlers **before** `send()`; use `onEvent` for early session-creation events. | Late handlers miss early events. |
+| 10 | Use `onElicitationRequest` to answer structured form prompts — observation alone does not respond. | Elicitation blocks until answered. |
+| 11 | Generate event guidance from `dist/generated/session-events.d.ts`; never hard-code event counts. | The catalog changes between releases. |
+| 12 | On shutdown: `await session.disconnect()` then `await client.stop()`. | Skipping leaks stdio/TCP handles. |
+| 13 | Do not claim production readiness beyond GitHub's current public-preview statements. | Public preview = breaking changes expected. |
 
 ## Quick start
 
@@ -92,54 +118,43 @@ try {
 
 ## Reference routing
 
-| Need | Read |
+Read the reference file that matches the task. Each is self-contained and verified against the SDK's TypeScript surface.
+
+| Task | Read |
 |---|---|
-| Client construction, stdio/TCP/external server, CLI path, lifecycle | `references/client-and-transport.md` |
-| GitHub auth, `gitHubToken`, env tokens, BYOK providers, Azure endpoint split | `references/auth-and-byok.md` |
-| Session lifecycle, `send`, `sendAndWait`, resume, compaction, `onEvent` | `references/sessions.md` |
+| Construct `CopilotClient`, choose stdio/TCP/external-server transport, lifecycle (`start`/`stop`) | `references/client-and-transport.md` |
+| Auth: `gitHubToken`, `COPILOT_GITHUB_TOKEN` / `GH_TOKEN`, BYOK providers, Azure endpoint split | `references/auth-and-byok.md` |
+| Session lifecycle: `send`, `sendAndWait`, resume, compaction, `onEvent` | `references/sessions.md` |
 | Streaming UI, early handlers, event catalog from `dist/generated/session-events.d.ts` | `references/events-and-streaming.md` |
-| Hooks for prompt/tool/session/error interception | `references/hooks.md` |
-| Custom tools, Zod/raw schemas, `skipPermission`, slash `commands`, handler errors | `references/tools-and-schemas.md` |
-| Permission decisions, `approveAll`, user input, elicitation handlers | `references/permissions-and-user-input.md` |
+| Hooks: prompt/tool/session/error interception | `references/hooks.md` |
+| Custom tools, Zod or raw schemas, `skipPermission`, slash `commands`, handler errors | `references/tools-and-schemas.md` |
+| Permission decisions: `approveAll`, user input, elicitation handlers | `references/permissions-and-user-input.md` |
 | Custom agents, `defaultAgent`, agent-level MCP servers and skills, sub-agent events | `references/agents-mcp-skills.md` |
-| Plan/autopilot, fleet mode, multi-client, backend service and scaling patterns | `references/advanced-patterns.md` |
-| Exact interface names and selected type shapes | `references/types-reference.md` |
-| Auth/package preflight helper | `scripts/check-copilot-auth.sh.md` |
-| Minimal project scaffold helper | `scripts/scaffold-copilot-app.sh.md` |
+| Plan/autopilot, fleet mode, multi-client, backend service patterns | `references/advanced-patterns.md` |
+| Exact interface names and selected type shapes from `dist/*.d.ts` | `references/types-reference.md` |
 
-## Non-negotiable rules
+### Helper scripts (in `scripts/`)
 
-- Stay inside Copilot SDK. Route non-Copilot agent frameworks to the sibling skills above.
-- Verify the installed package or freshly packed `latest` before using exact signatures.
-- Use Node that satisfies `@github/copilot-sdk` `engines.node`; current baseline is Node 20+.
-- Use `await client.start()` before `client.getAuthStatus()`; `createSession` can auto-start, but status calls require a connected client in current stable.
-- Always pass `onPermissionRequest` on `createSession` and `resumeSession`.
-- Spell GitHub token options as `gitHubToken` when current TypeScript types require it, even if a docs page shows `githubToken`.
-- For BYOK, always pass both `provider` and `model`; current package docs say the SDK throws without `model`.
-- Treat BYOK credentials as static key or static bearer-token auth unless current docs add a refresh API. Provider billing and rate limits apply.
-- Use `approveAll` only for local demos or intentionally unattended tools. It approves file writes, shell commands, MCP calls, URL access, custom tools, and memory operations.
-- Register event handlers before `send()`. Use `onEvent` when you must catch early session creation events.
-- Use `onElicitationRequest` when the app must answer structured form prompts; event observation alone does not answer them.
-- Keep event guidance generated from `dist/generated/session-events.d.ts`; do not hard-code event-count claims.
-- Use Copilot SDK custom agents for Copilot sub-agent orchestration. Use LangGraph or `mcp-use` when the app is not built on Copilot SDK.
-- Always clean up: `await session.disconnect()` before `await client.stop()` on script/server shutdown paths.
-- Do not claim production readiness beyond current GitHub public-preview statements.
+| Script | Use for | Doc |
+|---|---|---|
+| `scripts/check-copilot-auth.sh` | Preflight: check installed package, Node version, auth env vars | `scripts/check-copilot-auth.sh.md` |
+| `scripts/scaffold-copilot-app.sh` | Deterministic minimal Copilot SDK project scaffold | `scripts/scaffold-copilot-app.sh.md` |
 
-## Final checks
+## Final checks before reporting done
 
-Report:
+Report the following — explicitly, not implied:
 
-- Package version and dist-tag checked.
-- Auth mode used: signed-in user, `gitHubToken`, env token, external CLI server, or BYOK.
-- BYOK provider and `model`, when applicable.
+- Package version + dist-tag actually checked.
+- Auth mode used (signed-in user / `gitHubToken` / env token / external CLI server / BYOK).
+- BYOK `provider` and `model` when applicable.
 - Files created or changed.
-- Commands run: install, typecheck/test, start, scaffold/auth helpers.
-- Verification rung actually reached.
-- Runtime paths not exercised because auth or provider credentials were unavailable.
+- Commands run (install, typecheck/test, start, scaffold/auth helpers).
+- Verification rung actually reached — do not imply rungs you did not hit.
+- Runtime paths not exercised because credentials were unavailable.
 
 Verify:
 
-- `npm run typecheck` or equivalent passes.
-- Minimal `sendAndWait` or streaming path is exercised when credentials exist.
-- `session.disconnect()` and `client.stop()` are present on shutdown paths.
+- `npm run typecheck` (or equivalent) passes.
+- A minimal `sendAndWait` or streaming path runs when credentials exist.
+- `session.disconnect()` and `client.stop()` are present on every shutdown path.
 - Examples compile against the selected package version.

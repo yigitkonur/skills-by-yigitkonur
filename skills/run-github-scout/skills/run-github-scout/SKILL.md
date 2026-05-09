@@ -1,151 +1,123 @@
 ---
 name: run-github-scout
-description: Use skill if you are finding, shortlisting, or comparing GitHub repositories for a concrete need through adaptive discovery and repo evidence.
+description: Use skill if you are discovering GitHub repos, shortlisting candidates for a concrete need, or comparing OSS projects with adaptive search and repo evidence.
 version: 1.0.0
 ---
 
 # GitHub Repo Scout
 
-Find and shortlist the best-fit GitHub repos for a concrete user need.
-Default to adaptive discovery, internal relevance filtering, and a
-markdown shortlist in the conversation. Deeper comparison, feature
-matrices, and HTML export are optional end-stage branches — never the
-default.
+Adaptive GitHub repository **discovery and shortlisting** for a concrete
+user need. Default deliverable is a markdown shortlist in conversation
+backed by repo evidence. Deeper comparison, feature matrices, and HTML
+export are optional end-stage branches — never the default.
 
-This skill is **lean by design**. The shape is opposite to corpus
-research: no folder tree, no wave dispatch, no MAX-N ceilings, no
-template authoring. The default deliverable is a few markdown sections
-in chat.
+This skill is **lean by design**. Opposite shape to corpus research: no
+folder tree, no wave dispatch, no MAX-N ceilings, no template authoring.
 
-## Mental model
+## When to use this skill
 
-GitHub search returns **leads**, not answers. Half the job is filtering
-noise; the other half is asking the right questions before searching.
+Trigger on phrasings like:
 
-Five upstream-discipline rules prevent most derailments:
+- *"find the best open-source X for Y"* / *"find repos that do …"*
+- *"shortlist GitHub projects for …"* / *"what repos fit this stack/use case?"*
+- *"alternatives to `owner/repo` on GitHub"* / *"similar repos to …"*
+- *"compare GitHub repos for …"* / *"recommend a library that …"*
+- *"GitHub-hosted tools/SDKs/CLIs for …"* / *"OSS for …"*
+- *"verify this repo is what I think it is"* (verify-first scout)
 
-1. **Verify-first.** When the user names a known thing (repo, project,
-   tool), the first call verifies what that thing is. Not alternatives.
-2. **Pick the star threshold by ecosystem maturity**, not by reflex.
-   Young niches (AI agents, MCP) need none; mature ecosystems need
-   `stars:>500`+.
-3. **Avoid `topic:`, bare multi-word OR, and `in:readme` in first-pass
-   discovery.** All three are noise-prone.
-4. **Classify before you deepen.** A typed Relevant / Maybe / Off-topic
-   table is the gate before any README read.
-5. **Deepen 5 repos maximum.** Hard ceiling. Going to 6+ requires an
-   inline justification.
+### Do NOT use this skill when
 
-Read `references/discipline.md` first if any of these patterns is
-unfamiliar. It is the keystone for everything else this skill
-prescribes.
+- The question is a **single technical decision or version/API/CVE/pricing
+  lookup** with no repo-discovery focus → use `run-research`.
+- The user wants a **multi-file market/category corpus over 5+ entities**
+  with per-entity packs and source ledgers → use `run-industry-research`
+  (or `run-corpus-research` in this checkout). Repos can still be the
+  entities — the discriminator is corpus shape, not the subject.
+- The candidates are **not on GitHub** (closed-source SaaS, marketplace
+  apps, hosted-only products) → use `run-research` or
+  `run-industry-research`.
+- The task is **codebase-local** (read this repo, fix this bug, plan
+  these issues) → not this skill. For Issues planning specifically use
+  `run-issue-tree`.
+
+## Five rules that prevent most derailments
+
+These five upstream-discipline rules catch the bulk of failures. Read
+`references/discipline.md` first if any are unfamiliar.
+
+| # | Rule | Why |
+|---|---|---|
+| 1 | **Verify-first** when the user names a thing | One `gh search repos 'NAME' --limit 5` call confirms category before alternatives. Skipping costs 3-4 wasted searches. |
+| 2 | **Pick the star threshold by ecosystem maturity**, not reflex | Young niches (AI agents, MCP) need none; mature ecosystems need `stars:>500`+. Wrong threshold = wrong result set. |
+| 3 | **Avoid `topic:`, bare multi-word `OR`, `in:readme` in first-pass** | All three are noise-prone. Use them only after classify proves they help. |
+| 4 | **Classify before you deepen** | Typed Relevant / Maybe / Off-topic table is the gate before any README read. Skipping forces guesses. |
+| 5 | **Hard ceiling: 5 repos for deep evaluation** | Going to 6+ requires inline justification at the moment of promotion. |
 
 ## Prerequisites and pinned defaults
 
 | Item | Default |
 |---|---|
-| Auth check | Run `gh auth status` before non-trivial scouts. Prefer authenticated `GH_TOKEN` or `GITHUB_TOKEN` for higher limits and stable API behavior. |
-| Search help | Treat `gh search repos --help` as the source of supported JSON fields and flags. |
-| Rate-limit check | Before large searches or deep dives, run `gh api rate_limit --jq '.resources | {core, search, graphql}'`. |
-| Query limits | Default query limit: 20. First pass: 3-6 angles. Refinement: 1-4 queries. Deep dive: top 3-5 repos only. |
+| Auth check | Run `gh auth status` before non-trivial scouts. Prefer authenticated `GH_TOKEN` / `GITHUB_TOKEN` for higher limits. |
+| Search help | `gh search repos --help` is the source of supported JSON fields and flags. |
+| Rate-limit check | Before large searches or deep dives: `gh api rate_limit --jq '.resources | {core, search, graphql}'`. |
+| Query limits | First pass: 3-6 angles. Refinement: 1-4 queries. Deep dive: top 3-5 repos only. Default `--limit 20`. |
 
 ## GitHub tool contract
 
 - Use `gh search repos` for discovery.
 - Use `gh api repos/OWNER/REPO...` only for shortlisted metadata.
-- Use `gh api graphql` only for top-N deep evidence when REST, README, and search signals are insufficient.
+- Use `gh api graphql` only for top-N deep evidence when REST/README/search are insufficient.
 - Use direct `curl` only when `gh` is unavailable.
-- Use web/MCP tools for naming or landscape augmentation only; final repo truth comes from GitHub.
+- Use web/MCP tools (or `run-research`) for naming/landscape augmentation only; final repo truth comes from GitHub.
 - `run-issue-tree` also uses `gh`, but its intent is GitHub Issue planning/execution, not repo discovery.
 
 Rate-limit rules:
-- Search has its own rate bucket; do not fire unbounded search waves.
+- Search has its own bucket; never fire unbounded waves.
 - Prefer fewer diverse queries over paraphrase spam.
-- Check remaining `search`, `core`, and `graphql` limits before GraphQL or deep API work.
 - If limits are low, stop at metadata/README evidence and disclose the limit instead of pushing through.
-- Verify current GitHub behavior against official rate-limit docs before hardcoding exact numbers: https://docs.github.com/rest/rate-limit (accessed 2026-05-09).
+- Verify current GitHub behavior against official docs before hardcoding numbers: https://docs.github.com/rest/rate-limit (accessed 2026-05-09).
 
 ## Bundled scripts
 
-Resolve scripts relative to this skill directory. They are conveniences, not a replacement for fit judgment.
+Resolve scripts relative to this skill directory. They are conveniences,
+not a replacement for fit judgment.
 
 | Script | Use when |
 |---|---|
-| `scripts/gh-search.sh` | You need compact, repeatable TSV capture from `gh search repos`. See `scripts/gh-search.md`. |
-| `scripts/score-repos.sh` | You need a cheap signal sort from captured rows. It scores metadata only, never semantic fit. See `scripts/score-repos.md`. |
-
-## Trigger boundary
-
-**Use when:** "find the best open-source X for Y", "what GitHub repos
-fit this use case?", "compare repos for this stack/problem", "I need a
-shortlist of tools like this", or "find similar repos on GitHub".
-
-**Redirect when:**
-
-- The task is broad technical research without a repo-discovery focus
-  → use `run-research`.
-- The user wants broad market/category/vendor corpus work, especially
-  5+ entities or non-GitHub product comparisons → use
-  `run-industry-research` when available; in this checkout, the
-  equivalent corpus skill is `run-corpus-research`.
-- The question is codebase-local or about a non-GitHub product → not
-  this skill.
-
-`run-github-scout` and `run-research` differ in subject: this skill is
-GitHub-centric and discovery-oriented; `run-research` is open-web and
-decision-oriented. `run-github-scout` and
-`run-industry-research`/`run-corpus-research` differ in shape: this
-skill produces a shortlist in conversation; corpus research produces a
-multi-file evidence tree. Some tasks (e.g., "research 8 GitHub-hosted
-SaaS-style projects with deep multi-axis comparisons and source
-ledgers") warrant a corpus skill instead even though the entities are
-repos.
+| `scripts/gh-search.sh` | Compact, repeatable TSV capture from `gh search repos`. See `scripts/gh-search.md`. |
+| `scripts/score-repos.sh` | Cheap signal sort over captured rows. Metadata only — never semantic fit. See `scripts/score-repos.md`. |
 
 ## Default stance
 
-- **Shortlist first.** The default deliverable is an in-conversation
-  markdown shortlist.
-- **Search small, then refine.** Start with 3-6 broad angles, then run
-  at most one refinement round unless results are still materially
-  weak.
-- **Filter before expanding.** Read descriptions, names, topics,
-  stars, and recent activity before inventing more searches.
-- **`run-research` is optional, not required.** Invoke it for the
-  augmented branch when GitHub-only search is thin and naming or
-  landscape discovery would help. Built-in `WebSearch` is also
-  sufficient for light naming clues.
-- **Keep deep work top-N only.** Feature matrices, code reads, and HTML
-  export happen only after a useful shortlist exists.
+- **Shortlist first.** Default deliverable is an in-conversation markdown shortlist.
+- **Search small, then refine.** Start with 3-6 broad angles, then run at most one refinement round unless results are still materially weak.
+- **Filter before expanding.** Read descriptions, names, topics, stars, and recent activity before inventing more searches.
+- **`run-research` is optional, not required.** Invoke it for the augmented branch when GitHub-only search is thin and naming/landscape discovery would help. Built-in `WebSearch` is also sufficient for light naming clues.
+- **Keep deep work top-N only.** Feature matrices, code reads, and HTML export happen only after a useful shortlist exists.
 
-## Capability check
-
-Choose the leanest path that can still answer the request.
+## Capability check — pick the leanest path
 
 | Path | Use when | Default tools |
 |---|---|---|
-| **GitHub-only** | The problem is clearly named, the category is repo-centric, or GitHub search already surfaces relevant candidates. | `gh search repos`, GitHub web/API, repo READMEs |
-| **Augmented** | Naming is fuzzy, the landscape is broad, category labels are unclear, or first-pass GitHub search is thin/noisy. | GitHub search plus `run-research` (preferred for disciplined web augmentation) or built-in `WebSearch` (lighter fallback) |
+| **GitHub-only** | Problem clearly named, category is repo-centric, GitHub search already surfaces relevant candidates. | `gh search repos`, GitHub web/API, repo READMEs |
+| **Augmented** | Naming is fuzzy, landscape is broad, category labels unclear, or first-pass GitHub search is thin/noisy. | GitHub search + `run-research` (preferred) or built-in `WebSearch` (lighter fallback) |
 
 Rules:
-- If `run-research` and `WebSearch` are both unavailable, continue on
-  the GitHub-only path.
-- If web research is available, use it to discover better names,
-  categories, and community-curated alternatives, then map those back
-  to GitHub repos and filter there.
-- Do not ask the user to install a research tool just to run this
-  skill.
+- If `run-research` and `WebSearch` are both unavailable, continue on the GitHub-only path.
+- If web research is available, use it to discover better names/categories/curated alternatives, then map back to GitHub repos and filter there.
+- Never ask the user to install a research tool just to run this skill.
 
 ## Default workflow
 
 ### 0. Verify-first when the user named a thing
 
 If the user mentioned a specific repo, project, or tool by name, the
-**first** call is to verify what that thing is. Not to search for
-alternatives. One call: `gh search repos 'NAME' --limit 5
---sort=stars`. Confirm category before proceeding.
+**first** call verifies what that thing is — not alternatives. One call:
+`gh search repos 'NAME' --limit 5 --sort=stars`. Confirm category before
+proceeding.
 
-If the named thing is unrelated to what the user is asking for,
-surface that mismatch back to the user before continuing. See
+If the named thing is unrelated to what the user is asking for, surface
+the mismatch back to the user before continuing. See
 `references/discipline.md` §2.
 
 Skip this step only when the user named no specific thing.
@@ -158,22 +130,18 @@ Extract the search contract before touching GitHub:
 - must-haves
 - exclusions
 - ecosystem or language constraints
-- maturity expectations (production-ready, active, permissive license,
-  etc.)
+- maturity expectations (production-ready, active, permissive license, etc.)
 - known examples or anti-examples (if named, see Step 0)
 
-Ask clarifying questions only when the answer would materially change
-the search. If the user's request already pins the use case and
-constraints, skip questions entirely.
+Ask clarifying questions only when the answer would materially change the
+search. If the user's request already pins use case and constraints, skip
+questions entirely.
 
 ### 2. Choose the search path
 
 - Use the **GitHub-only** path by default.
-- Switch to the **Augmented** path if you hit ambiguous naming, broad
-  category noise, or community terminology problems.
-- Read `references/web-augment.md` only if you need the augmented
-  branch — it explains when and how to invoke `run-research` for
-  naming and landscape discovery.
+- Switch to **Augmented** if you hit ambiguous naming, broad category noise, or community terminology problems.
+- Read `references/web-augment.md` only if you need the augmented branch — it explains when and how to invoke `run-research` for naming and landscape discovery.
 
 ### 3. Run a small first pass
 
@@ -185,29 +153,29 @@ Minimum useful angle set:
 3. known examples or well-known alternatives
 4. one unexpected-naming branch
 
-Add a fifth or sixth angle only when a hard constraint matters
-(language, deployment model, self-hosted, etc.).
+Add a fifth or sixth angle only when a hard constraint matters (language,
+deployment model, self-hosted, etc.).
 
-**Pick a star threshold per ecosystem maturity** before launching.
-Young niches (AI agents, MCP, agent orchestrators) typically need no
-threshold — quality repos exist below 100⭐. Mature ecosystems (web
-frameworks, classic CLIs) need `stars:>500` to filter noise. See
+**Pick a star threshold per ecosystem maturity** before launching. Young
+niches (AI agents, MCP, agent orchestrators) typically need no threshold
+— quality repos exist below 100⭐. Mature ecosystems (web frameworks,
+classic CLIs) need `stars:>500` to filter noise. See
 `references/discipline.md` §3 for the matrix.
 
 **Avoid `topic:` in first-pass discovery** — it returns spam. **Avoid
 bare multi-word `OR` queries** — they parse ambiguously. See
 `references/discipline.md` §4 and §5.
 
-Use short, broad queries first. Prefer `scripts/gh-search.sh` for
-common capture; read `references/search.md`, `references/gh-syntax.md`,
-and `references/gh-output.md` if you need exact search patterns.
+Use short, broad queries first. Prefer `scripts/gh-search.sh` for common
+capture; read `references/search.md`, `references/gh-syntax.md`, and
+`references/gh-output.md` if you need exact search patterns.
 
 ### 4. Filter internally before searching again
 
 Treat the first pass as raw material, not the final answer.
 
-**Produce a classify table before any further work** — this is the
-gate that prevents drift into deep reading of the wrong candidates:
+**Produce a classify table before any further work** — this is the gate
+that prevents drift into deep reading of the wrong candidates:
 
 ```markdown
 | Repo | Class | Reason | Signals |
@@ -223,7 +191,7 @@ Filter using the cheapest signals first:
 - description
 - topics
 - stars
-- recent activity or pushed date
+- recent activity / pushed date
 - archived status
 - license presence
 
@@ -231,40 +199,37 @@ Read README intros only for borderline or high-potential candidates.
 Harvest better terms from relevant and maybe-relevant repos before
 expanding search.
 
-Use `references/dedup-and-rank.md` for the four-stage gate procedure.
-The classify table is mandatory; deepening without it is a discipline
-failure (see `references/discipline.md` §8). Use
-`scripts/score-repos.sh` only as a cheap metadata sort within the
-classify pass; do not let it override user-fit evidence. Read
-`references/quality-gates.md` after first-pass classification to
-decide whether to stop, refine once, augment, or deepen.
+Use `references/dedup-and-rank.md` for the four-stage gate procedure. The
+classify table is mandatory; deepening without it is a discipline failure
+(see `references/discipline.md` §8). Use `scripts/score-repos.sh` only as
+a cheap metadata sort within the classify pass; do not let it override
+user-fit evidence. Read `references/quality-gates.md` after first-pass
+classification to decide whether to stop, refine once, augment, or
+deepen.
 
 ### 5. Run one refinement pass
 
-Refine only after the first classification pass tells you what is
-missing.
+Refine only after the first classification pass tells you what is missing.
 
 Good reasons to refine:
 
 - too few relevant repos
 - too much off-topic noise
 - naming mismatch between user language and repo language
-- a promising subcategory emerged from candidate descriptions or
-  topics
+- a promising subcategory emerged from candidate descriptions or topics
 
 Refinement rules:
 
-- use 1-4 better queries, not a whole new search machine
+- 1-4 better queries, not a whole new search machine
 - expand only the gaps you observed
 - stop when new searches mostly repeat known repos
 
-Use `references/search-examples.md` for worked examples of first-pass
-plus refinement loops, including derailment-recovery patterns.
+Use `references/search-examples.md` for worked examples of first-pass +
+refinement loops, including derailment-recovery patterns.
 
 ### 6. Produce the default output
 
-Default output is **markdown in the conversation**, not mandatory
-files.
+Default output is **markdown in the conversation**, not files.
 
 Deliver:
 1. a one-paragraph recommendation or framing note
@@ -278,7 +243,7 @@ Stable row schema:
 ```markdown
 | Repo | Fit | Evidence | Signals | Caveat / unknown |
 |---|---|---|---|---|
-| [owner/repo](https://github.com/owner/repo) | Strong fit for X | README says Y; topics include Z | stars, pushed date, license, activity | Not verified: A |
+| [owner/repo](https://github.com/owner/repo) | Strong fit for X | README says Y; topics include Z | stars, pushed, license, activity | Not verified: A |
 ```
 
 Require repo links in the table unless a URL is unavailable.
@@ -290,48 +255,45 @@ For each `Best fits` repo, include a lightweight evidence pack:
 - caveats and unverified claims
 - last checked date when external state matters
 
-If the user is satisfied with the markdown shortlist, stop there.
+If the user is satisfied with the markdown shortlist, **stop there**.
 
 ### 7. Offer optional deepen
 
-Only deepen after the markdown shortlist is useful.
-Check `references/quality-gates.md` before deepening; most scouts should stop at the markdown shortlist.
+Only deepen after the markdown shortlist is useful. Check
+`references/quality-gates.md` before deepening; most scouts should stop
+at the markdown shortlist.
 
-Each branch consumes only the final shortlisted dataset; do not
-restart discovery.
+Each branch consumes only the final shortlisted dataset; do not restart
+discovery.
 
-- **light deeper comparison** — top 3-5 side-by-side on fit,
-  evidence, signals, and caveats
-- **code-level evaluation** — top few repos only; verify must-have
-  features, README/onboarding, tests/CI, and maturity risks
-- **feature matrix** — explicit capability coverage table with
-  evidence notes or `unknown`
-- **HTML/export** — persistent report from the stable markdown
-  shortlist
+- **light deeper comparison** — top 3-5 side-by-side on fit, evidence, signals, caveats
+- **code-level evaluation** — top few repos only; verify must-have features, README/onboarding, tests/CI, maturity risks
+- **feature matrix** — explicit capability coverage table with evidence notes or `unknown`
+- **HTML/export** — persistent report from the stable markdown shortlist
 
 **Hard ceiling: 5 repos for deep evaluation.** Going to 6+ requires an
-explicit inline justification at the moment the deepening starts —
-e.g., "promoting `owner/repo6` because it surfaced a
-decision-flipping signal during classify." Without that justification,
-stop at 5. See `references/discipline.md` §10.
+explicit inline justification at the moment the deepening starts — e.g.,
+"promoting `owner/repo6` because it surfaced a decision-flipping signal
+during classify." Without that justification, stop at 5. See
+`references/discipline.md` §10.
 
 If the user asks for files, create them from the **final shortlisted
-dataset only**. Do not create `.githubresearch/` or other artifact
-trees unless the user wants export or report output.
+dataset only**. Do not create `.githubresearch/` or other artifact trees
+unless the user wants export or report output.
 
 HTML export data contract for `references/report-template.html`:
 - Generate HTML only after the markdown shortlist is stable.
-- Fill `[TOPIC]`, `[DATE]`, `[ROW_COUNT]`, `[RECOMMENDATION]`, `[SEARCH_PATH_NOTE]`, and `[GAPS_NOTE]`.
-- Each row must provide repo URL/name, fit, evidence, signals, and caveat/unknown.
-- Grouped notes come from the same `Best fits`, `Worth a look`, and `Ruled out / why` groups.
+- Fill `[TOPIC]`, `[DATE]`, `[ROW_COUNT]`, `[RECOMMENDATION]`, `[SEARCH_PATH_NOTE]`, `[GAPS_NOTE]`.
+- Each row must provide repo URL/name, fit, evidence, signals, caveat/unknown.
+- Grouped notes come from the same `Best fits`, `Worth a look`, `Ruled out / why` groups.
 
 ## Default evaluation rules
 
 Use light, fast, rate-limit-aware signals by default:
 
-- topic, description, or README match to the user's need
+- topic / description / README match to the user's need
 - stars
-- recent activity or pushed date
+- recent activity / pushed date
 - rough maintainer or commit activity
 - archived or disabled status
 - license presence
@@ -344,37 +306,23 @@ Do **not** default to:
 - org prestige heuristics
 - "AI-wave-only author" style filters
 - a giant multi-metric rubric
-- mandatory per-repo GraphQL or REST drills across the whole candidate
-  set
+- mandatory per-repo GraphQL or REST drills across the whole candidate set
 
-If the user wants more confidence, deepen only on the top few repos.
-Read:
+If the user wants more confidence, deepen only on the top few repos. Read:
 
-- `references/evaluate.md` for the light default path and deepen
-  triggers
+- `references/evaluate.md` for the light default path and deepen triggers
 - `references/evaluate-rest.md` for cheap repo signals
-- `references/evaluate-graphql.md` for optional single-repo deep
-  evidence
+- `references/evaluate-graphql.md` for optional single-repo deep evidence
 - `references/evaluate-code.md` for optional code-level checks
 
 ## Orchestration rules
 
 Default execution model: **hybrid lean**.
 
-- The main agent owns intent parsing, search strategy, filtering, and
-  synthesis.
-- Batch or parallelize queries when helpful, but keep the reasoning
-  central.
-- Use subagents only for:
-  - very large landscapes
-  - explicit deep-dive requests
-  - optional feature-matrix generation
-  - top-N code-level review
-- When web augmentation is the gap and a subagent is dispatched for
-  it, the subagent's brief embeds the `run-research` skill discipline
-  (so the subagent uses the 5-tool toolkit correctly without
-  re-deriving it). See `references/subagent-prompts.md` for the
-  integration block.
+- The main agent owns intent parsing, search strategy, filtering, and synthesis.
+- Batch or parallelize queries when helpful, but keep the reasoning central.
+- Use subagents only for: very large landscapes; explicit deep-dive requests; optional feature-matrix generation; top-N code-level review.
+- When web augmentation is the gap and a subagent is dispatched for it, the subagent's brief embeds the `run-research` skill discipline (so the subagent uses the 5-tool toolkit correctly without re-deriving it). See `references/subagent-prompts.md` for the integration block.
 
 If you dispatch help, read `references/subagent-prompts.md`. Subagents
 gather evidence; the main agent still writes the final shortlist or
@@ -384,7 +332,7 @@ comparison.
 
 Load only the branch you need. References are flat on disk and grouped here by decision point.
 
-### Search/discovery
+### Search / discovery
 
 | File | Read when |
 |---|---|
@@ -393,9 +341,9 @@ Load only the branch you need. References are flat on disk and grouped here by d
 | `references/search-examples.md` | You need examples of good first-pass angles, refinement pivots, and derailment-recovery patterns. |
 | `references/gh-syntax.md` | You need valid `gh search repos` qualifiers, OR rules, or threshold guidance. |
 | `references/gh-output.md` | You want token-efficient `gh` output or markdown-ready capture. |
-| `references/web-augment.md` | GitHub-only search is thin or noisy, or naming is fuzzy and web augmentation (via `run-research` or `WebSearch`) would help. |
+| `references/web-augment.md` | GitHub-only search is thin/noisy, or naming is fuzzy and web augmentation (via `run-research` or `WebSearch`) would help. |
 
-### Evaluation/deepening
+### Evaluation / deepening
 
 | File | Read when |
 |---|---|
@@ -410,14 +358,14 @@ Load only the branch you need. References are flat on disk and grouped here by d
 |---|---|
 | `references/subagent-prompts.md` | The landscape is large, or the user explicitly wants deeper comparison work delegated. Includes the `run-research` integration block for web-augmentation subagents. |
 
-### Output/export
+### Output / export
 
 | File | Read when |
 |---|---|
 | `references/dedup-and-rank.md` | You are turning raw candidates into a grouped shortlist. The four-stage gate. |
 | `references/report-template.html` | The user explicitly wants an HTML export after the shortlist is stable. |
 
-### Stop/refine gates
+### Stop / refine gates
 
 | File | Read when |
 |---|---|
@@ -427,33 +375,23 @@ Load only the branch you need. References are flat on disk and grouped here by d
 
 - Do not treat `run-research` or web augmentation as mandatory.
 - Do not default to `.githubresearch/` or any persistent artifact tree.
-- Do not pad searches with 20 hypotheses, 100-call ceilings, or wave
-  theater.
-- Do not escalate to deep evaluation before you have produced the
-  classify table.
-- Do not read whole READMEs for every candidate; read intros or
-  targeted sections for the top few, and skip the badge zone (see
-  `references/evaluate-code.md`).
-- Do not let optional deep-dive work become the default path by
-  accident.
-- Stop when the shortlist is good enough and new searches mostly
-  repeat the same field.
+- Do not pad searches with 20 hypotheses, 100-call ceilings, or wave theater.
+- Do not escalate to deep evaluation before you have produced the classify table.
+- Do not read whole READMEs for every candidate; read intros or targeted sections for the top few, and skip the badge zone (see `references/evaluate-code.md`).
+- Do not let optional deep-dive work become the default path by accident.
+- Stop when the shortlist is good enough and new searches mostly repeat the same field.
 - Be explicit about gaps, uncertainty, and what you did **not** verify.
 
 ## Common derailments (read once)
 
 The five anti-patterns this skill catches most often:
 
-1. **Skipping verify-first** when the user names a thing (cost: 3-4
-   wasted searches before the mismatch is noticed).
-2. **First-pass `topic:` discovery** that returns 100k-star repos with
-   weak relevance.
-3. **Bare multi-word `OR` queries** that parse ambiguously and return
-   broad noise.
-4. **Skipping the classify table** between first-pass and deepen
-   (forces guessing the top 5).
+1. **Skipping verify-first** when the user names a thing (cost: 3-4 wasted searches before the mismatch is noticed).
+2. **First-pass `topic:` discovery** that returns 100k-star repos with weak relevance.
+3. **Bare multi-word `OR` queries** that parse ambiguously and return broad noise.
+4. **Skipping the classify table** between first-pass and deepen (forces guessing the top 5).
 5. **Deepening 7-10 READMEs** instead of stopping at 5.
 
-If the session feels off-shape, check this list. The fix is almost
-always upstream — a missed verify, a noisy qualifier, an unclassified
-candidate set. See `references/discipline.md` for full coverage.
+If the session feels off-shape, check this list. The fix is almost always
+upstream — a missed verify, a noisy qualifier, an unclassified candidate
+set. See `references/discipline.md` for full coverage.

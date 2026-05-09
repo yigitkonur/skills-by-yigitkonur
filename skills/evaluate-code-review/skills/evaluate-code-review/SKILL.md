@@ -1,171 +1,172 @@
 ---
 name: evaluate-code-review
-description: Use skill if you are triaging received code review feedback from human PR comments, bots, markdown review docs, or multi-reviewer feedback streams.
+description: Use skill if you are triaging received review feedback - PR comments, multi-bot reviews, markdown audit docs, or earlier session feedback - into accept/pushback/clarify/defer/dismiss.
 ---
 
 # Evaluate Code Review
 
-The opposite side of `ask-review`. Feedback is already in hand - from a human reviewer, one or more AI review bots, a previous self-review, or a markdown audit doc - and needs triage into action, pushback, clarification, deferral, or dismissal. Discipline: **verify before implementing, technical correctness over social comfort, no performative agreement.**
+Feedback is already in hand from a human reviewer, one or more AI bots (Copilot, CodeRabbit, Devin, Bito, Greptile), a prior self-review, or a markdown audit doc. The job is triage, not authoring. Discipline: **verify before implementing, technical correctness over social comfort, no performative agreement.**
 
-## Trigger boundary
+## When to use this skill
 
-Use this skill when the task is to:
+Trigger when the user is:
 
-- triage received human, bot, self-review, or markdown review feedback into ACCEPT / PUSHBACK / CLARIFY / DEFER / DISMISS
-- evaluate review comments on a GitHub PR (single or multiple reviewers)
-- consolidate feedback from multiple AI reviewers (Copilot + CodeRabbit + Devin + ...) on the same PR
-- audit earlier review feedback in the current conversation - "go back and check the reviewer's notes", "self-eval the review comments from earlier"
-- read a markdown review/audit doc (e.g. `review-notes.md`, `audit.md`) and produce an action plan
-- handle ambiguous input: the user said "check the review" without pointing at a specific source -> default to scanning prior messages, then PR comments on the current branch
+- *triaging received PR comments on a GitHub pull request* ("evaluate the review", "address the comments on PR #42", "what do the bots say on my PR")
+- *consolidating feedback from multiple reviewers* on the same PR ("Copilot and CodeRabbit disagree", "merge what the three reviewers said", "cluster the bot comments")
+- *auditing earlier review feedback in this conversation* ("go back and check the reviewer's notes", "self-eval the review comments from earlier")
+- *converting a markdown review/audit doc into an action plan* (`review.md`, `audit.md`, `feedback.md`, `*-review-notes.md`)
+- *handling ambiguous "check the review" prompts* with no source pointer — scan prior messages, then PR comments on the current branch, then markdown candidates
+- *deciding whether to implement, push back, or defer* a specific suggestion against the actual code
+- *replying in PR threads* with technical reasoning rather than gratitude
 
-Prefer another skill when:
+Do **NOT** use this skill when:
 
-- doing the review yourself (reviewer-side) -> `do-review`
-- preparing a PR for review (author-side) -> `ask-review`
-- checking what work is done vs. claimed done -> `check-completion`
-- tidying a dirty tree -> `run-repo-cleanup`
-- debugging runtime behavior via tools -> `do-debug`
-- running `orchestrate-codex` per-branch `codex exec review` convergence loops -> `orchestrate-codex` review mode; current major-finding evaluation routes through `do-review`, not this skill
+- *performing the review yourself* (reviewer-side, producing findings) → use `do-review`
+- *preparing a PR for review* (author-side, asking for feedback) → use `ask-review`
+- *checking what work is done vs. claimed done* with no review feedback in hand → use `check-completion`
+- *running `orchestrate-codex` per-branch convergence loops* — major-finding evaluation routes through `do-review`, not this skill
 
-## Non-negotiable rules (discipline)
+## Non-negotiable rules
 
-1. **Verify before implementing.** Do not start editing until the feedback has been confirmed against the actual code. Obra's rule: "check if breaks existing functionality; check if reviewer understands full context; check legacy/compatibility reasons."
-2. **No performative agreement.** The phrases in `references/voice.md` are forbidden. If a draft starts with praise, gratitude, or apology, delete the filler and state the technical result. See `references/rationalizations.md` for why agents keep writing it anyway.
-3. **Understand what was reviewed, from the ground truth.** Follow the fallback chain in `references/understand-changes.md`: commits → Edit/Write tool outputs → Bash rm/mv history. Do not trust the reviewer's description of "the changes" — they may be wrong.
-4. **Always dispatch an Explore subagent for independent analysis.** Self-contained prompt, no session-history leakage. See `references/subagent-dispatch.md` for the template.
-5. **Push back when the reviewer is wrong** — with technical reasoning, not defensiveness. "Can't verify X without Y; should I investigate / ask / proceed?" is a valid push-back.
-6. **Cluster before acting on multi-agent feedback.** When 2+ reviewers comment on the same file+line, cluster them into a single item before evaluating. See `references/multi-agent-consolidation.md`.
-7. **One item at a time during implementation.** Fix → test → next. Not "fix all four at once, run the suite once".
-8. **Implementation order:** blocking (breaks, security) → simple (typos, imports) → complex (refactoring, logic). Never the other order.
-9. **Evidence wins over source authority.** Human context, bot severity labels, and repeated bot agreement are signals, not verdicts. All sources go through the same verification lens.
+| # | Rule | Why |
+|---|---|---|
+| 1 | **Verify before implementing.** Confirm each suggestion against the actual code before any edit. | Reviewers (human and bot) are sometimes wrong, stale, or missing context. |
+| 2 | **No performative agreement.** No gratitude, praise, apology, or agreement-before-verification. The diff is the acknowledgment. | See `references/voice.md` for forbidden phrases and `references/rationalizations.md` for why agents keep writing them anyway. |
+| 3 | **Reconstruct ground truth before reading feedback.** Use the fallback chain in `references/understand-changes.md`: commits → tool-trail → bash history → uncertain. | Reviewer descriptions of "the changes" can be wrong. |
+| 4 | **Always dispatch an Explore subagent for independent analysis.** Self-contained prompt — no session-history leakage. See `references/subagent-dispatch.md`. | Parent context biases verdicts; a clean reader catches bias. |
+| 5 | **Cluster multi-source feedback before evaluating.** When 2+ reviewers comment on the same file+line, cluster into one item before triage. See `references/multi-agent-consolidation.md`. | Treating duplicates as separate todos triples the work and hides conflicts. |
+| 6 | **One item at a time during implementation.** Fix → test → next. | Batch-fix + batch-test misses regressions. |
+| 7 | **Implementation order: blocking → simple → complex.** Breakage and security first; typos and imports next; refactors last. | Prevents merge-blocking work from waiting behind cosmetic edits. |
+| 8 | **Push back when the reviewer is wrong.** Technical reasoning, not defensiveness or capitulation. | Correctness over comfort. |
+| 9 | **Evidence wins over source authority.** Human context, bot severity labels, and repeated bot agreement are signals, not verdicts. | All sources go through the same verification lens. |
 
 ## Source confidence model
 
-- **Human reviewers** may carry product, rollout, or architectural context; their line comments can still be stale, line-bound, or based on an older commit.
-- **Bots and static reviewers** provide broad coverage and consistent pattern matching; their severity labels are `severity_hint` only, never the final severity.
-- **Self-review and markdown docs** can preserve useful prior analysis, but they are often missing current code state and must be re-checked.
-- **Same truth standard for every source:** source type affects parsing, triage priority, and reply channel, not correctness.
-- **Tie-breakers:** when code evidence is equal, human product or architecture context can break ties. Repeated bot agreement raises priority, but correctness still requires verification.
+| Source | Carries | Caveat |
+|---|---|---|
+| Human reviewers | Product, rollout, architectural context | Line comments may be stale or based on an older commit |
+| AI bots (Copilot, CodeRabbit, Devin, Bito, Greptile) | Broad coverage, consistent pattern matching | Severity labels are `severity_hint` only |
+| Self-review / markdown docs | Useful prior analysis | Often missing current code state |
+
+**Same truth standard for every source.** Source type affects parsing, triage priority, and reply channel — not correctness. Tie-breakers when code evidence is equal: human product/architecture context. Repeated bot agreement raises priority but never decides correctness.
 
 ## Input modes
 
-The skill handles three input modes. Detect the mode from the user's phrasing; if genuinely ambiguous, check all three sources and report what was found.
+Detect the mode from the user's phrasing. If genuinely ambiguous, check all three sources and report what was found.
 
 | Mode | Trigger phrasing | Source |
 |---|---|---|
-| **PR mode** | "the review comments on PR #42", "what do the bots say on my PR", "address the review" | `scripts/parse-pr-comments.sh --repo <owner/name> --pr <N> --out <dir>`, then thread replies via `gh api` |
-| **Session-audit mode** | "audit what we just did", "check the review notes from earlier", "go back and evaluate the reviewer's feedback" (without PR context) | Previous messages in this conversation |
+| **PR mode** | "the review comments on PR #42", "what do the bots say on my PR", "address the review" | `scripts/parse-pr-comments.sh --repo <owner/name> --pr <N> --out <dir>`, then thread replies via `gh api`. See `scripts/parse-pr-comments.md`. |
+| **Session-audit mode** | "audit what we just did", "check the review notes from earlier", "go back and evaluate the reviewer's feedback" | Previous messages in this conversation |
 | **Markdown-doc mode** | "read review.md and give me an action plan", "the reviewer's notes are in audit.md" | Named file(s) on disk |
 
-**Ambiguous trigger** (user just says "evaluate the review" or "check what the reviewer said"): scan prior messages first, then `gh pr view` on the current branch, then look for obvious markdown candidates (`review*.md`, `audit*.md`, `feedback*.md`) in the working directory. Report what was found before proceeding.
+**Ambiguous trigger** ("evaluate the review" with no source): scan prior messages first, then `gh pr view` on the current branch, then look for `review*.md`, `audit*.md`, `feedback*.md` in the working directory. Report what was found before proceeding.
 
 ## Required workflow
 
-### 1. Identify the input mode and surface the feedback
+### Step 1 — Identify the input mode and surface the feedback
 
-State which mode is active. Extract every piece of review feedback as a flat list of items. Do not paraphrase yet — capture the verbatim text, its source (which reviewer, which comment ID, which line of which file in which message), and any code-range metadata.
-
-For PR mode, use `scripts/parse-pr-comments.sh` to fetch all three GitHub feedback channels before evaluating. See `scripts/parse-pr-comments.md`.
+State which mode is active. Extract every piece of review feedback as a flat list of items. Capture verbatim text — do not paraphrase yet — plus source, location, and code-range metadata.
 
 For each item, record: `{id?, channel?, source, source_type, file?, line?, original_line?, commit_id?, severity_hint?, verbatim_text}`.
 
-### 2. Understand what was actually reviewed (ground truth)
+For PR mode, run `scripts/parse-pr-comments.sh` to fetch all three GitHub feedback channels (top-level reviews, inline review comments, PR-discussion comments) before evaluating. See `scripts/parse-pr-comments.md` for invocation and output schema.
 
-Before evaluating any feedback, reconstruct the set of changes the reviewer *should have been* reviewing. Use the fallback chain:
+### Step 2 — Reconstruct ground truth
 
-1. **If the current branch has commits ahead of the base branch** → `git log origin/main..HEAD` + `git diff origin/main...HEAD`. This is the gold standard.
-2. **If no commits but the session has Edit/Write tool calls** → walk back through the conversation, collect every successful Edit and Write call's target file path. This reconstructs "what files the author changed, even without commits."
-3. **If the session has Bash calls like `rm`, `mv`, `mkdir`, `cp`** → these imply file operations not visible via diff. Include them.
-4. **If none of the above** → explicitly state the ground truth is uncertain before evaluating any feedback.
+Before evaluating any feedback, reconstruct the change set the reviewer *should have been* looking at. Fallback chain:
 
-See `references/understand-changes.md` for the extraction recipes.
+1. **Branch has commits ahead of base** → `git log origin/main..HEAD` + `git diff origin/main...HEAD`. Gold standard.
+2. **No commits but session has Edit/Write calls** → walk the conversation, collect every successful Edit/Write target path.
+3. **Session has Bash `rm`/`mv`/`mkdir`/`cp` calls** → include them; they imply file ops not visible via diff.
+4. **None of the above** → state that ground truth is uncertain before evaluating any feedback.
 
-### 3. Dispatch an Explore subagent for independent evaluation
+See `references/understand-changes.md` for the full extraction recipes.
 
-**Always.** Even for a single-item review. The subagent reads the code without parent-session bias and returns an independent assessment of each feedback item's correctness.
+### Step 3 — Dispatch an Explore subagent
 
-Per-subagent prompt is self-contained (no "as we discussed earlier", no "the user wants X", no session references). The subagent gets:
+**Always.** Even for a single-item review. The subagent reads the code without parent-session bias.
+
+The prompt is self-contained: no "as we discussed earlier", no "the user wants X", no session references. Hand the subagent:
 
 - The ground-truth change set (from Step 2)
 - The flat feedback-item list (from Step 1)
-- A pointer to this skill's `references/verification.md` for the lens
+- A pointer to `references/verification.md` for the lens
+
+The subagent returns per-item: `{verdict: correct | incorrect | unverifiable, evidence: file:line + reasoning, severity: critical | important | minor}`.
 
 See `references/subagent-dispatch.md` for the exact prompt template.
 
-The subagent returns: per-item `{verdict: correct | incorrect | unverifiable, evidence: file:line + reasoning, severity: critical | important | minor}`.
+### Step 4 — Consolidate multi-source feedback
 
-### 4. Consolidate multi-source feedback
+If only one reviewer, skip to Step 5.
 
-If the input is a single reviewer, skip clustering and go to Step 5.
+For 2+ reviewers (e.g., Copilot + CodeRabbit on one PR, or human + two AI bots):
 
-If 2+ reviewers (e.g., Copilot + CodeRabbit on the same PR, or human + two AI bots):
+- **Line-range clustering** — group items that touch the same file + overlapping line range (±5 lines is typical fuzz)
+- **Deduplicate** — when two reviewers flag the same concern, merge into one item citing both sources
+- **Resolve conflicts** — if two reviewers disagree, surface the disagreement explicitly; never silently pick one
+- **Discard noise** — obvious false positives get tagged as "dismissed with reason"
 
-- **Line-range clustering** — group items that touch the same file + overlapping line range. A "+/-5 lines" fuzz is typical.
-- **Deduplicate** — when two reviewers flag the same concern, merge into one item with both sources cited.
-- **Resolve conflicts** — if two reviewers disagree, surface the disagreement explicitly in the action plan; do not silently pick one.
-- **Discard noise** — obvious false positives (e.g., a bot flags a dependency it doesn't understand). Tag as "dismissed with reason".
+For PR JSONL snapshots, run `scripts/cluster-feedback.py --input normalized.jsonl --output clusters.json` before manual verification. See `scripts/cluster-feedback.md` for inputs/outputs and `references/multi-agent-consolidation.md` for the clustering and conflict-resolution policy.
 
-For PR JSONL snapshots, use `scripts/cluster-feedback.py --input normalized.jsonl --output clusters.json` before manual verification. See `scripts/cluster-feedback.md` and `references/multi-agent-consolidation.md`.
+### Step 5 — Evaluate each item against the codebase
 
-### 5. Evaluate each item against the codebase
+For every feedback item (or consolidated cluster), combine the subagent's verdict with parent verification. Each item ends with one verdict:
 
-For every feedback item (or consolidated cluster), combine the subagent's verdict with parent verification. Each item ends with one of:
+| Verdict | Meaning |
+|---|---|
+| **ACCEPT** | Feedback is correct and worth acting on |
+| **PUSHBACK** | Feedback is wrong; respond with technical reasoning |
+| **CLARIFY** | Feedback is unclear or evidence is missing; ask |
+| **DEFER** | Correct but out of scope for this PR; log as follow-up |
+| **DISMISS** | Noise, unambiguously wrong, or reviewer lacks context |
 
-- **ACCEPT** — the feedback is correct and worth acting on
-- **PUSHBACK** — the feedback is wrong; respond with technical reasoning
-- **CLARIFY** — the feedback is unclear or information needed for verification is missing; ask
-- **DEFER** — correct but out of scope for this PR; log as follow-up
-- **DISMISS** — noise, unambiguously wrong, or the reviewer lacks context
-
-Verification lens (from google-gemini's 7-pillar and obra's pushback criteria):
+Verification lens (6 checks):
 
 | Check | Question |
 |---|---|
 | Correctness | Would this break existing functionality? |
 | Scope (YAGNI) | Is the suggested feature actually used? Grep first. |
 | Stack fit | Is this correct for THIS codebase's stack? |
-| Compat | Legacy/compat reasons for the current implementation? |
+| Compat | Legacy/compatibility reasons for the current implementation? |
 | Context | Does the reviewer have the full context? |
 | Architectural | Does this conflict with a prior architectural decision? |
 
-See `references/verification.md` for the full lens.
+See `references/verification.md` for the full lens with worked examples.
 
-### 6. Produce the action plan
+### Step 6 — Produce the action plan
 
 Output format depends on mode:
 
-- **PR mode** — when PR replies are authorized, post thread replies via `gh api repos/{o}/{r}/pulls/{pr}/comments/{id}/replies` for ACCEPT/PUSHBACK/CLARIFY. Top-level comment only for summary. Never reply with pure gratitude.
-- **Session-audit mode** — markdown action plan as conversation output. Group by verdict.
-- **Markdown-doc mode** — markdown action plan written to a file next to the source doc, e.g. `review.md` → `review-action-plan.md`.
+- **PR mode** — when PR replies are authorized, post thread replies via `gh api repos/{o}/{r}/pulls/{pr}/comments/{id}/replies` for ACCEPT/PUSHBACK/CLARIFY items. Top-level only for the summary. Never reply with pure gratitude. Mechanics in `references/gh-review-workflow.md`.
+- **Session-audit mode** — markdown action plan as conversation output, grouped by verdict.
+- **Markdown-doc mode** — markdown action plan written next to the source doc (e.g. `review.md` → `review-action-plan.md`).
 
 Every action plan includes a decision register. Each item carries: stable item ID, source(s), source type(s), location and `commit_id` when available, verbatim reviewer text, verdict, evidence, planned action, and implementation status when implementation was requested.
 
-See `references/action-plan-output.md` for the exact formats.
+See `references/action-plan-output.md` for the exact format per mode.
 
-### 7. Implement the accepted items
-
-Implementation depends on the user's original authorization:
+### Step 7 — Implement the accepted items (only if authorized)
 
 - If the user asked only to evaluate, stop after Step 6 and hand over the action plan.
 - If the user asked to evaluate and implement, produce the action plan first, then proceed under that original authorization.
-- Destructive or externally visible actions still require explicit authorization before they happen.
-- **Order**: blocking (breaks, security) → simple (typos, imports) → complex (refactoring, logic)
-- **Discipline**: one item at a time, test each before the next
-- **Reply**: after implementing an item, reply in the PR thread (PR mode) or update the action plan (markdown mode) with "Fixed. <what changed>" — no gratitude.
+- Destructive or externally visible actions (PR pushes, comment posts, deploys, deletes) require explicit authorization every time.
+- **Order:** blocking (breaks, security) → simple (typos, imports) → complex (refactoring, logic).
+- **Discipline:** one item at a time, test each before the next.
+- **Reply:** after implementing an item, reply in the PR thread (PR mode) or update the action plan (markdown mode) with `Fixed. <what changed>.` — no gratitude.
 
-After implementation, report accepted item IDs fixed, files changed, commit SHA(s) when committed, validation command and exact result, remaining CLARIFY / DEFER / PUSHBACK / DISMISS items, and PR reply status by thread in PR mode.
+After implementation, report: accepted item IDs fixed, files changed, commit SHA(s) when committed, validation command and exact result, remaining CLARIFY/DEFER/PUSHBACK/DISMISS items, and PR reply status by thread in PR mode.
 
-## The voice discipline (critical)
+## Voice discipline
 
-Obra's rule: **No performative agreement.** Actions speak; the diff is the acknowledgment. Keep phrase-level rules in `references/voice.md`; keep pressure-scenario excuses and counters in `references/rationalizations.md`.
+**No performative agreement.** Actions speak; the diff is the acknowledgment. Phrase-level rules live in `references/voice.md` (forbidden phrases, "Fixed." alternatives, pushback templates). Pressure-scenario excuses and counters live in `references/rationalizations.md`.
 
 Short version: avoid gratitude, praise, apology, and agreement-before-verification. Accept correct feedback by stating the fix. Push back with evidence. Ask for clarification only when evidence is genuinely insufficient.
 
-## Using `gh` for multi-agent review
+## Multi-bot PR shortcuts (`gh`)
 
-When the feedback source is a PR with multiple AI reviewers (Copilot, CodeRabbit, Devin, Bito, Greptile), use `gh` to pull all comments before evaluation. The consolidation logic is in `references/multi-agent-consolidation.md`; the `gh` mechanics are in `references/gh-review-workflow.md`.
-
-Key commands (full recipes in the reference):
+When the source is a PR with multiple AI reviewers, pull all comments before evaluation. Full recipes in `references/gh-review-workflow.md`. Headline commands:
 
 ```bash
 # All top-level PR reviews (the summary comments)
@@ -206,21 +207,22 @@ Unless the user wants a different format, produce artifacts in this order:
 | reply in the comment thread for inline comments | reply at top-level PR comment (wrong channel) |
 | state exactly what was verified | claim a check that did not run |
 | ask for clarification when an item is ambiguous | implement a partial understanding |
-| one item at a time, test each | batch-fix, batch-test, and miss regressions |
+| one item at a time, test each | batch-fix, batch-test, miss regressions |
 
 ## Guardrails and recovery
 
-- Do not write gratitude, praise, apology, or agreement-before-verification. Delete mid-sentence if it appears.
-- Do not implement before verifying. The pre-implement check is not optional.
-- Do not dispatch subagent prompts that reference "earlier in this conversation" — they break as self-contained units.
-- Do not silently pick a side when two reviewers conflict. Surface the conflict.
-- Do not dismiss bot feedback without stating the reason.
-- Do not capitulate on push-back to save time. Technical correctness over comfort.
+Do not:
+- write gratitude, praise, apology, or agreement-before-verification — delete mid-sentence if it appears
+- implement before verifying — the pre-implement check is not optional
+- dispatch subagent prompts that reference "earlier in this conversation"
+- silently pick a side when two reviewers conflict — surface the conflict
+- dismiss bot feedback without stating the reason
+- capitulate on push-back to save time
 
 Recovery moves:
 
 - **Can't verify a suggestion** → state the limitation: "Can't verify without running X; should I investigate / ask / proceed?"
-- **Reviewer and prior architectural decision conflict** → stop, discuss with the human first; do not silently re-decide
+- **Reviewer and prior architectural decision conflict** → stop, raise with the human; do not silently re-decide
 - **Pushed back, then realized you were wrong** → correction template: "You were right — I checked <X> and it does <Y>. Implementing." No long apology.
 - **Ambiguous input with no PR / no messages / no markdown** → report the gap explicitly; ask the user which source to evaluate
 
@@ -228,14 +230,14 @@ Recovery moves:
 
 | File | Read when |
 |---|---|
-| `references/voice.md` | Writing any response — the forbidden-phrases list, the "Fixed." alternatives, pushback templates |
-| `references/understand-changes.md` | Reconstructing what was reviewed — commits → tool trail → bash history fallback chain |
-| `references/verification.md` | Evaluating a specific feedback item against the codebase; the 6-check verification lens |
+| `references/voice.md` | Writing any response — forbidden phrases, "Fixed." alternatives, pushback templates |
+| `references/rationalizations.md` | RED-baseline excuses that bypass verify-before-implement; counters |
+| `references/understand-changes.md` | Reconstructing what was reviewed — commits → tool-trail → bash fallback chain |
 | `references/subagent-dispatch.md` | Writing the Explore subagent prompt — self-contained template |
+| `references/verification.md` | Evaluating a specific feedback item against the codebase; the 6-check verification lens |
 | `references/multi-agent-consolidation.md` | Combining feedback from 2+ reviewers; line-range clustering; conflict resolution |
 | `references/gh-review-workflow.md` | Pulling PR comments via `gh`; thread replies; PR-discussion vs. review-comment channels |
 | `references/action-plan-output.md` | Formatting the action plan — per mode (PR / session / markdown-doc) |
-| `references/rationalizations.md` | RED-baseline excuses that bypass the verify-before-implement discipline; counters |
 | `scripts/parse-pr-comments.md` | Capturing PR reviews, inline comments, and discussion comments into raw snapshots plus normalized JSONL |
 | `scripts/cluster-feedback.md` | Preparing normalized JSONL into stable clustered items before verification |
 
@@ -244,12 +246,12 @@ Recovery moves:
 Before declaring done, confirm:
 
 - [ ] input mode declared and matches the user's ask
-- [ ] ground truth reconstructed with a named source (commits / tool trail / bash / uncertain)
+- [ ] ground truth reconstructed with a named source (commits / tool-trail / bash / uncertain)
 - [ ] Explore subagent dispatched with a self-contained prompt (no session references)
 - [ ] if multi-source: line-range clustering applied, conflicts surfaced
 - [ ] every feedback item has a verdict (ACCEPT / PUSHBACK / CLARIFY / DEFER / DISMISS) with reasoning
 - [ ] output matches the action-plan format for the mode
-- [ ] zero forbidden phrases in the response (grep-checked)
+- [ ] zero forbidden phrases in the response (grep-checked against `references/voice.md`)
 - [ ] if PR mode: inline replies went in the correct thread, not at top level
 - [ ] if implementation ran: order was blocking → simple → complex, one at a time
 

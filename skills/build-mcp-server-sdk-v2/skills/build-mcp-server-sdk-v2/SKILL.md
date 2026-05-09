@@ -1,115 +1,136 @@
 ---
 name: build-mcp-server-sdk-v2
-description: "Use skill if you are building or maintaining MCP servers with @modelcontextprotocol/server v2 alpha — split packages, Zod v4, ServerContext, framework adapters, ESM-only."
+description: "Use skill if you are building or maintaining MCP servers on @modelcontextprotocol/server v2 alpha — split packages, McpServer, registerTool, ctx.mcpReq handler context."
 ---
 
 # Build MCP Server (SDK v2 Alpha)
 
-Build and maintain MCP servers using the v2 alpha split-package SDK: `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, `@modelcontextprotocol/core`. Node.js 20+, ESM-only, Zod v4. Use this skill for new v2 alpha builds and v2 maintenance; use `convert-mcp-server-sdk-v1-to-v2` to port an existing v1 server.
+Build and maintain MCP servers on the v2 alpha **split-package SDK**: `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, `@modelcontextprotocol/core`, plus `/node`, `/express`, `/hono` adapters. ESM-only, Node 20+, Zod v4. Status as of 2026-05-09: latest npm tag is `2.0.0-alpha.2` — pin exact, plan rollback.
 
-## Current channel matrix
+## When to use
 
-| Channel | Status | Use for |
+Trigger this skill if any of these are true:
+
+- *Building a brand-new MCP server and the user picks v2, "the alpha", or split packages.*
+- *`package.json` already depends on `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, or `@modelcontextprotocol/core`.*
+- *Existing code uses `new McpServer(...)` from `@modelcontextprotocol/server` and `server.registerTool(...)` with the high-level API.*
+- *Tool/resource/prompt handlers use `(args, ctx)` with `ctx.mcpReq.signal`, `ctx.mcpReq.log()`, `ctx.mcpReq.notify()`, or `ctx.http?.authInfo`.*
+- *HTTP work uses `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node`, or `createMcpExpressApp()` / `createMcpHonoApp()` from the official adapters.*
+- *Schemas are full `z.object({...})` from `zod/v4`, not raw-shape shorthand.*
+
+Do NOT use this skill if any of these are true:
+
+- *`package.json` depends on the single-package `@modelcontextprotocol/sdk` (v1) — use **`build-mcp-server-sdk-v1`** instead.*
+- *Handlers use `(args, extra)` with `extra.sendNotification`, `extra.authInfo`, or `extra.signal` — that is v1; use **`build-mcp-server-sdk-v1`**.*
+- *The job is **porting** an existing v1 server to v2 — use **`convert-mcp-server-sdk-v1-to-v2`** (covers package split, import rewrite, `extra → ctx` mapping, OAuth replacement, staging strategy).*
+- *The project uses the `mcp-use` wrapper or `@hono/mcp` community middleware — use **`build-mcp-use-server`**, or migrate before applying official adapter patterns.*
+- *The user wants an agentic-quality / hardening / context-budget audit, not SDK correctness — use **`optimize-agent-ergonomics`**.*
+
+## Detect v2 vs v1
+
+Run `tree -L 3` and read `package.json`. v2 fingerprints (any one is sufficient):
+
+| Signal | Where | Means |
 |---|---|---|
-| npm published alpha | `@modelcontextprotocol/server@2.0.0-alpha.2` and split packages, published 2026-04-01; stdio transports are root exports | Install commands and runnable examples that must work from npm today |
-| main branch / `v2.0.0-bc` PR series | Compatibility work after alpha.2; docs now show stdio subpath exports | Forward-looking notes only, gated by fresh npm/source verification |
-| v1 stable | `@modelcontextprotocol/sdk@1.x` | Default production path until a non-alpha v2 release exists |
+| `@modelcontextprotocol/server` (or `/client`, `/core`, `/node`, `/express`, `/hono`) | `package.json` dependencies | v2 split package |
+| `import { McpServer, StdioServerTransport } from "@modelcontextprotocol/server"` | source | v2 server entrypoint |
+| Handler signature `(args, ctx) => …` and `ctx.mcpReq.*` | source | v2 ServerContext |
+| `import * as z from "zod/v4"` | source | v2 Zod v4 path |
+| `"type": "module"` + Node 20+ | `package.json` / engines | v2 ESM-only target |
 
-**When to use a different skill instead:**
+v1 anti-fingerprints (treat as **wrong skill**, redirect):
 
-- `@modelcontextprotocol/sdk` (single package, v1) in `package.json` → use `build-mcp-server-sdk-v1`
-- Handlers use `(args, extra)` with `extra.sendNotification` / `extra.authInfo` → that's v1, use `build-mcp-server-sdk-v1`
-- Existing v1 server that needs to be ported to v2 → use `convert-mcp-server-sdk-v1-to-v2`
-- Uses the `mcp-use` wrapper library → use `build-mcp-use-server`
-- Imports `@hono/mcp` → community Hono middleware, not the official SDK adapter; choose whether to migrate before applying `@modelcontextprotocol/hono` examples
-- Existing server audit, hardening, tool-surface quality, security posture, context budget, or architecture tradeoffs → use `optimize-agent-ergonomics`
-- Do not route raw SDK v2 projects to `apply-clean-mcp-architecture`; that skill is for `mcp-use/server` architecture
+- `@modelcontextprotocol/sdk` single package → `build-mcp-server-sdk-v1`
+- `extra.sendNotification`, `extra.authInfo`, `extra.signal` → `build-mcp-server-sdk-v1`
+- `SSEServerTransport` → v1 only; v2 removed it
 
-**How to detect v2:** Look for split package imports (`@modelcontextprotocol/server`, `@modelcontextprotocol/client`), handlers using `(args, ctx)` with `ctx.mcpReq.log()` / `ctx.mcpReq.signal`, and `"type": "module"` in `package.json`.
+## Core rules
 
-Core rules:
-
-- Always use `McpServer` from `@modelcontextprotocol/server` — the `Server` class is deprecated
-- Always use `registerTool` / `registerResource` / `registerPrompt` — positional overloads removed
-- Always use Zod v4 full schemas (`z.object({...})`) — raw shapes are v1 style; treat any current-release compatibility shim as migration aid, not target pattern
-- Always use `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node` for HTTP
-- Use `@modelcontextprotocol/hono` for the official SDK Hono adapter; do not silently substitute community `@hono/mcp`
-- Server-side OAuth is removed from the SDK — wire HTTP-layer auth (external AS + `jose`, Passport, custom Bearer middleware) and forward `req.auth` into `ctx.http?.authInfo`; treat `@modelcontextprotocol/server-auth-legacy` as planned/open until npm and PR #1908 confirm publication
-- SSE server transport is removed — use Streamable HTTP
-- ESM-only — no CommonJS support
-- Node.js 20+ required
+- Always use `McpServer` from `@modelcontextprotocol/server`. The low-level `Server` class is deprecated for direct use.
+- Always use `registerTool` / `registerResource` / `registerPrompt`. Positional overloads were removed in v2.
+- Always pass full Zod v4 schemas (`z.object({...})`). Raw shapes are a v1 pattern; if a current alpha still accepts them, treat that as a migration shim, not the target.
+- Always import HTTP transport from `@modelcontextprotocol/node` (e.g. `NodeStreamableHTTPServerTransport`). `SSEServerTransport` is removed.
+- For Express, use `@modelcontextprotocol/express` (`createMcpExpressApp()`). For Hono, use `@modelcontextprotocol/hono`. Do not silently substitute the community `@hono/mcp` package.
+- Server-side OAuth is removed from the SDK. Wire authentication at the HTTP layer (Passport, custom Bearer middleware, `jose`) and forward auth into `ctx.http?.authInfo`. Treat any `@modelcontextprotocol/server-auth-legacy` as planned/open until npm publish is confirmed.
+- ESM-only. No CommonJS dual-publish. Node.js 20+ required.
+- Pin alpha versions exactly (`--save-exact`); never use `^` ranges across alphas.
 
 ## Workflow
 
 ### 1 — Detect what exists
 
-Run `tree -L 3` and check `package.json`. Look for:
-
-- `@modelcontextprotocol/server` in dependencies → existing v2 server
-- `@modelcontextprotocol/sdk` (single package) → v1, redirect to `build-mcp-server-sdk-v1`
-- `mcp-use` → wrong skill, redirect to `build-mcp-use-server`
-- Handler patterns: `ctx.mcpReq` → v2; `extra.sendNotification` → v1
+Inspect `package.json` and `src/`. Decide: **existing v2 server** (go to 2A), **new v2 server** (go to 2B), or **wrong skill** (redirect per *When to use* and stop).
 
 ### 2A — Maintain or fix an existing v2 server
 
-Read the implementation. Check for:
+Read the implementation. Verify:
 
-- Correct context usage: `ctx.mcpReq.signal`, `ctx.http?.authInfo`, `ctx.mcpReq.notify()`
-- Proper schema usage: full `z.object()` instead of v1 raw shapes
-- Framework adapter usage: `createMcpExpressApp()` from `@modelcontextprotocol/express`
-- `outputSchema` validation: tools with `outputSchema` must return `structuredContent`
+- Context usage: `ctx.mcpReq.signal`, `ctx.mcpReq.log()`, `ctx.mcpReq.notify()`, `ctx.http?.authInfo`. Flag any `extra.*` access — that is v1 leakage.
+- Schemas: full `z.object()` (not raw shapes) for new code. `outputSchema` present whenever the tool returns `structuredContent`.
+- Transport: `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node` for HTTP; `StdioServerTransport` from `@modelcontextprotocol/server` for stdio.
+- Framework: `createMcpExpressApp()` or `createMcpHonoApp()` for HTTP framework wiring (DNS rebinding protection lives in the adapter).
+- Annotations: `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` set deliberately for tools with side effects.
+
+Then make the requested change (add tool, fix bug, add auth middleware, etc.).
 
 ### 2B — Scope a new v2 server
 
-Ask or infer:
+Decide:
 
-1. **What does the server wrap?** (API, database, filesystem, CLI)
-2. **Transport?** stdio for local, Streamable HTTP for remote
-3. **Framework?** Express or Hono (both have dedicated adapters)
-4. **Auth?** Client-side only in v2 (server-side OAuth removed)
+1. **Wraps what?** API, database, filesystem, CLI, or in-process logic.
+2. **Transport?** `stdio` for local; `Streamable HTTP` for remote/multi-client.
+3. **Framework?** Express or Hono if HTTP — both have first-party adapters.
+4. **Auth?** External AS + middleware; SDK no longer hosts an authorization server.
 
 ### 3 — Choose the implementation branch
 
-| Scenario | Action |
+| Scenario | Read |
 |---|---|
 | New stdio server | `references/guides/quick-start.md` |
 | New HTTP server (Express) | `references/guides/transports.md` + `references/guides/framework-adapters.md` |
 | New HTTP server (Hono) | `references/guides/transports.md` + `references/guides/framework-adapters.md` |
 | Add tools | `references/guides/tools-and-schemas.md` |
 | Add resources or prompts | `references/guides/resources-and-prompts.md` |
+| Add auth middleware | `references/guides/authentication.md` |
 | Build an MCP client | `references/guides/client-api.md` |
-| Stage or package for production readiness | `references/patterns/deployment.md` |
+| Sampling, elicitation, sessions, shutdown | `references/guides/context-and-lifecycle.md` |
+| Working server examples | `references/examples/server-recipes.md` |
+| Production hardening | `references/patterns/production-patterns.md` |
+| Deploy (Docker, serverless, Workers) | `references/patterns/deployment.md` |
+| Avoid common mistakes / v1 leakage | `references/patterns/anti-patterns.md` |
 
 ### 4 — Preflight setup
 
 - [ ] Node.js 20+ installed
-- [ ] For existing projects, run `scripts/check-mcp-server-v2-version.sh` from the target project root; see `scripts/check-mcp-server-v2-version.sh.md`
+- [ ] If existing: run `bash scripts/check-mcp-server-v2-version.sh` from the project root (see `scripts/check-mcp-server-v2-version.sh.md`); unsafe alpha ranges must fail
 - [ ] `npm install --save-exact @modelcontextprotocol/server@2.0.0-alpha.2`
 - [ ] `npm install zod@^4`
-- [ ] If HTTP: `npm install --save-exact @modelcontextprotocol/node@2.0.0-alpha.2`
-- [ ] If Express: `npm install --save-exact @modelcontextprotocol/express@2.0.0-alpha.2` plus `npm install express`
-- [ ] If Hono: `npm install --save-exact @modelcontextprotocol/hono@2.0.0-alpha.2` plus `npm install hono`
-- [ ] `"type": "module"` in package.json
-- [ ] TypeScript 5+ with `"module": "Node16"`, `"moduleResolution": "Node16"`
+- [ ] HTTP also: `npm install --save-exact @modelcontextprotocol/node@2.0.0-alpha.2`
+- [ ] Express also: `npm install --save-exact @modelcontextprotocol/express@2.0.0-alpha.2 express`
+- [ ] Hono also: `npm install --save-exact @modelcontextprotocol/hono@2.0.0-alpha.2 hono`
+- [ ] `"type": "module"` in `package.json`
+- [ ] TypeScript 5+, `"module": "Node16"`, `"moduleResolution": "Node16"`
 
-### 5 — Build or extend
+### 5 — Build
 
-1. Create `McpServer` with name, version, optional description/icons
-2. Define Zod v4 schemas: `z.object({ field: z.string() })` (not raw shapes as the target pattern)
-3. Register tools with `server.registerTool()` — input schema, annotations, handler with `(args, ctx)` pattern
-4. Register resources with `server.registerResource()` if exposing data
-5. Register prompts with `server.registerPrompt()` if providing templates
-6. Create transport and connect: `await server.connect(transport)`
-7. Handle graceful shutdown
+Default sequence:
+
+1. Construct `McpServer` with `{ name, version }` and optional `{ instructions, capabilities }`.
+2. Define Zod v4 schemas: `z.object({ field: z.string() })` (full schemas, not raw shapes).
+3. Register tools with `server.registerTool(name, config, handler)` — `inputSchema`, `annotations`, handler `(args, ctx) => CallToolResult`.
+4. Register resources with `server.registerResource()` if exposing data.
+5. Register prompts with `server.registerPrompt()` if providing templates.
+6. Construct transport, then `await server.connect(transport)`.
+7. Handle graceful shutdown (`SIGINT`/`SIGTERM` → `await server.close()`).
 
 ### 6 — Validate
 
-- **Version pins**: Run `scripts/check-mcp-server-v2-version.sh`; unsafe v2 alpha ranges must fail
-- **stdio**: `npx @anthropic-ai/mcp-inspector npx tsx src/index.ts`
-- **HTTP**: Start server, test with curl or Inspector
-- **Live CLI smoke**: If `mcpc` is available, use `test-by-mcpc-cli` after a stdio or Streamable HTTP server starts
-- **Schemas**: Verify Zod validation catches bad input
-- **Context**: Confirm `ctx.mcpReq` is used (not `extra`)
+- Local checks first: `npm run build`, focused tests if present.
+- **stdio:** `npx @anthropic-ai/mcp-inspector npx tsx src/index.ts`.
+- **HTTP:** start server; probe with `curl` or Inspector.
+- **Live CLI smoke:** if `mcpc` is installed, hand off to `test-by-mcpc-cli`. Minimum sequence: initialize → `tools/list` → one successful call → one invalid-arg call returning `isError: true`.
+- **Schemas:** invalid input → tool error (`isError: true`), not a thrown protocol error.
+- **Context:** confirm `ctx.mcpReq` is the access path, never `extra`.
 
 ## Quick start — minimal v2 stdio server
 
@@ -125,15 +146,11 @@ const server = new McpServer(
 server.registerTool("greet", {
   title: "Greet User",
   description: "Greet a user by name",
-  inputSchema: z.object({
-    name: z.string().describe("The user's name"),
-  }),
+  inputSchema: z.object({ name: z.string().describe("The user's name") }),
   annotations: { readOnlyHint: true, destructiveHint: false },
 }, async ({ name }, ctx) => {
   await ctx.mcpReq.log("info", `Greeting ${name}`);
-  return {
-    content: [{ type: "text" as const, text: `Hello, ${name}!` }],
-  };
+  return { content: [{ type: "text" as const, text: `Hello, ${name}!` }] };
 });
 
 const transport = new StdioServerTransport();
@@ -145,8 +162,6 @@ await server.connect(transport);
 ### McpServer
 
 ```typescript
-import { McpServer, StdioServerTransport } from "@modelcontextprotocol/server";
-
 new McpServer(
   { name: string, version: string, description?: string, icons?: Icon[] },
   { capabilities?: ServerCapabilities, instructions?: string }
@@ -182,7 +197,7 @@ server.experimental.tasks  // ExperimentalMcpServerTasks
 
 ```typescript
 // Tool handler: (args, ctx) => CallToolResult
-// No-args tool: (ctx) => CallToolResult
+// No-arg tool:  (ctx)       => CallToolResult
 
 ctx.sessionId?: string
 ctx.mcpReq.id: RequestId
@@ -216,73 +231,43 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 
 ## Decision rules
 
-- Always use `z.object({...})` — raw shapes (`{ name: z.string() }`) are v1 style; if the current release accepts them, treat that as migration compatibility only
-- Prefer `isError: true` for recoverable tool errors — LLMs self-correct from these
-- Prefer `ctx.mcpReq.log()` over `console.error()` — sends structured logs to the client
-- Prefer `ctx.mcpReq.elicitInput()` over `ctx.mcpReq.send()` for user input — cleaner API
-- Use `createMcpExpressApp()` or `createMcpHonoApp()` instead of raw Express/Hono setup
-- Set every relevant annotation deliberately; fill all four when safety or side effects matter
+- Use full `z.object({...})` for every new tool schema. Raw shapes are v1 style; even if accepted, do not target them.
+- Prefer `isError: true` for recoverable failures — the LLM self-corrects from soft errors.
+- Prefer `ctx.mcpReq.log()` over `console.error()` so logs reach the client.
+- Prefer `ctx.mcpReq.elicitInput()` over hand-rolled `ctx.mcpReq.send()` for user input requests.
+- Use `createMcpExpressApp()` / `createMcpHonoApp()` instead of raw Express/Hono setup — DNS rebinding is handled inside.
+- Set every relevant `annotations` field deliberately; fill all four when safety or side-effects matter.
 
 ## Guardrails
 
-- Never write new v2-native code with raw Zod shapes — use full `z.object()` schemas
-- Never use `extra.sendNotification` / `extra.authInfo` — those are v1 patterns; use `ctx.mcpReq`
-- Never import from `@modelcontextprotocol/sdk` — that's v1; import from `/server`, `/client`, `/core`
-- Never use `SSEServerTransport` — removed in v2
-- Never implement server-side OAuth with the SDK — removed; use external auth library
-- Never use CommonJS — v2 is ESM-only
-- Never use Node.js < 20
-
-## Reference routing
-
-### Start here
-
-| Reference | When to read |
-|---|---|
-| `references/guides/quick-start.md` | Scaffolding a new v2 server from scratch |
-| `references/guides/tools-and-schemas.md` | Registering tools with Zod v4, ServerContext, annotations |
-| `references/guides/transports.md` | stdio, Streamable HTTP, web-standard transport |
-
-### Server capabilities
-
-| Reference | When to read |
-|---|---|
-| `references/guides/resources-and-prompts.md` | Resources (static/template URI) and prompts |
-| `references/guides/authentication.md` | Server-side auth: JWT/Passport middleware, planned server-auth-legacy caveat, scope checks, DNS rebinding |
-| `references/guides/client-api.md` | Building MCP clients, auth providers, middleware |
-| `references/guides/framework-adapters.md` | Express and Hono adapters, DNS rebinding protection |
-| `references/guides/context-and-lifecycle.md` | ServerContext fields, sampling, elicitation, sessions, shutdown |
-
-### Build and ship
-
-| Reference | When to read |
-|---|---|
-| `references/examples/server-recipes.md` | Complete v2 server examples |
-| `references/patterns/deployment.md` | Docker, serverless, Cloudflare Workers |
-| `references/patterns/production-patterns.md` | Logging, error handling, rate limits, timeouts, AbortSignal, graceful shutdown |
-| `references/patterns/anti-patterns.md` | Common mistakes — including v1 patterns to avoid |
+- Never write new v2-native code with raw Zod shapes — always full `z.object()`.
+- Never use `extra.sendNotification` / `extra.authInfo` / `extra.signal` — those are v1; the v2 access path is `ctx.mcpReq.*` and `ctx.http?.authInfo`.
+- Never import from `@modelcontextprotocol/sdk` — that is the v1 single package; in v2 you import from `/server`, `/client`, `/core`, `/node`, `/express`, `/hono`.
+- Never use `SSEServerTransport` — removed in v2; use Streamable HTTP.
+- Never implement server-side OAuth in the SDK — removed in v2; integrate at the HTTP layer.
+- Never use CommonJS — v2 is ESM-only.
+- Never run on Node < 20.
+- Never use `^` ranges for alpha packages — pin exact and plan rollback.
 
 ## Compatibility and adoption note
 
-v2 is in pre-release alpha as of 2026-05-08. The latest npm-published split packages are `2.0.0-alpha.2`; the `v2.0.0-bc` label tracks main-branch compatibility PRs that may not be published yet. Most production MCP servers should stay on v1.x until v2 publishes a non-alpha stable release.
+v2 is pre-release alpha as of 2026-05-09. The latest npm split packages are at `2.0.0-alpha.2`; main-branch PRs labeled `v2.0.0-bc` may not yet be published. Most production servers should remain on v1.x until v2 cuts a non-alpha stable release.
 
-What this means in practice:
+In practice:
 
-- **Pin alpha versions exactly** (no `^` ranges) — alphas can break between patches.
+- **Pin alpha versions exactly** (no `^`); alphas can break between patches.
 - **Plan rollback** before deploying — keep the v1 branch deployable.
-- **The `@modelcontextprotocol/sdk` meta-package** remains v1 on npm unless fresh npm verification proves otherwise; main-branch meta-package PRs are migration signals, not an install target.
-- **`@modelcontextprotocol/server-auth-legacy`** is a planned/open transitional package until `npm view` succeeds and PR #1908 or release notes confirm publication.
-- Some MCP clients and third-party tooling still target v1 patterns; verify the target host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
-
-The SDK is actively maintained on the `main` branch (which is now the v2 branch). Subscribe to release notes for the duration of any v2 work.
+- **The `@modelcontextprotocol/sdk` meta-package** remains v1 on npm unless fresh `npm view` proves otherwise.
+- **`@modelcontextprotocol/server-auth-legacy`** is planned/open; treat it as unpublished until `npm view` succeeds.
+- **Verify each MCP host** (Claude Desktop, Cursor, Cline, custom) end-to-end on v2 features before depending on them.
 
 ## Output contract
 
 Report v2 server work with:
 
 1. Target path and detected channel/version.
-2. Transport and framework used.
+2. Transport (stdio, Streamable HTTP) and framework (none, Express, Hono).
 3. Tools, resources, and prompts added or changed.
-4. Auth shape, if any.
-5. Validation rung and exact commands run.
+4. Auth shape (none, Bearer middleware, Passport, jose, external AS).
+5. Validation rung reached and exact commands run.
 6. Alpha-risk caveats and rollback status.

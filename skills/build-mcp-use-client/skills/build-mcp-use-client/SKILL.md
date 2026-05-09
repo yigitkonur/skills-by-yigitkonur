@@ -1,45 +1,73 @@
 ---
 name: build-mcp-use-client
-description: Use skill if you are building or auditing MCP client apps with mcp-use TypeScript, including MCPClient, sessions, React hooks, code mode, auth, CLI.
+description: Use skill if you are writing TypeScript MCP client code with mcp-use — MCPClient, MCPSession, useMcp, McpClientProvider, mcp-use/browser, mcp-use/react, or npx mcp-use client.
 ---
 
-# Build MCP Use Client
+# Build mcp-use Client
 
-Build or audit TypeScript MCP client applications with `mcp-use`: `MCPClient`, `MCPSession`, `mcp-use/browser`, `mcp-use/react`, code mode, authentication, and `npx mcp-use client`.
+Build or audit deterministic TypeScript MCP **client** code using the `mcp-use` SDK: `MCPClient`, `MCPSession`, `mcp-use/browser`, `mcp-use/react` (`useMcp`, `McpClientProvider`, `useMcpClient`, `useMcpServer`), code mode, and the `npx mcp-use client` CLI.
 
-Run from the concrete package, fixture, or app path the user wants changed. If the user named a subdirectory, inspect that path directly instead of starting with a repo-wide scan.
+The client is the half that **connects to** an MCP server, lists/calls tools, reads resources, manages sessions, and handles auth — without an LLM choosing what to call.
 
-## When To Use This Skill Vs Neighbors
+## When to use this skill
 
-| Use case | Route |
-|---|---|
-| Implementing or auditing `mcp-use` TypeScript client code with `MCPClient`, `MCPSession`, `mcp-use/browser`, `mcp-use/react`, or `npx mcp-use client` | Stay in this skill |
-| `MCPAgent`, LLM orchestration, streaming agents, structured output, LangChain integration | `build-mcp-use-agent` |
-| `mcp-use/server`, tools/resources/prompts, transports, OAuth server, MCP Apps widgets | `build-mcp-use-server` |
-| Raw Model Context Protocol SDK implementation, not the `mcp-use` wrapper | `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2` |
-| Headless CLI testing/debugging of MCP servers with `mcpc` | `test-by-mcpc-cli` |
+Use this skill when *any* of these are true:
 
-Do not merge the client, agent, and server scopes. Route across them when a project has multiple halves.
+- *the user imports from `"mcp-use"`, `"mcp-use/browser"`, or `"mcp-use/react"`*
+- *the code constructs `new MCPClient(...)`, calls `createSession()`/`createAllSessions()`, or uses `client.close()`/`closeAllSessions()`*
+- *a React app uses `useMcp`, `McpClientProvider`, `useMcpClient`, or `useMcpServer`* (note: `state` not `status`; `storageProvider` not `persistenceProvider`)
+- *the project runs `npx mcp-use client` or has `mcp.json`, `mcp.config.json`, or `.vscode/mcp.json` config files*
+- *the work is connecting to existing MCP servers, listing tools/resources/prompts, calling them deterministically, or wiring up auth/sampling/elicitation callbacks on the client side*
+- *the request involves code mode via `executeCode()`/`search_tools()` from a client*
+- *the task is fixing client-side issues: 404 session recovery, idle proxy timeouts, dropped reconnects, OAuth re-auth loops, or React StrictMode duplicate sessions*
+
+Do **NOT** use this skill if:
+
+- *an LLM picks and orchestrates tools via `MCPAgent`* — route to `build-mcp-use-agent`
+- *the work imports from `"mcp-use/server"`, defines `server.tool`/`server.resource`/`server.prompt`, or builds widgets/transports/server auth* — route to `build-mcp-use-server`
+- *the code imports directly from `@modelcontextprotocol/sdk` without the `mcp-use` wrapper* — route to `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2`
+- *the only goal is headless CLI verification of an already-running MCP server with `mcpc`* — route to `test-by-mcpc-cli`
+
+Inspect the path the user named directly. Do not start with a repo-wide scan when a subdirectory is given.
+
+## Non-Negotiable Rules
+
+These rules are load-bearing — violating them is the most common source of client bugs.
+
+| # | Rule | Why |
+|---|---|---|
+| 1 | Import from `mcp-use`, `mcp-use/browser`, or `mcp-use/react` only | Hand-rolling raw `@modelcontextprotocol/sdk` calls inside a wrapper-library project re-implements features and breaks reconnection/auth integration |
+| 2 | `await` `createSession()` / `createAllSessions()` before use | Sessions are async; using an unresolved promise yields runtime errors that look like config bugs |
+| 3 | Always cleanup: `closeAllSessions()` for normal clients; `client.close()` for code mode | Code mode allocates external executors (VM/E2B) that leak without `close()` |
+| 4 | Discover before hardcoding: list tools/resources/prompts before assuming names | Server schemas drift; hardcoded names break silently when the server adds optional args |
+| 5 | Handle `CallToolResult.isError`, `content`, `structuredContent`, and `_meta` deliberately | The shape is union-like; assuming `content[0].text` exists masks real tool errors |
+| 6 | Set `timeout`, `maxTotalTimeout`, and `AbortSignal` for long-running tools | Defaults will hang on slow tools; production work needs explicit cancellation |
+| 7 | Tokens belong server-side or in OAuth flows; browser headers carry only public values | `mcp-use/browser` headers are visible to anyone who opens devtools |
+| 8 | Use `mcp.state` (not `status`) and `storageProvider` (not `persistenceProvider`) | These names changed; older docs and AI-generated code still ship the old ones |
+| 9 | Check optional capabilities (e.g. completion) before calling them | Servers advertise capabilities — calling unsupported ones throws confusing errors |
+| 10 | Report what validation actually ran; do not imply runtime coverage from `tsc` alone | Type checks are necessary but not sufficient for client behavior verification |
 
 ## Workflow
 
-### 1. Detect What Exists
+### 1. Detect what exists
 
-Inspect the target path:
+Inspect the target path and look for client-side signals:
 
 ```bash
 tree -L 3 2>/dev/null || find . -maxdepth 3 -type f | sort
 ```
 
-Look for:
+Confirm:
 
-- `package.json` with `"mcp-use"` as a dependency
+- `package.json` has `"mcp-use"` as a dependency
 - imports from `"mcp-use"`, `"mcp-use/browser"`, or `"mcp-use/react"`
-- `MCPClient`, `MCPSession`, `useMcp`, `McpClientProvider`, `useMcpClient`, `useMcpServer`
+- presence of `MCPClient`, `MCPSession`, `useMcp`, `McpClientProvider`, `useMcpClient`, `useMcpServer`
 - `npx mcp-use client` scripts, `mcp.json`, `mcp.config.*`, `.vscode/mcp.json`
-- direct imports from `@modelcontextprotocol/sdk` that should route to raw SDK skills
+- direct imports from `@modelcontextprotocol/sdk` — these route to raw SDK skills, not here
+- imports from `"mcp-use/server"` — these route to `build-mcp-use-server`
+- `MCPAgent` usage — that routes to `build-mcp-use-agent`
 
-Then run the version preflight when Node/npm are available:
+Run the version preflight when Node/npm are available:
 
 ```bash
 bash skills/build-mcp-use-client/skills/build-mcp-use-client/scripts/check-mcp-use-version.sh <target-path>
@@ -47,7 +75,7 @@ bash skills/build-mcp-use-client/skills/build-mcp-use-client/scripts/check-mcp-u
 
 Read `scripts/check-mcp-use-version.sh.md` before changing the script or interpreting non-obvious output.
 
-### 2A. Existing Client Found
+### 2A. Existing client found — audit then fix
 
 Run the diagnostic script first:
 
@@ -57,45 +85,41 @@ bash skills/build-mcp-use-client/skills/build-mcp-use-client/scripts/diagnose-cl
 
 Read `scripts/diagnose-client.sh.md` for the diagnostic categories and exit-code contract.
 
-Audit the live implementation before editing:
+Audit the implementation against the surface map below before editing. Apply focused fixes — do not rebuild a working client from scratch.
 
-| Audit surface | Read | Check |
+| Audit surface | Read | Check for |
 |---|---|---|
 | constructor, config files, sessions, imports | `references/guides/client-configuration.md`, `references/guides/environments.md` | correct entry point, current Node/package baseline, awaited session creation, cleanup |
-| tools, resources, prompts, completion | `references/guides/tools.md`, `references/guides/resources.md`, `references/guides/prompts.md`, `references/guides/completion.md` | discovery before calls, `isError`, `structuredContent`, pagination, capability checks, timeouts/abort |
+| tools, resources, prompts, completion | `references/guides/tools.md`, `references/guides/resources.md`, `references/guides/prompts.md`, `references/guides/completion.md` | discovery before calls, `isError` handling, `structuredContent`, pagination, capability checks, timeouts/abort |
 | callbacks, auth, notifications | `references/guides/sampling.md`, `references/guides/elicitation.md`, `references/guides/authentication.md`, `references/guides/notifications-and-logging.md` | callback names, browser secret boundary, token expiry/re-auth, list-changed handlers |
 | React | `references/guides/usemcp-and-react.md` | `state` not `status`, one provider for multi-server apps, StrictMode-safe `addServer`, cleanup, all states handled |
 | code mode | `references/guides/code-mode.md` | executor isolation, `executeCode()`, `search_tools()`, `client.close()` |
-| production and troubleshooting | `references/patterns/production-patterns.md`, `references/patterns/anti-patterns.md`, `references/troubleshooting/common-errors.md` | reconnection, 404 recovery, idle proxy timeout, process shutdown, dropped connections |
+| production hardening | `references/patterns/production-patterns.md`, `references/patterns/anti-patterns.md`, `references/troubleshooting/common-errors.md` | reconnection, 404 recovery, idle proxy timeout, process shutdown, dropped connections |
 
-Apply focused fixes directly. Do not rebuild a working client from scratch.
+### 2B. No client found — build the smallest working integration
 
-### 2B. No Client Found
-
-If repo context gives the environment, server target, and auth shape, skip the questionnaire and build the smallest working client integration.
+If repo context already gives the environment, server target, and auth shape, skip the questionnaire and build directly.
 
 Pick the server target before coding:
 
-- Existing MCP server in the repo: connect to it and discover actual tools/resources/prompts.
+- Existing MCP server in the repo: connect to it and discover real capabilities.
 - Client mechanics only, no domain server: use `@modelcontextprotocol/server-everything` for a smoke test.
 - Domain-specific tool required but no server exists: route to `build-mcp-use-server` first.
 
-If no context answers the basics, ask only the missing questions:
+If context is missing, ask only the questions you cannot answer:
 
-1. Environment: Node CLI, Node service, browser app, React app, or `npx mcp-use client`.
-2. Server count: one server or multiple.
-3. Transport: stdio, Streamable HTTP, or mixed.
-4. Auth: none, bearer token, OAuth, custom public headers.
-5. React: standalone `useMcp` or provider-based multi-server app.
-6. Callbacks: sampling, elicitation, notifications/logging, or none.
-7. Code mode: no, trusted-local VM, E2B, or custom isolation.
-8. Production hardening: basic cleanup, reconnect/health checks, or full production setup.
+1. Environment — Node CLI, Node service, browser app, React app, or `npx mcp-use client`.
+2. Server count — one server or multiple.
+3. Transport — stdio, Streamable HTTP, or mixed.
+4. Auth — none, bearer token, OAuth, or custom public headers.
+5. React shape — standalone `useMcp` or provider-based multi-server app.
+6. Callbacks — sampling, elicitation, notifications/logging, or none.
+7. Code mode — no, trusted-local VM, E2B, or custom isolation.
+8. Production hardening — basic cleanup, reconnect/health checks, or full setup.
 
-### 3. Build Or Fix
+### 3. Build or fix in this order
 
-Use this order:
-
-1. Install or align prerequisites with current `npm view mcp-use` metadata; do not keep old Node 18 guidance for current releases.
+1. Align prerequisites against current `npm view mcp-use` metadata; do not keep old Node 18 guidance for current releases.
 2. Use the right import path: `mcp-use` for Node, `mcp-use/browser` for browser, `mcp-use/react` for React.
 3. Configure real server IDs and discover capabilities before hardcoding tool/resource/prompt names.
 4. Add auth without printing or committing secrets.
@@ -104,7 +128,9 @@ Use this order:
 
 ## Core Surface Map
 
-| Trigger | File | Reason |
+Route to the reference file matching the user's intent. Do not load files speculatively.
+
+| Trigger | File | Why |
 |---|---|---|
 | install, first Node/browser/React/CLI client | `references/guides/quick-start.md` | minimal runnable paths and first calls |
 | choose Node/browser/React/CLI entry point | `references/guides/environments.md` | environment matrix, imports, limits |
@@ -131,43 +157,30 @@ Use this order:
 
 ## Decision Rules
 
-### Runtime And Version
+### Runtime and version
 
 - Treat `npm view mcp-use version engines peerDependencies --json` as the source of truth for current install guidance.
-- Use the bundled version script before copying examples into a project.
-- Prefer examples that use the current major/minor line verified by npm metadata. Avoid stale `^1.21.0` pins.
+- Run `scripts/check-mcp-use-version.sh` before copying examples into a project.
+- Prefer examples that use the major/minor line npm metadata confirms. Avoid stale `^1.21.0` style pins.
 
 ### React
 
 - Use one `McpClientProvider` for multi-server apps.
-- Dynamic `addServer()` calls inside `useEffect` must be idempotent under React StrictMode; clean up temporary servers with `removeServer()` when appropriate.
-- Gate UI and effects on all states: `discovering`, `authenticating`, `pending_auth`, `ready`, `failed`.
+- Make dynamic `addServer()` calls inside `useEffect` idempotent under StrictMode; clean up temporary servers with `removeServer()` when appropriate.
+- Gate UI and effects on every state: `discovering`, `authenticating`, `pending_auth`, `ready`, `failed`.
 - Resource-reading effects must avoid setting state after unmount or after a newer request supersedes the old one.
 
-### Code Mode
+### Code mode
 
-- Use the VM executor only for trusted local code.
-- Use E2B or custom isolation for untrusted or multi-tenant code.
-- Call `client.close()` when code mode may allocate external resources.
+- VM executor for trusted local code only.
+- E2B or custom isolation for untrusted or multi-tenant code.
+- Always call `client.close()` because code mode may allocate external resources.
 
-### Streaming And Reconnection
+### Streaming and reconnection
 
-- Prefer Streamable HTTP for new HTTP clients; use legacy SSE only for compatibility.
-- Do not build WebSocket clients for MCP.
-- Route long-running tools to timeout/progress/abort guidance in `references/guides/tools.md` and production reconnection guidance in `references/patterns/production-patterns.md`.
-
-## Non-Negotiables
-
-1. Import from `mcp-use`, `mcp-use/browser`, or `mcp-use/react`; do not hand-roll raw SDK calls in wrapper-library client code.
-2. Await `createSession()` or `createAllSessions()` before using sessions.
-3. Always clean up with `closeAllSessions()` or `client.close()`; use `client.close()` for code mode.
-4. Discover tools/resources/prompts before hardcoding names.
-5. Handle `CallToolResult.isError`, `content`, `structuredContent`, and `_meta` deliberately.
-6. Set `timeout`, `maxTotalTimeout`, and `AbortSignal` for long-running tools.
-7. Put sensitive tokens server-side or in OAuth flows; browser headers are only for public/non-secret values.
-8. Use `mcp.state`, not `mcp.status`; use `storageProvider`, not `persistenceProvider`.
-9. Check optional capabilities such as completion before calling them.
-10. Report exactly what validation ran; do not imply runtime coverage from type checks alone.
+- Prefer Streamable HTTP for new HTTP clients; legacy SSE only for compatibility.
+- Do not build WebSocket clients for MCP — `mcp-use` does not target WebSocket transport.
+- Route long-running tools through timeout/progress/abort guidance in `references/guides/tools.md` and reconnection guidance in `references/patterns/production-patterns.md`.
 
 ## Validation
 
@@ -181,16 +194,16 @@ npx tsx src/client.ts
 npx mcp-use client connect --stdio "npx -y @modelcontextprotocol/server-everything" --name smoke
 ```
 
-For React, also exercise the rendered states: `discovering`, `authenticating`, `pending_auth`, `ready`, and `failed`. For auth issues, test 401/403, expired refresh token, popup blocked, redirect callback failure, and `pending_auth` loops against `references/guides/authentication.md` plus `references/troubleshooting/common-errors.md`.
+For React, exercise every rendered state: `discovering`, `authenticating`, `pending_auth`, `ready`, `failed`. For auth issues, test 401/403, expired refresh token, popup blocked, redirect callback failure, and `pending_auth` loops against `references/guides/authentication.md` plus `references/troubleshooting/common-errors.md`.
 
 ## Output Contract
 
 When finishing a client task, report:
 
-1. target path and environment: Node, browser, React, or CLI
-2. servers discovered or configured
-3. key APIs used: `MCPClient`, `MCPSession`, `useMcp`, provider hooks, code mode, CLI
-4. validation commands actually run
-5. whether runtime behavior was exercised or only type/lint checks passed
-6. references consulted
-7. auth/secrets caveat without printing secret values
+1. Target path and environment: Node, browser, React, or CLI.
+2. Servers discovered or configured.
+3. Key APIs used: `MCPClient`, `MCPSession`, `useMcp`, provider hooks, code mode, CLI.
+4. Validation commands actually run.
+5. Whether runtime behavior was exercised or only type/lint passed.
+6. References consulted.
+7. Auth/secrets caveat — without printing the secret values.

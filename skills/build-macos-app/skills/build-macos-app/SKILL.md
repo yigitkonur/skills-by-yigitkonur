@@ -1,33 +1,47 @@
 ---
 name: build-macos-app
-description: Use skill if you are building, auditing, or shipping a production-grade macOS SwiftUI or AppKit app needing HIG compliance, Liquid Glass design, snapshot validation, SwiftLint/SwiftFormat hooks, or Convex+Clerk cloud sync.
+description: Use skill if you are building, auditing, or shipping a native macOS SwiftUI or AppKit app needing HIG, Liquid Glass, snapshot validation, SwiftLint hooks, or Convex+Clerk sync.
 ---
 
 # Build macOS App
 
 Build, audit, or ship native macOS SwiftUI/AppKit apps with HIG compliance, Liquid Glass visual treatment, expectation-first visual validation, Swift quality hooks, and optional Convex + Clerk cloud sync.
 
-Keep this file as the spine. Load references only for the branch being executed.
+This file is the spine. Match the request to one Operation in the table below, then load only the references for that branch — do not preload the whole tree.
 
-## Trigger Boundary
+## When to use this skill
 
-Use this skill for:
+Trigger on any of:
 
 - Native macOS app work: new app scaffolds, feature implementation, redesigns, audits, migrations, release prep, or quality setup.
 - SwiftUI/AppKit projects with `*.xcodeproj`, `*.xcworkspace`, `Package.swift`, or Swift files that include a macOS app target.
-- macOS UI concerns: menus, keyboard shortcuts, windows, sidebars, toolbars, settings, accessibility, HIG conformance, Liquid Glass, snapshots, SwiftLint, SwiftFormat, or pre-commit hooks.
-- Multi-platform Apple repos only when a macOS target exists.
+- macOS UI concerns: menus, keyboard shortcuts, windows, sidebars, toolbars, settings, accessibility, HIG conformance, Liquid Glass, snapshot tests, SwiftLint, SwiftFormat, or pre-commit hooks.
+- Multi-platform Apple repos when a macOS target exists.
 - Convex + Clerk Swift client work when the app has a macOS surface.
+
+Example user phrases that should trigger this skill:
+
+- *"Make this Mac app feel native — it looks like an iOS app on a Mac."*
+- *"Audit this SwiftUI macOS app against the HIG and the Liquid Glass guidelines."*
+- *"Migrate this Mac app from macOS 14 to Tahoe / macOS 26."*
+- *"Wire SwiftLint, SwiftFormat, and a pre-commit hook into this Swift repo."*
+- *"Add `swift-snapshot-testing` to this macOS app and capture screenshots in CI."*
+- *"Hook up Convex + Clerk to my SwiftUI Mac app with reactive queries and SIWA."*
+- *"Build a `MenuBarExtra` app with Settings, command menu, and Cmd-Q wired up."*
+- *"Why does this Liquid Glass toolbar look wrong on macOS 26?"*
+- *"Pre-release checklist for shipping this Mac app."*
 
 Do NOT use this skill for:
 
 - iOS-only, iPadOS-only, visionOS-only, watchOS-only, or tvOS-only work without a macOS target.
-- Generic Swift package work with no app, UI, or macOS surface.
-- Pure server-side Convex, TypeScript, or backend-only work.
-- Non-Apple Swift on Linux or server-side Swift.
-- Browser automation or web snapshot testing; route those to browser or Playwright skills.
+- Generic Swift package work with no app, UI, or macOS surface (use the language-level skill set).
+- Pure server-side Convex, TypeScript, or backend-only work — even if the same product has a Mac client, route backend-only requests away.
+- Non-Apple Swift on Linux, Windows, or server-side Swift.
+- Browser automation or web snapshot testing — route to browser or Playwright skills.
+- Catalyst-only or Intel-Mac targets for the Convex + Clerk path (current ConvexMobile is Apple Silicon only).
+- Generic Swift quality-hook setup for a repo with no macOS target — the per-platform references for iOS, tvOS, watchOS, and visionOS exist *only* to support multi-platform Apple repos that also include macOS.
 
-Quality-hook platform references for iOS, tvOS, watchOS, and visionOS exist only for multi-platform Apple repos that also include macOS. They are not standalone triggers.
+If a request is ambiguous (e.g. "I'm building an Apple app"), confirm there is a macOS target before engaging.
 
 ## Platform Stance
 
@@ -42,32 +56,36 @@ Quality-hook platform references for iOS, tvOS, watchOS, and visionOS exist only
 
 ## HIG vs Liquid Glass
 
+HIG is the baseline that always applies. Liquid Glass is an additive, version-gated visual treatment layered on top of an HIG-correct view — never a substitute for it.
+
 | Decision | Apply |
 |---|---|
 | Interaction, menus, windows, keyboard shortcuts, settings, accessibility, typography, spacing, and standard controls | HIG is always the baseline. |
-| macOS 26 / Tahoe-era visual treatment for navigation, chrome, toolbars, sidebars, floating controls, sheets, popovers, and overlays | Liquid Glass may apply after HIG is satisfied. |
+| macOS 26 / Tahoe-era visual treatment for navigation, chrome, toolbars, sidebars, floating controls, sheets, popovers, and overlays | Liquid Glass may apply *after* HIG is satisfied. |
 | Content rows, text, tables, form fields, cards, and data surfaces | Never apply glass. Keep content readable and semantically styled. |
 | macOS 14/15 support | Gate Liquid Glass APIs with `#available(macOS 26, *)`; provide `NSVisualEffectView` or standard SwiftUI fallbacks. |
 
 ## Operations
 
-Detect the operation from the user's request, then load the narrowest reference set.
+Detect the operation from the user's request, then load the narrowest reference set. Each row routes to the entry point — that file may fan out into siblings, but the spine never preloads them.
 
-| Operation | Trigger | Route |
+| Operation | Trigger phrase / signal | Route |
 |---|---|---|
-| Bootstrap | New macOS app or first production scaffold | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
-| Build | Add a screen, view, app feature, command, or window behavior | Apply Three Questions, then route by subsystem below |
-| Redesign | Make it native, Apple-like, Tahoe-ready, or Liquid Glass | [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
-| Audit | Review, assess, find issues, or preflight quality | [references/workflow/audit-existing.md](references/workflow/audit-existing.md) |
-| Migrate | Pre-Tahoe code moving to macOS 26 | [references/liquid-glass/migration-guide.md](references/liquid-glass/migration-guide.md) |
-| Install hooks | SwiftLint, SwiftFormat, pre-commit, or CI quality setup | [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md) |
-| Add visual tests | Screenshot validation or snapshot harness | [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md) |
+| Bootstrap | New macOS app, fresh project, or first production scaffold | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
+| Build | "Add a screen / view / window / command", any new feature on an existing app | Apply the Three Questions, then route by subsystem in HIG / Liquid Glass routing tables below |
+| Redesign | "Make it native", "Apple-like", "Tahoe-ready", "make it Liquid Glass" | [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
+| Audit | "Review", "assess", "find issues", "preflight", "lint the design" | [references/workflow/audit-existing.md](references/workflow/audit-existing.md) |
+| Migrate | Pre-Tahoe code (macOS 14/15) moving to macOS 26 | [references/liquid-glass/migration-guide.md](references/liquid-glass/migration-guide.md) |
+| Install hooks | "Set up SwiftLint / SwiftFormat / pre-commit / CI quality" | [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md) |
+| Add visual tests | "Snapshot tests", "screenshot validation", "visual diff" | [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md) |
 | Wire cloud sync | Convex, Clerk, real-time queries, subscriptions, or auth-gated data | [references/cloud-sync/overview.md](references/cloud-sync/overview.md) |
-| Ship | Release checklist or final app-store/direct-distribution pass | [references/workflow/ship-checklist.md](references/workflow/ship-checklist.md) |
+| Ship | Release checklist, App Store, direct distribution, notarization | [references/workflow/ship-checklist.md](references/workflow/ship-checklist.md) |
 
-If the requested operation is ambiguous, make the smallest reasonable assumption and proceed.
+If the requested operation is ambiguous, make the smallest reasonable assumption and proceed; do not stall for confirmation on routine work.
 
 ## Core Guardrails
+
+These four rules and the Three Questions are the gate every Build operation must pass before any view code is written or modified.
 
 ### Three Laws Of macOS UI
 
@@ -81,7 +99,9 @@ If the requested operation is ambiguous, make the smallest reasonable assumption
 2. What is the one primary action?
 3. Would this feel native beside Finder, Mail, Photos, or Settings?
 
-Critical audit findings:
+If a request would violate any of the Three Laws, or any of the Three Questions has no clear answer, redesign before writing code.
+
+### Critical audit findings — route by smell
 
 | Finding | Route |
 |---|---|
@@ -92,6 +112,8 @@ Critical audit findings:
 | AppKit/SwiftUI ceiling confusion | [references/liquid-glass/appkit-bridging.md](references/liquid-glass/appkit-bridging.md), [references/hig/practitioner-insights.md](references/hig/practitioner-insights.md) |
 
 ## HIG Reference Routing
+
+Open the row that matches the topic in the request. Foundations cover *how things look*; components cover *individual controls*; platform covers *window-level structure*; technologies covers *system integrations*.
 
 | Need | Read |
 |---|---|
@@ -119,6 +141,8 @@ Critical audit findings:
 
 ## Liquid Glass Routing
 
+Read these only after HIG is satisfied for the view in question. Glass is a finishing layer, not a structural one.
+
 | Need | Read |
 |---|---|
 | SwiftUI and AppKit API surface | [references/liquid-glass/api-reference.md](references/liquid-glass/api-reference.md) |
@@ -133,7 +157,7 @@ Liquid Glass references carry WWDC 2025 session context. Do not duplicate sessio
 
 ## Visual Validation Routing
 
-Expectation-first discipline is separate from the pixel-diff library.
+Expectation-first discipline (decide what should be true, then look) is separate from the pixel-diff library (the SPM tool that captures and compares images). Use both; do not skip the discipline.
 
 | Need | Read |
 |---|---|
@@ -153,7 +177,7 @@ Hard guardrails:
 - Never commit an empty SwiftLint baseline as a legacy-project solution.
 - Never claim typecheck works without running it once end to end.
 
-Copy the bundled assets from the outer skill root:
+Copy the bundled assets from the outer skill root into the target repo:
 
 | Source | Destination | Purpose |
 |---|---|---|
@@ -255,6 +279,8 @@ Cloud-sync UI still obeys HIG and Liquid Glass rules: loading states use skeleto
 
 ## Workflow Routing
 
+Use these only when the operation in the request is a whole-app workflow (bootstrap, audit, ship) rather than a single-view change.
+
 | Need | Read |
 |---|---|
 | Bootstrap a new app end to end | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
@@ -263,10 +289,12 @@ Cloud-sync UI still obeys HIG and Liquid Glass rules: loading states use skeleto
 
 ## Output Contract
 
-When work using this skill ends, report:
+Every session that uses this skill ends with a single report block. Do not pad it; do not omit it.
 
-- What changed: file paths plus one line per change.
-- Verification rung reached:
+Report:
+
+- **What changed:** file paths plus one line per change. Group related edits.
+- **Verification rung reached** — claim the highest rung actually exercised, no more:
 
   | Rung | Meaning |
   |---|---|
@@ -277,6 +305,6 @@ When work using this skill ends, report:
   | 5 | Ran the program and observed the change |
   | 6 | User confirmed the changed behavior |
 
-- What remains, only if anything remains.
+- **What remains** — only if anything remains. Be specific (file path, intended next rung, blocker).
 
-Never claim done while the working tree is dirty, a guardrail is violated, or the stated verification rung was not actually reached.
+Never claim done while the working tree is dirty, a guardrail in this skill is violated, or the stated verification rung was not actually reached. If a Liquid Glass change was made but never run on a macOS 26 device or simulator, claim Rung 2 — not Rung 5.

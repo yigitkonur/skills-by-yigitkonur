@@ -1,49 +1,65 @@
 ---
 name: run-corpus-research
-description: This skill should be used when the user asks to "research a category", "build a corpus on", "compare 5+ <things>", "deep research on", "competitive landscape", "category map", "evaluate N options", "research the <market/space/segment>", "research <N> alternatives to X", or any request that requires a navigable evidence corpus with per-entity packs, cross-entity comparisons, and source-traceable claims. Use whenever the question is "compare/research N things for a decision" where N >= 5 and depth across multiple axes matters. Skip when the question is a single decision with one or two options (use run-research), when the user wants a single one-page summary, when the question is local-codebase only, or when N < 5 entities.
-version: 1.0.0
+description: Use skill if you are orchestrating multi-file evidence-corpus research over 5+ entities with per-entity packs, cross-axis comparisons, and source-traceable claims.
 ---
 
-# Deep Corpus Research
+# Run Corpus Research
 
-Orchestrate a multi-file evidence corpus over an entity population.
+Orchestrate a multi-file evidence corpus over a population of entities.
 Output is a navigable folder tree — per-entity evidence packs,
-cross-entity comparison rollups, source ledgers, profile pages,
-master summary — not a single report.
+cross-entity comparison rollups, source ledgers, profile pages, master
+summary — never a single report.
 
 The orchestrator does not search the web. The orchestrator architects,
 dispatches, gates, and synthesizes. Searching is the subagents' job,
 and they search via the `run-research` skill (which the orchestrator
 embeds into every research-doing subagent brief).
 
-## Trigger boundary
+## When to use
 
-Use this skill when:
+Use this skill if any of these match:
 
-- The question is "research / compare / evaluate N things" where
-  N ≥ 5.
-- The decider needs depth across multiple axes (cost, performance,
-  reliability, fit, risk, longevity — domain-dependent).
-- A single report cannot answer the question; a navigable corpus can.
-- Source-traceable claims matter — every numeric / versioned / priced
-  claim cites a verbatim quote.
+- *"compare 5+ tools / vendors / frameworks / providers"* across multiple axes
+- *"research the <category> / <market> / <ecosystem>"* and produce a navigable corpus, not a one-pager
+- *"build a category map / competitive landscape / vendor evaluation"* with source-traceable claims
+- *"evaluate N options for <decision>"* where N ≥ 5 and a one-page summary is insufficient
+- *"deep research on <space>"* with per-entity files, cross-axis files, and a master summary
+- *"audit / shortlist <population>"* against a fixed axis catalog (cost, performance, fit, risk, longevity)
+- *"every numeric / versioned / priced claim must cite a verbatim source quote"*
+- *"the deliverable is a folder tree the team can navigate"*, not a single document
 
-Skip when:
+Do NOT use when:
 
-- The question is a single decision with one or two options — use
-  `run-research`.
-- The user wants a one-page summary — use `run-research`.
-- The question is local-codebase only — use Explore-class agents.
-- N < 5 entities — corpus overhead exceeds value.
-- The user wants a polished single deliverable (battlecard, deck) —
-  this skill produces evidence; downstream skills polish it.
+- The question is one technical question with one or two options — use `run-research` (single-question, web + Reddit, single markdown).
+- The user wants a single polished one-page summary or battlecard — use `run-research`; downstream skills polish.
+- The work is a codex-template fanout (same template, many inputs) — use `orchestrate-codex` batch mode (the retired `run-batch-codex-research` shim points there).
+- The question is local-codebase only — use Explore-class agents, not corpus orchestration.
+- N < 5 entities — corpus overhead exceeds the value.
+
+## Boundary against `run-industry-research`
+
+`run-industry-research` is a specialization of this orchestration pattern
+focused on **markets / industries / vendor categories** with the same
+multi-file output. Both skills produce per-entity packs + cross-axis
+comparisons + source ledgers; the difference is framing, not mechanics.
+
+- If the user's framing is *"industry / market / vendor category /
+  competitive landscape"* → prefer `run-industry-research`. It already
+  bakes in the market-research vocabulary, deeper Reddit/practitioner
+  templates, and a stricter source-verification ledger.
+- If the user's framing is *"compare / research / evaluate N entities"*
+  in any other domain (open-source projects, models, hardware, papers,
+  candidates, locations, regulations, frameworks) → use this skill.
+  It is the domain-agnostic corpus orchestrator.
+
+When in doubt, ask the user one clarifying question about framing
+before dispatching Wave 1. Do not run both skills.
 
 ## The orchestrator's mental model
 
 Every deep-research question reduces to one shape: **a population of
-entities, evaluated across a set of axes, producing per-entity
-evidence packs + per-axis cross-entity comparisons + a master decision
-artifact.**
+entities, evaluated across a set of axes, producing per-entity evidence
+packs + per-axis cross-entity comparisons + a master decision artifact.**
 
 Strip away domain. What remains in every session:
 
@@ -53,24 +69,24 @@ Strip away domain. What remains in every session:
 - **A finite set of evaluation axes.** Dimensions the decider weighs.
   Each has a native primitive (a unit of measurement). The
   orchestrator's second task is to enumerate them.
-- **A decider with a use case.** Without this, "good" and "bad"
-  cannot be defined.
+- **A decider with a use case.** Without this, "good" and "bad" cannot
+  be defined.
 - **A decision artifact.** Without this, the research has no closing
   condition.
 
 The orchestrator's four jobs in order:
 
 1. **Decompose.** What are the entities, what are the axes? Read
-   `references/thinking.md`. Without rigorous decomposition, no
-   amount of evidence saves the corpus.
+   `references/thinking.md`. Without rigorous decomposition, no amount
+   of evidence saves the corpus.
 
 2. **Structure.** Design the folder tree, file-naming scheme, MAX-N
    ceilings — before any subagent dispatches. Read
    `references/filesystem.md`.
 
 3. **Dispatch.** Write briefs that bind subagents to their specific
-   scope, the run-research skill's discipline, and the file paths
-   they own. Read `references/subagent-briefs.md`.
+   scope, the run-research skill's discipline, and the file paths they
+   own. Read `references/subagent-briefs.md` for copy-paste templates.
 
 4. **Synthesize.** Read every output file personally; resolve
    contradictions; write the master summary. Read
@@ -90,8 +106,8 @@ The orchestrator's four jobs in order:
 | 7 — Verification + Master summary | Resolve contradictions, write master, run gates (orchestrator-personal) | `_meta/00-master-summary.md` + verification log |
 
 Wave 1, Wave 2, Wave 3, optional Wave 4 dispatch parallel subagents.
-Phase 0, 2, 3, 7 are orchestrator-personal (no subagents). Subagents
-in Wave 1, Wave 2, and promoted-entity Wave 4 invoke the run-research
+Phase 0, 2, 3, 7 are orchestrator-personal (no subagents). Subagents in
+Wave 1, Wave 2, and promoted-entity Wave 4 invoke the run-research
 skill; Wave 3 and profile-page Wave 4 subagents are local-files only
 (no web research).
 
@@ -110,9 +126,9 @@ subagent executes via its run-research session.
 | Profile pages | 4 / orch | LOCAL-ONLY: read pack, write profile |
 | Master summary | 7 | LOCAL-ONLY: orchestrator reads everything, writes |
 
-For tool API and operational thresholds (ceilings on URL counts, facet
-counts, parallel calls), the subagent's brief points to run-research's
-own `references/tools.md`.
+For tool API and operational thresholds (URL counts, facet counts,
+parallel calls), the subagent's brief points to the `run-research`
+skill's own tool reference inside its installed copy.
 
 ## Reference routing
 
@@ -121,14 +137,14 @@ at once exhausts context.
 
 | Reference | Read when |
 |---|---|
-| `thinking.md` | Phase 0, every session — the decomposition protocol; what counts as an entity vs axis vs primitive |
-| `templates.md` | Phase 0, 2, 3 — concrete formats for charter, product template, axis templates, file budget; tier-promotion mechanics |
-| `orchestration.md` | Wave 1, 2, 3 — wave choreography, parallel-dispatch rules, tool steering, between-wave gate procedure |
-| `filesystem.md` | Phase 3 — directory contract, MAX-N caps, file naming, context-sharing through files |
-| `subagent-briefs.md` | Wave 1, 2, 3, 4 — copy-paste-ready brief templates with the run-research integration block |
-| `synthesis.md` | Phase 7 — claims ledger discipline, profile-page template, master-summary structure, personal-read gate procedure |
-| `verification.md` | Phase 7 — completion-gate commands and template-coverage audit |
-| `failure-modes.md` | Any wave — recovery procedures for subagent timeouts, shallow output, MAX-N overflow, contradictions |
+| `references/thinking.md` | Phase 0, every session — the decomposition protocol; what counts as an entity vs axis vs primitive |
+| `references/templates.md` | Phase 0, 2, 3 — concrete formats for charter, product template, axis templates, file budget; tier-promotion mechanics |
+| `references/orchestration.md` | Wave 1, 2, 3 — wave choreography, parallel-dispatch rules, tool steering, between-wave gate procedure |
+| `references/filesystem.md` | Phase 3 — directory contract, MAX-N caps, file naming, context-sharing through files |
+| `references/subagent-briefs.md` | Wave 1, 2, 3, 4 — copy-paste-ready brief templates with the run-research integration block |
+| `references/synthesis.md` | Phase 7 — claims ledger discipline, profile-page template, master-summary structure, personal-read gate procedure |
+| `references/verification.md` | Phase 7 — completion-gate commands and template-coverage audit |
+| `references/failure-modes.md` | Any wave — recovery procedures for subagent timeouts, shallow output, MAX-N overflow, contradictions |
 
 ## Hard rules
 
@@ -144,8 +160,8 @@ at once exhausts context.
 - **Every numeric / versioned / priced claim cites a verbatim quote.**
   Snippet citations are forbidden.
 - **MAX-N caps are ceilings, not targets.** 15 per entity / 12 per
-  cross-axis / 8 per meta. Below ceiling is normal; sparse evidence
-  is acceptable.
+  cross-axis / 8 per meta. Below ceiling is normal; sparse evidence is
+  acceptable.
 - **No silent gap-skipping.** A section with insufficient evidence
   becomes a one-paragraph "insufficient evidence" entry naming the
   data gap — never a stub file, never absent.
@@ -187,10 +203,10 @@ If you notice yourself doing any of the following — **stop**:
   "insufficient evidence" entry naming the data gap.
 - **Dispatching more than 8 subagents in one wave** → STOP.
   Coordination overhead exceeds parallelism savings. Split into
-  sub-waves.
+  sub-waves. See `references/orchestration.md`.
 - **Summarizing Reddit as "consensus"** without per-comment
   attribution → STOP. Apply the audience-evidence fields from
-  `synthesis.md`.
+  `references/synthesis.md`.
 - **Treating a vendor's marketing page as confirmed fact** → STOP.
   Re-classify per source hierarchy; vendor claims belong in the
   vendor-claim ledger row.
@@ -203,24 +219,35 @@ If you notice yourself doing any of the following — **stop**:
   report") → STOP. This skill produces a multi-file corpus. If the
   user wants a single report, redirect to `run-research`.
 - **Skipping the completion gate** ("looks done") → STOP. Run the
-  verification commands. Template-coverage audit, link check,
-  source-ledger presence are non-negotiable.
+  verification commands in `references/verification.md`.
+  Template-coverage audit, link check, source-ledger presence are
+  non-negotiable.
+- **Subagent stalled, timed out, or returned shallow output** → STOP
+  improvising. Apply the recovery procedures in
+  `references/failure-modes.md`.
 
 ## Quick start
 
 The first five minutes of any session:
 
 1. **Phase 0**: ask the user up to 3 clarifying questions (decider /
-   use case / scale). Write `_meta/01-charter.md` initial draft.
+   use case / scale). Write `_meta/01-charter.md` initial draft. Read
+   `references/thinking.md` and `references/templates.md` for the
+   charter format.
 2. **Wave 1**: dispatch two parallel subagents in one tool message —
-   discovery + scope-mapping. Both invoke run-research. Wait.
+   discovery + scope-mapping. Both invoke run-research. Use the brief
+   template in `references/subagent-briefs.md`. Wait.
 3. **Phase 2/3**: read Wave 1 outputs; write templates and
-   architecture. Show the architecture to the user before Wave 2.
+   architecture per `references/templates.md` and
+   `references/filesystem.md`. Show the architecture to the user
+   before Wave 2.
 
 After that, the loop is: Wave 2 (per-entity, possibly multiple
 sub-waves) → Wave 3 (per-axis cross) → optional Wave 4 → Phase 7
-verification + master summary.
+verification + master summary. Wave choreography lives in
+`references/orchestration.md`; the Phase 7 gate procedure lives in
+`references/verification.md` and `references/synthesis.md`.
 
 If anything is unclear, the question is almost always upstream: read
-`thinking.md` and clarify the decomposition before dispatching more
-agents.
+`references/thinking.md` and clarify the decomposition before
+dispatching more agents.

@@ -1,149 +1,139 @@
 ---
 name: build-chrome-extension
-description: Use skill if you are building or debugging a Chrome MV3 extension with service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing.
+description: Use skill if you are building or debugging a Chrome MV3 extension — manifest.json v3, service_worker, content_scripts, chrome.runtime/storage/alarms, popup, side_panel, declarativeNetRequest, or Web Store packaging.
 ---
 
 # Build Chrome Extension
 
-Build, debug, package, and prepare Chrome Manifest V3 extensions for Web Store review.
+Build, debug, package, and ship Chrome Manifest V3 extensions. Optimize for restart-safe service workers, isolated content scripts, least-privilege permissions, and Web Store review readiness.
 
-## Trigger Boundary
+## When To Use
 
-Use this skill for Chrome MV3 extension work:
+Trigger when the request matches any of:
 
-- creating a new Chrome MV3 extension
-- adding extension surfaces: content scripts, popup, options, side panel, service worker, offscreen document
-- fixing MV3 lifecycle, messaging, storage, manifest, permission, or content-script issues
-- migrating a Chrome extension from MV2 to MV3
-- choosing a Chrome MV3 extension framework
-- validating built output, packaging a Web Store zip, or preparing Web Store review notes
+- *creating a new Chrome MV3 extension or scaffolding from a framework (WXT, Plasmo, CRXJS, Vite)*
+- *editing or generating `manifest.json` with `manifest_version: 3`, `service_worker`, `content_scripts`, `host_permissions`, `action`, or `side_panel` fields*
+- *implementing or debugging `chrome.runtime`, `chrome.storage`, `chrome.alarms`, `chrome.scripting`, `chrome.tabs`, `chrome.declarativeNetRequest`, `chrome.sidePanel`, or `chrome.offscreen` APIs*
+- *fixing MV3 service-worker lifecycle issues: idle termination, top-level listener registration, async `onMessage` returns, `chrome.alarms` vs `setInterval`*
+- *bridging content scripts between ISOLATED and MAIN worlds, or routing fetches through the service worker for cross-origin host permissions*
+- *migrating an MV2 extension to MV3 (background page → service worker, blocking `webRequest` → `declarativeNetRequest`, browser_action → action)*
+- *validating a built `dist/` or `.output/chrome-mv3/` folder, packaging the Web Store zip, writing privacy/permission justifications, or preparing review notes*
+- *choosing or comparing Chrome MV3 frameworks for a new project*
 
-Do not use this skill for:
+Do NOT use this skill when:
 
-- Firefox, Safari, or cross-browser extension builds; route to a browser-extension skill with that scope
-- Edge enterprise-policy extension deployment or managed policy packaging
-- generic website, app, or component work without Chrome extension APIs
-- generic browser automation; use `run-playwright` or `run-agent-browser`
-- writing Playwright suites beyond extension-specific launch/load patterns; use `run-playwright`
-- npm/package-registry publishing; use `publish-npm-package`
-- Raycast or other platform extension artifacts; use the platform-specific skill such as `build-raycast-script-command`
+- *the target is Firefox, Safari, or a cross-browser polyfill (`browser.*` namespace, `web-ext` tooling, Safari App Extensions)*
+- *the request is generic browser automation outside an extension context — route to `run-playwright` or `run-agent-browser`*
+- *publishing a regular npm package or library — route to `publish-npm-package`*
+- *building a different platform's extension surface (Raycast script command, VS Code extension, Edge enterprise-policy package) — route to that platform's skill*
 
-## Pinned Defaults
+## Pinned Defaults — Apply Before Generating Code
 
 | Key | Default |
 |---|---|
-| Manifest target | MV3 only; never generate MV2 |
-| Greenfield framework | WXT unless the repo already dictates another Chrome MV3 tool |
-| State model | Persistent state in `chrome.storage.local`; ephemeral restart-safe state in `chrome.storage.session` |
-| Background model | Event-driven service worker with top-level listeners |
-| Network modification | `declarativeNetRequest`, not blocking `webRequest` |
-| Permissions | Least privilege; prefer runtime optional permissions |
-| Loaded folder | Built output only: WXT `.output/chrome-mv3-dev/` or `.output/chrome-mv3/`, Plasmo `build/chrome-mv3-*`, CRXJS/vanilla `dist/` |
-| Package preflight | Run the bundled manifest and package scripts before zipping |
+| Manifest target | `manifest_version: 3` only; never generate MV2 |
+| Greenfield framework | WXT unless the repo already chose another MV3 tool |
+| Persistent state | `chrome.storage.local`; `chrome.storage.session` for ephemeral restart-safe state |
+| Background model | Event-driven service worker, listeners registered synchronously at top level |
+| Periodic work | `chrome.alarms` — never `setTimeout`/`setInterval` for background scheduling |
+| Network modification | `chrome.declarativeNetRequest` — never blocking `webRequest` |
+| Permissions | Least privilege; prefer `optional_permissions` and `optional_host_permissions` granted via `chrome.permissions.request` |
+| Loaded folder | Built output only: WXT `.output/chrome-mv3-dev/` or `.output/chrome-mv3/`; Plasmo `build/chrome-mv3-*`; CRXJS/Vite `dist/` |
+| Package preflight | Run `scripts/check-mv3-manifest.sh` and `scripts/preflight-extension.sh` against the production build before zipping |
 
-## MV3 Footguns
+## MV3 Footguns — Keep In Working Memory
 
-Keep these in working memory before generating files:
+These are the failures that recur across every MV3 build. Internalize before writing code:
 
-- Service workers idle out; global state disappears. Persist state before and after meaningful work.
-- Register all service-worker event listeners synchronously at top level.
-- `setTimeout` and `setInterval` do not make background work reliable. Use `chrome.alarms`.
-- Async `chrome.runtime.onMessage` handlers must return `true` synchronously.
-- Content scripts run in isolated worlds by default. Use MAIN world only for page-JS access, then bridge safely.
-- Extension-origin fetches need `host_permissions`; content-script fetches remain subject to the page origin.
-- MV3 blocks inline scripts, `eval()`, `new Function()`, and remote executable code.
-- Hand-written manifests must point at built files, not `src/*.ts` or source-only HTML.
+- Service workers idle out (~30s default). Global module-scope state disappears between events. Persist before each await and rehydrate at event entry.
+- Register `chrome.runtime.onMessage`, `onInstalled`, `onStartup`, alarm, and tab listeners **synchronously at top level**. Late-registered listeners miss wake-up events.
+- `setTimeout`/`setInterval` cannot keep a service worker alive and will not fire reliably across idle cycles. Use `chrome.alarms.create` with `periodInMinutes >= 0.5`.
+- `chrome.runtime.onMessage` async handlers must `return true` synchronously to keep the message channel open; otherwise `sendResponse` throws.
+- Content scripts run in an isolated world by default. The page's JS, frameworks, and `window.*` globals are invisible. Use `world: "MAIN"` only for page-JS access, then bridge with `postMessage` plus a same-origin token.
+- Extension-origin `fetch` requires matching `host_permissions`. Content-script `fetch` is bound by the page's origin and CORS rules — route privileged requests through the service worker via `chrome.runtime.sendMessage`.
+- MV3 CSP forbids inline `<script>`, `eval()`, `new Function()`, and remote executable code. Bundle everything; no CDN-loaded scripts.
+- Hand-written `manifest.json` paths must point at built artifacts (e.g. `background.js`, `content.js`, `popup.html`), never `src/*.ts` or unbuilt source.
+- Requesting `<all_urls>` or broad host permissions at install time triggers Web Store review friction. Prefer `activeTab` plus optional host grants.
 
 ## Decision Rules
 
-Use these rules before writing code:
-
 | Decision | Default | Escalate when |
 |---|---|---|
-| Background state | Persist through `chrome.storage.session` or `chrome.storage.local` | State needs transactions, large indexes, or binary blobs; consider IndexedDB |
-| Periodic work | `chrome.alarms` | Work needs continuous real-time transport; design reconnect and queue behavior |
-| Network changes | `declarativeNetRequest` | Read-only observation is enough; use non-blocking `webRequest` only for observation |
-| Page data fetch | Service worker fetch with host permissions | Content script can safely use the page origin without extra privileges |
-| Page JS access | MAIN world bridge with validation | DOM-only access is enough; stay in ISOLATED world |
-| UI persistence | `chrome.storage.session` for transient UI state | Settings or user choices must survive browser restart; use `local` or `sync` |
-| Host access | `activeTab` or optional host permissions | The extension cannot function without install-time host access |
-| Side panel | Use for persistent companion workflows | A quick action or short form fits in popup |
-| Offscreen document | Use only for DOM, canvas, clipboard, audio, or worker needs from the service worker | Popup/options/content script can own the DOM work |
+| Background state | `chrome.storage.session`/`local` | Transactions, large indexes, binary blobs → IndexedDB |
+| Periodic work | `chrome.alarms` | Real-time stream → design reconnect + queue |
+| Network modification | `declarativeNetRequest` | Read-only observation → non-blocking `webRequest` |
+| Page data fetch | Service worker `fetch` with host permissions | Page origin is sufficient → content-script `fetch` |
+| Page JS access | `world: "MAIN"` bridge with payload validation | DOM-only access → stay in ISOLATED world |
+| UI state persistence | `chrome.storage.session` | Must survive browser restart → `local` or `sync` |
+| Host access | `activeTab` or optional host grants | Extension is non-functional without install-time host access |
+| Side panel vs popup | Side panel for persistent companion UI | Quick action or short form → popup |
+| Offscreen document | DOM/canvas/clipboard/audio/Worker from service worker | Popup/options/content script can own it → skip |
 
-## Chrome-Only Boundary Matrix
+## Routing Boundary
 
 | Request shape | Action |
 |---|---|
 | "Build a Chrome extension" | Use this skill; target MV3 |
-| "Build a browser extension for Chrome and Firefox" | Keep Chrome MV3 here; route cross-browser build rules elsewhere |
-| "Automate this website in a browser" | Use `run-playwright` or `run-agent-browser` |
-| "Write Playwright tests for an extension" | Keep extension launch/load notes here; route test-suite authoring to `run-playwright` |
-| "Publish the package to npm" | Use `publish-npm-package` |
-| "Submit to Chrome Web Store" | Use this skill; read Web Store reference |
-| "Deploy through enterprise policy" | Treat as out of scope unless the repo has a dedicated enterprise policy skill |
-
-## Minimal Build Evidence
-
-Before stopping, collect the smallest proof that matches the task:
-
-| Task | Evidence |
-|---|---|
-| New scaffold | built output path plus manifest check script result |
-| Feature change | relevant unit/integration test plus manual load note when Chrome behavior changed |
-| Manifest/permission change | manifest check script result plus permission justification |
-| Content-script change | allowed URL and disallowed URL injection result |
-| Service-worker change | restart-resilience note or explicit not-exercised caveat |
-| Package/Web Store work | package preflight result, zip path, and review notes |
+| "Build for Chrome and Firefox" | Keep Chrome MV3 here; cross-browser layer is out of scope |
+| "Automate a website in a browser" | Route to `run-playwright` or `run-agent-browser` |
+| "Write Playwright tests for an extension" | Extension launch/load notes here; full Playwright suite → `run-playwright` |
+| "Publish to npm" | Route to `publish-npm-package` |
+| "Submit to Chrome Web Store" | Use this skill; read `references/publishing/web-store.md` |
+| "Deploy via enterprise policy" | Out of scope unless a dedicated enterprise skill exists |
 
 ## Workflow
 
 ### 1. Scope The Extension
 
-**Think first:** "Which extension contexts exist, which Chrome APIs are required, and which permissions can be delayed until runtime?"
+Ask: *"Which extension surfaces exist, which Chrome APIs are required, which permissions can be deferred to runtime?"*
 
-1. Identify required surfaces: popup, options, side panel, content script, service worker, offscreen document.
-2. Identify Chrome APIs and required permissions.
-3. Choose install-time vs optional permissions.
-4. Choose framework using `references/frameworks/comparison.md`.
-5. Record the built output folder that Chrome will load.
+1. List required surfaces: popup, options, side panel, content script, service worker, offscreen document, devtools.
+2. List required Chrome APIs and resulting permissions.
+3. Split install-time vs `optional_permissions`/`optional_host_permissions`.
+4. Choose the framework — see `references/frameworks/comparison.md`.
+5. Record the built-output folder Chrome will load.
 
 ### 2. Scaffold Or Adapt
 
-**Think first:** "Is this a greenfield Chrome MV3 build, an existing framework build, or a hand-written manifest?"
+Ask: *"Greenfield, existing framework build, or hand-written manifest?"*
 
 - Greenfield default: WXT.
-- Existing Vite app becoming an extension: CRXJS if it keeps the change small.
-- Explicit manual control or custom build: vanilla + Vite.
-- Existing repo: follow the repo's framework and output conventions.
+- Existing Vite app becoming an extension: CRXJS.
+- Custom build pipeline / explicit control: vanilla + Vite.
+- Existing repo: follow its framework and output conventions.
 
-Use built output only. Chrome should never load `src/`, framework cache directories, or unbundled TypeScript.
+Chrome must load the built output folder, never `src/` or unbundled TypeScript.
 
 ### 3. Implement Extension Contexts
 
-**Think first:** "Which context owns the state, which context owns the DOM, and which messages cross the boundary?"
+Ask: *"Which context owns the state, which owns the DOM, which messages cross the boundary?"*
 
-- Service worker: read `references/patterns/service-worker.md`.
-- Content scripts: read `references/patterns/content-scripts.md`.
-- Popup/options/side panel: read `references/patterns/ui-surfaces.md`.
-- Messaging: read `references/apis/messaging.md`.
-- Storage: read `references/apis/storage.md`.
-- Permissions and runtime grants: read `references/manifest/permissions.md`.
-- Core APIs: read `references/apis/core-apis.md`.
+Read the matching reference before writing code:
 
-Keep UI logic separate from extension plumbing when practical. Validate messages, storage reads, external API data, and content-script bridge payloads at boundaries.
+- Service worker lifecycle, persistence, alarms, offscreen → `references/patterns/service-worker.md`
+- Content scripts, world isolation, idempotency, cross-origin routing → `references/patterns/content-scripts.md`
+- Popup, options, side panel, devtools, new-tab surfaces → `references/patterns/ui-surfaces.md`
+- One-time messages, ports, external/native messaging, page bridges → `references/apis/messaging.md`
+- `chrome.storage` areas, quotas, typed wrappers, migrations → `references/apis/storage.md`
+- Tabs, scripting, alarms, DNR, side panel, offscreen, runtime → `references/apis/core-apis.md`
+- Manifest shape, required fields, output-path checks → `references/manifest/manifest-v3.md`
+- Install-time, optional, host, runtime permissions → `references/manifest/permissions.md`
+- MV2 → MV3 migration → `references/manifest/mv2-to-mv3.md`
+
+Validate every cross-boundary payload: messages, storage reads, external API responses, MAIN-world bridge data.
 
 ### 4. Validate Built Output
 
-**Think first:** "Can Chrome load this exact output folder, and do all manifest paths exist there?"
+Ask: *"Can Chrome load this exact folder, and do all manifest paths exist there?"*
 
-Run the bundled checks from the skill directory:
+Run from the skill directory against your build folder:
 
 ```bash
 scripts/check-mv3-manifest.sh dist
 scripts/preflight-extension.sh dist
 ```
 
-Adjust the path for framework output:
+Adjust the path per framework:
 
 | Framework | Dev output | Production output |
 |---|---|---|
@@ -152,80 +142,69 @@ Adjust the path for framework output:
 | CRXJS | `dist/` | `dist/` |
 | Vanilla Vite | `dist/` | `dist/` |
 
-Read `scripts/check-mv3-manifest.md` and `scripts/preflight-extension.md` before changing either script.
+Read `scripts/check-mv3-manifest.md` and `scripts/preflight-extension.md` before modifying either script.
 
 ### 5. Test Extension Behavior
 
-**Think first:** "What failure would only appear after Chrome loads the extension?"
+Ask: *"What failure only appears once Chrome loads the extension?"*
 
-Keep this skill focused on extension-specific checks:
-
-- Unit-test pure logic and message/storage helpers.
-- Mock `chrome.*` only at test boundaries.
-- Manually load the built output in `chrome://extensions`.
-- Inspect the service worker from `chrome://extensions`.
-- Test service-worker restart resilience.
+- Unit-test pure logic and message/storage helpers; mock `chrome.*` only at boundaries.
+- Manually load the built output via `chrome://extensions` → "Load unpacked".
+- Inspect the service worker from the extensions page; trigger an idle/wake cycle.
 - Test content-script injection on allowed and disallowed URLs.
-- Verify runtime permission request UX.
+- Verify the runtime permission request UX (`chrome.permissions.request`) before the host call.
 
-Read `references/testing/testing-guide.md` for extension-specific testing. Route broad browser automation or full Playwright authoring to `run-playwright` or `run-agent-browser`.
+Read `references/testing/testing-guide.md` for extension-specific tests and `references/testing/debugging.md` for service-worker, popup, content-script, permission, and storage debugging. Route broad Playwright authoring to `run-playwright`.
 
 ### 6. Package For Web Store Review
 
-**Think first:** "Would a reviewer understand the single purpose, permission need, data use, and remote-code posture?"
+Ask: *"Could a reviewer state the single purpose, each permission's need, the data use, and the remote-code posture in one sentence each?"*
 
 1. Build production output.
-2. Run both bundled scripts against the production output.
-3. Remove junk before zipping: source maps unless intentionally shipped, tests, `.DS_Store`, `__MACOSX`, local caches.
-4. Create the package zip from inside the built output folder.
-5. Prepare Privacy practices, permission justifications, remote-code disclosure, data-use certification, and test instructions.
+2. Run both bundled scripts against that production build.
+3. Strip junk before zipping: source maps (unless intentionally shipped), tests, `.DS_Store`, `__MACOSX`, framework caches.
+4. Create the zip from inside the built-output folder (so `manifest.json` sits at the zip root).
+5. Prepare: privacy practices, per-permission justification, remote-code disclosure, data-use certification, reviewer test instructions.
 6. Read `references/publishing/web-store.md` before submission.
 
-## Canonical Routing
+## Minimal Build Evidence
 
-| Need | Read |
+Match evidence to the task before stopping:
+
+| Task | Evidence |
 |---|---|
-| Manifest shape, required fields, output-path checks | `references/manifest/manifest-v3.md` |
-| MV2 to MV3 migration | `references/manifest/mv2-to-mv3.md` |
-| Install-time, optional, host, and runtime permissions | `references/manifest/permissions.md` |
-| Service-worker lifecycle, persistence, alarms, offscreen documents | `references/patterns/service-worker.md` |
-| Content-script injection, worlds, idempotency, cross-origin request routing | `references/patterns/content-scripts.md` |
-| Popup, options, side panel, DevTools, new-tab surfaces | `references/patterns/ui-surfaces.md` |
-| One-time messages, ports, external/native messaging, page bridges | `references/apis/messaging.md` |
-| `chrome.storage` areas, quotas, typed wrappers, migrations | `references/apis/storage.md` |
-| Tabs, scripting, alarms, DNR, side panel, offscreen, runtime APIs | `references/apis/core-apis.md` |
-| WXT, Plasmo, CRXJS, vanilla Vite selection for Chrome MV3 | `references/frameworks/comparison.md` |
-| Extension-specific tests and Chrome load checks | `references/testing/testing-guide.md` |
-| Debugging service worker, popup, content script, permissions, storage | `references/testing/debugging.md` |
-| Web Store listing, privacy, policy, package, review readiness | `references/publishing/web-store.md` |
-| Built manifest sanity check script | `scripts/check-mv3-manifest.md` |
-| Package/Web Store preflight script | `scripts/preflight-extension.md` |
+| New scaffold | Built-output path + `check-mv3-manifest.sh` result |
+| Feature change | Relevant unit/integration test + manual-load note when Chrome behavior changed |
+| Manifest/permission change | `check-mv3-manifest.sh` result + permission justification |
+| Content-script change | Allowed-URL injection result + disallowed-URL injection result |
+| Service-worker change | Restart-resilience note OR explicit "not exercised" caveat |
+| Package/Web Store work | `preflight-extension.sh` result + zip path + reviewer notes |
 
 ## Output Contract
 
-Final reports for Chrome extension work should include:
+Final reports include:
 
 - loaded build directory
-- zip path, when packaged
-- Chrome version used for manual load, when manually tested
-- permissions and host-permissions justification summary
-- Web Store policy notes: single purpose, data use, remote code, MV2/MV3 posture
-- scripts and tests run, including any failures
+- zip path (when packaged)
+- Chrome version used for manual load (when manually tested)
+- summary of permissions and host-permissions justification
+- Web Store policy posture: single purpose, data use, remote code, MV3 compliance
+- scripts/tests run, including failures
 - reviewer notes for remaining manual checks
 
 ## Guardrails
 
 - Never generate or preserve Manifest V2 for new work.
-- Never load source folders in Chrome unless the framework explicitly outputs loadable code there.
-- Never use global variables as durable service-worker state.
-- Never rely on timers to keep the service worker alive.
+- Never load `src/` in Chrome unless the framework explicitly emits loadable code there.
+- Never hold durable state in module-scope globals inside the service worker.
+- Never rely on `setTimeout`/`setInterval` to keep the service worker alive.
 - Never use blocking `webRequest` for normal MV3 network modification.
-- Never request `<all_urls>` without a feature-level justification and narrower alternatives.
-- Never expose arbitrary background fetch through content-script messages.
+- Never request `<all_urls>` without a feature-level justification and a documented narrower alternative.
+- Never expose arbitrary background `fetch` through unauthenticated content-script messages.
 - Never ship remote executable code or undeclared remote-code behavior.
-- Always validate built output paths against `manifest.json`.
-- Always make extension permissions explainable in one sentence each.
+- Always validate built-output paths against `manifest.json` before claiming done.
+- Always make each permission explainable in one sentence.
 
 ## Bottom Line
 
-Build Chrome MV3 around restart-safe state, top-level service-worker listeners, least-privilege permissions, built-output validation, and Web Store review evidence. Route tutorials to references; keep the spine for decisions, defaults, and proof.
+MV3 punishes the same mistakes repeatedly: lost service-worker state, late-registered listeners, timer-based scheduling, isolated-world surprises, over-broad permissions, and shipping `src/` instead of built output. Apply the pinned defaults, route to references for depth, run the bundled scripts against the built folder, and produce review-ready evidence.

@@ -1,14 +1,31 @@
 ---
 name: run-agent-browser
-description: Use skill if you are driving agent-browser CLI @ref snapshots for stateful sessions, browser navigation, forms, screenshots, extraction, or provider/stealth runs.
+description: Use skill if you are driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, sessions, forms, extraction, screenshots, headed/stealth, or provider runs.
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*), Bash(bash scripts/check-agent-browser-version.sh:*), Bash(bash scripts/inspect-page.sh:*)
 ---
 
 # Browser Automation with agent-browser
 
-Use this skill when the task should be executed through the `agent-browser` CLI: `@ref` snapshots, stateful sessions, providers, screenshots, DOM-grounded extraction, headed/stealth runs, or cloud-backed browser flows. If the task is diagnosis in DevTools rather than browser automation, use the relevant debug skill.
+Drive the `agent-browser` CLI as the agent's hands inside a browser: open URLs, snapshot interactive refs, fill forms, click, extract DOM, screenshot, switch tabs, persist sessions, run headed/stealth, or dispatch through providers. This skill owns ad hoc, terminal-driven browser tasks where a human-style operator loop (observe → act → verify) is appropriate.
 
-## Decision gate
+## When to use this skill
+
+Use this skill when:
+- *the user names `agent-browser`, `npx agent-browser`, `@ref` snapshots, `snapshot -i`, or any agent-browser flag (`--session-name`, `--profile`, `--headed`, `-p browserbase|browseruse|kernel|ios`, `--engine lightpanda`)*
+- *the task is one-off browser automation done by the agent itself — log in, click, fill a form, scrape data, take a screenshot, capture page state*
+- *the workflow needs deterministic DOM-grounded verification (`get url`, `get text`, `get value`, `is visible`, `diff snapshot`) rather than asserted test code*
+- *multi-tab, popup, OAuth, or session-isolated flows must reuse one browser context across many commands*
+- *hosted, mobile, geo, or anti-bot pressure requires `--headed`, stealth, profiles, or a remote provider through the same CLI*
+- *another skill (`convert-url-to-nextjs`, `extract-saas-design`) needs live browser evidence — DOM, screenshots, runtime metadata, asset URLs — captured and handed back*
+
+Do NOT use this skill when:
+- the user explicitly asks for `@anthropic-ai/playwright-cli` / `playwright-cli` artifacts or stable end-to-end test code → use `run-playwright`
+- the deliverable is TypeScript code on `@onkernel/sdk` or Kernel Apps → use `build-kernel-ts-sdk`
+- the deliverable is a rebuilt Next.js project from a captured site → ownership stays with `convert-url-to-nextjs`; this skill is only invoked for capture
+- the deliverable is a SaaS visual-system writeup → ownership stays with `extract-saas-design`; this skill is only invoked for browser evidence
+- the task is static research, DevTools-first profiling, or anything that does not require an active browser context
+
+## Decision gate (which CLI?)
 
 | Need | Skill |
 |---|---|
@@ -18,23 +35,18 @@ Use this skill when the task should be executed through the `agent-browser` CLI:
 | Rebuild a captured site into Next.js | `convert-url-to-nextjs` owns the build; call this skill only for capture |
 | Document an existing SaaS/admin visual system | `extract-saas-design` owns the docs; call this skill only for browser evidence |
 
-## Trigger boundaries
+## Non-negotiable operating rules
 
-Use this skill for:
-- terminal-driven browser automation with `agent-browser`
-- form filling, login flows, data extraction, screenshots, and DOM-grounded web app checks with `@ref` snapshots
-- multi-tab or multi-session workflows where `snapshot -i --json`, refs, and deterministic verification matter
-- hosted, headed, stealth, profile, session-name, or provider-backed browser runs through the `agent-browser` CLI
+1. **Observe before acting.** After open, navigation, tab switch, popup, frame change, or major click, wait for state and run `snapshot -i` before choosing the next action.
+2. **Reuse the current session by default.** Do not spawn a new session just because you changed pages.
+3. **Prefer a new tab over a new window.** Use `window new` only when the site or task truly requires a separate window.
+4. **Track focus before every action.** Know the active tab, URL, and title before clicking or typing.
+5. **Verify after every meaningful interaction.** Check URL, title, text, value, visibility, checked state, or `diff snapshot` before assuming success.
+6. **Treat DOM evidence as the source of truth.** Screenshots are supporting evidence for layout, failures, or human review.
+7. **Close only what you opened.** Leave pre-existing tabs, windows, and reusable sessions alone unless the user asked to close them.
+8. **Keep output scoped.** Prefer `snapshot -i`, scoped snapshots, `--json`, `get text`, and `get attr` over verbose full-page output.
 
-Do not use this skill for:
-- tasks explicitly asking for `playwright-cli`, Browserbase `browse`, or another browser CLI
-- writing Playwright test code or running Playwright CLI workflows; use `run-playwright` or the repo's coding skill as appropriate
-- Kernel SDK implementation work; use `build-kernel-ts-sdk`
-- full site conversion or design-system extraction deliverables; return browser artifacts to `convert-url-to-nextjs` or `extract-saas-design`
-- static research that does not require active browser interaction
-- DevTools-first debugging or profiling unless the task still centers on `agent-browser`
-
-## Mode and persistence gates
+## Mode and persistence gate
 
 | Mode | Use when |
 |---|---|
@@ -47,28 +59,6 @@ Do not use this skill for:
 | `--engine lightpanda` | fast read-only/simple extraction where Lightpanda limitations are acceptable |
 
 Choose one persistence strategy. Prefer the default ephemeral session, then `--session` for parallel isolation, `--session-name` for auto-persisted app state, `--profile` for native Chrome persistence, and `state save/load` only when a portable state file is required.
-
-## Capture handoff
-
-`convert-url-to-nextjs` may use this skill to capture live routes, DOM snapshots, screenshots, runtime metadata, and asset URLs before reconstruction. `extract-saas-design` may use this skill to inspect implemented UI evidence when source or snapshots need browser verification. After capture, hand artifacts back to the owning skill; do not take over rebuild or design-doc output.
-
-For cross-skill calls, name the minimal artifacts:
-- current URL and title
-- `snapshot -i --json` or scoped snapshots
-- relevant `get text`, `get attr`, or `get styles` outputs
-- screenshot paths when visual evidence matters
-- saved state or profile path only if intentionally created and safe to retain
-
-## Non-negotiable operating rules
-
-1. **Observe before acting.** After open, navigation, tab switch, popup, frame change, or major click, wait for state and run `snapshot -i` before choosing the next action.
-2. **Reuse the current session by default.** Do not spawn a new session just because you changed pages.
-3. **Prefer a new tab over a new window.** Use `window new` only when the site or task truly requires a separate window.
-4. **Track focus before every action.** Know the active tab, URL, and title before clicking or typing.
-5. **Verify after every meaningful interaction.** Check URL, title, text, value, visibility, checked state, or `diff snapshot` before assuming success.
-6. **Treat DOM evidence as the source of truth.** Screenshots are supporting evidence for layout, failures, or human review.
-7. **Close only what you opened.** Leave pre-existing tabs, windows, and reusable sessions alone unless the user asked to close them.
-8. **Keep output scoped.** Prefer `snapshot -i`, scoped snapshots, `--json`, `get text`, and `get attr` over verbose full-page output.
 
 ## Default loop: observe → act → verify → clean up
 
@@ -89,8 +79,8 @@ agent-browser snapshot -i
 - Reuse the default session for a single continuous task.
 - Use `--session SESSION_NAME` only for isolated concurrent work.
 - Use `--session-name SESSION_NAME` only when deliberate persistence across runs is valuable and safe.
-- Use `--profile PATH` for permanent authentication persistence without manual save/load. When set globally (config.json or env var), all sessions automatically retain cookies, IndexedDB, service workers, and cache across browser restarts and reboots. See `references/authentication.md#persistent-profiles`.
-- Use `--auto-connect` to import authentication from a running Chrome session the user is already logged into — fastest way to bootstrap auth for one-off tasks. See `references/authentication.md#import-auth-from-your-browser`.
+- Use `--profile PATH` for permanent authentication persistence without manual save/load. When set globally (config.json or env var), all sessions automatically retain cookies, IndexedDB, service workers, and cache across browser restarts and reboots. See `references/authentication.md`.
+- Use `--auto-connect` to import authentication from a running Chrome session the user is already logged into — fastest way to bootstrap auth for one-off tasks. See `references/authentication.md`.
 
 ### 2) Navigate or focus the correct page
 
@@ -185,6 +175,17 @@ Capture screenshots only when you need:
 - Close only the ones you created.
 - If the browser context pre-existed, leave it in a sane state and avoid shutting it down unnecessarily.
 
+## Capture handoff
+
+`convert-url-to-nextjs` may use this skill to capture live routes, DOM snapshots, screenshots, runtime metadata, and asset URLs before reconstruction. `extract-saas-design` may use this skill to inspect implemented UI evidence when source or snapshots need browser verification. After capture, hand artifacts back to the owning skill; do not take over rebuild or design-doc output.
+
+For cross-skill calls, name the minimal artifacts:
+- current URL and title
+- `snapshot -i --json` or scoped snapshots
+- relevant `get text`, `get attr`, or `get styles` outputs
+- screenshot paths when visual evidence matters
+- saved state or profile path only if intentionally created and safe to retain
+
 ## Do this, not that
 
 | Do this | Not that |
@@ -214,7 +215,7 @@ Capture screenshots only when you need:
 - **Stale daemon or broken session:** try `agent-browser close`; if that fails, follow `references/troubleshooting.md`.
 - **Sensitive operations needed:** before `eval`, downloads, state persistence, storage writes, cookies, network routing, or unsafe flags, read `references/safety.md` and narrow scope first.
 
-## Minimal reference routing
+## Reference routing
 
 Treat `assets/templates/*.sh` as starting-point assets, not deterministic helper scripts. Adapt them before use; do not run them blindly against production or authenticated accounts.
 
@@ -222,13 +223,17 @@ Treat `assets/templates/*.sh` as starting-point assets, not deterministic helper
 |---|---|
 | Install, config, environment setup | `references/installation.md` |
 | Core commands, check-state commands, tabs, windows, diff | `references/commands.md` |
-| Ref lifecycle, scoped snapshots, stale-ref recovery | `references/snapshot-refs.md` |
+| Ref lifecycle, scoped snapshots, stale-ref recovery, JSON schema | `references/snapshot-refs.md` |
 | Session reuse, named sessions, persistence, cleanup | `references/session-management.md` |
-| Login flows, auth vault, saved state | `references/authentication.md` |
+| Login flows, auth vault, saved state, profiles, auto-connect | `references/authentication.md` |
 | Safe automation boundaries and sensitive-command policy | `references/safety.md` |
 | Observe and verify loops, DOM-evidence validation, extraction patterns | `references/workflows.md` |
 | Stale daemon, timeout, and focus-related failures | `references/troubleshooting.md` |
-| Proxies, stealth, cloud browsers, extensions, iOS, profiling, video | `references/proxy-support.md`, `references/stealth-automation.md`, `references/advanced.md`, `references/profiling.md`, `references/video-recording.md` |
+| Proxies, geo, IP rotation | `references/proxy-support.md` |
+| Stealth, anti-bot evasion, fingerprint hardening | `references/stealth-automation.md` |
+| Extensions, iOS, advanced provider flags | `references/advanced.md` |
+| CDP profiling, perf traces | `references/profiling.md` |
+| Video recording, replay artifacts | `references/video-recording.md` |
 | Helper scripts: version/bootstrap check or first-pass page inspection smoke test | `scripts/check-agent-browser-version.sh`, `scripts/check-agent-browser-version.md`, `scripts/inspect-page.sh`, `scripts/inspect-page.md` |
 | Shell template assets to adapt before use | `assets/templates/ai-agent-workflow.sh`, `assets/templates/form-automation.sh`, `assets/templates/authenticated-session.sh`, `assets/templates/e2e-test-workflow.sh`, `assets/templates/capture-workflow.sh` |
 
@@ -254,6 +259,16 @@ Treat `assets/templates/*.sh` as starting-point assets, not deterministic helper
 - `references/session-management.md`
 - `references/workflows.md`
 
+### Hosted, stealth, or geo-sensitive runs
+- `references/stealth-automation.md`
+- `references/proxy-support.md`
+- `references/advanced.md`
+
+### Performance, replay, profiling
+- `references/profiling.md`
+- `references/video-recording.md`
+- `references/troubleshooting.md`
+
 ## Output contract
 
 When browser work ends, report:
@@ -275,11 +290,11 @@ This SKILL.md is the steering layer. Keep the live loop disciplined:
 6. clean up only what you changed (`tab close INDEX`, `close`)
 
 Key rules to internalize:
-- `snapshot -i` hides non-interactive text -- use `get text` or `eval --stdin` for data extraction
-- CSS selectors in `get text` must match exactly one element -- use `eval --stdin` for multiples
+- `snapshot -i` hides non-interactive text — use `get text` or `eval --stdin` for data extraction
+- CSS selectors in `get text` must match exactly one element — use `eval --stdin` for multiples
 - `eval --stdin <<'EVALEOF'` heredoc is the safe JS execution pattern
 - `diff snapshot` is the correct diff form (not bare `diff`)
 - `back` works (not `go back`)
-- Refs expire after any page/DOM change -- always re-snapshot
+- Refs expire after any page/DOM change — always re-snapshot
 
 When in doubt, stop acting, inspect state again, and route into the smallest relevant reference instead of guessing.

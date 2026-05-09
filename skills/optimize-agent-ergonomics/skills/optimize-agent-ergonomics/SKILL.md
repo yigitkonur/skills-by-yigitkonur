@@ -1,77 +1,67 @@
 ---
 name: optimize-agent-ergonomics
-description: Use skill if you are deciding CLI vs MCP, harmonizing cross-surface agent contracts, or auditing surface choice before implementation.
+description: Use skill if you are deciding CLI vs MCP, harmonizing one workflow across both surfaces, or auditing why an agent fails on a tool before any implementation.
 ---
 
 # optimize-agent-ergonomics
 
-Make agent-facing tool surfaces easier to choose, use, and repair. This skill owns the CLI-vs-MCP decision, shared contract design, cross-surface audits, and handoff to surface-specific MCP build and test skills.
+Make agent-facing tool surfaces easier to choose, use, and repair. This skill owns the **surface decision** (CLI vs MCP vs hybrid vs skill+CLI), the **shared cross-surface contracts** (descriptions, outputs, errors, retries, idempotency), and the **named handoff** to surface-specific build and test skills once the architecture is fixed.
 
-## Trigger Boundary
+## When to use
 
-Use this skill when the task is about:
+Trigger on tasks that fit any of these:
 
-- deciding whether an agent workflow belongs on a CLI, MCP server, hybrid surface, or skill-plus-CLI path
-- harmonizing one workflow across CLI and MCP without duplicating incompatible contracts
-- auditing why an agent fails on an existing tool when the root cause could be surface choice, descriptions, outputs, auth, state, or retries
-- drafting the shared agent contract before implementation starts
-- preparing a named handoff to a build or test skill after the surface is fixed
+- *deciding whether an agent workflow belongs on a CLI, MCP server, hybrid surface, or skill+CLI path*
+- *harmonizing one workflow across CLI and MCP without diverging schemas, names, or error envelopes*
+- *auditing why an agent fails on an existing tool when the root cause could be surface choice, descriptions, output shape, auth, state, or retries*
+- *drafting the shared agent contract — names, descriptions, output schema, error model, retry semantics — before any code lands*
+- *preparing a named handoff to `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, `build-mcp-use-server`, or `test-by-mcpc-cli` after surface and contract are decided*
+- *picking between a stateless one-shot CLI and a session-aware MCP tool when auth, state, or audience is contested*
 
-Do not use this skill when:
+Do NOT use when:
 
-- the surface is already fixed and the task is implementation-only
-- the work is ordinary CLI usage with no agent-readiness concern
-- the work is ordinary MCP server coding with no ergonomics, surface, audit, or contract decision
-- the user asks for one throwaway shell script with no agent loop
-- the user asks to deprecate sibling skills; that is a separate maintainer-approved scope
+- The surface is already fixed and the work is **CLI-only implementation** — route to `optimize-agentic-cli`.
+- The surface is already fixed and the work is **MCP-only implementation** — route to `optimize-agentic-mcp`.
+- The user wants a one-off shell script with no agent harness in the loop — write the script directly.
+- The task is to deprecate or rewrite sibling skills — that is a separate maintainer-approved scope; do not edit `optimize-agentic-cli` or `optimize-agentic-mcp` here.
 
-## Relationship To Sibling Skills
+## Sibling boundary
 
-Maintained position for this repo: `optimize-agent-ergonomics` is the canonical cross-surface successor for agent-ready CLI/MCP decisions and shared contracts.
+| Skill | Owns |
+|---|---|
+| `optimize-agent-ergonomics` (this skill) | Surface choice, cross-surface harmonization, ergonomics audits where surface itself is suspect, named handoff. |
+| `optimize-agentic-cli` | CLI-only audit and command-contract design once the surface is CLI. |
+| `optimize-agentic-mcp` | MCP-only audit and architecture once the surface is MCP. |
+| `build-mcp-server-sdk-v1` / `-sdk-v2` / `build-mcp-use-server` | MCP implementation after architecture is fixed. |
+| `test-by-mcpc-cli` | End-to-end MCP verification. |
 
-If `optimize-agentic-cli` or `optimize-agentic-mcp` exists in an installed pack, treat them as legacy surface-specific workflows until a maintainer approves one of two separate follow-ups:
+If `optimize-agentic-cli` or `optimize-agentic-mcp` is also installed, treat them as the **post-decision** specialists. This skill stops at the handoff line.
 
-- deprecate both legacy skills into redirect stubs pointing here
-- keep all three active with narrower legacy descriptions and explicit routing boundaries
+## Non-negotiable rules
 
-Do not edit sibling skills during an ergonomics pass unless the maintainer explicitly authorizes that separate deprecation or narrowing scope.
+1. Decide the **workload** (what the agent is actually doing) before the surface.
+2. Read the target code/docs **before** recommending any pattern — never blind-prescribe.
+3. Keep CLI stdout, MCP `content`, and MCP `structuredContent` parseable; never mix prose into a JSON envelope.
+4. Errors must be retryable: include `next_action` and a stable error code so an agent can decide retry vs escalate vs abort.
+5. After the surface decision lands, hand off by **name** to the matching build/test skill — do not implement here.
+6. Cite the exact `references/...` file or companion skill behind every recommendation.
+7. State the actual verification rung reached (Rung 1 read → Rung 6 user-confirmed) — never inflate.
 
-## Non-Negotiable Rules
+## Pick a mode (and name it in the answer)
 
-1. Decide workload before deciding surface.
-2. Audit existing code before recommending patterns.
-3. Keep stdout, MCP content, and `structuredContent` parseable.
-4. Return retryable errors with next action and stable error codes.
-5. Route MCP implementation to `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `build-mcp-use-server` after architecture is fixed.
-6. Route MCP end-to-end verification to `test-by-mcpc-cli`.
-7. Cite exact reference files for every recommendation.
-8. State the verification rung actually reached.
-
-## Modes
-
-Pick one mode and name it in the answer.
-
-| Mode | Use when | Required first route |
+| Mode | Use when | First reference to read |
 |---|---|---|
-| Mode A — audit existing surface | Existing CLI/MCP/hybrid tool needs an agent-readiness audit | `references/common/audit-rhythm.md` |
-| Mode B — sketch new architecture | New tool needs surface, contract, and handoff before implementation | `references/common/design-thinking.md` |
-| Mode C — decide surface | Surface is undecided or contested | `references/common/decide-surface.md` |
-| Mode D — harmonize contracts | One workflow must expose CLI and MCP consistently | `references/common/agent-integration.md` |
-| Mode E — route out | Surface and implementation path are already fixed | matching reference below, then named companion skill |
+| **A — audit existing surface** | An existing CLI/MCP/hybrid tool is failing agents and needs an ergonomics scorecard. | `references/common/audit-rhythm.md` |
+| **B — sketch new architecture** | A new tool needs surface, contracts, and handoff before code. | `references/common/design-thinking.md` |
+| **C — decide surface** | CLI vs MCP vs hybrid vs skill+CLI is contested or undecided. | `references/common/decide-surface.md` |
+| **D — harmonize contracts** | One workflow must expose CLI **and** MCP consistently. | `references/common/agent-integration.md` |
+| **E — route out** | Surface and implementation path are already fixed; only need the right next-skill name. | matching reference below, then named companion skill |
 
-## Surface Decision Summary
+## Surface decision output (mandatory shape)
 
-Use `references/common/decide-surface.md` for the full decision tree. The short path:
+Whenever surface choice is in scope, end the answer with this exact block:
 
-1. CLI fits shell-composable, local, batch, CI, or human-and-agent workflows.
-2. MCP fits session-aware, model-native, remote, multi-tool, or client-integrated workflows.
-3. Hybrid fits a shared core with both a subprocess boundary and MCP transport.
-4. Skill+CLI fits deterministic local commands where a skill supplies workflow judgment.
-5. Revisit surface if auth, state, audience, or retry semantics contradict the first answer.
-
-Every surface decision output must use this shape:
-
-```markdown
+```
 Surface recommendation: CLI / MCP / hybrid / skill+CLI
 Reason: workload, auth, state, audience
 Tradeoff: what the losing option would cost
@@ -79,50 +69,63 @@ Next route: references/...
 Confidence: high / medium / low
 ```
 
+Short decision path (full tree in `references/common/decide-surface.md`):
+
+1. **CLI** — shell-composable, local, batch, CI, or human-and-agent workflows.
+2. **MCP** — session-aware, model-native, remote, multi-tool, or client-integrated workflows.
+3. **Hybrid** — shared core with both subprocess boundary and MCP transport.
+4. **Skill+CLI** — deterministic local commands plus skill-supplied workflow judgment.
+5. Revisit if **auth, state, audience, or retry semantics** contradict the first answer.
+
 ## Workflow
 
-### 1. Explore
+### 1. Explore (always first)
 
-Read the target code, docs, or current tool surface first. For existing tools, collect:
+For an existing tool, collect:
 
 - command/tool list and names
-- input schemas or flags
-- output shape
+- input schemas / flags
+- output shape (stdout, JSON, MCP `content` vs `structuredContent`)
 - error and retry behavior
-- auth and headless behavior
-- state/session behavior
-- operational signals: logs, tests, transport, deployment, timeout behavior
+- auth and headless/CI behavior
+- state/session model
+- ops signals: logs, tests, transport, deployment, timeout behavior
 
-### 2. Decide Or Confirm Surface
+For a greenfield tool, collect the **workload statement**: what the agent does, how often, with what side effects, against which audience.
 
-Use `references/common/decide-surface.md` before recommending CLI, MCP, hybrid, or skill+CLI. If the user already chose a surface, still verify that workload, auth, state, and audience do not contradict it.
+### 2. Decide or confirm surface
 
-### 3. Apply Shared Contracts
+Read `references/common/decide-surface.md`. If the user pre-chose a surface, still verify workload + auth + state + audience do not contradict it. Cross-check precedent in `references/common/exemplars.md` when conviction is shaky.
 
-Use the common references before surface-specific detail:
+### 3. Apply shared contracts (before surface-specific detail)
 
-- descriptions and names: `references/common/descriptions-as-prompts.md`
-- output shape: `references/common/output-contracts.md`
-- errors and retries: `references/common/error-strategy.md`
-- idempotency: `references/common/idempotency-and-retries.md`
-- iterative repair loops: `references/common/iterative-loops.md`
-- cognitive load: `references/common/agent-cognitive-load.md`
+| Topic | Reference |
+|---|---|
+| Names, descriptions, help text, tool selection | `references/common/descriptions-as-prompts.md` |
+| Output shape, schema versioning, pagination | `references/common/output-contracts.md` |
+| Error envelope, retry classes, `next_action` | `references/common/error-strategy.md` |
+| Idempotency keys, verb semantics, side effects | `references/common/idempotency-and-retries.md` |
+| Multi-turn submit/validate/repair/resume | `references/common/iterative-loops.md` |
+| Tool count, response size, token budget | `references/common/agent-cognitive-load.md` |
+| Survival across real subprocess + MCP harnesses | `references/common/agent-integration.md` |
+| Existing-tool audit rhythm | `references/common/audit-rhythm.md` |
+| Workload-first new-tool design | `references/common/design-thinking.md` |
+| Production CLI/MCP precedent | `references/common/exemplars.md` |
 
-### 4. Route Surface-Specific Work
+### 4. Route surface-specific work
 
-- CLI audit or design: route to `references/cli/audit-checklist.md` or `references/cli/architect-new.md`.
-- MCP audit or design: route to `references/mcp/audit-existing.md` or `references/mcp/architect-new.md`.
-- MCP implementation:
-  - `build-mcp-server-sdk-v1` for production-ready official SDK v1 work
-  - `build-mcp-server-sdk-v2` for split-package v2 work
-  - `build-mcp-use-server` for HTTP-first `mcp-use` server work
-- MCP testing: route to `test-by-mcpc-cli`.
+After the surface decision lands, route by direction:
 
-## Output Contracts
+- **CLI design** → `references/cli/architect-new.md`
+- **CLI audit** → `references/cli/audit-checklist.md`
+- **MCP design** → `references/mcp/architect-new.md`
+- **MCP audit** → `references/mcp/audit-existing.md`
+- **MCP build** → `build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2` / `build-mcp-use-server`
+- **MCP test** → `test-by-mcpc-cli`
 
-### Mode A Audit
+## Output contracts
 
-Produce:
+### Mode A audit
 
 ```markdown
 Mode: Mode A — audit existing surface
@@ -131,13 +134,13 @@ Target path: path/to/tool
 Scorecard:
 | Dimension | Score | Evidence |
 |---|---:|---|
-| discovery | 0-5 | file:line |
-| input/schema | 0-5 | file:line |
-| output | 0-5 | file:line |
-| error/retry | 0-5 | file:line |
-| auth/headless | 0-5 | file:line |
-| state/iteration | 0-5 | file:line |
-| operations | 0-5 | file:line |
+| discovery        | 0-5 | file:line |
+| input/schema     | 0-5 | file:line |
+| output           | 0-5 | file:line |
+| error/retry      | 0-5 | file:line |
+| auth/headless    | 0-5 | file:line |
+| state/iteration  | 0-5 | file:line |
+| operations       | 0-5 | file:line |
 
 Top findings:
 1. Severity: Critical / High / Medium / Low
@@ -151,9 +154,7 @@ Recommended fix path: minimal / comprehensive
 Verification rung reached: Rung 1-6, with commands or observation
 ```
 
-### Mode B Architecture Sketch
-
-Produce:
+### Mode B architecture sketch
 
 ```markdown
 Mode: Mode B — sketch new architecture
@@ -170,9 +171,9 @@ Next route: references/...
 Verification rung reached: Rung 1-6, with commands or observation
 ```
 
-## Reference Routing
+## Reference routing
 
-### Common
+### Common (`references/common/`)
 
 | File | Read when |
 |---|---|
@@ -188,12 +189,12 @@ Verification rung reached: Rung 1-6, with commands or observation
 | `references/common/iterative-loops.md` | Multi-turn submit, validate, repair, resume, or state-token workflows are in scope. |
 | `references/common/output-contracts.md` | Structured outputs, schema versioning, pagination, projection, or response-size caps are in scope. |
 
-### CLI
+### CLI (`references/cli/`)
 
 | File | Read when |
 |---|---|
 | `references/cli/architect-new.md` | Designing a new agent-ready CLI after the surface decision lands on CLI. |
-| `references/cli/audit-checklist.md` | Auditing an existing CLI for stdout/stderr, exit codes, headless mode, structured errors, and parsing reliability. |
+| `references/cli/audit-checklist.md` | Auditing an existing CLI for stdout/stderr, exit codes, headless mode, structured errors, parsing reliability. |
 | `references/cli/auth-headless.md` | CLI auth must work in CI, containers, remote shells, or non-interactive agent runs. |
 | `references/cli/code-templates.md` | A small scaffold or implementation template is needed after CLI contract design. |
 | `references/cli/exit-codes.md` | Exit-code taxonomy or retry/escalation classification is in scope. |
@@ -202,7 +203,7 @@ Verification rung reached: Rung 1-6, with commands or observation
 | `references/cli/output-envelope.md` | CLI JSON envelope, error object, pagination, or streaming output shape is in scope. |
 | `references/cli/subprocess-harness.md` | A CLI must be exercised from a realistic agent subprocess harness. |
 
-### MCP
+### MCP (`references/mcp/`)
 
 | File | Read when |
 |---|---|
@@ -219,7 +220,7 @@ Verification rung reached: Rung 1-6, with commands or observation
 | `references/mcp/patterns/agentic-patterns.md` | MCP workflow gating, HATEOAS next actions, prompt gates, or server-enforced stages are in scope. |
 | `references/mcp/patterns/auth-identity.md` | OAuth 2.1, PRM, CIMD, OBO, audience validation, or step-up consent is in scope. |
 | `references/mcp/patterns/caching-economics.md` | Prompt caching, result caching, invalidation, or token-cost economics is in scope. |
-| `references/mcp/patterns/client-compatibility.md` | Client support differences across Claude, ChatGPT, Cursor, Goose, or other MCP clients matter. |
+| `references/mcp/patterns/client-compatibility.md` | Client support differences across MCP clients matter. |
 | `references/mcp/patterns/error-handling.md` | MCP result errors, `isError`, recovery hints, validation errors, or retry fields are in scope. |
 | `references/mcp/patterns/exemplar-servers.md` | Vendor server precedent or production pattern comparison is needed. |
 | `references/mcp/patterns/model-behavior.md` | Model-specific tool selection, schema filling, or long-context behavior affects the design. |
@@ -235,24 +236,24 @@ Verification rung reached: Rung 1-6, with commands or observation
 | `references/mcp/patterns/tools.md` | Tool granularity, descriptions, response shape, or tool composition is in scope. |
 | `references/mcp/patterns/transport-and-ops.md` | Transport, stdio/HTTP/SSE, stdout purity, deployment, observability, or ops is in scope. |
 
-## Script Routing
+## Script routing
 
-Use deterministic helpers only as preflight evidence; never treat them as complete audits.
+Deterministic helpers are **preflight evidence only** — never a substitute for the audit.
 
 | Script | Read first | Use when |
 |---|---|---|
-| `scripts/audit-cli.sh` | `scripts/audit-cli.md` | Running a quick static/behavioral CLI preflight on a safe local probe command. |
-| `scripts/audit-mcp.sh` | `scripts/audit-mcp.md` | Running a conservative MCP source scan for registrations, schemas, transports, and error patterns. |
+| `scripts/audit-cli.sh` | `scripts/audit-cli.md` | Quick static/behavioral CLI preflight on a safe local probe command. |
+| `scripts/audit-mcp.sh` | `scripts/audit-mcp.md` | Conservative MCP source scan for registrations, schemas, transports, error patterns. |
 
-## Final Checks
+## Final checks
 
 Before declaring done:
 
-- [ ] Mode is explicit.
-- [ ] Surface recommendation uses the required five-line shape when surface choice was in scope.
-- [ ] Mode A audit output includes scorecard, findings, fix options, evidence, and verification rung.
-- [ ] Mode B sketch names workload, surface, command/tool set, output, error, auth, state, test plan, and handoff skill.
+- [ ] Mode is named explicitly (A/B/C/D/E).
+- [ ] Surface recommendation uses the required five-line shape when surface was in scope.
+- [ ] Mode A includes scorecard, findings, fix options with evidence, and rung reached.
+- [ ] Mode B names workload, surface, command/tool set, output, error, auth, state, test plan, handoff skill.
 - [ ] Every recommendation cites a `references/...` file or companion skill.
 - [ ] MCP implementation handoff names `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `build-mcp-use-server`.
-- [ ] MCP test handoff names `test-by-mcpc-cli` when end-to-end MCP verification is required.
-- [ ] Verification claims match the rung actually reached.
+- [ ] MCP test handoff names `test-by-mcpc-cli` when end-to-end verification is required.
+- [ ] Verification rung claimed matches the rung actually reached.

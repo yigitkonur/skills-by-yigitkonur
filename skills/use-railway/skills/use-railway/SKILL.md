@@ -1,158 +1,112 @@
 ---
 name: use-railway
-description: Use skill if you are using Railway CLI for deploys, logs, environments, linking, scaling, SSH, database access, or installed-versus-upstream command questions.
+description: Use skill if you are running railway CLI commands for deploys, logs, env vars, link, ssh, db shells, scaling, or reconciling installed CLI vs upstream docs.
 ---
 
-# Use Railway
+# use-railway
 
-Use Railway CLI from evidence, not memory.
+Drive the installed `railway` CLI from evidence, not memory. This skill is the routing layer: it picks the right reference, the right command, and the right scope (local binary vs upstream docs) for every Railway question an agent runs into during ongoing platform operations.
 
-## Trigger boundary
+## Use this skill when
 
-Use this skill when the task is about:
+- *the user types or pastes a literal `railway <subcommand>` and wants the right flags, aliases, or nested forms*
+- *the job is choosing between near-twin commands — `up` vs `deploy`, `redeploy` vs `restart`, `delete` vs `unlink`, `connect` vs `ssh`, `run` vs `shell` vs `dev`*
+- *the user is reading logs, checking deploy status, scaling a service, editing variables, attaching a domain, or opening a DB shell against a Railway service*
+- *the user pastes a Railway dashboard URL or asks "which project/service/environment am I linked to?"*
+- *the docs show a Railway command the local binary does not have, or the user says "latest", "current", "today" — version-drift reconciliation*
+- *the question is about Railway functions, volumes, or shell completion output for the installed CLI*
+- *the user wants first-party Railway database analysis (Postgres, MySQL, Redis, Mongo) rooted in CLI access*
 
-- exact `railway` commands, flags, aliases, arguments, or nested subcommands
-- choosing between nearby Railway CLI commands for deploys, logs, environments, domains, scaling, SSH, functions, volumes, or database access
-- reconciling the installed Railway CLI with newer first-party Railway docs or releases
-- using first-party Railway runbooks as supporting context for a CLI-first answer
+## Do NOT use this skill when
 
-Do not use this skill when:
-
-- the task is purely dashboard-only, GraphQL-only, or API-only Railway work
-- the job is general cloud architecture or infrastructure planning with no Railway CLI decision to make
-- a generic shell, Git, or deployment skill can answer the question without Railway-specific context
+- the job is **authoring a `make prod` / `make deploy` target or a Makefile control plane** that wraps Railway commands — use `init-makefiles` to generate the scenario-appropriate scaffold; this skill answers what the wrapped commands do, but does not write the Makefile
+- the work is **purely Railway dashboard, GraphQL API, or REST API** with no CLI decision to make
+- a generic shell, Git, or container-build skill answers the question with no Railway-specific context
+- the task is **infrastructure architecture planning** with no installed `railway` binary in play
 
 ## Non-negotiable rules
 
-1. Treat the local extracted help snapshot as the source of truth for the installed binary.
-2. Treat newer docs and releases as upstream context, not proof that a command exists locally.
-3. Route to one workflow guide first, then pull exact flags from the command reference.
-4. Explain close command splits when Railway has look-alike choices.
-5. Stay read-safe by default; do not mutate Railway resources unless the user explicitly wants an operational action.
-6. Never guess flags, aliases, or possible values from memory.
+1. **Local snapshot is truth** for the installed binary. The extracted help under `references/cli/` describes what is actually invokable on this machine.
+2. **Upstream docs are context, not proof.** Newer Railway pages may show commands or families the installed CLI cannot run. Mark scope explicitly.
+3. **Never guess flags, aliases, possible values, or nested subcommands** from memory. Route to `references/cli/railway-cli-command-reference.md`.
+4. **Read-safe by default.** This skill is reference-first. Do not run mutating commands (`up`, `redeploy`, `restart`, `down`, `delete`, `unlink`, `variable set`, `domain add`, `scale`) unless the user explicitly asked for the operational action.
+5. **Do not conflate near-twins.** `deploy` ≠ `up`, `redeploy` ≠ `restart`, `delete` ≠ `unlink`, `connect` ≠ `ssh`, `run` ≠ `shell` ≠ `dev`. Always disambiguate when the user's wording is ambiguous.
+6. **Trust explicit identifiers over the linked directory.** A pasted dashboard URL or explicit `--project / --environment / --service` always wins over `cwd` link state.
+7. **Version-drift gate.** If the user says "latest" / "current" / "today", or the question references a family the local snapshot doesn't have (e.g. `skills`, `agent`, `bucket`, `starship`), read `references/research/version-drift.md` first.
 
-## Recommended workflow
+## Workflow
 
-### 1. Establish version scope
+1. **Establish scope.** Local installed CLI, upstream Railway sources, or both? State it on the first line of every answer.
+2. **Run `railway --version`** when version drift could plausibly matter and the user has a shell.
+3. **Pick the smallest reference set** using the splits below. Avoid loading the full command reference unless flags or aliases are needed.
+4. **Answer in the output contract** (scope → command → flags → near-neighbor distinction → version-drift note if material).
 
-Run `railway --version` when version drift could matter.
-
-Read `references/research/version-drift.md` first if:
-
-- the user says `latest`, `current`, `today`, or `most recent`
-- the docs show a command the installed CLI does not
-- the question mentions newer families such as `skills`, `agent`, `bucket`, or `starship`
-
-### 2. Choose the smallest reference set
-
-- Exact syntax, flags, aliases, nested subcommands, arguments, or possible values:
-  - `references/cli/railway-cli-command-reference.md`
-- Raw help wording or formatting proof:
-  - `references/cli/railway-cli-live-help-snapshot.md`
-- Top-level completeness audit:
-  - `references/cli/command-family-coverage.md`
-- Workflow choice:
-  - one matching `references/cli/*.md` router
-  - then `references/cli/railway-cli-command-reference.md`
-- Upstream Railway guidance beyond the installed CLI:
-  - one matching file under `references/upstream/` or `references/database/`
-  - plus `references/research/version-drift.md` when local and upstream may differ
-
-### 3. Answer case by case
-
-For each answer:
-
-1. state whether the scope is local CLI, upstream Railway sources, or both
-2. choose the best command or reference route
-3. include exact flags, aliases, nested subcommands, or possible values when asked
-4. explain the closest confusing alternative when needed
-5. add a version-drift note only if it materially changes the answer
-
-## Common decision splits
+## Decision splits — load-bearing routing
 
 | Need | Read |
 |---|---|
-| `up` vs `deploy`, `redeploy` vs `restart`, or release rollback questions | `references/cli/deployments-and-releases.md` |
-| `delete` vs `unlink`, `link` vs `init`, project setup, `add`, `open`, or auth/context | `references/cli/context-projects-and-linking.md` |
-| `run` vs `shell` vs `dev`, shell completion, or local variable injection | `references/cli/local-development-and-shells.md` |
-| `connect` vs `ssh`, `status`, or logs | `references/cli/observability-and-access.md` |
-| `environment`, `variable`, `domain`, `scale`, or `service scale` | `references/cli/configuration-networking-and-scaling.md` |
-| Functions or volumes | `references/cli/functions-and-volumes.md` |
-| A vague "what Railway command should I use?" question | `references/cli/common-workflows.md` |
-| Dashboard URL parsing, resource-model context, or safe preflight before acting | `references/upstream/resource-model-and-preflight.md` |
-| First-party setup, deploy, configure, operate, docs/API, or DB runbooks | the matching file under `references/upstream/` or `references/database/` |
+| `up` vs `deploy`, `redeploy` vs `restart`, rollback, `down` | `references/cli/deployments-and-releases.md` |
+| `link` vs `init`, `delete` vs `unlink`, `add`, `open`, auth/context, `docs`, `completion`, `upgrade` | `references/cli/context-projects-and-linking.md` |
+| `run` vs `shell` vs `dev`, `dev configure`, `dev clean`, local var injection | `references/cli/local-development-and-shells.md` |
+| `status`, `logs`, `connect` vs `ssh`, service-level routing | `references/cli/observability-and-access.md` |
+| `environment`, `variable`, `domain`, `scale`, `service scale` | `references/cli/configuration-networking-and-scaling.md` |
+| Functions or volumes (attach/detach/delete distinctions) | `references/cli/functions-and-volumes.md` |
+| "What Railway command should I use for this job?" (intent-first) | `references/cli/common-workflows.md` |
+| Audit: every local top-level command family is covered | `references/cli/command-family-coverage.md` |
+| Exact flags, aliases, nested subcommands, possible values | `references/cli/railway-cli-command-reference.md` |
+| Raw help wording, examples, or formatting proof | `references/cli/railway-cli-live-help-snapshot.md` |
+| Dashboard URL parsing, resource model, safe preflight | `references/upstream/resource-model-and-preflight.md` |
+| First-party setup runbook (workspace, project, service, template) | `references/upstream/operations/setup.md` |
+| First-party deploy runbook (`up`, redeploy/restart, build config, Railpack, Dockerfile, monorepo) | `references/upstream/operations/deploy.md` |
+| First-party configure runbook (env, variables, domains, networking, config patches) | `references/upstream/operations/configure.md` |
+| First-party operate runbook (status, logs, metrics, health, recovery) | `references/upstream/operations/operate.md` |
+| Official docs endpoints, community search, GraphQL gaps, template discovery | `references/upstream/docs-and-api/request.md` |
+| Railway DB analysis — pick the engine | `references/database/analyze-db.md` |
+| Railway PostgreSQL analysis | `references/database/analyze-db-postgres.md` |
+| Railway MySQL analysis | `references/database/analyze-db-mysql.md` |
+| Railway Redis analysis | `references/database/analyze-db-redis.md` |
+| Railway MongoDB analysis | `references/database/analyze-db-mongo.md` |
+| "Latest"/"current"/"today" or docs show a command the local CLI lacks | `references/research/version-drift.md` |
 
-## Quick routing
+## Quick triage cues
 
-- "What flags does `railway X` support?" -> `references/cli/railway-cli-command-reference.md`
-- "Show the exact help text for `railway X`" -> `references/cli/railway-cli-live-help-snapshot.md`
-- "Show me every local Railway command family this skill covers" -> `references/cli/command-family-coverage.md`
-- "Which Railway command fits this task?" -> `references/cli/common-workflows.md`
-- "I need to link, init, add, delete, or inspect project context" -> `references/cli/context-projects-and-linking.md`
-- "I need to deploy, redeploy, restart, or roll back the latest deployment" -> `references/cli/deployments-and-releases.md`
-- "I need `run`, `shell`, or `dev`" -> `references/cli/local-development-and-shells.md`
-- "I need logs, status, `connect`, or `ssh`" -> `references/cli/observability-and-access.md`
-- "I need env vars, config edits, domains, or scale" -> `references/cli/configuration-networking-and-scaling.md`
-- "I need functions or volumes" -> `references/cli/functions-and-volumes.md`
-- "The docs show a command I do not have" -> `references/research/version-drift.md`
-- "I want Railway's own setup or deploy runbook, not just local CLI syntax" -> `references/upstream/operations/setup.md` or `references/upstream/operations/deploy.md`
-- "I pasted a Railway dashboard URL and need a safe starting point" -> `references/upstream/resource-model-and-preflight.md`
-- "I need first-party Railway database analysis guidance" -> `references/database/analyze-db.md`
+- "What flags does `railway X` support?" → `references/cli/railway-cli-command-reference.md`
+- "Show me the exact help text for `railway X`" → `references/cli/railway-cli-live-help-snapshot.md`
+- "Which Railway command fits this job?" → `references/cli/common-workflows.md`
+- "I pasted a dashboard URL" → `references/upstream/resource-model-and-preflight.md`
+- "The docs show a command I do not have" → `references/research/version-drift.md`
+- "I want Railway's own runbook, not just CLI syntax" → matching file under `references/upstream/operations/`
 
 ## Refresh the local snapshot
 
-When the Railway CLI changes, refresh the generated references from this skill directory:
+Run from this skill's content directory after a `railway` upgrade:
 
 ```bash
 node scripts/extract-railway-cli-help.mjs
 railway --version
 ```
 
-## Reference routing
-
-| File | When to read |
-|---|---|
-| `references/cli/railway-cli-command-reference.md` | Exact command syntax, flags, aliases, arguments, nested subcommands, and possible values from the installed CLI. |
-| `references/cli/railway-cli-live-help-snapshot.md` | Exact raw help wording, examples, or formatting proof matters. |
-| `references/cli/command-family-coverage.md` | Auditing completeness or proving that every local top-level command family is routed. |
-| `references/cli/common-workflows.md` | The user knows the job but not the right Railway command family yet. |
-| `references/cli/context-projects-and-linking.md` | Auth, context, project discovery, `link`, `unlink`, `init`, `add`, `delete`, `open`, `docs`, `completion`, or `upgrade`. |
-| `references/cli/deployments-and-releases.md` | `up`, template deploys, deployment history, `redeploy`, `restart`, or `down`. |
-| `references/cli/local-development-and-shells.md` | `run`, `shell`, `dev`, `dev configure`, `dev clean`, or shell completion. |
-| `references/cli/observability-and-access.md` | `status`, `logs`, `connect`, `ssh`, or service-level status/log routing. |
-| `references/cli/configuration-networking-and-scaling.md` | `environment`, `variable`, `domain`, `scale`, or `service scale`. |
-| `references/cli/functions-and-volumes.md` | Railway functions and volume workflows, including attach/detach/delete distinctions. |
-| `references/upstream/resource-model-and-preflight.md` | Dashboard URLs, Railway resource-model context, or a safe preflight before choosing commands. |
-| `references/upstream/operations/setup.md` | First-party Railway setup flows for projects, services, templates, buckets, or workspace setup. |
-| `references/upstream/operations/deploy.md` | First-party Railway deploy flows for `up`, restart/redeploy, build config, Railpack, Dockerfiles, or monorepos. |
-| `references/upstream/operations/configure.md` | First-party Railway configuration flows for environments, variables, domains, networking, or config patches. |
-| `references/upstream/operations/operate.md` | First-party Railway operating flows for status, logs, metrics, health, or recovery. |
-| `references/upstream/docs-and-api/request.md` | Official docs endpoints, community-search guidance, GraphQL gaps, or template discovery. |
-| `references/database/analyze-db.md` | Railway database analysis routing or DB-type selection. |
-| `references/database/analyze-db-postgres.md` | First-party Railway PostgreSQL analysis and tuning guidance. |
-| `references/database/analyze-db-mysql.md` | First-party Railway MySQL analysis and tuning guidance. |
-| `references/database/analyze-db-redis.md` | First-party Railway Redis analysis and tuning guidance. |
-| `references/database/analyze-db-mongo.md` | First-party Railway MongoDB analysis and tuning guidance. |
-| `references/research/version-drift.md` | Latest/current Railway CLI questions or upstream docs that exceed the installed local snapshot. |
+This regenerates `references/cli/railway-cli-command-reference.md`, `references/cli/railway-cli-live-help-snapshot.md`, and `references/cli/railway-cli-command-tree.json` so this skill keeps tracking the installed binary.
 
 ## Output contract
 
-Return answers in this order unless the user wants a different format:
+Return Railway answers in this order unless the user asks for a different shape:
 
-1. scope line: local installed CLI, upstream official sources, or both
-2. best command or routed next step
-3. important flags, aliases, subcommands, or possible values
-4. near-neighbor distinction when confusion is likely
-5. version-drift note only when it changes the answer
+1. **Scope line** — `local installed CLI`, `upstream Railway sources`, or `both`.
+2. **Best command or routed next step** — copy-pasteable when the answer is a command.
+3. **Important flags, aliases, nested subcommands, possible values** — only what's relevant.
+4. **Near-neighbor distinction** — when the next confusion is one keystroke away.
+5. **Version-drift note** — only if it materially changes the answer.
 
 ## Guardrails
 
-- Do not treat `railway deploy` and `railway up` as synonyms.
-- Do not treat `railway delete` and `railway unlink` as synonyms.
-- Do not treat `railway redeploy` and `railway restart` as synonyms.
+- Do not treat `railway deploy` and `railway up` as synonyms. `up` ships local code; `deploy` provisions a template.
+- Do not treat `railway delete` and `railway unlink` as synonyms. `delete` destroys the resource; `unlink` only detaches the local link.
+- Do not treat `railway redeploy` and `railway restart` as synonyms. `redeploy` rebuilds; `restart` bounces the running container.
+- Do not treat `railway connect` and `railway ssh` as synonyms. `connect` opens a DB shell; `ssh` opens a service shell.
 - Do not present upstream-only commands as locally available without saying so explicitly.
 - Do not default to dashboard instructions when the user asked about the CLI.
-- Do not let the copied upstream runbooks override the local extracted CLI when the user is asking about the installed binary's exact command surface.
-- Do not trust the linked directory over an explicit Railway dashboard URL or explicit project/environment/service identifiers.
-- Do not mutate Railway resources unless the user explicitly asked for an operational action; this skill is reference-first.
-- Do not use this skill for purely dashboard, GraphQL, or infrastructure-only Railway work unless the CLI question is central.
+- Do not let upstream runbooks override the local extracted CLI when the question is about the installed binary's exact surface.
+- Do not trust the linked directory over an explicit dashboard URL or explicit `--project / --environment / --service` flags.
+- Do not mutate Railway resources unless the user explicitly asked for an operational action.
+- Do not author Makefile deploy targets here — that is `init-makefiles`. This skill explains the commands; `init-makefiles` wraps them.

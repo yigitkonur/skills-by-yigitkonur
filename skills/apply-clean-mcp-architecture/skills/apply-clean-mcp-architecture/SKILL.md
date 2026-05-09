@@ -1,48 +1,42 @@
 ---
 name: apply-clean-mcp-architecture
-description: Use skill if you are placing, refactoring, or reviewing mcp-use/server TypeScript MCP code and need layer boundaries, folder layout, and TypeScript gates.
+description: Use skill if you are placing, refactoring, or auditing TypeScript mcp-use/server code under src/ and need Clean Architecture layer boundaries, folder layout, import direction, or dependency-cruiser gates.
 ---
 
 # Apply Clean MCP Architecture
 
-This skill is the architectural standard for **TypeScript MCP servers built with `mcp-use/server`**. It decides file placement, layer boundaries, import direction, request flow, and TypeScript gates. It does not teach the exact `mcp-use/server` API; that belongs to `build-mcp-use-server`.
+Architectural standard for **TypeScript MCP servers built with `mcp-use/server`**. Decides where files live, what each layer may import, what bootstrap wires, and how the discipline is enforced. Mechanical recipes (exact APIs, auth, transports, widgets) live in `build-mcp-use-server`.
 
-Structural questions resolve here. Mechanical questions route out:
+## When to use this skill
 
-- **Here:** where code lives, what each layer may import, what bootstrap wires, how discipline is verified.
-- **`build-mcp-use-server`:** exact tool/resource/prompt APIs, response helpers, auth, sessions, transports, deploy, Inspector, MCP Apps/widgets, React-side widget patterns, and CSP.
-- **`build-mcp-use-client`:** MCP clients.
-- **`build-mcp-use-agent`:** `MCPAgent` orchestration.
-- **`build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2`:** raw SDK servers without `mcp-use`.
-- **`optimize-agent-ergonomics`:** general agentic optimization, token-cost, tool-description quality, security posture, or runtime usability audits not centered on folder layout or layer boundaries.
+Trigger on phrases or contexts like:
 
-For non-MCP TypeScript projects, use the relevant framework skill or the repo's own patterns.
+- *"where should this tool / gateway / presenter / port live?"*
+- *"refactor this monolithic `src/tools/*.ts` into clean layers"*
+- *"audit this MCP server's architecture"* / *"PR review for layering"*
+- *"set up `dependency-cruiser` for an mcp-use server"*
+- *"why is `mcp-use` imported from `domain/` or `application/`?"*
+- *"scaffold a greenfield `mcp-use/server` repo with proper folders"*
+- *"`process.env` is being read all over the codebase — fix the seam"*
+- *"design ports, adapters, and provider error classification"*
 
-## Trigger Boundary
+Do **NOT** use this skill when:
 
-Use this skill for TypeScript `mcp-use/server` servers when the task is:
+- The question is a raw `@modelcontextprotocol/sdk` server mechanic — use `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `convert-mcp-server-sdk-v1-to-v2`.
+- The question is an `mcp-use/server` API recipe (tool helpers, auth, sessions, transports, widgets, CSP, Inspector, deploy) — use `build-mcp-use-server`.
+- The work is on a client app or `MCPAgent` — use `build-mcp-use-client` or `build-mcp-use-agent`.
+- The concern is general agentic usability, token cost, tool-description quality, or runtime UX rather than folder layout or layer boundaries — use `optimize-agent-ergonomics`.
 
-- Greenfield design.
-- Refactor of drifted layering.
-- Review or audit of architecture boundaries.
-- Placement of a new tool, resource, prompt, presenter, port, gateway, config seam, or bootstrap wiring.
-- PR review where folder layout, import direction, TypeScript gates, or Clean Architecture rules are in scope.
-
-Do not use it for:
-
-- Raw `@modelcontextprotocol/sdk` server mechanics.
-- Client apps or `MCPAgent` work.
-- Widget React code, CSP mechanics, session/auth transport recipes, deploy, or Inspector usage.
-- General MCP usability/security/cost optimization unless the concrete question is structural placement.
+If the task is structural placement *inside* an `mcp-use/server` repo, this skill owns it. If it is a mechanical recipe *outside* of placement, route out.
 
 ## Pinned Defaults
 
 | Decision | Default |
 |---|---|
 | Stack | TypeScript `mcp-use/server` |
-| Composition root | `src/infrastructure/server/bootstrap.ts` or equivalent entry wrapper |
+| Composition root | `src/infrastructure/server/bootstrap.ts` (or equivalent entry wrapper) |
 | Config seam | `src/infrastructure/config/runtime-config.ts` |
-| Env validation | Zod in the config seam only |
+| Env validation | Zod, in the config seam only |
 | Tool input validation | Zod at the handler boundary |
 | Use-case validation | None; use cases trust validated commands |
 | Boundary gate | `dependency-cruiser` plus TypeScript/lint |
@@ -51,43 +45,37 @@ Do not use it for:
 
 ## Mode Selection
 
-Pick exactly one mode before editing.
+Pick exactly one mode before editing. If evidence contradicts the picked mode, name the contradiction once and continue with the mode that matches the codebase.
 
 | Mode | Trigger | First action |
 |---|---|---|
-| **Greenfield** | No `src/` yet, or only a package stub exists | Follow the greenfield walkthrough from the routing table. |
-| **Refactor** | Existing server has monolithic tools, missing application layer, scattered env reads, or protocol imports in business logic | Follow the staged refactor playbook. |
-| **Review** | Existing repo or PR needs a structural grade | Run the audit checklist and report P0/P1/P2 findings. |
-| **Implementing** | Clean layered repo needs a tool, resource, prompt, or boundary component | Follow the define-tool and handler-context patterns, then wire through bootstrap. |
-| **Ask** | Advice only, no edits | Answer with the selected mode and the relevant routed references. |
-
-If evidence contradicts the selected mode, state the contradiction once and continue with the mode that matches the codebase.
+| **Greenfield** | No `src/` yet, or only a package stub exists | Read `references/greenfield-walkthrough.md`. |
+| **Refactor** | Existing server has monolithic tools, missing application layer, scattered env reads, or protocol imports in business logic | Read `references/refactor-playbook.md`. |
+| **Review** | Existing repo or PR needs a structural grade | Read `references/audit-checklist.md`; report P0/P1/P2 findings. |
+| **Implementing** | Clean layered repo needs a tool, resource, prompt, or boundary component | Read `references/define-tool-pattern.md` and `references/handler-context.md`. |
+| **Ask** | Advice only, no edits | Answer with the mode and route to the relevant references below. |
 
 ## Guardrails
 
-These rules are absolute for this skill.
+These rules are absolute. When a hard external constraint blocks one, report the constraint and the smallest compensating boundary — do not silently weaken the rule.
 
 1. **Inner layers never import outer layers.** `domain/` imports nothing outside itself. `application/` imports only `domain/` and `shared/`.
 2. **No `mcp-use` or SDK types in `domain/` or `application/`.** SDK shape churn must not ripple into business logic.
-3. **One composition root.** The root constructs concrete gateways, instantiates `MCPServer`, registers tools/resources/prompts, and starts the server.
-4. **One config seam.** `runtime-config.ts` is the only file that reads `process.env`; env is validated with Zod there.
-5. **`mcp-use` imports stay at the protocol edge.** Allowed layers: `handlers/`, `resources/`, `prompts/`, `presenters/` for response helpers, and `infrastructure/`.
-6. **Zod at boundaries.** Handler input schemas live at the handler boundary; root objects are strict; no `z.any()` or `z.unknown()` at tool boundaries; use cases and domain do not revalidate.
+3. **One composition root.** It constructs concrete gateways, instantiates `MCPServer`, registers tools/resources/prompts, and starts the server.
+4. **One config seam.** `runtime-config.ts` is the only file that reads `process.env`; env validates with Zod there.
+5. **`mcp-use` imports stay at the protocol edge.** Allowed: `handlers/`, `resources/`, `prompts/`, `presenters/` (response helpers), and `infrastructure/`.
+6. **Zod at boundaries.** Handler input schemas live at the handler boundary; root objects strict; no `z.any()`/`z.unknown()` at tool boundaries; use cases and domain do not revalidate.
 7. **Forbidden TypeScript stays forbidden.** No bare `any`, `as any`, `@ts-ignore`, or unjustified `@ts-expect-error`.
-8. **Type-only imports use `import type`.** `verbatimModuleSyntax: true` is required.
-9. **Locked TypeScript flags apply.** `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, NodeNext/Node16 module settings.
-10. **No stdout logging.** `console.*` is forbidden under `src/`; stdout is the JSON-RPC wire under stdio.
+8. **Type-only imports use `import type`.** `verbatimModuleSyntax: true` required.
+9. **Locked TS flags.** `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, NodeNext/Node16 module settings.
+10. **No stdout logging.** `console.*` forbidden under `src/`; stdout is the JSON-RPC wire under stdio.
 11. **Provider errors classify at gateways.** Raw provider errors become `DomainError` subclasses before crossing a port.
 12. **Domain events and next steps emit after durable commit.** Never dispatch before the side effect succeeds.
 13. **Entity privacy is runtime-enforced.** Prefer `#` private fields; `private` is acceptable only with equivalent lint and `as any` blocks.
 14. **One tool per file.** Monolithic tool files are refactor targets.
 15. **No application barrels.** Direct imports only; `index.ts` barrels inside `src/` cause cycles and cold-start regressions.
 
-When a hard external constraint blocks a guardrail, report the constraint and the smallest compensating boundary. Do not silently weaken the rule.
-
 ## Canonical Layout
-
-Keep the spine tree short; use the folder-layout reference for rationale, full naming rules, exceptions, and per-folder `AGENTS.md` guidance.
 
 ```text
 src/
@@ -102,6 +90,8 @@ src/
 └── shared/          # structural types and cross-cutting helpers
 ```
 
+Full naming rules, rationale, and per-folder `AGENTS.md` guidance: `references/folder-layout.md`.
+
 ## Import Matrix
 
 | Layer | May import from | Must not import |
@@ -115,20 +105,22 @@ src/
 | `resources/`, `prompts/` | domain, application, protocol-edge types | direct gateway construction, env |
 | `shared/` | domain types only | side effects, business logic, framework imports |
 
-Enforce the matrix with `dependency-cruiser` as a CI-blocking gate.
+Enforce as a CI-blocking gate; copy-paste config in `references/dependency-rules.md`.
 
 ## MCP Primitive Placement
 
-| Primitive | Structural home | Mechanical owner |
+| Primitive | Structural home (this skill) | Mechanical owner (route out) |
 |---|---|---|
-| Tool handler | `handlers/<feature>/<tool>.handler.ts` | `build-mcp-use-server` for exact API fields |
-| Tool input schema | Inline in handler; shared fragments in `handlers/schemas/` | `build-mcp-use-server` for field recipes |
-| Resource | `resources/<resource>.ts` or `resources/<widget-name>/` | `build-mcp-use-server` for resource/widget mechanics |
-| Prompt | `prompts/registry.ts` or `prompts/<prompt>.ts` | `build-mcp-use-server` for prompt mechanics |
-| Response shaping | `presenters/mcp-presenter.ts` | `build-mcp-use-server` for helper choice |
-| `MCPServer` construction | composition root only | `build-mcp-use-server` for constructor/API details |
-| Auth/session/transport wiring | `infrastructure/` plus composition root | `build-mcp-use-server` for provider/store/transport recipes |
-| `ctx.elicit()`, `ctx.sample()`, client capability checks | handlers only | `build-mcp-use-server` for invocation mechanics |
+| Tool handler | `handlers/<feature>/<tool>.handler.ts` | `build-mcp-use-server` |
+| Tool input schema | Inline in handler; shared fragments in `handlers/schemas/` | `build-mcp-use-server` |
+| Resource | `resources/<resource>.ts` or `resources/<widget-name>/` | `build-mcp-use-server` |
+| Prompt | `prompts/registry.ts` or `prompts/<prompt>.ts` | `build-mcp-use-server` |
+| Response shaping | `presenters/mcp-presenter.ts` | `build-mcp-use-server` |
+| `MCPServer` construction | composition root only | `build-mcp-use-server` |
+| Auth/session/transport wiring | `infrastructure/` plus composition root | `build-mcp-use-server` |
+| `ctx.elicit()`, `ctx.sample()`, capability checks | handlers only | `build-mcp-use-server` |
+
+Blended decisions split via `references/coordinate-with-build-mcp-use-server.md`.
 
 ## Request Flow
 
@@ -145,9 +137,9 @@ MCP client
 
 The handler is thin: parse, derive command, delegate, render. The use case is framework-free. The gateway hides providers. The presenter shapes data and redacts; it does not make business decisions.
 
-## Audit Smells
+## Audit Smells (sweep first)
 
-During review, check these first before deep reading:
+Detect these before deep reading:
 
 - `mcp-use` imported from `domain/`, `application/`, `gateways/`, or `shared/`.
 - `process.env` outside `infrastructure/config/runtime-config.ts`.
@@ -158,7 +150,7 @@ During review, check these first before deep reading:
 - `console.*` under `src/`.
 - `index.ts` barrels under application code.
 
-Use the anti-pattern catalogue only after the first sweep identifies likely drift.
+After the sweep, look up concrete examples and fix paths in `references/anti-patterns.md`.
 
 ## Validation
 
@@ -170,15 +162,13 @@ Minimum gates for structural work:
 - Focused unit tests for changed handlers/use cases/gateways/presenters.
 - End-to-end MCP call only when wiring, bootstrap, transport, auth/session, or response surfaces changed.
 
-Bundled read-only audit helpers:
+Bundled read-only audit helpers (run from the target MCP project root, or pass the project root as the first argument):
 
 | Need | Script | Doc |
 |---|---|---|
 | Grep likely layer-import, env, console, and barrel violations | `scripts/audit-layer-imports.sh` | `scripts/audit-layer-imports.md` |
 | Check canonical folders and expected seams | `scripts/check-folder-layout.sh` | `scripts/check-folder-layout.md` |
 | Check likely Zod boundary violations | `scripts/check-zod-boundary.sh` | `scripts/check-zod-boundary.md` |
-
-Run scripts from the target MCP project root, or pass the project root as the first argument.
 
 Claim only the verification rung actually reached.
 
