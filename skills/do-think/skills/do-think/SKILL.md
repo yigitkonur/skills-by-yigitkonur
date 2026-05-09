@@ -1,6 +1,6 @@
 ---
 name: do-think
-description: Use skill if you are facing ambiguous, high-stakes, or hard-to-reverse work — debug, refactor, plan, architect, brainstorm, choose — and need a deep-thinking framework, solo or user-in-the-loop.
+description: Use skill if you are planning, architecting, refactoring, brainstorming, or choosing under ambiguity/stakes and need Solo or user-in-the-loop deep thinking before acting.
 ---
 
 # Do Think
@@ -18,20 +18,24 @@ One core loop applies to both. Pick the mode FIRST, then run the loop.
 
 Use this skill when:
 - the problem is underspecified
-- the root cause is unknown
+- the right frame or decision criteria are unknown
 - multiple approaches are viable and tradeoffs matter
 - a refactor could change behavior, boundaries, or workflow
 - the codebase or domain is unfamiliar
 - the change is expensive to reverse
-- the task is likely to derail if you stop after the first obstacle
+- the task is likely to derail after the first obstacle
 - the user explicitly asked to brainstorm, walk through, or think together
 
-Do NOT use this skill when:
+Prefer another skill when:
 - the task is trivial, mechanical, or fully specified
 - the user gave exact steps and the main risk is execution, not reasoning
-- you are only summarizing, translating, or relaying already-known facts
-- the task is a runtime bug with a reproducible failure → use `do-debug` instead
-- the task is verifying what's actually done vs. claimed → use `check-completion`
+- only summarizing, translating, or relaying already-known facts
+- runtime bug with a reproducible failure → `do-debug`
+- reviewing a PR or branch diff → `do-review`
+- evaluating received review feedback → `evaluate-code-review`
+- preparing a PR/review handoff → `ask-review`
+- bulk dirty-tree cleanup into PRs → `run-repo-cleanup`
+- done-vs-claimed audit → `check-completion`
 
 ## Pick a mode FIRST (Iron Law #0)
 
