@@ -142,6 +142,66 @@ function mcpAuthRouter(options: AuthRouterOptions): RequestHandler;
 | POST | `/register` | Client registration (only if `clientsStore.registerClient` exists) |
 | POST | `/revoke` | Token revocation (only if `provider.revokeToken` exists) |
 
+### OAuth router wiring
+
+Compact Express wiring with the SDK router, bearer middleware, and handler access:
+
+```typescript
+import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
+import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
+import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+
+const issuerUrl = new URL("https://mcp.example.com");
+const resourceServerUrl = new URL("https://mcp.example.com/mcp");
+const scopesSupported = ["mcp:tools"];
+const requiredScopes = ["mcp:tools"];
+const provider = createProductionOAuthProvider(); // implements OAuthServerProvider
+
+const app = createMcpExpressApp();
+
+app.use(mcpAuthRouter({
+  provider,
+  issuerUrl,
+  scopesSupported,
+  resourceServerUrl,
+}));
+
+app.use("/mcp", requireBearerAuth({
+  verifier: provider,
+  requiredScopes,
+}));
+
+const server = new McpServer({ name: "secure-server", version: "1.0.0" });
+
+server.registerTool("whoami", {
+  description: "Return the authenticated client and granted scopes",
+  inputSchema: {},
+  annotations: { readOnlyHint: true },
+}, async (_args, extra) => ({
+  content: [{
+    type: "text",
+    text: JSON.stringify({
+      clientId: extra.authInfo?.clientId,
+      scopes: extra.authInfo?.scopes ?? [],
+    }),
+  }],
+}));
+
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: undefined,
+});
+
+await server.connect(transport);
+
+app.post("/mcp", async (req, res) => {
+  await transport.handleRequest(req, res, req.body);
+});
+```
+
+`mcpAuthRouter()` mounts `/authorize`, `/token`, OAuth metadata endpoints, `/register` when dynamic client registration is available, and `/revoke` when the provider supports revocation. Production providers must persist clients, authorization codes, and tokens, and must enforce HTTPS except for localhost development.
+
 ### OAuthServerProvider — source-verified interface
 
 ```typescript
