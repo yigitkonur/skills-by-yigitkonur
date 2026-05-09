@@ -1,19 +1,26 @@
-# run-codex-exec
+# run-codex-exec → orchestrate-codex (exec mode)
 
-Orchestrate multiple parallel `codex exec` CLI agents in git worktrees with auto-commit wrappers and a live stream monitor for observability.
+This skill has been folded into [`orchestrate-codex`](../orchestrate-codex/). Its exec-mode behavior — parallel `codex exec` agents in git worktrees with auto-commit and a live Monitor stream — lives there now under one source-of-truth flag policy and a manifest-backed lifecycle.
 
 **Category:** orchestration
 
-## Install
-
-Install this skill individually:
+## Install orchestrate-codex instead
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-codex-exec
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/orchestrate-codex
 ```
 
-Or install the full pack:
+Then dispatch in exec mode:
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
+node <skill>/scripts/orchestrate-codex.mjs exec --tasks tasks.json
 ```
+
+The recipe lives at `skills/orchestrate-codex/skills/orchestrate-codex/references/modes/exec.md`.
+
+## Why the merge
+
+- One entry point for all five codex modes (exec / batch / single / review / rescue) — agents stop guessing which sub-skill applies.
+- Stale flags (`--full-auto`) replaced with the current codex 0.129.0 surface.
+- Single source of truth for sandbox / model / effort policy in `codex-flags.sh`.
+- Vendored copy of OpenAI's `codex-plugin-cc` scripts as the implementation foundation.
