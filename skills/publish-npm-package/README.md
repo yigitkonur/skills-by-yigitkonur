@@ -1,6 +1,6 @@
 # publish-npm-package
 
-Automating npm publishing via GitHub Actions and need auth, versioning, provenance, or workflow-template choices.
+Automating npm package releases from GitHub Actions and need trusted publishing, token auth, versioning, provenance, or workflow templates.
 
 **Category:** development
 
