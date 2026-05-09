@@ -5,91 +5,191 @@ description: Use skill if you are building or extending TinaCMS-backed Next.js A
 
 # Build TinaCMS Next.js
 
-Build a Next.js App Router site with TinaCMS as a git-backed, MDX-first content layer. Content lives as `.md`/`.mdx` files in the repo, edited through TinaCMS visual editor, and rendered through dynamic Next.js routes.
+Build or extend a Next.js App Router site where TinaCMS is the git-backed content layer. The job is usually schema modeling, MDX/rich-text rendering, visual editing, TinaCloud/self-hosted deployment, or TinaCMS-specific debugging.
 
-For the full structured index of every reference file, read [references/00-reference-map.md](references/00-reference-map.md).
+Use this skill as a router first. Load the smallest reference lane that matches the user goal, then expand only when the implementation needs it. Use [references/00-reference-map.md](references/00-reference-map.md) as the exhaustive catalog for broad research or reference discovery, not as the first stop for ordinary tasks.
 
-## Workflow
+## Trigger Boundary
 
-1. Decide TinaCloud (default) vs self-hosted. Read [references/concepts/03-tinacloud-vs-self-hosted.md](references/concepts/03-tinacloud-vs-self-hosted.md).
-2. Understand the architecture. Read [references/concepts/01-what-is-tinacms.md](references/concepts/01-what-is-tinacms.md), [references/concepts/02-tina-folder-anatomy.md](references/concepts/02-tina-folder-anatomy.md), and (for self-hosted) [references/concepts/04-data-layer-architecture.md](references/concepts/04-data-layer-architecture.md).
-3. Scaffold or add to existing project. Read [references/setup/01-prerequisites.md](references/setup/01-prerequisites.md), [references/setup/02-new-project-scaffold.md](references/setup/02-new-project-scaffold.md), [references/setup/03-existing-project-add.md](references/setup/03-existing-project-add.md), [references/setup/04-package-scripts.md](references/setup/04-package-scripts.md), [references/setup/05-env-vars.md](references/setup/05-env-vars.md), [references/setup/06-gitignore-and-lockfile.md](references/setup/06-gitignore-and-lockfile.md), and [references/setup/07-claude-code-automations.md](references/setup/07-claude-code-automations.md).
-4. Configure `tina/config.ts`. Read [references/config/01-config-anatomy.md](references/config/01-config-anatomy.md), [references/config/02-build-and-server.md](references/config/02-build-and-server.md), [references/config/03-admin-and-ui.md](references/config/03-admin-and-ui.md), [references/config/04-branch-resolution.md](references/config/04-branch-resolution.md), [references/config/05-client-and-content-api.md](references/config/05-client-and-content-api.md), [references/config/06-typescript-path-aliases.md](references/config/06-typescript-path-aliases.md).
-5. Design the schema. Start with [references/schema/00-schema-overview.md](references/schema/00-schema-overview.md). Then [references/schema/01-collections.md](references/schema/01-collections.md), [references/schema/02-collection-templates.md](references/schema/02-collection-templates.md), [references/schema/03-naming-rules.md](references/schema/03-naming-rules.md), [references/schema/04-blocks-pattern.md](references/schema/04-blocks-pattern.md), [references/schema/05-reusable-field-groups.md](references/schema/05-reusable-field-groups.md), [references/schema/06-content-hooks.md](references/schema/06-content-hooks.md), [references/schema/07-list-ui-customization.md](references/schema/07-list-ui-customization.md), and [references/schema/08-default-collection-set.md](references/schema/08-default-collection-set.md).
-6. Pick field types. Start with [references/field-types/00-overview.md](references/field-types/00-overview.md). Per-type docs: [references/field-types/01-string.md](references/field-types/01-string.md), [references/field-types/02-number.md](references/field-types/02-number.md), [references/field-types/03-boolean.md](references/field-types/03-boolean.md), [references/field-types/04-datetime.md](references/field-types/04-datetime.md), [references/field-types/05-image.md](references/field-types/05-image.md), [references/field-types/06-reference.md](references/field-types/06-reference.md), [references/field-types/07-object.md](references/field-types/07-object.md), [references/field-types/08-rich-text-markdown.md](references/field-types/08-rich-text-markdown.md), [references/field-types/09-rich-text-mdx.md](references/field-types/09-rich-text-mdx.md), [references/field-types/10-markdown-shortcodes.md](references/field-types/10-markdown-shortcodes.md), and [references/field-types/11-reserved-names.md](references/field-types/11-reserved-names.md).
-7. (Optional) Custom field components via the toolkit. Read [references/toolkit-fields/00-toolkit-overview.md](references/toolkit-fields/00-toolkit-overview.md), [references/toolkit-fields/01-text-textarea-number.md](references/toolkit-fields/01-text-textarea-number.md), [references/toolkit-fields/02-image-color.md](references/toolkit-fields/02-image-color.md), [references/toolkit-fields/03-toggle-radio-select.md](references/toolkit-fields/03-toggle-radio-select.md), [references/toolkit-fields/04-tags-list.md](references/toolkit-fields/04-tags-list.md), [references/toolkit-fields/05-group-and-group-list.md](references/toolkit-fields/05-group-and-group-list.md), [references/toolkit-fields/06-date-markdown-html.md](references/toolkit-fields/06-date-markdown-html.md), [references/toolkit-fields/07-custom-field-component.md](references/toolkit-fields/07-custom-field-component.md).
-8. Wire dynamic Next.js pages. Read [references/rendering/01-app-router-pattern.md](references/rendering/01-app-router-pattern.md) (default) or [references/rendering/02-pages-router-pattern.md](references/rendering/02-pages-router-pattern.md) (legacy). Then [references/rendering/03-usetina-hook.md](references/rendering/03-usetina-hook.md), [references/rendering/04-tinamarkdown.md](references/rendering/04-tinamarkdown.md), [references/rendering/05-mdx-component-mapping.md](references/rendering/05-mdx-component-mapping.md), [references/rendering/06-overriding-builtins.md](references/rendering/06-overriding-builtins.md), [references/rendering/07-mermaid-diagrams.md](references/rendering/07-mermaid-diagrams.md), [references/rendering/08-block-renderer.md](references/rendering/08-block-renderer.md), [references/rendering/09-static-params.md](references/rendering/09-static-params.md), [references/rendering/10-caching-use-cache.md](references/rendering/10-caching-use-cache.md), and the **critical** [references/rendering/11-vercel-cache-caveat.md](references/rendering/11-vercel-cache-caveat.md).
-9. Wire visual editing. Read [references/visual-editing/01-overview.md](references/visual-editing/01-overview.md), [references/visual-editing/02-router-config.md](references/visual-editing/02-router-config.md), [references/visual-editing/03-tinafield-helper.md](references/visual-editing/03-tinafield-helper.md), [references/visual-editing/04-tinamarkdown-tinafield.md](references/visual-editing/04-tinamarkdown-tinafield.md), [references/visual-editing/05-draft-mode.md](references/visual-editing/05-draft-mode.md), [references/visual-editing/06-edit-state-hook.md](references/visual-editing/06-edit-state-hook.md), [references/visual-editing/07-debugging-checklist.md](references/visual-editing/07-debugging-checklist.md), and [references/visual-editing/08-proxy-ts.md](references/visual-editing/08-proxy-ts.md).
-10. Fetch data. Read [references/data-fetching/01-overview.md](references/data-fetching/01-overview.md), [references/data-fetching/02-generated-client.md](references/data-fetching/02-generated-client.md), [references/data-fetching/03-custom-queries.md](references/data-fetching/03-custom-queries.md), [references/data-fetching/04-fetch-options-revalidate.md](references/data-fetching/04-fetch-options-revalidate.md), [references/data-fetching/05-graphql-cli.md](references/data-fetching/05-graphql-cli.md).
-11. Use GraphQL features. Read [references/graphql/01-overview.md](references/graphql/01-overview.md), [references/graphql/02-get-document.md](references/graphql/02-get-document.md), [references/graphql/03-query-documents.md](references/graphql/03-query-documents.md), [references/graphql/04-filter-documents.md](references/graphql/04-filter-documents.md), [references/graphql/05-sorting.md](references/graphql/05-sorting.md), [references/graphql/06-pagination.md](references/graphql/06-pagination.md), [references/graphql/07-performance.md](references/graphql/07-performance.md), [references/graphql/08-limitations.md](references/graphql/08-limitations.md), [references/graphql/09-add-document.md](references/graphql/09-add-document.md), [references/graphql/10-update-document.md](references/graphql/10-update-document.md).
-12. Add SEO. Read [references/seo/01-generate-metadata.md](references/seo/01-generate-metadata.md), [references/seo/02-description-waterfall.md](references/seo/02-description-waterfall.md), [references/seo/03-og-image-waterfall.md](references/seo/03-og-image-waterfall.md), [references/seo/04-json-ld-structured-data.md](references/seo/04-json-ld-structured-data.md), [references/seo/05-dynamic-og-images.md](references/seo/05-dynamic-og-images.md), [references/seo/06-sitemap-and-robots.md](references/seo/06-sitemap-and-robots.md), [references/seo/07-rss-feed.md](references/seo/07-rss-feed.md).
-13. Configure media. Read [references/media/01-repo-based-default.md](references/media/01-repo-based-default.md), [references/media/02-accepted-types.md](references/media/02-accepted-types.md), [references/media/03-cloudinary.md](references/media/03-cloudinary.md), [references/media/04-s3.md](references/media/04-s3.md), [references/media/05-do-spaces.md](references/media/05-do-spaces.md), [references/media/06-vercel-blob.md](references/media/06-vercel-blob.md), [references/media/07-external-auth.md](references/media/07-external-auth.md).
-14. Pick a backend. **TinaCloud (default):** read [references/tinacloud/01-overview.md](references/tinacloud/01-overview.md), [references/tinacloud/02-network-requirements.md](references/tinacloud/02-network-requirements.md), [references/tinacloud/03-dashboard-registration.md](references/tinacloud/03-dashboard-registration.md), [references/tinacloud/04-projects.md](references/tinacloud/04-projects.md), [references/tinacloud/05-users-and-orgs.md](references/tinacloud/05-users-and-orgs.md), [references/tinacloud/06-editorial-workflow.md](references/tinacloud/06-editorial-workflow.md), [references/tinacloud/07-webhooks.md](references/tinacloud/07-webhooks.md), [references/tinacloud/08-search.md](references/tinacloud/08-search.md), [references/tinacloud/09-git-co-authoring.md](references/tinacloud/09-git-co-authoring.md), [references/tinacloud/10-api-versioning.md](references/tinacloud/10-api-versioning.md), [references/tinacloud/11-github-enterprise.md](references/tinacloud/11-github-enterprise.md), [references/tinacloud/12-vercel-deployment.md](references/tinacloud/12-vercel-deployment.md), [references/tinacloud/13-troubleshooting.md](references/tinacloud/13-troubleshooting.md). **Self-hosted (alternative):** read [references/self-hosted/00-overview.md](references/self-hosted/00-overview.md), [references/self-hosted/01-architecture.md](references/self-hosted/01-architecture.md), [references/self-hosted/02-nextjs-vercel-starter.md](references/self-hosted/02-nextjs-vercel-starter.md), [references/self-hosted/03-existing-site-add.md](references/self-hosted/03-existing-site-add.md), [references/self-hosted/04-manual-setup.md](references/self-hosted/04-manual-setup.md), [references/self-hosted/05-migrating-from-tinacloud.md](references/self-hosted/05-migrating-from-tinacloud.md), [references/self-hosted/06-querying-data.md](references/self-hosted/06-querying-data.md), [references/self-hosted/07-user-management.md](references/self-hosted/07-user-management.md), [references/self-hosted/08-limitations.md](references/self-hosted/08-limitations.md). For the backend route: [references/self-hosted/tina-backend/01-nextjs-app-route.md](references/self-hosted/tina-backend/01-nextjs-app-route.md), [references/self-hosted/tina-backend/02-vercel-functions.md](references/self-hosted/tina-backend/02-vercel-functions.md). For DB adapters: [references/self-hosted/database-adapter/01-overview.md](references/self-hosted/database-adapter/01-overview.md), [references/self-hosted/database-adapter/02-vercel-kv.md](references/self-hosted/database-adapter/02-vercel-kv.md), [references/self-hosted/database-adapter/03-mongodb.md](references/self-hosted/database-adapter/03-mongodb.md), [references/self-hosted/database-adapter/04-make-your-own.md](references/self-hosted/database-adapter/04-make-your-own.md). For auth providers: [references/self-hosted/auth-provider/01-overview.md](references/self-hosted/auth-provider/01-overview.md), [references/self-hosted/auth-provider/02-authjs.md](references/self-hosted/auth-provider/02-authjs.md), [references/self-hosted/auth-provider/03-tinacloud-auth.md](references/self-hosted/auth-provider/03-tinacloud-auth.md), [references/self-hosted/auth-provider/04-clerk-auth.md](references/self-hosted/auth-provider/04-clerk-auth.md), [references/self-hosted/auth-provider/05-bring-your-own.md](references/self-hosted/auth-provider/05-bring-your-own.md). For git providers: [references/self-hosted/git-provider/01-overview.md](references/self-hosted/git-provider/01-overview.md), [references/self-hosted/git-provider/02-github.md](references/self-hosted/git-provider/02-github.md), [references/self-hosted/git-provider/03-make-your-own.md](references/self-hosted/git-provider/03-make-your-own.md).
-15. Use the CLI. Read [references/cli/01-overview.md](references/cli/01-overview.md), [references/cli/02-tinacms-dev.md](references/cli/02-tinacms-dev.md), [references/cli/03-tinacms-build.md](references/cli/03-tinacms-build.md), [references/cli/04-graphql-commands.md](references/cli/04-graphql-commands.md), [references/cli/05-init-and-init-backend.md](references/cli/05-init-and-init-backend.md).
-16. Deploy. Read [references/deployment/01-vercel-tinacloud.md](references/deployment/01-vercel-tinacloud.md), [references/deployment/02-vercel-self-hosted.md](references/deployment/02-vercel-self-hosted.md), [references/deployment/03-deploy-hooks.md](references/deployment/03-deploy-hooks.md), [references/deployment/04-team-env-vars.md](references/deployment/04-team-env-vars.md), and the **important** [references/deployment/05-edge-runtime-not-supported.md](references/deployment/05-edge-runtime-not-supported.md).
-17. End-to-end playbooks. Read [references/workflows/01-greenfield-blog.md](references/workflows/01-greenfield-blog.md), [references/workflows/02-greenfield-marketing-site.md](references/workflows/02-greenfield-marketing-site.md), [references/workflows/03-add-cms-to-existing-site.md](references/workflows/03-add-cms-to-existing-site.md), [references/workflows/04-self-host-clerk-mongodb.md](references/workflows/04-self-host-clerk-mongodb.md), [references/workflows/05-editorial-workflow-team.md](references/workflows/05-editorial-workflow-team.md), [references/workflows/06-static-build-no-runtime.md](references/workflows/06-static-build-no-runtime.md).
+Use this skill for:
 
-## Default Stance
-
-- **Default to TinaCloud + Vercel + MDX** for the standard project. Self-hosted is the alternative for compliance, custom auth, or large content teams.
-- **App Router only** for new projects. Pages Router is documented as a legacy fallback.
-- **Two-component split is mandatory** for visual editing. Server Component fetches `{ data, query, variables }`; Client Component calls `useTina(props)`.
-- **Build order is `tinacms build && next build`.** Reverse order breaks with `Cannot find module '../tina/__generated__/client'`.
-- **Dev command is `tinacms dev -c "next dev"`.** Plain `next dev` skips the GraphQL server.
-- **Pin exact TinaCMS versions** (no `^` or `~`). Group `tinacms` and `@tinacms/cli` in RenovateBot/Dependabot.
-- **Use pnpm.** TinaCMS ≥ 2.7.3 expects pnpm.
-- **Always pass `revalidate`** to client queries on Vercel to defeat the data cache caveat.
-- **Always set `ui.router`** on every content collection for visual editing.
-- **Always include `defaultItem`** on block templates and `ui.itemProps` on list fields.
-- **Always commit `tina/tina-lock.json`**. Always gitignore `tina/__generated__/`.
-
-## Hard Rules
-
-- **Do not** call `useTina()` in a Server Component. Requires `"use client"`.
-- **Do not** put `data-tina-field` on React component wrappers. Place on DOM elements.
-- **Do not** import frontend-only code into `tina/config.ts` (no React, no `window`, no DOM APIs).
-- **Do not** use `templates` array on a collection unless documents genuinely have multiple shapes.
-- **Do not** ship the dev `admin/index.html` to production. Always run `tinacms build` in CI.
-- **Do not** access `cookies()`, `headers()`, or `searchParams` inside a `"use cache"` scope.
-- **Do not** rely on Vercel's default cache for TinaCloud responses without `next: { revalidate }`.
-- **Do not** deploy TinaCMS to a sub-path (`example.com/blog`) — known asset-loading bug.
-- **Do not** use `--no-optional` or `--omit=optional` on install.
-- **Do not** suggest Cloudflare Workers / Vercel Edge runtime self-hosting. The TinaCMS backend depends on Node.js APIs.
-- **Do not** use hyphens, spaces, or special chars in field names. Alphanumeric + underscores only.
-- **Do not** use reserved names: `children`, `mark`, `_template`, `_sys`, `id`, `__typename`.
-- **Do not** read content from `.env.local`. Tina build only reads `.env`.
-- **Do not** commit `tina/__generated__/`.
-- **Do not** commit raw passwords. Always bcrypt-hash for self-hosted user collection.
-
-## Recovery moves
-
-- **Click-to-edit not working** → run [references/visual-editing/07-debugging-checklist.md](references/visual-editing/07-debugging-checklist.md). For deeper diagnosis: [references/troubleshooting/06-visual-editing-issues.md](references/troubleshooting/06-visual-editing-issues.md).
-- **`Cannot find module '../tina/__generated__/client'`** → wrong build order. See [references/troubleshooting/02-build-and-types.md](references/troubleshooting/02-build-and-types.md).
-- **`Schema Not Successfully Built`** → frontend imports in `tina/config.ts`. See [references/troubleshooting/03-schema-errors.md](references/troubleshooting/03-schema-errors.md).
-- **Documents not appearing / `_template` errors / hyphenated frontmatter** → see [references/troubleshooting/04-content-errors.md](references/troubleshooting/04-content-errors.md).
-- **Reference dropdown 503** → split collection or use `string + options`. See [references/field-types/06-reference.md](references/field-types/06-reference.md).
-- **Stale content on Vercel** → add `next: { revalidate: 60 }`. See [references/rendering/11-vercel-cache-caveat.md](references/rendering/11-vercel-cache-caveat.md).
-- **`require is not defined` / `ERR_REQUIRE_ESM`** → switch to ESM. See [references/troubleshooting/02-build-and-types.md](references/troubleshooting/02-build-and-types.md).
-- **TinaCloud auth errors** → re-check env vars, regenerate token. See [references/troubleshooting/08-tinacloud-issues.md](references/troubleshooting/08-tinacloud-issues.md).
-- **Self-hosted backend 500** → check Vercel function logs. See [references/troubleshooting/05-runtime-errors.md](references/troubleshooting/05-runtime-errors.md).
-- **Editor admin doesn't load (corporate firewall)** → see [references/troubleshooting/07-network-and-firewall.md](references/troubleshooting/07-network-and-firewall.md).
-- **Top-level error catalog** (start here when in doubt) → [references/troubleshooting/01-error-catalog.md](references/troubleshooting/01-error-catalog.md).
-
-## Trigger boundary
-
-Use this skill when work involves:
-
-- Setting up TinaCMS in a Next.js project (App Router)
-- Designing TinaCMS collection schemas, blocks pattern, MDX templates
-- Rendering dynamic Next.js pages from TinaCMS content
-- Visual editing, draft mode, contextual editing
-- Deploying to Vercel with TinaCloud or self-hosted backend
-- Self-hosted backend with Auth.js, Clerk, MongoDB, or Vercel KV
-- Troubleshooting TinaCMS errors
+- Building or extending a TinaCMS-backed Next.js App Router site.
+- Adding TinaCMS to an existing App Router site without rebuilding the whole UI.
+- Modeling TinaCMS collections, fields, blocks, MDX/rich-text, media, or SEO content.
+- Wiring App Router rendering, metadata, caching, draft mode, or visual editing for TinaCMS data.
+- Deploying TinaCMS with TinaCloud or a self-hosted Node.js backend.
+- Debugging TinaCMS build, content, rendering, visual editing, Cloud, or self-hosted failures.
 
 Do not use this skill for:
 
-- Pages Router projects (App Router only — read official docs for Pages Router)
-- Vite, Astro, Hugo, or framework-agnostic TinaCMS setups
-- Edge-runtime deployment (Cloudflare Workers, Vercel Edge) — TinaCMS backend requires Node.js
-- Other CMSs (Sanity, Contentful, Strapi, Payload, headless WordPress)
+- Generic Next.js work with no TinaCMS surface.
+- Converting a live URL, HTML snapshot, or existing website into Next.js before CMS modeling; use `convert-url-to-nextjs`.
+- Design-system extraction or SaaS visual analysis without TinaCMS implementation; use `extract-saas-design`.
+- Pages Router as the main target. App Router is this skill's trigger; Pages Router references are legacy/fallback only.
+- Vite, Astro, Hugo, Gatsby, Remix, or framework-agnostic TinaCMS setup unless the task is only comparing against the App Router path.
+- Edge-runtime TinaCMS backend deployment. TinaCMS backend code requires Node.js.
+
+## Check Versions First
+
+Before copying any implementation pattern into a user project:
+
+1. Inspect `package.json`, lockfiles, package manager, `tina/config.*`, `tina/tina-lock.json`, `app/` or `src/app/`, and any `pages/` fallback.
+2. Identify installed `tinacms`, `@tinacms/cli`, `next`, `react`, and `react-dom` versions.
+3. Check whether the project is App Router, mixed App/Pages, or legacy Pages Router.
+4. Check whether it already uses TinaCloud (`clientId`, `token`) or self-hosted (`contentApiUrlOverride`, `/api/tina/gql`, `tina/database.*`).
+5. Anchor Next.js-sensitive patterns to the installed version: async `params`, async `draftMode()`, `proxy.ts`, caching APIs, and metadata behavior differ across Next 14/15/16.
+
+Read first:
+
+- [references/setup/01-prerequisites.md](references/setup/01-prerequisites.md)
+- [references/setup/04-package-scripts.md](references/setup/04-package-scripts.md)
+- [references/setup/05-env-vars.md](references/setup/05-env-vars.md)
+- [references/cli/01-overview.md](references/cli/01-overview.md)
+
+Prefer `pnpm` for greenfield work because the official TinaCMS App Router docs recommend it, but respect an existing project's package manager if its lockfile is consistent. Do not claim npm/yarn are unsupported; treat module-resolution failures as a known failure mode to diagnose.
+
+## Choose Backend Lane Early
+
+| Lane | Choose when | First references | Success check |
+|---|---|---|---|
+| TinaCloud | Managed auth/API/editorial hosting, standard git-backed path, GitHub integration, fastest setup | [references/concepts/03-tinacloud-vs-self-hosted.md](references/concepts/03-tinacloud-vs-self-hosted.md), [references/tinacloud/01-overview.md](references/tinacloud/01-overview.md), [references/deployment/01-vercel-tinacloud.md](references/deployment/01-vercel-tinacloud.md) | Admin loads, auth works, saves commit to GitHub, queries refresh with `revalidate` or deploy hooks |
+| Self-hosted | Full ownership, custom auth, custom storage, private network, enterprise hosting control, or avoiding TinaCloud dependency | [references/self-hosted/00-overview.md](references/self-hosted/00-overview.md), [references/self-hosted/01-architecture.md](references/self-hosted/01-architecture.md), [references/deployment/02-vercel-self-hosted.md](references/deployment/02-vercel-self-hosted.md) | `/api/tina/gql` responds on Node runtime, auth gates writes, DB/git provider configured, no Edge runtime |
+| Unknown | User has not supplied constraints | Default to TinaCloud for greenfield unless compliance, auth, storage, or network constraints point to self-hosted | State the lane assumption and verify env/config before implementation |
+
+Do not split this skill into Cloud and self-hosted variants. If the reference set keeps growing, that is a future product decision; this spine routes both lanes inside one skill.
+
+## Detect Intent
+
+| User intent | First hop | Essential follow-ups | Success check |
+|---|---|---|---|
+| Greenfield TinaCMS + App Router site | [references/workflows/01-greenfield-blog.md](references/workflows/01-greenfield-blog.md) or [references/workflows/02-greenfield-marketing-site.md](references/workflows/02-greenfield-marketing-site.md) | [references/setup/02-new-project-scaffold.md](references/setup/02-new-project-scaffold.md), [references/concepts/03-tinacloud-vs-self-hosted.md](references/concepts/03-tinacloud-vs-self-hosted.md), [references/setup/06-gitignore-and-lockfile.md](references/setup/06-gitignore-and-lockfile.md) | `tinacms dev -c "next dev"` runs, `/admin/index.html` loads, generated client exists, one route renders Tina content |
+| Add TinaCMS to existing App Router site | [references/workflows/03-add-cms-to-existing-site.md](references/workflows/03-add-cms-to-existing-site.md) | [references/setup/03-existing-project-add.md](references/setup/03-existing-project-add.md), [references/setup/04-package-scripts.md](references/setup/04-package-scripts.md), [references/schema/01-collections.md](references/schema/01-collections.md), [references/troubleshooting/04-content-errors.md](references/troubleshooting/04-content-errors.md) | Existing routes still work; one migrated content type audits, builds, and renders through Tina |
+| Model collections/schema | [references/schema/00-schema-overview.md](references/schema/00-schema-overview.md) | [references/schema/01-collections.md](references/schema/01-collections.md), [references/schema/03-naming-rules.md](references/schema/03-naming-rules.md), [references/schema/04-blocks-pattern.md](references/schema/04-blocks-pattern.md), [references/schema/08-default-collection-set.md](references/schema/08-default-collection-set.md) | `tinacms audit` and `tinacms build` pass; content paths match schema |
+| Choose or implement fields | [references/field-types/00-overview.md](references/field-types/00-overview.md) | [references/field-types/06-reference.md](references/field-types/06-reference.md), [references/field-types/07-object.md](references/field-types/07-object.md), [references/toolkit-fields/00-toolkit-overview.md](references/toolkit-fields/00-toolkit-overview.md) when custom widgets are required | Editor form matches the content model; list labels/defaults prevent empty editor states |
+| MDX or rich-text body/components | [references/field-types/09-rich-text-mdx.md](references/field-types/09-rich-text-mdx.md) | [references/rendering/04-tinamarkdown.md](references/rendering/04-tinamarkdown.md), [references/rendering/05-mdx-component-mapping.md](references/rendering/05-mdx-component-mapping.md), [references/visual-editing/04-tinamarkdown-tinafield.md](references/visual-editing/04-tinamarkdown-tinafield.md) | MDX renders with expected component mapping in App Router, including nested `children`, not just compile success |
+| Dynamic rendering/data fetching/metadata | [references/rendering/01-app-router-pattern.md](references/rendering/01-app-router-pattern.md) | [references/data-fetching/01-overview.md](references/data-fetching/01-overview.md), [references/rendering/09-static-params.md](references/rendering/09-static-params.md), [references/rendering/11-vercel-cache-caveat.md](references/rendering/11-vercel-cache-caveat.md), [references/seo/01-generate-metadata.md](references/seo/01-generate-metadata.md) | Server Component fetches Tina data, Client Component receives `{ data, query, variables }`, route and metadata render under the installed Next version |
+| Caching/revalidation | [references/rendering/11-vercel-cache-caveat.md](references/rendering/11-vercel-cache-caveat.md) | [references/data-fetching/04-fetch-options-revalidate.md](references/data-fetching/04-fetch-options-revalidate.md), [references/rendering/10-caching-use-cache.md](references/rendering/10-caching-use-cache.md), [references/deployment/03-deploy-hooks.md](references/deployment/03-deploy-hooks.md) | Deployed edits refresh within the chosen TTL or via webhook-driven revalidation |
+| Visual editing and draft/preview | [references/visual-editing/01-overview.md](references/visual-editing/01-overview.md) | [references/visual-editing/02-router-config.md](references/visual-editing/02-router-config.md), [references/visual-editing/05-draft-mode.md](references/visual-editing/05-draft-mode.md), [references/visual-editing/08-proxy-ts.md](references/visual-editing/08-proxy-ts.md), [references/visual-editing/07-debugging-checklist.md](references/visual-editing/07-debugging-checklist.md) | Draft Mode cookie sets, `useTina` updates preview, `data-tina-field` targets DOM, `proxy.ts` or legacy middleware does not block admin/API |
+| Deploy with TinaCloud | [references/deployment/01-vercel-tinacloud.md](references/deployment/01-vercel-tinacloud.md) | [references/tinacloud/03-dashboard-registration.md](references/tinacloud/03-dashboard-registration.md), [references/tinacloud/12-vercel-deployment.md](references/tinacloud/12-vercel-deployment.md), [references/deployment/04-team-env-vars.md](references/deployment/04-team-env-vars.md) | Vercel build uses `tinacms build && next build`, env vars exist in deploy target, admin auth and save flow work |
+| Self-host TinaCMS | [references/workflows/04-self-host-clerk-mongodb.md](references/workflows/04-self-host-clerk-mongodb.md) or [references/self-hosted/02-nextjs-vercel-starter.md](references/self-hosted/02-nextjs-vercel-starter.md) | [references/self-hosted/tina-backend/01-nextjs-app-route.md](references/self-hosted/tina-backend/01-nextjs-app-route.md), [references/self-hosted/auth-provider/01-overview.md](references/self-hosted/auth-provider/01-overview.md), [references/self-hosted/database-adapter/01-overview.md](references/self-hosted/database-adapter/01-overview.md), [references/self-hosted/git-provider/01-overview.md](references/self-hosted/git-provider/01-overview.md) | Node route handles `/api/tina/gql`, auth provider rejects unauthorized writes, DB and git provider persist edits |
+| Team editorial workflow | [references/workflows/05-editorial-workflow-team.md](references/workflows/05-editorial-workflow-team.md) | [references/tinacloud/06-editorial-workflow.md](references/tinacloud/06-editorial-workflow.md), [references/tinacloud/07-webhooks.md](references/tinacloud/07-webhooks.md), [references/tinacloud/09-git-co-authoring.md](references/tinacloud/09-git-co-authoring.md) | Editors save to branches/PRs, preview URL resolves, GitHub write access is verified |
+| Static/no-runtime CMS | [references/workflows/06-static-build-no-runtime.md](references/workflows/06-static-build-no-runtime.md) | [references/cli/03-tinacms-build.md](references/cli/03-tinacms-build.md), [references/rendering/09-static-params.md](references/rendering/09-static-params.md), [references/deployment/03-deploy-hooks.md](references/deployment/03-deploy-hooks.md) | All CMS pages pre-render; updates publish through git plus rebuild |
+| Debug failures | [references/troubleshooting/01-error-catalog.md](references/troubleshooting/01-error-catalog.md) | Use the symptom table below, then jump to the exact file | Root cause named, fix applied, verification rung stated |
+
+## Preview/Draft Checkpoint
+
+For visual editing or editorial preview tasks, verify all of these before chasing framework bugs:
+
+- `NEXT_PUBLIC_TINA_CLIENT_ID`, `TINA_TOKEN`, branch env, and any self-hosted auth/storage env vars are present in the right environment.
+- `tina/config.*` has `ui.router` or `ui.previewUrl` where the task needs live URLs.
+- App Router has a Draft Mode route and uses async `draftMode()` for Next 15+.
+- The page uses the two-component split: Server Component fetches, Client Component calls `useTina(props)`.
+- `query`, `variables`, and `data` are all passed to the Client Component.
+- `data-tina-field` lands on DOM elements or is forwarded by custom components.
+- `proxy.ts` in Next 16, or older `middleware.ts`, does not redirect `/admin`, `/api/preview`, or `/api/tina/*` incorrectly.
+
+## Debug by Symptom
+
+| Symptom | Go directly to | Also check |
+|---|---|---|
+| Generated client or `tina/__generated__` missing | [references/troubleshooting/02-build-and-types.md](references/troubleshooting/02-build-and-types.md) | [references/setup/04-package-scripts.md](references/setup/04-package-scripts.md) |
+| Schema validation/build failure | [references/troubleshooting/03-schema-errors.md](references/troubleshooting/03-schema-errors.md) | [references/schema/03-naming-rules.md](references/schema/03-naming-rules.md) |
+| Content missing, `_template`, bad frontmatter | [references/troubleshooting/04-content-errors.md](references/troubleshooting/04-content-errors.md) | [references/schema/02-collection-templates.md](references/schema/02-collection-templates.md) |
+| MDX/rich-text rendering failure | [references/field-types/09-rich-text-mdx.md](references/field-types/09-rich-text-mdx.md) | [references/rendering/05-mdx-component-mapping.md](references/rendering/05-mdx-component-mapping.md) |
+| Draft/preview mode not enabling | [references/visual-editing/05-draft-mode.md](references/visual-editing/05-draft-mode.md) | [references/troubleshooting/06-visual-editing-issues.md](references/troubleshooting/06-visual-editing-issues.md) |
+| Visual editing overlay not appearing | [references/visual-editing/07-debugging-checklist.md](references/visual-editing/07-debugging-checklist.md) | [references/troubleshooting/06-visual-editing-issues.md](references/troubleshooting/06-visual-editing-issues.md) |
+| Content stale after save/deploy | [references/rendering/11-vercel-cache-caveat.md](references/rendering/11-vercel-cache-caveat.md) | [references/data-fetching/04-fetch-options-revalidate.md](references/data-fetching/04-fetch-options-revalidate.md) |
+| TinaCloud auth/project/token/index errors | [references/troubleshooting/08-tinacloud-issues.md](references/troubleshooting/08-tinacloud-issues.md) | [references/tinacloud/13-troubleshooting.md](references/tinacloud/13-troubleshooting.md) |
+| Self-hosted auth/storage/API failures | [references/troubleshooting/05-runtime-errors.md](references/troubleshooting/05-runtime-errors.md) | [references/self-hosted/00-overview.md](references/self-hosted/00-overview.md) |
+| Edge runtime incompatibility | [references/deployment/05-edge-runtime-not-supported.md](references/deployment/05-edge-runtime-not-supported.md) | [references/self-hosted/tina-backend/01-nextjs-app-route.md](references/self-hosted/tina-backend/01-nextjs-app-route.md) |
+| Corporate firewall/admin network failure | [references/troubleshooting/07-network-and-firewall.md](references/troubleshooting/07-network-and-firewall.md) | [references/tinacloud/02-network-requirements.md](references/tinacloud/02-network-requirements.md) |
+
+Debugging should take at most two hops from this file to the specific troubleshooting document.
+
+## Defaults
+
+- Default to TinaCloud + Vercel + MDX for greenfield App Router projects unless constraints indicate self-hosting.
+- Keep Pages Router content as legacy/fallback only. If a project is Pages Router-first, use official docs and do not imply full support from this skill.
+- Prefer exact TinaCMS package pins and update `tinacms`, `@tinacms/cli`, and related `@tinacms/*` packages together.
+- Respect the existing package manager if the repo already has a clean lockfile; prefer pnpm for new TinaCMS App Router projects.
+- Use `tinacms dev -c "next dev"` for local dev and `tinacms build && next build` for production builds.
+- Commit `tina/tina-lock.json`; do not commit `tina/__generated__/` or `.tina/__generated__/`.
+- Always pass explicit `fetchOptions: { next: { revalidate: N } }` for TinaCMS client queries on Vercel unless the route is intentionally static-only.
+- Use `ui.router` for collections that need live preview or visual editing.
+- Use `defaultItem` for block templates and `ui.itemProps` for list fields that editors will manipulate.
+
+## Hard Rules
+
+- Do not call `useTina()` in a Server Component; put it in a `"use client"` component.
+- Do not place `data-tina-field` on React component wrappers unless the component forwards it to a DOM element.
+- Do not import frontend-only code into `tina/config.*`.
+- Do not use collection `templates` unless documents genuinely have multiple shapes; use `fields` for one shape.
+- Do not ship a dev admin build. CI must run `tinacms build`, not `tinacms dev`.
+- Do not access `cookies()`, `headers()`, or `searchParams` inside a `"use cache"` scope.
+- Do not deploy TinaCMS under a sub-path such as `example.com/blog`; route admin at the domain root or separate domain.
+- Do not install with `--no-optional` or `--omit=optional` when debugging TinaCMS module resolution.
+- Do not deploy self-hosted TinaCMS to Cloudflare Workers, Vercel Edge Functions, or any V8-isolate runtime.
+- Do not use hyphens, spaces, or special characters in field names. Use alphanumeric and underscores.
+- Do not use reserved names: `children` in the wrong context, `mark`, `_template`, `_sys`, `id`, `__typename`.
+- Do not put Tina build-required env vars only in `.env.local`; Tina build reads `.env` or host-provided env.
+- Do not manually edit generated Tina files.
+- Do not commit raw passwords for self-hosted users; hash them.
+
+## Output Contract
+
+For greenfield/build tasks, deliver:
+
+- Code changes for setup, schema, content model, rendering, and deployment lane.
+- Commands run and their results: install, `tinacms build`, typecheck/build, and local dev when feasible.
+- Validation result showing generated client, admin route, and at least one rendered content route.
+
+For migration/add-to-existing tasks, deliver:
+
+- Touched routes, components, content paths, package scripts, and env/config names.
+- Version, package-manager, App Router, and backend-lane assumptions.
+- Regression checks for existing routes plus the new TinaCMS route.
+
+For deployment tasks, deliver:
+
+- TinaCloud or self-hosted lane decision and why.
+- Env vars/config names verified without exposing secret values.
+- Provider-specific build/runtime checks, including Node runtime for self-hosted.
+
+For debugging tasks, deliver:
+
+- Symptom, root cause, exact reference used, fix, and verification rung.
+- If only static checks passed, say runtime was not exercised.
+
+## Verification Rungs
+
+- Skill edit: run `python3 scripts/validate-skills.py`; if unrelated repo-wide failures exist, report them separately and verify no new target-skill errors.
+- Package/static checks: inspect package versions, lockfile, App Router files, `tina/config.*`, env var names, `.gitignore`, and `tina/tina-lock.json`.
+- Tina checks: run `tinacms audit` where relevant, then `tinacms build`; verify `tina/__generated__/client.*` exists.
+- App checks: run the repo's typecheck/lint/build command; verify `tinacms build` precedes `next build`.
+- Runtime checks: run local dev with `tinacms dev -c "next dev"`, open `/admin/index.html`, render at least one App Router route.
+- Visual editing checks: enable Draft Mode, observe `useTina` updates, click `data-tina-field` targets, and verify `proxy.ts`/middleware does not block admin or Tina APIs.
+- Deployment checks: verify env vars in the provider, build logs, Node runtime for self-hosted backend, content save path, and cache/revalidation behavior.
+
+## Reference Routing
+
+Use these globs as the exhaustive reference catalog. Load only the lane you need:
+
+- Topic catalog: [references/00-reference-map.md](references/00-reference-map.md)
+- Concepts and architecture: [references/concepts/*.md](references/concepts/*.md)
+- Setup and project integration: [references/setup/*.md](references/setup/*.md)
+- Tina config: [references/config/*.md](references/config/*.md)
+- Schema modeling: [references/schema/*.md](references/schema/*.md)
+- Field types and MDX: [references/field-types/*.md](references/field-types/*.md)
+- Custom field toolkit: [references/toolkit-fields/*.md](references/toolkit-fields/*.md)
+- App Router rendering: [references/rendering/*.md](references/rendering/*.md)
+- Visual editing and preview: [references/visual-editing/*.md](references/visual-editing/*.md)
+- Data fetching and generated clients: [references/data-fetching/*.md](references/data-fetching/*.md)
+- GraphQL operations: [references/graphql/*.md](references/graphql/*.md)
+- SEO and metadata: [references/seo/*.md](references/seo/*.md)
+- Media storage: [references/media/*.md](references/media/*.md)
+- TinaCloud lane: [references/tinacloud/*.md](references/tinacloud/*.md)
+- Self-hosted lane: [references/self-hosted/*.md](references/self-hosted/*.md), [references/self-hosted/tina-backend/*.md](references/self-hosted/tina-backend/*.md), [references/self-hosted/auth-provider/*.md](references/self-hosted/auth-provider/*.md), [references/self-hosted/database-adapter/*.md](references/self-hosted/database-adapter/*.md), [references/self-hosted/git-provider/*.md](references/self-hosted/git-provider/*.md)
+- CLI: [references/cli/*.md](references/cli/*.md)
+- Deployment: [references/deployment/*.md](references/deployment/*.md)
+- End-to-end workflows: [references/workflows/*.md](references/workflows/*.md)
+- Troubleshooting: [references/troubleshooting/*.md](references/troubleshooting/*.md)
