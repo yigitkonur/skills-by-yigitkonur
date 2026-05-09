@@ -175,11 +175,24 @@ wc -l {SKILL_PATH}/SKILL.md  # must be under 500
 
 ### 7. Re-test if P0s were found
 
-If round 1 found any P0, launch another subagent with a **different task in a different domain**. Max 3 rounds. If friction isn't decreasing after 3, the skill needs architectural redesign.
+If round 1 found any P0, launch another subagent with a **different task in a different domain**.
+
+Decision rule:
+- Round 2 is required after any P0.
+- Round 3 is allowed only if friction decreased after round 2.
+- Max 3 rounds. If friction does not decrease after 3 rounds, stop and route to `synthesize-skills` for redesign instead of piling warnings into this skill.
 
 ### 8. Tell the user what happened
 
-Brief summary: friction counts, files edited, what worked well, whether re-test passed.
+No output files: the report is chat output, not a repo artifact.
+
+Report in this order:
+1. Marker counts by severity: `[STUCK]`, `[GUESSED]`, `[BROKE]`, `[NICE]`
+2. Root-cause clusters and taxonomy codes used
+3. Skill files edited
+4. Validation run and result
+5. Re-test result if any P0 was found
+6. Any companion-skill issue intentionally left for a separate pass
 
 ## Reference routing
 
