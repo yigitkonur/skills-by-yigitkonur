@@ -51,11 +51,16 @@ classify_claude() {
 
   first=$(sed -n '/[^[:space:]]/{s/^[[:space:]]*//;s/[[:space:]]*$//;p;q;}' "$file" 2>/dev/null || true)
   case "$first" in
-    '@AGENTS.md'|'See AGENTS.md'*|'See `AGENTS.md`'*)
+    '@AGENTS.md'|'@./AGENTS.md'|'@../AGENTS.md'|'See AGENTS.md'*|'See `AGENTS.md`'*)
       printf 'wrapper'
       ;;
     *)
-      printf 'independent'
+      nonblank=$(grep -c '[^[:space:]]' "$file" 2>/dev/null || printf '0')
+      if [ "$nonblank" -le 5 ] && grep -Eq 'AGENTS\.md' "$file" 2>/dev/null; then
+        printf 'wrapper'
+      else
+        printf 'independent'
+      fi
       ;;
   esac
 }
@@ -139,7 +144,7 @@ fi
 
 for native in './.github/copilot-instructions.md' './.github/instructions' './.greptile' './greptile.json'; do
   if [ -e "$native" ] && [ -z "$reviews" ]; then
-    printf 'risk: %s exists without a shared REVIEW.md layer\n' "$native"
+    printf 'check: %s exists without REVIEW.md; add shared review context only if review standards are in scope, otherwise document the skip reason\n' "$native"
     risk=1
   fi
 done

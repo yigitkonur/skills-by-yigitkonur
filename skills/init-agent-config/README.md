@@ -1,6 +1,6 @@
 # init-agent-config
 
-Generating AGENTS-first repo instructions, review-context decisions, folder-scoped guidance, and companion agent entrypoints for multi-agent coding workflows.
+Creating, auditing, or migrating AGENTS.md-first repo instructions, review-context decisions, folder-scoped guidance, and companion entrypoints for multi-agent coding workflows.
 
 **Category:** configuration
 

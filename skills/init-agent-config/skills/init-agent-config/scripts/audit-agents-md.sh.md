@@ -20,6 +20,8 @@ Run it during the initial audit before editing existing instruction files. It de
 - line counts for discovered instruction files
 - likely stale duplicate source-of-truth risks
 
+Wrapper detection treats symlinks, direct `@AGENTS.md` wrappers, and very small files that point to `AGENTS.md` as companions. Larger files that mention `AGENTS.md` are still reported as independent so they can be inspected for drift.
+
 ## Safety
 
 The script does not write files, delete files, change git state, or follow any workflow beyond filesystem inspection.

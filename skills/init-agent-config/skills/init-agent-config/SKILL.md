@@ -1,6 +1,6 @@
 ---
 name: init-agent-config
-description: "Use skill if you are creating, auditing, or migrating AGENTS.md-first repo instructions, REVIEW.md standards, folder-scoped guidance, and companion agent entrypoints for multi-agent coding workflows."
+description: "Use skill if you are creating, auditing, or migrating AGENTS.md-first repo instructions, review-context decisions, folder-scoped guidance, and companion entrypoints for multi-agent coding workflows."
 ---
 
 # Init Agent Config
@@ -186,11 +186,11 @@ Translate the discovery findings into a file plan.
 - Each planned file should have a one-sentence purpose before writing begins.
 - Use `scripts/scaffold-agents-md.sh` only after this file plan is known; never use it to invent structure before discovery.
 
-### 6) Audit existing files before rewriting them
+### 6) Produce the audit report before rewriting existing files
 
 Use `references/audit-and-migration.md` when the repo already has agent instructions.
 
-- find all existing instruction and wrapper files
+- use the Step 1 surface audit as input
 - score them before editing
 - show the report first
 - then propose targeted changes, migrations, or deletions
