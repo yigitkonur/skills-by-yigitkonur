@@ -12,6 +12,8 @@ Every MCP-server task lands in one of two question families.
 
 When a request blends both, split it. Do the architectural placement first using this skill (which file, which layer, what shape), then load the neighbour skill for the mechanics (which API, which fields, which flag).
 
+`build-mcp-use-server` now owns MCP Apps/widget mechanics in the same skill as server mechanics. That includes React-side widget patterns, `McpUseProvider`, `useWidget`, `useCallTool`, CSP declarations, widget metadata, asset hosting, and Inspector/widget validation. This skill owns only server-side placement: `src/resources/<widget-name>/`, bootstrap wiring, and the boundary flow between use cases, resources, tools, and presenters.
+
 ## Touch-points table
 
 Read this row-by-row. It is not exhaustive but it covers every overlap that has caused two-skill confusion in the reference repos.
@@ -20,7 +22,8 @@ Read this row-by-row. It is not exhaustive but it covers every overlap that has 
 |---|---|---|
 | Tool registration: where the file lives, what shape the factory has, how `bootstrap.ts` wires it | `apply-clean-mcp-architecture` | `defineTool()` factory layout, `handlers/<feature>/<tool>.handler.ts` placement, the rule that only the composition root may call `server.tool()`. |
 | Tool registration: which fields a tool config object accepts, what `annotations` flags do, how `mcp-use/server` validates the registration | `build-mcp-use-server` | API surface of `server.tool(...)` and `defineTool`-style helpers exposed by `mcp-use`. |
-| Zod schema authoring: every field bounded, `.strict()` on the root, no `z.any()` / `z.unknown()` | `build-mcp-use-server` | Field-level rules belong to the protocol-mechanics skill. This skill only insists the schema sits in the handler boundary, not deeper. |
+| Zod boundary invariants: schemas live at the handler boundary, root objects are strict, no `z.any()` / `z.unknown()` at boundaries, no use-case/domain revalidation | `apply-clean-mcp-architecture` | These are placement and trust-boundary rules. They survive `mcp-use` API changes. |
+| Zod schema authoring: field bounds, refinement recipes, generated types, client-facing schema mechanics, exact `mcp-use/server` registration shape | `build-mcp-use-server` | Field-level and API-specific rules belong to the protocol-mechanics skill. |
 | Schema placement: where shared field fragments live | `apply-clean-mcp-architecture` | `src/handlers/schemas/` for cross-tool fragments; tool-specific shapes inline in the handler. The neighbour skill never decides this. |
 | Response shape: `ToolResponse` builder in `domain/`, presenter in `presenters/`, the `presenter.render(...)` seam | `apply-clean-mcp-architecture` | Layered ownership: domain owns the framework-free response object; presenter is the only file that imports `mcp-use` response helpers. |
 | Response helpers: `text()`, `object()`, `mix()`, `error()`, `widget()` and when to choose each | `build-mcp-use-server` | Use them inside the presenter only. Any rule about which helper to use for what content lives in the neighbour skill. |
@@ -41,8 +44,8 @@ Read this row-by-row. It is not exhaustive but it covers every overlap that has 
 | Resources: static, templates, binary/image, URI conventions, subscriptions | `build-mcp-use-server` | Per-shape recipes belong to the neighbour skill. |
 | Prompts: where they live (`src/prompts/`), registration order in bootstrap (last) | `apply-clean-mcp-architecture` | Layer rule. |
 | Prompts: static, templates, completable, prompt engineering | `build-mcp-use-server` | Author-time mechanics. |
-| Widget hosting: which layer the server-side widget config lives in (`src/resources/<widget-name>/`), how it is wired in bootstrap | `apply-clean-mcp-architecture` | Architectural placement. |
-| Widget hosting mechanics: `widgetMetadata`, CSP declaration, `server.uiResource()`, `tool.widget.name` matching | `build-mcp-use-server` | Plus the React-side patterns (`McpUseProvider`, `useWidget`, `useCallTool`) for the widget itself. |
+| Widget hosting: which layer the server-side widget config lives in (`src/resources/<widget-name>/`), how it is wired in bootstrap, how widget data crosses layer boundaries | `apply-clean-mcp-architecture` | Architectural placement only. |
+| Widget hosting mechanics: `widgetMetadata`, CSP declaration, `server.uiResource()`, `tool.widget.name` matching, React-side widget patterns | `build-mcp-use-server` | The same current `build-mcp-use-server` skill owns MCP Apps/widget mechanics; do not route to the removed legacy widget split. |
 | Error handling: `DomainError` hierarchy, `code` / `recoveryHint` / `isRetryable`, gateway classifies before crossing the port, single mapping table at the boundary | `apply-clean-mcp-architecture` | The error model is architectural. |
 | Error response shaping: `error()` helper vs `throw`, expected-vs-unexpected failure semantics | `build-mcp-use-server` | The "use `error()` for expected failures, `throw` for truly unexpected" rule lives in the neighbour skill; this skill provides the typed-error model that feeds it. |
 | Logging: structured logger as a port, JSON to stderr, never stdout | `apply-clean-mcp-architecture` | Layer rule with security implications under stdio transport. |

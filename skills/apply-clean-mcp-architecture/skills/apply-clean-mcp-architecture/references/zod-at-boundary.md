@@ -1,6 +1,6 @@
 # Zod at the Boundary
 
-> SKILL.md's *Zod at the handler boundary only* rule (number 6 in the non-negotiable list) routes here. This reference fixes the architectural placement of Zod in an MCP server: which file owns the schema, how `schema.parse(input)` runs at the handler edge, how `ZodError` is converted to a `ValidationError` (a `DomainError` subclass) by the handler-boundary error mapper, where shared field fragments live, and how gateway responses are narrowed back from `unknown`. Schema-authoring mechanics — the deeper rationale for `.strict()` and `.describe()`, refinement helpers, output-schema patterns, alias preprocessors, and how schemas drive `mcp-use` tool registration — belong to `build-mcp-use-server` (`references/04-tools/`); this file does not duplicate them.
+> SKILL.md's *Zod at the handler boundary only* rule (number 6 in the non-negotiable list) routes here. This reference fixes the architectural placement of Zod in an MCP server: which file owns the schema, how `schema.parse(input)` runs at the handler edge, how `ZodError` is converted to a `ValidationError` (a `DomainError` subclass) by the handler-boundary error mapper, where shared field fragments live, and how gateway responses are narrowed back from `unknown`. Schema-authoring mechanics — field-bound recipes, refinement helpers, output-schema patterns, alias preprocessors, and `mcp-use/server` registration details — belong to `build-mcp-use-server` (`references/04-tools/`); this file does not duplicate them.
 
 After reading, an agent should know exactly where to place a Zod schema, how parsing failures become `DomainError`s, and how to safely admit an `unknown` provider response into the application layer.
 
@@ -8,7 +8,7 @@ After reading, an agent should know exactly where to place a Zod schema, how par
 
 | File | Owns |
 |---|---|
-| `handlers/<feature>/<tool>.handler.ts` | The tool's input Zod schema (a `z.ZodRawShape`). The schema is inline unless reused. |
+| `handlers/<feature>/<tool>.handler.ts` | The tool's input Zod schema placement (usually a `z.ZodRawShape`). The schema is inline unless reused. |
 | `handlers/schemas/` | Shared Zod field fragments reused across tools (filter elements, common date strings, pagination tokens). |
 | `handlers/<feature>/<tool>.handler.ts` (the handler body) | The single `schema.parse(input)` call. |
 | `infrastructure/middleware/error-handlers.ts` | The error mapper that catches `ZodError` and turns it into `ValidationError` before the MCP envelope is built. |
@@ -18,10 +18,10 @@ Zod **never** lives in:
 
 - `domain/` — domain trusts its inputs. Re-validating is wasted work and couples the layer to a parser library.
 - `application/` — use cases trust their commands. They receive validated, typed input or they receive nothing.
-- `gateways/` — the gateway sees provider responses (which are admitted via a structural guard or a Zod schema declared in the gateway file itself, see *Gateway-response narrowing* below) and produces typed values for the use case.
+- `gateways/` for tool-input validation or use-case command validation. Gateway-local schemas may narrow external provider responses before crossing a port; see *Gateway-response narrowing* below.
 - `presenters/` — the presenter is a humble mapper; it has no validation surface.
 
-Zod has **two** legitimate seams in an MCP server: the handler boundary (tool input from the MCP wire) and the env boundary (`process.env` in `runtime-config.ts`). Anywhere else is drift.
+Zod has two architectural validation seams in an MCP server: the handler boundary (tool input from the MCP wire) and the env boundary (`process.env` in `runtime-config.ts`). Gateway-local response narrowing is allowed as an adapter concern, not as a second application validation layer.
 
 ## The boundary-parse pattern
 
@@ -146,17 +146,17 @@ Do not infer the use-case command from `z.infer<>` and reuse it as the gateway r
 
 The exception: when the use-case command is genuinely identical to the handler input (rare; usually only true for trivial single-arg tools), `type Command = z.infer<typeof CommandSchema>` is acceptable, and the `CommandSchema` is declared inside the handler. The use case still does not import Zod — it imports the *type alias*, not the schema.
 
-## Schema-authoring discipline (defer to `build-mcp-use-server`)
+## Boundary invariants (defer mechanics to `build-mcp-use-server`)
 
-These rules apply to every tool input schema; the rationale, anti-patterns, and recipe-grade examples live in `build-mcp-use-server`'s `references/04-tools/`. State them once here so a reviewer can grep for them:
+These architectural invariants apply to every tool input schema:
 
-- `.strict()` on every top-level tool input object. Reject unknown fields rather than silently dropping them — silent drops mask agent typos.
-- `.describe()` on every field. The text is the LLM-visible spec.
-- Bound every field — `.min`, `.max`, `.length`, `.regex`, `.enum`. Unbounded `z.string()` and `z.array()` invite expensive provider calls and resource exhaustion.
-- Never `z.any()`. Never `z.unknown()` in a tool input schema (use a concrete schema with a refinement instead).
-- Use `z.preprocess()` for alias normalisation (e.g. hyphenated emit-form `referring-domains` → canonical `referring_domains`) so the use case sees only canonical values and can switch with `never` exhaustiveness.
+- Tool input schemas live at the handler boundary.
+- Top-level handler input objects are strict.
+- Boundary schemas do not use `z.any()` or `z.unknown()`.
+- Use cases and domain code receive validated commands and do not revalidate.
+- Shared field fragments live under `handlers/schemas/` only after two or more handlers use the same concept.
 
-For everything beyond this paragraph — output schemas, custom `mcp-use` integration patterns, when to use `z.discriminatedUnion`, refinement-vs-transform choice, generated types from `mcp-use generate-types` — load `build-mcp-use-server` and follow `references/04-tools/`.
+For field-level recipes, `.describe()` wording, refinement-vs-transform choice, output schemas, generated types, and exact `mcp-use/server` registration mechanics, load `build-mcp-use-server` and follow its `references/04-tools/` cluster.
 
 ## Gateway-response narrowing — `unknown` → schema → typed
 
