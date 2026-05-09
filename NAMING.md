@@ -112,6 +112,7 @@ When renaming a published skill:
 - `extract-saas-design`
 - `init-agent-config`
 - `init-makefiles`
+- `optimize-agent-ergonomics`
 - `optimize-agentic-cli`
 - `optimize-agentic-mcp`
 - `orchestrate-codex`
