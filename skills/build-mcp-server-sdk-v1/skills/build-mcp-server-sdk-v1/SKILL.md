@@ -11,8 +11,9 @@ Build and maintain MCP servers using `@modelcontextprotocol/sdk` v1.x (single pa
 
 - Imports from `@modelcontextprotocol/server` (split packages) → use `build-mcp-server-sdk-v2`
 - Handlers use `ctx.mcpReq` instead of flat `extra` → use `build-mcp-server-sdk-v2`
+- Existing v1 server whose goal is porting to v2 → use `convert-mcp-server-sdk-v1-to-v2`
 - Uses the `mcp-use` wrapper library → use `build-mcp-use-server`
-- Auditing/optimizing an existing server → use `optimize-agentic-mcp`
+- Agentic-quality or hardening audit beyond SDK correctness → use `optimize-agent-ergonomics`
 
 **How to detect v1:** `@modelcontextprotocol/sdk` (single package) in `package.json`. Handlers use `(args, extra)` with `extra.sendNotification`, `extra.authInfo`, `extra.signal` at the top level.
 
