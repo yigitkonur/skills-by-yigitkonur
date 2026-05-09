@@ -134,21 +134,26 @@ See `references/verification.md` for the full lens.
 
 Output format depends on mode:
 
-- **PR mode** — post thread replies via `gh api repos/{o}/{r}/pulls/{pr}/comments/{id}/replies` for ACCEPT/PUSHBACK/CLARIFY. Top-level comment only for summary. Never reply with pure gratitude.
+- **PR mode** — when PR replies are authorized, post thread replies via `gh api repos/{o}/{r}/pulls/{pr}/comments/{id}/replies` for ACCEPT/PUSHBACK/CLARIFY. Top-level comment only for summary. Never reply with pure gratitude.
 - **Session-audit mode** — markdown action plan as conversation output. Group by verdict.
 - **Markdown-doc mode** — markdown action plan written to a file next to the source doc, e.g. `review.md` → `review-action-plan.md`.
+
+Every action plan includes a decision register. Each item carries: stable item ID, source(s), source type(s), location and `commit_id` when available, verbatim reviewer text, verdict, evidence, planned action, and implementation status when implementation was requested.
 
 See `references/action-plan-output.md` for the exact formats.
 
 ### 7. Implement the accepted items
 
-Only after the action plan is produced and the user (or caller) has approved the plan, if the flow calls for implementation:
+Implementation depends on the user's original authorization:
 
+- If the user asked only to evaluate, stop after Step 6 and hand over the action plan.
+- If the user asked to evaluate and implement, produce the action plan first, then proceed under that original authorization.
+- Destructive or externally visible actions still require explicit authorization before they happen.
 - **Order**: blocking (breaks, security) → simple (typos, imports) → complex (refactoring, logic)
 - **Discipline**: one item at a time, test each before the next
 - **Reply**: after implementing an item, reply in the PR thread (PR mode) or update the action plan (markdown mode) with "Fixed. <what changed>" — no gratitude.
 
-If implementation is *not* requested in the user's ask ("just evaluate; I'll implement myself"), stop after Step 6 and hand over the action plan.
+After implementation, report accepted item IDs fixed, files changed, commit SHA(s) when committed, validation command and exact result, remaining CLARIFY / DEFER / PUSHBACK / DISMISS items, and PR reply status by thread in PR mode.
 
 ## The voice discipline (critical)
 
@@ -195,9 +200,9 @@ Unless the user wants a different format, produce artifacts in this order:
 2. Ground-truth change summary (after Step 2) — which fallback was used
 3. Explore-subagent dispatch report (after Step 3) — subagent ID + summarized verdicts
 4. Consolidation table (after Step 4) — only if multi-source; item ID → sources cited
-5. Per-item evaluation (after Step 5) — ACCEPT / PUSHBACK / CLARIFY / DEFER / DISMISS with reasoning
+5. Decision register (after Step 5) — item ID, sources, source types, location, commit_id, verbatim text, verdict, evidence, planned action, implementation status
 6. Action plan output (after Step 6) — mode-specific
-7. Implementation report (after Step 7) — only if implementation was requested
+7. Implementation report (after Step 7) — fixed IDs, files changed, commit SHA(s), validation result, remaining items, PR reply status
 
 ## Do this, not that
 

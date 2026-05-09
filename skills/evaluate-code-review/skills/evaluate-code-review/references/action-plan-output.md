@@ -2,13 +2,40 @@
 
 The action plan is the deliverable of this skill. Format depends on input mode.
 
+## Required decision register
+
+Every output mode includes a decision register before mode-specific replies or next steps.
+
+Each item carries:
+
+- `id` - stable item ID, e.g. `CR-001`
+- `sources` - reviewer, bot, self-review, or markdown doc names
+- `source_types` - `human`, `bot`, `self-review`, or `markdown doc`
+- `location` - path and line/range when available
+- `commit_id` - reviewed commit when available
+- `verbatim` - reviewer text, trimmed only for length
+- `verdict` - ACCEPT / PUSHBACK / CLARIFY / DEFER / DISMISS
+- `evidence` - file:line, test, history, or architecture evidence
+- `planned_action` - exact fix, reply, question, follow-up, or dismissal reason
+- `implementation_status` - `not requested`, `pending`, `fixed`, `blocked`, or `not applicable`
+
+Minimum table:
+
+```markdown
+| ID | Source(s) | Type(s) | Location | Commit | Verbatim | Verdict | Evidence | Planned action | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| CR-001 | Copilot, Alice | bot, human | `src/auth.ts:42-44` | `abc123` | "Missing null guard..." | ACCEPT | `src/auth.ts:42` dereferences `user` before check | Add guard and test missing-user path | pending |
+```
+
+If a verbatim comment is long, keep a short quote in the table and place the full text below the table under the same item ID.
+
 ## PR mode
 
 Output the action plan in two layers:
 
 ### Layer 1 — top-level PR summary comment
 
-One top-level comment summarizes the overall response. No item details here — those go in thread replies.
+One top-level comment summarizes the overall response. No item details here — those go in thread replies. Post it only when PR replies/comments are authorized.
 
 ```markdown
 Addressed in commit `<sha>` (or "see per-thread replies"):
@@ -73,19 +100,25 @@ No GitHub channel involved. Output the action plan as conversation output.
 **Feedback source(s):** <prev message author(s) or file name(s)>
 **Explore subagent dispatched:** <subagent id or "yes" + one-line verdict summary>
 
+### Decision register
+
+| ID | Source(s) | Type(s) | Location | Commit | Verbatim | Verdict | Evidence | Planned action | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| CR-001 | <reviewer> | <human/bot/self-review/markdown doc> | `<file:line>` | `<sha or n/a>` | "<verbatim>" | ACCEPT | <evidence> | <planned action> | <pending/not requested> |
+
 ### ACCEPT (N items)
 
-1. **<short label>** (`<file:line>`)
+1. **CR-001 — <short label>** (`<file:line>`)
    - Reviewer: <verbatim, trimmed>
    - Verdict: correct
    - Fix: <what to change, one or two sentences>
 
-2. **<short label>** (`<file:line>`)
+2. **CR-002 — <short label>** (`<file:line>`)
    - ...
 
 ### PUSHBACK (M items)
 
-1. **<short label>** (`<file:line>`)
+1. **CR-003 — <short label>** (`<file:line>`)
    - Reviewer: <verbatim, trimmed>
    - Verdict: incorrect — <technical reason>
    - Evidence: <file:line + reasoning>
@@ -93,18 +126,18 @@ No GitHub channel involved. Output the action plan as conversation output.
 
 ### CLARIFY (K items)
 
-1. **<short label>** (`<file:line>`)
+1. **CR-004 — <short label>** (`<file:line>`)
    - Reviewer: <verbatim>
    - Ambiguity: <what's unclear>
    - Question to ask: <specific question>
 
 ### DEFER (L items)
 
-1. **<short label>** — <why out of scope for now; when it should ship>
+1. **CR-005 — <short label>** — <why out of scope for now; when it should ship>
 
 ### DISMISS (P items)
 
-1. **<short label>** — <reason>
+1. **CR-006 — <short label>** — <reason plus evidence>
 
 ### Conflicts (if multi-source)
 
@@ -133,14 +166,47 @@ Use the same structure as session-audit mode above. Additionally:
 
 ## Implementation mode (optional Step 7)
 
-If the user asked for both evaluation AND implementation (e.g., "evaluate and apply the fixes"), after the action plan is produced and approved:
+If the user asked for both evaluation AND implementation (e.g., "evaluate and apply the fixes"), produce the action plan first, then continue under the original authorization. If the user asked only to evaluate, stop after the action plan.
 
 - Process ACCEPT items in order: blocking → simple → complex
 - One item at a time, test each
 - After each item:
-  - Commit with a message like `fix(scope): <what was done> — addresses review feedback on <item ref>`
+  - Commit with a message like `fix(scope): <what was done> - addresses review feedback on <item ref>`
   - (PR mode) Reply in the thread: `Fixed in <sha>.`
 - Do NOT batch multiple items into one commit unless they are the same file + same concern
+- Destructive or externally visible actions still require explicit authorization.
+
+### Required implementation report
+
+After fixes are applied, report:
+
+- accepted item IDs fixed
+- files changed
+- commit SHA(s), if committed
+- validation command(s) and exact result
+- remaining CLARIFY / DEFER / PUSHBACK / DISMISS items
+- PR reply status by thread when in PR mode
+
+Template:
+
+```markdown
+## Implementation report
+
+Fixed accepted items: CR-001, CR-002
+Files changed: `src/auth.ts`, `tests/auth.test.ts`
+Commits: `abc1234`, `def5678`
+Validation: `pnpm test -- auth` -> passed, 12 tests
+
+Remaining:
+- PUSHBACK: CR-003 replied in thread 98765
+- CLARIFY: CR-004 pending reviewer answer
+- DEFER: CR-005 logged in issue #88
+- DISMISS: CR-006 dismissed with evidence in thread 98770
+
+PR replies:
+- CR-001 / thread 98761: posted `Fixed in abc1234.`
+- CR-003 / thread 98765: posted pushback with `src/worker.ts:104` evidence
+```
 
 ## Character budget (PR mode)
 
