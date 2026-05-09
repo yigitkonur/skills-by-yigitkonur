@@ -1,6 +1,6 @@
 # CI/CD workflow — push-to-main → GitHub Actions auto-deploy
 
-The optional final step. After the Makefile is generated and AGENTS.md is normalized, the skill asks once: "Wire CI/CD for push-to-main → auto-deploy via GitHub Actions? (y/n)". If yes, the skill generates `.github/workflows/deploy.yml`, prompts for ONLY the tokens the scenario needs, pushes them to GitHub via `gh secret set`, and commits the workflow. The user never opens the GitHub UI; the agent never writes a token to disk except as a `gh secret set` payload.
+The optional final step. After core Makefile generation and AGENTS.md sync, the skill asks whether to generate GitHub Actions deploy wiring locally. If yes, the skill prompts for ONLY the tokens the scenario needs, stores only required secrets with `gh secret set`, verifies the secret names, generates `.github/workflows/deploy.yml`, and commits the workflow locally. Pushing is a separate explicit authorization gate.
 
 This step is opt-in. Decline = skill ends cleanly with `.github/workflows/` untouched. There's no half-baked YAML from a partial wiring.
 
@@ -11,18 +11,22 @@ This step is opt-in. Decline = skill ends cleanly with `.github/workflows/` unto
                                   └─ if not a GitHub repo: print manual-setup hint, skip CI/CD entirely
 2. Confirm gh authenticated:     gh auth status
                                   └─ if unauthenticated: ask user to `gh auth login` first; halt CI/CD
-3. Ask the user:                 "Wire CI/CD for push-to-main → auto-deploy via GitHub Actions? (y/n)"
+3. Ask the user:                 "Generate GitHub Actions deploy wiring locally? (y/n)"
                                   └─ default n; only proceed on explicit y
 4. Determine providers:          (Vercel | Railway | Supabase | combination, per scenario)
-5. Generate workflow YAML:       .github/workflows/deploy.yml — only blocks for in-scope providers
-6. Prompt for tokens:            one prompt per provider, using exact wording below
-7. Push secrets via gh:          gh secret set <NAME> --body "$pasted"
-8. Verify secrets present:       gh secret list (prints names only, never values)
-9. Commit + push:                git add .github/workflows/deploy.yml && git commit && git push origin main
-10. Print closing banner:        wired-secrets list, rotation hint
+5. Determine required secrets:    only those needed by in-scope providers
+6. Prompt for tokens:             one prompt block, using exact wording below
+                                  └─ blank required value halts CI/CD and leaves workflow untouched
+7. Push secrets via gh:           gh secret set <NAME> --body "$pasted"
+8. Verify secrets present:        gh secret list (prints names only, never values)
+9. Generate workflow YAML:        .github/workflows/deploy.yml — only blocks for verified providers
+10. Commit locally:               git add .github/workflows/deploy.yml && git commit
+11. Ask push authorization:       "Push the CI/CD commit to main now? (y/n)"
+                                  └─ default n; only plain `git push origin main` after explicit y
+12. Print closing banner:         wired-secrets list, local/pushed state, rotation hint
 ```
 
-Each step is a hard gate. Step 7 fails closed: if any `gh secret set` errors, halt before step 8 — don't push a YAML that references secrets that don't exist (Actions runs would fail at runtime with confusing "secret X not found" errors, far from the wiring step where the user could fix it).
+Each step is a hard gate. Step 7 fails closed: if any `gh secret set` errors, halt before workflow generation. Do not create YAML that references secrets that do not exist; Actions runs would fail at runtime with confusing "secret X not found" errors, far from the wiring step where the user could fix it.
 
 ## Provider scope by scenario
 
@@ -118,12 +122,12 @@ The skill detects the service list via `railway service list` (if locally linked
 
 ## Token-prompt sequence
 
-The skill stops the workflow and prompts once. The exact wording (read it aloud — every word is deliberate):
+The skill stops the workflow and prompts once. Prompt only for required in-scope provider secrets. The exact wording:
 
 ```
 init-makefiles needs the following GitHub Actions secrets to enable
-push-to-main deploys. Paste each value when prompted. To skip a
-provider, hit enter.
+push-to-main deploys. Paste each required value when prompted.
+Blank required values abort CI/CD generation and leave the workflow untouched.
 
 VERCEL_TOKEN  (https://vercel.com/account/tokens):
 RAILWAY_TOKEN  (Project → Settings → Tokens — PROJECT-scoped, not account):
@@ -137,10 +141,10 @@ Wording rules:
 - **One prompt block, not five separate questions.** The user pastes each on its own line. Lower-friction than five separate questions.
 - **Each line gives the URL or location of the value.** The user doesn't have to context-switch to find where each token lives.
 - **`PROJECT-scoped, not account` for `RAILWAY_TOKEN`.** This is the most common token-confusion mistake — `RAILWAY_API_TOKEN` (account scope) and `RAILWAY_TOKEN` (project scope) are different things and only the project-scoped one works for `railway up --ci -s`.
-- **`hit enter` to skip.** A blank value triggers a skip — the agent doesn't try to set an empty secret and doesn't include the corresponding YAML block. This handles the case where, e.g., the scenario is "Frontend + Supabase" but the user only wants Vercel wired and not Supabase.
+- **Blank required values abort.** The agent does not set an empty secret, does not generate a workflow that references missing secrets, and does not silently drop an in-scope provider block.
 - **No re-confirmation prompt.** The user pastes the value once; the agent uses it once; the value is then handed to `gh secret set` and dropped. No "are you sure?" — fewer steps, same security.
 
-The skill collects only the tokens for in-scope providers. For Scenario A, only `VERCEL_TOKEN` is asked. For Scenario E, only `RAILWAY_TOKEN`. For Scenario D, `VERCEL_TOKEN` plus the three Supabase values.
+The skill collects only the tokens for in-scope providers. For Scenario A, only `VERCEL_TOKEN` is asked. For Scenario E, only `RAILWAY_TOKEN`. For Scenario D, `VERCEL_TOKEN` plus the three Supabase values. If the user wants to wire only part of an in-scope provider set, record that as a new explicit scope decision before generating YAML.
 
 ## The `gh secret set` invocation
 
@@ -177,28 +181,30 @@ gh secret list
 # VERCEL_TOKEN               less than a minute ago
 ```
 
-The skill parses the output to confirm the expected secret names appear. If any expected secret is missing, the skill prints which one and halts before pushing the workflow.
+The skill parses the output to confirm the expected secret names appear. If any expected secret is missing, the skill prints which one and halts before generating or committing the workflow.
 
 GitHub Actions secrets are encrypted at rest with libsodium sealed boxes; the user cannot read them back via `gh secret view` (no such command exists for secret values — only metadata). The agent confirms by name, never by value.
 
-## Commit and push
+## Commit locally, then push only with authorization
 
 ```bash
 git add .github/workflows/deploy.yml
-git commit -m "ci: wire push-to-main deploy via init-makefiles"
+git commit -m "ci(deploy): wire init-makefiles deploy"
+# Ask: "Push the CI/CD commit to main now? (y/n)"
+# Only after explicit yes:
 git push origin main
 ```
 
-The commit message follows the skills-repo conventional-commits convention (`ci:` type, scope omitted since CI is the single concern). The skill never commits other unrelated work — `git add .github/workflows/deploy.yml` is the precise, narrow stage.
+The commit message uses a scoped Conventional Commit. The skill never commits other unrelated work — `git add .github/workflows/deploy.yml` is the precise, narrow stage.
 
-If `git push` fails (auth issue, branch protection, etc.), the skill stops and surfaces the failure. The workflow file is committed locally; the user re-runs `git push` after fixing.
+If push authorization is declined, the workflow file remains committed locally and the final report says `CI/CD: generated locally + secrets wired; not pushed`. If `git push` fails (auth issue, branch protection, etc.), the skill stops and surfaces the failure. The workflow file is committed locally; the user re-runs `git push` after fixing.
 
 ## Closing banner
 
 After successful wiring:
 
 ```
-✓ CI/CD wired. Push to main → auto-deploy via GitHub Actions.
+✓ CI/CD wired locally. Push to main → auto-deploy via GitHub Actions.
 
 Tokens stored in GitHub Actions secrets:
   • VERCEL_TOKEN
@@ -211,7 +217,7 @@ Rotate tokens any time:
 Or via the GitHub UI: Settings → Secrets and variables → Actions.
 ```
 
-The list is the actual set of secrets pushed (skipped tokens — those the user blanked — are NOT listed). The rotation hint shows the same `gh secret set --body` form, so rotating is a one-line follow-up. The UI link is for users who prefer the dashboard.
+The list is the actual set of secrets pushed. The rotation hint shows the same `gh secret set --body` form, so rotating is a one-line follow-up. The UI link is for users who prefer the dashboard.
 
 The banner does NOT echo any token values, even partially. No "ends in `...xy`" hint. No first-N-chars prefix. Tokens never round-trip from the agent's memory back to the user's terminal.
 
@@ -267,8 +273,11 @@ For Vercel, leaving the native integration on is *helpful* — preview deploys f
 |---|---|---|
 | `gh auth status` returns "not authenticated" | Step 2 halts | Tell user to run `gh auth login` interactively, then re-run the skill (start at step 2). |
 | `gh repo view` fails with "no GitHub remote" | Step 1 halts | Print: "manual setup required for non-GitHub repos." Skill skips CI/CD; Makefile + AGENTS.md are still complete. |
-| `gh secret set` fails (rate-limited, permissions, token-too-large) | Step 7 halts mid-way | Print the `gh` error verbatim. Halt the wiring. Do NOT push the workflow YAML. The user fixes (auth, scope, token-source) and re-runs. |
-| `gh secret list` shows the secrets but `git push` fails (branch protection) | Step 9 halts | The workflow YAML is committed locally; tell user to push manually after handling branch protection (typically: PR + merge instead of direct push). |
+| User leaves a required secret blank | Step 6 halts | Print the missing secret name. Leave `.github/workflows/` untouched and rerun CI/CD later. |
+| `gh secret set` fails (rate-limited, permissions, token-too-large) | Step 7 halts mid-way | Print the `gh` error verbatim. Halt the wiring. Do NOT generate or push workflow YAML. The user fixes auth, scope, or token source and re-runs. |
+| `gh secret list` misses an expected secret | Step 8 halts | Print the missing name. Do NOT generate workflow YAML until the secret exists. |
+| Push authorization declined | Step 11 halts cleanly | Workflow YAML is committed locally; final report says not pushed. |
+| `git push` fails (branch protection) | Step 11 push fails | The workflow YAML is committed locally; tell user to push manually after handling branch protection (typically: PR + merge instead of direct push). |
 | Action runs but deploy fails | Symptom appears in the Actions UI, not at wiring time | The skill is done; this is a deploy-failure issue. Direct user to the failing step in the Actions UI; common causes are wrong token scope (account-scoped Railway token instead of project-scoped) and missing dashboard config (Vercel project not linked, Railway service name wrong). |
 | User accidentally pasted the wrong token | The Action runs but provider auth fails | User runs `gh secret set <NAME> --body "<correct value>"` to overwrite. The closing banner's rotation hint covers this. |
 
@@ -276,11 +285,12 @@ For Vercel, leaving the native integration on is *helpful* — preview deploys f
 
 - **DO NOT auto-rotate or auto-create provider tokens.** Always user-pasted, always at user request. The agent has no business creating tokens on the user's behalf — the user owns the provider account, the user owns token lifecycle.
 - **DO NOT proceed with secret setting if `gh auth status` is unauthenticated.** Step 2 halts. The user runs `gh auth login` first; the skill waits.
-- **DO NOT push `.github/workflows/deploy.yml` until `gh secret list` confirms all required secrets are set.** A workflow that references missing secrets fails at runtime with confusing errors; halt at wiring time when the failure is debuggable.
+- **DO NOT generate or push `.github/workflows/deploy.yml` until `gh secret list` confirms all required secrets are set.** A workflow that references missing secrets fails at runtime with confusing errors; halt at wiring time when the failure is debuggable.
 - **DO NOT generate workflow YAML for providers the scenario doesn't use.** Scenario A's workflow has only the Vercel block; Scenario E's has only Railway. No dead provider blocks.
 - **DO NOT echo secrets in the closing banner, in logs, or anywhere user-visible.** The banner prints names only. `gh secret list` prints names only. The agent's chat output prints names only.
 - **DO NOT write tokens to disk.** `gh secret set --body` transmits the value without local persistence. If `--body-file` is used, `rm -f` the tempfile immediately after `gh secret set` returns.
 - **DO NOT `git push --force` from this workflow generation.** Plain `git push origin main` only. Branch protection might require a PR — handle that as a failure mode and surface to the user.
+- **DO NOT treat CI/CD generation consent as push consent.** Commit locally first, then ask for explicit push authorization.
 - **DO NOT add `pull_request` triggers to `deploy.yml`.** PRs deploy to *previews* (Vercel handles via its native integration), not to prod. The workflow is for `push: branches: [main]` only.
 - **DO NOT skip the `gh repo view` preflight.** A non-GitHub repo (Bitbucket, GitLab, self-hosted) can't accept `gh secret set`. Detect early and skip cleanly.
 - **DO NOT generate the workflow file if the user declines the `(y/n)` question.** Decline = `.github/workflows/` untouched. No half-baked YAML, no orphaned secrets.
