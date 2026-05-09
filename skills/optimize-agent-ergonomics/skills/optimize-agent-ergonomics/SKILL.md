@@ -235,6 +235,15 @@ Verification rung reached: Rung 1-6, with commands or observation
 | `references/mcp/patterns/tools.md` | Tool granularity, descriptions, response shape, or tool composition is in scope. |
 | `references/mcp/patterns/transport-and-ops.md` | Transport, stdio/HTTP/SSE, stdout purity, deployment, observability, or ops is in scope. |
 
+## Script Routing
+
+Use deterministic helpers only as preflight evidence; never treat them as complete audits.
+
+| Script | Read first | Use when |
+|---|---|---|
+| `scripts/audit-cli.sh` | `scripts/audit-cli.md` | Running a quick static/behavioral CLI preflight on a safe local probe command. |
+| `scripts/audit-mcp.sh` | `scripts/audit-mcp.md` | Running a conservative MCP source scan for registrations, schemas, transports, and error patterns. |
+
 ## Final Checks
 
 Before declaring done:
