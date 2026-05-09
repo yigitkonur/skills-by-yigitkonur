@@ -2774,7 +2774,7 @@ Recommended response shape:
 - Emit `actions_taken`, `budget_remaining`, and `stop_conditions` every time.
 - Make planner output reproducible enough to evaluate.
 
-This is how you apply agent steering to CLI deeply: the command should not just return the present state. It should expose the next frontier in a stable contract.
+This applies agent steering to CLI deeply: the command should not just return the present state. It should expose the next frontier in a stable contract.
 
 ## Summary: Agent-Friendly Execution Patterns
 

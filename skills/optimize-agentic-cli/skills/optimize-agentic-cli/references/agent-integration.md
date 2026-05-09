@@ -10,7 +10,7 @@
 - [4. Error Recovery Flow](#4-error-recovery-flow)
 - [5. Batch Processing with Partial Failure](#5-batch-processing-with-partial-failure)
 - [6. Agent System Prompt Template](#6-agent-system-prompt-template)
-- [7. Function Calling Schema](#7-function-calling-schema-claudegpt)
+- [7. Provider Tool Schema Example](#7-provider-tool-schema-example)
 - [8. Integration Test Script](#8-integration-test-script)
 - [9. Debugging Agent CLI Failures](#9-debugging-agent-cli-failures)
 - [10. TypeScript/JavaScript Integration](#10-typescriptjavascript-integration)
@@ -212,7 +212,7 @@ Parse response:
 ```
 ```
 
-## 7. Function Calling Schema (Claude/GPT)
+## 7. Provider Tool Schema Example
 
 ```json
 {
@@ -972,7 +972,7 @@ const result = await executor.invoke({
 });
 ```
 
-### Claude Computer Use / Tool Use
+### Anthropic Tool Use Example
 
 ```typescript
 // Claude tool definition for Anthropic API
@@ -1575,7 +1575,7 @@ Return guidance in a stable top-level field so the agent can decide what to do n
 
 **Why this matters:**
 - The agent sees the answer and the continuation frontier in one parseable envelope.
-- You eliminate a class of low-signal turns where the model asks itself what to do next.
+- Removes a class of low-signal turns where the model asks itself what to do next.
 - The CLI becomes agentic without becoming opaque.
 
 **Design rules:**

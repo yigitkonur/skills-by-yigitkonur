@@ -353,7 +353,7 @@ Exit codes enable agents to make retry decisions without parsing output.
 | 7 | `transient` | Retry-able error (network, timeout, rate limit, dependency) | Yes | `rate_limit`, `timeout`, `network`, `dependency_failed` |
 | 8 | `partial` | Some operations succeeded, some failed | No (check details) | `partial_success` |
 
-> **Critical:** Document your exit codes explicitly in `--help` output and man pages!
+> **Critical:** Exit codes must be documented explicitly in `--help` output and man pages.
 
 ### Exit Code Decision Tree
 

@@ -23,7 +23,7 @@ Promote the workflow to MCP when any of these become dominant:
 Use a hybrid when:
 - MCP should own auth, approvals, or discovery, but execution can stay in CLI
 - read and batch-transform steps are cheap in CLI, but write steps need governed remote access
-- you need both a developer-friendly operator surface and a governed agent-facing surface
+- both a developer-friendly operator surface and a governed agent-facing surface are needed
 
 Skills are a fourth option. If the agent mainly needs workflow guidance for existing tools, add a skill and keep the runtime surface as CLI.
 
@@ -34,7 +34,7 @@ Skills are a fourth option. If the agent mainly needs workflow guidance for exis
 | MCP is a JSON-RPC protocol with `stdio` and Streamable HTTP transports. | MCP is not "just remote tools." It can be local or remote, but it always adds a protocol layer. |
 | MCP servers expose typed discovery through `tools/list`, `inputSchema`, resources, and prompts. | Choose MCP when schema-level discovery and machine-readable tool contracts are the point. |
 | HTTP-based MCP authorization is specified around OAuth 2.1 style metadata and bearer tokens; `stdio` transports should use environment credentials instead. | MCP is much better matched to governed remote access than to local shell-style credential handling. |
-| Anthropic and OpenAI both document approvals, allowlists, deferred loading, and strong warnings about untrusted servers. | MCP earns its cost when you need approval and trust boundaries, not just a way to run commands. |
+| Anthropic and OpenAI both document approvals, allowlists, deferred loading, and strong warnings about untrusted servers. | MCP earns its cost when approval and trust boundaries matter, not just a way to run commands. |
 | Shell and local-shell tools run in the caller's own runtime, with safety coming from sandboxing, allowlists, hooks, and permissions. | CLI-first is usually simpler and cheaper, but the caller owns the blast radius. |
 
 Primary docs:
@@ -56,7 +56,7 @@ Primary docs:
 | Does the workflow need per-user auth, tenant isolation, approval, or revocation? | MCP | Those are protocol and gateway problems, not shell ergonomics problems. |
 | Does the tool keep state across calls: browser sessions, transactions, remote cursors? | MCP | Session continuity is native to MCP-style tool interfaces. |
 | Does the agent only need instructions for how to use existing CLIs and APIs? | Skill + CLI | This is workflow knowledge, not a new runtime protocol. |
-| Do you want governed discovery but cheap execution? | Hybrid | Use MCP for control plane, CLI for execution plane. |
+| Is governed discovery needed with cheap execution? | Hybrid | Use MCP for control plane, CLI for execution plane. |
 
 ## 4. When To Stay CLI-First
 
@@ -82,7 +82,7 @@ Do not call the CLI path "done" unless it has:
 - non-interactive flags such as `--yes`, `--no-input`, or `--output json`
 - deterministic auth handling for headless runs
 
-If those are missing, fix the CLI before you decide the architecture is the problem.
+If those are missing, fix the CLI before treating architecture as the problem.
 
 ## 5. When MCP Is The Better Abstraction
 
@@ -213,7 +213,7 @@ Representative discussions:
 
 | Current state | Move to | When |
 |---|---|---|
-| Raw shell commands with brittle parsing | Agent-ready CLI | You already have the right abstraction, but the contract is weak. |
+| Raw shell commands with brittle parsing | Agent-ready CLI | The abstraction is right, but the contract is weak. |
 | Good CLI plus repeated workflow mistakes | Skill + CLI | The runtime is fine; the agent needs better routing and examples. |
 | CLI with growing auth and governance demands | MCP or MCP gateway | The problem is no longer just execution; it is custody and policy. |
 | Large MCP server with thin endpoint wrappers | Smaller MCP, hybrid, or CLI | The server is carrying protocol tax without enough protocol value. |
@@ -221,10 +221,10 @@ Representative discussions:
 
 ## 9. Decision Rules To Apply In This Skill
 
-When you are using `optimize-agentic-cli`, apply these rules:
+When applying `optimize-agentic-cli`, use these rules:
 
 1. Default to keeping the workflow in CLI if the core problem is output quality, exit codes, auth ergonomics, or non-interactive behavior.
 2. Recommend MCP only when the requirements clearly justify protocol features: per-user auth, typed remote discovery, shared multi-client use, or stateful sessions.
 3. Recommend a skill when the problem is mainly workflow guidance rather than runtime access.
 4. Recommend a hybrid when auth and governance pull toward MCP but the work itself still looks like cheap, deterministic command execution.
-5. State explicitly whether your recommendation is based on documented facts, benchmark evidence, or practitioner reports.
+5. State explicitly whether the recommendation is based on documented facts, benchmark evidence, or practitioner reports.
