@@ -9,7 +9,7 @@
 ## Source Boundary
 - Ground broad product and architecture guidance in the repo-local references listed below.
 - Treat Clerk-specific implementation facts in this skill as verified against the official `clerk-convex-swift` package and its `Example/WorkoutTracker` sample, as summarized in the auth, client-sdk, playbook, and operations docs here.
-- Treat this reference set as opinionated toward the March 28, 2026 source snapshot and ConvexMobile `0.8.1`.
+- Treat this reference set as opinionated toward the latest checked 2026-05-09 source snapshot: `clerk-convex-swift 0.1.0`, `clerk-ios 1.1.2`, and ConvexMobile `0.8.1`.
 - Present ecosystem and feature gaps honestly. Do not market around them.
 
 ## Start Here

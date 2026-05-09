@@ -9,7 +9,7 @@
 
 1. In Xcode: **File -> Add Package Dependencies**.
 2. Repository URL: `https://github.com/get-convex/convex-swift`
-3. Version rule: **Up to Next Major** from `0.8.1`.
+3. Version rule: **Up to Next Major** from `0.8.1` for new setups. This is the latest checked GitHub tag as of 2026-05-09; `0.8.0` remains the lower bound for the Clerk auth callback model.
 4. Select `ConvexMobile` target and add it to your app target.
 
 ## Create the Client

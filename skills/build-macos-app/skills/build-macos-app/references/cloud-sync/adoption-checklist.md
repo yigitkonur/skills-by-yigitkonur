@@ -8,11 +8,11 @@
 ## Required Checks
 - Confirm the team is willing to write backend logic in TypeScript (including `convex-helpers` for user-guarded function wrappers).
 - Confirm Clerk is acceptable as the default auth path, including:
-  - The official `ClerkConvex` bridge package (`clerk-convex-swift >= 0.1.0`).
-  - `ClerkKit` and `ClerkKitUI` from `clerk-ios >= 1.0.0` for `AuthView()`, `UserButton()`, and session management.
+  - The official `ClerkConvex` bridge package (`clerk-convex-swift >= 0.1.0` minimum; latest checked tag `0.1.0` on 2026-05-09).
+  - `ClerkKit` and `ClerkKitUI` from `clerk-ios >= 1.0.0` minimum for `AuthView()`, `UserButton()`, and session management.
   - Clerk-owned interactive auth UX (Sign in with Apple, email, social methods via `AuthView()`).
   - Or there is explicit appetite to own a custom `AuthProvider`.
-- Confirm `convex-swift >= 0.8.0` is acceptable (required for `onIdToken` callback model in `AuthProvider`).
+- Confirm `convex-swift >= 0.8.0` is acceptable as the lower bound; new setups can start from the latest checked tag `0.8.1`.
 - Confirm iOS 17+ / macOS 14+ minimum deployment targets are acceptable (required by `clerk-convex-swift`).
 - Confirm whether the product can start with the official example's direct `tokenIdentifier` ownership model or already needs a richer `users` table and membership modeling.
 - Confirm iOS can be treated as reconnecting-online, not offline-first.

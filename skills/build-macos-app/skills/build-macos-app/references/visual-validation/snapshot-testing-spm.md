@@ -8,6 +8,8 @@ If the user wants screenshot validation but doesn't have a harness yet, this is 
 
 Default: `pointfreeco/swift-snapshot-testing` (the de-facto standard).
 
+Version stance: scaffold new harnesses from `1.19.2`, the latest checked GitHub tag on 2026-05-09. Existing projects pinned at `1.17.0` can stay there unless they need newer fixes; do not churn snapshot baselines just for a dependency bump.
+
 Why not roll your own:
 - The library handles snapshot file IO, diffing, record/verify modes, and pretty failure output.
 - Failures emit an Xcode-clickable image diff, which is the fastest debugging surface for visual regressions.
@@ -34,7 +36,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/pointfreeco/swift-snapshot-testing.git",
-            from: "1.17.0"
+            from: "1.19.2"
         ),
     ]
 )

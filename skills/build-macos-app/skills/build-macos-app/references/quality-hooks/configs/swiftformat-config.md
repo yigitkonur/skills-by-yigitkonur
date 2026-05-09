@@ -1,6 +1,6 @@
 # SwiftFormat Configuration
 
-This skill defaults to **Nick Lockwood's `SwiftFormat`** (`brew install swiftformat`, latest stable `0.61.0` as of 2026-04). It is the dominant 2025-2026 production iOS/macOS choice (~4:1 install share over Apple's `swift-format` per Homebrew analytics) and ships a battle-tested `.pre-commit-hooks.yaml` at its repo root. SwiftFormat is also the formatter wired into the reference implementation in `~/dev/fast-talk` that this skill generalizes.
+This skill defaults to **Nick Lockwood's `SwiftFormat`** (`brew install swiftformat`, latest checked tag `0.61.1` as of 2026-05-09). It is the dominant 2025-2026 production iOS/macOS choice (~4:1 install share over Apple's `swift-format` per Homebrew analytics) and ships a battle-tested `.pre-commit-hooks.yaml` at its repo root.
 
 For the alternative path (Apple's `swift-format`), see the bottom of this file.
 

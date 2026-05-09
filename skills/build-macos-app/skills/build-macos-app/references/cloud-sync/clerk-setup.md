@@ -14,7 +14,8 @@
 ## Package Identity
 - Repository: `github.com/clerk/clerk-convex-swift`
 - Product name: `ClerkConvex`
-- Dependencies: `clerk-ios >= 1.0.0`, `convex-swift >= 0.8.0`
+- Minimum dependencies: `clerk-ios >= 1.0.0`, `convex-swift >= 0.8.0`
+- Latest checked versions on 2026-05-09: `clerk-convex-swift 0.1.0`, `clerk-ios 1.1.2`, `convex-swift 0.8.1`
 - Platforms: iOS 17+ / macOS 14+
 - Swift tools version: 5.10
 - Strict concurrency enabled in the package.

@@ -2,7 +2,7 @@
 
 Tuned to **realm/SwiftLint's own dogfooded values** plus selective opt-in additions from the 0.62-0.63 release cycle. The most authoritative reference is the SwiftLint repo's own `.swiftlint.yml` (cdn.jsdelivr.net/gh/realm/SwiftLint@main/.swiftlint.yml) — Apple's own swift packages don't ship `.swiftlint.yml` because Apple uses swift-format internally, so realm's config is the closest to a community standard.
 
-Latest stable as of 2026-04: **SwiftLint 0.63.2** ("High-Speed Extraction"). 0.64.0-rc.1 adds experimental Windows support but no behavior changes for Apple platforms. The 0.62.0 release **requires a Swift 6 compiler to build SwiftLint itself**; the SPM plugin still supports Swift 5.9+ on the consuming side.
+Latest stable as of 2026-05-09: **SwiftLint 0.63.2** ("High-Speed Extraction"). GitHub tags also show `0.64.0-rc.1`, which is a release candidate; keep `0.63.2` as the stable baseline for this skill. The 0.62.0 release **requires a Swift 6 compiler to build SwiftLint itself**; the SPM plugin still supports Swift 5.9+ on the consuming side.
 
 ## Recommended `.swiftlint.yml` for new Apple-platform projects
 
@@ -207,7 +207,7 @@ SwiftLint is **target-agnostic** — it operates on `.swift` source text via Swi
 
 ## References
 
-- realm/SwiftLint repo — https://github.com/realm/SwiftLint (accessed 2026-04-18)
+- realm/SwiftLint repo — https://github.com/realm/SwiftLint (tags checked 2026-05-09)
 - Authoritative `.swiftlint.yml` (realm dogfood) — https://cdn.jsdelivr.net/gh/realm/SwiftLint@main/.swiftlint.yml
 - Rule directory — https://realm.github.io/SwiftLint/rule-directory.html
 - Baseline API — https://realm.github.io/SwiftLint/Structs/Baseline.html

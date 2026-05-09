@@ -18,6 +18,18 @@
 - Clerk's official Swift bridge uses `.tokenRefreshed` for push token updates and `.sessionChanged` for automatic client session sync.
 - macOS support is Apple Silicon only in the checked XCFramework slices.
 
+## Version Audit — Checked 2026-05-09
+
+Primary sources:
+- Clerk iOS Convex integration docs: `https://clerk.com/docs/ios/reference/native-mobile/integrations/convex`, last updated 2026-05-04.
+- GitHub tags: `github.com/clerk/clerk-convex-swift`, `github.com/clerk/clerk-ios`, `github.com/get-convex/convex-swift`.
+
+| Package | Minimum supported in this skill | Latest checked tag | Notes |
+|---|---:|---:|---|
+| `clerk-convex-swift` | `0.1.0` | `0.1.0` | Clerk docs install from `0.1.0`; it is still the only checked tag. |
+| `clerk-ios` | `1.0.0` | `1.1.2` | Lower bound is inherited from `clerk-convex-swift`; latest checked tag is newer. |
+| `convex-swift` | `0.8.0` | `0.8.1` | Lower bound supports the auth callback model; new setups can start from `0.8.1`. |
+
 ### Verified From Official `clerk-convex-swift` Source (v0.1.0+)
 - `ClerkConvexAuthProvider` is `@MainActor public final class` conforming to `AuthProvider` with `T = String`.
 - The convenience initializer `ConvexClientWithAuth(deploymentUrl:authProvider:)` calls `authProvider.bind(client:)` which starts session sync immediately.
@@ -27,7 +39,7 @@
 - Session sync uses explicit transition guards: login when `newSession.status == .active` AND (old was not active OR session ID changed); logout when old had ID but new is nil.
 - `ClerkConvexAuthError` is a `LocalizedError, Sendable, Equatable` enum with three cases: `.clerkNotLoaded`, `.noActiveSession`, `.tokenRetrievalFailed(String)`.
 - `extractIdToken(from:)` is `nonisolated` and returns the input string unchanged (identity function for `T = String`).
-- Package requires `clerk-ios >= 1.0.0` and `convex-swift >= 0.8.0`, targets iOS 17+ / macOS 14+, Swift tools 5.10, strict concurrency enabled.
+- Package minimums are `clerk-ios >= 1.0.0` and `convex-swift >= 0.8.0`; latest checked tags are listed above. The package targets iOS 17+ / macOS 14+, uses Swift tools 5.10, and enables strict concurrency.
 - The official example app uses `convex-helpers` `customQuery`/`customMutation`/`customCtx` for `userQuery`/`userMutation` wrappers with centralized auth checks.
 - The official example stores `tokenIdentifier` in a `userId` field with a compound index (`userId_date`).
 - The official example uses `@OptionalConvexInt` property wrapper for optional Int64 fields in `Decodable` models.
