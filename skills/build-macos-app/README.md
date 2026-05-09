@@ -20,7 +20,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 
 ## What you get
 
-The skill bundles 69 deep-dive references organized by domain:
+The skill bundles 108 deep-dive references organized across six subdirectories:
 
 - **`references/hig/`** — Apple Human Interface Guidelines for macOS: foundations (color, typography, spacing, icons, materials, motion), components (buttons, text inputs, menus, popovers, tables, alerts, selection controls), platform patterns (windows, sidebars, toolbars, keyboard shortcuts, drag-drop), accessibility, widgets/notifications, plus practitioner-level overrides.
 - **`references/liquid-glass/`** — macOS 26 (Tahoe+) Liquid Glass: API reference (SwiftUI + AppKit), 12 design principles with concentricity rules, full deprecation/smell catalog for modernizing existing code, toolbar/sidebar/window recipes, 5-phase migration guide, 34 known bugs with workarounds, AppKit↔SwiftUI bridging.
@@ -29,7 +29,7 @@ The skill bundles 69 deep-dive references organized by domain:
 - **`references/cloud-sync/`** — Convex + Clerk SwiftUI client patterns: macOS app entry, per-window view-model gotchas, four-state offline UX, connection banner, tri-state loading, pipeline recovery, Clerk auth gate, SIWA, reactive `switchToLatest` queries, SDK cheat sheet, limitations.
 - **`references/workflow/`** — Operations: bootstrap a new app, audit an existing app, pre-release ship checklist.
 
-Plus calibrated configs at `assets/`:
+The outer skill root also ships 6 calibrated asset files under `assets/`:
 
 - `assets/swiftlint.yml` — 28 opt-in rules + 5 custom rules tuned for SwiftUI / Concurrency / Performance.
 - `assets/swiftformat` — 17-rule allowlist, Swift 6, 4-space indent.
