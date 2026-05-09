@@ -331,17 +331,13 @@ Use the smallest relevant set for the branch of work.
 
 ## Why migrate to v2?
 
-v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/client`) is in pre-release alpha — `2.0.0-alpha.2` as of 2026-05-08, milestone `v2.0.0-bc` (backwards-compat PR series). Key changes over v1:
+v2 (`@modelcontextprotocol/server` + `@modelcontextprotocol/client`) is distinct from v1 and remains pre-release alpha as of 2026-05-08.
 
-- **Structured handler context** — `ctx.mcpReq.log()`, `ctx.mcpReq.elicitInput()`, `ctx.mcpReq.requestSampling()` replace manual `extra.sendRequest()` calls
-- **Framework adapters** — `createMcpExpressApp()` and `createMcpHonoApp()` from dedicated packages instead of manual wiring
-- **Zod v4 only** — v1 supports v3 + v4 via a runtime shim; v2 drops the shim
-- **JSON Schema 2020-12 by default** — v1 defaults to Draft-7 via `zod-to-json-schema`; v2 uses native `z.toJSONSchema()`
-- **Client middleware** — `withOAuth`, `withLogging`, `applyMiddlewares`, grant-agnostic `prepareTokenRequest()`, discovery caching
-- **Smaller bundles** — split packages mean you only install what you use
-- **ESM-only** — cleaner module resolution, no CJS baggage
+- Split packages replace the single `@modelcontextprotocol/sdk` package.
+- `ServerContext` replaces flat `RequestHandlerExtra`.
+- Server-side OAuth is removed from the core v2 SDK path.
 
-Most production servers should remain on v1.x until v2 publishes a non-alpha stable release. To plan or stage a port, use `convert-mcp-server-sdk-v1-to-v2`. To start fresh on v2 (no existing code to port), use `build-mcp-server-sdk-v2`.
+Route an existing v1 server port to `convert-mcp-server-sdk-v1-to-v2`. Route a new v2 build to `build-mcp-server-sdk-v2`.
 
 ## Compatibility note
 
