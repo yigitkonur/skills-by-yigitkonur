@@ -149,6 +149,17 @@ There are **two independent filter pipelines**, each with its own verbosity. The
 
 So: the dispatcher's `FILTER_LEVEL` env reaches the runner; it does NOT reach the Monitor's filter. Set runner-side via env at dispatch time; control Monitor-side by replaying the on-disk JSONL.
 
+## Aborting a running mission
+
+When the operator wants to stop a single-mode mission mid-flight (the agent is going down a wrong path, the user changed their mind, the work is no longer needed), single mode does not provide a built-in cancel command. Compose the existing primitives:
+
+1. **Capture `runner_pid` from the dispatcher envelope.** When `node orchestrate-codex.mjs single` returned, its envelope's `result.runner_pid` is the bash runner's PID. If you no longer have the envelope, `pgrep -f 'run-single.sh.*<entry-id>'` or `pgrep -f 'codex exec.*<cwd>'` will find it.
+2. **Send SIGTERM first:** `kill -TERM <runner_pid>`. The runner has no SIGTERM trap (no `trap 'kill 0' SIGTERM SIGINT`), so the codex grandchild process under it may orphan rather than terminate cleanly.
+3. **Clean up the codex grandchild explicitly:** `pkill -f 'codex exec'` scoped to the cwd the dispatcher used (e.g. `pkill -f "codex exec.*$(realpath /path/to/single-cwd)"`). Verify with `pgrep -f 'codex exec'` — confirm zero residual processes before doing anything else.
+4. **The manifest entry will be left in `running` state** (the runner did not get to write a terminal status row). Run `node orchestrate-codex.mjs rescue --manifest <path>` to surface the orphan; rescue's classifier reports it as `in_flight` with a dead pid (i.e. effectively `unknown`) and offers `--apply` to reclassify and redispatch (or you can flip the entry to `failed` with `manifest-update.py entry --set status=failed --set last_error=aborted_by_operator` if you do NOT want to resume).
+
+Same recipe applies to a hung mission once the operator decides termination is the right call (see Failure-mode #2 in `references/universal/failure-modes.md`). The only difference is a hung mission may already be unresponsive on SIGTERM and need `kill -KILL` after the grace window.
+
 ## Recovery
 
 | Symptom | Mitigation |

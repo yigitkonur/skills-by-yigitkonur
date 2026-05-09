@@ -94,3 +94,7 @@ Prefer pattern 1 unless the shared file is large enough that inlining bloats eve
 ## Sizing
 
 Templates run 30–80 lines. Per-input prompt files end up roughly the same size. If your template is over 150 lines, the prompt is doing too much; split into two batches with two templates.
+
+## 1:N output (one input → N variants)
+
+Batch renders one prompt and one answer per input. If one logical row needs N output variants (e.g. translate the same string into 4 languages, generate 3 length variants per article), do **not** encode the output dimension into the slug or template — invoke batch N times, once per output bucket, each with its own `--answers-dir` and `--force-new-run --run-id <bucket-tag>`. See `references/modes/batch.md` §"1:N output (multi-invoke pattern)" for the canonical shell-loop.

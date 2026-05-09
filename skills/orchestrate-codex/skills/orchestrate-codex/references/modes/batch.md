@@ -230,6 +230,30 @@ mv answers/<slug>.md answers/.prev/
 
 **Never delete `.prev/`** until you've confirmed the new answer is acceptable. Codex non-determinism means a retry can produce a smaller (or larger but worse) output than the original.
 
+## 1:N output (multi-invoke pattern)
+
+Batch is **1:1 by design**: one input row produces one answer file at `answers/<slug>.md`. There is no first-class flag for fan-out (e.g. one input × N output buckets). For a 1:N shape — translate 50 source strings into 4 target languages (200 outputs), generate 3 length variants per article, render each input in 5 visual styles — invoke batch **N times**, once per output bucket, each with its own `--answers-dir` and its own per-run manifest.
+
+Each invocation gets:
+- `--answers-dir <bucket>/` so the buckets do not collide on `answers/<slug>.md`.
+- `--force-new-run --run-id <bucket-tag>` so each bucket gets `manifest.<run-id>.json` and an isolated audit trail. Without `--force-new-run`, all invocations share the default per-cwd manifest path and the second invocation's entries either overwrite or skip-existing the first invocation's.
+
+Canonical 4-language translation example:
+
+```bash
+for lang in en es ja tr; do
+    node orchestrate-codex.mjs batch \
+        --inputs strings.txt \
+        --template translate-${lang}.md \
+        --answers-dir i18n/${lang} \
+        --force-new-run --run-id translate-${lang}
+done
+```
+
+Each bucket runs to completion in series (the loop is sequential); within each bucket the dispatcher's normal concurrency applies. Rendering 4 separate templates is the simplest path; if the only per-bucket variable is the language tag, build the templates from a shared base in the same script. Audit each bucket independently — the per-run manifest is what `audit-fleet-state.py` and `audit-sizes.sh` operate on.
+
+Do not try to encode the output dimension into the slug (`<input>-en`, `<input>-es`, …) inside one run. That makes one logical row produce N entries with N different slugs, defeats the skip-existing guard per-language, and pollutes the per-run manifest with entries that share an input but differ in a hidden axis.
+
 ## Anti-patterns
 
 - Auto-retry-by-size. Codex output varies; surface and inspect, never auto-retry.

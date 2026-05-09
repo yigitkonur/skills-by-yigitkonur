@@ -18,6 +18,10 @@ codex exec "${CODEX_FLAGS[@]}" --json -o <answer-file> -C <cwd> "<prompt>"
 | `-m gpt-5.5` | Pinned model. The skill is opinionated. Bumping is a one-line edit in `codex-flags.sh`. |
 | `-c model_reasoning_effort=xhigh` | Pinned effort. Same rationale. |
 
+### Sandbox semantics: network egress
+
+With `--dangerously-bypass-approvals-and-sandbox` (the skill's default, hard-wired into `CODEX_FLAGS`), codex has **full filesystem write access AND full network egress** inside the spawned process. Outbound HTTP is allowed: codex can hit package registries, CVE databases, web search endpoints, vendor APIs, and arbitrary URLs that its tools call. This is what makes use cases like CVE lookup, dependency-vulnerability scanning, web fetches inside research prompts, and registry-version checks work end-to-end without per-call approval prompts. Without the bypass flag, the default sandbox is `read-only`: no filesystem writes, no network. Other discrete sandbox modes (`-s read-only`, `-s workspace-write`) are forbidden by this skill (see "Forbidden flags" below) — they downgrade the bypass policy and silently change semantics. Cross-link: the approval-policy table is in this file's "Forbidden flags" section; the sandbox-mode discussion is in the same section.
+
 ### Two review surfaces — different flag sets
 
 Codex exposes review through two distinct entry points and they accept different flags. This is the most common source of confusion.
