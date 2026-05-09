@@ -124,7 +124,7 @@ Picking `search`, `create`, `update` as bare names guarantees collisions the mom
 | Tool `name` | `tools/list` | `snake_case` (community convention; 14 of 16 exemplars). Verb + resource. Namespaced. |
 | Tool `description` | `tools/list`, system prompt, every message | Verb + resource + key scope first. ≤200 tokens. Side effects explicit. 1-2 examples. |
 | Parameter `description` | When the model is filling args | Type + unit + range + example. Reference other tools when values come from them. |
-| Server `instructions` (init) | Once per session, system-level | Capabilities map, recommended workflows, important constraints. Like a `skills.md` for the server. |
+| Server `instructions` (init) | Once per session, system-level | Capabilities map, recommended workflows, important constraints. Like a skills file for the server. |
 | Response schemas (`outputSchema`) | When the model is parsing return values | Declare them; helps clients and structured-content consumers. |
 
 The `instructions` field is the most reliable place to surface server-wide guidance — major MCP clients (Claude Desktop, Cursor, VS Code) honor it; the spec's `prompts` feature is silently dropped by many clients.

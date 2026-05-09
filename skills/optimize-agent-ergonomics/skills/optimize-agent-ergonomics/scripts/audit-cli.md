@@ -27,4 +27,4 @@ The script exits `0` when the safe probe passes core checks, `1` when the probe 
 
 ## Limitations
 
-This is not a complete CLI audit. It exercises one safe command and cannot prove destructive operations, auth flows, all exit classes, retries, pagination, streaming, or every subcommand. Use `references/cli/audit-checklist.md` for the complete audit.
+This is not a complete CLI audit. It exercises one safe command and cannot prove destructive operations, auth flows, all exit classes, retries, pagination, streaming, or every subcommand. Use `../references/cli/audit-checklist.md` for the complete audit.

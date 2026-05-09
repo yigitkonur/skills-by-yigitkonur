@@ -237,7 +237,7 @@ Pick the primitive based on three questions, in this order.
 | `delete_environment(env_id, approval_token)` | **Tool** (gated) | Side effect, model-initiated, requires gate |
 | `/code-review file=X strict=true` | **Prompt** | User-initiated, repeatable, embeds the file |
 | `live_metrics(service)` | **Tool** | Live data, model picks when to refresh |
-| `project://standards.md` | **Resource** | Read-only, referenced from many tool descriptions |
+| `project://standards` | **Resource** | Read-only, referenced from many tool descriptions |
 | `/scaffold-component name=Button` | **Prompt** | User decides to start, parameterized |
 
 ### The hybrid pattern

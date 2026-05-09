@@ -394,7 +394,7 @@ const server = new McpServer({
 });
 ```
 
-Treat this like an `AGENTS.md` — a briefing the agent reads once at session start.
+Treat this like an agent-instructions file — a briefing the agent reads once at session start.
 
 ### Add correct AND incorrect call examples in descriptions
 

@@ -74,13 +74,13 @@ Evidence: [what you observed — call trace, --help output, schema dump, log lin
 | Dimension | What's wrong | Common/ reference |
 |---|---|---|
 | description-quality | Tool description / `--help` is human-doc, not LLM-prompt | `descriptions-as-prompts.md` |
-| schema-quality | Deeply nested schema; unused params; ambiguous types | (CLI) `flags-and-discovery.md`, (MCP) `schema-design.md` |
+| schema-quality | Deeply nested schema; unused params; ambiguous types | (CLI) `../cli/flags-and-discovery.md`, (MCP) `../mcp/patterns/schema-design.md` |
 | error-quality | Errors not retry-safe; no `next_action`; protocol errors for business logic | `error-strategy.md` |
 | output-noise | Raw API JSON dumped; stdout/stderr blended; no envelope | `output-contracts.md` |
 | missing-iterative | Long-running workflow with no `phase` / `next_action` | `iterative-loops.md` |
-| tool-count | 30+ tools in a flat namespace | (MCP) `agent-cognitive-load.md` + `decision-trees/tool-count.md` |
+| tool-count | 30+ tools in a flat namespace | (MCP) `agent-cognitive-load.md` + `../mcp/decision-trees/tool-count.md` |
 | response-shape | No `schema_version`; field renames across releases | `output-contracts.md` |
-| auth-flakiness | Manual token paste; no refresh; no headless mode | (CLI) `auth-headless.md`, (MCP) `auth-identity.md` |
+| auth-flakiness | Manual token paste; no refresh; no headless mode | (CLI) `../cli/auth-headless.md`, (MCP) `../mcp/patterns/auth-identity.md` |
 
 Severity rubric:
 

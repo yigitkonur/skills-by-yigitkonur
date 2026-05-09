@@ -300,7 +300,7 @@ The exemplar is signal; the reasoning is yours.
 ## Cross-references
 
 - For the full 16-server survey with disagreements and copy-this patterns, read `../mcp/patterns/exemplar-servers.md`.
-- For the detailed CLI audits with scores, read the historical examples in the merged `cli/code-templates.md`.
+- For the detailed CLI audits with scores, read the historical examples in the merged `../cli/code-templates.md`.
 - For the design choices these exemplars made, route through `descriptions-as-prompts.md`, `output-contracts.md`, `error-strategy.md`.
 - For when the workload determines which exemplar to copy, read `decide-surface.md`.
 - For exemplar-derived design phases, read `../mcp/decision-trees/design-phase.md`.

@@ -1,6 +1,6 @@
 # Mode A-MCP — Audit an existing MCP server
 
-Audit an MCP server with the **Explore → Diagnose → Present → Optimize** ritual. Read the code before suggesting patterns. Tie every finding to a real file and line. Surface findings one at a time with options. Apply only after explicit user approval. Verify after applying. This file is the entry point for every MCP audit; the surface-agnostic ritual lives in `../../common/audit-rhythm.md` — read it once, then return here for MCP specifics.
+Audit an MCP server with the **Explore → Diagnose → Present → Optimize** ritual. Read the code before suggesting patterns. Tie every finding to a real file and line. Surface findings one at a time with options. Apply only after explicit user approval. Verify after applying. This file is the entry point for every MCP audit; the surface-agnostic ritual lives in `../common/audit-rhythm.md` — read it once, then return here for MCP specifics.
 
 ## Workflow
 
@@ -63,15 +63,15 @@ Classify every observation into one of the categories below. Each category maps 
 
 | Category | Symptoms | Route |
 |---|---|---|
-| Tool design | 30 tools, REST 1:1, vague names, agents pick wrong tool | `tool-count.md` → `../patterns/tools.md` |
-| Schema | Deeply nested input, parse failures, hallucinated params | `../patterns/schema-design.md` |
-| Response format | Raw API JSON, large payloads, no `structuredContent` | `response-format.md` → `../patterns/tools.md` |
-| Error semantics | Protocol errors for business logic; recovery hints missing | `error-strategy.md` → `../patterns/error-handling.md` |
-| Security | No auth on remote; user tokens forwarded; SSRF; PII leaked | `security-posture.md` → `../patterns/security.md`, `../patterns/auth-identity.md`, `../patterns/threat-catalog.md` |
-| Scaling | One process under load; no caching; long-running blocking calls | `scaling.md` → `../patterns/transport-and-ops.md`, `../patterns/session-and-state.md`, `../patterns/caching-economics.md` |
-| Production-readiness | No tests; no health endpoint; no telemetry; SSE on remote | `production-readiness.md` → `../patterns/transport-and-ops.md`, `../patterns/testing.md` |
-| Advanced protocol | Sampling / elicitation silently dropped on non-supporting clients | `../patterns/advanced-protocol.md`, `../patterns/client-compatibility.md` |
-| Distribution | Publishing to v0 of the official registry; no namespacing | `../patterns/registry-and-distribution.md` |
+| Tool design | 30 tools, REST 1:1, vague names, agents pick wrong tool | `decision-trees/tool-count.md` → `patterns/tools.md` |
+| Schema | Deeply nested input, parse failures, hallucinated params | `patterns/schema-design.md` |
+| Response format | Raw API JSON, large payloads, no `structuredContent` | `decision-trees/response-format.md` → `patterns/tools.md` |
+| Error semantics | Protocol errors for business logic; recovery hints missing | `decision-trees/error-strategy.md` → `patterns/error-handling.md` |
+| Security | No auth on remote; user tokens forwarded; SSRF; PII leaked | `decision-trees/security-posture.md` → `patterns/security.md`, `patterns/auth-identity.md`, `patterns/threat-catalog.md` |
+| Scaling | One process under load; no caching; long-running blocking calls | `decision-trees/scaling.md` → `patterns/transport-and-ops.md`, `patterns/session-and-state.md`, `patterns/caching-economics.md` |
+| Production-readiness | No tests; no health endpoint; no telemetry; SSE on remote | `decision-trees/production-readiness.md` → `patterns/transport-and-ops.md`, `patterns/testing.md` |
+| Advanced protocol | Sampling / elicitation silently dropped on non-supporting clients | `patterns/advanced-protocol.md`, `patterns/client-compatibility.md` |
+| Distribution | Publishing to v0 of the official registry; no namespacing | `patterns/registry-and-distribution.md` |
 
 Findings should cite specific files and line numbers. Severity is your call: **Critical** (security, data loss, prod failure), **High** (agent-blocking ergonomics), **Medium** (cost or token waste), **Low** (style, polish).
 
@@ -120,21 +120,21 @@ Use this as the diagnostic checklist during Phase 1 + 2.
 
 | # | Pitfall | Fix routes to |
 |---|---|---|
-| 1 | Wrapping every REST endpoint as a tool (1:1 surface) | `../patterns/tools.md` (intent-based design) |
-| 2 | Deeply nested JSON schemas (>1 level) | `../patterns/schema-design.md` |
-| 3 | Returning raw API JSON | `../patterns/tools.md` (response shape) |
-| 4 | Throwing protocol errors for business failures | `error-strategy.md`, `../patterns/error-handling.md` |
-| 5 | No input validation server-side | `../patterns/security.md` |
-| 6 | Eagerly registering 20–30+ tools | `tool-count.md`, `../patterns/progressive-discovery.md` |
-| 7 | Vague tool descriptions | `../patterns/tools.md` (descriptions section), `../../common/descriptions-as-prompts.md` |
-| 8 | No tests before production | `../patterns/testing.md` |
-| 9 | Using SSE for new remote deployments | `../patterns/transport-and-ops.md` (Streamable HTTP only) |
-| 10 | Ignoring session cleanup on disconnect | `../patterns/session-and-state.md` |
-| 11 | Invalidating provider prompt cache on every turn | `../patterns/caching-economics.md` |
-| 12 | Assuming every client supports sampling / elicitation / roots | `../patterns/advanced-protocol.md`, `../patterns/client-compatibility.md` |
-| 13 | Forwarding user tokens to upstream APIs | `../patterns/auth-identity.md` (OBO with audience check) |
-| 14 | Publishing to v0 of the official registry | `../patterns/registry-and-distribution.md` |
-| 15 | Picking a deployment platform before counting cold starts or session needs | `../patterns/transport-and-ops.md` |
+| 1 | Wrapping every REST endpoint as a tool (1:1 surface) | `patterns/tools.md` (intent-based design) |
+| 2 | Deeply nested JSON schemas (>1 level) | `patterns/schema-design.md` |
+| 3 | Returning raw API JSON | `patterns/tools.md` (response shape) |
+| 4 | Throwing protocol errors for business failures | `decision-trees/error-strategy.md`, `patterns/error-handling.md` |
+| 5 | No input validation server-side | `patterns/security.md` |
+| 6 | Eagerly registering 20–30+ tools | `decision-trees/tool-count.md`, `patterns/progressive-discovery.md` |
+| 7 | Vague tool descriptions | `patterns/tools.md` (descriptions section), `../common/descriptions-as-prompts.md` |
+| 8 | No tests before production | `patterns/testing.md` |
+| 9 | Using SSE for new remote deployments | `patterns/transport-and-ops.md` (Streamable HTTP only) |
+| 10 | Ignoring session cleanup on disconnect | `patterns/session-and-state.md` |
+| 11 | Invalidating provider prompt cache on every turn | `patterns/caching-economics.md` |
+| 12 | Assuming every client supports sampling / elicitation / roots | `patterns/advanced-protocol.md`, `patterns/client-compatibility.md` |
+| 13 | Forwarding user tokens to upstream APIs | `patterns/auth-identity.md` (OBO with audience check) |
+| 14 | Publishing to v0 of the official registry | `patterns/registry-and-distribution.md` |
+| 15 | Picking a deployment platform before counting cold starts or session needs | `patterns/transport-and-ops.md` |
 
 ## Per-category exploration commands
 
@@ -219,10 +219,10 @@ Once the code map is in your head, ask 2–3 cited questions. Examples:
 
 ## Cross-links
 
-- The universal Explore → Diagnose → Present → Optimize ritual: `../../common/audit-rhythm.md`.
-- The surface-agnostic principles every audit applies: `../../common/output-contracts.md`, `../../common/error-strategy.md`, `../../common/descriptions-as-prompts.md`.
-- The CLI counterpart for an analogous audit on a CLI tool: `../../cli/audit-checklist.md`.
+- The universal Explore → Diagnose → Present → Optimize ritual: `../common/audit-rhythm.md`.
+- The surface-agnostic principles every audit applies: `../common/output-contracts.md`, `../common/error-strategy.md`, `../common/descriptions-as-prompts.md`.
+- The CLI counterpart for an analogous audit on a CLI tool: `../cli/audit-checklist.md`.
 
 ## When to escalate to a redesign
 
-If the audit surfaces a foundational mistake — wrong surface (CLI would have been better; route to `../../common/decide-surface.md`), wrong SDK choice (v2 beta can't ship to the user's clients), wrong transport (SSE on a 2026 deploy) — stop the optimization pass. Surface that finding alone, give the user the redesign option, and only resume incremental optimization if they accept the patch path.
+If the audit surfaces a foundational mistake — wrong surface (CLI would have been better; route to `../common/decide-surface.md`), wrong SDK choice (v2 beta can't ship to the user's clients), wrong transport (SSE on a 2026 deploy) — stop the optimization pass. Surface that finding alone, give the user the redesign option, and only resume incremental optimization if they accept the patch path.

@@ -25,4 +25,4 @@ The script exits `0` for an existing target and `2` for usage or missing-path er
 
 ## Limitations
 
-This helper is static evidence only. It does not initialize the server, call tools, validate schemas, inspect generated schema output, verify auth, run MCP Inspector, or replace `test-by-mcpc-cli`. Use `references/mcp/audit-existing.md` and `references/mcp/patterns/testing.md` for the full audit path.
+This helper is static evidence only. It does not initialize the server, call tools, validate schemas, inspect generated schema output, verify auth, run MCP Inspector, or replace `test-by-mcpc-cli`. Use `../references/mcp/audit-existing.md` and `../references/mcp/patterns/testing.md` for the full audit path.

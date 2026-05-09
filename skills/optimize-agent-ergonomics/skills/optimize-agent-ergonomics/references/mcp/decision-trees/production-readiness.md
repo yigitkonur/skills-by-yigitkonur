@@ -22,7 +22,7 @@ The checklist is **gating** — production readiness means every item is green o
 
 ### 2. Threat model documented and addressed
 
-**Verify.** Re-read `security-posture.md`. Open the doc that records the threat model (a `SECURITY.md` or similar). Confirm every applicable defense is wired.
+**Verify.** Re-read `security-posture.md`. Open the doc that records the threat model (a security document or similar). Confirm every applicable defense is wired.
 
 **Skip patterns.** "It's behind OAuth so we're fine"; no SSRF defenses on outbound calls; no audit log.
 

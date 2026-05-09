@@ -6,8 +6,8 @@ Design a new MCP server from scratch. Run the surface-agnostic 8-question pass f
 
 Two preconditions. Skip either and the rest of the conversation is wasted:
 
-1. The user said "I want to build an MCP server" or equivalent — not "should I build a CLI or an MCP?" If the surface is undecided, route to `../../common/decide-surface.md` first and come back.
-2. The 8 surface-agnostic questions in `../../common/design-thinking.md` are already answered, and "MCP" was the surface that fell out. If they are not, run that file first.
+1. The user said "I want to build an MCP server" or equivalent — not "should I build a CLI or an MCP?" If the surface is undecided, route to `../common/decide-surface.md` first and come back.
+2. The 8 surface-agnostic questions in `../common/design-thinking.md` are already answered, and "MCP" was the surface that fell out. If they are not, run that file first.
 
 Reaching the end of this file without an approved architecture sketch and a named companion skill means Mode B-MCP is not finished — keep going.
 
@@ -45,17 +45,17 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 
 **Why it matters.** If the answer reads like an API description ("expose `GET /users`"), the user is in the wrong frame. Tools map to user intents, not REST verbs. A vague answer here flows downstream into a 1:1 REST wrap and a 30-tool surface.
 
-**Implication.** Sharp answer → continue. Vague answer → ask one follow-up; if still vague, route to `design-phase.md` and stop until the user can name the task.
+**Implication.** Sharp answer → continue. Vague answer → ask one follow-up; if still vague, route to `decision-trees/design-phase.md` and stop until the user can name the task.
 
-**Next.** `design-phase.md` for the early architecture lock-ins.
+**Next.** `decision-trees/design-phase.md` for the early architecture lock-ins.
 
 ### Q2. Existing CLI or SDK already
 
 > "Does the system you're wrapping have an official CLI (`gh`, `kubectl`, `aws`, `az`, `stripe`) or a well-maintained SDK?"
 
-**Why it matters.** If a battle-tested CLI already exists, an MCP wrapper is often duplicate surface area for the agent — read `../../common/decide-surface.md` before committing.
+**Why it matters.** If a battle-tested CLI already exists, an MCP wrapper is often duplicate surface area for the agent — read `../common/decide-surface.md` before committing.
 
-**Implication.** Yes → route to `../../common/decide-surface.md`. No → continue.
+**Implication.** Yes → route to `../common/decide-surface.md`. No → continue.
 
 ### Q3. Local or remote
 
@@ -69,7 +69,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - Remote HTTP, widest compat → official SDK v1.
 - Remote HTTP, willing to accept beta → SDK v2.
 
-**Next.** `../patterns/transport-and-ops.md`.
+**Next.** `patterns/transport-and-ops.md`.
 
 ### Q4. Tool count and granularity
 
@@ -80,10 +80,10 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 **Implication.**
 - < 10 tools → static list is fine.
 - 10–20 → consolidate CRUD into action-enums; namespace clearly.
-- 20–40 → progressive discovery (`../patterns/progressive-discovery.md`).
+- 20–40 → progressive discovery (`patterns/progressive-discovery.md`).
 - 40+ → meta-tools or semantic search.
 
-**Next.** `tool-count.md`.
+**Next.** `decision-trees/tool-count.md`.
 
 ### Q5. Schema strategy
 
@@ -96,7 +96,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - JSONSchema hand-written → same flatness rule; easy to drift from the SDK's expected shape.
 - Generated from typed code → audit the emitted shape, not the source type.
 
-**Next.** `../patterns/schema-design.md`.
+**Next.** `patterns/schema-design.md`.
 
 ### Q6. Response format
 
@@ -110,7 +110,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - Both → mixed (text for narrative, structured for data); annotate audience.
 - Large dataset → paginate or expose as Resources.
 
-**Next.** `response-format.md`.
+**Next.** `decision-trees/response-format.md`.
 
 ### Q7. Error model
 
@@ -124,7 +124,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - Transient (rate limit) → `isError: true` + retry-after.
 - Transport / framework failure → JSON-RPC error code (the only legitimate use).
 
-**Next.** `error-strategy.md` (and `../../common/error-strategy.md` for the universal taxonomy).
+**Next.** `decision-trees/error-strategy.md` (and `../common/error-strategy.md` for the universal taxonomy).
 
 ### Q8. Auth profile
 
@@ -138,7 +138,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - OAuth 2.1 + PKCE → multi-user remote.
 - OAuth + CIMD/DCR → public marketplace.
 
-**Next.** `security-posture.md` and `../patterns/auth-identity.md`.
+**Next.** `decision-trees/security-posture.md` and `patterns/auth-identity.md`.
 
 ### Q9. Sessions and state
 
@@ -151,7 +151,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - Per-session state → in-memory keyed by sessionId; cleanup on disconnect.
 - Cross-session persistence → externalize to Redis or DB; multi-tenant isolation.
 
-**Next.** `../patterns/session-and-state.md`.
+**Next.** `patterns/session-and-state.md`.
 
 ### Q10. Scaling expectations
 
@@ -166,7 +166,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - High-frequency tools → caching is mandatory.
 - Long-running tools → consider sampling / elicitation / async.
 
-**Next.** `scaling.md` and `../patterns/caching-economics.md`.
+**Next.** `decision-trees/scaling.md` and `patterns/caching-economics.md`.
 
 ### Q11. Advanced protocol features
 
@@ -180,7 +180,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 - Roots needed → check VS Code / Claude Desktop support matrix.
 - Resources / Prompts (beyond tools) → useful for large datasets and templated workflows.
 
-**Next.** `../patterns/advanced-protocol.md` and `../patterns/resources-and-prompts.md`.
+**Next.** `patterns/advanced-protocol.md` and `patterns/resources-and-prompts.md`.
 
 ### Q12. Client compatibility and deployment
 
@@ -188,7 +188,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 
 **Why it matters.** Some features only work in specific clients. Some platforms have cold-start or session quirks that bend the architecture.
 
-**Implication.** Cross-check against `../patterns/client-compatibility.md`. Pick the deployment that matches the session-affinity / cold-start budget the workload can tolerate (`../patterns/transport-and-ops.md`).
+**Implication.** Cross-check against `patterns/client-compatibility.md`. Pick the deployment that matches the session-affinity / cold-start budget the workload can tolerate (`patterns/transport-and-ops.md`).
 
 ## Architecture-sketch template
 
@@ -278,26 +278,26 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 - **Choosing transport before auth.** Transport and auth are coupled (stdio implies "no network auth"; HTTP implies a full threat model). Decide together at Q3 + Q8.
 - **Eagerly registering 30+ tools.** Past the model's sweet spot, routing collapses. Q4 forces the count out into the open early.
 - **Ignoring client compatibility.** Sampling and elicitation work in some clients and silently no-op in others. Q11 + Q12 catch this before the architecture is locked.
-- **Forwarding user tokens upstream.** Use OBO with audience checks — see `../patterns/auth-identity.md`.
+- **Forwarding user tokens upstream.** Use OBO with audience checks — see `patterns/auth-identity.md`.
 - **Skipping the architecture-sketch approval.** The sketch is the contract; without it, the companion build skill has no fixed target.
 
 ## Routing after this file
 
 - The architecture sketch is approved → companion build skill (matrix above).
-- The brainstorm exposed that MCP is the wrong primitive → `../../common/decide-surface.md`.
+- The brainstorm exposed that MCP is the wrong primitive → `../common/decide-surface.md`.
 - A specific question dominates the design (auth, scaling, tool count) → the matching decision-tree:
-  - Tool count or progressive discovery → `tool-count.md`.
-  - Response format → `response-format.md`.
-  - Error semantics → `error-strategy.md`.
-  - Threat model → `security-posture.md`.
-  - Scaling → `scaling.md`.
-  - Pre-deploy → `production-readiness.md`.
-  - Early architecture lock-ins → `design-phase.md`.
+  - Tool count or progressive discovery → `decision-trees/tool-count.md`.
+  - Response format → `decision-trees/response-format.md`.
+  - Error semantics → `decision-trees/error-strategy.md`.
+  - Threat model → `decision-trees/security-posture.md`.
+  - Scaling → `decision-trees/scaling.md`.
+  - Pre-deploy → `decision-trees/production-readiness.md`.
+  - Early architecture lock-ins → `decision-trees/design-phase.md`.
 
 ## When to re-enter this file
 
-- Tool count crosses the next cliff (10 / 20 / 40 / 100) — re-run Q4 and revisit `tool-count.md`.
+- Tool count crosses the next cliff (10 / 20 / 40 / 100) — re-run Q4 and revisit `decision-trees/tool-count.md`.
 - Target-client mix changes (Cursor or Windsurf added) — re-run Q11 + Q12.
-- Sampling or elicitation discovered mid-build — `../patterns/advanced-protocol.md`.
+- Sampling or elicitation discovered mid-build — `patterns/advanced-protocol.md`.
 - Single-user scope grows to multi-tenant — re-run Q8 + Q10.
 - v2 beta API changes land — re-read the `build-mcp-server-sdk-v2` SKILL.md before starting again.
