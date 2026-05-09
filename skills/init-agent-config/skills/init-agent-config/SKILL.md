@@ -226,43 +226,15 @@ Use the writer scaffold in `references/discovery-prompts.md`. Include the target
 
 ### 10) Generate the review-context layer
 
-After the AGENTS hierarchy is written, draft the review-context layer from the same repo evidence.
+After the AGENTS hierarchy is written, decide whether the same repo evidence warrants a review-context layer.
 
-**Purpose**
-- standardize what kinds of diffs should be flagged
-- encode repo-specific code standards that matter during review
-- capture the places where AI agents may act outside intended architectural or safety bounds
-- strengthen future AGENTS updates by forcing the repo's risk model to be explicit
+- Default to root `REVIEW.md` for review-standardization work or when discovery finds repo-specific risks worth encoding.
+- Use scoped `REVIEW.md` only when a subtree has distinct review risks that would bloat or contradict the root.
+- Keep `AGENTS.md` as operating guidance and `REVIEW.md` as diff scrutiny.
+- If review drafting exposes a missing work boundary, update the relevant `AGENTS.md`.
+- If `REVIEW.md` is intentionally skipped, state the reason in the final response.
 
-**Default outputs**
-- root `REVIEW.md`
-- scoped `REVIEW.md` files only when a subtree has review risks or standards that diverge materially from the root
-
-**Split of responsibility**
-- `AGENTS.md` = how to work and where things belong
-- `REVIEW.md` = what to flag, protect, or verify in diffs
-
-**Review-writing rules**
-- use repo evidence, not generic best practices
-- keep rules specific, measurable, actionable, and semantic
-- put highest-risk rules first
-- skip anything already enforced by lint, format, or deterministic tooling
-- prefer 5-10 strong rules over a long checklist
-- use scoped `REVIEW.md` only when the root file would become contradictory or bloated
-
-**Suggested section order for root `REVIEW.md`**
-- `## Critical Areas`
-- `## Security`
-- `## Conventions`
-- `## Performance`
-- `## Patterns`
-- `## Ignore`
-- `## Testing`
-
-**After drafting review context**
-- compare it back against the AGENTS hierarchy
-- if the review pass exposed missing boundaries or safety rules, update the relevant `AGENTS.md` files
-- keep the two surfaces complementary rather than duplicative
+See `references/review-context.md` for purpose, exceptions, section order, scoped review rules, and adapter relationships.
 
 ### 11) Validate before finalizing
 
@@ -341,6 +313,7 @@ Read the smallest reference set that unblocks the current decision:
 | Need | Reference |
 |-----|-----------|
 | Wave 1, Wave 2, or writer prompt scaffolds | `references/discovery-prompts.md` |
+| REVIEW.md purpose, exceptions, root/scoped split, and adapter relationships | `references/review-context.md` |
 | AGENTS authoring, folder scoping, WHAT/WHY/HOW, and derailments | `references/agents-md-format.md` |
 | Companion entrypoints, review-context adapters, setup gotchas, cross-agent surfaces | `references/agent-entrypoints.md` |
 | Auditing existing files, report format, and migrations | `references/audit-and-migration.md` |
