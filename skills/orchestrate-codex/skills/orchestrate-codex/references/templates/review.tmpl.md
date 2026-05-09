@@ -4,6 +4,8 @@ Review mode invokes `codex exec review` per branch per round. The review focus i
 
 This template is the per-round review focus passed via stdin or `--prompt`. It uses the canonical six section headers from `references/universal/prompt-discipline.md` so the audit grep at `prompt-discipline.md:155-158` passes against review prompts. Review-specific blocks (what to flag, what to skip, round context, output format) live under those headers.
 
+The `<one-sentence summary of the branch's intent>` placeholder below would, in a future revision, be filled from the per-entry `round_focus` field documented in `references/modes/review.md`. **That field is not consumed by the runner today** — for now, the operator hand-fills the placeholder before invoking review on a custom prompt.
+
 ---
 
 ## Template

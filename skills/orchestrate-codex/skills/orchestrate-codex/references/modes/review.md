@@ -20,8 +20,9 @@ This skill never opens PRs and never merges. Use `ask-review` for PR creation an
 - Each branch has a coherent concern (one PR's worth of changes).
 - The user wants codex review as the source of findings — not Greptile / Devin / Copilot, not human reviewers (yet).
 
+One branch IS in scope for review mode — Q2 routes a single named branch to the same per-branch converge-or-cap loop. Use the dispatcher path (`node orchestrate-codex.mjs review --branches feat/foo`) so you get manifest seeding, monitor wiring, and the markdown→JSON sidecar that feeds `classify-review-feedback.py`. Drop to bare `codex exec review --base main` only when you explicitly do **not** want any of that wiring (e.g. a one-off ad-hoc check whose findings you'll read by eye and discard).
+
 When to skip:
-- One branch → run `codex exec review --base main` directly.
 - Branches with mixed concerns → split first via repo-cleanup tools.
 - Multi-bot review evaluation → out of scope; this skill drives codex review only.
 
@@ -31,7 +32,11 @@ When to skip:
 node orchestrate-codex.mjs review --branches feat/auth feat/billing docs/quickstart
 ```
 
-Or `--branches-file branches.txt` (one branch per line).
+`--branches` also accepts a file path: if its value resolves to an existing file, the dispatcher reads one branch per line from it (`expandBranches` in `orchestrate-codex.mjs:632-649`). So `--branches branches.txt` is equivalent to listing every branch on the command line. There is no separate `--branches-file` flag.
+
+### Stacked branches and `--base`
+
+The dispatcher accepts a single `--base <ref>` that applies to every branch in the invocation. For stacked branches (e.g. `feat/notifications` based on `feat/inbox`, which is itself based on `main`), reviewing all of them in one invocation against `--base main` is wrong — the diff for `feat/notifications` would also include `feat/inbox`'s changes. Run review separately per stack level with the appropriate `--base` for each. Per-branch base override is not yet wired (related to the `round_focus` note below).
 
 Per-branch settings flow through `tasks.json`-like structure inside the manifest:
 
@@ -44,7 +49,7 @@ Per-branch settings flow through `tasks.json`-like structure inside the manifest
 }
 ```
 
-`round_focus` is the per-branch context the prompt template uses. See `references/templates/review.tmpl.md`.
+`round_focus` is **informational only — not consumed by the runner today; planned.** Neither `handleReview` (`orchestrate-codex.mjs:1700-1797`) nor `run-review.sh` reads this field. The review prompt template (`references/templates/review.tmpl.md`) leaves `<one-sentence summary of the branch's intent>` as a manual placeholder for the operator to fill before invoking review on a single branch with custom intent.
 
 ## Pre-flight
 
@@ -89,8 +94,9 @@ errlog="$ROUNDS_DIR/$slug.r$ROUND_NUM.err.log"
 # 4. Mark terminal.
 if [ ${PIPESTATUS[0]} -eq 0 ] && [ -s "$findings_path" ]; then
     manifest-update.sh entry "$MANIFEST" "$id" \
-        status=reviewed finished_at=now exit_code=0 \
-        last_findings_path="$findings_path"
+        status=done finished_at=now exit_code=0 \
+        last_findings_path="$findings_path" \
+        last_findings_json="$findings_json"
 else
     manifest-update.sh entry "$MANIFEST" "$id" \
         status=failed finished_at=now exit_code="$rc" \
@@ -98,11 +104,11 @@ else
 fi
 ```
 
-That's the entire runner. There is no internal round counter, no apply queue, no all-rejected-streak detection, no terminal-state logic. The runner emits a `reviewed` status when a round produces non-empty findings; the **orchestrator** (Claude main agent) is responsible for:
+That's the entire runner. There is no internal round counter, no apply queue, no all-rejected-streak detection, no terminal-state logic. The runner writes `status=done` when a round produces non-empty findings (the canonical manifest enum has no `reviewed` value — see `references/universal/manifest-contract.md:140`); the **orchestrator** (Claude main agent) is responsible for:
 
-1. Reading `last_findings_path` after the round terminates.
-2. Bridging the markdown findings into JSON (see "Findings format" below).
-3. Running `classify-review-feedback.py` on the JSON.
+1. Reading `last_findings_json` after the round terminates — that's the path to feed into `classify-review-feedback.py`. The runner synthesizes this JSON sidecar from the per-round JSONL events (see "Findings format" below); `last_findings_path` points at the markdown report and is for human eyes / forensic review only. **Feeding the markdown into the classifier crashes with exit 2.**
+2. (Optional) Reading `last_findings_path` for the human-readable narrative.
+3. Running `classify-review-feedback.py --input "$last_findings_json"` on the JSON sidecar.
 4. Calling `Skill(do-review)` to evaluate each major item.
 5. Applying accepted items via `Edit` directly in the worktree.
 6. Pushing the worktree's branch (`git -C <wt> push`).
@@ -110,28 +116,32 @@ That's the entire runner. There is no internal round counter, no apply queue, no
 
 ### Findings format
 
-`codex exec review` emits **Markdown** to the path passed to `-o`, even with `--json` set (see `run-review.sh` line ~218 — the file extension is `.md`, and codex review's `-o` output is its own narrative report, not the JSONL stream). `classify-review-feedback.py` requires JSON input.
+`codex exec review` emits **Markdown** to the path passed to `-o`, even with `--json` set — codex review's `-o` output is its own narrative report, not the JSONL event stream. The runner records this markdown path as `mode_state.last_findings_path`. `classify-review-feedback.py` requires JSON input, so it cannot read that markdown directly.
 
-There is **no built-in bridge** in the current skill. Until one ships, the orchestrator must transform the markdown findings into JSON shaped like:
+The runner bridges this gap by synthesizing a sidecar JSON file from the captured JSONL events (`run-review.sh:340-393`) and recording it as `mode_state.last_findings_json`. **That sidecar is what the classifier reads** — always feed `last_findings_json`, never `last_findings_path`. Shape:
 
 ```json
 {
-  "branch": "feat/auth",
-  "round": 1,
-  "items": [
-    {"id": "f1", "severity": "major|minor", "file": "src/foo.ts", "line": 42,
-     "category": "correctness|stability|data-integrity|security|regression|hygiene|branch-structure|formatting|naming|docs|perf|scope",
-     "summary": "...", "rationale": "..."}
-  ]
+  "review_id": "<slug>.r<N>",
+  "findings": [],
+  "raw_text": "<concatenated agent_message text>",
+  "slug": "<slug>",
+  "base": "<base ref>",
+  "round": <N>,
+  "findings_md": "<absolute path to the markdown report>",
+  "thread_id": "<first thread.started event's id, if any>",
+  "agent_messages": ["..."],
+  "raw_event_count": <int>
 }
 ```
 
-Workarounds:
+The `findings` array is empty in today's sidecar — `classify-review-feedback.py` falls back to `raw_text` (concatenated `agent_message` text) for parsing. If the JSONL is missing or malformed the runner writes a stub with an `error` key (`jsonl_missing` / `jsonl_parse_failed`) so the classifier still has something to surface.
 
-- **Manual bridge.** Read the markdown by hand, hand-craft the JSON above, run `classify-review-feedback.py --input <hand-crafted.json>`.
-- **Agent bridge.** Spawn a small `single` mode mission with a prompt that converts the markdown findings to the JSON schema; pipe its `-o` file into the classifier.
+Operator-side richer transforms (e.g. handcrafting per-finding `{file, line, severity, category, summary, rationale}` items into `findings`) are still possible and may improve classifier accuracy:
 
-Either path is currently the operator's responsibility. Markdown-to-JSON inside `run-review.sh` is **Planned**.
+- **Agent bridge.** Spawn a small `single` mode mission with a prompt that reads the markdown at `last_findings_path` and emits enriched `findings[]` items into a JSON file you then pass to `--input`.
+
+Structured-finding extraction inside `run-review.sh` itself is **Planned**.
 
 ### Multi-round loop (Planned)
 
@@ -141,11 +151,12 @@ The behavior in earlier drafts — "loop until converged or `max_rounds=10`, det
 # Round 1 — fired by the dispatcher automatically.
 node orchestrate-codex.mjs review --branches feat/auth,feat/billing
 
-# Wait for run-review.sh to flip every entry to `reviewed` or `failed`.
-# Then for each branch with status=reviewed:
-#   - Read mode_state.last_findings_path
-#   - Bridge to JSON, classify, evaluate via /do-review, apply via Edit, push.
-#   - If round produced fixes → bump round counter, fire round 2:
+# Wait for run-review.sh to flip every entry to `done` or `failed`.
+# Then for each branch with status=done:
+#   - Read mode_state.last_findings_json (sidecar synthesized by the runner).
+#   - Classify via classify-review-feedback.py, evaluate via /do-review,
+#     apply via Edit, push.
+#   - If round produced fixes → flip status back to queued and fire round 2:
 
 bash scripts/run-review.sh /abs/path/to/manifest.json 2
 
@@ -194,7 +205,7 @@ The runner writes one of two `status` values to each entry:
 
 | Status (written by runner) | Meaning |
 |---|---|
-| `reviewed` | One round produced non-empty findings cleanly; the orchestrator must now read `last_findings_path` and decide whether more rounds are needed. **This is a `running`-flavored status, not a final terminal.** Treat `reviewed` as "round complete, awaiting orchestrator decision." |
+| `done` | One round produced non-empty findings cleanly; the orchestrator must now read `last_findings_json` and decide whether more rounds are needed. **For review mode, `done` is a "round complete, awaiting orchestrator decision" signal — not the final per-branch terminal.** The orchestrator converts to a terminal value (`converged`, `cap_reached_*`, `blocked`, etc.) under `mode_state.terminal_state` once it decides the branch's outcome. The manifest enum has no `reviewed` value (see `references/universal/manifest-contract.md:140`). |
 | `failed` | The codex-review spawn errored, exited non-zero, produced empty findings, or worktree setup failed. |
 
 The orchestrator-driven terminal taxonomy (the values you write into `mode_state.terminal_state` by hand once you've decided a branch is finished):
@@ -209,7 +220,7 @@ The orchestrator-driven terminal taxonomy (the values you write into `mode_state
 | `blocked` | Major or ambiguous findings require contextual evaluation/apply, persistent ambiguous items, oscillation, or contradictions that need a human decision. | surface for human decision |
 | `failed` | Tooling crash past retry budget; codex review crashed; classifier crashed. | surface for human |
 
-Do not invent additional states. If a situation doesn't fit, pick `blocked` with a `terminal_reason` describing the mismatch, surface it, and file the issue. Mapping rule for the runner's `reviewed`: it is **not** a terminal state. Convert to one of the orchestrator-driven values above as soon as you've decided the branch's outcome; leaving entries at `reviewed` indefinitely confuses rescue (which treats `reviewed` as in-flight-ish).
+Do not invent additional states. If a situation doesn't fit, pick `blocked` with a `terminal_reason` describing the mismatch, surface it, and file the issue. Mapping rule for the runner's per-round `done`: it is **not** the per-branch terminal state. Treat it as "round complete" and write the per-branch terminal under `mode_state.terminal_state` as soon as you've decided the branch's outcome; leaving entries at bare `done` without a `terminal_state` indefinitely is ambiguous between "round 1 awaiting next-round decision" and "branch finished cleanly."
 
 ## Recovery
 

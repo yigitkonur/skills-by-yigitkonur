@@ -2,7 +2,14 @@
 
 Inspect an existing manifest, classify each entry's true state, then re-spawn an explicit subset through the original mode's runner.
 
-> **Status: read-only classification today.** `handleRescue` (`scripts/orchestrate-codex.mjs`) reads the manifest, runs `rescue-detect.py` (or a fallback bucket count), and emits an envelope describing what's redo-able. It **does not currently re-spawn**, **does not flip entries to `queued`**, and **does not perform pre-rescue cleanup.** The "Pre-rescue cleanup" and "Re-spawn" sections below describe **Planned** behavior; each section also shows the working manual sequence for today.
+## What rescue actually does today
+
+Two distinct behaviors based on whether `--apply` is passed (`handleRescue` in `scripts/orchestrate-codex.mjs:1879-2120`):
+
+- **Default (no `--apply`) — read-only classify.** Reads the manifest, runs `rescue-detect.py` (or a fallback bucket count), and emits an envelope whose `next_action` is a structured `ask_user_question` object describing the three redispatch buckets. It does NOT mutate the manifest, kill processes, stash worktrees, or spawn anything.
+- **`rescue --apply <subset>` — redispatch.** After classify, runs pre-rescue cleanup (kill stale pids, stash dirty worktrees, prune temp partials), flips the chosen entries to `queued` (clearing `started_at`/`finished_at`/`exit_code`/`last_error`, incrementing `attempts`), then spawns the original mode's runner detached on the selected subset. The runner's skip-existing guards leave `done` entries alone; only the freshly-`queued` ones run.
+
+Subsets accepted by `--apply`: `failed-only` | `never-started-only` | `all-non-done` | `ids:s1,s2,...`. The CLI also accepts `--redo {failed,never-started,all-non-done}` as an alias — it normalizes into `--apply` (`orchestrate-codex.mjs:1889-1906`). `--apply` is the canonical form (matches the envelope's `rerun_with` template).
 
 ## When rescue triggers
 
@@ -10,18 +17,31 @@ Inspect an existing manifest, classify each entry's true state, then re-spawn an
 - The user explicitly invokes rescue: `node orchestrate-codex.mjs rescue [--manifest <path>]`.
 - The detection algorithm Q1 fires (manifest exists + resume keyword in prompt).
 
-Rescue never auto-runs from classification. Redispatch requires an explicit `--redo` value.
+Rescue never auto-runs redispatch from classification. Redispatch requires an explicit `--apply <subset>` (or its `--redo` alias).
 
 ## Inputs
 
 ```
 node orchestrate-codex.mjs rescue [--manifest /abs/path/to/manifest.json]
-node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --redo failed
-node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --redo never-started
-node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --redo all-non-done --accept-stale
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --apply failed-only
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --apply never-started-only
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --apply all-non-done --accept-stale
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --apply ids:02-config-editor,04-alert-fsm
 ```
 
-If `--manifest` omitted, the dispatcher resolves from cwd via the universal slug+hash function (matches codex-companion's `resolveStateDir`). If no manifest at the resolved path, rescue refuses with `error.code="no_manifest_found"` and stops.
+If `--manifest` omitted, the dispatcher resolves from cwd via the universal slug+hash function (matches codex-companion's `resolveStateDir`). If no manifest at the resolved path, rescue refuses with `error.code="manifest_not_found"` and stops.
+
+### Finding the manifest when you don't remember the cwd
+
+The manifest path is derived from `realpath(cwd)` + sha256 — without the original cwd, the dispatcher cannot reconstruct it. To enumerate every manifest on disk under both fallback roots:
+
+```bash
+# Both possible roots (CLAUDE_PLUGIN_DATA env var wins if set; otherwise TMPDIR/codex-companion).
+find "${CLAUDE_PLUGIN_DATA:-/nonexistent}/state" "${TMPDIR:-/tmp}/codex-companion" \
+    -type f -name manifest.json 2>/dev/null
+```
+
+Each match lives at `<state-root>/<slug>-<sha256-prefix>/orchestrate-codex/manifest.json`. The `<slug>` is the basename of the original workspace root, so you can usually identify the project by reading the directory name. Pass the chosen path to `--manifest <abs-path>` directly — bypasses the cwd-based resolver.
 
 ## Pre-flight
 
@@ -67,12 +87,12 @@ Output (JSON):
 
 ## Redispatch decision
 
-After classification, the dispatcher emits a JSON envelope with the classification and redispatch options embedded. The envelope's `next_action` is a structured `ask_user_question` object — the orchestrator should surface a 3-option `AskUserQuestion` to the user. To act on the user's choice, rerun with one explicit bucket:
+After classification (the no-`--apply` invocation), the dispatcher emits a JSON envelope with the classification and redispatch options embedded. The envelope's `next_action` is a structured `ask_user_question` object — the orchestrator should surface a 3-option `AskUserQuestion` to the user. To act on the user's choice, rerun with one explicit bucket:
 
 ```bash
-node orchestrate-codex.mjs rescue --manifest <path> --redo failed
-node orchestrate-codex.mjs rescue --manifest <path> --redo never-started
-node orchestrate-codex.mjs rescue --manifest <path> --redo all-non-done --accept-stale
+node orchestrate-codex.mjs rescue --manifest <path> --apply failed-only
+node orchestrate-codex.mjs rescue --manifest <path> --apply never-started-only
+node orchestrate-codex.mjs rescue --manifest <path> --apply all-non-done --accept-stale
 ```
 
 Sample question shape:
@@ -88,19 +108,21 @@ The orchestrator should always offer a fourth implicit option: **decline** the A
 
 Never auto-pick. Rescue is operator-confirmed.
 
-## Pre-rescue cleanup
+## Pre-rescue cleanup (wired today)
 
-**Planned — not yet wired.** The current `handleRescue` is read-only and does none of the steps below. They describe the intended future behavior.
+When invoked with `--apply`, `handleRescue` runs `preRescueCleanup` against the selected entries before flipping them to `queued`. The cleanup behavior:
 
 1. **`in_flight` with stale pid.** `kill -TERM <pid>`; wait; `kill -KILL` if alive; mark entry `last_error="killed_by_rescue"`.
-2. **Stale worktree (exec/review mode).** If `worktree_path` exists in manifest but `git worktree list` doesn't show it: `git worktree prune`; recreate via `setup-worktree.sh`.
-3. **Dirty worktree (exec/review mode).** `git -C <wt> stash --include-untracked`; record stash ref into `manifest.entries[i].mode_state.pre_rescue_stash`. Do NOT abandon work silently.
+2. **Stale worktree (exec/review mode).** If `worktree_path` exists in manifest but `git worktree list` doesn't show it: `git worktree prune`; the runner recreates via `setup-worktree.sh` on the next round.
+3. **Dirty worktree (exec/review mode).** `git -C <wt> stash --include-untracked`; record stash ref into `manifest.entries[i].mode_state.pre_rescue_stash`. Work is never abandoned silently.
 4. **Stale partial answer (batch mode).** `rm -f answers/.<slug>.partial`. The runner writes its in-flight temp file at `answers/.<slug>.partial` (leading dot — see `run-batch.sh`); the canonical answer path is `answers/<slug>.md`. Partials are atomic-renamed away on success, so they only linger after a crash.
-5. **Stale codex thread.** If `codex_thread_id` is present, future rescue may pass it to `codex exec resume <id>` for single-mode entries. For exec/batch/review, start fresh (no resume).
+5. **Stale codex thread.** If `codex_thread_id` is present, rescue passes it to `codex exec resume <id>` for single-mode entries (default behavior; override with `mode_state.single.resume_thread`). For exec/batch/review, start fresh (no resume).
 
-After cleanup, the planned behavior is to flip the chosen entries to `queued`, increment `attempts`, clear `started_at` / `finished_at` / `exit_code` / `last_error`, and append a history row for the cleanup + flip. None of this is wired today.
+After cleanup, rescue flips each chosen entry to `queued`, increments `attempts`, clears `started_at` / `finished_at` / `exit_code` / `last_error`, and appends a history row for the cleanup + flip. The envelope's `cleanup` field reports what was done.
 
-### Manual workaround (today)
+### Manual workaround (only if you really want to skip `--apply`)
+
+If you have a reason to do the cleanup + flip + spawn yourself instead of relying on `--apply`:
 
 ```bash
 # 1. Inspect what classifier saw.
@@ -122,12 +144,16 @@ rm -f answers/.<slug>.partial
 bash scripts/manifest-update.sh entry <manifest> <id> \
     status=queued exit_code= finished_at= last_error=
 
-# 6. Re-invoke the original mode's runner manually.
+# 6. Re-invoke the original mode's runner manually (see "Re-spawn" below).
 ```
 
-## Re-spawn
+In practice, `--apply <subset>` is the supported path; the manual sequence above is for emergencies (e.g. cleanup is failing and you want to do steps by hand to find out why).
 
-**Planned — not yet wired.** The intended behavior is for rescue to dispatch the original mode's runner with the chosen subset of entries marked `queued`, letting the skip-existing guards take care of everything else. Today, after manually flipping entries to `queued`, you re-invoke the runner yourself:
+## Re-spawn (wired today)
+
+When invoked with `--apply`, after pre-rescue cleanup and the queued-flip, `handleRescue` spawns the original mode's runner detached, with mode-appropriate args/env (`orchestrate-codex.mjs:2038-2101`). The skip-existing guards in each runner leave `done` entries alone; only the freshly-`queued` ones run.
+
+If you've taken the manual workaround above, you re-invoke the runner yourself:
 
 ```bash
 # exec mode (positional manifest, runner reads JOBS / etc. from env):
@@ -150,8 +176,6 @@ bash scripts/run-single.sh \
 bash scripts/run-review.sh /abs/path/to/manifest.json <round-number>
 ```
 
-The skip-existing guards in each runner mean entries already at `done` are passed over; only the freshly-`queued` ones run.
-
 ## Edge cases
 
 | Case | Handling |
@@ -163,16 +187,17 @@ The skip-existing guards in each runner mean entries already at `done` are passe
 | Manifest references a worktree path that no longer exists AND no stash recorded | Treat as `never_started` for that entry; recreate via setup-worktree.sh on dispatch. |
 | Manifest references a branch that no longer exists locally OR remotely | Surface; ask user to recreate the branch (from local reflog, from a teammate's fork, from scratch) or to skip the entry. The `codex_thread_id` field is recorded for diagnostic purposes; it does **not** today reconstruct branch state — `codex exec resume` replays the thread but does not regenerate git refs. |
 | Manifest is older than 7 days | Surface freshness warning; user passes `--accept-stale` to proceed. Old manifests may reference deleted branches, ignored issues, or aged-out codex-companion state. |
-| User chose "redo all non-done" but `unknown` entries exist | Treat `unknown` as `failed` for redispatch purposes. Log the assumption in history. |
+| User chose `all-non-done` but `unknown` entries exist | Treat `unknown` as `failed` for redispatch purposes. Log the assumption in history. |
 | The original mode is not implemented in this skill version | Refuse; surface the manifest's mode field and the supported modes. Skill upgrade or downgrade needed. |
 
 ## Success gate
 
-For today's read-only rescue, the success gate is just: classifier exited 0, envelope was emitted, and the user picked a subset (or declined). The actual redispatch — and the inherited per-mode terminal gates below — kick in once you've manually flipped entries and re-invoked the original runner.
+Two gates depending on invocation:
 
-Once redispatch is wired (or after manual redispatch), rescue inherits the original mode's success gate:
-- exec / batch / single: every chosen entry reaches a terminal status (`done` or `failed`); the original cleanup runs.
-- review: every chosen branch reaches a terminal state (`converged` / `cap_reached` / `blocked` / `failed`).
+- **Classify-only (no `--apply`).** Success = classifier exited 0 and the envelope was emitted with a structured `ask_user_question` next-action. The user's pick (or decline) closes the round.
+- **Redispatch (`--apply <subset>`).** Rescue inherits the original mode's success gate after spawning the runner:
+  - exec / batch / single: every chosen entry reaches a terminal status (`done` or `failed`); the original cleanup runs.
+  - review: every chosen branch reaches a terminal state (`converged` / `cap_reached` / `blocked` / `failed`).
 
 ## Recovery
 
