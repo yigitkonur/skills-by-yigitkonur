@@ -22,6 +22,8 @@ Build and maintain MCP servers using the v2 alpha split-package SDK: `@modelcont
 - Existing v1 server that needs to be ported to v2 → use `convert-mcp-server-sdk-v1-to-v2`
 - Uses the `mcp-use` wrapper library → use `build-mcp-use-server`
 - Imports `@hono/mcp` → community Hono middleware, not the official SDK adapter; choose whether to migrate before applying `@modelcontextprotocol/hono` examples
+- Existing server audit, hardening, tool-surface quality, security posture, context budget, or architecture tradeoffs → use `optimize-agent-ergonomics`
+- Do not route raw SDK v2 projects to `apply-clean-mcp-architecture`; that skill is for `mcp-use/server` architecture
 
 **How to detect v2:** Look for split package imports (`@modelcontextprotocol/server`, `@modelcontextprotocol/client`), handlers using `(args, ctx)` with `ctx.mcpReq.log()` / `ctx.mcpReq.signal`, and `"type": "module"` in `package.json`.
 
@@ -105,6 +107,7 @@ Ask or infer:
 - **Version pins**: Run `scripts/check-mcp-server-v2-version.sh`; unsafe v2 alpha ranges must fail
 - **stdio**: `npx @anthropic-ai/mcp-inspector npx tsx src/index.ts`
 - **HTTP**: Start server, test with curl or Inspector
+- **Live CLI smoke**: If `mcpc` is available, use `test-by-mcpc-cli` after a stdio or Streamable HTTP server starts
 - **Schemas**: Verify Zod validation catches bad input
 - **Context**: Confirm `ctx.mcpReq` is used (not `extra`)
 
@@ -272,3 +275,14 @@ What this means in practice:
 - Some MCP clients and third-party tooling still target v1 patterns; verify your host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
 
 The SDK is actively maintained on the `main` branch (which is now the v2 branch). Subscribe to release notes for the duration of any v2 work.
+
+## Output contract
+
+Report v2 server work with:
+
+1. Target path and detected channel/version.
+2. Transport and framework used.
+3. Tools, resources, and prompts added or changed.
+4. Auth shape, if any.
+5. Validation rung and exact commands run.
+6. Alpha-risk caveats and rollback status.
