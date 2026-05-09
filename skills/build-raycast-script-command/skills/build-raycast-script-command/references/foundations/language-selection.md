@@ -52,5 +52,3 @@ Choose Bash for:
 | Writing 100+ lines of shell for JSON-heavy logic | Switch to Python |
 | Adding Python dependencies for a tiny `open` wrapper | Stay in Bash |
 | Choosing based only on personal preference | Choose based on task shape and future maintenance |
-
-- remote comparison: `openclaw/skills/shell-scripting`

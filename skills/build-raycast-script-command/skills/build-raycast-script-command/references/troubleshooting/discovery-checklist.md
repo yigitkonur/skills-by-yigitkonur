@@ -2,21 +2,18 @@
 
 Use this file when the command does not appear in Raycast or does not seem to be recognized.
 
-## First Checks
+## Symptom Table
 
-1. Does the filename still contain `.template.`?
-2. Are all required metadata fields present?
-3. Are metadata comments written with `#`?
-4. Is the file in a directory actually added to Raycast via `Add Script Directory`?
-
-## Common Causes
-
-| Symptom | Likely cause |
-|---|---|
-| command never appears | `.template.` still in filename |
-| command not recognized | missing `schemaVersion`, `title`, or `mode` |
-| metadata ignored | wrong comment syntax or metadata not placed correctly |
-| command appears under odd package label | `packageName` omitted and inferred from directory |
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Command never appears | Script directory is not added to Raycast | Open Raycast Settings -> Script Commands -> Add Script Directory and select the folder containing the script. |
+| Command never appears | Filename still contains `.template.` | Duplicate or rename the file and remove `.template.` after required user-specific edits are filled in. |
+| Command is not recognized | Missing `@raycast.schemaVersion`, `@raycast.title`, or `@raycast.mode` | Add the required metadata directly below the shebang. |
+| Metadata is ignored | Metadata is too far from the top | Move the metadata block near the top, before runnable code. |
+| Metadata is ignored | Wrong comment style for Python/Bash | Use `# @raycast.*` comments. |
+| Command appears but mode is wrong | `@raycast.mode` is missing or unsupported | Use one of `fullOutput`, `compact`, `silent`, or `inline`. |
+| Command appears but will not run | Shebang or runtime is wrong | Run the file from Terminal with its shebang path; fix the shebang or install the runtime. |
+| Command appears under an odd package label | `packageName` omitted and inferred from directory | Add `@raycast.packageName` when the package label matters. |
 
 ## Fast Fix Pattern
 

@@ -18,7 +18,7 @@ print("- item one")
 print("- item two")
 ```
 
-## Recipe 2: Compact action
+## Recipe 2: Compact or silent action
 
 ```python
 #!/usr/bin/env python3
@@ -35,6 +35,8 @@ if not success:
 
 print("Created card successfully")
 ```
+
+Use the same one-line final output shape for `silent` actions. Pick `compact` when the user should see a toast; pick `silent` when the action should stay quiet unless the final line matters.
 
 ## Recipe 3: Inline status
 

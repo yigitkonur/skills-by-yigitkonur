@@ -28,6 +28,16 @@ if not token:
 # Install them with `pip install requests`
 ```
 
+### Missing dependency failure
+
+```python
+try:
+    import requests
+except ImportError:
+    print("requests is required. Install it with: pip install requests")
+    raise SystemExit(1)
+```
+
 ### Compact/silent success
 
 ```python
@@ -43,9 +53,24 @@ print("- item one")
 print("- item two")
 ```
 
+### Inline status
+
+```python
+print("API ok")
+```
+
 ## Python-specific Guidance
 
 - Use `print()` for user-facing output.
 - Keep the final printed line readable because Raycast may surface only that line.
 - Prefer standard library where practical for portability.
 - Document third-party packages explicitly when they are required.
+
+## Mode-Aware Output
+
+| Mode | Python output shape |
+|---|---|
+| `fullOutput` | print the full report; multi-line output is expected |
+| `compact` | print the important summary last |
+| `silent` | print one final confirmation only when useful |
+| `inline` | print one short first line and include `@raycast.refreshTime` |

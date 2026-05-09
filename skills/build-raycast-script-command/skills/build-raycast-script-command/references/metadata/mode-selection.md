@@ -47,5 +47,3 @@ If unsure:
 | choosing mode before inspecting the output shape | inspect output first, then choose |
 | using `silent` when the user needs to read details | use `fullOutput` |
 | using `inline` for a command that prints multiple lines | compress to one line or switch modes |
-
-- remote comparison: `writing-user-outputs`
