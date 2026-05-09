@@ -20,6 +20,15 @@ Convert live sites or saved HTML snapshots into grounded Next.js App Router buil
 - The task is general Next.js UI coding with no reconstruction or grounded extraction requirement.
 - The goal is a redesign, simplification, or `same vibe` rewrite instead of faithful reconstruction.
 
+## Sibling routing
+
+| Need | Route |
+|---|---|
+| New or existing TinaCMS-backed Next.js site | Use `build-tinacms-nextjs`; this skill is for URL or snapshot reconstruction, not CMS architecture. |
+| Design documentation only for SaaS/dashboard/admin systems | Use `extract-saas-design`; use this skill only when the deliverable is a buildable Next.js page. |
+| Browser capture inside this pipeline | Use `run-agent-browser` as the preferred Capture Wave helper; it is a positive dependency, not a replacement for this workflow. |
+| Playwright-based capture | Use `run-playwright` only when the user explicitly requested Playwright CLI, `run-agent-browser` is unavailable, or a Playwright CLI session already exists. |
+
 ## Setup
 
 | Key | Value |
@@ -82,6 +91,12 @@ Read `references/input-output-spec.md` for input detection, working-root rules, 
 | Wave 4 | Page builds plus visual QA loops | `references/wave-pipeline.md` + `references/quality-checklist.md` | route files, page components, copied public assets, visual compare artifacts | final verification passes |
 
 If the user only asked for extraction or documentation, stop after the appropriate phase instead of pushing to build.
+
+Think first:
+- **Capture Wave:** Which browser helper will produce the complete evidence contract for this source?
+- **Wave 0:** Which CSS corpus is strongest for this page: mirrored live capture, `_files/`, adjacent CSS, inline CSS, or source fallback?
+- **Wave 3:** Which routes stay static, and which exact interactions justify Client Components?
+- **Wave 4:** What visual claim can the screenshot evidence actually support?
 
 ## Asset and style handling rules
 
