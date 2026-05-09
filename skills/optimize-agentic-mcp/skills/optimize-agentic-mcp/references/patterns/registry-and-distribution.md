@@ -2,6 +2,20 @@
 
 How to choose where to publish an MCP server, which gateway to route consumers through, and what trust signals actually defend against the 2025 supply-chain attack wave. The generic meta-server gateway pattern lives in `composition.md`; the hosting substrate (Cloudflare, Vercel, Fly, Lambda) lives in `deployment-platforms.md`. This file is about the **distribution and trust layer** — catalogs, namespaces, federation, and the named incidents that reshaped the ecosystem.
 
+## Contents
+
+- The Three-Tier Taxonomy
+- 1. Registries — the Catalog Tier
+- 2. Gateways / Aggregators — the Request-Path Tier
+- 3. Hosted Tool-as-a-Service — the Runtime Tier
+- 4. Comparison Table
+- 5. Named Trust Incidents (2025)
+- 6. Publisher Picker Rubric
+- 7. Publish-and-Consume How-Tos
+- 8. Federation, Mirroring, and Self-Hosted Catalogs
+- 9. Ecosystem Mechanics Worth Knowing
+- When This File Applies
+
 ## The Three-Tier Taxonomy
 
 The MCP distribution ecosystem splits into three functionally distinct tiers. Confusing them is the single most common architectural error in 2025-26.

@@ -2,6 +2,20 @@
 
 The named-attack taxonomy, dated CVEs, defense-tool ecosystem, and audit checklist that emerged across 2025 research. Sibling `security.md` covers generic defenses (content sanitization, delegated permissions, HMAC schema signing, PII tokenization, SSRF blocking). Sibling `auth-identity.md` covers confused-deputy, token-audience binding, DCR impersonation, and session hijacking on unscoped endpoints. **This file covers prompt-injection-class and supply-chain attacks with their named taxonomy, CVEs, and defense tooling.** Anything marked *[→ auth-identity.md]* is only summarized here and detailed there.
 
+## Contents
+
+- 1. Attack Catalog — 20 Named Primitives
+- 1a. Per-Attack Deep Dives (the high-impact subset)
+- 2. Prompt-Injection Attack Class — Attacker Delivery Surfaces
+- 3. Supply-Chain Attack Class — Where the Malicious Package Comes From
+- 4. Defense Tooling Ecosystem (≥8 named tools)
+- 5. CVE List (≥5 dated)
+- 6. Red-Team Case Studies (≥3)
+- 7. Spec-Revision Security Diff (what each MCP spec version added)
+- 8. Audit Checklist (30+ binary items)
+- 9. Routing Summary
+- 10. Key Primary Sources (YYYY-MM)
+
 ---
 
 ## 1. Attack Catalog — 20 Named Primitives

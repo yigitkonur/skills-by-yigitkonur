@@ -2,6 +2,21 @@
 
 Patterns for production-grade MCP server deployment: clean stdout, transport selection, hot reload, observability, graceful error handling, lazy connections, lazy token validation, transport benchmarks, rate limiting, caching, health checks, and Kubernetes deployment.
 
+## Contents
+
+- 1. Keep stdout Pure JSON-RPC -- All Logs to stderr
+- 2. Use Streamable HTTP, Not Deprecated SSE
+- 3. Use Hot Reload During Development
+- 4. Add Structured Observability from Day One
+- 5. Never Call process.exit() or sys.exit() Inside Tool Handlers
+- 6. Open External Connections Inside Tool Calls, Not at Startup
+- 7. Validate Authentication Tokens at Execution Time, Not Startup
+- 8. Transport Choice Makes or Breaks Performance
+- 9. Token Bucket Rate Limiting per Tool Category
+- 10. Multi-Level Caching for MCP Responses
+- 11. Health Checks with KPI Targets
+- 12. Kubernetes Deployment for MCP Servers
+
 ---
 
 ## 1. Keep stdout Pure JSON-RPC -- All Logs to stderr

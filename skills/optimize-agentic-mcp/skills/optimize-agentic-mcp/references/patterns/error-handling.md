@@ -2,6 +2,18 @@
 
 How to design MCP error responses that enable agent self-recovery instead of dead ends. These 9 patterns cover error framing, recovery guidance, loop prevention, and using errors as a teaching mechanism.
 
+## Contents
+
+- Pattern 1: Use isError in the Result Object, Not Protocol-Level Errors
+- Pattern 2: Make Error Messages Educational, Not Technical
+- Pattern 3: Embed Recovery Tool Names Directly in Error Messages
+- Pattern 4: Include Retry Limits and Fallback Instructions in Errors
+- Pattern 5: Let Errors Handle the Long Tail Instead of Bloating Descriptions
+- Pattern 6: Distinguish "Prevented" from "Failed" in Error Framing
+- Pattern 7: Avoid "Not Found" Phrasing — Return What Exists Instead
+- Pattern 8: Build Circuit Breakers for Agent Loop Detection
+- Pattern 9: Return Normalized Inputs in Every Response
+
 ## Pattern 1: Use isError in the Result Object, Not Protocol-Level Errors
 
 MCP has two error paths — picking the wrong one is a common mistake that kills agent recovery.

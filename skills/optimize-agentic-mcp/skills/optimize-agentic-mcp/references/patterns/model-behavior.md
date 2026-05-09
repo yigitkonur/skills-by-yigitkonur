@@ -4,6 +4,16 @@ Current-generation empirical per-model reference for MCP server authors. Covers 
 
 The outdated "Claude 20–30 / GPT 15–20 / Gemini 10" rules-of-thumb from `context-engineering.md` and the cross-model schema matrix in `schema-design.md` Pattern 8 are superseded by the numbers and idioms below. Read this file when designing for multi-client deployment, picking a default model, estimating cost-per-workload, or debugging model-specific tool-call failures.
 
+## Contents
+
+- The Late-2025 Landscape
+- Master Model-Capability Table
+- Per-Family Idioms
+- Adjustment Rules for MCP Server Authors
+- Cost Analysis: Reference Workloads
+- Quick Cross-Reference to Sibling Patterns
+- Key Sources
+
 ## The Late-2025 Landscape
 
 There is no single tool-use champion. Four different models lead four different leaderboards, and the gap between benchmark wins and production MCP workflows is large.

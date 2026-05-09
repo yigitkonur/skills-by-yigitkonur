@@ -4,6 +4,26 @@ Protocol-level authorization patterns for remote MCP servers. This file covers t
 
 MCP moved from "auth optional, good luck" (2025-03-26) to a hardened OAuth 2.1 profile (2025-11-25) in three revisions. Three invariants now drive every pattern here: **every token has an audience**, **every client has verifiable identity**, and **MCP servers never forward user tokens upstream**.
 
+## Contents
+
+- 1. Know The Spec Diff Before You Touch Auth Code
+- 2. Map Every MCP Behavior To The RFC That Governs It
+- 3. Flow Walkthrough — First Connection (2025-11-25)
+- 4. Flow Walkthrough — Step-Up / Incremental Scope
+- 5. Flow Walkthrough — On-Behalf-Of (OBO) For Upstream APIs
+- 6. Always Validate `aud` — And Never Pass Tokens Through
+- 7. Attack Primitive — Confused Deputy (MCP-As-Faux-AS)
+- 8. Attack Primitive — Token Audience Confusion And Passthrough
+- 9. Attack Primitive — DCR Rug Pull And Tool Squatting
+- 10. Attack Primitive — Session Hijacking Via Unscoped Endpoints (CVE-2025-6514)
+- 11. Attack Primitive — Indirect Prompt Injection To Confused Agent
+- 12. Attack Primitive — Cross-Tenant Data Leak Via Missing Per-Agent Identity
+- 13. Attack Primitive — Supply-Chain Backdoor In Published Servers
+- 14. Multi-Tenant SaaS Reference Pattern A — Separate AS With Token Exchange
+- 15. Multi-Tenant SaaS Reference Pattern B — URL-Mode Elicitation
+- 16. Reference Implementations To Study
+- 17. Audit Checklist Before Shipping
+
 ---
 
 ## 1. Know The Spec Diff Before You Touch Auth Code

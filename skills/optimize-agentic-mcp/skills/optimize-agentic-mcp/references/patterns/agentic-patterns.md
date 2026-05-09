@@ -2,6 +2,16 @@
 
 7 patterns for building reliable multi-step agent workflows with structural enforcement, state-based routing, bounded continuation, and safe coordination between agents.
 
+## Contents
+
+- 1. Parameter Dependency Chains
+- 2. HATEOAS: State-Based Available Actions
+- 3. Guard Tools: Precondition Validation via Boolean Params
+- 4. SERF: Machine-Readable Error Taxonomy for Agents
+- 5. Shared Context: Append-Only Event Log for Multi-Agent Coordination
+- 6. Server-Enforced Workflow Stages
+- 7. Bounded Server-Side Continuation for Research and SEO Loops
+
 ---
 
 ## 1. Parameter Dependency Chains

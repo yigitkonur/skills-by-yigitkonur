@@ -4,6 +4,15 @@
 
 Quick measurement helper: run `../../scripts/measure-context-budget.sh` from this reference location before and after trimming tool descriptions, schema blocks, or static response examples. It uses a chars/4 heuristic and flags >20 active tools by default.
 
+## Contents
+
+- 1. Tool Descriptions Eat ~15% of Your Context Budget
+- 2. The Code Execution Pattern Saves 98% of Tool-Related Tokens
+- 3. Shrink Tool Responses as Context Fills Up (Tiered Verbosity)
+- 4. Strip ANSI Codes and Progress Bars Before Returning CLI Output
+- 5. Use the Right Data Delivery Strategy for Each Tool Type
+- 6. Each LLM Has a Tool Limit Beyond Which Accuracy Collapses
+
 ---
 
 ## 1. Tool Descriptions Eat ~15% of Your Context Budget

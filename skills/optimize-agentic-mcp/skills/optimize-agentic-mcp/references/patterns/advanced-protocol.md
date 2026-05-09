@@ -4,6 +4,22 @@
 
 Client support is uneven. Every one of these features can be silently dropped by the client, so capability-checks and graceful fallbacks are non-negotiable.
 
+## Contents
+
+- Pattern 1: Capability-Gate Every Advanced Feature Before Using It
+- Pattern 2: Use Sampling to Keep the API Key on the Client Side
+- Pattern 3: Sampling-With-Tools Requires Matching `ToolResultContent` For Every `ToolUseContent`
+- Pattern 4: Use Elicitation To Clarify Missing Arguments, Not To Fish For Secrets
+- Pattern 5: URL-Mode Elicitation For OAuth, Secrets, And Payments
+- Pattern 6: Honor `roots/list` Instead Of Hard-Coding Workspace Paths
+- Pattern 7: Implement `completion/complete` With Context-Aware Narrowing
+- Pattern 8: Progress Tokens Belong In `params._meta`, Not `params`
+- Pattern 9: Handle `notifications/cancelled` Cooperatively — And Never Cancel `initialize` Or Tasks
+- Pattern 10: Namespace Custom `_meta` Keys With Reverse-DNS; Reserve Un-Namespaced For The Protocol
+- Pattern 11: Compose Progress + Cancellation, Sampling + Elicitation, And URL-Mode + `_meta` For Full Agentic UX
+- Pattern 12: Detect Stateless HTTP Mode Early — Advanced Features Silently Break Without A Session
+- Client Support Matrix (2025-12)
+
 ## Pattern 1: Capability-Gate Every Advanced Feature Before Using It
 
 Rule: never invoke `sampling/createMessage`, `elicitation/create`, or `roots/list` without first inspecting the client's declared capabilities from `initialize`. If the capability is absent, fall back to embedding the request in a regular tool response and let the calling agent handle it.

@@ -2,6 +2,15 @@
 
 Interview flow an agent runs **before** touching code or any other decision tree. Collects intent, converts it to an architecture sketch, picks a framework, and routes to the right companion skill. Run this whenever the user says "I want to build an MCP server" and the repo has no MCP yet.
 
+## Contents
+
+- Decision Tree
+- Interview Questions (ask verbatim; adapt only to reference user-supplied context)
+- Framework Picker
+- Architecture-Sketch Template
+- Routing After This Tree
+- When to Re-evaluate
+
 ## Decision Tree
 
 ```

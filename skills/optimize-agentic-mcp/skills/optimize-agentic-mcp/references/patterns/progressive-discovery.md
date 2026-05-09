@@ -2,6 +2,17 @@
 
 8 patterns for managing large tool catalogs, dynamic tool registration, and reducing context window pressure when your MCP server exposes 20+ tools.
 
+## Contents
+
+- 1. Use Meta-Tools for Large Tool Catalogs (list/describe/execute)
+- 2. Use Semantic Search with Embeddings for 100+ Tools
+- 3. Session-Based Progressive Tool Unlocking
+- 4. Four-Stage Progressive Disclosure Pattern
+- 5. Dynamic Tool List Changes Nuke the KV/Prefix Cache
+- 6. Use `notifications/tools/list_changed` for Dynamic Tooling
+- 7. FastMCP Visibility Transforms
+- 8. Graceful Fallback for Hidden Tools
+
 ---
 
 ## 1. Use Meta-Tools for Large Tool Catalogs (list/describe/execute)

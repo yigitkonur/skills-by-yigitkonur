@@ -2,6 +2,20 @@
 
 How to craft MCP tool responses that steer the model toward correct next steps, minimize token waste, and serve both the user and the agent. These 11 patterns treat every response as a prompt to the model.
 
+## Contents
+
+- Pattern 1: Treat Every Tool Response as a Prompt to the Model
+- Pattern 2: Add a Response Format Enum to Every Data-Returning Tool
+- Pattern 3: Return Semantic Identifiers, Not Opaque UUIDs
+- Pattern 4: Prepend Truncation Guidance When Results Are Cut Off
+- Pattern 5: Include Next-Step Hints in Successful Responses
+- Pattern 6: Default to YAML Over JSON for LLM-Consumable Responses
+- Pattern 7: Use TSV for Tabular Data to Save 30-40% of Tokens
+- Pattern 8: Use Content Annotations to Separate User-Facing and Assistant-Facing Data
+- Pattern 9: Declare Output Schemas and Return structuredContent
+- Pattern 10: Put Example Responses in Tool Descriptions
+- Pattern 11: Return a Search Frontier, Not Just the First SERP
+
 ## Pattern 1: Treat Every Tool Response as a Prompt to the Model
 
 This is the single most important MCP design insight. Stop treating MCP servers like APIs with better descriptions. Every tool response is injected directly into the model's context and becomes part of its reasoning input.

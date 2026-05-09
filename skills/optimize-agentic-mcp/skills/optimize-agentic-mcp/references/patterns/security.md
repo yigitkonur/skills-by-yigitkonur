@@ -2,6 +2,17 @@
 
 8 patterns for hardening MCP servers against prompt injection, data exfiltration, privilege escalation, and unauthorized access.
 
+## Contents
+
+- 1. Sanitize User-Generated Content in Tool Responses
+- 2. Use Delegated Permissions, Not a Shared Superuser Token
+- 3. Use Tool Annotations to Signal Safety Properties
+- 4. Require Human Confirmation for Destructive Operations
+- 5. Prevent Cross-Tool Hijacking via Shared Context
+- 6. Sign and Verify Tool Schemas Before Execution
+- 7. Tokenize PII Before Model Exposure
+- 8. Use OAuth2 with Granular Scopes for External MCP Servers
+
 ---
 
 ## 1. Sanitize User-Generated Content in Tool Responses

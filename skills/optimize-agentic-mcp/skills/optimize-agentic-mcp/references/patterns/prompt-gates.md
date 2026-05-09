@@ -2,6 +2,14 @@
 
 Patterns for using tool responses as steering mechanisms that guide agent behavior mid-conversation. Tool responses carry surprising authority in the LLM context -- use them deliberately to build state machines, inject instructions, and control multi-step workflows without agent frameworks.
 
+## Contents
+
+- 1. Tool Responses Have Surprisingly High Authority
+- 2. Use XML Tags to Separate Instructions from Data
+- 3. Build State Machines via Sequential Tool Responses
+- 4. Namespace Injected Instructions to Prevent Conflicts
+- 5. Recommend the Next Tool or Query Frontier Explicitly
+
 ---
 
 ## 1. Tool Responses Have Surprisingly High Authority

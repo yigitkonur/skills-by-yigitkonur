@@ -4,6 +4,16 @@ Empirical survey of 16 production MCP servers shipped by major SaaS vendors in 2
 
 **Headline findings, 2026-04.** The ecosystem has converged on **remote/hosted transports over stdio**, **OAuth 2.1 + PKCE over long-lived API keys**, and **intent-consolidated tools over 1:1 OpenAPI wrappers**. It has diverged sharply on **tool count philosophy** (Cloudflare 2 → GitHub 56 → Atlassian Rovo 54) and **`structuredContent` adoption** (spec-recommended, but Supabase and Linear explicitly opt out in favor of JSON-in-text).
 
+## Contents
+
+- 1. Per-server profiles
+- 2. Head-to-head comparison
+- 3. Copy-this patterns
+- 4. Avoid-this anti-patterns
+- 5. Design disagreements
+- 6. Notable one-offs
+- 7. Cross-cutting observations
+
 ---
 
 ## 1. Per-server profiles

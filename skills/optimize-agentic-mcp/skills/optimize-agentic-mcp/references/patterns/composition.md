@@ -2,6 +2,16 @@
 
 7 patterns for combining multiple MCP servers, building gateways, and creating composable server architectures.
 
+## Contents
+
+- 1. Use a Meta-Server for Cross-Cutting Concerns
+- 2. Design Composable Servers That the LLM Orchestrates
+- 3. Wrap Complex APIs in One Tool + Resource Documentation
+- 4. Use the Provider + Transform Architecture for Maximum Flexibility
+- 5. Generate MCP Servers from OpenAPI Specs
+- 6. Use a Gateway/Proxy for Multi-Server Orchestration
+- 7. Zero-Trust Policy Gateway
+
 ---
 
 ## 1. Use a Meta-Server for Cross-Cutting Concerns

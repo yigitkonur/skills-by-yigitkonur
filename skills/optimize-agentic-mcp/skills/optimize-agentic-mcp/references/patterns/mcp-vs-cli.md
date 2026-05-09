@@ -4,6 +4,21 @@ Use this guide before optimizing an MCP server when the real question may be whe
 
 Status: refreshed on April 15, 2026.
 
+## Contents
+
+- 1. Fast Recommendation
+- 2. What The Official Docs Establish
+- 3. Use MCP When The Protocol Features Are The Product
+- 4. Choose CLI Instead When The Work Is Really Command Execution
+- 5. Use A Skill Instead When The Missing Piece Is Workflow Knowledge
+- 6. Hybrid Patterns That Usually Beat Pure MCP
+- 7. Kill Criteria: Signs The MCP Server Is The Wrong Abstraction
+- 8. Keep Criteria: Signs The MCP Server Is Worth Optimizing
+- 9. If You Keep MCP, Optimize In This Order
+- 10. Current Evidence And Caveats
+- 11. Security Note
+- 12. Decision Rules To Apply In This Skill
+
 ## 1. Fast Recommendation
 
 Do not assume every agent-accessible integration should be an MCP server.

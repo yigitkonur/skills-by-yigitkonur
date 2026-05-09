@@ -2,6 +2,14 @@
 
 Patterns for managing state across MCP sessions: learning from successful calls, handling long-running operations, scoping state correctly, scaling throughput with session pooling, and compacting conversations to preserve context window budget.
 
+## Contents
+
+- 1. Log Successful Tool Calls to Build a Learning Database
+- 2. Return Task IDs for Long-Running Operations
+- 3. Scope State to Session, Not Global Variables
+- 4. Session Pooling for 10x Throughput
+- 5. Conversation Compaction Priorities
+
 ---
 
 ## 1. Log Successful Tool Calls to Build a Learning Database

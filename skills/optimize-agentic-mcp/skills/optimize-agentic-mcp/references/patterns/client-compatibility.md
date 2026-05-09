@@ -2,6 +2,28 @@
 
 How to ship an MCP server that survives the 11 major clients in production, each of which interprets the same wire protocol differently, often silently.
 
+## Contents
+
+- Master Capability Matrix
+- Pattern 1: Never rely on dynamic resource templates
+- Pattern 2: Keep tool count at or below 40
+- Pattern 3: Never ship prompts that take more than one argument
+- Pattern 4: Always return a text content block alongside `structuredContent`
+- Pattern 5: Send `Authorization` with exact header casing
+- Pattern 6: Treat sampling as optional, not available
+- Pattern 7: Branch on the config root key in installers
+- Pattern 8: Do not put safety logic in the `instructions` field
+- Pattern 9: Assume `tools/list_changed` is a no-op somewhere
+- Pattern 10: Prefer Streamable HTTP, keep an SSE fallback for one more release
+- Pattern 11: Never assume OAuth 2.1 DCR works
+- Pattern 12: Bypass Cloudflare AI-bot blocking on remote endpoints
+- Pattern 13: Emit human-readable text even when elicitation is declined
+- Pattern 14: Do not assume MCP Apps (interactive UI) is portable
+- Pattern 15: Gate `readOnlyHint` annotations on VS Code
+- Documented silent-failure cases
+- Per-client profiles
+- How to use this reference
+
 ## Master Capability Matrix
 
 Columns are clients; cells use `native` (fully works), `partial` (implemented with caveats), `ignored` (announced but silently dropped), `unknown-YYYY-MM` (not verifiable as of that month). Sources: [apify/mcp-client-capabilities v0.0.14](https://github.com/apify/mcp-client-capabilities) (2026-02), [mcp-availability.com](https://mcp-availability.com/) (2026-02), and per-client changelogs linked in each profile.

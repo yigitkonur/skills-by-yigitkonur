@@ -2,6 +2,20 @@
 
 How to write tool descriptions that maximize selection accuracy and minimize misuse. These 11 patterns cover structure, naming, schema design, and the critical balance between informativeness and verbosity.
 
+## Contents
+
+- Pattern 1: Use XML Tags to Separate Purpose from Instructions
+- Pattern 2: Write Descriptions Like Briefing a New Hire
+- Pattern 3: Namespace Tools to Prevent Collisions Across MCP Servers
+- Pattern 4: Use Unambiguous Parameter Names
+- Pattern 5: Enforce Strict Input Schemas with Enums and Constraints
+- Pattern 6: Front-Load Verb + Resource in the First Five Words
+- Pattern 7: Include Exclusionary Guidance — Tell the Model When NOT to Use a Tool
+- Pattern 8: Truth in the Schema, Hints in the Description
+- Pattern 9: Use the `instructions` Field as Your Server's skills.md
+- Pattern 10: Add Correct AND Incorrect Call Examples in Descriptions
+- Pattern 11: Over-Verbose Descriptions Reduce Tool Call Rate
+
 ## Pattern 1: Use XML Tags to Separate Purpose from Instructions
 
 Models parse tool descriptions as their only guide for when and how to use a tool. Structuring descriptions with XML tags significantly improves selection accuracy because models can distinguish the "what it's for" from the "how to use it."

@@ -2,6 +2,17 @@
 
 How to structure MCP tools so they map to user intent, minimize round-trips, and work across model sizes. These 8 patterns cover the full spectrum from single-tool consolidation to large-scale facade routing.
 
+## Contents
+
+- Pattern 1: Design Around User Intent, Not API Endpoints
+- Pattern 2: Be a Smart Database, Not a Smart Analyst
+- Pattern 3: Consolidate Multi-Step Workflows Into Single Atomic Tools
+- Pattern 4: Use a Planner Tool to Teach the Model Your Workflow
+- Pattern 5: Expose a Code Execution Sandbox for Batch Operations
+- Pattern 6: Design Tool Workflows for 3-5 Calls, Not 20+
+- Pattern 7: CRUD — Combined Tool vs Separate Tools Decision
+- Pattern 8: The Toolhost/Facade Pattern for Many Related Operations
+
 ## Pattern 1: Design Around User Intent, Not API Endpoints
 
 The most common MCP anti-pattern is wrapping each API endpoint as its own tool. This forces the model to orchestrate multi-step workflows that a human developer would automate.

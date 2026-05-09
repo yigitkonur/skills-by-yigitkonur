@@ -6,6 +6,25 @@ The sibling doc `context-engineering.md` covers tool-definition token budgets, t
 
 Before changing cache-sensitive tool surfaces, run `../../scripts/measure-context-budget.sh` from this reference location to capture the current tool-definition budget. Re-run after edits so the audit can state the measured direction of change.
 
+## Contents
+
+- Per-Provider Mechanics Reference
+- Cost Math Worksheet — 20-Tool MCP Server, 10-Turn Agent Session
+- Break-Even Analysis — How Many Reads Before a Write Pays Off
+- Pattern 1: Freeze Tool Descriptions Before You Enable Caching
+- Pattern 2: Put Stable Content Before the Breakpoint, Volatile After
+- Pattern 3: Never Renegotiate the MCP Tool List Mid-Session
+- Pattern 4: Match TTL to Content Lifetime, Not Convenience
+- Pattern 5: Eliminate Every Byte-Varying Element From the Cacheable Prefix
+- Pattern 6: Pin One Provider Route Per Session
+- Pattern 7: Treat Tool Results as a Separate Cache Problem
+- Pattern 8: Budget the 4-Breakpoint Cap Across Features, Not Data Types
+- Pattern 9: Ship Thin Tool Stubs by Default, Hydrate Schemas on Demand
+- Pattern 10: Monitor Cache Creation Ratios — Vendor Defaults Drift
+- Pattern 11: Pair Prompt Caching With Batch and Code-Execution for Compounding Wins
+- Case Studies
+- Key Sources
+
 ---
 
 ## Per-Provider Mechanics Reference

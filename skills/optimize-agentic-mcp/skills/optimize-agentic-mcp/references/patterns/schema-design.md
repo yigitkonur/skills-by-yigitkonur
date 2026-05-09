@@ -2,6 +2,17 @@
 
 How to design MCP tool input schemas that work reliably across models, handle type coercion gracefully, and stay simple enough for LLMs to fill correctly. These 8 patterns cover validation, naming, complexity limits, and cross-model portability.
 
+## Contents
+
+- Pattern 1: Use `z.coerce` and `z.preprocess` for Type Safety
+- Pattern 2: Pair Regex Validation with Human-Readable Examples
+- Pattern 3: Keep Schemas Flat, Under 6 Parameters
+- Pattern 4: Accept Flexible Formats, Normalize Server-Side
+- Pattern 5: Describe Each Enum Value Inline
+- Pattern 6: Break Tools Over 40 Parameters
+- Pattern 7: Safe Tool Name Characters Only
+- Pattern 8: Cross-Model Portable Schema Rules
+
 ## Pattern 1: Use `z.coerce` and `z.preprocess` for Type Safety
 
 LLMs frequently send `"3"` instead of `3`, or `"false"` instead of `false`. Your server crashes with a Zod validation error, the LLM sees a cryptic message, and the user's request fails silently.

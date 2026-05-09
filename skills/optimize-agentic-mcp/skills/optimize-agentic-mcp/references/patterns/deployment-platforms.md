@@ -4,6 +4,32 @@ Platform-specific patterns for remote MCP server deployment on Cloudflare Worker
 
 This file does **not** re-cover generic transport choice, stdout purity, rate limiting, caching, K8s deployment, or lazy-auth — those live in `transport-and-ops.md`. This file is strictly about platform-shaped decisions.
 
+## Contents
+
+- 1. On Cloudflare Workers, Use `McpAgent` for Stateful, `createMcpHandler` for Stateless
+- 2. Use Durable Object WebSocket Hibernation to Stop Paying for Idle MCP Sessions
+- 3. Cloudflare Workers CPU Time is 30s by Default — Opt Into 5 Minutes for Long Tools
+- 4. For Regulated Workloads on Cloudflare, Bind the McpAgent to the FedRAMP Jurisdiction
+- 5. Wrap McpAgent in `workers-oauth-provider` for Full OAuth 2.1 Without a Separate Auth Server
+- 6. On Vercel, Enable Fluid Compute Explicitly — Otherwise You Get 300s Max
+- 7. Vercel Caps Response Bodies at 4.5 MB — Offload Large Blobs to R2/S3/Blob
+- 8. Smithery Requires `startCommand.type: http` for Container Deployments
+- 9. Smithery `configSchema` Auto-Renders the Connect UI — Make Required Fields Explicit
+- 10. AWS Lambda: Set `AWS_LWA_INVOKE_MODE=response_stream` for Streamable HTTP
+- 11. Lambda's 15-Minute Wall Forces SQS + Webhook for Long-Running MCP Tools
+- 12. GCP Cloud Run Has the Longest HTTP Timeout of Any Managed Platform — 60 Minutes
+- 13. Cloud Run MCP Servers Must Bind `host="0.0.0.0"` and Use `--no-allow-unauthenticated`
+- 14. Azure Container Apps Offers Two MCP Modes — Standalone and Dynamic Sessions
+- 15. Fly.io `fly mcp launch` Wires Bearer Tokens to Both Server and Client
+- 16. Deno Deploy Blocks `Deno.connect` to Port 443 — Use `Deno.connectTls`
+- 17. Modal MCP Servers Must Set `stateless_http=True`
+- 18. Render's MCP API Key is Account-Wide — Treat It Like a Root Token
+- 19. Koyeb & Northflank: Scale-to-Zero Remote MCP with `sessionIdGenerator: undefined`
+- 20. Composio Isn't Free Infrastructure — Price Against the Auth Value, Not the Compute
+- Platform Profiles (Compact Reference)
+- Picker Rubric: Workload → Platform
+- Cross-Cutting Decision Heuristics
+
 ---
 
 ## 1. On Cloudflare Workers, Use `McpAgent` for Stateful, `createMcpHandler` for Stateless

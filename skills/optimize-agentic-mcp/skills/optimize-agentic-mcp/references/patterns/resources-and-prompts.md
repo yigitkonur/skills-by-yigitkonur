@@ -2,6 +2,13 @@
 
 Patterns for using MCP resources and prompts effectively. Resources provide URI-addressable read-only data; prompts provide user-triggered workflow templates. Together they complement tools by reducing token waste, enabling on-demand documentation, and creating repeatable workflow entry points.
 
+## Contents
+
+- 1. Use Resources as On-Demand Documentation Referenced in Errors
+- 2. Use Resource Templates with URI Patterns for Scalable Data Access
+- 3. Use MCP Prompts for Repeatable Workflow Entry Points
+- 4. When to Use Resources vs Tools
+
 ---
 
 ## 1. Use Resources as On-Demand Documentation Referenced in Errors
