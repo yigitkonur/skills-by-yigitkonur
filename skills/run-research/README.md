@@ -1,6 +1,10 @@
 # run-research
 
-Technical research using web search, page scraping, Reddit practitioner mining, and AI synthesis. Handles both simple single-agent questions and multi-domain orchestrated research with parallel agents.
+Drive the research-powerpack MCP toolkit (`start-research` plus the 2×2 of
+raw/smart × search/scrape) for technical research that requires web
+evidence, Reddit practitioner experience, and multi-source synthesis.
+
+The skill itself lives at `skills/run-research/SKILL.md`.
 
 **Category:** productivity
 

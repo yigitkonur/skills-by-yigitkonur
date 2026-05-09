@@ -1,23 +1,35 @@
-# Synthesizing Research Findings
+# Synthesizing research findings
 
-Synthesis transforms scattered data into decisions. The difference between a bibliography and a recommendation is synthesis — connecting dots, resolving contradictions, and naming the variable that changes the answer.
+Synthesis transforms scattered data into decisions. The difference
+between a bibliography and a recommendation is synthesis — connecting
+dots, resolving contradictions, and naming the variable that changes the
+answer.
 
-## Source Credibility
+This file is the single-agent synthesis discipline. For multi-agent
+orchestrator synthesis (where multiple researcher agents produce
+parallel documents and the orchestrator personally reads all of them),
+see `orchestrator.md`.
 
-Not all sources carry equal weight. Use this hierarchy when sources conflict:
+---
+
+## Source credibility
+
+Not all sources carry equal weight. Use this hierarchy when sources
+conflict.
 
 | Source | Trust level | Best for |
 |---|---|---|
 | Official docs (current version) | Highest | How things should work, exact API, config syntax |
 | Official changelog / release notes | Very high | What changed, breaking changes, version-specific facts |
-| GitHub Issues/PRs (maintainer responses) | High | Known bugs, intended behavior, workarounds |
-| Scraped benchmarks with methodology | High | Performance claims (check conditions match yours) |
-| deep-research synthesis | High for analysis, moderate for specific facts | Trade-off reasoning, architectural analysis |
+| Official postmortems / incident reports | Very high | What broke, why, what changed in response |
+| GitHub issues/PRs (maintainer responses) | High | Known bugs, intended behavior, workarounds |
+| Scraped benchmarks with disclosed methodology | High | Performance claims (check workload conditions match yours) |
+| `## Synthesis` from `smart-web-search` | Moderate-high for analysis, low for facts | Trade-off reasoning. Never cite as evidence — it reads titles and snippets, not bodies. |
 | Highly-upvoted Reddit (100+ votes, specific details) | Moderate-high | How things actually work in production |
 | Stack Overflow accepted + highly voted | Moderate-high | Common solutions (check date) |
-| Recent blog by practitioner with specifics | Moderate | Single data point, useful if detailed |
+| Recent blog by named practitioner with specifics | Moderate | Single data point, useful if detailed |
 | Low-engagement Reddit | Low-moderate | Unvalidated individual opinion |
-| Vendor marketing / comparison pages | Low | Extract facts only, ignore assessments |
+| Vendor marketing or comparison pages | Low | Extract facts only, ignore assessments |
 
 ### Recency matters more for some topics
 
@@ -25,65 +37,183 @@ Not all sources carry equal weight. Use this hierarchy when sources conflict:
 |---|---|---|
 | JS frameworks, CSS, Node ecosystem | 6–12 months | 6 months |
 | Cloud service pricing | 3–6 months | 3 months |
+| AI/ML tooling and pricing | 3–6 months | 3 months |
 | Security practices | 1–2 years | 1 year |
 | Database features | 2–3 years | 2 years |
-| Algorithms, data structures | 10+ years | Rarely |
+| Algorithms, data structures | 10+ years | rarely |
 
-## Resolving Contradictions
+---
 
-When sources disagree, don't just pick one. Understand why they disagree:
+## Citation discipline
 
-**Different versions** — The most common cause. Source A describes v3 behavior, source B describes v4. Check which version you're using. The more recent version's docs win.
+The hard rule: **only scraped page content is evidence.** Search
+snippets are leads, not citations. The `## Synthesis` block returned by
+`smart-web-search` is a planning aid — its rank-citations point to URLs
+not yet scraped.
 
-**Different scale** — "Redis is fine" (from someone running 100 req/s) vs "Redis fell over" (from someone running 100K req/s). Both are right in their context. Match to your scale.
+### What a citation looks like
 
-**Different context** — "Use JWT" (stateless API) vs "Use sessions" (monolith with server-side rendering). The architecture determines which is correct. Name the context variable.
+For each non-trivial claim, capture:
 
-**Official docs vs community experience** — Official docs describe intended behavior. Community reveals actual behavior — including undocumented limits, silent failure modes, and configuration gotchas the docs don't mention. Trust community for "does it work in practice?" Trust docs for "how is it supposed to work?"
+- The verbatim quote.
+- The URL.
+- The scrape date.
+- Source-specific attribution where it exists: Reddit username + score
+  + date; GitHub issue number + maintainer handle; blog author + date;
+  CVE-ID + CVSS score.
 
-**deep-research vs scraped facts** — Always trust scraped official docs over deep-research claims for specific facts (version numbers, pricing, API signatures). deep-research excels at analysis and trade-off reasoning, not at being a factual database.
+Compliant citations:
 
-**Nobody agrees** — This usually means the answer is genuinely context-dependent. Don't force a single recommendation. Present the options, name the variables that determine which is best, and apply them to the user's specific situation.
+> "Codex CLI is OpenAI's coding agent that you can run locally from
+> your terminal." — developers.openai.com/codex/cli (scraped 2026-05-08).
 
-## Building Consensus Maps
+> u/sreekanth850 (+16, 2026-04, r/ChatGPTCoding): "Claude has been
+> terrible recently. Using both, codex with 5.4 is far better."
+
+> Anthropic April 23 postmortem: "three separate issues in the Claude
+> Code harness caused complex but material problems which directly
+> affected users." — simonwillison.net/2026/Apr/24/recent-claude-code-quality-reports/
+> (scraped 2026-05-08).
+
+Non-compliant:
+
+- "According to Anthropic, ..." (no quote, no URL).
+- "Reddit consensus is ..." (no attribution, no specific source).
+- "The docs say X." (no quote, no URL).
+- A URL alone with no quote — implies the page was read; verify or
+  re-scrape.
+
+### Inference vs evidence
+
+Claims fall in three categories:
+
+- **Direct evidence.** A verbatim scraped quote supports the claim.
+- **Aggregate evidence.** Multiple sources agree; cite ≥3 with quotes.
+- **Inference.** The claim is reasonable but no source states it
+  directly. Mark with explicit qualifier ("inferred from <X> and <Y>",
+  "no source confirms but suggested by <Z>").
+
+Never blend. Inference paragraphs should look visibly different from
+evidence paragraphs. The reader's trust is calibrated by how cleanly
+inference is marked.
+
+### Snippets, banned
+
+`raw-web-search` and `smart-web-search` return snippets — short page
+fragments composed by Google for relevance signaling. Never cite from a
+snippet. They are designed to be misleading: composed from
+non-contiguous page text, ranked for click-through, frequently
+out-of-context. If a claim is interesting in a snippet, scrape the page
+and find the verbatim text. If the page does not contain it (sometimes
+it does not), the snippet was a hallucination and the claim is
+unsupported.
+
+---
+
+## Resolving contradictions
+
+When sources disagree, do not just pick one. Understand why they
+disagree.
+
+**Different versions.** Most common cause. Source A describes v3
+behavior; source B describes v4. Check which version applies. Recent
+version's docs win for "how it works now."
+
+**Different scale.** "Redis is fine" (someone running 100 req/s) vs
+"Redis fell over" (someone running 100K req/s). Both right in their
+context. Match the user's scale.
+
+**Different context.** "Use JWT" (stateless API) vs "Use sessions"
+(monolith with SSR). Architecture determines correctness. Name the
+context variable.
+
+**Official docs vs community experience.** Docs describe intended
+behavior. Community reveals actual behavior — including undocumented
+limits, silent failure modes, and configuration gotchas the docs do not
+mention. Trust community for "does it work in practice?" Trust docs for
+"how is it supposed to work?"
+
+**Smart-search synthesis vs scraped facts.** Always trust scraped
+official docs over smart-search synthesis claims for specific facts
+(version numbers, pricing, API signatures). Smart-search synthesis is
+analysis-grade; scraped pages are evidence-grade.
+
+**Nobody agrees.** Usually means the answer is genuinely
+context-dependent. Do not force a single recommendation. Present the
+options, name the variables that determine which is best, apply them to
+the user's situation.
+
+### Using `## Contradictions` from smart-scrape
+
+`smart-scrape-links` sometimes surfaces a `## Contradictions` section
+when commenters or sources disagree within a single page or across the
+batch. This is a free signal — the extractor noticed disagreement that
+might otherwise have stayed buried in dense prose.
+
+Read every `## Contradictions` section. For sentiment work in
+particular, it is gold: the disagreement IS the answer. Example from
+the Claude Code vs Codex research that authored this skill: a
+contradiction surfaced over whether Codex is "hands-off" (one
+commenter, +20 votes) or "asks for permission constantly" (different
+commenter, +20 votes). Both quotes verbatim, both verifiable. The
+contradiction itself revealed a Windows-only bug in the
+`--dangerously-bypass-approvals-and-sandbox` flag — neither commenter
+alone described the bug, but the disagreement plus a third source's
+"works fine on WSL2" closed the loop.
+
+---
+
+## Building consensus maps
 
 For complex topics with many sources, map the landscape:
 
-**Strong consensus (80%+ agree):** Present as the recommendation. Note minority objections if they're substantive.
+- **Strong consensus (80%+ agree).** Present as the recommendation.
+  Note minority objections if they are substantive.
+- **Moderate consensus (50–80%).** Present as "the common approach,
+  with caveats." List dissenting perspectives and conditions.
+- **No consensus (<50%).** Present as "multiple valid approaches." List
+  trade-offs. Recommend based on user-specific constraints, not vote
+  count.
+- **Evolving consensus.** Old sources say X, new sources say Y. Present
+  Y as current direction. Explain what changed (new version, new tool,
+  changed best practice).
 
-**Moderate consensus (50-80% agree):** Present as "the common approach, with caveats." Explicitly list dissenting perspectives and the conditions under which they apply.
+---
 
-**No consensus (<50% agreement):** Present as "multiple valid approaches." List trade-offs for each. Recommend based on the user's specific constraints, not on vote count.
+## Output formats
 
-**Evolving consensus:** Old sources say X, new sources say Y. Present Y as the current direction. Explain what changed and why (new version, new tool, changed best practice).
-
-## Output Patterns
+Match the format to the request type. The shapes below are templates;
+adapt for the specific session.
 
 ### For decisions
+
 ```
 RECOMMENDATION: [Clear choice]
 CONFIDENCE: [High/Medium/Low] based on [N sources, agreement level]
 WHY: [2-3 sentences connecting evidence to recommendation]
 TRADE-OFFS:
   - Choosing this: [specific benefit, sourced] but [specific drawback, sourced]
-  - Alternative would give: [what you'd gain] at the cost of [what you'd lose]
-CONDITIONS: This assumes [your constraints]. If [variable] changes, reconsider [alternative].
+  - Alternative: [what you'd gain] at the cost of [what you'd lose]
+CONDITIONS: This assumes [your constraints]. If [variable] changes,
+            reconsider [alternative].
 ```
 
 ### For bug fixes
+
 ```
 LIKELY CAUSE: [Diagnosis with evidence chain]
-FIX: [Specific steps, showing before → after]
+FIX: [Specific steps, before → after code]
 VERIFIED BY: [Which sources confirm]
 CAVEATS: [When this fix doesn't apply]
-FALLBACK: [What to try if this doesn't work]
+FALLBACK: [What to try if this fails]
 ```
 
-### For evaluations
+### For comparisons
+
 ```
 | Criterion | Option A | Option B | Source |
 |---|---|---|---|
-| [Key factor] | [Data] | [Data] | [Where from] |
+| [Key factor] | [Data with quote] | [Data with quote] | [URL + scrape date] |
 ...
 
 BEST FOR [context A]: Option A because [reason]
@@ -91,49 +221,93 @@ BEST FOR [context B]: Option B because [reason]
 AVOID: [Option] when [condition] because [specific evidence]
 ```
 
-## Handling Uncertainty
+### For security advisories
 
-When you don't have enough data, say so clearly:
+```
+| CVE | Severity | Affected | Fixed in | Mitigation | Exploit observed |
+|---|---|---|---|---|---|
+
+PRIORITY: [Highest unpatched CVE first]
+REMEDIATION: [Concrete steps with deadlines]
+RESIDUAL RISK: [What is still exposed and why]
+```
+
+### For uncertainty
+
+When data is insufficient, say so:
+
 ```
 WHAT I FOUND: [Summary of limited findings]
-GAPS: [What I couldn't find or verify]
-CONFIDENCE: Low — [N] sources, [disagreement/sparse coverage]
+GAPS: [What couldn't be found or verified]
+CONFIDENCE: Low — [N sources, disagreement/sparse coverage]
 PRELIMINARY DIRECTION: [Best guess based on available data]
 TO INCREASE CONFIDENCE: [Specific next steps]
 ```
 
-When the answer is "it depends," break down the dependencies:
+### For "it depends"
+
+When the answer is genuinely context-dependent:
+
 ```
 The answer depends on [2-3 specific factors]:
 
 IF [your scale] < 10K req/s AND [team size] < 5:
   → Use [simpler option] because [reason, evidence]
 
-IF [your scale] > 10K req/s OR [need for feature X]:
+IF [your scale] > 10K req/s OR [need feature X]:
   → Use [more complex option] because [reason, evidence]
 
 YOUR SITUATION: Based on [known constraints], [recommendation] applies.
 ```
 
-## Verification Checklist
+---
 
-Before finalizing any recommendation, verify:
+## The fresh-context self-review gate
 
-- [ ] Key claims confirmed by 2+ independent sources
-- [ ] No unresolved contradictions
-- [ ] Version-specific claims checked against official docs/changelog
-- [ ] Sources are actually independent (not citing each other)
-- [ ] Recency appropriate for the technology area
-- [ ] deep-research claims about specific facts verified via scrape
+Before delivering synthesis, run a mental self-review with no prior
+session memory.
 
-**Verification effort should match stakes:** Quick fact check → 1 source is fine. Library adoption → 2-3 sources. Architecture decision → full triangulation (official docs + practitioners + independent analysis). Security claim → never trust a single source.
+Open the synthesis as if reading it for the first time. For each
+non-trivial claim, ask: "where is the evidence? Can I find a quote, URL,
+scrape date, attribution?"
 
-## When deep-research Did the Heavy Lifting
+For each numeric / versioned / priced claim, ask: "is this verbatim from
+a scrape, or paraphrased?"
 
-If deep-research was your final synthesis step with a rich KNOWN field, its output forms the core of your answer. Don't re-do the analysis. Instead, supplement with:
-- Specific Reddit quotes it may have missed
-- Exact numbers from scraped pages
-- Dissenting views from comment threads
-- Any facts you verified that contradict its claims
+For each contradiction, ask: "is the disagreement surfaced clearly, or
+silently picked?"
 
-This augmentation approach is faster and more accurate than re-synthesizing from scratch.
+For each inference, ask: "is it visibly marked as inference?"
+
+Any "no" is a fix-before-delivery item. The most common failures:
+
+- A claim sourced from a search snippet rather than a scraped page.
+- A version number from memory that was not in any scraped source.
+- A contradiction smoothed over in prose ("most sources agree...").
+- An inference written in the same voice as direct evidence.
+
+Self-review takes 5–10 minutes. It catches more bugs than any other
+discipline in this skill.
+
+---
+
+## Verification checklist
+
+Before finalizing any recommendation:
+
+- [ ] Key claims confirmed by 2+ independent sources.
+- [ ] No unresolved contradictions (resolved, surfaced, or explicitly
+      flagged).
+- [ ] Version-specific claims checked against official docs/changelog.
+- [ ] Sources actually independent (not citing each other).
+- [ ] Recency appropriate for the technology area.
+- [ ] Smart-search `## Synthesis` claims about specific facts verified
+      by a scraped page.
+- [ ] `## Not found` sections reviewed; gaps closed or explicitly
+      flagged.
+- [ ] Every numeric / versioned / priced claim has a verbatim quote.
+
+**Verification effort matches stakes.** Quick fact check → 1 source is
+fine. Library adoption → 2–3 sources. Architecture decision → full
+triangulation (official docs + practitioners + independent analysis).
+Security claim → never trust a single source.
