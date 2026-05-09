@@ -53,7 +53,7 @@ Positive routing:
 | Intent | Start here | Then read |
 |---|---|---|
 | Extend an existing `mcp-use` server | `scripts/audit-server-readiness.sh.md` | `references/04-tools/01-overview.md`, `references/05-responses/01-overview-decision-table.md`, `references/08-server-config/01-mcp-server-constructor.md`, `references/22-validate/` |
-| Greenfield HTTP tool server | `references/02-setup/05-manual-http-server.md` | `references/04-tools/01-overview.md`, `references/05-responses/01-overview-decision-table.md`, `references/22-validate/02-curl-handshake.md` |
+| Greenfield HTTP tool server | `scripts/scaffold-mcp-use-server.sh.md` or `references/02-setup/05-manual-http-server.md` | `references/04-tools/01-overview.md`, `references/05-responses/01-overview-decision-table.md`, `references/22-validate/02-curl-handshake.md` |
 | Strict stdio requirement | `references/02-setup/04-manual-stdio-server.md` | `references/09-transports/02-stdio.md`, then route to `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2` |
 | MCP Apps / ChatGPT widget | `references/30-workflows/11-streaming-chart-widget.md` or `references/30-workflows/12-progress-and-elicit-widget.md` | `references/18-mcp-apps/01-what-are-mcp-apps.md`, `references/18-mcp-apps/server-surface/01-widget-helper.md`, `references/18-mcp-apps/widget-react/01-mcpuseprovider.md`, `references/20-inspector/11-protocol-toggle-and-csp-mode.md` |
 | Next.js drop-in | `references/30-workflows/10-add-mcp-to-existing-nextjs-app.md` | `references/19-nextjs-drop-in/01-overview.md`, `references/19-nextjs-drop-in/03-shared-aliases-and-tailwind.md`, `references/19-nextjs-drop-in/04-server-only-shimming.md`, `references/19-nextjs-drop-in/05-deploying-as-vercel-route.md` |
@@ -106,6 +106,7 @@ Summarize target path, existing server vs no server, tools-only vs widgets, impl
 
 - scaffolded project -> keep root `index.ts`
 - manual HTTP server -> default `src/server.ts`
+- empty greenfield HTTP package -> `scripts/scaffold-mcp-use-server.sh` is allowed
 - existing app owns `src/index.ts` or `src/server.ts` -> add `src/mcp-server.ts`
 - Next.js drop-in -> follow `references/19-nextjs-drop-in/`
 - strict stdio -> route out to raw SDK skills
@@ -214,7 +215,7 @@ Start with intent or symptoms; use inventory only as fallback.
 - **Symptom index:** `references/00-symptom-index.md`
 - **Version drift policy:** `references/00-version-drift.md`
 - **Full inventory:** `references/00-reference-index.md`
-- **Bundled scripts:** `scripts/check-mcp-use-version.sh.md`, `scripts/audit-server-readiness.sh.md`
+- **Bundled scripts:** `scripts/check-mcp-use-version.sh.md`, `scripts/audit-server-readiness.sh.md`, `scripts/scaffold-mcp-use-server.sh.md`
 - **Foundations:** `references/01-concepts/*.md`
 - **Setup:** `references/02-setup/*.md`
 - **CLI:** `references/03-cli/*.md`
