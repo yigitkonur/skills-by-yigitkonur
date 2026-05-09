@@ -216,9 +216,15 @@ Before declaring a bug fixed, produce these artifacts in order:
 1. **Symptom card** (Phase 1) — one paragraph, reproducible by a stranger
 2. **Ranked candidate mechanisms** (Phase 2) — 1-3 one-sentence hypotheses with evidence
 3. **Experiment design + result** (Phase 3) — falsification prediction + observed result
-4. **Fix + regression guard** (Phase 4) — narrow fix, test/assertion that fails without it
-5. **Verification** (Phase 4) — the Phase 1 repro now passes, evidence captured
-6. **Next-step pointer** — `check-completion` handoff, or "close and ship"
+4. **Root-cause statement** (Phase 3 → Phase 4) —
+   ```
+   Root cause: <frame / boundary / layer> — <violated assumption>
+   Mechanism: <X caused Y because Z>
+   Narrowest fix location: <file/function/layer>
+   ```
+5. **Fix + regression guard** (Phase 4) — narrow fix, test/assertion that fails without it
+6. **Verification** (Phase 4) — the Phase 1 repro now passes, evidence captured
+7. **Next-step pointer** — `check-completion` handoff, or "close and ship"
 
 Each artifact is visible in the session transcript. Do not batch them to the end.
 
@@ -257,6 +263,7 @@ Before declaring done, confirm:
 - [ ] Phase 2 produced 1-3 ranked candidates with evidence per row
 - [ ] Phase 3 experiment stated its false-case prediction before running
 - [ ] Phase 3 confirmed one mechanism (not "partially matched")
+- [ ] Root-cause statement is written before any Phase 4 product-code edit
 - [ ] Phase 4 fix is narrow (no unrelated cleanup, no unrelated files)
 - [ ] Regression guard exists and fails without the fix
 - [ ] Phase 1 repro now passes 10/10 with evidence captured
