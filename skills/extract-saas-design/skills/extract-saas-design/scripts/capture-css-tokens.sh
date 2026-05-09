@@ -17,11 +17,6 @@ search() {
 
   if command -v rg >/dev/null 2>&1; then
     rg -n --no-heading \
-      --glob '!node_modules/**' \
-      --glob '!.git/**' \
-      --glob '!dist/**' \
-      --glob '!build/**' \
-      --glob '!coverage/**' \
       --glob '*.css' \
       --glob '*.scss' \
       --glob '*.less' \
@@ -30,6 +25,15 @@ search() {
       --glob '*.jsx' \
       --glob '*.ts' \
       --glob '*.js' \
+      --glob '!node_modules/**' \
+      --glob '!dist/**' \
+      --glob '!build/**' \
+      --glob '!coverage/**' \
+      --glob '!**/node_modules/**' \
+      --glob '!**/.git/**' \
+      --glob '!**/dist/**' \
+      --glob '!**/build/**' \
+      --glob '!**/coverage/**' \
       -e "$pattern" "$root" || true
     return
   fi
@@ -38,7 +42,7 @@ search() {
     \( -path '*/node_modules/*' -o -path '*/.git/*' -o -path '*/dist/*' -o -path '*/build/*' -o -path '*/coverage/*' \) -prune -o \
     -type f \( -name '*.css' -o -name '*.scss' -o -name '*.less' -o -name '*.html' -o -name '*.tsx' -o -name '*.jsx' -o -name '*.ts' -o -name '*.js' \) -print0 |
     while IFS= read -r -d '' file; do
-      grep -nE "$pattern" "$file" 2>/dev/null | sed "s#^#$file:#" || true
+      grep -nE -e "$pattern" "$file" 2>/dev/null | sed "s#^#$file:#" || true
     done
 }
 
@@ -64,13 +68,14 @@ echo
 
 echo "## CSS Custom Property Definitions"
 search '--[A-Za-z0-9_-]+[[:space:]]*:[[:space:]]*[^;}]+' |
-  sed -E 's/.*(--[A-Za-z0-9_-]+)[[:space:]]*:[[:space:]]*([^;}]+).*/\1: \2/' |
+  grep -oE -e '--[A-Za-z0-9_-]+[[:space:]]*:[[:space:]]*[^;}]+' |
+  sed -E 's/[[:space:]]+/ /g; s/[[:space:]]*:[[:space:]]*/: /' |
   sort | uniq -c | sort -rn || true
 echo
 
 echo "## CSS Custom Property Usage Counts"
 search 'var\(--[A-Za-z0-9_-]+' |
-  grep -oE 'var\(--[A-Za-z0-9_-]+' |
+  grep -oE -e 'var\(--[A-Za-z0-9_-]+' |
   sed 's/^var(//' |
   sort | uniq -c | sort -rn || true
 echo
