@@ -149,7 +149,7 @@ Each missing source expands the suspect-status surface area. If multiple sources
 
 ## Cross-reference
 
-The fallback chain for understanding what changed is similar to (but not the same as) the `evaluate-code-review` skill's `understand-changes.md`. That skill's chain is about reconstructing the diff the reviewer saw; this skill's sources are about reconstructing every task in scope. The two chains share the mechanics (git → tool trace → bash) but differ in purpose.
+The fallback chain for understanding what changed is similar to (but not the same as) the `evaluate-code-review` skill's `understand-changes.md`. Boundary: `check-completion` audits internal completion state for tasks, plans, sessions, and branches; `evaluate-code-review` triages external review feedback, reviewer comments, bot comments, and review docs. The two chains share mechanics (git → tool trace → bash) but differ in purpose.
 
 Do not require reading `evaluate-code-review/understand-changes.md` to act on this file. This file is self-sufficient.
 

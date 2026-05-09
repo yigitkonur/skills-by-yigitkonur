@@ -1,6 +1,6 @@
 # Rationalizations — RED Baseline for Audit Discipline
 
-The core discipline — **two phases, never default to `Implemented`, evidence before status** — is bypassable under pressure. This file captures verbatim rationalizations and counters. Seeded from `obra/verification-before-completion` + audit-specific excuses observed when agents are finishing a long session under token or time pressure.
+The core discipline — **two phases, never default to `Implemented`, evidence before status** — is bypassable under pressure. This file captures verbatim rationalizations and counters from audit-specific excuses observed when agents are finishing a long session under token or time pressure.
 
 See `synthesize-skills/references/authoring/tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
 

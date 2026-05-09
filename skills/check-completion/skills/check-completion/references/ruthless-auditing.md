@@ -21,7 +21,7 @@ The asymmetry favors pessimism. Rigor in Phase 1 is cheap; omissions discovered 
 
 ## The four red flags
 
-If you see any of these in your own draft audit rows, stop and re-classify. Borrowed in spirit from `obra/verification-before-completion`.
+If you see any of these in your own draft audit rows, stop and re-classify.
 
 ### Red flag 1: Fuzzy language
 

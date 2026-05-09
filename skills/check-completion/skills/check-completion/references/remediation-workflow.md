@@ -4,7 +4,7 @@ After the audit table exists, Phase 2 executes until every in-scope row reaches 
 
 ## The core rule
 
-**Do not stop, pause, or ask for confirmation mid-remediation unless a blocker is genuinely unresolvable.** This is an intentional divergence from obra's `executing-plans` skill, which stops and asks on every blocker. `check-completion` is designed to maximize progress through a fixed backlog; halting on every friction point defeats that.
+**Do not stop, pause, or ask for confirmation mid-remediation unless a blocker is genuinely unresolvable.** This intentionally differs from blocker-heavy plan execution workflows that stop on every blocker. `check-completion` is designed to maximize progress through a fixed backlog; halting on every friction point defeats that.
 
 When a blocker is encountered: document per `blocker-handling.md`, then continue with the next task.
 
