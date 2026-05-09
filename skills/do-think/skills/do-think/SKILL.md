@@ -5,14 +5,9 @@ description: Use skill if you are planning, architecting, refactoring, brainstor
 
 # Do Think
 
-The deep-thinking skill. Use it when acting on the first plausible answer is risky.
+Use this skill when acting on the first plausible answer is risky. Pick the mode FIRST, then run one core loop.
 
-Two operating modes:
-
-- **Solo deep-think** (default) — agent reasons alone, then acts.
-- **Interactive brainstorm** — user in the loop, 5 forks, 6-step structured session.
-
-One core loop applies to both. Pick the mode FIRST, then run the loop.
+Modes: **Solo deep-think** (default; agent reasons alone, then acts) or **Interactive brainstorm** (user in the loop, 5 forks, 6-step structured session).
 
 ## Trigger boundary
 
@@ -95,41 +90,16 @@ Phase D — Commit     D1 choose / produce  ·   D2 verify (op-specific)
 ### Phase B — Calibrate
 
 - **B1.** Effort tier (Hard Choice × Confidence-vs-Quality) → `references/foundations/effort-calibration.md`. Output: Low / Medium / High in the opening contract.
-- **B2.** Gather the minimum grounding set — **shape varies by Op** (see operation-classification.md):
-  - SenseMaking: direct observation + primary docs (evidence ladder)
-  - Extraction: schema spec + sample inputs (≥3 covering edges)
-  - Composition: form examples + voice spec + factual context + audience
-  - Reshape: invariants + scope of change
-  - GroundedQA: corpus boundary + retrieved passages
-  - WatchTrigger: trigger conditions + signal definition + history baseline
-  - Orchestration: system contracts + idempotency keys + error modes
-  - SelfVerify: oracle definition + iteration budget + convergence criterion
+- **B2.** Gather the minimum grounding set. Shape varies by Op; use `references/foundations/operation-classification.md` and the workflow file.
 
 **Phase B exit**: tier set; minimum evidence (op-shaped) collected.
 
 ### Phase C — Compare
 
-C1 and C2 are **operation-specific**. The 4-phase loop is universal; what each phase produces depends on the operation. Run the workflow for the classified Op.
+C1 and C2 are **operation-specific**. Run the workflow for the classified Op.
 
-- **C1.** Op-specific output (NOT always "≥3 options"):
-  - SenseMaking → ≥3 candidate verdicts with falsifiers
-  - Extraction → filled schema + completeness flag + ambiguity log
-  - Composition → outline + assumption list (≥3 outline variants only when structural choice matters)
-  - Reshape → transformation plan + invariant proofs
-  - GroundedQA → retrieved evidence + scope confirmation
-  - WatchTrigger → trigger spec + alert payload + escalation rules
-  - Orchestration → sequence + idempotency markers + error handlers
-  - SelfVerify → first attempt + first oracle reading
-
-- **C2.** Op-specific stress-test (mandatory at Tier Medium/High):
-  - SenseMaking → Inversion + Ladder of Inference + Second-Order (the trio) → `references/foundations/stress-test-trio.md`
-  - Extraction → coverage + edge case + schema-fit
-  - Composition → form-substance match + voice fit + audience appropriateness
-  - Reshape → behavior preservation + scope-creep check
-  - GroundedQA → hallucination scan + citation completeness + out-of-scope flag
-  - WatchTrigger → false-positive scan + missed-signal scan + signal/noise
-  - Orchestration → partial-failure scan + transaction boundary check + retry safety
-  - SelfVerify → loop bound + oracle accuracy + escape condition
+- **C1.** Produce the op-shaped output. Only SenseMaking requires ≥3 candidate verdicts; other ops produce schemas, outlines, invariant plans, evidence, trigger specs, sequences, or oracle readings.
+- **C2.** Stress-test before committing at Tier Medium/High. Use the trio only for SenseMaking → `references/foundations/stress-test-trio.md`; other ops use the C2 focus in `operation-classification.md`.
 
 **Phase C exit criterion**: op-specific C1 output written AND op-specific C2 stress-test written. Outputs are written, not implied.
 
@@ -212,18 +182,12 @@ Every finished session states:
 - Reading all `frameworks/*`, or loading more than one decomposition, one generation, and one evaluation/stress tool in one pass
 - Asking the user a clarifying question mid-Solo (you've hit an escalation trigger — switch to Interactive instead)
 
-## Anti-rationalization table
+## Rationalization checks
 
-| Rationalization | Counter |
-|---|---|
-| "Cynefin is overkill for this." | 30 seconds saves rerouting a 15-minute analysis. Run it. |
-| "Op classification is obvious — skip it." | The most common upstream failure is op-mismatch. 30 seconds of classification saves a wrong-tools session. Write it in the contract. |
-| "I already know which option wins." | Then write what would falsify it. Can't? You don't know. (Sense-Making only — other ops don't have "options.") |
-| "Stress-test feels formulaic — skip." | Skipping is exactly when the formulaic check catches the blind spot the intuition missed. |
-| "Three options is artificial; only two are real." | Force a third. The third is usually "do nothing" or "ask the user." Both are real. (Sense-Making only.) |
-| "High-stakes means Interactive." | No. High stakes raises Tier. Switch to Interactive only when user-owned context, co-authorship, or the Solo escalation gate requires it. |
-| "Verification step is obvious — skip writing it." | Unwritten = skipped under pressure. Write it. |
-| "The trio (Inversion + Ladder + Second-Order) applies to every Op." | No. The trio is for Sense-Making. Other ops have their own stress-test focus — see operation-classification.md. |
+- If classification, stress-test, or verification feels obvious, write it anyway.
+- High stakes raise Tier; Interactive still needs a mode gate.
+- The trio is SenseMaking-only; other ops use op-shaped C2 checks.
+- If every candidate dies, switch modes or hand off. Do not pick the least-bad path silently.
 
 ## Voice discipline
 
@@ -238,12 +202,6 @@ Every finished session states:
 - `Coverage: …` / `Form-substance match: …` / `Hallucination scan: …` / etc. (in C2, op-specific)
 - `Verification check: …` (in D2)
 
-**Forbidden phrases**:
-- "I think the best option is…" (without three named options)
-- "this is straightforward" (without a Cynefin check)
-- "let me know if you want me to dig deeper" (false abdication)
-- "Thanks for the great discussion" / "Hope this helps" / "Please feel free to" / "You're absolutely right" (shared with the pack's review skills)
-
 ## Escalation gates
 
 - **Solo → Interactive** when: all candidates/attempts die in stress-test
@@ -255,12 +213,8 @@ Every finished session states:
 ### `do-debug` route-back handoff
 
 When this session, especially one entered from `do-debug` after 3 failed fixes, produces a falsifiable runtime hypothesis, hand back to `do-debug` with:
-- symptom card / observed failure
-- failed-fix summary, if known
-- selected hypothesis and mechanism
-- falsification experiment
-- narrow next diagnostic or fix boundary
-- verification check
+
+`symptom card / observed failure`, `failed-fix summary if known`, `selected hypothesis + mechanism`, `falsification experiment`, `narrow next diagnostic or fix boundary`, and `verification check`.
 
 ## Reference routing — master table
 
@@ -327,8 +281,4 @@ Selection rule: choose at most one decomposition tool, one generation tool, and 
 
 ## Final test
 
-Before you act, ask:
-
-> *Do I know enough to make the next move safer and clearer than acting immediately would be?*
-
-If yes, act. If no, gather the smallest missing evidence first.
+Before acting, ask: *Do I know enough to make the next move safer and clearer than acting immediately would be?* If not, gather the smallest missing evidence first.

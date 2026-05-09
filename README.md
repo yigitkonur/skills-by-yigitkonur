@@ -40,7 +40,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [convert-url-to-nextjs](skills/convert-url-to-nextjs/) | design | Live URLs or HTML snapshots to Next.js projects |
 | [do-debug](skills/do-debug/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to do-think Interactive |
 | [do-review](skills/do-review/) | productivity | Review PRs and branch diffs for merge readiness |
-| [do-think](skills/do-think/) | productivity | Deep-thinking framework — Solo or user-in-the-loop Interactive modes; 4-phase loop with mandatory stress-test trio |
+| [do-think](skills/do-think/) | productivity | Deep thinking for ambiguous plans, architecture, refactors, or choices |
 | [enhance-prompt](skills/enhance-prompt/) | productivity | Rewrite task prompts for LLM or coding-agent execution |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [evaluate-code-review](skills/evaluate-code-review/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
