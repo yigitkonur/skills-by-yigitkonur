@@ -75,7 +75,7 @@ The `mcp-use/react` package provides two usage patterns:
 | Provider-based (recommended) | `McpClientProvider` + `useMcpClient` + `useMcpServer` | Multi-server apps, production use |
 | Standalone hook | `useMcp(options)` | Simple single-server applications |
 
-**Recommended approach:** Use `McpClientProvider` for managing multiple MCP server connections. It provides automatic proxy fallback, notification management, persistence support, and a superior developer experience compared to standalone `useMcp()`.
+**Recommended approach:** Use one `McpClientProvider` at the app root for multi-server apps. It provides automatic proxy fallback, notification management, persistence support, and a superior developer experience compared to standalone `useMcp()`. Do not mount one provider per route, panel, or server; nested providers split state and make reconnect/auth behavior harder to reason about.
 
 ---
 
@@ -98,9 +98,10 @@ function App() {
 
 // 2. Add servers dynamically
 function MyComponent() {
-  const { addServer, servers } = useMcpClient();
+  const { addServer, removeServer, servers } = useMcpClient();
 
   useEffect(() => {
+    // addServer is idempotent for the same id, so this is safe under React StrictMode.
     addServer("linear", {
       url: "https://mcp.linear.app/mcp",
       name: "Linear",
@@ -111,7 +112,14 @@ function MyComponent() {
       name: "My Server",
       headers: { Authorization: "Bearer YOUR_API_KEY" },
     });
-  }, [addServer]);
+
+    // If this component owns temporary servers, clean them up on unmount.
+    // For app-wide servers, prefer the provider's mcpServers prop instead.
+    return () => {
+      removeServer("linear");
+      removeServer("my-server");
+    };
+  }, [addServer, removeServer]);
 
   return (
     <div>
@@ -714,12 +722,28 @@ function ResourceViewer({ serverId, uri }: { serverId: string; uri: string }) {
   const [content, setContent] = useState("");
 
   useEffect(() => {
-    if (server?.state === "ready") {
-      server.readResource(uri).then((resource) => {
-        setContent(resource.contents[0].text || "");
-      });
+    let cancelled = false;
+
+    if (server?.state !== "ready") {
+      setContent("");
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [server?.state, uri]);
+
+    server
+      .readResource(uri)
+      .then((resource) => {
+        if (!cancelled) setContent(resource.contents[0]?.text || "");
+      })
+      .catch((error) => {
+        if (!cancelled) setContent(`Error: ${error.message}`);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [server, server?.state, uri]);
 
   if (!server) return null;
 
@@ -1303,7 +1327,7 @@ function Root() {
 
 ### Mistake 2: Checking state === "ready" Only
 
-Always handle `"failed"`, `"pending_auth"`, and `"authenticating"` states to avoid blank screens and missed auth prompts.
+Always handle `"discovering"`, `"authenticating"`, `"pending_auth"`, `"ready"`, and `"failed"` states to avoid blank screens, missed auth prompts, and retry dead ends.
 
 ### Mistake 3: Nesting McpClientProvider Instances
 
@@ -1370,3 +1394,11 @@ if (mcp.status !== "ready") return <div>Loading...</div>;
 ```typescript
 if (mcp.state !== "ready") return <div>Loading...</div>;
 ```
+
+### Mistake 8: Dynamic addServer Without StrictMode Cleanup
+
+React StrictMode can run effects twice in development. Use stable server IDs, rely on `addServer()` idempotency, and clean up temporary servers with `removeServer()` when the component owns their lifetime. For persistent app-wide servers, pass `mcpServers` to the singleton provider instead of adding them from a child effect.
+
+### Mistake 9: Setting State After Unmount In Resource Effects
+
+Resource reads are async. Guard `setState` with a cancellation flag or request id so slow reads do not update an unmounted component or overwrite newer results.
