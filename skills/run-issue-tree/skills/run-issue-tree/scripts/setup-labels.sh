@@ -4,6 +4,11 @@
 # Set MAX_WAVE=N to create wave:1..wave:N labels (default 5).
 set -euo pipefail
 
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  sed -n '2,4p' "$0" | sed 's/^# //'
+  exit 0
+fi
+
 REPO="${1:?Usage: setup-labels.sh OWNER/REPO}"
 MAX_WAVE="${MAX_WAVE:-5}"
 
