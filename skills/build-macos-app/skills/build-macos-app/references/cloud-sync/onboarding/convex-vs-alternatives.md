@@ -21,7 +21,7 @@
 - Built-in offline persistence and queued local writes.
 - Larger iOS ecosystem, more examples, and broader operational precedent.
 - Better fit when planes, tunnels, or intermittent connectivity are core product requirements.
-- Better fit when you need mature support across more Apple platforms without current Convex limitations.
+- Better fit when the product needs mature support across more Apple platforms without current Convex limitations.
 
 ## Where Supabase Wins
 - PostgreSQL and SQL are first-class, not approximated.
@@ -39,27 +39,27 @@
 ## Decision Tree
 
 ```
-Does your app need to work offline (planes, subways, poor signal)?
+Product needs offline operation (planes, subways, poor signal)?
 ├── YES → Firebase (built-in offline persistence)
 │         Convex has NO offline support.
 └── NO  → continue
 
-Does your app need complex SQL queries (JOINs, GROUP BY, analytics)?
+Product needs complex SQL queries (JOINs, GROUP BY, analytics)?
 ├── YES → Supabase (full PostgreSQL)
 │         Convex has no SQL, no JOINs, no GROUP BY.
 └── NO  → continue
 
-Does your app need real-time data that multiple users see simultaneously?
+Product needs real-time data that multiple users see simultaneously?
 ├── YES → Convex is built for this. One subscription = always-current data.
 │         Firebase requires manual listener management.
 │         Supabase requires separate fetch + listen + merge.
 └── NO  → Any backend works. Choose by team familiarity.
 
-Are you building for Intel Mac, watchOS, tvOS, or visionOS?
+Target includes Intel Mac, watchOS, tvOS, or visionOS?
 ├── YES → Firebase or Supabase (Convex is arm64-only, iOS/macOS only)
 └── NO  → continue
 
-Do you want Combine-native reactive data in SwiftUI?
+SwiftUI architecture benefits from Combine-native reactive data?
 ├── YES → Convex — subscribe() returns AnyPublisher directly
 └── NO  → Any backend works.
 ```

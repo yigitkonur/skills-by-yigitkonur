@@ -1,74 +1,55 @@
-# Reference Map
+# Cloud Sync Reference Map
 
 ## Use This Corpus For
-- Designing a Convex + Clerk backend for a SwiftUI app that targets iPhone, Mac, or both.
-- Deciding whether Convex is the right backend before implementation.
-- Choosing production-safe client, auth, lifecycle, and backend patterns for the current Swift SDK.
-- Loading only the narrowest reference needed instead of dumping the entire research set into context.
+- Designing the Swift client side of a Convex + Clerk app that includes a macOS target.
+- Deciding whether Convex fits the product before implementation.
+- Selecting production-safe client, auth, lifecycle, backend, and platform patterns for the current Swift SDK.
+- Loading the narrowest reference needed instead of pulling the full cloud-sync corpus into context.
 
 ## Source Boundary
 - Ground broad product and architecture guidance in the repo-local references listed below.
-- Treat Clerk-specific implementation facts in this skill as verified against the official `clerk-convex-swift` package and its `Example/WorkoutTracker` sample, as summarized in the auth, client-sdk, playbook, and operations docs here.
+- Treat Clerk-specific implementation facts as verified against the official `clerk-convex-swift` package, Clerk docs, GitHub tags, and the `Example/WorkoutTracker` sample where those files say so.
 - Treat this reference set as opinionated toward the latest checked 2026-05-09 source snapshot: `clerk-convex-swift 0.1.0`, `clerk-ios 1.1.2`, and ConvexMobile `0.8.1`.
 - Present ecosystem and feature gaps honestly. Do not market around them.
 
 ## Start Here
-1. Read [onboarding/04-adoption-checklist-and-hard-stops.md](adoption-checklist.md) to decide whether Convex fits the app.
-2. Read [onboarding/03-mental-model-live-data-functions-and-state.md](onboarding/mental-model.md) before making architecture decisions.
-3. Read [authentication/01-clerk-first-setup.md](clerk-setup.md) if the app needs user accounts.
-4. Read [swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md) before placing the client or auth state.
-5. Read [operations/01-verified-corrections-and-trust-boundaries.md](operations/verified-corrections.md) before repeating any claim as fact.
+1. Fit check: [adoption-checklist.md](adoption-checklist.md), [onboarding/convex-vs-alternatives.md](onboarding/convex-vs-alternatives.md), [limitations.md](limitations.md).
+2. Mental model: [onboarding/mental-model.md](onboarding/mental-model.md), [onboarding/why-convex-fits-swiftui.md](onboarding/why-convex-fits-swiftui.md).
+3. Setup path: [setup-extra/node-prerequisites.md](setup-extra/node-prerequisites.md), [spm-setup.md](spm-setup.md), [setup-extra/first-run.md](setup-extra/first-run.md).
+4. Clerk path: [setup-extra/clerk-jwt-template.md](setup-extra/clerk-jwt-template.md), [setup-extra/auth-config-wiring.md](setup-extra/auth-config-wiring.md), [clerk-setup.md](clerk-setup.md), [sign-in-with-apple.md](sign-in-with-apple.md).
+5. Trust boundary: [operations/verified-corrections.md](operations/verified-corrections.md), [backend/auth-rules-and-server-ownership.md](backend/auth-rules-and-server-ownership.md).
 
-## Folder Guide
-- `setup/`: zero-to-running with Node, SPM, Clerk, and first `npx convex dev` run.
-- `onboarding/`: product fit, mental model, backend choice, and adoption constraints.
-- `backend/`: schema, indexes, functions, scheduling, errors, auth rules, file organization, and server ownership.
-- `client-sdk/`: public Swift API surface, type system, subscription behavior, pipeline termination, encoding, connection state, and logging.
-- `swiftui/`: view-model patterns, lifecycle ownership, navigation/tab/sheet behavior, tri-state loading, and dependency injection.
-- `authentication/`: Clerk-first setup, custom `AuthProvider` work, Firebase fallback, SIWA, and Keychain.
-- `platforms/`: iOS suspension, POSIX error 53, offline limits, network recovery, NWPathMonitor, binary size, macOS windows/menu bar, per-window VMs, and support limits.
-- `advanced/`: pagination, file storage, image upload, full-text search, streaming/transcription, subscription deduplication, and Convex components.
-- `pitfalls/`: the 10 most common mistakes — pipeline termination, threading, auth, offline traps, and more.
-- `walkthrough/`: complete chat app from zero — schema, backend, models, views, deployment.
-- `quick-reference/`: backend cheat sheet, Swift SDK API surface, SQL mapping, function decision tree, subscription placement matrix.
-- `testing/`: mock FFI client, integration tests, SwiftUI previews, OSLog/Console.app, and server-side `convex-test`.
-- `playbooks/`: default end-to-end workflows for common app shapes.
-- `operations/`: corrected claims, limitations, non-goals, and trust boundaries.
+## Current Subdirectories
+- `onboarding/`: backend fit, alternatives, and mental model.
+- `setup-extra/`: Node, Clerk JWT template, Convex auth config, and first run sequence.
+- `backend/`: server ownership and structured error behavior.
+- `client-sdk-extra/`: wire types, `ConvexEncodable`, subscription errors, and debug logging.
+- `platforms/`: iOS/macOS lifecycle caveats, NWPathMonitor, binary size, performance, and threading.
+- `pitfalls-extra/`: production failure modes that need quick lookup.
+- `quick-reference/`: backend card, function decision tree, and subscription placement matrix.
+- `playbooks/`: greenfield, shared iOS/macOS, and streaming/transcription implementation paths.
+- `swiftui-extra/`: navigation stack, tab, and sheet lifecycle extensions.
+- `walkthrough/`: complete chat app sequence.
+
+Top-level cloud-sync files cover macOS app entry, root architecture, per-window models, observation, reactive queries, loading/error UI, connection banners, offline states, pipeline recovery, SPM setup, Clerk setup, SIWA, SDK cheat sheets, and known limitations.
 
 ## Fast Routing By Problem
-- "Should we use Convex here?" -> [onboarding/02-convex-vs-firebase-vs-supabase.md](onboarding/convex-vs-alternatives.md), [onboarding/04-adoption-checklist-and-hard-stops.md](adoption-checklist.md)
-- "How do I set up from scratch?" -> [setup/01-installing-convex-and-node-prerequisites.md](setup-extra/node-prerequisites.md) through [setup/05-first-run-npx-convex-dev.md](setup-extra/first-run.md)
-- "How should SwiftUI think about Convex?" -> [onboarding/03-mental-model-live-data-functions-and-state.md](onboarding/mental-model.md)
-- "How should we model the backend?" -> [backend/01-schema-document-model-and-relationships.md](quick-reference/backend-card.md), [backend/02-indexes-query-shaping-and-performance.md](quick-reference/backend-card.md)
-- "Which function type do we use?" -> [backend/03-queries-mutations-actions-scheduling.md](quick-reference/function-decision-tree.md), [quick-reference/04-function-decision-tree.md](quick-reference/function-decision-tree.md)
-- "How do we wire Clerk?" -> [authentication/01-clerk-first-setup.md](clerk-setup.md)
-- "How do subscriptions reach SwiftUI safely?" -> [client-sdk/03-subscriptions-errors-logging-and-connection-state.md](client-sdk-extra/subscriptions-and-errors.md), [swiftui/01-consumption-patterns.md](reactive-queries.md)
-- "Why did my subscription stop updating?" -> [pitfalls/01-pipeline-dies-after-first-error.md](pitfall-pipeline-dies.md), [client-sdk/04-pipeline-termination-and-recovery.md](pipeline-recovery.md)
-- "Where should the client live?" -> [swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md)
-- "Will iOS backgrounding break this?" -> [platforms/01-ios-backgrounding-reconnection-and-staleness.md](platforms/ios-backgrounding-and-staleness.md)
-- "What are the common mistakes?" -> [pitfalls/](pitfalls/) (start with 01)
-- "How do we do uploads or pagination?" -> [advanced/01-pagination-live-tail-and-history.md](quick-reference/subscription-placement.md), [advanced/02-file-storage-upload-download-and-document-ids.md](quick-reference/backend-card.md)
-- "How do we handle streaming or transcription?" -> [advanced/04-streaming-workloads-and-transcription.md](playbooks/streaming-and-transcription.md), [playbooks/03-streaming-and-transcription-playbook.md](playbooks/streaming-and-transcription.md)
-- "Show me a complete example" -> [walkthrough/01-from-zero-to-realtime-chat-app.md](walkthrough/01-zero-to-realtime-chat.md) through [walkthrough/05-deployment-checklist.md](walkthrough/05-deployment-checklist.md)
-- "Quick lookup / cheat sheet" -> [quick-reference/](quick-reference/) (5 docs)
-- "How do I test this?" -> [testing/01-mock-ffi-client-unit-testing.md](client-sdk-extra/debug-logging.md) through [testing/05-server-side-testing-with-convex-test.md](backend/structured-errors-convexerror.md)
+- Backend fit or alternatives: [onboarding/convex-vs-alternatives.md](onboarding/convex-vs-alternatives.md), [adoption-checklist.md](adoption-checklist.md), [operations/known-gaps.md](operations/known-gaps.md).
+- Setup from scratch: [setup-extra/node-prerequisites.md](setup-extra/node-prerequisites.md), [spm-setup.md](spm-setup.md), [setup-extra/clerk-jwt-template.md](setup-extra/clerk-jwt-template.md), [setup-extra/auth-config-wiring.md](setup-extra/auth-config-wiring.md), [setup-extra/first-run.md](setup-extra/first-run.md).
+- SwiftUI architecture: [root-architecture.md](root-architecture.md), [observation-ownership.md](observation-ownership.md), [reactive-queries.md](reactive-queries.md), [lifecycle-navigation.md](lifecycle-navigation.md).
+- macOS lifecycle: [macos-app-entry.md](macos-app-entry.md), [per-window-viewmodels.md](per-window-viewmodels.md), [swiftui-extra/navstack-subscription-lifecycle.md](swiftui-extra/navstack-subscription-lifecycle.md), [swiftui-extra/tabview-and-sheets.md](swiftui-extra/tabview-and-sheets.md).
+- Clerk auth: [clerk-setup.md](clerk-setup.md), [auth-custom-provider.md](auth-custom-provider.md), [sign-in-with-apple.md](sign-in-with-apple.md), [backend/auth-rules-and-server-ownership.md](backend/auth-rules-and-server-ownership.md).
+- Subscription failures and recovery: [client-sdk-extra/subscriptions-and-errors.md](client-sdk-extra/subscriptions-and-errors.md), [pipeline-recovery.md](pipeline-recovery.md), [pitfall-pipeline-dies.md](pitfall-pipeline-dies.md).
+- Loading, offline, and connection UX: [loading-error-tristate.md](loading-error-tristate.md), [connection-banner.md](connection-banner.md), [offline-ux-states.md](offline-ux-states.md), [platforms/nwpathmonitor.md](platforms/nwpathmonitor.md).
+- Wire types and SDK surface: [client-surface.md](client-surface.md), [client-sdk-extra/type-system-and-modeling.md](client-sdk-extra/type-system-and-modeling.md), [client-sdk-extra/convex-encodable.md](client-sdk-extra/convex-encodable.md), [swift-sdk-cheatsheet.md](swift-sdk-cheatsheet.md).
+- Common pitfalls: [pitfalls-extra/actions-as-side-effects.md](pitfalls-extra/actions-as-side-effects.md), [pitfalls-extra/arrays-8192-limit.md](pitfalls-extra/arrays-8192-limit.md), [pitfalls-extra/date-now-in-queries.md](pitfalls-extra/date-now-in-queries.md), [pitfalls-extra/receive-on-main.md](pitfalls-extra/receive-on-main.md), [pitfalls-extra/trusting-client-for-auth.md](pitfalls-extra/trusting-client-for-auth.md), [pitfalls-extra/unbounded-collect.md](pitfalls-extra/unbounded-collect.md).
+- Implementation paths: [playbooks/greenfield-swiftui-app.md](playbooks/greenfield-swiftui-app.md), [playbooks/shared-ios-macos-app.md](playbooks/shared-ios-macos-app.md), [playbooks/streaming-and-transcription.md](playbooks/streaming-and-transcription.md).
+- Complete example: [walkthrough/01-zero-to-realtime-chat.md](walkthrough/01-zero-to-realtime-chat.md), [walkthrough/02-schema-and-backend-code.md](walkthrough/02-schema-and-backend-code.md), [walkthrough/03-swift-models-and-viewmodels.md](walkthrough/03-swift-models-and-viewmodels.md), [walkthrough/04-swiftui-views.md](walkthrough/04-swiftui-views.md), [walkthrough/05-deployment-checklist.md](walkthrough/05-deployment-checklist.md).
 
 ## Non-Negotiable Defaults
 - Prefer Clerk as the default Swift auth path.
 - Prefer one long-lived authenticated client per process.
-- Prefer `ObservableObject` plus `@StateObject` for subscription-owning models.
-- Treat subscription errors as terminal unless you explicitly rebuild the pipeline.
-- Treat iOS as online-only with reconnect, not offline-first.
-- Treat macOS support as Apple Silicon only.
-- Use verification notes to correct stale or overstated claims.
-
-## Corrected Claims To Remember
-- `TabView` does cancel `.task` on tab switch; do not write guidance that says the opposite.
-- `@Observable` can run `init()` multiple times, but the stored-instance issue is side effects, not multiple active retained instances.
-- The `convex-helpers` pagination/filter issue cited in the corpus is real history, but the referenced issue is closed.
-- Binary-size impact is likely larger than the optimistic low-end estimate from the research set.
-
-## Read Next By Outcome
-- New greenfield app: [playbooks/01-greenfield-swiftui-app-playbook.md](playbooks/greenfield-swiftui-app.md)
-- Shared iOS + macOS app: [playbooks/02-shared-ios-macos-app-playbook.md](playbooks/shared-ios-macos-app.md)
-- Streaming/transcription app: [playbooks/03-streaming-and-transcription-playbook.md](playbooks/streaming-and-transcription.md)
+- Treat subscription errors as terminal unless the pipeline is explicitly rebuilt.
+- Treat Swift SDK networking as reconnecting-online, not offline-first.
+- Treat macOS support as Apple Silicon only for the ConvexMobile path.
+- Use [operations/verified-corrections.md](operations/verified-corrections.md) before repeating version, support, or trust-boundary claims.
