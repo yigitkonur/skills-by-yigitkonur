@@ -132,6 +132,7 @@ port.onMessage.addListener((msg) => console.log("Received:", msg));
 - Content scripts initiate requests on behalf of the page origin and remain subject to the page's same-origin policy, even when the extension has host permissions.
 - Route privileged cross-origin fetches through the service worker, but never let a content script pass an arbitrary URL. Pass a constrained ID or path and construct the URL in the extension context.
 - Prefer HTTPS for remote data. Treat fetched data as untrusted and avoid injecting it with `innerHTML`.
+- Cross-origin isolation (COOP/COEP) is not a default content-script requirement. If SharedArrayBuffer or another cross-origin-isolated API appears in scope, research Chrome's official [cross-origin isolation](https://developer.chrome.com/docs/extensions/develop/concepts/cross-origin-isolation) docs before advising; extension context support has caveats.
 
 ### ISOLATED <-> MAIN world bridging
 
