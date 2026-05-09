@@ -18,7 +18,7 @@ Use this skill for:
 
 Do not use this skill for:
 
-- MCP server architecture, MCP tool schemas, MCP transport/auth/session design, or protocol-level testing; route MCP-specific work through the repo's MCP routing and build/test skills
+- MCP server architecture, MCP tool schemas, MCP transport/auth/session design, or protocol-level testing; route surface decisions through `optimize-agent-ergonomics` and MCP implementation/testing through the repo's MCP build/test skills
 - vendor-specific operational answers when a vendor skill exists; use `use-railway` for Railway CLI and `use-linear-cli` for Linear CLI
 - generic shell scripting unless the CLI contract itself is the problem
 
@@ -64,6 +64,11 @@ Use the scripts only for read-only discovery support:
 | `scripts/diff-cli-help.sh` | `scripts/diff-cli-help.md` | Compare captured help snapshots for command/flag additions, removals, and likely breaking changes. |
 
 These scripts audit discoverability and drift only. They do not prove full agent-readiness and must not replace stdout/stderr, exit-code, non-interactive, and destructive-flow checks.
+
+## Local Exemplars
+
+- `use-linear-cli` is the strong agent-ready CLI model: JSON everywhere, `--dry-run`, `--id-only`, non-pager flags, an exit-code contract, and bulk mutation gates.
+- `use-railway` is the drift-aware CLI model: installed-help snapshot, upstream-vs-local distinction, refresh scripts, and version-drift routing.
 
 ## Audit Workflow
 

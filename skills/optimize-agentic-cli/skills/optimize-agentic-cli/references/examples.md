@@ -29,6 +29,17 @@ Production-ready code examples in Go, Python, Node.js, Rust, and Shell/Bash for 
 
 Use this file for implementation examples and audit case studies. Use `output-contracts.md`, `discovery-and-auth.md`, and `execution-patterns.md` as canonical standards when examples repeat those tables.
 
+## Local CLI Exemplars
+
+Use these repo-local skills as design anchors before reaching for generic examples:
+
+| Skill | Pattern worth copying |
+|---|---|
+| `use-linear-cli` | JSON on every command, `--dry-run` before bulk writes, `--id-only` for chaining, `--no-pager` discipline, explicit exit-code contract, and bulk mutation gates. |
+| `use-railway` | Installed-help snapshot as local truth, upstream-vs-local command distinction, refresh scripts, and version-drift routing. |
+
+Real-world audits below should use the audit report contract from `SKILL.md`: scorecard, severity-ranked findings, command evidence, why it matters for agents, recommended fix, and verification command.
+
 ## Standard Flag Names
 
 All examples in this document use consistent flag names:
@@ -744,6 +755,8 @@ func createResource(cmd *cobra.Command, args []string) {
 ## 11. Real-World CLI Audit: GitHub CLI (gh)
 
 Let's audit `gh` (GitHub CLI) for agent-readiness using our checklist.
+
+Report shape: scorecard first, then severity-ranked findings with command evidence and verification commands.
 
 ### Critical Checks
 
