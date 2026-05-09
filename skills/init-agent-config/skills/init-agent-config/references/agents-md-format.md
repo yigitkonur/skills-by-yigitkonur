@@ -23,7 +23,7 @@ Do not use it for:
 1. Plain markdown only.
 2. Root file first, folder files second.
 3. Each child file contains only the local delta from its parent.
-4. Default to local files for meaningful `src/*`, `apps/*`, `services/*`, or `packages/*` subtrees discovered in Wave 2.
+4. Default to local files for meaningful `src/*`, `apps/*`, `services/*`, or `packages/*` subtrees discovered in Wave 2, but skip or collapse folders with no distinct workflow, risk, or convention.
 5. Every file must answer: `What does a coder working in this scope need to know to avoid mistakes?`
 6. If a line would not prevent a mistake, cut it.
 7. Companion agent files must point back to AGENTS rather than competing with it.
@@ -133,10 +133,11 @@ Start from the filesystem, not from templates.
 1. Run `tree -d .` or `tree -dL 2 .`.
 2. Mark the repo root plus each meaningful `src/*`, `apps/*`, `services/*`, or `packages/*` folder.
 3. After Wave 2, create a local `AGENTS.md` for each first-level subtree with its own workflow, entry points, or failure modes.
-4. If a folder has only a tiny local delta, keep the file short instead of skipping it.
-5. Add deeper nesting only when the second-level subtree has genuinely different rules from its parent.
+4. If Wave 2 proves a folder has no distinct workflow, risk, or convention, skip it or collapse the guidance into the parent.
+5. If a folder has a small but real local delta, keep the file short instead of moving the detail to the root.
+6. Add deeper nesting only when the second-level subtree has genuinely different rules from its parent.
 
-**Default bias:** if `src/` contains `api/`, `components/`, `lib/`, and `jobs/`, assume each of those needs its own file unless discovery proves otherwise.
+**Default bias:** if `src/` contains `api/`, `components/`, `lib/`, and `jobs/`, assume each is a candidate for its own file unless Wave 2 proves there is no local signal.
 
 ## Example Hierarchy
 

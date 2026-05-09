@@ -59,7 +59,7 @@ Quick boundary:
 - If the environment supports explorer subagents, use up to 10 across the discovery waves.
 - Explorer prompts must be substantive: minimum 500 words, maximum 2500 words.
 - Writer prompts may be more detailed, but cap them at 5000 words.
-- Default folder rule: create root `AGENTS.md` plus a local `AGENTS.md` for each meaningful `src` subfolder discovered in Wave 2. If a `src` tree has first-level folders, each first-level folder should end with its own `AGENTS.md` unless repo evidence proves there is no distinct workflow there.
+- Default folder rule: treat each meaningful first-level `src/*` folder as a local `AGENTS.md` candidate. Create the file unless Wave 2 proves there is no distinct workflow, risk, or convention; then skip or collapse the guidance into the parent.
 - Every folder-level `AGENTS.md` must answer the question: `What does a coder working in this folder need to know to avoid mistakes here?`
 - When generated, the root `REVIEW.md` must answer: `What kinds of changes should be flagged or scrutinized because they break this repo's intended standards or risk boundaries?`
 - After each `AGENTS.md` is finalized, create sibling `CLAUDE.md` as a symlink to it. If symlinks are impossible in the target environment, fall back to a one-line wrapper and call out the exception in your response.
@@ -182,7 +182,7 @@ Translate the discovery findings into a file plan.
 - Each folder `AGENTS.md` carries only what is local to that subtree.
 - Child files may assume the parent already provided global rules.
 - If a folder needs only a small local delta, keep that file short rather than folding it back into the root.
-- If a `src` folder has first-level subfolders, default to one local `AGENTS.md` per first-level subfolder.
+- If a `src` folder has first-level subfolders, default to one local `AGENTS.md` per meaningful subfolder unless Wave 2 proves the local delta is empty.
 - Each planned file should have a one-sentence purpose before writing begins.
 - Use `scripts/scaffold-agents-md.sh` only after this file plan is known; never use it to invent structure before discovery.
 
