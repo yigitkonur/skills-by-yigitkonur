@@ -20,9 +20,11 @@ Default Claude compatibility model: every finalized `AGENTS.md` gets a sibling `
 
 ## Do not use this skill for
 
-- reviewing a PR directly
+- creating or revising skills, frontmatter, reference routing, or skill packaging -> use `synthesize-skills`
+- checking whether planned work is actually complete -> use `check-completion`
+- reviewing a PR directly -> use `do-review`
 - writing generic "AI coding guidelines" without inspecting a real repository
-- runtime subagent orchestration unrelated to repo instruction files -> use the matching orchestration skill
+- runtime multi-agent orchestration unrelated to repo instruction files -> use `orchestrate-codex`
 
 ## Review context and native adapters
 
@@ -97,12 +99,12 @@ Resolve script paths relative to this skill directory.
 
 Classify the job before reading deeply.
 
-| Request type | What to produce |
+| Request type | Output contract |
 |-------------|-----------------|
-| New setup | Fresh root and folder `AGENTS.md` hierarchy, then companion entrypoints |
-| Audit | Quality report first, then targeted edits |
-| Migration | Extract universal content into `AGENTS.md`, then re-home agent-specific behavior |
-| Extension | Add missing folder files or companion entrypoints without rewriting everything |
+| New setup | Root and evidence-gated folder `AGENTS.md` hierarchy, sibling `CLAUDE.md` companions, review-context decision/output, then optional adapter question |
+| Audit | Quality report first, then targeted edits to unstable files, companion status, and review-context gaps |
+| Migration | Extract shared rules into `AGENTS.md`, move agent-native behavior out, preserve critical warnings, repair companions, and decide review context |
+| Extension | Add missing folder files or entrypoints without rewriting stable root files; touch review context only when the new scope warrants it |
 
 Check which instruction surfaces already exist:
 - `AGENTS.md`, nested `AGENTS.md`, `AGENTS.override.md`
@@ -350,9 +352,10 @@ Start with one or two references. Expand only if the current task truly needs mo
 
 When you generate or revise files, provide:
 
-1. the chosen AGENTS hierarchy and why it fits the repo
-2. the folder map or tree excerpt that drove the hierarchy
-3. the audit report first when existing files were present
-4. the review-context outputs and how they complement the AGENTS hierarchy
-5. the created or updated files, including any symlinked companion entrypoints and configured review adapters
-6. remaining unknowns or follow-up checks in your response text, not inside the instruction files
+1. instruction hierarchy created or changed
+2. repo evidence that drove the hierarchy
+3. audit report before edits when existing files were present
+4. review-context output or explicit reason it was not generated
+5. companion entrypoint status for each finalized `AGENTS.md`
+6. verification rung reached
+7. unresolved unknowns outside generated files
