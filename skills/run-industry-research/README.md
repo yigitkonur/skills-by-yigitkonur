@@ -1,6 +1,6 @@
 # run-industry-research
 
-Researching an industry, market, or vendor category with 5+ entities and need a multi-file evidence corpus with per-entity packs, cross-entity comparisons, and source ledgers.
+Researching an industry, market, or vendor category with 5+ entities and need a reusable multi-file corpus. Use `run-research` for 1-4 entity or single-question research; use `run-github-scout` for GitHub-only repo discovery.
 
 **Category:** productivity
 

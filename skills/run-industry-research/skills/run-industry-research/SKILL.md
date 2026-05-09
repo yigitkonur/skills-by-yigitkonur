@@ -11,20 +11,38 @@ The discipline is **template-driven**. The orchestrator first studies the catego
 
 ## Trigger boundary
 
+Use this skill by default for **5+ named or discoverable entities** when the user wants a reusable multi-file market/category research corpus: per-entity packs, cross-entity comparisons, profile pages, and source ledgers.
+
 Use this skill when the user asks for:
 
 - comprehensive industry research, market landscape, category map, or competitive landscape
-- deep product-category audits with many vendors, tools, frameworks, or open-source projects
+- deep product-category audits with 5+ vendors, tools, frameworks, or open-source projects
 - SaaS research, open-source ecosystem research, developer-tool landscape, or provider comparison
 - a reusable research folder with product pages, comparison rollups, pricing/unit economics, source ledgers, Reddit/audience evidence, and master summaries
 
 Do not use this skill for:
 
-- a single technical question or architecture decision — use `run-research`
+- 1-4 entity comparisons, single reports, or one-off architecture/library decisions — use `run-research` unless the user explicitly asks for this skill's corpus folder structure
+- a single technical research question — use `run-research`
 - finding GitHub repositories only — use `run-github-scout`
 - codebase analysis, code review, or implementation work
 - a quick one-page market summary where a full corpus would be overkill
 - producing a polished single deliverable (HTML battlecard, slide deck) — this skill produces evidence; downstream skills polish it
+
+`run-research` answers a technical research question. `run-industry-research` builds a full market/category research corpus. `run-github-scout` handles GitHub-repo-only discovery and shortlisting.
+
+## Pinned defaults
+
+| Key | Default |
+|---|---|
+| Trigger threshold | 5+ named/discoverable entities plus reusable corpus output |
+| Non-trigger route | 1-4 entity comparisons, single reports, and one-off technical decisions route to `run-research` unless explicit corpus structure is requested |
+| Default scale | `standard` for 10-40 entities; `compact` for 5-10 entities |
+| Hard wave cap | 20 agents per wave |
+| Recommended wave size | 6-8 agents when integration quality or context pressure matters |
+| Profile pages | Default yes for `core` tier at `standard` scale or larger |
+| File count policy | Record and reconcile against template-derived expectation; no fixed cap |
+| Source ledger policy | Per-entity ledgers in `[entity]/09-sources/`; cross-corpus ledgers in `_cross-[scope]/09-sources/` |
 
 ## Hard limits
 
@@ -74,10 +92,11 @@ Clarify outcome if missing:
 1. Ask: "What will you do with this research?" Capture target audience, geography, decision type (buying, strategy, implementation, investment, content).
 2. Skip questions when the user's intent is already clear from context.
 3. Choose corpus scale (guidance, not hard cap):
-   - `compact` — 1-10 entities, ~80-200 files
+   - `compact` — 5-10 entities, ~80-200 files
    - `standard` — 10-40 entities, ~150-500 files
    - `deep` — 40-100 entities, ~500-2000 files
    - `tiered` — 100+ entities, full packs for top tier only
+   - 1-4 entities use this skill only when the user explicitly requests the corpus folder structure.
 
 **Artifact:** one-paragraph scope statement with chosen scale, presented to user before Phase 1.
 
