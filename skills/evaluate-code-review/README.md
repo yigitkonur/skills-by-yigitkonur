@@ -1,6 +1,6 @@
 # evaluate-code-review
 
-Evaluate code review feedback — PR comments from humans or bots, earlier self-review output, consolidating multiple AI reviewers, or auditing a session's changes against a review doc.
+Triaging received code review feedback from human PR comments, bots, markdown review docs, or multi-reviewer feedback streams.
 
 **Category:** productivity
 

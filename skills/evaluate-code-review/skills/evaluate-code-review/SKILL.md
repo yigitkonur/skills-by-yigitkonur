@@ -1,28 +1,31 @@
 ---
 name: evaluate-code-review
-description: Use skill if you are evaluating code review feedback — PR comments from humans or bots, multi-agent review consolidation, or auditing a session's changes against a review doc.
+description: Use skill if you are triaging received code review feedback from human PR comments, bots, markdown review docs, or multi-reviewer feedback streams.
 ---
 
 # Evaluate Code Review
 
-The opposite side of `ask-review`. You have feedback in hand — from a human reviewer, one or more AI review bots, a previous self-review, or a markdown audit doc — and need to decide what to act on, what to push back on, and what to ask about. Discipline: **verify before implementing, technical correctness over social comfort, no performative agreement.**
+The opposite side of `ask-review`. Feedback is already in hand - from a human reviewer, one or more AI review bots, a previous self-review, or a markdown audit doc - and needs triage into action, pushback, clarification, deferral, or dismissal. Discipline: **verify before implementing, technical correctness over social comfort, no performative agreement.**
 
 ## Trigger boundary
 
 Use this skill when the task is to:
 
+- triage received human, bot, self-review, or markdown review feedback into ACCEPT / PUSHBACK / CLARIFY / DEFER / DISMISS
 - evaluate review comments on a GitHub PR (single or multiple reviewers)
 - consolidate feedback from multiple AI reviewers (Copilot + CodeRabbit + Devin + ...) on the same PR
-- audit earlier messages in the current conversation — "go back and check the reviewer's notes", "self-eval what we just shipped"
+- audit earlier review feedback in the current conversation - "go back and check the reviewer's notes", "self-eval the review comments from earlier"
 - read a markdown review/audit doc (e.g. `review-notes.md`, `audit.md`) and produce an action plan
-- handle ambiguous input: the user said "check the review" without pointing at a specific source → default to scanning prior messages, then PR comments on the current branch
+- handle ambiguous input: the user said "check the review" without pointing at a specific source -> default to scanning prior messages, then PR comments on the current branch
 
 Prefer another skill when:
 
-- doing the review yourself (reviewer-side) → `do-review`
-- preparing a PR for review (author-side) → `ask-review`
-- tidying a dirty tree → `run-repo-cleanup`
-- debugging runtime behavior via tools → `debug-*`
+- doing the review yourself (reviewer-side) -> `do-review`
+- preparing a PR for review (author-side) -> `ask-review`
+- checking what work is done vs. claimed done -> `check-completion`
+- tidying a dirty tree -> `run-repo-cleanup`
+- debugging runtime behavior via tools -> `do-debug`
+- running `orchestrate-codex` per-branch `codex exec review` convergence loops -> `orchestrate-codex` review mode; current major-finding evaluation routes through `do-review`, not this skill
 
 ## Non-negotiable rules (discipline)
 
