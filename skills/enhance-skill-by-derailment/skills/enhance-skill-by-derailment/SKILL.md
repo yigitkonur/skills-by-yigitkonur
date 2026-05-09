@@ -1,10 +1,9 @@
 ---
 name: enhance-skill-by-derailment
-description: >-
-  Use skill if you are improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find breaks, and applying fixes.
+description: "Use skill if you are hardening an existing skill by running a real-task subagent derailment pass, classifying trace friction, and editing the skill files."
 ---
 
-# Enhance Skill by Using
+# Enhance Skill by Derailment
 
 Improve a skill by making a subagent use it on a real task, reading the execution trace to find where the instructions broke, and fixing the skill directly.
 
@@ -12,6 +11,8 @@ Improve a skill by making a subagent use it on a real task, reading the executio
 
 **Use when:** testing, hardening, or improving any skill's instructional quality
 **Do NOT use when:** building a new skill from scratch (use `synthesize-skills`)
+
+Use `synthesize-skills` to create or redesign a skill; use this skill after a draft exists and needs real-task hardening.
 
 ## Non-negotiable rules
 

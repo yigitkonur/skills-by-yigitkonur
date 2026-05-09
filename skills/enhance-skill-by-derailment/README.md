@@ -1,6 +1,6 @@
 # enhance-skill-by-derailment
 
-Improving a skill's instructional quality by having a subagent use it on a real task, reading the execution trace to find breaks, and applying fixes.
+Hardening an existing skill by running a real-task subagent derailment pass, classifying trace friction, and editing the skill files.
 
 **Category:** productivity
 
