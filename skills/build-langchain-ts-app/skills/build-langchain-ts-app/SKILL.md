@@ -41,14 +41,14 @@ Force the architecture choice before writing code:
 
 | Path | Expected output shape | First reference to load | Verification |
 |---|---|---|---|
-| `createAgent` tool-calling assistant | Messages state plus optional `structuredResponse`; tools call real project functions. | `references/agents.md`, then `references/tools.md` | Assert tool call/result behavior, final message, max-step limit, and optional structured response. |
-| RAG pipeline | Answer plus retrieved/source `Document[]`, citations, and grounding metadata. | `references/rag.md` | Assert retrieval count, source IDs, answer contract, and no-answer behavior. |
-| Raw `StateGraph` | Typed graph state returned from `invoke`/`stream`; state transitions are explicit. | `references/langgraph.md` | Assert node outputs, conditional routes, recursion limit, and persisted state when enabled. |
-| Structured output | Validated schema object or explicit parse/retry failure path. | `references/structured-output.md` | Assert schema success, invalid-output handling, and provider/tool strategy behavior. |
-| Streaming UI/API | Chosen token/event/update contract with cancellation and error events. | `references/streaming.md` | Assert event order, chunk shape, completion signal, and abort behavior. |
-| MCP integration | Namespaced MCP tools, lifecycle management, and explicit auth/transport config. | `references/mcp.md` | Assert server connection, tool discovery/filtering, timeout, cleanup, and credential failure behavior. |
-| Memory/checkpointing | Stable `thread_id`, selected checkpointer/store, retention rules, and replay expectations. | `references/memory-checkpointers.md` | Assert multi-turn continuity, isolation between threads, and persistence across process restart if durable. |
-| Multi-agent / knowledge-domain agent | Supervisor/router/handoff state plus domain safety constraints. | `references/multi-agent.md` or `references/knowledge-agents.md` | Assert route selection, handoff messages, domain guardrails, and failure fallback. |
+| `createAgent` tool-calling assistant | Messages state plus optional `structuredResponse`; tools call real project functions. | `references/agents/agents.md`, then `references/agents/tools.md` | Assert tool call/result behavior, final message, max-step limit, and optional structured response. |
+| RAG pipeline | Answer plus retrieved/source `Document[]`, citations, and grounding metadata. | `references/rag/rag.md` | Assert retrieval count, source IDs, answer contract, and no-answer behavior. |
+| Raw `StateGraph` | Typed graph state returned from `invoke`/`stream`; state transitions are explicit. | `references/langgraph/langgraph.md` | Assert node outputs, conditional routes, recursion limit, and persisted state when enabled. |
+| Structured output | Validated schema object or explicit parse/retry failure path. | `references/agents/structured-output.md` | Assert schema success, invalid-output handling, and provider/tool strategy behavior. |
+| Streaming UI/API | Chosen token/event/update contract with cancellation and error events. | `references/agents/streaming.md` | Assert event order, chunk shape, completion signal, and abort behavior. |
+| MCP integration | Namespaced MCP tools, lifecycle management, and explicit auth/transport config. | `references/providers/mcp.md` | Assert server connection, tool discovery/filtering, timeout, cleanup, and credential failure behavior. |
+| Memory/checkpointing | Stable `thread_id`, selected checkpointer/store, retention rules, and replay expectations. | `references/langgraph/memory-checkpointers.md` | Assert multi-turn continuity, isolation between threads, and persistence across process restart if durable. |
+| Multi-agent / knowledge-domain agent | Supervisor/router/handoff state plus domain safety constraints. | `references/agents/multi-agent.md` or `references/agents/knowledge-agents.md` | Assert route selection, handoff messages, domain guardrails, and failure fallback. |
 
 ## Implementation contracts
 
@@ -86,7 +86,7 @@ For RAG, make these decisions before implementation:
 | Grounding contract | Return source documents | Citations, refusal/no-answer policy, regression eval |
 | Evaluation metric | Manual smoke test | Retrieval recall, faithfulness, answer relevance |
 
-Before productionizing any path, define max steps or recursion limits, token budget, retry/fallback policy, rate-limit strategy, and failure surface. Route details to `references/middleware-catalog.md`, `references/middleware-patterns.md`, `references/observability-tracing.md`, and `references/observability-evaluation.md`.
+Before productionizing any path, define max steps or recursion limits, token budget, retry/fallback policy, rate-limit strategy, and failure surface. Route details to `references/middleware/middleware-catalog.md`, `references/middleware/middleware-patterns.md`, `references/ops/observability-tracing.md`, and `references/ops/observability-evaluation.md`.
 
 Use LangSmith/observability for development debugging, production traces, cost/token tracking, RAG evaluation, and user feedback or online evals. Verify current pricing before quoting costs.
 
@@ -96,17 +96,17 @@ Load only the files needed for the selected path.
 
 | Intent | Read |
 |---|---|
-| First runnable app and baseline commands | `references/getting-started.md`, `references/common-errors.md` |
-| Agent orchestration and tool contracts | `references/agents.md`, `references/tools.md` |
-| Structured output and streaming | `references/structured-output.md`, `references/streaming.md` |
-| Multi-agent and knowledge-domain agents | `references/multi-agent.md`, `references/knowledge-agents.md` |
-| Raw LangGraph execution | `references/langgraph.md`, `references/langgraph-execution.md`, `references/human-in-the-loop.md` |
-| Memory and persistence | `references/memory-checkpointers.md`, `references/memory-stores.md` |
-| RAG | `references/rag.md` |
-| Middleware and guardrails | `references/middleware-catalog.md`, `references/middleware-patterns.md` |
-| Models, providers, and MCP | `references/models.md`, `references/providers.md`, `references/mcp.md` |
-| Local and production deployment | `references/deployment-local.md`, `references/deployment-production.md` |
-| Tracing, evaluation, and online feedback | `references/observability-tracing.md`, `references/observability-evaluation.md` |
+| First runnable app and baseline commands | `references/start/getting-started.md`, `references/start/common-errors.md` |
+| Agent orchestration and tool contracts | `references/agents/agents.md`, `references/agents/tools.md` |
+| Structured output and streaming | `references/agents/structured-output.md`, `references/agents/streaming.md` |
+| Multi-agent and knowledge-domain agents | `references/agents/multi-agent.md`, `references/agents/knowledge-agents.md` |
+| Raw LangGraph execution | `references/langgraph/langgraph.md`, `references/langgraph/langgraph-execution.md`, `references/langgraph/human-in-the-loop.md` |
+| Memory and persistence | `references/langgraph/memory-checkpointers.md`, `references/langgraph/memory-stores.md` |
+| RAG | `references/rag/rag.md` |
+| Middleware and guardrails | `references/middleware/middleware-catalog.md`, `references/middleware/middleware-patterns.md` |
+| Models, providers, and MCP | `references/providers/models.md`, `references/providers/providers.md`, `references/providers/mcp.md` |
+| Local and production deployment | `references/ops/deployment-local.md`, `references/ops/deployment-production.md` |
+| Tracing, evaluation, and online feedback | `references/ops/observability-tracing.md`, `references/ops/observability-evaluation.md` |
 
 ## Scope boundaries
 
