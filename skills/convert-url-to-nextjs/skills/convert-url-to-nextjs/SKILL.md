@@ -37,6 +37,12 @@ Convert live sites or saved HTML snapshots into grounded Next.js App Router buil
 | **Naming** | Route folders, capture identifiers, manifests, asset folders, CSS classes, and token names use kebab-case. React component files and exported component symbols use PascalCase. |
 | **Minified CSS warning** | Captured or saved CSS may be minified (no trailing `;` before `}`). All grep patterns in references use `[^;}]+` to handle this — do not simplify to `[^;]+`. |
 
+## Scripts
+
+| Phase | Helper | Use |
+|---|---|---|
+| Capture Wave | `scripts/capture-url.sh` — read `scripts/capture-url.md` | Create the route capture skeleton, record expected artifact paths, and run a supplied browser-capture command without writing success signals on failure. |
+
 ## Start with these decisions
 
 | Situation | Action |
