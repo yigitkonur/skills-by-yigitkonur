@@ -94,7 +94,7 @@ gh pr comment $PR --repo $REPO --body "@alice <response text>"
 
 ## Reviewing one's own past responses (self-audit)
 
-If evaluating your own past output, fetch your previous PR comments:
+For self-auditing past output, fetch previous PR comments:
 
 ```bash
 # My PR comments on PR #N
@@ -152,7 +152,7 @@ When running the voice discipline, replies to bots are usually machine-parsed; s
 
 ## Repo-explicit `--repo` rule
 
-Every `gh pr`-family command can infer the repo from `git remote`. **Don't rely on it.** If you're on a fork, the inference is wrong. Always pass `--repo <owner>/<name>` explicitly, as the sibling `ask-review` skill also requires.
+Every `gh pr`-family command can infer the repo from `git remote`. **Don't rely on it.** On forks, inference is often wrong. Always pass `--repo <owner>/<name>` explicitly, as the sibling `ask-review` skill also requires.
 
 For `gh api` calls, the repo is explicit in the URL path — no inference risk.
 

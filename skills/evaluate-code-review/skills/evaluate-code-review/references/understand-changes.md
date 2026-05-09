@@ -1,6 +1,6 @@
 # Understanding What Was Reviewed — The Fallback Chain
 
-The reviewer evaluates *some* set of changes. Before you can judge their feedback, you need to reconstruct that set independently — do not trust the reviewer's description of "the changes" as the ground truth. Reviewers get the diff wrong constantly (stale PRs, edited commits, wrong base, bot confusion).
+The reviewer evaluates *some* set of changes. Before judging feedback, reconstruct that set independently — do not trust the reviewer's description of "the changes" as the ground truth. Reviewers get the diff wrong constantly (stale PRs, edited commits, wrong base, bot confusion).
 
 ## The fallback chain
 
@@ -55,7 +55,7 @@ Ground-truth changes (from Edit/Write trail, no commits):
   Edit:  /path/to/config.json (1 edit)
 ```
 
-**Caveat:** tool trail does not show you the *before* state. If a reviewer comments "line 42 is wrong", you know `line 42` *now* but not what it was pre-edit. If a before-state matters, read the git diff against HEAD (if there are no local commits, diff against the index or an earlier HEAD if the file was committed before the edits).
+**Caveat:** tool trail does not show the *before* state. If a reviewer comments "line 42 is wrong", `line 42` is visible *now* but may differ from the pre-edit state. If a before-state matters, read the git diff against HEAD (if there are no local commits, diff against the index or an earlier HEAD if the file was committed before the edits).
 
 ### Layer 3: Bash commands affecting files
 
@@ -84,7 +84,7 @@ If none of Layers 1-3 produce a complete picture, **say so**. Do not proceed to 
 
 ## Reconciling reviewer references to ground truth
 
-Once you have the ground-truth change set, check each feedback item's reference:
+Once the ground-truth change set is reconstructed, check each feedback item's reference:
 
 | Reviewer reference | Check |
 |---|---|
@@ -97,7 +97,7 @@ If a reviewer reference points at code **not in the change set** — the reviewe
 
 ## Commit-boundary awareness
 
-When the PR has multiple commits, reviewer comments sometimes pin to a specific commit. The `comment.commit_id` field on `gh api repos/{o}/{r}/pulls/{N}/comments` tells you which commit the reviewer was viewing.
+When the PR has multiple commits, reviewer comments sometimes pin to a specific commit. The `comment.commit_id` field on `gh api repos/{o}/{r}/pulls/{N}/comments` identifies which commit the reviewer was viewing.
 
 If the commit_id is not `HEAD`, the reviewer was looking at an earlier state. Either:
 

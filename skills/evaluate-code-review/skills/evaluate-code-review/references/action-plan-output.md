@@ -45,7 +45,7 @@ Addressed in commit `<sha>` (or "see per-thread replies"):
 - <K> items need clarification (inline per-thread, tagged CLARIFY)
 - <L> items dismissed with reason (inline per-thread)
 
-Validation: `<what you ran>` passes.
+Validation: `<what was run>` passes.
 
 <Optional one-paragraph framing if the PR context warrants — e.g., "The retry-strategy thread is the only unresolved item; reviewer and I are aligned that it needs architectural input.">
 ```
@@ -225,9 +225,9 @@ If an explanation genuinely needs more characters, split — link from the summa
 | One giant PR comment with everything inline | Layer 1 summary + Layer 2 thread replies |
 | Thread reply with pure "Fixed." | If the fix is non-obvious, state the commit SHA or the one-line change |
 | PUSHBACK reply without evidence | Cite `file:line`; specific scenarios that break |
-| CLARIFY reply that's actually a pushback | If you have evidence, push back. CLARIFY is for genuine uncertainty. |
+| CLARIFY reply that's actually a pushback | If evidence exists, push back. CLARIFY is for genuine uncertainty. |
 | Dismiss bot feedback without reason | "Dismissed — <reason>" always |
-| Action plan that doesn't name the ground-truth source | Always state how you reconstructed what was reviewed |
+| Action plan that doesn't name the ground-truth source | Always state how the reviewed change set was reconstructed |
 
 ## Worked example — PR mode
 

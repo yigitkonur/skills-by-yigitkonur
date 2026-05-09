@@ -2,7 +2,7 @@
 
 The core discipline in this skill is **verify before implementing, no performative agreement**. Under pressure (time, sunk cost, social pressure to agree), agents skip verification and default to "the reviewer is probably right, let me just implement." This file is the RED baseline: verbatim rationalizations and counters.
 
-See the `synthesize-skills` skill's `tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
+See `skills/synthesize-skills/skills/synthesize-skills/references/authoring/tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
 
 ## Why the discipline breaks
 
@@ -20,7 +20,7 @@ All three are bypassable with the counters below. None justify skipping the six-
 |---|---|---|
 | "The reviewer is probably right, let me just implement." | Authority pressure + time savings | "Probably right" is not a verdict. Run the six-check. Ten minutes of verification saves an hour of debugging when the "fix" breaks something. |
 | "It feels rude to push back on the reviewer." | Social pressure | Pushback with technical reasoning is **not** rude — it's the review process working. Capitulation is the rude behavior: it wastes the reviewer's time correcting you later when the wrong fix breaks. |
-| "The reviewer has more context than me." | Perceived authority | Maybe. But the diff is in front of **you**, not them. You can grep, run tests, read history. They cannot. Verify against the code; push back where the reviewer's context is stale. |
+| "The reviewer has more context than me." | Perceived authority | Maybe. But the diff is available locally; grep, run tests, and read history. Verify against the code; push back where the reviewer's context is stale. |
 | "I'll batch all the fixes and test once at the end." | Time savings | Batching hides regressions. One fix, test, next. This is obra's "one item at a time, test each" rule and it exists because batched fixes create combinatorial failure modes. |
 | "The suggestion is obvious — no need to verify." | Cognitive shortcut | "Obvious" suggestions fail the six-check constantly. Obvious that "remove unused import" is safe? Until the import is re-exported via a barrel file. Always check. |
 | "The reviewer's comment already cites `file:line` — they've done the work." | Delegating the verification | The reviewer identified *where*; the six-check tells you *whether it's right*. The line reference is a starting point, not a verdict. |
@@ -94,6 +94,6 @@ Pushing back on a wrong-but-harmless suggestion is a discipline muscle. Every sk
 
 ## How to use this file
 
-Before writing a response to a reviewer, scan this table. If your draft response echoes any of the rationalizations, stop. Re-read the corresponding counter. Then rewrite.
+Before writing a response to a reviewer, scan this table. If the draft response echoes any of the rationalizations, stop. Re-read the corresponding counter. Then rewrite.
 
 In practice, the counters become internal voice. With practice, agents stop writing "You're absolutely right" because the voice discipline has become automatic.

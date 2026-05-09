@@ -29,8 +29,8 @@ Prefer another skill when:
 
 ## Non-negotiable rules (discipline)
 
-1. **Verify before implementing.** Do not start editing until you have confirmed the feedback against the actual code. Obra's rule: "check if breaks existing functionality; check if reviewer understands full context; check legacy/compatibility reasons."
-2. **No performative agreement.** The phrases in `references/voice.md` are forbidden. If you catch yourself about to type "You're absolutely right" or "Thanks for catching that" — stop and state the fix instead. See `references/rationalizations.md` for why agents keep writing them anyway.
+1. **Verify before implementing.** Do not start editing until the feedback has been confirmed against the actual code. Obra's rule: "check if breaks existing functionality; check if reviewer understands full context; check legacy/compatibility reasons."
+2. **No performative agreement.** The phrases in `references/voice.md` are forbidden. If a draft starts with praise, gratitude, or apology, delete the filler and state the technical result. See `references/rationalizations.md` for why agents keep writing it anyway.
 3. **Understand what was reviewed, from the ground truth.** Follow the fallback chain in `references/understand-changes.md`: commits → Edit/Write tool outputs → Bash rm/mv history. Do not trust the reviewer's description of "the changes" — they may be wrong.
 4. **Always dispatch an Explore subagent for independent analysis.** Self-contained prompt, no session-history leakage. See `references/subagent-dispatch.md` for the template.
 5. **Push back when the reviewer is wrong** — with technical reasoning, not defensiveness. "Can't verify X without Y; should I investigate / ask / proceed?" is a valid push-back.
@@ -82,7 +82,7 @@ See `references/understand-changes.md` for the extraction recipes.
 
 ### 3. Dispatch an Explore subagent for independent evaluation
 
-**Always.** Even for a single-item review. The subagent reads the code without your session's bias and returns its own assessment of each feedback item's correctness.
+**Always.** Even for a single-item review. The subagent reads the code without parent-session bias and returns an independent assessment of each feedback item's correctness.
 
 Per-subagent prompt is self-contained (no "as we discussed earlier", no "the user wants X", no session references). The subagent gets:
 
@@ -109,11 +109,11 @@ For PR JSONL snapshots, use `scripts/cluster-feedback.py --input normalized.json
 
 ### 5. Evaluate each item against the codebase
 
-For every feedback item (or consolidated cluster), combine the subagent's verdict with your own verification. Each item ends with one of:
+For every feedback item (or consolidated cluster), combine the subagent's verdict with parent verification. Each item ends with one of:
 
 - **ACCEPT** — the feedback is correct and worth acting on
 - **PUSHBACK** — the feedback is wrong; respond with technical reasoning
-- **CLARIFY** — the feedback is unclear or you lack information to verify; ask
+- **CLARIFY** — the feedback is unclear or information needed for verification is missing; ask
 - **DEFER** — correct but out of scope for this PR; log as follow-up
 - **DISMISS** — noise, unambiguously wrong, or the reviewer lacks context
 
@@ -157,19 +157,9 @@ After implementation, report accepted item IDs fixed, files changed, commit SHA(
 
 ## The voice discipline (critical)
 
-Obra's rule: **No performative agreement.** Actions speak; the diff says "you heard the feedback." Full forbidden list + alternatives in `references/voice.md`. Pressure-case counters: `references/rationalizations.md`.
+Obra's rule: **No performative agreement.** Actions speak; the diff is the acknowledgment. Keep phrase-level rules in `references/voice.md`; keep pressure-scenario excuses and counters in `references/rationalizations.md`.
 
-Quick hits:
-
-| Instead of | Use |
-|---|---|
-| "You're absolutely right!" | "Fixed. <description>" or just the change |
-| "Great point!" | Acknowledge the technical content, not the point |
-| "Thanks for catching that!" | "Fixed in `src/foo.ts:42`." |
-| "Let me implement that now" (before verifying) | "Checking the codebase first — <specific check>." |
-| "I'll address all six items" (without understanding them) | "Understood items 1, 2, 3, 6. Need clarification on 4 and 5 before proceeding." |
-
-If you catch yourself about to write "Thanks" — DELETE IT. State the fix instead.
+Short version: avoid gratitude, praise, apology, and agreement-before-verification. Accept correct feedback by stating the fix. Push back with evidence. Ask for clarification only when evidence is genuinely insufficient.
 
 ## Using `gh` for multi-agent review
 
@@ -214,13 +204,13 @@ Unless the user wants a different format, produce artifacts in this order:
 | reconstruct what changed from commits or tool outputs | trust the reviewer's description of "the changes" |
 | push back with technical reasoning when feedback is wrong | accept everything to avoid conflict |
 | reply in the comment thread for inline comments | reply at top-level PR comment (wrong channel) |
-| state exactly what you verified | claim you checked something you didn't |
+| state exactly what was verified | claim a check that did not run |
 | ask for clarification when an item is ambiguous | implement a partial understanding |
 | one item at a time, test each | batch-fix, batch-test, and miss regressions |
 
 ## Guardrails and recovery
 
-- Do not write "Thanks for the review" / "Thanks for catching that" / "Great point". Delete mid-sentence if you catch it.
+- Do not write gratitude, praise, apology, or agreement-before-verification. Delete mid-sentence if it appears.
 - Do not implement before verifying. The pre-implement check is not optional.
 - Do not dispatch subagent prompts that reference "earlier in this conversation" — they break as self-contained units.
 - Do not silently pick a side when two reviewers conflict. Surface the conflict.

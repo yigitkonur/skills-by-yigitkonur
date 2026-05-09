@@ -1,6 +1,6 @@
 # Voice — Forbidden Phrases and Technical-Correctness Alternatives
 
-The voice discipline is the most bypassed rule in this skill. Performative agreement costs nothing in the moment and corrodes technical rigor over time. Review this file **every time** you are about to write a response to a reviewer.
+The voice discipline is the most bypassed rule in this skill. Performative agreement costs nothing in the moment and corrodes technical rigor over time. Load this file before writing a response to a reviewer.
 
 ## Forbidden phrases (absolute)
 
@@ -19,7 +19,7 @@ These phrases are banned in any response — PR thread, conversation, markdown d
 | "I apologize for..." | Long apologies after pushback turn corrections into drama. State the correction factually. |
 | "No worries, I'll fix it" | "No worries" is social filler; "I'll fix it" is future-tense. Either fix it now or state the block. |
 
-If you catch yourself about to type any of the above, **delete mid-sentence** and replace with the appropriate pattern below.
+If a forbidden phrase starts forming, **delete mid-sentence** and replace it with the appropriate pattern below.
 
 ## Pattern: accepting correct feedback
 
@@ -64,7 +64,7 @@ Or more concisely:
 
 ## Pattern: asking for clarification
 
-Restate what you understand; name exactly what you don't.
+Restate current understanding; name exactly what is missing.
 
 ```
 "Understood items 1, 2, 3, 6. Need clarification on 4 and 5 before
@@ -84,11 +84,11 @@ Explicit limitation, clear follow-up ask.
  reviewer for more context, or proceed with the current implementation?"
 ```
 
-This is **not** a pushback. It's honest uncertainty. The reviewer can answer the question and unblock you.
+This is **not** a pushback. It is honest uncertainty. The reviewer can answer the question and unblock the item.
 
-## Pattern: acknowledging a push-back you lost
+## Pattern: acknowledging a push-back that lost
 
-You pushed back, reviewer produced evidence, you were wrong. State the correction factually.
+After pushback, the reviewer may produce stronger evidence. State the correction factually.
 
 ```
 "You were right — I checked `session.ts:L42` and the lock *is* acquired
@@ -133,7 +133,7 @@ Bots sometimes flag false positives (unknown dependencies, language-specific pat
 
 ## The "delete if you catch yourself" rule
 
-You will catch yourself about to write a forbidden phrase. The rule:
+The rule for a forbidden phrase forming in a draft:
 
 1. See the words forming in the draft.
 2. Delete them before they're sent.
@@ -153,4 +153,4 @@ This is explicit in obra's source: "If you catch yourself about to write 'Thanks
 
 ## Why this matters
 
-The author-reviewer relationship is adversarial by design — the reviewer is paid to find what you missed. Performative agreement collapses the adversarial pressure: once you say "you're absolutely right," reversing course later looks like you didn't mean it. Technical-correctness voice keeps every claim defensible, which is what the review process requires.
+The author-reviewer relationship is adversarial by design — the reviewer is paid to find missed issues. Performative agreement collapses the adversarial pressure: once a response says "you're absolutely right," reversing course later looks unserious. Technical-correctness voice keeps every claim defensible, which is what the review process requires.

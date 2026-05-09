@@ -1,6 +1,6 @@
 # Verification Lens — Checking Feedback Against the Codebase
 
-Every feedback item gets the same six-check lens before you assign a verdict. This file is the checklist the parent agent *and* the Explore subagent both run.
+Every feedback item gets the same six-check lens before verdict assignment. This file is the checklist the parent agent *and* the Explore subagent both run.
 
 ## Source confidence model
 
@@ -163,7 +163,7 @@ The Explore subagent runs this same worksheet per its prompt template.
 
 ## Speed notes
 
-If you have 20 feedback items and the full six-check on each takes 5 minutes, that's 100 minutes. Triage first:
+If there are 20 feedback items and the full six-check on each takes 5 minutes, that's 100 minutes. Triage first:
 
 - **Obvious ACCEPT** (typo, rename, import missing): 30 seconds each. Do these in a batch.
 - **Obvious DISMISS** (false positive from a bot, comment on unchanged code): 1 minute to state the reason.
