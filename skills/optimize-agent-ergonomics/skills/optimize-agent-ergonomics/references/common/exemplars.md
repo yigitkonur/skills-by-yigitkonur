@@ -280,6 +280,23 @@ Concrete examples of redesigns since launch:
 
 When citing an exemplar, include the YYYY-MM-DD of the source page. When applying its pattern, recompute staleness — half the patterns above didn't exist 12 months ago.
 
+## Citing exemplars in design discussions
+
+Exemplars are evidence, not authority. Use them to back design decisions, not to win arguments.
+
+Good citations:
+
+- "Notion's post-mortem (notion.com/blog, 2026) recommends against 1:1 OpenAPI mapping; we should consolidate to intent-based tools instead."
+- "HubSpot's published reasoning (product.hubspot.com/blog, 2025-06-18): SSE complicates auto-scaling. We're behind an LB; pick Streamable HTTP only."
+- "Cloudflare's Codemode benchmark (developers.cloudflare.com, 2026): 1.17M tokens → 1k via JS sandbox. Our API has 80 endpoints; this is the path."
+
+Bad citations:
+
+- "Linear ships 23 tools, so we can ship 23." — Linear's catalog cost is 17.3k tokens; that's evidence against, not for, the count.
+- "Stripe uses OAuth, so we should too." — Stripe's auth choice depends on Restricted API Keys as the permission surface; if you don't have that primitive, the model doesn't apply.
+
+The exemplar is signal; the reasoning is yours.
+
 ## Cross-references
 
 - For the full 16-server survey with disagreements and copy-this patterns, read `../mcp/patterns/exemplar-servers.md`.

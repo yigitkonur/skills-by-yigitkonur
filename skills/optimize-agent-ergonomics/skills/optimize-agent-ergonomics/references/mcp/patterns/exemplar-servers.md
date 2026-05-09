@@ -300,6 +300,14 @@ Five patterns to never repeat.
 - **`structuredContent` adoption.** Spec-recommended. Supabase explicitly opts out. Linear doesn't use it. Most others ambiguous.
 - **Auth sophistication.** HubSpot (OAuth 2.1 + PKCE + runtime permission intersection) > Atlassian / Linear / Notion / Intercom (OAuth with DCR) > Stripe (OAuth + Restricted Keys) > Asana V2 (OAuth without DCR) > PayPal (manual `client_credentials` → Bearer paste).
 
+### Open questions the exemplars haven't settled
+
+- **`structuredContent` in practice.** No exemplar publishes a before/after cost comparison. Supabase's explicit opt-out suggests the ergonomics story isn't settled.
+- **Tool-count ceilings.** Atlassian Rovo 54 and GitHub 56+ work with frontier models today. There is no published evidence on whether mid-tier models degrade gracefully at those counts.
+- **Markdown body format standardization.** Notion ships "Notion-flavored Markdown," Atlassian ships Confluence-flavored Markdown, Figma ships React+Tailwind by default. No convergence on how to serialize rich content for agents.
+- **Consent-time tool scoping.** Sentry does it via OAuth consent; Supabase via URL query params; GitHub via toolset flag at deploy. Three different layers for the same problem, no clear winner.
+- **Embedded LLM inside the MCP.** Sentry does this for NL search. No other exemplar does. Unclear whether this is a broader pattern or a Sentry-specific workaround.
+
 Re-cite, don't paraphrase. When you pull a claim from this file into a design doc or PR, keep the vendor attribution and the date — the MCP ecosystem moves fast enough that exemplars older than ~6 months may have shipped redesigns.
 
 ---

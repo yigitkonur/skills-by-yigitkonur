@@ -1,6 +1,6 @@
 # optimize-agent-ergonomics
 
-Auditing a CLI or MCP server for agent-readiness, designing one from scratch, or deciding CLI vs MCP for an agent-callable tool.
+Deciding CLI vs MCP or harmonizing shared agent-ergonomics contracts across both surfaces before routing to surface-specific skills.
 
 **Category:** development
 

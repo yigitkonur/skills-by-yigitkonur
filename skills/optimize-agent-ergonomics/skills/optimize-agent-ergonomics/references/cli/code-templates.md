@@ -207,36 +207,22 @@ Stdlib only — no Click, no Typer. Demonstrates envelope writer, exit-code cons
 #!/usr/bin/env python3
 """Agent-ready CLI — envelope, exit codes, flags, TTY detection."""
 
-import argparse
-import json
-import os
-import sys
+import argparse, json, os, sys
 from typing import Any
 
 # Exit-code taxonomy — cross-language contract.
-EXIT_SUCCESS = 0
-EXIT_CRASH = 1
-EXIT_USAGE = 2
-EXIT_NOT_FOUND = 3
-EXIT_AUTH = 4
-EXIT_CONFLICT = 5
-EXIT_VALIDATION = 6
-EXIT_TRANSIENT = 7
+EXIT_SUCCESS, EXIT_CRASH, EXIT_USAGE, EXIT_NOT_FOUND = 0, 1, 2, 3
+EXIT_AUTH, EXIT_CONFLICT, EXIT_VALIDATION, EXIT_TRANSIENT = 4, 5, 6, 7
 
 
 def is_tty() -> bool:
     return sys.stdout.isatty() and not os.environ.get("NO_TTY")
 
 
-def emit(envelope: dict, *, pretty: bool | None = None) -> None:
+def emit(envelope: dict) -> None:
     """Write an envelope to stdout. Pretty-prints only when stdout is a TTY."""
-    if pretty is None:
-        pretty = is_tty()
-    if pretty:
-        print(json.dumps(envelope, indent=2))
-    else:
-        print(json.dumps(envelope))
-    sys.stdout.flush()
+    indent = 2 if is_tty() else None
+    print(json.dumps(envelope, indent=indent), flush=True)
 
 
 def emit_ndjson(event: dict) -> None:
@@ -244,31 +230,17 @@ def emit_ndjson(event: dict) -> None:
     print(json.dumps(event), flush=True)
 
 
-def emit_success(result: Any, schema_version: str = "1", **extra) -> None:
-    env = {"ok": True, "result": result, "schema_version": schema_version}
-    env.update(extra)
-    emit(env)
+def emit_success(result: Any, **extra) -> None:
+    emit({"ok": True, "result": result, "schema_version": "1", **extra})
 
 
-def emit_error(
-    error_class: str,
-    code: str,
-    message: str,
-    *,
-    retryable: bool = False,
-    suggestion: str | None = None,
-    schema_version: str = "1",
-    exit_code: int = EXIT_CRASH,
-) -> None:
-    err: dict = {
-        "class": error_class,
-        "code": code,
-        "message": message,
-        "retryable": retryable,
-    }
+def emit_error(error_class: str, code: str, message: str, *,
+               retryable: bool = False, suggestion: str | None = None,
+               exit_code: int = EXIT_CRASH) -> None:
+    err: dict = {"class": error_class, "code": code, "message": message, "retryable": retryable}
     if suggestion:
         err["suggestion"] = suggestion
-    emit({"ok": False, "error": err, "schema_version": schema_version})
+    emit({"ok": False, "error": err, "schema_version": "1"})
     sys.exit(exit_code)
 
 
@@ -280,15 +252,10 @@ def add_std_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--timeout", type=int, default=30, help="per-command timeout")
 
 
-def cmd_greet(args: argparse.Namespace) -> None:
+def cmd_greet(args) -> None:
     if not args.name:
-        emit_error(
-            "validation",
-            "MISSING_NAME",
-            "--name is required",
-            suggestion="pass --name=<value>",
-            exit_code=EXIT_VALIDATION,
-        )
+        emit_error("validation", "MISSING_NAME", "--name is required",
+                   suggestion="pass --name=<value>", exit_code=EXIT_VALIDATION)
     emit_success({"greeting": f"Hello, {args.name}!"})
     sys.exit(EXIT_SUCCESS)
 
@@ -297,27 +264,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="mytool")
     add_std_flags(parser)
     sub = parser.add_subparsers(dest="command")
-
     greet = sub.add_parser("greet", help="greet someone by name")
     greet.add_argument("--name", help="name to greet")
-    add_std_flags(greet)
     greet.set_defaults(func=cmd_greet)
 
     args = parser.parse_args()
-
-    # Auto-JSON on non-TTY.
     if not is_tty():
         args.json = True
-
     if not args.command:
-        emit_error(
-            "usage",
-            "MISSING_COMMAND",
-            "no command given",
-            suggestion="run mytool --help",
-            exit_code=EXIT_USAGE,
-        )
-
+        emit_error("usage", "MISSING_COMMAND", "no command given",
+                   suggestion="run mytool --help", exit_code=EXIT_USAGE)
     args.func(args)
 
 

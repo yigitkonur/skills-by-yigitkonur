@@ -1,8 +1,8 @@
 # Testing — how to verify an MCP server end-to-end
 
-Most MCP "bugs" surface only when an actual model picks the wrong tool, fills the wrong parameters, or fails to recover from an error. Unit tests catch the obvious failures; only **agent-driven tests** catch the description ambiguities, parameter-name mismatches, and response-shape regressions that determine whether the agent uses your server confidently. This file covers both.
+Most MCP "bugs" surface when a caller picks the wrong tool, fills the wrong parameters, or fails to recover from an error. Unit tests catch the obvious failures; **agent-use smoke checks** catch description ambiguities, parameter-name mismatches, and response-shape regressions without introducing eval workflows. This file covers both.
 
-The test pyramid: unit → schema → handler → transport → advanced protocol → security → agent-driven evals. Climb it in order. Cross-link `test-by-mcpc-cli` for the canonical end-to-end CLI; cross-link `../decision-trees/production-readiness.md` for the pre-deploy checklist that uses these tests.
+The test pyramid: unit → schema → handler → transport → advanced protocol → security → agent-use smoke checks. Climb it in order. Cross-link `test-by-mcpc-cli` for the canonical end-to-end CLI; cross-link `../decision-trees/production-readiness.md` for the pre-deploy checklist that uses these tests.
 
 ---
 
@@ -150,12 +150,11 @@ Run a static check at registration time: every tool name matches `[a-z][a-z0-9_]
 - **`mcpc` CLI** — canonical end-to-end MCP testing. Cross-link `test-by-mcpc-cli` for the dedicated skill. Use for: smoke tests in CI, fixture-driven regression suites, capability negotiation traces.
 - **MCP Inspector** — interactive UI at `npx @modelcontextprotocol/inspector@latest`. Use for: exploring a server's tool list, firing one-off calls, debugging schema errors.
 - **MCP-Test** ([github.com/modelcontextprotocol/mcp-test](https://github.com/modelcontextprotocol/mcp-test)) — the spec authors' conformance test suite. Use for: verifying your server passes the official conformance checks before publishing.
-- **PromptFoo** — systematic tool-selection evals across models. Use for: measuring whether the right tool is picked for a given user intent across Claude/GPT/Gemini.
 - **FastMCP `dev` mode** — `fastmcp dev inspector server.py` auto-restarts on file change and opens Inspector. Use for: interactive iteration loops while drafting tools.
 
 ---
 
-## Agent-driven tests — the only category that catches "did the agent actually use this right?"
+## Agent-use smoke checks — catch "will the caller use this right?"
 
 Schema, handler, and transport tests catch the obvious failures. They do not catch:
 
@@ -165,113 +164,45 @@ Schema, handler, and transport tests catch the obvious failures. They do not cat
 - Error messages that don't tell the model what to do next.
 - Tools that succeed in isolation but fail in a 5-step workflow because step 2's output doesn't unlock step 3.
 
-The only test that catches these is **a real LLM trying to complete a real task using your tools**. Build an eval suite, run it on every change, read the trace.
+Do not build model-graded suites, store conversation traces, or route generated transcripts back into model-based rewrites from this skill. This repository forbids eval instructions inside skills.
 
-```python
-import anthropic, json
+Use deterministic smoke checks instead:
 
-def run_eval(task: dict, mcp_tools: list) -> dict:
-    client = anthropic.Anthropic()
-    messages = [{"role": "user", "content": task["prompt"]}]
-    transcript = []
-
-    while True:
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            system="You are testing MCP tools. Think step by step before each tool call.",
-            tools=mcp_tools,
-            messages=messages,
-        )
-        transcript.append(response)
-
-        if response.stop_reason == "end_turn":
-            return {
-                "success": verify_against_ground_truth(response, task["expected"]),
-                "tool_calls": count_tool_calls(messages),
-                "tokens": response.usage.input_tokens + response.usage.output_tokens,
-                "transcript": transcript,
-            }
-
-        for block in response.content:
-            if block.type == "tool_use":
-                result = call_mcp_tool(block.name, block.input)
-                messages.append({"role": "assistant", "content": response.content})
-                messages.append({"role": "user", "content": [{
-                    "type": "tool_result", "tool_use_id": block.id, "content": result,
-                }]})
-```
+- **Selection fixtures.** For each user intent, list the expected tool name, required arguments, and forbidden adjacent tools. Review the tool names/descriptions against those fixtures.
+- **Metadata linting.** Check every tool name, description length, schema depth, required-field descriptions, and destructive-action annotation at registration time.
+- **Workflow fixtures.** Script multi-step flows with fixed tool calls and mocked upstream responses. Confirm each step returns the next required field, not raw provider JSON.
+- **Recovery fixtures.** Feed representative `isError: true` responses into the next step of the workflow and confirm the response includes a stable code, retryability, and concrete next action.
+- **Context-budget checks.** Fail any response that exceeds the documented token/size cap for the tool class.
 
 What to measure beyond pass/fail:
 
-- **Tool-call count.** Fewer is better — dead giveaway of poor consolidation.
-- **Token consumption.** A response bigger than 25,000 tokens means you're losing context budget.
-- **First-try success.** Did the model pick the right tool on call #1? If not, the description needs work.
-- **Recovery rate.** When a call fails, does the model recover or give up?
-- **Time to completion.** A workflow that takes 12 turns when it should take 3 is a design problem.
+- **Expected call count.** Fewer is better; extra required calls signal poor consolidation.
+- **Response size.** A response bigger than 25,000 tokens loses context budget.
+- **Fixture coverage.** Every adjacent-tool pair has at least one selection fixture.
+- **Recovery guidance.** Every retryable failure includes a machine-readable code and next action.
+- **Workflow length.** A flow that requires 12 deterministic steps when it should take 3 is a design problem.
 
-### Auto-refactoring with the transcript
+### Review descriptions without model-driven loops
 
-Feed the eval transcripts back to a model and ask for description fixes. The model can spot ambiguities humans miss:
+Use a static description review before adding a tool:
 
-```python
-analysis_prompt = f"""
-These are MCP tool evaluation transcripts. Where the agent failed or used too many calls,
-identify:
-
-1. Which tool description was ambiguous.
-2. What parameter naming caused confusion.
-3. Where the response format led the agent astray.
-4. Specific text changes to fix each issue.
-
-Transcripts:
-{json.dumps(eval_results, indent=2)}
-"""
+```markdown
+Intent: Find all orders from last week.
+Expected tool: search_orders
+Adjacent tools that should not match: get_order, list_customers
+Required argument labels: date_range, status
+Side-effect note required: no
 ```
 
-Run this 3–5 rounds (prototype → eval → refactor → re-eval) until held-out tasks stabilize. Cross-link `tools.md` § "Tool descriptions" for the writing patterns the analysis output should follow.
+Check the description against the fixture:
 
-### A/B test descriptions in-context
+- Names the user intent, not the implementation.
+- Mentions the required argument labels.
+- States result limits and sort order.
+- Does not duplicate another tool's trigger phrase.
+- States side effects for destructive tools.
 
-```python
-prompt = """
-Version A: "Searches the database for matching records."
-Version B: "Find records matching your criteria. Returns up to 50 results sorted by relevance.
-Use filters to narrow: status, date_range, owner."
-
-Which description would help you use this tool more effectively? Why?
-"""
-```
-
-The model picks B almost every time. The interesting cases are where it picks A — usually because B has too many keywords that compete with adjacent tools. Tune by asking.
-
-### PromptFoo for cross-model selection accuracy
-
-```yaml
-# promptfoo.yaml
-prompts:
-  - "You have access to these tools: {{tools}}. User request: {{request}}"
-
-providers:
-  - openai:gpt-5
-  - anthropic:messages:claude-sonnet-4-5
-  - google:gemini-3-pro
-
-tests:
-  - vars:
-      request: "Find all orders from last week"
-      tools: "{{tool_schemas}}"
-    assert:
-      - { type: contains, value: "search_orders" }
-      - { type: contains, value: "date_range" }
-
-  - vars:
-      request: "What's the weather today?"
-      tools: "{{tool_schemas}}"
-    assert:
-      - { type: not-contains, value: "search_orders" }
-```
-
-Run cross-model. A description tweak that helps Claude can break Gemini. Cross-link `model-behavior.md` for per-family idioms.
+Cross-link `tools.md` § "Tool descriptions" for the writing patterns this review enforces, and `model-behavior.md` for schema idioms to keep portable across clients.
 
 ---
 
@@ -298,9 +229,9 @@ tests/
 │   │       ├── invalid_missing_id.json
 │   │       └── upstream_down.json
 │   └── ...
-├── eval/
-│   ├── tasks.json                 # multi-step eval scenarios
-│   └── transcripts/               # captured for review
+├── workflows/
+│   ├── order_refund.json          # deterministic multi-step smoke fixture
+│   └── customer_lookup.json
 ```
 
 ---
@@ -318,7 +249,7 @@ Cross-link `../decision-trees/production-readiness.md` for the full checklist. T
 7. **Schema portability check** — no `anyOf`/`$ref`/nesting >3 unless the deploy is OpenAI-strict-only.
 8. **Response-size cap** — no tool response exceeds 25,000 tokens; chatty tools ≤1,000.
 9. **Untrusted-data wrapping** — every tool that returns user-supplied text wraps it (cross-link `security.md`).
-10. **At least one agent-driven eval** — multi-step task, runs against the canonical model, transcript stored.
+10. **At least one agent-use smoke check** — deterministic multi-step fixture with expected tool calls and recovery assertions.
 
 If any of the ten fails, hold the deploy. Cross-link `../decision-trees/production-readiness.md` for the full tree (security posture, scaling, observability).
 
@@ -327,8 +258,8 @@ If any of the ten fails, hold the deploy. Cross-link `../decision-trees/producti
 ## Cross-references
 
 - `test-by-mcpc-cli` — the canonical CLI-driven end-to-end test workflow; this file routes there for transport and integration tests.
-- `tools.md` — tool design and descriptions; the patterns evals catch when violated.
-- `model-behavior.md` — per-family idioms; eval matrix uses the model column from there.
+- `tools.md` — tool design and descriptions; the smoke checks catch when violated.
+- `model-behavior.md` — per-family schema idioms to keep portable across clients.
 - `client-compatibility.md` — per-client matrix; capability-negotiation tests use the same axes.
 - `error-handling.md` — `isError: true` shape; handler tests assert against it.
 - `security.md` — sanitization patterns the security tests check.
