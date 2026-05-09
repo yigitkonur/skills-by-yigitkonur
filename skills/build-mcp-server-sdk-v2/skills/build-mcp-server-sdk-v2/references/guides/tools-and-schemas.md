@@ -1,6 +1,6 @@
 # Tools and Schemas (v2)
 
-Tools are the primary capability of MCP servers. v2 uses Zod v4 exclusively — no raw shapes, no Zod v3 compatibility.
+Tools are the primary capability of MCP servers. v2 uses Zod v4. Full `z.object()` schemas are the target pattern; raw shapes are v1 style even if a current release accepts them through a compatibility shim.
 
 ## registerTool API
 
@@ -21,14 +21,14 @@ server.registerTool<OutputArgs extends AnySchema, InputArgs extends AnySchema | 
 
 ### v2 schema rules
 
-**v2 requires full `z.object()` — raw shapes are NOT accepted:**
+**Use full `z.object()` schemas. Raw shapes are migration-only at best:**
 
 ```typescript
 import * as z from "zod/v4";
 
-// WRONG — raw shapes don't work in v2
+// WRONG — v1 raw-shape style; do not write this as v2-native code
 server.registerTool("search", {
-  inputSchema: { query: z.string() },  // TypeError
+  inputSchema: { query: z.string() },
 }, handler);
 
 // RIGHT — full Zod v4 schema

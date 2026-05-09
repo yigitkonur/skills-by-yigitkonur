@@ -1,6 +1,6 @@
 # Quick Start (v2)
 
-Scaffold a new MCP server using the v2 split-package SDK. Source-verified against `main` branch.
+Scaffold a new MCP server using the v2 split-package SDK. Source-verified against npm `2.0.0-alpha.2` and current `main` docs.
 
 ## Prerequisites
 
@@ -108,6 +108,8 @@ await server.connect(transport);
 
 **Critical:** Always `console.error()`, never `console.log()` — stdout is reserved for JSON-RPC.
 
+Import note: npm `2.0.0-alpha.2` exposes `StdioServerTransport` from the root package. Current main-branch docs use `@modelcontextprotocol/server/stdio`; switch only after the installed package exports that subpath.
+
 Run: `npx tsx src/index.ts`
 Test: `npx @anthropic-ai/mcp-inspector npx tsx src/index.ts`
 
@@ -194,7 +196,7 @@ app.listen(3000, () => console.error("MCP server on :3000"));
 |---|---|
 | `import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"` | `import { McpServer } from "@modelcontextprotocol/server"` |
 | `import { StreamableHTTPServerTransport } from "...sdk/server/streamableHttp.js"` | `import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node"` |
-| `inputSchema: { name: z.string() }` (raw shape) | `inputSchema: z.object({ name: z.string() })` (full schema) |
+| `inputSchema: { name: z.string() }` (raw shape, v1 style) | `inputSchema: z.object({ name: z.string() })` (full schema) |
 | `async (args, extra) => { extra.signal; }` | `async (args, ctx) => { ctx.mcpReq.signal; }` |
 | `McpError` / `ErrorCode` | `ProtocolError` / `ProtocolErrorCode` |
 

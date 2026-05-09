@@ -1,6 +1,6 @@
 # Framework Adapters (v2)
 
-v2 provides dedicated adapter packages for Express and Hono. These replace v1's built-in `createMcpExpressApp()`.
+v2 provides dedicated adapter packages for Express and Hono. These replace v1's built-in `createMcpExpressApp()`. `@modelcontextprotocol/hono` is the official SDK adapter package; `@hono/mcp` is a community Hono middleware package with a different API and must not be substituted silently.
 
 ## Express adapter
 
@@ -53,6 +53,8 @@ const app = createMcpHonoApp({ host: "127.0.0.1" });
 ```
 
 Same DNS rebinding logic as Express. Additionally installs JSON body-parsing middleware that stashes parsed body in `c.set('parsedBody', ...)` for MCP transport consumption.
+
+If a repo imports `@hono/mcp`, pause before applying these examples. Decide whether to keep the community middleware API or migrate to the official `@modelcontextprotocol/hono` adapter.
 
 ### Hono middleware exports
 

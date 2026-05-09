@@ -17,7 +17,7 @@ import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 ## Using raw Zod shapes
 
 ```typescript
-// WRONG — raw shapes not accepted in v2
+// WRONG — v1 raw-shape style; treat compatibility shims as migration aids only
 server.registerTool("search", {
   inputSchema: { query: z.string(), limit: z.number() },
 }, handler);

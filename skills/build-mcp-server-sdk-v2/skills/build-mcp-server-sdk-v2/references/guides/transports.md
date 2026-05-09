@@ -6,7 +6,7 @@ v2 transport architecture: web-standard core (`WebStandardStreamableHTTPServerTr
 
 | Transport | Package | Use when |
 |---|---|---|
-| `StdioServerTransport` | `@modelcontextprotocol/server` | Local CLI tools, editor integrations |
+| `StdioServerTransport` | npm alpha.2: `@modelcontextprotocol/server`; current main docs: `@modelcontextprotocol/server/stdio` | Local CLI tools, editor integrations |
 | `NodeStreamableHTTPServerTransport` | `@modelcontextprotocol/node` | Node.js HTTP servers |
 | `WebStandardStreamableHTTPServerTransport` | `@modelcontextprotocol/server` | Deno, Bun, Cloudflare Workers |
 
@@ -23,6 +23,8 @@ await server.connect(transport);
 ```
 
 All logging to stderr. stdout = JSON-RPC only.
+
+Current main-branch docs import stdio from `@modelcontextprotocol/server/stdio`; npm `2.0.0-alpha.2` exposes it from the root package only. Re-check `npm view @modelcontextprotocol/server exports --json` before changing examples.
 
 ## NodeStreamableHTTPServerTransport
 

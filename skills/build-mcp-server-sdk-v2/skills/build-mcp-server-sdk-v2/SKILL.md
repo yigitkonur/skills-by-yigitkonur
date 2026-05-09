@@ -11,8 +11,8 @@ Build and maintain MCP servers using the v2 alpha split-package SDK: `@modelcont
 
 | Channel | Status | Use for |
 |---|---|---|
-| npm published alpha | `@modelcontextprotocol/server@2.0.0-alpha.2` and split packages, published 2026-04-01 | Install commands and runnable examples that must work from npm today |
-| main branch / `v2.0.0-bc` PR series | Compatibility work after alpha.2; useful source signal, not automatically in npm | Forward-looking notes only, gated by fresh npm/source verification |
+| npm published alpha | `@modelcontextprotocol/server@2.0.0-alpha.2` and split packages, published 2026-04-01; stdio transports are root exports | Install commands and runnable examples that must work from npm today |
+| main branch / `v2.0.0-bc` PR series | Compatibility work after alpha.2; docs now show stdio subpath exports | Forward-looking notes only, gated by fresh npm/source verification |
 | v1 stable | `@modelcontextprotocol/sdk@1.x` | Default production path until a non-alpha v2 release exists |
 
 **When to use a different skill instead:**
@@ -21,6 +21,7 @@ Build and maintain MCP servers using the v2 alpha split-package SDK: `@modelcont
 - Handlers use `(args, extra)` with `extra.sendNotification` / `extra.authInfo` → that's v1, use `build-mcp-server-sdk-v1`
 - Existing v1 server that needs to be ported to v2 → use `convert-mcp-server-sdk-v1-to-v2`
 - Uses the `mcp-use` wrapper library → use `build-mcp-use-server`
+- Imports `@hono/mcp` → community Hono middleware, not the official SDK adapter; choose whether to migrate before applying `@modelcontextprotocol/hono` examples
 
 **How to detect v2:** Look for split package imports (`@modelcontextprotocol/server`, `@modelcontextprotocol/client`), handlers using `(args, ctx)` with `ctx.mcpReq.log()` / `ctx.mcpReq.signal`, and `"type": "module"` in `package.json`.
 
@@ -28,8 +29,9 @@ Core rules:
 
 - Always use `McpServer` from `@modelcontextprotocol/server` — the `Server` class is deprecated
 - Always use `registerTool` / `registerResource` / `registerPrompt` — positional overloads removed
-- Always use Zod v4 full schemas (`z.object({...})`) — raw shapes not accepted in v2
+- Always use Zod v4 full schemas (`z.object({...})`) — raw shapes are v1 style; treat any current-release compatibility shim as migration aid, not target pattern
 - Always use `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node` for HTTP
+- Use `@modelcontextprotocol/hono` for the official SDK Hono adapter; do not silently substitute community `@hono/mcp`
 - Server-side OAuth is removed from the SDK — wire HTTP-layer auth (external AS + `jose`, Passport, custom Bearer middleware) and forward `req.auth` into `ctx.http?.authInfo`; treat `@modelcontextprotocol/server-auth-legacy` as planned/open until npm and PR #1908 confirm publication
 - SSE server transport is removed — use Streamable HTTP
 - ESM-only — no CommonJS support
@@ -51,7 +53,7 @@ Run `tree -L 3` and check `package.json`. Look for:
 Read the implementation. Check for:
 
 - Correct context usage: `ctx.mcpReq.signal`, `ctx.http?.authInfo`, `ctx.mcpReq.notify()`
-- Proper schema usage: full `z.object()` not raw shapes
+- Proper schema usage: full `z.object()` instead of v1 raw shapes
 - Framework adapter usage: `createMcpExpressApp()` from `@modelcontextprotocol/express`
 - `outputSchema` validation: tools with `outputSchema` must return `structuredContent`
 
@@ -89,7 +91,7 @@ Ask or infer:
 ### 5 — Build or extend
 
 1. Create `McpServer` with name, version, optional description/icons
-2. Define Zod v4 schemas: `z.object({ field: z.string() })` (not raw shapes)
+2. Define Zod v4 schemas: `z.object({ field: z.string() })` (not raw shapes as the target pattern)
 3. Register tools with `server.registerTool()` — input schema, annotations, handler with `(args, ctx)` pattern
 4. Register resources with `server.registerResource()` if exposing data
 5. Register prompts with `server.registerPrompt()` if providing templates
@@ -208,7 +210,7 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 
 ## Decision rules
 
-- Always use `z.object({...})` — raw shapes (`{ name: z.string() }`) are not accepted in v2
+- Always use `z.object({...})` — raw shapes (`{ name: z.string() }`) are v1 style; if the current release accepts them, treat that as migration compatibility only
 - Prefer `isError: true` for recoverable tool errors — LLMs self-correct from these
 - Prefer `ctx.mcpReq.log()` over `console.error()` — sends structured logs to the client
 - Prefer `ctx.mcpReq.elicitInput()` over `ctx.mcpReq.send()` for user input — cleaner API
@@ -217,7 +219,7 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 
 ## Guardrails
 
-- Never use raw Zod shapes — v2 requires full `z.object()` schemas
+- Never write new v2-native code with raw Zod shapes — use full `z.object()` schemas
 - Never use `extra.sendNotification` / `extra.authInfo` — those are v1 patterns; use `ctx.mcpReq`
 - Never import from `@modelcontextprotocol/sdk` — that's v1; import from `/server`, `/client`, `/core`
 - Never use `SSEServerTransport` — removed in v2

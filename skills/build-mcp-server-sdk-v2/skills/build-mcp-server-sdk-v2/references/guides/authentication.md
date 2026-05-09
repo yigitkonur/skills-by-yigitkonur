@@ -9,6 +9,8 @@ This guide covers server-side authentication only. For client-side auth provider
 The Express and Hono adapters propagate upstream-set request fields into `ServerContext`. Set `req.auth` (Express) or the equivalent on the Hono context, and it surfaces as `ctx.http?.authInfo` in every handler.
 
 ```typescript
+import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/core";
+
 // Adapter middleware sets req.auth
 app.use(async (req, res, next) => {
   const verified = await verifyToken(req.headers.authorization);

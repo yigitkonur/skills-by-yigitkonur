@@ -46,6 +46,8 @@ const transport = new StreamableHTTPClientTransport(
 await client.connect(transport);
 ```
 
+Import note: current main-branch docs use `@modelcontextprotocol/client/stdio`; npm `2.0.0-alpha.2` exposes `StdioClientTransport` from the root package only. Verify package exports before changing a project pinned to alpha.2.
+
 ## Core methods
 
 ```typescript
