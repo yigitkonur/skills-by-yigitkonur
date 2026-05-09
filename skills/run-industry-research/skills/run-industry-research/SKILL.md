@@ -170,7 +170,7 @@ Compare entities by criterion across the population, **driven by the per-criteri
 2. **Dispatch up to 20 Cross-Category Comparison Agents in parallel per wave** — one agent per criterion (pricing, capabilities, integrations, security, audience, benchmarks, buyer-fit, sources). Each agent owns one cross-criterion folder.
 3. **Each agent's brief references the matching `_COMPARISON_TEMPLATE_<criterion>.md`** which prescribes axes, matrix columns, ranking dimensions, and source expectations specific to that criterion.
 4. **Each cross file** must answer: which entities are directly comparable, adjacent, or not-comparable? Which wins for which scenario? Where do sources contradict? What test would change the recommendation?
-5. **Reuse the source-hierarchy + claims-ledger discipline** from `references/workflow/evidence-and-synthesis.md`.
+5. **Reuse the source-hierarchy + source-map + claims-ledger schemas** from `references/workflow/evidence-and-synthesis.md`.
 
 **Artifact:** populated `_cross-<scope>/` folder. Each criterion has at minimum a `00-overall-comparison.md` plus the granular comparison files mandated by its `_COMPARISON_TEMPLATE_<criterion>.md`.
 
@@ -206,7 +206,7 @@ Verify:
 - **Template coverage** — every section of `_PRODUCT_TEMPLATE.md` is addressed in every `core` entity pack; every `_COMPARISON_TEMPLATE_<criterion>.md` section is addressed in its cross folder. Sections marked "insufficient evidence" must name the specific data gap.
 - Root `README.md` points to highest-signal entry points.
 - Every `core` entity has a profile page linking to its evidence pack.
-- Source maps and claims ledgers exist at entity and cross-category level, or absences are explained.
+- Source maps and claims ledgers exist at entity and cross-category level using the required schemas.
 - Reddit/practitioner evidence is direct when available, labeled adjacent when sparse, never presented as consensus without attribution.
 - All stale placeholders, broken local links, and naming mismatches are fixed.
 
@@ -306,7 +306,7 @@ Load only the references whose phase is active. Loading all references at once e
 | `references/architecture/template-authoring.md` | Phase 2 — writing the maximalist `_PRODUCT_TEMPLATE.md` and per-criterion `_COMPARISON_TEMPLATE_<criterion>.md` files. The keystone reference. |
 | `references/architecture/profile-pages.md` | Phase 6 — writing the standalone `<entity>.md` decision pages. |
 | `references/workflow/discovery.md` | Phase 1 — finding entities, decomposing into sub-questions, tiering candidates, AND running the deep category pre-pass that feeds template authoring. |
-| `references/workflow/evidence-and-synthesis.md` | Phase 4-5 — applying source hierarchy, claims ledgers, Reddit/practitioner rules, pricing/unit-economics standards, cross-category structure. |
+| `references/workflow/evidence-and-synthesis.md` | Phase 4-5 — applying source hierarchy, source-map and claims-ledger schemas, Reddit/practitioner rules, pricing/unit-economics standards, cross-category structure. |
 | `references/workflow/worked-example-cloud-browsers.md` | Any phase — an annotated walkthrough of the cloud-browsers corpus, including the actual `_meta/comparison-template.md` and `_meta/product-folder-research-brief.md` artifacts. Use to mirror the *discipline*; do not copy slugs. |
 | `references/agents/mission-briefs.md` | Phase 1, 4, 5 — writing prompts for discovery, entity-pack, cross-comparison, audience, source-verification, and profile-writer agents. |
 | `references/agents/research-powerpack-and-explore.md` | Phase 1, 4, 5 — portable Research Power Pack API shapes (`start-research`, smart/raw search and scrape) plus web-capable research agent and local-corpus Explore patterns (≤20 per wave). |

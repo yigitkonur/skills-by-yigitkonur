@@ -15,15 +15,26 @@ How to turn web research, Reddit/practitioner signal, and local evidence packs i
 
 Use the strongest source for the claim type. For pricing, official pages beat blog summaries. For lived experience, direct practitioner threads beat vendor case studies.
 
-## Claims Ledger
+## Source Maps And Claims Ledgers
 
-Every important file should feed a claims ledger:
+Every `core` entity must maintain ledgers in `[entity]/09-sources/`. Every cross-comparison scope must maintain corpus-level ledgers in `_cross-[scope]/09-sources/`. Agents update the local ledger they own; the orchestrator reconciles duplicates and contradictions before Phase 7.
 
-| Claim | Type | Evidence | Confidence | Caveat | Follow-up |
-|---|---|---|---|---|---|
-| Product supports X API. | Confirmed fact | Official docs URL, captured date. | High | Version may change. | Recheck before implementation. |
-| Vendor is best at Y. | Vendor claim | Homepage or blog URL. | Low | No independent benchmark. | Run buyer test. |
-| Users complain about pricing. | Practitioner report | Reddit/HN/review URL with date. | Medium | Sample may be biased. | Search broader category. |
+### Source map schema
+
+Minimum columns:
+
+| Source ID | URL | Title | Publisher/vendor | Source type | Capture date | Used in files | Quality rating | Access notes |
+|---|---|---|---|---|---|---|---|---|
+| S001 | https://example.com/pricing | Pricing | Example Vendor | official pricing | YYYY-MM-DD | `01-pricing/01-public-plans.md` | high | public page |
+
+### Claims ledger schema
+
+Minimum columns:
+
+| Claim ID | Entity | Claim | Claim type | Source URL | Source title | Author/vendor | Published/updated date | Capture date | Evidence file | Confidence | Caveat | Follow-up test |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| C001 | Example Vendor | Product supports X API. | confirmed fact | https://example.com/docs/api | API docs | Example Vendor | YYYY-MM-DD | YYYY-MM-DD | `02-platform/01-control-surface.md` | high | Version may change. | Recheck before implementation. |
+| C002 | Example Vendor | Vendor is best at Y. | vendor/project claim | https://example.com/blog | Launch post | Example Vendor | YYYY-MM-DD | YYYY-MM-DD | `07-benchmarks/01-vendor-claims.md` | low | No independent benchmark. | Run buyer test. |
 
 Claim types:
 
@@ -112,12 +123,12 @@ Do not put volatile pricing tables in the README unless the user explicitly want
 
 Run these checks before declaring completion:
 
-- file count under cap
+- file count recorded and reconciled against the template-derived expectation
 - no hidden junk files
 - no broken local markdown links
 - all core entities have a profile and evidence pack
 - all cross-category rollups exist
-- all source maps and claims ledgers exist or gaps are explicit
+- per-entity source maps and claims ledgers exist in `[entity]/09-sources/`, and cross-corpus ledgers exist in `_cross-[scope]/09-sources/`
 - no placeholder text such as TODO, TBD, or "fill later"
 - no stale links to renamed folders
 - root README and main profiles point to current folder names

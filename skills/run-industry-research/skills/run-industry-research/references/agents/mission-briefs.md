@@ -74,7 +74,7 @@ If MCP tools fail, fall back to WebSearch/WebFetch. Do not stop because one tool
 - [ ] Every non-trivial claim cites a source URL or local source file
 - [ ] Pricing/economics use native units first and normalize only when variables permit
 - [ ] Practitioner evidence includes source, date, author/user, and bias label
-- [ ] Source map and claims ledger exist (or absences are explained)
+- [ ] `[entity-slug]/09-sources/01-source-map.md` and `02-claims-ledger.md` are populated or updated using the schemas in `references/workflow/evidence-and-synthesis.md`
 - [ ] No stub files; no placeholder TBD/TODO content
 - [ ] `[entity-slug]/README.md` indexes every file in the pack
 
@@ -120,6 +120,7 @@ Do not edit entity packs. Do not edit other cross-criterion folders.
 - [ ] Every required ranking dimension is populated, with confidence levels
 - [ ] Comparison separates direct, adjacent, and not-comparable entities
 - [ ] Every row cites the relevant entity-pack file AND the original source URL with capture date
+- [ ] `_cross-[scope]/09-sources/01-source-map.md` and `02-claims-ledger.md` are populated or updated for claims introduced or reused by this comparison
 - [ ] Missing variables are stated explicitly, not guessed
 - [ ] A "tests that would change the recommendation" section is included in `00-overall-comparison.md`
 
@@ -295,6 +296,8 @@ Audit source quality across the corpus. Create source maps, claims ledgers, cont
 
 - [ ] Every high-impact claim is classified as confirmed, vendor claim, practitioner report, inference, contradicted, or unverified.
 - [ ] Time-sensitive facts include capture date.
+- [ ] Every source map uses columns: Source ID, URL, Title, Publisher/vendor, Source type, Capture date, Used in files, Quality rating, Access notes.
+- [ ] Every claims ledger uses columns: Claim ID, Entity, Claim, Claim type, Source URL, Source title, Author/vendor, Published/updated date, Capture date, Evidence file, Confidence, Caveat, Follow-up test.
 - [ ] Broken, gated, JS-only, unavailable, and contradictory sources are labeled.
 - [ ] Follow-up tests are concrete and buyer-actionable.
 ```
