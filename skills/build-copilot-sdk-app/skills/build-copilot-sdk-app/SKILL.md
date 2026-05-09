@@ -5,11 +5,11 @@ description: Use skill if you are building directly on @github/copilot-sdk for C
 
 # Build Copilot SDK App
 
-Build applications powered by GitHub Copilot using the `@github/copilot-sdk` TypeScript/Node.js package (protocol v3). The SDK communicates with the Copilot CLI over JSON-RPC (stdio or TCP) and exposes a session-based API for sending prompts, receiving streamed responses, registering custom tools, handling permissions, and managing agent workflows.
+Build Node/TypeScript apps directly on `@github/copilot-sdk`, the GitHub Copilot SDK agent runtime. The SDK is public preview, so treat installed package types as the API contract and use docs for product/auth policy context.
 
 ## Trigger boundary
 
-Use this skill only for applications built directly on `@github/copilot-sdk` and the GitHub Copilot SDK agent runtime.
+Use this skill only for applications that import `@github/copilot-sdk` and create Copilot SDK clients, sessions, tools, commands, hooks, custom agents, MCP-backed agents, streaming UIs, or BYOK provider sessions.
 
 Do not use this skill for:
 
@@ -21,378 +21,125 @@ Do not use this skill for:
 
 ## Source-of-truth gate
 
-Copilot SDK is public preview and moves quickly. Before relying on any signature or example, check the version in the target project:
+Before writing version-sensitive code, check the selected package:
 
 ```bash
 npm view @github/copilot-sdk version dist-tags engines --json
-node -e "const fs=require('fs'),path=require('path');let d=path.dirname(require.resolve('@github/copilot-sdk'));for(;;){const f=path.join(d,'package.json');if(fs.existsSync(f)){const p=JSON.parse(fs.readFileSync(f,'utf8'));if(p.name==='@github/copilot-sdk'){console.log(p.version);break}}const n=path.dirname(d);if(n===d)throw new Error('package root not found');d=n}"
+npm pack @github/copilot-sdk@latest
 ```
 
 Source priority:
 
-1. Installed `node_modules/@github/copilot-sdk/dist/*.d.ts`, or a freshly packed `npm pack @github/copilot-sdk@latest` package, for TypeScript signatures
-2. The npm package `README.md` for package-specific examples
-3. Official GitHub Docs for preview status, product availability, auth concepts, and BYOK policy
-4. These skill references, only after the freshness check above
+1. Installed `node_modules/@github/copilot-sdk/dist/*.d.ts`, or a freshly packed npm package, for TypeScript signatures.
+2. The package `README.md` for package-specific examples.
+3. Official GitHub Docs for public-preview status, availability, auth concepts, and BYOK policy.
+4. These references only after freshness has been checked.
 
-Audit baseline: on 2026-05-08, npm reported `latest = 0.3.0`, `prerelease = 1.0.0-beta.3`, and `engines.node = >=20.0.0`. Do not treat those as permanent facts; teach and run the checks.
+Audit baseline: on 2026-05-08, npm reported `latest = 0.3.0`, `prerelease = 1.0.0-beta.3`, and `engines.node = >=20.0.0`. Do not bake those in as permanent facts. Prefer the installed package engine over docs snippets when they disagree.
 
-For runnable setup, prefer the installed package engine over docs snippets. If docs mention Node 18 but `package.json` says Node `>=20.0.0`, use Node 20+. The SDK package includes bundled CLI support through `@github/copilot`; a global `copilot` command is useful for interactive auth and external-server workflows, but do not state it is always required unless the current package/docs prove it for that deployment path.
-
-## Decision tree
-
-```
-What do you need?
-│
-├── New app from scratch
-│   ├── Install & basic example ──────────► Quick start (below) or scripts/scaffold-copilot-app.sh
-│   ├── Client options & transport ───────► references/client-and-transport.md — stdio vs TCP, CopilotClient config
-│   └── Authentication ──────────────────► references/auth-and-byok.md or scripts/check-copilot-auth.sh
-│
-├── Sessions
-│   ├── Create / resume / disconnect ────► references/sessions.md — lifecycle, create-or-resume pattern
-│   ├── Infinite sessions & compaction ──► references/sessions.md — long conversations, context window mgmt
-│   └── Persistence & resumption ────────► references/sessions.md — disk persistence, resumeSession semantics
-│
-├── Messages & streaming
-│   ├── send / sendAndWait ──────────────► Quick start (below) — blocking vs fire-and-forget
-│   ├── Streaming deltas ────────────────► references/events-and-streaming.md — incremental content delivery
-│   └── Event catalog ───────────────────► references/events-and-streaming.md — regenerate/check from dist/generated/session-events.d.ts
-│
-├── Custom tools
-│   ├── defineTool with Zod ─────────────► references/tools-and-schemas.md — Zod schema, handler, auto-JSON-Schema
-│   ├── JSON Schema tools ──────────────► references/tools-and-schemas.md — raw schema without Zod
-│   └── Override built-in tools ────────► references/tools-and-schemas.md — replace default Copilot tools
-│
-├── Permissions & user input
-│   ├── Permission handler ─────────────► references/permissions-and-user-input.md — approveAll or custom logic
-│   ├── ask_user / onUserInputRequest ──► references/permissions-and-user-input.md — programmatic user prompts
-│   └── Elicitation (MCP forms) ────────► references/permissions-and-user-input.md — structured input via MCP
-│
-├── Hooks (lifecycle interceptors)
-│   ├── Pre/post tool use ──────────────► references/hooks.md — intercept tool calls, modify args/results
-│   ├── Prompt modification ────────────► references/hooks.md — rewrite prompts before send
-│   └── Session lifecycle & errors ─────► references/hooks.md — onError, onSessionStart, void return OK
-│
-├── Agents, MCP & skills
-│   ├── Custom agents ──────────────────► references/agents-mcp-skills.md — agent registration & routing
-│   ├── MCP server config ─────────────► references/agents-mcp-skills.md — connect external MCP servers
-│   ├── Skills system ─────────────────► references/agents-mcp-skills.md — skill discovery & invocation
-│   └── CLI extensions (.mjs) ─────────► references/agents-mcp-skills.md — extend Copilot CLI via scripts
-│
-├── Advanced patterns
-│   ├── Plan / autopilot / interactive ─► references/advanced-patterns.md — mode switching workflow
-│   ├── Fleet mode ─────────────────────► references/advanced-patterns.md — parallel session orchestration
-│   ├── Multi-client architecture ──────► references/advanced-patterns.md — multiple CopilotClient instances
-│   ├── Ralph loop (autonomous dev) ───► references/advanced-patterns.md — autonomous code generation loop
-│   ├── Steering & queueing ───────────► references/advanced-patterns.md — prompt queueing, backpressure
-│   └── System message modes ──────────► references/advanced-patterns.md — system prompt configuration
-│
-├── Auth & BYOK
-│   ├── GitHub OAuth / tokens ──────────► references/auth-and-byok.md — token acquisition flow
-│   └── Bring Your Own Key ────────────► references/auth-and-byok.md — OpenAI/Anthropic/Azure/Gemini/Ollama
-│
-└── Type reference
-    └── All interfaces & RPC methods ──► references/types-reference.md — TypeScript interfaces, RPC API
-```
+The package includes bundled CLI support via `@github/copilot`; a global `copilot` command is useful for interactive auth and external server workflows, but is not always a separate prerequisite for stdio clients.
 
 ## Quick start
 
-### Prerequisites
+For a deterministic scaffold:
 
-Verify your environment:
 ```bash
-node --version   # use installed package engines.node; current baseline is >=20
-npm ls @github/copilot-sdk
+bash scripts/scaffold-copilot-app.sh my-copilot-app
+cd my-copilot-app
+npm install
+npm run typecheck
+npm start
 ```
 
-Authenticate before you run the examples:
-
-- Local interactive auth: use the Copilot CLI available to this project or globally, for example `npx copilot login` or `copilot login`
-- Headless auth: set one of `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN`
-- BYOK: configure `provider` and `model`; no GitHub Copilot subscription is required for BYOK
-- In CI or other non-interactive runs, export the token before `npm start`; do not expect the SDK process to complete browser login for you.
-
-### Default file layout and run command
-
-Use this layout unless the repo already has a better convention:
+For an existing project:
 
 ```bash
-mkdir -p src/lib
+npm pkg set type=module
 npm pkg set scripts.start="tsx src/index.ts"
-npm pkg set scripts.dev="tsx watch src/index.ts"
-```
-
-- Put the main SDK entrypoint in `src/index.ts`
-- Put reusable local business logic in `src/lib/*.ts`
-- Run the first build with `npm start`
-
-### Project setup
-
-```bash
-npm init -y
-npm pkg set type=module   # SDK is ESM-only
 npm install @github/copilot-sdk tsx zod
+bash path/to/scripts/check-copilot-auth.sh .
 ```
 
-For a deterministic scaffold, run `scripts/scaffold-copilot-app.sh`. For auth and package preflight, run `scripts/check-copilot-auth.sh`.
-
-> **ESM required.** The SDK only ships ESM exports. Your `package.json` must have `"type": "module"`.
-
-### Common imports
-
-```typescript
-// Core
-import { CopilotClient, approveAll } from "@github/copilot-sdk";
-
-// Tools
-import { defineTool } from "@github/copilot-sdk";
-import { z } from "zod";
-
-// Advanced — hooks, resume, types
-import type { SessionConfig, ToolInvocation } from "@github/copilot-sdk";
-```
-
-### Minimal example
+## Minimal GitHub-auth session
 
 ```typescript
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 
 const client = new CopilotClient();
-await client.start();
-const auth = await client.getAuthStatus();
 
-if (!auth.isAuthenticated) {
-  throw new Error(
-    "Authenticate with `copilot login` or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN first."
-  );
-}
-
-const session = await client.createSession({
-  model: "gpt-4.1",
-  onPermissionRequest: approveAll,
-});
-
-const response = await session.sendAndWait({ prompt: "What is 2 + 2?" });
-console.log(response?.data.content);
-
-await session.disconnect();
-await client.stop();
-```
-
-Save this as `src/index.ts`, then run `npm start`.
-
-If startup does not progress:
-
-- Check `auth.isAuthenticated` first and stop there if it is `false`
-- In headless environments, set `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN` before launching Node
-- Re-run with `new CopilotClient({ logLevel: "debug" })` and follow `references/auth-and-byok.md` for auth preflight
-
-### With streaming
-
-```typescript
-const session = await client.createSession({
-  model: "gpt-4.1",
-  streaming: true,
-  onPermissionRequest: approveAll,
-});
-
-session.on("assistant.message_delta", (event) => {
-  process.stdout.write(event.data.deltaContent);
-});
-
-session.on("session.idle", async () => {
-  console.log("\n--- done ---");
-  await session.disconnect();
-  await client.stop();
-});
-
-await session.send({ prompt: "Explain TypeScript generics" });
-```
-
-### With a custom tool
-
-Create the imported helper first:
-
-```typescript
-// src/lib/math.ts
-export function add(a: number, b: number) {
-  return a + b;
-}
-```
-
-```typescript
-import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";
-import { z } from "zod";
-import { add } from "./lib/math.ts";
-
-const addNumbers = defineTool("add_numbers", {
-  description: "Add two numbers using local business logic",
-  parameters: z.object({
-    a: z.number().describe("First number"),
-    b: z.number().describe("Second number"),
-  }),
-  handler: async ({ a, b }) => ({ result: add(a, b) }),
-});
-
-const client = new CopilotClient();
-const session = await client.createSession({
-  model: "gpt-4.1",
-  tools: [addNumbers],
-  onPermissionRequest: approveAll,
-});
-
-const response = await session.sendAndWait({
-  prompt: "Use the add_numbers tool to add 19 and 23.",
-});
-console.log(response?.data.content);
-
-await session.disconnect();
-await client.stop();
-```
-
-Default convention: keep imported domain helpers under `src/lib/` and wire them into tool handlers instead of hard-coding toy data inside the handler.
-If the real logic lives in another package, import a workspace dependency or package entrypoint that `tsx` can resolve at runtime instead of a source-only deep path.
-
-## Key patterns
-
-### Send-and-wait vs fire-and-forget
-
-```typescript
-// Blocking — waits for session.idle, returns last assistant.message
-const response = await session.sendAndWait(
-  { prompt: "Hello" },
-  30_000, // optional timeout in ms
-);
-
-// Non-blocking — returns immediately, events arrive via session.on()
-await session.send({ prompt: "Start a long task..." });
-```
-
-### Event subscription (typed + wildcard)
-
-```typescript
-// Typed — only fires for the specific event type
-const unsub = session.on("tool.execution_complete", (event) => {
-  console.log(`${event.data.toolName}: ${event.data.success}`);
-});
-
-// Wildcard — fires for every event
-session.on((event) => {
-  if (event.type === "session.error") {
-    console.error(event.data.message);
-  }
-});
-
-unsub(); // unsubscribe
-```
-
-### Session persistence
-
-```typescript
-// Create with a stable ID
-const session = await client.createSession({
-  sessionId: "user-123-conversation",
-  model: "gpt-4.1",
-  onPermissionRequest: approveAll,
-});
-await session.sendAndWait({ prompt: "Let's discuss TypeScript" });
-await session.disconnect(); // preserves state on disk
-
-// Resume later (same or different client)
-const resumed = await client.resumeSession("user-123-conversation", {
-  onPermissionRequest: approveAll,
-});
-```
-
-### Create-or-resume pattern
-
-`createSession` always starts fresh — only `resumeSession` restores conversation context. In applications that may revisit a session:
-
-```typescript
-let session;
 try {
-  session = await client.resumeSession(sessionId, {
+  await client.start();
+  const auth = await client.getAuthStatus();
+  if (!auth.isAuthenticated) {
+    throw new Error("Authenticate with Copilot CLI or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN.");
+  }
+
+  const session = await client.createSession({
+    model: process.env.COPILOT_MODEL ?? "gpt-5",
     onPermissionRequest: approveAll,
   });
-} catch {
-  session = await client.createSession({
-    sessionId,
-    model: "gpt-4.1",
-    onPermissionRequest: approveAll,
-  });
+
+  try {
+    const response = await session.sendAndWait({ prompt: "What is 2 + 2?" });
+    console.log(response?.data.content ?? "(no response)");
+  } finally {
+    await session.disconnect();
+  }
+} finally {
+  await client.stop();
 }
 ```
 
-### Handling ask_user programmatically
+## Reference routing
 
-```typescript
-const session = await client.createSession({
-  onPermissionRequest: approveAll,
-  onUserInputRequest: async (request) => {
-    if (request.choices?.length) {
-      return { answer: request.choices[0], wasFreeform: false };
-    }
-    return { answer: "Yes, proceed", wasFreeform: true };
-  },
-});
-```
+| Need | Read |
+|---|---|
+| Client construction, stdio/TCP/external server, CLI path, lifecycle | `references/client-and-transport.md` |
+| GitHub auth, `gitHubToken`, env tokens, BYOK providers, Azure endpoint split | `references/auth-and-byok.md` |
+| Session lifecycle, `send`, `sendAndWait`, resume, compaction, `onEvent` | `references/sessions.md` |
+| Streaming UI, early handlers, event catalog from `dist/generated/session-events.d.ts` | `references/events-and-streaming.md` |
+| Hooks for prompt/tool/session/error interception | `references/hooks.md` |
+| Custom tools, Zod/raw schemas, `skipPermission`, slash `commands`, handler errors | `references/tools-and-schemas.md` |
+| Permission decisions, `approveAll`, user input, elicitation handlers | `references/permissions-and-user-input.md` |
+| Custom agents, `defaultAgent`, agent-level MCP servers and skills, sub-agent events | `references/agents-mcp-skills.md` |
+| Plan/autopilot, fleet mode, multi-client, backend service and scaling patterns | `references/advanced-patterns.md` |
+| Exact interface names and selected type shapes | `references/types-reference.md` |
+| Auth/package preflight helper | `scripts/check-copilot-auth.sh.md` |
+| Minimal project scaffold helper | `scripts/scaffold-copilot-app.sh.md` |
 
-### Plan / autopilot mode
+## Non-negotiable rules
 
-```typescript
-await session.rpc.mode.set({ mode: "plan" });
+- Stay inside Copilot SDK. Route non-Copilot agent frameworks to the sibling skills above.
+- Verify the installed package or freshly packed `latest` before using exact signatures.
+- Use Node that satisfies `@github/copilot-sdk` `engines.node`; current baseline is Node 20+.
+- Use `await client.start()` before `client.getAuthStatus()`; `createSession` can auto-start, but status calls require a connected client in current stable.
+- Always pass `onPermissionRequest` on `createSession` and `resumeSession`.
+- Spell GitHub token options as `gitHubToken` when current TypeScript types require it, even if a docs page shows `githubToken`.
+- For BYOK, always pass both `provider` and `model`; current package docs say the SDK throws without `model`.
+- Treat BYOK credentials as static key or static bearer-token auth unless current docs add a refresh API. Provider billing and rate limits apply.
+- Use `approveAll` only for local demos or intentionally unattended tools. It approves file writes, shell commands, MCP calls, URL access, custom tools, and memory operations.
+- Register event handlers before `send()`. Use `onEvent` when you must catch early session creation events.
+- Use `onElicitationRequest` when the app must answer structured form prompts; event observation alone does not answer them.
+- Keep event guidance generated from `dist/generated/session-events.d.ts`; do not hard-code event-count claims.
+- Use Copilot SDK custom agents for Copilot sub-agent orchestration. Use LangGraph or `mcp-use` when the app is not built on Copilot SDK.
+- Always clean up: `await session.disconnect()` before `await client.stop()` on script/server shutdown paths.
+- Do not claim production readiness beyond current GitHub public-preview statements.
 
-session.on("exit_plan_mode.requested", (event) => {
-  console.log("Plan ready:", event.data.summary);
-  session.rpc.mode.set({ mode: "autopilot" });
-});
-```
+## Final checks
 
-### Abort in-flight work
+Report:
 
-```typescript
-await session.send({ prompt: "Run sleep 100" });
-await session.abort(); // cancels current work; session remains usable
-```
+- Package version and dist-tag checked.
+- Auth mode used: signed-in user, `gitHubToken`, env token, external CLI server, or BYOK.
+- BYOK provider and `model`, when applicable.
+- Files created or changed.
+- Commands run: install, typecheck/test, start, scaffold/auth helpers.
+- Verification rung actually reached.
+- Runtime paths not exercised because auth or provider credentials were unavailable.
 
-## Common pitfalls
+Verify:
 
-| Pitfall | Fix |
-|---------|-----|
-| `onPermissionRequest` missing | Required on every `createSession`/`resumeSession`. Use `approveAll` for unattended operation. |
-| `sendAndWait` timeout | Default is 60s. Pass explicit timeout: `sendAndWait(opts, 300_000)`. Timeout does NOT abort in-flight work. |
-| Streaming events not arriving | Set `streaming: true` in SessionConfig. |
-| `cliUrl` + `useStdio` | Mutually exclusive. `cliUrl` connects to external server; `useStdio` spawns child process. |
-| `console.log` in extensions | stdout is reserved for JSON-RPC. Use `session.log()` instead. |
-| Tool name collision in extensions | Tool names must be globally unique across all extensions. |
-| BYOK without `model` | `model` is required when using `provider`. Current package docs say the SDK throws if no model is specified; verify against installed types/runtime. |
-| Race condition on event registration | Register `session.on()` before calling `session.send()`. |
-
-## Steering notes for AI agents
-
-> These notes are distilled from real-world testing. They address the exact points where an agent following these instructions literally will get stuck.
-
-### Project initialization
-- **Always** run `npm init -y` then `npm pkg set type=module` before installing. The SDK is ESM-only and will throw `ERR_PACKAGE_PATH_NOT_EXPORTED` without this.
-- **Always** install `zod` alongside the SDK if you plan to use `defineTool`. It's not bundled.
-- Verify Node satisfies the installed package `engines.node` and `@github/copilot-sdk` resolves before writing any code.
-
-### Session lifecycle
-- `createSession` **always starts fresh** — even with the same `sessionId`. It does NOT restore previous messages.
-- To resume a conversation, use `resumeSession(sessionId)`. If the session doesn't exist, it throws — catch and fall back to `createSession`.
-- **Always** call `session.disconnect()` then `client.stop()` when done. Without this, streaming processes hang indefinitely because the RPC connection keeps the event loop alive.
-
-### Streaming
-- Register **all** event handlers (`session.on(...)`) **before** calling `session.send()`. Handlers registered after send may miss early events.
-- In the `session.idle` handler, always include cleanup (`disconnect` + `stop`) unless you're building a multi-turn REPL.
-- When the model calls multiple tools in parallel, `tool.execution_start` and `tool.execution_complete` events interleave. Use `toolCallId` to correlate them.
-
-### Tools
-- `defineTool` requires a Zod schema for parameters. The SDK auto-detects Zod and calls `toJSONSchema()`.
-- Tool handler errors are caught and surfaced to the model as error results — they don't crash your process.
-- Tool names must be globally unique across all extensions.
-
-### Timeouts and errors
-- `sendAndWait` timeout does **not** abort in-flight work. It only stops waiting. Call `session.abort()` explicitly if you need to cancel.
-- BYOK without `model` is an error path. Current package docs say session creation throws; always pair `provider` with `model` and verify behavior against the selected package version.
+- `npm run typecheck` or equivalent passes.
+- Minimal `sendAndWait` or streaming path is exercised when credentials exist.
+- `session.disconnect()` and `client.stop()` are present on shutdown paths.
+- Examples compile against the selected package version.
