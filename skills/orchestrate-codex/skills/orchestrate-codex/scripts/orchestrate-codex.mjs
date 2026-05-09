@@ -163,6 +163,7 @@ const EXIT_CODE_BY_ERROR = {
   not_a_repo: 2,
   manifest_not_found: 3,
   manifest_corrupt: 3,
+  manifest_stale: 3,
   concurrent_run_in_progress: 3,
   manifest_inflight_race: 3,
   spawn_failed: 4,
@@ -1926,6 +1927,29 @@ async function handleRescue(argv) {
       { manifest_path: manifestPath });
   }
 
+  // Freshness gate: rescue.md:51 contracts "≤ 7 days OR --accept-stale".
+  // Older manifests may reference deleted branches, removed files, or codex-
+  // companion job records aged out by MAX_JOBS=50 prune.
+  const acceptStale = !!options["accept-stale"];
+  const startedAt = m.started_at ? Date.parse(m.started_at) : NaN;
+  if (Number.isFinite(startedAt)) {
+    const ageMs = Date.now() - startedAt;
+    const ageDays = ageMs / (24 * 60 * 60 * 1000);
+    if (ageDays > 7 && !acceptStale) {
+      return errEnvelope(command, "manifest_stale",
+        `Manifest is ${ageDays.toFixed(1)} days old (started_at=${m.started_at}); ` +
+        `rescue refuses manifests older than 7 days. ` +
+        `Re-run with --accept-stale to override.`,
+        { manifest_path: manifestPath, started_at: m.started_at, age_days: Number(ageDays.toFixed(2)) });
+    }
+    if (ageDays > 7 && acceptStale) {
+      process.stderr.write(
+        `[rescue] WARNING: manifest is ${ageDays.toFixed(1)} days old ` +
+        `(started_at=${m.started_at}); proceeding because --accept-stale is set.\n`
+      );
+    }
+  }
+
   let classification = null;
   if (fs.existsSync(PY_HELPERS.rescue)) {
     const r = runPythonHelper(PY_HELPERS.rescue, ["--manifest", manifestPath, "--json"], wsRoot);
@@ -1975,7 +1999,7 @@ async function handleRescue(argv) {
     const failedIds = (m.entries || []).filter((e) => e.status === "failed").map((e) => e.id);
     const neverStartedIds = (m.entries || []).filter((e) => e.status === "queued" && (e.attempts || 0) === 0).map((e) => e.id);
     const nonDoneIds = (m.entries || []).filter((e) => e.status !== "done").map((e) => e.id);
-    return okEnvelope(command, {
+    const env = okEnvelope(command, {
       phase: "done",
       next_action: {
         kind: "ask_user_question",
@@ -1993,6 +2017,8 @@ async function handleRescue(argv) {
       classification,
       workspace_root: wsRoot,
     });
+    if (acceptStale) env.meta.accept_stale = true;
+    return env;
   }
 
   // --apply <subset>: select, cleanup, flip-to-queued, re-spawn the original
@@ -2016,7 +2042,7 @@ async function handleRescue(argv) {
       `--apply ids: unknown slug(s): ${subset.unknown.join(", ")}.`);
   }
   if (subset.ids.length === 0) {
-    return okEnvelope(command, {
+    const env = okEnvelope(command, {
       phase: "done",
       next_action: { kind: "noop", reason: "subset is empty; nothing to redispatch." },
       manifest_path: manifestPath,
@@ -2025,6 +2051,8 @@ async function handleRescue(argv) {
       classification,
       workspace_root: wsRoot,
     });
+    if (acceptStale) env.meta.accept_stale = true;
+    return env;
   }
 
   const dryRun = !!options["dry-run"];
@@ -2054,6 +2082,7 @@ async function handleRescue(argv) {
       dry_run: true,
     });
     env.meta.dry_run = true;
+    if (acceptStale) env.meta.accept_stale = true;
     return env;
   }
 
@@ -2152,6 +2181,7 @@ async function handleRescue(argv) {
     dry_run: false,
   }, buildMonitorForMode(m.mode, { manifestPath, runId: m.run_id, monitorRoot, jsonlPath: ((m.entries || [])[0] || {}).jsonl_path }));
   env.meta.dry_run = false;
+  if (acceptStale) env.meta.accept_stale = true;
   return env;
 }
 

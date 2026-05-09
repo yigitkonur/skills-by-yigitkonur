@@ -245,6 +245,26 @@ def main() -> int:
             cleaned_ids.add(entry_id)
             continue
 
+        # Non-terminal manifest status — refuse. `running` means the worktree
+        # is in active use; `queued` means a runner may (re-)claim it. Cleaning
+        # either is unsafe regardless of branch-merged / tree-clean signals.
+        # Operator escape hatch is the existing --force-abandon flag.
+        status = entry.get("status")
+        if status in ("running", "queued") and not force:
+            refused += 1
+            actions.append({
+                "entry_id": entry_id, "action": "refuse",
+                "message": (
+                    f"manifest status={status!r} is non-terminal; "
+                    f"worktree may be in active use. "
+                    f"Pass --force-abandon {entry_id} to remove anyway."
+                ),
+                "reasons": [f"manifest status={status!r} (non-terminal)"],
+                "worktree_path": wt,
+                "manifest_status": status,
+            })
+            continue
+
         # No worktree path or path missing on disk
         if not worktree_present(wt):
             actions.append({
