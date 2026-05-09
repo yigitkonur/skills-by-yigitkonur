@@ -51,17 +51,17 @@ User request
 │  │  → Read references/foundations/workflow.md
 │  │  → Read references/python/file-anatomy.md
 │  │  → Read references/metadata/mode-selection.md
-│  │  → Read references/examples/python-recipes.md
+│  │  → Read references/python/python-recipes.md
 │  └─ Bash is clearly the best fit
 │     → Read references/foundations/workflow.md
 │     → Read references/bash/bash-script-patterns.md
 │     → Read references/metadata/mode-selection.md
-│     → Read references/examples/bash-recipes.md
+│     → Read references/bash/bash-recipes.md
 │
 ├─ "Convert an existing script into a Raycast command"
 │  → Read references/foundations/workflow.md
 │  → Read references/metadata/required-fields.md
-│  → Read references/conventions/dependencies-and-portability.md
+│  → Read references/foundations/dependencies-and-portability.md
 │  → Read references/troubleshooting/discovery-checklist.md
 │
 ├─ "Choose or change the output mode"
@@ -69,7 +69,7 @@ User request
 │  → Read references/metadata/inline-refresh-and-errors.md
 │
 ├─ "Add or fix arguments"
-│  → Read references/arguments/typed-arguments.md
+│  → Read references/metadata/typed-arguments.md
 │  → Read references/python/implementation-patterns.md or references/bash/bash-script-patterns.md
 │
 ├─ "Why doesn't this command show up in Raycast?"
@@ -85,8 +85,8 @@ User request
 │  → Read references/foundations/language-selection.md
 │
 └─ "Make this repo-ready or shareable"
-   → Read references/conventions/community-repo-conventions.md
-   → Read references/conventions/dependencies-and-portability.md
+   → Read references/foundations/community-repo-conventions.md
+   → Read references/foundations/dependencies-and-portability.md
 ```
 
 ### Step 3: Implement directly
@@ -172,25 +172,25 @@ echo "Done"
 - `references/python/file-anatomy.md`
 - `references/python/implementation-patterns.md`
 - `references/metadata/mode-selection.md`
-- `references/examples/python-recipes.md`
+- `references/python/python-recipes.md`
 
 ### "Create a new Bash Script Command"
 
 - `references/foundations/workflow.md`
 - `references/bash/bash-script-patterns.md`
 - `references/metadata/mode-selection.md`
-- `references/examples/bash-recipes.md`
+- `references/bash/bash-recipes.md`
 
 ### "Convert an existing script"
 
 - `references/foundations/workflow.md`
 - `references/metadata/required-fields.md`
-- `references/conventions/dependencies-and-portability.md`
+- `references/foundations/dependencies-and-portability.md`
 - `references/troubleshooting/discovery-checklist.md`
 
 ### "Add arguments"
 
-- `references/arguments/typed-arguments.md`
+- `references/metadata/typed-arguments.md`
 - `references/python/implementation-patterns.md`
 - `references/bash/bash-script-patterns.md`
 
@@ -202,8 +202,8 @@ echo "Done"
 
 ### "Make it community-repo ready"
 
-- `references/conventions/community-repo-conventions.md`
-- `references/conventions/dependencies-and-portability.md`
+- `references/foundations/community-repo-conventions.md`
+- `references/foundations/dependencies-and-portability.md`
 - `references/troubleshooting/discovery-checklist.md`
 
 ## Templates
@@ -245,17 +245,17 @@ Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
 | `references/metadata/required-fields.md` | Read when adding or repairing metadata headers. |
 | `references/metadata/mode-selection.md` | Read when choosing between `fullOutput`, `compact`, `silent`, and `inline`. |
 | `references/metadata/inline-refresh-and-errors.md` | Read when working on inline refresh, first-line/last-line behavior, or failure semantics. |
-| `references/arguments/typed-arguments.md` | Read when adding, changing, or debugging Script Command arguments. |
+| `references/metadata/typed-arguments.md` | Read when adding, changing, or debugging Script Command arguments. |
 | `references/python/file-anatomy.md` | Read when creating a Python command file or checking placement of metadata and code. |
 | `references/python/implementation-patterns.md` | Read when wiring `sys.argv`, dependency notes, failure messages, or Python output patterns. |
 | `references/bash/bash-script-patterns.md` | Read when building or fixing a Bash-based Script Command. |
-| `references/conventions/community-repo-conventions.md` | Read when the command should follow Raycast community-repo conventions. |
-| `references/conventions/dependencies-and-portability.md` | Read when the command depends on tools/packages or must stay portable. |
+| `references/foundations/community-repo-conventions.md` | Read when the command should follow Raycast community-repo conventions. |
+| `references/foundations/dependencies-and-portability.md` | Read when the command depends on tools/packages or must stay portable. |
 | `references/troubleshooting/discovery-checklist.md` | Read when a command does not appear in Raycast or seems not to be recognized. |
 | `references/troubleshooting/runtime-and-output-issues.md` | Read when output, refresh, or failure behavior is wrong. |
-| `references/examples/python-recipes.md` | Read when you need concrete Python command patterns. |
-| `references/examples/bash-recipes.md` | Read when you need concrete Bash command patterns. |
-| `references/sources/source-map.md` | Read when you need the provenance for the internal references or want to expand the skill from the original Raycast research docs. |
+| `references/python/python-recipes.md` | Read when you need concrete Python command patterns. |
+| `references/bash/bash-recipes.md` | Read when you need concrete Bash command patterns. |
+| `references/foundations/source-map.md` | Read when you need the provenance for the internal references or want to expand the skill from the original Raycast research docs. |
 
 ## Guardrails
 

@@ -9,9 +9,9 @@ Use this file when you need provenance for the skill's internal references or wa
 | Scope, fit, and language choice | `references/foundations/scope-and-fit.md`, `references/foundations/language-selection.md` | Raycast Manual, Script Commands README |
 | Python file anatomy and overall workflow | `references/python/file-anatomy.md`, `references/foundations/workflow.md` | Raycast Manual, Python template |
 | Required metadata and mode behavior | `references/metadata/required-fields.md`, `references/metadata/mode-selection.md`, `references/metadata/inline-refresh-and-errors.md`, `references/troubleshooting/runtime-and-output-issues.md` | Raycast Manual, OUTPUTMODES.md |
-| Arguments and Python positional input handling | `references/arguments/typed-arguments.md`, `references/python/implementation-patterns.md` | ARGUMENTS.md, Inputs blog post |
-| Community-repo conventions, portability, and discovery | `references/conventions/community-repo-conventions.md`, `references/conventions/dependencies-and-portability.md`, `references/troubleshooting/discovery-checklist.md` | Script Commands README, CONTRIBUTING.md |
-| Concrete command recipes and starter patterns | `references/examples/python-recipes.md`, `references/examples/bash-recipes.md`, `assets/templates/python-script-command.py`, `assets/templates/bash-script-command.sh` | Python template, Script Commands README, Raycast Manual |
+| Arguments and Python positional input handling | `references/metadata/typed-arguments.md`, `references/python/implementation-patterns.md` | ARGUMENTS.md, Inputs blog post |
+| Community-repo conventions, portability, and discovery | `references/foundations/community-repo-conventions.md`, `references/foundations/dependencies-and-portability.md`, `references/troubleshooting/discovery-checklist.md` | Script Commands README, CONTRIBUTING.md |
+| Concrete command recipes and starter patterns | `references/python/python-recipes.md`, `references/bash/bash-recipes.md`, `assets/templates/python-script-command.py`, `assets/templates/bash-script-command.sh` | Python template, Script Commands README, Raycast Manual |
 
 ## Raycast-owned upstream sources
 
