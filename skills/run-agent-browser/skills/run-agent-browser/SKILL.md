@@ -216,6 +216,8 @@ Capture screenshots only when you need:
 
 ## Minimal reference routing
 
+Treat `assets/templates/*.sh` as starting-point assets, not deterministic helper scripts. Adapt them before use; do not run them blindly against production or authenticated accounts.
+
 | Need | Read |
 |---|---|
 | Install, config, environment setup | `references/installation.md` |
@@ -228,7 +230,7 @@ Capture screenshots only when you need:
 | Stale daemon, timeout, and focus-related failures | `references/troubleshooting.md` |
 | Proxies, stealth, cloud browsers, extensions, iOS, profiling, video | `references/proxy-support.md`, `references/stealth-automation.md`, `references/advanced.md`, `references/profiling.md`, `references/video-recording.md` |
 | Helper scripts: version/bootstrap check or first-pass page inspection smoke test | `scripts/check-agent-browser-version.sh`, `scripts/check-agent-browser-version.md`, `scripts/inspect-page.sh`, `scripts/inspect-page.md` |
-| Ready-made shell starting points | `templates/ai-agent-workflow.sh`, `templates/form-automation.sh`, `templates/authenticated-session.sh`, `templates/e2e-test-workflow.sh`, `templates/capture-workflow.sh` |
+| Shell template assets to adapt before use | `assets/templates/ai-agent-workflow.sh`, `assets/templates/form-automation.sh`, `assets/templates/authenticated-session.sh`, `assets/templates/e2e-test-workflow.sh`, `assets/templates/capture-workflow.sh` |
 
 ## Minimal reading sets
 
