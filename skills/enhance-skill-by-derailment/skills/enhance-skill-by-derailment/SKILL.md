@@ -23,6 +23,14 @@ Use `synthesize-skills` to create or redesign a skill; use this skill after a dr
 5. **Different domain each round.** Same task twice proves nothing.
 6. **Do not inject fake constraints.** If the skill does not require a wrapper, shell convention, or extra ritual, do not add one in the test harness.
 
+## Available scripts
+
+Scripts are resolved relative to the skill directory root.
+
+| Script | Use |
+|---|---|
+| `scripts/launch-derailment.sh` | Render the Step 3 prompt, optionally pipe it to a runtime-neutral agent command, and tee output to a trace. See `scripts/launch-derailment.sh.md`. |
+
 ## Workflow
 
 ### 1. Get the skill
