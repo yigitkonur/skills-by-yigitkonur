@@ -1,393 +1,231 @@
 ---
 name: build-chrome-extension
-description: Use skill if you are building or debugging a Chrome extension with Manifest V3 — service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing.
+description: Use skill if you are building or debugging a Chrome MV3 extension with service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing.
 ---
 
 # Build Chrome Extension
 
-Build production-grade Chrome extensions with Manifest V3.
+Build, debug, package, and prepare Chrome Manifest V3 extensions for Web Store review.
 
-## Trigger boundary
+## Trigger Boundary
 
-Use this skill when the task involves:
+Use this skill for Chrome MV3 extension work:
 
-- Creating a new Chrome or browser extension from scratch
-- Adding features to an existing extension (content scripts, popups, sidepanels, background logic)
-- Debugging extension-specific issues (service worker termination, messaging failures, permission errors)
-- Migrating from Manifest V2 to V3
-- Packaging and publishing to Chrome Web Store
-- Choosing between extension frameworks (WXT, Plasmo, CRXJS, vanilla)
+- creating a new Chrome MV3 extension
+- adding extension surfaces: content scripts, popup, options, side panel, service worker, offscreen document
+- fixing MV3 lifecycle, messaging, storage, manifest, permission, or content-script issues
+- migrating a Chrome extension from MV2 to MV3
+- choosing a Chrome MV3 extension framework
+- validating built output, packaging a Web Store zip, or preparing Web Store review notes
 
-Do NOT use this skill for:
+Do not use this skill for:
 
-- General web development without extension context
-- Browser automation or testing (use run-agent-browser or similar)
-- Chrome DevTools Protocol / CDP debugging of websites
-- PWA / service worker development outside extensions
-- React/Vue/Angular component development (use frontend-design)
+- Firefox, Safari, or cross-browser extension builds; route to a browser-extension skill with that scope
+- Edge enterprise-policy extension deployment or managed policy packaging
+- generic website, app, or component work without Chrome extension APIs
+- generic browser automation; use `run-playwright` or `run-agent-browser`
+- writing Playwright suites beyond extension-specific launch/load patterns; use `run-playwright`
+- npm/package-registry publishing; use `publish-npm-package`
+- Raycast or other platform extension artifacts; use the platform-specific skill such as `build-raycast-script-command`
 
-## The Persistence Paradox — read this first
+## Pinned Defaults
 
-Service workers in MV3 extensions terminate after 30 seconds of inactivity. This is the #1 source of bugs in AI-generated extensions.
+| Key | Default |
+|---|---|
+| Manifest target | MV3 only; never generate MV2 |
+| Greenfield framework | WXT unless the repo already dictates another Chrome MV3 tool |
+| State model | Persistent state in `chrome.storage.local`; ephemeral restart-safe state in `chrome.storage.session` |
+| Background model | Event-driven service worker with top-level listeners |
+| Network modification | `declarativeNetRequest`, not blocking `webRequest` |
+| Permissions | Least privilege; prefer runtime optional permissions |
+| Loaded folder | Built output only: WXT `.output/chrome-mv3-dev/` or `.output/chrome-mv3/`, Plasmo `build/chrome-mv3-*`, CRXJS/vanilla `dist/` |
+| Package preflight | Run the bundled manifest and package scripts before zipping |
 
-**Rules:**
-- NEVER store state in global variables — use `chrome.storage.local` or `chrome.storage.session`
-- NEVER rely on `setTimeout`/`setInterval` for long-running tasks — use `chrome.alarms`
-- ALWAYS register event listeners at the top level (not inside async callbacks)
-- Use `chrome.offscreen` for tasks requiring DOM access from background
+## MV3 Footguns
 
-```typescript
-// WRONG — state lost on SW termination
-let count = 0;
-chrome.action.onClicked.addListener(() => { count++; });
+Keep these in working memory before generating files:
 
-// RIGHT — persisted across restarts
-chrome.action.onClicked.addListener(async () => {
-  const { count = 0 } = await chrome.storage.local.get('count');
-  await chrome.storage.local.set({ count: count + 1 });
-});
-```
+- Service workers idle out; global state disappears. Persist state before and after meaningful work.
+- Register all service-worker event listeners synchronously at top level.
+- `setTimeout` and `setInterval` do not make background work reliable. Use `chrome.alarms`.
+- Async `chrome.runtime.onMessage` handlers must return `true` synchronously.
+- Content scripts run in isolated worlds by default. Use MAIN world only for page-JS access, then bridge safely.
+- Extension-origin fetches need `host_permissions`; content-script fetches remain subject to the page origin.
+- MV3 blocks inline scripts, `eval()`, `new Function()`, and remote executable code.
+- Hand-written manifests must point at built files, not `src/*.ts` or source-only HTML.
 
-## Decision tree
+## Decision Rules
 
-```
-User request
-├─ "Create / scaffold a new extension"
-│   → Read references/manifest/manifest-v3.md
-│   → Read references/frameworks/comparison.md
-│   → Follow: New Extension Workflow (below)
-│
-├─ "Add feature to existing extension"
-│   ├─ Content script work → Read references/patterns/content-scripts.md
-│   ├─ Background / service worker → Read references/patterns/service-worker.md
-│   ├─ UI (popup/options/sidepanel) → Read references/patterns/ui-surfaces.md
-│   ├─ Messaging between contexts → Read references/apis/messaging.md
-│   ├─ Storage / state management → Read references/apis/storage.md
-│   └─ Permissions → Read references/manifest/permissions.md
-│
-├─ "Debug an extension issue"
-│   ├─ Service worker dies/restarts → Read references/patterns/service-worker.md
-│   ├─ Content script not injecting → Read references/patterns/content-scripts.md
-│   ├─ Messaging failures → Read references/apis/messaging.md
-│   ├─ Permission errors → Read references/manifest/permissions.md
-│   └─ General → Read references/testing/debugging.md
-│
-├─ "Test the extension"
-│   → Read references/testing/testing-guide.md
-│
-├─ "Publish to Chrome Web Store"
-│   → Read references/publishing/web-store.md
-│
-└─ "Migrate MV2 → MV3"
-    → Read references/manifest/mv2-to-mv3.md
-```
+Use these rules before writing code:
 
-## New Extension Workflow
+| Decision | Default | Escalate when |
+|---|---|---|
+| Background state | Persist through `chrome.storage.session` or `chrome.storage.local` | State needs transactions, large indexes, or binary blobs; consider IndexedDB |
+| Periodic work | `chrome.alarms` | Work needs continuous real-time transport; design reconnect and queue behavior |
+| Network changes | `declarativeNetRequest` | Read-only observation is enough; use non-blocking `webRequest` only for observation |
+| Page data fetch | Service worker fetch with host permissions | Content script can safely use the page origin without extra privileges |
+| Page JS access | MAIN world bridge with validation | DOM-only access is enough; stay in ISOLATED world |
+| UI persistence | `chrome.storage.session` for transient UI state | Settings or user choices must survive browser restart; use `local` or `sync` |
+| Host access | `activeTab` or optional host permissions | The extension cannot function without install-time host access |
+| Side panel | Use for persistent companion workflows | A quick action or short form fits in popup |
+| Offscreen document | Use only for DOM, canvas, clipboard, audio, or worker needs from the service worker | Popup/options/content script can own the DOM work |
 
-### Phase 1: Requirements
+## Chrome-Only Boundary Matrix
 
-1. Identify the extension type: popup-only, content-script-driven, background-heavy, or full-featured
-2. List required Chrome APIs (storage, tabs, scripting, declarativeNetRequest, sidePanel, etc.)
-3. Determine minimum permissions using the principle of least privilege
-4. Choose a framework or vanilla approach (read `references/frameworks/comparison.md`)
+| Request shape | Action |
+|---|---|
+| "Build a Chrome extension" | Use this skill; target MV3 |
+| "Build a browser extension for Chrome and Firefox" | Keep Chrome MV3 here; route cross-browser build rules elsewhere |
+| "Automate this website in a browser" | Use `run-playwright` or `run-agent-browser` |
+| "Write Playwright tests for an extension" | Keep extension launch/load notes here; route test-suite authoring to `run-playwright` |
+| "Publish the package to npm" | Use `publish-npm-package` |
+| "Submit to Chrome Web Store" | Use this skill; read Web Store reference |
+| "Deploy through enterprise policy" | Treat as out of scope unless the repo has a dedicated enterprise policy skill |
 
-**Default framework rule**
+## Minimal Build Evidence
 
-- If the user gives no framework preference, start with **WXT**. It is the safest default for new MV3 extensions, including dead-simple popup-only tools.
-- Choose **CRXJS** when the user already has a Vite app and wants the smallest extension-specific change.
-- Choose **vanilla + Vite** only when the user explicitly wants manual control or needs to fit the extension into an existing custom build.
+Before stopping, collect the smallest proof that matches the task:
 
-**Quick selection heuristic**
+| Task | Evidence |
+|---|---|
+| New scaffold | built output path plus manifest check script result |
+| Feature change | relevant unit/integration test plus manual load note when Chrome behavior changed |
+| Manifest/permission change | manifest check script result plus permission justification |
+| Content-script change | allowed URL and disallowed URL injection result |
+| Service-worker change | restart-resilience note or explicit not-exercised caveat |
+| Package/Web Store work | package preflight result, zip path, and review notes |
 
-| Situation | Default |
-|---------|---------|
-| New extension, unsure of needs | WXT |
-| Popup-only or small internal tool | WXT |
-| Existing Vite app gaining extension output | CRXJS |
-| Existing custom build or explicit no-framework requirement | Vanilla + Vite |
+## Workflow
 
-### Phase 2: Scaffold
+### 1. Scope The Extension
 
-If the task is a new extension and no stronger signal exists, use the WXT fast path:
+**Think first:** "Which extension contexts exist, which Chrome APIs are required, and which permissions can be delayed until runtime?"
+
+1. Identify required surfaces: popup, options, side panel, content script, service worker, offscreen document.
+2. Identify Chrome APIs and required permissions.
+3. Choose install-time vs optional permissions.
+4. Choose framework using `references/frameworks/comparison.md`.
+5. Record the built output folder that Chrome will load.
+
+### 2. Scaffold Or Adapt
+
+**Think first:** "Is this a greenfield Chrome MV3 build, an existing framework build, or a hand-written manifest?"
+
+- Greenfield default: WXT.
+- Existing Vite app becoming an extension: CRXJS if it keeps the change small.
+- Explicit manual control or custom build: vanilla + Vite.
+- Existing repo: follow the repo's framework and output conventions.
+
+Use built output only. Chrome should never load `src/`, framework cache directories, or unbundled TypeScript.
+
+### 3. Implement Extension Contexts
+
+**Think first:** "Which context owns the state, which context owns the DOM, and which messages cross the boundary?"
+
+- Service worker: read `references/patterns/service-worker.md`.
+- Content scripts: read `references/patterns/content-scripts.md`.
+- Popup/options/side panel: read `references/patterns/ui-surfaces.md`.
+- Messaging: read `references/apis/messaging.md`.
+- Storage: read `references/apis/storage.md`.
+- Permissions and runtime grants: read `references/manifest/permissions.md`.
+- Core APIs: read `references/apis/core-apis.md`.
+
+Keep UI logic separate from extension plumbing when practical. Validate messages, storage reads, external API data, and content-script bridge payloads at boundaries.
+
+### 4. Validate Built Output
+
+**Think first:** "Can Chrome load this exact output folder, and do all manifest paths exist there?"
+
+Run the bundled checks from the skill directory:
 
 ```bash
-npm create wxt@latest my-extension
-cd my-extension
-npm install
-npm run dev
+scripts/check-mv3-manifest.sh dist
+scripts/preflight-extension.sh dist
 ```
 
-After `npm run dev`, WXT writes the unpacked development build to `.output/chrome-mv3-dev/`. Load that directory manually if WXT does not launch the browser for you. Use `.output/chrome-mv3/` after a production build.
+Adjust the path for framework output:
 
-If you intentionally choose **vanilla + Vite**, follow `references/frameworks/comparison.md` exactly:
+| Framework | Dev output | Production output |
+|---|---|---|
+| WXT | `.output/chrome-mv3-dev/` | `.output/chrome-mv3/` |
+| Plasmo | `build/chrome-mv3-dev/` | `build/chrome-mv3-prod/` |
+| CRXJS | `dist/` | `dist/` |
+| Vanilla Vite | `dist/` | `dist/` |
 
-- Keep `manifest.json` and icons under `public/`
-- Put popup HTML/CSS/TS entry files under `src/`
-- Build with `npm run build`
-- Treat `src/` + `public/` as source only; Chrome should only ever load the built output
-- Load the built **`dist/`** directory in `chrome://extensions`
+Read `scripts/check-mv3-manifest.md` and `scripts/preflight-extension.md` before changing either script.
 
-If you are building the manual vanilla + Vite path, generate this exact source tree. Do not force WXT, Plasmo, or CRXJS into this layout:
+### 5. Test Extension Behavior
 
-```
-my-extension/
-├── public/
-│   ├── manifest.json          # Hand-written manifest copied into dist/
-│   ├── icons/
-│   │   ├── icon-16.png
-│   │   ├── icon-48.png
-│   │   └── icon-128.png
-│   └── _locales/              # i18n assets copied as-is (if needed)
-│       └── en/
-│           └── messages.json
-├── src/
-│   ├── background/
-│   │   └── index.ts           # Builds to dist/background/index.js
-│   ├── content/
-│   │   └── index.ts           # Builds to dist/content/index.js (if needed)
-│   ├── popup/
-│   │   ├── index.html         # Builds to dist/popup/index.html
-│   │   ├── main.ts
-│   │   └── styles.css
-│   ├── options/
-│   │   ├── index.html         # Optional
-│   │   └── main.ts
-│   ├── sidepanel/
-│   │   ├── index.html         # Optional
-│   │   └── main.ts
-│   └── lib/
-│       ├── messaging.ts       # Type-safe message passing
-│       └── storage.ts         # Type-safe storage helpers
-├── tsconfig.json
-├── package.json
-└── vite.config.ts
-```
+**Think first:** "What failure would only appear after Chrome loads the extension?"
 
-### Phase 3: Implement
+Keep this skill focused on extension-specific checks:
 
-Build each component following the patterns in the reference files. Key principles:
+- Unit-test pure logic and message/storage helpers.
+- Mock `chrome.*` only at test boundaries.
+- Manually load the built output in `chrome://extensions`.
+- Inspect the service worker from `chrome://extensions`.
+- Test service-worker restart resilience.
+- Test content-script injection on allowed and disallowed URLs.
+- Verify runtime permission request UX.
 
-- **Service worker**: Stateless, event-driven, all listeners registered at top level
-- **Content scripts**: Idempotent, isolated world by default, use MAIN world only when needed
-- **Messaging**: Type-safe with defined message types, always handle errors
-- **Storage**: Prefer `chrome.storage.session` for ephemeral data, `local` for persistent
-- **Permissions**: Request optional permissions at runtime when possible
+Read `references/testing/testing-guide.md` for extension-specific testing. Route broad browser automation or full Playwright authoring to `run-playwright` or `run-agent-browser`.
 
-### Phase 4: Test
+### 6. Package For Web Store Review
 
-Read `references/testing/testing-guide.md` for the full testing approach:
+**Think first:** "Would a reviewer understand the single purpose, permission need, data use, and remote-code posture?"
 
-- Unit test business logic with Vitest
-- Integration test Chrome APIs with Puppeteer or Playwright
-- Manual load in `chrome://extensions` with Developer Mode
-  - WXT: load `.output/chrome-mv3-dev/` during `npm run dev`, or `.output/chrome-mv3/` after a production build
-  - Plasmo: load `build/chrome-mv3-dev/` for dev or `build/chrome-mv3-prod/` for production
-  - CRXJS / vanilla Vite: load `dist/`
-- Test service worker restart resilience
+1. Build production output.
+2. Run both bundled scripts against the production output.
+3. Remove junk before zipping: source maps unless intentionally shipped, tests, `.DS_Store`, `__MACOSX`, local caches.
+4. Create the package zip from inside the built output folder.
+5. Prepare Privacy practices, permission justifications, remote-code disclosure, data-use certification, and test instructions.
+6. Read `references/publishing/web-store.md` before submission.
 
-### Phase 5: Package and Publish
+## Canonical Routing
 
-Read `references/publishing/web-store.md` for store submission:
+| Need | Read |
+|---|---|
+| Manifest shape, required fields, output-path checks | `references/manifest/manifest-v3.md` |
+| MV2 to MV3 migration | `references/manifest/mv2-to-mv3.md` |
+| Install-time, optional, host, and runtime permissions | `references/manifest/permissions.md` |
+| Service-worker lifecycle, persistence, alarms, offscreen documents | `references/patterns/service-worker.md` |
+| Content-script injection, worlds, idempotency, cross-origin request routing | `references/patterns/content-scripts.md` |
+| Popup, options, side panel, DevTools, new-tab surfaces | `references/patterns/ui-surfaces.md` |
+| One-time messages, ports, external/native messaging, page bridges | `references/apis/messaging.md` |
+| `chrome.storage` areas, quotas, typed wrappers, migrations | `references/apis/storage.md` |
+| Tabs, scripting, alarms, DNR, side panel, offscreen, runtime APIs | `references/apis/core-apis.md` |
+| WXT, Plasmo, CRXJS, vanilla Vite selection for Chrome MV3 | `references/frameworks/comparison.md` |
+| Extension-specific tests and Chrome load checks | `references/testing/testing-guide.md` |
+| Debugging service worker, popup, content script, permissions, storage | `references/testing/debugging.md` |
+| Web Store listing, privacy, policy, package, review readiness | `references/publishing/web-store.md` |
+| Built manifest sanity check script | `scripts/check-mv3-manifest.md` |
+| Package/Web Store preflight script | `scripts/preflight-extension.md` |
 
-- Prepare store assets (screenshots 1280x800, promo images, descriptions)
-- Review permission justifications
-- Build production bundle and create `.zip`
-- Submit via Chrome Web Store Developer Dashboard
+## Output Contract
 
-## Manifest V3 — minimal valid manifest
+Final reports for Chrome extension work should include:
 
-```json
-{
-  "manifest_version": 3,
-  "name": "My Extension",
-  "version": "1.0.0",
-  "description": "A brief description of the extension.",
-  "permissions": [],
-  "action": {
-    "default_popup": "popup/index.html",
-    "default_icon": {
-      "16": "icons/icon-16.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
-    }
-  },
-  "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
-  }
-}
-```
-
-For hand-written manifests, point every manifest entry at the built extension files, not at `src/*.ts` or other source-only paths. Frameworks like WXT and CRXJS generate or rewrite those manifest paths for you.
-
-Add fields as needed:
-
-| Feature | Manifest field |
-|---------|---------------|
-| Background logic | `"background": { "service_worker": "background.js", "type": "module" }` |
-| Content scripts | `"content_scripts": [{ "matches": [...], "js": [...] }]` |
-| Options page | `"options_page": "options.html"` or `"options_ui": { "page": "options.html", "open_in_tab": false }` |
-| Side panel | `"side_panel": { "default_path": "sidepanel.html" }` |
-| Context menus | Add `"contextMenus"` to permissions |
-| Keyboard shortcuts | `"commands": { ... }` |
-| Network rules | `"declarative_net_request": { "rule_resources": [...] }` |
-
-## Common pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-| Global variables lost after SW terminates | Use `chrome.storage.local` / `chrome.storage.session` |
-| Event listeners not firing after restart | Register listeners at the top level of SW, never inside async |
-| Content script not injecting | Check `matches` patterns, verify `host_permissions`, check page CSP |
-| `chrome.tabs.sendMessage` fails | Content script must be loaded first; use `chrome.scripting.executeScript` as fallback |
-| CORS errors from extension | Use `host_permissions` for the target domain |
-| `eval()` blocked by CSP | MV3 forbids `eval`; use `chrome.scripting.executeScript` with `world: 'MAIN'` |
-| Storage sync quota exceeded | `chrome.storage.sync` has 100KB total limit; use `local` for large data |
-| Extension not reloading changes | Use `chrome.runtime.reload()` or enable auto-reload via framework |
-| Side panel not showing | Requires Chrome 114+; add `"sidePanel"` permission |
-| `chrome.scripting` undefined | Add `"scripting"` permission to manifest |
-| Manifest points at `src/*.ts` or other source-only files | In hand-written builds, point manifest entries at built files inside `dist/` such as `popup/index.html` and `background/index.js` |
-| Shared repo `tsc` errors block extension build | Scope compilation to the extension package/entrypoints; do not typecheck unrelated UI code just to ship the extension |
-
-## Type-safe messaging pattern
-
-```typescript
-// shared/messages.ts — define once, import everywhere
-type MessageMap = {
-  'GET_TAB_DATA': { tabId: number };
-  'TAB_DATA_RESULT': { title: string; url: string };
-  'TOGGLE_FEATURE': { enabled: boolean };
-};
-
-type MessageType = keyof MessageMap;
-
-interface TypedMessage<T extends MessageType> {
-  type: T;
-  payload: MessageMap[T];
-}
-
-function sendMessage<T extends MessageType>(
-  msg: TypedMessage<T>
-): Promise<any> {
-  return chrome.runtime.sendMessage(msg);
-}
-
-function onMessage<T extends MessageType>(
-  type: T,
-  handler: (payload: MessageMap[T], sender: chrome.runtime.MessageSender) => void | Promise<any>
-) {
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === type) {
-      const result = handler(message.payload, sender);
-      if (result instanceof Promise) {
-        result.then(sendResponse);
-        return true; // Keep channel open for async response
-      }
-    }
-  });
-}
-```
-
-## Type-safe storage pattern
-
-```typescript
-// shared/storage.ts
-interface StorageSchema {
-  settings: { theme: 'light' | 'dark'; notifications: boolean };
-  cache: { lastSync: number; data: unknown[] };
-  count: number;
-}
-
-async function getStorage<K extends keyof StorageSchema>(
-  key: K
-): Promise<StorageSchema[K] | undefined> {
-  const result = await chrome.storage.local.get(key);
-  return result[key];
-}
-
-async function setStorage<K extends keyof StorageSchema>(
-  key: K, value: StorageSchema[K]
-): Promise<void> {
-  await chrome.storage.local.set({ [key]: value });
-}
-
-function watchStorage<K extends keyof StorageSchema>(
-  key: K,
-  callback: (newValue: StorageSchema[K], oldValue: StorageSchema[K]) => void
-): void {
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && key in changes) {
-      callback(changes[key].newValue, changes[key].oldValue);
-    }
-  });
-}
-```
-
-## Red flags — stop and fix immediately
-
-| Red flag | Why it's dangerous |
-|----------|--------------------|
-| Global `let`/`var` in service worker | Lost on every SW restart (every 30s idle) |
-| `setInterval` in service worker | Cleared on termination; use `chrome.alarms` |
-| Missing `return true` in async message handler | Response channel closes before async completes |
-| `"permissions": ["<all_urls>"]` | Over-broad; triggers Web Store review flags |
-| Inline scripts in HTML | Blocked by MV3 CSP; use separate `.js` files |
-| `document` access in service worker | No DOM in SW; use `chrome.offscreen` if DOM needed |
-| `XMLHttpRequest` in service worker | Use `fetch()` instead; XHR unavailable in SW |
-| Content script assumes DOM is ready | Use `"run_at": "document_idle"` or wait for elements |
-
-## Reference routing
-
-### Manifest and permissions
-
-| File | Read when |
-|------|-----------|
-| `references/manifest/manifest-v3.md` | Setting up or modifying manifest.json, understanding required vs optional fields |
-| `references/manifest/permissions.md` | Choosing permissions, understanding risk levels, requesting optional permissions |
-| `references/manifest/mv2-to-mv3.md` | Migrating an existing MV2 extension to MV3 |
-
-### Chrome APIs
-
-| File | Read when |
-|------|-----------|
-| `references/apis/messaging.md` | Implementing communication between popup, content script, service worker, or external pages |
-| `references/apis/storage.md` | Using chrome.storage (local, sync, session), understanding quotas and watching changes |
-| `references/apis/core-apis.md` | Using tabs, scripting, alarms, notifications, contextMenus, commands, declarativeNetRequest, sidePanel, offscreen |
-
-### Extension patterns
-
-| File | Read when |
-|------|-----------|
-| `references/patterns/service-worker.md` | Writing background service workers, handling lifecycle, persistence, alarms, offscreen |
-| `references/patterns/content-scripts.md` | Injecting into web pages, MAIN vs ISOLATED world, dynamic injection, shadow DOM isolation |
-| `references/patterns/ui-surfaces.md` | Building popup, options page, side panel, or DevTools panel UI |
-
-### Frameworks
-
-| File | Read when |
-|------|-----------|
-| `references/frameworks/comparison.md` | Choosing between WXT, Plasmo, CRXJS Vite, or vanilla; framework setup guides |
-
-### Testing and publishing
-
-| File | Read when |
-|------|-----------|
-| `references/testing/testing-guide.md` | Unit testing, integration testing, manual testing, CI/CD for extensions |
-| `references/testing/debugging.md` | Debugging service worker issues, content script problems, messaging failures |
-| `references/publishing/web-store.md` | Chrome Web Store submission, asset requirements, review process, update workflow |
+- loaded build directory
+- zip path, when packaged
+- Chrome version used for manual load, when manually tested
+- permissions and host-permissions justification summary
+- Web Store policy notes: single purpose, data use, remote code, MV2/MV3 posture
+- scripts and tests run, including any failures
+- reviewer notes for remaining manual checks
 
 ## Guardrails
 
-- NEVER generate Manifest V2 extensions. Always use `"manifest_version": 3`.
-- NEVER use `eval()`, `new Function()`, or inline scripts in MV3 extensions.
-- NEVER store secrets (API keys, tokens) in extension code or storage without encryption.
-- NEVER use `"permissions": ["<all_urls>"]` without explicit justification.
-- NEVER use global variables for state in service workers.
-- ALWAYS register service worker event listeners synchronously at the top level.
-- ALWAYS handle the case where content scripts haven't loaded yet when sending messages.
-- ALWAYS use TypeScript for extensions with more than one file.
-- ALWAYS validate data at boundaries (messages received, storage reads, external API responses).
-- PREFER `chrome.storage.session` over `chrome.storage.local` for ephemeral data.
-- PREFER optional permissions requested at runtime over declared permissions.
-- PREFER `declarativeNetRequest` over `webRequest` for network modification.
+- Never generate or preserve Manifest V2 for new work.
+- Never load source folders in Chrome unless the framework explicitly outputs loadable code there.
+- Never use global variables as durable service-worker state.
+- Never rely on timers to keep the service worker alive.
+- Never use blocking `webRequest` for normal MV3 network modification.
+- Never request `<all_urls>` without a feature-level justification and narrower alternatives.
+- Never expose arbitrary background fetch through content-script messages.
+- Never ship remote executable code or undeclared remote-code behavior.
+- Always validate built output paths against `manifest.json`.
+- Always make extension permissions explainable in one sentence each.
+
+## Bottom Line
+
+Build Chrome MV3 around restart-safe state, top-level service-worker listeners, least-privilege permissions, built-output validation, and Web Store review evidence. Route tutorials to references; keep the spine for decisions, defaults, and proof.

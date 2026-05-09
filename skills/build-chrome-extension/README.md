@@ -1,6 +1,6 @@
 # build-chrome-extension
 
-Building or debugging a Chrome extension with Manifest V3 — service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing.
+Building or debugging a Chrome MV3 extension with service workers, content scripts, popup/sidepanel, messaging, storage, permissions, testing, or Web Store publishing.
 
 **Category:** development
 
