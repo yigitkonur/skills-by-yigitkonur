@@ -43,8 +43,8 @@ Default final structure:
 Recommended table:
 
 ```markdown
-| Repo | Why it fits | Useful signals | Caveat |
-|---|---|---|---|
+| Repo | Fit | Evidence | Signals | Caveat / unknown |
+|---|---|---|---|---|
 ```
 
 ## 5. Be explicit about uncertainty

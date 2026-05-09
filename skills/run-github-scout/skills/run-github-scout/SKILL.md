@@ -158,17 +158,27 @@ Default output is **markdown in the conversation**, not mandatory files.
 
 Deliver:
 1. a one-paragraph recommendation or framing note
-2. a compact markdown table
+2. a compact table using the stable row schema
 3. a grouped shortlist (`Best fits`, `Worth a look`, `Ruled out / why`)
-4. notable gaps or uncertainty
+4. evidence packs for `Best fits`
+5. notable gaps or uncertainty
 
-Recommended table:
+Stable row schema:
 
 ```markdown
-| Repo | Why it fits | Useful signals | Caveat |
-|---|---|---|---|
-| owner/repo | Best match for X because Y | 4.2k stars, pushed 2026-04, MIT | Docs thin |
+| Repo | Fit | Evidence | Signals | Caveat / unknown |
+|---|---|---|---|---|
+| [owner/repo](https://github.com/owner/repo) | Strong fit for X | README says Y; topics include Z | stars, pushed date, license, activity | Not verified: A |
 ```
+
+Require repo links in the table unless a URL is unavailable.
+
+For each `Best fits` repo, include a lightweight evidence pack:
+- why it matches the user's must-haves
+- evidence source used: description, topics, README, API, or code
+- cheap quality signals checked
+- caveats and unverified claims
+- last checked date when external state matters
 
 If the user is satisfied with the markdown shortlist, stop there.
 
@@ -176,13 +186,20 @@ If the user is satisfied with the markdown shortlist, stop there.
 
 Only deepen after the markdown shortlist is useful.
 
-Optional branches:
-- **light deeper comparison** — compare the top 3-5 repos side by side
-- **code-level evaluation** — verify feature evidence and implementation maturity in the top few repos
-- **feature matrix** — only if the user wants explicit capability coverage
-- **HTML/export** — only if the user wants a persistent artifact
+Each branch consumes only the final shortlisted dataset; do not restart discovery.
+
+- **light deeper comparison** — top 3-5 side-by-side on fit, evidence, signals, and caveats
+- **code-level evaluation** — top few repos only; verify must-have features, README/onboarding, tests/CI, and maturity risks
+- **feature matrix** — explicit capability coverage table with evidence notes or `unknown`
+- **HTML/export** — persistent report from the stable markdown shortlist
 
 If the user asks for files, create them from the **final shortlisted dataset only**. Do not create `.githubresearch/` or other artifact trees unless the user wants export or report output.
+
+HTML export data contract for `references/report-template.html`:
+- Generate HTML only after the markdown shortlist is stable.
+- Fill `[TOPIC]`, `[DATE]`, `[ROW_COUNT]`, `[RECOMMENDATION]`, `[SEARCH_PATH_NOTE]`, and `[GAPS_NOTE]`.
+- Each row must provide repo URL/name, fit, evidence, signals, and caveat/unknown.
+- Grouped notes come from the same `Best fits`, `Worth a look`, and `Ruled out / why` groups.
 
 ## Default evaluation rules
 
@@ -223,16 +240,6 @@ Default execution model: **hybrid lean**.
 - When web augmentation is the gap and a subagent is dispatched for it, the subagent's brief embeds the `run-research` skill discipline (so the subagent uses the 5-tool toolkit correctly without re-deriving it). See `references/subagent-prompts.md` for the integration block.
 
 If you dispatch help, read `references/subagent-prompts.md`. Subagents gather evidence; the main agent still writes the final shortlist or comparison.
-
-## Output contract
-
-Unless the user asks for a different format, show work in this order:
-
-1. interpreted need summary
-2. chosen search path and why
-3. first-pass shortlist result
-4. refined shortlist and recommendation
-5. optional deepen choices if more confidence or export is useful
 
 ## Reference routing
 
