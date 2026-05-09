@@ -15,7 +15,8 @@ Used by `modes/interactive-brainstorm.md`. Solo mode does not need this file (no
 | Runtime | Tool name | Style |
 |---|---|---|
 | **claude-code** (Anthropic SDK) | `AskUserQuestion` | PascalCase |
-| **codex** (OpenAI) | `ask_user_question` | snake_case |
+| **codex** (OpenAI, current) | `request_user_input` | snake_case |
+| **codex-legacy** (OpenAI, older docs) | `ask_user_question` | snake_case |
 | **gemini-cli** | `ask_user` | snake_case |
 | **deepagents** | `ask_user` | snake_case |
 | **kimi-cli** | `AskUserQuestion` | PascalCase |
@@ -37,7 +38,7 @@ Casing matters. Lookup is exact-match.
 ### Picking at runtime
 
 1. Look up the runtime in the table.
-2. If the runtime isn't listed → try `AskUserQuestion` once; if the tool is unknown, try `ask_user` once; otherwise prose fallback.
+2. If the runtime isn't listed → try `request_user_input` once on OpenAI/Codex, `AskUserQuestion` once on PascalCase runtimes, then `ask_user` once; otherwise prose fallback.
 3. Never silently skip a fork. If no tool works, fall back to prose. Do not proceed without the user's answer.
 
 ## Portable payload shape
@@ -66,6 +67,8 @@ questions: [
 - First option marked `(Recommended)` in the label, based on your analysis — not static
 - Do NOT manually add "Other" — Claude Code auto-adds it; other runtimes may differ, but mimicking keeps the prompt clean
 - Use `multiSelect: true` only when choices are genuinely orthogonal (e.g., "which failure modes to block")
+
+OpenAI/Codex `request_user_input` note: include a stable `id` per question, omit `multiSelect`, and keep 2-3 options because the current tool adds free-form "Other" itself. If only `ask_user_question` exists, treat it as the legacy Codex alias and use the generic payload shape above.
 
 ## The five forks mapped to the ask-user tool
 

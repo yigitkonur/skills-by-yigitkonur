@@ -39,19 +39,19 @@ Prefer another skill when:
 
 ## Pick a mode FIRST (Iron Law #0)
 
-Default: **Solo**. Switch to **Interactive** when any of:
+Default: **Solo** for answer-or-execute requests. High stakes raise Tier first; they do not force Interactive unless the decision needs user-owned context or co-authorship.
 
-- The user said "help me think", "walk through", "brainstorm", "let's figure out", "let's explore"
-- The user is present AND the decision is high-stakes / hard-to-reverse
-- ≥2 viable options have no obvious winner AND the user is reachable
-- Solo's Phase C2 stress-test killed all three options (escalation gate)
-- The decision requires the user's domain knowledge or stakeholder context
+Switch to **Interactive** by one of three gates:
+
+- **User-flagged**: the user says "help me think", "walk through", "brainstorm", "let's figure out", "let's explore", or otherwise asks to co-author the decision.
+- **Auto-detected**: stakeholder/domain context is missing, or ≥2 viable options remain equal with no agent-owned tie-breaker.
+- **Escalated**: Solo Phase C2 stress-test kills all candidates/attempts.
 
 Cross-runtime note: Interactive needs an ask-user tool. See `references/cross-runtime.md` for the runtime → tool lookup and the prose fallback. **Do not silently degrade Interactive into Solo** — surface the limitation if the runtime can't support forks.
 
 ## The opening contract (Iron Law #1)
 
-The **first line** of every response is a single machine-checkable contract:
+The **first line** at the start of a `do-think` session is a single machine-checkable contract:
 
 ```
 Mode: <Solo|Interactive>   Op: <op>   Cynefin: <Clear|Complicated|Complex|Chaotic|Disorder>   Tier: <Low|Medium|High>
@@ -59,7 +59,7 @@ Mode: <Solo|Interactive>   Op: <op>   Cynefin: <Clear|Complicated|Complex|Chaoti
 
 Where `Op` is one of: `SenseMaking | Extraction | Composition | Reshape | GroundedQA | WatchTrigger | Orchestration | SelfVerify`.
 
-This line is non-skippable. It declares mode (no silent default-to-Solo), proves Phase A1 ran (no skipping the Cynefin classifier), proves Phase A2 ran (no defaulting to Sense-Making for everything), and locks the effort tier (no scope creep). The user can correct any of four things in one re-prompt. Re-emit if any field changes mid-session.
+This line is non-skippable at session start. It declares mode (no silent default-to-Solo), proves Phase A1 ran, proves Phase A2 ran, and locks the effort tier. The user can correct any field in one re-prompt. Re-emit only if Mode, Op, Cynefin, or Tier changes mid-session.
 
 ## Non-negotiable rules
 
@@ -213,7 +213,7 @@ Full spec: `references/foundations/output-contract.md`.
 | "I already know which option wins." | Then write what would falsify it. Can't? You don't know. (Sense-Making only — other ops don't have "options.") |
 | "Stress-test feels formulaic — skip." | Skipping is exactly when the formulaic check catches the blind spot the intuition missed. |
 | "Three options is artificial; only two are real." | Force a third. The third is usually "do nothing" or "ask the user." Both are real. (Sense-Making only.) |
-| "Solo because the user said 'just figure it out'." | Solo is the choice; "just figure it out" doesn't say it's reversible. Confirm reversibility before committing solo. |
+| "High-stakes means Interactive." | No. High stakes raises Tier. Switch to Interactive only when user-owned context, co-authorship, or the Solo escalation gate requires it. |
 | "Verification step is obvious — skip writing it." | Unwritten = skipped under pressure. Write it. |
 | "The trio (Inversion + Ladder + Second-Order) applies to every Op." | No. The trio is for Sense-Making. Other ops have their own stress-test focus — see operation-classification.md. |
 

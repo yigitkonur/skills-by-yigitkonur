@@ -2,16 +2,17 @@
 
 User-in-the-loop variant of the core loop. The 4-phase Phase A → D structure is preserved as a 6-step session with 5 user forks (steps 1-5 each end in a fork; step 6 emits the final output without a fork).
 
-This was previously the standalone `do-brainstorm` skill; it now lives inside `do-think` as one of two operating modes.
+Interactive brainstorm is the user-in-the-loop mode inside `do-think`.
 
 ## When to use
 
-Switch to Interactive (from Solo's default) when any of:
-- The user said "help me think", "walk through", "brainstorm", "let's figure out", "let's explore"
-- The user is present AND the decision is high-stakes / hard-to-reverse
-- ≥2 viable options have no obvious winner AND the user is reachable
-- Solo Phase C2 stress-test killed all three options (escalation gate)
-- The decision requires the user's domain knowledge / stakeholder context
+Solo is the default for answer-or-execute requests. Switch to Interactive only through these gates:
+
+- **User-flagged**: the user says "help me think", "walk through", "brainstorm", "let's figure out", "let's explore", or otherwise asks to co-author the decision.
+- **Auto-detected**: stakeholder/domain context is missing, or ≥2 viable options remain equal with no agent-owned tie-breaker.
+- **Escalated**: Solo Phase C2 stress-test killed all candidates/attempts.
+
+High stakes alone raises Tier; it does not force Interactive unless user-owned context is needed.
 
 ## Cross-runtime requirement
 
@@ -19,7 +20,7 @@ Interactive needs an ask-user tool. Look up the runtime's tool name in `referenc
 
 ## The five forks
 
-The 4-phase loop maps to a 6-step session with 5 forks (the original `do-brainstorm` workflow, now realized inside `do-think`):
+The 4-phase loop maps to a 6-step session with 5 forks:
 
 | Step | Phase | What runs | Fork question |
 |---|---|---|---|
