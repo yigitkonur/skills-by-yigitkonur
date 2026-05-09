@@ -60,7 +60,7 @@ Positive routing:
 | Auth / OAuth | `references/11-auth/01-overview-decision-matrix.md` | `references/11-auth/02-dcr-vs-proxy-mode.md`, `references/11-auth/03-ctx-auth-object.md`, `references/11-auth/08-debugging-checklist.md`, `references/27-troubleshooting/03-oauth-and-supabase-issues.md` |
 | Sessions, streaming, notifications, sampling, elicitation | `references/30-workflows/02-stateful-redis-streaming-server.md` | `references/10-sessions/01-overview.md`, `references/14-notifications/01-overview.md`, `references/13-sampling/01-overview.md`, `references/12-elicitation/01-overview.md` |
 | Deploy or production hardening | `references/25-deploy/01-decision-matrix.md` | `references/25-deploy/02-pre-deploy-checklist.md`, `references/24-production/05-health-routes.md`, `references/24-production/01-graceful-shutdown.md`, relevant `references/25-deploy/platforms/*.md` |
-| Troubleshoot a concrete error | `references/27-troubleshooting/06-decision-tree.md` | `references/27-troubleshooting/01-error-catalog.md`, `references/27-troubleshooting/02-quick-diagnostic-table.md`, then the exact cluster named by the symptom |
+| Troubleshoot a concrete error | `references/00-symptom-index.md` | `references/27-troubleshooting/06-decision-tree.md`, `references/27-troubleshooting/01-error-catalog.md`, then the exact cluster named by the symptom |
 | Migrate from raw SDK or older `mcp-use` | `references/28-migration/01-from-modelcontextprotocol-sdk.md` or `references/28-migration/02-mcp-use-v1-to-v2.md` | `references/17-advanced/03-mcp-use-vs-official-sdk.md`, `references/09-transports/01-overview.md`, affected setup/auth/widget references |
 
 Use `references/00-reference-index.md` only when the intent table is not specific enough or you need an exact filename.
@@ -206,6 +206,7 @@ Unless the user asks for another format, report:
 
 Start with intent or symptoms; use inventory only as fallback.
 
+- **Symptom index:** `references/00-symptom-index.md`
 - **Full inventory:** `references/00-reference-index.md`
 - **Foundations:** `references/01-concepts/*.md`
 - **Setup:** `references/02-setup/*.md`
