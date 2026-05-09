@@ -38,7 +38,7 @@ Additional shipped command groups in `@mcp-use/cli@3.1.2`:
 | `mcp-use deployments ...` | List, inspect, restart, delete, stop/start, and view logs for cloud deployments. |
 | `mcp-use servers ...` | List, inspect, delete cloud servers; `servers env ...` manages server env vars. |
 
-`mcp-use introspect`, `mcp-use serve`, and `mcp-use generate-docs` are not commands in the `mcp-use@1.26.0` installed CLI dependency. Files `09` through `11` are kept as tombstones so agents do not reintroduce those names.
+`mcp-use introspect`, `mcp-use serve`, and `mcp-use generate-docs` are not commands in the `mcp-use@1.26.0` installed CLI dependency. Files `09` through `11` are intentional tombstones so agents do not reintroduce those names; read `../00-version-drift.md` and re-verify against the installed CLI before removing them.
 
 For the full flag matrix in one place, see `12-flag-reference.md`. For env vars the CLI itself reads, see `14-environment-variables.md`.
 

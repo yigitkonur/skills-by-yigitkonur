@@ -36,7 +36,7 @@ Server build → this skill. Agent build → `build-mcp-use-agent`. Both can shi
 - Choosing an LLM provider.
 - Front-end frameworks for hosting MCP UIs outside of the MCP Apps widget runtime.
 
-## Sibling skill changes
+## Legacy migration note
 
 The legacy skill `build-mcp-use-apps-widgets` was merged into this skill. Cluster `18-mcp-apps/` carries everything that was in `build-mcp-use-apps-widgets`. If you find a reference to `build-mcp-use-apps-widgets` in another skill, update it to `build-mcp-use-server` (or to `build-mcp-use-server/skills/build-mcp-use-server/references/18-mcp-apps/` if it pointed at a specific file).
 

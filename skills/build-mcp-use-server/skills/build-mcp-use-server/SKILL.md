@@ -74,6 +74,7 @@ Use `references/00-reference-index.md` only when the intent table is not specifi
 - Work in the actual package, fixture, or subdirectory the user named. Do not widen to a repo-wide scan unless the target path is unknown.
 - Prefer improving an existing server over replacing it.
 - Never claim the server is scaffolded, installed, runnable, or verified when the environment is read-only, plan-only, or missing prerequisites you cannot add.
+- For version-sensitive claims, read `references/00-version-drift.md` before editing examples, command docs, or migration guidance.
 
 ## Workflow
 
@@ -207,6 +208,7 @@ Unless the user asks for another format, report:
 Start with intent or symptoms; use inventory only as fallback.
 
 - **Symptom index:** `references/00-symptom-index.md`
+- **Version drift policy:** `references/00-version-drift.md`
 - **Full inventory:** `references/00-reference-index.md`
 - **Foundations:** `references/01-concepts/*.md`
 - **Setup:** `references/02-setup/*.md`

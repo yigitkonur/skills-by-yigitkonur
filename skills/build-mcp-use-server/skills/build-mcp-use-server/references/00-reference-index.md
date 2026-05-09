@@ -1,6 +1,6 @@
 # Reference Index
 
-Use `00-symptom-index.md` first for concrete failures. Use this file only when the intent routing in `SKILL.md` and the symptom index are not specific enough, or when you need to enumerate exact filenames. Prefer reading one cluster at a time instead of loading the full tree.
+Use `00-symptom-index.md` first for concrete failures and `00-version-drift.md` before editing version-sensitive claims. Use this file only when the intent routing in `SKILL.md` and those entry points are not specific enough, or when you need to enumerate exact filenames. Prefer reading one cluster at a time instead of loading the full tree.
 
 To enumerate every reference file from the skill root:
 
