@@ -60,7 +60,7 @@ When `authProvider` is provided, `useMcp` uses that provider directly instead of
 
 ## Bearer Token Authentication (Browser / React)
 
-For servers requiring API keys or bearer tokens, pass `headers` directly to `useMcp`:
+For servers requiring public, non-secret headers, pass `headers` directly to `useMcp`. Do not put sensitive bearer tokens, API keys, refresh tokens, or client secrets in browser bundles; use OAuth or a server-side `MCPClient` proxy for those.
 
 ```typescript
 import { useMcp } from "mcp-use/react";
@@ -69,7 +69,7 @@ function MyComponent() {
   const mcp = useMcp({
     url: "http://localhost:3000/mcp",
     headers: {
-      Authorization: "Bearer sk-your-api-key-here",
+      "X-Public-Tenant": "demo",
     },
   });
 
@@ -94,7 +94,7 @@ const config = {
   mcpServers: {
     "my-server": {
       url: "https://api.example.com/mcp",
-      authToken: "sk-your-api-key-here",
+      authToken: process.env.MCP_API_KEY,
     },
   },
 };
@@ -131,7 +131,7 @@ const config = {
     "my-server": {
       url: "https://api.example.com/mcp",
       headers: {
-        Authorization: "Bearer sk-your-api-key",
+        Authorization: `Bearer ${process.env.MCP_API_KEY}`,
         "X-API-Version": "2024-01-01",
         "X-Custom-Header": "value",
       },
@@ -268,12 +268,12 @@ const mcp = useMcp({
 
 ## Manual Authentication Control
 
-By default, mcp-use requires explicit user action to trigger OAuth authentication. When a server requires authentication, the connection enters `pending_auth` state and you must call the `authenticate()` method:
+Set `preventAutoAuth: true` when the UI must require explicit user action before OAuth starts. When a server requires authentication, the connection enters `pending_auth` state and you must call the `authenticate()` method:
 
 ```typescript
 const mcp = useMcp({
   url: "http://localhost:3000/mcp",
-  // preventAutoAuth: true is the default
+  preventAutoAuth: true,
 });
 
 // Manually trigger authentication when ready
@@ -305,7 +305,7 @@ if (mcp.state === "pending_auth" || mcp.state === "authenticating") {
 }
 ```
 
-To enable automatic OAuth flow (legacy behavior), set `preventAutoAuth: false`:
+To enable automatic OAuth flow, omit `preventAutoAuth` or set it to `false`:
 
 ```typescript
 const mcp = useMcp({
@@ -316,7 +316,7 @@ const mcp = useMcp({
 
 | Setting | Behavior |
 |---|---|
-| `preventAutoAuth: true` (default) | User must call `authenticate()` explicitly |
+| `preventAutoAuth: true` | User must call `authenticate()` explicitly |
 | `preventAutoAuth: false` | OAuth starts automatically when server requires it |
 
 ---
@@ -346,7 +346,7 @@ When supplied via `authProvider`, `useMcp` bypasses the built-in browser provide
 | `callbackUrl` | `string` | No (OAuth) | URL the OAuth provider redirects to after consent. Defaults to `/oauth/callback` on the current origin |
 | `authProvider` | `OAuthClientProvider` | No | Custom provider instance for headless/testing environments |
 | `useRedirectFlow` | `boolean` | No (default `false`) | Switch to redirect flow instead of popup |
-| `preventAutoAuth` | `boolean` | No (default `true`) | If `false`, OAuth popup opens automatically on connection |
+| `preventAutoAuth` | `boolean` | No (default `false`) | If `true`, connection enters `pending_auth` and waits for `authenticate()` |
 | `headers` | `Record<string, string>` | No | Additional HTTP headers for the MCP connection |
 | `enabled` | `boolean` | No (default `true`) | When `false`, no connection is attempted (similar to TanStack Query's `enabled`) |
 
@@ -389,9 +389,28 @@ import { useMcp } from "mcp-use/react";
 const mcp = useMcp({
   url: "https://api.githubcopilot.com/mcp/",
   callbackUrl: "http://localhost:3000/callback",
-  // clientId and other OAuth params configured via authProvider or server metadata
+  oauth: {
+    clientId: "your-public-client-id",
+    scope: "read:user",
+  },
 });
 ```
+
+Do not put confidential `clientSecret` values in browser code. Use a backend exchange or OAuth proxy for confidential clients.
+
+---
+
+## Token Expiry And Re-Auth Routing
+
+Route these symptoms to this file and `references/troubleshooting/common-errors.md`:
+
+| Symptom | Likely Fix |
+|---|---|
+| 401 or 403 after a previously working session | Refresh or re-authenticate; clear stored auth if refresh fails |
+| Expired refresh token | Call `clearStorage()`, then `authenticate()` again |
+| Popup blocked | Render `mcp.authUrl` as a user-clicked fallback link |
+| Redirect callback failure | Verify `callbackUrl` matches the route that calls `onMcpAuthorization()` |
+| `pending_auth` loop | Confirm `preventAutoAuth`, callback URL, DCR/manual registration, and browser storage state |
 
 ### Bearer Token — API-Based Servers
 
@@ -421,8 +440,8 @@ const client = MCPClient.fromDict({
 | Implement token refresh | Avoid expired token failures |
 | Scope tokens minimally | Limit blast radius of token compromise |
 | Use DCR when available | Automatic client registration, no manual setup |
-| Avoid custom headers in client-side bundles | Secrets in browser bundles can be extracted; use server-side `MCPClient` instead |
-| Prefer popup flow over redirect flow | Redirect flow puts the token in the callback URL query string; popup flow keeps tokens out of the URL |
+| Avoid sensitive custom headers in client-side bundles | Secrets in browser bundles can be extracted; use OAuth or server-side `MCPClient` instead |
+| Treat redirect routes as auth-sensitive | Redirect flow puts OAuth code/state in the callback URL; handle it only with `onMcpAuthorization()` |
 
 **BAD** — Hardcoded credentials in source:
 
@@ -470,4 +489,7 @@ import { useMcp } from "mcp-use/react";
 
 // OAuth callback handler (redirect flow callback page)
 import { onMcpAuthorization } from "mcp-use/auth";
+
+// Browser OAuth provider for advanced/headless cases
+import { BrowserOAuthClientProvider } from "mcp-use/browser";
 ```

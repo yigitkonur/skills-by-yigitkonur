@@ -61,7 +61,7 @@ Choose the correct import based on your runtime environment. Each entry point ex
 | **Use Case**       | Backend services, scripts, agents | Frontend web apps     | React components        | Interactive exploration |
 | **OAuth Support**  | Yes                     | Yes                         | Yes                     | Yes                     |
 | **File System**    | Yes                     | No                          | No                      | Yes                     |
-| **Code Mode**      | Yes                     | No                          | No                      | Yes                     |
+| **Code Mode**      | Yes                     | No                          | No                      | No                      |
 | **Session Mgmt**   | Manual                  | Manual                      | Automatic (hook)        | Automatic               |
 
 ---

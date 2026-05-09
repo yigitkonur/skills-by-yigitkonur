@@ -4,6 +4,8 @@ Complete reference for code mode — executing tool calls as code, executor type
 
 ---
 
+Code mode is a Node.js `MCPClient` feature. Browser clients, React hooks/providers, and the CLI client do not expose `executeCode()` or code-mode executors.
+
 ## Why Code Mode
 
 Based on Anthropic's research, code mode improves agent performance by:
@@ -461,9 +463,7 @@ await client.close();
 Use the built-in code mode system prompt with an agent:
 
 ```typescript
-import { MCPClient } from "mcp-use";
-import { MCPAgent } from "mcp-use/agent";
-import { PROMPTS } from "mcp-use/client/prompts";
+import { MCPAgent, MCPClient, PROMPTS } from "mcp-use";
 
 const client = new MCPClient(
   {
@@ -590,9 +590,7 @@ await client.executeCode(userProvidedCode);
 ## Complete Example — VM Code Mode with Agent
 
 ```typescript
-import { MCPClient } from "mcp-use";
-import { MCPAgent } from "mcp-use/agent";
-import { PROMPTS } from "mcp-use/client/prompts";
+import { MCPAgent, MCPClient, PROMPTS } from "mcp-use";
 
 const client = new MCPClient(
   {
@@ -656,17 +654,14 @@ await client.close();
 // Core client and executor base
 import { MCPClient, BaseCodeExecutor } from "mcp-use";
 
-// CodeExecutor is an alias for BaseCodeExecutor (backward compatibility)
-import { CodeExecutor } from "mcp-use";
-
 // Concrete executor implementations
 import { VMCodeExecutor, isVMAvailable, E2BCodeExecutor } from "mcp-use";
 
 // Agent integration
-import { MCPAgent } from "mcp-use/agent";
+import { MCPAgent } from "mcp-use";
 
 // Code mode system prompt
-import { PROMPTS } from "mcp-use/client/prompts";
+import { PROMPTS } from "mcp-use";
 
 // Types (for custom executors)
 import type {

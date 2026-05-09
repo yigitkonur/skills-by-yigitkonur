@@ -171,28 +171,20 @@ const client = new MCPClient({
 });
 ```
 
-For browser with OAuth:
+For React/browser with OAuth:
 ```typescript
-import { MCPClient, BrowserOAuthClientProvider } from "mcp-use/browser";
+import { useMcp } from "mcp-use/react";
 
-const authProvider = new BrowserOAuthClientProvider({
-  clientId: "your-client-id",
-  authorizationUrl: "https://api.example.com/oauth/authorize",
-  tokenUrl: "https://api.example.com/oauth/token",
-  callbackUrl: window.location.origin + "/oauth/callback",
-});
-
-const client = new MCPClient({
-  mcpServers: {
-    myServer: {
-      url: "https://api.example.com/mcp",
-      authProvider,
-    },
-  },
+const mcp = useMcp({
+  url: "https://api.example.com/mcp",
+  callbackUrl: `${window.location.origin}/oauth/callback`,
+  preventAutoAuth: true,
 });
 ```
 
-**Prevention:** Check the server's auth requirements before configuring the client. Use environment variables for tokens, never hardcode them.
+If the server requires manual OAuth registration, pass public client metadata through the `oauth` option. Do not put confidential `clientSecret` values in browser code.
+
+**Prevention:** Check the server's auth requirements before configuring the client. Use environment variables for server-side tokens, OAuth for browser flows, and never hardcode secrets.
 
 ---
 ### Error: Connection drops after ~60 seconds
@@ -896,7 +888,7 @@ const mcp = useMcp({
 
 **When:** `mcp.state` is `"pending_auth"` but the OAuth flow never starts.
 
-**Cause:** The server requires OAuth, but `preventAutoAuth` is `true` (the default) and `authenticate()` was never called.
+**Cause:** The server requires OAuth and the client is waiting for explicit user action, usually because `preventAutoAuth: true` is set or automatic auth failed.
 
 **Fix:**
 Show an auth button and call `authenticate()`:
@@ -907,7 +899,7 @@ function MyComponent() {
   const mcp = useMcp({
     url: "http://localhost:3000/mcp",
     callbackUrl: window.location.origin + "/oauth/callback",
-    // preventAutoAuth: true is the default
+    preventAutoAuth: true,
   });
 
   if (mcp.state === "pending_auth") {
@@ -926,7 +918,7 @@ function MyComponent() {
 }
 ```
 
-Or enable auto-auth (not recommended for most UIs):
+Or enable/restore auto-auth:
 ```typescript
 const mcp = useMcp({
   url: "http://localhost:3000/mcp",
