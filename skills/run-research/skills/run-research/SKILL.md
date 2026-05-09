@@ -25,8 +25,7 @@ Skip when:
 
 - The task is industry, market, vendor-category, buyer comparison, or
   5+ entity corpus research with per-entity packs, comparison templates,
-  or reusable source ledgers. Use `run-industry-research`; in this repo,
-  route the same corpus-shaped work to `run-corpus-research`.
+  or reusable source ledgers. Use `run-industry-research`.
 - The task is GitHub repo discovery, shortlisting, or repo comparison.
   Use `run-github-scout`.
 - The question is local-codebase only or answerable without web evidence.
@@ -136,8 +135,7 @@ or reusable source-ledger corpora here.
 Route corpus-shaped requests away: 5+ vendors/entities, product or
 category landscapes, buyer comparisons, market or industry research,
 reusable evidence packs, and multi-file corpora belong in
-`run-industry-research`; in this repo, route the same work to
-`run-corpus-research`.
+`run-industry-research`.
 
 For deep single-question orchestration, read `references/orchestrator.md`.
 Below the threshold, stay single-agent for coherence.
