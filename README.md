@@ -49,11 +49,9 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-makefiles](skills/init-makefiles/) | workflow | Scaffold per-scenario Makefiles — 7 scenarios, ≤4 files, AGENTS sync, opt CI/CD |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit or design agent-ready CLIs with iterative feedback loops |
 | [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, or architect new MCP servers |
+| [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI in 5 modes: parallel worktree fleets, batched template runs, single-mission monitoring, per-branch review loops, rescue |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
-| [run-batch-codex-research](skills/run-batch-codex-research/) | orchestration | Fan out codex (or another LLM CLI) over N inputs in parallel with idempotent retry |
-| [run-codex-exec](skills/run-codex-exec/) | orchestration | Parallel codex exec agents in git worktrees with auto-commit + live monitor |
-| [run-codex-review](skills/run-codex-review/) | orchestration | Per-branch /codex:review fix loops + /ask-review PR + codex rescue + multi-bot /do-review evaluation |
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
 | [run-industry-research](skills/run-industry-research/) | productivity | Industry research corpora with evidence packs and comparisons |
 | [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub Issue trees with sub-issues and waves |

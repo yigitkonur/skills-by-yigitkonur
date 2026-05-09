@@ -25,6 +25,7 @@ Anchor on this set of plain-English intent verbs:
 | `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
+| `orchestrate` | Coordinate N parallel agents under one policy and one observability surface | `orchestrate-codex` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli`, `optimize-agentic-mcp` |
 | `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
@@ -113,10 +114,9 @@ When renaming a published skill:
 - `init-makefiles`
 - `optimize-agentic-cli`
 - `optimize-agentic-mcp`
+- `orchestrate-codex`
 - `publish-npm-package`
 - `run-agent-browser`
-- `run-codex-exec`
-- `run-codex-review`
 - `run-github-scout`
 - `run-industry-research`
 - `run-issue-tree`

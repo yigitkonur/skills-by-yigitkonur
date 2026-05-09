@@ -266,12 +266,11 @@ check-completion                 convert-mcp-server-sdk-v1-to-v2  convert-url-to
 do-debug                         do-review                        do-think
 enhance-prompt                   enhance-skill-by-derailment      evaluate-code-review
 extract-saas-design              init-agent-config                init-makefiles
-optimize-agentic-cli             optimize-agentic-mcp             publish-npm-package
-run-agent-browser                run-batch-codex-research         run-codex-exec
-run-codex-review                 run-github-scout                 run-industry-research
-run-issue-tree                   run-playwright                   run-repo-cleanup
-run-research                     synthesize-skills                test-by-mcpc-cli
-use-linear-cli                   use-railway
+optimize-agentic-cli             optimize-agentic-mcp             orchestrate-codex
+publish-npm-package              run-agent-browser                run-github-scout
+run-industry-research            run-issue-tree                   run-playwright
+run-repo-cleanup                 run-research                     synthesize-skills
+test-by-mcpc-cli                 use-linear-cli                   use-railway
 ```
 
 ---
