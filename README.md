@@ -39,7 +39,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [convert-mcp-server-sdk-v1-to-v2](skills/convert-mcp-server-sdk-v1-to-v2/) | development | Port v1 MCP servers to the v2 split-package SDK |
 | [convert-url-to-nextjs](skills/convert-url-to-nextjs/) | design | Live URLs or HTML snapshots to Next.js projects |
 | [do-debug](skills/do-debug/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to do-think Interactive |
-| [do-review](skills/do-review/) | productivity | Systematic pull request review |
+| [do-review](skills/do-review/) | productivity | Review PRs and branch diffs for merge readiness |
 | [do-think](skills/do-think/) | productivity | Deep-thinking framework — Solo or user-in-the-loop Interactive modes; 4-phase loop with mandatory stress-test trio |
 | [enhance-prompt](skills/enhance-prompt/) | productivity | Rewrite task prompts for LLM or coding-agent execution |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
