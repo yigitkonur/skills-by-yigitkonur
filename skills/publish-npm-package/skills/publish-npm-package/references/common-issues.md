@@ -1,21 +1,28 @@
 # Common Issues — npm Publishing via GitHub Actions
 
-Troubleshooting guide covering OIDC/provenance, token auth, version bumping,
+Troubleshooting guide covering trusted publishing, provenance, token auth, version bumping,
 package publishing, and GitHub Actions workflow failures.
 
-> **⚠️ Steering:** First-publish failures are the #1 source of CI frustration.
-> If this is your package's **very first publish**, start with the "First Publish
-> Failures" section below — most OIDC/token errors have a different root cause
-> on first publish vs subsequent publishes.
+## Contents
 
----
+- [First publish failures](#0-first-publish-failures)
+- [Trusted publishing and provenance failures](#1-trusted-publishing--provenance-failures)
+- [Token authentication failures](#2-token-authentication-failures)
+- [Version bumping issues](#3-version-bumping-issues)
+- [Package publishing failures](#4-package-publishing-failures)
+- [GitHub Actions workflow issues](#5-github-actions-workflow-issues)
+- [Debugging workflow](#6-debugging-workflow)
+- [Recovery procedures](#7-recovery-procedures)
+- [Quick reference](#quick-reference-error--fix)
+
+> **Guardrail:** For a package's first publish, start with "First Publish Failures". Trusted-publishing errors and token errors often have different root causes on first publish than on later publishes.
 
 ## 0. First Publish Failures
 
 First-time publishing has unique failure modes that don't apply to subsequent
 publishes. These are the most common traps:
 
-### OIDC First Publish Fails with 404
+### Trusted Publishing First Publish Fails with 404
 
 **Symptom:** `npm ERR! 404 Not Found - PUT https://registry.npmjs.org/@scope%2fpkg`
 
@@ -29,11 +36,11 @@ has no package to authorize against.
 # 1. Create a granular access token on npmjs.com with publish scope
 # 2. Publish the initial version locally or via CI with token auth:
 npm publish --access public
-# 3. After the package exists, switch your workflow to OIDC
+# 3. After the package exists, link trusted publishing
 ```
 
-> See also: [auth/oidc-trusted-publishing.md](../auth/oidc-trusted-publishing.md)
-> and [auth/granular-tokens.md](../auth/granular-tokens.md) for the bootstrap pattern.
+> See also: [auth/oidc-trusted-publishing.md](auth/oidc-trusted-publishing.md)
+> and [auth/granular-tokens.md](auth/granular-tokens.md) for the bootstrap pattern.
 
 ### E403 on Scoped Packages
 
@@ -54,15 +61,14 @@ Or set it permanently in `package.json`:
 { "publishConfig": { "access": "public" } }
 ```
 
-> See also: [packaging/package-config.md](../packaging/package-config.md) for
+> See also: [package-config.md](package-config.md) for
 > full `publishConfig` guidance.
 
-### ERR_SOCKET_TIMEOUT on First Publish with OIDC
+### ERR_SOCKET_TIMEOUT on First Publish with Explicit Provenance
 
 **Symptom:** `ERR_SOCKET_TIMEOUT` when contacting Fulcio for signing.
 
-**Cause:** Missing `id-token: write` permission in the workflow. Without it,
-GitHub cannot mint the OIDC token, and the Fulcio request hangs until timeout.
+**Cause:** Missing `id-token: write` permission in a workflow that is trying to generate provenance. Without it, GitHub cannot mint the OIDC token used for signing.
 
 **Fix:** Add permissions at the **job** level (not just workflow level):
 
@@ -84,9 +90,9 @@ First publish failing?
 │  ├─ Scoped package? → add --access public or publishConfig.access
 │  └─ Token/OIDC? → check token scopes or trusted publishing config
 ├─ ERR_SOCKET_TIMEOUT?
-│  └─ Missing id-token: write permission → add to job permissions
+│  └─ Explicit provenance? add id-token: write permission
 ├─ ENEEDAUTH?
-│  ├─ OIDC? → add registry-url to setup-node
+│  ├─ Trusted publishing? → verify npm trusted-publisher settings and setup-node registry-url
 │  └─ Token? → verify NPM_TOKEN secret is set and not empty
 └─ 401 Unauthorized?
    ├─ Token for wrong registry? → create token on npmjs.com
@@ -94,26 +100,27 @@ First publish failing?
 ```
 
 > **Cross-references:**
-> - Auth setup: [auth/oidc-trusted-publishing.md](../auth/oidc-trusted-publishing.md) and [auth/granular-tokens.md](../auth/granular-tokens.md)
-> - Version tool config: [versioning/semantic-release.md](../versioning/semantic-release.md), [versioning/changesets.md](../versioning/changesets.md), and [versioning/release-please.md](../versioning/release-please.md)
-> - Package config: [packaging/package-config.md](../packaging/package-config.md)
-> - Supply chain security: [security/supply-chain.md](../security/supply-chain.md)
+> - Auth setup: [auth/oidc-trusted-publishing.md](auth/oidc-trusted-publishing.md) and [auth/granular-tokens.md](auth/granular-tokens.md)
+> - Version tool config: [versioning/semantic-release.md](versioning/semantic-release.md), [versioning/changesets.md](versioning/changesets.md), and [versioning/release-please.md](versioning/release-please.md)
+> - Package config: [package-config.md](package-config.md)
+> - Supply chain security: [supply-chain.md](supply-chain.md)
 
 ---
 
-## 1. OIDC / Provenance Failures
+## 1. Trusted Publishing / Provenance Failures
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `ERR_SOCKET_TIMEOUT` on Fulcio | Missing `id-token: write` permission | Add `permissions: { id-token: write }` to the **job** (not just workflow) |
-| `401 Unauthorized` from Sigstore | Wrong OIDC audience or misconfigured runner | Verify GitHub-hosted runners; check `ACTIONS_ID_TOKEN_REQUEST_URL` is set |
+| `ENEEDAUTH` with trusted publishing | npm trusted-publisher settings do not match workflow, or `id-token: write` is missing | Match org/repo/workflow filename exactly and add `id-token: write` |
+| `ERR_SOCKET_TIMEOUT` on Fulcio | Explicit provenance without `id-token: write` | Add `permissions: { id-token: write }` to the job |
+| `401 Unauthorized` from Sigstore | Wrong OIDC audience or misconfigured runner | Verify supported cloud-hosted runner and OIDC request vars |
 | `403 Forbidden` on npm publish | Branch/ref mismatch in npm `trustOrigin` | Publish only from the branch configured in npm trusted publishing settings |
 | Provenance verification fails | `repository` URL in `package.json` doesn't match repo | Fix `repository` — **case-sensitive**, use `https://github.com/OWNER/REPO.git` |
 | Empty `materials` in provenance | Missing `contents: read` permission | Add `contents: read` alongside `id-token: write` |
-| `ENEEDAUTH` with OIDC | `registry-url` not set in `actions/setup-node` | Add `registry-url: 'https://registry.npmjs.org'` |
-| Provenance works but publish fails | Self-hosted runner can't mint OIDC tokens | Use **GitHub-hosted** runners for the publish job |
+| No provenance badge | private repo/package, CircleCI trusted publishing, or provenance disabled | Use public GitHub/GitLab repo and package, or accept no provenance |
+| `npm whoami` fails | trusted publishing is publish-only | Do not use `npm whoami` for trusted-publishing auth checks |
 
-### Correct Permissions Block
+### Correct Pure Trusted-Publishing Block
 
 ```yaml
 jobs:
@@ -123,21 +130,22 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
       - run: npm ci
-      - run: npm publish --provenance --access public
+      - run: npm publish --access public
 ```
 
 ### Debugging Commands
 
-**Verbose publish:**
+**Verbose publish for pure trusted publishing:**
 
 ```bash
-npm publish --provenance --access public --loglevel=verbose 2>&1 | tee publish.log
+npm publish --access public --loglevel=verbose 2>&1 | tee publish.log
 ```
 
 **Inspect OIDC token claims inside a workflow:**
@@ -197,10 +205,11 @@ Getting EOTP error?
 ### Token Setup
 
 ```yaml
-- uses: actions/setup-node@v4
+- uses: actions/setup-node@v6
   with:
-    node-version: '20'
+    node-version: '24'
     registry-url: 'https://registry.npmjs.org'
+    package-manager-cache: false
 - run: npm publish --access public
   env:
     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -226,11 +235,11 @@ Getting EOTP error?
 | No version bump after merge | No conventional commit prefixes | Use `fix:`, `feat:`, `perf:` — plain messages are ignored |
 | Wrong version bump | Commit parsing mismatch | Check `.releaserc.json` `commit-analyzer` preset/rules |
 | `ENOTINHISTORY` | Shallow clone | Set `fetch-depth: 0` in `actions/checkout` |
-| `EINVALIDNPMTOKEN` with OIDC | semantic-release expects `NPM_TOKEN` | Upgrade to `@semantic-release/npm` **v11+** for OIDC |
+| `EINVALIDNPMTOKEN` with trusted publishing | semantic-release expects `NPM_TOKEN` | Upgrade `@semantic-release/npm` to a version that supports trusted publishing |
 | Release runs but no publish | `[skip ci]` in version-bump commit | Modify git plugin's `message` template |
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
   with:
     fetch-depth: 0
     persist-credentials: false
@@ -254,7 +263,7 @@ Getting EOTP error?
 |-------|-------|-----|
 | No "Version Packages" PR | No `.changeset/*.md` files merged | Developers must run `npx changeset` and commit the file |
 | Version PR has conflicts | Multiple competing changesets | Resolve conflicts in the Version Packages PR |
-| `changeset publish` fails | Missing npm auth | Set `NODE_AUTH_TOKEN` or configure OIDC |
+| `changeset publish` fails | Missing npm auth | Set `NODE_AUTH_TOKEN` for token auth or configure trusted publishing |
 | Empty changelog | Changeset files deleted before version bump | Keep `.changeset/*.md` until `changeset version` runs |
 
 ```yaml
@@ -294,13 +303,14 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
       - run: npm ci
-      - run: npm publish --provenance --access public
+      - run: npm publish --access public
 ```
 
 ---
@@ -353,7 +363,7 @@ npm publish --dry-run                 # Simulate full publish
 | Workflow doesn't trigger | Wrong event/branch config | Check `on:` trigger matches your branch |
 | Parallel publishes race condition | No concurrency group | Add `concurrency: { group: "release-${{ github.ref }}", cancel-in-progress: false }` |
 | `GITHUB_TOKEN` insufficient permissions | Default token is read-only | Set explicit `permissions` at job level |
-| Cache not working | Missing cache config | Add `cache: 'npm'` in `actions/setup-node` |
+| Release cache drift | Release workflow uses dependency cache | Set `package-manager-cache: false` in release jobs; cache only test jobs |
 
 ```yaml
 concurrency:
@@ -361,11 +371,11 @@ concurrency:
   cancel-in-progress: false
 
 # ...
-- uses: actions/setup-node@v4
+- uses: actions/setup-node@v6
   with:
-    node-version: '20'
+    node-version: '24'
     registry-url: 'https://registry.npmjs.org'
-    cache: 'npm'
+    package-manager-cache: false
 ```
 
 ---
@@ -377,7 +387,13 @@ Follow this sequence when a publish fails:
 **Step 1 — Read workflow logs.** Open the failed run in GitHub Actions; expand
 the `npm publish` step for the actual error.
 
-**Step 2 — Enable verbose logging.**
+**Step 2 — Enable verbose logging.** Use the command for the selected auth lane.
+
+```yaml
+- run: npm publish --access public --loglevel=verbose
+```
+
+For token+provenance:
 
 ```yaml
 - run: npm publish --provenance --access public --loglevel=verbose
@@ -388,7 +404,7 @@ the `npm publish` step for the actual error.
 Or re-run with **Enable debug logging** checked (sets `ACTIONS_RUNNER_DEBUG`
 and `ACTIONS_STEP_DEBUG` to `true`).
 
-**Step 3 — Verify authentication.**
+**Step 3 — Verify token authentication when token auth is intended.**
 
 ```yaml
 - run: |
@@ -442,6 +458,7 @@ npm deprecate @scope/pkg@1.2.3 "Critical bug — use >=1.2.4"
 ```
 
 Then publish a patched version immediately.
+
 ### Token Leaked
 
 1. Revoke the token immediately on [npmjs.com](https://www.npmjs.com/settings/~/tokens)
@@ -455,6 +472,7 @@ npm audit signatures
 ```
 
 5. If a malicious version was published, `npm unpublish` within 72h or contact npm support
+
 ### Broken Release
 
 **Patch forward (preferred):**
@@ -469,9 +487,11 @@ git push origin main
 ```bash
 git checkout -b hotfix/1.2.4
 npm version patch
-npm publish --provenance --access public
+npm publish --access public
 git push origin hotfix/1.2.4 --tags
 ```
+
+Add `--provenance` only when using the token+provenance CI lane.
 
 ### Stuck Release PR
 
@@ -497,7 +517,7 @@ npx changeset publish
 ```bash
 npm deprecate @scope/pkg@2.0.0 "Accidental major bump — use @scope/pkg@^1.3.0"
 npm version 1.3.0 --allow-same-version
-npm publish --provenance --access public
+npm publish --access public
 ```
 
 ---

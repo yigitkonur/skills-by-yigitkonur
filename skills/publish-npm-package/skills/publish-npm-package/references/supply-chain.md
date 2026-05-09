@@ -1,14 +1,21 @@
 # npm Supply Chain Security Reference
 
-Guide to securing every link in the npm publishing supply chain—from source commit to published package.
+Guide to securing every link in the npm publishing supply chain, from source commit to published package.
 
-> **⚠️ Steering:** Supply-chain hardening applies to **ALL** publishing scenarios—not
-> just fully-automated pipelines. Whether you use OIDC or token auth, semantic-release
-> or manual `npm version`, provenance attestation and action pinning protect your
-> users from supply-chain attacks. Apply these practices from day one, including
-> your very first publish.
+## Contents
 
----
+- [npm provenance attestation](#1-npm-provenance-attestation)
+- [GitHub Actions supply chain security](#2-github-actions-supply-chain-security)
+- [npm token security](#3-npm-token-security)
+- [Lockfile security](#4-lockfile-security)
+- [Dependency auditing](#5-dependency-auditing)
+- [2FA and account security](#6-2fa-and-account-security)
+- [Publishing security checklist](#7-publishing-security-checklist)
+- [First-publish security considerations](#8-first-publish-security-considerations)
+- [Incident response](#9-incident-response)
+- [Secure trusted-publishing workflow](#quick-reference-complete-secure-trusted-publishing-workflow)
+
+> **Guardrail:** Apply supply-chain hardening to all publishing scenarios, including first publish. Match provenance configuration to the chosen auth lane: automatic for trusted publishing, explicit for token+provenance.
 
 ## 1. npm Provenance Attestation
 
@@ -19,7 +26,7 @@ npm provenance achieves **SLSA Build Level 2**: the build ran on a hosted, verif
 ### How Sigstore Integration Works
 
 ```
-1. `npm publish --provenance` detects GitHub OIDC environment
+1. npm detects a trusted-publishing or explicit provenance environment
    └─ Reads ACTIONS_ID_TOKEN_REQUEST_URL + ACTIONS_ID_TOKEN_REQUEST_TOKEN
 2. Exchanges OIDC JWT for a Fulcio short-lived signing certificate
    └─ Certificate embeds CI identity — no long-lived keys needed
@@ -45,13 +52,15 @@ npm audit signatures
 ### Configuration Options
 
 ```bash
-npm publish --provenance                          # CLI flag
+npm publish --provenance                          # token+provenance CLI flag
 echo "provenance=true" >> .npmrc                  # .npmrc
 # package.json: { "publishConfig": { "provenance": true } }
 NPM_CONFIG_PROVENANCE=true npm publish            # env var
 ```
 
-> Provenance only works in supported CI environments (GitHub Actions, GitLab CI)—not local machines.
+For pure trusted publishing, omit these explicit settings. npm automatically generates provenance for eligible public packages from public GitHub/GitLab repositories.
+
+> Provenance only works in supported cloud CI environments, not local machines.
 
 ---
 
@@ -63,7 +72,7 @@ Tags like `@v4` are mutable—a compromised maintainer account can move the tag 
 
 ```yaml
 # ❌ Bad — tag can be moved to malicious code
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 
 # ✅ Good — immutable reference
 - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -180,13 +189,16 @@ Add `.npmrc` to `.gitignore`. Check history: `git log --all -p -- .npmrc`. Use `
 ```yaml
 - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
   with:
-    node-version: 20
+    node-version: 24
     registry-url: https://registry.npmjs.org
+    package-manager-cache: false
 # Creates .npmrc with: //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-- run: npm publish --provenance
+- run: npm publish --access public
   env:
     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
+
+Add `--provenance` and `id-token: write` only for token+provenance.
 
 ### Granular Token Scopes
 
@@ -304,7 +316,7 @@ Always use `auth-and-writes`, not `auth-only`. Org admins can enforce 2FA for al
 - [ ] `npm pack --dry-run` shows no sensitive files
 
 ### Build Pipeline
-- [ ] Provenance enabled (`--provenance`)
+- [ ] Provenance behavior matches the auth lane (automatic trusted publishing or explicit token+provenance)
 - [ ] All actions pinned to full commit SHA
 - [ ] `npm ci` used (not `npm install`)
 - [ ] `npm audit --audit-level=high` passes
@@ -382,8 +394,8 @@ npm access ls-collaborators <package>
 npm unpublish <package>@<version>
 # After 72 hours — contact npm support at npmjs.com/support
 
-# Publish a patched version immediately
-npm version patch && npm publish --provenance
+# Publish a patched version immediately using the selected auth lane
+npm version patch && npm publish --access public
 
 # If unpublish fails, deprecate with a security warning
 npm deprecate <package>@<version> \
@@ -407,7 +419,7 @@ npm deprecate <package>@"<1.2.4" "Versions before 1.2.4 have a security issue"
 
 ---
 
-## Quick Reference: Complete Secure OIDC Workflow
+## Quick Reference: Complete Secure Trusted-Publishing Workflow
 
 ```yaml
 name: Publish
@@ -428,13 +440,13 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npm test
-      - run: npm publish --provenance
+      - run: npm publish --access public
 ```
 
-For token auth, keep the same hardening but add `NODE_AUTH_TOKEN` only in the
-publish step of the matching token workflow.
+For token auth, keep the same hardening but add `NODE_AUTH_TOKEN` only in the publish step of the matching token workflow. Add `--provenance` only for the token+provenance lane.

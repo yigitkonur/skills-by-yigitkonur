@@ -1,31 +1,50 @@
 ---
 name: publish-npm-package
-description: Use skill if you are automating npm publishing via GitHub Actions and need auth, versioning, provenance, or workflow-template choices.
+description: Use skill if you are automating npm package releases from GitHub Actions and need trusted publishing, token auth, versioning, provenance, or workflow templates.
 ---
 
 # npm Publish CI/CD
 
-Set up npmjs publishing via GitHub Actions with a complete, internally consistent release flow: auth, version management, workflow trigger, provenance, and recovery.
+Set up npmjs publishing via GitHub Actions with a complete, internally consistent release flow: auth, version management, package-manager installs, workflow trigger, provenance, validation, and recovery.
 
 ## Trigger
 
 Use this skill when the task is about:
-- publishing to npmjs.org from GitHub Actions or locally from a developer machine
+- automating npmjs.org package releases from GitHub Actions
+- publishing to npmjs.org locally from a developer machine
 - first-time npm publishing of a new package (local bootstrap or CI)
 - replacing manual `npm login` / `npm publish` with CI/CD
-- choosing OIDC trusted publishing vs `NPM_TOKEN`
+- choosing trusted publishing vs `NPM_TOKEN`
 - choosing semantic-release vs changesets vs release-please vs manual trigger
 - adding provenance, least-privilege permissions, or supply-chain hardening
 - wiring single-package or monorepo npm releases
 - debugging a failing npm publish workflow (including EOTP, ENEEDAUTH, E403)
 
-This skill assumes npmjs.org. For deep `package.json` / exports / files shaping, route to `references/packaging/package-config.md` instead of expanding that detail here.
+This skill assumes npmjs.org. For deep `package.json` / exports / files shaping, route to `references/package-config.md` instead of expanding that detail here.
+
+Do not use this skill when:
+- deploying apps/services or infrastructure instead of npm packages; use `use-railway` only for Railway CLI operations
+- implementing package code, SDK internals, or runtime APIs; use the relevant `build-*` skill
+- publishing Docker images, packages for another registry ecosystem, or non-npm artifacts unless npm publishing is also required
+- asking only about exact Railway, Vercel, cloud, or platform CLI commands
+
+## Auth/provenance lanes
+
+Keep these lanes separate in every workflow and diagnosis:
+
+| Lane | Use when | Requirements | Publish command | Provenance |
+|---|---|---|---|---|
+| **Trusted publishing auth** | Public package, public repo, GitHub Actions on GitHub-hosted runners, package already linked on npm | No npm token, `id-token: write`, `contents: read`, npm CLI 11.5.1+, Node 22.14.0+ | `npm publish --access public` | Automatic for eligible public packages/repos; do not add `--provenance` for the pure baseline |
+| **Token auth with provenance** | Token auth is required but public provenance is desired | `NODE_AUTH_TOKEN`, `id-token: write`, cloud-hosted runner, npm CLI 9.5.0+ | `npm publish --provenance --access public` | Explicit via flag, `NPM_CONFIG_PROVENANCE=true`, or tool config |
+| **Token auth without provenance** | Private package, self-hosted runner, GHES, private registry, bootstrap, or provenance not supported | `NODE_AUTH_TOKEN`; no `id-token` needed | `npm publish --access public` | None |
+
+Trusted publishing is currently supported by npm for GitHub Actions, GitLab CI/CD, and CircleCI cloud runners. This skill defaults to GitHub Actions templates; do not describe GitHub-only support as a universal npm limitation.
 
 ## Local publish vs CI publish — know which mode you're in
 
 Before doing anything, determine whether this is a **local publish** (from the user's terminal) or a **CI publish** (from GitHub Actions). The token wiring is fundamentally different and mixing them up is the #1 cause of EOTP/ENEEDAUTH errors.
 
-> **⚠️ Steering (F-20):** `NODE_AUTH_TOKEN` as an environment variable ONLY works in CI when `actions/setup-node` with `registry-url` has created an `.npmrc` containing `${NODE_AUTH_TOKEN}`. On a developer's local machine, npm ignores `NODE_AUTH_TOKEN` entirely unless an `.npmrc` with that placeholder exists. If you set `NODE_AUTH_TOKEN=<token> npm publish` locally and it still asks for OTP, npm is NOT using your token — it's using the interactive login session from `npm login`.
+> **Guardrail:** `NODE_AUTH_TOKEN` as an environment variable only works when an `.npmrc` contains `${NODE_AUTH_TOKEN}`. In GitHub Actions, `actions/setup-node` creates that file when `registry-url` is set. On a developer machine, npm ignores `NODE_AUTH_TOKEN` unless the placeholder `.npmrc` exists.
 
 ### Local publish (developer terminal)
 
@@ -57,15 +76,31 @@ rm .npmrc   # clean up
 npm login   # then npm publish --access public
 ```
 
-> **⚠️ Steering (F-21):** The `--//registry.npmjs.org/:_authToken=TOKEN` CLI flag is NOT a security risk on a local machine. The granular-tokens reference marks it as "❌ Wrong" — that guidance applies to CI (where it would appear in logs). Locally, it's the most reliable way to publish with a token.
+> **Guardrail:** The `--//registry.npmjs.org/:_authToken=TOKEN` CLI flag is not a security risk on a local machine. The granular-tokens reference marks this as wrong only for CI, where secrets can appear in logs. Locally, it is the most reliable token-passing method.
 
 ### CI publish (GitHub Actions)
 
-Use `NODE_AUTH_TOKEN` env var **with** `actions/setup-node` `registry-url`:
+For pure trusted publishing, use no npm token:
 ```yaml
-- uses: actions/setup-node@v4
+permissions:
+  contents: read
+  id-token: write
+
+steps:
+  - uses: actions/setup-node@v6
+    with:
+      node-version: '24'
+      registry-url: 'https://registry.npmjs.org'
+      package-manager-cache: false
+  - run: npm publish --access public
+```
+
+For token auth, use `NODE_AUTH_TOKEN` env var **with** `actions/setup-node` `registry-url`:
+```yaml
+- uses: actions/setup-node@v6
   with:
     registry-url: 'https://registry.npmjs.org'  # Creates .npmrc with ${NODE_AUTH_TOKEN}
+    package-manager-cache: false
 - run: npm publish --access public
   env:
     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -75,8 +110,10 @@ Use `NODE_AUTH_TOKEN` env var **with** `actions/setup-node` `registry-url`:
 
 If you see `EOTP` with an automation/granular token that has "Bypass 2FA" enabled:
 1. **npm is not using your token.** It's falling back to the interactive `npm login` session.
-2. Run `npm whoami` — if it shows your personal username, the session auth is active.
+2. Run `npm whoami` only for token-auth diagnosis. If it shows your personal username, the session auth is active.
 3. Fix: pass the token explicitly via CLI flag (`--//registry.npmjs.org/:_authToken=...`) or properly wire `NODE_AUTH_TOKEN` with a setup-node `.npmrc`.
+
+Do not use `npm whoami` to validate trusted publishing. npm OIDC auth applies only during `npm publish`.
 
 ## Always classify the repo first
 
@@ -90,7 +127,7 @@ Before writing YAML, answer these questions and **record the answers** — they 
 6. Is this **greenfield** (never published), or does the package already exist with tags/versions/releases?
 7. Is the target really **npmjs.org**?
 
-> **⚠️ Steering (F-01):** Record answers explicitly (e.g., as inline comments or a checklist). Without a recorded classification, the auth and versioning decisions become guesswork. The table below maps answers directly to choices.
+> **Guardrail:** Record answers explicitly, for example as inline comments or a checklist. Without a recorded classification, the auth and versioning decisions become guesswork.
 
 Derive those answers in this order:
 1. `package.json` and workspace manifests
@@ -132,7 +169,7 @@ If the classification is still ambiguous after those checks, stop and ask instea
 
 **Auth rules**
 - Default to **OIDC** whenever it is supported.
-- OIDC requires **GitHub-hosted runners**, npm CLI **>= 9.5.0**, exact `package.json.repository.url`, `id-token: write`, `contents: read`, and public package visibility unless npm Enterprise support exists.
+- Trusted publishing requires a supported cloud-hosted runner, npm CLI **11.5.1+**, Node **22.14.0+**, exact `package.json.repository.url`, `id-token: write`, `contents: read`, and public package/repo visibility for automatic provenance.
 - If the publish runner is self-hosted, do **not** choose OIDC and hope it works; use a granular token.
 - If this is the **first publish of a brand-new package**, bootstrap with a granular token even if the steady-state target is OIDC.
 - Token-based publishing should use `secrets.NPM_TOKEN` exposed as `NODE_AUTH_TOKEN` in the publish step. Do not use `npm login` in CI.
@@ -140,7 +177,7 @@ If the classification is still ambiguous after those checks, stop and ask instea
 - Do not keep both OIDC and token auth just because an old workflow used both. The only valid mixed setup is when **token auth is still required** but you also grant `id-token: write` for provenance.
 - Avoid classic automation tokens for new work.
 
-> **⚠️ Steering (F-07):** OIDC auth means **zero npm secrets**. If your workflow has `NODE_AUTH_TOKEN` or `NPM_TOKEN` in the publish step, you are using token-based auth, **not** OIDC — even if `id-token: write` is set. Pure OIDC relies on GitHub's identity federation with npm; no token is exchanged via environment variables.
+> **Guardrail:** Trusted publishing means **zero npm secrets**. If the publish step has `NODE_AUTH_TOKEN` or `NPM_TOKEN`, it is token auth, not trusted publishing, even if `id-token: write` is set.
 
 ## 2) Choose the versioning model, not just a tool
 
@@ -151,7 +188,7 @@ If the classification is still ambiguous after those checks, stop and ask instea
 | Put version intent in each PR and batch releases deliberately | **changesets** | Monorepos, single-package repos without strict conventional commits, explicit version notes, teams that want a human-reviewed Version PR without adopting conventional commits | The repo wants publish-on-merge with no human-authored version data | `references/versioning/changesets.md` |
 | Rare/simple releases | **manual trigger + `npm version`** | Automation would be heavier than the release frequency | The task explicitly asks for full release automation | matching workflow "Manual Trigger" section |
 
-> **⚠️ Steering (F-04):** changesets is **not** monorepo-only. It works perfectly for single-package repos and does not require conventional commits. If a single-package repo wants a human-reviewed Version PR without adopting conventional commits, changesets is the right choice.
+> **Guardrail:** changesets is **not** monorepo-only. It works for single-package repos and does not require conventional commits. If a single-package repo wants a human-reviewed Version PR without adopting conventional commits, choose changesets.
 
 ### Quick-decision flowchart
 
@@ -178,13 +215,13 @@ Is this a monorepo?
   - release-please: config + manifest aligned to the current published version
   - changesets: initialized config and contributor workflow for changeset files
 
-> **⚠️ Steering (F-05):** Distinguish **greenfield** (team can choose to adopt conventional commits going forward) from **existing repo** (commit history already exists without them). For greenfield, picking release-please + committing to conventional commits is valid. For existing repos with inconsistent history, changesets avoids the commit-discipline prerequisite.
+> **Guardrail:** Distinguish **greenfield** (team can choose to adopt conventional commits going forward) from **existing repo** (commit history already exists without them). For existing repos with inconsistent history, changesets avoids the commit-discipline prerequisite.
 
 ## 3) Route to the exact workflow template
 
 Do not hand-assemble publish YAML from memory if a matching reference already exists.
 
-> **⚠️ Steering (F-13):** Use the **workflow template's** configuration files as the starting point. If the versioning reference (e.g., `release-please.md`) shows different or additional config options, treat them as customization, **not** the baseline. The workflow template is the source of truth for the config file set.
+> **Guardrail:** Use workflow templates as the source of truth for full GitHub Actions YAML. Versioning references explain tool config and tool-specific failure modes.
 
 | Auth | Versioning | Workflow template |
 |---|---|---|
@@ -198,7 +235,7 @@ Do not hand-assemble publish YAML from memory if a matching reference already ex
 | Token | manual trigger | `references/workflows/token-workflows.md` → **4. Token + Manual Trigger** |
 
 **Monorepo routing**
-- Read `references/monorepo/publishing-patterns.md` before choosing a monorepo flow.
+- Read `references/monorepo-publishing.md` before choosing a monorepo flow.
 - Prefer the **changesets** template for most workspaces repos.
 - Use the **release-please** template when the repo already relies on conventional commits and wants a Release PR gate.
 - Do not default to semantic-release for monorepos unless the repo is already invested in that ecosystem and the limitation is understood.
@@ -211,24 +248,39 @@ Before editing or validating the workflow, confirm:
 - The code is pushed to a **GitHub repository** (the workflow runs on GitHub Actions).
 - `package.json.repository.url` exactly matches the GitHub repo URL, **including casing**.
 - Scoped public packages set `publishConfig.access: "public"` or an equivalent publish flag.
-- Prefer `publishConfig.provenance: true` so provenance is not a human-memory step.
-- The repo's lockfile is committed and CI uses deterministic installs (`npm ci` or the repo's equivalent).
+- For pure trusted publishing, do not require `publishConfig.provenance`; npm automatically generates provenance for eligible public packages/repos. Use provenance config only for token+provenance or third-party tools that do not call `npm publish` directly.
+- The repo's lockfile is committed and CI uses the matching deterministic install.
 - `npm pack --dry-run` shows the intended tarball contents.
 - If `npm pack --dry-run` includes `src/` files while `main`, `module`, `types`, or `exports` point at `dist/`, stop and fix packaging before touching CI/CD.
-- Packaging details such as `files`, `exports`, types, and dual ESM/CJS output are correct. Use `references/packaging/package-config.md` for those details.
+- Packaging details such as `files`, `exports`, types, and dual ESM/CJS output are correct. Use `references/package-config.md` for those details.
+
+### Lockfile and package-manager detection
+
+Detect the package manager before writing install commands:
+
+| Lockfile / marker | Install command | Notes |
+|---|---|---|
+| `package-lock.json` or `npm-shrinkwrap.json` | `npm ci` | Default when no other package manager is clearly in use |
+| `pnpm-lock.yaml` | `pnpm install --frozen-lockfile` | Enable pnpm before install, usually with Corepack |
+| `yarn.lock` with `.yarnrc.yml` or `packageManager: "yarn@..."` | `yarn install --immutable` | Yarn Berry/modern Yarn |
+| `yarn.lock` without Berry markers | `yarn install --frozen-lockfile` | Yarn Classic |
+| `bun.lockb` | `bun install --frozen-lockfile` | Use only if the repo already uses Bun |
+
+When multiple lockfiles exist, stop and reconcile the package-manager choice before changing release automation.
 
 ### CI prerequisites
 - `actions/setup-node` uses `registry-url: https://registry.npmjs.org`
 - publish jobs run build/test before publish
 - explicit `concurrency` is present to avoid publish races
 - permissions are least-privilege and set deliberately
-- For production hardening, consider pinning GitHub Actions to full SHAs with a tag comment (e.g., `actions/checkout@<sha> # v4`). The reference templates use tags for readability — pin to SHAs before shipping to production. See `references/security/supply-chain.md` for SHA pinning guidance.
+- Release builds should use `actions/setup-node@v6`, Node 24, and `package-manager-cache: false` unless the repo deliberately keeps tag-readable examples for compatibility. The workflow references document this choice.
+- For production hardening, consider pinning GitHub Actions to full SHAs with a tag comment (e.g., `actions/checkout@<sha> # v6`). The reference templates use tags for readability; pin to SHAs before shipping to production. See `references/supply-chain.md` for SHA pinning guidance.
 
-> **⚠️ Steering (F-17):** The workflow templates use `@v4` style tags for readability. For production, pin to full commit SHAs with a tag comment: `actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4`. This prevents supply-chain attacks via mutable tags.
+> **Guardrail:** The workflow templates use version tags for readability. For production, pin to full commit SHAs with tag comments. This prevents supply-chain attacks via mutable tags.
 
 ### First-publish / OIDC bootstrap (critical for greenfield)
 
-> **⚠️ Steering (F-11):** OIDC requires the package to **already exist** on npm. For a brand-new package, you hit a chicken-and-egg problem: you can't link a non-existent package to your GitHub repo.
+> **Guardrail:** Trusted publishing requires the package to **already exist** on npm. For a brand-new package, bootstrap the first publish with token auth before linking trusted publishing.
 
 Even when the long-term target is OIDC, the first release must use token-based auth to bootstrap the package on npm.
 
@@ -244,7 +296,7 @@ Even when the long-term target is OIDC, the first release must use token-based a
 - For release-please, ensure both config and manifest files exist with the **manifest version matching `package.json`**. For never-published packages, use the `package.json` version (typically `1.0.0` or `0.1.0`).
 - For changesets, ensure contributors know when to add a changeset and how empty changesets are handled.
 
-> **⚠️ Steering (F-10/F-18):** "Current version" in the release-please manifest means the version in `package.json`. For greenfield packages that have never been published, set the manifest to match `package.json` exactly. Do not guess `"0.0.0"` unless `package.json` says `"0.0.0"`.
+> **Guardrail:** "Current version" in the release-please manifest means the version in `package.json`. For greenfield packages that have never been published, set the manifest to match `package.json` exactly. Do not guess `"0.0.0"` unless `package.json` says `"0.0.0"`.
 
 ## Guardrails: avoid half-configured release automation
 
@@ -258,14 +310,25 @@ Even when the long-term target is OIDC, the first release must use token-based a
 - Do not assume OIDC works on self-hosted runners.
 - Do not commit tokenized `.npmrc` files or hardcode `_authToken` values. A placeholder-based `.npmrc` is fine; real tokens are not.
 - Do not forget scoped public package access settings; `E403` on a scoped package often means `public` access was never configured.
-- Do not rely on a human remembering `--provenance`; prefer package or tool config that bakes it in.
+- Do not add `--provenance` to pure trusted-publishing baselines. Use it only for token+provenance lanes or tools that need explicit provenance config.
 - Do not use `pull_request_target` for untrusted code to reach release secrets or publish permissions.
 - If the repo is mid-migration, finish the auth + versioning + workflow + bootstrap state together. Half-migrated release automation is worse than a temporary manual process.
+
+## Validation scripts
+
+Run these bundled helpers from the skill directory or copy them into the target repo when useful. Read the paired `.md` docs for flags; do not load script source during normal skill use.
+
+| Script | Use |
+|---|---|
+| `scripts/check-package-json.mjs` | Inspect `package.json`, detect package manager/lockfile state, flag package metadata and `src`/`dist` mismatches, and emit JSON with human output. |
+| `scripts/dry-run-publish.sh` | Run `npm pack --dry-run`, optionally `npm publish --dry-run`, from a package directory without publishing for real. |
+| `scripts/check-npm-auth.sh` | Token-auth diagnostic only: check token env presence safely and run `npm whoami` when token auth is intended. It does not validate trusted publishing. |
 
 ## Verification before calling the setup done
 
 ### Always run
-- `npm pack --dry-run` — verify tarball contents
+- `scripts/check-package-json.mjs [package-dir]` or equivalent checks in the target repo
+- `scripts/dry-run-publish.sh [package-dir]` or `npm pack --dry-run` directly to verify tarball contents
 - build/test in the same workflow that publishes
 - a check that the intended versioning tool is actually wired, not just installed
 
@@ -273,11 +336,12 @@ Even when the long-term target is OIDC, the first release must use token-based a
 
 | Check | OIDC | Token |
 |---|---|---|
-| Runner type | GitHub-hosted | Any |
-| Permissions | `contents: read`, `id-token: write` | N/A |
+| Runner type | GitHub-hosted / supported cloud runner | Any |
+| Permissions | `contents: read`, `id-token: write` | no `id-token` unless token+provenance |
 | Registry config | `actions/setup-node` → `registry-url: https://registry.npmjs.org` | Same |
 | Secret wiring | None needed (no `NODE_AUTH_TOKEN`) | `NPM_TOKEN` in secrets, `NODE_AUTH_TOKEN` in publish step |
-| Post-publish verify | `npm audit signatures` | `npm whoami` (diagnostic only) |
+| Auth diagnostic | publish-only; `npm whoami` does not prove OIDC | `scripts/check-npm-auth.sh --token` or `npm whoami` |
+| Post-publish verify | `npm audit signatures` | `npm audit signatures` only if provenance/signatures are expected |
 
 ### Tool-specific checks
 
@@ -287,7 +351,21 @@ Even when the long-term target is OIDC, the first release must use token-based a
 | changesets | `npx changeset status` | `.changeset/config.json` | Release/version PR path matches template |
 | release-please | `release-please release-pr --repo-url=<owner/repo> --token=TOKEN --dry-run` (optional, requires CLI install) | `.release-please-config.json`, `.release-please-manifest.json` | Manifest version matches `package.json`, publish gated on `release_created == 'true'` |
 
-> **⚠️ Steering (F-15):** release-please has no built-in dry-run equivalent to `npx semantic-release --dry-run`. Verify by confirming config + manifest files exist and the manifest version matches `package.json`. The CLI dry-run above is optional and requires `npm i -g release-please`.
+> **Guardrail:** release-please has no built-in dry-run equivalent to `npx semantic-release --dry-run`. Verify config + manifest files and manifest/package version alignment. The CLI dry run above is optional and requires installing release-please.
+
+## Output contract
+
+When the setup or diagnosis is complete, report:
+
+- selected auth lane and versioning model
+- files changed
+- exact publish workflow trigger
+- package name, version, and npm dist-tag
+- npm package URL (`https://www.npmjs.com/package/name`)
+- GitHub release or tag URL when the chosen flow creates one
+- validation commands actually run
+- provenance/signature verification status
+- rollback or recovery note for failed or wrong publishes
 
 ## Recovery routing
 
@@ -295,13 +373,13 @@ If the task is about an existing failure, jump straight to the narrowest referen
 
 | Problem | Read first | Immediate focus |
 |---|---|---|
-| OIDC / provenance failure | `references/troubleshooting/common-issues.md`, then `references/auth/oidc-trusted-publishing.md` | missing `id-token: write`, missing `contents: read`, wrong repo URL, self-hosted runner, missing npmjs registry config |
-| Token auth failure | `references/troubleshooting/common-issues.md`, then `references/auth/granular-tokens.md` | expired token, wrong scopes, wrong secret wiring, rotation mistakes |
-| semantic-release failure | `references/troubleshooting/common-issues.md`, then `references/versioning/semantic-release.md` | shallow clone, missing baseline tag, commit messages not releasable, old plugin versions |
-| changesets failure | `references/troubleshooting/common-issues.md`, then `references/versioning/changesets.md` | forgotten changesets, release PR drift, access/public config, prerelease state |
-| release-please failure | `references/troubleshooting/common-issues.md`, then `references/versioning/release-please.md` | manifest drift, missing releasable commits, duplicate/stuck Release PRs, broken publish gating |
-| Published wrong version / broken package | `references/troubleshooting/common-issues.md` | unpublish within 72 hours if allowed, otherwise deprecate and patch forward |
-| Token leak / security incident | `references/security/supply-chain.md` | revoke, rotate, audit publishes, harden workflow before re-enabling release |
+| OIDC / provenance failure | `references/common-issues.md`, then `references/auth/oidc-trusted-publishing.md` | missing `id-token: write`, missing `contents: read`, wrong repo URL, self-hosted runner, missing npmjs registry config |
+| Token auth failure | `references/common-issues.md`, then `references/auth/granular-tokens.md` | expired token, wrong scopes, wrong secret wiring, rotation mistakes |
+| semantic-release failure | `references/common-issues.md`, then `references/versioning/semantic-release.md` | shallow clone, missing baseline tag, commit messages not releasable, old plugin versions |
+| changesets failure | `references/common-issues.md`, then `references/versioning/changesets.md` | forgotten changesets, release PR drift, access/public config, prerelease state |
+| release-please failure | `references/common-issues.md`, then `references/versioning/release-please.md` | manifest drift, missing releasable commits, duplicate/stuck Release PRs, broken publish gating |
+| Published wrong version / broken package | `references/common-issues.md` | unpublish within 72 hours if allowed, otherwise deprecate and patch forward |
+| Token leak / security incident | `references/supply-chain.md` | revoke, rotate, audit publishes, harden workflow before re-enabling release |
 
 ## Smallest reading set by scenario
 
@@ -309,19 +387,19 @@ If the task is about an existing failure, jump straight to the narrowest referen
 - `references/auth/oidc-trusted-publishing.md`
 - `references/versioning/semantic-release.md`
 - `references/workflows/oidc-workflows.md` → **1. OIDC + semantic-release**
-- `references/security/supply-chain.md`
+- `references/supply-chain.md`
 
 ### Public single-package repo, reviewable release gate
 - `references/auth/oidc-trusted-publishing.md`
 - `references/versioning/release-please.md` or `references/versioning/changesets.md`
 - `references/workflows/oidc-workflows.md` → **3. OIDC + release-please** or **2. OIDC + changesets**
-- `references/security/supply-chain.md`
+- `references/supply-chain.md`
 
 ### Monorepo / workspaces
-- `references/monorepo/publishing-patterns.md`
+- `references/monorepo-publishing.md`
 - `references/versioning/changesets.md` (default) or `references/versioning/release-please.md`
 - matching OIDC/token workflow section
-- `references/security/supply-chain.md`
+- `references/supply-chain.md`
 
 ### Private package, self-hosted runner, or non-GitHub CI
 - `references/auth/granular-tokens.md`
@@ -329,11 +407,11 @@ If the task is about an existing failure, jump straight to the narrowest referen
 - matching section in `references/workflows/token-workflows.md`
 
 ### Failing existing workflow
-- `references/troubleshooting/common-issues.md`
+- `references/common-issues.md`
 - auth reference for the current auth mode
 - versioning reference for the current tool
 
-## Steering experiences — quick reference
+## Known traps — quick reference
 
 These are the highest-impact traps found during derailment testing. Each is documented in detail at the relevant decision point above and in the reference files.
 

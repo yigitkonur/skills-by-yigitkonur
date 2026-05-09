@@ -2,7 +2,17 @@
 
 Complete reference for `package.json` fields, entry points, file inclusion, and dual CJS/ESM publishing.
 
----
+## Contents
+
+- [Essential package.json fields](#1-essential-packagejson-fields)
+- [The files field](#2-the-files-field-whitelist-approach--recommended)
+- [.npmignore vs files](#3-npmignore-vs-files-field)
+- [The exports field](#4-the-exports-field-modern-entry-points)
+- [Dual CJS/ESM publishing](#5-dual-cjsesm-publishing)
+- [TypeScript declaration files](#6-typescript-declaration-files)
+- [Lifecycle scripts](#7-lifecycle-scripts)
+- [Complete package.json template](#8-complete-packagejson-template)
+- [Pre-publish checklist](#9-pre-publish-checklist)
 
 ## 1. Essential package.json Fields
 
@@ -39,11 +49,7 @@ Short one-liner for npmjs.com search results. Keep under 120 characters:
 
 **Critical for provenance.** Must match the GitHub repo URL exactly — case-sensitive.
 
-> **⚠️ Steering (F-12):** The `repository.url` field must **exactly** match your
-> GitHub repository URL, including letter casing. `MyOrg/My-Package` ≠
-> `myorg/my-package`. A mismatch silently breaks provenance verification, and npm
-> will publish without provenance rather than failing — so you won't notice until
-> consumers check. Always copy the URL directly from your GitHub repo page.
+> **Guardrail:** The `repository.url` field must exactly match the GitHub repository URL, including letter casing. A mismatch can break provenance verification. Copy the URL directly from the GitHub repo page.
 
 ```json
 {
@@ -81,26 +87,22 @@ Declare supported Node.js versions (advisory by default):
 
 ### `publishConfig`
 
-> **⚠️ Steering:** Always set `publishConfig.provenance: true` and — for scoped
-> packages — `publishConfig.access: "public"` as defaults in your `package.json`.
-> This prevents the two most common first-publish failures: missing provenance
-> (silent) and `E403 Forbidden` on scoped packages (blocks publish entirely).
+> **Guardrail:** Always set `publishConfig.access: "public"` for scoped public packages. Set `publishConfig.provenance: true` only for token+provenance or third-party publishing tools that need explicit provenance config. Pure trusted publishing generates eligible provenance automatically.
 
-Essential for scoped public packages and provenance:
+Baseline for public npm packages:
 
 ```json
 {
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/",
-    "provenance": true,
     "tag": "latest"
   }
 }
 ```
 
 - `access` — scoped packages default to `"restricted"` (paid); set `"public"` for free publishing
-- `provenance` — enables SLSA attestation when publishing from GitHub Actions with OIDC. **Recommended for all packages** — there is no downside to enabling it
+- `provenance` — use for token+provenance lanes; omit from pure trusted-publishing baselines unless intentionally overriding npm's automatic behavior
 - `tag` — use `"next"` or `"beta"` for pre-releases
 
 ---
@@ -414,7 +416,7 @@ Catches: missing `.d.ts`, mismatched CJS/ESM declarations, incorrect `exports` c
   "types": "./dist/index.d.ts",
   "files": ["dist"],
   "engines": { "node": ">=18.0.0" },
-  "publishConfig": { "access": "public", "provenance": true },
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
