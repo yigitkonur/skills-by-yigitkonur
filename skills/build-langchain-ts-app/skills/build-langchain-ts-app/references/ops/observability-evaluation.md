@@ -4,6 +4,21 @@ Complete reference for LangSmith evaluation workflows, dataset management, LLM-a
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- 1. Evaluation Quickstart
+- 2. Dataset Creation and Management
+- 3. `client.evaluate()` — All Options
+- 4. LLM-as-Judge via `openevals`
+- 5. Feedback API
+- 6. OpenTelemetry Integration
+- 7. Third-Party Observability Tools
+- 8. Self-Hosted LangSmith
+- 9. LangSmith Pricing
+- 10. Production Security Checklist for Evaluation
+- Known Pitfalls
+
 ## Quick Reference — Imports
 
 ```typescript

@@ -4,6 +4,20 @@
 
 ---
 
+## Contents
+
+- BaseChatModel Abstraction
+- Message Types
+- Content Block Types
+- initChatModel Factory
+- Tool Binding
+- Structured Output
+- Fallbacks and Retry
+- Response Caching, Rate Limiting, Token Usage
+- fakeModel — Testing API
+- Provider Reference
+- Provider Comparison Table
+
 ## BaseChatModel Abstraction
 
 Every provider class (`ChatOpenAI`, `ChatAnthropic`, `ChatGoogleGenerativeAI`, etc.) extends `BaseChatModel` from `@langchain/core`. This guarantees identical `invoke`, `stream`, `batch`, `bindTools`, and `withStructuredOutput` behaviour across all providers — swap providers by changing a single import or model string.

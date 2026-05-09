@@ -5,6 +5,18 @@
 
 ---
 
+## Contents
+
+- Import Errors
+- Zod / Schema Errors
+- Provider Errors
+- Streaming Errors
+- Tools Errors
+- Agents / LangGraph Errors
+- Middleware Errors
+- Memory Errors
+- Quick Lookup Table
+
 ## Import Errors
 
 ### "Module not found: langchain/chains"

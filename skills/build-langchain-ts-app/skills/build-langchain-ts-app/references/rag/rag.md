@@ -5,6 +5,22 @@
 
 ---
 
+## Contents
+
+- RAG Architecture: Which Pattern to Choose
+- 1. Document Loaders
+- 2. Text Splitters
+- 3. Embeddings
+- 4. Vector Stores
+- 5. Retriever Types (11)
+- 6. RAG Chain Construction
+- 7. Conversational RAG
+- 8. Streaming RAG
+- 9. Advanced RAG Patterns
+- 10. RAG Evaluation (RAGAS)
+- 11. Production Patterns
+- Import Quick Reference
+
 ## RAG Architecture: Which Pattern to Choose
 
 | Architecture | Control | Latency | Best For |

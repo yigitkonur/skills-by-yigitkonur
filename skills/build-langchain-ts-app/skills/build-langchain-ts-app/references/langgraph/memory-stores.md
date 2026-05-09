@@ -4,6 +4,31 @@ Complete reference for LangGraph BaseStore (long-term cross-thread memory), LLM 
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- Two BaseStore Interfaces — Critical Distinction
+- LangGraph BaseStore Full API
+- InMemoryStore (Dev/Test)
+- PostgresStore (Production)
+- Namespace Patterns
+- IndexConfig — Semantic Search Configuration
+- Memory Storage Patterns
+- Accessing Store Inside Graph Nodes
+- Production: Hybrid Short-Term + Long-Term
+- GDPR Compliance
+- LLM Caching
+- Exact Match Caches
+- Semantic Caches
+- Cache Comparison Table
+- TTL Configuration Reference
+- Key Encoding
+- Production Cache Patterns
+- CacheBackedEmbeddings
+- LangChain BaseStore Implementations (for CacheBackedEmbeddings)
+- Store Selection Guide
+- Known Pitfalls
+
 ## Quick Reference — Imports
 
 ```typescript

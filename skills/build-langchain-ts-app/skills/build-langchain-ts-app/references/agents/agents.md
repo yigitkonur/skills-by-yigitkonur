@@ -4,6 +4,25 @@ Complete reference for `createAgent` (LangChain.js v1). All APIs verified agains
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- createAgent — Full Parameter Reference
+- Model Configuration
+- System Prompt Configuration
+- Tool Binding
+- Agent Loop Architecture
+- Structured Output
+- Middleware Integration
+- Built-in Middleware Reference
+- Conversation Persistence
+- Agent Streaming
+- Error Handling
+- Human-in-the-Loop
+- contextSchema and runtime.context
+- Production Pattern — Full Stack
+- v0 → v1 Migration Reference
+
 ## Quick Reference — Imports
 
 ```typescript

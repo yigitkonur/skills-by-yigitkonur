@@ -6,6 +6,25 @@
 
 ---
 
+## Contents
+
+- API Comparison
+- 1. `graph.stream()` — The 8 Stream Modes
+- 2. Combining Multiple Stream Modes
+- 3. Subgraph Streaming
+- 4. TypeScript Types
+- 5. `streamEvents()` — Runnable-Level Event Streaming
+- 6. `streamLog()` — Legacy (Deprecated)
+- 7. `@ai-sdk/langchain` — Vercel AI SDK Bridge
+- 8. `useStream` Hook — React / Vue / Svelte
+- 9. Framework Integrations
+- 10. LangSmith Deployment Streaming
+- 11. Structured Output Streaming Workarounds
+- 12. Error Handling & Cancellation
+- 13. Extended Thinking / Reasoning Tokens
+- 14. Known Gotchas
+- 15. Production Decision Reference
+
 ## API Comparison
 
 | API | Returns | Level | Best For |

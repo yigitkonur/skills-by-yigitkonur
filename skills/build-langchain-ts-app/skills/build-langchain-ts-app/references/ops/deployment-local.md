@@ -5,6 +5,18 @@
 
 ---
 
+## Contents
+
+- LangGraph Studio (LangSmith Studio)
+- CLI Reference — All Commands
+- `langgraph.json` — Complete Schema Reference
+- VS Code Debugger Attachment
+- Local Dev Server Configuration
+- Agent Chat UI
+- Hot Reload Behavior
+- Safari Tunnel Workaround
+- Known Pitfalls
+
 ## LangGraph Studio (LangSmith Studio)
 
 The Studio UI is web-based and hosted by LangSmith. It connects to your local or deployed server via a `baseUrl` query parameter — no installation required.

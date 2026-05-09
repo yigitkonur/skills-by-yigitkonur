@@ -4,6 +4,19 @@ Complete reference for structured output in LangChain.js. All code verified agai
 
 ---
 
+## Contents
+
+- `withStructuredOutput()` — Full API
+- Agent-Level Structured Output (LangChain v1 SDK)
+- Zod Schema Patterns
+- Complete Output Parser Catalog
+- LCEL Chain Patterns with Output Parsers
+- Streaming Structured Output
+- Provider Differences
+- Error Handling and Retry
+- Testing with `FakeListChatModel`
+- Production Decision Matrix
+
 ## `withStructuredOutput()` — Full API
 
 ### Method signature

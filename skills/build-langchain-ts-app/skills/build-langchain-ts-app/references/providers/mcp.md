@@ -4,6 +4,28 @@
 
 ---
 
+## Contents
+
+- Overview
+- MultiServerMCPClient — Full API
+- Transport Types
+- loadMcpTools — Manual Client Management
+- Authentication
+- Stateless vs. Stateful Sessions
+- MCP Resources and Prompts
+- Tool Discovery and Filtering
+- Error Handling
+- LangGraph Integration
+- Building MCP Servers in TypeScript
+- convertMcpToLangchainTools vs. MultiServerMCPClient
+- Ecosystem
+- Production Patterns
+- Security
+- MCP vs. Native LangChain Tools
+- Session Lifecycle
+- Known Pitfalls
+- Quick-Start Checklist
+
 ## Overview
 
 Model Context Protocol (MCP) is an open standard (JSON-RPC 2.0) that decouples tool provision from LLM orchestration. MCP servers expose tools, resources, and prompts over a transport wire; any compatible client discovers and invokes them dynamically.

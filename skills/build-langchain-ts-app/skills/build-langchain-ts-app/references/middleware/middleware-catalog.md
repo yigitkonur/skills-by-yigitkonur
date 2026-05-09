@@ -4,6 +4,31 @@ Complete reference for all built-in LangChain.js v1 middleware. APIs verified ag
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- AgentMiddleware Interface
+- 6 Hook Types
+- Registering Middleware
+- Built-In Middleware Summary Table
+- 1. summarizationMiddleware
+- 2. humanInTheLoopMiddleware
+- 3. modelCallLimitMiddleware
+- 4. toolCallLimitMiddleware
+- 5. modelFallbackMiddleware
+- 6. toolRetryMiddleware
+- 7. modelRetryMiddleware
+- 8. piiMiddleware
+- 9. piiRedactionMiddleware
+- 10. llmToolSelectorMiddleware
+- 11. todoListMiddleware
+- 12. llmToolEmulatorMiddleware
+- 13. contextEditingMiddleware
+- 14. dynamicSystemPromptMiddleware
+- anthropicPromptCachingMiddleware
+- openAIModerationMiddleware
+- Known Pitfalls
+
 ## Quick Reference — Imports
 
 ```typescript

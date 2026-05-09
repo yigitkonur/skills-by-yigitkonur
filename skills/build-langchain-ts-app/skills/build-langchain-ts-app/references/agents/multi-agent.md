@@ -4,6 +4,21 @@
 
 ---
 
+## Contents
+
+- 1. The Four Core Patterns
+- 2. Performance Benchmarks (τ-bench)
+- 3. Subagents Pattern (Supervisor)
+- 4. Swarm Pattern
+- 5. Handoffs Pattern
+- 6. Customer Support Example (Full Working Code)
+- 7. Router Pattern and 5 Routing Strategies
+- 8. Skills Pattern
+- 9. Parallel Execution and the Cancel Bug
+- 10. Context Engineering During Handoffs
+- 11. Import Reference
+- 12. Known Pitfalls
+
 ## 1. The Four Core Patterns
 
 All LangChain multi-agent architectures are built from four foundational patterns. They can be mixed.

@@ -2,6 +2,14 @@
 
 Use this file when you need the first working path, not the full LangChain ecosystem.
 
+## Contents
+
+- Preflight
+- Path 1 — createAgent with existing helpers
+- Path 2 — OpenRouter with direct tool binding
+- When to switch to StateGraph
+- When to switch to RAG
+
 ## Preflight
 
 - Node.js 20+ is required.

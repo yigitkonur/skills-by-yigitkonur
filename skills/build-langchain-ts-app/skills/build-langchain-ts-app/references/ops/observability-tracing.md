@@ -4,6 +4,25 @@ Complete reference for LangSmith tracing setup, callback system, span data model
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- 1. LangSmith Setup and Configuration
+- 2. Automatic Tracing
+- 3. Manual Tracing — `traceable` and RunTree
+- 4. Run (Span) Data Format
+- 5. Callback System — 19 Callback Types Cataloged
+- 6. Built-in Callback Handlers
+- 7. Custom Callback Handlers
+- 8. Metadata, Tags, and Correlation IDs
+- 9. Data Privacy — Anonymizers
+- 10. Cost and Token Tracking
+- 11. Dashboards and Monitoring
+- 12. Alerts
+- 13. Trace Filtering and Export
+- 14. Webhook Automation
+- Known Pitfalls
+
 ## Quick Reference — Imports
 
 ```typescript

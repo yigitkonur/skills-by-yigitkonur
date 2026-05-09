@@ -4,6 +4,23 @@ Complete reference for building knowledge-domain agents in LangChain.js v1: SQL 
 
 ---
 
+## Contents
+
+- SQL Agent — Core Architecture
+- SQL Agent — Safety Layer
+- SQL Agent — Full TypeScript Setup
+- SQL Agent — Production Patterns
+- SQL Agent — Complex Schema Strategies
+- SQL Agent — Multi-Database Routing
+- Multi-Knowledge-Base Routing
+- Voice Pipeline Architecture
+- Voice Pipeline — AssemblyAI STT Integration
+- Voice Pipeline — LangChain Agent Stage
+- Voice Pipeline — Full Wiring
+- Voice Pipeline — Latency Optimization
+- Community Anti-Patterns and War Stories
+- Known Pitfalls
+
 ## SQL Agent — Core Architecture
 
 ### Internal Workflow (8 Steps)

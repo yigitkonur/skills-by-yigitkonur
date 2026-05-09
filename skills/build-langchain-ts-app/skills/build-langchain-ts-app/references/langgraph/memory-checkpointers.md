@@ -4,6 +4,25 @@ Complete reference for LangGraph checkpointers, message transformer APIs, middle
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- Conceptual Architecture
+- Checkpointer Comparison
+- Checkpointer Setup
+- Thread ID & Configuration
+- Full Execution Flow
+- Message Transformer APIs
+- RemoveMessage / REMOVE_ALL_MESSAGES
+- Middleware-Based Memory Management
+- LangGraph-Native Summarization Pattern
+- Delete Messages Pattern
+- Custom State Schema Pattern
+- TTL & Memory Lifecycle
+- Community Chat Message History Backends (Legacy)
+- Legacy Memory Migration
+- Known Pitfalls
+
 ## Quick Reference — Imports
 
 ```typescript

@@ -4,6 +4,22 @@ Patterns for building custom middleware and guardrails with `createMiddleware()`
 
 ---
 
+## Contents
+
+- Quick Reference — Imports
+- createMiddleware() Full Signature
+- HookResult Type
+- ModelCallRequest Shape
+- jumpTo Targets and Agent Jumps
+- Guardrail Patterns
+- PII Filtering Patterns
+- contextSchema and Runtime Context
+- Context Window Management
+- Middleware Composition Rules
+- Advanced Custom Patterns
+- Testing Custom Middleware
+- Known Pitfalls
+
 ## Quick Reference — Imports
 
 ```typescript

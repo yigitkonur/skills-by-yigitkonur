@@ -5,6 +5,23 @@
 
 ---
 
+## Contents
+
+- 1. Ecosystem Overview
+- 2. Master Feature Matrix
+- 3. `initChatModel` Provider Prefix Reference
+- 4. Top-Tier Providers — Deep Reference
+- 5. High-Performance Inference Providers
+- 6. Local Provider — Ollama
+- 7. OpenRouter
+- 8. Model-Specific Providers
+- 9. Community Providers
+- 10. Embedding Models Reference
+- 11. Base URL / Proxy Configuration
+- 12. Provider Switching Patterns and Pitfalls
+- 13. Custom Provider Skeleton
+- 14. Package Version Notes (Mar 2026)
+
 ## 1. Ecosystem Overview
 
 LangChain.js organizes providers into two tiers:

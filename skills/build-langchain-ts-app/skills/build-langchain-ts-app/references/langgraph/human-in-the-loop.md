@@ -4,6 +4,29 @@
 
 ---
 
+## Contents
+
+- Core Mechanisms
+- interrupt() Function
+- Static Breakpoints: interruptBefore / interruptAfter
+- Dynamic Breakpoints
+- Command({ resume }): Simple, Structured, Routing
+- State Persistence During Interrupts
+- Tool Approval Patterns
+- HITL Middleware: interruptOn Config
+- Multiple Interrupts in One Node
+- Streaming with HITL
+- Time Travel: getStateHistory, Replay, Fork
+- Frontend UI: useStream Hook and ApprovalCard
+- Async Approval: Slack, Email, Webhook
+- RBAC: Role Hierarchy and Multi-Level Approval
+- Confidence / Cost Thresholds
+- Multi-Step Approval Chains
+- Testing HITL Workflows
+- Production Checklist
+- 9 Anti-Patterns
+- API Quick Reference
+
 ## Core Mechanisms
 
 | Mechanism | API | Use when |

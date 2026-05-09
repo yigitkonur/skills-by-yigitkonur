@@ -4,6 +4,27 @@ Complete reference for designing and implementing tools for LangChain.js agents.
 
 ---
 
+## Contents
+
+- Type Hierarchy
+- `tool()` Factory Function
+- `ToolRuntime` — Second Argument to Every Tool
+- `StructuredTool` — Class-Based Approach
+- Zod Schema Patterns
+- Tool Description Engineering
+- Error Handling — 6 Strategies
+- Model-Tool Binding
+- `ToolNode` — LangGraph Prebuilt Node
+- Human-in-the-Loop Tool Approval
+- Built-in Tools Catalog
+- MCP Tool Integration
+- SQL Toolkit
+- Retriever as Tool
+- Toolkit Pattern
+- Tool Observability
+- Known Issues and Workarounds
+- Decision Tree
+
 ## Type Hierarchy
 
 ```
