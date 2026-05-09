@@ -4,14 +4,14 @@ How AGENTS-first repositories expose the same instruction hierarchy to agent-nat
 
 ## Core Model
 
-`AGENTS.md` is the source of truth for agent behavior. `REVIEW.md` is the source of truth for review standards. Agent-native entrypoints and review adapters are companions, not peers.
+`AGENTS.md` is the source of truth for agent behavior. `REVIEW.md` is the review-standardization layer when the run or repo evidence warrants one. Agent-native entrypoints and review adapters are companions, not peers.
 
 Default order:
 1. discover the repo
 2. write the root and folder `AGENTS.md` hierarchy
-3. create companion `CLAUDE.md` / `GEMINI.md` entrypoints
-4. write the repo-grounded `REVIEW.md` layer
-5. generate platform-native review adapters from that completed context
+3. create or repair sibling `CLAUDE.md` companions
+4. create the repo-grounded `REVIEW.md` layer when in scope, or record why it is skipped
+5. ask about platform-native review adapters only after the review-context decision
 
 ## Support Matrix
 
@@ -37,23 +37,24 @@ Default order:
 | Aider | `.aider.conf.yml` | Configure `read: AGENTS.md` |
 | Windsurf | `.windsurfrules` | Condensed pointer or summary when native file is required |
 
-## Core Standardization Pair
+## Core Standardization Surfaces
 
-Every finished repo should leave this skill with these two surfaces:
+Every finished repo should leave this skill with an AGENTS source of truth and a review-context decision:
 
 | File | Purpose |
 |------|---------|
 | `AGENTS.md` | How agents should work, where code belongs, what boundaries exist |
-| `REVIEW.md` | What diffs should be flagged, protected, or held to a higher bar |
+| `CLAUDE.md` | Sibling compatibility companion for each finalized `AGENTS.md` |
+| `REVIEW.md` | What diffs should be flagged, protected, or held to a higher bar when review context is in scope |
 
 Keep them complementary:
 - `AGENTS.md` tells the agent how to operate
-- `REVIEW.md` tells the reviewer what to scrutinize
+- `REVIEW.md` tells the reviewer what to scrutinize when generated
 - neither file should become a duplicate of the other
 
 ## Configurable Native Review Adapters
 
-These are final-stage adapters generated from the completed `AGENTS.md` + `REVIEW.md` pair.
+These are final-stage adapters generated from the completed `AGENTS.md` hierarchy and the recorded review-context decision.
 
 | Platform | Native files | Use them for | Keep out of them | Key gotcha |
 |----------|--------------|--------------|------------------|------------|
@@ -63,9 +64,9 @@ These are final-stage adapters generated from the completed `AGENTS.md` + `REVIE
 
 ## Final-Step Question
 
-After the AGENTS hierarchy and `REVIEW.md` layer are done, ask one concise question:
+After the AGENTS hierarchy and review-context decision are done, ask one concise question:
 
-`The AGENTS.md and REVIEW.md hierarchy is complete. Which native review adapters should also be generated for this repo: Copilot, Devin, Greptile, or none?`
+`The AGENTS.md hierarchy is complete and the REVIEW.md decision is recorded. Which native review adapters should also be generated for this repo: Copilot, Devin, Greptile, or none?`
 
 Use that answer to decide whether to stop or generate adapters in this same workflow.
 
@@ -398,7 +399,7 @@ AGENTS stays authoritative. Copilot and Claude each get only the native extras t
 | Gotcha | Why it bites | Fix |
 |--------|-------------|-----|
 | Writing `CLAUDE.md` first | Claude becomes the real source of truth | Write `AGENTS.md` first, then mirror it |
-| Skipping `REVIEW.md` because no PR tool is installed | The repo loses its review standards layer | Always write the generic review context anyway |
+| Skipping `REVIEW.md` because no PR tool is installed | Review standards disappear when repo risks are real | Create `REVIEW.md` when review context is in scope or evidence warrants it |
 | Adding shared rules to `CLAUDE.md` | Other agents never see them | Move them into `AGENTS.md` |
 | Using wrapper text as a second policy file | Shared rules drift | Keep wrapper one line or use the symlink |
 | Keeping Claude-only notes in AGENTS | Pollutes portable instructions | Move them into `.claude/` |

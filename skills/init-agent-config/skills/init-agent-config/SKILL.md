@@ -5,7 +5,7 @@ description: "Use skill if you are creating, auditing, or migrating AGENTS.md-fi
 
 # Init Agent Config
 
-Build AGENTS-first instruction systems from repo evidence. `AGENTS.md` is the source of truth for how agents should work. `REVIEW.md` is the standardization layer for what changes should be scrutinized or blocked during review. Explore the repository in waves, write root plus folder-scoped `AGENTS.md` files, then finish with a repo-grounded review context layer and any needed native adapters.
+Build AGENTS-first instruction systems from repo evidence. `AGENTS.md` is the source of truth for how agents should work. `REVIEW.md` is the optional review-standardization layer for what changes should be scrutinized or blocked during review. Explore the repository in waves, write root plus folder-scoped `AGENTS.md` files, create companion entrypoints, decide the review-context layer, then finish with any requested native adapters.
 
 Default Claude compatibility model: every finalized `AGENTS.md` gets a sibling `CLAUDE.md` symlink. If the environment cannot preserve symlinks, fall back to a one-line wrapper and call out the exception in your response.
 
@@ -26,14 +26,15 @@ Default Claude compatibility model: every finalized `AGENTS.md` gets a sibling `
 
 ## Review context and native adapters
 
-The main job is still AGENTS standardization, but every finished repo should also get a review-context layer. Treat `REVIEW.md` as mandatory. Treat platform-native review adapters as configurable last-step outputs driven by the completed `AGENTS.md` + `REVIEW.md` pair.
+The main job is AGENTS standardization. Generate `REVIEW.md` by default for review-standardization runs or when repo evidence exposes review-critical risks. Skip it when the user requested only AGENTS migration or no shared review standard exists to encode. Treat platform-native review adapters as configurable final-stage outputs.
 
 Keep the split clear:
 
 | Surface | Purpose | Default status |
 |---------|---------|----------------|
 | `AGENTS.md` | How agents should work, where code lives, what local boundaries exist | Required |
-| `REVIEW.md` | What diffs should be flagged, protected, or held to a higher bar | Required |
+| `CLAUDE.md` | Compatibility companion for each finalized `AGENTS.md` | Required symlink or wrapper |
+| `REVIEW.md` | What diffs should be flagged, protected, or held to a higher bar | Default when in scope or evidence warrants it |
 | Copilot files | GitHub Copilot review-specific adapters | Configurable final step |
 | Devin files | Devin Bug Catcher review adapters and scoped review surfaces | Configurable final step |
 | Greptile files | Greptile review adapters and context files | Configurable final step |
@@ -47,9 +48,10 @@ Quick boundary:
 
 - Inspect the repository before drafting anything.
 - `AGENTS.md` comes first. Agent-specific files come after the AGENTS hierarchy exists.
-- `REVIEW.md` comes after the AGENTS hierarchy, not before it.
-- Do not ask about Copilot, Devin, or Greptile adapters until both the `AGENTS.md` hierarchy and `REVIEW.md` are complete.
-- Every project should leave this skill with a useful review-context layer, even if it never adopts a PR review tool.
+- Create or repair sibling `CLAUDE.md` companions after each finalized `AGENTS.md`.
+- `REVIEW.md` comes after AGENTS and CLAUDE decisions, not before them.
+- Create `REVIEW.md` by default for review-standardization work or when discovery finds repo-specific review risks; otherwise document why it was skipped.
+- Do not ask about Copilot, Devin, or Greptile adapters until the `AGENTS.md` hierarchy and review-context decision are complete.
 - Native review adapters are configurable last-step outputs, not the default deliverable.
 - Use wave-based discovery: broad architecture first, folder architecture second, writing only after both waves are merged.
 - If the environment supports explorer subagents, use up to 10 across the discovery waves.
@@ -57,7 +59,7 @@ Quick boundary:
 - Writer prompts may be more detailed, but cap them at 5000 words.
 - Default folder rule: create root `AGENTS.md` plus a local `AGENTS.md` for each meaningful `src` subfolder discovered in Wave 2. If a `src` tree has first-level folders, each first-level folder should end with its own `AGENTS.md` unless repo evidence proves there is no distinct workflow there.
 - Every folder-level `AGENTS.md` must answer the question: `What does a coder working in this folder need to know to avoid mistakes here?`
-- The root `REVIEW.md` must answer: `What kinds of changes should be flagged or scrutinized because they break this repo's intended standards or risk boundaries?`
+- When generated, the root `REVIEW.md` must answer: `What kinds of changes should be flagged or scrutinized because they break this repo's intended standards or risk boundaries?`
 - After each `AGENTS.md` is finalized, create sibling `CLAUDE.md` as a symlink to it. If symlinks are impossible in the target environment, fall back to a one-line wrapper and call out the exception in your response.
 - Verify commands and paths against real files; never invent them.
 - Keep universal guidance in `AGENTS.md`. Keep agent-native syntax and features out of `AGENTS.md`.
@@ -254,7 +256,7 @@ Check all of the following:
 
 - root and folder `AGENTS.md` files exist where the wave plan said they should
 - each created `CLAUDE.md` points to the correct sibling `AGENTS.md`, or the fallback wrapper is documented as an exception
-- root `REVIEW.md` exists and reflects the repo's real risk areas
+- root `REVIEW.md` exists and reflects the repo's real risk areas, or the skip reason is documented
 - scoped `REVIEW.md` files exist only where the repo truly needs them
 - commands and paths are verified
 - child `AGENTS.md` files do not restate root rules unnecessarily
@@ -267,11 +269,10 @@ Check all of the following:
 Only after Step 11 passes, ask one concise question about platform adapters.
 
 Use this exact question pattern:
-`The AGENTS.md and REVIEW.md hierarchy is complete. Which native review adapters should also be generated for this repo: Copilot, Devin, Greptile, or none?`
+`The AGENTS.md hierarchy is complete and the REVIEW.md decision is recorded. Which native review adapters should also be generated for this repo: Copilot, Devin, Greptile, or none?`
 
 Rules for this step:
-- ask only after both AGENTS and REVIEW are done
-- the generic review-context layer is not optional; only the platform adapters are configurable
+- ask only after AGENTS is done and the review-context decision is complete
 - if the user says `none`, stop
 - if the user names one or more platforms, generate the matching native adapter files in this same skill
 - if the user says `all`, still confirm the repo actually uses them before writing files
