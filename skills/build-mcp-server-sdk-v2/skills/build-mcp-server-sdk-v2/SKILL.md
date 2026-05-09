@@ -1,11 +1,19 @@
 ---
 name: build-mcp-server-sdk-v2
-description: "Use skill if you are building or maintaining MCP servers with @modelcontextprotocol/server v2 — split packages, Zod v4, ServerContext, framework adapters, and ESM-only."
+description: "Use skill if you are building or maintaining MCP servers with @modelcontextprotocol/server v2 alpha — split packages, Zod v4, ServerContext, framework adapters, ESM-only."
 ---
 
-# Build MCP Server (SDK v2)
+# Build MCP Server (SDK v2 Alpha)
 
-Build and maintain MCP servers using the v2 split-package SDK: `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, `@modelcontextprotocol/core`. Node.js 20+, ESM-only, Zod v4. v2 is in pre-release alpha as of 2026-05-08 (`2.0.0-alpha.2`, milestone `v2.0.0-bc`) — most production servers still run v1. Use this skill for new v2 builds and v2 maintenance; use `convert-mcp-server-sdk-v1-to-v2` to port an existing v1 server.
+Build and maintain MCP servers using the v2 alpha split-package SDK: `@modelcontextprotocol/server`, `@modelcontextprotocol/client`, `@modelcontextprotocol/core`. Node.js 20+, ESM-only, Zod v4. Use this skill for new v2 alpha builds and v2 maintenance; use `convert-mcp-server-sdk-v1-to-v2` to port an existing v1 server.
+
+## Current channel matrix
+
+| Channel | Status | Use for |
+|---|---|---|
+| npm published alpha | `@modelcontextprotocol/server@2.0.0-alpha.2` and split packages, published 2026-04-01 | Install commands and runnable examples that must work from npm today |
+| main branch / `v2.0.0-bc` PR series | Compatibility work after alpha.2; useful source signal, not automatically in npm | Forward-looking notes only, gated by fresh npm/source verification |
+| v1 stable | `@modelcontextprotocol/sdk@1.x` | Default production path until a non-alpha v2 release exists |
 
 **When to use a different skill instead:**
 
@@ -248,13 +256,13 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 
 ## Compatibility and adoption note
 
-v2 is in pre-release alpha as of 2026-05-08 — latest published version is `2.0.0-alpha.2`, the milestone label is `v2.0.0-bc` (backwards-compat PR series). Most production MCP servers still run v1.x and should until v2 publishes a non-alpha stable release.
+v2 is in pre-release alpha as of 2026-05-08. The latest npm-published split packages are `2.0.0-alpha.2`; the `v2.0.0-bc` label tracks main-branch compatibility PRs that may not be published yet. Most production MCP servers should stay on v1.x until v2 publishes a non-alpha stable release.
 
 What this means in practice:
 
 - **Pin alpha versions exactly** (no `^` ranges) — alphas can break between patches.
 - **Plan rollback** before deploying — keep the v1 branch deployable.
-- **The `@modelcontextprotocol/sdk` meta-package** preserves v1 import paths under v2 internals as a transitional on-ramp; see `convert-mcp-server-sdk-v1-to-v2` for staged migration.
+- **The `@modelcontextprotocol/sdk` meta-package** remains v1 on npm unless fresh npm verification proves otherwise; main-branch meta-package PRs are migration signals, not an install target.
 - **`@modelcontextprotocol/server-auth-legacy`** publishes the frozen v1 OAuth router for users who can't drop server-side OAuth on the migration path.
 - Some MCP clients and third-party tooling still target v1 patterns; verify your host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
 
