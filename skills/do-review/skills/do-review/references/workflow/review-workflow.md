@@ -4,8 +4,8 @@ Step-by-step review procedure with exact CLI examples for every phase.
 This is the primary reference for `SKILL.md`. Follow phases in order; do not skip.
 
 > **Prerequisites:**
-> - **GitHub PR mode:** you need `gh` (GitHub CLI) authenticated. Run `gh auth status` to confirm.
-> - **Local diff mode:** you need a local git checkout with the target diff available. `gh` auth is not required.
+> - **GitHub PR mode:** the reviewer needs `gh` (GitHub CLI) authenticated. Run `gh auth status` to confirm.
+> - **Local diff mode:** the reviewer needs a local git checkout with the target diff available. `gh` auth is not required.
 >
 > If the repository is cloned locally, many commands can be replaced with faster local equivalents noted throughout.
 
@@ -35,26 +35,26 @@ git log --oneline <base>..<head>
 
 If `refs/remotes/origin/HEAD` is unset, `git remote show origin | sed -n '/HEAD branch/s/.*: //p'` is the fallback for resolving the default branch.
 
-If you are reviewing uncommitted work, inspect both staged and unstaged state explicitly:
+If the reviewer is reviewing uncommitted work, inspect both staged and unstaged state explicitly:
 
 ```bash
 git diff --cached --stat
 git diff --stat
 ```
 
-If a file you expect to review is missing from `git status` or the diff, check whether ignore rules are hiding it:
+If a file the reviewer expect to review is missing from `git status` or the diff, check whether ignore rules are hiding it:
 
 ```bash
 git check-ignore -v path/to/file
 ```
 
-If you still cannot identify the exact comparison target or whether staged/unstaged changes are in scope, stop and ask. Do not invent a diff target.
+If the reviewer still cannot identify the exact comparison target or whether staged/unstaged changes are in scope, stop and ask. Do not invent a diff target.
 
 ### Navigation — SKILL.md phase mapping
 
-SKILL.md defines 8 phases; this file covers phases 2-8 as its internal phases 1-7. Use this table to navigate:
+SKILL.md defines 8 phases. This file expands the detailed procedures for Phases 2-8 after target triage:
 
-| SKILL.md phase | This file's section |
+| SKILL.md phase | Detailed section here |
 |---|---|
 | Phase 1 — Triage | Handled in SKILL.md directly (not in this file) |
 | Phase 2 — Gather context | Phase 1 — Gather Context |
@@ -65,15 +65,13 @@ SKILL.md defines 8 phases; this file covers phases 2-8 as its internal phases 1-
 | Phase 7 — Cross-cutting sweep | Phase 6 — Cross-cutting Analysis |
 | Phase 8 — Synthesize and output | Phase 7 — Synthesize and Output |
 
-> The offset is intentional: SKILL.md Phase 1 (Triage) has no counterpart here.
-
 ---
 
 ## Phase 1 — Gather Context
 
 **Goal:** Build a mental model of what the PR is trying to do and why, before looking at any code.
 
-If you are in local diff mode, replace PR metadata/issue/CI fields with local equivalents:
+If the reviewer is in local diff mode, replace PR metadata/issue/CI fields with local equivalents:
 - branch name + recent commits instead of PR title/body
 - user request or branch naming instead of linked issues
 - local test results only if the user or workflow provides them
@@ -95,7 +93,7 @@ Use this source mapping in local diff mode:
 gh pr view <N> --repo owner/repo --json title,body,state,author,labels,baseRefName,headRefName,reviewDecision,statusCheckRollup,files,createdAt,updatedAt,isDraft,mergeable,milestone
 ```
 
-Record these fields immediately — you will reference them throughout the review:
+Record these fields immediately — the reviewer will reference them throughout the review:
 
 | Field | Why it matters |
 |-------|----------------|
@@ -142,7 +140,7 @@ gh issue view <N> --repo owner/repo --json title,body,state,labels,comments,assi
 
 Read the issue body carefully. It often contains acceptance criteria, reproduction steps, or design constraints that the PR body omits. If the PR references multiple issues, synthesize a unified understanding of the goal.
 
-**If no issues are linked:** This is a yellow flag. The PR may be exploratory, a refactor, or missing context. Note this in your review summary and rely more heavily on the PR body and commit messages for intent.
+**If no issues are linked:** This is a yellow flag. The PR may be exploratory, a refactor, or missing context. Note this in the review summary and rely more heavily on the PR body and commit messages for intent.
 
 #### What good linked issues look like
 - Clear problem statement with reproduction steps
@@ -189,10 +187,10 @@ No checks configured
 ```
 
 In local diff mode:
-- local test/build output provided → record it as your verification state
+- local test/build output provided → record it as the review verification state
 - no local verification output available → write `Checks unavailable in local diff mode` and continue
 
-When a specific CI run failed and you need logs:
+When a specific CI run failed and the reviewer needs logs:
 
 ```bash
 # List workflow runs for the PR's head branch
@@ -327,9 +325,9 @@ Test*.java        → Java/JUnit
 
 When `total additions + deletions > 500`:
 
-1. **Flag the PR size** as a concern in your review summary. Large PRs are harder to review correctly and more likely to hide bugs.
+1. **Flag the PR size** as a concern in the review summary. Large PRs are harder to review correctly and more likely to hide bugs.
 2. **Prioritize ruthlessly.** Review the top 2–3 highest-risk clusters in full detail. For lower-risk clusters, do a skim review (check for obvious issues only).
-3. **Explicitly state your coverage.** In the review output, note which clusters received deep review and which were skimmed:
+3. **Explicitly state the review coverage.** In the review output, note which clusters received deep review and which were skimmed:
    ```
    Deep review: Data (migrations), API (routes)
    Skim review: Frontend (components), Config
@@ -423,14 +421,14 @@ Thread is outdated (the file/line changed since the comment)
   → Mark as "needs recheck"
   → The code at that location changed since the comment was made
   → Verify whether the underlying issue was fixed or still exists
-  → If still exists, reference the original thread in your finding
+  → If still exists, reference the original thread in the review finding
 
 Thread is active and unresolved (no agreement in replies)
   → Mark as "open"
-  → Acknowledge this thread in your review
+  → Acknowledge this thread in the review
   → Do NOT duplicate the feedback
-  → If you agree with the finding, you may add supporting evidence
-  → If you disagree, explain why with evidence
+  → If the review agrees with the finding, the reviewer may add supporting evidence
+  → If the reviewer disagree, explain why with evidence
 ```
 
 ### 3.3 Summarize review state
@@ -473,9 +471,9 @@ git diff --cached
 git diff
 ```
 
-If both committed branch changes and uncommitted work are in scope, review them as separate buckets in your notes and final output.
+If both committed branch changes and uncommitted work are in scope, review them as separate buckets in the review notes and final output.
 
-For large diffs, you can filter to specific files:
+For large diffs, the reviewer can filter to specific files:
 
 ```bash
 # Get the diff and filter to a specific file
@@ -520,8 +518,8 @@ git diff {base-branch}..{head-branch} -- {path}
 
 Use head vs. base comparison when:
 - The diff shows a behavioral change but the intent is unclear from the hunk alone
-- You need to understand what was removed, not just what was added
-- A function signature changed and you need to see all callers
+- the reviewer needs to understand what was removed, not just what was added
+- A function signature changed and the reviewer needs to see all callers
 - Complex control flow was restructured and the hunk context is insufficient
 
 ### 4.3 Goal validation procedure
@@ -533,7 +531,7 @@ Re-read the PR body and all linked issue descriptions. Write a single sentence:
 
 > "This PR should [accomplish X] by [changing Y in Z]."
 
-If you cannot form this sentence, the PR description is inadequate — flag this as a finding.
+If the reviewer cannot form this sentence, the PR description is inadequate — flag this as a finding.
 
 **Check 2 — Verify happy paths are implemented.**
 For the stated goal, identify the primary success scenario. Trace it through the diff:
@@ -567,7 +565,7 @@ Scan the diff for changes that serve no stated purpose. Common forms:
 - Adding a feature not mentioned in the PR description
 - Changing configuration or dependencies without explanation
 
-Scope creep is typically a **�� important** finding, not a blocker — unless the undescribed changes are risky.
+Scope creep is typically a **🟡 Important** finding, not a blocker — unless the undescribed changes are risky.
 
 **Check 6 — Assess completeness.**
 Ask: "If I merge this PR, will the stated goal be fully achieved?" Consider:
@@ -602,7 +600,7 @@ Hypothesis: PR adds a roles column to the users table and enforces role checks i
 
 For each cluster, in the priority order determined in Phase 2:
 
-**Step 1 — Read the diff hunks** for all files in the cluster. You already have the full diff from Phase 4. Focus on the files belonging to the current cluster.
+**Step 1 — Read the diff hunks** for all files in the cluster. The full diff is already available from Phase 4. Focus on the files belonging to the current cluster.
 
 **Step 2 — Read full file context** when the diff is insufficient:
 
@@ -618,10 +616,10 @@ git show {head-branch}:src/api/middleware/auth.ts
 ```
 
 Read the full file when:
-- A function was modified but you need to see the full function body
+- A function was modified but the reviewer needs to see the full function body
 - New code references existing variables/functions defined elsewhere in the file
 - The diff shows a partial change to a complex control flow structure
-- You need to understand the file's overall architecture to evaluate the change
+- the reviewer needs to understand the file's overall architecture to evaluate the change
 
 **Step 3 — Read the base version** when comparing behavior changes:
 
@@ -640,9 +638,9 @@ Read the base version when:
 - The diff shows a behavioral change (not just additions)
 - A function's signature or return type changed
 - Error handling was modified
-- You need to confirm what the old behavior was
+- the reviewer needs to confirm what the old behavior was
 
-**Step 4 — Apply the review dimensions checklist.** See `references/review-dimensions.md` for the full checklist. Evaluate in priority order: Security → Correctness → Data Integrity → Performance → API Contract → Maintainability → Testing.
+**Step 4 — Apply the review dimensions checklist.** See `references/dimensions/review-dimensions.md` for the full checklist. Evaluate in priority order: Security → Correctness → Data Integrity → Performance → API Contract → Maintainability → Testing.
 
 **Step 5 — Apply the actionability filter** to each potential finding. A finding must pass ALL of these gates:
 
@@ -663,7 +661,7 @@ Read the base version when:
 │   NO → Drop it. "In theory" is not actionable.
 │   YES ↓
 ├─ Would a senior on this team flag it? (calibration)
-│   NO → Drop it. You're being too noisy.
+│   NO → Drop it. the review is being too noisy.
 │   YES ↓
 ├─ Confidence ≥ 70%?
 │   NO → Phrase as a 💡 question instead.
@@ -719,7 +717,7 @@ If callers exist outside the PR's changed files, this is a potential coordinatio
 
 ### 5.3 Reading specific files for deep context
 
-When you need to understand a file that is not in the diff but is referenced by changed code:
+When the reviewer needs to understand a file that is not in the diff but is referenced by changed code:
 
 ```bash
 gh api repos/{owner}/{repo}/contents/src/models/user.ts?ref={head-branch} --jq '.content' | base64 -d
@@ -772,7 +770,7 @@ Check that coupled systems were updated together:
 | Shared type/interface | All importers | `grep -rn "from.*types" --include="*.ts" src/` |
 | Error code or status | Error handlers, client-side logic | `grep -rn "ERR_ROLE_INVALID" --include="*.ts" src/` |
 
-With `gh` when you don't have local checkout:
+With `gh` when no local checkout is available:
 
 ```bash
 gh search code "NEW_ENV_VAR repo:owner/repo"
@@ -829,7 +827,7 @@ If `package.json`, `requirements.txt`, `go.mod`, `Cargo.toml`, or similar files 
 
 ## Phase 7 — Synthesize and Output
 
-**Goal:** Compile all findings into a clear, actionable review output. See `references/output-templates.md` for exact format templates.
+**Goal:** Compile all findings into a clear, actionable review output. See `references/output/output-templates.md` for exact format templates.
 
 ### 7.1 Verdict decision
 
@@ -843,8 +841,8 @@ Choose the verdict based on these criteria:
   └─ No critical test gaps
 
 💬 Comment — ANY of these:
-  ├─ Questions that need author answers before you can decide
-  ├─ Suggestions you want to share but nothing blocks merge
+  ├─ Questions that need author answers before the reviewer can decide
+  ├─ Suggestions the reviewer want to share but nothing blocks merge
   └─ More than two 🟡 important findings but zero blockers
 
 🔄 Request Changes — ANY of these:
@@ -864,16 +862,16 @@ Before finalizing, run this self-check:
   → If any is really 🟡 important, downgrade it.
 
 > 10 total findings?
-  → You are likely being too noisy. Re-apply the actionability filter.
+  → the reviewer is likely being too noisy. Re-apply the actionability filter.
   → Remove anything that fails "Would a senior on this team flag this?"
 
 0 positive observations?
   → Add at least one. Every PR has something done well.
-  → If you genuinely cannot find anything positive, the PR may need
+  → If the reviewer genuinely cannot find anything positive, the PR may need
     a conversation, not a code review.
 
 0 questions?
-  → Consider whether you truly understood everything.
+  → Consider whether the reviewer truly understood everything.
   → If the PR is non-trivial, there is almost always something worth asking about.
 
 All findings are 🟢 suggestions?
@@ -883,7 +881,7 @@ All findings are 🟢 suggestions?
 
 ### 7.3 Output structure
 
-Use the template from `references/output-templates.md`. Key sections:
+Use the template from `references/output/output-templates.md`. Key sections:
 
 1. **Summary** — 1–2 sentences: what the PR does and whether it achieves its goal.
 2. **Verdict** — ✅ / 💬 / 🔄 with one-line justification.
@@ -915,13 +913,13 @@ Before submitting the review:
 - [ ] GitHub-only fields are either evidenced or marked unavailable in local diff mode
 - [ ] Verdict matches the findings (no blocker → no "request changes")
 - [ ] Total finding count is reasonable (<15)
-- [ ] Language is constructive ("this could" not "you should")
+- [ ] Language is constructive ("this could" not "the reviewer should")
 
 ---
 
 ## Submitting the Review
 
-Present the review to the user first. Only submit or post it on GitHub if the user explicitly asks you to do that. If the user asked only for review findings, stop here and do not run any command in this section.
+Present the review to the user first. Only submit or post it on GitHub if the user explicitly asks the reviewer to do that. If the user asked only for review findings, stop here and do not run any command in this section.
 
 ### Post a formal review with verdict
 
@@ -938,7 +936,7 @@ gh pr review <N> --repo owner/repo --comment --body "Review body text here"
 
 ### Post a general comment (no verdict)
 
-When you want to add a comment to the PR conversation without submitting a formal review:
+When the reviewer want to add a comment to the PR conversation without submitting a formal review:
 
 ```bash
 gh pr comment <N> --repo owner/repo --body "Comment text here"
@@ -951,7 +949,7 @@ For line-level feedback, use the pull request review comments API:
 ```bash
 # Comment on a specific line in a file
 gh api repos/{owner}/{repo}/pulls/{N}/comments \
-  -f body="Your inline comment here" \
+  -f body="Inline comment text here" \
   -f commit_id="$(gh pr view <N> --repo owner/repo --json headRefOid --jq '.headRefOid')" \
   -f path="src/api/middleware/auth.ts" \
   -F line=47 \
@@ -1003,7 +1001,7 @@ Valid `event` values: `APPROVE`, `REQUEST_CHANGES`, `COMMENT`.
 
 ## Local Checkout Workflow
 
-When you have the repository cloned locally, many operations become faster and more powerful. Use this workflow when the agent has filesystem access.
+When the reviewer has the repository cloned locally, many operations become faster and more powerful. Use this workflow when the agent has filesystem access.
 
 ### Checkout the PR
 
@@ -1011,7 +1009,7 @@ When you have the repository cloned locally, many operations become faster and m
 gh pr checkout <N> --repo owner/repo
 ```
 
-This switches to the PR's head branch locally. You now have full filesystem access to the proposed changes.
+This switches to the PR's head branch locally and makes the proposed changes available on disk.
 
 ### Quick orientation
 
@@ -1111,10 +1109,10 @@ Examples:
 - "This PR should fix the login timeout by increasing the session TTL from 15m to 1h and adding a refresh endpoint."
 - "This PR should add CSV export to the reports page by adding a download button and a backend endpoint that streams CSV."
 
-If you cannot form this sentence, the PR description is inadequate. Report:
+If the reviewer cannot form this sentence, the PR description is inadequate. Report:
 
 > **[💡 Question] PR description does not clearly state the goal**
-> I cannot determine what this PR is intended to accomplish. Could you add a description of the problem being solved and the approach taken?
+> I cannot determine what this PR is intended to accomplish. Could the PR description add the problem being solved and the approach taken?
 
 **2. Trace happy paths.**
 
@@ -1194,9 +1192,9 @@ If any check is ⚠️, record it as a **🟡 important** finding and proceed.
 
 > These notes capture real mistakes observed during derailment testing.
 
-1. **Phase ordering is mandatory, not suggestive.** Skipping Phase 1 (Gather Context) and jumping straight to diff analysis is the most common workflow violation. Without context, you cannot validate goals or calibrate severity -- every subsequent finding is less reliable.
-2. **The phase numbering in this file is offset by 1 from SKILL.md.** SKILL.md Phase 1 (Triage) maps to pre-workflow setup. SKILL.md Phase 2 maps to this file's Phase 1 (Gather Context). Consult the Navigation table at the top of this file when cross-referencing.
+1. **Phase ordering is mandatory, not suggestive.** Skipping Phase 1 (Gather Context) and jumping straight to diff analysis is the most common workflow violation. Without context, the reviewer cannot validate goals or calibrate severity -- every subsequent finding is less reliable.
+2. **Use the navigation table before cross-referencing phase numbers.** SKILL.md owns the operational phases; this file starts its detailed sections after target triage.
 3. **Goal validation (this file's Phase 4) is the most frequently skipped phase.** Agents tend to jump from context-gathering to per-file review without confirming that the PR achieves its stated goal. This leads to reviews that are technically correct but miss the biggest risk: "the PR does not do what it claims."
-4. **The cross-cutting sweep (this file's Phase 6) catches issues invisible at the file level.** Schema-consumer mismatches, missing auth on new endpoints, and env-var additions without deploy config are all coordination failures that only appear when you look across clusters.
+4. **The cross-cutting sweep (this file's Phase 6) catches issues invisible at the file level.** Schema-consumer mismatches, missing auth on new endpoints, and env-var additions without deploy config are all coordination failures that only appear when the reviewer look across clusters.
 
-> **Cross-reference:** See SKILL.md "Default workflow" section for the 8-phase overview and `references/file-clustering.md` for how to structure the cluster review in Phases 5-6.
+> **Cross-reference:** See SKILL.md "Default workflow" section for the 8-phase overview and `references/analysis/file-clustering.md` for how to structure the cluster review in Phases 5-6.

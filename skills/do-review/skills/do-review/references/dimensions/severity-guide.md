@@ -28,7 +28,7 @@ Is it a code quality issue?
     → YES → 🟢 Suggestion
     → NO → Skip (not worth commenting)
 
-Are you uncertain about the intent or behavior?
+Are the reviewer uncertain about the intent or behavior?
   → YES → 💡 Question
 
 Did the author do something well?
@@ -48,7 +48,7 @@ Did the author do something well?
 - Crash: null pointer access on a code path that WILL be hit
 - Secret exposure: API key hardcoded in source code
 
-**Calibration:** If you have >3 blockers in a PR, re-examine. Either the PR is seriously problematic (suggest closing/rewriting) or your threshold is too low. True blockers are rare — most PRs have 0-1.
+**Calibration:** If the reviewer has >3 blockers in a PR, re-examine. Either the PR is seriously problematic (suggest closing/rewriting) or the review threshold is too low. True blockers are rare — most PRs have 0-1.
 
 ### 🟡 Important — Should fix, author decides if it blocks
 
@@ -62,7 +62,7 @@ Did the author do something well?
 - Missing test for a new critical code path
 - Inconsistent error response format
 
-**Calibration:** 2-5 important findings per PR is normal. If >5, check if you're being too strict.
+**Calibration:** 2-5 important findings per PR is normal. If >5, check if the review is being too strict.
 
 ### 🟢 Suggestion — Non-blocking improvement
 
@@ -75,17 +75,17 @@ Did the author do something well?
 - A function that's growing too long (>50 lines)
 - A missing TypeScript type that defaults to `any`
 
-**Calibration:** 3-8 suggestions per PR is fine. If >10, you're probably bikeshedding.
+**Calibration:** 3-8 suggestions per PR is fine. If >10, the review is probably bikeshedding.
 
 ### 💡 Question — Needs author clarification
 
-**Definition:** You're unsure about the intent or behavior and need the author's input.
+**Definition:** The intent or behavior is unclear and author input is needed.
 
 **Use when:**
 - Confidence is < 70% on a potential finding
-- The code could be intentional but you're not sure
-- The behavior seems odd but might have context you're missing
-- You want to understand a design decision
+- The code could be intentional but confidence is low
+- The behavior seems odd but may have missing context
+- A design decision needs context
 
 **Examples:**
 - "Is `user.role` guaranteed to be non-null here?"
@@ -112,7 +112,7 @@ Did the author do something well?
 
 1. **Blocker inflation is the most common severity calibration error.** More than 3 blockers in a single review almost always means some are actually Important. Re-check each blocker against the definition: does it make the PR *unsafe to merge*? If the PR could merge and the issue could be fixed in a follow-up, it is Important, not Blocker.
 2. **Suggestions should never be phrased imperatively.** If a finding uses "must", "should", or "need to", it is probably mis-classified as a suggestion. Suggestions are optional improvements -- phrase them as "consider", "one option would be", or "this could be simplified by".
-3. **Questions are under-used.** When you are unsure about intent, context, or whether something is a bug, a question is the correct severity. "Is it intentional that `maxRetries` defaults to 0?" is more useful than "Bug: maxRetries defaults to 0" when you do not know the intended behavior.
-4. **Praise must appear in every review.** If you cannot find something specific to praise, you have not read the PR carefully enough. Even a small PR has something worth acknowledging -- a well-named variable, a good error message, or a clean test structure.
+3. **Questions are under-used.** When intent, context, or bug status is unclear, a question is the correct severity. "Is it intentional that `maxRetries` defaults to 0?" is more useful than "Bug: maxRetries defaults to 0" when the intended behavior is unknown.
+4. **Praise must appear in every review.** If the reviewer cannot find something specific to praise, the reviewer has not read the PR carefully enough. Even a small PR has something worth acknowledging -- a well-named variable, a good error message, or a clean test structure.
 
 > **Cross-reference:** See SKILL.md "Severity calibration" section for the calibration checks that catch over-counting.

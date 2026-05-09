@@ -141,7 +141,7 @@ When an AI tool (Copilot Review, CodeRabbit, etc.) has already reviewed the PR:
 2. **Do not duplicate AI findings** — if the AI caught it, acknowledge and move on
 3. **Verify AI findings** — AI has ~30% false positive rate; check the important ones
 4. **Focus on what AI missed** — intent validation, cross-file coordination, business logic
-5. **Override AI severity** — AI may overweight style issues; recalibrate to your scale
+5. **Override AI severity** — AI may overweight style issues; recalibrate to the review scale
 
 ### What AI Reviews Do Well
 
@@ -188,7 +188,7 @@ When evaluating whether a project has adequate automation:
 
 ### When to Suggest Adding Automation
 
-If during review you find yourself repeatedly flagging the same type of issue, suggest automation:
+If during review a finding appears yourself repeatedly flagging the same type of issue, suggest automation:
 
 ```markdown
 💡 I noticed several formatting inconsistencies across the changed files.
@@ -247,7 +247,7 @@ wait
 
 1. **Bot review comments (Dependabot, CodeQL, Snyk, SonarQube) are prior review state.** Treat them the same as human comments for deduplication purposes. If a bot already flagged an issue, do not re-raise it -- reference the bot's finding instead.
 2. **CI status must be checked before deep review.** If CI is red, the review should focus on issues CI does not already prove. Do not pile style feedback on top of failing builds -- that is noise.
-3. **When CI passes but you find a potential bug, check whether existing tests cover the scenario.** If tests exist and pass, your finding needs stronger evidence -- explain why the tests are insufficient or how your scenario differs from what is tested.
+3. **When CI passes but a finding appears a potential bug, check whether existing tests cover the scenario.** If tests exist and pass, the review finding needs stronger evidence -- explain why the tests are insufficient or how the review scenario differs from what is tested.
 4. **Security scan results (CodeQL, Snyk) take precedence over manual security observations.** If a security scanner flagged an issue and it is unresolved, escalate it as a blocker. Do not downgrade machine-detected security findings.
 
-> **Cross-reference:** See `references/comment-correlation.md` for rules on deduplicating against bot findings and `references/review-workflow.md` Phase 1 for the CI-check step.
+> **Cross-reference:** See `references/workflow/comment-correlation.md` for rules on deduplicating against bot findings and `references/workflow/review-workflow.md` Phase 1 for the CI-check step.

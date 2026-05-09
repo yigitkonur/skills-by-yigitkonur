@@ -30,7 +30,7 @@ How to read and understand complex diffs effectively during PR review.
 ## Diff reading strategies
 
 ### Strategy 1: Intent-first reading
-1. Read the hunk header to understand WHERE you are in the file
+1. Read the hunk header to understand WHERE the reviewer is in the file
 2. Read the context lines (no prefix) to understand the SURROUNDING code
 3. Read the `-` lines to understand WHAT WAS THERE
 4. Read the `+` lines to understand WHAT REPLACED IT
@@ -45,15 +45,15 @@ Classify each hunk as:
 - **Cosmetic change** — formatting, renaming, comments. LOW attention (skip if linter exists).
 
 ### Strategy 3: When diff is not enough
-Situations where you MUST read the full file (use `git show <ref>:<path>` or `gh api repos/{owner}/{repo}/contents/{path}?ref={ref}`):
-- The diff shows a change inside a function but you can't see the function signature
+Situations where the reviewer MUST read the full file (use `git show <ref>:<path>` or `gh api repos/{owner}/{repo}/contents/{path}?ref={ref}`):
+- The diff shows a change inside a function but the reviewer can't see the function signature
 - The diff shows a new call to a function defined elsewhere
-- The diff modifies error handling but you can't see the try/catch scope
+- The diff modifies error handling but the reviewer can't see the try/catch scope
 - The diff adds code that depends on variables defined above the hunk
 - The diff changes conditional logic but the condition involves variables from outside the hunk
 
 ### Strategy 4: Comparing head vs base
-When you need to understand the FULL behavior change:
+When the reviewer needs to understand the FULL behavior change:
 ```bash
 # Get the base (before) version
 git show <base-branch>:<path/to/file>
@@ -89,10 +89,10 @@ Compare the two versions to understand:
 ## Handling large diffs (>500 lines)
 
 1. Start with `gh api repos/{owner}/{repo}/pulls/{N}/files --paginate` to see the file-level summary (additions/deletions per file)
-2. Identify the files with the MOST changes — these are your priority
+2. Identify the files with the MOST changes — these are the review priority
 3. Read those file diffs carefully
 4. For files with <10 line changes, do a quick scan only
-5. Note in your review which files you deeply reviewed vs skimmed
+5. Note in the review which files the reviewer deeply reviewed vs skimmed
 
 ## Steering note: Deprecation and refactor diffs
 
@@ -108,9 +108,9 @@ When reviewing a deprecation diff:
 
 > These notes capture real mistakes observed during derailment testing.
 
-1. **Reading only the diff without loading the full file is the #1 cause of false-positive findings.** When a diff shows a change inside a function but you cannot see the function signature, variable declarations, or error handling scope -- load the full file before concluding there is a bug.
+1. **Reading only the diff without loading the full file is the #1 cause of false-positive findings.** When a diff shows a change inside a function but the reviewer cannot see the function signature, variable declarations, or error handling scope -- load the full file before concluding there is a bug.
 2. **Deprecation diffs look different from bug-fix diffs.** In deprecation PRs, the primary change is removal or replacement of API surface. Focus on: are all call sites updated? Is there a migration path? Is there a deprecation warning for call sites outside this PR?
 3. **Cosmetic-vs-behavioral classification must happen before deep review.** If a hunk is purely cosmetic (rename, format, comment), skip it immediately. Do not analyze renamed variables for behavioral impact -- that is wasted review budget.
 4. **Generated file diffs should be skipped entirely.** If the diff includes `*.generated.ts`, `*.pb.go`, or similar generated output, review the source definition file instead. Reviewing generated code line-by-line is anti-productive.
 
-> **Cross-reference:** See `references/file-clustering.md` for how to handle generated code in the clustering phase.
+> **Cross-reference:** See `references/analysis/file-clustering.md` for how to handle generated code in the clustering phase.

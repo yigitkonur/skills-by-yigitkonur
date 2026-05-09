@@ -51,7 +51,7 @@ For XSS: check `dangerouslySetInnerHTML`, `v-html`, `innerHTML`, `{!! !!}` (Blad
 
 ## 2. Correctness (Priority: CRITICAL)
 
-Correctness bugs ship silently and break in production. These are the hardest to catch and the most valuable to flag. Read the code as if you are the runtime executing it.
+Correctness bugs ship silently and break in production. These are the hardest to catch and the most valuable to flag. Read the code as if the reviewer is the runtime executing it.
 
 ### Logic errors
 
@@ -132,7 +132,7 @@ A breaking change to a response body is removing a field or changing its type. A
 ### State management
 
 - [ ] Is state updated atomically where needed?
-- [ ] Are state transitions valid? (can you go from state A to state C directly?)
+- [ ] Are state transitions valid? (can the reviewer go from state A to state C directly?)
 - [ ] Is cached data invalidated when the source of truth changes?
 - [ ] Are optimistic updates rolled back on failure?
 
@@ -170,7 +170,7 @@ Look for patterns like: reading an entire file into a string when streaming line
 - [ ] Are responses compressed where appropriate?
 - [ ] Are unnecessary data fetches eliminated? (over-fetching from APIs)
 
-Missing timeouts on external calls are a silent killer — one slow downstream service can exhaust your connection pool and bring down your entire application. Every outbound HTTP request should have an explicit timeout.
+Missing timeouts on external calls are a silent killer — one slow downstream service can exhaust the review connection pool and bring down the review entire application. Every outbound HTTP request should have an explicit timeout.
 
 ---
 
@@ -216,7 +216,7 @@ Test coverage comments should be specific. "Add tests" is not actionable. "This 
 ### Quality
 
 - [ ] Do tests actually assert meaningful behavior? (not just "no error thrown")
-- [ ] Are test names descriptive? (can you understand what's tested from the name?)
+- [ ] Are test names descriptive? (can the reviewer understand what's tested from the name?)
 - [ ] Are tests isolated? (no dependency on execution order or external state)
 - [ ] Are test fixtures/mocks appropriate? (not mocking the thing under test)
 
@@ -226,7 +226,7 @@ Test coverage comments should be specific. "Add tests" is not actionable. "This 
 - [ ] If a bug was fixed, is there a regression test?
 - [ ] If a new feature was added, are there feature tests?
 
-A missing regression test for a bug fix is always worth flagging — it is the single highest-value test you can write, because it prevents a known failure mode from recurring.
+A missing regression test for a bug fix is always worth flagging — it is the single highest-value test the reviewer can write, because it prevents a known failure mode from recurring.
 
 ---
 
@@ -241,7 +241,7 @@ Do NOT run through every checkbox mechanically. Instead:
 5. **For a Config/Infra cluster:** focus on dimensions 1 (secrets), 3 (breaking changes)
 6. **For Tests:** focus on dimension 7
 
-### When you find an issue
+### When a finding appears an issue
 
 1. Note the file and line number
 2. Note which dimension it falls under
@@ -274,6 +274,6 @@ The goal is a review that the author respects and acts on — not a comprehensiv
 1. **Security and correctness are always dimensions 1-2.** Do not reorder the dimensions based on PR type. Even in a "refactor-only" PR, check security and correctness first -- refactors can inadvertently change auth boundaries or error handling.
 2. **For deprecation PRs, dimension 3 (Data Integrity) expands to include backwards compatibility and migration completeness.** Check: are all callers updated? Is there a deprecation warning for callers that were not updated? Is the migration path documented?
 3. **Dimension 7 (Maintainability) is the most over-reported dimension.** Only flag maintainability when it materially affects safety, comprehension of critical paths, or onboarding difficulty. "This could be more readable" is not a review finding unless the current code is actively misleading.
-4. **Each dimension should produce at most 2-3 findings per cluster.** If you are generating more, you are likely being too granular. Batch related issues within a dimension into a single finding.
+4. **Each dimension should produce at most 2-3 findings per cluster.** If the reviewer is generating more, the reviewer is likely being too granular. Batch related issues within a dimension into a single finding.
 
-> **Cross-reference:** See `references/severity-guide.md` for how to calibrate finding severity within each dimension.
+> **Cross-reference:** See `references/dimensions/severity-guide.md` for how to calibrate finding severity within each dimension.

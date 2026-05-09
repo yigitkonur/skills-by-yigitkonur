@@ -55,7 +55,7 @@ if (!user.role) {  // Catches null, undefined, and empty string
 |---------|---------------|
 | Raising an issue | "This could cause..." / "I notice that..." / "It looks like..." |
 | Suggesting a fix | "Consider..." / "One approach would be..." / "What about..." |
-| Asking for context | "Could you help me understand why..." / "Is it intentional that..." |
+| Asking for context | "Could the author clarify why..." / "Is it intentional that..." |
 | Agreeing with choice | "Nice approach here" / "Good use of..." / "This handles the edge case well" |
 | Uncertain finding | "I might be wrong, but..." / "Can this be null here?" / "Unless I'm missing context..." |
 
@@ -64,25 +64,25 @@ if (!user.role) {  // Catches null, undefined, and empty string
 | Bad Phrase | Why | Better Alternative |
 |-----------|-----|-------------------|
 | "You should..." | Directive; creates defensiveness | "Consider..." / "It might help to..." |
-| "Why didn't you..." | Implies negligence | "Was there a reason for..." |
+| "Why was this not..." | Implies negligence | "Was there a reason for..." |
 | "Obviously..." | Condescending | (just state the fact) |
 | "This is wrong" | Absolute statement without evidence | "This may not handle the case where..." |
 | "Just do X" | Minimizes the work involved | "One option would be X" |
-| "Nit: " on 10+ comments | Signals you're bikeshedding | Batch nits into one comment or skip |
-| "LGTM" (without reading) | Irresponsible approval | Specify what you reviewed |
+| "Nit: " on 10+ comments | Signals the review is bikeshedding | Batch nits into one comment or skip |
+| "LGTM" (without reading) | Irresponsible approval | Specify what was reviewed |
 
-### The "I" vs "You" Rule
+### The Reviewer-Perspective Rule
 
-Frame comments from your perspective, not as directives to the author:
+Frame comments from the review perspective, not as directives to the author:
 
 ```
-❌ "You forgot to handle the error case"
+❌ "The error case was forgotten"
 ✅ "I don't see error handling for the case where the API returns 500"
 
-❌ "You need to add validation here"
+❌ "Validation needs to be added here"
 ✅ "This endpoint would benefit from input validation — see the pattern in user-routes.ts:30"
 
-❌ "Why did you use var instead of const?"
+❌ "Why was var used instead of const?"
 ✅ "This could use const since it's never reassigned"
 ```
 
@@ -90,7 +90,7 @@ Frame comments from your perspective, not as directives to the author:
 
 ## Severity Tags and When to Use Them
 
-Use consistent severity tags so the author can triage your feedback efficiently.
+Use consistent severity tags so the author can triage the review feedback efficiently.
 
 | Tag | When to Use | Author Action |
 |-----|-------------|---------------|
@@ -118,7 +118,7 @@ Would I flag this in my own code? → Good calibration check
 
 ### When to batch
 
-If you find the same issue in multiple files (e.g., missing error handling in 4 endpoints), do NOT leave 4 separate comments. Instead:
+If a finding appears the same issue in multiple files (e.g., missing error handling in 4 endpoints), do NOT leave 4 separate comments. Instead:
 
 ```markdown
 🟡 **Missing error handling on external API calls** — multiple files
@@ -175,9 +175,9 @@ If the issues are in the same file but fundamentally different problems, keep th
 ### For questions
 
 ```
-1. State what you observed
+1. State what the reviewer observed
 2. State why it seems unusual or unclear
-3. Offer your best interpretation
+3. Offer the review best interpretation
 4. Ask the author to confirm or clarify
 ```
 
@@ -195,7 +195,7 @@ others?
 
 Always include at least one positive observation. This is not politeness theater — it serves two purposes:
 
-1. **Calibration signal** — shows you actually read and understood the code
+1. **Calibration signal** — shows the reviewer actually read and understood the code
 2. **Reinforcement** — encourages good patterns to continue
 
 ### Good praise examples
@@ -215,7 +215,7 @@ time when issues arise.
 ### Bad praise (avoid)
 
 ```markdown
-❌ "Looks good overall" — too vague, no evidence you read anything
+❌ "Looks good overall" — too vague, no evidence the reviewer read anything
 ❌ "Nice code!" — not specific enough to be useful
 ❌ "Good job 👍" — feels perfunctory
 ```
@@ -234,16 +234,16 @@ Reviews get ignored when they exhibit these patterns:
 | No positive feedback | Feels like an attack | Include at least one praise |
 | Vague suggestions | "Clean this up" is not actionable | Provide specific code suggestions |
 | Style preferences | "I prefer X" is subjective | Only flag if it violates project conventions |
-| Out-of-scope architecture | "You should refactor the whole module" | Not in scope for this PR |
+| Out-of-scope architecture | "Refactor the whole module" | Not in scope for this PR |
 
 ## Steering notes
 
 > These notes capture real mistakes observed during derailment testing.
 
-1. **"You should" is the most common tone mistake in AI-generated reviews.** Replace with "This could...", "Consider...", or "One approach would be...". The goal is collaborative exploration, not directive instruction.
+1. **Directive phrasing is the most common tone mistake in AI-generated reviews.** Replace it with "This could...", "Consider...", or "One approach would be...". The goal is collaborative exploration, not directive instruction.
 2. **Praise must be specific to be credible.** "Nice work!" is noise. "The error boundary at `src/ErrorBoundary.tsx:23` cleanly separates render failures from data failures -- this prevents cascading crashes" is useful praise.
 3. **Batching repeated issues is under-used.** If the same missing-null-check pattern appears in 4 files, write one finding with all 4 locations, not 4 separate findings. This reduces noise by 75% without losing information.
-4. **When extending an existing thread, start with "Agree with @reviewer" or "Building on the above."** This signals collaboration, not competition. Never rephrase someone else's finding as your own.
-5. **Questions beat assertions for low-confidence observations.** "Is it intentional that this endpoint has no rate limiting?" is more useful than "This endpoint needs rate limiting" when you are unsure about the architectural context.
+4. **When extending an existing thread, start with "Agree with @reviewer" or "Building on the above."** This signals collaboration, not competition. Never rephrase someone else's finding as the review own.
+5. **Questions beat assertions for low-confidence observations.** "Is it intentional that this endpoint has no rate limiting?" is more useful than "This endpoint needs rate limiting" when the reviewer is unsure about the architectural context.
 
-> **Cross-reference:** See `references/anti-patterns.md` for the full list of tone and content anti-patterns to avoid.
+> **Cross-reference:** See `references/output/anti-patterns.md` for the full list of tone and content anti-patterns to avoid.

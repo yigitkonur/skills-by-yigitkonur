@@ -65,7 +65,7 @@ Layer 4: API Routes/Controllers   → Review fourth (exposes services)
 Layer 5: Consumers (Frontend/CLI) → Review last (calls API)
 ```
 
-**When to use:** PRs that introduce a new feature across the full stack. Reviewing bottom-up lets you validate each layer's contract before reviewing its consumers.
+**When to use:** PRs that introduce a new feature across the full stack. Reviewing bottom-up lets the reviewer validate each layer's contract before reviewing its consumers.
 
 ### Strategy 3: Risk-Based Chunking
 
@@ -101,7 +101,7 @@ git show <sha2>
 
 **When to use:** PRs with clean, logical commit history where each commit is a self-contained change. Not useful for squash-heavy PRs.
 
-**Limitation:** You lose cross-commit context — an issue introduced in commit 1 and fixed in commit 5 won't be visible when reviewing commit 1.
+**Limitation:** Commit-by-commit review loses cross-commit context — an issue introduced in commit 1 and fixed in commit 5 will not be visible when reviewing commit 1.
 
 ---
 
@@ -144,7 +144,7 @@ Read the diff, check for obvious issues, verify test coverage.
 
 ### Tier 3: Skim Review (40% of files, 10% of time)
 
-Quick scan for red flags. Accept that you might miss subtle issues.
+Quick scan for red flags. Accept that the reviewer might miss subtle issues.
 
 **Applies to:**
 - Files in low-risk clusters (docs, config, styling)
@@ -160,7 +160,7 @@ Quick scan for red flags. Accept that you might miss subtle issues.
 
 ## Communicating Coverage Limitations
 
-When you cannot deeply review everything, explicitly state what you covered:
+When deep review is not possible for every cluster, explicitly state what was covered:
 
 ```markdown
 ### Review Coverage
@@ -251,8 +251,8 @@ This two-pass approach prevents the common mistake of spending 60% of review tim
 > These notes capture real mistakes observed during derailment testing.
 
 1. **"This PR is too large" is a valid review finding, but only when actionable.** Recommend specific split points (e.g., "the migration changes could be a separate PR from the API changes") rather than generic "please split."
-2. **Skimmed clusters must be declared.** When reviewing a large PR, state which clusters received deep review and which were skimmed. Never imply full coverage when you only reviewed part of the diff.
+2. **Skimmed clusters must be declared.** When reviewing a large PR, state which clusters received deep review and which were skimmed. Never imply full coverage when the reviewer only reviewed part of the diff.
 3. **Risk-based chunking is almost always the right strategy for large PRs.** Start with security-sensitive and data-access clusters, then work outward. Alphabetical or commit-order review wastes budget on low-risk changes.
 4. **Generated code inflates line counts.** A PR with 2000 changed lines where 1500 are generated protobuf output is actually a small PR. Classify generated files separately before applying size-based strategy decisions.
 
-> **Cross-reference:** See `references/file-clustering.md` for clustering rules that feed into chunking decisions.
+> **Cross-reference:** See `references/analysis/file-clustering.md` for clustering rules that feed into chunking decisions.

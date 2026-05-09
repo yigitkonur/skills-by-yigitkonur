@@ -316,4 +316,4 @@ When reviewing caching changes:
 3. **Do not flag performance in code that runs once at startup or during deployment.** Initialization code, migration scripts, and build-time operations are not hot paths. Focus performance review on request-handling code.
 4. **Memory leak findings require evidence of retention.** Saying "this might leak" is speculation. Show: (a) what is allocated, (b) what reference prevents garbage collection, (c) under what usage pattern the retention grows unbounded.
 
-> **Cross-reference:** See `references/review-dimensions.md` dimension 5 (Performance) for the priority-ordered checklist of performance concerns.
+> **Cross-reference:** See `references/dimensions/review-dimensions.md` dimension 5 (Performance) for the priority-ordered checklist of performance concerns.

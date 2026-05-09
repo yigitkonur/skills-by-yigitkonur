@@ -2,16 +2,16 @@
 
 ## Why cluster before reviewing
 
-When a PR changes 15 files across API routes, database migrations, frontend components, and tests, reviewing them in alphabetical order is inefficient and error-prone. You miss cross-file relationships, duplicate reviews of the same concern, and fail to catch coordination bugs between layers.
+When a PR changes 15 files across API routes, database migrations, frontend components, and tests, reviewing them in alphabetical order is inefficient and error-prone. Alphabetical order hides cross-file relationships, duplicates the same concern, and misses coordination bugs between layers.
 
-Most tools and reviewers default to alphabetical or directory-sorted file lists. This means you might review `src/api/users.ts` first, then `src/auth/middleware.ts`, then `src/components/UserProfile.tsx`, then `tests/api/users.test.ts` — bouncing between unrelated concerns, losing context with each jump, and never seeing the full picture of any single change.
+Most tools and reviewers default to alphabetical or directory-sorted file lists. This means the reviewer might review `src/api/users.ts` first, then `src/auth/middleware.ts`, then `src/components/UserProfile.tsx`, then `tests/api/users.test.ts` — bouncing between unrelated concerns, losing context with each jump, and never seeing the full picture of any single change.
 
-Clustering groups files by domain/concern so you can:
+Clustering groups files by domain/concern to:
 
-- **Review related changes together** — an API route, its request validation schema, and its test file form one reviewable unit. Reading them together lets you verify that the test actually covers the new validation logic, rather than reviewing the route now and the test 10 files later when you've forgotten the details.
+- **Review related changes together** — an API route, its request validation schema, and its test file form one reviewable unit. Reading them together lets the reviewer verify that the test actually covers the new validation logic, rather than reviewing the route now and the test 10 files later when the reviewer've forgotten the details.
 - **Detect missing coordination** — if the API response shape changed but no frontend consumer was updated, a cluster-based review makes that gap immediately visible. The API cluster is present, the frontend cluster is absent. That absence is the signal.
-- **Prioritize by risk** — a database migration that drops a column is more dangerous than a README typo fix. Reviewing the migration first, while you have full attention, prevents the most costly class of missed bugs.
-- **Size the review effort per cluster** — knowing that 300 of the 400 changed lines are in auto-generated migration files lets you budget your attention for the 100 lines of hand-written logic that actually need careful review.
+- **Prioritize by risk** — a database migration that drops a column is more dangerous than a README typo fix. Reviewing the migration first, while attention is fresh, prevents the most costly class of missed bugs.
+- **Size the review effort per cluster** — knowing that 300 of the 400 changed lines are in auto-generated migration files lets the reviewer budget the review attention for the 100 lines of hand-written logic that actually need careful review.
 
 ---
 
@@ -71,9 +71,9 @@ Some files resist clean categorization:
 
 For ambiguous files:
 
-1. **Check imports/exports** if you have access to file contents. A utility imported only by frontend components belongs with Frontend. A middleware imported by the auth module belongs with Security/Auth.
+1. **Check imports/exports** when file contents are available. A utility imported only by frontend components belongs with Frontend. A middleware imported by the auth module belongs with Security/Auth.
 2. **Default to the cluster with the most related files** already in this PR. If 5 other files are in the API cluster and this ambiguous file is imported by 3 of them, it goes in API.
-3. **When nothing else works**, create a **"Mixed/Other"** cluster. Keep it small — if it has more than 3-4 files, you probably need to refine your clustering rules for this specific codebase.
+3. **When nothing else works**, create a **"Mixed/Other"** cluster. Keep it small — if it has more than 3-4 files, the reviewer probably need to refine the review clustering rules for this specific codebase.
 
 ### Step 5: Order clusters by review priority
 
@@ -89,19 +89,19 @@ Review clusters in this order, allocating attention to the highest-risk areas fi
 8. **Tests** — validate the above; review alongside their paired source cluster
 9. **Documentation** — lowest risk; a quick scan for accuracy is sufficient
 
-This ordering is a default. Adjust it for your domain. If you're reviewing a documentation-focused repo, docs move up. If it's a frontend-only project, Frontend becomes priority 1.
+This ordering is a default. Adjust it for the review domain. If the repo is documentation-focused, docs move up. If it is frontend-only, Frontend becomes priority 1.
 
 ---
 
 ## Cluster review strategy by size
 
-Not every PR deserves the same depth of review. Use total lines changed to calibrate your approach:
+Not every PR deserves the same depth of review. Use total lines changed to calibrate the review approach:
 
 | Total lines changed | Strategy |
 |---------------------|----------|
-| **< 100 lines** | Review everything in detail. Clustering still helps organize your thinking, but every file gets a careful read. |
+| **< 100 lines** | Review everything in detail. Clustering still helps organize the review thinking, but every file gets a careful read. |
 | **100–500 lines** | Review the top 3 priority clusters in detail. Scan remaining clusters at a high level, focusing on obvious issues. |
-| **500–1000 lines** | Deep review on priority 1–2 clusters. Summary review on clusters 3–4. Skim the rest. Flag the PR size as a concern in your review. |
+| **500–1000 lines** | Deep review on priority 1–2 clusters. Summary review on clusters 3–4. Skim the rest. Flag the PR size as a concern in the review. |
 | **> 1000 lines** | Flag PR size as a blocker. Recommend splitting into smaller PRs along cluster boundaries. If splitting is not possible, deep review only the highest-risk cluster and explicitly note that other clusters were not deeply reviewed. |
 
 The cluster boundaries themselves suggest natural PR split points. A PR with 3 well-defined clusters could often be 3 smaller, independently reviewable PRs.
@@ -110,7 +110,7 @@ The cluster boundaries themselves suggest natural PR split points. A PR with 3 w
 
 ## Output format
 
-After clustering, output a cluster map before starting the file-by-file review. This serves as both a table of contents and a risk assessment. The reviewer (or the person reading your review) can immediately see the shape of the PR.
+After clustering, output a cluster map before starting the file-by-file review. This serves as both a table of contents and a risk assessment. The reviewer (or the person reading the review) can immediately see the shape of the PR.
 
 ```
 ## File Clusters (23 files changed, +482/-156)
@@ -145,7 +145,7 @@ After clustering, output a cluster map before starting the file-by-file review. 
 
 Key elements of this format:
 
-- **Color-coded priority indicators** (🔴🟡🟢⚪) give an instant visual signal of where attention is needed.
+- **Color-coded priority indicators** (🔴🟡🟢⚪) give an instant visual signal of where attention should go.
 - **Line count per file** lets reviewers gauge effort before diving in.
 - **Review focus hints** per cluster tell the reviewer what to look for, not just what files exist.
 - **Test pairing** is shown inline with the cluster, not in a separate section, so the reviewer sees source and test together.
@@ -189,7 +189,7 @@ The cluster rules above are defaults. Real codebases have their own conventions:
 - **Non-standard layouts** (e.g., a Go project with `cmd/`, `internal/`, `pkg/`) need custom pattern mappings. Map `internal/` → Core/Business Logic, `cmd/` → API/Routes, etc.
 - **Generated code** (protobuf outputs, GraphQL codegen, ORM models) should be noted but reviewed lightly — focus on the source definitions, not the generated output.
 
-When you encounter a new codebase, spend 30 seconds scanning the top-level directory structure before applying cluster rules. Adjust the patterns to match what you see. The goal is not to follow the rules rigidly but to group related changes together so you can review them as coherent units.
+For a new codebase, spend 30 seconds scanning the top-level directory structure before applying cluster rules. Adjust the patterns to match the repo shape. The goal is not to follow the rules rigidly but to group related changes into coherent review units.
 
 ## Steering notes
 
@@ -201,4 +201,4 @@ When you encounter a new codebase, spend 30 seconds scanning the top-level direc
 4. **In monorepos, cluster first by package/service, then by concern within each package.** Do not mix files from different packages into the same "API" or "auth" cluster -- they may have different conventions and ownership.
 5. **When a PR touches 1-2 files across many clusters, do not create a cluster per file.** Instead, identify the primary cluster (largest change set) and note the outlier files as "related changes."
 
-> **Cross-reference:** See `references/large-pr-strategy.md` for chunking strategies when clustering produces too many groups.
+> **Cross-reference:** See `references/analysis/large-pr-strategy.md` for chunking strategies when clustering produces too many groups.

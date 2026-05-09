@@ -1,6 +1,6 @@
 # Cross-Cutting Coordination Checklist
 
-Detailed procedures for detecting issues that span multiple files and clusters. These bugs are invisible when reviewing files in isolation — they only surface when you check how changes coordinate across system boundaries.
+Detailed procedures for detecting issues that span multiple files and clusters. These bugs are invisible when reviewing files in isolation — they only surface when the reviewer check how changes coordinate across system boundaries.
 
 ---
 
@@ -204,4 +204,4 @@ Always include both sides of the coordination gap (the change and the unconverte
 3. **Auth boundary changes are invisible in file-level review.** A new endpoint or route may look correct in isolation but lack auth middleware. Always check that new routes go through the same auth pipeline as existing routes in the same service.
 4. **Environment variable additions require deploy-side verification.** A new `process.env.X` in code without a corresponding entry in `.env.example`, deployment config, or documentation is a coordination failure.
 
-> **Cross-reference:** Use `references/file-clustering.md` to identify which clusters need cross-cutting checks between them.
+> **Cross-reference:** Use `references/analysis/file-clustering.md` to identify which clusters need cross-cutting checks between them.

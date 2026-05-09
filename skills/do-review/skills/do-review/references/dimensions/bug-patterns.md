@@ -75,7 +75,7 @@ async function updateProfile(userId, data) {
 }
 ```
 
-**Review heuristic:** When you see code that reads a value, makes a decision, then writes based on that decision — ask: "What if the value changed between the read and the write?"
+**Review heuristic:** When a reviewer sees code that reads a value, makes a decision, then writes based on that decision — ask: "What if the value changed between the read and the write?"
 
 ---
 
@@ -370,8 +370,8 @@ Deprecation PRs are easy to under-review because "nothing is really changing." T
 > These notes capture real mistakes observed during derailment testing.
 
 1. **The most over-reported bug pattern is "missing null check."** Before flagging a null/undefined risk, check whether the framework or caller guarantees non-null. In TypeScript strict mode, Express validated middleware, or Django's ORM, many "missing null checks" are false positives.
-2. **Race conditions are the hardest patterns to verify from a diff alone.** If you suspect a race condition, check whether the code uses locks, transactions, or atomic operations. If you cannot determine concurrency behavior from the diff, phrase it as a question rather than asserting a bug.
+2. **Race conditions are the hardest patterns to verify from a diff alone.** If the reviewer suspects a race condition, check whether the code uses locks, transactions, or atomic operations. If the reviewer cannot determine concurrency behavior from the diff, phrase it as a question rather than asserting a bug.
 3. **Error handling gaps are often intentional at the caller level.** Before flagging a missing try/catch, check whether the caller expects the function to throw (e.g., Express error middleware, React error boundaries). Not every function needs its own error handling.
 4. **The "Deprecation and Refactor Patterns" section applies specifically to PRs that remove or rename API surface.** For standard feature PRs, focus on the original bug patterns (race conditions, error handling, null handling, etc.) -- deprecation patterns are not relevant.
 
-> **Cross-reference:** See `references/language-specific.md` for language-specific variants of these patterns and `references/review-dimensions.md` dimension 2 (Correctness) for the priority checklist.
+> **Cross-reference:** See `references/dimensions/language-specific.md` for language-specific variants of these patterns and `references/dimensions/review-dimensions.md` dimension 2 (Correctness) for the priority checklist.
