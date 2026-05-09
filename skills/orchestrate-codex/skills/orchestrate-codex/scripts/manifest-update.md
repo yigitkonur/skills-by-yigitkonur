@@ -33,6 +33,8 @@ Special values:
 
 Numeric coercion (allowlist applied to the leaf segment of dotted keys): `exit_code`, `attempts`, `schema_version`, `concurrency_cap`, `round`, `codex_pid`, `post_verify_exit`, `answer_size_bytes`, `major_count`, `minor_count`. Numeric-shaped values for these keys parse to JSON numbers; everything else stays a string.
 
+Boolean coercion (allowlist applied to the leaf segment of dotted keys): `below_floor`, `dry_run`, `bypass`, `cleaned_up`, `reuse_worktree`. When the raw value is exactly `true` or `false`, it is written as a JSON boolean. The Python sibling coerces every literal `true`/`false`; the bash sibling restricts coercion to this allowlist so that user-supplied free-form strings stay strings. Both writers agree on the boolean output for the listed keys — downstream consumers can safely compare with `=== true` / `=== false`.
+
 ## Outputs
 
 - Manifest file updated atomically (lock + atomic-rename).

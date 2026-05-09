@@ -89,9 +89,9 @@ Notes on the table — each row reflects what `scripts/codex-json-filter.sh` act
 - `[CMD>]`, `[CMD✓]`, `[CMD✗]` are emitted at every level (the `command_execution` arm has no level guard at lines 103, 117, 124). The previous doc claimed they were `normal`-only — that was wrong.
 - `[THINK]` and `[FILE]` are emitted at `normal` and `verbose` (the `reasoning` and `file_change` arms gate on `[[ "$LEVEL" != "minimal" ]]` at lines 128, 140). The previous doc claimed they were `verbose`-only — also wrong.
 - `[SAID]` is **first-line-only**: line 137 takes the first non-empty line of `item.text` via `awk 'NF { print; exit }'`. For multi-line structured outputs (JSON / YAML / TOML), Monitor surfaces a useless `[SAID] {` or `[SAID] ---`. **Do not validate structured deliverables from Monitor `[SAID]` lines — parse the `-o` file directly.**
-- `[ERR]` at the top level (`error` event) is correct, but **`item.completed` events with `item.type=error` (codex deprecation warnings, item-level errors) are silently dropped at every level** — the `case "$item_type"` block at lines 111-148 has no `error)` arm. Until the script is patched, expect these to surface only via `-o` content, the `*.err.log` stderr capture, or by post-run `jq` over the JSONL file.
+- `[ERR]` is emitted at every level for both shapes: top-level `error` events AND `item.completed` events with `item.type=error` (codex deprecation warnings, item-level errors). The `case "$item_type"` block has a dedicated `error)` arm (`scripts/codex-json-filter.sh:204-211`) that pulls the `item_msg` field and surfaces the error unconditionally — there is no level guard, by design, because the Monitor contract requires failures to be visible.
 
-Set via `CODEX_FILTER_LEVEL=minimal|normal|verbose` env. The script does **not** parse argv — a `--level <…>` flag passed on the command line is silently ignored.
+Set via `CODEX_FILTER_LEVEL=minimal|normal|verbose` env, or pass `--level <minimal|normal|verbose>` (or `--level=<value>`) on the command line. The script parses argv at `scripts/codex-json-filter.sh:71-90` and rejects unknown flags with exit 2; the env var is the default and the flag overrides it when both are set.
 
 ## Line buffering
 

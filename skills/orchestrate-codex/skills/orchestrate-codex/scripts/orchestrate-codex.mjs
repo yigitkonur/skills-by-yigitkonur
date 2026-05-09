@@ -594,7 +594,13 @@ function buildBatchEntries(inputsText, command) {
     return newEntry({
       id,
       slug: id,
-      modeState: { batch: { input: line, input_row: line, prompt_file: null, answer_size_bytes: null, below_floor: null } },
+      // Bug 4 fix: do NOT seed nested `mode_state.batch.{answer_size_bytes,
+      // below_floor}` keys — the runner writes those to the TOP LEVEL
+      // (`mode_state.answer_size_bytes` / `mode_state.below_floor`), and the
+      // dual shape left null fields hanging that downstream readers couldn't
+      // disambiguate. The nested `mode_state.batch.input` row content remains
+      // canonical per references/modes/batch.md.
+      modeState: { batch: { input: line, input_row: line, prompt_file: null } },
     });
   });
   const dup = entries.find((e) => e.__err);
@@ -767,6 +773,60 @@ function getBaseCommit(cwd) {
   const r = spawnSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" });
   if (r.status === 0) return r.stdout.trim();
   return null;
+}
+
+// Bug 1 fix — carry forward terminal `done` entries from a prior manifest so
+// re-running the dispatcher (e.g. to retry one failure) does not silently
+// demote successful entries back to `queued` (which the runner would then
+// flip to `skipped`, rewriting history). The fresh entry list is mutated
+// in place: any element whose id matches a prior `done` entry has its
+// terminal-state fields (status, timing, paths, mode_state, etc.) restored
+// from the prior manifest.
+//
+// Edge cases:
+//   - prior entry exists but status !== "done": no-op (let the runner re-run).
+//   - prior entry has stale paths (e.g. worktree deleted between runs):
+//     carry forward anyway; the runner's idempotency guard handles re-creation
+//     and audit will surface the drift.
+//   - no prior manifest: no-op (fresh seed behaviour).
+//   - older manifest schema lacks some fields: read with `??` defaults so the
+//     merge is forward-compatible.
+function carryForwardDoneEntries(priorManifestPath, freshEntries) {
+  if (!Array.isArray(freshEntries) || freshEntries.length === 0) return freshEntries;
+  const prior = readManifestIfPresent(priorManifestPath);
+  if (!prior || prior.__corrupt) return freshEntries;
+  const priorEntries = Array.isArray(prior.entries) ? prior.entries : [];
+  if (priorEntries.length === 0) return freshEntries;
+  const priorById = new Map();
+  for (const entry of priorEntries) {
+    if (entry && typeof entry.id === "string") priorById.set(entry.id, entry);
+  }
+  for (const entry of freshEntries) {
+    if (!entry || typeof entry.id !== "string") continue;
+    const prev = priorById.get(entry.id);
+    if (!prev || prev.status !== "done") continue;
+    // Restore terminal-state fields. mode_state is shallow-merged so the
+    // freshly-seeded shape (e.g. mode_state.batch.input from the new inputs
+    // file) wins for keys absent in the prior, and prior-run signals
+    // (answer_size_bytes / below_floor / post_verify_cmd / task.*) win where
+    // present. Unknown fields on the prior side are tolerated via `??`.
+    entry.status = prev.status ?? entry.status;
+    entry.started_at = prev.started_at ?? entry.started_at;
+    entry.finished_at = prev.finished_at ?? entry.finished_at;
+    entry.exit_code = prev.exit_code ?? entry.exit_code;
+    entry.attempts = prev.attempts ?? entry.attempts;
+    entry.log_path = prev.log_path ?? entry.log_path;
+    entry.jsonl_path = prev.jsonl_path ?? entry.jsonl_path;
+    entry.answer_path = prev.answer_path ?? entry.answer_path;
+    entry.worktree_path = prev.worktree_path ?? entry.worktree_path;
+    entry.codex_thread_id = prev.codex_thread_id ?? entry.codex_thread_id;
+    entry.codex_session_id = prev.codex_session_id ?? entry.codex_session_id;
+    entry.last_error = prev.last_error ?? entry.last_error;
+    if (prev.mode_state && typeof prev.mode_state === "object") {
+      entry.mode_state = { ...(entry.mode_state || {}), ...prev.mode_state };
+    }
+  }
+  return freshEntries;
 }
 
 function seedManifest({
@@ -1022,6 +1082,12 @@ function flipEntryToQueued(manifestPath, entryId, wsRoot) {
   // manifest-update.py defaults to dry-run; --execute writes. We blank
   // exit_code/finished_at/last_error so audit doesn't carry stale failure
   // signals into the next attempt.
+  //
+  // Bug 5 fix: also clear started_at and increment attempts. references/modes/
+  // rescue.md documents that rescue should "increment attempts" and "clear
+  // started_at"; the runner only increments on the START path, so dry-run
+  // and stub-runner code paths previously left attempts stuck at the prior
+  // value. Bumping here covers every redispatch entry (rescue + force-redo).
   const args = [
     "entry",
     "--manifest", manifestPath,
@@ -1030,6 +1096,8 @@ function flipEntryToQueued(manifestPath, entryId, wsRoot) {
     "--set", "exit_code=null",
     "--set", "finished_at=null",
     "--set", "last_error=null",
+    "--set", "started_at=null",
+    "--set", "attempts=+1",
     "--execute",
   ];
   return runPythonHelper(PY_HELPERS.manifestUpdate, args, wsRoot);
@@ -1299,6 +1367,10 @@ async function handleExec(argv) {
   const promptErr = materializeExecPrompts(built.value, cwd, promptDir, command);
   if (promptErr) return promptErr;
 
+  // Bug 1 fix: carry forward `done` entries from a prior manifest at the
+  // same path so a re-run does not demote successful entries back to queued.
+  carryForwardDoneEntries(manifestPath, built.value);
+
   const seeded = seedManifest({
     manifestPath, mode: "exec", runId, entries: built.value,
     concurrencyCap: cap.value, monitorRoot, cwd: wsRoot,
@@ -1440,6 +1512,9 @@ async function handleBatch(argv) {
   const renderErr = renderBatchPromptFiles(built.value, templatePath, promptsDir, command);
   if (renderErr) return renderErr;
 
+  // Bug 1 fix: preserve `done` entries from the prior manifest.
+  carryForwardDoneEntries(manifestPath, built.value);
+
   const seeded = seedManifest({
     manifestPath, mode: "batch", runId, entries: built.value,
     concurrencyCap: cap.value, monitorRoot, cwd: wsRoot,
@@ -1566,6 +1641,9 @@ async function handleSingle(argv) {
   if (options["resume-last"]) built.value[0].mode_state.single.resume_last = true;
   if (options["resume-thread"]) built.value[0].mode_state.single.resume_thread = String(options["resume-thread"]);
 
+  // Bug 1 fix: preserve `done` entries from the prior manifest.
+  carryForwardDoneEntries(manifestPath, built.value);
+
   const seeded = seedManifest({
     manifestPath, mode: "single", runId, entries: built.value,
     concurrencyCap: 1, monitorRoot, cwd: wsRoot,
@@ -1672,6 +1750,9 @@ async function handleReview(argv) {
   fs.mkdirSync(monitorRoot, { recursive: true });
   const preflight = runBootstrap({ command, cwd: wsRoot, mode: command, runId, monitorRoot, skipGit: false });
   if (preflight.err) return preflight.err;
+
+  // Bug 1 fix: preserve `done` entries from the prior manifest.
+  carryForwardDoneEntries(manifestPath, built.value);
 
   const seeded = seedManifest({
     manifestPath, mode: "review", runId, entries: built.value,
@@ -2200,6 +2281,7 @@ export {
   manifestPathFor,
   workspaceFor,
   seedManifest,
+  carryForwardDoneEntries,
   parseArgsStrict,
   resolveConcurrency,
   selectRescueSubset,

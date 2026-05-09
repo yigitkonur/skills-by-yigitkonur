@@ -22,6 +22,14 @@ Use this template for: large refactors with live observability needed; research 
 
 - <hard facts the agent must respect>
 
+# Output format (parseable deliverables only — JSON / YAML / CSV / fixed-shape markdown)
+
+- The `-o` answer file's first byte must be the canonical opener (`<`, `{`, `---`, header row, first table row).
+- The `-o` answer file's last byte must be the canonical closer (`>`, `}`, the final data row, EOF after the last value).
+- No code fences (no triple-backticks, no ```json / ```yaml).
+- No prose preamble or trailing commentary — output ONLY the artifact.
+- Restate this in BOTH Constraints AND Success criteria; a single mention is fragile.
+
 # Success criteria
 
 - <specific deliverables>

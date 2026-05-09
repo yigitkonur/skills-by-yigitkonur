@@ -177,10 +177,17 @@ if [[ "$prompt_count" -eq 0 ]]; then
 fi
 
 mkdir -p "$ANSWERS" "$LOGS"
+# Bug 3 fix: do NOT tee runner stdout/stderr into $RUNNER_LOG here. The
+# dispatcher (orchestrate-codex.mjs spawnRunnerDetached) is the canonical
+# owner of the runner-log redirect — when the dispatcher launches the
+# runner it opens $RUNNER_LOG and binds stdio to that fd, so every printed
+# START/DONE/SKIP/FAIL line lands in the file once. A runner-side `tee` on
+# top of that produced two copies of every line (audit-sizes.sh `grep -c`
+# then over-counted by 2x). When the runner is invoked DIRECTLY by an
+# operator (no dispatcher), there is no redirect — stdout flows to the
+# terminal as expected.
 if [[ -n "$RUNNER_LOG" ]]; then
   mkdir -p "$(dirname "$RUNNER_LOG")"
-  : > "$RUNNER_LOG"
-  exec > >(tee -a "$RUNNER_LOG") 2> >(tee -a "$RUNNER_LOG" >&2)
 fi
 
 # ── Per-job runner ─────────────────────────────────────────────

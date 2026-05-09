@@ -149,6 +149,23 @@ is_numeric_leaf() {
   esac
 }
 
+# Bug 2 fix — boolean-coercible leaf keys. When the leaf segment of the
+# dotted key matches one of these AND the raw value is exactly `true` or
+# `false`, write a JSON boolean instead of a JSON string. The runner emits
+# `mode_state.below_floor=true` after every batch-mode answer write; without
+# coercion the manifest accumulated string-typed `"true"` / `"false"` values
+# that broke `=== true` comparisons in downstream consumers. The python
+# sibling already coerces every literal `true`/`false` (manifest-update.py:
+# coerce_value); this allowlist mirrors that behaviour for bash callers
+# while staying conservative — only known-boolean fields coerce, so a string
+# value that happens to be the word "true" stays a string.
+is_boolean_leaf() {
+  case "$1" in
+    below_floor|dry_run|bypass|cleaned_up|reuse_worktree) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Convert a dotted key path "a.b.c" to a jq array literal: ["a","b","c"].
 # Single-segment keys produce ["a"]. Empty segments are rejected.
 dotted_to_jq_path() {
@@ -217,6 +234,10 @@ build_chain() {
         ;;
       *)
         if is_numeric_leaf "$leaf" && [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+          JQ_ARGS+=( --argjson "v$i" "$value" )
+        elif is_boolean_leaf "$leaf" && { [[ "$value" == "true" ]] || [[ "$value" == "false" ]]; }; then
+          # Bug 2 fix: coerce known-boolean fields to JSON booleans (--argjson
+          # parses `true` / `false` as boolean literals).
           JQ_ARGS+=( --argjson "v$i" "$value" )
         else
           JQ_ARGS+=( --arg "v$i" "$value" )

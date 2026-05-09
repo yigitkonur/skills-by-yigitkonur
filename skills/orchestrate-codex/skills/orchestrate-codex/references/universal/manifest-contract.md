@@ -163,12 +163,21 @@ Hard ceiling: `--concurrency > 20` is refused unless `--i-have-measured "<justif
 **batch mode:**
 ```json
 {
-  "input_row": "https://example.com/foo",
-  "prompt_file": "/abs/path/to/prompts/01-foo.md",
+  "batch": {
+    "input": "https://example.com/foo",
+    "input_row": "https://example.com/foo",
+    "prompt_file": "/abs/path/to/prompts/01-foo.md"
+  },
   "answer_size_bytes": 12345,
   "below_floor": false
 }
 ```
+
+`answer_size_bytes` and `below_floor` are written at the **top level of
+`mode_state`** (not nested under `mode_state.batch`). The runner writes the
+top-level shape; `audit-sizes.sh` and rescue/audit helpers read it from
+there. The nested `mode_state.batch.*` block carries only the per-row inputs
+seeded by the dispatcher.
 
 **single mode:**
 ```json
