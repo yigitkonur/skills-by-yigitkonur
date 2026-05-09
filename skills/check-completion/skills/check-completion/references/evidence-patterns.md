@@ -1,6 +1,6 @@
 # Evidence Patterns — What Counts as Proof
 
-The taxonomy tells you which status applies. This file tells you what "real evidence" looks like per status class. Evidence is the difference between an audit and a vibe check.
+The taxonomy defines which status applies. This file defines what "real evidence" looks like per status class. Evidence is the difference between an audit and a vibe check.
 
 ## The cardinal rule
 
@@ -105,7 +105,7 @@ Example: `node server.js failed with: "Error: cannot find module './auth'" at li
 ### Evidence for `Skipped`
 
 - The explicit skip decision
-- Why the justification doesn't hold (if you are concluding it doesn't)
+- Why the justification fails (when concluding it fails)
 
 Example: `Agent said at message 18: "I'll skip the cache invalidation test for now." Task was in the initial scope; no follow-up; justification "for now" without a defined later-trigger does not hold`.
 
@@ -221,4 +221,4 @@ Inline evidence in the audit table's Evidence column. Keep to one line when poss
 - **Partial verification** — "the function runs" (runs ≠ returns correct result)
 - **Self-referential evidence** — "the TodoList is marked completed" (toggling is not verifying)
 
-If your evidence line reads as any of the above, downgrade the status.
+If an evidence line reads as any of the above, downgrade the status.

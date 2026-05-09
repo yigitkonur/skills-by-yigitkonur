@@ -109,7 +109,7 @@ No commentary ("Great, this worked!"), no narrative ("First I thought about it, 
 
 ## The "re-read this file" rule
 
-Before writing each audit table, scan this file. If your draft row breaks the voice discipline, rewrite it. Over time, the rules become automatic — until then, the external check is the safety net.
+Before writing each audit table, scan this file. If a draft row breaks the voice discipline, rewrite it. Over time, the rules become automatic — until then, the external check is the safety net.
 
 ## Common mistakes
 

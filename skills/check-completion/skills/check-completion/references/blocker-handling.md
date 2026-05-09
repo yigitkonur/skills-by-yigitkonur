@@ -22,10 +22,10 @@ Before declaring a blocker unresolvable, run these five checks. If ANY has a yes
 
 | # | Check | Example |
 |---|---|---|
-| 1 | Can you provide the missing value from existing context? | Env var is hardcoded in a checked-in `.env.example`; use that. |
+| 1 | Can the missing value be supplied from existing context? | Env var is hardcoded in a checked-in `.env.example`; use that. |
 | 2 | Is there a documented workaround? | OAuth flow unavailable; docs show how to use a personal access token instead. |
-| 3 | Can you ask the agent to act with a reduced-scope version of the task? | Database not available; mock the interface for now, flag real-DB verification as follow-up. |
-| 4 | Can you split the task so the non-blocked part proceeds? | "Deploy to prod" is blocked; "prepare the deploy artifact" is not. Split and do the second part. |
+| 3 | Can the agent act with a reduced-scope version of the task? | Database not available; mock the interface for now, flag real-DB verification as follow-up. |
+| 4 | Can the task be split so the non-blocked part proceeds? | "Deploy to prod" is blocked; "prepare the deploy artifact" is not. Split and do the second part. |
 | 5 | Is the blocker a task-description artifact rather than a real dependency? | "Add auth using the team's auth service" — but the task-asker didn't specify which auth service. That's ambiguity (`Ambiguous`), not a blocker. |
 
 If all five return no, the blocker is genuinely unresolvable.

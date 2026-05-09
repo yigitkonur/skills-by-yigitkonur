@@ -1,6 +1,6 @@
 # Status Taxonomy — The 22 Statuses
 
-Every task in the audit table gets exactly one status from this list. This file is the authoritative source for each status's definition, detection rules, and evidence patterns. Read this file when classifying a task and you are unsure which status applies.
+Every task in the audit table gets exactly one status from this list. This file is the authoritative source for each status's definition, detection rules, and evidence patterns. Read this file when classification is uncertain.
 
 ## Contents
 - [Terminal vs. non-terminal statuses](#terminal-vs-non-terminal)

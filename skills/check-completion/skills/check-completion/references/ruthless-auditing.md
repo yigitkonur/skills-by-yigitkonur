@@ -8,7 +8,7 @@ When classifying a task, ask:
 
 > **"What would change my mind?"**
 
-If the answer is "nothing I would bother to check" → you are on autopilot, not auditing. Go back to `evidence-patterns.md` and name the specific evidence that would prove the task's claimed status.
+If the answer is "nothing I would bother to check" → the auditor is on autopilot, not auditing. Go back to `evidence-patterns.md` and name the specific evidence that would prove the task's claimed status.
 
 ## Default to pessimistic
 
@@ -21,7 +21,7 @@ The asymmetry favors pessimism. Rigor in Phase 1 is cheap; omissions discovered 
 
 ## The four red flags
 
-If you see any of these in your own draft audit rows, stop and re-classify.
+If any of these appear in draft audit rows, stop and re-classify.
 
 ### Red flag 1: Fuzzy language
 
@@ -61,10 +61,10 @@ If you see any of these in your own draft audit rows, stop and re-classify.
 
 ## The "minimum viable skeptic" test
 
-Imagine a skeptic reading your audit, asking "how do you know?" for every row. For each row:
+Imagine a skeptic reading the audit, asking "how do you know?" for every row. For each row:
 
-- **`Implemented` row**: could you answer the skeptic with a specific, citable observation?
-- **Non-`Implemented` row**: could you answer with the specific signal that ruled out `Implemented`?
+- **`Implemented` row**: can the row answer the skeptic with a specific, citable observation?
+- **Non-`Implemented` row**: can the row answer with the specific signal that ruled out `Implemented`?
 
 If the answer to either is "no", the row is not ready. Re-classify.
 
@@ -103,7 +103,7 @@ Crisp rule: `Out of Scope` is permanent for this audit; `Deprioritized` is tempo
 
 ## When a task resists classification
 
-If you have run through:
+If the audit has already run through:
 
 1. The 22 statuses in `status-taxonomy.md`
 2. The close-status picking rules
@@ -132,13 +132,13 @@ Specifically:
 
 See the completion report template in `output-format.md` — every upgraded row lists both the started-status and the ended-status, with evidence for the transition.
 
-## When you are tempted to "just declare it done"
+## When tempted to "just declare it done"
 
-This is the peak pressure moment. You are near the end of Phase 2, a few rows remain non-terminal, and you want to be done.
+This is the peak pressure moment. Phase 2 is nearly done, a few rows remain non-terminal, and completion pressure is high.
 
 **The rule**: the audit is done when every row is at a terminal status, OR when a row is explicitly unresolvable with a concrete next step. Not before.
 
-If you are tempted to:
+If tempted to:
 
 - Mark a row `Implemented` without re-running the verification
 - Mark a row `Out of Scope` to avoid having to finish it

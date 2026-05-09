@@ -1,6 +1,6 @@
 # Audit Sources — Where to Find Task Evidence
 
-Phase 1 Step 2 scans six sources. Each one reveals tasks and evidence the others miss. Skip any source and you introduce silent gaps — tasks that were done but you don't see, or tasks that were promised but you don't know about.
+Phase 1 Step 2 scans six sources. Each one reveals tasks and evidence the others miss. Skipping any source creates silent gaps — tasks that were done but unseen, or tasks that were promised but untracked.
 
 ## The six sources
 

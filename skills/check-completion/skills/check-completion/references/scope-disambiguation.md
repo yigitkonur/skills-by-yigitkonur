@@ -20,7 +20,7 @@ Without user guidance, match the request to one of these.
 - Tests: runs during this session
 - Bash: filesystem ops this session
 
-**Risk**: session boundaries can be fuzzy. If you can't tell when the "current session" started, pick the most recent user message that opened a distinct ask.
+**Risk**: session boundaries can be fuzzy. If the "current session" start is unclear, pick the most recent user message that opened a distinct ask.
 
 ### Plan scope
 
@@ -111,7 +111,7 @@ If the picked scope is broader than needed, narrow explicitly:
 - User asks "audit what's done" right after a focused sub-session on one topic → narrow to that topic, state the narrowing
 - Session has been multi-day with lots of noise → narrow to the most recent productive block
 
-Narrowing is legitimate; hiding work from the user is not. If you narrow, the audit intro must say "narrowed from <broader scope> because <reason>" so the user can expand if they want.
+Narrowing is legitimate; hiding work from the user is not. If narrowing, the audit intro must say "narrowed from <broader scope> because <reason>" so the user can expand if needed.
 
 ## When scope is unresolvable
 
@@ -140,4 +140,4 @@ If mid-Phase-1 the audit reveals the scope itself was wrong — e.g., the user a
 - The audit caught a tangential concern that belongs to a different skill / different session / different project
 - Something came up during tool use (e.g., Edit opened an unrelated file) that isn't part of the intended work
 
-Do not use `Out of Scope` to hide work you don't want to do. That's a rationalization — see `rationalizations.md`.
+Do not use `Out of Scope` to hide work the agent does not want to do. That's a rationalization — see `rationalizations.md`.

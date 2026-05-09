@@ -47,7 +47,7 @@ Exactly one of the 22 statuses from `status-taxonomy.md`. Wrap in backticks. No 
 ❌ `Implemented + Untested` (two statuses in one cell)
 ✅ `` `Implemented but Untested` ``
 
-If you genuinely can't pick one, the task needs to be split or re-described before classification.
+If classification cannot pick one status, split or re-describe the task before classification.
 
 #### `Evidence`
 One line (two max) citing specific, concrete evidence per `evidence-patterns.md`. Use the citation style:
@@ -188,7 +188,7 @@ Inline in the row. One per row minimum; more if the status requires multi-part e
 |---|---|
 | Status cells with qualifiers like "Implemented-ish" | Pick a real status; add context to Evidence if needed |
 | Multiple statuses in one cell | Split the row or pick the more-pessimistic one |
-| Evidence column says "checked" or "looks good" | Cite the specific thing you checked |
+| Evidence column says "checked" or "looks good" | Cite the specific checked thing |
 | Action Required is "fix it" or "address" | Rewrite with the concrete step — what command, which file |
 | Blocking column has `Yes` for every non-`Implemented` row | Only mark Blocking when another row genuinely depends on this one |
 | Completion report has `Partially Implemented` in the Ended column | Not terminal — go back to Phase 2 and finish the row |

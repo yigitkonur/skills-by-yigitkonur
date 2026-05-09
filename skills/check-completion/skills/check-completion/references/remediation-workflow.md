@@ -71,7 +71,7 @@ For each task in priority order:
 
 **Do not batch** multiple remediations and verify once at the end. Two reasons:
 
-- **Attribution** — if a single verification fails, you don't know which of the batched fixes caused it
+- **Attribution** — if a single verification fails, the batched fix that caused it is unknown
 - **Evidence per row** — the completion report requires per-row evidence; batched verification doesn't produce per-row citations
 
 Exception: purely mechanical changes in the same file (typos, import reorderings) may be batched into one edit + one verification, as long as the evidence citation makes clear which rows were covered.
@@ -196,17 +196,17 @@ Remediation is complete when:
 - Every row in the audit table has a terminal status
 - Every terminal status with a non-`Implemented` outcome (`Deferred to Human`, `Deprioritized`, `Cancelled`, `Out of Scope`, `Superseded` with replacement verified, `Blocked — unresolvable`) has concrete documentation
 
-If you are tempted to declare Phase 2 complete with rows still at non-terminal statuses, re-read `rationalizations.md`. The answer is: either finish the row, or document it as unresolvable with a concrete next step.
+If tempted to declare Phase 2 complete with rows still at non-terminal statuses, re-read `rationalizations.md`. The answer is: either finish the row, or document it as unresolvable with a concrete next step.
 
 ## One exception to "don't pause"
 
-You MAY pause ONCE, for a single round, if the audit reveals:
+Pause ONCE, for a single round, only if the audit reveals:
 
 - A scope misunderstanding that would invalidate much of the remediation work
-- A destructive operation that needs user authorization (file deletion outside your own work, data loss risk, pushing to shared remotes)
+- A destructive operation that needs user authorization (file deletion outside the agent's own work, data loss risk, pushing to shared remotes)
 - A blocker whose resolution requires a credential or decision only the user can provide
 
-In all other cases: document and continue. The single-pause rule is not a loophole; if you are using it more than once per audit, the discipline is slipping.
+In all other cases: document and continue. The single-pause rule is not a loophole; repeated use within one audit means the discipline is slipping.
 
 ## After the last row
 

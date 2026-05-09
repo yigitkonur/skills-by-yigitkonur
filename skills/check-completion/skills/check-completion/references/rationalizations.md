@@ -23,7 +23,7 @@ All three feel rational in the moment. All three produce false-positive `Impleme
 | "I wrote the code, so the task is Implemented." | Confusing action with outcome | Writing ≠ running. Without a test run or observed behavior this session, status is `Implemented but Untested`. |
 | "It was Implemented last week." | Past-tense evidence (valid when written, stale now) | Re-run now. `Implemented but Broken` is a real status. Regression since last known-good is the most common silent failure. |
 | "I'll just audit while fixing — two birds, one stone." | Phase-collapse to avoid "extra work" | No. Produce the audit table as a discrete artifact first. Fixing while auditing hides what was done vs. what was broken vs. what was missed. |
-| "Not finding evidence means there isn't any." | Absence-of-evidence-as-evidence-of-absence | Not finding it means you didn't find it. Scan all 6 sources in `audit-sources.md`, then conclude. |
+| "Not finding evidence means there isn't any." | Absence-of-evidence-as-evidence-of-absence | Not finding it means evidence was not found. Scan all 6 sources in `audit-sources.md`, then conclude. |
 | "The TodoList says completed — that's good enough." | Trusting the tracking system | TodoList statuses reflect what was toggled, not what was done. Every `completed` TodoList row is an `Assumed Complete` candidate until independently verified. |
 | "This is a quick audit; I'll skip the table." | Procedural shortcut | The table is the audit. Without it, there is no audit — just vibe-checking wearing a lab coat. |
 | "The user will trust my summary." | Delegated verification | The user asked for the audit because summaries were failing before. Re-summarizing without evidence defeats the ask. |
@@ -92,7 +92,7 @@ Counter: every Phase 2 upgrade requires the same evidence as a fresh `Implemente
 
 ## How to use this file
 
-Before writing any Phase 1 row, scan this table. If your draft row echoes any rationalization, stop. Re-read the counter. Then rewrite the row.
+Before writing any Phase 1 row, scan this table. If the draft row echoes any rationalization, stop. Re-read the counter. Then rewrite the row.
 
 Before declaring Phase 2 complete, scan this table. If the completion report has any rows whose upgrades match a rationalization ("everything looks done"), run the missing verification.
 
