@@ -48,6 +48,17 @@ Read the smallest reference set that matches the task:
 | Implementation code examples and real-world audits | `references/examples.md` |
 | Agent wrapper and invocation patterns | `references/agent-integration.md` |
 
+## Bundled Scripts
+
+Use the scripts only for read-only discovery support:
+
+| Script | Read first | Use for |
+|---|---|---|
+| `scripts/audit-cli-help.sh` | `scripts/audit-cli-help.md` | Inspect top-level and listed subcommand help for standard flags, examples, exit-code docs, and missing affordances. |
+| `scripts/diff-cli-help.sh` | `scripts/diff-cli-help.md` | Compare captured help snapshots for command/flag additions, removals, and likely breaking changes. |
+
+These scripts audit discoverability and drift only. They do not prove full agent-readiness and must not replace stdout/stderr, exit-code, non-interactive, and destructive-flow checks.
+
 ## Audit Workflow
 
 Before recommending changes:
