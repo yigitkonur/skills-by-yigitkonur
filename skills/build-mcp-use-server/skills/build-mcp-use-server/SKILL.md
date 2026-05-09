@@ -26,7 +26,7 @@ Numbered folders under `references/` are local organization, not a required `01`
 
 ## Coordinate with neighboring skills
 
-- **`apply-clean-mcp-architecture` owns structure:** where files live, import direction, layer boundaries, composition root, config seam, handler/presenter placement. Its detailed contract is in its `coordinate-with-build-mcp-use-server.md` reference.
+- **`apply-clean-mcp-architecture` owns structure:** where files live, import direction, layer boundaries, composition root, config seam, handler/presenter placement. Read this skill's reciprocal handoff at `references/00-clean-architecture-coordination.md`.
 - **This skill owns mechanics:** exact `mcp-use/server` APIs, Zod schemas, response helpers, auth/session/transport config, widget CSP, Inspector usage, deploy mechanics.
 - **Blended request:** load `apply-clean-mcp-architecture` first for placement, then this skill for API mechanics.
 
@@ -213,6 +213,7 @@ Unless the user asks for another format, report:
 Start with intent or symptoms; use inventory only as fallback.
 
 - **Symptom index:** `references/00-symptom-index.md`
+- **Clean architecture handoff:** `references/00-clean-architecture-coordination.md`
 - **Version drift policy:** `references/00-version-drift.md`
 - **Full inventory:** `references/00-reference-index.md`
 - **Bundled scripts:** `scripts/check-mcp-use-version.sh.md`, `scripts/audit-server-readiness.sh.md`, `scripts/scaffold-mcp-use-server.sh.md`
