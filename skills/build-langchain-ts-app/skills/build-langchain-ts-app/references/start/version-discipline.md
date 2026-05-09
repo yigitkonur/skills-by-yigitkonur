@@ -23,6 +23,8 @@ Checked against the npm registry with `npm view <package> version` on 2026-05-09
 | `@langchain/openrouter` | `0.2.4` |
 | `@langchain/langgraph-sdk` | `1.9.1` |
 | `@langchain/langgraph-cli` | `1.2.1` |
+| `@langchain/langgraph-supervisor` | `1.0.1` |
+| `@langchain/langgraph-swarm` | `1.0.1` |
 | `@langchain/textsplitters` | `1.0.1` |
 | `@langchain/mcp-adapters` | `1.1.3` |
 | `langsmith` | `0.6.3` |

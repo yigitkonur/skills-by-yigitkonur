@@ -1,6 +1,6 @@
 # Knowledge Agents Reference
 
-Complete reference for building knowledge-domain agents in LangChain.js v1: SQL agents, voice pipelines, and multi-knowledge-base routing. All APIs verified against langchain@1.2+, @langchain/core@1.1+, @langchain/langgraph@1.2+. TypeScript only unless labeled Python.
+Complete reference for building knowledge-domain agents in LangChain.js v1: SQL agents, voice pipelines, and multi-knowledge-base routing. Version-sensitive examples checked against langchain@1.4.0, @langchain/core@1.1.45, @langchain/langgraph@1.3.0 on 2026-05-09. TypeScript only unless labeled Python.
 
 ---
 

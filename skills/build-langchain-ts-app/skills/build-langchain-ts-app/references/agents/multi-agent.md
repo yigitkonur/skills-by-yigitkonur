@@ -1,6 +1,6 @@
 # Multi-Agent Reference
 
-> Covers `langchain@1.x`, `@langchain/langgraph@1.2.5`, `@langchain/langgraph-supervisor@1.0.1`, `@langchain/langgraph-swarm@1.0.1`. TypeScript only. All API shapes sourced from official LangChain docs and research as of 2026-03-23.
+> Covers `langchain@1.4.0`, `@langchain/langgraph@1.3.0`, `@langchain/langgraph-supervisor@1.0.1`, `@langchain/langgraph-swarm@1.0.1`. TypeScript only. Package versions checked on 2026-05-09.
 
 ---
 
@@ -1148,4 +1148,4 @@ import { z } from "zod/v4";  // use zod/v4 with StateSchema
 | 15 | **No timeout on subagent calls** | Single stuck subagent blocks entire workflow | Wrap calls with `Promise.race` + timeout rejection |
 | 16 | **Missing Zod schema on tool inputs** | Runtime parse errors in LangGraph | Always define `schema: z.object({...})` on every tool |
 | 17 | **No `thread_id` in stateful workflows** | Multi-turn state not preserved | Always pass `{ configurable: { thread_id: "..." } }` to `invoke()` |
-| 18 | **Streaming across subagents** | Subagent token streams don't propagate to parent (known issue, March 2026) | Collect final results and re-emit; use `streamMode: "updates"` and filter by node name |
+| 18 | **Streaming across subagents** | Subagent token streams may not propagate to parent in current supervisor/swarm paths | Collect final results and re-emit; use `streamMode: "updates"` and filter by node name |

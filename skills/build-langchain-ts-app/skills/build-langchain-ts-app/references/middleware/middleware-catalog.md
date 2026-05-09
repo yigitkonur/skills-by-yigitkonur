@@ -1,6 +1,6 @@
 # Middleware: Built-in Catalog Reference
 
-Complete reference for all built-in LangChain.js v1 middleware. APIs verified against `langchain@1.2.35`, `@langchain/core@1.1.34`, `@langchain/langgraph@1.2.5`. TypeScript only.
+Complete reference for all built-in LangChain.js v1 middleware. Version-sensitive examples checked against `langchain@1.4.0`, `@langchain/core@1.1.45`, `@langchain/langgraph@1.3.0` on 2026-05-09. TypeScript only.
 
 ---
 

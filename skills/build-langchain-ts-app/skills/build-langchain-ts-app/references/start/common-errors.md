@@ -1,6 +1,6 @@
 # LangChain.js Common Errors Reference
 
-> Verified against langchain@1.2.35, @langchain/core@1.1.34, @langchain/langgraph@1.2.5 — March 2026
+> Version-sensitive examples checked against langchain@1.4.0, @langchain/core@1.1.45, @langchain/langgraph@1.3.0 on 2026-05-09.
 > Every error was reproduced or confirmed via testing, GitHub issues, or community reports.
 
 ---

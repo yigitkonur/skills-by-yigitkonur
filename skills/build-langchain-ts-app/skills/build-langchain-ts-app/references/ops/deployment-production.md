@@ -1,6 +1,6 @@
 # Deployment: Production Infrastructure Reference
 
-> Verified against @langchain/langgraph@1.2.5, @langchain/langgraph-sdk latest, @langchain/langgraph-cli latest.
+> Version-sensitive examples checked against @langchain/langgraph@1.3.0, @langchain/langgraph-sdk@1.9.1, and @langchain/langgraph-cli@1.2.1 on 2026-05-09.
 > LangGraph Platform was rebranded to LangSmith Deployment in May 2025. "LangGraph Cloud" is now "LangSmith Cloud". SDK and `langgraph.json` are unchanged.
 
 ---
@@ -15,7 +15,7 @@
 - LangGraph SDK Client (`@langchain/langgraph-sdk`)
 - Generative UI (`typedUi`, `LoadExternalComponent`, `useStream`)
 - CI/CD Pipeline (GitHub Actions)
-- Pricing Table (LangSmith Deployment, 2025–2026)
+- Pricing Verification
 - Production Scaling Patterns
 - Health Checks & Monitoring
 - Known Pitfalls
@@ -918,27 +918,16 @@ CI trigger sources: code changes on `main`/`development`, PromptHub updates, onl
 
 ---
 
-## Pricing Table (LangSmith Deployment, 2025–2026)
+## Pricing Verification
 
-| Plan | Cost | Key limits |
-|------|------|-----------|
-| **Open Source** | $0 | MIT library; no platform included |
-| **Developer** | $0 up to 100K nodes/mo | Self-hosted server; core orchestration |
-| **Plus** | Pay-as-you-go | Managed SaaS; Studio; $39/user/mo |
-| **Enterprise** | Custom | Hybrid/self-hosted; SLA; SSO/RBAC; dedicated support |
+LangSmith Deployment pricing changes. Before quoting any plan cost, node execution fee, standby fee, trace-retention fee, or seat price, verify the official LangSmith pricing page and record the check date in the implementation notes.
 
-### Plus Plan Usage Fees
+Keep implementation guidance cost-aware without preserving stale figures:
 
-| Item | Cost |
-|------|------|
-| Node execution | $0.001 per node executed |
-| Standby time (dev deployment) | $0.0007/min |
-| Standby time (prod deployment) | $0.0036/min |
-| Traces (14-day retention) | $2.50/1K traces |
-| Traces (400-day retention) | $4.50/1K traces |
-| Additional seats | $39/user/mo |
-
-**Example**: 1M node executions ≈ $1,000 (excluding standby and seat costs).
+- Estimate node count per run and token usage separately.
+- Track managed deployment standby time for dev and production environments.
+- Confirm trace retention and seat costs before budgeting.
+- Consider self-hosting or hybrid deployment when data residency or high-volume usage dominates.
 
 ### Cost Reduction Strategies
 
@@ -1119,7 +1108,7 @@ LANGSMITH_PROJECT=my-production-project
 | Subgraph per-thread persistence fails inside a tool | Not supported by the SDK | Use per-invocation persistence for subgraphs called as tools |
 | Traces not appearing in LangSmith in scripts | Background callback not flushed before process exit | Call `await waitForAllTracers()` at script end |
 | Docker Compose start fails with "db not healthy" | `langgraph-postgres` healthcheck takes >10s on first boot | Increase `start_period` in the postgres healthcheck to `30s` |
-| High cost on managed cloud at scale | Node execution billed at $0.001/node | Self-host with Docker Compose (MIT, no per-node fees) or use Enterprise self-hosted |
+| High cost on managed cloud at scale | Current managed pricing not verified | Verify current LangSmith pricing, then consider self-hosting or Enterprise/hybrid options |
 | Safari CORS on LangSmith Studio preview | Safari blocks non-HTTPS localhost connections | Not applicable in production; use `--tunnel` in local dev only |
 | `imagePullSecrets` missing in Hybrid K8s | Private registry not authenticated | Set `imagePullSecrets` in `langgraph-dataplane-values.yaml` |
 | `LANGCHAIN_CALLBACKS_BACKGROUND=true` missing in long-running servers | Traces dropped because callbacks are not awaited | Set `LANGCHAIN_CALLBACKS_BACKGROUND=true` for servers; `false` for short scripts |

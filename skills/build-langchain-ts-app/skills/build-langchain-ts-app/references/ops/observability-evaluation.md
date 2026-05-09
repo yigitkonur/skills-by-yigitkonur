@@ -1,6 +1,6 @@
 # Observability: Evaluation & Testing Reference
 
-Complete reference for LangSmith evaluation workflows, dataset management, LLM-as-judge, Feedback API, OpenTelemetry integration, third-party observability tools, self-hosted LangSmith, and pricing. All APIs verified against langsmith (latest), openevals (latest). TypeScript only.
+Complete reference for LangSmith evaluation workflows, dataset management, LLM-as-judge, Feedback API, OpenTelemetry integration, third-party observability tools, self-hosted LangSmith, and pricing checks. Version-sensitive examples checked against langsmith@0.6.3 and openevals@0.2.0 on 2026-05-09. TypeScript only.
 
 ---
 
@@ -862,14 +862,14 @@ const client = new Client({
 | Plan | Tracing | Evaluation | Deployment | Alerts | Bulk Export |
 |------|---------|-----------|-----------|--------|-------------|
 | **Free** | Yes (volume limits) | Yes | No | No | No |
-| **Plus** | Yes (higher limits) | Yes | $0.001/node | Yes | Yes |
-| **Enterprise** | Yes (unlimited) | Yes | $0.001/node (custom) | Yes | Yes + self-hosted |
+| **Plus** | Yes (higher limits) | Yes | Verify current pricing | Yes | Yes |
+| **Enterprise** | Yes (unlimited) | Yes | Custom / verify current pricing | Yes | Yes + self-hosted |
 
 ### Deployment Pricing Details
 
 - `langgraph dev` — local development, free, no Docker required
 - `langgraph up` — local Docker stack, free, requires Docker
-- `langgraph deploy` — LangSmith Cloud, **$0.001 per node execution**
+- `langgraph deploy` — LangSmith Cloud; verify current node execution and standby pricing before quoting costs
 - Self-hosted LangSmith — Enterprise plan add-on; requires `LANGSMITH_LICENSE_KEY`
 - Custom auth (`langgraph up` with auth) requires a production license key
 

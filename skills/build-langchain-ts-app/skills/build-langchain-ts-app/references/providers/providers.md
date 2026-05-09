@@ -20,7 +20,7 @@
 - 11. Base URL / Proxy Configuration
 - 12. Provider Switching Patterns and Pitfalls
 - 13. Custom Provider Skeleton
-- 14. Package Version Notes (Mar 2026)
+- 14. Package Version Notes (checked 2026-05-09)
 
 ## 1. Ecosystem Overview
 
@@ -711,13 +711,13 @@ class ChatMyProvider extends BaseChatModel {
 
 ---
 
-## 14. Package Version Notes (Mar 2026)
+## 14. Package Version Notes (checked 2026-05-09)
 
-- `@langchain/openai`: latest — supports `gpt-5.1`, `gpt-5.2`, Responses API
-- `@langchain/anthropic`: latest — supports Claude Sonnet 4.6, all built-in tools
-- `@langchain/google`: new unified package replacing `google-genai` + `google-vertexai` (Feb 2026)
-- `@langchain/google-genai`: uses consolidated `@google/genai` SDK (v4.0.0+ changed from `@google/generative-ai`)
-- `@langchain/aws`: v1.3.1 — `ChatBedrockConverse` recommended over legacy `Bedrock` class
-- `@langchain/openrouter`: first-party package launched Feb 2026
-- `@langchain/deepseek`: launched Nov 2024, supports DeepSeek-V3 and R1
-- `@langchain/cerebras`: launched Aug 2024
+- `@langchain/openai`: `1.4.5` checked on 2026-05-09; verify model availability before hard-coding model strings
+- `@langchain/anthropic`: `1.3.29` checked on 2026-05-09; verify provider feature support before quoting model/tool support
+- `@langchain/google`: `0.1.11` checked on 2026-05-09; unified package replacing older split Google packages
+- `@langchain/google-genai`: `2.1.30` checked on 2026-05-09; uses consolidated `@google/genai` SDK
+- `@langchain/aws`: `1.3.7` checked on 2026-05-09; `ChatBedrockConverse` recommended over legacy `Bedrock` class
+- `@langchain/openrouter`: `0.2.4` checked on 2026-05-09; first-party package launched Feb 2026
+- `@langchain/deepseek`: `1.0.25` checked on 2026-05-09
+- `@langchain/cerebras`: `1.0.4` checked on 2026-05-09
