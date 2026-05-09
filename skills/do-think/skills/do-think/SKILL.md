@@ -73,7 +73,7 @@ This line is non-skippable at session start. It declares mode (no silent default
 8. Numbered, stepwise progress instead of mental jumps.
 9. Prefer the smallest next move that changes your certainty.
 10. End every session with a concrete next move + verification check (shape varies by Op).
-11. **Foundations are self-sufficient. `frameworks/` is library** — accessed only via the master routing table at the bottom of this file or by `modes/interactive-brainstorm.md`. Do not cross-link from foundations to frameworks.
+11. **`frameworks/` is a library** — access it from this file's table, Interactive mode, or an operation workflow that explicitly names the framework. Do not load all frameworks.
 
 ## The universal core loop — 4 phases
 
@@ -209,7 +209,7 @@ Every finished session states:
 - Stopping after the first obstacle when better local moves still exist
 - Claiming success before stating the (op-shaped) verification result
 - Silently degrading Interactive into Solo
-- Reading `frameworks/*` without being routed there from this master table or from `modes/interactive-brainstorm.md`
+- Reading all `frameworks/*`, or loading more than one decomposition, one generation, and one evaluation/stress tool in one pass
 - Asking the user a clarifying question mid-Solo (you've hit an escalation trigger — switch to Interactive instead)
 
 ## Anti-rationalization table
@@ -264,7 +264,7 @@ When this session, especially one entered from `do-debug` after 3 failed fixes, 
 
 ## Reference routing — master table
 
-Foundations are self-sufficient (read directly when the loop says so). `frameworks/` is library — accessed only via the rows below or via `modes/interactive-brainstorm.md`. Do not cross-link foundations into frameworks.
+Foundations are self-sufficient. `frameworks/` is a library accessed from this table, Interactive mode, or an operation workflow that explicitly names the framework.
 
 ### Foundations (load-bearing primitives, used by every session)
 
@@ -303,7 +303,9 @@ Foundations are self-sufficient (read directly when the loop says so). `framewor
 | [`references/workflows/task-planning.md`](references/workflows/task-planning.md) | (universal) | A large or fuzzy task that needs slicing |
 | [`references/workflows/continuous-execution.md`](references/workflows/continuous-execution.md) | (universal) | Need to keep moving without frequent human checkpoint |
 
-### Frameworks (library — accessed only from this table or from Interactive Steps 2-5)
+### Frameworks (selection-capped library)
+
+Selection rule: choose at most one decomposition tool, one generation tool, and one evaluation/stress tool per pass. In Solo mode, load no framework unless C1 generation or C2 evaluation needs it. In Interactive mode, Steps 2-5 route frameworks; each step picks one primary framework unless the user explicitly widens the session.
 
 | File | Read when |
 |---|---|

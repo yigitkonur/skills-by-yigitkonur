@@ -9,8 +9,8 @@ Cynefin (pronounced "ku-NEV-in") classifies the situation, then prescribes the a
 | Domain | Signature | Action sequence | Solo agent default |
 |---|---|---|---|
 | **Clear** (Obvious) | Familiar problem, clear cause-effect, stable conditions. "Known knowns." | Sense → Categorize → Respond | Apply the established best practice; no further thinking needed. Decline `do-think` if invoked on a Clear problem. |
-| **Complicated** | Multiple plausible answers exist but aren't immediately obvious. "Known unknowns." Investigation will resolve. | Sense → Analyze → Respond | Decompose, then evaluate options against weighted factors (route via SKILL.md master table to the appropriate decomposition + decision-matrix framework). |
-| **Complex** | "Unknown unknowns." Cause-effect emerges only through probing. Unclear what to measure. | Probe → Sense → Respond | Cheap experiment FIRST, then assess. Generate options via the appropriate framework (route via SKILL.md master table — perspective rotation, combinatorial generation, or systems mapping, depending on what the C1 generator needs). |
+| **Complicated** | Multiple plausible answers exist but aren't immediately obvious. "Known unknowns." Investigation will resolve. | Sense → Analyze → Respond | Decompose, then evaluate options against weighted factors using one tool from the SKILL.md framework table. |
+| **Complex** | "Unknown unknowns." Cause-effect emerges only through probing. Unclear what to measure. | Probe → Sense → Respond | Cheap experiment FIRST, then assess. Generate options with one SKILL.md-routed framework that fits C1. |
 | **Chaotic** | Out of control. No clear cause-effect. Immediate action required to stabilize. | Act → Sense → Respond | Take the most conservative stabilizing action. Defer deep thinking until stabilized. |
 | **Disorder** | You cannot tell which domain. | Identify the domain first | Run Abstraction Laddering (`reframing.md`), then re-classify. |
 

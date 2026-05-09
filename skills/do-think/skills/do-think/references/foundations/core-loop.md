@@ -78,7 +78,7 @@ NOT always "≥3 options." That's a Sense-Making move. Per-op:
 | Orchestration | sequence + idempotency markers + error handlers |
 | SelfVerify | first attempt + first oracle reading |
 
-If C1 generation is dry, route via the SKILL.md master table to a `frameworks/` file (e.g., `zwicky-box.md` for combinatorial generation, `six-thinking-hats.md` for perspective rotation, `decomposition-tools.md` for MECE breakdowns).
+If C1 generation is dry, choose one generator from the SKILL.md framework table: combinatorial generation, perspective rotation, or MECE breakdown. Do not load the whole framework library.
 
 ### C2. Op-specific stress-test (mandatory at Tier Medium/High)
 

@@ -96,6 +96,8 @@ Every option, weight, factor, branch in the decomposition — if you cannot defe
 
 Interactive steps 2-5 dispatch into the frameworks library:
 
+Pick one primary framework per step unless the user explicitly widens the session. Do not load all framework files for one brainstorm.
+
 | Step | Library files |
 |---|---|
 | Step 2 (Decompose) | `frameworks/decomposition-tools.md` (Issue Trees, Ishikawa) · `frameworks/systems-tools.md` (Iceberg, Connection Circles) · `foundations/reframing.md` (Abstraction Laddering) |

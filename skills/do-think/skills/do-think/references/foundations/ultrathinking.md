@@ -25,7 +25,7 @@ Standard Tier-High already runs strict trio + full grounding. Ultrathink adds:
    - What am I assuming about constraints, users, the system?
    Re-enter Phase A3 (reframe) if the widened frame exposes a different problem.
 
-2. **Compare real options.** Do not compare one real option to two strawmen. Keep 2-3 *serious* options alive through Phase C1. Use the SKILL.md routing to reach `frameworks/zwicky-box.md` if option generation is dry.
+2. **Compare real options.** Do not compare one real option to two strawmen. Keep 2-3 *serious* options alive through Phase C1. If option generation is dry, choose one generator from the SKILL.md framework table.
 
 3. **Force the simplest adequate path.** Reject solutions that are technically clever but operationally heavier than the problem needs. The path with the smallest surface area that still solves the problem usually wins on long-horizon costs.
 

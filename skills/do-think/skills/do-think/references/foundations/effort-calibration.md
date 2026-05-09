@@ -15,7 +15,7 @@ Two axes: **impact** (how significant is the outcome?) × **comparability** (how
 |---|---|---|---|---|
 | Low | Easy | **No-brainer** | Pick now. Optimizing wastes time. | Low |
 | Low | Hard | **Apples & Oranges** | Pick by current values; don't overthink. | Low |
-| High | Easy | **Big Choice** | `frameworks/decision-matrix.md`; gather information, score options. | Medium |
+| High | Easy | **Big Choice** | Decision Matrix via the SKILL.md framework table; gather information, score options. | Medium |
 | High | Hard | **Hard Choice** | Decision Matrix + accept that no "right" answer exists; run a cheap experiment if reversibility allows. | High |
 
 **Heuristic**: time-spent-thinking should match the box, not how urgent the problem feels. Most agents waste energy optimizing No-brainers and rush Hard Choices.
@@ -77,7 +77,7 @@ Set tier silently using both matrices, write the tier in the opening contract, p
 
 ## Interactive mode application
 
-Tier is set via **both axes** (Hard Choice classifier + Confidence-vs-Quality posture) in `modes/interactive-brainstorm.md` Step 1 (alongside Cynefin and Op classification, so the opening contract can emit Tier on the first line). The Hard Choice quadrant maps to Tier Low/Medium/High; the Confidence-vs-Quality posture (speed-first / balanced / quality-first) modulates how aggressively the tier's grounding/stress-test budget is spent. See `frameworks/decision-matrix.md` for the full Decision Matrix mechanics used at Step 4 (Evaluate).
+Tier is set via **both axes** (Hard Choice classifier + Confidence-vs-Quality posture) in `modes/interactive-brainstorm.md` Step 1 (alongside Cynefin and Op classification, so the opening contract can emit Tier on the first line). The Hard Choice quadrant maps to Tier Low/Medium/High; the Confidence-vs-Quality posture modulates how aggressively the tier's grounding/stress-test budget is spent. Use the SKILL.md framework table when Step 4 needs Decision Matrix mechanics.
 
 ## Anti-patterns
 
