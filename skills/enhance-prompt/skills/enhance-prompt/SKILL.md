@@ -1,6 +1,6 @@
 ---
 name: enhance-prompt
-description: "Use skill if you are enhancing a prompt before sending it to an LLM or coding agent — adds narrative structure, thinking-steering, failure pre-emption, halt conditions, and verification layers."
+description: Use skill if you are rewriting a task prompt for an LLM or coding agent to improve execution quality without changing skill instructions or doing the task.
 ---
 
 # Enhance Prompt
@@ -9,8 +9,16 @@ Intercept a user's raw prompt, turbocharge it with context and steering, and ret
 
 ## Trigger boundary
 
-**Use when:** enhancing a prompt before sending it to an LLM or coding agent
-**Do NOT use when:** improving general writing (emails, essays), building skill files, or reviewing code
+Use this skill when rewriting a task prompt before another LLM or coding agent consumes it.
+
+| Need | Use |
+|---|---|
+| Rewrite a task prompt before another LLM or coding agent consumes it | `enhance-prompt` |
+| Improve a skill's instructions by watching a subagent use it | `enhance-skill-by-derailment` |
+| Create or substantially redesign a skill | `synthesize-skills` |
+| Solve an ambiguous or high-stakes problem directly, not prompt another agent | `do-think` |
+
+If another workflow needs to prepare a prompt for a subagent or external model, use `enhance-prompt` only for that prompt artifact, then return to the parent workflow.
 
 ## Core philosophy
 

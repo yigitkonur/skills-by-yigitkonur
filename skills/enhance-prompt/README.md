@@ -1,6 +1,6 @@
 # enhance-prompt
 
-Enhancing a prompt before sending it to an LLM or coding agent — adds narrative structure, thinking-steering, failure pre-emption, halt conditions, and verification layers.
+Rewriting a task prompt for an LLM or coding agent to improve execution quality without changing skill instructions or doing the task.
 
 **Category:** productivity
 
