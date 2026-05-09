@@ -6,6 +6,8 @@ Three persistence and reuse mechanisms. They compose:
 - **Browser pools** — pre-warmed browsers ready for instant acquire.
 - **Credentials and credential providers** — encrypted credential storage; native or 1Password-backed.
 
+Source note: Verified against Kernel pricing, profiles, browser-pools, and changelog docs on 2026-05-09. Re-check live docs before changing billing or plan-gate claims.
+
 ## Profiles
 
 Direct `browsers.create({ profile: { name } })` requires the profile to already exist. Either call `profiles.create` first, or take the Managed Auth path (`auth.connections.create` auto-creates the profile if `profile_name` is new).
@@ -20,7 +22,9 @@ await kernel.browsers.create({
 });
 ```
 
-`save_changes: true` snapshots the profile's state on `deleteByID`. Subsequent `browsers.create({ profile: { name: 'user-123' } })` (without `save_changes`) loads that snapshot read-only.
+`save_changes: true` snapshots the profile's state on `deleteByID` or browser timeout. `browser.close()` only closes the local CDP connection and does not persist profile state. Subsequent `browsers.create({ profile: { name: 'user-123' } })` (without `save_changes`) loads that snapshot read-only.
+
+Only one parallel browser should write to a profile with `save_changes: true` at a time. Multiple parallel writers can corrupt the saved profile or produce unpredictable final state. Parallel readers are fine when `save_changes` is omitted.
 
 Direct profile API:
 
@@ -41,7 +45,7 @@ A single profile can carry login state for **multiple domains** when paired with
 
 ## Browser pools (Reserved Browsers)
 
-Pre-configure a fixed set of browsers ready for instant acquire. You are billed only when a browser is **acquired**, not while idle in the pool.
+Pre-configure a fixed set of browsers ready for instant acquire. As of the 2026-05-09 docs check, browser pools require the Start-Up plan or Enterprise, GPU is not available for pools, and idle browsers in a pool incur no disk charges. Pricing docs and the April 10 changelog both say idle pool storage charges were removed for Start-Up too. Re-check `https://www.kernel.sh/docs/info/pricing` before making billing-sensitive promises.
 
 ```ts
 const pool = await kernel.browserPools.create({
@@ -86,6 +90,13 @@ Operations:
 - `kernel.browserPools.update / delete / list` — standard.
 
 Acquired browsers are exempt from `flush`. Use `flush` to roll the pool after a config change or to invalidate session state across all idle instances.
+
+Cost guardrails:
+
+- Create pools outside request/runtime paths; pool declarations are quota-bearing infrastructure.
+- Release every acquired browser. An acquired browser stays acquired until release or timeout.
+- Use `reuse: false` after sensitive flows or credential changes so the pool rebuilds that browser.
+- Report pool name/id, acquired `session_id`, release result, and whether `reuse` was true.
 
 ## Credentials
 
@@ -167,7 +178,7 @@ await kernel.auth.connections.create({
 | Per-user login that survives sessions | Profile + Managed Auth (Hosted UI) |
 | Bulk warm-start automation, no auth | Browser pool with `stealth: true` |
 | Many users, same upstream SaaS | Profile-per-user + 1Password provider + auto-match |
-| Pool of pre-authenticated browsers | Pool + per-browser profile (acquire, set profile, run, release with `reuse: false`) |
+| Pool of pre-authenticated browsers | Pool + per-browser profile (acquire, set profile, run, release with `reuse: false` after sensitive flows) |
 | Headless re-auth without prompting | Pre-stored credential + `auth.connections.create({ credential: { name } })` then submit |
 
 ## Where to look next
