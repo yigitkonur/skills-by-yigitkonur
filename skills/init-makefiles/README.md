@@ -1,6 +1,6 @@
 # init-makefiles
 
-Setting up `make` targets for a project — classifies seven scenarios, wipes prior Makefiles, generates ≤4 zero-argument Makefiles, syncs AGENTS.md, optionally wires GitHub Actions deploys.
+Generating scenario-specific Makefile control planes, safely replacing old scaffolds, syncing Make targets, or optionally wiring deploy CI.
 
 **Category:** workflow
 

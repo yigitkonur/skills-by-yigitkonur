@@ -46,7 +46,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [evaluate-code-review](skills/evaluate-code-review/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS + REVIEW standardization hierarchies |
-| [init-makefiles](skills/init-makefiles/) | workflow | Scaffold per-scenario Makefiles — 7 scenarios, ≤4 files, AGENTS sync, opt CI/CD |
+| [init-makefiles](skills/init-makefiles/) | workflow | Scaffold safe scenario Makefiles, AGENTS sync, optional deploy CI |
 | [optimize-agent-ergonomics](skills/optimize-agent-ergonomics/) | development | Decide CLI vs MCP and shared agent contracts |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
 | [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI in 5 modes: parallel worktree fleets, batched template runs, single-mission monitoring, per-branch review loops, rescue |

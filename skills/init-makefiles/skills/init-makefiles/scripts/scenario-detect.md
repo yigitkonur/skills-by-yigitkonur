@@ -4,10 +4,9 @@ Read-only heuristic signal collector for `init-makefiles` scenario classificatio
 
 ## Use
 
-Run from the downstream project root, or pass the root explicitly:
+Run from this skill directory and pass the downstream project root. If already in the downstream project root, `.` is acceptable.
 
 ```bash
-bash scripts/scenario-detect.sh
 bash scripts/scenario-detect.sh /path/to/project
 ```
 

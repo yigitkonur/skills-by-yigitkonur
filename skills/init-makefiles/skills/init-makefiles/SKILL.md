@@ -1,13 +1,17 @@
 ---
 name: init-makefiles
-description: Use skill if you are setting up `make` targets for a project — classifies seven scenarios, wipes prior Makefiles, generates ≤4 zero-argument Makefiles, syncs AGENTS.md, optionally wires GitHub Actions deploys.
+description: Use skill if you are generating scenario-specific Makefile control planes, safely replacing old scaffolds, syncing Make targets, or optionally wiring deploy CI.
 ---
 
 # init-makefiles
 
 Make is the project's control plane. One generated Makefile (or up to four in monorepos), zero required arguments, scenario-appropriate targets only.
 
-Run this skill when an agent must scaffold or refresh `make` targets in a project. The skill inspects the repo, classifies it into one of seven scenarios, wipes prior scaffolding (after a Git snapshot), generates the right Makefile(s), normalizes `AGENTS.md` / `CLAUDE.md`, and optionally wires GitHub Actions for push-to-main deploys.
+Run this skill when an agent must scaffold or refresh `make` targets in a project. The skill inspects the repo, classifies it into one of seven scenarios, snapshots and replaces approved prior scaffolding, generates the right Makefile(s), syncs the `AGENTS.md` `## Make targets` contract, and optionally wires GitHub Actions for push-to-main deploys.
+
+## Compatibility note
+
+`init-makefiles` is the consolidated successor to the older make-local, make-railway, and make-vercel direction. Do not recreate provider-specific Makefile skills; classify the project scenario here, then generate only scenario-appropriate targets.
 
 ## How to think about this
 
@@ -29,7 +33,9 @@ Three principles, applied without exception:
 
 - The user wants a one-off shell script — use bash, not make
 - The project is purely a CI pipeline with no local control plane — use `.github/workflows/` directly
-- Provider-specific operations beyond what these targets cover — defer to `use-railway` for Railway CLI ops, or to the provider's docs
+- Railway logs, scale, restart, env edits, or one-off CLI operations are the job — use `use-railway`
+- AGENTS hierarchy, REVIEW.md, folder-scoped agent config, or broad repo governance is the job — use `init-agent-config`
+- Hosted MCP architecture beyond a local MCP control target is the job — use `build-mcp-use-server`
 
 ## Workflow
 
@@ -69,11 +75,19 @@ find . -maxdepth 3 -name "Makefile" -not -path "./node_modules/*"
 ls -la AGENTS.md CLAUDE.md 2>/dev/null
 ```
 
-If a precondition fails (no `package.json`, no dev script, no SSH alias for Mac scenario), surface it before generating — don't generate something that breaks on first run. Full detection cheat sheet in `references/scenario-detection.md`.
+Then run the bundled detector for a second, low-freedom signal pass. Resolve `scripts/scenario-detect.sh` relative to this skill directory and pass the downstream project root:
+
+```bash
+bash scripts/scenario-detect.sh /path/to/project
+```
+
+The detector is read-only and heuristic-only; it prints observed signals and candidate scenarios, not the final answer. Full detection cheat sheet in `references/scenario-detection.md`; detector implementation notes in `scripts/scenario-detect.md`.
+
+If a precondition fails (no `package.json`, no dev script, no SSH alias for Mac scenario), surface it before generating. Do not generate something that breaks on first run.
 
 ### 2. Classify
 
-Pick exactly one scenario. The seven:
+Pick exactly one scenario per deployable app. The seven:
 
 | # | Scenario | Primary signal | What's in scope |
 |---|---|---|---|
@@ -85,33 +99,78 @@ Pick exactly one scenario. The seven:
 | **F** | Build-artifact | Cargo / Go / Swift / native CLI; no HTTP framework, no remote target | Build + run locally; no deploy |
 | **G** | MacBook ship | `.xcodeproj` / `Package.swift` Mac target + remote-Mac SSH alias | Build + ship via `rsync` + atomic swap + verify |
 
+For single-app projects, the final classification has one tag. For monorepos, each deployable app gets one tag and the root gets a dominant orchestration tag. For the rare frontend + backend + Supabase shape, use the supported combined tag **C+D** only when the custom backend deploys separately and Supabase is also in scope.
+
+Before generating files, print this block:
+
+```text
+Scenario: <A-G, or C+D for supported combined shape>
+Scope: <repo root or per-app paths>
+Confidence: <high|medium>
+Signals: <observed files/deps/commands>
+Excluded scenarios: <why the near misses were rejected>
+Provider scope: <Vercel/Railway/Supabase/MacBook/local-only>
+Makefiles to generate: <root + app paths, max 4>
+Ambiguity resolved: <none or the answered question>
+```
+
 If detection is ambiguous → **ask one targeted question, never guess**. Sample prompts in `references/scenario-detection.md`.
 
-### 3. Read existing scaffolding
+### 3. Preview and read existing scaffolding
 
-For every `Makefile`, `*.mk`, `make-*.sh`, `scripts/dev.sh`, `scripts/deploy.sh` at known paths: read into context. Note useful patterns the user encoded (custom env handling, project-specific port choices, framework-specific dev commands) — those inform the regenerated targets.
+Run the bundled wipe preview before touching files. Resolve `scripts/preview-makefile-wipe.sh` relative to this skill directory and pass the downstream project root:
 
-Then snapshot before deletion:
+```bash
+bash scripts/preview-makefile-wipe.sh /path/to/project
+bash scripts/preview-makefile-wipe.sh /path/to/project --paths-only > /tmp/init-makefiles-candidates.txt
+```
+
+The script is read-only. It prints exact paths, match reasons, tracked state, and uncommitted status; implementation notes live in `scripts/preview-makefile-wipe.md`.
+
+For every candidate `Makefile`, `*.mk`, `make-*.sh`, `scripts/dev.sh`, and `scripts/deploy.sh`: read the file before classifying it as scaffold. Note useful patterns the user encoded (custom env handling, project-specific port choices, framework-specific dev commands) because those inform regenerated targets.
+
+Write a deletion manifest containing only paths approved for replacement:
+
+```bash
+DELETION_MANIFEST=/tmp/init-makefiles-delete-manifest.txt
+# write one approved path per line, exactly as printed by the preview
+```
+
+Refuse to continue if a candidate has uncommitted non-scaffold edits the agent cannot classify. If unrelated dirty files exist, leave them untouched and state that they were not snapshotted.
+
+### 4. Snapshot and wipe from manifest
+
+Create a targeted snapshot commit before deletion. Stage only manifest paths:
 
 ```bash
 git status --porcelain
-# If working tree has unrelated changes, ask user to commit/stash first.
-git add -A
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  git add -- "$path"
+done < "$DELETION_MANIFEST"
 git commit -m "chore(make): snapshot existing scaffold before init-makefiles regen"
 ```
 
-Never auto-commit unrelated work.
+Never use `git add -A` for the snapshot. Never auto-commit unrelated work.
 
-### 4. Wipe
-
-Delete the prior scaffold:
+Print recovery before deleting:
 
 ```bash
-rm -f Makefile *.mk scripts/dev.sh scripts/deploy.sh
-find . -maxdepth 3 -name "Makefile" -not -path "./node_modules/*" -delete
+SNAPSHOT_SHA=$(git rev-parse --short HEAD)
+printf 'Recovery: git revert %s\n' "$SNAPSHOT_SHA"
+printf 'Single file: git restore --source=%s -- path/to/Makefile\n' "$SNAPSHOT_SHA"
 ```
 
-### 5. Generate
+Delete only manifest paths:
+
+```bash
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  rm -f -- "$path"
+done < "$DELETION_MANIFEST"
+```
+
+### 5. Generate core Makefiles
 
 Compose the new Makefile(s) from the scenario's references. Universal preamble in `references/makefile-base.md`. Scenario sections live in `references/makefile-frontend.md`, `references/makefile-backend.md`, `references/makefile-supabase.md`, and `references/makefile-macbook.md`. Monorepo delegation in `references/makefile-monorepo.md`.
 
@@ -130,10 +189,13 @@ Apply the 5-state machine in `references/agents-md-update.md`. The contract:
 
 - AGENTS.md is the source of truth
 - CLAUDE.md is a symlink → AGENTS.md (or absent)
-- A `## Make targets` section is written/updated, listing every generated target, env-var knob, and what the skill will and will not do
+- Only the downstream project `## Make targets` section is written/updated, listing every generated target, env-var knob, and what the skill will and will not do
+- Same-directory `CLAUDE.md → AGENTS.md` compatibility links are in scope
+- Hand-written `## Make targets` sections require explicit replacement consent
 - The rewrite is skipped if the existing section is already accurate (no churn)
+- Broad AGENTS-first governance, nested folder instructions, and REVIEW.md remain the job of `init-agent-config`
 
-### 7. Verify
+### 7. Verify core generation
 
 Run the verification ladder in `references/verification-ladder.md`. The skill claims at most rung 5 (external curl from this machine, no proxy). Rung 6 (independent client — phone on cellular) is a manual user step printed in the post-deploy banner.
 
@@ -144,16 +206,20 @@ Per scenario:
 - F: `make build` produces a binary; `./build/<name> --version` runs without error
 - G: `make ship` rsyncs and `pgrep -x "$(APP_NAME)"` returns a PID after `sleep 2`
 
+Core generation is complete when Makefiles, AGENTS.md sync, and verification are done. The skill remains useful and complete if CI/CD is declined.
+
 ### 8. Optional: CI/CD
 
-Ask: "Wire CI/CD for push-to-main → auto-deploy via GitHub Actions? (y/n)". If yes, follow `references/ci-cd-workflow.md`:
+Ask first: "Generate GitHub Actions deploy wiring locally? (y/n)". If yes, follow `references/ci-cd-workflow.md`:
 
 1. Detect GitHub repo via `gh repo view --json nameWithOwner -q .nameWithOwner`
-2. Generate `.github/workflows/deploy.yml` for the providers in scope
+2. Generate `.github/workflows/deploy.yml` for the providers in scope only
 3. Prompt user for ONLY the tokens needed (Vercel / Railway / Supabase)
-4. `gh secret set <NAME> --body "$pasted"` for each
-5. Commit and push the workflow
-6. Print summary listing wired secrets and how to rotate them later
+4. `gh secret set <NAME> --body "$pasted"` for each required secret
+5. Verify required secrets by name with `gh secret list`
+6. Commit the workflow locally
+7. Ask for explicit push authorization
+8. Push only after that authorization; never force-push
 
 If declined, leave `.github/workflows/` untouched. No half-baked YAML.
 
@@ -164,11 +230,21 @@ If declined, leave `.github/workflows/` untouched. No half-baked YAML.
 - **Backends don't run locally by default.** Local hosts the frontend or an MCP server. Backend stays remote in dev unless `LOCAL_BACKEND=1` is set explicitly.
 - **Provider scope is conditional.** Vercel only if there's a frontend. Railway only if there's a custom backend. Supabase only if `supabase/` exists. MacBook only if a Mac project + remote-Mac target.
 - **No improvised commands.** Inspect first; pick the canonical command from the relevant reference.
-- **Wipe before regenerating.** Read existing scaffold for context, snapshot via Git commit, then delete and regenerate. Never edit incrementally.
+- **Replace before regenerating.** Preview, read, manifest, targeted snapshot, print recovery, then delete only manifest paths. Never edit Makefiles incrementally.
 - **Max 4 Makefiles.** Ask if there are more apps than slots.
 - **Detection ambiguous → ask one question, never guess.**
 
 ## Recovery paths
+
+### Recovery from wipe
+
+```bash
+git log --oneline -- Makefile
+git show --stat <snapshot-sha>
+git revert <snapshot-sha>
+# or restore a single file:
+git restore --source=<snapshot-sha> -- path/to/Makefile
+```
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -183,6 +259,21 @@ If declined, leave `.github/workflows/` untouched. No half-baked YAML.
 | Vercel build fails with function over 250 MB | Heavy bundled deps | `make build-check` surfaces sizes; `references/makefile-frontend.md` lists mitigations |
 | `make funnel` rejects port 3000 | Funnel allows only 443/8443/10000 | Use `make funnel TUNNEL_PORT=443` (and `PUBLIC_FUNNEL=1`) |
 | `make tunnel` works but `host <node>.<tailnet>.ts.net` fails on macOS | macOS DNS quirk: `host`/`nslookup`/bare `dig` bypass system resolver | Use `tailscale dns query <fqdn>` or `dscacheutil -q host -a name <fqdn>` |
+
+## Final report contract
+
+Return this shape when the downstream project work is done:
+
+```text
+Scenario: <chosen scenario and confidence>
+Generated files: <paths>
+Deleted/replaced scaffold paths: <paths or none>
+Snapshot: <sha and recovery command>
+AGENTS.md / CLAUDE.md: <state>
+CI/CD: <skipped | generated locally | secrets wired | pushed>
+Verification: <rung actually reached per target>
+Manual verification still required: <targets, especially rung 6>
+```
 
 ## Reference routing
 
@@ -201,13 +292,15 @@ If declined, leave `.github/workflows/` untouched. No half-baked YAML.
 | `references/ci-cd-workflow.md` | Wiring GitHub Actions; `gh secret set` sequence; concurrency rules; rotation hint |
 | `references/env-vars-conventions.md` | Where envs live per scenario; `.env.local` vs `.env.railway`; Vercel sensitivity defaults; Railway built-in vars |
 | `references/verification-ladder.md` | The 6 rungs; per-target verification; banner template for the user's manual rung-6 step |
+| `scripts/scenario-detect.md` | Read-only heuristic detector script; use before final classification and ambiguity questions |
+| `scripts/preview-makefile-wipe.md` | Read-only wipe preview script; use before manifest, targeted snapshot, and deletion |
 
 ## Cross-skill handoffs
 
 - **`use-railway`** — for ad-hoc Railway CLI operations not covered by deploy targets (logs, scale, restart, env management beyond what the Makefile exposes)
 - **`build-mcp-use-server`** — for hosted-MCP scenarios beyond local-only MCP servers (Scenario B is for local-facing MCP only)
 - **`build-macos-app`** — for Mac-app development standards (this skill only does Make scaffolding; framework choice and SwiftUI patterns belong there)
-- **`init-agent-config`** — for the skills repo's own AGENTS.md governance (orthogonal — this skill targets downstream projects)
+- **`init-agent-config`** — for AGENTS hierarchy, REVIEW.md, folder-scoped agent config, and broad repo governance
 
 ## Guardrails
 
@@ -218,7 +311,9 @@ If declined, leave `.github/workflows/` untouched. No half-baked YAML.
 - **Never generate Vercel config in projects without a frontend.** Skip Scenarios E / F / G.
 - **Never generate Supabase migrations in projects without `supabase/`.** Skip Scenarios A / B / C / E / F / G.
 - **Never write tokens to disk except as `gh secret set` payloads.** Never echo tokens back to the user.
-- **Never edit a Makefile in place.** Wipe and regenerate. The snapshot commit is the safety net.
+- **Never edit a Makefile in place.** Manifest, snapshot, delete, and regenerate. The targeted snapshot commit is the safety net.
+- **Never delete scaffold paths that were not printed in the preview and copied into the deletion manifest.**
+- **Never push CI/CD workflow commits without explicit push authorization after local generation and secret verification.**
 - **Never set `output: 'standalone'`** in `next.config.js` for Vercel-hosted Next.js. Standalone is for self-host (Railway/Docker) only.
 - **Never use `host` / `nslookup` / bare `dig`** to verify MagicDNS names on macOS — they bypass the system resolver. Use `tailscale dns query <fqdn>` or `dscacheutil -q host -a name <fqdn>`.
 - **Never use `RAILWAY_API_TOKEN` (account scope)** when a project token would do. CI uses project tokens.
@@ -234,7 +329,8 @@ Before declaring done:
 - [ ] `CLAUDE.md` is a symlink → AGENTS.md (or absent)
 - [ ] No more than 4 Makefiles in the project tree
 - [ ] Snapshot commit exists in `git log` before the regen commit
-- [ ] If CI/CD opted in: `.github/workflows/deploy.yml` exists; `gh secret list` shows the wired secrets
+- [ ] Deletion manifest paths match the deleted/replaced scaffold paths
+- [ ] If CI/CD opted in: `.github/workflows/deploy.yml` exists; `gh secret list` shows the wired secrets; push was separately authorized
 - [ ] No Funnel mapping was created without explicit `PUBLIC_FUNNEL=1`
 - [ ] The Makefile preamble matches `references/makefile-base.md`
 - [ ] Port hygiene helper is present in any Makefile that opens a port

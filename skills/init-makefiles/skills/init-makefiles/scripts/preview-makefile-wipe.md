@@ -4,10 +4,9 @@ Read-only candidate discovery for the scaffold wipe step.
 
 ## Use
 
-Run from the downstream project root, or pass the root explicitly:
+Run from this skill directory and pass the downstream project root. If already in the downstream project root, `.` is acceptable.
 
 ```bash
-bash scripts/preview-makefile-wipe.sh
 bash scripts/preview-makefile-wipe.sh /path/to/project
 bash scripts/preview-makefile-wipe.sh /path/to/project --paths-only
 ```
