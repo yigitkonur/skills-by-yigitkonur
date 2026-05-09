@@ -35,7 +35,7 @@ Reasonable expectations by corpus scale:
 
 | Corpus scale | Entity count | Core entities | Avg files per core entity | Cross-criterion folders | Typical total range |
 |---|---:|---:|---:|---:|---:|
-| Compact | 1-10 | all | 8-20 | 5-8 | 80-200 |
+| Compact | 5-10 | all | 8-20 | 5-8 | 80-200 |
 | Standard | 10-40 | 10-25 | 12-25 | 8-12 | 150-500 |
 | Deep | 40-100 | 20-60 | 15-30 | 10-15 | 500-2000 |
 | Tiered | 100+ | top 20-50 | 15-30 | 10-15 | 1000-3000 |

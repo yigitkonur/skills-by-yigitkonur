@@ -229,7 +229,7 @@ Filter the returned links for plausible entity homepages, then status-check each
 
 When dispatching multiple agents in parallel (Phase 1 discovery, Phase 4 entity research, Phase 5 cross-comparison):
 
-1. **Maximum 8 agents per wave.** More than 8 overwhelms context budget.
+1. **Recommended 6-8 agents per wave; never exceed 20.** Use 6-8 when integration quality or context pressure matters. Use up to 20 only when scopes are cleanly disjoint and output volume is manageable.
 2. **Disjoint write scopes.** Each agent owns exactly one folder. Two agents writing to the same folder produces conflicts.
 3. **No subagent recursion.** Agents do not spawn subagents. Two-level orchestration only.
 4. **Self-contained prompts.** Each agent's brief carries all context — they do not see the conversation.
@@ -267,7 +267,7 @@ Capture the result in `_meta/methodology-and-source-policy.md` so the corpus rec
 |---|---|---|
 | MCP returns sparse results | Brief too generic | Add concrete sub-questions and required source mix |
 | MCP times out on a long brief | Single brief too broad | Split into 2-3 briefs run sequentially or in parallel |
-| Parallel Explore agents overlap | Write scopes not disjoint | Re-dispatch with explicit "you own only [path]" |
+| Parallel research agents overlap | Write scopes not disjoint | Re-dispatch with explicit "you own only [path]" |
 | Agent returns 200 lines of unsourced prose | Brief didn't require source URLs per claim | Re-brief with "every claim cites a URL or local file" |
 | One slow agent blocks the wave | Sequential read of agent results | Process completed agents as they return; don't gate on the last one |
 | Same fact arrives 3 times | No de-duplication step | Add an explicit "check existing pack before writing" step in the brief |
