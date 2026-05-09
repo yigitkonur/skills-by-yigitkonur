@@ -243,7 +243,14 @@ def assess_entry(
     if wt:
         annotation["worktree_path"] = wt
         annotation["worktree_present"] = os.path.isdir(wt)
-        annotation["worktree_in_git"] = wt in fs_worktree_set
+        # Symlink-safe comparison: `git worktree list --porcelain` reports the
+        # canonical path (e.g. /private/tmp/... on macOS where /tmp is a
+        # symlink), while the manifest stores the path as the operator gave it
+        # (often /tmp/...). Compare via os.path.realpath so a manifest's
+        # /tmp/foo matches git's /private/tmp/foo. fs_worktree_set is already
+        # built from canonicalized git output (see build_report); we only need
+        # to canonicalize the manifest side here.
+        annotation["worktree_in_git"] = os.path.realpath(wt) in fs_worktree_set
         # Drift: worktree_path is set in manifest but the directory doesn't
         # exist on disk AND git doesn't know about it. This is the most
         # common operational drift (worktree deleted out from under us).
@@ -352,19 +359,23 @@ def detect_orphan_worktrees(
 ) -> list[str]:
     """Worktree paths on disk matching the orchestrate-codex naming pattern
     (../<repo>-wt-<mode>-<slug>) that are not referenced by any manifest entry.
+
+    Symlink-safe: compares canonical (realpath) forms, so a manifest entry
+    stored as `/tmp/...` matches git's reported `/private/tmp/...` on macOS.
+    The returned paths are git's reported (canonical) paths.
     """
     if not manifest or not isinstance(manifest.get("entries"), list):
         return []
-    manifest_paths = {
-        e.get("worktree_path") or ""
+    manifest_paths_canonical = {
+        os.path.realpath(e.get("worktree_path") or "")
         for e in manifest["entries"]
-        if isinstance(e, dict)
+        if isinstance(e, dict) and e.get("worktree_path")
     }
     pattern = re.compile(rf"{re.escape(repo_name)}-wt-")
     out = []
     for path in fs_worktrees:
         name = os.path.basename(path)
-        if pattern.search(name) and path not in manifest_paths:
+        if pattern.search(name) and os.path.realpath(path) not in manifest_paths_canonical:
             out.append(path)
     return out
 
@@ -395,7 +406,11 @@ def build_report(args, manifest: dict | None) -> dict:
     cc_jobs = load_codex_companion_jobs(cc_state_dir)
 
     fs_worktrees = list_worktree_paths(repo_root) if repo_root else []
-    fs_worktree_set = set(fs_worktrees)
+    # Canonicalize for the membership-test set so manifest-vs-git comparison
+    # is symlink-safe (macOS /tmp → /private/tmp). The `fs_worktrees` list
+    # itself is preserved as git reported it, so JSON consumers see the
+    # canonical paths git knows about.
+    fs_worktree_set = {os.path.realpath(p) for p in fs_worktrees}
 
     now = time.time()
     stale_secs = args.stale_minutes * 60
@@ -509,18 +524,18 @@ def _build_recommendations(drift_kind_counts: dict[str, int],
         )
     if drift_kind_counts.get("answer_missing"):
         recs.append(
-            "Flip status=failed via `manifest-update.py --set status=failed` "
+            "Flip status=failed via `manifest-update.py entry --set status=failed --execute` "
             "for done-without-answer entries; then rescue."
         )
     if drift_kind_counts.get("answer_path_null_with_fs_evidence"):
         recs.append(
             "Update batch entries' answer_path via "
-            "`manifest-update.py --set answer_path=<found-path>` so future "
-            "audits see the evidence."
+            "`manifest-update.py entry --set answer_path=<found-path> --execute` "
+            "so future audits see the evidence."
         )
     if drift_kind_counts.get("failed_without_exit_code"):
         recs.append(
-            "Fill in `exit_code` on failed entries (manifest-update.py); "
+            "Fill in `exit_code` on failed entries (manifest-update.py entry --execute); "
             "audit treats null exit_code on failed status as drift."
         )
     if orphans_count:
