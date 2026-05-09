@@ -153,6 +153,7 @@ const status: GetStatusResponse = await client.getStatus();
 ### getAuthStatus()
 
 ```typescript
+await client.start(); // getAuthStatus requires a connected client
 const auth: GetAuthStatusResponse = await client.getAuthStatus();
 // { isAuthenticated: true, authType: "user", host: "github.com", login: "username" }
 ```

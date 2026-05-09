@@ -25,7 +25,7 @@ Copilot SDK is public preview and moves quickly. Before relying on any signature
 
 ```bash
 npm view @github/copilot-sdk version dist-tags engines --json
-node -e "const fs=require('fs'),path=require('path');let p=require.resolve('@github/copilot-sdk');while(!fs.existsSync(path.join(p,'package.json')))p=path.dirname(p);console.log(JSON.parse(fs.readFileSync(path.join(p,'package.json'),'utf8')).version)"
+node -e "const fs=require('fs'),path=require('path');let d=path.dirname(require.resolve('@github/copilot-sdk'));for(;;){const f=path.join(d,'package.json');if(fs.existsSync(f)){const p=JSON.parse(fs.readFileSync(f,'utf8'));if(p.name==='@github/copilot-sdk'){console.log(p.version);break}}const n=path.dirname(d);if(n===d)throw new Error('package root not found');d=n}"
 ```
 
 Source priority:
@@ -45,9 +45,9 @@ For runnable setup, prefer the installed package engine over docs snippets. If d
 What do you need?
 │
 ├── New app from scratch
-│   ├── Install & basic example ──────────► Quick start (below) — npm init, ESM setup, first prompt
+│   ├── Install & basic example ──────────► Quick start (below) or scripts/scaffold-copilot-app.sh
 │   ├── Client options & transport ───────► references/client-and-transport.md — stdio vs TCP, CopilotClient config
-│   └── Authentication ──────────────────► references/auth-and-byok.md — OAuth, tokens, BYOK with 5 providers
+│   └── Authentication ──────────────────► references/auth-and-byok.md or scripts/check-copilot-auth.sh
 │
 ├── Sessions
 │   ├── Create / resume / disconnect ────► references/sessions.md — lifecycle, create-or-resume pattern
@@ -135,6 +135,8 @@ npm pkg set type=module   # SDK is ESM-only
 npm install @github/copilot-sdk tsx zod
 ```
 
+For a deterministic scaffold, run `scripts/scaffold-copilot-app.sh`. For auth and package preflight, run `scripts/check-copilot-auth.sh`.
+
 > **ESM required.** The SDK only ships ESM exports. Your `package.json` must have `"type": "module"`.
 
 ### Common imports
@@ -157,6 +159,7 @@ import type { SessionConfig, ToolInvocation } from "@github/copilot-sdk";
 import { CopilotClient, approveAll } from "@github/copilot-sdk";
 
 const client = new CopilotClient();
+await client.start();
 const auth = await client.getAuthStatus();
 
 if (!auth.isAuthenticated) {

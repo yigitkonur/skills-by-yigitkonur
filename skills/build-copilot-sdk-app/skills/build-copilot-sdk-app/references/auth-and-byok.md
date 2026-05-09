@@ -34,11 +34,14 @@ The package includes bundled CLI support through `@github/copilot`, so a global 
 Preflight with the SDK, not by parsing CLI output:
 
 ```typescript
+await client.start();
 const auth = await client.getAuthStatus();
 if (!auth.isAuthenticated) {
   throw new Error("Authenticate with Copilot CLI or set COPILOT_GITHUB_TOKEN / GH_TOKEN / GITHUB_TOKEN.");
 }
 ```
+
+Bundled helper: run `scripts/check-copilot-auth.sh` from this skill to check Node, package resolution, token env presence, and `getAuthStatus()` without printing secrets.
 
 ## OAuth GitHub App token
 
@@ -274,6 +277,6 @@ Results are cached after the first call.
 ## Steering notes
 
 - Always spell current TypeScript token options as `gitHubToken`.
-- Use `client.getAuthStatus()` for GitHub-auth preflight; BYOK provider credentials are validated by provider calls.
+- Use `await client.start()` before `client.getAuthStatus()` for GitHub-auth preflight; BYOK provider credentials are validated by provider calls.
 - For BYOK, fail fast if the required provider env var or `model` is missing.
 - Prefer `type: "azure"` only for native Azure OpenAI host endpoints; use `type: "openai"` for `/openai/v1/` OpenAI-compatible endpoints.
