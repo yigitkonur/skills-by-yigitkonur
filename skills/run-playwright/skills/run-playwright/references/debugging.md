@@ -1,414 +1,196 @@
-# Debugging and Diagnostics
+# Debugging And Diagnostics
 
-How to capture console logs, inspect network requests, record traces,
-troubleshoot common issues, and diagnose page problems in `playwright-cli`.
+Use this reference when diagnosing browser failures with console output, request logs, routing, traces, or truth checks in `playwright-cli`.
 
----
+## Table Of Contents
 
-## Table of Contents
-
-- [What debug commands return](#what-debug-commands-return)
-- [Console logs](#console-logs)
-- [Network logs](#network-logs)
+- [Output Semantics](#output-semantics)
+- [Console](#console)
+- [Requests](#requests)
+- [Network Routing And Mocking](#network-routing-and-mocking)
 - [Tracing](#tracing)
-- [eval for truth checks](#eval-for-truth-checks)
-- [run-code for diagnostics](#run-code-for-diagnostics)
-- [Error diagnosis workflow](#error-diagnosis-workflow)
-- [Troubleshooting guide](#troubleshooting-guide)
-- [Public site noise](#public-site-noise)
+- [Truth Checks With eval](#truth-checks-with-eval)
+- [Diagnosis Workflow](#diagnosis-workflow)
+- [Troubleshooting](#troubleshooting)
 
----
+## Output Semantics
 
-## What debug commands return
+Current `@playwright/cli` commands may print inline data, a Markdown link to an artifact, or a filesystem path depending on command, config, and output mode.
 
-> **Steering experience:** This is one of the most common sources of confusion. Debug commands do NOT print results to the terminal. They write files and print file paths.
+Rule:
 
-**Key rule:** `console`, `network`, `snapshot`, and `screenshot` all return **artifact file paths**, not inline text. Those files may contain useful entries or may be empty.
+1. Inspect the command output first.
+2. If it contains a path or Markdown artifact link, read that artifact before making a claim.
+3. If docs and installed help disagree, prefer `playwright-cli --help <command>`.
 
-You must:
-1. Run the command (e.g., `console error`).
-2. Read the printed file path (e.g., `.playwright-cli/console-1710456789.txt`).
-3. `cat` the file to inspect actual content.
-4. Only then claim the page is clean or broken.
+Snapshots and traces commonly return artifact links. Response bodies may print inline for text and save binary bodies to a file. Do not assume every debug command is file-only.
+
+## Console
 
 ```bash
-# WRONG — assumes console output appears inline
-console error
-# "No errors" — actually you never read the file!
-
-# RIGHT — read the artifact file
-console error
-cat .playwright-cli/console-1710456789.txt
-# Now you can see actual error content (or confirm it is empty)
+playwright-cli console
+playwright-cli console error
+playwright-cli console warning
+playwright-cli console --clear
 ```
 
-Artifact paths are implementation details — use the path the CLI returns,
-do not guess based on repo layout.
-
----
-
-## Console logs
-
-### Basic usage
+Capture errors around one action:
 
 ```bash
-console
-console error
-console warning
-console --clear
+playwright-cli console --clear
+playwright-cli click e5
+playwright-cli snapshot
+playwright-cli console error
 ```
 
-### Workflow: capture errors around an action
+`console --clear` may produce little or no output. Treat that as normal and continue to the capture command.
+
+Console noise from public sites is common. Tie bug claims to the flow you reproduced, not to unrelated telemetry, GPU, hydration, or analytics noise.
+
+## Requests
+
+Executable help for `@playwright/cli@0.1.13` exposes `requests`, not `network`.
 
 ```bash
-console --clear
-# Reproduce the issue
-click <button-ref>
-snapshot
-console error
+playwright-cli requests
+playwright-cli requests --filter="/api/.*user"
+playwright-cli requests --static
+playwright-cli requests --clear
 ```
 
-Then open the returned file path and inspect its content.
-
-### Filter by level
-
-| Command | What it captures |
-|---------|-----------------|
-| `console` | All console output |
-| `console error` | Only error-level messages |
-| `console warning` | Only warnings |
-| `console info` | Only info messages |
-
-### Clear and re-capture
+Inspect a request listed by `requests`:
 
 ```bash
-console --clear          # silent success, produces no output
-# Perform actions
-console error            # captures errors to a file, prints the file path
-cat <returned-path>      # read the artifact to see actual console output
+playwright-cli request 3
+playwright-cli request-headers 3
+playwright-cli request-body 3
+playwright-cli response-headers 3
+playwright-cli response-body 3
 ```
 
-> **Note:** `--clear` flags produce no visible output. This is normal.
-> The next capture command (`console error`, `network`, etc.) writes to a new
-> artifact file whose path is printed.
-
-### What console logs look like
-
-On a typical site, console output can include:
-- JavaScript errors (uncaught exceptions, type errors)
-- Network-related failures (405, 400, 429 responses logged to console)
-- Framework warnings (React, Next.js hydration warnings)
-- Browser-internal messages (GPU warnings, ReadPixels)
-- Telemetry or analytics noise
-
-**Do not automatically treat all console errors as bugs.** Interpret them
-in context of the flow you are testing.
-
----
-
-## Network logs
-
-### Basic usage
+Use `requests --clear` before reproducing a failure, then inspect the new entries:
 
 ```bash
-network
-network --static
-network --clear
+playwright-cli requests --clear
+playwright-cli click e7
+playwright-cli requests --filter="/api/"
+playwright-cli request 0
 ```
 
-### Workflow: capture network around an action
+Version drift note: some official docs still show `network` and `network --clear`. In the verified package, `playwright-cli --help network` falls back to the global help because `network` is not an executable command. Use `requests`.
+
+## Network Routing And Mocking
+
+Use CLI route commands for simple mocks:
 
 ```bash
-network --clear
-# Reproduce the issue
-click <submit-ref>
-snapshot
-network
+playwright-cli route "**/api/users" --body='[{"name":"Alice"}]' --content-type=application/json
+playwright-cli route "**/*.jpg" --status=404
+playwright-cli route-list
+playwright-cli unroute "**/api/users"
+playwright-cli unroute
+playwright-cli network-state-set offline
+playwright-cli network-state-set online
 ```
 
-### Include static assets
+For conditional logic, delays, or request-body inspection, use `run-code`:
 
 ```bash
-network --static
+playwright-cli run-code "async page => {
+  await page.route('**/api/login', async route => {
+    const body = route.request().postDataJSON();
+    await route.fulfill({
+      status: body.username === 'admin' ? 200 : 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: body.username === 'admin' })
+    });
+  });
+}"
 ```
 
-Use `--static` when you need to check for broken images, CSS, or JavaScript files.
-
-### What to look for in network logs
-
-| Indicator | What it means |
-|-----------|---------------|
-| 4xx status | Client error (bad request, unauthorized, not found) |
-| 5xx status | Server error |
-| Missing requests | Expected API call not made |
-| CORS errors | Cross-origin request blocked |
-| Rate limiting (429) | Being throttled |
-| Redirects (3xx) | Unexpected navigation |
-
-### Network request details
-
-To get more details about specific requests:
+Always remove route mocks you created:
 
 ```bash
-run-code 'async (page) => {
-  const response = await page.waitForResponse(r => r.url().includes("/api/data"))
-  return {
-    url: response.url(),
-    status: response.status(),
-    headers: response.headers()
-  }
-}'
+playwright-cli route-list
+playwright-cli unroute "**/api/login"
 ```
-
----
 
 ## Tracing
 
-### Record a trace
-
 ```bash
-tracing-start
-# ... perform actions ...
-tracing-stop
+playwright-cli tracing-start
+playwright-cli goto https://example.com
+playwright-cli click e5
+playwright-cli tracing-stop
 ```
 
-The trace file can be viewed in the Playwright Trace Viewer for detailed
-step-by-step analysis including:
-- screenshots at each action
-- DOM snapshots
-- network requests
-- console logs
+`tracing-stop` saves a trace and prints the path or artifact link. Use that returned path as the source of truth.
 
-### When to use tracing
-
-Use tracing when:
-- A bug is hard to reproduce
-- You need a detailed timeline of events
-- You want to share evidence of a flow with someone else
-- Debugging complex multi-step interactions
-
----
-
-## eval for truth checks
-
-`eval` is the most reliable way to verify browser state.
-
-### Page context checks
+Open traces with Playwright's trace viewer:
 
 ```bash
-eval "() => document.title"
-eval "() => window.location.href"
-eval "() => document.readyState"
-eval "() => document.querySelectorAll('.item').length"
-eval "() => document.cookie"
+npx playwright show-trace .playwright-cli/trace.zip
 ```
 
-### Element context checks
+Trace when:
+
+- the failure is hard to explain from a snapshot
+- timing, DOM before/after, console, and request timeline matter
+- you need a shareable artifact for a reproduced flow
+
+## Truth Checks With eval
+
+Use `eval` for state that screenshots and snapshots do not prove:
 
 ```bash
-eval "(el) => el.value" <ref>
-eval "(el) => el.textContent" <ref>
-eval "(el) => el.checked" <ref>
-eval "(el) => el.disabled" <ref>
-eval "(el) => el.getAttribute('aria-label')" <ref>
-eval "(el) => getComputedStyle(el).display" <ref>
-eval "(el) => getComputedStyle(el).color" <ref>
-eval "(el) => el.getBoundingClientRect()" <ref>
+playwright-cli eval "() => window.location.href"
+playwright-cli eval "() => document.title"
+playwright-cli eval "() => document.readyState"
+playwright-cli eval "(el) => el.value" e3
+playwright-cli eval "(el) => el.checked" e8
+playwright-cli eval "() => JSON.stringify(localStorage)"
 ```
 
-### Why eval is more trustworthy than command headers
+Prefer primitive values, JSON-serializable objects, and short expressions. For longer code, use `run-code` and re-snapshot afterward.
 
-In several real tests, `eval "() => window.location.href"` was more
-reliable than the URL shown in command output headers, especially
-after tab switches or unusual navigation.
-
-Use `eval` when correctness matters — not the surrounding metadata.
-
----
-
-## run-code for diagnostics
-
-### Inspect page performance
+## Diagnosis Workflow
 
 ```bash
-run-code 'async (page) => {
-  const timing = await page.evaluate(() => JSON.stringify(performance.timing))
-  return JSON.parse(timing)
-}'
+# 1. Start from known state.
+playwright-cli snapshot
+playwright-cli eval "() => window.location.href"
+playwright-cli screenshot --filename=debug-start.png
+
+# 2. Clear evidence buffers.
+playwright-cli console --clear
+playwright-cli requests --clear
+
+# 3. Reproduce once.
+playwright-cli click e5
+playwright-cli snapshot
+playwright-cli screenshot --filename=after-click.png
+
+# 4. Gather evidence.
+playwright-cli console error
+playwright-cli requests --filter="/api/"
+playwright-cli eval "() => document.title"
+
+# 5. Add trace only if the above is insufficient.
+playwright-cli tracing-start
+# reproduce a shorter focused flow
+playwright-cli tracing-stop
 ```
 
-### Check for JavaScript errors
+Return the relevant artifact paths and the verification rung reached.
 
-```bash
-run-code 'async (page) => {
-  const errors = []
-  page.on("pageerror", err => errors.push(err.message))
-  await page.waitForTimeout(2000)
-  return errors
-}'
-```
+## Troubleshooting
 
-### Inspect cookies
-
-```bash
-run-code 'async (page) => {
-  return await page.context().cookies()
-}'
-```
-
-### Check localStorage
-
-```bash
-eval "() => JSON.stringify(localStorage)"
-```
-
-### Check sessionStorage
-
-```bash
-eval "() => JSON.stringify(sessionStorage)"
-```
-
-### Inspect network responses programmatically
-
-```bash
-run-code 'async (page) => {
-  const responses = []
-  page.on("response", r => {
-    if (r.status() >= 400) {
-      responses.push({ url: r.url(), status: r.status() })
-    }
-  })
-  await page.reload()
-  await page.waitForLoadState("networkidle")
-  return responses
-}'
-```
-
----
-
-## Error diagnosis workflow
-
-### Step 1: Capture the current state
-
-```bash
-snapshot
-screenshot --filename=current-state.png
-eval "() => window.location.href"
-```
-
-### Step 2: Check for errors
-
-```bash
-console error
-network
-```
-
-### Step 3: Reproduce and capture
-
-```bash
-console --clear
-network --clear
-# Reproduce the issue step by step
-click <problem-button-ref>
-snapshot
-screenshot --filename=after-click.png
-console error
-network
-```
-
-### Step 4: Combine all evidence
-
-```bash
-run-code 'async (page) => ({
-  url: page.url(),
-  title: await page.title(),
-  readyState: await page.evaluate(() => document.readyState)
-})'
-screenshot --filename=diagnosis-final.png
-```
-
-### Full diagnosis template
-
-```bash
-# 1. Initial state
-open <url>
-snapshot
-screenshot --filename=step-0-initial.png
-console --clear
-network --clear
-
-# 2. Reproduce
-click <trigger-ref>
-snapshot
-screenshot --filename=step-1-after-action.png
-
-# 3. Collect evidence
-console error
-network
-eval "() => window.location.href"
-eval "() => document.title"
-
-# 4. Final state
-screenshot --filename=step-2-final.png
-```
-
----
-
-## Troubleshooting guide
-
-### "Ref not found"
-
-Refs are stale. Re-snapshot:
-
-```bash
-snapshot
-```
-
-### Upload fails with modal-state error
-
-Click the file chooser trigger before calling `upload`:
-
-```bash
-click <upload-trigger-ref>
-upload /absolute/path/to/file
-```
-
-### Command did not print a snapshot
-
-> **Steering experience:** Almost no commands auto-print a snapshot. `snapshot` itself only prints a file path, not the tree. Always follow actions with `snapshot` then `cat` the returned file.
-
-Not all commands auto-print. Always follow with `snapshot` then `cat` the file.
-
-### URL or page header seems wrong
-
-Use `eval "() => window.location.href"` for truth.
-
-### Page appears blank
-
-```bash
-run-code 'async (page) => {
-  await page.waitForSelector("body > *", { state: "visible", timeout: 10000 })
-  return "content visible"
-}'
-snapshot
-```
-
-### Click does nothing
-
-Re-snapshot and retry with fresh ref.
-
-### Form submission hangs
-
-```bash
-click <submit-ref>
-run-code 'async (page) => {
-  await page.waitForResponse(r => r.url().includes("/api/submit"))
-  return "response received"
-}'
-```
-
----
-
-## Public site noise
-
-Production sites emit console/network noise (telemetry, anti-bot, GPU warnings, 429s) — these are **not** your app's bugs. Tie any bug claim back to the actual flow you reproduced.
+| Problem | Recovery |
+|---|---|
+| `network` examples fail | Use `requests`; confirm with `playwright-cli --help requests`. |
+| Console or requests clear prints no useful text | Continue; clear commands are setup steps. |
+| Artifact path is unclear | Re-run with `--json` or inspect the Markdown link/path in output. |
+| Ref not found | Run `snapshot` again and use fresh refs. |
+| Page appears blank | Wait for a visible selector with `run-code`, then `snapshot`. |
+| Submit hangs | Use `requests --clear`, reproduce, inspect API entries, then add a trace if needed. |
+| Route mock keeps affecting later steps | `route-list`, then `unroute <pattern>` or `unroute` for mocks you own. |
