@@ -2,6 +2,8 @@
 
 Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on behalf of an end-user. Two flow shapes share the same `kernel.auth.connections.*` SDK surface; pick one early.
 
+Source note: Verified against Kernel docs, `@onkernel/sdk` npm metadata, and `@onkernel/managed-auth-react@0.1.0` package types on 2026-05-09.
+
 ## Flow shapes
 
 | | Hosted UI | Programmatic |
@@ -16,7 +18,7 @@ Kernel **Managed Auth** lets a Kernel browser log into a third-party SaaS on beh
 | Method | Purpose |
 |---|---|
 | `kernel.auth.connections.create({ domain, profile_name, login_url?, allowed_domains?, save_credentials?, credential? })` | Create a connection scoping a `domain` to a browser `profile_name`. |
-| `kernel.auth.connections.login(id)` | Start a login session; returns `{ hosted_url }` for redirect/embed (Hosted UI) or starts the polling loop (Programmatic). |
+| `kernel.auth.connections.login(id)` | Start a login session for an auth connection id; returns login-session fields including `hosted_url`, `handoff_code`, `flow_type`, and `flow_expires_at`. |
 | `kernel.auth.connections.retrieve(id)` | Returns current `flow_status`, `flow_step`, connection `status`, and (in programmatic mode) `discovered_fields`, `pending_sso_buttons`, `mfa_options`, `sign_in_options`. |
 | `kernel.auth.connections.submit(id, { fields?, sso_provider?, mfa_option_id?, sign_in_option_id?, sso_button_selector? })` | Programmatic only: submit user-collected values. Pick the single field that matches the current `flow_step` — for `AWAITING_INPUT` it's `fields`; for SSO it's `sso_provider` or `sso_button_selector`; for MFA it's `mfa_option_id`; for sign-in pickers it's `sign_in_option_id`. |
 | `kernel.auth.connections.update(id, …)` | Edit a connection (e.g. switch credential). |
@@ -45,17 +47,26 @@ const conn = await kernel.auth.connections.create({
   save_credentials: true,                  // default true — set false to opt out of credential capture
 });
 
-const { hosted_url } = await kernel.auth.connections.login(conn.id);
-// Return both id and hosted_url to your frontend.
-return Response.json({ id: conn.id, hosted_url });
+const login = await kernel.auth.connections.login(conn.id);
+if (!login.handoff_code) throw new Error('missing managed-auth handoff_code');
+
+// Return the auth connection id plus login-session fields. Do not expose KERNEL_API_KEY.
+return Response.json({
+  connectionId: conn.id,
+  profileName: `netflix-${userId}`,
+  hostedUrl: login.hosted_url,
+  handoffCode: login.handoff_code,
+  flowExpiresAt: login.flow_expires_at,
+});
 ```
 
 ```ts
 // 2. Frontend — redirect or embed
-window.location.href = hosted_url;          // simplest: redirect away
+window.location.href = hostedUrl;           // simplest: redirect away
 
 // OR embed Kernel's hosted UI in your own page:
 //   import { KernelManagedAuth } from '@onkernel/managed-auth-react';
+//   Pass sessionId={connectionId} and handoffCode={handoffCode}.
 //   See `references/examples/managed-auth-flow.md` for the full embed pattern.
 ```
 
@@ -78,6 +89,14 @@ const session = await kernel.browsers.create({
 ```
 
 For long-running waits, prefer `kernel.auth.connections.follow(id)` SSE over a polling loop.
+
+Security and lifecycle rules:
+
+- Never expose `KERNEL_API_KEY` to the browser or React component.
+- Treat `handoff_code` as short-lived and single-use; request a fresh login session instead of caching it.
+- Distinguish the auth connection id (`conn.id`) from login-session fields (`hosted_url`, `handoff_code`, `flow_expires_at`).
+- Store only stable ids needed later: auth connection id and profile name. Do not persist handoff codes or raw credentials.
+- Finish reports must include auth connection id, profile name, final `flow_status`/`status`, and any browser `session_id` launched from the profile.
 
 ## Programmatic — your own UI
 

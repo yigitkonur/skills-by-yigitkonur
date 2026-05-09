@@ -4,6 +4,8 @@ End-to-end Hosted UI with the embedded `@onkernel/managed-auth-react` component,
 
 Stack assumptions: Next.js 14+ App Router, TypeScript, `@onkernel/sdk`, `@onkernel/managed-auth-react`.
 
+Source note: Verified against Kernel docs, `@onkernel/sdk` npm metadata, and `@onkernel/managed-auth-react@0.1.0` package types on 2026-05-09.
+
 ## Backend route — start a connection
 
 ```ts
@@ -22,16 +24,17 @@ export async function POST(req: NextRequest) {
     save_credentials: true,
   });
 
-  const { hosted_url } = await kernel.auth.connections.login(conn.id);
-
-  // Parse the handoff: hosted_url ends with `/{conn.id}?code=<handoff>`
-  const url = new URL(hosted_url);
-  const code = url.searchParams.get('code');
+  const login = await kernel.auth.connections.login(conn.id);
+  if (!login.handoff_code) {
+    throw new Error('Kernel login response did not include handoff_code');
+  }
 
   return NextResponse.json({
     connectionId: conn.id,
-    hostedUrl: hosted_url,
-    code,
+    profileName: `netflix-${userId}`,
+    hostedUrl: login.hosted_url,
+    handoffCode: login.handoff_code,
+    flowExpiresAt: login.flow_expires_at,
   });
 }
 ```
@@ -44,11 +47,16 @@ export async function POST(req: NextRequest) {
 
 import { useEffect, useState } from 'react';
 import { KernelManagedAuth } from '@onkernel/managed-auth-react';
+import '@onkernel/managed-auth-react/styles.css';
 import { useRouter } from 'next/navigation';
 
 export default function ConnectPage() {
   const router = useRouter();
-  const [conn, setConn] = useState<{ connectionId: string; code: string } | null>(null);
+  const [conn, setConn] = useState<{
+    connectionId: string;
+    profileName: string;
+    handoffCode: string;
+  } | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/connect', { method: 'POST' })
@@ -61,9 +69,9 @@ export default function ConnectPage() {
   return (
     <KernelManagedAuth
       sessionId={conn.connectionId}
-      handoffCode={conn.code}
-      onSuccess={() => router.push('/connected')}
-      onError={(err) => console.error(err)}
+      handoffCode={conn.handoffCode}
+      onSuccess={({ profileName }) => router.push(`/connected?profile=${profileName}`)}
+      onError={({ code, message }) => console.error(code, message)}
       appearance={{
         theme: 'light',
         variables: {
@@ -92,6 +100,8 @@ useEffect(() => {
 }, []);
 ```
 
+Do not expose `KERNEL_API_KEY` to this client component. The backend creates the auth connection and login session; the frontend receives only the connection id and short-lived handoff code.
+
 ## Backend — confirm the connection completed
 
 After `onSuccess` (or after the redirect comes back), confirm the state from your backend before launching a browser:
@@ -109,6 +119,8 @@ export async function GET(
 ) {
   const state = await kernel.auth.connections.retrieve(params.connectionId);
   return NextResponse.json({
+    connectionId: params.connectionId,
+    profileName: state.profile_name,
     flowStatus: state.flow_status,
     status: state.status,
     needsAuth: state.status !== 'AUTHENTICATED',
@@ -169,8 +181,10 @@ Most sessions remain valid for days; Kernel auto-refreshes when possible.
 
 - The React component is a **client component**. Mark the file `'use client'` in App Router; it will not render server-side.
 - `auth.connections.create` returns 409 on duplicate `(domain, profile_name)`. Either reuse the existing connection or pick a new `profile_name`.
-- The handoff `code` query-param expires quickly. Re-`login` if the user lingers before completing.
+- Treat `handoff_code` as short-lived. Re-`login` if the user lingers before completing.
 - Same-origin proxying via Next rewrites is supported via `baseUrl=""` on the component if you want the iframe to look like your domain.
+- Store only the auth connection id and profile name needed by your app; do not store handoff codes after exchange.
+- When finishing a Managed Auth task, report auth connection id, profile name, final `flow_status`/`status`, and whether a browser was launched with that profile.
 
 ## Programmatic flow alternative
 
