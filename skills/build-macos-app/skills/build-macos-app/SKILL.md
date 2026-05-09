@@ -3,477 +3,280 @@ name: build-macos-app
 description: Use skill if you are building, auditing, or shipping a production-grade macOS SwiftUI or AppKit app needing HIG compliance, Liquid Glass design, snapshot validation, SwiftLint/SwiftFormat hooks, or Convex+Clerk cloud sync.
 ---
 
-# Build macOS App — Production-Grade
+# Build macOS App
 
-You are a senior Apple design engineer. Your job is to make macOS code look like Apple shipped it. You think in glass, concentricity, and hierarchy — not in pixels and hex colors.
+Build, audit, or ship native macOS SwiftUI/AppKit apps with HIG compliance, Liquid Glass visual treatment, expectation-first visual validation, Swift quality hooks, and optional Convex + Clerk cloud sync.
 
-This skill orchestrates five production concerns: **HIG compliance**, **Liquid Glass design**, **visual validation discipline**, **Swift quality hooks**, and an optional **cloud-sync** track for apps with a Convex + Clerk backend. The load-bearing tables and rules live below; everything else is in `references/` — route deliberately, never speculate.
+Keep this file as the spine. Load references only for the branch being executed.
 
-## When to use this skill
+## Trigger Boundary
 
-Trigger when the user says any of: *"build a macOS app"*, *"production-grade Mac app"*, *"ship a Mac app"*, *"audit my macOS UI"*, *"modernize for Tahoe"*, *"make this look like Apple shipped it"*, *"Mac app quality setup"*, *"bootstrap a SwiftUI macOS app"*, *"Liquid Glass review"*, *"set up snapshot tests for Swift"*, *"Swift pre-commit hook"*. Trigger when the directory contains `*.xcodeproj`, `*.xcworkspace`, `Package.swift`, or `*.swift` with a macOS target. Trigger on mentions of SwiftUI, AppKit, Liquid Glass, NavigationSplitView, NSGlassEffectView, Settings scene, MenuBarExtra, ConvexMobile, Clerk, ClerkConvex.
+Use this skill for:
 
-Do NOT use this skill when:
-- The work is iOS-only / iPadOS-only with no macOS surface.
-- The task is pure server-side Convex/JS work — this skill covers the Swift client only.
-- The task is non-Apple Swift on Linux.
+- Native macOS app work: new app scaffolds, feature implementation, redesigns, audits, migrations, release prep, or quality setup.
+- SwiftUI/AppKit projects with `*.xcodeproj`, `*.xcworkspace`, `Package.swift`, or Swift files that include a macOS app target.
+- macOS UI concerns: menus, keyboard shortcuts, windows, sidebars, toolbars, settings, accessibility, HIG conformance, Liquid Glass, snapshots, SwiftLint, SwiftFormat, or pre-commit hooks.
+- Multi-platform Apple repos only when a macOS target exists.
+- Convex + Clerk Swift client work when the app has a macOS surface.
+
+Do NOT use this skill for:
+
+- iOS-only, iPadOS-only, visionOS-only, watchOS-only, or tvOS-only work without a macOS target.
+- Generic Swift package work with no app, UI, or macOS surface.
+- Pure server-side Convex, TypeScript, or backend-only work.
+- Non-Apple Swift on Linux or server-side Swift.
+- Browser automation or web snapshot testing; route those to browser or Playwright skills.
+
+Quality-hook platform references for iOS, tvOS, watchOS, and visionOS exist only for multi-platform Apple repos that also include macOS. They are not standalone triggers.
+
+## Platform Stance
+
+| Scope | Rule |
+|---|---|
+| Primary scope | Native macOS SwiftUI/AppKit apps. |
+| Multi-platform repos | In scope only when a macOS target exists. |
+| Out of scope | iOS-only, iPadOS-only, visionOS-only, watchOS-only, tvOS-only, non-Apple Swift, and pure server-side Convex. |
+| Liquid Glass target | macOS 26+ with the Xcode 26 SDK. |
+| Backward-compatible target | macOS 14+ with availability guards where Liquid Glass or Clerk paths require them. |
+| Clerk + Convex path | Apple Silicon macOS only per current ConvexMobile limitations. |
+
+## HIG vs Liquid Glass
+
+| Decision | Apply |
+|---|---|
+| Interaction, menus, windows, keyboard shortcuts, settings, accessibility, typography, spacing, and standard controls | HIG is always the baseline. |
+| macOS 26 / Tahoe-era visual treatment for navigation, chrome, toolbars, sidebars, floating controls, sheets, popovers, and overlays | Liquid Glass may apply after HIG is satisfied. |
+| Content rows, text, tables, form fields, cards, and data surfaces | Never apply glass. Keep content readable and semantically styled. |
+| macOS 14/15 support | Gate Liquid Glass APIs with `#available(macOS 26, *)`; provide `NSVisualEffectView` or standard SwiftUI fallbacks. |
 
 ## Operations
 
-Detect the operation from the user's intent, then route to the matching workflow file. If ambiguous, ask once.
+Detect the operation from the user's request, then load the narrowest reference set.
 
-| Operation | Trigger | Route to |
+| Operation | Trigger | Route |
 |---|---|---|
-| **bootstrap** | Fresh project, "start a new Mac app" | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
-| **build** | "Add a view", "implement screen X" | Apply Three Questions, then load relevant references on demand |
-| **redesign** | "Make this look like Apple", "modernize" | [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
-| **audit** | "Review", "audit", "assess" | [references/workflow/audit-existing.md](references/workflow/audit-existing.md) |
-| **migrate** | Pre-Tahoe code on macOS 26 | [references/liquid-glass/migration-guide.md](references/liquid-glass/migration-guide.md) |
-| **install hooks** | Wants pre-commit lint/format | [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md) |
-| **add tests** | Snapshot/visual validation | [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md) |
-| **wire cloud sync** | Convex + Clerk backend | [references/cloud-sync/overview.md](references/cloud-sync/overview.md) |
-| **ship** | Pre-release final pass | [references/workflow/ship-checklist.md](references/workflow/ship-checklist.md) |
+| Bootstrap | New macOS app or first production scaffold | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
+| Build | Add a screen, view, app feature, command, or window behavior | Apply Three Questions, then route by subsystem below |
+| Redesign | Make it native, Apple-like, Tahoe-ready, or Liquid Glass | [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
+| Audit | Review, assess, find issues, or preflight quality | [references/workflow/audit-existing.md](references/workflow/audit-existing.md) |
+| Migrate | Pre-Tahoe code moving to macOS 26 | [references/liquid-glass/migration-guide.md](references/liquid-glass/migration-guide.md) |
+| Install hooks | SwiftLint, SwiftFormat, pre-commit, or CI quality setup | [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md) |
+| Add visual tests | Screenshot validation or snapshot harness | [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md) |
+| Wire cloud sync | Convex, Clerk, real-time queries, subscriptions, or auth-gated data | [references/cloud-sync/overview.md](references/cloud-sync/overview.md) |
+| Ship | Release checklist or final app-store/direct-distribution pass | [references/workflow/ship-checklist.md](references/workflow/ship-checklist.md) |
 
----
+If the requested operation is ambiguous, make the smallest reasonable assumption and proceed.
 
-## The Three Laws of macOS UI
+## Core Guardrails
 
-These are non-negotiable. Violating any of them is a CRITICAL audit finding.
+### Three Laws Of macOS UI
 
-1. **Every action must be in the menu bar.** Toolbars are hideable; the menu bar is the source of truth. Every toolbar action needs a menu equivalent. → [references/hig/components/menus.md](references/hig/components/menus.md)
-2. **Standard keyboard shortcuts are sacred.** `Cmd-N/O/S/Shift-S/Z/Shift-Z/Q/W/Comma/F/A/C/V/X`. Don't repurpose. → [references/hig/platform/keyboard-shortcuts.md](references/hig/platform/keyboard-shortcuts.md)
-3. **Settings take effect immediately.** No Save / Cancel / Apply in preferences. → [references/hig/components/menus.md](references/hig/components/menus.md)
+1. Every action must be reachable from the menu bar; toolbars are optional chrome. See [references/hig/components/menus.md](references/hig/components/menus.md).
+2. Standard keyboard shortcuts are reserved: `Cmd-N/O/S/Shift-S/Z/Shift-Z/Q/W/Comma/F/A/C/V/X`. See [references/hig/platform/keyboard-shortcuts.md](references/hig/platform/keyboard-shortcuts.md).
+3. Settings take effect immediately. No Save, Cancel, or Apply buttons in preferences. See [references/hig/components/menus.md](references/hig/components/menus.md).
 
-## The Three Questions
+### Three Questions Before Any View
 
-Ask these before writing or accepting any view:
+1. Is this navigation or content?
+2. What is the one primary action?
+3. Would this feel native beside Finder, Mail, Photos, or Settings?
 
-1. **Is this navigation or content?** Glass goes on navigation; never on content rows, cards, or text.
-2. **What is the ONE primary action?** Promote one button per screen (`.glassProminent` + `.tint(.accentColor)`, or `.keyboardShortcut(.defaultAction)`). All others are secondary.
-3. **Would Apple ship this?** If it looks like a custom design system, you wrote it wrong. → [references/liquid-glass/design-principles.md](references/liquid-glass/design-principles.md)
+Critical audit findings:
 
-## Glass Placement
-
-| Layer | Glass? | Examples |
-|---|---|---|
-| **Navigation** | YES | Toolbars, sidebars, floating controls, sheets, popovers, menu overlays, tab bars |
-| **Content** | NO | Lists, table rows, text, images, cards, form fields |
-
-→ [references/liquid-glass/design-principles.md](references/liquid-glass/design-principles.md)
-
-## Hierarchy Through Tinting
-
-| Role | API | Rule |
-|---|---|---|
-| Primary | `.buttonStyle(.glassProminent)` + `.tint(.accentColor)` | **ONE per screen** |
-| Secondary | `.buttonStyle(.glass)` (no tint) | Many allowed |
-| Destructive | `.tint(.red)` or `.buttonRole(.destructive)` | Never the default |
-| Informational | No tint, no prominence | Background actions |
-
-macOS workaround: secondary glass buttons may need `.tint(.clear)` to suppress accent bleed (practitioner workaround, not official Apple guidance). → [references/liquid-glass/pitfalls-and-solutions.md](references/liquid-glass/pitfalls-and-solutions.md)
-
-## macOS-Specific Non-Negotiables
-
-- `.interactive()` is iOS-only. Do not use on macOS code paths.
-- `.scrollEdgeEffectStyle(.hard)` is the macOS default; only override with reason.
-- `.tabViewStyle(.sidebarAdaptable)` produces a macOS sidebar (and a floating tab bar on iOS).
-- `Settings { … }` scene + `Cmd-,` is mandatory.
-- `.commands { CommandGroup … }` wires app menus from SwiftUI.
-- `NavigationSplitView` + `.backgroundExtensionEffect()` on the sidebar. Never `NavigationView`.
-- Gate every Tahoe-specific API with `#available(macOS 26, *)`.
-- Concentric corner radii (`.containerConcentric` or `ConcentricRectangle()`) wherever glass meets bordered content.
-
-→ [references/liquid-glass/macos-patterns.md](references/liquid-glass/macos-patterns.md), [references/liquid-glass/api-reference.md](references/liquid-glass/api-reference.md)
-
----
-
-## Spacing Scale (8pt grid)
-
-| Token | px | Use |
-|---|---|---|
-| xxs | 1 | hairline |
-| xs | 4 | tight inline |
-| s | 6 | min between stacked controls |
-| **m** | **8** | label-to-control |
-| l | 10 | inline groups |
-| ml | 12 | between paragraphs |
-| xl | 14 | small section |
-| xxl | 16 | GroupBox margin |
-| **xxxl** | **20** | window content margin (L/R/B) |
-| xxxxl | 24 | menu bar height |
-
-**The 20-8-6 rule:** 20pt window margins, 8pt label-to-control gap, 6pt minimum between stacked controls. → [references/hig/foundations/layout-spacing.md](references/hig/foundations/layout-spacing.md)
-
-## Typography (macOS body = 13pt, NOT 17pt)
-
-| Style | Size | Weight | Use |
-|---|---|---|---|
-| Large Title | 26 | Regular | Hero, sparingly |
-| Title 1 | 22 | Regular | Page heading |
-| Title 2 | 17 | Regular | Section header |
-| Title 3 | 15 | Regular | Subsection |
-| **Headline** | **13** | **Bold** | Emphasis (NOT Semibold) |
-| **Body** | **13** | Regular | **Default** |
-| Callout | 12 | Regular | Tertiary |
-| Subheadline | 11 | Regular | Captions |
-| Footnote | 10 | Regular | Fine print |
-
-SF Pro Text ≤19pt; SF Pro Display ≥20pt. → [references/hig/foundations/typography.md](references/hig/foundations/typography.md)
-
-## Control Size Tiers
-
-| Tier | px | SwiftUI | AppKit | Use |
-|---|---|---|---|---|
-| Mini | ~16 | `.controlSize(.mini)` | `.mini` | Inline within toolbars / dense forms |
-| Small | ~19 | `.controlSize(.small)` | `.small` | Sidebars, palettes |
-| **Regular** | **~22** | `.controlSize(.regular)` | `.regular` | **Default** for buttons, fields |
-| Large | ~26-32 | `.controlSize(.large)` / `.extraLarge` | `.large` | Hero CTAs, watch-style buttons |
-
-→ [references/hig/components/buttons.md](references/hig/components/buttons.md), [references/hig/components/text-inputs.md](references/hig/components/text-inputs.md)
-
-## Color Label Hierarchy
-
-Use semantic colors only — never hardcoded hex on glass or content.
-
-| Role | NSColor | SwiftUI | When |
-|---|---|---|---|
-| Primary | `.labelColor` | `.foregroundStyle(.primary)` | Default body text, headings |
-| Secondary | `.secondaryLabelColor` | `.foregroundStyle(.secondary)` | Captions, metadata |
-| Tertiary | `.tertiaryLabelColor` | `.foregroundStyle(.tertiary)` | Disabled labels, placeholders |
-| Quaternary | `.quaternaryLabelColor` | `.foregroundStyle(.quaternary)` | Watermarks, decorative |
-
-CALayer does NOT auto-adapt to appearance — refresh in `viewDidChangeEffectiveAppearance()`. Asset catalogs support 4 slots: Any, Dark, High-Contrast, HC-Dark.
-
-→ [references/hig/foundations/color-and-dark-mode.md](references/hig/foundations/color-and-dark-mode.md)
-
-## Materials — `.behindWindow` vs `.withinWindow`
-
-| Surface | Material | Blending |
-|---|---|---|
-| Title bar | `.titlebar` | **`.withinWindow`** (mandatory — `.behindWindow` causes black gap) |
-| Sidebar | `.sidebar` | `.behindWindow` (requires `window.isOpaque = false`) |
-| Sheet content | `.contentBackground` | `.withinWindow` |
-| HUD / floating panel | `.hudWindow` | `.behindWindow` |
-| Pre-Tahoe glass surface | `.fullScreenUI` / `.menu` / `.popover` | per Apple docs |
-
-For Tahoe (macOS 26): prefer `.glassEffect()` and `NSGlassEffectView` over the deprecated material list. → [references/hig/foundations/materials-and-vibrancy.md](references/hig/foundations/materials-and-vibrancy.md)
-
-## Motion Timing
-
-- `NSAnimationContext` default: **0.25s**.
-- SwiftUI `.default`: **0.35s**.
-- Window/sheet present-dismiss: ~**0.20s**.
-- **Hard rule: <0.4s on macOS.** Anything longer feels sluggish.
-- Springs: **no bounce** (or `response: 0.3, dampingFraction: 0.85+`).
-- Honor `accessibilityReduceMotion` — substitute `.opacity` or instant cuts.
-
-→ [references/hig/foundations/motion.md](references/hig/foundations/motion.md)
-
-## SwiftUI vs AppKit — Decision Table
-
-| Need | Choose |
+| Finding | Route |
 |---|---|
-| Forms, lists ≤1000 rows, settings panes | **SwiftUI** |
-| Tables 5000+ rows, virtualization | **AppKit** (`NSTableView`) |
-| Native sidebar vibrancy + source-list header | **AppKit** |
-| Window lifecycle (delegate, full-screen quirks, restoration nuance) | **AppKit** (`NSWindow` delegate) |
-| Rich drag-drop with file promises | **AppKit** (`NSPasteboard`) |
-| Cross-platform iOS+macOS code | **SwiftUI** |
-| Custom NSToolbar with badges + segmented overflow | **AppKit** + `NSToolbarItem` |
-| Live Liquid Glass with dynamic `tintColor` | Either; `.glassEffect()` (SwiftUI) or `NSGlassEffectView` (AppKit) |
+| Glass on content, list rows, cards, table cells, or text | [references/liquid-glass/design-principles.md](references/liquid-glass/design-principles.md) |
+| Multiple tinted primary actions on one screen | [references/liquid-glass/design-principles.md](references/liquid-glass/design-principles.md) |
+| Hardcoded colors, fixed font sizes, iOS-scale rows, or custom dark-mode toggles | [references/hig/foundations/color-and-dark-mode.md](references/hig/foundations/color-and-dark-mode.md), [references/hig/foundations/typography.md](references/hig/foundations/typography.md) |
+| `NavigationView`, missing `Settings`, missing commands, custom window chrome, or missing shortcuts | [references/hig/platform/windows.md](references/hig/platform/windows.md), [references/hig/platform/toolbars.md](references/hig/platform/toolbars.md), [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
+| AppKit/SwiftUI ceiling confusion | [references/liquid-glass/appkit-bridging.md](references/liquid-glass/appkit-bridging.md), [references/hig/practitioner-insights.md](references/hig/practitioner-insights.md) |
 
-Quote: *"SwiftUI implements HIG for you on iOS; on macOS, it fights you at every turn."* — bridge to AppKit when the SwiftUI ceiling appears. → [references/liquid-glass/appkit-bridging.md](references/liquid-glass/appkit-bridging.md)
+## HIG Reference Routing
 
-## Component Decision Trees
-
-### Which container for additional UI?
-- 1–2 lines of input + binary choice → **Alert**
-- Form with 3–10 fields, modal task → **Sheet**
-- Quick context, transient → **Popover** (`.transient`)
-- Persistent context, user keeps editing main view → **Inspector** (sidebar trailing)
-- Hide/show inline content → **DisclosureGroup**
-
-### Which data display?
-- Forms + ≤1000 rows → SwiftUI **List/Table**
-- Hierarchical, ≤5000 rows → SwiftUI **OutlineGroup**
-- Flat, 5000+ rows → AppKit **NSTableView**
-- Hierarchical, large → AppKit **NSOutlineView**
-- 2D grid + selection → AppKit **NSCollectionView** (Compositional Layout)
-- Multi-column drill-down → AppKit **NSBrowser**
-
-### Checkbox vs Toggle?
-- Multi-select list / form field → **Checkbox**
-- Single boolean preference, takes effect immediately → **Toggle / NSSwitch**
-
-→ [references/hig/components/buttons.md](references/hig/components/buttons.md), [references/hig/components/selection-controls.md](references/hig/components/selection-controls.md), [references/hig/components/alerts-and-sheets.md](references/hig/components/alerts-and-sheets.md), [references/hig/components/popovers-and-disclosure.md](references/hig/components/popovers-and-disclosure.md), [references/hig/components/tables-and-lists.md](references/hig/components/tables-and-lists.md)
-
-## Dialog Button Placement
-
-```
-[Destructive]  [Cancel]  [Default Action]
-```
-
-- Default = trailing, accent fill, `Return` key.
-- Cancel = `Escape` key.
-- Destructive can never be the default. In `NSAlert`, never put it first — styling is suppressed on the first button.
-- Use specific verbs: *Delete*, *Replace*, *Discard* — never "OK" or "Yes / No".
-
-→ [references/hig/components/alerts-and-sheets.md](references/hig/components/alerts-and-sheets.md)
-
----
-
-## The "Apple Would Never" List
-
-1. Glass on list rows / table cells / content
-2. Multiple tinted primary actions on one screen
-3. Hardcoded colors (`Color(red:)`, hex literals) on glass
-4. Fixed font sizes (`.font(.system(size: 14))`)
-5. `NavigationView` instead of `NavigationSplitView` / `NavigationStack`
-6. `@StateObject` / `@ObservedObject` (superseded — use `@Observable`)
-7. `.toolbarBackground(.visible)` on macOS 26
-8. Missing keyboard shortcuts (`Cmd-N/S/W/Z/Comma/Q`)
-9. Custom window chrome (drag regions, custom traffic lights)
-10. `.interactive()` on macOS code paths
-
-## The 10 Common Mistakes
-
-1. Treating macOS as a big iPad (no bottom tab bars, no full-screen sheets)
-2. Save / Cancel / Apply in Settings (settings take effect immediately)
-3. Missing standard keyboard shortcuts
-4. Missing menu bar items (toolbar without menu equivalent)
-5. iOS body text size (17pt) instead of macOS 13pt
-6. iOS row heights (44pt) instead of macOS 22pt
-7. Custom dark mode toggle (respect `NSAppearance` and system Settings)
-8. SwiftUI `List` / `Table` for >1000 rows (use `NSTableView`)
-9. Missing Services menu in text apps
-10. Hardcoded colors instead of semantic (`.foregroundStyle(.primary)`, `.secondary`, `.accentColor`)
-
-→ [references/hig/practitioner-insights.md](references/hig/practitioner-insights.md) for what real shipping macOS apps override and why.
-
----
-
-## Visual Validation: 7 Non-Negotiable Rules
-
-When validating UI with screenshots:
-
-1. State the expectation BEFORE capture. Never retrofit expectations from a captured image.
-2. Validate one target state per run.
-3. Prefer the most deterministic capture path: in-app rendering → UI-test harness → browser driver (hybrid apps) → Accessibility / `screencapture` fallback.
-4. Record layout facts (collapsed sidebars, compact toolbars, split-view sizes) before classifying drift.
-5. Separate deterministic structure from data-dependent variation (item names, timestamps).
-6. Report in three buckets: **Matches** / **Drift** / **Better than expected**.
-7. Fix the narrowest correct layer (automation / app / expectation) and rerun the same target.
-
-→ [references/visual-validation/expectation-loop.md](references/visual-validation/expectation-loop.md), [references/visual-validation/capture-modes.md](references/visual-validation/capture-modes.md), [references/visual-validation/drift-analysis.md](references/visual-validation/drift-analysis.md), [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md), [references/visual-validation/troubleshooting.md](references/visual-validation/troubleshooting.md)
-
----
-
-## Quality Hooks: Hard Guardrails
-
-- **Never** write to `.git/hooks/` directly. Use `git config core.hooksPath .githooks`.
-- **Never** enable typecheck stage by default — it's slow. User must opt in via `SWIFT_HOOK_TYPECHECK=1`.
-- **Never** install global tools without confirmation.
-- **Never** commit an empty SwiftLint baseline as "done" on a legacy project.
-- **Never** claim typecheck works without running it once end-to-end.
-
-### Assets to copy into the user's repo
-
-The merged skill ships a calibrated config bundle at the outer skill root. Copy verbatim:
-
-| Source (this skill) | Destination (user repo) | Purpose |
-|---|---|---|
-| `<skill>/assets/swiftlint.yml` | `.swiftlint.yml` | 28 opt-in rules + 7 disabled + 5 custom rules |
-| `<skill>/assets/swiftformat` | `.swiftformat` | 17-rule allowlist, Swift 6, 4-space indent |
-| `<skill>/assets/githooks/pre-commit` | `.githooks/pre-commit` | Stages: detect → SwiftLint → SwiftFormat → optional typecheck |
-| `<skill>/assets/scripts/swift-typecheck.sh` | `scripts/swift-typecheck.sh` | Per-platform xcodebuild matrix (macOS/iOS/tvOS/watchOS/visionOS) |
-| `<skill>/assets/Makefile.fragment` | append to `Makefile` | `lint` / `lint-fix` / `lint-new` / `format` / `install-hooks` / `lint-all` |
-| `<skill>/assets/github-workflows/swift-quality.yml` | `.github/workflows/swift-quality.yml` | CI matrix + snapshot diff artifact upload |
-
-Then enable: `git config core.hooksPath .githooks`.
-
-→ [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md), [references/quality-hooks/baseline-workflow.md](references/quality-hooks/baseline-workflow.md), [references/quality-hooks/typecheck-stage.md](references/quality-hooks/typecheck-stage.md), [references/quality-hooks/configs/swiftlint-config.md](references/quality-hooks/configs/swiftlint-config.md), [references/quality-hooks/configs/swiftformat-config.md](references/quality-hooks/configs/swiftformat-config.md), [references/quality-hooks/troubleshooting.md](references/quality-hooks/troubleshooting.md), [references/quality-hooks/platforms/macos.md](references/quality-hooks/platforms/macos.md), [references/quality-hooks/platforms/ios.md](references/quality-hooks/platforms/ios.md), [references/quality-hooks/platforms/tvos.md](references/quality-hooks/platforms/tvos.md), [references/quality-hooks/platforms/watchos.md](references/quality-hooks/platforms/watchos.md), [references/quality-hooks/platforms/visionos.md](references/quality-hooks/platforms/visionos.md), [references/quality-hooks/platforms/multiplatform.md](references/quality-hooks/platforms/multiplatform.md)
-
----
-
-## Cloud Sync (when the app talks to a backend)
-
-Engage this track only when:
-- `Package.swift` contains `ConvexMobile`, `ClerkKit`, or `ClerkConvex`, OR
-- The user mentions Convex, Clerk, real-time queries, multi-device sync, auth-gated cloud data, or live subscriptions.
-
-If the app is local-only (Core Data, SwiftData, no server), skip this entire track.
-
-### Default stance — preserve verbatim, do not loosen
-
-- Use **Clerk** as the default Swift auth path. Use the official `ClerkConvex` package (`clerk-convex-swift >= 0.1.0`) with `clerk-ios >= 1.0.0` and `convex-swift >= 0.8.0`.
-- Prefer **one `@MainActor` long-lived authenticated client per process**, created with `ConvexClientWithAuth(deploymentUrl:authProvider: ClerkConvexAuthProvider())`.
-- Use `AuthView()` and `UserButton()` from `ClerkKitUI` for sign-in. Never roll your own `ASAuthorizationController` for SIWA — `AuthView()` handles it.
-- Add `.prefetchClerkImages()` and `.environment(Clerk.shared)` on root views.
-- Treat the Swift SDK as **reconnecting-online**, NOT offline-first.
-- Treat macOS support as **Apple Silicon only**. No Catalyst, no watchOS, no tvOS, no visionOS via this stack.
-- Target iOS 17+ / macOS 14+ minimum.
-
-### Hard rules
-
-- Do NOT promise optimistic updates, native offline persistence, Catalyst, watchOS, tvOS, or visionOS support — the SDK does not have them.
-- Do NOT use client-passed `userId` values for authorization. Server-side identity (Clerk JWT subject) is the only trustable source.
-- Do NOT use `Date.now()` inside Convex queries — it breaks reactivity. Pass a stable client timestamp argument.
-- Do NOT assume subscription recovery after a terminal `Combine` failure. Rebuild the pipeline with `resubscribe()`.
-- Do NOT declare `@StateObject`/`@Observable` view models at the App scene level on macOS — they re-init across new windows. Declare them **inside** the view hierarchy.
-
-→ [references/cloud-sync/overview.md](references/cloud-sync/overview.md), [references/cloud-sync/limitations.md](references/cloud-sync/limitations.md), [references/cloud-sync/adoption-checklist.md](references/cloud-sync/adoption-checklist.md)
-
-### macOS-specific cloud-sync routing
-
-| Concern | Read |
+| Need | Read |
 |---|---|
-| App entry, MenuBarExtra, sandbox entitlements | [references/cloud-sync/macos-app-entry.md](references/cloud-sync/macos-app-entry.md) |
-| Per-window view model gotcha (the #1 macOS multi-window bug) | [references/cloud-sync/per-window-viewmodels.md](references/cloud-sync/per-window-viewmodels.md) |
-| Offline / network-transition UX (4 states) | [references/cloud-sync/offline-ux-states.md](references/cloud-sync/offline-ux-states.md) |
-| Connection banner / sync indicator | [references/cloud-sync/connection-banner.md](references/cloud-sync/connection-banner.md) |
-| Tri-state loading (loading / loaded / failed) + skeletons | [references/cloud-sync/loading-error-tristate.md](references/cloud-sync/loading-error-tristate.md) |
-| Pipeline termination + `resubscribe()` (production-critical) | [references/cloud-sync/pipeline-recovery.md](references/cloud-sync/pipeline-recovery.md) |
-| `Env` struct + module-level `@MainActor` client | [references/cloud-sync/root-architecture.md](references/cloud-sync/root-architecture.md) |
-| Auth gate `LandingPage` + `AuthView()` sheet | [references/cloud-sync/clerk-setup.md](references/cloud-sync/clerk-setup.md) |
-| SIWA + keychain + session restoration | [references/cloud-sync/sign-in-with-apple.md](references/cloud-sync/sign-in-with-apple.md) |
-| `switchToLatest` parameterized subscriptions | [references/cloud-sync/reactive-queries.md](references/cloud-sync/reactive-queries.md) |
-| `@Observable` re-init traps | [references/cloud-sync/observation-ownership.md](references/cloud-sync/observation-ownership.md), [references/cloud-sync/pitfall-observable-reinit.md](references/cloud-sync/pitfall-observable-reinit.md) |
-| `TabView` cancels `.task`; `NavigationStack(path:)` patterns | [references/cloud-sync/lifecycle-navigation.md](references/cloud-sync/lifecycle-navigation.md), [references/cloud-sync/pitfall-task-cancellation.md](references/cloud-sync/pitfall-task-cancellation.md) |
-| Pipeline-dies-after-first-error | [references/cloud-sync/pitfall-pipeline-dies.md](references/cloud-sync/pitfall-pipeline-dies.md) |
-| Xcode SPM setup, `ConvexClient` init | [references/cloud-sync/spm-setup.md](references/cloud-sync/spm-setup.md), [references/cloud-sync/client-surface.md](references/cloud-sync/client-surface.md) |
-| Swift SDK API cheat sheet (`subscribe`/`mutation`/`action`/`watchWebSocketState`) | [references/cloud-sync/swift-sdk-cheatsheet.md](references/cloud-sync/swift-sdk-cheatsheet.md) |
-
-### How cloud-sync UI integrates with HIG / Liquid Glass
-
-- **Loading**: prefer `ViewState<T>.loading` + `.redacted(reason: .placeholder)` skeletons over `ProgressView` everywhere.
-- **Error**: tri-state `.failed(ClientError)` shows `Image(systemName: "exclamationmark.triangle")` + a `.borderedProminent` Retry button calling `vm.resubscribe()`.
-- **Auth presentation**: `AuthView()` via `.sheet(isPresented:)` from a root `LandingPage`. `UserButton()` lives in `.toolbar { ToolbarItem(placement: .automatic) }`.
-- **Sync indicator**: `Capsule`-shape banner with `ProgressView` + caption, animated with `.transition(.move(edge: .top).combined(with: .opacity))` and `.animation(.spring(response: 0.3))`. For permanent placement, use a small status dot (`Circle().fill().frame(width: 8, height: 8)` + caption) in the toolbar or sidebar footer.
-- **Menu bar**: cloud-sync apps that need ambient status use `MenuBarExtra("Status", systemImage: …)` with `.menuBarExtraStyle(.window)` — the default `.menu` style does not behave like a normal SwiftUI surface.
-
-These visual choices must reconcile with the **Hierarchy Through Tinting** rule above — at most ONE `.glassProminent` per screen, even when an auth flow is on top.
-
----
-
-## Reference Routing
-
-Single source of truth. When in doubt, scan this table and load the matching file.
-
-### HIG — Foundations
-
-| Topic | File |
-|---|---|
-| Color, dark mode, contrast, semantic tokens | [references/hig/foundations/color-and-dark-mode.md](references/hig/foundations/color-and-dark-mode.md) |
-| Typography, weights, SF Pro Display vs Text | [references/hig/foundations/typography.md](references/hig/foundations/typography.md) |
-| Spacing, alignment, 8pt grid, NSGridView | [references/hig/foundations/layout-spacing.md](references/hig/foundations/layout-spacing.md) |
-| Icons, app icon sizes, SF Symbols + animation | [references/hig/foundations/icons-and-sf-symbols.md](references/hig/foundations/icons-and-sf-symbols.md) |
-| Materials, vibrancy, `.behindWindow` vs `.withinWindow` | [references/hig/foundations/materials-and-vibrancy.md](references/hig/foundations/materials-and-vibrancy.md) |
-| Motion, animation, springs, Reduce Motion | [references/hig/foundations/motion.md](references/hig/foundations/motion.md) |
-
-### HIG — Components
-
-| Topic | File |
-|---|---|
-| Buttons, toggles, switches, toolbar buttons | [references/hig/components/buttons.md](references/hig/components/buttons.md) |
-| Text inputs, search, AutoFill, passkeys | [references/hig/components/text-inputs.md](references/hig/components/text-inputs.md) |
-| Pickers, sliders, steppers, color wells | [references/hig/components/selection-controls.md](references/hig/components/selection-controls.md) |
+| Color, dark mode, semantic colors, and layer adaptation | [references/hig/foundations/color-and-dark-mode.md](references/hig/foundations/color-and-dark-mode.md) |
+| Typography, weights, SF Pro Text vs Display | [references/hig/foundations/typography.md](references/hig/foundations/typography.md) |
+| Spacing, alignment, 8pt grid, control size decisions | [references/hig/foundations/layout-spacing.md](references/hig/foundations/layout-spacing.md) |
+| Icons, app icons, SF Symbols, animation | [references/hig/foundations/icons-and-sf-symbols.md](references/hig/foundations/icons-and-sf-symbols.md) |
+| Materials, vibrancy, `.behindWindow`, `.withinWindow` | [references/hig/foundations/materials-and-vibrancy.md](references/hig/foundations/materials-and-vibrancy.md) |
+| Motion timing, springs, Reduce Motion | [references/hig/foundations/motion.md](references/hig/foundations/motion.md) |
+| Buttons and button hierarchy | [references/hig/components/buttons.md](references/hig/components/buttons.md) |
+| Text fields, search fields, labels, validation | [references/hig/components/text-inputs.md](references/hig/components/text-inputs.md) |
+| Pickers, sliders, steppers, toggles, checkboxes | [references/hig/components/selection-controls.md](references/hig/components/selection-controls.md) |
 | Menus, menu bar, contextual menus, Services | [references/hig/components/menus.md](references/hig/components/menus.md) |
-| Popovers, tooltips, disclosure | [references/hig/components/popovers-and-disclosure.md](references/hig/components/popovers-and-disclosure.md) |
-| Tables, lists, outlines, NSCollectionView | [references/hig/components/tables-and-lists.md](references/hig/components/tables-and-lists.md) |
-| Alerts, sheets, dialogs, system panels | [references/hig/components/alerts-and-sheets.md](references/hig/components/alerts-and-sheets.md) |
-
-### HIG — Platform patterns
-
-| Topic | File |
-|---|---|
-| Window types, traffic lights, restoration, tabbing | [references/hig/platform/windows.md](references/hig/platform/windows.md) |
-| Sidebars, source lists, split views, inspectors | [references/hig/platform/sidebars-and-split-views.md](references/hig/platform/sidebars-and-split-views.md) |
+| Popovers, tooltips, disclosure, inspectors | [references/hig/components/popovers-and-disclosure.md](references/hig/components/popovers-and-disclosure.md) |
+| Tables, lists, outlines, collection views | [references/hig/components/tables-and-lists.md](references/hig/components/tables-and-lists.md) |
+| Alerts, sheets, dialogs, destructive actions | [references/hig/components/alerts-and-sheets.md](references/hig/components/alerts-and-sheets.md) |
+| Windows, restoration, tabbing, traffic lights | [references/hig/platform/windows.md](references/hig/platform/windows.md) |
+| Sidebars, split views, source lists, inspectors | [references/hig/platform/sidebars-and-split-views.md](references/hig/platform/sidebars-and-split-views.md) |
 | Toolbars, title bars, customization | [references/hig/platform/toolbars.md](references/hig/platform/toolbars.md) |
-| Keyboard shortcuts, focus, F-keys, Escape hierarchy | [references/hig/platform/keyboard-shortcuts.md](references/hig/platform/keyboard-shortcuts.md) |
-| Drag-drop, file management, document types, Quick Look | [references/hig/platform/drag-drop-files.md](references/hig/platform/drag-drop-files.md) |
+| Keyboard shortcuts, focus, Escape hierarchy | [references/hig/platform/keyboard-shortcuts.md](references/hig/platform/keyboard-shortcuts.md) |
+| Drag/drop, pasteboard, file promises, documents | [references/hig/platform/drag-drop-files.md](references/hig/platform/drag-drop-files.md) |
+| Accessibility, VoiceOver, contrast, motion | [references/hig/technologies/accessibility.md](references/hig/technologies/accessibility.md) |
+| Widgets, notifications, Spotlight, MenuBarExtra | [references/hig/technologies/widgets-and-notifications.md](references/hig/technologies/widgets-and-notifications.md) |
+| Practitioner overrides and common real-world judgment calls | [references/hig/practitioner-insights.md](references/hig/practitioner-insights.md) |
 
-### HIG — Technologies
+## Liquid Glass Routing
 
-| Topic | File |
+| Need | Read |
 |---|---|
-| VoiceOver, A11y APIs, Reduce Motion / Increase Contrast | [references/hig/technologies/accessibility.md](references/hig/technologies/accessibility.md) |
-| Widgets, notifications, Spotlight, MenuBarExtras | [references/hig/technologies/widgets-and-notifications.md](references/hig/technologies/widgets-and-notifications.md) |
-| Real-world overrides + practitioner perspective | [references/hig/practitioner-insights.md](references/hig/practitioner-insights.md) |
+| SwiftUI and AppKit API surface | [references/liquid-glass/api-reference.md](references/liquid-glass/api-reference.md) |
+| Navigation/content divide, concentricity, tint hierarchy | [references/liquid-glass/design-principles.md](references/liquid-glass/design-principles.md) |
+| Deprecated APIs, smell catalog, audit heuristics | [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
+| Toolbar, sidebar, window, Settings recipes | [references/liquid-glass/macos-patterns.md](references/liquid-glass/macos-patterns.md) |
+| Pre-Tahoe migration sequence | [references/liquid-glass/migration-guide.md](references/liquid-glass/migration-guide.md) |
+| Known bugs, crashes, and workarounds | [references/liquid-glass/pitfalls-and-solutions.md](references/liquid-glass/pitfalls-and-solutions.md) |
+| AppKit and SwiftUI bridge choices | [references/liquid-glass/appkit-bridging.md](references/liquid-glass/appkit-bridging.md) |
 
-### Liquid Glass
+Liquid Glass references carry WWDC 2025 session context. Do not duplicate session lists in the spine.
 
-| Topic | File |
+## Visual Validation Routing
+
+Expectation-first discipline is separate from the pixel-diff library.
+
+| Need | Read |
 |---|---|
-| SwiftUI + AppKit Liquid Glass API surface | [references/liquid-glass/api-reference.md](references/liquid-glass/api-reference.md) |
-| 12 design principles, concentricity, tinting hierarchy | [references/liquid-glass/design-principles.md](references/liquid-glass/design-principles.md) |
-| Modernizing existing code (41-row deprecation table, 30 smells) | [references/liquid-glass/design-diagnosis.md](references/liquid-glass/design-diagnosis.md) |
-| Toolbar / sidebar / window / Settings recipes | [references/liquid-glass/macos-patterns.md](references/liquid-glass/macos-patterns.md) |
-| 5-phase migration from pre-Tahoe | [references/liquid-glass/migration-guide.md](references/liquid-glass/migration-guide.md) |
-| 34 known glass bugs and workarounds | [references/liquid-glass/pitfalls-and-solutions.md](references/liquid-glass/pitfalls-and-solutions.md) |
-| AppKit ↔ SwiftUI glass bridging | [references/liquid-glass/appkit-bridging.md](references/liquid-glass/appkit-bridging.md) |
+| Expectation-first loop and report buckets | [references/visual-validation/expectation-loop.md](references/visual-validation/expectation-loop.md) |
+| Capture-mode selection for native, hybrid, and fallback paths | [references/visual-validation/capture-modes.md](references/visual-validation/capture-modes.md) |
+| Drift taxonomy and narrowest-layer fix choice | [references/visual-validation/drift-analysis.md](references/visual-validation/drift-analysis.md) |
+| Point-Free `swift-snapshot-testing` SPM wiring, record/verify mode, CI artifacts | [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md) |
+| Blank screenshots, focus failures, permissions, unstable runners | [references/visual-validation/troubleshooting.md](references/visual-validation/troubleshooting.md) |
 
-#### WWDC 2025 sessions (authoritative source for Liquid Glass)
+## Quality Hooks Routing
 
-- **219** — *Meet Liquid Glass* — design language, lensing, motion, adaptive behavior.
-- **310** — *Build a SwiftUI app with the new design* — `.glassEffect()`, container shapes, ornaments.
-- **323** — *Update your AppKit app with the new design* — `NSGlassEffectView`, NSToolbar updates, `NSWindow` chrome.
-- **356** — *Get to know the new design system* — concentricity rules, hierarchy, layout regions, accessibility.
+Hard guardrails:
 
-### Visual validation
+- Never write to `.git/hooks/` directly; use `git config core.hooksPath .githooks`.
+- Never enable typecheck stage by default; opt in with `SWIFT_HOOK_TYPECHECK=1`.
+- Never install global tools without confirmation.
+- Never commit an empty SwiftLint baseline as a legacy-project solution.
+- Never claim typecheck works without running it once end to end.
 
-| Topic | File |
+Copy the bundled assets from the outer skill root:
+
+| Source | Destination | Purpose |
+|---|---|---|
+| `assets/swiftlint.yml` | `.swiftlint.yml` | SwiftLint rules and custom rules |
+| `assets/swiftformat` | `.swiftformat` | SwiftFormat allowlist |
+| `assets/githooks/pre-commit` | `.githooks/pre-commit` | Staged Swift lint/format/typecheck hook |
+| `assets/scripts/swift-typecheck.sh` | `scripts/swift-typecheck.sh` | Per-platform `xcodebuild` matrix |
+| `assets/Makefile.fragment` | append to `Makefile` | Lint, format, hook install targets |
+| `assets/github-workflows/swift-quality.yml` | `.github/workflows/swift-quality.yml` | CI matrix and snapshot artifacts |
+
+| Need | Read |
 |---|---|
-| Expectation-first 5-step loop | [references/visual-validation/expectation-loop.md](references/visual-validation/expectation-loop.md) |
-| Capture-mode preference order | [references/visual-validation/capture-modes.md](references/visual-validation/capture-modes.md) |
-| Drift taxonomy (5 categories) | [references/visual-validation/drift-analysis.md](references/visual-validation/drift-analysis.md) |
-| `swift-snapshot-testing` SPM wiring + CI | [references/visual-validation/snapshot-testing-spm.md](references/visual-validation/snapshot-testing-spm.md) |
-| Blank screenshots, focus failures, permission gotchas | [references/visual-validation/troubleshooting.md](references/visual-validation/troubleshooting.md) |
-
-### Quality hooks
-
-| Topic | File |
-|---|---|
-| 4-stage hook architecture rationale | [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md) |
-| Greenfield empty baseline vs `--write-baseline` for legacy | [references/quality-hooks/baseline-workflow.md](references/quality-hooks/baseline-workflow.md) |
-| Typecheck stage opt-in + speed flags | [references/quality-hooks/typecheck-stage.md](references/quality-hooks/typecheck-stage.md) |
+| Hook architecture and install semantics | [references/quality-hooks/hook-architecture.md](references/quality-hooks/hook-architecture.md) |
+| Greenfield vs legacy SwiftLint baselines | [references/quality-hooks/baseline-workflow.md](references/quality-hooks/baseline-workflow.md) |
+| Opt-in typecheck stage and project detection | [references/quality-hooks/typecheck-stage.md](references/quality-hooks/typecheck-stage.md) |
 | SwiftLint config rationale | [references/quality-hooks/configs/swiftlint-config.md](references/quality-hooks/configs/swiftlint-config.md) |
 | SwiftFormat config rationale | [references/quality-hooks/configs/swiftformat-config.md](references/quality-hooks/configs/swiftformat-config.md) |
-| Hook failure debugging | [references/quality-hooks/troubleshooting.md](references/quality-hooks/troubleshooting.md) |
-| Per-platform xcodebuild destination matrix | [references/quality-hooks/platforms/macos.md](references/quality-hooks/platforms/macos.md), [ios.md](references/quality-hooks/platforms/ios.md), [tvos.md](references/quality-hooks/platforms/tvos.md), [watchos.md](references/quality-hooks/platforms/watchos.md), [visionos.md](references/quality-hooks/platforms/visionos.md), [multiplatform.md](references/quality-hooks/platforms/multiplatform.md) |
+| Hook troubleshooting | [references/quality-hooks/troubleshooting.md](references/quality-hooks/troubleshooting.md) |
+| macOS typecheck destination | [references/quality-hooks/platforms/macos.md](references/quality-hooks/platforms/macos.md) |
+| Multi-platform Apple CI matrix | [references/quality-hooks/platforms/multiplatform.md](references/quality-hooks/platforms/multiplatform.md) |
+| iOS companion targets in macOS repos | [references/quality-hooks/platforms/ios.md](references/quality-hooks/platforms/ios.md) |
+| tvOS companion targets in macOS repos | [references/quality-hooks/platforms/tvos.md](references/quality-hooks/platforms/tvos.md) |
+| watchOS companion targets in macOS repos | [references/quality-hooks/platforms/watchos.md](references/quality-hooks/platforms/watchos.md) |
+| visionOS companion targets in macOS repos | [references/quality-hooks/platforms/visionos.md](references/quality-hooks/platforms/visionos.md) |
 
-### Cloud sync (Convex + Clerk)
+## Cloud Sync Routing
 
-See the **Cloud Sync** section above for the full routing table.
+Engage only when `Package.swift` or the request mentions `ConvexMobile`, `ClerkKit`, `ClerkConvex`, Convex, Clerk, real-time queries, multi-device sync, auth-gated cloud data, or live subscriptions. Skip this track for local-only Core Data or SwiftData apps.
 
-### Workflow
+Default stance:
 
-| Topic | File |
+- Use Clerk as the default Swift auth path.
+- Treat `clerk-convex-swift >= 0.1.0`, `clerk-ios >= 1.0.0`, and `convex-swift >= 0.8.0` as minimum supported bounds; use version audit notes in [references/cloud-sync/operations/verified-corrections.md](references/cloud-sync/operations/verified-corrections.md) for latest checked versions.
+- Prefer one `@MainActor` long-lived authenticated client per process: `ConvexClientWithAuth(deploymentUrl:authProvider: ClerkConvexAuthProvider())`.
+- Use `AuthView()` and `UserButton()` from `ClerkKitUI`; do not roll a manual SIWA flow around `ASAuthorizationController`.
+- Treat the Swift SDK as reconnecting-online, not offline-first.
+- Treat macOS support as Apple Silicon only through this stack.
+
+Hard rules:
+
+- Do not promise optimistic updates, native offline persistence, Catalyst, Intel Mac, watchOS, tvOS, or visionOS support for ConvexMobile.
+- Do not trust client-passed `userId` values. Server-side Clerk JWT identity is the authorization boundary.
+- Do not use `Date.now()` inside Convex queries; pass stable client timestamps.
+- Do not assume a subscription recovers after terminal Combine failure; rebuild with `resubscribe()`.
+- Do not declare subscription-owning view models at the App scene level on macOS; use per-window or in-hierarchy ownership.
+
+### Cloud Sync Start Points
+
+| Decision | Read |
 |---|---|
-| Bootstrapping a fresh app end-to-end | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
-| Auditing existing code (severity-tagged report) | [references/workflow/audit-existing.md](references/workflow/audit-existing.md) |
-| Pre-release ship checklist | [references/workflow/ship-checklist.md](references/workflow/ship-checklist.md) |
+| Whole corpus map and narrow routing | [references/cloud-sync/overview.md](references/cloud-sync/overview.md) |
+| Current limitations and hard stops | [references/cloud-sync/limitations.md](references/cloud-sync/limitations.md), [references/cloud-sync/operations/known-gaps.md](references/cloud-sync/operations/known-gaps.md) |
+| Adoption constraints before committing | [references/cloud-sync/adoption-checklist.md](references/cloud-sync/adoption-checklist.md) |
+| Backend fit and alternatives | [references/cloud-sync/onboarding/convex-vs-alternatives.md](references/cloud-sync/onboarding/convex-vs-alternatives.md), [references/cloud-sync/onboarding/why-convex-fits-swiftui.md](references/cloud-sync/onboarding/why-convex-fits-swiftui.md) |
+| Live-data mental model | [references/cloud-sync/onboarding/mental-model.md](references/cloud-sync/onboarding/mental-model.md) |
+| Verified corrections and trust boundary | [references/cloud-sync/operations/verified-corrections.md](references/cloud-sync/operations/verified-corrections.md) |
 
----
+### Cloud Sync Setup And Auth
 
-## Output contract
+| Decision | Read |
+|---|---|
+| Node and Convex CLI prerequisites | [references/cloud-sync/setup-extra/node-prerequisites.md](references/cloud-sync/setup-extra/node-prerequisites.md) |
+| Xcode SPM setup and ConvexMobile client init | [references/cloud-sync/spm-setup.md](references/cloud-sync/spm-setup.md), [references/cloud-sync/client-surface.md](references/cloud-sync/client-surface.md) |
+| First local `npx convex dev` run | [references/cloud-sync/setup-extra/first-run.md](references/cloud-sync/setup-extra/first-run.md) |
+| Clerk account, JWT template, and Convex auth config | [references/cloud-sync/setup-extra/clerk-jwt-template.md](references/cloud-sync/setup-extra/clerk-jwt-template.md), [references/cloud-sync/setup-extra/auth-config-wiring.md](references/cloud-sync/setup-extra/auth-config-wiring.md) |
+| Clerk-first Swift setup and root auth gate | [references/cloud-sync/clerk-setup.md](references/cloud-sync/clerk-setup.md) |
+| Auth alternatives and custom provider fallback | [references/cloud-sync/auth-custom-provider.md](references/cloud-sync/auth-custom-provider.md) |
+| Sign in with Apple, Keychain, and session restoration | [references/cloud-sync/sign-in-with-apple.md](references/cloud-sync/sign-in-with-apple.md) |
+| Backend ownership and authorization | [references/cloud-sync/backend/auth-rules-and-server-ownership.md](references/cloud-sync/backend/auth-rules-and-server-ownership.md) |
 
-When you finish work in this skill, end with:
+### Cloud Sync SwiftUI, SDK, And Platform Behavior
 
-- **What changed**: file paths + one-line per change.
-- **Verification rung reached**: which level of validation you actually completed.
+| Decision | Read |
+|---|---|
+| Root architecture and environment injection | [references/cloud-sync/root-architecture.md](references/cloud-sync/root-architecture.md) |
+| macOS app entry, MenuBarExtra, entitlements | [references/cloud-sync/macos-app-entry.md](references/cloud-sync/macos-app-entry.md) |
+| Per-window view models | [references/cloud-sync/per-window-viewmodels.md](references/cloud-sync/per-window-viewmodels.md) |
+| Observation ownership and re-init traps | [references/cloud-sync/observation-ownership.md](references/cloud-sync/observation-ownership.md), [references/cloud-sync/pitfall-observable-reinit.md](references/cloud-sync/pitfall-observable-reinit.md) |
+| Navigation, tabs, sheets, and subscription lifecycle | [references/cloud-sync/lifecycle-navigation.md](references/cloud-sync/lifecycle-navigation.md), [references/cloud-sync/pitfall-task-cancellation.md](references/cloud-sync/pitfall-task-cancellation.md), [references/cloud-sync/swiftui-extra/navstack-subscription-lifecycle.md](references/cloud-sync/swiftui-extra/navstack-subscription-lifecycle.md), [references/cloud-sync/swiftui-extra/tabview-and-sheets.md](references/cloud-sync/swiftui-extra/tabview-and-sheets.md) |
+| Reactive queries and parameterized subscriptions | [references/cloud-sync/reactive-queries.md](references/cloud-sync/reactive-queries.md) |
+| Loading, errors, skeletons, and retry UI | [references/cloud-sync/loading-error-tristate.md](references/cloud-sync/loading-error-tristate.md), [references/cloud-sync/backend/structured-errors-convexerror.md](references/cloud-sync/backend/structured-errors-convexerror.md) |
+| Connection banner, offline states, and recovery | [references/cloud-sync/connection-banner.md](references/cloud-sync/connection-banner.md), [references/cloud-sync/offline-ux-states.md](references/cloud-sync/offline-ux-states.md), [references/cloud-sync/pipeline-recovery.md](references/cloud-sync/pipeline-recovery.md), [references/cloud-sync/pitfall-pipeline-dies.md](references/cloud-sync/pitfall-pipeline-dies.md) |
+| SDK wire types and modeling | [references/cloud-sync/client-sdk-extra/type-system-and-modeling.md](references/cloud-sync/client-sdk-extra/type-system-and-modeling.md), [references/cloud-sync/client-sdk-extra/convex-encodable.md](references/cloud-sync/client-sdk-extra/convex-encodable.md), [references/cloud-sync/client-sdk-extra/subscriptions-and-errors.md](references/cloud-sync/client-sdk-extra/subscriptions-and-errors.md), [references/cloud-sync/swift-sdk-cheatsheet.md](references/cloud-sync/swift-sdk-cheatsheet.md) |
+| Debug logging and observability | [references/cloud-sync/client-sdk-extra/debug-logging.md](references/cloud-sync/client-sdk-extra/debug-logging.md) |
+| iOS/macOS lifecycle caveats | [references/cloud-sync/platforms/ios-backgrounding-and-staleness.md](references/cloud-sync/platforms/ios-backgrounding-and-staleness.md) |
+| Network awareness | [references/cloud-sync/platforms/nwpathmonitor.md](references/cloud-sync/platforms/nwpathmonitor.md) |
+| Performance, threading, binary size | [references/cloud-sync/platforms/performance-and-threading.md](references/cloud-sync/platforms/performance-and-threading.md), [references/cloud-sync/platforms/binary-size-and-profiling.md](references/cloud-sync/platforms/binary-size-and-profiling.md) |
+
+### Cloud Sync Pitfalls, Quick References, And Playbooks
+
+| Decision | Read |
+|---|---|
+| Pitfalls index: side effects, array limits, `Date.now`, main thread delivery, auth trust, unbounded collect | [references/cloud-sync/pitfalls-extra/actions-as-side-effects.md](references/cloud-sync/pitfalls-extra/actions-as-side-effects.md), [references/cloud-sync/pitfalls-extra/arrays-8192-limit.md](references/cloud-sync/pitfalls-extra/arrays-8192-limit.md), [references/cloud-sync/pitfalls-extra/date-now-in-queries.md](references/cloud-sync/pitfalls-extra/date-now-in-queries.md), [references/cloud-sync/pitfalls-extra/receive-on-main.md](references/cloud-sync/pitfalls-extra/receive-on-main.md), [references/cloud-sync/pitfalls-extra/trusting-client-for-auth.md](references/cloud-sync/pitfalls-extra/trusting-client-for-auth.md), [references/cloud-sync/pitfalls-extra/unbounded-collect.md](references/cloud-sync/pitfalls-extra/unbounded-collect.md) |
+| Quick reference cards and decision trees | [references/cloud-sync/quick-reference/backend-card.md](references/cloud-sync/quick-reference/backend-card.md), [references/cloud-sync/quick-reference/function-decision-tree.md](references/cloud-sync/quick-reference/function-decision-tree.md), [references/cloud-sync/quick-reference/subscription-placement.md](references/cloud-sync/quick-reference/subscription-placement.md) |
+| Implementation playbooks | [references/cloud-sync/playbooks/greenfield-swiftui-app.md](references/cloud-sync/playbooks/greenfield-swiftui-app.md), [references/cloud-sync/playbooks/shared-ios-macos-app.md](references/cloud-sync/playbooks/shared-ios-macos-app.md), [references/cloud-sync/playbooks/streaming-and-transcription.md](references/cloud-sync/playbooks/streaming-and-transcription.md) |
+| Complete walkthrough | [references/cloud-sync/walkthrough/01-zero-to-realtime-chat.md](references/cloud-sync/walkthrough/01-zero-to-realtime-chat.md), [references/cloud-sync/walkthrough/02-schema-and-backend-code.md](references/cloud-sync/walkthrough/02-schema-and-backend-code.md), [references/cloud-sync/walkthrough/03-swift-models-and-viewmodels.md](references/cloud-sync/walkthrough/03-swift-models-and-viewmodels.md), [references/cloud-sync/walkthrough/04-swiftui-views.md](references/cloud-sync/walkthrough/04-swiftui-views.md), [references/cloud-sync/walkthrough/05-deployment-checklist.md](references/cloud-sync/walkthrough/05-deployment-checklist.md) |
+
+Cloud-sync UI still obeys HIG and Liquid Glass rules: loading states use skeletons or tri-state UI, errors provide a specific retry path, auth UI lives in sheets/toolbars where appropriate, and sync status belongs in subtle chrome rather than content rows.
+
+## Workflow Routing
+
+| Need | Read |
+|---|---|
+| Bootstrap a new app end to end | [references/workflow/bootstrap-new-app.md](references/workflow/bootstrap-new-app.md) |
+| Audit existing code with severity-tagged findings | [references/workflow/audit-existing.md](references/workflow/audit-existing.md) |
+| Run final pre-release checks | [references/workflow/ship-checklist.md](references/workflow/ship-checklist.md) |
+
+## Output Contract
+
+When work using this skill ends, report:
+
+- What changed: file paths plus one line per change.
+- Verification rung reached:
 
   | Rung | Meaning |
   |---|---|
   | 1 | Read the code |
-  | 2 | Type-check / lint passes |
+  | 2 | Type-check or lint passes |
   | 3 | Unit tests pass |
   | 4 | Snapshot tests pass |
-  | 5 | Ran the program; observed the change |
+  | 5 | Ran the program and observed the change |
   | 6 | User confirmed the changed behavior |
 
-- **What's next**: explicit next action if anything remains.
+- What remains, only if anything remains.
 
-Never claim "done" while:
-- The working tree is dirty (commit first, then claim).
-- Any guardrail above is violated.
-- The verification rung you reached is below the rung the user requires.
+Never claim done while the working tree is dirty, a guardrail is violated, or the stated verification rung was not actually reached.
