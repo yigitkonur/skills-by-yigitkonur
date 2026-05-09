@@ -1,6 +1,10 @@
 # run-github-scout
 
-Finding, shortlisting, or comparing GitHub repos for a concrete need with adaptive discovery, relevance filtering, and optional deeper comparison.
+Find, shortlist, or compare GitHub repos for a concrete need. Lean by
+default — adaptive discovery, internal relevance filtering, and a
+markdown shortlist in conversation. When naming is fuzzy or the
+landscape is broad, optionally augment with `run-research` for
+disciplined web discovery.
 
 **Category:** productivity
 
