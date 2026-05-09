@@ -1,6 +1,6 @@
 # Decision tree — error strategy
 
-Design error responses so the agent can recover. Errors are the primary steering signal — get them right, the agent fixes its own mistake in one turn; get them wrong, the agent abandons the workflow after the first failure. This tree routes by error semantics. Source: `optimize-agentic-mcp/references/decision-trees/error-strategy.md`.
+Design error responses so the agent can recover. Errors are the primary steering signal — get them right, the agent fixes its own mistake in one turn; get them wrong, the agent abandons the workflow after the first failure. This tree routes by error semantics.
 
 ## The one rule
 

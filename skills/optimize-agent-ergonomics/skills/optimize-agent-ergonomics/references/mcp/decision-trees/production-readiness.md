@@ -1,6 +1,6 @@
 # Decision tree — production readiness
 
-Pre-deploy checklist for an MCP server that will face real users. Every item is a "yes / not applicable / fix before deploy" decision. Skipping items reliably surfaces as outages, not as theoretical concerns. Run this tree before announcing the server is live. Source: `optimize-agentic-mcp/references/decision-trees/production-readiness.md`.
+Pre-deploy checklist for an MCP server that will face real users. Every item is a "yes / not applicable / fix before deploy" decision. Skipping items reliably surfaces as outages, not as theoretical concerns. Run this tree before announcing the server is live.
 
 ## How to use this checklist
 

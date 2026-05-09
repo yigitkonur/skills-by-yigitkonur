@@ -1,6 +1,6 @@
 # cli/architect-new.md
 
-Mode B-CLI entry. Design a new agent-ready CLI from scratch with agent-readiness as a first-class constraint, not an afterthought. The 10-step workflow below produces a CLI that survives the audit checklist on day one — because every check was a design decision, not a bug to find later. Source: distilled from optimize-agentic-cli/SKILL.md (build order) and execution-patterns.md (verb semantics).
+Mode B-CLI entry. Design a new agent-ready CLI from scratch with agent-readiness as a first-class constraint, not an afterthought. The 10-step workflow below produces a CLI that survives the audit checklist on day one — because every check was a design decision, not a bug to find later.
 
 ## Mode B-CLI workflow — 10 steps
 

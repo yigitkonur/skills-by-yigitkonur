@@ -1,6 +1,6 @@
 # Decision tree — design-phase choices that lock in for the lifetime of the server
 
-The decisions you make once and live with. SDK, schema dialect, statefulness, transport, auth model — once shipped, the cost of changing any of these is high and the blast radius is wide. Pick deliberately. Source: `optimize-agentic-mcp/references/decision-trees/design-phase.md`, refreshed against the 16-server exemplar survey.
+The decisions you make once and live with. SDK, schema dialect, statefulness, transport, auth model — once shipped, the cost of changing any of these is high and the blast radius is wide. Pick deliberately.
 
 ## Decision branches
 

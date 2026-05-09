@@ -1,6 +1,6 @@
 # Decision tree — scaling
 
-Scale by working backwards from the load profile, not by reaching for Kubernetes by default. A single MCP server is fine for the single-user case; gateway patterns, session pooling, and async become necessary at specific bottlenecks. This tree picks the smallest architecture that still works for the workload. Source: `optimize-agentic-mcp/references/decision-trees/scaling.md`.
+Scale by working backwards from the load profile, not by reaching for Kubernetes by default. A single MCP server is fine for the single-user case; gateway patterns, session pooling, and async become necessary at specific bottlenecks. This tree picks the smallest architecture that still works for the workload.
 
 ## Decision branches
 

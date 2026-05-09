@@ -1,6 +1,6 @@
 # idempotency-and-retries — operations with side effects must be safe to retry
 
-Operations with side effects must be safe to retry. The agent's harness retries; the user's harness retries; the platform retries; the pipeline retries. Verbs carry semantics; idempotency keys make those semantics enforceable. Source: `optimize-agentic-cli/references/execution-patterns.md` (idempotency section), generalized.
+Operations with side effects must be safe to retry. The agent's harness retries; the user's harness retries; the platform retries; the pipeline retries. Verbs carry semantics; idempotency keys make those semantics enforceable.
 
 ## The 5 verbs and their semantics
 

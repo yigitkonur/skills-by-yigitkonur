@@ -1,6 +1,6 @@
 # Threat catalog
 
-Named attacks, dated CVEs, defense tooling, and red-team case studies for MCP servers. Use this as the canonical vocabulary when writing findings or threat models. Cross-link to `security.md` for the trust-boundary model and the four hardening dimensions; cross-link to `auth-identity.md` for confused-deputy, token-audience binding, DCR impersonation, and session hijacking on unscoped endpoints. Sourced from `optimize-agentic-mcp/.../patterns/threat-catalog.md`. Date stamps preserved.
+Named attacks, dated CVEs, defense tooling, and red-team case studies for MCP servers. Use this as the canonical vocabulary when writing findings or threat models. Cross-link to `security.md` for the trust-boundary model and the four hardening dimensions; cross-link to `auth-identity.md` for confused-deputy, token-audience binding, DCR impersonation, and session hijacking on unscoped endpoints. Date stamps are preserved.
 
 ---
 

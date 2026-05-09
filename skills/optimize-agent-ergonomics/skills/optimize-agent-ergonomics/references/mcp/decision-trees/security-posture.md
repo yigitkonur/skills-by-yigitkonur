@@ -1,6 +1,6 @@
 # Decision tree — security posture
 
-Pick the threat model from the deployment context. Local stdio has near-zero network surface; remote multi-tenant HTTP has the full attack surface (OAuth 2.1, RFC 9728 PRM, audit logs, per-call authorization). Threat model selection is not optional — guessing here means an audit-time finding instead of a design-time decision. Source: `optimize-agentic-mcp/references/decision-trees/security-posture.md`.
+Pick the threat model from the deployment context. Local stdio has near-zero network surface; remote multi-tenant HTTP has the full attack surface (OAuth 2.1, RFC 9728 PRM, audit logs, per-call authorization). Threat model selection is not optional — guessing here means an audit-time finding instead of a design-time decision.
 
 ## Decision branches
 
@@ -166,7 +166,7 @@ Deep dive: `../patterns/auth-identity.md` (CIMD + step-up consent), `../patterns
 - **Trusting tenant id from input.** Always resolve from the token.
 - **`Authorization: Bearer ${userToken}` in cache keys.** Token lifetime ≠ cache lifetime; key off the user id, not the token.
 - **`*` CORS with credentials.** Catastrophic.
-- **SSE for new remote deployments.** Deprecated; use Streamable HTTP. Source: `optimize-agentic-mcp/SKILL.md` pitfall #9.
+- **SSE for new remote deployments.** Deprecated; use Streamable HTTP.
 - **Logging tokens or PII.** Redact at the log boundary; logs leak.
 - **Skipping the audit log.** Without it, a breach has no forensics.
 - **One global rate limit.** A 10 r/s cap on `read` and `ai` together starves both. Per-category buckets.

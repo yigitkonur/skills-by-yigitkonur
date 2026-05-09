@@ -1,6 +1,6 @@
 # cli/iterative-pattern.md
 
-A CLI that drives a multi-turn agent workflow with validate → repair → advance. The agent submits work, the CLI validates, the CLI returns structured correction guidance, the agent repairs, the workflow advances only when the artifact is acceptable. This file specifies the CLI-specific iterative envelope, the phase taxonomy, the state-token pattern, and a worked schema-migration example. Cross-link to `../common/iterative-loops.md` for the cross-surface principles. Source: distilled from optimize-agentic-cli/references/iterative-cli.md.
+A CLI that drives a multi-turn agent workflow with validate → repair → advance. The agent submits work, the CLI validates, the CLI returns structured correction guidance, the agent repairs, the workflow advances only when the artifact is acceptable. This file specifies the CLI-specific iterative envelope, the phase taxonomy, the state-token pattern, and a worked schema-migration example. Cross-link to `../common/iterative-loops.md` for the cross-surface principles.
 
 ## When to use
 

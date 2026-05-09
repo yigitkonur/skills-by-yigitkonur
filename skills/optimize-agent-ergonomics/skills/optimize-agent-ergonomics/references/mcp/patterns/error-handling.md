@@ -1,6 +1,6 @@
 # Error handling
 
-How to design MCP error responses that an agent can recover from on the next call. Cross-surface principles — retry-friendly, transient vs permanent, schema-versioned envelopes — live in `../../common/error-strategy.md`. This file is the MCP-specific expression: the `isError` flag, the protocol-vs-result distinction, structured content shapes, and the recovery hints the model reads next. Sourced from `optimize-agentic-mcp/.../patterns/error-handling.md`.
+How to design MCP error responses that an agent can recover from on the next call. Cross-surface principles — retry-friendly, transient vs permanent, schema-versioned envelopes — live in `../../common/error-strategy.md`. This file is the MCP-specific expression: the `isError` flag, the protocol-vs-result distinction, structured content shapes, and the recovery hints the model reads next.
 
 ---
 

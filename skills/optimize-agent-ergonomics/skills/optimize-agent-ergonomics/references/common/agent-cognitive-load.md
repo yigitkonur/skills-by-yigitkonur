@@ -1,6 +1,6 @@
 # agent-cognitive-load — token budgets, tool counts, and progressive disclosure
 
-The agent has limited context and limited attention. Every tool you register, every flag you expose, every byte you return either advances the task or burns budget. Design for both bounds. Source: `optimize-agentic-mcp/references/patterns/context-engineering.md` (6 patterns) and `optimize-agentic-mcp/references/patterns/progressive-discovery.md`, generalized to cover CLIs.
+The agent has limited context and limited attention. Every tool you register, every flag you expose, every byte you return either advances the task or burns budget. Design for both bounds.
 
 ## The two budgets, and how they couple
 
@@ -11,7 +11,7 @@ Every agent call spends from two distinct accounts.
 | Context tokens | Tool definitions, descriptions, prior responses, the user's prompt | Tool definitions inject on EVERY message, not only when invoked |
 | Attention | The model's capacity to pick the right tool from a list and fill the right schema | Falls off a cliff past per-model thresholds, not a slope |
 
-Tool definitions in particular eat ~15% of a typical Claude Code session's input tokens. A single complex tool like Playwright MCP can push that to 50%. Across a 30-turn conversation, 20 tools at 100 tokens each is 60,000 tokens gone before the agent has done a single useful thing. Source: community measurement on r/ClaudeAI; `optimize-agentic-mcp/references/patterns/context-engineering.md` Pattern 1.
+Tool definitions in particular eat ~15% of a typical Claude Code session's input tokens. A single complex tool like Playwright MCP can push that to 50%. Across a 30-turn conversation, 20 tools at 100 tokens each is 60,000 tokens gone before the agent has done a single useful thing. Practitioner signal from r/ClaudeAI; treat as directional evidence, not a vendor guarantee.
 
 The two budgets couple: more tools means more tokens AND more attention pressure. Past the model's tool-count cliff, accuracy drops while cost rises. Both vectors point the same direction — fewer, sharper tools.
 
@@ -43,7 +43,7 @@ Past Gemini's sweet spot (~10) and approaching GPT-4's hard ceiling (~20). Claud
 Two recovery paths:
 
 1. **Consolidate aggressively to <20.** Best when most tools are CRUD wrappers that should collapse into action-enum tools.
-2. **Switch to meta-tools / Codemode.** Best when the catalog is genuinely diverse. Cloudflare's published benchmark: 2,594 endpoints with full schemas = ~1,170,000 tokens; the same surface via 2-tool Codemode = ~1,000 tokens. 99.9% reduction. Source: `optimize-agentic-mcp/references/patterns/exemplar-servers.md` Copy #3.
+2. **Switch to meta-tools / Codemode.** Best when the catalog is genuinely diverse. Cloudflare's published benchmark: 2,594 endpoints with full schemas = ~1,170,000 tokens; the same surface via 2-tool Codemode = ~1,000 tokens. 99.9% reduction. Source: `../mcp/patterns/exemplar-servers.md` Copy #3.
 
 The cliff isn't gentle. GPT-4 starts hallucinating tool calls past 50; Claude ignores tools beyond position 30. Adding a 31st tool doesn't add capacity — it removes it.
 
@@ -72,7 +72,7 @@ A tool that routinely returns >5,000 tokens has the wrong shape. Project, pagina
 
 ### Tiered verbosity — shrink as context fills
 
-Optional but high-leverage: vary response size by remaining context budget. Three tiers from `optimize-agentic-mcp/references/patterns/context-engineering.md` Pattern 3:
+Optional but high-leverage: vary response size by remaining context budget. Three practical tiers:
 
 | Remaining context | Tier | Response shape |
 |---|---|---|
@@ -129,7 +129,7 @@ The MCP cognitive surface lives in `tools/list`:
 
 When the catalog token cost exceeds ~5% of the agent's context window, the server should offer a tool-subset selector at connect time. Sentry does this via OAuth consent groups. Supabase does it via URL query params (`?features=database,docs`). GitHub via toolset flags at deploy. Cross-link `../mcp/patterns/progressive-discovery.md` for the full progressive-discovery patterns.
 
-The Code Execution Pattern (Anthropic's published benchmark: 150k tokens → 2k, 98.7% reduction) is the most aggressive form. Replace static tool definitions with a single `execute_code()` tool that does on-demand discovery via `list_servers()` → `list_tools(server)` → `get_tool_schema(server, tool)`. Schemas are fetched only when needed and discarded after the call. Source: `optimize-agentic-mcp/references/patterns/context-engineering.md` Pattern 2; works for stdio/local servers, harder for OAuth-gated remote servers.
+The Code Execution Pattern (Anthropic's published benchmark: 150k tokens → 2k, 98.7% reduction) is the most aggressive form. Replace static tool definitions with a single `execute_code()` tool that does on-demand discovery via `list_servers()` → `list_tools(server)` → `get_tool_schema(server, tool)`. Schemas are fetched only when needed and discarded after the call. Source: Anthropic published benchmark; works for stdio/local servers, harder for OAuth-gated remote servers.
 
 ## Description token cost — the hidden compounder
 
@@ -146,7 +146,7 @@ Heuristics for description length:
 | Long prose explaining when not to use | 150–300 | Trim — over-narrowing reduces call rate |
 | Restating the schema in prose | 300+ | Almost always wrong; rewrite |
 
-Over-verbose descriptions reduce call rate; the model interprets length as friction. Cap at 100 tokens; lead with the verb. Source: `optimize-agentic-mcp/references/patterns/tool-descriptions.md` Pattern 11. Cross-link `descriptions-as-prompts.md`.
+Over-verbose descriptions reduce call rate; the model interprets length as friction. Cap at 100 tokens; lead with the verb. Cross-link `descriptions-as-prompts.md`.
 
 ## ANSI / progress-bar inflation on shell-wrapped tools
 
@@ -160,7 +160,7 @@ When an MCP tool wraps a CLI binary, raw CLI output inflates token cost by 5–9
 | `vitest run` (28 tests) | 196 | 39 | 80% |
 | `cargo build` (2 errors) | 436 | 138 | 68% |
 
-Strip ANSI escape sequences, carriage-return progress redraws, spinner Unicode, and box-drawing characters before returning CLI output. Set `NO_COLOR=1` and `TERM=dumb` in the subprocess environment to suppress at source. Source: `optimize-agentic-mcp/references/patterns/context-engineering.md` Pattern 4.
+Strip ANSI escape sequences, carriage-return progress redraws, spinner Unicode, and box-drawing characters before returning CLI output. Set `NO_COLOR=1` and `TERM=dumb` in the subprocess environment to suppress at source.
 
 For CLI authors: detect non-TTY stdout and auto-suppress ANSI; honor `NO_COLOR=1`. The harness shouldn't have to scrub.
 

@@ -2,7 +2,7 @@
 
 Production-grade transport and deployment patterns for MCP servers: pick the right transport for the workload, keep stdout pure JSON-RPC, validate auth at the right layer, and pick the right hosting platform for cold-start, timeout, and response-cap constraints. Two distinct sections — pick a transport first, then pick a platform.
 
-This file replaces both `transport-and-ops.md` and `deployment-platforms.md` from the prior MCP skill. Cross-link to `auth-identity.md` for OAuth / OAuth 2.1 / DCR specifics; this file deals only with where auth happens, not with how it works.
+Cross-link to `auth-identity.md` for OAuth / OAuth 2.1 / DCR specifics; this file deals only with where auth happens, not with how it works.
 
 ---
 

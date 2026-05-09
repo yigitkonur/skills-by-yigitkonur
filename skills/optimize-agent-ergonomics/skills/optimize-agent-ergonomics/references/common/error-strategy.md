@@ -1,6 +1,6 @@
 # error-strategy — errors an agent can parse and recover from
 
-Errors are the hard part. A tool the agent uses confidently has retry-friendly error envelopes; a tool the agent abandons after one failure does not. Distinguish transient from permanent. Surface the next action. Schema-version the envelope. Source: `optimize-agentic-mcp/patterns/error-handling.md` (9 patterns), `optimize-agentic-cli/references/output-contracts.md` (error section), and `optimize-agentic-cli/references/execution-patterns.md` (retry-safe section).
+Errors are the hard part. A tool the agent uses confidently has retry-friendly error envelopes; a tool the agent abandons after one failure does not. Distinguish transient from permanent. Surface the next action. Schema-version the envelope.
 
 ## Universal principles
 
@@ -62,7 +62,7 @@ The `next_action` shape adapts to the surface — for CLI it includes the next c
 
 ### Never use protocol errors for business logic
 
-The most common MCP failure mode: throwing a JSON-RPC protocol error (`-32xxx` codes) when the actual problem is "user not found" or "invalid input." The LLM never sees these — the client typically swallows them. From `optimize-agentic-mcp/patterns/error-handling.md` Pattern 1:
+The most common MCP failure mode: throwing a JSON-RPC protocol error (`-32xxx` codes) when the actual problem is "user not found" or "invalid input." The LLM never sees these — the client typically swallows them. MCP-specific failure pattern:
 
 ```json
 // BAD — protocol error for business failure; LLM never sees the message
@@ -113,7 +113,7 @@ The agent now has the exact tool name AND the exact args to pass. Don't make the
 
 ### Use "preventive" framing, not "punitive" framing
 
-When a tool catches bad input before executing, it *prevented* a problem — it didn't *fail*. Wording shapes the agent's behavior. From `optimize-agentic-mcp/patterns/error-handling.md` Pattern 6:
+When a tool catches bad input before executing, it *prevented* a problem — it didn't *fail*. Wording shapes the agent's behavior. MCP-specific wording pattern:
 
 Bad — punitive:
 ```
@@ -130,7 +130,7 @@ The flag (`isError: true`) tells the protocol something went wrong. The text tel
 
 ### Avoid "not found" framing — return what exists
 
-"X not found" anchors the LLM on failure. From `optimize-agentic-mcp/patterns/error-handling.md` Pattern 7:
+"X not found" anchors the LLM on failure. MCP-specific wording pattern:
 
 Bad: `"Module 'color' not found."`
 Good: `"Available modules: fs, http, path, crypto. Pick one and retry."`
@@ -500,7 +500,7 @@ Plus exit code per `../cli/exit-codes.md`.
 
 **`retryable: false` with no actionable hint.** Tells the agent to stop with no path forward. Always pair permanent errors with a `next_action` or `suggestion` — even if it's "escalate to user."
 
-**Loop detection missing on the server side.** Agents can't detect their own loops. Server-side hash-based deduplication (see `optimize-agentic-mcp/patterns/error-handling.md` Pattern 8) catches `update_record(id=42, status="active")` called 5× with identical params and surfaces a "Loop detected — stop retrying and ask the user" error.
+**Loop detection missing on the server side.** Agents can't detect their own loops. Server-side hash-based deduplication (see `../mcp/patterns/error-handling.md` loop-detection guidance) catches `update_record(id=42, status="active")` called 5× with identical params and surfaces a "Loop detected — stop retrying and ask the user" error.
 
 ## Cross-references
 

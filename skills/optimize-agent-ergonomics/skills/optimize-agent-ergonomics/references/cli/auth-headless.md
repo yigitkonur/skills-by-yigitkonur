@@ -1,6 +1,6 @@
 # cli/auth-headless.md
 
-Agents run headless. A CLI whose only auth path is "open a browser and log in" cannot be driven by an agent. This file ranks auth patterns by agent-friendliness, defines env-var conventions, and covers the sandbox boundaries that determine which patterns work in CI vs on a developer machine. Source: distilled from optimize-agentic-cli/references/discovery-and-auth.md (auth flows, credential resolution, secret handling).
+Agents run headless. A CLI whose only auth path is "open a browser and log in" cannot be driven by an agent. This file ranks auth patterns by agent-friendliness, defines env-var conventions, and covers the sandbox boundaries that determine which patterns work in CI vs on a developer machine.
 
 ## Auth pattern ranking
 

@@ -1,6 +1,6 @@
 # Caching and economics
 
-Two distinct cache surfaces meet in every MCP deployment: **provider-side prompt caching** (the tokens the model provider charges for) and **tool-level result caching** (the bytes your handler computes). They compose; they don't substitute. This file covers both. Sourced from `optimize-agentic-mcp/.../patterns/caching-economics.md`.
+Two distinct cache surfaces meet in every MCP deployment: **provider-side prompt caching** (the tokens the model provider charges for) and **tool-level result caching** (the bytes your handler computes). They compose; they don't substitute. This file covers both.
 
 The math is unambiguous once the prefix stays byte-identical; the hard part is keeping it that way across MCP tool edits, reconnects, and dynamic system prompts. The hard part on the tool-result side is correct invalidation.
 

@@ -1,6 +1,6 @@
 # Decision tree — tool count and granularity
 
-Decide tool granularity by counting first, then by intent. Past the per-model sweet spot, routing accuracy collapses; before it, the question is intent vs. API shape. This tree routes to the right consolidation, progressive-discovery, or splitting pattern for the count you have. Source: `optimize-agentic-mcp/references/decision-trees/tool-count.md`.
+Decide tool granularity by counting first, then by intent. Past the per-model sweet spot, routing accuracy collapses; before it, the question is intent vs. API shape. This tree routes to the right consolidation, progressive-discovery, or splitting pattern for the count you have.
 
 ## Decision branches
 

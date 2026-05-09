@@ -1,6 +1,6 @@
 # agent-integration — how agents actually call your tool
 
-Write tools that match how agents call them. The agent's harness has a contract; honor it. Subprocess wrappers (CLI) and MCP clients (MCP) share more than they differ — both run with timeouts, parse structured responses, classify outcomes, retry on transient. The tool author is responsible for surviving that contract on day one. Source: `optimize-agentic-cli/references/agent-integration.md`, generalized to cover MCP.
+Write tools that match how agents call them. The agent's harness has a contract; honor it. Subprocess wrappers (CLI) and MCP clients (MCP) share more than they differ — both run with timeouts, parse structured responses, classify outcomes, retry on transient. The tool author is responsible for surviving that contract on day one.
 
 ## The universal harness contract
 

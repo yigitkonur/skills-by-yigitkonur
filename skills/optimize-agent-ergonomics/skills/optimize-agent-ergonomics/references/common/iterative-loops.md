@@ -1,6 +1,6 @@
 # iterative-loops — multi-turn workflows where the agent submits, the tool validates, and the agent repairs
 
-Some workloads can't fit in one call. The agent submits an artifact, the tool validates, returns structured correction guidance, the agent repairs, the tool advances. The same shape works on both surfaces. This file owns the cross-surface envelope, the universal field set, the phase taxonomy, and the repair-budget rules. Surface specifics live in `../cli/iterative-pattern.md` (CLI envelope on stdout) and `../mcp/patterns/agentic-patterns.md` (MCP session-scoped state). Source: `optimize-agentic-cli/references/iterative-cli.md` plus `optimize-agentic-mcp/references/patterns/agentic-patterns.md` (Patterns 1, 6, 7), generalized.
+Some workloads can't fit in one call. The agent submits an artifact, the tool validates, returns structured correction guidance, the agent repairs, the tool advances. The same shape works on both surfaces. This file owns the cross-surface envelope, the universal field set, the phase taxonomy, and the repair-budget rules. Surface specifics live in `../cli/iterative-pattern.md` (CLI envelope on stdout) and `../mcp/patterns/agentic-patterns.md` (MCP session-scoped state).
 
 ## When the iterative pattern earns its cost
 

@@ -1,6 +1,6 @@
 # descriptions-as-prompts — names and descriptions ARE the prompt
 
-Tool descriptions are prompt engineering, not documentation. The model reads the description at decision time — `tools/list` for MCP, `--help` for CLI — and decides whether and how to call your tool. Write for the model, not for a human reading docs once. Source: primarily `optimize-agentic-mcp/patterns/tool-descriptions.md` (11 patterns), generalized to cover CLI.
+Tool descriptions are prompt engineering, not documentation. The model reads the description at decision time — `tools/list` for MCP, `--help` for CLI — and decides whether and how to call your tool. Write for the model, not for a human reading docs once.
 
 ## What the model reads, and when
 
@@ -103,7 +103,7 @@ export_customers:"Export all customers matching a filter as CSV. Async — retur
                   Do NOT use for single lookups; use get_customer instead."
 ```
 
-Without exclusionary hints, models default to the "biggest" tool — the one that could technically handle every case. Real-world example: Figma's MCP server uses `"Do NOT use unless explicitly requested by the user"` on its `depth` parameter to prevent agents from making expensive deep-tree calls by default. Source: `optimize-agentic-mcp/patterns/tool-descriptions.md` Pattern 7.
+Without exclusionary hints, models default to the "biggest" tool — the one that could technically handle every case. Real-world example: Figma's MCP server uses `"Do NOT use unless explicitly requested by the user"` on its `depth` parameter to prevent agents from making expensive deep-tree calls by default.
 
 ### Use exact, namespaced names
 
@@ -298,7 +298,7 @@ Read the description aloud — once, top to bottom. Now ask: if this were the en
 4. What "success" looks like vs. what failure looks like?
 5. Which related tool to use if this one isn't the right fit?
 
-If any answer is "no", the description is missing the corresponding piece. If the description runs over 200 tokens, the model is also less likely to call the tool — community evaluations show over-verbose descriptions reduce call rate, not increase it (source: `optimize-agentic-mcp/patterns/tool-descriptions.md` Pattern 11).
+If any answer is "no", the description is missing the corresponding piece. If the description runs over 200 tokens, the model is also less likely to call the tool. Practitioner signal: over-verbose descriptions reduce call rate, not increase it.
 
 The optimal description is short enough to scan and specific enough to select.
 

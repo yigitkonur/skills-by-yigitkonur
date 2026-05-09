@@ -1,6 +1,6 @@
 # cli/subprocess-harness.md
 
-How an agent harness invokes an agent-ready CLI safely and parses the response. The harness IS the integration test — if your CLI doesn't survive being called this way, it isn't agent-ready. This file specifies the harness contract, ships Python / Node / Bash sample wrappers, catalogs the common failure modes, and explains how to use the harness as your final verification step before declaring a CLI agent-ready. Source: distilled from `optimize-agentic-cli/references/agent-integration.md`. Cross-link `../common/agent-integration.md` for the cross-surface principles.
+How an agent harness invokes an agent-ready CLI safely and parses the response. The harness IS the integration test — if your CLI doesn't survive being called this way, it isn't agent-ready. This file specifies the harness contract, ships Python / Node / Bash sample wrappers, catalogs the common failure modes, and explains how to use the harness as your final verification step before declaring a CLI agent-ready. Cross-link `../common/agent-integration.md` for the cross-surface principles.
 
 ## The harness contract
 

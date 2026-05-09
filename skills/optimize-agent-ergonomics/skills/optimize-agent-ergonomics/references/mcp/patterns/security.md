@@ -1,6 +1,6 @@
 # Security
 
-How to harden an MCP server against prompt injection, data exfiltration, privilege escalation, and unauthorized access. Four hardening dimensions, one mental model. Cross-link to `auth-identity.md` for the OAuth 2.1 / RFC 9728 / CIMD wiring underneath, and `threat-catalog.md` for named attack taxonomy and CVEs. Sourced from `optimize-agentic-mcp/.../patterns/security.md`.
+How to harden an MCP server against prompt injection, data exfiltration, privilege escalation, and unauthorized access. Four hardening dimensions, one mental model. Cross-link to `auth-identity.md` for the OAuth 2.1 / RFC 9728 / CIMD wiring underneath, and `threat-catalog.md` for named attack taxonomy and CVEs.
 
 ---
 

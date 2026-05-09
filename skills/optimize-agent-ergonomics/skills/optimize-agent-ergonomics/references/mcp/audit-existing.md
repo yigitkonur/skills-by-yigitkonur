@@ -116,7 +116,7 @@ Verification is non-negotiable. Mode A ends with all approved findings applied *
 
 ## The 15 common MCP pitfalls
 
-Use this as the diagnostic checklist during Phase 1 + 2. Source: `optimize-agentic-mcp/SKILL.md` "Common Pitfalls" section.
+Use this as the diagnostic checklist during Phase 1 + 2.
 
 | # | Pitfall | Fix routes to |
 |---|---|---|

@@ -1,6 +1,6 @@
 # Schema design
 
-How to design MCP tool input schemas that LLMs fill correctly on the first try, across Claude, ChatGPT, Cursor, and Goose. Schemas are the second-most-read text on a tool — after the description — and the model's compliance rate is bounded by them. Cross-link to `tools.md` for tool-shape decisions and `client-compatibility.md` for which features each client actually honors. Sourced from `optimize-agentic-mcp/.../patterns/schema-design.md`.
+How to design MCP tool input schemas that LLMs fill correctly on the first try, across Claude, ChatGPT, Cursor, and Goose. Schemas are the second-most-read text on a tool — after the description — and the model's compliance rate is bounded by them. Cross-link to `tools.md` for tool-shape decisions and `client-compatibility.md` for which features each client actually honors.
 
 ---
 

@@ -1,6 +1,6 @@
 # cli/code-templates.md
 
-Production code samples in 5 languages — Go, Python, Node.js, Rust, Bash — for the canonical envelope, exit-code constants, standard flags, TTY detection, and NDJSON streaming. Copy-paste templates that ship with the JSON shape and exit-code taxonomy already wired. Cross-language consistency is the contract: the JSON envelope and exit codes must match across every language so an agent harness can call any language CLI and get the same shape. Source: `optimize-agentic-cli/references/examples.md`.
+Production code samples in 5 languages — Go, Python, Node.js, Rust, Bash — for the canonical envelope, exit-code constants, standard flags, TTY detection, and NDJSON streaming. Copy-paste templates that ship with the JSON shape and exit-code taxonomy already wired. Cross-language consistency is the contract: the JSON envelope and exit codes must match across every language so an agent harness can call any language CLI and get the same shape.
 
 ## Cross-language contract
 

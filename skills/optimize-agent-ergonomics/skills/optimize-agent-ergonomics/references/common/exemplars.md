@@ -1,6 +1,6 @@
 # exemplars — production CLIs and MCP servers, evidence-based
 
-Real-world tools that get this right. Patterns alone are insufficient — the exemplars below show how production teams trade off the principles in this skill, with citation. When your design choice has precedent, name it. When two precedents disagree, name them both. Source: `optimize-agentic-cli/references/examples.md` (CLI audits) and `optimize-agentic-mcp/references/patterns/exemplar-servers.md` (16-server survey).
+Real-world tools that get this right. Patterns alone are insufficient — the exemplars below show how production teams trade off the principles in this skill, with citation. When your design choice has precedent, name it. When two precedents disagree, name them both.
 
 ## CLI exemplars
 
@@ -23,7 +23,7 @@ What it does poorly:
 - No `schema_version` on JSON outputs; field renames between versions break agents that learned the v1 shape.
 - No NDJSON streaming for long-running operations (`gh run watch` ships text).
 
-Score in the 5-check audit: stdout/stderr separation, non-interactive, JSON output — pass; exit codes, structured errors — partial. Net: ~86% (mostly ready). Source: `optimize-agentic-cli/references/examples.md` Section 11.
+Score in the 5-check audit: stdout/stderr separation, non-interactive, JSON output — pass; exit codes, structured errors — partial. Net: ~86% (mostly ready).
 
 ### `aws` CLI (v2)
 
@@ -112,7 +112,7 @@ No CLI in this list ships the full canonical agent-ready surface (envelope + sem
 
 ## MCP exemplars
 
-Six production MCP servers from major SaaS vendors, with evidence drawn from the 16-server survey in `optimize-agentic-mcp/references/patterns/exemplar-servers.md`.
+Six production MCP servers from major SaaS vendors, with evidence drawn from the 16-server survey in `../mcp/patterns/exemplar-servers.md`.
 
 ### GitHub — `github/github-mcp-server`
 

@@ -1,6 +1,6 @@
 # Auth and identity
 
-Protocol-level authorization for remote MCP servers under the 2025-11-25 OAuth 2.1 profile. Five patterns the auditor must recognize: OAuth 2.1, RFC 9728 PRM (Protected Resource Metadata), CIMD (Client-Initiated MCP Delegation), OBO (On-Behalf-Of), and step-up consent. Cross-link to `security.md` for prompt injection / PII / SSRF, and `threat-catalog.md` for the named OAuth attack primitives. Sourced from `optimize-agentic-mcp/.../patterns/auth-identity.md`.
+Protocol-level authorization for remote MCP servers under the 2025-11-25 OAuth 2.1 profile. Five patterns the auditor must recognize: OAuth 2.1, RFC 9728 PRM (Protected Resource Metadata), CIMD (Client-Initiated MCP Delegation), OBO (On-Behalf-Of), and step-up consent. Cross-link to `security.md` for prompt injection / PII / SSRF, and `threat-catalog.md` for the named OAuth attack primitives.
 
 MCP moved from "auth optional, good luck" (2025-03-26) to a hardened OAuth 2.1 profile (2025-11-25) in three revisions. Three invariants now drive every pattern:
 

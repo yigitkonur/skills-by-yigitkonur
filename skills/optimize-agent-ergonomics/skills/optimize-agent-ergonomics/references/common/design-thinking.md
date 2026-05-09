@@ -1,6 +1,6 @@
 # design-thinking — 8 questions before any surface, schema, or code
 
-Before picking a surface, before drawing a single schema, before writing the first tool description, answer 8 questions about the workload. Surface selection, schema shape, error model, observability, and lifecycle policy all fall out of the answers. Skip these and you'll spend the rest of the design fighting decisions you should have made up front. Source: `optimize-agentic-mcp/decision-trees/brainstorming-new-mcp.md`, generalized across CLI and MCP.
+Before picking a surface, before drawing a single schema, before writing the first tool description, answer 8 questions about the workload. Surface selection, schema shape, error model, observability, and lifecycle policy all fall out of the answers. Skip these and you'll spend the rest of the design fighting decisions you should have made up front.
 
 ## The 8 questions in order
 

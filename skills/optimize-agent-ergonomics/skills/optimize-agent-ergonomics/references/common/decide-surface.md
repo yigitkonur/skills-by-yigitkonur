@@ -1,6 +1,6 @@
 # decide-surface — CLI vs MCP, decided by workload
 
-The single canonical CLI-vs-MCP decision file. Before writing a tool description, picking a schema, drafting an architecture sketch, or "modernizing" an existing tool, decide the surface — and decide it from the workload, not from which technology felt newer last week. Both old skills (`optimize-agentic-cli/references/mcp-vs-cli-decision.md` and `optimize-agentic-mcp/references/patterns/mcp-vs-cli.md`) lived here separately; deduplicated to one truth, refreshed 2026-04-15.
+The single canonical CLI-vs-MCP decision file. Before writing a tool description, picking a schema, drafting an architecture sketch, or "modernizing" an existing tool, decide the surface — and decide it from the workload, not from which technology felt newer last week. Refreshed 2026-04-15 as the single cross-surface decision source.
 
 ## Workload-first rubric
 

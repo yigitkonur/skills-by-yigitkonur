@@ -1,6 +1,6 @@
 # Progressive discovery
 
-How to expose only the tools the agent needs right now and reveal more on demand. The cross-surface principle — fewer well-designed entry points beat thirty narrow tools — lives in `../../common/agent-cognitive-load.md`. This file is the MCP-specific deep dive: meta-tools, semantic search, session-scoped visibility, four-stage disclosure, and graceful fallback for hidden tools. Sourced from `optimize-agentic-mcp/.../patterns/progressive-discovery.md`.
+How to expose only the tools the agent needs right now and reveal more on demand. The cross-surface principle — fewer well-designed entry points beat thirty narrow tools — lives in `../../common/agent-cognitive-load.md`. This file is the MCP-specific deep dive: meta-tools, semantic search, session-scoped visibility, four-stage disclosure, and graceful fallback for hidden tools.
 
 ---
 

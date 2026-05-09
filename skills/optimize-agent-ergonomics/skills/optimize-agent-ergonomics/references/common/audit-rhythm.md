@@ -1,6 +1,6 @@
 # audit-rhythm — Explore → Diagnose → Present → Optimize
 
-The disciplined audit rhythm. Pattern-fitting before exploration generates worse advice than no advice — that's why this rhythm is non-negotiable for every Mode-A audit, on either surface. Read the user's actual code first, classify findings, present them one at a time with options, then optimize after the user picks. Don't dump 30 recommendations as a wall. Source: `optimize-agentic-mcp/SKILL.md`'s "Pick Mode One Before You Do Anything" framing, generalized.
+The disciplined audit rhythm. Pattern-fitting before exploration generates worse advice than no advice — that's why this rhythm is non-negotiable for every Mode-A audit, on either surface. Read the user's actual code first, classify findings, present them one at a time with options, then optimize after the user picks. Don't dump 30 recommendations as a wall.
 
 ## The 4 phases
 

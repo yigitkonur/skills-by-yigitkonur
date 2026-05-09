@@ -1,6 +1,6 @@
 # Advanced protocol
 
-Protocol features beyond the basic tool/resource/prompt surface — sampling, elicitation, roots, cancellation. These determine whether a server feels static or genuinely agentic. Client support is uneven; capability checks and graceful fallbacks are non-negotiable. Cross-link to `client-compatibility.md` for the support matrix and `agentic-patterns.md` for the prompt-gate alternative when advanced features are missing. Sourced from `optimize-agentic-mcp/.../patterns/advanced-protocol.md`.
+Protocol features beyond the basic tool/resource/prompt surface — sampling, elicitation, roots, cancellation. These determine whether a server feels static or genuinely agentic. Client support is uneven; capability checks and graceful fallbacks are non-negotiable. Cross-link to `client-compatibility.md` for the support matrix and `agentic-patterns.md` for the prompt-gate alternative when advanced features are missing.
 
 ---
 

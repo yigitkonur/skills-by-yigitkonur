@@ -1,6 +1,6 @@
 # cli/exit-codes.md
 
-Exit codes give agents fast classification without parsing. The agent reads `$?` before it parses stdout — that's three orders of magnitude cheaper than running JSON through a parser. A semantic exit-code taxonomy lets the agent decide "retry, escalate, abort, repair" before it even looks at the envelope. This file defines the canonical taxonomy used by every CLI in this skill, the agent policy per code, and language-specific implementations. Source: distilled from optimize-agentic-cli/references/output-contracts.md.
+Exit codes give agents fast classification without parsing. The agent reads `$?` before it parses stdout — that's three orders of magnitude cheaper than running JSON through a parser. A semantic exit-code taxonomy lets the agent decide "retry, escalate, abort, repair" before it even looks at the envelope. This file defines the canonical taxonomy used by every CLI in this skill, the agent policy per code, and language-specific implementations.
 
 ## The taxonomy
 

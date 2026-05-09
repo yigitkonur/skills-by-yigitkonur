@@ -1,6 +1,6 @@
 # cli/output-envelope.md
 
-The canonical CLI JSON envelope. Every command that supports `--json` emits this shape. The agent's parse-and-route function is written against this contract; if every command in your CLI returns it, the agent learns the contract once and reuses it everywhere. Source: distilled from optimize-agentic-cli/references/output-contracts.md (envelope + error fields), with cross-surface principles lifted to `../common/output-contracts.md`.
+The canonical CLI JSON envelope. Every command that supports `--json` emits this shape. The agent's parse-and-route function is written against this contract; if every command in your CLI returns it, the agent learns the contract once and reuses it everywhere.
 
 ## Schema
 

@@ -37,7 +37,7 @@ Do not skip step 1. The 8 surface-agnostic questions are the reason you are conf
 
 ## The 12 MCP brainstorm questions
 
-Ask each verbatim or with minimal sharpening. Order matters — later questions assume earlier answers. After every question, write the answer down; the architecture sketch will need it. Cite the source for each block when relaying to the user (Section 5: this file folds in `optimize-agentic-mcp/references/decision-trees/brainstorming-new-mcp.md`).
+Ask each verbatim or with minimal sharpening. Order matters — later questions assume earlier answers. After every question, write the answer down; the architecture sketch will need it. Cite the source for each block when relaying to the user.
 
 ### Q1. End-user task in one sentence
 
@@ -192,7 +192,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 
 ## Architecture-sketch template
 
-Once Q1..Q12 are answered, produce this sketch verbatim and ask the user to approve before any code is written. Source for the template: `optimize-agentic-mcp/references/decision-trees/brainstorming-new-mcp.md`.
+Once Q1..Q12 are answered, produce this sketch verbatim and ask the user to approve before any code is written.
 
 ```
 # MCP Architecture Sketch — <project-name>
@@ -250,7 +250,7 @@ Once Q1..Q12 are answered, produce this sketch verbatim and ask the user to appr
 
 ## Companion-skill handoff matrix
 
-After the sketch is approved, route to exactly one of the following. Source: `optimize-agentic-mcp/SKILL.md` "Companion Skills" section.
+After the sketch is approved, route to exactly one of the following.
 
 | Skill | Pick when | Tradeoff |
 |---|---|---|

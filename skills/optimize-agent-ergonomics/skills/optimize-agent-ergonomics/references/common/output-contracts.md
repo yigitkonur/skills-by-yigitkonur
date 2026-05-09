@@ -1,6 +1,6 @@
 # output-contracts — outputs an agent can parse and reason about
 
-Cross-surface principles for tool output. The agent reads every response; what's in the response either advances the task or burns context budget. Schema-version it, name fields stably, project to agent-relevant fields, and never dump raw API payloads. Source: `optimize-agentic-cli/references/output-contracts.md` (cross-surface principles) and `optimize-agentic-mcp/patterns/tool-responses.md`.
+Cross-surface principles for tool output. The agent reads every response; what's in the response either advances the task or burns context budget. Schema-version it, name fields stably, project to agent-relevant fields, and never dump raw API payloads.
 
 ## Universal principles
 
@@ -53,7 +53,7 @@ New fields are additive. Old fields stay. Old fields can be deprecated (mark the
 
 The agent's context window is finite. Every byte that isn't directly useful is byte that crowds out the next thought. Raw API JSON typically includes timestamps, auth metadata, tracking IDs, and pagination plumbing the agent doesn't need.
 
-Bad — Linear's `list_users` returning `createdAt`, `updatedAt`, `avatarUrl`, `isAdmin`, `isGuest` when the agent only wants assignment IDs (source: `optimize-agentic-mcp/patterns/exemplar-servers.md` Avoid #4):
+Bad — Linear's `list_users` returning `createdAt`, `updatedAt`, `avatarUrl`, `isAdmin`, `isGuest` when the agent only wants assignment IDs (source: `../mcp/patterns/exemplar-servers.md` Avoid #4):
 
 ```json
 {
@@ -256,7 +256,7 @@ The text is the human-readable summary the agent shows the user. The structured 
 
 **`isError: true`** — for business-logic failures (validation, conflict, not-found). Reserve protocol-level JSON-RPC errors for actual transport failures. See `error-strategy.md` for the rationale.
 
-**Output schemas** — declare `outputSchema` alongside `inputSchema`. Helps clients reason about return shape and helps the model plan downstream calls. Supabase declares both on every tool (source: `optimize-agentic-mcp/patterns/exemplar-servers.md` Copy #1).
+**Output schemas** — declare `outputSchema` alongside `inputSchema`. Helps clients reason about return shape and helps the model plan downstream calls. Supabase declares both on every tool (source: `../mcp/patterns/exemplar-servers.md` Copy #1).
 
 ```typescript
 server.tool("get_order", {
@@ -362,7 +362,7 @@ Optional but high-leverage: vary response size by remaining context budget. Thre
 | 40 — 70% | Summary | Count + top 5 + `detail_available: true` hint. |
 | < 40% | Minimal | Count only + `Narrow your query or call get_details(id) for a specific record.` |
 
-Source: `optimize-agentic-mcp/patterns/context-engineering.md` Pattern 3. Tiered verbosity gives the model a graceful off-ramp on long sessions; a tool that returns 10,000 rows at turn 40 silently degrades model performance.
+Tiered verbosity gives the model a graceful off-ramp on long sessions; a tool that returns 10,000 rows at turn 40 silently degrades model performance.
 
 ## Anti-patterns to refuse
 

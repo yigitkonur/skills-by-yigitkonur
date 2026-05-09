@@ -1,6 +1,6 @@
 # Decision tree — response format
 
-Pick text, structured content, mixed, or a paginated/Resource path. The shape of a tool's response determines token cost, agent comprehension, and what the next tool can do with the output. Wrong shape burns context budget. Source: `optimize-agentic-mcp/references/decision-trees/response-format.md`.
+Pick text, structured content, mixed, or a paginated/Resource path. The shape of a tool's response determines token cost, agent comprehension, and what the next tool can do with the output. Wrong shape burns context budget.
 
 ## Decision branches
 

@@ -1,6 +1,6 @@
 # cli/flags-and-discovery.md
 
-The standard flag set every agent-ready CLI supports, plus TTY/CI detection rules and the help-text-as-API contract. Agents discover what your CLI can do by reading `--help` — that text is part of your API surface, not documentation. This file specifies the flags, the auto-detection logic, and the help structure. Source: distilled from optimize-agentic-cli/references/discovery-and-auth.md (standard flag table, TTY/CI detection, help-as-API patterns).
+The standard flag set every agent-ready CLI supports, plus TTY/CI detection rules and the help-text-as-API contract. Agents discover what your CLI can do by reading `--help` — that text is part of your API surface, not documentation. This file specifies the flags, the auto-detection logic, and the help structure.
 
 ## Standard flag registry
 
