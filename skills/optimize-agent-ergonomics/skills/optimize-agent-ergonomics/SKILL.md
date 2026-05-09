@@ -1,192 +1,249 @@
 ---
 name: optimize-agent-ergonomics
-description: Use skill if you are deciding CLI vs MCP or harmonizing shared agent-ergonomics contracts across both surfaces before routing to surface-specific skills.
+description: Use skill if you are deciding CLI vs MCP, harmonizing cross-surface agent contracts, or auditing surface choice before implementation.
 ---
 
 # optimize-agent-ergonomics
 
-Make cross-surface tool decisions that agents can actually use. Whether the tool ships as a CLI binary, an MCP server, or both, the agent's experience is the same — read a description, pick a tool, send typed input, get a typed result, recover from errors. This skill owns the shared principles and CLI-vs-MCP routing decision; surface-specific audit and build work belongs to the dedicated companion skills.
+Make agent-facing tool surfaces easier to choose, use, and repair. This skill owns the CLI-vs-MCP decision, shared contract design, cross-surface audits, and handoff to surface-specific MCP build and test skills.
 
-## How to think about this
+## Trigger Boundary
 
-Three principles, applied without exception.
+Use this skill when the task is about:
 
-1. **Surface is a deployment choice, not an identity.** The same business logic can ship as a CLI, an MCP server, or both. Decide based on the workload — who calls it, how often, with what auth model, against what state — not based on which technology felt newer last week. Every cross-surface pass runs through `references/common/decide-surface.md` before surface-specific work begins.
-2. **Descriptions are prompt engineering.** A `--help` page or a `tools/list` description is text the LLM reads at decision time. Write for the model, not for a human reading docs. Names, parameter labels, error messages — all of it is the prompt the agent uses to figure out whether to call your tool. See `references/common/descriptions-as-prompts.md`.
-3. **Errors are the hard part.** Outputs an agent can parse and retry on are the difference between a tool the agent uses confidently and one it abandons after the first failure. Distinguish transient from permanent. Surface the next action. Make the envelope schema-versioned. See `references/common/error-strategy.md`.
+- deciding whether an agent workflow belongs on a CLI, MCP server, hybrid surface, or skill-plus-CLI path
+- harmonizing one workflow across CLI and MCP without duplicating incompatible contracts
+- auditing why an agent fails on an existing tool when the root cause could be surface choice, descriptions, outputs, auth, state, or retries
+- drafting the shared agent contract before implementation starts
+- preparing a named handoff to a build or test skill after the surface is fixed
 
-## Use this skill when
+Do not use this skill when:
 
-- Deciding whether a workflow should be a CLI, an MCP server, or both
-- Harmonizing a workflow that ships as both CLI and MCP
-- Designing the shared agent-facing contract before the surface is fixed
-- Diagnosing why an agent keeps failing on a tool when the root cause could be surface choice, description, output, or retry semantics
-- Preparing a handoff to `references/cli/audit-checklist.md` (CLI audit) or `references/cli/architect-new.md` (CLI design), `references/mcp/audit-existing.md` (MCP audit) or `references/mcp/architect-new.md` (MCP design), or an MCP build skill
+- the surface is already fixed and the task is implementation-only
+- the work is ordinary CLI usage with no agent-readiness concern
+- the work is ordinary MCP server coding with no ergonomics, surface, audit, or contract decision
+- the user asks for one throwaway shell script with no agent loop
+- the user asks to deprecate sibling skills; that is a separate maintainer-approved scope
 
-## Do not use this skill when
+## Relationship To Sibling Skills
 
-- The work is a CLI-only audit, CLI-only redesign, or CLI implementation after the surface is fixed — defer to `references/cli/audit-checklist.md` (CLI audit) or `references/cli/architect-new.md` (CLI design)
-- The work is an MCP-only audit, MCP architecture pass, or MCP optimization after the surface is fixed — defer to `references/mcp/audit-existing.md` (MCP audit) or `references/mcp/architect-new.md` (MCP design)
-- *Implementing* an MCP server in a specific SDK after the architecture is decided — defer to `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `build-mcp-use-server`
-- *Testing* an MCP server end-to-end — defer to `test-by-mcpc-cli`
-- *Porting* a v1 MCP server to v2 — defer to `convert-mcp-server-sdk-v1-to-v2`
-- The user wants a one-off shell script with no agent in the loop
+Maintained position for this repo: `optimize-agent-ergonomics` is the canonical cross-surface successor for agent-ready CLI/MCP decisions and shared contracts.
+
+If `optimize-agentic-cli` or `optimize-agentic-mcp` exists in an installed pack, treat them as legacy surface-specific workflows until a maintainer approves one of two separate follow-ups:
+
+- deprecate both legacy skills into redirect stubs pointing here
+- keep all three active with narrower legacy descriptions and explicit routing boundaries
+
+Do not edit sibling skills during an ergonomics pass unless the maintainer explicitly authorizes that separate deprecation or narrowing scope.
+
+## Non-Negotiable Rules
+
+1. Decide workload before deciding surface.
+2. Audit existing code before recommending patterns.
+3. Keep stdout, MCP content, and `structuredContent` parseable.
+4. Return retryable errors with next action and stable error codes.
+5. Route MCP implementation to `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `build-mcp-use-server` after architecture is fixed.
+6. Route MCP end-to-end verification to `test-by-mcpc-cli`.
+7. Cite exact reference files for every recommendation.
+8. State the verification rung actually reached.
+
+## Modes
+
+Pick one mode and name it in the answer.
+
+| Mode | Use when | Required first route |
+|---|---|---|
+| Mode A — audit existing surface | Existing CLI/MCP/hybrid tool needs an agent-readiness audit | `references/common/audit-rhythm.md` |
+| Mode B — sketch new architecture | New tool needs surface, contract, and handoff before implementation | `references/common/design-thinking.md` |
+| Mode C — decide surface | Surface is undecided or contested | `references/common/decide-surface.md` |
+| Mode D — harmonize contracts | One workflow must expose CLI and MCP consistently | `references/common/agent-integration.md` |
+| Mode E — route out | Surface and implementation path are already fixed | matching reference below, then named companion skill |
+
+## Surface Decision Summary
+
+Use `references/common/decide-surface.md` for the full decision tree. The short path:
+
+1. CLI fits shell-composable, local, batch, CI, or human-and-agent workflows.
+2. MCP fits session-aware, model-native, remote, multi-tool, or client-integrated workflows.
+3. Hybrid fits a shared core with both a subprocess boundary and MCP transport.
+4. Skill+CLI fits deterministic local commands where a skill supplies workflow judgment.
+5. Revisit surface if auth, state, audience, or retry semantics contradict the first answer.
+
+Every surface decision output must use this shape:
+
+```markdown
+Surface recommendation: CLI / MCP / hybrid / skill+CLI
+Reason: workload, auth, state, audience
+Tradeoff: what the losing option would cost
+Next route: references/...
+Confidence: high / medium / low
+```
 
 ## Workflow
 
-### 1. Classify intent
+### 1. Explore
 
-Pick exactly one entry point. Ambiguous → ask one targeted question, never guess.
+Read the target code, docs, or current tool surface first. For existing tools, collect:
 
-| Intent | Mode | Route |
-|---|---|---|
-| "Should this be a CLI or an MCP?" | Decide | `references/common/decide-surface.md` → route to the companion skill once the surface is fixed |
-| "Design the agent contract before picking a surface" | Cross-surface design | `references/common/design-thinking.md` → `references/common/output-contracts.md` → `references/common/error-strategy.md` → handoff |
-| "This workflow needs both CLI and MCP" | Harmonize | `references/common/agent-integration.md` → `references/common/descriptions-as-prompts.md` → surface-specific handoff |
-| "The agent fails, but I don't know whether it is a CLI or MCP problem" | Diagnose | `references/common/audit-rhythm.md` → `references/common/decide-surface.md` → route to companion skill |
-| "Audit my existing CLI" | Route out | `references/cli/audit-checklist.md` (CLI audit) or `references/cli/architect-new.md` (CLI design) |
-| "Audit my existing MCP server" | Route out | `references/mcp/audit-existing.md` (MCP audit) or `references/mcp/architect-new.md` (MCP design) |
+- command/tool list and names
+- input schemas or flags
+- output shape
+- error and retry behavior
+- auth and headless behavior
+- state/session behavior
+- operational signals: logs, tests, transport, deployment, timeout behavior
 
-### 2. Apply the universal principles
+### 2. Decide Or Confirm Surface
 
-Every cross-surface decision and shared-contract pass routes through the shared principle set first:
+Use `references/common/decide-surface.md` before recommending CLI, MCP, hybrid, or skill+CLI. If the user already chose a surface, still verify that workload, auth, state, and audience do not contradict it.
 
-- `references/common/design-thinking.md` — 8 questions to answer for any new agent tool: workload, audience, statefulness, auth, scale, error semantics, observability, lifecycle.
-- `references/common/descriptions-as-prompts.md` — names + descriptions ARE the prompt; how to write them so the model picks the right tool.
-- `references/common/output-contracts.md` — structured outputs, schema versioning, what an agent can parse vs what dumps raw API noise into context.
-- `references/common/error-strategy.md` — retry-friendly error envelopes; transient vs permanent; what the agent needs to recover.
-- `references/common/idempotency-and-retries.md` — verb semantics (create / apply / ensure / delete), idempotency keys, side-effect safety.
-- `references/common/iterative-loops.md` — multi-turn workflows: agent submits → validates → repairs → resubmits → advances.
-- `references/common/agent-cognitive-load.md` — token budgets, progressive disclosure, why fewer well-designed tools beat thirty narrow ones.
-- `references/common/agent-integration.md` — how agents actually call tools (subprocess for CLI, MCP client for MCP); failure modes the tool author should anticipate.
-- `references/common/audit-rhythm.md` — the Explore → Diagnose → Present → Optimize ritual; do not pattern-match before reading the user's code.
-- `references/common/exemplars.md` — production CLIs and MCP servers that get this right, evidence-based.
-- `references/common/decide-surface.md` — the canonical CLI-vs-MCP decision tree; the only file that owns this question.
+### 3. Apply Shared Contracts
 
-### 3. Apply the surface-specific patterns
+Use the common references before surface-specific detail:
 
-For CLI-specific handoffs, cite the relevant `references/cli/` file in this skill only to explain the shared contract, then route detailed CLI audit/design work to `references/cli/audit-checklist.md` (CLI audit) or `references/cli/architect-new.md` (CLI design).
+- descriptions and names: `references/common/descriptions-as-prompts.md`
+- output shape: `references/common/output-contracts.md`
+- errors and retries: `references/common/error-strategy.md`
+- idempotency: `references/common/idempotency-and-retries.md`
+- iterative repair loops: `references/common/iterative-loops.md`
+- cognitive load: `references/common/agent-cognitive-load.md`
 
-For MCP-specific handoffs, cite `references/mcp/audit-existing.md`, the relevant `references/mcp/decision-trees/*.md`, or `references/mcp/patterns/*.md` only to explain the shared contract, then route detailed MCP audit/architecture work to `references/mcp/audit-existing.md` (MCP audit) or `references/mcp/architect-new.md` (MCP design).
+### 4. Route Surface-Specific Work
 
-### 4. Hand off once the surface is fixed
+- CLI audit or design: route to `references/cli/audit-checklist.md` or `references/cli/architect-new.md`.
+- MCP audit or design: route to `references/mcp/audit-existing.md` or `references/mcp/architect-new.md`.
+- MCP implementation:
+  - `build-mcp-server-sdk-v1` for production-ready official SDK v1 work
+  - `build-mcp-server-sdk-v2` for split-package v2 work
+  - `build-mcp-use-server` for HTTP-first `mcp-use` server work
+- MCP testing: route to `test-by-mcpc-cli`.
 
-After the surface decision or cross-surface contract is approved by the user:
+## Output Contracts
 
-- **CLI:** hand off to `references/cli/audit-checklist.md` (CLI audit) or `references/cli/architect-new.md` (CLI design) with the chosen contract and any relevant CLI reference route.
-- **MCP architecture / optimization:** hand off to `references/mcp/audit-existing.md` (MCP audit) or `references/mcp/architect-new.md` (MCP design).
-- **MCP implementation:** route to the right companion build skill based on the architecture decision:
-  - `build-mcp-server-sdk-v1` — production-ready, mainstream SDK
-  - `build-mcp-server-sdk-v2` — beta SDK, newest features
-  - `build-mcp-use-server` — HTTP-first, modern DX, opinionated wrapper
-  - `convert-mcp-server-sdk-v1-to-v2` — when the user has a v1 server and wants to port
+### Mode A Audit
 
-## Decision rules
+Produce:
 
-- **Surface decision is conditional, not assumed.** Don't open with "is this a CLI or MCP?" — first ask what the workload is. The surface falls out.
-- **Audit before optimize.** Read the existing surface and failure evidence before suggesting patterns. Mechanical pattern-matching is worse than no help at all — that's why `references/common/audit-rhythm.md` is non-negotiable.
-- **Descriptions are prompts.** Treat every tool description and `--help` page as text the LLM reads at tool-selection time, not as documentation a human will read once.
-- **Errors must be retryable.** If the agent can't tell whether to retry, the tool will be abandoned after one failure. Schema-versioned envelopes, error codes, and `next_action` guidance are the difference.
-- **Surface-specific work routes to surface-specific references.** Don't try to apply CLI patterns to MCP and vice versa — the contracts are different even when the principles match.
-- **Companion skills own surface-specific depth.** This skill stops at surface decision + shared contract; CLI/MCP-specific skills audit, optimize, architect, and implement.
+```markdown
+Mode: Mode A — audit existing surface
+Target path: path/to/tool
 
-## Recovery paths
+Scorecard:
+| Dimension | Score | Evidence |
+|---|---:|---|
+| discovery | 0-5 | file:line |
+| input/schema | 0-5 | file:line |
+| output | 0-5 | file:line |
+| error/retry | 0-5 | file:line |
+| auth/headless | 0-5 | file:line |
+| state/iteration | 0-5 | file:line |
+| operations | 0-5 | file:line |
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| Agent fails to call a tool that "looks right" | Description is human-readable, not LLM-readable | Read `references/common/descriptions-as-prompts.md`; rewrite description with intent + parameter shape + side-effect note |
-| Agent succeeds once, then gives up on retry | Error envelope doesn't distinguish transient from permanent | Read `references/common/error-strategy.md`; add error code + retry guidance to envelope |
-| Agent submits malformed input repeatedly | Schema is too deep or too permissive | Read `references/mcp/patterns/schema-design.md` (MCP) or `references/cli/flags-and-discovery.md` (CLI); flatten + tighten |
-| 30 tools, agent picks the wrong one | Too many tools in flat namespace | Read `references/mcp/decision-trees/tool-count.md`; consolidate or progressive-discover |
-| Agent times out on a long-running tool | No iterative pattern | Read `references/common/iterative-loops.md` + `references/cli/iterative-pattern.md` (CLI) or `references/mcp/patterns/agentic-patterns.md` (MCP); add `phase` + `progress` + `next_action` |
-| Tool exposes raw API JSON | Agent loses context budget on noise | Read `references/mcp/patterns/tools.md` (response-shape) or `references/cli/output-envelope.md`; project to agent-relevant fields only |
-| MCP server passes audit but fails in production | Skipped `references/mcp/decision-trees/production-readiness.md` | Run that tree before declaring done |
-| User asks "should I use MCP or just stick with the CLI?" | Surface decision question | Read `references/common/decide-surface.md` — the decision tree is in there |
-| Agent loses context across turns on a multi-step workflow | No session state | Read `references/mcp/patterns/session-and-state.md` (MCP) or `references/cli/iterative-pattern.md` (CLI) |
-| Agent keeps re-fetching the same large data | No caching strategy | Read `references/mcp/patterns/caching-economics.md` |
+Top findings:
+1. Severity: Critical / High / Medium / Low
+   Evidence: file:line
+   Issue:
+   Reference route:
+   Minimal fix:
+   Comprehensive fix:
 
-## Reference routing
+Recommended fix path: minimal / comprehensive
+Verification rung reached: Rung 1-6, with commands or observation
+```
+
+### Mode B Architecture Sketch
+
+Produce:
+
+```markdown
+Mode: Mode B — sketch new architecture
+Workload:
+Chosen surface: CLI / MCP / hybrid / skill+CLI
+Command/tool set:
+Output contract:
+Error model:
+Auth model:
+State model:
+Test plan:
+Handoff skill:
+Next route: references/...
+Verification rung reached: Rung 1-6, with commands or observation
+```
+
+## Reference Routing
+
+### Common
 
 | File | Read when |
 |---|---|
-| `references/common/agent-cognitive-load.md` | Tool count, token budgets, context-engineering across surfaces |
-| `references/common/agent-integration.md` | Understanding how agents actually call tools |
-| `references/common/audit-rhythm.md` | Diagnosing ambiguous tool failures before routing to a surface skill |
-| `references/common/decide-surface.md` | The user is unsure whether the workflow should be a CLI or MCP, or you need to confirm the surface choice before optimizing |
-| `references/common/descriptions-as-prompts.md` | Whenever tool naming or description is in scope |
-| `references/common/design-thinking.md` | Designing a shared agent contract before the surface is fixed |
-| `references/common/error-strategy.md` | Designing error envelopes; cross-surface principles |
-| `references/common/exemplars.md` | Need a worked example or vendor reference |
-| `references/common/idempotency-and-retries.md` | Designing operations with side effects; verb semantics |
-| `references/common/iterative-loops.md` | Multi-turn agent workflows; submit → validate → repair |
-| `references/common/output-contracts.md` | Designing structured output; cross-surface principles |
-| `references/cli/architect-new.md` | CLI-specific handoff context for a new agent-ready CLI |
-| `references/cli/audit-checklist.md` | CLI-specific handoff context for the 5-check audit |
-| `references/cli/auth-headless.md` | Headless auth, env vars, sandbox boundaries |
-| `references/cli/code-templates.md` | Production code samples in Go / Python / Node / Rust / Bash |
-| `references/cli/exit-codes.md` | Semantic exit code taxonomy |
-| `references/cli/flags-and-discovery.md` | Standard flag registry, TTY/CI detection, help-text-as-API |
-| `references/cli/iterative-pattern.md` | CLI-specific iterative pattern fields |
-| `references/cli/output-envelope.md` | CLI-specific JSON envelope (`ok` / `result` / `error` / `schema_version`) |
-| `references/cli/subprocess-harness.md` | Calling an agent-ready CLI from a Python / Node agent harness |
-| `references/mcp/architect-new.md` | MCP-specific handoff context for a new MCP server |
-| `references/mcp/audit-existing.md` | MCP-specific handoff context for auditing an existing MCP server |
-| `references/mcp/decision-trees/design-phase.md` | Deciding whether MCP architecture work is ready to hand off |
-| `references/mcp/decision-trees/error-strategy.md` | Choosing MCP error signaling and recovery shape |
-| `references/mcp/decision-trees/production-readiness.md` | Auditing production deployment, ops, and reliability readiness |
-| `references/mcp/decision-trees/response-format.md` | Choosing response shape and content structure |
-| `references/mcp/decision-trees/scaling.md` | Deciding scaling, transport, and operational shape |
-| `references/mcp/decision-trees/security-posture.md` | Auditing auth, secrets, permissions, and threat posture |
-| `references/mcp/decision-trees/tool-count.md` | Deciding whether to split, merge, or progressively disclose tools |
-| `references/mcp/patterns/advanced-protocol.md` | Advanced protocol capabilities and when to expose them |
-| `references/mcp/patterns/agentic-patterns.md` | MCP patterns that help agents recover, iterate, and continue work |
-| `references/mcp/patterns/auth-identity.md` | Auth, identity, and user-context design |
-| `references/mcp/patterns/caching-economics.md` | Caching strategy and token/cost tradeoffs |
-| `references/mcp/patterns/client-compatibility.md` | Client-specific compatibility and capability expectations |
-| `references/mcp/patterns/error-handling.md` | MCP error envelopes, `isError`, and recoverability |
-| `references/mcp/patterns/exemplar-servers.md` | Worked server examples and patterns worth copying |
-| `references/mcp/patterns/model-behavior.md` | Model behavior considerations that affect MCP design |
-| `references/mcp/patterns/progressive-discovery.md` | Progressive disclosure for large tool surfaces |
-| `references/mcp/patterns/prompt-gates.md` | Prompt and confirmation gates before risky actions |
-| `references/mcp/patterns/registry-and-distribution.md` | Registry, packaging, and distribution considerations |
-| `references/mcp/patterns/resources-and-prompts.md` | MCP resources and prompts as discovery surfaces |
-| `references/mcp/patterns/schema-design.md` | Schema depth, argument shape, and validation design |
-| `references/mcp/patterns/security.md` | Security principles for MCP servers |
-| `references/mcp/patterns/session-and-state.md` | Session state, continuity, and multi-step tool flows |
-| `references/mcp/patterns/testing.md` | MCP testing strategy and verification expectations |
-| `references/mcp/patterns/threat-catalog.md` | Threat catalog for review and design work |
-| `references/mcp/patterns/tools.md` | Tool granularity, naming, and response-shape patterns |
-| `references/mcp/patterns/transport-and-ops.md` | Transport, deployment, observability, and operations |
+| `references/common/agent-cognitive-load.md` | Tool count, response size, token budget, progressive disclosure, or context pressure matters. |
+| `references/common/agent-integration.md` | The design must survive real agent harnesses across subprocess and MCP clients. |
+| `references/common/audit-rhythm.md` | Any existing tool is being audited or diagnosed. |
+| `references/common/decide-surface.md` | CLI vs MCP vs hybrid vs skill+CLI is open, contested, or needs confirmation. |
+| `references/common/descriptions-as-prompts.md` | Names, descriptions, help text, parameter text, or tool selection are in scope. |
+| `references/common/design-thinking.md` | A new agent-facing workflow needs workload-first architecture. |
+| `references/common/error-strategy.md` | Error envelopes, retry semantics, `next_action`, transient/permanent classification, or loop detection are in scope. |
+| `references/common/exemplars.md` | Precedent from production CLIs or MCP servers would sharpen a decision. |
+| `references/common/idempotency-and-retries.md` | Side effects, retries, idempotency keys, or verb semantics are in scope. |
+| `references/common/iterative-loops.md` | Multi-turn submit, validate, repair, resume, or state-token workflows are in scope. |
+| `references/common/output-contracts.md` | Structured outputs, schema versioning, pagination, projection, or response-size caps are in scope. |
 
-## Cross-skill handoffs
+### CLI
 
-- **`build-mcp-server-sdk-v1`** — implements the MCP server using `@modelcontextprotocol/sdk` v1.x; the canonical production path
-- **`build-mcp-server-sdk-v2`** — implements with the v2 split-package SDK (beta as of May 2026)
-- **`build-mcp-use-server`** — implements with the `mcp-use` HTTP-first wrapper
-- **`convert-mcp-server-sdk-v1-to-v2`** — ports a v1 server to v2
-- **`test-by-mcpc-cli`** — tests an MCP server end-to-end with `mcpc 0.2.x`
-- **`use-railway`** — operates Railway-hosted MCP servers (logs, scale, restart) post-deploy
-- **`init-makefiles`** — scaffolds `make` targets around the resulting tool (CLI or MCP server)
+| File | Read when |
+|---|---|
+| `references/cli/architect-new.md` | Designing a new agent-ready CLI after the surface decision lands on CLI. |
+| `references/cli/audit-checklist.md` | Auditing an existing CLI for stdout/stderr, exit codes, headless mode, structured errors, and parsing reliability. |
+| `references/cli/auth-headless.md` | CLI auth must work in CI, containers, remote shells, or non-interactive agent runs. |
+| `references/cli/code-templates.md` | A small scaffold or implementation template is needed after CLI contract design. |
+| `references/cli/exit-codes.md` | Exit-code taxonomy or retry/escalation classification is in scope. |
+| `references/cli/flags-and-discovery.md` | Help text, standard flags, TTY detection, or CLI discovery is in scope. |
+| `references/cli/iterative-pattern.md` | CLI needs validate-repair-advance phases, state tokens, or NDJSON progress. |
+| `references/cli/output-envelope.md` | CLI JSON envelope, error object, pagination, or streaming output shape is in scope. |
+| `references/cli/subprocess-harness.md` | A CLI must be exercised from a realistic agent subprocess harness. |
 
-## Guardrails
+### MCP
 
-- **Never apply patterns mechanically.** Read the user's code first. The audit rhythm is non-negotiable for a reason — pattern-fitting before exploration generates worse advice than no advice.
-- **Never claim a CLI is agent-ready without routing to the CLI 5-check audit.** Stdout/stderr, exit codes, non-interactive, structured errors, parsing reliability — all five belong to `references/cli/audit-checklist.md` (CLI audit) or `references/cli/architect-new.md` (CLI design) once the surface is fixed.
-- **Never skip `references/common/decide-surface.md` when the user is unsure of the surface.** Guessing the surface pollutes the rest of the conversation.
-- **Never wrap a REST API 1:1** as either CLI commands or MCP tools. That's a guaranteed agent footgun — the agent loses context on response noise and the tool surface is too granular for intent-based dispatch (`references/mcp/patterns/tools.md`).
-- **Never create deeply nested input schemas.** Flatten to ≤6 top-level params. LLMs fail at deep-nested structure (`references/mcp/patterns/schema-design.md`).
-- **Never expose protocol errors for business logic.** Use `isError` + structured content (MCP) or exit codes + envelope (CLI). Protocol errors are reserved for transport/framework failures.
-- **Never blanket-recommend MCP over CLI or vice versa.** The decision is workload-dependent (`references/common/decide-surface.md`).
-- **Never skip the companion-skill handoff once the surface is fixed.** This skill ends at surface decision + shared contract; surface-specific work belongs to the companion skill.
+| File | Read when |
+|---|---|
+| `references/mcp/architect-new.md` | Designing a new MCP server before routing to a build skill. |
+| `references/mcp/audit-existing.md` | Auditing an existing MCP server for agent-readiness and production ergonomics. |
+| `references/mcp/decision-trees/design-phase.md` | SDK, schema dialect, statefulness, transport, or auth choices are still open. |
+| `references/mcp/decision-trees/error-strategy.md` | MCP-specific protocol error vs `isError` vs structured recovery shape is in scope. |
+| `references/mcp/decision-trees/production-readiness.md` | Deployment, health, telemetry, tests, or production reliability is in scope. |
+| `references/mcp/decision-trees/response-format.md` | Text content, `structuredContent`, mixed responses, resources, or pagination must be chosen. |
+| `references/mcp/decision-trees/scaling.md` | Load profile, session pooling, async tasks, gateway, or multi-server scale is in scope. |
+| `references/mcp/decision-trees/security-posture.md` | Deployment threat model, auth, secrets, permissions, or SSRF defenses are in scope. |
+| `references/mcp/decision-trees/tool-count.md` | Tool count, granularity, consolidation, or progressive discovery is in scope. |
+| `references/mcp/patterns/advanced-protocol.md` | Sampling, elicitation, roots, cancellation, or capability fallback is in scope. |
+| `references/mcp/patterns/agentic-patterns.md` | MCP workflow gating, HATEOAS next actions, prompt gates, or server-enforced stages are in scope. |
+| `references/mcp/patterns/auth-identity.md` | OAuth 2.1, PRM, CIMD, OBO, audience validation, or step-up consent is in scope. |
+| `references/mcp/patterns/caching-economics.md` | Prompt caching, result caching, invalidation, or token-cost economics is in scope. |
+| `references/mcp/patterns/client-compatibility.md` | Client support differences across Claude, ChatGPT, Cursor, Goose, or other MCP clients matter. |
+| `references/mcp/patterns/error-handling.md` | MCP result errors, `isError`, recovery hints, validation errors, or retry fields are in scope. |
+| `references/mcp/patterns/exemplar-servers.md` | Vendor server precedent or production pattern comparison is needed. |
+| `references/mcp/patterns/model-behavior.md` | Model-specific tool selection, schema filling, or long-context behavior affects the design. |
+| `references/mcp/patterns/progressive-discovery.md` | Large tool catalogs need meta-tools, staged disclosure, semantic search, or hidden-tool fallback. |
+| `references/mcp/patterns/prompt-gates.md` | Destructive or high-stakes actions need confirmation, approval, or consent gates. |
+| `references/mcp/patterns/registry-and-distribution.md` | Publishing, namespacing, marketplace install, registry metadata, or trust signals are in scope. |
+| `references/mcp/patterns/resources-and-prompts.md` | MCP resources or prompts are part of discovery, context, or reusable workflow design. |
+| `references/mcp/patterns/schema-design.md` | Input schemas, nesting, enums, optionality, validation, or generated schemas are in scope. |
+| `references/mcp/patterns/security.md` | Prompt injection, data exfiltration, privilege escalation, or hardening strategy is in scope. |
+| `references/mcp/patterns/session-and-state.md` | Session state, stateless tokens, resumability, or cross-turn continuity is in scope. |
+| `references/mcp/patterns/testing.md` | Unit, protocol, Inspector, `mcpc`, regression, or production verification strategy is in scope. |
+| `references/mcp/patterns/threat-catalog.md` | Findings need named MCP attack vocabulary, CVEs, or dated practitioner evidence. |
+| `references/mcp/patterns/tools.md` | Tool granularity, descriptions, response shape, or tool composition is in scope. |
+| `references/mcp/patterns/transport-and-ops.md` | Transport, stdio/HTTP/SSE, stdout purity, deployment, observability, or ops is in scope. |
 
-## Final checks
+## Final Checks
 
 Before declaring done:
 
-- [ ] Mode is explicit (Decide / Cross-surface design / Harmonize / Diagnose / Route out)
-- [ ] At least one exact common reference file was read for principles
-- [ ] At least one exact CLI or MCP reference file was read for surface specifics
-- [ ] Findings are presented one at a time with options, not as a wall of recommendations
-- [ ] Handoff to companion CLI/MCP/build/test skill is named once the surface is fixed
-- [ ] Surface decision was made consciously, not assumed
-- [ ] Every recommendation cites the reference file that backs it
+- [ ] Mode is explicit.
+- [ ] Surface recommendation uses the required five-line shape when surface choice was in scope.
+- [ ] Mode A audit output includes scorecard, findings, fix options, evidence, and verification rung.
+- [ ] Mode B sketch names workload, surface, command/tool set, output, error, auth, state, test plan, and handoff skill.
+- [ ] Every recommendation cites a `references/...` file or companion skill.
+- [ ] MCP implementation handoff names `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `build-mcp-use-server`.
+- [ ] MCP test handoff names `test-by-mcpc-cli` when end-to-end MCP verification is required.
+- [ ] Verification claims match the rung actually reached.
