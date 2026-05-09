@@ -38,6 +38,8 @@ Run `tree -L 3` and `ls package.json tsconfig.json` in the project directory. Lo
 - `.mcp.json` or `mcp` key in `package.json` → MCP client config, not server code
 - `src/` with tool/resource handler files → existing implementation to extend
 
+If `package.json` exists, run the bundled version check: `bash scripts/check-mcp-sdk-v1-version.sh [project-dir]`. See `scripts/check-mcp-sdk-v1-version.sh.md`.
+
 Summarize: existing server (go to Step 2A) or new server (go to Step 2B).
 
 ### 2A — Audit an existing SDK server
@@ -83,6 +85,7 @@ Before writing server code, confirm:
 
 - [ ] Node.js 18+ installed (required for `globalThis.crypto`)
 - [ ] `npm install @modelcontextprotocol/sdk zod` — both are required
+- [ ] Existing projects pass `bash scripts/check-mcp-sdk-v1-version.sh [project-dir]`
 - [ ] TypeScript 5+ with `"moduleResolution": "node16"` or `"nodenext"` in tsconfig
 - [ ] If HTTP transport: `npm install express` (Express 5 recommended)
 
