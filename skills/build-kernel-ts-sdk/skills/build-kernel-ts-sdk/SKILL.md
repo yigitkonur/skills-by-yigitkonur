@@ -123,6 +123,21 @@ For each resource, decide the cleanup path before running: `deleteByID`, pool `r
 5. **Handle lifecycle.** Always pair `browsers.create` with `browsers.deleteByID`, even on error paths. Use `try/finally`. See `references/guides/browsers-lifecycle.md`.
 6. **Deploy or run.** For Mode B, `kernel deploy` and consume invocations; for Mode A, run inside your service. See `references/guides/apps-deploy-invoke.md` and `references/examples/deploy-and-invoke-app.md`.
 
+## Output contract
+
+When finishing a Kernel task, report only fields that apply:
+
+- operating mode: embed, deploy, or mixed
+- package versions checked and package range pinned
+- created browser `session_id` values and whether each was deleted, pool-released, intentionally timed out, or left running with reason
+- live view URL or replay/artifact path when relevant
+- profile name/id and whether `save_changes` was used
+- Managed Auth connection id, final `flow_status`/`status`, and profile name
+- deployment id, app name, version, and action name
+- invocation id, sync/async mode, terminal status, and how logs/events were consumed
+- payload/output size strategy for large artifacts
+- verification rung actually reached: typecheck, script run, live browser run, deployment/invocation observed
+
 ## Bundled scripts
 
 | Script | Use |
