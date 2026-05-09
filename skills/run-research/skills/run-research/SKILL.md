@@ -129,21 +129,26 @@ already run; the classifier tracks them. Loop search–capture–synthesize
 until every `gaps_to_watch` item from `start-research` is closed and
 the last search round surfaces no new terms. Then stop and write up.
 
-## When to escalate to multi-agent
+## Deep single-question path
 
-Single-agent is the default. Escalate when:
+Single-agent research is the default. Use the deep path only when one
+technical question spans 3+ distinct technical subdomains that benefit
+from independent reading lenses, such as security, performance,
+maintainer intent, and migration experience.
 
-- The question has five or more distinct comparison axes that benefit from
-  focused attention (e.g., security plus performance plus ergonomics plus
-  pricing plus ecosystem in one mission).
-- Time budget exceeds roughly 90 minutes of agent work.
-- Domain experts in different verticals need to contribute independently
-  (security review uses a different reading lens than performance
-  benchmarking).
+The output still defaults to one markdown synthesis. If the user
+explicitly asks for files, a small numbered folder is allowed; do not
+build per-entity packs, product profiles, comparison-template corpora,
+or reusable source-ledger corpora here.
 
-For multi-agent orchestration, read `references/orchestrator.md`. Below
-the escalation threshold, single-agent is cheaper and produces more
-coherent synthesis.
+Route corpus-shaped requests away: 5+ vendors/entities, product or
+category landscapes, buyer comparisons, market or industry research,
+reusable evidence packs, and multi-file corpora belong in
+`run-industry-research`; in this repo, route the same work to
+`run-corpus-research`.
+
+For deep single-question orchestration, read `references/orchestrator.md`.
+Below the threshold, stay single-agent for coherence.
 
 ## Reference routing
 
@@ -154,7 +159,7 @@ coherent synthesis.
 | What does an end-to-end research session look like for my scenario? | `references/workflows.md` |
 | How do I cite, mark inference, surface contradictions, format output? | `references/synthesis.md` |
 | A scrape timed out. A search returned 0 results. Now what? | `references/failure-modes.md` |
-| I have ≥5 axes and need to dispatch parallel researchers. | `references/orchestrator.md` |
+| A single question spans 3+ technical subdomains and needs parallel evidence gathering. | `references/orchestrator.md` |
 
 ## Guardrails
 
