@@ -80,7 +80,7 @@ if [ -s "answers/$slug.md" ]; then
 fi
 
 # 2. Mark entry running.
-python3 manifest-update.py --manifest "$MANIFEST" --entry "$slug" \
+python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$slug" \
     --set 'status=running' --set "started_at=$(date -u ...)"
 
 # 3. Spawn codex with the universal flag set + per-spawn additions.

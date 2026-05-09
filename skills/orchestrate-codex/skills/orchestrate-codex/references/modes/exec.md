@@ -67,7 +67,7 @@ bash setup-worktree.sh "$task_id" "$task_branch" "$base_branch"
 # Worktree is at ../<repo>-wt-exec-<task_id> (per worktree-contract.md naming).
 
 # 2. Mark entry running.
-python3 manifest-update.py --manifest "$MANIFEST" --entry "$task_id" \
+python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$task_id" \
     --set 'status=running' --set "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --set 'attempts++'
 
@@ -106,7 +106,7 @@ if [ "$CODEX_EXIT" = "0" ] && commits-landed-since-baseline; then
 else
     status=failed
 fi
-python3 manifest-update.py --manifest "$MANIFEST" --entry "$task_id" \
+python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$task_id" \
     --set "status=$status" --set "exit_code=$CODEX_EXIT" \
     --set "finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --set "verify_status=$verify_status"

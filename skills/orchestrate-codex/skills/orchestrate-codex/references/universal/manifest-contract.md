@@ -282,7 +282,7 @@ Concurrent invocations of either manifest-update helper against the same manifes
 | Rescue redispatch | Re-flip selected entries to `queued`, clear prior terminal fields, append history rows, then invoke the original mode's runner with `--only`. The runner increments `attempts`. |
 | Tidy success | Manifest **deleted** (only after all entries terminal AND every worktree removed). |
 
-Hand-editing the manifest is forbidden. If audit reveals drift, fix via `manifest-update.py --entry <id> --set 'status=failed' --set 'last_error=manual-correction'`. The history shows the correction.
+Hand-editing the manifest is forbidden. If audit reveals drift, fix via `manifest-update.py entry --entry <id> --set 'status=failed' --set 'last_error=manual-correction'`. The history shows the correction.
 
 ## Concurrent runs on the same workspace
 

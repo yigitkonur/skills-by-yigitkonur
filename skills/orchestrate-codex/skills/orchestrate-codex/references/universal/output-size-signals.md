@@ -98,7 +98,7 @@ A `--force-redo` convenience flag is in the design notes (see `references/univer
 When you accept a small output as legitimately small:
 
 ```bash
-python3 manifest-update.py --manifest <path> --entry <slug> \
+python3 manifest-update.py entry --manifest <path> --entry <slug> \
     --set 'mode_state.below_floor=true' \
     --set 'mode_state.accepted_small=true' \
     --set 'mode_state.accept_reason="parked domain — no source material"'

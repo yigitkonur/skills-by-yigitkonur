@@ -117,7 +117,7 @@ The runner captures `thread_id` from the first JSONL event:
 
 ```bash
 thread_id=$(jq -r 'select(.type == "thread.started") | .thread_id' < "$jsonl_path" | head -1)
-python3 manifest-update.py --manifest "$MANIFEST" --entry "$slug" \
+python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$slug" \
     --set "codex_thread_id=$thread_id"
 ```
 

@@ -88,7 +88,7 @@ The spine carries a 13-bullet anti-pattern list. This file expands each with a c
 
 **Cost:** History row not appended; audit can't tell what changed; rescue and downstream tools may misclassify.
 
-**Right pattern:** `manifest-update.py --manifest <path> --entry <id> --set 'status=failed' --execute`. The history row records the change; concurrent writers serialize.
+**Right pattern:** `manifest-update.py entry --manifest <path> --entry <id> --set 'status=failed' --execute`. The history row records the change; concurrent writers serialize.
 
 ## 12. Dropping `CODEX_FLAGS` inside an `xargs bash -c` subshell
 
