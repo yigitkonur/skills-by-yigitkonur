@@ -81,6 +81,7 @@ Ask or infer:
 ### 4 — Preflight setup
 
 - [ ] Node.js 20+ installed
+- [ ] For existing projects, run `scripts/check-mcp-server-v2-version.sh` from the target project root; see `scripts/check-mcp-server-v2-version.sh.md`
 - [ ] `npm install --save-exact @modelcontextprotocol/server@2.0.0-alpha.2`
 - [ ] `npm install zod@^4`
 - [ ] If HTTP: `npm install --save-exact @modelcontextprotocol/node@2.0.0-alpha.2`
@@ -101,6 +102,7 @@ Ask or infer:
 
 ### 6 — Validate
 
+- **Version pins**: Run `scripts/check-mcp-server-v2-version.sh`; unsafe v2 alpha ranges must fail
 - **stdio**: `npx @anthropic-ai/mcp-inspector npx tsx src/index.ts`
 - **HTTP**: Start server, test with curl or Inspector
 - **Schemas**: Verify Zod validation catches bad input
