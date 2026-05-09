@@ -55,7 +55,11 @@ emit_matches() {
 }
 
 for layer in "$SRC/domain" "$SRC/application"; do
-  emit_matches "import[^'\"]*['\"][^'\"]*(mcp-use(/server)?|@modelcontextprotocol/sdk|/handlers/|/presenters/|/resources/|/prompts/|/infrastructure/|handlers/|presenters/|resources/|prompts/|infrastructure/)" "$layer" "inner layer imports a forbidden outer/protocol dependency"
+  emit_matches "import[^'\"]*['\"][^'\"]*(mcp-use(/server)?|@modelcontextprotocol/sdk|/gateways/|/handlers/|/presenters/|/resources/|/prompts/|/infrastructure/|gateways/|handlers/|presenters/|resources/|prompts/|infrastructure/)" "$layer" "inner layer imports a forbidden outer/protocol dependency"
+done
+
+for layer in "$SRC/gateways" "$SRC/shared"; do
+  emit_matches "import[^'\"]*['\"][^'\"]*(mcp-use(/server)?|@modelcontextprotocol/sdk)" "$layer" "layer imports MCP protocol/framework API outside the boundary"
 done
 
 if [ "$SEARCH" = "rg" ]; then

@@ -21,7 +21,7 @@ report_missing() {
   FINDINGS=$((FINDINGS + 1))
 }
 
-for dir in domain application handlers presenters infrastructure; do
+for dir in domain application handlers gateways presenters infrastructure; do
   [ -d "$SRC/$dir" ] || report_missing "$SRC/$dir" "canonical directory"
 done
 

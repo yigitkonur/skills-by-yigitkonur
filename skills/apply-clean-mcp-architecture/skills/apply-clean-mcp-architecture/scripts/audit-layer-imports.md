@@ -15,6 +15,7 @@ The project root defaults to `.`.
 ## What it checks
 
 - Forbidden protocol or outer-layer imports inside `src/domain/**` and `src/application/**`.
+- MCP protocol/framework imports inside `src/gateways/**` and `src/shared/**`.
 - `process.env` reads outside `src/infrastructure/config/runtime-config.ts`.
 - `console.*` calls under `src/`.
 - `index.ts` files under `src/`, except the package entrypoint `src/index.ts`.
@@ -27,4 +28,4 @@ The project root defaults to `.`.
 
 ## Limitations
 
-This is a fast textual audit, not a full dependency graph. It can miss aliased imports and can flag intentional entrypoint files that are not documented in the project. Use `dependency-cruiser` for the merge gate.
+This is a fast textual audit, not a full dependency graph. It can miss aliased imports, multiline imports where `import` and `from` are on different lines, and can flag intentional entrypoint files that are not documented in the project. Use `dependency-cruiser` for the merge gate.

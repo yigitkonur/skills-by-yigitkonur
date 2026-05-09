@@ -27,4 +27,4 @@ The project root defaults to `.`.
 
 ## Limitations
 
-This is a textual heuristic. It can find likely violations but cannot prove every external boundary is schema-covered. Handler schemas wrapped centrally by a local factory may require human review to confirm where `.strict()` is applied.
+This is a textual heuristic. It can find likely violations but cannot prove every external boundary is schema-covered. Nested `z.object(...)` calls and handler schemas wrapped centrally by a local factory may require human review to confirm where `.strict()` is applied.
