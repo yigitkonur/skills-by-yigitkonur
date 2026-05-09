@@ -46,6 +46,6 @@ Limit deeper evaluation to the top 3-5 repos.
 ## Escalation path
 
 1. Search metadata and README intros
-2. Cheap repo signals (`rest-unique-signals.md`)
-3. Optional single-repo GraphQL evidence (`graphql-repo-deep-dive.md`)
-4. Optional README, file tree, and source checks (`code-level-analysis.md`)
+2. Cheap repo signals (`evaluate-rest.md`)
+3. Optional single-repo GraphQL evidence (`evaluate-graphql.md`)
+4. Optional README, file tree, and source checks (`evaluate-code.md`)

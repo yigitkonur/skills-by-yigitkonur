@@ -134,6 +134,7 @@ Read README intros only for borderline or high-potential candidates. Harvest bet
 
 Use `references/dedup-and-rank.md` when you need a repeatable shortlist assembly step.
 Use `scripts/score-repos.sh` only as a cheap metadata sort; do not let it override user-fit evidence.
+Read `references/quality-gates.md` after first-pass classification to decide whether to stop, refine once, augment, or deepen.
 
 ### 5. Run one refinement pass
 
@@ -185,6 +186,7 @@ If the user is satisfied with the markdown shortlist, stop there.
 ### 7. Offer optional deepen
 
 Only deepen after the markdown shortlist is useful.
+Check `references/quality-gates.md` before deepening; most scouts should stop at the markdown shortlist.
 
 Each branch consumes only the final shortlisted dataset; do not restart discovery.
 
@@ -243,7 +245,9 @@ If you dispatch help, read `references/subagent-prompts.md`. Subagents gather ev
 
 ## Reference routing
 
-Load only the branch you need. References are flat (one level deep).
+Load only the branch you need. References are flat on disk and grouped here by decision point.
+
+### Search/discovery
 
 | File | Read when |
 |---|---|
@@ -251,15 +255,35 @@ Load only the branch you need. References are flat (one level deep).
 | `references/search-examples.md` | You need examples of good first-pass angles or refinement pivots. |
 | `references/gh-syntax.md` | You need valid `gh search repos` qualifiers or OR rules. |
 | `references/gh-output.md` | You want token-efficient `gh` output or markdown-ready capture. |
-| `references/web-augment.md` | GitHub-only search is thin or noisy, or naming is fuzzy and web augmentation (via `run-research` or `WebSearch`) would help. |
-| `references/dedup-and-rank.md` | You are turning raw candidates into a grouped shortlist. |
+| `references/web-augment.md` | GitHub-only search is thin/noisy, or naming is fuzzy and web augmentation would help. |
+
+### Evaluation/deepening
+
+| File | Read when |
+|---|---|
 | `references/evaluate.md` | You are checking repo quality signals or deciding whether to deepen. |
 | `references/evaluate-rest.md` | You need cheap repo signals beyond the initial search output. |
 | `references/evaluate-graphql.md` | You need a single-repo deep evidence query for a top candidate. |
 | `references/evaluate-code.md` | You need README, file-tree, or source evidence for the top few repos. |
-| `references/subagent-prompts.md` | The landscape is large, or the user explicitly wants deeper comparison work delegated. Includes the `run-research` integration block for web-augmentation subagents. |
-| `references/quality-gates.md` | Decide whether to stop, refine once, or deepen. |
+
+### Orchestration
+
+| File | Read when |
+|---|---|
+| `references/subagent-prompts.md` | The landscape is large, or the user explicitly wants deeper comparison work delegated. |
+
+### Output/export
+
+| File | Read when |
+|---|---|
+| `references/dedup-and-rank.md` | You are turning raw candidates into a grouped shortlist. |
 | `references/report-template.html` | The user explicitly wants an HTML export after the shortlist is stable. |
+
+### Stop/refine gates
+
+| File | Read when |
+|---|---|
+| `references/quality-gates.md` | Decide whether to stop, refine once, augment, or deepen. |
 
 ## Guardrails
 
