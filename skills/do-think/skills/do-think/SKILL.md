@@ -246,11 +246,21 @@ Every finished session states:
 
 ## Escalation gates
 
-- **Solo → Interactive** when: 3 candidate options die in stress-test
+- **Solo → Interactive** when: all candidates/attempts die in stress-test
 - **Interactive → Solo** never silently — only on explicit user request
-- **Out to `do-debug`** when: the task is a runtime bug with a reproducible failure
+- **Out to `do-debug`** when: the task is a runtime bug with a reproducible failure, or a `do-think` session produces a testable runtime hypothesis
 - **Out to `check-completion`** when: declared "done" but unsure what's actually verified
 - **Do NOT recommend `do-think` as the next-step** (no infinite regress). If more thinking is needed, name the sub-topic and explicitly hand off.
+
+### `do-debug` route-back handoff
+
+When this session, especially one entered from `do-debug` after 3 failed fixes, produces a falsifiable runtime hypothesis, hand back to `do-debug` with:
+- symptom card / observed failure
+- failed-fix summary, if known
+- selected hypothesis and mechanism
+- falsification experiment
+- narrow next diagnostic or fix boundary
+- verification check
 
 ## Reference routing — master table
 

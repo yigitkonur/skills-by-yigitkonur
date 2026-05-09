@@ -87,7 +87,7 @@ The core loop, expanded:
 6. If hypothesis wrong → STOP. Re-enter Phase A. Don't iterate on a dead hypothesis.
 ```
 
-**Iteration budget enforcement**: most "stuck in loop" failures are budget violations. After 3-5 iterations on the same hypothesis with no progress, the hypothesis is wrong. Escalate to Sense-Making (`workflows/bug-tracing.md`) or do-debug.
+**Iteration budget enforcement**: most "stuck in loop" failures are budget violations. After 3-5 iterations on the same hypothesis with no progress, the hypothesis is wrong. If there is a reproducible runtime/test failure, hand off to `do-debug` with the failing oracle output, attempted fixes, selected hypothesis, falsification experiment, next diagnostic boundary, and verification check. If the operation frame itself is wrong, re-enter SenseMaking inside `do-think`.
 
 ## Adversarial self-test (optional but recommended)
 
@@ -125,7 +125,7 @@ Verification: <real-world / staging behavior check planned or done>
 |---|---|
 | Iterating without an oracle ("I'll know it when I see it") | That's Composition, not Self-Verification. Without a deterministic oracle, switch workflows. |
 | Test-tweaking until green (changing the test's assertion to match the code's behavior) | Forbidden. The test encodes the spec; if it's wrong, fix the spec, not the assertion. Honest fix: realize the test's assertion is right and the code is wrong. |
-| Ignoring iteration budget ("just one more try") | After 3-5 iterations on the same hypothesis, the hypothesis is wrong. Escalate to bug-tracing or do-debug. More iterations on a dead hypothesis don't converge. |
+| Ignoring iteration budget ("just one more try") | After 3-5 iterations on the same hypothesis, route to `do-debug` for reproducible runtime/test failures, or re-enter SenseMaking if the operation frame is wrong. More iterations on a dead hypothesis don't converge. |
 | Declaring done when the oracle is green but the real behavior isn't tested | Run the adversarial self-test: "what bug would slip past my tests?" If you can't answer, the tests are shallow. |
 | Skipping the post-green real-world verification | The oracle is a proxy. The real check is staging / manual exercise / production-like environment. Tier Medium/High requires the real check. |
 | Using Self-Verification on tasks without code (or without an oracle) | Wrong operation. If the task is "draft a doc," it's Composition; iterating doesn't converge against truth, it converges against your taste. |
