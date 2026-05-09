@@ -19,6 +19,26 @@ Do not use this skill for:
 - Effect-TS applications without Copilot SDK — use `build-effect-ts-v3`
 - Generic OpenAI, Vercel AI SDK, or provider-SDK chatbots that do not import `@github/copilot-sdk`
 
+## Source-of-truth gate
+
+Copilot SDK is public preview and moves quickly. Before relying on any signature or example, check the version in the target project:
+
+```bash
+npm view @github/copilot-sdk version dist-tags engines --json
+node -e "const fs=require('fs'),path=require('path');let p=require.resolve('@github/copilot-sdk');while(!fs.existsSync(path.join(p,'package.json')))p=path.dirname(p);console.log(JSON.parse(fs.readFileSync(path.join(p,'package.json'),'utf8')).version)"
+```
+
+Source priority:
+
+1. Installed `node_modules/@github/copilot-sdk/dist/*.d.ts`, or a freshly packed `npm pack @github/copilot-sdk@latest` package, for TypeScript signatures
+2. The npm package `README.md` for package-specific examples
+3. Official GitHub Docs for preview status, product availability, auth concepts, and BYOK policy
+4. These skill references, only after the freshness check above
+
+Audit baseline: on 2026-05-08, npm reported `latest = 0.3.0`, `prerelease = 1.0.0-beta.3`, and `engines.node = >=20.0.0`. Do not treat those as permanent facts; teach and run the checks.
+
+For runnable setup, prefer the installed package engine over docs snippets. If docs mention Node 18 but `package.json` says Node `>=20.0.0`, use Node 20+. The SDK package includes bundled CLI support through `@github/copilot`; a global `copilot` command is useful for interactive auth and external-server workflows, but do not state it is always required unless the current package/docs prove it for that deployment path.
+
 ## Decision tree
 
 ```
@@ -37,7 +57,7 @@ What do you need?
 ├── Messages & streaming
 │   ├── send / sendAndWait ──────────────► Quick start (below) — blocking vs fire-and-forget
 │   ├── Streaming deltas ────────────────► references/events-and-streaming.md — incremental content delivery
-│   └── All 47 event types ─────────────► references/events-and-streaming.md — full event catalog
+│   └── Event catalog ───────────────────► references/events-and-streaming.md — regenerate/check from dist/generated/session-events.d.ts
 │
 ├── Custom tools
 │   ├── defineTool with Zod ─────────────► references/tools-and-schemas.md — Zod schema, handler, auto-JSON-Schema
@@ -82,14 +102,15 @@ What do you need?
 
 Verify your environment:
 ```bash
-node --version   # must be >= 20
-copilot --version # Copilot CLI must be installed
+node --version   # use installed package engines.node; current baseline is >=20
+npm ls @github/copilot-sdk
 ```
 
 Authenticate before you run the examples:
 
-- Local interactive auth: `copilot login`
+- Local interactive auth: use the Copilot CLI available to this project or globally, for example `npx copilot login` or `copilot login`
 - Headless auth: set one of `COPILOT_GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_TOKEN`
+- BYOK: configure `provider` and `model`; no GitHub Copilot subscription is required for BYOK
 - In CI or other non-interactive runs, export the token before `npm start`; do not expect the SDK process to complete browser login for you.
 
 ### Default file layout and run command
@@ -342,7 +363,7 @@ await session.abort(); // cancels current work; session remains usable
 | `cliUrl` + `useStdio` | Mutually exclusive. `cliUrl` connects to external server; `useStdio` spawns child process. |
 | `console.log` in extensions | stdout is reserved for JSON-RPC. Use `session.log()` instead. |
 | Tool name collision in extensions | Tool names must be globally unique across all extensions. |
-| BYOK without `model` | `model` is required when using `provider` config. Session creation succeeds silently, but `sendAndWait` will fail. |
+| BYOK without `model` | `model` is required when using `provider`. Current package docs say the SDK throws if no model is specified; verify against installed types/runtime. |
 | Race condition on event registration | Register `session.on()` before calling `session.send()`. |
 
 ## Steering notes for AI agents
@@ -352,7 +373,7 @@ await session.abort(); // cancels current work; session remains usable
 ### Project initialization
 - **Always** run `npm init -y` then `npm pkg set type=module` before installing. The SDK is ESM-only and will throw `ERR_PACKAGE_PATH_NOT_EXPORTED` without this.
 - **Always** install `zod` alongside the SDK if you plan to use `defineTool`. It's not bundled.
-- Verify `node --version` is >= 20 and `copilot --version` responds before writing any code.
+- Verify Node satisfies the installed package `engines.node` and `@github/copilot-sdk` resolves before writing any code.
 
 ### Session lifecycle
 - `createSession` **always starts fresh** — even with the same `sessionId`. It does NOT restore previous messages.
@@ -371,4 +392,4 @@ await session.abort(); // cancels current work; session remains usable
 
 ### Timeouts and errors
 - `sendAndWait` timeout does **not** abort in-flight work. It only stops waiting. Call `session.abort()` explicitly if you need to cancel.
-- BYOK without `model` in provider config creates a session successfully but fails silently at send time. Always pair `provider` with `model`.
+- BYOK without `model` is an error path. Current package docs say session creation throws; always pair `provider` with `model` and verify behavior against the selected package version.
