@@ -121,6 +121,8 @@ Use `references/02-setup/01-prerequisites.md` as the setup matrix:
 - `@mcp-use/react` is present only when building widgets.
 - chosen entry file matches project shape.
 
+Run `scripts/check-mcp-use-version.sh` when a package exists and dependency drift matters. Its usage is documented in `scripts/check-mcp-use-version.sh.md`.
+
 If prerequisites are missing and cannot be added, switch to plan-only output.
 
 ### 5. Build or extend
@@ -210,6 +212,7 @@ Start with intent or symptoms; use inventory only as fallback.
 - **Symptom index:** `references/00-symptom-index.md`
 - **Version drift policy:** `references/00-version-drift.md`
 - **Full inventory:** `references/00-reference-index.md`
+- **Bundled scripts:** `scripts/check-mcp-use-version.sh.md`
 - **Foundations:** `references/01-concepts/*.md`
 - **Setup:** `references/02-setup/*.md`
 - **CLI:** `references/03-cli/*.md`
