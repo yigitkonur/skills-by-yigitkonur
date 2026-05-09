@@ -48,6 +48,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS + REVIEW standardization hierarchies |
 | [init-makefiles](skills/init-makefiles/) | workflow | Scaffold per-scenario Makefiles — 7 scenarios, ≤4 files, AGENTS sync, opt CI/CD |
 | [optimize-agent-ergonomics](skills/optimize-agent-ergonomics/) | development | Decide CLI vs MCP and shared agent contracts |
+| [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
 | [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI in 5 modes: parallel worktree fleets, batched template runs, single-mission monitoring, per-branch review loops, rescue |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm publishing via GitHub Actions |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |

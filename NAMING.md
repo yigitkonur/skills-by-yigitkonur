@@ -50,7 +50,8 @@ When two skills overlap, use distinct verbs:
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
 - `run-research` (answer a technical research question) vs `run-industry-research` (build a full market/category research corpus)
-- `optimize-agent-ergonomics` covers both CLI and MCP surfaces
+- `optimize-agent-ergonomics` decides CLI vs MCP and shared cross-surface contracts
+- `optimize-agentic-cli` handles CLI-only audits and command-contract design once the surface is fixed
 
 ## Canonical Rules
 
