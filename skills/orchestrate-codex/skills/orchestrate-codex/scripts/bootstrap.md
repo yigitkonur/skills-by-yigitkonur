@@ -35,7 +35,7 @@ CODEX_EFFORT=xhigh
 Side effects:
 - Creates `MONITOR_ROOT` directory tree if missing.
 - Pins `BASELINE_SHA` (current `git rev-parse HEAD`) when git checks are enabled.
-- Exits non-zero when `codex login status` fails, unless `ORCHESTRATE_SKIP_CODEX_AUTH=1` is set for tests.
+- Hard-fails with exit 3 when `codex login status` returns non-zero, unless `ORCHESTRATE_SKIP_CODEX_AUTH=1` is set (typical use: ephemeral CI runners that do not carry codex-cli auth state).
 
 ## Exit codes
 
@@ -51,13 +51,13 @@ Side effects:
 ## Behavior
 
 - Detects monorepo layout (multiple `package.json`s with workspace fields) and surfaces it in stdout for downstream tools.
-- Verifies `.gitignore` covers `<repo-name>-wt-*`; appends pattern to `.gitignore` if missing AND user passed `--gitignore-fix` (default off).
-- Soft-warns when `${CLAUDE_PLUGIN_DATA}` is unset and falls back to the XDG path.
-- **`codex login status` is a soft probe**: a non-zero exit emits a stderr
-  warning but does not fail bootstrap. The user may have authenticated via
-  `CODEX_API_KEY` (which the probe cannot see), or the auth subcommand shape
-  may differ on older binaries (`0.129.x` introduced `login status`). If
-  spawns later fail with auth errors, run `codex login` and retry.
+- Probes `.gitignore` for the in-repo worktree pattern only; see "Worktree advisory" below for the conditional.
+- Falls back to `${TMPDIR:-/tmp}/codex-companion` when `${CLAUDE_PLUGIN_DATA}` is unset (matches the codex-companion resolver — see `references/universal/plugin-data.md`).
+- **`codex login status` is a hard gate** (`scripts/bootstrap.sh:74-82`): a non-zero exit fails bootstrap with exit 3 and the dispatcher surfaces the failure in its JSON envelope. The escape hatch is `ORCHESTRATE_SKIP_CODEX_AUTH=1`, which downgrades the gate to a stderr warning and proceeds. Use the escape hatch on ephemeral CI runners that do not carry codex-cli auth state; in any environment where spawns will exercise codex auth, leave the gate hard and run `codex login` if it fails.
+
+### Worktree advisory
+
+`scripts/bootstrap.sh:148-155` advises adding the worktree dir to `.gitignore` **only when** the resolved `WORKTREE_DIR_NAME` (default `.worktrees`) is treated as in-repo. The default convention (per `references/universal/worktree-contract.md`) places worktrees OUT-of-repo at `<repo-parent>/<repo>-wt-<mode>-<slug>`, in which case `.gitignore` does not need to cover them. The advisory fires only when `WORKTREE_DIR_NAME` points inside the repo — typically when the user has overridden the default to a relative path like `.worktrees/`.
 
 ## Notes
 

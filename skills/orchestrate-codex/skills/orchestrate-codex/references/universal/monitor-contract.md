@@ -176,13 +176,20 @@ The agent receives every Monitor line as a notification injected into the conver
 
 ## Tuning verbosity
 
-`codex-json-filter.sh` accepts:
+`codex-json-filter.sh` accepts (verified against `scripts/codex-json-filter.sh:25-32, 162-237`; matches `references/universal/json-streaming.md` §Verbosity levels):
 
 ```bash
-codex-json-filter.sh --level minimal   # only [START], [SAID], [ERR]
-codex-json-filter.sh --level normal    # add [CMD>], [CMD✓], [TURN<]
-codex-json-filter.sh --level verbose   # add [THINK], [FILE], full command output
+codex-json-filter.sh --level minimal   # [START] [CMD>] [CMD✓] [CMD✗] [SAID] [TURN<] [ERR]
+codex-json-filter.sh --level normal    # minimal + [TURN>] [THINK] [FILE] [ITEM>] [ITEM<]
+codex-json-filter.sh --level verbose   # normal + [?] (unknown event types) + [CMD✓] extended form (with output tail)
 ```
+
+`[CMD>] [CMD✓] [CMD✗] [TURN<]` are emitted at **every** level (no `[[ "$LEVEL" != "minimal" ]]` guard on the `command_execution` arms or the `turn.completed` arm). `[ERR]` is also emitted at every level. The level only gates `[TURN>] [THINK] [FILE] [ITEM>] [ITEM<]` (gated off in `minimal`) and `[?]` plus the verbose `[CMD✓]` output tail (verbose only).
+
+### How to set the level
+
+- **Runner-pipe (per-entry JSONL written to `entry.jsonl_path`):** the bash runners `run-single.sh` and `run-review.sh` read `FILTER_LEVEL` (default `normal`) and forward it to the filter as `CODEX_FILTER_LEVEL`. There is **no `--filter-level` flag on `node orchestrate-codex.mjs`** — set it as an env var on the dispatcher invocation: `FILTER_LEVEL=verbose node scripts/orchestrate-codex.mjs single …`. `run-single.sh` and `run-review.sh` also accept `--filter-level <level>` when invoked directly without the dispatcher.
+- **Monitor-pipe (the Monitor command for single mode):** built by `singleMonitorCommand` in `scripts/orchestrate-codex.mjs:418-425`. It pipes `tail -F <jsonl> | bash codex-json-filter.sh` with **no `--level` flag and no `CODEX_FILTER_LEVEL` env**, so the Monitor's filter always runs at the script's default `normal`. `FILTER_LEVEL` does NOT propagate to the Monitor pipe — the runner-pipe verbosity and the Monitor-pipe verbosity are independent. Re-arm the Monitor with a custom command if you need a different Monitor-side level.
 
 `codex-monitor.sh` accepts:
 - `CODEX_MONITOR_INTERVAL=N` — seconds between ticks (default 30).

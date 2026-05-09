@@ -28,12 +28,16 @@ The `<workspace-slug>-<hash>` is computed from cwd using the same algorithm code
 
 Sharing the slug+hash with codex-companion is intentional: rescue mode correlates manifest entries with codex-companion's `state.json` and `jobs/<id>.json` records under the same `<workspace-slug>-<hash>` directory.
 
-Plugin-data resolution has two distinct branches and a per-component fallback:
+Plugin-data resolution is shared across orchestrate-codex (dispatcher + bash runners) and the vendored codex-companion (`scripts/codex-cc/lib/state.mjs`). Both follow the same chain:
 
-1. **Orchestrate-codex (this skill, dispatcher + bash runners):** if `${CLAUDE_PLUGIN_DATA}` is set, manifests live at `${CLAUDE_PLUGIN_DATA}/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`. If unset, the documented fallback is `${XDG_DATA_HOME:-$HOME/.local/share}/claude-code/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`. If neither resolves writably, the dispatcher surfaces `error.code = "plugin_data_unwritable"` and stops.
-2. **Vendored codex-companion (`scripts/codex-cc/lib/state.mjs`):** if `${CLAUDE_PLUGIN_DATA}` is set, state lives at `${CLAUDE_PLUGIN_DATA}/state/<slug>-<hash>/`. If unset, codex-companion falls back to `${os.tmpdir()}/codex-companion/<slug>-<hash>/` — **not** the XDG path. The asymmetry is intentional in upstream codex-cc and preserved by the vendored copy; rescue mode correlates by `<slug>-<hash>` regardless of which root each component used, but if the two roots diverge (e.g. `CLAUDE_PLUGIN_DATA` set partway through the session) rescue cannot correlate.
+1. If `${CLAUDE_PLUGIN_DATA}` is set, the state root is `${CLAUDE_PLUGIN_DATA}/state/<workspace-slug>-<hash>/`. The orchestrate-codex manifest lives at `${CLAUDE_PLUGIN_DATA}/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`.
+2. If `${CLAUDE_PLUGIN_DATA}` is unset, the state root is `${TMPDIR:-/tmp}/codex-companion/<workspace-slug>-<hash>/`. The orchestrate-codex manifest lives at `${TMPDIR:-/tmp}/codex-companion/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`.
 
-The dispatcher and `bootstrap.sh` both use this algorithm. There is no separate XDG or md5 path beyond the documented fallback above. Never use `/tmp` as the manifest path of record yourself — cross-session collisions are silent. The `os.tmpdir()` fallback above is codex-companion's behavior, not the orchestrator's.
+If the resolved state dir is not writable, the dispatcher surfaces `error.code = "plugin_data_unwritable"` and stops with exit 5.
+
+Verified against `scripts/codex-cc/lib/state.mjs:10, 41-43` (`FALLBACK_STATE_ROOT_DIR = path.join(os.tmpdir(), "codex-companion")`; resolver returns `pluginDataDir ? <plugin-data>/state : FALLBACK_STATE_ROOT_DIR`) and `scripts/bootstrap.sh:114-120` (`STATE_ROOT="$CLAUDE_PLUGIN_DATA/state"` or `STATE_ROOT="${TMPDIR:-/tmp}/codex-companion"`). There is no XDG path, no `~/.local/share/claude-code` fallback, and no md5 path. See `references/universal/plugin-data.md` for the canonical resolver.
+
+Both writers always agree on the same `<slug>-<hash>` directory because they use the same algorithm against the same `cwd`; rescue's correlation between manifest entries (orchestrate-codex's `manifest.json`) and codex-companion job records (`state.json`, `jobs/<id>.json`) holds whenever both writers ran in the same process tree (so they observed the same `${CLAUDE_PLUGIN_DATA}` value). If the env var flips partway through the session — e.g. set on dispatch but unset for a later helper invocation — the two writers land in different roots and rescue cannot correlate. Always export `${CLAUDE_PLUGIN_DATA}` once for the session, or always invoke through `bootstrap.sh`. Never use `/tmp` directly as the manifest path of record yourself — cross-session collisions are silent.
 
 ## Top-level schema
 
