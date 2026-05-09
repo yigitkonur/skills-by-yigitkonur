@@ -65,13 +65,15 @@ Ask or infer from context:
 4. **Tools, resources, or prompts?** Most servers need tools; resources for data access; prompts for reusable templates
 5. **Client features needed?** Sampling (LLM completions), elicitation (user input), roots (filesystem access)
 
+For an empty greenfield target, scaffold the selected transport with `bash scripts/scaffold-v1-server.sh <target-dir> <server-name> [stdio|http-stateful|http-stateless]`. See `scripts/scaffold-v1-server.sh.md`.
+
 ### 3 — Choose the implementation branch
 
 | Scenario | Action |
 |---|---|
-| New stdio server | Scaffold from quick-start template → `references/guides/quick-start.md` |
-| New HTTP server (stateful) | Scaffold with session management → `references/guides/transports.md` |
-| New HTTP server (stateless) | Scaffold without sessions → `references/guides/transports.md` |
+| New stdio server | Run `scripts/scaffold-v1-server.sh` with `stdio`, then read `references/guides/quick-start.md` |
+| New HTTP server (stateful) | Run `scripts/scaffold-v1-server.sh` with `http-stateful`, then read `references/guides/transports.md` |
+| New HTTP server (stateless) | Run `scripts/scaffold-v1-server.sh` with `http-stateless`, then read `references/guides/transports.md` |
 | Add tools to existing server | Read `references/guides/tools-and-schemas.md`, register new tools |
 | Add resources | Read `references/guides/resources-and-prompts.md` |
 | Add authentication | Read `references/guides/authentication.md` |
