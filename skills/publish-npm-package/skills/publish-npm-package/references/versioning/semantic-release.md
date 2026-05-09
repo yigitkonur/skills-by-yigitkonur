@@ -1,5 +1,20 @@
 # semantic-release — Fully Automated npm Versioning & Publishing
 
+## Contents
+
+- [Overview](#overview)
+- [How it works](#how-it-works)
+- [Conventional commit format](#conventional-commit-format)
+- [Installation and setup](#installation-and-setup)
+- [Configuration](#configuration)
+- [Branch configuration](#branch-configuration)
+- [Dry-run testing](#dry-run-testing)
+- [Monorepo limitations](#monorepo-limitations)
+- [Common issues](#common-issues)
+- [Workflow routing](#workflow-routing)
+- [When to use semantic-release](#when-to-use-semantic-release)
+- [Quick reference](#quick-reference)
+
 ## Overview
 
 semantic-release automates the entire package release workflow: version determination,
@@ -16,10 +31,7 @@ driven by conventional commit messages.
 **Core philosophy:** No human decides what the next version number will be. Commits
 since the last release are analyzed, and the version bump is determined automatically.
 
-> **⚠️ Steering:** Only choose semantic-release for **single-package repos** with
-> strong conventional-commit discipline. It publishes automatically on every push —
-> there is no human gate. For monorepos, use **changesets** or **release-please**
-> instead (semantic-release has no native monorepo support).
+> **Guardrail:** Only choose semantic-release for single-package repos with strong conventional-commit discipline. It publishes automatically on every push and has no human gate. For monorepos, use changesets or release-please instead unless the repo already depends on semantic-release.
 
 ---
 
@@ -212,7 +224,7 @@ Publishes the package to npm.
 | `pkgRoot` | `"."` | Directory with package.json |
 | `tarballDir` | `false` | Directory to store .tgz tarball |
 
-**Provenance** is enabled via the `--provenance` npm flag in CI, not a plugin option.
+For pure trusted publishing, eligible provenance is automatic. For token+provenance, configure semantic-release npm provenance from the token workflow reference.
 
 #### @semantic-release/git
 
@@ -301,13 +313,12 @@ Same as beta but with `alpha` channel. Typically:
 
 ## Dry-Run Testing
 
-> **⚠️ Always dry-run first** before enabling semantic-release in CI.
-> This catches misconfigured tokens, missing tags, and commit-format issues.
+> **Guardrail:** Always dry-run before enabling semantic-release in CI. This catches misconfigured tokens, missing tags, and commit-format issues.
 
 ```bash
 # Requires GITHUB_TOKEN plus the publish auth for the mode you are testing.
-# Local dry-runs usually use token auth; pure OIDC can only be exercised on
-# GitHub-hosted runners.
+# Local dry-runs usually use token auth; trusted publishing can only be exercised
+# during the publish step on a supported hosted runner.
 npx semantic-release --dry-run
 
 # With explicit branch
@@ -404,7 +415,7 @@ plugin so the changelog file exists when git commits it:
 
 **Fix:** Always use `fetch-depth: 0` in checkout:
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
   with:
     fetch-depth: 0
 ```
@@ -415,7 +426,7 @@ plugin so the changelog file exists when git commits it:
 
 **Fix:** Use `persist-credentials: false` and set up a token with write access:
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
   with:
     fetch-depth: 0
     persist-credentials: false
@@ -447,73 +458,17 @@ For a brand-new package that has never been published:
 4. Run `npx semantic-release --dry-run` to verify the first release will be created
    correctly before enabling the CI workflow
 
-If your steady-state auth mode is OIDC, the versioning setup above still needs a
-token-based first publish before you switch the workflow to pure OIDC.
+If the steady-state auth mode is trusted publishing, the versioning setup above still needs a token-based first publish before switching the workflow to pure trusted publishing.
 
 ---
 
-## Complete GitHub Actions Workflow (Pure OIDC)
+## Workflow Routing
 
-```yaml
-name: Release
-on:
-  push:
-    branches: [main, beta]
+This reference explains semantic-release behavior and configuration. Do not copy a complete GitHub Actions workflow from this file.
 
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
-
-jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Test
-        run: npm test --if-present
-
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
-```
-
-### With npm Provenance (OIDC)
-
-```yaml
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-        run: npx semantic-release
-```
-
-The `id-token: write` permission in the `permissions` block is required for OIDC
-provenance to work. npm will generate and attach a signed SLSA provenance statement
-to the published package.
-
-For token auth, start from `references/workflows/token-workflows.md` and only add
-`NPM_TOKEN` / `NODE_AUTH_TOKEN` in that token variant.
+- Trusted publishing: use `references/workflows/oidc-workflows.md` section 1.
+- Token auth without provenance: use `references/workflows/token-workflows.md` section 1.
+- Token auth with provenance: use `references/workflows/token-workflows.md` "Adding provenance to token workflows".
 
 ---
 

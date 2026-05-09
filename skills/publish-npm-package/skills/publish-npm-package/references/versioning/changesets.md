@@ -1,5 +1,25 @@
 # Changesets — PR-Based Version Management for npm
 
+## Contents
+
+- [Overview](#overview)
+- [How it works](#how-it-works)
+- [Installation and setup](#installation-and-setup)
+- [Configuration](#configuration)
+- [Developer workflow](#developer-workflow)
+- [Changeset file format](#changeset-file-format)
+- [GitHub action configuration](#github-action-configuration)
+- [Pre-release mode](#pre-release-mode)
+- [Single-package configuration](#single-package-configuration)
+- [Version packages PR workflow](#version-packages-pr-workflow)
+- [Monorepo patterns](#monorepo-patterns)
+- [Workflow routing](#workflow-routing)
+- [Snapshot releases](#snapshot-releases)
+- [Common issues](#common-issues)
+- [First publish](#first-publish-greenfield)
+- [When to use changesets](#when-to-use-changesets)
+- [Quick reference](#quick-reference)
+
 ## Overview
 
 Changesets is a version management tool designed around the pull request workflow.
@@ -17,10 +37,7 @@ version changes by adding changeset files during development.
 **Core philosophy:** The person making the change is the best person to describe and
 classify that change. Version intent is captured at PR time, not release time.
 
-> **⚠️ Steering:** changesets works for **both monorepos AND single-package repos**.
-> It does **not** require conventional commits — developers describe changes in
-> plain English via changeset files. If the team wants a human-gated release
-> without adopting a commit convention, changesets is the right choice.
+> **Guardrail:** changesets works for both monorepos and single-package repos. It does not require conventional commits. If the team wants a human-gated release without adopting a commit convention, choose changesets.
 
 ---
 
@@ -310,59 +327,13 @@ EOF
 
 ## GitHub Action Configuration
 
-### Install the Action
+The workflow references own complete GitHub Actions YAML. In this file, keep only changesets action options and tool-specific behavior.
 
-```yaml
-name: Release
+Route complete workflows to:
 
-on:
-  push:
-    branches: [main]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
-jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Create Release PR or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: npx changeset publish
-          version: npx changeset version
-          title: "chore: version packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-> Pair this with the matching workflow template for auth wiring. Pure OIDC keeps
-> only `GITHUB_TOKEN` here; token auth adds the npm token env or `.npmrc`
-> placeholder from `references/workflows/token-workflows.md`.
+- trusted publishing: `references/workflows/oidc-workflows.md` section 2
+- token auth without provenance: `references/workflows/token-workflows.md` section 2
+- token auth with provenance: `references/workflows/token-workflows.md` "Adding provenance to token workflows"
 
 ### Action Options
 
@@ -518,24 +489,15 @@ This ensures consumers within the monorepo always reference compatible versions.
 
 ---
 
-## Publishing with Provenance
+## Workflow Routing
 
-### npm Provenance via OIDC
+Use the workflow references for full YAML and auth wiring:
 
-```yaml
-      - name: Create Release PR or Publish
-        uses: changesets/action@v1
-        with:
-          publish: npx changeset publish --provenance --access public
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
+- pure trusted publishing: `references/workflows/oidc-workflows.md`
+- token auth: `references/workflows/token-workflows.md`
+- token+provenance: `references/workflows/token-workflows.md` "Adding provenance to token workflows"
 
-Requirements:
-- `id-token: write` permission in the workflow
-- npm account linked to the GitHub repository
-- `--access public` required for scoped packages with provenance
-- No `NPM_TOKEN` / `NODE_AUTH_TOKEN` in the OIDC variant
+For pure trusted publishing, keep changesets publish commands free of `--provenance`, `NPM_CONFIG_PROVENANCE`, `NPM_TOKEN`, and `NODE_AUTH_TOKEN`. npm automatically generates eligible provenance. For token+provenance, add `--provenance` or `NPM_CONFIG_PROVENANCE=true` in the token workflow.
 
 ---
 
@@ -626,82 +588,6 @@ Requires `GITHUB_TOKEN` to be set for API access.
 
 ---
 
-## Complete Workflow with OIDC Provenance
-
-```yaml
-name: Release
-
-on:
-  push:
-    branches: [main]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
-jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Test
-        run: npm test --if-present
-
-      - name: Create Release PR or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: npx changeset publish --provenance --access public
-          version: npx changeset version
-          title: "chore: version packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Report published packages
-        if: steps.changesets.outputs.published == 'true'
-        run: |
-          echo "Published packages:"
-          echo '${{ steps.changesets.outputs.publishedPackages }}' | jq '.'
-```
-
-### Using NPM_TOKEN Instead of OIDC
-
-If your npm org doesn't support OIDC provenance, switch to the token workflow
-template and add token auth explicitly:
-
-```yaml
-      - name: Create Release PR or Publish
-        uses: changesets/action@v1
-        with:
-          publish: npx changeset publish --access public
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
-
----
-
 ## First Publish (Greenfield)
 
 For a brand-new package that has never been published to npm:
@@ -717,9 +603,7 @@ For a brand-new package that has never been published to npm:
 No git tags or prior history are needed. Changesets starts from whatever version
 is in `package.json`.
 
-If your long-term auth mode is OIDC, this section only covers the **versioning**
-baseline. The first publish still needs token bootstrap before you switch the
-workflow to pure OIDC.
+If the long-term auth mode is trusted publishing, this section only covers the versioning baseline. The first publish still needs token bootstrap before switching to pure trusted publishing.
 
 ---
 
@@ -765,6 +649,6 @@ npx changeset pre exit
 # Check for pending changesets
 npx changeset status
 
-# Publish with provenance
-npx changeset publish --provenance --access public
+# Publish public scoped packages
+npx changeset publish --access public
 ```

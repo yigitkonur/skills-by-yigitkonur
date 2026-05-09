@@ -1,5 +1,22 @@
 # release-please — Google's Release PR Automation for npm
 
+## Contents
+
+- [Overview](#overview)
+- [How it works](#how-it-works)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Manifest file](#manifest-file)
+- [Monorepo support](#monorepo-support)
+- [Workflow routing](#workflow-routing)
+- [Output variables](#output-variables)
+- [Pre-release support](#pre-release-support)
+- [Bootstrap for existing projects](#bootstrap-for-existing-projects)
+- [Common issues](#common-issues)
+- [When to use release-please](#when-to-use-release-please)
+- [Comparison with other tools](#comparison-with-other-tools)
+- [Quick reference](#quick-reference)
+
 ## Overview
 
 release-please is Google's open-source tool for automating releases via GitHub pull
@@ -18,10 +35,7 @@ publishes releases when that PR is merged.
 Conventional commits flow into it automatically. Humans decide when to ship by
 merging the PR.
 
-> **⚠️ Steering:** release-please **requires** conventional commits. If the repo
-> doesn't use them and the team won't adopt them, use **changesets** instead —
-> it provides the same human-gated Release PR workflow without requiring any
-> commit convention.
+> **Guardrail:** release-please requires conventional commits. If the repo does not use them and the team will not adopt them, use changesets instead.
 
 ---
 
@@ -318,76 +332,17 @@ Commits without a scope that matches a component apply to the root package.
 
 ---
 
-## Two-Job Workflow Pattern
+## Workflow Routing
 
-The recommended pattern separates release-please from publishing. The example
-below is the **pure OIDC** variant; for token auth, keep the same job split but
-lift the publish-step wiring from `references/workflows/token-workflows.md`.
+The recommended pattern separates release-please from publishing: one job creates or updates the Release PR and GitHub Release; a second job publishes only when `release_created == 'true'`.
 
-```yaml
-name: Release
+Use the workflow references for complete YAML:
 
-on:
-  push:
-    branches: [main]
+- trusted publishing: `references/workflows/oidc-workflows.md` section 3
+- token auth without provenance: `references/workflows/token-workflows.md` section 3
+- token auth with provenance: `references/workflows/token-workflows.md` "Adding provenance to token workflows"
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
-jobs:
-  release-please:
-    name: Release Please
-    runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      upload_url: ${{ steps.release.outputs.upload_url }}
-    steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          config-file: .release-please-config.json
-          manifest-file: .release-please-manifest.json
-
-  publish:
-    name: Publish to npm
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Test
-        run: npm test --if-present
-
-      - name: Publish
-        run: npm publish --provenance --access public
-```
-
-This pattern ensures:
-- Publishing only happens when a release is created (not on every push)
-- Build and test run before publish
-- The publish step can be customized independently
-- Pure OIDC keeps the publish step free of `NPM_TOKEN` / `NODE_AUTH_TOKEN`
+Keep pure trusted-publishing publish steps free of `NPM_TOKEN`, `NODE_AUTH_TOKEN`, `--provenance`, and `NPM_CONFIG_PROVENANCE`.
 
 ---
 
@@ -516,9 +471,7 @@ PR to produce `0.1.0`, start with `0.0.0` in both `package.json` and the
 manifest. No git tag is needed — release-please treats the manifest version as
 the baseline when no matching tag exists.
 
-This is the versioning baseline only. If your steady-state auth mode is OIDC,
-the **first actual publish** still uses token bootstrap before you switch the
-workflow to pure OIDC.
+This is the versioning baseline only. If the steady-state auth mode is trusted publishing, the first actual publish still uses token bootstrap before switching to pure trusted publishing.
 
 For already-published repos, release-please looks for a git tag matching the
 current manifest version (for example `v2.5.3`) and analyzes commits since that
@@ -637,98 +590,6 @@ This can happen when the action's branch naming changes between versions.
 **Fix:** The manifest version matches an existing tag. Update the manifest to
 the current version and ensure you haven't manually created tags that conflict
 with release-please's tagging.
-
----
-
-## Complete Workflow with Token Auth + Provenance
-
-> For pure OIDC auth (no NPM_TOKEN needed), use the template in `references/workflows/oidc-workflows.md` section 3.
-
-```yaml
-name: Release
-
-on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
-jobs:
-  release-please:
-    name: Release Please
-    runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          config-file: .release-please-config.json
-          manifest-file: .release-please-manifest.json
-
-  publish:
-    name: Publish to npm
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Test
-        run: npm test --if-present
-
-      - name: Publish with provenance
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
-
-### Token Auth Without Provenance
-
-```yaml
-  publish:
-    name: Publish to npm
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-
-      - run: npm ci
-      - run: npm run build --if-present
-      - run: npm test --if-present
-
-      - name: Publish
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
 
 ---
 
