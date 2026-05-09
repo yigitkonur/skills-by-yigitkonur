@@ -207,17 +207,13 @@ Phase 1 (artifact 3) and Phase 2 (artifact 6) are the two headline deliverables.
 
 ## Rationalizations to counter (RED baseline, abridged)
 
-Agents under pressure default to `Implemented`. The counters:
+Agents under pressure default to `Implemented`. High-signal counters:
 
 | Rationalization | Counter |
 |---|---|
 | "Everything looks done, it's probably fine" | "Probably" is not a status. Run the Gate Function per task. |
 | "The agent reported success earlier" | Agent reports are not evidence. Re-verify independently. |
-| "I wrote the code, so it's Implemented" | `Implemented but Untested` until you ran it. Exit code 0 beats "I wrote it." |
-| "It was Implemented last week" | `Implemented but Broken` is a real status. Re-run now. |
 | "I'll audit later; let me just fix the one obvious thing first" | No. Audit first. Fixing while auditing defeats the audit. |
-| "Not finding evidence means there isn't any" | Not finding it means you didn't find it. Scan all 6 sources, then conclude. |
-| "This is just a quick audit, I can skip the table" | The table is the audit. No table, no audit. |
 
 Full table + pressure scenarios: `references/rationalizations.md`.
 
