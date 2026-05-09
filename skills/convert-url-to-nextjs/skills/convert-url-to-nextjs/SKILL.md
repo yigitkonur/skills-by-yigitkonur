@@ -71,8 +71,9 @@ Read `references/input-output-spec.md` for input detection, working-root rules, 
 5. **Screenshots are for verification, not invention.** Use screenshots and scroll slices to detect missed structure and measure fidelity; do not derive exact token values from pixels when CSS/HTML evidence exists.
 6. **Build from extracted values only.** `tokens.ts`, `tailwind.config.ts`, `globals.css`, components, and route data must trace to Capture/Wave 0/Wave 1 artifacts. Mark incomplete values `UNVERIFIED` instead of substituting defaults.
 7. **Self-host everything.** Fonts, images, icons, and other assets must end up local. No CDN fonts. No remote image URLs.
-8. **Write signals last.** `done.signal` and `foundation-ready.signal` are written only after verification passes.
-9. **If something cannot be grounded, mark it `UNVERIFIED`.** Honest gaps are allowed. Invented values are not.
+8. **Preserve asset provenance.** Record original source URLs and asset origins. Self-host captured images, fonts, and icons only when the user owns or has permission to use them; otherwise mark replacements `UNVERIFIED` or user-supplied. This is a workflow guardrail, not legal advice.
+9. **Write signals last.** `done.signal` and `foundation-ready.signal` are written only after verification passes.
+10. **If something cannot be grounded, mark it `UNVERIFIED`.** Honest gaps are allowed. Invented values are not.
 
 ## Do this / not that
 
@@ -109,8 +110,10 @@ Think first:
 ## Asset and style handling rules
 
 - Extract CSS custom properties, `@font-face`, `@media`, `@keyframes`, and transition values before touching the build.
+- Treat extracted CSS/HTML/runtime artifacts as the source of truth; Tailwind config is only the build expression that re-expresses those values in the scaffold.
 - Treat Wave 1 `token-values.json` as the source of truth for tokens; Wave 3 only re-expresses those exact values in `tokens.ts`, Tailwind config, and `globals.css`.
 - Copy fonts to `public/assets/fonts/`, images to `public/assets/images/...`, and icons to `public/assets/icons/` or inline them only when the source uses inline SVG.
+- For captured assets, preserve original URL, local path, capture source, and permission/provenance status in the asset manifest.
 - Preserve exact typography, spacing, gradients, shadows, radii, z-index, and breakpoint values.
 - Preserve responsive behavior from real source media queries; do not substitute defaults if the capture uses different breakpoints.
 - Preserve extracted interaction behavior, but only if it can be grounded from CSS or documented JS/runtime behavior specs.
@@ -122,7 +125,7 @@ Think first:
 - **Next.js / runtime-heavy site:** record `__NEXT_DATA__`, `self.__next_f`, build IDs, chunk URLs, and route-level script/style manifests when present.
 - **Missing `_files/` folder:** if the HTML references local CSS files, use adjacent-asset snapshot mode; if it only contains inline CSS, use SingleFile mode; otherwise full reconstruction may be blocked unless a live site can be captured.
 - **Missing assets or remote-only assets:** download them during extraction and record original → local path mapping.
-- **Missing fonts:** inspect captured network artifacts and stylesheet URLs. Download font files to `public/assets/fonts/` and create `@font-face` declarations. If the original font cannot be recovered, mark the substitution clearly.
+- **Missing fonts:** inspect captured `@font-face`, CSS `url(...)`, runtime font URLs, and local `.woff2` / `.woff` / `.ttf` / `.otf` files. Verify weight/style coverage and `font-display`; if the original font cannot be recovered, document the missing source and mark the substitution `UNVERIFIED`.
 - **External JS (analytics, chat widgets):** do not embed third-party scripts blindly. Document them separately and only re-add them if the user explicitly wants that behavior.
 - **Missing CSS or JS evidence for a value or behavior:** mark it `UNVERIFIED` and avoid inventing the implementation.
 - **Incomplete capture:** continue extraction where possible, but do not claim a pixel-perfect rebuild if core layout, type, asset, or below-the-fold evidence is missing.

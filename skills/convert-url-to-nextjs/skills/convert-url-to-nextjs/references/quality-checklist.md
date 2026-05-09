@@ -72,6 +72,7 @@ Run after Waves 0–2 complete.
 - [ ] all CSS files were inventoried with file sizes and content-hash deduplication
 - [ ] all inline `<style>` blocks were extracted from each HTML file when present
 - [ ] input mode was detected and documented (live capture / browser snapshot / adjacent-asset snapshot / SingleFile / source fallback)
+- [ ] style stack was classified (CSS Modules, global CSS, Tailwind output, inline/SingleFile, or compiled CSS-in-JS)
 
 ## B1. Wave 0 Completeness
 
@@ -88,6 +89,7 @@ Run after Waves 0–2 complete.
 - [ ] all CSS custom properties were extracted and resolved where possible
 - [ ] all major sections visible in screenshots appear in the section inventory
 - [ ] typography values were extracted from CSS/HTML, not eyeballed
+- [ ] font sources, local files, weights/styles, and `font-display` are documented
 - [ ] color values and gradients were extracted from CSS/HTML, not eyeballed
 - [ ] spacing and breakpoint values were extracted from CSS/HTML, not guessed
 - [ ] JS-driven behaviors were documented declaratively when evidence existed
@@ -146,6 +148,7 @@ Run after Waves 3–4 complete.
 - [ ] `tokens.ts` covers the extracted token set
 - [ ] `globals.css` and Tailwind config use extracted values, not defaults
 - [ ] self-hosted fonts and assets exist locally
+- [ ] captured assets retain original URL/source path and permission/provenance status
 - [ ] `traceability-matrix.md` exists and is coherent
 - [ ] `.design-soul/wave3/foundation-ready.signal` exists only after checks pass
 

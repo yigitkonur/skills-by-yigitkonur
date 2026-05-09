@@ -81,6 +81,18 @@ grep -oE 'href="[^"]+\.css[^"]*"' {page}.html | sed 's/^href="//;s/"$//' | sort 
 >
 > **Multi-line CSS rule:** Some adjacent snapshots are not minified. When a single-line regex pattern misses multi-line values (especially gradients or media blocks), flatten the corpus first: `cat $CSS_FILES | tr '\n' ' '` and then run the extraction regex against the flattened stream.
 
+### Style Stack Detection Table
+
+Detect the compiled style stack before interpreting class names. Tailwind is the build expression in the Next.js scaffold, not the source of truth; extracted CSS/HTML/runtime artifacts determine values.
+
+| Signal | Treat as | Extraction rule |
+|---|---|---|
+| `Component_element__hash` class names | CSS Modules / hashed classes | Decode prefixes for section mapping, but extract values from the matching CSS rules. |
+| Plain selectors, reset files, site-wide CSS | Vanilla/global CSS | Preserve selectors and custom properties as the primary token source. |
+| Dense utility classes or compiled Tailwind output | Tailwind utility output | Recover values from generated CSS and HTML usage; reconstruct Tailwind config only from those values. |
+| Inline `style=""` or SingleFile `<style>` blocks | Inline / SingleFile export | Extract inline declarations and custom properties as first-class corpus members. |
+| Emotion, Stitches, styled-components, or runtime hash output | CSS-in-JS compiled CSS | Treat the compiled CSS as evidence; do not infer source component APIs that are not present. |
+
 ---
 
 ## Step 0: Evidence Audit and Page Classification
@@ -165,7 +177,7 @@ If `runtime-metadata.json` exists, note:
 - build IDs
 - chunk/script/style URLs
 - framework-specific objects such as `__NEXT_DATA__` or `self.__next_f`
-- route-local asset URLs that may not appear in static HTML
+- route-local asset and font URLs that may not appear in static HTML
 
 Cross-check runtime metadata against the mirrored asset root. If runtime-discovered assets were not mirrored, call that gap out explicitly before continuing.
 
@@ -276,6 +288,10 @@ Document:
 - weight usage by role
 - line-height and letter-spacing patterns
 - local vs remote font sources
+- every `@font-face` `src` URL and matching local font file
+- weight/style coverage, including italic variants when present
+- `font-display` behavior; if absent, record `not specified`
+- missing original fonts as explicit gaps, not silent substitutions
 
 ---
 
@@ -370,6 +386,15 @@ Create `assets/asset-manifest.json` mapping original -> local path for:
 - videos when relevant
 
 For live-capture mode, make sure assets discovered only through runtime metadata are also cataloged.
+
+For every captured asset, record provenance:
+
+- original URL or local source path
+- local destination path
+- capture mode (`live`, `_files`, adjacent asset, inline, source fallback)
+- permission status: `owned`, `permission-granted`, `user-supplied`, or `UNVERIFIED`
+
+Self-host only assets the user owns or has permission to use. If permission is unknown, preserve traceability and mark the replacement or copied asset `UNVERIFIED`.
 
 ---
 

@@ -711,7 +711,7 @@ Decision guidance for building extracted patterns in Next.js App Router.
 
 ### Font Loading Strategy
 
-1. Download all fonts to `public/fonts/`
+1. Download all fonts to `public/assets/fonts/`
 2. Define `@font-face` in `styles/globals.css` with `font-display: swap`
 3. Create `next/font/local` instances in `lib/fonts.ts` for Next.js optimization
 4. Apply via `className` on `<body>` or specific elements
@@ -732,7 +732,7 @@ Decision guidance for building extracted patterns in Next.js App Router.
 
 Before marking any page complete:
 - [ ] All `<img>` src attributes point to `/assets/images/...`
-- [ ] All `@font-face` src attributes point to `/fonts/...`
+- [ ] All `@font-face` src attributes point to `/assets/fonts/...`
 - [ ] All SVG icons are inline components or in `/assets/icons/...`
 - [ ] No `<link>` tags reference external stylesheets
 - [ ] No `<script>` tags reference external scripts

@@ -1007,6 +1007,7 @@ Wave 3 is NOT complete until ALL checks pass. The orchestrator must verify every
 - [ ] Font loading works — the `font-display: swap` property is set on every `@font-face`
 - [ ] All images referenced in Wave 2 manifests exist in `public/assets/images/[page]/`
 - [ ] All SVG icons from Wave 0 exist in `public/assets/icons/`
+- [ ] Asset manifests preserve original URL/source path, local destination, capture mode, and permission/provenance status
 
 ### Zero External Dependencies
 
