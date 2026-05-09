@@ -1,6 +1,6 @@
 # Multi-Agent Feedback Consolidation
 
-When a PR has feedback from multiple reviewers (human + Copilot + CodeRabbit + Devin + Greptile + Bito + random Claude review script), consolidation happens *before* evaluation. The goal: one flat list of items where each item is evaluated once, regardless of how many reviewers raised it.
+When a PR has feedback from multiple reviewers (human + Copilot + CodeRabbit + Devin + Greptile + Bito + ad-hoc bot review script), consolidation happens *before* evaluation. The goal: one flat list of items where each item is evaluated once, regardless of how many reviewers raised it.
 
 Inspired by but not copied from `yigitkonur/cli-pr-consensus`. The patterns here are language-agnostic and do not require the TypeScript tool.
 
@@ -13,7 +13,7 @@ Raw reviewer comments (N sources)
   Per-source parsing  ── each source has its own comment format / location
         │
         ▼
-  Flat item list      ── {source, file, line, verbatim_text} per item
+  Flat item list      ── {source, source_type, file, line, verbatim_text} per item
         │
         ▼
   Line-range clustering ── items on the same file + overlapping lines merge
@@ -44,7 +44,9 @@ Each reviewer delivers feedback in a different shape. Recognize and extract.
 | Bito | HTML-embedded issue/fix divs with citations | `<div class="...">` blocks in `body` |
 | Greptile | generic markdown, similar to human | `body` field (markdown) |
 | Cubic | structured `<violation>` blocks | XML-like blocks in `body` |
-| Custom Claude / ad-hoc bot | whatever the integration produces | treat as generic markdown |
+| Custom / ad-hoc bot | whatever the integration produces | treat as generic markdown |
+
+All sources go through the same verification lens. Source type affects parsing, priority, and reply channel; it does not decide correctness.
 
 ### gh fetch commands (per source cluster)
 
@@ -72,6 +74,20 @@ Those three sources together cover everything GitHub-tracked.
 - **Bito** — look for `<div class="...">` wrapping `<div>issue</div>`, `<div>fix</div>`, `<div>citation</div>`. Strip HTML, extract fields.
 
 For unknown bots, fall through to generic markdown parsing.
+
+## Severity hint normalization
+
+Normalize source labels to `severity_hint` only. Final severity comes from verified impact.
+
+| Source label | Normalized field | Notes |
+|---|---|---|
+| CodeRabbit 🔴 / 🟡 / nitpick | `severity_hint` only | Red/yellow/nitpick controls triage order, not verdict |
+| Copilot wording such as "security", "bug", "nit" | `severity_hint` only | Treat natural-language severity as unverified |
+| Cubic / Greptile / Bito / Devin labels | `severity_hint` only | Preserve the label text in the item record |
+| Human "blocking" / "nit" / "non-blocking" | `severity_hint` only | Human labels can carry process intent, but impact still needs code evidence |
+| Missing or unclear label | `severity_hint: unknown` | Do not infer high severity from source identity |
+
+Use values such as `critical`, `important`, `minor`, or `unknown` for sorting. Do not output final `critical` / `important` / `minor` severity until verification is complete.
 
 ## Line-range clustering
 
@@ -101,6 +117,17 @@ Cluster 3: README.md:14
 ```
 
 Clusters get evaluated as one unit. All three comments in Cluster 1 are about "null/missing value at the auth lookup" — one verdict, one response.
+
+## Stable item IDs
+
+Assign stable IDs before evaluation and carry the same ID through the decision register, action plan, implementation report, and PR replies.
+
+Preferred forms:
+
+- `CR-001`, `CR-002`, ... for generated consolidated items
+- `FILENAME-LINE-CONCERN` when humans need a readable external ID, e.g. `AUTH-42-NULL-GUARD`
+
+Once assigned, do not renumber because one item was dismissed or merged. Mark merged IDs as aliases of the surviving item instead.
 
 ## Deduplication
 
@@ -148,6 +175,14 @@ Surface the conflict explicitly in the action plan:
 
 Do not silently pick one side. The disagreement itself is information.
 
+### Decision rules when reviewers disagree
+
+1. **Do not majority-vote correctness.** Five bots repeating a false claim are five signals to check, not five votes.
+2. **Cluster first, then verify.** Compare claims only after line-range and concern clustering.
+3. **Code evidence wins.** If source A and source B conflict and current code resolves the issue, take the evidence-backed verdict.
+4. **Unresolved conflicts stay visible.** If code evidence does not resolve the disagreement, mark the item `CLARIFY` or `blocked-by-architecture`.
+5. **Highest-evidence claim wins.** When five bots disagree, preserve each as an independent signal and accept the claim with the strongest file:line, test, history, or architecture evidence.
+
 ## Noise filtering
 
 Some feedback is a clear false positive. Common patterns:
@@ -165,33 +200,39 @@ item (dismissed):
   dismissed_reason: "Re-exported via barrel in src/index.ts:12 — static analyzer false positive."
 ```
 
-Dismissals should be rare. If more than ~10% of feedback is dismissed as noise, look at your filter — you may be mis-flagging real concerns.
+Required dismissal record shape:
+
+```
+{source, verbatim, reason, evidence}
+```
+
+Bot feedback can be dismissed only item-by-item with evidence. Never dismiss a whole bot or source class as noise. Dismissals should be rare. If more than ~10% of feedback is dismissed as noise, inspect the filter; real concerns may be misclassified.
 
 ## The consolidated output
 
 After the pipeline, the evaluation step sees one consolidated list:
 
 ```
-Item 1: Cluster src/auth.ts:40-47 (null check)
+Item CR-001: Cluster src/auth.ts:40-47 (null check)
   Sources: Copilot, Bito, Human
   Severity hint (from bot tags): important
   [sent to evaluation]
 
-Item 2: Cluster src/session.ts:87 (mutex deadlock)
+Item CR-002: Cluster src/session.ts:87 (mutex deadlock)
   Sources: Human
   Severity hint: critical
   [sent to evaluation]
 
-Item 3: README.md:14 (typo)
+Item CR-003: README.md:14 (typo)
   Sources: CodeRabbit
   Severity hint: minor
   [sent to evaluation]
 
-Item 4 (conflict): src/worker.ts:100-108 (retry strategy)
+Item CR-004 (conflict): src/worker.ts:100-108 (retry strategy)
   Sources: Copilot, CodeRabbit (disagreement)
   [sent to evaluation, flagged]
 
-Item 5 (dismissed): src/index.ts:15 (import)
+Item CR-005 (dismissed): src/index.ts:15 (import)
   Sources: Copilot
   Reason: barrel re-export
   [not sent to evaluation]

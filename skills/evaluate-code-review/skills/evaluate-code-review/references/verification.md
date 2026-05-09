@@ -2,6 +2,21 @@
 
 Every feedback item gets the same six-check lens before you assign a verdict. This file is the checklist the parent agent *and* the Explore subagent both run.
 
+## Source confidence model
+
+Source type is routing metadata, not a truth standard. Human comments, bot comments, self-review notes, and markdown review docs all pass through the same checks below.
+
+| Source type | Useful signal | Common failure mode | Evaluation rule |
+|---|---|---|---|
+| Human | Product, rollout, architecture, or team convention context | Stale diff, narrow line focus, local preference framed as rule | Prefer human context only when code evidence is otherwise equal |
+| Bot | Broad static coverage, repeated pattern detection, consistency across many files | Severity labels overstated; repository-specific conventions missed | Treat labels as `severity_hint`; verify impact in code |
+| Self-review | Prior reasoning and known weakness capture | Biased by the original implementation and may predate later edits | Re-run the lens against current code |
+| Markdown doc | Durable action list with item numbers and rationale | Detached from current commit, missing reply-channel metadata | Preserve IDs when useful; verify each claim against current code |
+
+**No source wins by identity.** Do not use "human always wins", "the bot said critical", or "five bots agree" as a verdict. When reviewers disagree, code evidence decides. If evidence does not resolve the conflict, mark `CLARIFY` or `blocked-by-architecture`.
+
+Repeated bot agreement raises priority because the claim is likely worth checking first. It does not replace the six-check verification.
+
 ## The six checks
 
 ### 1. Correctness

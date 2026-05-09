@@ -37,6 +37,15 @@ Prefer another skill when:
 6. **Cluster before acting on multi-agent feedback.** When 2+ reviewers comment on the same file+line, cluster them into a single item before evaluating. See `references/multi-agent-consolidation.md`.
 7. **One item at a time during implementation.** Fix → test → next. Not "fix all four at once, run the suite once".
 8. **Implementation order:** blocking (breaks, security) → simple (typos, imports) → complex (refactoring, logic). Never the other order.
+9. **Evidence wins over source authority.** Human context, bot severity labels, and repeated bot agreement are signals, not verdicts. All sources go through the same verification lens.
+
+## Source confidence model
+
+- **Human reviewers** may carry product, rollout, or architectural context; their line comments can still be stale, line-bound, or based on an older commit.
+- **Bots and static reviewers** provide broad coverage and consistent pattern matching; their severity labels are `severity_hint` only, never the final severity.
+- **Self-review and markdown docs** can preserve useful prior analysis, but they are often missing current code state and must be re-checked.
+- **Same truth standard for every source:** source type affects parsing, triage priority, and reply channel, not correctness.
+- **Tie-breakers:** when code evidence is equal, human product or architecture context can break ties. Repeated bot agreement raises priority, but correctness still requires verification.
 
 ## Input modes
 
