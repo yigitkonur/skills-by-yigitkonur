@@ -2,6 +2,8 @@
 
 6 patterns for optimizing token usage, managing context windows, and reducing the hidden cost of MCP tool definitions.
 
+Quick measurement helper: run `../../scripts/measure-context-budget.sh` from this reference location before and after trimming tool descriptions, schema blocks, or static response examples. It uses a chars/4 heuristic and flags >20 active tools by default.
+
 ---
 
 ## 1. Tool Descriptions Eat ~15% of Your Context Budget

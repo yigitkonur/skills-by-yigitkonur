@@ -4,6 +4,8 @@
 
 The sibling doc `context-engineering.md` covers tool-definition token budgets, tiered verbosity, and ANSI stripping. `session-and-state.md` covers application-level response caching (L1/L2/L3, Redis, ETag). `progressive-discovery.md` warns in one line that dynamic tool lists invalidate the cache. This file is the deep-dive on the **provider** cache: what each vendor charges, what invalidates it, and how to design MCP tool surfaces so the prefix stays stable.
 
+Before changing cache-sensitive tool surfaces, run `../../scripts/measure-context-budget.sh` from this reference location to capture the current tool-definition budget. Re-run after edits so the audit can state the measured direction of change.
+
 ---
 
 ## Per-Provider Mechanics Reference
