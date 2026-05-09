@@ -75,6 +75,7 @@ For cross-skill calls, name the minimal artifacts:
 ### 1) Establish session and baseline
 
 - Verify agent-browser is available before your first command. Run `agent-browser --version` (or `npx agent-browser --version`). If the command is not found, install with `npm install -g agent-browser` (pin a specific version in production — see `references/safety.md`).
+- For repeatable bootstrap checks, run `bash scripts/check-agent-browser-version.sh` from this skill directory before live automation.
 - If the first real browser command fails because Chromium is missing, run `agent-browser install` once, then retry the same command. Treat browser-binary installation as part of the happy path, not a troubleshooting detour.
 - If you may be joining an existing browser context, inspect it first:
 
@@ -226,6 +227,7 @@ Capture screenshots only when you need:
 | Observe and verify loops, DOM-evidence validation, extraction patterns | `references/workflows.md` |
 | Stale daemon, timeout, and focus-related failures | `references/troubleshooting.md` |
 | Proxies, stealth, cloud browsers, extensions, iOS, profiling, video | `references/proxy-support.md`, `references/stealth-automation.md`, `references/advanced.md`, `references/profiling.md`, `references/video-recording.md` |
+| Helper scripts: version/bootstrap check or first-pass page inspection smoke test | `scripts/check-agent-browser-version.sh`, `scripts/check-agent-browser-version.md`, `scripts/inspect-page.sh`, `scripts/inspect-page.md` |
 | Ready-made shell starting points | `templates/ai-agent-workflow.sh`, `templates/form-automation.sh`, `templates/authenticated-session.sh`, `templates/e2e-test-workflow.sh`, `templates/capture-workflow.sh` |
 
 ## Minimal reading sets
