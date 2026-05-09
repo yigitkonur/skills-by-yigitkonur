@@ -23,6 +23,8 @@ Strong fits:
 
 Avoid this pattern for trivial one-shot lookups where a single structured response is enough.
 
+One-shot `read`, `list`, `get`, `status`, or `whoami` commands should return the simpler JSON envelope from `output-contracts.md`. Do not add sessions, staged commands, or retry budgets when there is no artifact to repair.
+
 ---
 
 ## 2. The Semantic Shift
@@ -85,6 +87,35 @@ Recommended fields:
 
 The exact shape can vary, but the semantics should not.
 
+### Minimal repair-loop response contract
+
+Use these fields as the smallest contract for generated-artifact repair loops:
+
+```json
+{
+  "ok": false,
+  "phase": "submit",
+  "artifact_ref": "batch_4.patch",
+  "accepted": false,
+  "validation_errors": [],
+  "warnings": [],
+  "attempt": 2,
+  "max_attempts": 3,
+  "progress": {
+    "completed": 3,
+    "total": 10,
+    "percent": 30
+  },
+  "next_action": {
+    "command": "mycli submit --session session.json --artifact batch_4.patch",
+    "reason": "Repair validation errors and resubmit the same artifact."
+  },
+  "finalize_command": null
+}
+```
+
+When `accepted` becomes `true`, return either the next artifact command or a concrete `finalize_command`.
+
 ---
 
 ## 4. What Makes The Feedback High Quality
@@ -108,6 +139,13 @@ Bad feedback looks like:
 - `something went wrong`
 - exit code `1` with no body
 - interactive prompts asking the operator how to recover
+
+### Repairable vs escalation-needed failures
+
+| Class | Examples | CLI response |
+|---|---|---|
+| Repairable | Missing placeholder, invalid JSON field, patch hunk mismatch, untranslated segment, schema violation with item IDs | Return stable error codes, exact locations or IDs, suggestions, retry budget, and the same submit command. |
+| Escalation-needed | Subjective quality judgment with no criteria, missing source context, auth or permission denial, external service outage, destructive conflict requiring human policy | Stop the repair loop, mark `accepted: false`, set `next_action` to escalation or prerequisite resolution, and avoid inventing fixes. |
 
 ---
 
