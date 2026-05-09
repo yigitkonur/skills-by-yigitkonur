@@ -35,6 +35,15 @@ Rate-limit rules:
 - If limits are low, stop at metadata/README evidence and disclose the limit instead of pushing through.
 - Verify current GitHub behavior against official rate-limit docs before hardcoding exact numbers: https://docs.github.com/rest/rate-limit (accessed 2026-05-09).
 
+## Bundled scripts
+
+Resolve scripts relative to this skill directory. They are conveniences, not a replacement for fit judgment.
+
+| Script | Use when |
+|---|---|
+| `scripts/gh-search.sh` | You need compact, repeatable TSV capture from `gh search repos`. See `scripts/gh-search.md`. |
+| `scripts/score-repos.sh` | You need a cheap signal sort from captured rows. It scores metadata only, never semantic fit. See `scripts/score-repos.md`. |
+
 ## Trigger boundary
 
 **Use when:** "find the best open-source X for Y", "what GitHub repos fit this use case?", "compare repos for this stack/problem", "I need a shortlist of tools like this", or "find similar repos on GitHub".
@@ -101,7 +110,7 @@ Minimum useful angle set:
 
 Add a fifth or sixth angle only when a hard constraint matters (language, deployment model, self-hosted, etc.).
 
-Use short, broad queries first. Read `references/search.md`, `references/gh-syntax.md`, and `references/gh-output.md` if you need exact search patterns.
+Use short, broad queries first. Prefer `scripts/gh-search.sh` for common capture; read `references/search.md`, `references/gh-syntax.md`, and `references/gh-output.md` if you need exact search patterns.
 
 ### 4. Filter internally before searching again
 
@@ -124,6 +133,7 @@ Filter using the cheapest signals first:
 Read README intros only for borderline or high-potential candidates. Harvest better terms from relevant and maybe-relevant repos before expanding search.
 
 Use `references/dedup-and-rank.md` when you need a repeatable shortlist assembly step.
+Use `scripts/score-repos.sh` only as a cheap metadata sort; do not let it override user-fit evidence.
 
 ### 5. Run one refinement pass
 
