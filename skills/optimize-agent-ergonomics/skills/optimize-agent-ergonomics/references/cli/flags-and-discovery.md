@@ -1,6 +1,6 @@
 # cli/flags-and-discovery.md
 
-The standard flag set every agent-ready CLI supports, plus TTY/CI detection rules and the help-text-as-API contract. Agents discover what your CLI can do by reading `--help` — that text is part of your API surface, not documentation. This file specifies the flags, the auto-detection logic, and the help structure.
+The standard flag set every agent-ready CLI supports, plus TTY/CI detection rules and the help-text-as-API contract. Agents discover what the CLI can do by reading `--help` — that text is part of the API surface, not documentation. This file specifies the flags, the auto-detection logic, and the help structure.
 
 ## Standard flag registry
 
@@ -66,7 +66,7 @@ If the dry-run can't reach the server (e.g., auth is required to compute the dif
 
 **`--force` / `-f`**
 
-Override one specific safety check. Document which check it overrides. NEVER use `--force` as a catchall. If your CLI has three independent checks, expose three flags: `--force-overwrite`, `--force-destroy-data`, `--ignore-version-skew`. Each one says exactly what it bypasses.
+Override one specific safety check. Document which check it overrides. NEVER use `--force` as a catchall. If the CLI has three independent checks, expose three flags: `--force-overwrite`, `--force-destroy-data`, `--ignore-version-skew`. Each one says exactly what it bypasses.
 
 **`--timeout=<seconds>`**
 
@@ -180,7 +180,7 @@ The five questions every help page must answer:
 
 ## Discovery — top-level commands
 
-The agent learns what your CLI can do by reading the root `--help`. List every subcommand:
+The agent learns what the CLI can do by reading the root `--help`. List every subcommand:
 
 ```
 SUBCOMMANDS
@@ -225,7 +225,7 @@ mytool --list-commands --json
 }
 ```
 
-Optional, but valuable for agents that need to programmatically discover the surface. If you implement it, keep it stable across versions.
+Optional, but valuable for agents that need to programmatically discover the surface. When implementing it, keep it stable across versions.
 
 ## Plugin / sub-command discovery
 

@@ -16,7 +16,7 @@ The tradeoff is latency vs trust. A gate adds at least one extra turn — the us
 
 **Escalating privileges.** Granting admin role, opening a port to public, disabling MFA, rotating keys, adding OAuth scopes. The agent may need elevated access mid-session for one tool call; gate the elevation, not every subsequent call. Pair with OAuth step-up consent — see `auth-identity.md`.
 
-Other common gate targets: `git push --force` to protected branches, schema migrations on production, deploys outside business hours, anything tagged `irreversible: true` in your tool annotations.
+Other common gate targets: `git push --force` to protected branches, schema migrations on production, deploys outside business hours, anything tagged `irreversible: true` in the tool annotations.
 
 **Source:** [Anthropic — Writing effective tools for AI agents](https://www.anthropic.com/engineering/writing-tools-for-agents); spec 2025-11-25 elicitation guidance at [modelcontextprotocol.io](https://modelcontextprotocol.io/specification/2025-11-25/server/elicitation).
 

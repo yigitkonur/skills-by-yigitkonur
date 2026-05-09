@@ -425,7 +425,7 @@ Interaction: model calls `api_call` with a guess; if wrong, error says "see tool
 
 ### Generate MCP servers from OpenAPI specs
 
-If you already have a well-documented REST API, you don't need to hand-code each tool. Generate them. Notion's MCP server uses this — `MCPProxy` loads an OpenAPI spec and exposes every endpoint.
+When a well-documented REST API already exists, tool authors need not hand-code each tool. Generate them. Notion's MCP server uses this — `MCPProxy` loads an OpenAPI spec and exposes every endpoint.
 
 ```typescript
 import { MCPProxy } from "./proxy";
@@ -440,7 +440,7 @@ When to use: 20+ endpoints, well-maintained OpenAPI spec, want quick MCP access 
 
 ### Gateway/proxy for multi-server orchestration
 
-Multiple MCP servers create real operational problems: tool name collisions, idle-server resource waste, no unified discovery, cascading failures. A gateway proxy solves all of them by sitting between the client and your server fleet.
+Multiple MCP servers create real operational problems: tool name collisions, idle-server resource waste, no unified discovery, cascading failures. A gateway proxy solves all of them by sitting between the client and the server fleet.
 
 ```typescript
 const gateway = new MCPGateway({
@@ -462,11 +462,11 @@ await gateway.start();
 
 Existing solutions: **MCPJungle** (multi-server with prefixed naming + health checks), **MCPX** (discovery + installation), **MetaMCP** (control plane for fleets). Use when 3+ servers run simultaneously, names conflict, resource-constrained environments need lifecycle management, or production needs circuit breaking.
 
-If you have 1-2 servers with no name conflicts, direct connections are simpler. Don't add a gateway for the sake of architecture.
+With 1-2 servers and no name conflicts, direct connections are simpler. Don't add a gateway for the sake of architecture.
 
 ### Zero-trust policy gateway
 
-Wrap your server in a policy execution gateway that evaluates every tool call against a declarative policy before dispatch. The gateway validates permissions, enforces constraints, and signs job tickets — all without modifying individual tool handlers.
+Wrap the server in a policy execution gateway that evaluates every tool call against a declarative policy before dispatch. The gateway validates permissions, enforces constraints, and signs job tickets — all without modifying individual tool handlers.
 
 ```typescript
 import { createHmac } from "crypto";

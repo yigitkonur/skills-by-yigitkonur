@@ -129,7 +129,7 @@ The five canonical phases plus terminal states:
 
 Workflows usually pass through phases in order: `validating` → `staging` → `applying` → `verifying` → `complete`. They may loop back from `validating` (errors found, agent repairs, resubmits). They jump to `failed` from any non-terminal phase if recovery isn't possible.
 
-Custom phases are allowed but discouraged. If you need `seeding`, `replicating`, etc., document them in `--help` and explain when each fires.
+Custom phases are allowed but discouraged. When the workload needs `seeding`, `replicating`, etc., document them in `--help` and explain when each fires.
 
 ## State-token pattern
 

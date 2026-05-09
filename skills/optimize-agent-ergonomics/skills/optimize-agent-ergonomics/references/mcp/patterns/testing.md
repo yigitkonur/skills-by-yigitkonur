@@ -73,7 +73,7 @@ Spin up the server in stdio or Streamable HTTP mode and exercise the full JSON-R
 
 ```bash
 npx @modelcontextprotocol/inspector@latest
-# Opens http://localhost:5173 — point it at your server, browse tools, fire calls.
+# Opens http://localhost:5173 — point it at the server, browse tools, fire calls.
 ```
 
 What to verify with Inspector:
@@ -149,7 +149,7 @@ Run a static check at registration time: every tool name matches `[a-z][a-z0-9_]
 
 - **`mcpc` CLI** — canonical end-to-end MCP testing. Cross-link `test-by-mcpc-cli` for the dedicated skill. Use for: smoke tests in CI, fixture-driven regression suites, capability negotiation traces.
 - **MCP Inspector** — interactive UI at `npx @modelcontextprotocol/inspector@latest`. Use for: exploring a server's tool list, firing one-off calls, debugging schema errors.
-- **MCP-Test** ([github.com/modelcontextprotocol/mcp-test](https://github.com/modelcontextprotocol/mcp-test)) — the spec authors' conformance test suite. Use for: verifying your server passes the official conformance checks before publishing.
+- **MCP-Test** ([github.com/modelcontextprotocol/mcp-test](https://github.com/modelcontextprotocol/mcp-test)) — the spec authors' conformance test suite. Use for: verifying the server passes the official conformance checks before publishing.
 - **FastMCP `dev` mode** — `fastmcp dev inspector server.py` auto-restarts on file change and opens Inspector. Use for: interactive iteration loops while drafting tools.
 
 ---

@@ -1,6 +1,6 @@
 # exemplars — production CLIs and MCP servers, evidence-based
 
-Real-world tools that get this right. Patterns alone are insufficient — the exemplars below show how production teams trade off the principles in this skill, with citation. When your design choice has precedent, name it. When two precedents disagree, name them both.
+Real-world tools that get this right. Patterns alone are insufficient — the exemplars below show how production teams trade off the principles in this skill, with citation. When the design choice has precedent, name it. When two precedents disagree, name them both.
 
 ## CLI exemplars
 
@@ -31,7 +31,7 @@ Amazon's CLI for the AWS API. JSON is the default output; `--query` provides JME
 
 What it does well:
 
-- JSON is the default; you have to pass `--output text` to get human-readable. Agents hit JSON without remembering a flag.
+- JSON is the default; agents pass `--output text` to get human-readable. Agents hit JSON without remembering a flag.
 - `--query <jmespath>` for in-line filtering: `aws s3api list-buckets --query 'Buckets[].Name'`.
 - Structured error responses on most commands: `aws s3 ls s3://nonexistent` returns a JSON error object, not freeform text.
 - Pagination with `--max-items` and continuation tokens.
@@ -252,20 +252,20 @@ The right exemplar depends on the workload shape. Use this matrix to pick.
 | Code forge | GitHub | Enum-dispatcher + lockdown + insiders + description override |
 | Vault / credential manager | `op` / `bw` | Headless auth via env-var session token |
 
-When two exemplars apply, prefer the one with public engineering blog posts (HubSpot, Notion, Cloudflare) — they document the trade-offs you're about to face.
+When two exemplars apply, prefer the one with public engineering blog posts (HubSpot, Notion, Cloudflare) — they document the trade-offs the design must handle.
 
 ## Open questions the exemplars haven't settled
 
-The 16-server survey leaves several questions unresolved as of 2026-04. Carry them as design decisions you'll have to make on your own evidence.
+The 16-server survey leaves several questions unresolved as of 2026-04. Carry them as design decisions you'll have to make on local evidence.
 
 - **`structuredContent` in practice.** No exemplar publishes a before/after cost comparison for `structuredContent` vs stringified JSON. Supabase's explicit opt-out suggests the ergonomics story isn't settled. Ship both and measure your own.
-- **DCR adoption.** Asana V2 rejects it; most others accept it. Gateways like Docker MCP Gateway are stuck waiting. If you're shipping for a gateway, support DCR.
+- **DCR adoption.** Asana V2 rejects it; most others accept it. Gateways like Docker MCP Gateway are stuck waiting. When shipping for a gateway, support DCR.
 - **Meta-tools vs dedicated tools.** Zapier ships both modes (Classic + Agentic) and lets the user choose. No vendor publishes comparative telemetry on which mode wins for which task.
 - **Embedded LLM inside the MCP.** Sentry does this for NL search. No other exemplar does. Unclear whether this is a broader pattern or a Sentry-specific workaround.
 - **Tool-count ceilings on mid-tier models.** Atlassian Rovo 54 and GitHub 56+ work with frontier models today. There is no published evidence on whether mid-tier models degrade gracefully at those counts.
 - **Markdown body format standardization.** Notion ships "Notion-flavored Markdown", Atlassian ships Confluence-flavored Markdown, Figma ships React+Tailwind by default. No convergence.
 
-When you make a call on any of these, document the reasoning and the date — the answers will move.
+When making a call on any of these, document the reasoning and the date — the answers will move.
 
 ## How exemplars age
 
@@ -293,7 +293,7 @@ Good citations:
 Bad citations:
 
 - "Linear ships 23 tools, so we can ship 23." — Linear's catalog cost is 17.3k tokens; that's evidence against, not for, the count.
-- "Stripe uses OAuth, so we should too." — Stripe's auth choice depends on Restricted API Keys as the permission surface; if you don't have that primitive, the model doesn't apply.
+- "Stripe uses OAuth, so we should too." — Stripe's auth choice depends on Restricted API Keys as the permission surface; without that primitive, the model doesn't apply.
 
 The exemplar is signal; the reasoning is yours.
 

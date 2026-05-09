@@ -83,7 +83,7 @@ mytool auth login
 ```
 
 - Strictly worse than device flow: the CLI assumes a graphical environment exists.
-- Almost never appropriate for an agent-ready CLI. If your auth provider only supports web flow, wrap it in a token-issuing service: the human authenticates once, gets a long-lived API token, the agent uses the token.
+- Almost never appropriate for an agent-ready CLI. If the auth provider only supports web flow, wrap it in a token-issuing service: the human authenticates once, gets a long-lived API token, the agent uses the token.
 
 ## Credential resolution chain
 
@@ -178,7 +178,7 @@ What's safe in CI vs what's safe on a developer machine differs. The CLI should 
 | Logging the token value | NEVER | NEVER | Even in `--verbose`. Redact unconditionally. |
 | Writing tokens to disk | OK with permissions (0600) | NEVER write new tokens; only read injected ones | CI's filesystem may be archived |
 
-The redaction rule: `--verbose` and any debug logger MUST redact tokens. Treat any string matching `^(sk|sklive|sk-live|tok|tk|api[-_]key|bearer)[_-]\w{16,}$` (or your CLI's specific format) as sensitive. Print as `MYTOOL_TOKEN=sk_live_••••••••` (last 4 chars are sometimes acceptable for debugging; redact the rest).
+The redaction rule: `--verbose` and any debug logger MUST redact tokens. Treat any string matching `^(sk|sklive|sk-live|tok|tk|api[-_]key|bearer)[_-]\w{16,}$` (or the CLI's specific format) as sensitive. Print as `MYTOOL_TOKEN=sk_live_••••••••` (last 4 chars are sometimes acceptable for debugging; redact the rest).
 
 ## Logging vs persisting
 
@@ -190,11 +190,11 @@ log(f"using token {token}")                     # NEVER
 log(f"using token ending in ...{token[-4:]}")   # OK for debug; still avoid in production logs
 ```
 
-If your CLI persists tokens to disk (e.g., after `mytool auth login`), write to `~/.config/mytool/credentials` with mode 0600 and the directory mode 0700. On Windows, use the user's local app data folder with appropriate ACLs. Document the path in `mytool auth status`.
+If the CLI persists tokens to disk (e.g., after `mytool auth login`), write to `~/.config/mytool/credentials` with mode 0600 and the directory mode 0700. On Windows, use the user's local app data folder with appropriate ACLs. Document the path in `mytool auth status`.
 
 ## Token refresh and expiration
 
-If your auth uses access tokens with expiry, the CLI MUST handle refresh transparently:
+If the auth uses access tokens with expiry, the CLI MUST handle refresh transparently:
 
 ```python
 def get_authenticated_client():

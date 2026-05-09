@@ -1,4 +1,4 @@
-# agent-integration — how agents actually call your tool
+# agent-integration — how agents actually call the tool
 
 Write tools that match how agents call them. The agent's harness has a contract; honor it. Subprocess wrappers (CLI) and MCP clients (MCP) share more than they differ — both run with timeouts, parse structured responses, classify outcomes, retry on transient. The tool author is responsible for surviving that contract on day one.
 
@@ -291,7 +291,7 @@ When the harness passes these six checks, the tool meets the agent-readiness bar
 - **Ship without a harness test.** "Works in the terminal" doesn't mean "works under subprocess capture." Run the harness.
 - **Same exit code for every failure.** `os.Exit(1)` is the agent-readiness equivalent of `panic`. Map classes to codes (`../cli/exit-codes.md`).
 - **Same MCP error shape for transient and permanent.** `isError: true` with no `retryable` flag forces the agent to guess.
-- **Hidden state in the agent's context.** Tools that depend on environment from a prior call (e.g., "you must call `auth_login` first") need an explicit `state_token` or a session model.
+- **Hidden state in the agent's context.** Tools that depend on environment from a prior call (e.g., "required call: `auth_login` first") need an explicit `state_token` or a session model.
 - **Mixed channels.** Prose on stdout, JSON on stderr. Pick one channel per role and hold it.
 - **No timeout default.** A tool with no documented timeout invites 30s default cancellations on legitimate work. Document expected duration.
 - **Refusing structured errors when `--json` is set.** A CLI that prints `Error: foo` on stderr and exits 1 even with `--json` set is broken for agents.

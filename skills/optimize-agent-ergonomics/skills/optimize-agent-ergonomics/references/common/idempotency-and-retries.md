@@ -349,7 +349,7 @@ The server told the agent to wait 60s. The agent retried in 1s. The server retur
 | Ensure a feature flag is enabled | `ensure` | Not needed | Always safe. |
 | Delete a deploy | `delete` | Not needed | Idempotent on already-absent. |
 | Update an issue's status | `update` | Optional | Idempotent on same input. |
-| Charge a customer | `create` (or `apply` if you have an order ID) | **Required** | Conflict on duplicate; never silently retry. |
+| Charge a customer | `create` (or `apply` if an order ID exists) | **Required** | Conflict on duplicate; never silently retry. |
 | Send a transactional email | `create` | **Required** | Otherwise retries spam users. |
 | Schedule a meeting | `create` | Recommended | Conflict on overlap; agent handles. |
 | Cancel an order | `delete` (or `update status=cancelled`) | Not needed (delete) / optional (update) | Idempotent. |

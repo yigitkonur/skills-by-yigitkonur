@@ -197,7 +197,7 @@ app.get("/sse",  (req, res) => server.connect(new SSEServerTransport("/messages"
 app.post("/messages", (req, res) => transport.handlePostMessage(req, res));
 ```
 
-Mark this endpoint deprecated in your README. Log a warning when used so you can retire it once your client telemetry shows zero SSE traffic.
+Mark this endpoint deprecated in your README. Log a warning when used so you can retire it once the client telemetry shows zero SSE traffic.
 
 **Source:** [MCP spec 2025-06-18 changelog (SSE deprecation)](https://modelcontextprotocol.io/specification/2025-11-25/changelog).
 
@@ -263,7 +263,7 @@ async def search_tickets(query: str) -> list[TextContent]:
     api_token = os.environ.get("API_TOKEN")
     if not api_token:
         return [TextContent(type="text",
-            text="API_TOKEN not set. Add it to your environment and restart the server.")]
+            text="API_TOKEN not set. Add it to the environment and restart the server.")]
     try:
         async with httpx.AsyncClient() as client:
             r = await client.get(URL, headers={"Authorization": f"Bearer {api_token}"})
@@ -601,7 +601,7 @@ startCommand:
                    env: { TAVILY_API_KEY: config.TAVILY_API_KEY } })
 ```
 
-`configSchema` (JSON Schema Draft-7) auto-renders the Smithery Connect UI. `required` becomes required inputs, `format: password` masks fields. Optional fields without `default` arrive as `undefined` — your server must tolerate that.
+`configSchema` (JSON Schema Draft-7) auto-renders the Smithery Connect UI. `required` becomes required inputs, `format: password` masks fields. Optional fields without `default` arrive as `undefined` — the server must tolerate that.
 
 **Source:** [smithery.ai/docs/build](https://smithery.ai/docs/build).
 

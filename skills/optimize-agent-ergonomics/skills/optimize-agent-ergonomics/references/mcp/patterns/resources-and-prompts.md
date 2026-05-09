@@ -76,7 +76,7 @@ server.registerResource(
 );
 ```
 
-The `complete` field powers autocomplete in clients that support it (VS Code's MCP extension, Cursor v1.6+). The `list` field is `undefined` because enumerating every recipe is wasteful; clients fetch by exact URI. Cross-link `client-compatibility.md` Pattern 1 — Claude Desktop and several other clients silently ignore resource templates as of 2026-02. Test on your target before committing.
+The `complete` field powers autocomplete in clients that support it (VS Code's MCP extension, Cursor v1.6+). The `list` field is `undefined` because enumerating every recipe is wasteful; clients fetch by exact URI. Cross-link `client-compatibility.md` Pattern 1 — Claude Desktop and several other clients silently ignore resource templates as of 2026-02. Test on the target before committing.
 
 ### Pagination and large resources
 
@@ -110,7 +110,7 @@ def search(query: str) -> dict:
     # ...
 ```
 
-Tools list stays lean. The model fetches `docs://search` only when something goes wrong. Practitioners report 90%+ first-call success on this pattern; the resource is touched only on the rare failure. Test on your target client — on clients that don't auto-fetch resources, the model still has to ask for it explicitly.
+Tools list stays lean. The model fetches `docs://search` only when something goes wrong. Practitioners report 90%+ first-call success on this pattern; the resource is touched only on the rare failure. Test on the target client — on clients that don't auto-fetch resources, the model still has to ask for it explicitly.
 
 **Source:** [MCP spec — resources](https://modelcontextprotocol.io/specification/2025-11-25/server/resources); [u/kiedi5 on r/mcp](https://reddit.com/r/mcp) — "Does anyone use MCP prompts or resources?" (2025).
 
@@ -182,7 +182,7 @@ def code_review(payload: str) -> list[dict]:
     # ...
 ```
 
-Most other clients (Claude Desktop, Claude Code, Cursor, Continue, VS Code, Goose) accept multi-argument prompts. Test on your target.
+Most other clients (Claude Desktop, Claude Code, Cursor, Continue, VS Code, Goose) accept multi-argument prompts. Test on the target.
 
 ### Common prompt shapes
 
@@ -258,13 +258,13 @@ The agent uses `search_customers` for discovery, then reads `customers://abc-123
 
 ### The community reality check
 
-Most production MCP servers ship tools only — partly because client support for resources and prompts is uneven (cross-link `client-compatibility.md`). If portability matters more than ergonomics, default to tools and add resources/prompts as a nice-to-have once you've verified your target clients support them. The compatibility matrix is the limiting factor: Claude Desktop supports static resources but ignores templates; Zed has no resources at all; Cline ignores resources and most prompts.
+Most production MCP servers ship tools only — partly because client support for resources and prompts is uneven (cross-link `client-compatibility.md`). If portability matters more than ergonomics, default to tools and add resources/prompts as a nice-to-have after verifying the target clients support them. The compatibility matrix is the limiting factor: Claude Desktop supports static resources but ignores templates; Zed has no resources at all; Cline ignores resources and most prompts.
 
 For a multi-client deployment, the safest path:
 
 1. Tools that work everywhere — the must-have surface.
 2. Static resources for documentation referenced from error messages — works on most clients, degrades gracefully on the rest.
-3. Prompts only when the user-initiated UX is the point — and test on your target before committing.
+3. Prompts only when the user-initiated UX is the point — and test on the target before committing.
 
 ---
 

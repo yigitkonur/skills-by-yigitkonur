@@ -32,7 +32,7 @@ START: How is the server deployed?
 |   +-- Apply the full remote threat model:
 |   |   - OAuth 2.1 + PKCE (no implicit, no resource-owner password)
 |   |   - RFC 9728 Protected Resource Metadata (PRM) endpoint
-|   |   - audience-restricted tokens (your server is the audience)
+|   |   - audience-restricted tokens (the server is the audience)
 |   |   - SSRF defenses (block 10/8, 172.16/12, 192.168/16, 127/8)
 |   |   - HTTPS only; HSTS; structured audit log per call
 |   |   - rate limiting at transport (per-token bucket)
@@ -94,7 +94,7 @@ When the server listens on a loopback port:
 - No implicit. No resource-owner password credentials.
 - Refresh tokens rotated.
 - Discovery via RFC 9728 PRM (`/.well-known/oauth-protected-resource`).
-- Token audience must include your server's identifier; reject tokens audienced elsewhere.
+- Token audience must include the server's identifier; reject tokens audienced elsewhere.
 
 ### Per-call authorization
 

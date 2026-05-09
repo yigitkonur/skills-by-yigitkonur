@@ -1,6 +1,6 @@
 # descriptions-as-prompts — names and descriptions ARE the prompt
 
-Tool descriptions are prompt engineering, not documentation. The model reads the description at decision time — `tools/list` for MCP, `--help` for CLI — and decides whether and how to call your tool. Write for the model, not for a human reading docs once.
+Tool descriptions are prompt engineering, not documentation. The model reads the description at decision time — `tools/list` for MCP, `--help` for CLI — and decides whether and how to call the tool. Write for the model, not for a human reading docs once.
 
 ## What the model reads, and when
 
@@ -85,7 +85,7 @@ The first form encodes a behavior policy that's better expressed as a schema gat
 
 "May be useful for..." or "Sometimes used to..." make the model uncertain. The model needs a verb sentence — what the tool *does*, not what it *might* do.
 
-Bad: "This tool may be useful for searching customers when you have specific criteria."
+Bad: "This tool may be useful for searching customers when specific criteria exist."
 Good: "Search customers by name, email, or account ID."
 
 ### Tell the model when NOT to use a tool

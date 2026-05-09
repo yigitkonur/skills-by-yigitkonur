@@ -115,7 +115,7 @@ Walk them top-to-bottom. Don't reorder. Don't skip. The output is a one-paragrap
 
 **What it asks.** Is this tool ephemeral (one-off task), long-lived (production for years), or pinned to a specific version of an upstream API?
 
-**Why it matters.** Lifecycle choice determines schema versioning rigor, deprecation strategy, and how aggressively you can change the contract.
+**Why it matters.** Lifecycle choice determines schema versioning rigor, deprecation strategy, and how aggressively the implementation can change the contract.
 
 **Possible answers and what each implies:**
 
@@ -150,7 +150,7 @@ The 8 answers tell you:
 
 That's the architecture sketch — derived from the 8 answers, not invented from intuition.
 
-## The "questions you should NOT ask first" anti-list
+## The "questions the agent should not ask first" anti-list
 
 Skipping the 8 questions and starting with these wastes the design pass:
 

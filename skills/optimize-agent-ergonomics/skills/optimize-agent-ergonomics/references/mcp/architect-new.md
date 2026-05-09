@@ -9,7 +9,7 @@ Two preconditions. Skip either and the rest of the conversation is wasted:
 1. The user said "I want to build an MCP server" or equivalent — not "should I build a CLI or an MCP?" If the surface is undecided, route to `../../common/decide-surface.md` first and come back.
 2. The 8 surface-agnostic questions in `../../common/design-thinking.md` are already answered, and "MCP" was the surface that fell out. If they are not, run that file first.
 
-If you reach the end of this file without an approved architecture sketch and a named companion skill, you have not finished Mode B-MCP — keep going.
+Reaching the end of this file without an approved architecture sketch and a named companion skill means Mode B-MCP is not finished — keep going.
 
 ## Workflow
 
@@ -33,7 +33,7 @@ If you reach the end of this file without an approved architecture sketch and a 
 6. State the install command and the first follow-on action; stop
 ```
 
-Do not skip step 1. The 8 surface-agnostic questions are the reason you are confident MCP is the right surface in the first place; jumping into the MCP-specific 12 without them produces a pretty sketch for the wrong product.
+Do not skip step 1. The 8 surface-agnostic questions are the evidence that MCP is the right surface in the first place; jumping into the MCP-specific 12 without them produces a pretty sketch for the wrong product.
 
 ## The 12 MCP brainstorm questions
 
@@ -41,7 +41,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 
 ### Q1. End-user task in one sentence
 
-> "Describe the outcome your users want, not the endpoints. What is the end-user task this MCP enables in one sentence?"
+> "Describe the outcome users want, not the endpoints. What is the end-user task this MCP enables in one sentence?"
 
 **Why it matters.** If the answer reads like an API description ("expose `GET /users`"), the user is in the wrong frame. Tools map to user intents, not REST verbs. A vague answer here flows downstream into a 1:1 REST wrap and a 30-tool surface.
 
@@ -188,7 +188,7 @@ Ask each verbatim or with minimal sharpening. Order matters — later questions 
 
 **Why it matters.** Some features only work in specific clients. Some platforms have cold-start or session quirks that bend the architecture.
 
-**Implication.** Cross-check against `../patterns/client-compatibility.md`. Pick the deployment that matches the session-affinity / cold-start budget you can tolerate (`../patterns/transport-and-ops.md`).
+**Implication.** Cross-check against `../patterns/client-compatibility.md`. Pick the deployment that matches the session-affinity / cold-start budget the workload can tolerate (`../patterns/transport-and-ops.md`).
 
 ## Architecture-sketch template
 
@@ -274,7 +274,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
 - **Skipping the brainstorm.** Jumping into code before Q1..Q12 are answered guarantees rework — the schema, transport, and auth decisions you make on instinct will not survive the first real user.
 - **Wrapping a REST API 1:1.** Q1 is the canary; if the answer reads like API endpoints, the brainstorm has not actually started.
-- **Picking SDK v2 because it is newer.** v2 is beta; pick it only when you can absorb API churn. v1 is the production default.
+- **Picking SDK v2 because it is newer.** v2 is beta; pick it only when API churn is acceptable. v1 is the production default.
 - **Choosing transport before auth.** Transport and auth are coupled (stdio implies "no network auth"; HTTP implies a full threat model). Decide together at Q3 + Q8.
 - **Eagerly registering 30+ tools.** Past the model's sweet spot, routing collapses. Q4 forces the count out into the open early.
 - **Ignoring client compatibility.** Sampling and elicitation work in some clients and silently no-op in others. Q11 + Q12 catch this before the architecture is locked.

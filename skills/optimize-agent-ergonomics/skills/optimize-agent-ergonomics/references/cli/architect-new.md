@@ -6,7 +6,7 @@ Mode B-CLI entry. Design a new agent-ready CLI from scratch with agent-readiness
 
 Run these in order. Each step has a routing target; do not skip them.
 
-1. **Run `../common/design-thinking.md` first.** The 8 surface-agnostic questions (workload, audience, statefulness, auth, scale, error semantics, observability, lifecycle) lock the basic shape. The surface decision lands on CLI — confirm by reading `../common/decide-surface.md` if you haven't already.
+1. **Run `../common/design-thinking.md` first.** The 8 surface-agnostic questions (workload, audience, statefulness, auth, scale, error semantics, observability, lifecycle) lock the basic shape. The surface decision lands on CLI — confirm by reading `../common/decide-surface.md` if the decision is not already made.
 
 2. **Pick the 5–10 commands using intent-based granularity.** Commands map to verbs the agent might want to run, not to API endpoints. Aim for fewer, broader commands. Test each against `audit-checklist.md` (the 5 checks every command must pass).
 
@@ -24,7 +24,7 @@ Run these in order. Each step has a routing target; do not skip them.
 
 9. **Write the harness.** A small subprocess harness (Python or Node) that exercises the CLI under realistic agent conditions. See `subprocess-harness.md`. The harness IS the integration test.
 
-10. **Test agent-driven invocation.** Run the CLI from the harness with synthetic agent prompts. Run the audit script from `audit-checklist.md` against your CLI. If anything fails, fix and re-run before declaring done.
+10. **Test agent-driven invocation.** Run the CLI from the harness with synthetic agent prompts. Run the audit script from `audit-checklist.md` against the CLI. If anything fails, fix and re-run before declaring done.
 
 ## Verb-based command design
 
@@ -43,7 +43,7 @@ The CLI's commands are verbs. The agent's prompt has a verb in it; the CLI's ver
 
 The `apply` vs `create` distinction is load-bearing for agent retries. `apply` says "reconcile to this state, idempotently"; `create` says "make a new one, fail if it exists." Agents that retry safely use `apply` or `ensure`. Agents that intend exactly-once creation use `create` with an idempotency key.
 
-`get` vs `describe`: `get` is the lean read for the agent's loop; `describe` is the full read for the human or for debugging. Both are read-only. If you only need one, use `get`.
+`get` vs `describe`: `get` is the lean read for the agent's loop; `describe` is the full read for the human or for debugging. Both are read-only. When only one is needed, use `get`.
 
 ## Sub-command structure: when to nest
 
@@ -54,12 +54,12 @@ Two patterns:
 **Nested noun-verb:** `mytool app create`, `mytool database create`, `mytool app list`. Two levels. Best for CLIs with 10+ commands across multiple resource types.
 
 Pick noun-verb when:
-- You have multiple resource types with parallel operations.
+- Multiple resource types exist with parallel operations.
 - Discovery via `mytool app --help` is valuable.
 - The agent's prompt naturally says "create an app" / "list databases."
 
 Pick flat when:
-- You have <10 commands total.
+- <10 commands total exist.
 - Commands are heterogeneous (don't share verbs).
 - Two-level invocation is more typing than the user / agent will tolerate.
 
@@ -182,7 +182,7 @@ The deliverable is:
 2. A scaffolded binary with envelope + exit codes + flags + auth implemented (from `code-templates.md`).
 3. A `subprocess-harness.md`-based smoke test that the user can run.
 4. A `--help` page that documents the envelope, exit codes, examples.
-5. A short note to the user: "ship this, then come back if you want iteration on streaming, observability, or distribution."
+5. A short note to the user: "ship this, then come back for iteration on streaming, observability, or distribution."
 
 This skill ends here. There is no `build-cli` companion skill; the merged `optimize-agent-ergonomics` skill produces the scaffold and stops.
 

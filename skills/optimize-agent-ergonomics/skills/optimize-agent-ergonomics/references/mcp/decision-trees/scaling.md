@@ -70,7 +70,7 @@ Move per-session state out of the process:
 Anything reliably >30s:
 
 ```python
-# FastMCP-style; check your SDK
+# FastMCP-style; check the SDK
 @mcp.tool(task=True)
 async def deep_index(repo_url: str) -> str:
     task_id = enqueue(repo_url)

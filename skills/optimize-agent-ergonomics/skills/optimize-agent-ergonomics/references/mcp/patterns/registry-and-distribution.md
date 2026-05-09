@@ -1,4 +1,4 @@
-# Registry and distribution — publishing your MCP server
+# Registry and distribution — publishing the MCP server
 
 Three questions every MCP author has to answer before shipping: how do users **install** the server, where do they **discover** it, and how do they know which **version** to pin? This file covers the distribution mechanisms (npm, pip, Docker, hosted), the registry options (Official Registry, Smithery, Docker Catalog, Glama, GitHub MCP Registry), and the versioning hygiene that keeps production stable. Cross-link `transport-and-ops.md` for hosting platform constraints, `auth-identity.md` for OAuth registration during install, `security.md` for the supply-chain defenses these distribution channels enable.
 
@@ -101,7 +101,7 @@ Rare but valid for some workflows: ship a single self-contained binary the user 
 
 ---
 
-## Registry options — where users find your server
+## Registry options — where users find the server
 
 Registries do not run code; they index metadata. Three tiers; pick by audience and trust model.
 
@@ -233,7 +233,7 @@ For Docker, pin by image digest (`mcp/acme-mcp@sha256:abc...`), not just by tag 
 
 ### Deprecation discipline
 
-When you remove a tool or change a response shape, announce it in three places:
+When removing a tool or changing a response shape, announce it in three places:
 
 1. **The `instructions` field** of the `initialize` response (cross-link `tools.md` § "Use the `instructions` field"). Persistent, machine-readable, surfaced by every major client.
 2. **The CHANGELOG** in the package. Conventional Commits + a generated changelog is fine.
@@ -243,7 +243,7 @@ GitHub's `create_pull_request_with_copilot` (issue #1220, 2025-10) is the cautio
 
 ---
 
-## Discovery — how clients actually find your server
+## Discovery — how clients actually find the server
 
 Client discovery breaks into two phases.
 
@@ -294,7 +294,7 @@ Make the handshake fast (<500ms) and the `tools/list` lean (cross-link `client-c
 
 ## Cross-references
 
-- `transport-and-ops.md` — hosting platform constraints; what your server's deploy target can support.
+- `transport-and-ops.md` — hosting platform constraints; what the server's deploy target can support.
 - `auth-identity.md` — OAuth 2.1 + DCR + RFC 9728 PRM; the auth wiring expected by Smithery, Cloudflare, and the Official Registry.
 - `security.md` — sanitization and untrusted-data wrapping that registries scan for.
 - `threat-catalog.md` — named CVEs (CVE-2025-6514, postmark-mcp, Smithery path traversal) the version-pinning rule defends against.

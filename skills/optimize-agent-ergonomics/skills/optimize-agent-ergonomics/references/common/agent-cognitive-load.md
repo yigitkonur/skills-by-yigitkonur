@@ -21,7 +21,7 @@ Pick the band that matches the surface count today.
 
 ### 5–15 tools (sweet spot)
 
-The model holds the entire catalog in working memory. Selection accuracy is high. Token cost is modest. This is the right size for almost every CLI and the right size for an MCP server unless you've consolidated thoughtfully.
+The model holds the entire catalog in working memory. Selection accuracy is high. Token cost is modest. This is the right size for almost every CLI and the right size for an MCP server unless the catalog is consolidated thoughtfully.
 
 What to verify in this band:
 

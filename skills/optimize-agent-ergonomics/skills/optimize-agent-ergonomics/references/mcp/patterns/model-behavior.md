@@ -134,7 +134,7 @@ No first-party function-calling training. The ecosystem uses Hermes-style tags o
 - Examples in every description.
 - Action-routed enums instead of `oneOf`.
 
-For most production MCP servers, treating Llama 4 as a poor citizen is the right call. If you must support it, pair with a stronger advisor model.
+For most production MCP servers, treating Llama 4 as a poor citizen is the right call. When support is mandatory, pair with a stronger advisor model.
 
 ---
 
@@ -188,7 +188,7 @@ function validateCrossModelSchema(schema: any): string[] {
 }
 ```
 
-Run this at server registration time. If any issue surfaces and your model matrix includes the affected vendor, refactor before shipping.
+Run this at server registration time. If any issue surfaces and the model matrix includes the affected vendor, refactor before shipping.
 
 ---
 

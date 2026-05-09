@@ -251,7 +251,7 @@ The first confirmed malicious MCP server on npm. Starting at `v1.0.16`, the pack
 
 Sources: snyk.io/blog/malicious-mcp-server-on-npm-postmark-mcp-harvests-emails/ (2025-09-25); thehackernews.com/2025/09/first-malicious-mcp-server-found.html (2025-09-29).
 
-Takeaway: never auto-update MCP servers; pin to a commit hash; run a supply-chain scanner against your installed set on a schedule.
+Takeaway: never auto-update MCP servers; pin to a commit hash; run a supply-chain scanner against the installed set on a schedule.
 
 ### Cursor MCP config overwrite — CVE-2025-59944 (Lakera 2025-10-10)
 

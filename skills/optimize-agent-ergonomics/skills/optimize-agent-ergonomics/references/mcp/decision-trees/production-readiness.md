@@ -156,7 +156,7 @@ The checklist is **gating** — production readiness means every item is green o
 
 **Skip patterns.** None; agents cannot detect their own loops.
 
-**Failure mode.** A single agent's stuck loop ticks up your bill and your upstream's quota.
+**Failure mode.** A single agent's stuck loop ticks up your bill and the upstream's quota.
 
 **Pattern reference.** `error-strategy.md`, `../patterns/error-handling.md`.
 
@@ -180,7 +180,7 @@ Before announcing the server is live:
 - [ ] A rollback plan is rehearsed (last green deploy is one command away).
 - [ ] First-day metrics dashboard is up: tool-call count, error rate, P95 latency, active sessions.
 
-If any of those is blank, you are not deploying — you are launching with one foot off the ground.
+If any of those is blank, deployment is premature.
 
 ## Anti-patterns
 

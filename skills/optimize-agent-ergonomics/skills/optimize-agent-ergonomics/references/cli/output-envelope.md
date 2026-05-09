@@ -1,6 +1,6 @@
 # cli/output-envelope.md
 
-The canonical CLI JSON envelope. Every command that supports `--json` emits this shape. The agent's parse-and-route function is written against this contract; if every command in your CLI returns it, the agent learns the contract once and reuses it everywhere.
+The canonical CLI JSON envelope. Every command that supports `--json` emits this shape. The agent's parse-and-route function is written against this contract; if every command in the CLI returns it, the agent learns the contract once and reuses it everywhere.
 
 ## Schema
 
@@ -72,7 +72,7 @@ Structured error for the agent's recovery loop.
 
 ### `schema_version` (string, required)
 
-A stable string the agent can branch on if the envelope shape ever changes. Today, `"1"`. Bump to `"2"` if you make a breaking change.
+A stable string the agent can branch on if the envelope shape ever changes. Today, `"1"`. Bump to `"2"` after a breaking change.
 
 - The agent reads `schema_version` once at startup; if it doesn't recognize the version, it falls back to "raw text" mode and surfaces a warning. This is what makes future evolution safe.
 - Use simple integers (`"1"`, `"2"`), not semver. The schema is either compatible or it isn't; minor versions are noise.
@@ -89,7 +89,7 @@ A change is **breaking** (bump to `"2"`):
 - A field's type changes (`status` was a string, now an object).
 - An existing error code's semantics change.
 
-When you bump the version:
+When bumping the version:
 1. Keep the `"1"` shape working for at least one release. Emit `"2"` only when the user passes `--schema-version=2` or `MYTOOL_SCHEMA=2`.
 2. Document the migration in `--help` and the changelog: "schema_version `2` adds `result.regions[]` (array). Pass `--schema-version=2` to opt in. Default flips to `2` in v3.0."
 3. The agent that requested `"1"` keeps getting `"1"`. The agent that requested `"2"` (or omitted the request and accepts the default) gets `"2"`.
@@ -269,7 +269,7 @@ def parse_envelope(stdout: str) -> dict:
 - **Envelope on success, plain text on failure.** Asymmetric. Agent crashes on the failure path. Fix: error envelope through the same writer.
 - **Boolean `ok` plus a string `status` field that contradicts it.** Agent has to reconcile. Fix: pick one — `ok` is canonical.
 - **Numeric `error.code` (`"code": 42`).** Lossy; the agent has to maintain a code table that drifts from yours. Use SCREAMING_SNAKE_CASE strings.
-- **`error.message` localized.** The agent's branches break when the locale flips. Keep `message` and `code` in English; offer `error.localized_message` if you must.
+- **`error.message` localized.** The agent's branches break when the locale flips. Keep `message` and `code` in English; offer `error.localized_message` when unavoidable.
 - **Stream events tagged with `ok`.** Agents read until they see `ok`; if every progress line has `ok=true`, the loop terminates after the first one. Reserve `ok` for the terminal envelope.
 - **Pretty-printed JSON in single-shot mode.** Wastes bytes; some harnesses chunk on newlines. Pretty-print only when stdout is a TTY.
 

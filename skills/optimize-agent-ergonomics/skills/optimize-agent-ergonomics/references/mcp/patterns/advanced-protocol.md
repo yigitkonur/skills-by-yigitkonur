@@ -394,7 +394,7 @@ When NOT to use `_meta`: storing tokens, API keys, PII — `_meta` is not authen
 
 ### When to use
 
-If your server exposes resource templates or prompts with argument slots, implement `completion/complete`. The 2025-11-25 `context.arguments` field narrows suggestions based on previously selected arguments — when the user picks `language=python`, the `framework` completions return Django/Flask/FastAPI, not Rails.
+If the server exposes resource templates or prompts with argument slots, implement `completion/complete`. The 2025-11-25 `context.arguments` field narrows suggestions based on previously selected arguments — when the user picks `language=python`, the `framework` completions return Django/Flask/FastAPI, not Rails.
 
 ### How it works
 

@@ -8,7 +8,7 @@ The math is unambiguous once the prefix stays byte-identical; the hard part is k
 
 ## Provider-side prompt caching — what each vendor charges
 
-The first decision is which cache surface you are optimizing against. Mins, TTLs, write premiums, and invalidation triggers differ materially across vendors.
+The first decision is which cache surface is under optimization. Mins, TTLs, write premiums, and invalidation triggers differ materially across vendors.
 
 | Dimension | Anthropic (docs.claude.com, 2026-04) | OpenAI (developers.openai.com, 2026-04) | Gemini API (ai.google.dev, 2026-03) | Vertex AI (cloud.google.com, 2026-04) | Bedrock (aws.amazon.com, 2026-01) |
 |---|---|---|---|---|---|
@@ -182,7 +182,7 @@ Caches are per-model **and** per-provider region. Switching from Anthropic Direc
 
 ### Ship thin tool stubs, hydrate schemas on demand
 
-When you have 20+ MCP tools, the tool block alone can be 3-10K tokens. Sending a thin stub first and fetching full schemas on demand keeps the cached prefix small **and** keeps it byte-stable — as long as hydration happens through a message, not a tool edit.
+With 20+ MCP tools, the tool block alone can be 3-10K tokens. Sending a thin stub first and fetching full schemas on demand keeps the cached prefix small **and** keeps it byte-stable — as long as hydration happens through a message, not a tool edit.
 
 - Register stubs like `{"name":"mcp__slack__read_channel","description":"Read messages from Slack","defer_loading":true}` — a few tokens each.
 - Append the full JSON schema as a user or assistant message when the model asks for it. Messages sit after the breakpoint and don't invalidate cache.

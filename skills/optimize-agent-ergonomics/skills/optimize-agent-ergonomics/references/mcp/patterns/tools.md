@@ -143,7 +143,7 @@ Mark planner descriptions with "Call this FIRST" — the model treats it as a st
 
 ### Design tool workflows for 3-5 calls, not 20+
 
-Frontier models handle 20+ sequential tool calls; smaller and open-source models degrade after 5-7 — they forget earlier results, hallucinate parameters, or loop. If your server requires 15 tool calls to complete a common task, you've locked yourself into expensive frontier models.
+Frontier models handle 20+ sequential tool calls; smaller and open-source models degrade after 5-7 — they forget earlier results, hallucinate parameters, or loop. If the server requires 15 tool calls to complete a common task, the design locks itself into expensive frontier models.
 
 Design tools so common goals complete in 3-5 calls. This means each tool does more meaningful work per invocation, not that you have fewer tools.
 
@@ -180,7 +180,7 @@ def manage_user(
 
 ### Toolhost / facade pattern for many related operations
 
-When your server exposes 20+ closely related operations, expose a single dispatcher tool that routes via an `operation` parameter. This is the GoF Facade pattern applied to MCP — shared logic (auth, logging, error handling) lives in the facade.
+When the server exposes 20+ closely related operations, expose a single dispatcher tool that routes via an `operation` parameter. This is the GoF Facade pattern applied to MCP — shared logic (auth, logging, error handling) lives in the facade.
 
 ```python
 OPERATIONS = {
@@ -238,7 +238,7 @@ Security requirements (non-negotiable): isolated containers with `--no-new-privi
 
 ### Descriptions are prompt engineering
 
-A `tools/list` description is text the LLM reads at decision time. Write for the model, not for a human reading docs. Names, parameter labels, error hints — all of it is the prompt the agent uses to figure out whether to call your tool. The cross-surface principles live in `../../common/descriptions-as-prompts.md`. This section is the MCP-specific deep dive.
+A `tools/list` description is text the LLM reads at decision time. Write for the model, not for a human reading docs. Names, parameter labels, error hints — all of it is the prompt the agent uses to figure out whether to call the tool. The cross-surface principles live in `../../common/descriptions-as-prompts.md`. This section is the MCP-specific deep dive.
 
 ### Use XML tags to separate purpose from instructions
 
@@ -365,7 +365,7 @@ The description adds three things the schema cannot: side effect (`sent` trigger
 
 **Schema = what's valid. Description = what's wise.**
 
-### Use the `instructions` field as your server's briefing doc
+### Use the `instructions` field as the server's briefing doc
 
 The MCP `initialize` response includes an `instructions` field — free-form text the client surfaces as system-level context. This is the most reliable place to explain overall capabilities, recommended workflows, and inter-tool relationships. Unlike `prompts` (silently ignored by many clients), `instructions` is consistently read by Claude Desktop, Cursor, and other major clients.
 
@@ -425,7 +425,7 @@ function registerWithLengthCheck(name, description, schema, handler) {
 }
 ```
 
-Move parameter-level guidance into individual parameter `description` fields rather than the tool description. The model reads parameter descriptions when filling arguments — exactly when you want parameter guidance.
+Move parameter-level guidance into individual parameter `description` fields rather than the tool description. The model reads parameter descriptions when filling arguments — exactly when parameter guidance is needed.
 
 ```typescript
 {
@@ -485,7 +485,7 @@ For tabular or large data, prefer a single `text` block with a human-readable he
 
 MCP supports `outputSchema` on tools — declare the response shape, and the SDK validates at runtime. The agent gets a contract it can rely on; the SDK catches server bugs before they reach the agent.
 
-**Critical rule:** if you declare an `outputSchema`, you MUST return `structuredContent`. Always return `content` too for backward compatibility.
+**Critical rule:** when declaring an `outputSchema`, return `structuredContent`. Always return `content` too for backward compatibility.
 
 ```typescript
 server.registerTool("get_weather", {
@@ -505,7 +505,7 @@ server.registerTool("get_weather", {
 });
 ```
 
-If you're not ready to commit to a schema, don't declare one — add it when the response shape stabilizes.
+When the implementation is not ready to commit to a schema, don't declare one — add it when the response shape stabilizes.
 
 ### The `isError` flag
 
@@ -559,7 +559,7 @@ Good:
 {"project_name": "Q4 Marketing Campaign", "project_id": "q4-marketing", "channel_name": "#general"}
 ```
 
-Always include a human-readable name alongside any ID. Use slug-style IDs when possible. If you must return UUIDs, pair them: `{"project": {"id": "550e...", "name": "Q4 Marketing"}}`.
+Always include a human-readable name alongside any ID. Use slug-style IDs when possible. When UUIDs are unavoidable, pair them: `{"project": {"id": "550e...", "name": "Q4 Marketing"}}`.
 
 ### Prepend truncation guidance when results are cut off
 
@@ -584,7 +584,7 @@ Place guidance **before** data so the model reads it first. Include the total co
 
 ### Include next-step hints in successful responses
 
-HATEOAS at the language level. The model has no memory of your API's workflow. A developer would read your docs; the model relies on your response.
+HATEOAS at the language level. The model has no memory of the API's workflow. A developer would read docs; the model relies on the response.
 
 ```python
 @tool
@@ -681,7 +681,7 @@ Priority levels: `1.0` critical user info, `0.7` supplementary context, `0.3` de
 
 ### Return normalized inputs in every response
 
-When your server accepts flexible input formats and normalizes internally (e.g., `"yesterday"` → `"2024-01-15"`), include the normalized values in the response. This teaches the agent the canonical format, improving every subsequent call.
+When the server accepts flexible input formats and normalizes internally (e.g., `"yesterday"` → `"2024-01-15"`), include the normalized values in the response. This teaches the agent the canonical format, improving every subsequent call.
 
 ```json
 {

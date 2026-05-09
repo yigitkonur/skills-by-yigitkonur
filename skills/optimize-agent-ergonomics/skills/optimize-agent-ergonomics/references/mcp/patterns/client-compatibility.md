@@ -28,7 +28,7 @@ Columns: clients in production usage as of 2026-02. Cells: `native` (works), `pa
 | SSE (legacy) | unknown | unknown | native | native | partial | native | native |
 | OAuth 2.1 + DCR | partial (PKCE; pre-registered only) | partial | native (browser) | native (DCR + client-credentials) | partial | ignored ([#3090](https://github.com/cline/cline/issues/3090)) | unknown |
 
-Add Codex CLI, Copilot CLI, Windsurf, Zed if you ship to those — see the source links above for the wider matrix. The seven columns above cover roughly 90% of installed-base usage.
+Add Codex CLI, Copilot CLI, Windsurf, Zed when shipping to those — see the source links above for the wider matrix. The seven columns above cover roughly 90% of installed-base usage.
 
 ---
 
@@ -38,7 +38,7 @@ Add Codex CLI, Copilot CLI, Windsurf, Zed if you ship to those — see the sourc
 
 OpenAI strict mode and DeepSeek accept `$ref`, `oneOf`, `anyOf`, `allOf`. Gemini rejects `anyOf` and `$ref`. Mistral accepts only the bare minimum (`type`, `object`, `properties`, `required`, `string`). Llama 4 has no first-party tool-use training. The model side of this lives in `model-behavior.md`; the implication for client compatibility is that **your input schemas must lowest-common-denominator across the model the client routes to.**
 
-Ship `oneOf` only when you know the model is OpenAI strict or DeepSeek. Otherwise:
+Ship `oneOf` only when the target model is known to be OpenAI strict or DeepSeek. Otherwise:
 
 ```typescript
 // Portable across all models — action enum substitutes for oneOf.
@@ -72,7 +72,7 @@ The text block survives every client; the image and structured payload light up 
 
 Stdio works everywhere. Streamable HTTP works on every modern client; Cline regressed it in v3.17.5+ ([#3829](https://github.com/cline/cline/issues/3829)) — connections drop after seconds. SSE was deprecated by the spec on 2025-06-18; Codex CLI removed it; VS Code, Cursor, Cline, and Continue still accept it for backcompat; Goose supports it remote-only.
 
-Ship Streamable HTTP first, advertise it in your README, keep an SSE endpoint as a deprecated fallback for one more release, and log a warning when SSE is used. Once your client telemetry shows zero SSE traffic, retire it. See `transport-and-ops.md` for transport implementation details.
+Ship Streamable HTTP first, advertise it in your README, keep an SSE endpoint as a deprecated fallback for one more release, and log a warning when SSE is used. Once the client telemetry shows zero SSE traffic, retire it. See `transport-and-ops.md` for transport implementation details.
 
 ### 4. Authorization headers get dropped
 
@@ -89,7 +89,7 @@ server.tool("whoami", "Echo the auth principal the server sees.", {}, async (_, 
 
 ### 5. Config root keys are not standardized
 
-Every client except Zed reads a top-level `"mcpServers"` key. Zed reads `"context_servers"` under `settings.json`. Cursor strictly matches `"mcpServers"` — `"servers"` parses without error and produces "No Tools Found" with no log entry. If you ship an installer or deeplink, branch on target client:
+Every client except Zed reads a top-level `"mcpServers"` key. Zed reads `"context_servers"` under `settings.json`. Cursor strictly matches `"mcpServers"` — `"servers"` parses without error and produces "No Tools Found" with no log entry. When shipping an installer or deeplink, branch on target client:
 
 ```javascript
 const key = client === "zed" ? "context_servers" : "mcpServers";
@@ -98,12 +98,12 @@ writeJson(configPath, { [key]: { acme: serverSpec } });
 
 ### 6. `tools/list_changed` is a no-op on Claude Code
 
-Claude Code captures the tool list once per session and ignores `tools/list_changed` notifications. Cursor, Windsurf, Zed, Cline, and VS Code refresh on notification. If your server adds tools after a gated unlock (auth, feature flag), either:
+Claude Code captures the tool list once per session and ignores `tools/list_changed` notifications. Cursor, Windsurf, Zed, Cline, and VS Code refresh on notification. If the server adds tools after a gated unlock (auth, feature flag), either:
 
 1. Advertise all tools at startup and return `isError: true` on locked tools until unlocked, or
 2. Require a session restart after unlock and surface that in the unlock tool's response.
 
-Don't rely on `tools/list_changed` if Claude Code is in your client matrix.
+Don't rely on `tools/list_changed` if Claude Code is in the client matrix.
 
 ### 7. The `instructions` field renders differently everywhere
 
@@ -249,7 +249,7 @@ Add Cursor and Goose for a four-client matrix when shipping a public server. Cro
 
 ## Documented silent-failure cases
 
-When a user reports "MCP doesn't work," check this list before suspecting your server:
+When a user reports "MCP doesn't work," check this list before suspecting the server:
 
 1. **Cursor "No Tools Found" on wrong root key.** `.cursor/mcp.json` with `"servers": {...}` instead of `"mcpServers": {...}`. Parse succeeds, no tools surface, no warning. Fix: rename the key.
 2. **Zed prompts with >1 argument disappear.** Server registers `code_review(path, language)`; Zed's `acceptable_prompt` filter drops it. Fix: collapse to a single JSON-string argument.

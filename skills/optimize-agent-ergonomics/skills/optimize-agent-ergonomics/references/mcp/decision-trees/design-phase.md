@@ -137,7 +137,7 @@ Picking factors:
 - **Need to support legacy clients that don't speak Streamable HTTP** → SSE alongside Streamable HTTP, marked deprecated.
 - **Anything else** → Streamable HTTP. It's the production answer in 2026.
 
-HubSpot's published reasoning (`product.hubspot.com/blog/...`, 2025-06-18): "Supporting SSE would have introduced load balancer and scaling complexity in auto-scaling environments." If you operate behind an auto-scaling LB, follow HubSpot — Streamable HTTP only.
+HubSpot's published reasoning (`product.hubspot.com/blog/...`, 2025-06-18): "Supporting SSE would have introduced load balancer and scaling complexity in auto-scaling environments." When operating behind an auto-scaling LB, follow HubSpot — Streamable HTTP only.
 
 Cross-link `../patterns/transport-and-ops.md` for the deployment patterns and operational concerns.
 
@@ -167,7 +167,7 @@ Each of these is a major-version event. Plan for migration: keep the old contrac
 
 ## Anti-patterns at the design phase
 
-- **Picking the SDK based on team familiarity, not on workload fit.** v1 is the default for most workloads, but if you need sampling/elicitation, v2 is the right answer regardless of how comfortable the team is with v1.
+- **Picking the SDK based on team familiarity, not on workload fit.** v1 is the default for most workloads, but when the workload needs sampling/elicitation, v2 is the right answer regardless of how comfortable the team is with v1.
 - **Skipping cross-model portability decisions until launch.** "We'll worry about ChatGPT support later" leads to schemas that work in Claude and break elsewhere.
 - **Defaulting to stateful when stateless would work.** Stateful adds complexity; only pay for it when the workflow demands it.
 - **Adopting SSE in 2026.** It's deprecated. Streamable HTTP only.

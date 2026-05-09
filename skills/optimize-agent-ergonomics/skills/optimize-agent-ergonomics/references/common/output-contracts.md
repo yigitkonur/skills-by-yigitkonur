@@ -368,7 +368,7 @@ Tiered verbosity gives the model a graceful off-ramp on long sessions; a tool th
 
 **Mixing prose and JSON on the same channel.** `console.log("Done!"); console.log(JSON.stringify(result));` writes both lines to stdout. The agent's parser fails on the first line.
 
-**Renaming fields between releases.** Stable field names are the contract. Renames break every agent that has learned the old name. If you must rename, bump the major version.
+**Renaming fields between releases.** Stable field names are the contract. Renames break every agent that has learned the old name. When renaming is unavoidable, bump the major version.
 
 **Returning raw API JSON.** Notion's own post-mortem on v1: "1:1 API-to-tool mapping produced poor agent experiences, including high token use from hierarchical JSON block data." Project to fields the agent will actually use.
 

@@ -12,7 +12,7 @@ MCP moved from "auth optional, good luck" (2025-03-26) to a hardened OAuth 2.1 p
 
 ## The 2025-11-25 spec diff
 
-If your server or client was written against `2025-06-18` or earlier, assume it is wrong on at least one of: AS discovery, PRM location, DCR assumptions, step-up scope, or CIMD. Audit against the diff first, then code.
+If the server or client was written against `2025-06-18` or earlier, assume it is wrong on at least one of: AS discovery, PRM location, DCR assumptions, step-up scope, or CIMD. Audit against the diff first, then code.
 
 | Area | 2025-06-18 | 2025-11-25 |
 |---|---|---|
@@ -55,7 +55,7 @@ When reviewing a server, tick off each row before touching anything else. Non-co
 
 ## OAuth 2.1 — first-connection flow
 
-This is the reference sequence. Any deviation means your server is either pre-spec or non-compliant.
+This is the reference sequence. Any deviation means the server is either pre-spec or non-compliant.
 
 1. **Unauthenticated request.** Client POSTs to `https://mcp.example.com/mcp` without `Authorization`.
 2. **Server challenges.** Response: `401` with `WWW-Authenticate: Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource", scope="files:read"`.

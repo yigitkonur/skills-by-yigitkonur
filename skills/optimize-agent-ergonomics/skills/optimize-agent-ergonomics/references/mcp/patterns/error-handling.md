@@ -36,7 +36,7 @@ MCP has two error paths. Picking the wrong one is the most common error-handling
 
 The rule: **protocol errors are reserved for transport/framework failures.** Bad JSON, unknown method, server crash — those are the only things that belong in the JSON-RPC `error` field. Every business logic failure — validation errors, permission issues, "resource not found", state conflicts, rate limits — uses `isError: true` so the agent can see the message and try again.
 
-When you throw a protocol-level error for a business failure, the agent gets a generic "tool call failed" with no information to fix the problem. With `isError: true`, the error text becomes part of the conversation and the model adjusts its approach. Source: alpic.ai — "Better MCP tool call error responses" (2025); MCP specification 2025-11-25, Tools.
+When throwing a protocol-level error for a business failure, the agent gets a generic "tool call failed" with no information to fix the problem. With `isError: true`, the error text becomes part of the conversation and the model adjusts its approach. Source: alpic.ai — "Better MCP tool call error responses" (2025); MCP specification 2025-11-25, Tools.
 
 ---
 

@@ -83,7 +83,7 @@ async def delete_environment(environment_id: str, tests_verified: bool, backup_i
 
 ### Reject schema fields that smell like instructions
 
-Full-schema poisoning (FSP, see `threat-catalog.md` #5) injects instructions into `parameter.description`, enum labels, default values, and even parameter names. If your server loads tool definitions from a config file, package, or registry, scan every text field — not just `description` — for instruction-shaped patterns at load time:
+Full-schema poisoning (FSP, see `threat-catalog.md` #5) injects instructions into `parameter.description`, enum labels, default values, and even parameter names. If the server loads tool definitions from a config file, package, or registry, scan every text field — not just `description` — for instruction-shaped patterns at load time:
 
 ```python
 INSTRUCTION_PATTERNS = [
@@ -206,7 +206,7 @@ This is "MCP colors" — Simon Willison's red-tool / blue-tool distinction (simo
 
 ### Process isolation for code-execution tools
 
-If you expose an `execute_code` tool, the sandbox is non-negotiable. Container minimums:
+When exposing an `execute_code` tool, the sandbox is non-negotiable. Container minimums:
 
 - `--no-new-privileges` and dropped capabilities (`--cap-drop=ALL`).
 - Read-only filesystem with a small `tmpfs` for working space.

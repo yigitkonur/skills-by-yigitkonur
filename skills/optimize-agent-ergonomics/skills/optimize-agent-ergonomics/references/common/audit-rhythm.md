@@ -242,7 +242,7 @@ User picks B. Apply B. Verify with `mcpc call-tool ./server search '{"query":"ac
 ## Anti-patterns that violate the rhythm
 
 **Pattern-fitting before exploration.**
-Looking at the user's repo for two minutes and concluding "you should add `--json`" without checking whether they already have it (they often do; it's just broken). Read the code first.
+Looking at the user's repo for two minutes and concluding "the CLI should add `--json`" without checking whether they already have it (they often do; it's just broken). Read the code first.
 
 **Batch-recommending.**
 Listing 12 findings as bullet points without giving the user a way to engage with one at a time. The user's attention is the bottleneck, not the finding count.
@@ -251,7 +251,7 @@ Listing 12 findings as bullet points without giving the user a way to engage wit
 Editing the user's code as soon as you see a problem. Mode A is a discussion, not an autopilot. Apply only after explicit approval.
 
 **Generic questions instead of specific ones.**
-"What does your tool do?" is a generic question. "In `tools/search.ts:42`, the schema has 14 parameters including `filters.dateRange.start` — are all 14 used, or are most optional?" is a specific question. Spec specifically.
+"What does the tool do?" is a generic question. "In `tools/search.ts:42`, the schema has 14 parameters including `filters.dateRange.start` — are all 14 used, or are most optional?" is a specific question. Spec specifically.
 
 **Skipping the verification rung.**
 Saying "Done, this is fixed" without running the binary or hitting the endpoint. Claim the rung you actually reached. Type-check passes is not the same as integration test passes is not the same as observed behavior.

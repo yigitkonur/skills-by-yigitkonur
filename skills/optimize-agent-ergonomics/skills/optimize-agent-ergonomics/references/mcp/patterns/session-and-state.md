@@ -19,7 +19,7 @@ def get_customer(customer_id: str) -> dict:
     return crm.get_customer(customer_id) or {"error": f"customer {customer_id} not found"}
 ```
 
-When you reach for "I need to remember something between calls," ask: can the caller pass it back as a parameter? That's the state-token pattern (below). Server-resident state is a last resort.
+Reaching for "I need to remember something between calls," ask: can the caller pass it back as a parameter? That's the state-token pattern (below). Server-resident state is a last resort.
 
 ---
 
@@ -90,7 +90,7 @@ server.tool("next_page", "Advance one page.", { /* ... */ }, async (_, ctx) => {
 });
 ```
 
-Externalize once you cross any of: multi-pod horizontal scaling, scale-to-zero hosting (Cloudflare Workers without Durable Objects, Vercel Fluid Compute, Lambda), or HPA-managed autoscaling. Sticky session affinity fights the autoscaler — externalized state lets every pod serve every request.
+Externalize after crossing any of: multi-pod horizontal scaling, scale-to-zero hosting (Cloudflare Workers without Durable Objects, Vercel Fluid Compute, Lambda), or HPA-managed autoscaling. Sticky session affinity fights the autoscaler — externalized state lets every pod serve every request.
 
 ---
 

@@ -31,7 +31,7 @@ Sixteen production MCP servers from major vendors, what each does well, what eac
 
 - **Source.** `github.com/stripe/agent-toolkit`.
 - **Surface.** ~25 tools across Payments, Customers, Products, Prices, Invoices, Subscriptions, Refunds, Disputes, Balance, Payment Links, Coupons. `snake_case`, `--tools=` flag selects subsets at launch time.
-- **What to copy.** **Reuse existing fine-grained API key permissions as the MCP permissions surface.** Stripe has no MCP-level scope system — Restricted API Keys (`rk_*`) are the permissions surface. For Connect platforms, `context.account = "acct_123"` switches tenant per call. If you already have a fine-grained permissions primitive, reuse it rather than inventing parallel scopes.
+- **What to copy.** **Reuse existing fine-grained API key permissions as the MCP permissions surface.** Stripe has no MCP-level scope system — Restricted API Keys (`rk_*`) are the permissions surface. For Connect platforms, `context.account = "acct_123"` switches tenant per call. When a fine-grained permissions primitive already exists, reuse it rather than inventing parallel scopes.
 - **What to avoid.** Without Restricted Keys, this design forces single-key-fits-all, which leaks more than the agent should be able to do. Don't ship without a permissions primitive comparable in granularity.
 - **Ecosystem.** `@stripe/agent-toolkit` (framework helpers), `@stripe/ai-sdk` (Vercel AI SDK bindings), `@stripe/token-meter` (usage metering for LLM-driven Stripe actions).
 - **Auth / transport.** Remote OAuth at `https://mcp.stripe.com`; local via `npx -y @stripe/mcp --api-key=...`.
@@ -86,7 +86,7 @@ Sixteen production MCP servers from major vendors, what each does well, what eac
 - **Source.** [support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/](https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/). GA 2026-02-04.
 - **Surface.** 54 tools — Jira (13), Confluence (11), JSM (4), Bitbucket Cloud (23), Rovo code/shared (4), Teamwork Graph (2 beta), Compass (12). **Naming is `camelCase`** — major outlier. `getJiraIssue`, `createConfluencePage`, `searchJiraIssuesUsingJql`. Bitbucket uses dotted sub-action names: `bitbucketPullRequest.approve`, `bitbucketRepoContent.branch.get`.
 - **What to copy.** **Cross-product Teamwork Graph tools** (`getTeamworkGraphContext`, `getTeamworkGraphObject`) return entity context spanning Jira + Confluence + Bitbucket for a single object. When your product has multiple surfaces referring to the same entity, expose the graph-walk instead of forcing the agent to join three tool calls.
-- **What to avoid.** `camelCase` is a portability risk — clients that assume `snake_case` may render or filter incorrectly. If you break from `snake_case`, document loudly.
+- **What to avoid.** `camelCase` is a portability risk — clients that assume `snake_case` may render or filter incorrectly. When breaking from `snake_case`, document loudly.
 - **Response.** Confluence body delivered as Markdown.
 - **Auth.** OAuth; users consent per AI client; admins allowlist clients.
 
@@ -201,7 +201,7 @@ The two outliers in tool count (Cloudflare 2, GitHub 56+) and naming (Atlassian 
 
 ## Design disagreements
 
-Where the exemplars contradict each other. When two production servers disagree, you must pick deliberately.
+Where the exemplars contradict each other. When two production servers disagree, pick deliberately.
 
 ### Tool count — Cloudflare (2) vs GitHub (56) vs Atlassian Rovo (54)
 
@@ -209,7 +209,7 @@ Cloudflare bets that Codemode dominates for large APIs: 2 tools, 1,000 tokens, J
 
 ### Naming — `snake_case` (most) vs `camelCase` (Atlassian) vs `kebab-case` (Notion)
 
-Atlassian Rovo is the major outlier and pushes further with dotted sub-actions (`bitbucketPullRequest.merge`). Notion uses `kebab-case`. Everyone else ships `snake_case`. The risk with non-`snake_case` is accidental collisions with client tooling that assumes `snake_case` identifiers. If you break from `snake_case`, document loudly and avoid cross-tool name collisions.
+Atlassian Rovo is the major outlier and pushes further with dotted sub-actions (`bitbucketPullRequest.merge`). Notion uses `kebab-case`. Everyone else ships `snake_case`. The risk with non-`snake_case` is accidental collisions with client tooling that assumes `snake_case` identifiers. When breaking from `snake_case`, document loudly and avoid cross-tool name collisions.
 
 ### `structuredContent` adoption vs stringified JSON
 
@@ -217,7 +217,7 @@ The MCP spec added `structuredContent` precisely to stop vendors shipping JSON-i
 
 ### Transport — Streamable HTTP only (HubSpot) vs + SSE retained (Intercom, Notion)
 
-HubSpot rejects SSE outright: "Supporting SSE would have introduced load balancer and scaling complexity" ([product.hubspot.com, 2025-06-18](https://product.hubspot.com/blog/unlocking-deep-research-crm-connector-for-chatgpt)). Intercom and Notion keep a deprecated SSE endpoint alongside Streamable HTTP. **If you operate behind an auto-scaling load balancer, HubSpot's reasoning applies.** If you need to support legacy MCP clients, keep SSE and mark deprecated.
+HubSpot rejects SSE outright: "Supporting SSE would have introduced load balancer and scaling complexity" ([product.hubspot.com, 2025-06-18](https://product.hubspot.com/blog/unlocking-deep-research-crm-connector-for-chatgpt)). Intercom and Notion keep a deprecated SSE endpoint alongside Streamable HTTP. **When operating behind an auto-scaling load balancer, HubSpot's reasoning applies.** When the workload needs to support legacy MCP clients, keep SSE and mark deprecated.
 
 ### Auth model — Stripe Restricted Keys vs HubSpot OAuth 2.1 + PKCE
 
@@ -231,7 +231,7 @@ Atlassian Rovo ships one server spanning Jira, Confluence, JSM, Bitbucket, and C
 
 ## Notable one-offs
 
-Patterns no one else replicates. Useful when you have a similar problem.
+Patterns no one else replicates. Useful for similar problems.
 
 - **GitHub `github_support_docs_search`** — parameter description IS a behavioral policy: "Input from the user about the question they need answered. This is the latest raw unedited user message. You should ALWAYS leave the user message as it is, you should never modify it." Description-as-enforcement.
 - **GitHub Insiders channel** — toggle via URL `/insiders` or header `X-MCP-Insiders: true`. Two activation vectors for the same flag.
@@ -308,7 +308,7 @@ Five patterns to never repeat.
 - **Consent-time tool scoping.** Sentry does it via OAuth consent; Supabase via URL query params; GitHub via toolset flag at deploy. Three different layers for the same problem, no clear winner.
 - **Embedded LLM inside the MCP.** Sentry does this for NL search. No other exemplar does. Unclear whether this is a broader pattern or a Sentry-specific workaround.
 
-Re-cite, don't paraphrase. When you pull a claim from this file into a design doc or PR, keep the vendor attribution and the date — the MCP ecosystem moves fast enough that exemplars older than ~6 months may have shipped redesigns.
+Re-cite, don't paraphrase. When pulling a claim from this file into a design doc or PR, keep the vendor attribution and the date — the MCP ecosystem moves fast enough that exemplars older than ~6 months may have shipped redesigns.
 
 ---
 

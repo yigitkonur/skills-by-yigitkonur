@@ -230,7 +230,7 @@ This is the most common MCP failure mode. Notion's own post-mortem (`notion.com/
 False dichotomy. Hybrid is often correct. The same business logic can ship as a CLI binary AND as an MCP server, sharing the underlying handler. Pick the surfaces by workload, not by ideology.
 
 **"The decision tree is the entry point."**
-No — the workload is the entry point. The surface is downstream of the workload. If you open with "is this a CLI or MCP?", you've already wasted a turn.
+No — the workload is the entry point. The surface is downstream of the workload. Opening with "is this a CLI or MCP?" wastes a turn.
 
 ## Decision rules to apply
 

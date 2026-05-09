@@ -139,7 +139,7 @@ async def unlock_admin_mode(ctx: Context) -> str:
 
 Layer priority: global transforms → session transforms → tool-level annotations. Later layers override earlier ones — a session transform can re-enable a tool that a global transform hid.
 
-Without session-scoped visibility, you must re-register tools (which nukes the prompt cache) or maintain separate server instances per user tier.
+Without session-scoped visibility, the server must re-register tools (which nukes the prompt cache) or maintain separate server instances per user tier.
 
 Disable by name when the tag system is overkill:
 

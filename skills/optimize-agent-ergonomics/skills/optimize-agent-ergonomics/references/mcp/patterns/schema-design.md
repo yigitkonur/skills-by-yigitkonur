@@ -58,7 +58,7 @@ Rules of thumb:
 
 - Treat `z.array()` of primitives as acceptable; `z.array(z.object())` as risky.
 - Never nest two or more levels.
-- If you need real complexity, split into multiple tools rather than one mega-schema.
+- When the workload needs real complexity, split into multiple tools rather than one mega-schema.
 - If the nested object is genuinely repeating (rows in a batch), pass it as TSV or JSON inside a single `string` field and parse server-side.
 
 ---
@@ -140,7 +140,7 @@ Defaults that match the most common case reduce token cost. If 95% of calls want
 
 Required fields force the model to think about them. Each one extends decision time and the chance of getting the wrong value. Optional + default is almost always the better choice unless the parameter genuinely has no sensible default.
 
-The required count is usually 1-3. If you have 5+ required fields, reread the tool boundary — you're probably wrapping an API endpoint when you should be wrapping an intent.
+The required count is usually 1-3. With 5+ required fields, reread the tool boundary — you're probably wrapping an API endpoint when you should be wrapping an intent.
 
 ### Enums
 
@@ -241,11 +241,11 @@ The error message is the model's teaching surface. A good example in the error m
 
 ## Cross-model portability — 7 hard rules
 
-If your server is consumed by Claude, ChatGPT, Cursor, and Goose, schemas that work in one client can silently disappear in another. Each model has a different JSON Schema subset; a schema that crashes Gemini drops the tool from that client's context entirely.
+If the server is consumed by Claude, ChatGPT, Cursor, and Goose, schemas that work in one client can silently disappear in another. Each model has a different JSON Schema subset; a schema that crashes Gemini drops the tool from that client's context entirely.
 
 The hard rules:
 
-1. **No `oneOf` / `anyOf` / `allOf`.** Gemini ignores tools containing them. If you need a sum type, accept a permissive string and route server-side.
+1. **No `oneOf` / `anyOf` / `allOf`.** Gemini ignores tools containing them. When the workload needs a sum type, accept a permissive string and route server-side.
 2. **Max 3 levels of nesting.** GPT-class models degrade beyond 3; Gemini breaks at 5.
 3. **No `$ref`.** Most clients don't resolve schema references. Inline every definition.
 4. **No `format` validators beyond `date-time` and `email`.** GPT and Gemini ignore the rest. Describe the format in the `description` field.
