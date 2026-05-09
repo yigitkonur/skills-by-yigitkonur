@@ -1,6 +1,6 @@
 # Multi-Agent Reference
 
-> Covers `langchain@1.4.0`, `@langchain/langgraph@1.3.0`, `@langchain/langgraph-supervisor@1.0.1`, `@langchain/langgraph-swarm@1.0.1`. TypeScript only. Package versions checked on 2026-05-09.
+> Covers `langchain@1.4.0`, `@langchain/langgraph@1.3.0`, `@langchain/langgraph-supervisor@1.0.1`, `@langchain/langgraph-swarm@1.0.1`. TypeScript only. Package versions checked on 2026-05-09 UTC.
 
 ---
 

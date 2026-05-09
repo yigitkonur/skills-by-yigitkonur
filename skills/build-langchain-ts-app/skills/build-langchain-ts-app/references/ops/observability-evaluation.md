@@ -1,6 +1,6 @@
 # Observability: Evaluation & Testing Reference
 
-Complete reference for LangSmith evaluation workflows, dataset management, LLM-as-judge, Feedback API, OpenTelemetry integration, third-party observability tools, self-hosted LangSmith, and pricing checks. Version-sensitive examples checked against langsmith@0.6.3 and openevals@0.2.0 on 2026-05-09. TypeScript only.
+Complete reference for LangSmith evaluation workflows, dataset management, LLM-as-judge, Feedback API, OpenTelemetry integration, third-party observability tools, self-hosted LangSmith, and pricing checks. Version-sensitive examples checked against langsmith@0.6.3 and openevals@0.2.0 on 2026-05-09 UTC. TypeScript only.
 
 ---
 

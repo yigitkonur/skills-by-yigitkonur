@@ -1,6 +1,6 @@
 # Deployment: Local Development & Studio Reference
 
-> Version-sensitive examples checked against @langchain/langgraph-cli@1.2.1 and @langchain/langgraph@1.3.0 on 2026-05-09. Verify current LangSmith Studio behavior before quoting deployment details.
+> Version-sensitive examples checked against @langchain/langgraph-cli@1.2.1 and @langchain/langgraph@1.3.0 on 2026-05-09 UTC. Verify current LangSmith Studio behavior before quoting deployment details.
 > LangGraph Platform was rebranded to LangSmith Deployment in May 2025. CLI and `langgraph.json` are unchanged.
 
 ---

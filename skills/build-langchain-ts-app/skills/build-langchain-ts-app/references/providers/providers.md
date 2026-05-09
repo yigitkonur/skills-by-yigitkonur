@@ -20,7 +20,7 @@
 - 11. Base URL / Proxy Configuration
 - 12. Provider Switching Patterns and Pitfalls
 - 13. Custom Provider Skeleton
-- 14. Package Version Notes (checked 2026-05-09)
+- 14. Package Version Notes (checked 2026-05-09 UTC)
 
 ## 1. Ecosystem Overview
 
@@ -711,13 +711,13 @@ class ChatMyProvider extends BaseChatModel {
 
 ---
 
-## 14. Package Version Notes (checked 2026-05-09)
+## 14. Package Version Notes (checked 2026-05-09 UTC)
 
-- `@langchain/openai`: `1.4.5` checked on 2026-05-09; verify model availability before hard-coding model strings
-- `@langchain/anthropic`: `1.3.29` checked on 2026-05-09; verify provider feature support before quoting model/tool support
-- `@langchain/google`: `0.1.11` checked on 2026-05-09; unified package replacing older split Google packages
-- `@langchain/google-genai`: `2.1.30` checked on 2026-05-09; uses consolidated `@google/genai` SDK
-- `@langchain/aws`: `1.3.7` checked on 2026-05-09; `ChatBedrockConverse` recommended over legacy `Bedrock` class
-- `@langchain/openrouter`: `0.2.4` checked on 2026-05-09; first-party package launched Feb 2026
-- `@langchain/deepseek`: `1.0.25` checked on 2026-05-09
-- `@langchain/cerebras`: `1.0.4` checked on 2026-05-09
+- `@langchain/openai`: `1.4.5` checked on 2026-05-09 UTC; verify model availability before hard-coding model strings
+- `@langchain/anthropic`: `1.3.29` checked on 2026-05-09 UTC; verify provider feature support before quoting model/tool support
+- `@langchain/google`: `0.1.11` checked on 2026-05-09 UTC; unified package replacing older split Google packages
+- `@langchain/google-genai`: `2.1.30` checked on 2026-05-09 UTC; uses consolidated `@google/genai` SDK
+- `@langchain/aws`: `1.3.7` checked on 2026-05-09 UTC; `ChatBedrockConverse` recommended over legacy `Bedrock` class
+- `@langchain/openrouter`: `0.2.4` checked on 2026-05-09 UTC; first-party package launched Feb 2026
+- `@langchain/deepseek`: `1.0.25` checked on 2026-05-09 UTC
+- `@langchain/cerebras`: `1.0.4` checked on 2026-05-09 UTC

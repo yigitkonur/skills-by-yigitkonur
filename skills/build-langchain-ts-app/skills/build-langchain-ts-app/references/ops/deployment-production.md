@@ -1,6 +1,6 @@
 # Deployment: Production Infrastructure Reference
 
-> Version-sensitive examples checked against @langchain/langgraph@1.3.0, @langchain/langgraph-sdk@1.9.1, and @langchain/langgraph-cli@1.2.1 on 2026-05-09.
+> Version-sensitive examples checked against @langchain/langgraph@1.3.0, @langchain/langgraph-sdk@1.9.1, and @langchain/langgraph-cli@1.2.1 on 2026-05-09 UTC.
 > LangGraph Platform was rebranded to LangSmith Deployment in May 2025. "LangGraph Cloud" is now "LangSmith Cloud". SDK and `langgraph.json` are unchanged.
 
 ---

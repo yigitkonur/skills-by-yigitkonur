@@ -12,7 +12,7 @@ Use this reference before changing package-sensitive LangChain.js examples, inst
 
 ## Tested package matrix
 
-Checked against the npm registry with `npm view <package> version` on 2026-05-09:
+Checked against the npm registry with `npm view <package> version` on 2026-05-09 UTC:
 
 | Package | Registry version |
 |---|---:|

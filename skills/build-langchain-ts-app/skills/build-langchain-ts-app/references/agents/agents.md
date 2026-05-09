@@ -1,6 +1,6 @@
 # Agents Reference
 
-Complete reference for `createAgent` (LangChain.js v1). Version-sensitive examples checked against langchain@1.4.0, @langchain/core@1.1.45, @langchain/langgraph@1.3.0 on 2026-05-09. TypeScript only.
+Complete reference for `createAgent` (LangChain.js v1). Version-sensitive examples checked against langchain@1.4.0, @langchain/core@1.1.45, @langchain/langgraph@1.3.0 on 2026-05-09 UTC. TypeScript only.
 
 ---
 

@@ -1,6 +1,6 @@
 # RAG — Retrieval-Augmented Generation
 
-> Version-sensitive examples checked against langchain@1.4.0, @langchain/core@1.1.45, @langchain/openai@1.4.5, @langchain/textsplitters@1.0.1 on 2026-05-09.
+> Version-sensitive examples checked against langchain@1.4.0, @langchain/core@1.1.45, @langchain/openai@1.4.5, @langchain/textsplitters@1.0.1 on 2026-05-09 UTC.
 > All code TypeScript. Import paths exact.
 
 ---
@@ -965,7 +965,6 @@ await ls.createFeedback(runId, "user-rating", { score: 1, comment: "Helpful!" })
 | `TimeWeightedVectorStoreRetriever` | `langchain/retrievers/time_weighted` |
 | `ChatPromptTemplate` | `@langchain/core/prompts` |
 | `dynamicSystemPromptMiddleware` | `langchain` |
-| `RunnableWithMessageHistory` | `@langchain/core/runnables` |
 | `CheerioWebBaseLoader` | `@langchain/community/document_loaders/web/cheerio` |
 | `PDFLoader` | `@langchain/community/document_loaders/fs/pdf` |
 | `DirectoryLoader` | `@langchain/classic/document_loaders/fs/directory` |
