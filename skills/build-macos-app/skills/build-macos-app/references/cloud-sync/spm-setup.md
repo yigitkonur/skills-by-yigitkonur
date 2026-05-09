@@ -103,6 +103,6 @@ The Rust XCFramework adds approximately 5-15 MB after stripping and App Store th
 - Using `import Clerk` or `import ClerkSDK` -- the correct imports are `import ClerkKit`, `import ClerkConvex`, `import ClerkKitUI`.
 
 ## Read Next
-- [03-clerk-account-and-jwt-template-setup.md](03-clerk-account-and-jwt-template-setup.md)
-- [../client-sdk/01-client-surface-runtime-and-auth-bridge.md](../client-sdk/01-client-surface-runtime-and-auth-bridge.md)
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
+- [03-clerk-account-and-jwt-template-setup.md](setup-extra/clerk-jwt-template.md)
+- [../client-sdk/01-client-surface-runtime-and-auth-bridge.md](client-surface.md)
+- [../authentication/01-clerk-first-setup.md](clerk-setup.md)

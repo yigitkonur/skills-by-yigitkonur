@@ -75,6 +75,6 @@ Always verify the backend query uses `.withIndex()` + `.take(N)` or `.paginate()
 - Subscribing to unbounded queries from Swift without reviewing the backend function.
 
 ## Read Next
-- [../backend/02-indexes-query-shaping-and-performance.md](../backend/02-indexes-query-shaping-and-performance.md)
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
-- [../advanced/01-pagination-live-tail-and-history.md](../advanced/01-pagination-live-tail-and-history.md)
+- [../backend/02-indexes-query-shaping-and-performance.md](../quick-reference/backend-card.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](../quick-reference/function-decision-tree.md)
+- [../advanced/01-pagination-live-tail-and-history.md](../quick-reference/subscription-placement.md)

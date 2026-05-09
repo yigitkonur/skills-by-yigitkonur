@@ -61,6 +61,6 @@ Add both via **File -> Add Package Dependencies** in Xcode. The bridge product i
 - Building custom sign-in UI when `AuthView()` from `ClerkKitUI` handles all Clerk-supported methods.
 
 ## Read Next
-- [04-connecting-clerk-to-convex-auth-config.md](04-connecting-clerk-to-convex-auth-config.md)
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
+- [04-connecting-clerk-to-convex-auth-config.md](auth-config-wiring.md)
+- [../authentication/01-clerk-first-setup.md](../clerk-setup.md)
+- [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md)

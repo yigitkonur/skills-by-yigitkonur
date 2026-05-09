@@ -61,6 +61,6 @@ class ConnectionMonitor: ObservableObject {
 - Promising optimistic updates — the Swift SDK does not support them.
 
 ## Read Next
-- [01-ios-backgrounding-reconnection-and-staleness.md](01-ios-backgrounding-reconnection-and-staleness.md)
-- [05-nwpathmonitor-network-awareness.md](05-nwpathmonitor-network-awareness.md)
-- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk/03-subscriptions-errors-logging-and-connection-state.md)
+- [01-ios-backgrounding-reconnection-and-staleness.md](platforms/ios-backgrounding-and-staleness.md)
+- [05-nwpathmonitor-network-awareness.md](platforms/nwpathmonitor.md)
+- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](client-sdk-extra/subscriptions-and-errors.md)

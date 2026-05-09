@@ -9,8 +9,8 @@
 The official `clerk-convex-swift` example app (`Example/WorkoutTracker` in `github.com/clerk/clerk-convex-swift`) demonstrates the canonical small-app Clerk + Convex SwiftUI **iOS** baseline. Use it as a template for bootstrap, auth-gate, backend-wrapper, and feature-model patterns, not as a complete macOS or shared-app architecture.
 
 ## Default Sequence
-1. Decide fit with [../onboarding/04-adoption-checklist-and-hard-stops.md](../onboarding/04-adoption-checklist-and-hard-stops.md).
-2. Settle the mental model with [../onboarding/03-mental-model-live-data-functions-and-state.md](../onboarding/03-mental-model-live-data-functions-and-state.md).
+1. Decide fit with [../onboarding/04-adoption-checklist-and-hard-stops.md](../adoption-checklist.md).
+2. Settle the mental model with [../onboarding/03-mental-model-live-data-functions-and-state.md](../onboarding/mental-model.md).
 3. Stand up Clerk auth and root client ownership:
    - Add `clerk-convex-swift` (product `ClerkConvex`) and `clerk-ios` (product `ClerkKit`, `ClerkKitUI`) as SPM dependencies.
    - Create `convex/auth.config.ts` with Clerk issuer URL and `applicationID: "convex"`.
@@ -56,6 +56,6 @@ The official `clerk-convex-swift` example app (`Example/WorkoutTracker` in `gith
 - Verify teams are not copying the example's simplifications blindly where their product needs richer user modeling or error handling.
 
 ## Read Next
-- [02-shared-ios-macos-app-playbook.md](02-shared-ios-macos-app-playbook.md)
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
-- [../backend/01-schema-document-model-and-relationships.md](../backend/01-schema-document-model-and-relationships.md)
+- [02-shared-ios-macos-app-playbook.md](shared-ios-macos-app.md)
+- [../authentication/01-clerk-first-setup.md](../clerk-setup.md)
+- [../backend/01-schema-document-model-and-relationships.md](../quick-reference/backend-card.md)

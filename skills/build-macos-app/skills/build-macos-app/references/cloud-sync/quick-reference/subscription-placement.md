@@ -236,7 +236,7 @@ Every `Decodable` model must have `CodingKeys` with `case id = "_id"`.
 - Using `.replaceError(with:)` in production -- silently kills the subscription pipeline on first error.
 
 ## Read Next
-- [04-function-decision-tree.md](04-function-decision-tree.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
-- [../swiftui/02-observation-and-ownership.md](../swiftui/02-observation-and-ownership.md)
-- [../swiftui/03-lifecycle-navigation-tabs-and-sheets.md](../swiftui/03-lifecycle-navigation-tabs-and-sheets.md)
+- [04-function-decision-tree.md](function-decision-tree.md)
+- [../swiftui/01-consumption-patterns.md](../reactive-queries.md)
+- [../swiftui/02-observation-and-ownership.md](../observation-ownership.md)
+- [../swiftui/03-lifecycle-navigation-tabs-and-sheets.md](../lifecycle-navigation.md)

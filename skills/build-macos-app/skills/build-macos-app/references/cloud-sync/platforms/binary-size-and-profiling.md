@@ -60,6 +60,6 @@ Convex Combine publishers deliver values on the Rust Tokio runtime thread. Alway
 - Assigning subscription values to `@Published` properties without `.receive(on: DispatchQueue.main)` — this causes main-thread assertion failures.
 
 ## Read Next
-- [03-performance-battery-and-threading.md](03-performance-battery-and-threading.md)
-- [05-nwpathmonitor-network-awareness.md](05-nwpathmonitor-network-awareness.md)
-- [../advanced/03-testing-debugging-and-observability.md](../advanced/03-testing-debugging-and-observability.md)
+- [03-performance-battery-and-threading.md](performance-and-threading.md)
+- [05-nwpathmonitor-network-awareness.md](nwpathmonitor.md)
+- [../advanced/03-testing-debugging-and-observability.md](../client-sdk-extra/debug-logging.md)

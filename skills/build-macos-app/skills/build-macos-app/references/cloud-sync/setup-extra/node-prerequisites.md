@@ -86,6 +86,6 @@ Run `npx convex deploy` in CI/CD for production deployments.
 - Skipping `schema.ts` -- without it, the database has no validation and `_generated/` types are incomplete.
 
 ## Read Next
-- [02-xcode-spm-setup-convexmobile.md](02-xcode-spm-setup-convexmobile.md)
-- [05-first-run-npx-convex-dev.md](05-first-run-npx-convex-dev.md)
-- [../backend/01-schema-document-model-and-relationships.md](../backend/01-schema-document-model-and-relationships.md)
+- [02-xcode-spm-setup-convexmobile.md](../spm-setup.md)
+- [05-first-run-npx-convex-dev.md](first-run.md)
+- [../backend/01-schema-document-model-and-relationships.md](../quick-reference/backend-card.md)

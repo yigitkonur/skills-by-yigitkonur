@@ -259,7 +259,7 @@ struct ProfileView: View {
 
 ## Pipeline Termination Warning
 
-ViewModels using `.replaceError(with:)` will stop receiving updates after the first error. For production, use `Result`-wrapping or explicit `sink`. See [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk/03-subscriptions-errors-logging-and-connection-state.md).
+ViewModels using `.replaceError(with:)` will stop receiving updates after the first error. For production, use `Result`-wrapping or explicit `sink`. See [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk-extra/subscriptions-and-errors.md).
 
 ## Avoid
 - Building custom sign-in/sign-out UI -- use `AuthView()` and `UserButton()` from `ClerkKitUI`.
@@ -269,7 +269,7 @@ ViewModels using `.replaceError(with:)` will stop receiving updates after the fi
 - Omitting `#if DEBUG` guard around `initConvexLogging()` -- logs expose JWTs in production.
 
 ## Read Next
-- [03-complete-swift-models-and-viewmodels.md](03-complete-swift-models-and-viewmodels.md)
+- [03-complete-swift-models-and-viewmodels.md](03-swift-models-and-viewmodels.md)
 - [05-deployment-checklist.md](05-deployment-checklist.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
-- [../swiftui/02-observation-and-ownership.md](../swiftui/02-observation-and-ownership.md)
+- [../swiftui/01-consumption-patterns.md](../reactive-queries.md)
+- [../swiftui/02-observation-and-ownership.md](../observation-ownership.md)

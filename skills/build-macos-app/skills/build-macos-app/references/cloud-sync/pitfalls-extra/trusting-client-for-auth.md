@@ -109,6 +109,6 @@ Passing a `userId` argument is correct when viewing another user's **public** pr
 - Using raw `query`/`mutation` for authenticated endpoints — prefer `userQuery`/`userMutation` wrappers.
 
 ## Read Next
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
-- [06-calling-actions-directly-for-side-effects.md](06-calling-actions-directly-for-side-effects.md)
+- [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md)
+- [../authentication/01-clerk-first-setup.md](../clerk-setup.md)
+- [06-calling-actions-directly-for-side-effects.md](actions-as-side-effects.md)

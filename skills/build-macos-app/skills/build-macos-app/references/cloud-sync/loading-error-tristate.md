@@ -116,6 +116,6 @@ case .loading:
 - Showing a loading spinner on every resubscribe when stale data would be a better UX.
 
 ## Read Next
-- [01-consumption-patterns.md](01-consumption-patterns.md)
-- [02-observation-and-ownership.md](02-observation-and-ownership.md)
-- [05-navigation-stack-subscription-lifecycle.md](05-navigation-stack-subscription-lifecycle.md)
+- [01-consumption-patterns.md](reactive-queries.md)
+- [02-observation-and-ownership.md](observation-ownership.md)
+- [05-navigation-stack-subscription-lifecycle.md](swiftui-extra/navstack-subscription-lifecycle.md)

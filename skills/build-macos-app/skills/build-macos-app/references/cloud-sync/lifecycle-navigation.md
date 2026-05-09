@@ -77,6 +77,6 @@ Key patterns:
 - Mixing navigation state into feature data models — keep them separate as the official example does.
 
 ## Read Next
-- [01-consumption-patterns.md](01-consumption-patterns.md)
-- [02-observation-and-ownership.md](02-observation-and-ownership.md)
-- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](../platforms/04-macos-multi-window-menu-bar-and-support-limits.md)
+- [01-consumption-patterns.md](reactive-queries.md)
+- [02-observation-and-ownership.md](observation-ownership.md)
+- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](macos-app-entry.md)

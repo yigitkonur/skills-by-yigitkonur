@@ -219,6 +219,6 @@ export const createOrUpdate = userMutation({
 - Storing user identity data that changes frequently (avatar URL, display name) in every domain document.
 
 ## Read Next
-- [01-from-zero-to-realtime-chat-app.md](01-from-zero-to-realtime-chat-app.md)
-- [03-complete-swift-models-and-viewmodels.md](03-complete-swift-models-and-viewmodels.md)
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
+- [01-from-zero-to-realtime-chat-app.md](01-zero-to-realtime-chat.md)
+- [03-complete-swift-models-and-viewmodels.md](03-swift-models-and-viewmodels.md)
+- [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md)

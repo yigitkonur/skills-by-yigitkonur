@@ -43,6 +43,6 @@
 - "Subscription errors are temporary." Not in the Combine pipeline: the stream is terminal unless rebuilt.
 
 ## Read Next
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](../quick-reference/function-decision-tree.md)
+- [../swiftui/01-consumption-patterns.md](../reactive-queries.md)
+- [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md)

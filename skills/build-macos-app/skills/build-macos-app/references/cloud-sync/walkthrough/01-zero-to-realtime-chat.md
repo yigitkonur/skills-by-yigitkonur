@@ -38,7 +38,7 @@ export default defineSchema({
 });
 ```
 
-See [../backend/01-schema-document-model-and-relationships.md](../backend/01-schema-document-model-and-relationships.md).
+See [../backend/01-schema-document-model-and-relationships.md](../quick-reference/backend-card.md).
 
 ## Step 3: Create Auth-Gated Function Wrappers
 
@@ -59,7 +59,7 @@ export const userMutation = customMutation(mutation, customCtx(async (ctx) => aw
 
 This is the primary pattern. `userQuery`/`userMutation` from `convex-helpers` centralizes the auth check and provides `ctx.identity` directly in every handler.
 
-See [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md).
+See [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md).
 
 ## Step 4: Write Backend Functions
 
@@ -101,7 +101,7 @@ export default {
 };
 ```
 
-Set up via Clerk Dashboard. See [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md).
+Set up via Clerk Dashboard. See [../authentication/01-clerk-first-setup.md](../clerk-setup.md).
 
 ## Step 6: Add SPM Packages in Xcode
 
@@ -226,7 +226,7 @@ MyChatApp (@main)
 - Accepting a client-passed `userId` instead of deriving it server-side from `ctx.identity.tokenIdentifier`.
 
 ## Read Next
-- [02-complete-schema-and-backend-code.md](02-complete-schema-and-backend-code.md)
-- [03-complete-swift-models-and-viewmodels.md](03-complete-swift-models-and-viewmodels.md)
-- [04-complete-swiftui-views.md](04-complete-swiftui-views.md)
+- [02-complete-schema-and-backend-code.md](02-schema-and-backend-code.md)
+- [03-complete-swift-models-and-viewmodels.md](03-swift-models-and-viewmodels.md)
+- [04-complete-swiftui-views.md](04-swiftui-views.md)
 - [05-deployment-checklist.md](05-deployment-checklist.md)

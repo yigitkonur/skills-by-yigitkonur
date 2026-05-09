@@ -74,6 +74,6 @@ Round the time argument to the nearest hour so the query argument changes infreq
 - Assuming the reactive system will "eventually" re-run a non-deterministic query — it tracks database reads, not JavaScript expressions.
 
 ## Read Next
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
-- [03-unbounded-collect-bandwidth-bomb.md](03-unbounded-collect-bandwidth-bomb.md)
-- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk/03-subscriptions-errors-logging-and-connection-state.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](../quick-reference/function-decision-tree.md)
+- [03-unbounded-collect-bandwidth-bomb.md](unbounded-collect.md)
+- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk-extra/subscriptions-and-errors.md)

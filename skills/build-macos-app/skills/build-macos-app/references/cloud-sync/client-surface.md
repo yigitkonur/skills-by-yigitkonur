@@ -146,6 +146,6 @@ func delete(workout: Workout) {
 - Assuming a separate `AuthModel` object is mandatory when a local root auth gate already solves the app's needs.
 
 ## Read Next
-- [02-type-system-wire-format-and-modeling.md](02-type-system-wire-format-and-modeling.md)
-- [03-subscriptions-errors-logging-and-connection-state.md](03-subscriptions-errors-logging-and-connection-state.md)
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
+- [02-type-system-wire-format-and-modeling.md](client-sdk-extra/type-system-and-modeling.md)
+- [03-subscriptions-errors-logging-and-connection-state.md](client-sdk-extra/subscriptions-and-errors.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md)

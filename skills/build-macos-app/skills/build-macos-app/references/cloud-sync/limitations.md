@@ -83,6 +83,6 @@ Consider alternatives if the product **requires**:
 - Assuming feature parity between the React and Swift SDKs.
 
 ## Read Next
-- [../operations/02-known-gaps-limitations-and-non-goals.md](../operations/02-known-gaps-limitations-and-non-goals.md)
-- [../onboarding/04-adoption-checklist-and-hard-stops.md](../onboarding/04-adoption-checklist-and-hard-stops.md)
-- [../platforms/02-offline-behavior-network-transitions-and-recovery.md](../platforms/02-offline-behavior-network-transitions-and-recovery.md)
+- [../operations/02-known-gaps-limitations-and-non-goals.md](operations/known-gaps.md)
+- [../onboarding/04-adoption-checklist-and-hard-stops.md](adoption-checklist.md)
+- [../platforms/02-offline-behavior-network-transitions-and-recovery.md](offline-ux-states.md)

@@ -102,6 +102,6 @@ struct StatusView: View {
 - Using a dedicated `convex` variable name for the client; the correct variable name is `client`.
 
 ## Read Next
-- [04-pipeline-termination-and-recovery.md](04-pipeline-termination-and-recovery.md)
-- [06-debug-logging.md](06-debug-logging.md)
-- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/01-ios-backgrounding-reconnection-and-staleness.md)
+- [04-pipeline-termination-and-recovery.md](pipeline-recovery.md)
+- [06-debug-logging.md](client-sdk-extra/debug-logging.md)
+- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](platforms/ios-backgrounding-and-staleness.md)

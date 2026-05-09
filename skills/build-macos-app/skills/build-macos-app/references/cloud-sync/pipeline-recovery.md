@@ -165,7 +165,7 @@ Never use it in production for critical data paths.
 - Skipping the `resubscribe()` method; without it there is no way to restore live updates after an error.
 
 ## Read Next
-- [05-websocket-state-and-connection-banner.md](05-websocket-state-and-connection-banner.md)
-- [06-debug-logging.md](06-debug-logging.md)
-- [03-subscriptions-errors-logging-and-connection-state.md](03-subscriptions-errors-logging-and-connection-state.md)
-- [../backend/07-structured-errors-convexerror.md](../backend/07-structured-errors-convexerror.md)
+- [05-websocket-state-and-connection-banner.md](connection-banner.md)
+- [06-debug-logging.md](client-sdk-extra/debug-logging.md)
+- [03-subscriptions-errors-logging-and-connection-state.md](client-sdk-extra/subscriptions-and-errors.md)
+- [../backend/07-structured-errors-convexerror.md](backend/structured-errors-convexerror.md)

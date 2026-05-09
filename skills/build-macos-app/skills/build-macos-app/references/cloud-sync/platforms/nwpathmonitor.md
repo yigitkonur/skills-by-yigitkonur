@@ -93,6 +93,6 @@ Use network awareness to adjust product behavior proactively:
 - Blocking mutations when the WebSocket is reconnecting — mutations are queued and sent when the connection resumes.
 
 ## Read Next
-- [02-offline-behavior-network-transitions-and-recovery.md](02-offline-behavior-network-transitions-and-recovery.md)
-- [01-ios-backgrounding-reconnection-and-staleness.md](01-ios-backgrounding-reconnection-and-staleness.md)
-- [03-performance-battery-and-threading.md](03-performance-battery-and-threading.md)
+- [02-offline-behavior-network-transitions-and-recovery.md](../offline-ux-states.md)
+- [01-ios-backgrounding-reconnection-and-staleness.md](ios-backgrounding-and-staleness.md)
+- [03-performance-battery-and-threading.md](performance-and-threading.md)

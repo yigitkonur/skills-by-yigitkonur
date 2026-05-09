@@ -144,6 +144,6 @@ struct WorkoutsPage: View {
 - Treating `UserButton()` as part of unauthenticated bootstrap UI instead of authenticated feature chrome.
 
 ## Read Next
-- [02-observation-and-ownership.md](02-observation-and-ownership.md)
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
-- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](../platforms/04-macos-multi-window-menu-bar-and-support-limits.md)
+- [02-observation-and-ownership.md](observation-ownership.md)
+- [../authentication/01-clerk-first-setup.md](clerk-setup.md)
+- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](macos-app-entry.md)

@@ -79,6 +79,6 @@ initConvexLogging()  // Call once at app launch — debug builds only
 - Forgetting `.receive(on: DispatchQueue.main)` — values arrive off-main, causing purple Xcode warnings and potential crashes.
 
 ## Read Next
-- [04-pipeline-termination-and-recovery.md](04-pipeline-termination-and-recovery.md)
-- [05-websocket-state-and-connection-banner.md](05-websocket-state-and-connection-banner.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
+- [04-pipeline-termination-and-recovery.md](../pipeline-recovery.md)
+- [05-websocket-state-and-connection-banner.md](../connection-banner.md)
+- [../swiftui/01-consumption-patterns.md](../reactive-queries.md)

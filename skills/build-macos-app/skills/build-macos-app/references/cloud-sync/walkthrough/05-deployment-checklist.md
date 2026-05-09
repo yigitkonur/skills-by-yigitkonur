@@ -233,6 +233,6 @@ If something goes wrong after deployment:
 - Force-pushing schema changes that remove fields in production -- add new fields as optional first.
 
 ## Read Next
-- [01-from-zero-to-realtime-chat-app.md](01-from-zero-to-realtime-chat-app.md)
-- [../operations/01-verified-corrections-and-trust-boundaries.md](../operations/01-verified-corrections-and-trust-boundaries.md)
-- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/01-ios-backgrounding-reconnection-and-staleness.md)
+- [01-from-zero-to-realtime-chat-app.md](01-zero-to-realtime-chat.md)
+- [../operations/01-verified-corrections-and-trust-boundaries.md](../operations/verified-corrections.md)
+- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/ios-backgrounding-and-staleness.md)

@@ -83,6 +83,6 @@ struct LandingPage: View {
 - Building a custom `ASAuthorizationController` flow when `AuthView()` from `ClerkKitUI` already handles SIWA natively.
 
 ## Read Next
-- [01-clerk-first-setup.md](01-clerk-first-setup.md)
-- [02-custom-auth-provider-and-firebase-fallback.md](02-custom-auth-provider-and-firebase-fallback.md)
-- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/01-ios-backgrounding-reconnection-and-staleness.md)
+- [01-clerk-first-setup.md](clerk-setup.md)
+- [02-custom-auth-provider-and-firebase-fallback.md](auth-custom-provider.md)
+- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](platforms/ios-backgrounding-and-staleness.md)

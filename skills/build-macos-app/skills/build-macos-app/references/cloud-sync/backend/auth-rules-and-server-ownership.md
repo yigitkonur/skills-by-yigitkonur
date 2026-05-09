@@ -184,6 +184,6 @@ This schema mirrors the official example's minimal ownership model; it is not pr
 - Assuming the official example's missing `users` table means richer products should never create one.
 
 ## Read Next
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
-- [../authentication/02-custom-auth-provider-and-firebase-fallback.md](../authentication/02-custom-auth-provider-and-firebase-fallback.md)
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
+- [../authentication/01-clerk-first-setup.md](../clerk-setup.md)
+- [../authentication/02-custom-auth-provider-and-firebase-fallback.md](../auth-custom-provider.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](../root-architecture.md)

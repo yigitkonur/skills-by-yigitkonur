@@ -157,7 +157,7 @@ class ConnectionViewModel: ObservableObject {
 
 ## Pipeline Termination Warning
 
-`.replaceError(with: [])` in the ViewModels above hides errors and terminates the stream. For production, use `Result`-wrapping or explicit `sink(receiveCompletion:receiveValue:)`. See [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk/03-subscriptions-errors-logging-and-connection-state.md).
+`.replaceError(with: [])` in the ViewModels above hides errors and terminates the stream. For production, use `Result`-wrapping or explicit `sink(receiveCompletion:receiveValue:)`. See [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk-extra/subscriptions-and-errors.md).
 
 ## Note on Variable Naming
 
@@ -171,7 +171,7 @@ The official example uses `client` (not `convex`) as the module-level variable n
 - Omitting `.receive(on: DispatchQueue.main)` -- Combine publishers from the Convex SDK deliver on background threads.
 
 ## Read Next
-- [02-complete-schema-and-backend-code.md](02-complete-schema-and-backend-code.md)
-- [04-complete-swiftui-views.md](04-complete-swiftui-views.md)
-- [../client-sdk/01-client-surface-runtime-and-auth-bridge.md](../client-sdk/01-client-surface-runtime-and-auth-bridge.md)
-- [../client-sdk/02-type-system-wire-format-and-modeling.md](../client-sdk/02-type-system-wire-format-and-modeling.md)
+- [02-complete-schema-and-backend-code.md](02-schema-and-backend-code.md)
+- [04-complete-swiftui-views.md](04-swiftui-views.md)
+- [../client-sdk/01-client-surface-runtime-and-auth-bridge.md](../client-surface.md)
+- [../client-sdk/02-type-system-wire-format-and-modeling.md](../client-sdk-extra/type-system-and-modeling.md)

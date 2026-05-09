@@ -74,6 +74,6 @@ This performs an **atomic deployment** -- schema, functions, and indexes all dep
 - Skipping the dashboard logs when debugging -- they show server-side errors with stack traces that the Swift client cannot surface.
 
 ## Read Next
-- [01-installing-convex-and-node-prerequisites.md](01-installing-convex-and-node-prerequisites.md)
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
-- [../onboarding/03-mental-model-live-data-functions-and-state.md](../onboarding/03-mental-model-live-data-functions-and-state.md)
+- [01-installing-convex-and-node-prerequisites.md](node-prerequisites.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](../quick-reference/function-decision-tree.md)
+- [../onboarding/03-mental-model-live-data-functions-and-state.md](../onboarding/mental-model.md)

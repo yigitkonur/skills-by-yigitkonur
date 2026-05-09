@@ -91,6 +91,6 @@ Create the observable at the `App` level where it will not be re-created by pare
 - Assuming SwiftUI creates `@Observable` instances only once — parent rebuilds trigger re-creation.
 
 ## Read Next
-- [../swiftui/02-observation-and-ownership.md](../swiftui/02-observation-and-ownership.md)
-- [09-task-modifier-cancels-on-navigation.md](09-task-modifier-cancels-on-navigation.md)
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
+- [../swiftui/02-observation-and-ownership.md](observation-ownership.md)
+- [09-task-modifier-cancels-on-navigation.md](pitfall-task-cancellation.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md)

@@ -56,6 +56,6 @@ func toggleComplete(taskId: String) async {
 - Ignoring purple runtime warnings — they become crashes in release builds.
 
 ## Read Next
-- [01-pipeline-dies-after-first-error.md](01-pipeline-dies-after-first-error.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
-- [../platforms/03-performance-battery-and-threading.md](../platforms/03-performance-battery-and-threading.md)
+- [01-pipeline-dies-after-first-error.md](../pitfall-pipeline-dies.md)
+- [../swiftui/01-consumption-patterns.md](../reactive-queries.md)
+- [../platforms/03-performance-battery-and-threading.md](../platforms/performance-and-threading.md)

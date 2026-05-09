@@ -91,6 +91,6 @@ Use `convex-helpers` `userQuery`/`userMutation` as the primary backend auth patt
 - Calling `loginFromCache()` manually -- the `ClerkConvexAuthProvider` bound via `bind(client:)` handles session restore automatically.
 
 ## Read Next
-- [05-first-run-npx-convex-dev.md](05-first-run-npx-convex-dev.md)
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
-- [../authentication/01-clerk-first-setup.md](../authentication/01-clerk-first-setup.md)
+- [05-first-run-npx-convex-dev.md](first-run.md)
+- [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md)
+- [../authentication/01-clerk-first-setup.md](../clerk-setup.md)

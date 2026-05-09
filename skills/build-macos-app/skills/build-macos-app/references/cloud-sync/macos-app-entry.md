@@ -120,6 +120,6 @@ struct MainContentView: View {
 - Assuming the official WorkoutTracker iOS example translates directly to macOS without adapting window management, split view navigation, and toolbar placement.
 
 ## Read Next
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
-- [../operations/02-known-gaps-limitations-and-non-goals.md](../operations/02-known-gaps-limitations-and-non-goals.md)
-- [../playbooks/02-shared-ios-macos-app-playbook.md](../playbooks/02-shared-ios-macos-app-playbook.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md)
+- [../operations/02-known-gaps-limitations-and-non-goals.md](operations/known-gaps.md)
+- [../playbooks/02-shared-ios-macos-app-playbook.md](playbooks/shared-ios-macos-app.md)

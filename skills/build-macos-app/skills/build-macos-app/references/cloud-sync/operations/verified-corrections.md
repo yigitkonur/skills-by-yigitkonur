@@ -53,5 +53,5 @@
 - Say "current limitation" for missing offline persistence, optimistic updates, or unsupported platform slices.
 
 ## Read Next
-- [02-known-gaps-limitations-and-non-goals.md](02-known-gaps-limitations-and-non-goals.md)
-- [../00-reference-map.md](../00-reference-map.md)
+- [02-known-gaps-limitations-and-non-goals.md](known-gaps.md)
+- [../00-reference-map.md](../overview.md)

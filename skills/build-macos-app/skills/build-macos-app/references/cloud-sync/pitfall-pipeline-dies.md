@@ -85,6 +85,6 @@ With Result-wrapping:
 - Skipping `.asResult()` on subscriptions that "probably won't error" — transient failures happen in production.
 
 ## Read Next
-- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk/03-subscriptions-errors-logging-and-connection-state.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
-- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/01-ios-backgrounding-reconnection-and-staleness.md)
+- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](client-sdk-extra/subscriptions-and-errors.md)
+- [../swiftui/01-consumption-patterns.md](reactive-queries.md)
+- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](platforms/ios-backgrounding-and-staleness.md)

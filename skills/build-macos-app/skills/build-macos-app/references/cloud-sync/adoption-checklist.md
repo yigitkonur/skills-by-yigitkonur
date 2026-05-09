@@ -45,6 +45,6 @@
 - If the product is strongly realtime and the hard stops are absent, Convex is a reasonable default candidate.
 
 ## Read Next
-- [02-convex-vs-firebase-vs-supabase.md](02-convex-vs-firebase-vs-supabase.md)
-- [../operations/02-known-gaps-limitations-and-non-goals.md](../operations/02-known-gaps-limitations-and-non-goals.md)
-- [../playbooks/01-greenfield-swiftui-app-playbook.md](../playbooks/01-greenfield-swiftui-app-playbook.md)
+- [02-convex-vs-firebase-vs-supabase.md](onboarding/convex-vs-alternatives.md)
+- [../operations/02-known-gaps-limitations-and-non-goals.md](operations/known-gaps.md)
+- [../playbooks/01-greenfield-swiftui-app-playbook.md](playbooks/greenfield-swiftui-app.md)

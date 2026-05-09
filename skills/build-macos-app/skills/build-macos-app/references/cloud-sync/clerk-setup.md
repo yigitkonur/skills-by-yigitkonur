@@ -154,6 +154,6 @@ Both `login(onIdToken:)` and `loginFromCache(onIdToken:)` call the same internal
 - Calling `client.login()` manually — interactive sign-in is Clerk UI's job.
 
 ## Read Next
-- [02-custom-auth-provider-and-firebase-fallback.md](02-custom-auth-provider-and-firebase-fallback.md)
-- [03-sign-in-with-apple-keychain-and-session-restoration.md](03-sign-in-with-apple-keychain-and-session-restoration.md)
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
+- [02-custom-auth-provider-and-firebase-fallback.md](auth-custom-provider.md)
+- [03-sign-in-with-apple-keychain-and-session-restoration.md](sign-in-with-apple.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md)

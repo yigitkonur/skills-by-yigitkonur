@@ -51,6 +51,6 @@ The official `ClerkConvexAuthProvider` is the canonical implementation to model 
 - Skipping session transition guards — logging in on every auth event instead of only on meaningful transitions wastes work and can cause flickering auth state.
 
 ## Read Next
-- [01-clerk-first-setup.md](01-clerk-first-setup.md)
-- [03-sign-in-with-apple-keychain-and-session-restoration.md](03-sign-in-with-apple-keychain-and-session-restoration.md)
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
+- [01-clerk-first-setup.md](clerk-setup.md)
+- [03-sign-in-with-apple-keychain-and-session-restoration.md](sign-in-with-apple.md)
+- [../backend/04-auth-rules-and-server-ownership.md](backend/auth-rules-and-server-ownership.md)

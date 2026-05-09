@@ -91,6 +91,6 @@ Text(task?.title ?? "Loading...")
 - Using `.task { }` for subscriptions that must stay alive across navigation.
 
 ## Read Next
-- [08-observable-macro-re-init-trap.md](08-observable-macro-re-init-trap.md)
-- [../swiftui/03-lifecycle-navigation-tabs-and-sheets.md](../swiftui/03-lifecycle-navigation-tabs-and-sheets.md)
-- [../swiftui/01-consumption-patterns.md](../swiftui/01-consumption-patterns.md)
+- [08-observable-macro-re-init-trap.md](pitfall-observable-reinit.md)
+- [../swiftui/03-lifecycle-navigation-tabs-and-sheets.md](lifecycle-navigation.md)
+- [../swiftui/01-consumption-patterns.md](reactive-queries.md)

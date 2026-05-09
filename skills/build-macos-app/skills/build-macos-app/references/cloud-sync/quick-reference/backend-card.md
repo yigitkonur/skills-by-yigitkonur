@@ -208,7 +208,7 @@ Scheduled functions:         1,000 pending per deployment
 - Unbounded `.collect()` without an index range -- always constrain the result set.
 
 ## Read Next
-- [02-swift-sdk-api-cheat-sheet.md](02-swift-sdk-api-cheat-sheet.md)
-- [03-sql-to-convex-mapping-table.md](03-sql-to-convex-mapping-table.md)
-- [04-function-decision-tree.md](04-function-decision-tree.md)
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
+- [02-swift-sdk-api-cheat-sheet.md](../swift-sdk-cheatsheet.md)
+- [03-sql-to-convex-mapping-table.md](backend-card.md)
+- [04-function-decision-tree.md](function-decision-tree.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](function-decision-tree.md)

@@ -199,7 +199,7 @@ Every `Decodable` model must include `CodingKeys` with `case id = "_id"`.
 - Accessing `ctx.db` directly from actions -- use `ctx.runQuery()` / `ctx.runMutation()`.
 
 ## Read Next
-- [01-convex-backend-quick-reference-card.md](01-convex-backend-quick-reference-card.md)
-- [05-subscription-placement-decision-matrix.md](05-subscription-placement-decision-matrix.md)
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
-- [../backend/04-auth-rules-and-server-ownership.md](../backend/04-auth-rules-and-server-ownership.md)
+- [01-convex-backend-quick-reference-card.md](backend-card.md)
+- [05-subscription-placement-decision-matrix.md](subscription-placement.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](function-decision-tree.md)
+- [../backend/04-auth-rules-and-server-ownership.md](../backend/auth-rules-and-server-ownership.md)

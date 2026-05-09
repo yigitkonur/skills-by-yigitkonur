@@ -28,6 +28,6 @@
 - Confirm background behavior does not silently lose buffered work.
 
 ## Read Next
-- [../advanced/04-streaming-workloads-and-transcription.md](../advanced/04-streaming-workloads-and-transcription.md)
-- [../advanced/01-pagination-live-tail-and-history.md](../advanced/01-pagination-live-tail-and-history.md)
-- [../advanced/02-file-storage-upload-download-and-document-ids.md](../advanced/02-file-storage-upload-download-and-document-ids.md)
+- [../advanced/04-streaming-workloads-and-transcription.md](streaming-and-transcription.md)
+- [../advanced/01-pagination-live-tail-and-history.md](../quick-reference/subscription-placement.md)
+- [../advanced/02-file-storage-upload-download-and-document-ids.md](../quick-reference/backend-card.md)

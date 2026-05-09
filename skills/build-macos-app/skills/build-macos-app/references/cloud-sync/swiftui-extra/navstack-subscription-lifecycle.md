@@ -104,6 +104,6 @@ struct DetailView: View {
 - Recreating expensive subscriptions on every push/pop cycle when a `@StateObject` model would eliminate the churn.
 
 ## Read Next
-- [03-lifecycle-navigation-tabs-and-sheets.md](03-lifecycle-navigation-tabs-and-sheets.md)
-- [02-observation-and-ownership.md](02-observation-and-ownership.md)
-- [06-tabview-and-sheet-patterns.md](06-tabview-and-sheet-patterns.md)
+- [03-lifecycle-navigation-tabs-and-sheets.md](../lifecycle-navigation.md)
+- [02-observation-and-ownership.md](../observation-ownership.md)
+- [06-tabview-and-sheet-patterns.md](tabview-and-sheets.md)

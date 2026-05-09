@@ -63,6 +63,6 @@ try await client.mutation("counter:increment", with: ["amount": 5])
 - Using a variable named `convex` instead of `client` for the Convex client instance.
 
 ## Read Next
-- [02-type-system-wire-format-and-modeling.md](02-type-system-wire-format-and-modeling.md)
-- [01-client-surface-runtime-and-auth-bridge.md](01-client-surface-runtime-and-auth-bridge.md)
-- [04-pipeline-termination-and-recovery.md](04-pipeline-termination-and-recovery.md)
+- [02-type-system-wire-format-and-modeling.md](type-system-and-modeling.md)
+- [01-client-surface-runtime-and-auth-bridge.md](../client-surface.md)
+- [04-pipeline-termination-and-recovery.md](../pipeline-recovery.md)

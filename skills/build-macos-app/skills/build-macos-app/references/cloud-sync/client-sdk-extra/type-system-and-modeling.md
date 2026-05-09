@@ -112,5 +112,5 @@ try await client.mutation("workouts:store", with: args)
 - Including optional fields with `nil` values in mutation argument dictionaries — omit them instead.
 
 ## Read Next
-- [01-client-surface-runtime-and-auth-bridge.md](01-client-surface-runtime-and-auth-bridge.md)
-- [03-subscriptions-errors-logging-and-connection-state.md](03-subscriptions-errors-logging-and-connection-state.md)
+- [01-client-surface-runtime-and-auth-bridge.md](../client-surface.md)
+- [03-subscriptions-errors-logging-and-connection-state.md](subscriptions-and-errors.md)

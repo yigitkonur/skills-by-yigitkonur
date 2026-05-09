@@ -44,6 +44,6 @@
 - Confirm iOS stale-state UX exists.
 
 ## Read Next
-- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/01-ios-backgrounding-reconnection-and-staleness.md)
-- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](../platforms/04-macos-multi-window-menu-bar-and-support-limits.md)
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
+- [../platforms/01-ios-backgrounding-reconnection-and-staleness.md](../platforms/ios-backgrounding-and-staleness.md)
+- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](../macos-app-entry.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](../root-architecture.md)

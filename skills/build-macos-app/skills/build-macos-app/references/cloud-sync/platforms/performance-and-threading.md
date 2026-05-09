@@ -32,6 +32,6 @@
 - Treating power or bandwidth cost as somebody else's problem.
 
 ## Read Next
-- [../advanced/03-testing-debugging-and-observability.md](../advanced/03-testing-debugging-and-observability.md)
-- [../advanced/01-pagination-live-tail-and-history.md](../advanced/01-pagination-live-tail-and-history.md)
-- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk/03-subscriptions-errors-logging-and-connection-state.md)
+- [../advanced/03-testing-debugging-and-observability.md](../client-sdk-extra/debug-logging.md)
+- [../advanced/01-pagination-live-tail-and-history.md](../quick-reference/subscription-placement.md)
+- [../client-sdk/03-subscriptions-errors-logging-and-connection-state.md](../client-sdk-extra/subscriptions-and-errors.md)

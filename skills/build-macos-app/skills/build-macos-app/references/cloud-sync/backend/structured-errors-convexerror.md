@@ -74,6 +74,6 @@ do {
 - Forgetting to decode the `data` string on the Swift side; it arrives as raw JSON, not a typed object.
 
 ## Read Next
-- [05-internal-functions-and-helpers.md](05-internal-functions-and-helpers.md)
-- [06-intent-plus-schedule-pattern.md](06-intent-plus-schedule-pattern.md)
-- [../client-sdk/04-pipeline-termination-and-recovery.md](../client-sdk/04-pipeline-termination-and-recovery.md)
+- [05-internal-functions-and-helpers.md](../quick-reference/function-decision-tree.md)
+- [06-intent-plus-schedule-pattern.md](../quick-reference/function-decision-tree.md)
+- [../client-sdk/04-pipeline-termination-and-recovery.md](../pipeline-recovery.md)

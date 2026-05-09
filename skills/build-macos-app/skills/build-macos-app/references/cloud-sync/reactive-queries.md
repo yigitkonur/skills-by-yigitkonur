@@ -89,6 +89,6 @@ This single pipeline handles:
 - Forgetting `.removeDuplicates()` before `.replaceError()` — without it, every server push triggers a view update even if data is unchanged.
 
 ## Read Next
-- [02-observation-and-ownership.md](02-observation-and-ownership.md)
-- [03-lifecycle-navigation-tabs-and-sheets.md](03-lifecycle-navigation-tabs-and-sheets.md)
-- [../advanced/01-pagination-live-tail-and-history.md](../advanced/01-pagination-live-tail-and-history.md)
+- [02-observation-and-ownership.md](observation-ownership.md)
+- [03-lifecycle-navigation-tabs-and-sheets.md](lifecycle-navigation.md)
+- [../advanced/01-pagination-live-tail-and-history.md](quick-reference/subscription-placement.md)

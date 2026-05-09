@@ -134,6 +134,6 @@ struct WorkoutsTab: View {
 - Expecting `@StateObject` inside a sheet to survive across present/dismiss cycles — it is re-created each time.
 
 ## Read Next
-- [05-navigation-stack-subscription-lifecycle.md](05-navigation-stack-subscription-lifecycle.md)
-- [03-lifecycle-navigation-tabs-and-sheets.md](03-lifecycle-navigation-tabs-and-sheets.md)
-- [02-observation-and-ownership.md](02-observation-and-ownership.md)
+- [05-navigation-stack-subscription-lifecycle.md](navstack-subscription-lifecycle.md)
+- [03-lifecycle-navigation-tabs-and-sheets.md](../lifecycle-navigation.md)
+- [02-observation-and-ownership.md](../observation-ownership.md)

@@ -76,6 +76,6 @@ But if the subscription pipeline terminated due to an error (see `pitfalls/01-pi
 - Confusing `.inactive` with `.background` — they are not the same recovery signal.
 
 ## Read Next
-- [02-offline-behavior-network-transitions-and-recovery.md](02-offline-behavior-network-transitions-and-recovery.md)
-- [03-performance-battery-and-threading.md](03-performance-battery-and-threading.md)
-- [../pitfalls/01-pipeline-dies-after-first-error.md](../pitfalls/01-pipeline-dies-after-first-error.md)
+- [02-offline-behavior-network-transitions-and-recovery.md](../offline-ux-states.md)
+- [03-performance-battery-and-threading.md](performance-and-threading.md)
+- [../pitfalls/01-pipeline-dies-after-first-error.md](../pitfall-pipeline-dies.md)

@@ -165,6 +165,6 @@ struct MyMacApp: App {
 - Passing the module-level `client` via environment when direct access is simpler — the module-level `let client` pattern means ViewModels can reference it directly.
 
 ## Read Next
-- [04-macos-multi-window-menu-bar-and-support-limits.md](04-macos-multi-window-menu-bar-and-support-limits.md)
-- [../swiftui/04-environment-injection-and-root-architecture.md](../swiftui/04-environment-injection-and-root-architecture.md)
-- [../swiftui/02-observation-and-ownership.md](../swiftui/02-observation-and-ownership.md)
+- [04-macos-multi-window-menu-bar-and-support-limits.md](macos-app-entry.md)
+- [../swiftui/04-environment-injection-and-root-architecture.md](root-architecture.md)
+- [../swiftui/02-observation-and-ownership.md](observation-ownership.md)

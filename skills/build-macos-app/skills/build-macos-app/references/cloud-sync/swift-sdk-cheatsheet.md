@@ -226,7 +226,7 @@ struct Message: Decodable, Identifiable {
 > 1. `sink(receiveCompletion:receiveValue:)` — set an error state in `receiveCompletion`, then call `resubscribe()` (cancel all cancellables and rebuild the pipeline) to resume live updates.
 > 2. Result-wrapping (`.asResult()`) — the error is visible as UI state, but the pipeline still completes. Call `resubscribe()` to resume live updates.
 >
-> See [../pitfalls/01-pipeline-dies-after-first-error.md](../pitfalls/01-pipeline-dies-after-first-error.md).
+> See [../pitfalls/01-pipeline-dies-after-first-error.md](pitfall-pipeline-dies.md).
 
 ---
 
@@ -262,7 +262,7 @@ client.watchWebSocketState()
 - Using `initConvexLogging()` without `#if DEBUG` -- exposes JWTs and user data.
 
 ## Read Next
-- [01-convex-backend-quick-reference-card.md](01-convex-backend-quick-reference-card.md)
-- [03-sql-to-convex-mapping-table.md](03-sql-to-convex-mapping-table.md)
-- [../client-sdk/01-client-surface-runtime-and-auth-bridge.md](../client-sdk/01-client-surface-runtime-and-auth-bridge.md)
-- [../client-sdk/02-type-system-wire-format-and-modeling.md](../client-sdk/02-type-system-wire-format-and-modeling.md)
+- [01-convex-backend-quick-reference-card.md](quick-reference/backend-card.md)
+- [03-sql-to-convex-mapping-table.md](quick-reference/backend-card.md)
+- [../client-sdk/01-client-surface-runtime-and-auth-bridge.md](client-surface.md)
+- [../client-sdk/02-type-system-wire-format-and-modeling.md](client-sdk-extra/type-system-and-modeling.md)

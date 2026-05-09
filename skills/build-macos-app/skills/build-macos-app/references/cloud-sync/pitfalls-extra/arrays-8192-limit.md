@@ -59,6 +59,6 @@ Rule of thumb: if the array can grow beyond ~100 elements, use a separate table.
 - Using arrays for data that should be queried, filtered, or paginated independently.
 
 ## Read Next
-- [../backend/01-schema-document-model-and-relationships.md](../backend/01-schema-document-model-and-relationships.md)
-- [03-unbounded-collect-bandwidth-bomb.md](03-unbounded-collect-bandwidth-bomb.md)
-- [../advanced/04-streaming-workloads-and-transcription.md](../advanced/04-streaming-workloads-and-transcription.md)
+- [../backend/01-schema-document-model-and-relationships.md](../quick-reference/backend-card.md)
+- [03-unbounded-collect-bandwidth-bomb.md](unbounded-collect.md)
+- [../advanced/04-streaming-workloads-and-transcription.md](../playbooks/streaming-and-transcription.md)

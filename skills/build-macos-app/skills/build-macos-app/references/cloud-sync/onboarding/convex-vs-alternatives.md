@@ -102,6 +102,6 @@ Do you want Combine-native reactive data in SwiftUI?
 - Call out the ecosystem maturity gap and platform support limitations in the same conversation as the benefits.
 
 ## Read Next
-- [01-why-convex-fits-swiftui.md](01-why-convex-fits-swiftui.md)
-- [04-adoption-checklist-and-hard-stops.md](04-adoption-checklist-and-hard-stops.md)
-- [../operations/02-known-gaps-limitations-and-non-goals.md](../operations/02-known-gaps-limitations-and-non-goals.md)
+- [01-why-convex-fits-swiftui.md](why-convex-fits-swiftui.md)
+- [04-adoption-checklist-and-hard-stops.md](../adoption-checklist.md)
+- [../operations/02-known-gaps-limitations-and-non-goals.md](../operations/known-gaps.md)

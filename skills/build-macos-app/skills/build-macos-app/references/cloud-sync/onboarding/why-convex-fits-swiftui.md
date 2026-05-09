@@ -41,6 +41,6 @@
 - The ecosystem remains small; Discord and source reading are part of the operational reality.
 
 ## Read Next
-- [02-convex-vs-firebase-vs-supabase.md](02-convex-vs-firebase-vs-supabase.md)
-- [03-mental-model-live-data-functions-and-state.md](03-mental-model-live-data-functions-and-state.md)
-- [04-adoption-checklist-and-hard-stops.md](04-adoption-checklist-and-hard-stops.md)
+- [02-convex-vs-firebase-vs-supabase.md](convex-vs-alternatives.md)
+- [03-mental-model-live-data-functions-and-state.md](mental-model.md)
+- [04-adoption-checklist-and-hard-stops.md](../adoption-checklist.md)

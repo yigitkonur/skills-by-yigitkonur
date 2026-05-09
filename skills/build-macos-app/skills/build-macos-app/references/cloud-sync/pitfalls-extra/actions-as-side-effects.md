@@ -88,6 +88,6 @@ let weather: WeatherData = try await client.action(
 - Skipping the `status` field on intent records — it is needed for idempotency checks.
 
 ## Read Next
-- [../backend/03-queries-mutations-actions-scheduling.md](../backend/03-queries-mutations-actions-scheduling.md)
-- [07-trusting-client-for-authorization.md](07-trusting-client-for-authorization.md)
-- [../operations/01-verified-corrections-and-trust-boundaries.md](../operations/01-verified-corrections-and-trust-boundaries.md)
+- [../backend/03-queries-mutations-actions-scheduling.md](../quick-reference/function-decision-tree.md)
+- [07-trusting-client-for-authorization.md](trusting-client-for-auth.md)
+- [../operations/01-verified-corrections-and-trust-boundaries.md](../operations/verified-corrections.md)

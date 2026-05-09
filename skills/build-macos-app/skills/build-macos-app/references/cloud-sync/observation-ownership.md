@@ -90,6 +90,6 @@ struct ChatView: View {
 - Treating ownership questions as SwiftUI ceremony instead of correctness.
 
 ## Read Next
-- [01-consumption-patterns.md](01-consumption-patterns.md)
-- [03-lifecycle-navigation-tabs-and-sheets.md](03-lifecycle-navigation-tabs-and-sheets.md)
-- [../pitfalls/08-observable-macro-re-init-trap.md](../pitfalls/08-observable-macro-re-init-trap.md)
+- [01-consumption-patterns.md](reactive-queries.md)
+- [03-lifecycle-navigation-tabs-and-sheets.md](lifecycle-navigation.md)
+- [../pitfalls/08-observable-macro-re-init-trap.md](pitfall-observable-reinit.md)

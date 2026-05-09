@@ -48,6 +48,6 @@ This isolates Convex SDK logs from all other system output, making it easy to tr
 - Relying on Xcode console alone; Console.app with subsystem filtering provides better structured output.
 
 ## Read Next
-- [04-pipeline-termination-and-recovery.md](04-pipeline-termination-and-recovery.md)
-- [05-websocket-state-and-connection-banner.md](05-websocket-state-and-connection-banner.md)
-- [../advanced/03-testing-debugging-and-observability.md](../advanced/03-testing-debugging-and-observability.md)
+- [04-pipeline-termination-and-recovery.md](../pipeline-recovery.md)
+- [05-websocket-state-and-connection-banner.md](../connection-banner.md)
+- [../advanced/03-testing-debugging-and-observability.md](debug-logging.md)

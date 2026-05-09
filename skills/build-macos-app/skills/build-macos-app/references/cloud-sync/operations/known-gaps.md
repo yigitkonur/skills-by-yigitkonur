@@ -39,6 +39,6 @@
 - Prefer alternative backends when the product shape fundamentally conflicts with these limits.
 
 ## Read Next
-- [../onboarding/04-adoption-checklist-and-hard-stops.md](../onboarding/04-adoption-checklist-and-hard-stops.md)
-- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](../platforms/04-macos-multi-window-menu-bar-and-support-limits.md)
-- [../advanced/04-streaming-workloads-and-transcription.md](../advanced/04-streaming-workloads-and-transcription.md)
+- [../onboarding/04-adoption-checklist-and-hard-stops.md](../adoption-checklist.md)
+- [../platforms/04-macos-multi-window-menu-bar-and-support-limits.md](../macos-app-entry.md)
+- [../advanced/04-streaming-workloads-and-transcription.md](../playbooks/streaming-and-transcription.md)
