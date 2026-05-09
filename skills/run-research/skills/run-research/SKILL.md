@@ -115,19 +115,11 @@ Five steps. One pass minimum. Iterate until every gap is closed.
    snippets lie; the page is canonical. Mark inference vs evidence
    explicitly. Surface contradictions; do not paper over disagreement.
 
-**Two to four search rounds per substantive session is normal**, not
-excessive. After every capture, harvest the next round's seeds:
-
-- From `smart-scrape-links`: read `## Follow-up signals` (referenced
-  URLs and concepts the extractor surfaced) and `## Not found` (which
-  facets a source failed to answer — those gaps drive the next query).
-- From `smart-web-search`: read `## Gaps` (open questions with IDs) and
-  `## Suggested follow-up searches` (refine queries tied to gap IDs).
-
-Feed harvested terms into round 2 search. Do not paraphrase queries
-already run; the classifier tracks them. Loop search–capture–synthesize
-until every `gaps_to_watch` item from `start-research` is closed and
-the last search round surfaces no new terms. Then stop and write up.
+Two to four search rounds per substantive session is normal. After each
+capture, harvest `## Follow-up signals`, `## Not found`, `## Gaps`, and
+`## Suggested follow-up searches`. Stop only when `gaps_to_watch` and
+`stop_criteria` are closed, or when remaining gaps are explicitly
+unresolvable from available sources.
 
 ## Deep single-question path
 
@@ -161,51 +153,63 @@ Below the threshold, stay single-agent for coherence.
 | A scrape timed out. A search returned 0 results. Now what? | `references/failure-modes.md` |
 | A single question spans 3+ technical subdomains and needs parallel evidence gathering. | `references/orchestrator.md` |
 
-## Guardrails
+## Output and citation contract
 
-These rules apply across every loop. Violation produces unreliable
-synthesis.
+Default to in-chat Markdown unless the user asks for a file. Use JSON
+only when explicitly requested.
 
-- Never cite a URL from a search snippet alone. Snippets are misleading by
-  design; only scraped page content is evidence.
-- Persistence is structural, not exceptional. Tool results above ~50KB
-  persist to file. When "Output too large" appears, subagent-extract — do
-  not paste the persisted file into context.
-- Parallel calls amplify output volume, not just speed. Two parallel
-  `raw-web-search` calls with 25 keywords each can return >100KB of
-  context-polluting snippets in seconds. Plan for the output side before
-  fanning out.
-- Provider cascade failure (Jina → Scrape.do → Kernel all failing on one
-  URL) means WAF or interstitial blocking, not bug. Route around — try
-  the postmortem, the mirror, the web archive — do not retry.
-- Match facet shape to page type. Specs from docs (verbatim config keys,
-  command syntax, version strings); sentiment from Reddit (attributed
-  quotes with vote counts, dissent); verdicts from blogs (recommendation
-  logic, comparison axes). Asking for sentiment from a docs page produces
-  nothing useful.
-- Cap `smart-scrape-links` at 5 URLs and 7 facets per call. Beyond either,
-  split. Observed: 9 URLs times out repeatedly; 4–5 URLs at ≤7 facets
-  succeed in roughly 50 seconds.
-- The `## Not found` section returned by `smart-scrape-links` is not
-  optional reading. It tells you which facets a source did not answer,
-  which directly determines the next search query.
-- Search aggressively. Two parallel `raw-web-search` calls in one turn,
-  then a refined round 2 after triage, is normal — not excessive.
-  Single-call sessions are usually under-researched.
-- `gaps_to_watch` and `stop_criteria` from `start-research` are binding.
-  The loop ends when every gap is closed, not when fatigue sets in.
+| Request shape | Default output |
+|---|---|
+| quick fact check | 3-8 bullets with sources |
+| bug / root cause | likely cause, fix, caveats, fallback |
+| decision / comparison | recommendation, confidence, table, flip conditions, counter-arguments |
+| deep single-question research | 800-2,000 words plus source ledger |
 
-## Quick start
+For any non-trivial answer, include compact source notes:
 
-The literal first call to make:
+- URL or source identifier
+- source type
+- author/date when available
+- access date or research date for time-sensitive claims
+- claim supported
+- confidence or caveat when source quality is weak
 
-```
-start-research(
-  goal: "<one paragraph: topic, your use case, known unknowns,
-         skip list, freshness window, quote discipline>"
-)
-```
+Minimum citation rules:
 
-If the goal is two sentences and names only the topic, stop. Read
-`references/prompting.md` first. The five to ten minutes spent sharpening
-the goal are the highest-leverage minutes in the session.
+- Cite scraped pages, official docs, issues, posts, advisories, or other
+  concrete sources. Never cite search snippets or tool-provided
+  synthesis as evidence.
+- For APIs, prices, CVEs, versions, model behavior, deprecations, and
+  fast-moving libraries, verify before synthesizing. Prefer official
+  docs, changelogs, release notes, and advisories for exact facts.
+- Use practitioner sources for production behavior, not exact API truth.
+- Separate confirmed facts from inference. Mark unresolved gaps instead
+  of smoothing them into a confident answer.
+- "Reddit consensus" is not a citation. Attribute Reddit evidence with
+  username, subreddit, date, and preferably score/comment context.
+
+Read `references/synthesis.md` for detailed credibility tiers,
+contradiction handling, and output examples.
+
+## Operational guardrails
+
+- Use `start-research` first for substantive sessions. A quick fact check
+  can skip it when the overhead does not pay back.
+- Cap `smart-scrape-links` at 5 URLs and 7 facets per call; split beyond
+  that.
+- Read every `## Not found` section and feed unresolved gaps into the
+  next query.
+- Plan for output volume before parallel raw searches; large raw results
+  may need file-backed triage.
+- Treat provider cascade failure as blocking or WAF behavior. Route
+  around to mirrors, archives, postmortems, or quoted discussions.
+
+## Final checks
+
+- description is single-line, quoted, starts with `Use skill if you are`,
+  and is <=30 words
+- `run-research` target-specific validator checks pass
+- every reference file remains routed from `SKILL.md`
+- output contract includes source attribution and unresolved gaps
+- sibling redirects still name `run-industry-research` and
+  `run-github-scout`

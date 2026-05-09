@@ -24,7 +24,7 @@ conflict.
 | Official postmortems / incident reports | Very high | What broke, why, what changed in response |
 | GitHub issues/PRs (maintainer responses) | High | Known bugs, intended behavior, workarounds |
 | Scraped benchmarks with disclosed methodology | High | Performance claims (check workload conditions match yours) |
-| `## Synthesis` from `smart-web-search` | Moderate-high for analysis, low for facts | Trade-off reasoning. Never cite as evidence — it reads titles and snippets, not bodies. |
+| Tool-provided synthesis (`smart-web-search` `## Synthesis`) | Planning input only | Trade-off leads and gap hints. Never cite as evidence; it reads titles and snippets, not bodies. |
 | Highly-upvoted Reddit (100+ votes, specific details) | Moderate-high | How things actually work in production |
 | Stack Overflow accepted + highly voted | Moderate-high | Common solutions (check date) |
 | Recent blog by named practitioner with specifics | Moderate | Single data point, useful if detailed |
@@ -47,9 +47,20 @@ conflict.
 ## Citation discipline
 
 The hard rule: **only scraped page content is evidence.** Search
-snippets are leads, not citations. The `## Synthesis` block returned by
-`smart-web-search` is a planning aid — its rank-citations point to URLs
-not yet scraped.
+snippets and tool-provided synthesis are leads, not citations. The
+`## Synthesis` block returned by `smart-web-search` is a planning aid:
+its rank-citations point to URLs not yet scraped.
+
+### Source ledger fields
+
+For non-trivial answers, maintain compact source notes with:
+
+- URL or source identifier
+- source type
+- author/date when available
+- access date or research date for time-sensitive claims
+- claim supported
+- confidence or caveat when source quality is weak
 
 ### What a citation looks like
 
