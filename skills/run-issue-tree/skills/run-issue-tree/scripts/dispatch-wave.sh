@@ -307,7 +307,11 @@ for issue in $(jq -r '.number' "$ISSUES"); do
     }' >> "$MANIFEST_JSONL"
 
   if [ "$MARK_IN_PROGRESS" = "1" ]; then
-    gh issue edit "$issue" --repo "$REPO" --add-label "status:in-progress" --remove-label "status:ready" >/dev/null
+    if has_label "$issue" "status:ready"; then
+      gh issue edit "$issue" --repo "$REPO" --add-label "status:in-progress" --remove-label "status:ready" >/dev/null
+    else
+      gh issue edit "$issue" --repo "$REPO" --add-label "status:in-progress" >/dev/null
+    fi
   fi
 done
 
