@@ -21,7 +21,7 @@ Port an existing MCP TypeScript server from `@modelcontextprotocol/sdk` v1.x to 
 
 ## Core rules
 
-- Pick a migration strategy *before* touching files — full rewrite, meta-package shim, or partial. The v2 alpha publishes a `@modelcontextprotocol/sdk` meta-package that re-exports v1 import paths; this is the smooth on-ramp, not a long-term destination.
+- Pick a migration strategy *before* touching files — full rewrite, meta-package shim, server-auth-legacy transition, or stay on v1. The v2 alpha publishes a `@modelcontextprotocol/sdk` meta-package that re-exports v1 import paths; this is the smooth on-ramp, not a long-term destination.
 - Never mix v1 and v2 packages in the same module graph except deliberately during a staged migration. Two `McpServer` classes from two packages will not interoperate; types will silently diverge.
 - Pin to an exact alpha version (`@modelcontextprotocol/server@2.0.0-alpha.2`) — `^` ranges across alphas will surface breaking changes mid-migration.
 - Migrate handler context (`extra` → `ctx`) and schemas (`ZodRawShape` → `z.object`) together for any tool you touch. Half-migrated handlers are the single biggest source of runtime errors during a port.
@@ -45,6 +45,8 @@ Read `package.json`, `tsconfig.json`, and every file under `src/`. Record:
 
 This inventory drives the strategy choice in step 2.
 
+For a deterministic first pass, run `bash scripts/check-v2-feasibility.sh <project-dir>` from this skill directory and read `scripts/check-v2-feasibility.md`. Use the report to focus the manual inventory; do not treat it as a substitute for reading the code.
+
 ### 2 — Choose the migration strategy
 
 | Strategy | When | Effort | Trade-off |
@@ -54,20 +56,22 @@ This inventory drives the strategy choice in step 2.
 | **Server-auth-legacy** | Production OAuth server using `mcpAuthRouter` | Days | Keep OAuth on v1 frozen package; everything else on v2 |
 | **Stay on v1** | OAuth-heavy, large, or alpha-allergic | Zero | No code change; revisit when v2 reaches stable |
 
-Read `references/guides/migration-strategy.md` before committing. Record the choice in the PR description so future maintainers know what state the server is in.
+Read `references/guides/migration-strategy.md` before committing. Record the choice in the change description so future maintainers know what state the server is in.
 
 ### 3 — Rewrite packages and imports
 
 Per `references/guides/package-and-imports.md`. Smallest unit: one import line at a time.
 
 - `@modelcontextprotocol/sdk/server/mcp.js` → `@modelcontextprotocol/server`
-- `@modelcontextprotocol/sdk/server/stdio.js` → `@modelcontextprotocol/server/stdio` (or top-level `@modelcontextprotocol/server` re-export)
+- `@modelcontextprotocol/sdk/server/stdio.js` → `@modelcontextprotocol/server`
 - `@modelcontextprotocol/sdk/server/streamableHttp.js` → `@modelcontextprotocol/node` (renamed `NodeStreamableHTTPServerTransport`)
 - `@modelcontextprotocol/sdk/server/express.js` → `@modelcontextprotocol/express`
 - `@modelcontextprotocol/sdk/client/index.js` → `@modelcontextprotocol/client`
 - `@modelcontextprotocol/sdk/types.js` (errors only) → `@modelcontextprotocol/core`
 
 If using the meta-package shim, this step is a no-op until you choose to migrate a specific module.
+
+For direct-package migrations, preview the mechanical import portion with `bash scripts/migrate-imports.sh <project-dir>` and read `scripts/migrate-imports.md`; rerun with `--write` only after reviewing the dry-run. Avoid it for schema, `ctx`, auth-router, request-handler-key, or transport-lifecycle rewrites.
 
 ### 4 — Rewrite schemas
 
@@ -123,8 +127,10 @@ Per `references/guides/transports-and-adapters.md`.
 Per `references/patterns/validation-and-rollback.md`.
 
 - Add `"type": "module"` to `package.json`. Bump engines to Node 20+.
-- Run the existing test suite. Fix type errors before runtime errors.
-- Test with `npx @anthropic-ai/mcp-inspector`.
+- Run type-check first, then the existing unit/integration test suite.
+- Test with `npx @anthropic-ai/mcp-inspector` for browser/manual smoke coverage.
+- Use `test-by-mcpc-cli` for headless CLI smoke/regression checks when `mcpc` is available.
+- Connect at least one real MCP client before production rollout.
 - Stage in a non-prod environment for at least one week before flipping production traffic.
 - Keep the v1 branch deployable until v2 reaches stable — alpha versions can break.
 
@@ -172,9 +178,24 @@ await server.connect(new StdioServerTransport());
 - Never run an alpha SDK in production before staging it in a non-prod environment with realistic traffic for at least one week.
 - Never mix `@modelcontextprotocol/sdk` and `@modelcontextprotocol/server` in the same compiled bundle without the meta-package shim — TypeScript will accept the duplicate types, but `instanceof` checks and class identity break at runtime.
 - Never assume `req.auth` propagates without explicitly wiring HTTP-layer auth middleware — v2 does not provide a server-side OAuth router that does this for you.
-- Never delete the v1 branch or `package-lock.json` until v2 has been stable in production for at least one full release cycle. Roll-back is the cheapest insurance you have during alpha.
+- Never delete the v1 branch or `package-lock.json` until v2 has been stable in production for at least one full release cycle. Rollback readiness is the cheapest insurance during alpha.
 - Never `npm install` v2 packages without `--save-exact` — Yarn/pnpm equivalents apply.
 - Never adopt the `better-auth` MCP plugin as a new dependency in a v2 migration — it's marked for deprecation and currently targets v1 import paths.
+
+## Output contract
+
+When a port finishes, report:
+
+- migration strategy chosen and why
+- package/version changes, exact alpha pins, and whether the v2 meta-package remains
+- handlers/tools migrated, especially schema and `ctx` rewrites
+- auth path chosen: stay on v1, server-auth-legacy, HTTP-layer auth, or no auth
+- transports/adapters changed
+- validation rung reached: type-check, unit tests, Inspector, `test-by-mcpc-cli`, real client, staging/canary
+- rollback status: v1 branch/image/lockfile preserved, or blocker if not verified
+- residual risks from v2 alpha status
+
+After the port lands, use `build-mcp-server-sdk-v2` for ongoing v2 maintenance.
 
 ## Reference routing
 
