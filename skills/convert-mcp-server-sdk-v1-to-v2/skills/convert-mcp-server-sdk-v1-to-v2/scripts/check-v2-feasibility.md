@@ -4,7 +4,7 @@ Read-only static audit for a TypeScript MCP server before an SDK v1 to v2 migrat
 
 ## Use when
 
-- Choosing between full rewrite, meta-package shim, server-auth-legacy, or staying on v1.
+- Choosing between full rewrite, verified meta-package shim, HTTP-layer auth transition, or staying on v1.
 - Preparing the Step 1 inventory before touching source files.
 - Looking for deterministic first-pass blockers: CommonJS, Node <20, OAuth router usage, SSE, raw schemas, handler context, and error rewrites.
 

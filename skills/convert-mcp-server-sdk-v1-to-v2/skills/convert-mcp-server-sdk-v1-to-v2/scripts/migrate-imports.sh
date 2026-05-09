@@ -82,7 +82,7 @@ transform_file() {
   fi
 
   if search_file "$file" '@modelcontextprotocol/sdk/types\.js' && search_file "$file" 'McpError|ErrorCode'; then
-    if search_file "$file" '@modelcontextprotocol/sdk/types\.js.*(RequestSchema|ResultSchema|NotificationSchema|ResourceSchema|PromptSchema)'; then
+    if search_file "$file" 'RequestSchema|ResultSchema|NotificationSchema|ResourceSchema|PromptSchema'; then
       warn_file "$file" "mixed /types.js import with schemas; split error imports manually before rewriting"
     else
       rename_errors=1
@@ -101,7 +101,7 @@ transform_file() {
       if (rename_errors == "1") {
         gsub("McpError", "ProtocolError", line)
         gsub("ErrorCode", "ProtocolErrorCode", line)
-        gsub("@modelcontextprotocol/sdk/types.js", "@modelcontextprotocol/core", line)
+        gsub("@modelcontextprotocol/sdk/types.js", "@modelcontextprotocol/server", line)
       }
 
       if (rename_streamable == "1") {
@@ -126,7 +126,7 @@ while IFS= read -r -d '' file; do
   if search_file "$file" 'SSEServerTransport'; then
     warn_file "$file" "SSEServerTransport is removed in v2; rewrite transport flow manually"
   fi
-  if search_file "$file" '@modelcontextprotocol/sdk' && search_file "$file" '@modelcontextprotocol/(server|client|core|node|express|hono|server-auth-legacy)'; then
+  if search_file "$file" '@modelcontextprotocol/sdk' && search_file "$file" '@modelcontextprotocol/(server|client|node|express|hono|server-auth-legacy)'; then
     warn_file "$file" "mixed v1/v2 MCP imports detected"
   fi
 
@@ -152,10 +152,7 @@ while IFS= read -r -d '' file; do
   fi
 done < <(
   find "$PROJECT" \
-    -path "$PROJECT/node_modules" -prune -o \
-    -path "$PROJECT/dist" -prune -o \
-    -path "$PROJECT/build" -prune -o \
-    -path "$PROJECT/coverage" -prune -o \
+    -type d \( -name node_modules -o -name dist -o -name build -o -name coverage \) -prune -o \
     -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) \
     -print0
 )

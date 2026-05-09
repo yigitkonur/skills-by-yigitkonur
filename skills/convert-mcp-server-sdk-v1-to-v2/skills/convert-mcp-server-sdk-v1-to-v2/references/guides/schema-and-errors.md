@@ -50,11 +50,11 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 throw new McpError(ErrorCode.InvalidParams, "Bad input");
 
 // v2 — wire-protocol errors
-import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/core";
+import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/server";
 throw new ProtocolError(ProtocolErrorCode.InvalidParams, "Bad input");
 
 // v2 — local SDK errors (new)
-import { SdkError, SdkErrorCode } from "@modelcontextprotocol/core";
+import { SdkError, SdkErrorCode } from "@modelcontextprotocol/server";
 throw new SdkError(SdkErrorCode.NotConnected, "...");
 ```
 
@@ -111,7 +111,7 @@ Most servers don't need `setRequestHandler` directly — `registerTool` / `regis
 - [ ] All prompt `argsSchema: { ... }` wrapped in `z.object({ ... })`.
 - [ ] `zod-to-json-schema` removed from `package.json`.
 - [ ] `McpError` → `ProtocolError`, `ErrorCode` → `ProtocolErrorCode`.
-- [ ] Error imports moved from `@modelcontextprotocol/sdk/types.js` to `@modelcontextprotocol/core`.
+- [ ] Error imports moved from `@modelcontextprotocol/sdk/types.js` to `@modelcontextprotocol/server`.
 - [ ] `setRequestHandler(SomeSchema, ...)` calls rewritten to `setRequestHandler("method/name", ...)`.
 - [ ] Imports of `*RequestSchema` from `/types.js` removed where no longer needed.
 - [ ] If your server published JSON Schema externally, downstream consumers verified for 2020-12 support.

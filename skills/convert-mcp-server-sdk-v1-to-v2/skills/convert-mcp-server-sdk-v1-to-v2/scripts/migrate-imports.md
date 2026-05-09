@@ -32,6 +32,6 @@ bash scripts/migrate-imports.sh --write /path/to/project
 - `StreamableHTTPServerTransport` -> `NodeStreamableHTTPServerTransport` in files that import the v1 Streamable HTTP transport
 - `@modelcontextprotocol/sdk/server/express.js` -> `@modelcontextprotocol/express`
 - `@modelcontextprotocol/sdk/client/index.js` -> `@modelcontextprotocol/client`
-- safe `McpError` / `ErrorCode` imports from `@modelcontextprotocol/sdk/types.js` -> `ProtocolError` / `ProtocolErrorCode` from `@modelcontextprotocol/core`
+- safe `McpError` / `ErrorCode` imports from `@modelcontextprotocol/sdk/types.js` -> `ProtocolError` / `ProtocolErrorCode` from `@modelcontextprotocol/server`
 
 The helper prints warnings for auth-router paths, `SSEServerTransport`, and mixed v1/v2 imports. It only scans files under the supplied project directory.

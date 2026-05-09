@@ -5,7 +5,7 @@ description: "Use skill if you are porting an existing MCP TypeScript server fro
 
 # Convert MCP Server (SDK v1 → v2)
 
-Port an existing MCP TypeScript server from `@modelcontextprotocol/sdk` v1.x to the v2 split-package SDK (`@modelcontextprotocol/server`, `/client`, `/core`, `/node`, `/express`, `/hono`). Covers package split, import rewrites, the `extra → ctx` handler-context mapping, Zod v3→v4 with raw-shape removal, error-class rename, request-handler key strings, framework adapter packages, and the OAuth-router replacement story.
+Port an existing MCP TypeScript server from `@modelcontextprotocol/sdk` v1.x to the v2 split-package SDK (`@modelcontextprotocol/server`, `/client`, `/node`, `/express`, `/hono`). Covers package split, import rewrites, the `extra → ctx` handler-context mapping, Zod v3→v4 with raw-shape removal, error-class rename, request-handler key strings, framework adapter packages, and the OAuth-router replacement story.
 
 **v2 is currently a pre-release alpha.** As of 2026-05-08, the latest published version is `2.0.0-alpha.2`; the milestone is `v2.0.0-bc` (backwards-compat PR series). Most production servers should stay on `@modelcontextprotocol/sdk@^1.x` for now and use this skill to plan, test, and stage the migration — not to flip a production switch.
 
@@ -21,11 +21,11 @@ Port an existing MCP TypeScript server from `@modelcontextprotocol/sdk` v1.x to 
 
 ## Core rules
 
-- Pick a migration strategy *before* touching files — full rewrite, meta-package shim, server-auth-legacy transition, or stay on v1. The v2 alpha publishes a `@modelcontextprotocol/sdk` meta-package that re-exports v1 import paths; this is the smooth on-ramp, not a long-term destination.
+- Pick a migration strategy *before* touching files — full rewrite, meta-package shim if published for the target alpha, HTTP-layer auth transition, or stay on v1. Do not assume the v2 alpha meta-package exists; verify package availability before relying on it.
 - Never mix v1 and v2 packages in the same module graph except deliberately during a staged migration. Two `McpServer` classes from two packages will not interoperate; types will silently diverge.
 - Pin to an exact alpha version (`@modelcontextprotocol/server@2.0.0-alpha.2`) — `^` ranges across alphas will surface breaking changes mid-migration.
 - Migrate handler context (`extra` → `ctx`) and schemas (`ZodRawShape` → `z.object`) together for any tool you touch. Half-migrated handlers are the single biggest source of runtime errors during a port.
-- Replace `mcpAuthRouter` / `requireBearerAuth` / `OAuthServerProvider` deliberately — server-side OAuth is removed from v2. The v2 alpha ships `@modelcontextprotocol/server-auth-legacy` (frozen v1 AS code) for users who can't drop OAuth; for new auth work, integrate at the HTTP layer (custom Bearer middleware, Passport, jose) and forward `authInfo` via `req.auth`.
+- Replace `mcpAuthRouter` / `requireBearerAuth` / `OAuthServerProvider` deliberately — server-side OAuth is removed from v2. If a target alpha publishes `@modelcontextprotocol/server-auth-legacy`, treat it as a transition; otherwise stay on v1 or integrate at the HTTP layer (custom Bearer middleware, Passport, jose) and forward `authInfo` via `req.auth`.
 - Upgrade Node to 20+ and add `"type": "module"` to `package.json` — v2 is ESM-only; CommonJS dual-publish is not supported.
 - Keep a working v1 branch alive until v2 graduates from alpha. The v2 branch is a delivery target; the v1 branch is the running production until then.
 
@@ -52,8 +52,8 @@ For a deterministic first pass, run `bash scripts/check-v2-feasibility.sh <proje
 | Strategy | When | Effort | Trade-off |
 |---|---|---|---|
 | **Full rewrite** | Small server (≤200 LOC tools, ≤2 transports, no OAuth router) | Hours | Cleanest end state, full v2 API access |
-| **Meta-package shim** | Medium server, many subpath imports, want to test runtime first | Hours | Keeps v1 import paths working under v2; defer rewrites tool-by-tool |
-| **Server-auth-legacy** | Production OAuth server using `mcpAuthRouter` | Days | Keep OAuth on v1 frozen package; everything else on v2 |
+| **Meta-package shim** | Medium server, many subpath imports, and target alpha publishes the shim | Hours | Keeps v1 import paths working under v2; defer rewrites tool-by-tool |
+| **HTTP-layer auth transition** | Production OAuth server using `mcpAuthRouter` | Days | Replace SDK OAuth with app/framework middleware in a separate auth migration |
 | **Stay on v1** | OAuth-heavy, large, or alpha-allergic | Zero | No code change; revisit when v2 reaches stable |
 
 Read `references/guides/migration-strategy.md` before committing. Record the choice in the change description so future maintainers know what state the server is in.
@@ -67,7 +67,7 @@ Per `references/guides/package-and-imports.md`. Smallest unit: one import line a
 - `@modelcontextprotocol/sdk/server/streamableHttp.js` → `@modelcontextprotocol/node` (renamed `NodeStreamableHTTPServerTransport`)
 - `@modelcontextprotocol/sdk/server/express.js` → `@modelcontextprotocol/express`
 - `@modelcontextprotocol/sdk/client/index.js` → `@modelcontextprotocol/client`
-- `@modelcontextprotocol/sdk/types.js` (errors only) → `@modelcontextprotocol/core`
+- `@modelcontextprotocol/sdk/types.js` (errors only) → `@modelcontextprotocol/server`
 
 If using the meta-package shim, this step is a no-op until you choose to migrate a specific module.
 
@@ -102,14 +102,14 @@ No-args tool handler: `(extra) => ...` becomes `(ctx) => ...` — same shape, re
 
 Per `references/guides/schema-and-errors.md`.
 
-- `McpError` / `ErrorCode` (from `/types.js`) → `ProtocolError` / `ProtocolErrorCode` (from `@modelcontextprotocol/core`).
+- `McpError` / `ErrorCode` (from `/types.js`) → `ProtocolError` / `ProtocolErrorCode` (from `@modelcontextprotocol/server`).
 - `setRequestHandler(CallToolRequestSchema, ...)` → `setRequestHandler("tools/call", ...)` (method string instead of Zod schema).
 
 ### 7 — Replace auth
 
 Per `references/guides/auth-replacements.md`.
 
-- If using `mcpAuthRouter` and you can't drop it: install `@modelcontextprotocol/server-auth-legacy` and keep the v1 router — v2 server connects through it.
+- If using `mcpAuthRouter` and the target alpha publishes `@modelcontextprotocol/server-auth-legacy`, keep the v1 router through that transition package; otherwise stay on v1 until auth can move out of the SDK.
 - If integrating fresh: do auth at the HTTP layer (Express/Hono middleware) and forward the user's identity into `authInfo` via `req.auth`. The Express adapter passes `req.auth` through to `ctx.http?.authInfo` automatically when set by upstream middleware.
 - The `better-auth` MCP plugin currently targets v1 import paths and is flagged for deprecation in favor of better-auth's OAuth Provider Plugin — do not adopt it new for a v2 migration.
 
@@ -167,8 +167,8 @@ await server.connect(new StdioServerTransport());
 
 ## Decision rules
 
-- Prefer the meta-package shim for any server with more than ~10 subpath import sites — it lets you migrate handlers and transports incrementally on a tested runtime instead of in one PR.
-- Prefer `server-auth-legacy` over a from-scratch OAuth rewrite during the migration window — auth is high-stakes; defer the rewrite to a separate PR after the SDK port lands.
+- Prefer the meta-package shim for any server with more than ~10 subpath import sites only when the target alpha actually publishes it — otherwise choose direct packages or stay on v1.
+- Prefer separating auth from the SDK port — auth is high-stakes; use a verified transition package only when it exists for the target alpha.
 - Prefer pinned alpha versions over `^` ranges — alphas can publish breaking changes between any two patches.
 - Prefer migrating one handler end-to-end (imports + schema + ctx + errors) rather than one concern across all handlers — it bounds the test surface per PR.
 - Treat `ctx.http?` as nullable everywhere — stdio transport leaves it `undefined`. Code that assumed `extra.authInfo` was always present needs an explicit branch.
@@ -189,7 +189,7 @@ When a port finishes, report:
 - migration strategy chosen and why
 - package/version changes, exact alpha pins, and whether the v2 meta-package remains
 - handlers/tools migrated, especially schema and `ctx` rewrites
-- auth path chosen: stay on v1, server-auth-legacy, HTTP-layer auth, or no auth
+- auth path chosen: stay on v1, verified transition package, HTTP-layer auth, or no auth
 - transports/adapters changed
 - validation rung reached: type-check, unit tests, Inspector, `test-by-mcpc-cli`, real client, staging/canary
 - rollback status: v1 branch/image/lockfile preserved, or blocker if not verified
@@ -205,7 +205,7 @@ Use the smallest set relevant to the migration step.
 
 | Reference | When to read |
 |---|---|
-| `references/guides/migration-strategy.md` | Choosing between full rewrite, meta-package shim, server-auth-legacy, and "stay on v1" |
+| `references/guides/migration-strategy.md` | Choosing between full rewrite, meta-package shim if available, HTTP-layer auth transition, and "stay on v1" |
 
 ### Rewrite mechanics
 
@@ -215,7 +215,7 @@ Use the smallest set relevant to the migration step.
 | `references/guides/schema-and-errors.md` | Zod v3→v4, raw shapes, JSON Schema dialect, error class rename, request-handler key strings |
 | `references/guides/handler-context-mapping.md` | Full `extra` → `ctx` field mapping, no-args handlers, http nullability, new ctx-only methods |
 | `references/guides/transports-and-adapters.md` | Transport renames, Express/Hono adapters, DNS rebinding, hostHeaderValidation |
-| `references/guides/auth-replacements.md` | server-auth-legacy shim, custom Bearer/Passport/jose patterns, why not better-auth |
+| `references/guides/auth-replacements.md` | OAuth-router replacement, custom Bearer/Passport/jose patterns, why not better-auth |
 
 ### Validate and ship
 
@@ -225,6 +225,6 @@ Use the smallest set relevant to the migration step.
 
 ## Compatibility note
 
-This skill is source-verified against the v1.x branch (latest stable: `@modelcontextprotocol/sdk@^1.x`) and the v2 alpha branch (`@modelcontextprotocol/server@2.0.0-alpha.2`, `@modelcontextprotocol/hono@2.0.0-alpha.2`). The migration target moves with each alpha release; re-check the v2 changelog before each migration sprint.
+This skill is source-verified against the v1.x branch (latest stable: `@modelcontextprotocol/sdk@^1.x`) and the v2 alpha packages (`@modelcontextprotocol/server@2.0.0-alpha.2`, `@modelcontextprotocol/client@2.0.0-alpha.2`, `@modelcontextprotocol/node@2.0.0-alpha.2`, `@modelcontextprotocol/express@2.0.0-alpha.2`, `@modelcontextprotocol/hono@2.0.0-alpha.2`). npm verification on 2026-05-09 found no published `@modelcontextprotocol/core`, `@modelcontextprotocol/sdk@2.0.0-alpha.2`, or `@modelcontextprotocol/server-auth-legacy`; re-check the v2 changelog and npm package availability before each migration sprint.
 
 After the port lands, the destination skill is `build-mcp-server-sdk-v2` for ongoing v2 work.

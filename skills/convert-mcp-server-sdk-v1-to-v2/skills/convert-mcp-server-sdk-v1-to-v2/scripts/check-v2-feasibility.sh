@@ -81,7 +81,7 @@ sdk_profile="not detected"
 if [[ -n "$sdk_version" && "$sdk_version" != *"@modelcontextprotocol/sdk"* ]]; then
   has_sdk="yes"
   case "$sdk_version" in
-    2.0.0-alpha.*) sdk_profile="v2 meta-package ($sdk_version)" ;;
+    2.0.0-alpha.*) sdk_profile="candidate v2 meta-package ($sdk_version; verify package availability)" ;;
     *1.*|^1.*|~1.*|">=1"*) sdk_profile="v1 dependency ($sdk_version)" ;;
     *) sdk_profile="ambiguous SDK dependency ($sdk_version)" ;;
   esac
@@ -116,7 +116,7 @@ auth_count="$(count_matches 'mcpAuthRouter|requireBearerAuth|OAuthServerProvider
 sse_count="$(count_matches 'SSEServerTransport')"
 streamable_count="$(count_matches 'StreamableHTTPServerTransport')"
 raw_shape_count="$(count_matches '(inputSchema|outputSchema|argsSchema)[[:space:]]*:[[:space:]]*\{')"
-ctx_count="$(count_matches 'extra\.(authInfo|sendNotification|sendRequest|requestInfo)')"
+ctx_count="$(count_matches 'extra\.(signal|authInfo|sessionId|requestId|requestInfo|_meta|sendNotification|sendRequest|closeSSEStream|closeStandaloneSSEStream|taskId|taskStore)')"
 error_count="$(count_matches 'McpError|ErrorCode')"
 sdk_import_count="$(count_matches '@modelcontextprotocol/sdk/')"
 
@@ -158,12 +158,12 @@ fi
 strategy="stay on v1"
 strategy_reason="v2 is alpha; no v1 SDK dependency was detected."
 if [[ "$has_sdk" == "yes" ]]; then
-  if [[ "$sdk_profile" == v2\ meta-package* ]]; then
+  if [[ "$sdk_profile" == candidate\ v2\ meta-package* ]]; then
     strategy="meta-package shim"
-    strategy_reason='the project already appears to use the v2 `@modelcontextprotocol/sdk` meta-package.'
+    strategy_reason='the project pins a possible v2 `@modelcontextprotocol/sdk` meta-package; verify it exists before relying on this path.'
   elif [[ "$auth_count" != "0" ]]; then
-    strategy="meta-package + server-auth-legacy"
-    strategy_reason="OAuth router/provider usage is present and should not be rewritten in the same step as the SDK port."
+    strategy="stay on v1"
+    strategy_reason="OAuth router/provider usage is present; use HTTP-layer auth or verify a server-auth-legacy package before migrating."
   elif [[ "$sse_count" != "0" || "$node_below20" == yes* || "$type_module" != "yes" ]]; then
     strategy="stay on v1"
     strategy_reason="migration blockers must be cleared before direct v2 package adoption."
@@ -218,7 +218,7 @@ print_sample "@modelcontextprotocol/sdk imports" '@modelcontextprotocol/sdk/'
 print_sample "auth-router usage" 'mcpAuthRouter|requireBearerAuth|OAuthServerProvider|@modelcontextprotocol/sdk/server/auth/'
 print_sample "transport usage" 'SSEServerTransport|StreamableHTTPServerTransport'
 print_sample "raw schema candidates" '(inputSchema|outputSchema|argsSchema)[[:space:]]*:[[:space:]]*\{'
-print_sample "handler context usage" 'extra\.(authInfo|sendNotification|sendRequest|requestInfo)'
+print_sample "handler context usage" 'extra\.(signal|authInfo|sessionId|requestId|requestInfo|_meta|sendNotification|sendRequest|closeSSEStream|closeStandaloneSSEStream|taskId|taskStore)'
 print_sample "error rewrite candidates" 'McpError|ErrorCode'
 echo
 echo "## Validation commands to run next"

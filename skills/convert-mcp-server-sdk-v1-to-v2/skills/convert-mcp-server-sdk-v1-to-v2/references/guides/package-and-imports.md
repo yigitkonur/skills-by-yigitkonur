@@ -6,16 +6,14 @@ The v1→v2 split is a packaging change, not a protocol change. Most of the rewr
 
 | v1 (single package) | v2 (split packages) | Purpose |
 |---|---|---|
-| `@modelcontextprotocol/sdk` | `@modelcontextprotocol/server` | `McpServer`, stdio transport, registration APIs |
+| `@modelcontextprotocol/sdk` | `@modelcontextprotocol/server` | `McpServer`, stdio transport, registration APIs, protocol errors, shared types |
 | | `@modelcontextprotocol/client` | `Client`, client transports, middleware |
-| | `@modelcontextprotocol/core` | `ProtocolError`, `ProtocolErrorCode`, types |
 | | `@modelcontextprotocol/node` | `NodeStreamableHTTPServerTransport` (HTTP for Node) |
 | | `@modelcontextprotocol/express` | `createMcpExpressApp`, Express adapter |
 | | `@modelcontextprotocol/hono` | `createMcpHonoApp`, Hono adapter (new in v2) |
-| | `@modelcontextprotocol/server-auth-legacy` | Frozen v1 AS code for migration |
-| | `@modelcontextprotocol/sdk` (v2 meta-package) | Re-exports v1 import paths under v2 internals |
+| | future/verified transition packages | Auth or meta-package shims, only if published for the target alpha |
 
-`@modelcontextprotocol/sdk` is reused as a v2 meta-package — same name, different contents. To install the v1 SDK explicitly, pin to `^1.x`. To install the v2 meta-package, pin to `2.0.0-alpha.2` (or whatever the current alpha is).
+As of npm verification on 2026-05-09, `@modelcontextprotocol/core`, `@modelcontextprotocol/sdk@2.0.0-alpha.2`, and `@modelcontextprotocol/server-auth-legacy` are not published. Do not plan around those packages unless the target alpha's npm registry state or changelog confirms they exist.
 
 ## Naming pitfall
 
@@ -41,11 +39,10 @@ import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import { createMcpExpressApp } from "@modelcontextprotocol/express";
 import { Client, StdioClientTransport, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
-import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/core";
+import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/server";
 
-// ─── v2 (meta-package shim, transitional) ───
-// Same import lines as v1 — meta-package re-exports them under v2 internals.
-// Switch package.json dependency from v1 to "@modelcontextprotocol/sdk": "2.0.0-alpha.2".
+// ─── v2 (meta-package shim, transitional, only if published) ───
+// Same import lines as v1 — a verified meta-package would re-export them under v2 internals.
 ```
 
 ## tsconfig changes
@@ -86,7 +83,6 @@ import { ProtocolError, ProtocolErrorCode } from "@modelcontextprotocol/core";
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0-alpha.2",
     "@modelcontextprotocol/client": "2.0.0-alpha.2",
-    "@modelcontextprotocol/core": "2.0.0-alpha.2",
     "@modelcontextprotocol/node": "2.0.0-alpha.2",
     "@modelcontextprotocol/express": "2.0.0-alpha.2",
     "express": "^5.0.0",
@@ -101,5 +97,5 @@ Pin alpha versions exactly (no `^`) — alphas can ship breaking changes between
 
 - **Mixing v1 and v2 packages** in the same module graph without the meta-package. Two `McpServer` classes from two packages don't interoperate. TypeScript will accept the duplicate types; `instanceof` checks and class identity break at runtime.
 - **Forgetting `WebStandardStreamableHTTPServerTransport` moved to `@modelcontextprotocol/server`** (in v1 it's a deep subpath of the SDK). Don't import it from `/node` — that package only has the Node-specific transport.
-- **Forgetting `.js` extensions** when using meta-package shim with `Node16` resolution. The shim re-exports under top-level paths, but if a file still uses `import "@modelcontextprotocol/sdk/server/mcp.js"` (with `.js`), Node16 still requires the extension.
+- **Assuming a meta-package shim exists** without verifying the target alpha. If the shim is unpublished, direct package imports are the only v2 path.
 - **Installing `@hono/mcp` instead of `@modelcontextprotocol/hono`**. They are different packages — the SDK adapter exports `createMcpHonoApp`, the community one does not.

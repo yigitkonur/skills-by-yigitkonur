@@ -1,6 +1,6 @@
 # Auth Replacements
 
-v2 removes server-side OAuth from the SDK. This is the highest-risk part of any v1→v2 migration that uses `mcpAuthRouter`. There are three credible paths and one path to avoid.
+v2 removes server-side OAuth from the SDK. This is the highest-risk part of any v1→v2 migration that uses `mcpAuthRouter`. There are current paths, one conditional future path, and one path to avoid.
 
 ## What v2 removes
 
@@ -37,15 +37,15 @@ server.registerTool("private", schema, async (args, ctx) => {
 });
 ```
 
-## Path 1 — server-auth-legacy (transitional, OAuth-heavy servers)
+## Path 1 — stay on v1 until auth is separated (OAuth-heavy servers)
 
-`@modelcontextprotocol/server-auth-legacy` is published alongside v2 specifically for users who can't drop server-side OAuth on the migration path. It is the v1 AuthorizationServer code, frozen, packaged as a separate dependency.
+As of npm verification on 2026-05-09, `@modelcontextprotocol/server-auth-legacy` is not published. OAuth-router-heavy servers should stay on v1 until auth can move to an HTTP-layer implementation, unless a later target alpha publishes a verified transition package.
 
 ```typescript
 // v1
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 
-// v2 transition
+// Conditional future v2 transition, only if the package is published for the target alpha
 import { mcpAuthRouter } from "@modelcontextprotocol/server-auth-legacy";
 
 // Same options, same behavior, same OAuthServerProvider interface.
@@ -53,7 +53,7 @@ const authRouter = mcpAuthRouter({ provider, baseUrl, ... });
 app.use(authRouter);
 ```
 
-Treat this as a transition tool, not a destination. It's frozen — no new spec features land here. Plan a follow-up migration to a dedicated AS once v2 reaches stable.
+Treat any future transition package as a bridge, not a destination. Plan a follow-up migration to a dedicated AS once v2 reaches stable.
 
 When to use this path:
 
@@ -61,7 +61,7 @@ When to use this path:
 - Custom `OAuthServerProvider` implementation has business logic you can't easily replicate.
 - The migration window doesn't have budget to also rewrite auth.
 
-## Path 2 — HTTP-layer auth (recommended for fresh v2 work)
+## Path 2 — HTTP-layer auth (recommended for v2 work)
 
 Run a standard token verifier as Express/Hono middleware and forward the verified identity to the SDK. This is what most production v2 servers should do.
 
@@ -141,20 +141,20 @@ This is not OAuth-compliant; clients won't auto-refresh. Only acceptable for int
 - The plugin **targets v1 import paths only** (`@modelcontextprotocol/sdk/server/mcp.js`, `/server/streamableHttp.js`). It does not yet support v2 packages.
 - The plugin documentation says it **"will soon be deprecated in favor of the OAuth Provider Plugin"**.
 
-Do not adopt it as a new dependency in a v2 migration. If you already use it on v1, evaluate the OAuth Provider Plugin (better-auth's successor) when it stabilizes; otherwise plan a migration to one of the three paths above.
+Do not adopt it as a new dependency in a v2 migration. If you already use it on v1, evaluate the OAuth Provider Plugin (better-auth's successor) when it stabilizes; otherwise plan a migration to one of the paths above.
 
 ## Migration sequence for OAuth servers
 
 1. Inventory every `OAuthServerProvider` method and `mcpAuthRouter` mount point.
-2. Decide: server-auth-legacy (keep behavior) or HTTP-layer (rewrite).
-3. If server-auth-legacy: install `@modelcontextprotocol/server-auth-legacy`, swap the import line, run integration tests against existing OAuth flow, deploy.
+2. Decide: stay on v1, a verified transition package, or HTTP-layer rewrite.
+3. If a transition package is published for the target alpha: swap the import line, run integration tests against the existing OAuth flow, deploy.
 4. If HTTP-layer rewrite: stand up the new auth middleware in parallel, run shadow validation (verify both v1 router and new middleware accept the same tokens), cut over, remove the v1 router.
 5. Confirm `ctx.http?.authInfo` populates correctly in handlers — this is the load-bearing assertion.
 6. Test refresh flows, expiry, revocation, scope mismatch — full OAuth happy and unhappy paths.
 
 ## Pre-flight checklist for this rewrite
 
-- [ ] Path chosen: server-auth-legacy / HTTP-layer / DIY / stay on v1.
+- [ ] Path chosen: stay on v1 / verified transition package / HTTP-layer / DIY.
 - [ ] All `requireBearerAuth` / `mcpAuthRouter` / `OAuthServerProvider` references inventoried.
 - [ ] Replacement middleware sets `req.auth` (or equivalent) before the MCP route.
 - [ ] `ctx.http?.authInfo` confirmed populated in at least one handler under test.

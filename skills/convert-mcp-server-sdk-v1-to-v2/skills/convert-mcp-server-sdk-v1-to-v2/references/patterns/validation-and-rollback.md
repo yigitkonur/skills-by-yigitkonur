@@ -18,7 +18,7 @@ Common findings at this rung:
 
 - `Property 'authInfo' does not exist on ServerContext` — you wrote `ctx.authInfo` instead of `ctx.http?.authInfo`.
 - `Argument of type '{ name: ZodString }' is not assignable to parameter of type 'AnySchema'` — you didn't wrap a raw shape in `z.object()`.
-- `Module '"@modelcontextprotocol/sdk/server/mcp.js"' has no exported member 'McpServer'` — you bumped the dependency to the v2 meta-package but the meta-package version doesn't include this re-export. Check the alpha changelog.
+- `Module '"@modelcontextprotocol/sdk/server/mcp.js"' has no exported member 'McpServer'` — you assumed a v2 meta-package shim exists, but the target alpha may not publish one. Check npm and the alpha changelog.
 
 ### Rung 2 — unit tests pass
 
@@ -75,9 +75,9 @@ Two approaches, in order of preference:
 
 Run v1 and v2 as separate Node processes behind a reverse proxy. Routes `/mcp/v1` and `/mcp/v2` to each. Cleanest separation; no module-resolution risk.
 
-### Approach B — Meta-package shim
+### Approach B — Meta-package shim, only if published
 
-Single process, depend on the v2 `@modelcontextprotocol/sdk` meta-package. Existing v1 imports keep working; new v2 imports use direct package paths. Verify there's no class-identity mixing — handlers must consistently use one shape, not both.
+Single process, depend on the v2 `@modelcontextprotocol/sdk` meta-package only if the target alpha publishes it. Existing v1 imports keep working; new v2 imports use direct package paths. Verify there's no class-identity mixing — handlers must consistently use one shape, not both.
 
 ```typescript
 // In a meta-package process, this works:
