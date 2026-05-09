@@ -1,10 +1,12 @@
-# Planning Questions — Round 1 Axis Bank
+# Planning Questions — Conditional Axis Bank
 
-Round 1 of `enhance-prompt` dispatches a single ask-user call (`AskUserQuestion` on Claude Code, `ask_user_question` on Codex, `ask_user` on Gemini CLI / deepagents / pi / GitHub Copilot, `ask_followup_question` on Cline / Roo, etc. — see `references/ask-user-tools.md` for the 16-runtime table + prose fallback) with up to **4 questions** (Claude Code cap; portable across runtimes) covering the axes most likely to change the final enhancement. This file is the canonical bank; swap axes when the prompt warrants.
+Use this bank only after Step 2 decides to ask. Ask when the answer would materially change the enhanced prompt. Skip when the user asked for a direct rewrite, when an explicit assumption is enough, or when the prompt is already specific.
+
+When asking, dispatch one structured call with up to **4 questions** covering the axes most likely to change the final enhancement. Use `references/ask-user-tools.md` for the current runtime's structured tool or prose fallback.
 
 ## The four canonical axes
 
-For a typical non-trivial prompt, Round 1 picks 3-4 of these. If an axis is irrelevant, drop it — do not pad to hit 4.
+When a planning round is warranted, pick 1-4 of these. If an axis is irrelevant, drop it — do not pad to hit 4.
 
 ### Axis 1 — Outcome type
 
@@ -134,7 +136,7 @@ Questions:
    - Assumption cascade
 ```
 
-After the user answers, Step 3 applies the enhancement with the picked axes.
+After the user answers, Step 3 applies the enhancement with the picked axes. If the decision gate would not ask, encode the same uncertainty as a concise assumption in the enhanced prompt instead.
 
 ## Round 2 example — conditional follow-up
 

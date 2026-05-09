@@ -1,6 +1,6 @@
 # Ask-User Tools by Runtime
 
-This skill dispatches planning questions via a user-question tool. The tool's name and signature vary by runtime. Pick the right one for the runtime you are running in; fall back to plain prose if the tool is unavailable.
+This skill dispatches planning questions only when the Step 2 decision gate says an answer would materially change the enhanced prompt. The tool's name and signature vary by runtime. Pick the right one for the runtime you are running in; fall back to plain prose if the tool is unavailable.
 
 ## Runtime → tool mapping
 
@@ -47,7 +47,7 @@ Casing matters — the tool is an exact-match lookup. `ask_user_question` and `A
 
 1. Look at the runtime table above; invoke the listed tool.
 2. If the runtime is not in the table → try `AskUserQuestion` (most common PascalCase) once; if it fails with "unknown tool," try `ask_user` (most common snake_case) once.
-3. If both fail → prose fallback. Do not skip the planning round.
+3. If both fail → prose fallback.
 
 When writing this skill's instructions into an agent's system prompt on a specific runtime, pre-resolve the tool name so the agent does not have to route at runtime.
 
@@ -123,7 +123,7 @@ Routing via this reference keeps the planning round portable: the skill works on
 
 This reference is primarily consumed by:
 
-- **`enhance-prompt`** — during Step 2 (Round 1 planning), the skill dispatches a question tool. The tool name depends on the runtime.
+- **`enhance-prompt`** — during Step 2 when the decision gate says to ask. The tool name depends on the runtime.
 
 Other skills in this pack that occasionally ask user questions (e.g. `check-completion` when scope is unclear, `synthesize-skills` when design tradeoffs need user input) can reuse the table above without a cross-skill dependency — the table is short enough to inline by reference when needed.
 

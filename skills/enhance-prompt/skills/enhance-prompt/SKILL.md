@@ -41,34 +41,23 @@ Read the prompt. Form an internal opinion on these questions — do NOT show thi
 | Is this code-related? | If yes, the agent can see the filesystem, run commands, read files. Don't repeat what it can discover. |
 | What's the done signal? | How does the agent know to stop? Most prompts forget this and the agent spins. |
 
-### Step 2 — Plan via the runtime's ask-user tool (Round 1, default)
+### Step 2 — Ask only when it changes the prompt
 
-**Default: run Round 1.** For non-trivial prompts, a short upfront planning round catches misalignment cheaper than rewriting after enhancement.
+Ask a planning question only when the answer would materially change the enhanced prompt.
 
-Dispatch **one** user-question call with up to **4 bundled questions** covering the axes most likely to change the enhancement. The tool name depends on the runtime — here is a quick lookup, full table in `references/ask-user-tools.md`:
+Skip the planning round when:
+- The user asked for a direct rewrite.
+- The missing detail can be handled as an explicit assumption.
+- The prompt is already specific enough to enhance safely.
+- The prompt is a one-line surgical edit with unambiguous intent.
 
-- **claude-code** / **kimi-cli** → `AskUserQuestion`
-- **codex** / **qwen-code** / **mistral-vibe** → `ask_user_question`
-- **gemini-cli** / **deepagents** / **github-copilot** / **pi** → `ask_user`
-- **cline** / **roo** → `ask_followup_question`
-- **cursor** / **continue** → `AskQuestion`
-- **droid** → `AskUser`
-- **antigravity** → `suggested_responses`
-- **opencode** → `question`
-- **Unknown runtime** → prose fallback (same options, presented as markdown)
-
-See `references/ask-user-tools.md` for the full 16-runtime table with confidence notes, invocation shape, naming-convention lookup, and the prose fallback template. See `references/planning-questions.md` for the canonical axis bank + selection rules.
+If asking, dispatch **one** structured user-question call with **1-4 questions**; do not pad. Use the current runtime's structured user-question tool if available; otherwise use the prose fallback in `references/ask-user-tools.md`. See `references/planning-questions.md` for the axis bank and selection rules.
 
 Per question:
 - **2-4 options**, mutually exclusive unless `multiSelect: true` is clearly right (e.g., "which failure modes to block" — multiple is common)
 - **First option marked "(Recommended)"** based on your Step 1 diagnosis — not a static default
 - **Short labels** (1-5 words), one-line descriptions
-- **Do not manually add "Other"** — Claude Code auto-provides it and most other runtimes mimic this convention; see `references/ask-user-tools.md` for per-runtime differences
-
-**Skip Round 1 only when:**
-- The prompt is a one-line surgical edit with unambiguous intent ("fix typo in README line 12")
-- The user explicitly said "just enhance, don't ask"
-- Step 1 diagnosis shows the prompt is already excellent → proceed with the light-touch path and a one-line note
+- **Do not manually add "Other"** — use the runtime's built-in free-form path when available; see `references/ask-user-tools.md` for fallback wording
 
 ### Step 2a — Round 2 (conditional, narrower)
 
@@ -83,6 +72,12 @@ After Round 1 answers come back, assess: did the answers surface a new ambiguity
 - You are tempted to use Round 2 to "double-check" Round 1 answers → no, just proceed
 
 Round 2 is **one** call to the runtime's ask-user tool, **1-3 focused questions**. Total question budget across both rounds: **≤ 7**. If the budget is blown, make a reasoned default and proceed with a note.
+
+### Step 2b — Target-agent specificity
+
+If the target agent is unknown, write the enhanced prompt in generic task language.
+If the user names Codex, Claude Code, Gemini, a local model, an API call, or another target, adapt only the necessary syntax and tool assumptions.
+Never mention unavailable tools in the enhanced prompt.
 
 ### Step 3 — Enhance
 
@@ -161,8 +156,8 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 
 | File | Read when |
 |---|---|
-| `references/ask-user-tools.md` | Dispatching the planning round — picks the right tool name for the current runtime across 16 mapped agents (Claude Code / Codex / Factory Droid / Cursor / Gemini CLI / Cline / Roo / and 9 more), with a prose fallback when no structured tool is available |
-| `references/planning-questions.md` | Running Step 2 (Round 1) — canonical axis bank, picking the "(Recommended)" option, swap rules, worked examples |
+| `references/ask-user-tools.md` | Step 2 decides to ask — use the current runtime's structured question tool or the prose fallback |
+| `references/planning-questions.md` | Step 2 decides to ask — conditional axis bank, "(Recommended)" selection rules, swap rules, worked examples |
 | `references/output-contract.md` | Producing the final enhanced prompt — response shape, prompt skeleton, code/non-code variants, assumptions, and prompt lint checklist |
 | `references/enhancement-layers.md` | Applying the 5 enhancement layers — detailed guidance per layer |
 | `references/code-prompt-patterns.md` | Prompt targets a coding agent — file paths, verification, tech-stack awareness |
