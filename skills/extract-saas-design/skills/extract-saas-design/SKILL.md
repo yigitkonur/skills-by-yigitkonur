@@ -10,13 +10,14 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
 ## Use this skill when
 
 - The user wants the current visual system documented: tokens, component specs, layout patterns, dark mode, or dashboard-specific UI behavior.
-- The user wants to recreate the current look in another codebase **through documentation**, not by copying source.
+- The user wants a documentation handoff that lets another codebase match the current look, not generated implementation code.
 - The user wants scoped extraction: foundations only, named components, a navigation or data-display slice, or an evidence-based consistency audit.
 
 ## Do not use this skill when
 
-- The real task is to build, port, or generate a working UI.
+- The real task is to build, port, clone, recover, convert, or generate a working UI. Use `convert-url-to-nextjs` when the user asks to rebuild, convert, clone, recover, or ship a working Next.js UI.
 - The real task is redesign, restyling, “make it better,” or speculative UX advice.
+- The source is Figma-only, screenshot-only, or visual inspiration with no inspectable implementation evidence.
 - The target is mainly a marketing or brochure site instead of a SaaS/dashboard/admin product.
 - There is no implemented UI evidence to inspect.
 
