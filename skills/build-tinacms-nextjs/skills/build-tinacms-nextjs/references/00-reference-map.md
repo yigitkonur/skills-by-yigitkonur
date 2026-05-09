@@ -1,6 +1,6 @@
 # Reference Map
 
-The full structured index of every reference file in this skill. Use it when SKILL.md routes are not enough — find the deeper file directly.
+The exhaustive topic catalog for this skill. Use it after `SKILL.md` has picked a lane, or when the task is broad research/reference discovery. Do not start here for ordinary build, deployment, or debugging tasks; the spine routes those faster.
 
 ## Concepts
 
@@ -21,7 +21,7 @@ The full structured index of every reference file in this skill. Use it when SKI
 | [setup/04-package-scripts.md](setup/04-package-scripts.md) | `dev` / `build` / `start`, build order |
 | [setup/05-env-vars.md](setup/05-env-vars.md) | `.env` vs `.env.local`, build-time embedding |
 | [setup/06-gitignore-and-lockfile.md](setup/06-gitignore-and-lockfile.md) | What to commit, what to ignore |
-| [setup/07-claude-code-automations.md](setup/07-claude-code-automations.md) | Hooks + MCP servers |
+| [setup/07-agent-automation.md](setup/07-agent-automation.md) | Optional agent-runtime guardrails |
 
 ## Config
 
