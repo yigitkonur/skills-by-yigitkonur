@@ -170,6 +170,16 @@ Minimum gates for structural work:
 - Focused unit tests for changed handlers/use cases/gateways/presenters.
 - End-to-end MCP call only when wiring, bootstrap, transport, auth/session, or response surfaces changed.
 
+Bundled read-only audit helpers:
+
+| Need | Script | Doc |
+|---|---|---|
+| Grep likely layer-import, env, console, and barrel violations | `scripts/audit-layer-imports.sh` | `scripts/audit-layer-imports.md` |
+| Check canonical folders and expected seams | `scripts/check-folder-layout.sh` | `scripts/check-folder-layout.md` |
+| Check likely Zod boundary violations | `scripts/check-zod-boundary.sh` | `scripts/check-zod-boundary.md` |
+
+Run scripts from the target MCP project root, or pass the project root as the first argument.
+
 Claim only the verification rung actually reached.
 
 ## Completion Output
