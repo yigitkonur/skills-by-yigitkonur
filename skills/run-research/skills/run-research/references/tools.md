@@ -5,11 +5,11 @@ Short aliases in this reference map to the current tool IDs:
 
 | Alias | MCP tool |
 |---|---|
-| `start-research` | `mcp__research_powerpack__start_research` |
-| `smart-web-search` | `mcp__research_powerpack__smart_web_search` |
-| `raw-web-search` | `mcp__research_powerpack__raw_web_search` |
-| `smart-scrape-links` | `mcp__research_powerpack__smart_scrape_links` |
-| `raw-scrape-links` | `mcp__research_powerpack__raw_scrape_links` |
+| `start-research` | `mcp__research-powerpack__start-research` |
+| `smart-web-search` | `mcp__research-powerpack__smart-web-search` |
+| `raw-web-search` | `mcp__research-powerpack__raw-web-search` |
+| `smart-scrape-links` | `mcp__research-powerpack__smart-scrape-links` |
+| `raw-scrape-links` | `mcp__research-powerpack__raw-scrape-links` |
 
 If the MCP server is unavailable, use built-in `WebSearch` for targeted
 search and `WebFetch` for extraction. If those fail, use `curl` and parse

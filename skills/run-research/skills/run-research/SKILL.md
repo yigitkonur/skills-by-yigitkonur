@@ -41,17 +41,17 @@ parse the page manually.
 
 | Capability | First choice | Fallback 1 | Fallback 2 |
 |---|---|---|---|
-| Research prelude | `mcp__research_powerpack__start_research` | manual query plan | - |
-| Targeted search | `mcp__research_powerpack__smart_web_search` or `mcp__research_powerpack__raw_web_search` | `WebSearch` | `curl` |
-| Page extraction | `mcp__research_powerpack__smart_scrape_links` or `mcp__research_powerpack__raw_scrape_links` | `WebFetch` | `curl` + parse |
+| Research prelude | `mcp__research-powerpack__start-research` | manual query plan | - |
+| Targeted search | `mcp__research-powerpack__smart-web-search` or `mcp__research-powerpack__raw-web-search` | `WebSearch` | `curl` |
+| Page extraction | `mcp__research-powerpack__smart-scrape-links` or `mcp__research-powerpack__raw-scrape-links` | `WebFetch` | `curl` + parse |
 
 Short aliases in this skill mean the MCP tools above:
 
-- `start-research` -> `mcp__research_powerpack__start_research`
-- `smart-web-search` -> `mcp__research_powerpack__smart_web_search`
-- `raw-web-search` -> `mcp__research_powerpack__raw_web_search`
-- `smart-scrape-links` -> `mcp__research_powerpack__smart_scrape_links`
-- `raw-scrape-links` -> `mcp__research_powerpack__raw_scrape_links`
+- `start-research` -> `mcp__research-powerpack__start-research`
+- `smart-web-search` -> `mcp__research-powerpack__smart-web-search`
+- `raw-web-search` -> `mcp__research-powerpack__raw-web-search`
+- `smart-scrape-links` -> `mcp__research-powerpack__smart-scrape-links`
+- `raw-scrape-links` -> `mcp__research-powerpack__raw-scrape-links`
 
 Scope selection:
 
