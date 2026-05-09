@@ -169,6 +169,13 @@ grep -rE 'https?://' components/ styles/ | grep -v '// original:' && echo "FAIL:
 - **Before final completion:** compare source vs build at 1280px, 768px, and 375px using full-page and scroll-segment captures; record visual summaries instead of relying on subjective judgment.
 - If any verification fails, fix it before writing the completion signal or calling the build done.
 
+## Final report contract
+
+- `Verification rung reached`: state the actual rung and evidence, for example `build/type-check only` or `browser-run visual comparison with summary.json`.
+- `pixel-perfect`: claim only when the user provided a threshold or exact measured diff gate and desktop/tablet/mobile/full-page artifacts meet it.
+- `visual-equivalent`: use when comparison artifacts support fidelity but documented drift remains because source evidence is incomplete.
+- Build success alone is never a visual fidelity claim.
+
 ## Reference map
 
 | Need | Read |

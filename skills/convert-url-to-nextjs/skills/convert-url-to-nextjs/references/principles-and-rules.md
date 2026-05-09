@@ -110,6 +110,14 @@ Every serious reconstruction must include visual comparison evidence:
 
 Never claim `pixel-perfect` or `faithful` from build success alone.
 
+### Fidelity Claim Terms
+
+| Claim | Required evidence |
+|---|---|
+| `pixel-perfect` | User-provided threshold or exact measured diff gate, passed across desktop/tablet/mobile and full-page or scroll-segment evidence |
+| `visual-equivalent` | Objective comparison artifacts plus documented remaining drift where source evidence is incomplete |
+| Build success | Technical compilation only; never a fidelity claim |
+
 ---
 
 ## CSS Module Decoding

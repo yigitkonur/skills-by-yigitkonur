@@ -183,6 +183,8 @@ For every verified route:
 - [ ] full-page or scroll-segment compare artifacts exist for long pages
 - [ ] `summary.json` exists with measured results and notes
 
+`summary.json` must include route, viewport, source screenshot, build screenshot, diff artifact path when produced, comparator availability, measured metric, known drift, status, and pass/fail.
+
 ## C5. Visual Fidelity Gates
 
 For every verified route:
@@ -198,6 +200,8 @@ For every verified route:
 - [ ] known remaining drift is documented explicitly
 
 If the user set a similarity threshold, hit it. If not, use the measured visual summary and document the gap honestly.
+
+Use `pixel-perfect` only when the measured gate is explicit and passed. Use `visual-equivalent` when artifacts support a faithful reconstruction but documented drift remains. Build success alone does not satisfy this section.
 
 ## C6. Interaction and Runtime Quality
 

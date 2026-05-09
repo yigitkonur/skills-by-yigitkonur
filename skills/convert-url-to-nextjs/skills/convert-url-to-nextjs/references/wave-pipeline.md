@@ -332,7 +332,7 @@ Before writing `foundation-ready.signal`, verify:
    - source screenshots
    - build screenshots
    - diff images
-   - `summary.json` with similarity metrics and notes
+   - `summary.json` with route, viewport, source screenshot, build screenshot, diff artifact path, comparator availability, measured metric, known drift, status, and pass/fail
 
 ### Wave 4 Acceptance Criteria
 
@@ -350,6 +350,8 @@ Each page must pass:
 ### Similarity Rule
 
 Use objective compare artifacts instead of subjective `looks close` language. If the user gives a threshold, hit it. If they do not, use route-by-route comparison artifacts and document the measured gap before claiming fidelity.
+
+`pixel-perfect` requires a user-provided threshold or exact measured diff gate plus desktop/tablet/mobile/full-page evidence. `visual-equivalent` allows documented drift when source evidence is incomplete. Build success alone is never a fidelity claim.
 
 ---
 
