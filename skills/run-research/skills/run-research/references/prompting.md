@@ -561,17 +561,15 @@ synthetic benchmarks. Skip: marketing claims. Freshness: last 18 months.
 Quote discipline: every benchmark number verbatim with workload spec.
 ```
 
-### 8. Landscape scan
+### 8. Redirect landscape scans
 
-```
-Map current state of <ecosystem segment> as of <month/year>. User
-context: quarterly tech-radar update for engineering org. Done =
-canonical players + emerging entrants + recently dead/declining tools,
-with one-line evidence per claim. Skip: deep technical comparisons.
-Freshness: last 6 months emphasized; mention longer trajectories where
-relevant. Quote discipline: funding events, acquisitions, deprecation
-notices verbatim.
-```
+Do not turn landscape scans into `run-research` goals. Route market,
+industry, vendor-category, 5+ entity, reusable evidence pack, and
+multi-file corpus requests to `run-industry-research`; in this repo, use
+`run-corpus-research`.
+
+If a landscape request contains one narrow technical question, rewrite
+only that question as a `run-research` goal.
 
 ---
 

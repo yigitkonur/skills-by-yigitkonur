@@ -30,7 +30,9 @@ Four yes/no questions route to the right workflow:
 
 4. **What kind of mapping?**
    - Security exposure → Workflow 6 (Security audit).
-   - State of an ecosystem → Workflow 8 (Landscape scan).
+   - State of an ecosystem, market, vendor category, or 5+ entities →
+     redirect to `run-industry-research`; in this repo, use
+     `run-corpus-research`.
 
 Every workflow except 4 and 5 starts with `start-research`.
 
@@ -404,54 +406,17 @@ the workload conditions under which it holds.
 
 ---
 
-## Workflow 8: Landscape scan
+## Redirect: landscape and corpus requests
 
-**When to use.** Mapping the current state of an ecosystem segment.
-Quarterly tech-radar updates, "what's new in X" briefings.
+Do not run ecosystem landscape scans in `run-research`. Requests such as
+"state of X", "market map", "category landscape", "compare 8 vendors",
+"build an evidence pack", or "research alternatives to X" are
+corpus-shaped. Use `run-industry-research`; in this repo, use
+`run-corpus-research`.
 
-**Plan.**
-
-```
-goal: "Map current state of <ecosystem segment> as of <month/year>.
-User context: quarterly tech-radar update for <audience>. Done =
-canonical players + emerging entrants + recently dead/declining tools,
-with one-line evidence per claim. Skip: deep technical comparisons.
-Freshness: last 6 months emphasized. Quote discipline: funding events,
-acquisitions, deprecation notices verbatim."
-```
-
-**Reconnoiter.** `primary_branch: reddit` initially — community pulse
-is the best starting signal for ecosystem state.
-
-- `smart-web-search` (Reddit scope, 7–10 keywords): "state of
-  <ecosystem> 2026", "what's new in <ecosystem>", "switched from X to
-  Y", "<ecosystem> is dying", year-pinned.
-- Second pass: `smart-web-search` (web scope, 5–7 keywords):
-  "<ecosystem> changelog 2026", "<ecosystem> roadmap", funding /
-  acquisition news.
-
-**Triage.** Most recent + highest-engagement Reddit threads;
-canonical-vendor changelogs.
-
-**Capture.**
-
-- `raw-scrape-links` on Reddit landscape threads (≤5 permalinks).
-- `smart-scrape-links` on changelogs and roadmap pages (≤5 URLs):
-  ```
-  Page type hint: changelog or announcement.
-  extract: new features verbatim | breaking changes | deprecations |
-  roadmap | release dates | adoption signals.
-  Discipline: dates and version strings verbatim.
-  ```
-
-**Synthesize.** Three-section landscape map: canonical players (with
-evidence of activity), emerging entrants (with adoption signal),
-declining/dead tools (with evidence of decline). One-line evidence per
-claim.
-
-**Stop criteria.** Every canonical/emerging/declining entry has at least
-one cited evidence quote. No category empty (an empty "declining"
-section usually means the scan missed dissent).
+If the user asks one narrow technical question inside a landscape, such
+as "is library A still maintained enough for production use?", keep that
+as `run-research` and answer only that question.
 
 ---
 
