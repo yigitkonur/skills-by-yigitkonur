@@ -1,408 +1,192 @@
 # Forms
 
-How to fill inputs, select dropdowns, check boxes, upload files, handle date pickers,
-and verify form state in `playwright-cli`.
+Use this reference for inputs, selects, checkboxes, radios, uploads, date fields, autocomplete, and form submission in `playwright-cli`.
 
----
+## Core Rules
 
-## Table of Contents
+1. Snapshot before interacting with a form.
+2. Verify live values with `eval`; command success alone is not proof.
+3. Re-snapshot after submit, route change, modal open/close, or validation rerender.
+4. Use `check` / `uncheck` for native checkboxes and radios.
+5. Trigger file chooser UI before `upload`.
 
-- [Core form rules](#core-form-rules)
-- [fill — set a field by ref](#fill--set-a-field-by-ref)
-- [type — focus-driven typing](#type--focus-driven-typing)
-- [select — dropdown menus](#select--dropdown-menus)
-- [check and uncheck — checkboxes and radios](#check-and-uncheck--checkboxes-and-radios)
-- [File upload](#file-upload)
-- [Date and time inputs](#date-and-time-inputs)
-- [Autocomplete and search inputs](#autocomplete-and-search-inputs)
-- [Multi-step form flows](#multi-step-form-flows)
-- [Form submission](#form-submission)
-- [Verification patterns](#verification-patterns)
-- [Troubleshooting forms](#troubleshooting-forms)
+## Fill And Type
 
----
-
-## Core form rules
-
-1. **Snapshot first** — get fresh refs before interacting with any form element.
-2. **Verify with eval** — do not trust command output alone; use `eval` to check live values.
-3. **Refs die on re-render** — after submitting or navigating, re-snapshot before continuing.
-
-The safe pattern:
+Use `fill` when you have a field ref and want to set a value:
 
 ```bash
-snapshot
-fill <ref> "value"
-eval "(el) => el.value" <ref>
+playwright-cli snapshot
+playwright-cli fill e3 "user@example.com"
+playwright-cli eval "(el) => el.value" e3
 ```
 
----
-
-## fill — set a field by ref
+Use `fill --submit` for single-field search or login flows where Enter submits:
 
 ```bash
-fill <ref> <text>
-fill <ref> <text> --submit
+playwright-cli fill e4 "playwright cli" --submit
+playwright-cli snapshot
+playwright-cli eval "() => window.location.href"
 ```
 
-Replaces the current field value. Does not always print a fresh snapshot.
-
-### Basic usage
+Use `type` when the field must receive real keystroke events:
 
 ```bash
-fill <email-ref> "user@example.com"
-eval "(el) => el.value" <email-ref>
+playwright-cli click e5
+playwright-cli type "new y"
+playwright-cli snapshot
 ```
 
-### Fill and submit
-
-> **Steering experience:** `fill --submit` is a powerful shortcut that fills and submits in one command. It is especially useful for search fields. Prefer it over `fill` + `click <submit-ref>` when a single field drives the submission.
+`type --submit` types into the focused element and presses Enter:
 
 ```bash
-fill <search-ref> "playwright testing" --submit
-snapshot
-eval "() => window.location.href"
+playwright-cli click e5
+playwright-cli type "query" --submit
+playwright-cli snapshot
 ```
 
-### Clear a field
+Clear a field with an empty fill:
 
 ```bash
-fill <ref> ""
-eval "(el) => el.value" <ref>
+playwright-cli fill e3 ""
+playwright-cli eval "(el) => el.value" e3
 ```
 
-### Fill multiple fields
+## Selects
+
+Native selects use option values, not visible labels:
 
 ```bash
-snapshot
-fill <first-name-ref> "Jane"
-fill <last-name-ref> "Doe"
-fill <email-ref> "jane@example.com"
-eval "(el) => el.value" <email-ref>
-screenshot --filename=form-filled.png
+playwright-cli eval "(el) => [...el.options].map(o => ({ value: o.value, text: o.textContent.trim() }))" e6
+playwright-cli select e6 "price-asc"
+playwright-cli eval "(el) => el.value" e6
 ```
 
----
-
-## type — focus-driven typing
+Custom dropdowns are click sequences:
 
 ```bash
-type <text>
-type <text> --submit
+playwright-cli click e7
+playwright-cli snapshot
+playwright-cli click e12
+playwright-cli snapshot
 ```
 
-Targets the currently focused editable element. Simulates keystroke-by-keystroke
-input, which triggers `input` and `keydown` events.
-
-### When to use type vs fill
-
-| Scenario | Use |
-|----------|-----|
-| Set a known field by ref | `fill` |
-| Trigger autocomplete / search suggestions | `type` |
-| Simulate real user typing behavior | `type` |
-| Fill a contenteditable div | `type` (after clicking to focus) |
-
-### Type into a focused field
+For multi-selects or complex widgets, use `run-code`:
 
 ```bash
-click <search-ref>
-type "react hooks tutorial"
-snapshot
+playwright-cli run-code "async page => {
+  await page.locator('select[multiple]').selectOption(['a', 'b']);
+}"
+playwright-cli snapshot
 ```
 
-### Type with submission
+## Checkboxes And Radios
 
 ```bash
-click <search-ref>
-type "playwright cli guide" --submit
-snapshot
-eval "() => window.location.href"
+playwright-cli check e8
+playwright-cli eval "(el) => el.checked" e8
+
+playwright-cli uncheck e8
+playwright-cli eval "(el) => el.checked" e8
 ```
 
----
-
-## select — dropdown menus
+For a radio group:
 
 ```bash
-select <ref> <value>
+playwright-cli check e10
+playwright-cli eval "() => document.querySelector('input[name=plan]:checked')?.value"
 ```
 
-The value must be the option's `value` attribute, not its visible label.
+If a toggle is a custom element instead of a native input, use `click` and verify the resulting state.
 
-### Inspect options first
+## File Upload And Drop
+
+`upload` requires an active file chooser:
 
 ```bash
-eval "(el) => [...el.options].map(o => ({ value: o.value, text: o.textContent.trim() }))" <ref>
+playwright-cli click e11
+playwright-cli upload /absolute/path/to/file.pdf
+playwright-cli eval "() => [...document.querySelector('input[type=file]').files].map(f => f.name)"
+playwright-cli screenshot --filename=file-selected.png
 ```
 
-### Select by value
+Upload multiple files by passing multiple paths:
 
 ```bash
-select <sort-ref> "price-asc"
-eval "(el) => el.value" <sort-ref>
+playwright-cli click e11
+playwright-cli upload /absolute/path/a.png /absolute/path/b.png
 ```
 
-### Verify selected option text
+Use `drop` for drag-and-drop upload targets:
 
 ```bash
-eval "(el) => el.options[el.selectedIndex]?.textContent.trim()" <ref>
+playwright-cli drop e15 --path=/absolute/path/image.png
+playwright-cli snapshot
 ```
 
-### Multi-select (via run-code)
-
-Native HTML multi-selects require `run-code`:
+Fallback for hidden file inputs:
 
 ```bash
-run-code 'async (page) => {
-  await page.locator("select[multiple]").selectOption(["opt1", "opt2"])
-  return "selected"
-}'
-snapshot
+playwright-cli run-code "async page => {
+  await page.locator('input[type=file]').setInputFiles('/absolute/path/file.pdf');
+}"
+playwright-cli snapshot
 ```
 
-### Custom dropdown components
+## Date And Time Inputs
 
-Many modern UIs use custom dropdowns (not native `<select>`). Handle them as
-click sequences:
+Native fields accept browser-standard values:
 
 ```bash
-click <dropdown-trigger-ref>
-snapshot
-click <option-ref>
-snapshot
+playwright-cli fill e12 "2026-12-31"
+playwright-cli eval "(el) => el.value" e12
+
+playwright-cli fill e13 "14:30"
+playwright-cli eval "(el) => el.value" e13
+
+playwright-cli fill e14 "2026-12-31T14:30"
+playwright-cli eval "(el) => el.value" e14
 ```
 
----
+Custom date pickers usually require click sequences or a targeted `run-code` fallback.
 
-## check and uncheck — checkboxes and radios
-
-### Checkbox
+## Autocomplete
 
 ```bash
-check <ref>
-eval "(el) => el.checked" <ref>
+playwright-cli click e3
+playwright-cli type "new y"
+playwright-cli run-code "async page => {
+  await page.waitForSelector('.autocomplete-dropdown', { state: 'visible' });
+}"
+playwright-cli snapshot
+playwright-cli click e9
+playwright-cli snapshot
 ```
+
+## Submission Proof
 
 ```bash
-uncheck <ref>
-eval "(el) => el.checked" <ref>
+playwright-cli console --clear
+playwright-cli requests --clear
+playwright-cli click e20
+playwright-cli snapshot
+playwright-cli eval "() => window.location.href"
+playwright-cli requests --filter="/api/"
 ```
 
-### Radio button
-
-The `check` command works for both checkboxes and radios:
+If the app does not navigate on submit, verify a state change, success message, request status, or stored value:
 
 ```bash
-check <radio-ref>
-eval "(el) => el.checked" <radio-ref>
+playwright-cli eval "() => document.querySelector('[data-status]')?.textContent"
+playwright-cli eval "() => document.querySelector('form')?.checkValidity()"
 ```
 
-Prefer `check` over `click` for radios — it is idempotent (safe to call
-even if already selected).
+## Troubleshooting
 
-### Verify a group of radios
-
-```bash
-eval "() => document.querySelector('input[name=plan]:checked')?.value"
-```
-
-### Toggle switches
-
-Some toggle switches are styled checkboxes:
-
-```bash
-check <toggle-ref>
-eval "(el) => el.checked" <toggle-ref>
-```
-
-If the toggle is a custom component, use `click` instead.
-
----
-
-## File upload
-
-> **Steering experience:** Uploads are **modal-driven**, not ref-driven. The most common upload failure is calling `upload` before clicking the file chooser trigger. The file chooser dialog **must** be active before calling `upload`. If you call `upload` with no active chooser, the CLI will error with a modal-state message.
-
-The safe upload workflow is: click trigger → `upload` → verify with `eval`.
-
-### Safe upload workflow
-
-```bash
-snapshot
-click <upload-button-ref>
-upload /absolute/path/to/file.pdf
-eval "() => [...document.querySelector('input[type=file]').files].map(f => f.name)"
-screenshot --filename=file-selected.png
-```
-
-### Multiple files
-
-```bash
-click <upload-button-ref>
-upload /path/to/file-a.png /path/to/file-b.png
-eval "() => [...document.querySelector('input[type=file]').files].map(f => f.name)"
-```
-
-### Hidden file input fallback
-
-When the real `<input type=file>` is hidden behind a custom UI:
-
-```bash
-run-code 'async (page) => {
-  await page.locator("input[type=file]").setInputFiles(["/absolute/path/to/file.pdf"])
-  return "uploaded"
-}'
-snapshot
-screenshot --filename=file-uploaded.png
-```
-
-### Upload rules
-
-| Rule | Why |
-|------|-----|
-| Trigger file chooser first | `upload` only works when a chooser modal is active |
-| Use absolute paths | Relative paths may resolve incorrectly |
-| Files must be in allowed roots | Paths outside allowed directories are rejected |
-| Verify with eval after upload | Command success alone is not proof |
-
----
-
-## Date and time inputs
-
-### Native date input
-
-```bash
-fill <date-ref> "2024-12-31"
-eval "(el) => el.value" <date-ref>
-```
-
-### Native time input
-
-```bash
-fill <time-ref> "14:30"
-eval "(el) => el.value" <time-ref>
-```
-
-### Native datetime-local input
-
-```bash
-fill <datetime-ref> "2024-12-31T14:30"
-eval "(el) => el.value" <datetime-ref>
-```
-
-### Custom date pickers
-
-Most custom date pickers require clicking through the calendar UI:
-
-```bash
-click <datepicker-trigger-ref>
-snapshot
-# Navigate to correct month if needed
-click <prev-month-ref>
-snapshot
-click <day-15-ref>
-snapshot
-eval "() => document.querySelector('.date-input').value"
-```
-
-### Date picker via run-code
-
-If the date picker is complex, set the value directly:
-
-```bash
-run-code 'async (page) => {
-  const input = page.locator("input.date-field")
-  await input.fill("2024-12-31")
-  await input.dispatchEvent("change")
-  return "date set"
-}'
-snapshot
-```
-
----
-
-## Autocomplete and search inputs
-
-```bash
-click <search-ref>
-type "new y"
-run-code 'async (page) => {
-  await page.waitForSelector(".autocomplete-dropdown", { state: "visible" })
-  return "suggestions visible"
-}'
-snapshot
-click <suggestion-ref>
-eval "(el) => el.value" <search-ref>
-```
-
----
-
-## Multi-step form flows
-
-```bash
-# Step 1
-snapshot
-fill <name-ref> "Jane Doe"
-fill <email-ref> "jane@example.com"
-click <next-ref>
-snapshot
-
-# Step 2
-fill <address-ref> "123 Main St"
-select <state-ref> "OR"
-click <next-ref>
-snapshot
-
-# Step 3 — review and submit
-click <submit-ref>
-snapshot
-eval "() => window.location.href"
-screenshot --filename=confirmation.png
-```
-
----
-
-## Form submission
-
-> **Steering experience:** After any form submission, refs are almost certainly dead. Always re-snapshot before continuing. If the submission triggers a page navigation, also verify the new URL with `eval "() => window.location.href"`.
-
-```bash
-# Option 1: click submit
-click <submit-ref>
-snapshot     # refs are dead after submit — must re-snapshot
-
-# Option 2: fill with --submit (shortcut)
-fill <search-ref> "query" --submit
-snapshot
-
-# Option 3: press Enter (when field is focused)
-press Enter
-snapshot
-```
-
----
-
-## Verification patterns
-
-```bash
-eval "(el) => el.value" <ref>                    # field value
-eval "(el) => el.checked" <ref>                  # checked state
-eval "(el) => el.value" <select-ref>             # selected option
-eval "() => document.querySelector('form').checkValidity()"
-eval "() => [...document.querySelectorAll('.error')].map(e => e.textContent)"
-```
-
----
-
-## Troubleshooting forms
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `fill` does nothing | Ref is stale | `snapshot` then retry with fresh ref |
-| Value appears empty after `fill` | Framework resets value on re-render | Use `type` instead, or `run-code` with `dispatchEvent` |
-| `select` fails silently | Used visible label instead of `value` | Inspect options with `eval` first |
-| `upload` fails | No file chooser active | Click the upload trigger first |
-| Upload path denied | File outside allowed roots | Move file to an allowed directory |
-| Checkbox won't check | Element is a custom styled div, not an `<input>` | Use `click` instead of `check` |
-| Form submits but nothing happens | SPA handling prevents navigation | Use `run-code` with `waitForResponse` |
+| Problem | Recovery |
+|---|---|
+| `fill` does nothing | Ref is stale; re-snapshot. |
+| Value resets after fill | Framework rerendered; try `type` or dispatch events via `run-code`. |
+| `select` picks nothing | Inspect option values first. |
+| `upload` errors | Click the chooser trigger first and use absolute paths. |
+| Checkbox does not change | It may be a custom component; click and verify UI state. |
+| Submit appears idle | Clear requests, reproduce, inspect `requests`, then add a trace if needed. |

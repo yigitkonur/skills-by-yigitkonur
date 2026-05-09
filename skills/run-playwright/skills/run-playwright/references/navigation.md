@@ -1,395 +1,169 @@
 # Navigation
 
-How to navigate pages, wait for loading, manage browser history, and handle URLs
-in `playwright-cli`.
+Use this reference for opening pages, navigating existing sessions, handling redirects, waiting for SPAs, and verifying URLs in `playwright-cli`.
 
----
-
-## Table of Contents
-
-- [Core navigation commands](#core-navigation-commands)
-- [URL handling and quoting](#url-handling-and-quoting)
-- [Page loading states](#page-loading-states)
-- [Waiting for content](#waiting-for-content)
-- [History navigation](#history-navigation)
-- [Redirects and SPA navigation](#redirects-and-spa-navigation)
-- [Page reload strategies](#page-reload-strategies)
-- [Navigation verification](#navigation-verification)
-- [Common navigation patterns](#common-navigation-patterns)
-
-All examples in this file are shell commands. Prefix each subcommand with `playwright-cli` when copying from a short example that omits it for readability.
-
----
-
-## Core navigation commands
-
-### open
-
-```bash
-playwright-cli open <url>
-```
-
-Navigates to the given URL. Usually prints page metadata and a snapshot.
-
-After `open`, always capture a fresh snapshot before interacting:
+## Core Commands
 
 ```bash
 playwright-cli open https://example.com
+playwright-cli open https://example.com --headed
+playwright-cli goto https://example.com/account
+playwright-cli reload
+playwright-cli go-back
+playwright-cli go-forward
+```
+
+Use `open [url]` to create or configure a browser session. Use `goto <url>` when the session is already open and you only need to navigate the current page.
+
+After any navigation command:
+
+```bash
 playwright-cli snapshot
-playwright-cli screenshot --filename=landing.png
-```
-
-**Local-target rule:** `file://` URLs and `localhost`/LAN hosts are not guaranteed to be reachable from the browser context. If they fail, prefer a `data:` URL for tiny fixtures or a publicly reachable staging/tunnel URL for real pages.
-
-### go-back
-
-```bash
-go-back
-```
-
-Navigates browser history backward. Equivalent to clicking the browser back button.
-
-### go-forward
-
-```bash
-go-forward
-```
-
-Navigates browser history forward.
-
-### reload
-
-```bash
-reload
-```
-
-Reloads the current page. Useful when you need a fresh page state or suspect
-stale content.
-
-**After any navigation command, run `snapshot` before using refs.** Then `cat` the snapshot file to read the actual tree.
-
----
-
-## URL handling and quoting
-
-### Quote URLs in zsh
-
-> **Steering experience:** URL quoting issues are subtle — the command may appear to work but navigate to a truncated URL. Always verify with `eval "() => window.location.href"` after `open` to confirm the full URL arrived correctly.
-
-URLs containing `?`, `&`, `#`, or other shell-sensitive characters must be quoted:
-
-```bash
-# WRONG — zsh may interpret & or ? before the CLI sees them
-open https://www.example.com/search?q=test&page=2
-
-# CORRECT
-open "https://www.example.com/search?q=test&page=2"
-```
-
-### URLs with special characters
-
-```bash
-# Spaces in query params — use URL encoding or quotes
-open "https://example.com/search?q=hello%20world"
-
-# Hash fragments
-open "https://example.com/docs#section-3"
-
-# Anchored deep links
-open "https://app.example.com/dashboard?tab=settings&view=profile"
-```
-
-### Verify the URL arrived correctly
-
-```bash
-playwright-cli open "https://example.com/search?q=test"
 playwright-cli eval "() => window.location.href"
 ```
 
-The `eval` check is more reliable than the printed page header,
-especially after tab switches or redirects.
+## Quoting URLs
 
----
-
-## Page loading states
-
-Different pages require different wait strategies.
-
-### Static pages
-
-Most static pages are ready immediately after `open`:
+Quote URLs containing shell-sensitive characters:
 
 ```bash
-open https://example.com
-snapshot
+playwright-cli goto "https://example.com/search?q=test&page=2"
+playwright-cli goto "https://example.com/docs#section-3"
 ```
 
-### SPA / JavaScript-heavy pages
+Verify the final URL with `eval`; redirects and shell quoting mistakes can make command echoes misleading.
 
-SPAs may render content after initial load. Use `run-code` to wait:
+## Headed Or Headless
+
+The CLI runs headless by default.
+
+Use headed mode for:
+
+- live observation
+- UI review
+- 2FA/CAPTCHA handoff
+- debugging where a human needs to see the page
 
 ```bash
-open https://app.example.com
-run-code 'async (page) => {
-  await page.waitForSelector("[data-testid=app-loaded]", { state: "visible" })
-  return "ready"
-}'
-snapshot
+playwright-cli open https://example.com --headed
 ```
 
-### Pages with loading spinners
+Use default/headless mode for routine automated verification. Put stable mode choices in config/env only when repeated runs need the same behavior.
 
-Wait for the spinner to disappear:
+## Browser And Profile Options
 
 ```bash
-open https://dashboard.example.com
-run-code 'async (page) => {
-  await page.waitForSelector(".loading-spinner", { state: "hidden" })
-  return "loaded"
-}'
-snapshot
-screenshot --filename=dashboard-loaded.png
+playwright-cli open --browser=chrome https://example.com
+playwright-cli open --browser=firefox https://example.com
+playwright-cli open --device="iPhone 15" https://example.com
+playwright-cli open --viewport-size=1280x720 https://example.com
+playwright-cli open --persistent https://example.com
+playwright-cli open --profile=./profile-dir https://example.com
+playwright-cli --config .playwright/cli.config.json open https://example.com
 ```
 
-### Lazy-loaded content
+Prefer command-line options for one-off runs. Use config files or environment variables for repeated, stable automation.
 
-Content below the fold may not load until scrolled.
+## Local Targets
 
-> **Steering experience:** The `mousewheel <deltaX> <deltaY>` parameter order may be swapped in some CLI versions. Always test with a small scroll first: `mousewheel 0 100` then `eval "() => window.scrollY"`. If scrollY didn't increase, try `mousewheel 100 0`.
+Local URLs are valid if the browser can reach them:
 
 ```bash
-open https://example.com/long-page
-snapshot
-mousewheel 0 100
-eval "() => window.scrollY"   # verify scroll direction first
-mousewheel 0 900
-run-code 'async (page) => {
-  await page.waitForSelector(".lazy-section", { state: "visible" })
-  return "lazy content visible"
-}'
-snapshot
+playwright-cli open http://127.0.0.1:3000
+playwright-cli open "file:///absolute/path/fixture.html"
 ```
 
----
+If a local target fails:
 
-## Waiting for content
+1. Confirm the server is running or the file URL is absolute.
+2. Use `eval "() => window.location.href"` and `snapshot` to see where the browser landed.
+3. For tiny fixtures, use a `data:` URL.
+4. For browser contexts that cannot reach local services, use a reachable staging or tunnel URL.
 
-### Wait for a specific element
+## Waiting For SPAs
+
+Snapshots show current state; they do not wait for every app-specific condition. Use `run-code` for precise waits:
 
 ```bash
-run-code 'async (page) => {
-  await page.waitForSelector("#results-container", { state: "visible" })
-  return "results visible"
-}'
-snapshot
+playwright-cli run-code "async page => {
+  await page.waitForSelector('[data-testid=app-loaded]', { state: 'visible', timeout: 10000 });
+}"
+playwright-cli snapshot
 ```
 
-### Wait for a URL change
+Wait for URL changes:
 
 ```bash
-run-code 'async (page) => {
-  await page.waitForURL("**/dashboard**")
-  return page.url()
-}'
-snapshot
+playwright-cli run-code "async page => {
+  await page.waitForURL('**/dashboard**');
+  return page.url();
+}"
+playwright-cli snapshot
 ```
 
-### Wait for a network response
+Wait for an API response:
 
 ```bash
-run-code 'async (page) => {
-  const resp = await page.waitForResponse(r => r.url().includes("/api/data"))
-  return { url: resp.url(), status: resp.status() }
-}'
+playwright-cli run-code "async page => {
+  const response = await page.waitForResponse(r => r.url().includes('/api/data'));
+  return { url: response.url(), status: response.status() };
+}"
 ```
 
-### Wait for JavaScript readiness
+## Redirects
 
 ```bash
-run-code 'async (page) => {
-  await page.waitForFunction(() => window.appReady === true)
-  return "app ready"
-}'
-snapshot
+playwright-cli goto https://example.com/old-path
+playwright-cli eval "() => window.location.href"
+playwright-cli snapshot
 ```
 
-### Timeout handling
-
-Default waits can hang on slow pages. Set explicit timeouts:
+For auth redirects, verify both the login URL and the post-login target:
 
 ```bash
-run-code 'async (page) => {
-  await page.waitForSelector(".content", { state: "visible", timeout: 10000 })
-  return "done"
-}'
+playwright-cli goto https://app.example.com/dashboard
+playwright-cli eval "() => window.location.href"
+playwright-cli snapshot
+# complete login
+playwright-cli eval "() => window.location.href"
 ```
 
----
-
-## History navigation
-
-### Navigate back and verify
+## Tabs And New Pages
 
 ```bash
-open https://example.com/page-1
-snapshot
-open https://example.com/page-2
-snapshot
-
-go-back
-snapshot
-eval "() => window.location.href"
-# Should show page-1
+playwright-cli tab-list
+playwright-cli tab-new https://example.com/docs
+playwright-cli tab-select 0
+playwright-cli tab-close 1
 ```
 
-### Navigate forward
+`tab-new [url]` is supported in current help and was smoke-tested against a `data:` URL. If a pinned older package opens `about:blank`, recover with:
 
 ```bash
-go-forward
-snapshot
-eval "() => window.location.href"
-# Should show page-2
+playwright-cli tab-new
+playwright-cli goto https://example.com/docs
 ```
 
-### Multi-step history
+## Scroll And Lazy Content
 
 ```bash
-open https://example.com/a
-open https://example.com/b
-open https://example.com/c
-
-go-back
-go-back
-eval "() => window.location.href"
-# Should show /a
+playwright-cli mousewheel 0 100
+playwright-cli eval "() => window.scrollY"
+playwright-cli mousewheel 0 900
+playwright-cli snapshot
 ```
 
----
+If the page scrolls the wrong axis in a pinned older version, try swapping arguments and verify again with `window.scrollY`.
 
-## Redirects and SPA navigation
-
-### Detect redirects
+## Navigation Health Check
 
 ```bash
-open https://example.com/old-path
-eval "() => window.location.href"
-# If the page redirected, this shows the final URL
-```
-
-### SPA client-side navigation
-
-SPA route changes may not trigger a full page load. After clicking
-a navigation link in a SPA:
-
-```bash
-click <nav-link-ref>
-run-code 'async (page) => {
-  await page.waitForURL("**/settings")
-  return page.url()
-}'
-snapshot
-```
-
-### Auth redirects
-
-Login pages often redirect after successful auth:
-
-```bash
-open https://app.example.com/dashboard
-# May redirect to /login
-eval "() => window.location.href"
-snapshot
-# Fill login form, submit
-# Then verify redirect back to dashboard
-eval "() => window.location.href"
-```
-
----
-
-## Page reload strategies
-
-### Simple reload
-
-```bash
-reload
-snapshot
-```
-
-### Reload and wait for content
-
-```bash
-reload
-run-code 'async (page) => {
-  await page.waitForSelector("[data-ready=true]", { state: "visible" })
-  return "ready"
-}'
-snapshot
-```
-
-### Clear cache and reload
-
-```bash
-run-code 'async (page) => {
-  await page.evaluate(() => {
-    caches.keys().then(keys => keys.forEach(k => caches.delete(k)))
-  })
-  await page.reload()
-  return "reloaded"
-}'
-snapshot
-```
-
----
-
-## Navigation verification
-
-### Verify current URL
-
-```bash
-eval "() => window.location.href"
-```
-
-### Verify page title
-
-```bash
-eval "() => document.title"
-```
-
-### Verify page loaded successfully
-
-```bash
-eval "() => document.readyState"
-# Should return "complete"
-```
-
-### Full page health check after navigation
-
-```bash
-open https://example.com
-snapshot
-screenshot --filename=health-check.png
-eval "() => document.title"
-eval "() => window.location.href"
-console error
-network
-```
-
----
-
-## Common navigation patterns
-
-```bash
-# Open and verify
-open https://example.com
-snapshot
-eval "() => window.location.href"
-
-# Multi-step flow
-click <product-link-ref>
-snapshot
-click <add-to-cart-ref>
-snapshot
-click <checkout-ref>
-snapshot
-eval "() => window.location.href"
+playwright-cli goto https://example.com
+playwright-cli snapshot
+playwright-cli eval "() => window.location.href"
+playwright-cli eval "() => document.title"
+playwright-cli eval "() => document.readyState"
+playwright-cli console error
+playwright-cli requests
+playwright-cli screenshot --filename=health-check.png
 ```

@@ -1,406 +1,183 @@
-# Screenshots and Visual Testing
+# Screenshots, PDF, Video, And Visual Checks
 
-How to capture screenshots, test responsive layouts, compare visual states,
-and use screenshots as evidence in `playwright-cli`.
+Use this reference for visual evidence, responsive checks, PDFs, videos, and artifact handling in `playwright-cli`.
 
----
+## Artifact Rules
 
-## Table of Contents
+- `screenshot` defaults to a timestamped `page-{timestamp}.png` when `--filename` is omitted.
+- `pdf --filename=...` writes the named PDF.
+- `video-start [filename]` starts recording; `video-stop` returns/saves the video artifact.
+- Artifact location can be affected by CLI config such as `outputDir`.
+- The returned path or Markdown artifact link is the source of truth. Record that exact path in the final answer.
 
-- [Core screenshot rules](#core-screenshot-rules)
-- [Screenshot types](#screenshot-types)
-- [Naming conventions](#naming-conventions)
-- [Responsive testing](#responsive-testing)
-- [Dark mode testing](#dark-mode-testing)
-- [Before and after comparison](#before-and-after-comparison)
-- [PDF capture](#pdf-capture)
-- [Layout integrity checks](#layout-integrity-checks)
-- [Viewport sweep for lazy content](#viewport-sweep-for-lazy-content)
-- [Video recording](#video-recording)
-- [Screenshot as evidence](#screenshot-as-evidence)
-- [Common screenshot patterns](#common-screenshot-patterns)
+## Screenshots
 
----
-
-## Core screenshot rules
-
-1. **Screenshots are evidence, not decoration.** Pair them with `snapshot`
-   for refs and `eval` for truth checks.
-2. **Always use descriptive filenames.** Answer: what, which step, what conditions.
-3. **Take screenshots after the page settles.** Animations, loaders, and
-   lazy content can produce misleading captures.
-4. **A screenshot alone is rarely enough** for stateful flows. Pair with
-   `eval "() => window.location.href"` or `eval "(el) => el.value"`.
-
----
-
-## Screenshot types
-
-### Viewport screenshot (above the fold)
+Viewport screenshot:
 
 ```bash
-screenshot --filename=current-view.png
+playwright-cli screenshot --filename=current-view.png
 ```
 
-Captures what is visible in the current viewport.
-
-### Full-page screenshot
+Full-page screenshot:
 
 ```bash
-screenshot --full-page --filename=full-page.png
+playwright-cli screenshot --full-page --filename=full-page.png
 ```
 
-Captures the entire scrollable page, including content below the fold.
-
-### Element screenshot
+Element screenshot:
 
 ```bash
-screenshot <ref> --filename=element.png
+playwright-cli screenshot e5 --filename=element.png
 ```
 
-Captures a specific element. Useful for:
-- isolated component testing
-- capturing a specific form, card, or widget
-- comparing individual UI elements before and after changes
-
-### Screenshot without filename
+Generated filename:
 
 ```bash
-screenshot
+playwright-cli screenshot
 ```
 
-The CLI generates a timestamped filename in the `.playwright-cli/` artifact area.
-Prefer explicit filenames for organized workflows.
+Use explicit filenames for workflows with multiple captures.
 
-> **Steering experience:** All screenshot commands write files to disk and print the file path. The path is the artifact — save it in your notes if you need to reference the screenshot later.
+## Naming
 
----
+Use names that encode state:
 
-## Naming conventions
+| Example | Meaning |
+|---|---|
+| `homepage-desktop-light.png` | desktop viewport, light mode |
+| `login-after-submit.png` | post-submit state |
+| `mobile-cart-drawer.png` | mobile viewport with cart open |
+| `checkout-error-503.png` | error state after mocked 503 |
 
-Good filenames answer: **what**, **at what step**, **under what conditions**.
+## Pair Visuals With State Proof
 
-| Example | What it communicates |
-|---------|---------------------|
-| `homepage-desktop-light.png` | Desktop viewport, light theme |
-| `login-after-submit.png` | Login page, post-submission state |
-| `search-before-filter.png` | Search results, before applying filter |
-| `search-after-4-stars.png` | After applying 4-star filter |
-| `mobile-dark-cart-drawer.png` | Mobile, dark mode, cart drawer open |
-| `upload-file-selected.png` | After selecting a file for upload |
-| `checkout-step-2.png` | Second step of checkout flow |
-
----
-
-## Responsive testing
-
-### Resize viewport
+Screenshots are supporting evidence. Pair them with state:
 
 ```bash
-resize 1280 720
-screenshot --full-page --filename=desktop.png
-
-resize 768 1024
-screenshot --full-page --filename=tablet.png
-
-resize 375 812
-screenshot --full-page --filename=mobile.png
+playwright-cli screenshot --filename=after-filter.png
+playwright-cli eval "() => window.location.href"
+playwright-cli snapshot
 ```
 
-### Wait for responsive layout to settle
-
-If the UI is async or uses CSS transitions:
+For forms:
 
 ```bash
-resize 375 812
-run-code 'async (page) => {
-  await page.waitForSelector("[data-testid=mobile-nav]", { state: "visible" })
-  return "mobile layout ready"
-}'
-screenshot --full-page --filename=mobile-settled.png
+playwright-cli eval "(el) => el.value" e3
+playwright-cli screenshot --filename=form-filled.png
 ```
 
-### Common viewport sizes
-
-| Device class | Width × Height |
-|-------------|----------------|
-| Desktop HD | 1920 × 1080 |
-| Desktop | 1280 × 720 |
-| Tablet portrait | 768 × 1024 |
-| Tablet landscape | 1024 × 768 |
-| Mobile (iPhone) | 375 × 812 |
-| Mobile small | 320 × 568 |
-
-### Responsive test matrix
+For diagnosis:
 
 ```bash
-open https://example.com
-
-resize 1280 720
-screenshot --full-page --filename=desktop.png
-
-resize 768 1024
-screenshot --full-page --filename=tablet.png
-
-resize 375 812
-screenshot --full-page --filename=mobile.png
+playwright-cli console error
+playwright-cli requests --filter="/api/"
+playwright-cli screenshot --filename=diagnosis.png
 ```
 
----
-
-## Dark mode testing
-
-### Method 1 — emulate preferred color scheme
+## Responsive Checks
 
 ```bash
-run-code 'async (page) => {
-  await page.emulateMedia({ colorScheme: "dark" })
-  return "dark mode emulated"
-}'
-screenshot --full-page --filename=dark-mode.png
+playwright-cli resize 1280 720
+playwright-cli screenshot --full-page --filename=desktop.png
+
+playwright-cli resize 768 1024
+playwright-cli screenshot --full-page --filename=tablet.png
+
+playwright-cli resize 375 812
+playwright-cli screenshot --full-page --filename=mobile.png
 ```
 
-### Method 2 — toggle CSS class
+Wait for layout-specific content before capture when needed:
 
 ```bash
-eval "() => document.documentElement.classList.add('dark')"
-screenshot --full-page --filename=dark-class.png
+playwright-cli resize 375 812
+playwright-cli run-code "async page => {
+  await page.waitForSelector('[data-testid=mobile-nav]', { state: 'visible' });
+}"
+playwright-cli screenshot --full-page --filename=mobile-settled.png
 ```
 
-### Method 3 — localStorage theme
+## Dark Mode
 
 ```bash
-eval "() => { localStorage.setItem('theme', 'dark'); location.reload(); }"
-run-code 'async (page) => {
-  await page.waitForSelector("body", { state: "visible" })
-  return "reloaded"
-}'
-snapshot
-screenshot --full-page --filename=dark-storage.png
+playwright-cli run-code "async page => { await page.emulateMedia({ colorScheme: 'dark' }); }"
+playwright-cli screenshot --full-page --filename=dark-mode.png
+
+playwright-cli run-code "async page => { await page.emulateMedia({ colorScheme: 'light' }); }"
+playwright-cli screenshot --full-page --filename=light-mode.png
 ```
 
-### Reset to light mode
+If the app uses a theme toggle or localStorage, verify the actual state with `eval`.
+
+## PDF
 
 ```bash
-run-code 'async (page) => {
-  await page.emulateMedia({ colorScheme: "light" })
-  return "light mode"
-}'
-screenshot --full-page --filename=light-mode.png
+playwright-cli pdf --filename=page.pdf
 ```
 
-### Full theme matrix
+Use PDF for printable reports or long static documents where a full-page screenshot is unwieldy.
+
+## Video
 
 ```bash
-resize 1280 720
-run-code 'async (page) => { await page.emulateMedia({ colorScheme: "light" }); }'
-screenshot --full-page --filename=desktop-light.png
-
-run-code 'async (page) => { await page.emulateMedia({ colorScheme: "dark" }); }'
-screenshot --full-page --filename=desktop-dark.png
-
-resize 375 812
-run-code 'async (page) => { await page.emulateMedia({ colorScheme: "light" }); }'
-screenshot --full-page --filename=mobile-light.png
-
-run-code 'async (page) => { await page.emulateMedia({ colorScheme: "dark" }); }'
-screenshot --full-page --filename=mobile-dark.png
+playwright-cli video-start flow.webm
+# perform the flow
+playwright-cli video-chapter "Checkout submit"
+playwright-cli video-stop
 ```
 
----
+Use video for complex interaction sequences where a static screenshot is insufficient. Return the video artifact path.
 
-## Before and after comparison
+## Trace Viewer
 
-### Visual diff workflow
+Trace capture lives in `references/debugging.md`, but visual review often ends with trace inspection:
 
 ```bash
-# BEFORE state
-screenshot --full-page --filename=BEFORE-desktop.png
-resize 375 812
-screenshot --full-page --filename=BEFORE-mobile.png
-
-# Make changes or reproduce flow
-resize 1280 720
-# [... interaction steps ...]
-
-# AFTER state
-screenshot --full-page --filename=AFTER-desktop.png
-resize 375 812
-screenshot --full-page --filename=AFTER-mobile.png
+playwright-cli tracing-start
+# reproduce
+playwright-cli tracing-stop
+npx playwright show-trace .playwright-cli/trace.zip
 ```
 
-### With wait for hydration
+Use the path returned by `tracing-stop`; `.playwright-cli/trace.zip` is the common default, not a guarantee.
 
-If the page uses lazy rendering or hydration, add waits:
+## Layout Integrity Checks
+
+Horizontal overflow:
 
 ```bash
-run-code 'async (page) => {
-  await page.waitForSelector("[data-hydrated=true]", { state: "visible" })
-  return "hydrated"
-}'
-screenshot --full-page --filename=AFTER-hydrated.png
+playwright-cli eval "() => document.body.scrollWidth > window.innerWidth"
 ```
 
-### Pair with URL proof for stateful flows
+Broken images:
 
 ```bash
-screenshot --filename=after-filter.png
-eval "() => window.location.href"
+playwright-cli eval "() => [...document.querySelectorAll('img')].filter(i => !i.complete || i.naturalWidth === 0).length"
 ```
 
----
-
-## PDF capture
+Element box:
 
 ```bash
-pdf --filename=page.pdf
+playwright-cli eval "(el) => el.getBoundingClientRect()" e5
 ```
 
-Generates a PDF of the current page. Useful for:
-- saving printable reports
-- capturing content that screenshots miss (very long pages)
-- archiving page state
-
----
-
-## Layout integrity checks
-
-### Check for horizontal overflow
+Element fully in viewport:
 
 ```bash
-eval "() => document.body.scrollWidth > window.innerWidth"
-```
-
-Returns `true` if content overflows horizontally (a layout bug).
-
-### Check for broken images
-
-```bash
-eval "() => [...document.querySelectorAll('img')].filter(i => !i.complete || i.naturalWidth === 0).length"
-```
-
-### Get element bounding box
-
-```bash
-eval "(el) => el.getBoundingClientRect()" <ref>
-```
-
-### Verify element is visible in viewport
-
-```bash
-eval "(el) => {
+playwright-cli eval "(el) => {
   const r = el.getBoundingClientRect();
   return r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth;
-}" <ref>
+}" e5
 ```
 
----
-
-## Viewport sweep for lazy content
-
-Full-page screenshots may miss lazy-loaded or sticky UI behavior.
-Use manual fold capture instead.
-
-> **Steering experience:** The `mousewheel <deltaX> <deltaY>` parameter order may be swapped in some CLI versions. **Always verify scroll direction first** with a small test scroll before using large values. If the page scrolls horizontally instead of vertically, swap the parameters.
+## Lazy Content Sweep
 
 ```bash
-# Step 1: Verify scroll direction works correctly
-mousewheel 0 100
-eval "() => window.scrollY"
-# If scrollY increased, parameter order is correct (deltaX=0, deltaY=100)
-# If scrollY is still 0, try: mousewheel 100 0
-
-# Step 2: Capture folds with verified direction
-screenshot --filename=fold-01.png
-mousewheel 0 900
-eval "() => window.scrollY"   # verify scroll happened
-screenshot --filename=fold-02.png
-mousewheel 0 900
-screenshot --filename=fold-03.png
-mousewheel 0 900
-screenshot --filename=fold-04.png
+playwright-cli mousewheel 0 100
+playwright-cli eval "() => window.scrollY"
+playwright-cli screenshot --filename=fold-01.png
+playwright-cli mousewheel 0 900
+playwright-cli screenshot --filename=fold-02.png
 ```
 
-> **Known quirk:** `mousewheel <deltaX> <deltaY>` parameter order may be swapped
-> internally by the CLI (e.g. `mousewheel 0 900` scrolls horizontally instead of
-> vertically). Always test with a small scroll first and verify with `eval "() =>
-> window.scrollY"` before committing to a sweep.
-
----
-
-## Video recording
-
-### Record a workflow
-
-```bash
-video-start
-# ... perform actions ...
-video-stop
-```
-
-The CLI saves the video file. Use this for:
-- capturing complex interaction sequences
-- debugging flaky behavior
-- creating evidence of a complete flow
-
----
-
-## Screenshot as evidence
-
-### When to trust a screenshot
-
-Trust screenshots most when you have also:
-
-| Check | Command |
-|-------|---------|
-| Verified the URL | `eval "() => window.location.href"` |
-| Verified form values | `eval "(el) => el.value" <ref>` |
-| Captured console/network | `console error` / `network` |
-| Waited for UI to settle | `run-code` with `waitForSelector` |
-
-### When screenshots are insufficient
-
-- **Dynamic content** — text or numbers that change on reload
-- **Invisible state** — cookies, localStorage, session data
-- **Timing-sensitive UI** — animations mid-transition
-
-For these, use `eval` to extract the truth value directly.
-
----
-
-## Common screenshot patterns
-
-### Page health check
-
-```bash
-open https://example.com
-snapshot
-screenshot --filename=initial.png
-console error
-network
-```
-
-### Form state capture
-
-```bash
-fill <ref> "test@example.com"
-eval "(el) => el.value" <ref>
-screenshot --filename=form-filled.png
-```
-
-### Post-submission verification
-
-```bash
-click <submit-ref>
-snapshot
-eval "() => window.location.href"
-screenshot --filename=after-submit.png
-```
-
-### Component isolation
-
-```bash
-snapshot
-screenshot <card-ref> --filename=product-card.png
-screenshot <nav-ref> --filename=navigation-bar.png
-```
+If a pinned older build scrolls the wrong axis, swap `dx`/`dy` and verify with `window.scrollY` before continuing.
