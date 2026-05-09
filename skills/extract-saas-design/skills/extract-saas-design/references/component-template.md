@@ -293,6 +293,8 @@ For each sub-component, show: its role, its CSS, and how it relates to siblings.
 
 The exact CSS to recreate this component's default appearance. No JS logic — pure visual spec.
 
+These CSS blocks are documentation artifacts for visual specification. They are not production UI code, a generated app, or permission to turn extraction into implementation.
+
 ```css
 /* Container */
 .component {

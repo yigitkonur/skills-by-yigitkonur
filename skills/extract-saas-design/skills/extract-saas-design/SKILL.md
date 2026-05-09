@@ -123,6 +123,14 @@ When you are asked to produce extraction files, keep the structure predictable:
 - numbered pattern docs in `components/[app-specific]/` when the scope includes dashboard-level compositions or product-unique flows
 - `INDEX.md` and `_summary.md` for multi-document or full extractions
 
+Default output is markdown documentation with CSS recreation blocks inside `.md` files. Do not generate `.tokens.json`, Style Dictionary config, Tokens Studio files, or other token export files unless the user explicitly asks for token export.
+
+Source-of-truth hierarchy:
+- Component source and CSS tokens are primary when available.
+- Live DOM/computed styles and Storybook are secondary evidence.
+- Screenshots validate layout and state coverage, but do not override source values.
+- Figma token sync is documented only when the implemented codebase contains token-sync artifacts.
+
 Use the exact structure, naming, and content expectations in `references/documentation/output-format.md`, `references/system-template.md`, and `references/component-template.md`.
 
 ## Reference routing

@@ -6,6 +6,14 @@ Write the `.design-soul/` tree at the target codebase root or at a writable work
 
 For narrow extractions, create only the files required by scope. `INDEX.md` and `_summary.md` become required when the extraction spans multiple docs or categories.
 
+Default output is markdown documentation with CSS recreation blocks inside `.md` files. Do not generate `.tokens.json`, Style Dictionary config, Tokens Studio files, or other token export files unless the user explicitly asks for token export.
+
+Source-of-truth hierarchy:
+1. Component source and CSS tokens are primary when available.
+2. Live DOM/computed styles and Storybook are secondary evidence.
+3. Screenshots validate layout and state coverage, but do not override source values.
+4. Figma token sync is documented only when the implemented codebase contains token-sync artifacts.
+
 ---
 
 ## Output Directory Structure
