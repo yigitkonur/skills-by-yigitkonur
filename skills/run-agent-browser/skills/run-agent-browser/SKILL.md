@@ -1,7 +1,7 @@
 ---
 name: run-agent-browser
 description: Use skill if you are driving agent-browser CLI @ref snapshots for stateful sessions, browser navigation, forms, screenshots, extraction, or provider/stealth runs.
-allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
+allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*), Bash(bash scripts/check-agent-browser-version.sh:*), Bash(bash scripts/inspect-page.sh:*)
 ---
 
 # Browser Automation with agent-browser

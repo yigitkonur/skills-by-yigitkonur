@@ -22,6 +22,23 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 fi
 
 MIN_VERSION="${1:-$DEFAULT_MIN_VERSION}"
+MIN_VERSION="${MIN_VERSION#v}"
+MIN_VERSION="${MIN_VERSION#V}"
+
+if [[ ! "$MIN_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+  echo "minimum parsed:   no ($MIN_VERSION)"
+  echo "minimum version must look like 0.17.1, 0.17, or v0.17.1" >&2
+  exit 0
+fi
+
+normalize_version() {
+  local raw="$1"
+  local major minor patch
+  IFS=. read -r major minor patch <<<"$raw"
+  printf '%s.%s.%s' "$major" "${minor:-0}" "${patch:-0}"
+}
+
+MIN_VERSION="$(normalize_version "$MIN_VERSION")"
 
 if command -v agent-browser >/dev/null 2>&1; then
   AB_CMD=(agent-browser)
@@ -67,7 +84,9 @@ version_lt() {
   IFS=. read -r left_major left_minor left_patch <<<"$left"
   IFS=. read -r right_major right_minor right_patch <<<"$right"
 
+  left_minor="${left_minor:-0}"
   left_patch="${left_patch:-0}"
+  right_minor="${right_minor:-0}"
   right_patch="${right_patch:-0}"
 
   if ((10#$left_major < 10#$right_major)); then return 0; fi
