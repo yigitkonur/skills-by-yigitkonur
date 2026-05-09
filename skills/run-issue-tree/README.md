@@ -1,6 +1,6 @@
 # run-issue-tree
 
-Planning or executing a project as GitHub Issues with sub-issues, wave-based execution, labels, and subagent dispatch via gh CLI.
+planning or executing GitHub-only issue trees with sub-issues, wave/status labels, gh CLI orchestration, and runtime-native subagent dispatch.
 
 **Category:** productivity
 

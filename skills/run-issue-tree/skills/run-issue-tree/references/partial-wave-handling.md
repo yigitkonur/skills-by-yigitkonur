@@ -133,21 +133,13 @@ When failures are severe enough to invalidate the wave:
 
 ## State tracking across sessions
 
-All state is stored in GitHub labels and issue comments. If the orchestrator crashes and restarts, it can reconstruct state by:
+All state is stored in GitHub labels, issue bodies, sub-issue links, and comments. If the orchestrator crashes and restarts, reconstruct state with:
 
 ```bash
-# Reconstruct current state
-echo "=== Project State ==="
-for wave in "wave:0-foundation" "wave:1" "wave:2" "wave:3" "wave:4" "wave:5"; do
-  TOTAL=$(gh issue list --repo "$REPO" -l "$wave" --state all --json number --jq 'length')
-  CLOSED=$(gh issue list --repo "$REPO" -l "$wave" --state closed --json number --jq 'length')
-  FAILED=$(gh issue list --repo "$REPO" -l "$wave" -l "status:failed" --json number --jq 'length')
-  IN_PROG=$(gh issue list --repo "$REPO" -l "$wave" -l "status:in-progress" --json number --jq 'length')
-  [ "$TOTAL" -gt 0 ] && echo "$wave: $CLOSED/$TOTAL closed, $FAILED failed, $IN_PROG in-progress"
-done
+bash "$SKILL_DIR/scripts/issue-tree-status.sh" "$REPO" ROOT_ISSUE
 ```
 
-This produces a complete snapshot without any external state storage.
+This discovers actual wave labels dynamically and produces a complete snapshot without any external state storage.
 
 ## Decision matrix
 

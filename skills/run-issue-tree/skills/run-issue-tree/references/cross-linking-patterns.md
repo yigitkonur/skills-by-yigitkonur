@@ -44,10 +44,12 @@ Sub-issue relationship. Parent closes when all children close.
 - **Parent:** #30 (User management feature)
 ```
 
-Additionally wire via GraphQL sub-issue API:
+Additionally wire via the REST sub-issue API:
 ```bash
 bash "$SKILL_DIR/scripts/link-sub-issue.sh" "$REPO" PARENT_NUM CHILD_NUM
 ```
+
+The script fetches the child issue's numeric REST `id`, then calls `POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues` with `X-GitHub-Api-Version: 2026-03-10`. Read `scripts/link-sub-issue.sh.md` before using `--replace-parent`.
 
 ### 3. Related (informational)
 
@@ -79,7 +81,7 @@ Step 1: Create all subtasks         → get issue numbers
 Step 2: Create tasks (ref subtasks) → get issue numbers
 Step 3: Create features (ref tasks) → get issue numbers
 Step 4: Create epics (ref features) → get issue numbers
-Step 5: Wire sub-issue relationships via GraphQL
+Step 5: Wire sub-issue relationships via REST
 Step 6: Edit parent bodies to add real child numbers
 ```
 

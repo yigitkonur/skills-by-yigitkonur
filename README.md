@@ -55,7 +55,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
 | [run-industry-research](skills/run-industry-research/) | productivity | Industry research corpora with evidence packs and comparisons |
-| [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub Issue trees with sub-issues and waves |
+| [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub-only issue trees with runtime dispatch |
 | [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
 | [run-repo-cleanup](skills/run-repo-cleanup/) | productivity | Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies |
 | [run-research](skills/run-research/) | productivity | Single-question technical research with source-backed synthesis |
