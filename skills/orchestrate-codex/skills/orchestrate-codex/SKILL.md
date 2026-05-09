@@ -32,9 +32,9 @@ Do NOT use this skill when:
 |---|---|---|---|---|
 | exec | `codex exec` per task | `../<repo>-wt-exec-<slug>` per task | one-shot, auto-commit, exit | every entry done (commit + non-empty answer + post-verify pass) or failed (surfaced) |
 | batch | `codex exec` per input row | `<workdir>/answers/<id>.md` (no worktree) | bounded-concurrency runner, idempotent skip-existing | every input has non-empty answer + audit pass |
-| single | one `codex exec --json` | selected cwd; `--reuse-worktree` records current-worktree reuse | one-shot streaming via filter | `turn.completed` event seen + `-o` file non-empty |
+| single | one `codex exec --json` | selected cwd; `--reuse-worktree` records current-worktree reuse | one-shot streaming via filter | `-o` file non-empty + manifest entry `done` (`turn.completed` is a Monitor signal, not a gate) |
 | review | one `codex exec review` per branch per round | `../<repo>-wt-review-<slug>` per branch | classifier-driven rounds, cap 10 | every branch in {converged, blocked, failed, cap_reached} |
-| rescue | re-attach to an existing manifest | inherits prior mode's workspace | classify, then `--redo failed\|never-started\|all-non-done` | original mode's gate |
+| rescue | re-attach to an existing manifest | inherits prior mode's workspace | classify, then `--apply failed-only\|never-started-only\|all-non-done\|ids:...` (`--redo` is back-compat alias) | original mode's gate |
 
 ## Step 1 — Detect the mode
 
@@ -45,8 +45,13 @@ Q1. Does <manifest-path> exist AND does the prompt contain
     {"resume","continue","pick up","rescue","prior run"}?
         → mode = rescue, HIGH
 
-Q2. Did the user supply a branch list (named, branches.txt, or ≥2 git refs)
-    AND does the prompt contain {"review","ship","merge","close out"}?
+Q2. Did the user name ≥1 branch (1 branch counts; routes to the same per-branch
+    converge-or-cap loop) — single name, branches.txt, comma list, or git refs —
+    AND does the prompt express ship-readiness intent? Tokens like
+    {"review","ship","merge","close out"} are illustrative, not literal —
+    match intent (e.g. "across the line before code-freeze" = ship,
+    "make sure these are merge-ready" = merge-prep). Per-branch flow lives
+    in `references/modes/review.md`.
         → mode = review, HIGH
 
 Q3. Did the user supply (or name) an inputs file (inputs.txt / urls.txt / *.csv)
@@ -58,6 +63,9 @@ Q4. Does the prompt contain {"single task","one big mission","watch live",
         → mode = single, HIGH
 
 Q5. Does the prompt list ≥2 discrete tasks AND is cwd a git repo?
+    (discrete = enumerated/named tasks the user listed — bullets, numbered,
+    or comma-separated. Vague plurals like "a bunch of stuff" or "clean up
+    everything" do NOT count as discrete; they fall through to Q8.)
         → mode = exec, HIGH
 
 Q6. Does the prompt name ≥2 branches/features/plan files
@@ -67,8 +75,11 @@ Q6. Does the prompt name ≥2 branches/features/plan files
 Q7. Is the prompt one substantial coding task in a git repo, no list?
         → mode = single, MEDIUM
 
-Q8. None of the above → ask once using request_user_input("Pick orchestration mode",
-    options: exec / batch / single / review / rescue).
+Q8. None of the above → ask once. Compose option descriptions from the
+    Trigger Boundary bullets above — one user-facing sentence per mode
+    (e.g. "exec — parallel codex agents on ≥2 discrete coding tasks across
+    separate worktrees"). A 5-bare-word picker is unusable; the user needs
+    to see what each mode does.
 ```
 
 `<manifest-path>` resolution: `resolveStateDir(cwd)/orchestrate-codex/manifest.json`, where `resolveStateDir` is the vendored codex-cc algorithm: `$CLAUDE_PLUGIN_DATA/state/<slug>-<hash>` when set, otherwise `${TMPDIR:-/tmp}/codex-companion/<slug>-<hash>`. See `references/universal/manifest-contract.md` and `references/universal/plugin-data.md`.
@@ -80,10 +91,10 @@ If detection lands on MEDIUM confidence and the surrounding prompt is genuinely 
 Run before every mode. Stops the agent from improvising into a broken state.
 
 1. `codex --version` succeeds. The skill assumes codex 0.130.0 or later for the verified `codex exec review` flags.
-2. `codex login status` is a soft probe. If it exits non-zero AND `~/.codex/config.toml` declares no `model_provider` (i.e. nothing else is supplying auth), surface and stop. Otherwise warn and proceed — bearer-token / managed-companion / proxy auth all spawn cleanly while `login status` reports "Not logged in". The bash `bootstrap.sh` hard-fails on non-zero exit; set `ORCHESTRATE_SKIP_CODEX_AUTH=1` to bypass when alternate auth is in play.
+2. `codex login status` is a hard gate in `scripts/bootstrap.sh`: non-zero exit → bootstrap dies with exit 3 ("Run `codex login` before dispatching"). Escape hatch: `ORCHESTRATE_SKIP_CODEX_AUTH=1` downgrades the gate to a WARN — use this for ephemeral CI runners, bearer-token / managed-companion / proxy auth setups where `login status` reports "Not logged in" but spawns succeed anyway. If you bypass, verify auth another way before claiming pre-flight green.
 3. cwd is resolved. If the chosen mode requires a git repo (exec, review), `git rev-parse --is-inside-work-tree` succeeds.
 4. Workspace slug+hash computed (see manifest contract).
-5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"` (a `--force-new-run` escape hatch is **planned, not yet implemented** — see `references/universal/idempotency.md`; rescue mode is the supported path).
+5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"`. Two recovery paths: rescue mode (default — re-attach to the existing manifest), or `--force-new-run --run-id <custom>` (writes a parallel `manifest.<custom>.json` so the original run is left untouched). See `references/universal/idempotency.md`.
 6. `.gitignore` (if a git repo) covers the worktree path pattern (`../<repo>-wt-*`) and any in-repo state files.
 7. Required scripts present: `<skill-root>/scripts/codex-flags.sh`, the per-mode runner, the helpers for the chosen mode.
 8. `<skill-root>/scripts/codex-cc/` is present because the dispatcher imports its `lib/` helpers. Review mode does not require `gh`; it uses native `codex exec review`.
@@ -109,7 +120,7 @@ Forbidden: `--full-auto` (deprecated), `-a` other than `never`, `-s read-only`, 
 
 ## Universal: Monitor contract
 
-One Monitor per fleet, not per worker. Arm Monitor BEFORE launching the runner — late-arming Monitors miss first-wave events.
+One Monitor per fleet, not per worker. The dispatcher detaches the runner before returning the envelope, so the agent cannot literally pre-arm. Arm Monitor immediately on envelope receipt; first-wave loss is bounded by the runner-spawn-to-envelope-emit window (typically <100ms). Don't sleep, don't read other files, don't re-plan — the very next tool call after the dispatcher returns must be the Monitor invocation.
 
 ```
 Monitor({
@@ -119,6 +130,8 @@ Monitor({
   timeout_ms: 300000
 })
 ```
+
+Single mode uses a different Monitor command — it tails the JSONL stream directly (`tail -F <jsonl> | bash <skill-root>/scripts/codex-json-filter.sh | awk '{print; fflush();}'`) instead of `codex-monitor.sh`. Do NOT compose the Monitor block by hand; the dispatcher emits the correct per-mode command verbatim in `envelope.monitor.tool_hint`. Pass it through unchanged. Per-mode commands documented in `references/universal/monitor-contract.md`.
 
 Each runner emits one stdout line per state transition (`START <id>`, `DONE <id>`, `FAIL <id>`, `SKIP <id>`, terminal `--- all jobs finished ---`). Coverage rule: filter must match every terminal state including failure — silent monitor is indistinguishable from "still running." Pipes use `--line-buffered` in grep and `fflush()` in awk.
 
@@ -197,7 +210,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Pre-checks:** choose cwd explicitly; if cwd is already inside a worktree, pass `--reuse-worktree` to record that choice.
 - **Read first:** `references/modes/single.md`, `references/universal/json-streaming.md`, `references/universal/monitor-contract.md`, `references/templates/single.tmpl.md`.
 - **Run:** `node scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`). The dispatcher writes a one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`. Surface the literal Monitor hint.
-- **Success gate:** `turn.completed` event observed AND `-o` file non-empty AND manifest entry `done`.
+- **Success gate:** `-o` file non-empty AND manifest entry `done` (these are what `run-single.sh` actually checks; `turn.completed` is a Monitor observability signal, not a runner gate).
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/single.md` §recovery.
 
 ### review mode — per-branch convergence loop
@@ -205,7 +218,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Trigger:** Q2 (branch list + review keyword).
 - **Pre-checks:** git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable.
 - **Read first:** `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md`.
-- **Run:** `node scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher seeds branch entries, then `run-review.sh` iterates rounds: native `codex exec review --base <base> --json -o <findings.md>` per branch, then `classify-review-feedback.py`. If zero major: `converged`. If major or ambiguous: `blocked` with findings/classification paths for main-agent evaluation. Round cap 10.
+- **Run:** `node scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher seeds branch entries; `run-review.sh <manifest> <round-N>` executes ONE round (native `codex exec review --base <base> --json -o <findings.md>` fanned out across branches). The orchestrator (this agent) calls `classify-review-feedback.py` on each round's findings, decides converged / blocked / continue, and re-invokes `run-review.sh` with `<round-N+1>` if continuing. The runner does NOT loop. Soft round cap is 10 — operator-driven.
 - **Success gate:** every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path`.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/review.md` §loops.
 
@@ -214,7 +227,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Trigger:** Q1 (manifest exists + resume keyword).
 - **Pre-checks:** manifest path resolved; freshness ≤ 7 days OR user confirms staleness; `manifest.mode` field present.
 - **Read first:** `references/modes/rescue.md`, `references/universal/manifest-contract.md`, then the original mode's reference (whatever `manifest.mode` says).
-- **Run:** `node scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only. Redispatch with `node scripts/orchestrate-codex.mjs rescue --manifest <path> --redo failed|never-started|all-non-done`; pass `--accept-stale` only when replaying unknown/stale entries intentionally.
+- **Run:** `node scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only. Redispatch with `node scripts/orchestrate-codex.mjs rescue --manifest <path> --apply failed-only|never-started-only|all-non-done|ids:s1,s2,...`. The dispatcher's envelope prints `--apply` in its `rerun_with` template; `--redo failed|never-started|all-non-done` is accepted as a back-compat alias and normalized into `--apply`. Pass `--accept-stale` only when replaying unknown/stale entries intentionally.
 - **Success gate:** every NOT-DONE entry transitions to a terminal status; manifest history append-only.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/rescue.md` §edge-cases.
 
