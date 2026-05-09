@@ -1,6 +1,6 @@
 ---
 name: run-github-scout
-description: This skill should be used when the user asks to "find a GitHub repo for X", "compare GitHub repos", "shortlist open-source X", "find similar repos", "what GitHub project does Y", "open-source X for Y stack", or any request to discover or evaluate GitHub repositories for a concrete need. Skip when the question is broad web research not centered on repos (use `run-research`), when the user wants a deep multi-axis corpus over 5+ entities (use `run-corpus-research`), when the question is local-codebase only, or when no GitHub repository discovery is needed.
+description: Use skill if you are finding, shortlisting, or comparing GitHub repositories for a concrete need through adaptive discovery and repo evidence.
 version: 1.0.0
 ---
 
@@ -10,6 +10,31 @@ Find and shortlist the best-fit GitHub repos for a concrete user need. Default t
 
 This skill is **lean by design**. The shape is opposite to corpus research: no folder tree, no wave dispatch, no MAX-N ceilings, no template authoring. The default deliverable is a few markdown sections in chat.
 
+## Prerequisites and pinned defaults
+
+| Item | Default |
+|---|---|
+| Auth check | Run `gh auth status` before non-trivial scouts. Prefer authenticated `GH_TOKEN` or `GITHUB_TOKEN` for higher limits and stable API behavior. |
+| Search help | Treat `gh search repos --help` as the source of supported JSON fields and flags. |
+| Rate-limit check | Before large searches or deep dives, run `gh api rate_limit --jq '.resources | {core, search, graphql}'`. |
+| Query limits | Default query limit: 20. First pass: 3-6 angles. Refinement: 1-4 queries. Deep dive: top 3-5 repos only. |
+
+## GitHub tool contract
+
+- Use `gh search repos` for discovery.
+- Use `gh api repos/OWNER/REPO...` only for shortlisted metadata.
+- Use `gh api graphql` only for top-N deep evidence when REST, README, and search signals are insufficient.
+- Use direct `curl` only when `gh` is unavailable.
+- Use web/MCP tools for naming or landscape augmentation only; final repo truth comes from GitHub.
+- `run-issue-tree` also uses `gh`, but its intent is GitHub Issue planning/execution, not repo discovery.
+
+Rate-limit rules:
+- Search has its own rate bucket; do not fire unbounded search waves.
+- Prefer fewer diverse queries over paraphrase spam.
+- Check remaining `search`, `core`, and `graphql` limits before GraphQL or deep API work.
+- If limits are low, stop at metadata/README evidence and disclose the limit instead of pushing through.
+- Verify current GitHub behavior against official rate-limit docs before hardcoding exact numbers: https://docs.github.com/rest/rate-limit (accessed 2026-05-09).
+
 ## Trigger boundary
 
 **Use when:** "find the best open-source X for Y", "what GitHub repos fit this use case?", "compare repos for this stack/problem", "I need a shortlist of tools like this", or "find similar repos on GitHub".
@@ -17,10 +42,10 @@ This skill is **lean by design**. The shape is opposite to corpus research: no f
 **Redirect when:**
 
 - The task is broad technical research without a repo-discovery focus → use `run-research`.
-- The user wants a deep navigable corpus over 5+ entities with per-entity packs and cross-entity comparisons → use `run-corpus-research`.
+- The user wants broad market/category/vendor corpus work, especially 5+ entities or non-GitHub product comparisons → use `run-industry-research` when available; in this checkout, the equivalent corpus skill is `run-corpus-research`.
 - The question is codebase-local or about a non-GitHub product → not this skill.
 
-`run-github-scout` and `run-research` differ in subject: this skill is GitHub-centric and discovery-oriented; `run-research` is open-web and decision-oriented. `run-github-scout` and `run-corpus-research` differ in shape: this skill produces a shortlist in conversation; `run-corpus-research` produces a multi-file corpus tree. Some tasks (e.g., "research 8 GitHub-hosted SaaS-style projects with deep multi-axis comparisons and source ledgers") may warrant `run-corpus-research` instead even though the entities are repos.
+`run-github-scout` and `run-research` differ in subject: this skill is GitHub-centric and discovery-oriented; `run-research` is open-web and decision-oriented. `run-github-scout` and `run-industry-research`/`run-corpus-research` differ in shape: this skill produces a shortlist in conversation; corpus research produces a multi-file evidence tree. Some tasks (e.g., "research 8 GitHub-hosted SaaS-style projects with deep multi-axis comparisons and source ledgers") warrant a corpus skill instead even though the entities are repos.
 
 ## Default stance
 
