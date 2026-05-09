@@ -50,6 +50,11 @@ Skip this step only when the user named no specific thing.
 Keep the first pass intentionally small. Four good angles beats twenty
 padded ones.
 
+For compact, repeatable TSV capture, prefer the bundled wrapper
+`scripts/gh-search.sh` (see `scripts/gh-search.md` for usage). The raw
+`gh search repos` examples in this file are equivalent and useful when
+custom fields or flags are needed.
+
 **Pick a star threshold per ecosystem maturity** before running the
 first pass. Young niches (AI agents, MCP bridges, agent orchestrators,
 recent vibe-coding tools) typically need no threshold — quality repos

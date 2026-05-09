@@ -72,9 +72,18 @@ pattern that jumps past badges.
 
 - no author follower scoring
 - no org prestige scoring
-- no giant weighted rubric
+- no giant weighted rubric for **fit** or **relevance**
 - no mandatory GraphQL and REST drills across the full candidate field
 - no red-flag taxonomy that is detached from actual user fit
+
+The "no weighted rubric" rule applies to **semantic fit and
+relevance** — those judgments belong to the agent against the user's
+must-haves. The bundled `scripts/score-repos.sh` is a separate,
+allowed tool: it scores **metadata only** (archived/disabled,
+freshness, license, stars bucket, language, README/CI presence) and is
+useful as a cheap sort within Stage 2 classify. Never use its score
+as a final ranking signal — final recommendations cite repo-fit
+evidence from description, topics, README, API, or code.
 
 ## Escalation path
 
