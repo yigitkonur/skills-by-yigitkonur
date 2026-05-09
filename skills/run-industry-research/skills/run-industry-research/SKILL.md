@@ -56,15 +56,19 @@ Do not use this skill for:
 
 ## Tools and graceful degradation
 
-This skill is MCP-enhanced. Tool preference order:
+This skill is Research Power Pack-enhanced. Tool names vary by runtime; before Phase 1, verify available tool names and record the result in `_meta/methodology-and-source-policy.md`.
 
-| Capability | First choice | Fallback 1 | Fallback 2 |
+| Capability | Portable API | Use when | Fallback |
 |---|---|---|---|
-| Multi-source web research | `mcp__research-powerpack__start-research` | parallel `WebSearch` | `curl` from shell |
-| Targeted query | `mcp__research-powerpack__web-search` | `WebSearch` | `curl` |
-| Page extraction | `mcp__research-powerpack__scrape-links` | `WebFetch` | `curl` + parse |
-| Codebase / local file search | `Explore` subagent (parallel) | `Grep` + `Glob` | `Read` |
-| Parallel entity research | Parallel `Explore` subagents (≤20/wave) | Sequential `WebSearch` rounds | — |
+| Research planning | `start-research` | Set scope, gaps, and stop criteria | parallel `WebSearch`, then `curl` |
+| Classified web search | `web-search` / `smart-web-search` | Triage results with extraction/synthesis in context | `WebSearch`, then `curl` |
+| Raw result harvesting | `raw-web-search` | Build an unfiltered URL pool for later triage | `WebSearch`, then `curl` |
+| Classified page extraction | `scrape-links` / `smart-scrape-links` | Extract pages into structured matches, gaps, and follow-up signals | `WebFetch`, then `curl` |
+| Raw source capture | `raw-scrape-links` | Preserve full source markdown or Reddit threads for files/subagents | `WebFetch`, then `curl` |
+| Local corpus search | local-corpus `Explore` or `rg`/`find` + read tools | Search generated files, source URLs, duplicates, and links | manual file reads |
+| Parallel entity research | web-capable research agents (≤20/wave) | Independent entity or criterion work with disjoint write scopes | sequential search rounds |
+
+Use smart tools for classified extraction or synthesis that goes into context. Use raw tools for unfiltered result harvesting, source capture, Reddit thread preservation, or evidence passed to files/agents.
 
 Read `references/agents/research-powerpack-and-explore.md` for concrete invocation patterns and parameter recipes.
 
@@ -105,7 +109,7 @@ Clarify outcome if missing:
 Phase 1 has TWO outputs: the entity list AND the category understanding that feeds Phase 2 template authoring.
 
 1. **Decompose the topic into 3-5 sub-questions.** Each sub-question surfaces a different candidate cluster.
-2. **Run discovery searches** via `mcp__research-powerpack__start-research` (preferred) or parallel Explore subagents (fallback).
+2. **Run discovery searches** via `start-research` (preferred) or web-capable research agents with `WebSearch`/`WebFetch` (fallback).
 3. **Tier candidates** into `core`, `secondary`, `discovered-only`.
 4. **Run a deep category pre-pass.** Before locking the entity list, study the category itself: what axes do buyers actually compare on? What pricing primitives are native here? What practitioner channels matter? What regulatory/compliance angles apply? This pre-pass is what enables you to write maximalist templates in Phase 2 — without it, the templates default to generic and miss vertical-specific axes.
 
@@ -304,7 +308,7 @@ Load only the references whose phase is active. Loading all references at once e
 | `references/workflow/evidence-and-synthesis.md` | Phase 4-5 — applying source hierarchy, claims ledgers, Reddit/practitioner rules, pricing/unit-economics standards, cross-category structure. |
 | `references/workflow/worked-example-cloud-browsers.md` | Any phase — an annotated walkthrough of the cloud-browsers corpus, including the actual `_meta/comparison-template.md` and `_meta/product-folder-research-brief.md` artifacts. Use to mirror the *discipline*; do not copy slugs. |
 | `references/agents/mission-briefs.md` | Phase 1, 4, 5 — writing prompts for discovery, entity-pack, cross-comparison, audience, source-verification, and profile-writer agents. |
-| `references/agents/research-powerpack-and-explore.md` | Phase 1, 4, 5 — concrete MCP tool calls (`start-research`, `web-search`, `scrape-links`) and parallel Explore subagent dispatch patterns (≤20 per wave). |
+| `references/agents/research-powerpack-and-explore.md` | Phase 1, 4, 5 — portable Research Power Pack API shapes (`start-research`, smart/raw search and scrape) plus web-capable research agent and local-corpus Explore patterns (≤20 per wave). |
 
 ## Guardrails
 

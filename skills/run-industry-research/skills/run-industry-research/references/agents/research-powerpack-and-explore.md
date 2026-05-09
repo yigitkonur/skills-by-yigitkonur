@@ -1,25 +1,30 @@
-# Research-Powerpack and Parallel Explore
+# Research Power Pack And Research Agents
 
-Concrete invocation patterns for the research-powerpack MCP and parallel Explore subagents — the two tool families this skill leans on most.
+Portable invocation patterns for Research Power Pack tools, web-capable research agents, and local-corpus Explore.
 
 Read this in **Phase 1, 4, and 5** when dispatching research work.
 
 ## Tool inventory
 
-### Research-powerpack MCP tools
+Tool names vary by runtime. Verify the available tool names before Phase 1 and record the result in `_meta/methodology-and-source-policy.md`.
 
-| Tool | What it does | Use for |
+### Research Power Pack API shapes
+
+| Portable API | What it does | Use for |
 |---|---|---|
-| `mcp__research-powerpack__start-research` | Multi-source web research orchestrator. Takes a brief, returns a synthesized findings document. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
-| `mcp__research-powerpack__web-search` | Single targeted search query. Returns ranked links with snippets. | Phase 4-5 quick fact checks; gap filling |
-| `mcp__research-powerpack__scrape-links` | Extract links from a page (e.g., review aggregators, category pages). | Phase 1 candidate harvesting; Phase 4 status-page indexing |
+| `start-research` | Goal-tailored planning brief: scope, first searches, gaps, stop criteria. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
+| `web-search` / `smart-web-search` | Classified search with extraction/synthesis, relevance tiers, gaps, and follow-up searches. | Triage in context; gap-driven follow-ups |
+| `raw-web-search` | Unfiltered ranked URL lists and snippets. | Broad URL harvesting; Reddit permalink discovery; subagent triage |
+| `scrape-links` / `smart-scrape-links` | Structured page extraction with matches, not-found sections, and follow-up signals. | Docs/blog extraction; fact checks; source-backed synthesis |
+| `raw-scrape-links` | Full source markdown capture; preserves Reddit thread structure when available. | Source files, quote-safe evidence, Reddit/practitioner capture |
 
-### Parallel Explore subagents
+Use smart tools when the output goes directly into context and needs classification. Use raw tools when the output goes to files, subagents, source ledgers, or later triage.
 
-`Explore` is the read-only search agent (Glob + Grep + Read). For industry research it serves two roles:
+### Web-capable research agents and local-corpus Explore
 
-1. **Local-corpus Explore** — search inside the evolving research corpus for cross-references, duplicate entities, source URLs already cited.
-2. **Distributed-research Explore** — dispatch one Explore per sub-question or per entity, each running its own search rounds; results merge into the orchestrator.
+Use **web-capable research agents** for distributed web work when MCP tools are missing or when independent entity/criterion missions can run in parallel. The agent must have web search/fetch tools in its runtime and a self-contained brief.
+
+Reserve **local-corpus Explore** for read-only search inside the generated corpus: cross-references, duplicate entities, source URLs already cited, broken links, and stale filenames.
 
 ### Fallback chain
 
@@ -27,9 +32,9 @@ When the MCP is unavailable:
 
 | Lost capability | Fallback |
 |---|---|
-| `start-research` | Parallel Explore subagents (one per sub-question) running `WebSearch` + `WebFetch` |
-| `web-search` | `WebSearch` direct |
-| `scrape-links` | `WebFetch` to the page + manual link extraction in the output, OR `curl` |
+| `start-research` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
+| `web-search` / `smart-web-search` / `raw-web-search` | `WebSearch` direct |
+| `scrape-links` / `smart-scrape-links` / `raw-scrape-links` | `WebFetch` to the page + manual extraction, OR `curl` |
 
 State the fallback explicitly in the workflow. Do not silently degrade.
 
@@ -40,20 +45,20 @@ Need: discover entities in a category
 ├── Have: research-powerpack MCP
 │   └── Use: start-research with sub-question brief
 └── Have: only base tools
-    └── Use: parallel Explore subagents, one per sub-question
+    └── Use: web-capable research agents, one per sub-question
 
 Need: research one entity in depth (Phase 4)
 ├── Have: research-powerpack MCP
 │   ├── Initial broad pass: start-research per entity
-│   └── Targeted gap-filling: web-search + scrape-links
+│   └── Targeted gap-filling: smart/raw web-search + scrape-links
 └── Have: only base tools
-    └── Single Explore per entity, dispatched in parallel waves of ≤8
+    └── One web-capable research agent per entity, dispatched in waves
 
 Need: cross-reference inside the growing corpus
 └── Always: local-corpus Explore (read-only inside the corpus folder)
 
 Need: extract a candidate list from a category review page
-├── Have: scrape-links → use directly
+├── Have: smart-scrape-links or raw-scrape-links → use directly
 └── Have: only base tools → WebFetch + parse
 ```
 
@@ -62,8 +67,8 @@ Need: extract a candidate list from a category review page
 Phase 1, full-MCP path.
 
 ```
-mcp__research-powerpack__start-research:
-  brief: |
+start-research:
+  goal: |
     # Discovery brief: [topic-slug] category
 
     ## Goal
@@ -92,10 +97,10 @@ mcp__research-powerpack__start-research:
 
 The MCP returns a research output file or summary. Capture it into `_meta/discovered-entities.md`.
 
-## Pattern B: discovery via parallel Explore (no MCP)
+## Pattern B: discovery via web-capable research agents (no MCP)
 
 ```
-Dispatch N agents in parallel (one per sub-question, max 8 per wave):
+Dispatch N agents in parallel (one per sub-question):
 
 Agent 1 — sub-question 1
   - Use WebSearch with keywords: "[category name] best 2025", "[category] alternatives"
@@ -108,12 +113,12 @@ Agent 2 — sub-question 2 (challengers)
   - Reddit/HN search for migration stories
   - Return: candidate list with migration-story URLs
 
-[... up to 8 agents in parallel ...]
+[... recommended 6-8 agents in parallel; never exceed 20 ...]
 
 Orchestrator merges results into _meta/discovered-entities.md
 ```
 
-Each Explore agent's prompt should be self-contained (it has no conversation context). Pattern:
+Each research agent's prompt should be self-contained (it has no conversation context). Pattern:
 
 ```
 Discover candidates in the [topic] category that match this sub-question:
@@ -141,11 +146,11 @@ Report under 500 words.
 
 ## Pattern C: per-entity research via start-research
 
-Phase 4, full-MCP path. One MCP call per `core` entity (parallelizable in waves of 8).
+Phase 4, full-MCP path. One MCP call per `core` entity (parallelizable in waves).
 
 ```
-mcp__research-powerpack__start-research:
-  brief: |
+start-research:
+  goal: |
     # Entity research: [entity-slug] in [topic-slug] corpus
 
     ## Goal
@@ -188,11 +193,14 @@ mcp__research-powerpack__start-research:
 Phase 4 or 5, when the orchestrator needs a specific fact:
 
 ```
-mcp__research-powerpack__web-search: "Browserbase pricing 2025"
-→ returns ranked URLs and snippets
+smart-web-search:
+  keywords:
+    - "site:browserbase.com pricing browser minutes"
+  extract: "pricing plans | native units | overages | enterprise gating"
 
-mcp__research-powerpack__web-search: "Anchor Browser switched from Browserbase reddit"
-→ returns Reddit threads with migration discussion
+raw-web-search:
+  keywords:
+    - "site:reddit.com/r/*/comments Anchor Browser Browserbase migration OR switched"
 ```
 
 Use this when:
@@ -205,11 +213,14 @@ Use this when:
 Phase 1 supplement. Useful when a category-review site lists 30 entities you want to harvest:
 
 ```
-mcp__research-powerpack__scrape-links: "https://www.g2.com/categories/[category]/products"
-→ returns list of links from the page
+smart-scrape-links:
+  urls:
+    - "https://www.g2.com/categories/[category]/products"
+  extract: "listed products | vendor URLs | category labels | pagination signals"
 
-mcp__research-powerpack__scrape-links: "https://github.com/[curated-list-repo]"
-→ returns links from a curated list repo's README
+raw-scrape-links:
+  urls:
+    - "https://github.com/[curated-list-repo]"
 ```
 
 Filter the returned links for plausible entity homepages, then status-check each via WebFetch.
@@ -231,10 +242,10 @@ When dispatching multiple agents in parallel (Phase 1 discovery, Phase 4 entity 
 A typical Phase 4 sequence for one entity:
 
 ```
-1. mcp__research-powerpack__start-research → broad evidence pack draft
+1. start-research → broad evidence pack draft
 2. Read the draft; identify gaps (missing pricing scenario, missing Reddit signal)
-3. mcp__research-powerpack__web-search → fill specific gaps
-4. mcp__research-powerpack__scrape-links → harvest related pages if needed
+3. smart-web-search or raw-web-search → fill specific gaps
+4. smart-scrape-links or raw-scrape-links → harvest related pages if needed
 5. Local Explore → cross-reference inside the corpus to avoid duplicating cross-product files
 6. Write or refine the entity-pack files
 ```
@@ -245,7 +256,7 @@ Before Phase 1, run a one-line probe:
 
 ```
 # Check MCP availability
-Probe: are the mcp__research-powerpack__* tools listed in the available tools?
+Probe: which Research Power Pack tools are available (`start-research`, smart/raw search, smart/raw scrape), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
 ```
 
 Capture the result in `_meta/methodology-and-source-policy.md` so the corpus records which tools were used (and which fallbacks).

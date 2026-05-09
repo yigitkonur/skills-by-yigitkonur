@@ -67,13 +67,13 @@ Each sub-question surfaces a different candidate cluster. Five sub-questions ret
 
 ## Search execution
 
-### With research-powerpack MCP (preferred)
+### With Research Power Pack (preferred)
 
-Use `mcp__research-powerpack__start-research` with a research brief that names the sub-questions. The MCP runs multi-source discovery and returns a consolidated candidate list.
+Verify available tool names before searching and record them in `_meta/methodology-and-source-policy.md`. Use `start-research` with a research brief that names the sub-questions. The tool runs multi-source discovery and returns a consolidated candidate list or search plan.
 
 ```
-mcp__research-powerpack__start-research:
-  brief: |
+start-research:
+  goal: |
     Discover entities in the [topic] category. Decompose into these sub-questions:
     1. [sub-question 1]
     2. [sub-question 2]
@@ -83,24 +83,34 @@ mcp__research-powerpack__start-research:
     that surfaced it.
 ```
 
-For targeted follow-ups on specific candidates, use `mcp__research-powerpack__web-search`:
+For targeted follow-ups on specific candidates, use smart search when the results should be classified in context and raw search when the goal is URL harvesting:
 
 ```
-mcp__research-powerpack__web-search: "[candidate name] alternatives 2025"
-mcp__research-powerpack__web-search: "[candidate name] vs [known competitor]"
+smart-web-search:
+  keywords:
+    - "[candidate name] alternatives 2025"
+    - "[candidate name] vs [known competitor]"
+  extract: "direct competitors | adjacent alternatives | source quality | recency"
+
+raw-web-search:
+  keywords:
+    - "site:reddit.com/r/*/comments [candidate name] [category] alternatives OR switched"
 ```
 
 For extracting candidate lists from category review pages:
 
 ```
-mcp__research-powerpack__scrape-links: "https://example-review-site.com/[category]"
+smart-scrape-links:
+  urls:
+    - "https://example-review-site.com/[category]"
+  extract: "listed entities | vendor URLs | category labels | access notes"
 ```
 
 ### Fallback path (no MCP)
 
-Dispatch parallel Explore subagents — one per sub-question — to run `WebSearch` rounds and report back a candidate list. See `references/agents/research-powerpack-and-explore.md` for the parallel-Explore dispatch recipe.
+Dispatch web-capable research agents — one per sub-question — to run `WebSearch`/`WebFetch` rounds and report back a candidate list. See `references/agents/research-powerpack-and-explore.md` for the dispatch recipe.
 
-If even Explore is unavailable, run sequential `WebSearch` queries against each sub-question.
+If web-capable agents are unavailable, run sequential `WebSearch` queries against each sub-question. Reserve local-corpus Explore for searching the generated corpus, not open-web discovery.
 
 ## Search keyword templates
 
