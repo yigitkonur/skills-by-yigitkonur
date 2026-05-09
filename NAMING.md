@@ -89,6 +89,7 @@ When renaming a published skill:
 ## Current Canonical Skill Names
 
 - `apply-clean-architecture`
+- `apply-clean-mcp-architecture`
 - `ask-review`
 - `build-chrome-extension`
 - `build-copilot-sdk-app`
