@@ -38,12 +38,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/codex-flags.sh"
 
 PROMPT_FILE="${PROMPT_FILE:-}"
+PROMPT_TEXT="${PROMPT_TEXT:-}"
 CWD="${CWD:-$(pwd)}"
 OUT="${OUT:-}"
+JSONL="${JSONL:-}"
 DRY_RUN=0
 FILTER_LEVEL="${FILTER_LEVEL:-normal}"
 ORCHESTRATE_MANIFEST="${ORCHESTRATE_MANIFEST:-}"
 ORCHESTRATE_ENTRY_ID="${ORCHESTRATE_ENTRY_ID:-single}"
+REUSE_WORKTREE=0
 
 usage() {
   cat >&2 <<'EOF'
@@ -51,7 +54,9 @@ run-single.sh — spawn one codex exec, stream JSONL through the filter.
 
 Usage:
   run-single.sh --prompt-file <file> [--cwd <dir>] [--out <file>]
+  run-single.sh --prompt <text> [--cwd <dir>] [--out <file>]
                 [--manifest <m.json> --entry-id <id>]
+                [--jsonl <path>]
                 [--filter-level minimal|normal|verbose]
                 [--dry-run]
 EOF
@@ -61,11 +66,14 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --prompt-file) PROMPT_FILE="$2"; shift 2 ;;
+    --prompt)      PROMPT_TEXT="$2"; shift 2 ;;
     --cwd)         CWD="$2"; shift 2 ;;
     --out)         OUT="$2"; shift 2 ;;
+    --jsonl)       JSONL="$2"; shift 2 ;;
     --manifest)    ORCHESTRATE_MANIFEST="$2"; shift 2 ;;
     --entry-id)    ORCHESTRATE_ENTRY_ID="$2"; shift 2 ;;
     --filter-level) FILTER_LEVEL="$2"; shift 2 ;;
+    --reuse-worktree) REUSE_WORKTREE=1; shift ;;
     --dry-run)     DRY_RUN=1; shift ;;
     -h|--help)     usage ;;
     *)
@@ -75,18 +83,26 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$PROMPT_FILE" || ! -f "$PROMPT_FILE" ]]; then
-  echo "FATAL --prompt-file required and must exist: '$PROMPT_FILE'" >&2
-  exit 3
-fi
 if [[ ! -d "$CWD" ]]; then
   echo "FATAL --cwd not a directory: $CWD" >&2
+  exit 3
+fi
+if [[ -z "$PROMPT_FILE" && -n "$PROMPT_TEXT" ]]; then
+  mkdir -p "$CWD/.orchestrate-codex"
+  PROMPT_FILE="$CWD/.orchestrate-codex/${ORCHESTRATE_ENTRY_ID}.prompt.md"
+  printf '%s\n' "$PROMPT_TEXT" > "$PROMPT_FILE"
+fi
+if [[ -z "$PROMPT_FILE" || ! -f "$PROMPT_FILE" ]]; then
+  echo "FATAL --prompt-file or --prompt required; prompt file must exist: '$PROMPT_FILE'" >&2
   exit 3
 fi
 if [[ -z "$OUT" ]]; then
   OUT="$CWD/.orchestrate-codex/single.last.md"
 fi
-mkdir -p "$(dirname "$OUT")"
+if [[ -z "$JSONL" ]]; then
+  JSONL="$(dirname "$OUT")/${ORCHESTRATE_ENTRY_ID}.jsonl"
+fi
+mkdir -p "$(dirname "$OUT")" "$(dirname "$JSONL")"
 
 if ! command -v codex >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
   echo "FATAL codex CLI not found on PATH" >&2
@@ -107,10 +123,16 @@ fi
 echo "START $ORCHESTRATE_ENTRY_ID"
 
 # ── Spawn codex ────────────────────────────────────────────────
-LOG_PATH="$(dirname "$OUT")/${ORCHESTRATE_ENTRY_ID}.jsonl"
+LOG_PATH="$JSONL"
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[dry-run] codex exec ${CODEX_FLAGS[*]} --json -C $CWD -o $OUT < $PROMPT_FILE"
+  printf 'dry-run answer for %s\n' "$ORCHESTRATE_ENTRY_ID" > "$OUT"
+  printf '{"type":"turn.completed","dry_run":true}\n' > "$LOG_PATH"
+  if [[ -n "$ORCHESTRATE_MANIFEST" && -f "$ORCHESTRATE_MANIFEST" ]]; then
+    "$SCRIPT_DIR/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$ORCHESTRATE_ENTRY_ID" \
+      status=done finished_at=now exit_code=0 codex_thread_id=dry-run 2>/dev/null || true
+  fi
   echo "DONE  $ORCHESTRATE_ENTRY_ID (dry-run)"
   echo "--- all jobs finished ---"
   exit 0

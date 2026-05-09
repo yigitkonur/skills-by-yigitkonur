@@ -1,46 +1,14 @@
 #!/usr/bin/env bash
-# run-review.sh — review mode driver. One invocation = one round, fanned out
-# over branches.
+# run-review.sh — review mode convergence runner.
 #
-# For every branch in the manifest, in parallel:
-#   1. Setup-worktree per branch (if not already present from a prior round).
-#   2. Spawn `codex exec review --base <base> --json -o <findings.md>` inside
-#      the worktree. `codex exec review` is the non-interactive review surface;
-#      its JSONL output flows through codex-json-filter.sh so Monitor sees
-#      compact lines.
-#   3. Write the round's findings under <state-dir>/rounds/<slug>.<round>.md
-#      and the JSONL log under <state-dir>/rounds/<slug>.<round>.jsonl.
-#
-# CLI flag drift note: the plan's appendix says `codex review` accepts a
-# narrower flag set (no --json, no -o, no bypass). The live `codex exec
-# review` accepts ALL of: --json, -o, --dangerously-bypass-approvals-and-sandbox,
-# --skip-git-repo-check, -m, --ephemeral. We use `codex exec review` (not bare
-# `codex review`) for that reason. CODEX_REVIEW_FLAGS in codex-flags.sh is
-# kept narrow as a safety rail for direct `codex review` invocations.
-#
-# Monitor contract: emits one stdout line per state transition:
-#   START <slug>     review starting
-#   DONE  <slug>     findings written, classifier-eligible
-#   FAIL  <slug>     codex review failed
-#   SKIP  <slug>     pre-existing findings file (idempotent)
-# Final line: `--- all jobs finished ---`.
+# One invocation loops review rounds until every branch reaches a terminal
+# state: converged, blocked, failed, or cap_reached. Each round uses native
+# `codex exec review`, normalizes findings for classify-review-feedback.py,
+# and records the terminal decision in the manifest.
 #
 # Usage:
-#   run-review.sh [--dry-run] <manifest.json> <round-number>
-#
-# The manifest's review entries[] shape:
-#   { id, slug, branch, base_branch, worktree_path?, status, ... }
-#
-# Inputs (env):
-#   JOBS              parallel concurrency (default 4)
-#   PROJECT_DIR       repo root (default: cwd)
-#   ORCHESTRATE_MODE  exported to setup-worktree as `review`
-#   FILTER_LEVEL      passed to codex-json-filter.sh (default normal)
-#   STATE_DIR         where rounds/<slug>.<round>.{md,jsonl} live. Defaults
-#                     to dirname(<manifest>).
-#
-# Exit codes: 0 fleet ran, 1 manifest issue, 2 codex/jq missing,
-#             3 invalid args/round.
+#   run-review.sh --manifest <manifest.json> [--base main] [--max-rounds 10]
+#                 [--concurrency N] [--only id,id] [--dry-run]
 
 set -u
 
@@ -48,24 +16,51 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=codex-flags.sh
 . "$SCRIPT_DIR/codex-flags.sh"
 
-DRY_RUN=0
+MANIFEST="${ORCHESTRATE_MANIFEST:-}"
+DRY_RUN="${DRY_RUN:-0}"
 JOBS="${JOBS:-4}"
+BASE_REF="${BASE_REF:-main}"
+MAX_ROUNDS="${MAX_ROUNDS:-10}"
 PROJECT_DIR="${PROJECT_DIR:-$(pwd)}"
 FILTER_LEVEL="${FILTER_LEVEL:-normal}"
+STATE_DIR="${STATE_DIR:-}"
+ONLY_IDS="${ONLY_IDS:-}"
+CONCURRENCY_JUSTIFICATION="${ORCHESTRATE_CONCURRENCY_JUSTIFICATION:-}"
+REVIEW_FIXTURES="${ORCHESTRATE_REVIEW_FIXTURES:-}"
 export ORCHESTRATE_MODE="${ORCHESTRATE_MODE:-review}"
 
-if [[ "${1:-}" == "--dry-run" ]]; then
-  DRY_RUN=1
-  shift
-fi
+usage() {
+  cat >&2 <<'EOF'
+run-review.sh — run codex exec review until terminal branch states.
 
-if [[ $# -lt 2 ]]; then
-  echo "usage: $0 [--dry-run] <manifest.json> <round-number>" >&2
+Usage:
+  run-review.sh --manifest <manifest.json> [--base main] [--max-rounds 10]
+                [--concurrency N] [--only id,id] [--dry-run]
+EOF
   exit 3
-fi
+}
 
-MANIFEST="$1"
-ROUND="$2"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --manifest) MANIFEST="$2"; shift 2 ;;
+    --base) BASE_REF="$2"; shift 2 ;;
+    --max-rounds) MAX_ROUNDS="$2"; shift 2 ;;
+    --concurrency|--jobs) JOBS="$2"; shift 2 ;;
+    --project-dir) PROJECT_DIR="$2"; shift 2 ;;
+    --state-dir) STATE_DIR="$2"; shift 2 ;;
+    --only) ONLY_IDS="$2"; shift 2 ;;
+    --i-have-measured) CONCURRENCY_JUSTIFICATION="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage ;;
+    *)
+      echo "unknown arg: $1" >&2
+      usage
+      ;;
+  esac
+done
+
+[[ -n "$MANIFEST" ]] || usage
+export ORCHESTRATE_MANIFEST="$MANIFEST"
 
 if [[ ! -f "$MANIFEST" ]]; then
   echo "FATAL manifest not found: $MANIFEST" >&2
@@ -75,80 +70,75 @@ if ! jq -e . "$MANIFEST" >/dev/null 2>&1; then
   echo "FATAL manifest is not valid JSON: $MANIFEST" >&2
   exit 1
 fi
-if ! [[ "$ROUND" =~ ^[0-9]+$ ]]; then
-  echo "FATAL round must be a non-negative integer, got: $ROUND" >&2
+if ! [[ "$MAX_ROUNDS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "FATAL --max-rounds must be a positive integer, got: $MAX_ROUNDS" >&2
   exit 3
 fi
-if [[ "$ROUND" -gt 10 ]]; then
-  echo "WARN round=$ROUND exceeds the soft cap of 10. The plan's review" >&2
-  echo "     mode tightened the cap from 20 → 10 because each review is" >&2
-  echo "     a single codex review call (not a multi-turn applier loop)." >&2
+if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "FATAL JOBS must be a positive integer, got: $JOBS" >&2
+  exit 3
 fi
-
-if ! command -v codex >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
-  echo "FATAL codex CLI not found on PATH" >&2
-  exit 2
+if [[ "$JOBS" -gt 100 ]]; then
+  echo "FATAL JOBS=$JOBS exceeds hard cap of 100" >&2
+  exit 3
+fi
+if [[ "$JOBS" -gt 20 && -z "$CONCURRENCY_JUSTIFICATION" ]]; then
+  echo "FATAL JOBS=$JOBS exceeds 20; pass --i-have-measured <justification>" >&2
+  exit 3
 fi
 if ! command -v jq >/dev/null 2>&1; then
   echo "FATAL jq not found on PATH" >&2
   exit 2
 fi
-
-if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
-  echo "FATAL JOBS must be a positive integer, got: $JOBS" >&2
-  exit 3
+if ! command -v codex >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
+  echo "FATAL codex CLI not found on PATH" >&2
+  exit 2
 fi
 
 STATE_DIR="${STATE_DIR:-$(dirname "$MANIFEST")}"
 ROUNDS_DIR="$STATE_DIR/rounds"
 mkdir -p "$ROUNDS_DIR"
-
 JSON_FILTER="$SCRIPT_DIR/codex-json-filter.sh"
 
-# ── Build worklist: entries with status NOT IN {converged, blocked} ────
-WORKLIST="$(mktemp)"
-trap 'rm -f "$WORKLIST"' EXIT
+build_worklist() {
+  local out="$1"
+  jq -r '
+    .entries[]
+    | select((.status // "queued") != "converged"
+             and (.status // "queued") != "blocked"
+             and (.status // "queued") != "failed"
+             and (.status // "queued") != "cap_reached")
+    | [
+        .id,
+        (.slug // .id),
+        (.branch // ""),
+        (.base_branch // "'"$BASE_REF"'"),
+        (.worktree_path // ""),
+        (.status // "queued")
+      ]
+    | @tsv
+  ' "$MANIFEST" > "$out"
 
-jq -r '
-  .entries[]
-  | select((.status // "queued") != "converged"
-           and (.status // "queued") != "blocked"
-           and (.status // "queued") != "cap-reached")
-  | [
-      .id,
-      (.slug // .id),
-      (.branch // ""),
-      (.base_branch // "main"),
-      (.worktree_path // ""),
-      (.status // "queued")
-    ]
-  | @tsv
-' "$MANIFEST" > "$WORKLIST"
+  if [[ -n "$ONLY_IDS" ]]; then
+    local filtered
+    filtered="$(mktemp)"
+    awk -F'\t' -v only="$ONLY_IDS" '
+      BEGIN { n = split(only, ids, ","); for (i = 1; i <= n; i++) wanted[ids[i]] = 1 }
+      wanted[$1]
+    ' "$out" > "$filtered"
+    mv "$filtered" "$out"
+  fi
+}
 
-if [[ ! -s "$WORKLIST" ]]; then
-  echo "[run-review] no entries to review (all branches terminal)"
-  echo "--- all jobs finished ---"
-  exit 0
-fi
+write_review_json_from_text() {
+  local raw="$1" out="$2" branch="$3" round="$4"
+  jq -n --arg branch "$branch" --argjson round "$round" --rawfile raw "$raw" \
+    '{branch:$branch, round:$round, raw_text:$raw}' > "$out"
+}
 
-echo "[run-review] manifest: $MANIFEST"
-echo "[run-review] round:    $ROUND"
-echo "[run-review] entries:  $(wc -l < "$WORKLIST" | tr -d ' ') to review"
-echo "[run-review] rounds:   $ROUNDS_DIR"
-
-# ── Per-branch runner ──────────────────────────────────────────
 run_one() {
   local row="$1"
   IFS=$'\t' read -r id slug branch base wt_path _status <<<"$row"
-
-  local findings="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.md"
-  local jsonl="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.jsonl"
-  local errlog="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.err.log"
-
-  if [[ -s "$findings" ]]; then
-    echo "SKIP  $id (round $ROUND_NUM findings already exist: $findings)"
-    return 0
-  fi
 
   if [[ -z "$branch" ]]; then
     echo "FAIL  $id (no branch in manifest entry)"
@@ -157,125 +147,168 @@ run_one() {
     return 1
   fi
 
-  echo "START $id (round $ROUND_NUM, branch=$branch base=$base)"
-  "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-    status=running attempts=+1 round="$ROUND_NUM" \
-    started_at=now 2>/dev/null || true
+  local findings="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.md"
+  local jsonl="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.jsonl"
+  local errlog="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.err.log"
+  local review_json="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.review.json"
+  local class_json="$ROUNDS_DIR/${slug}.r${ROUND_NUM}.classification.json"
 
-  # ── Setup worktree if needed ─────────────────────────────────
+  echo "START $id (round $ROUND_NUM branch=$branch base=$base)"
+  "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+    status=running started_at=now attempts=+1 round="$ROUND_NUM" 2>/dev/null || true
+
   local wt_resolved=""
   if [[ -n "$wt_path" && -d "$wt_path" ]]; then
     wt_resolved="$wt_path"
+  elif [[ "$DRY_RUN_LOCAL" == "1" ]]; then
+    wt_resolved="<dry-run-wt>/$slug"
   else
-    if [[ "$DRY_RUN_LOCAL" == "1" ]]; then
-      wt_resolved="<dry-run-wt>/$slug"
-    else
-      local setup_out
-      if ! setup_out="$(ALLOW_REUSE=1 "$SCRIPT_DIR_ABS/setup-worktree.sh" "$slug" "$branch" "$base" 2>&1)"; then
-        echo "FAIL  $id (setup-worktree failed)"
-        printf '%s\n' "$setup_out" | sed 's/^/  [setup] /'
-        "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-          status=failed finished_at=now last_error="setup-worktree failed" 2>/dev/null || true
-        return 1
-      fi
-      wt_resolved="$(printf '%s\n' "$setup_out" | awk -F= '/^WORKTREE_PATH=/ { sub(/^WORKTREE_PATH=/, ""); print; exit }')"
-      if [[ -z "$wt_resolved" ]]; then
-        echo "FAIL  $id (could not parse WORKTREE_PATH from setup-worktree)"
-        "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-          status=failed finished_at=now last_error="setup-worktree parse failed" 2>/dev/null || true
-        return 1
-      fi
+    local setup_out
+    if ! setup_out="$(ALLOW_REUSE=1 "$SCRIPT_DIR_ABS/setup-worktree.sh" "$slug" "$branch" "$base" 2>&1)"; then
+      echo "FAIL  $id (setup-worktree failed)"
+      printf '%s\n' "$setup_out" | sed 's/^/  [setup] /'
+      "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+        status=failed finished_at=now last_error="setup-worktree failed" 2>/dev/null || true
+      return 1
+    fi
+    wt_resolved="$(printf '%s\n' "$setup_out" | awk -F= '/^WORKTREE_PATH=/ { sub(/^WORKTREE_PATH=/, ""); print; exit }')"
+    if [[ -z "$wt_resolved" ]]; then
+      echo "FAIL  $id (could not parse WORKTREE_PATH from setup-worktree)"
+      "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+        status=failed finished_at=now last_error="setup-worktree parse failed" 2>/dev/null || true
+      return 1
     fi
   fi
   "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
     worktree_path="$wt_resolved" 2>/dev/null || true
 
-  # ── Reconstruct CODEX_FLAGS in subshell ─────────────────────
-  # Newline-delimited string (NULs get stripped by `$(...)`); no flag value
-  # in our policy contains a newline.
   local -a flags=()
   while IFS= read -r f; do
     [[ -n "$f" ]] && flags+=("$f")
   done <<<"$CODEX_FLAGS_STR"
 
-  # ── Spawn codex exec review ─────────────────────────────────
-  # Note: `codex exec review` accepts the full bypass+skip-git+model flag set
-  # (verified live, contradicting the plan's narrower CODEX_REVIEW_FLAGS).
-  # We pass --base <base> + --json + -o <findings>, plus CODEX_FLAGS.
   if [[ "$DRY_RUN_LOCAL" == "1" ]]; then
-    echo "[dry-run] (cd $wt_resolved && codex exec review ${flags[*]} --base $base --json -o $findings)"
-    echo "DONE  $id (dry-run)"
+    if [[ -n "$REVIEW_FIXTURES_LOCAL" && -f "$REVIEW_FIXTURES_LOCAL/${slug}.r${ROUND_NUM}.json" ]]; then
+      cp "$REVIEW_FIXTURES_LOCAL/${slug}.r${ROUND_NUM}.json" "$review_json"
+      jq -r '.raw_text // (.items // [] | tostring)' "$review_json" > "$findings"
+    elif [[ -n "$REVIEW_FIXTURES_LOCAL" && -f "$REVIEW_FIXTURES_LOCAL/${slug}.r${ROUND_NUM}.md" ]]; then
+      cp "$REVIEW_FIXTURES_LOCAL/${slug}.r${ROUND_NUM}.md" "$findings"
+      write_review_json_from_text "$findings" "$review_json" "$branch" "$ROUND_NUM"
+    else
+      jq -n --arg branch "$branch" --argjson round "$ROUND_NUM" \
+        '{branch:$branch, round:$round, items:[]}' > "$review_json"
+      printf 'dry-run review: no findings for %s round %s\n' "$branch" "$ROUND_NUM" > "$findings"
+    fi
+    printf '{"type":"turn.completed","dry_run":true}\n' > "$jsonl"
+  else
+    local start_ts end_ts elapsed exit_code
+    start_ts="$(date +%s)"
+    set +e
+    if [[ -x "$JSON_FILTER" ]]; then
+      (cd "$wt_resolved" && codex exec review "${flags[@]}" --base "$base" --json -o "$findings" 2>"$errlog") \
+        | tee "$jsonl" \
+        | CODEX_FILTER_LEVEL="$FILTER_LEVEL" "$JSON_FILTER" \
+        | sed "s/^/[review:$slug] /"
+      exit_code="${PIPESTATUS[0]}"
+    else
+      (cd "$wt_resolved" && codex exec review "${flags[@]}" --base "$base" --json -o "$findings" 2>"$errlog") \
+        | tee "$jsonl" \
+        | sed "s/^/[review:$slug] /"
+      exit_code="${PIPESTATUS[0]}"
+    fi
+    set -u
+    end_ts="$(date +%s)"
+    elapsed=$(( end_ts - start_ts ))
+    if [[ "$exit_code" -ne 0 ]]; then
+      echo "FAIL  $id (codex review exit=$exit_code runtime=${elapsed}s; see $errlog)"
+      "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+        status=failed finished_at=now exit_code="$exit_code" last_error="codex review exit $exit_code" \
+        last_findings_path="$findings" 2>/dev/null || true
+      return 1
+    fi
+    if [[ ! -s "$findings" ]]; then
+      echo "FAIL  $id (codex review exit=0 but findings empty)"
+      "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+        status=failed finished_at=now exit_code=0 last_error="empty findings" \
+        last_findings_path="$findings" 2>/dev/null || true
+      return 1
+    fi
+    write_review_json_from_text "$findings" "$review_json" "$branch" "$ROUND_NUM"
+  fi
+
+  local classify_out classify_rc major_count
+  set +e
+  classify_out="$(python3 "$SCRIPT_DIR_ABS/classify-review-feedback.py" --review-json "$review_json" --json 2>"$class_json.err")"
+  classify_rc=$?
+  set -u
+  if [[ "$classify_rc" -eq 2 ]]; then
+    echo "FAIL  $id (classifier failed; see $class_json.err)"
+    "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+      status=failed finished_at=now last_error="classifier failed" \
+      last_findings_path="$findings" 2>/dev/null || true
+    return 1
+  fi
+  printf '%s\n' "$classify_out" > "$class_json"
+  major_count="$(jq -r '(.counts.major // 0)' "$class_json")"
+
+  if [[ "$major_count" -eq 0 ]]; then
+    echo "DONE  $id (converged round=$ROUND_NUM findings=$findings)"
+    "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+      status=converged finished_at=now exit_code=0 \
+      last_findings_path="$findings" classification_path="$class_json" 2>/dev/null || true
     return 0
   fi
 
-  local start_ts end_ts elapsed exit_code thread_id=""
-  start_ts="$(date +%s)"
-
-  set +e
-  # The codex review JSONL stream → tee → filter chain mirrors run-single.
-  if [[ -x "$JSON_FILTER" ]]; then
-    (cd "$wt_resolved" && \
-      codex exec review "${flags[@]}" --base "$base" --json -o "$findings" 2>"$errlog") \
-      | tee "$jsonl" \
-      | CODEX_FILTER_LEVEL="$FILTER_LEVEL" "$JSON_FILTER" \
-      | sed "s/^/[review:$slug] /"
-    exit_code="${PIPESTATUS[0]}"
-  else
-    (cd "$wt_resolved" && \
-      codex exec review "${flags[@]}" --base "$base" --json -o "$findings" 2>"$errlog") \
-      | tee "$jsonl" \
-      | sed "s/^/[review:$slug] /"
-    exit_code="${PIPESTATUS[0]}"
-  fi
-  set -e
-
-  end_ts="$(date +%s)"
-  elapsed=$(( end_ts - start_ts ))
-
-  if [[ -f "$jsonl" ]]; then
-    thread_id="$(grep -m1 '"type":"thread.started"' "$jsonl" 2>/dev/null \
-                  | jq -r '.thread_id // ""' 2>/dev/null || echo "")"
-  fi
-
-  if [[ "$exit_code" -ne 0 ]]; then
-    echo "FAIL  $id (codex review exit=$exit_code; runtime=${elapsed}s; see $errlog)"
-    "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-      status=failed finished_at=now exit_code="$exit_code" \
-      last_error="codex review exit $exit_code" \
-      codex_thread_id="$thread_id" \
-      last_findings_path="$findings" 2>/dev/null || true
-    return 1
-  fi
-
-  if [[ ! -s "$findings" ]]; then
-    echo "FAIL  $id (codex review exit=0 but findings empty)"
-    "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-      status=failed finished_at=now exit_code=0 last_error="empty findings" \
-      codex_thread_id="$thread_id" \
-      last_findings_path="$findings" 2>/dev/null || true
-    return 1
-  fi
-
-  # Status stays as `running` here — the orchestrator (Claude main agent)
-  # decides converged/cap-reached after reading the findings + classifier.
-  # We mark `reviewed` to indicate the round produced findings cleanly.
-  echo "DONE  $id (runtime=${elapsed}s findings=$(wc -c < "$findings" | tr -d ' ')B)"
+  echo "DONE  $id (blocked: $major_count major finding(s); see $class_json)"
   "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-    status=reviewed finished_at=now exit_code=0 \
-    codex_thread_id="$thread_id" \
-    last_findings_path="$findings" 2>/dev/null || true
+    status=blocked finished_at=now exit_code=0 \
+    last_error="major review findings require main-agent evaluation/apply queue" \
+    last_findings_path="$findings" classification_path="$class_json" 2>/dev/null || true
 }
 
 CODEX_FLAGS_STR="$(printf '%s\n' "${CODEX_FLAGS[@]}")"
 export CODEX_FLAGS_STR
 export SCRIPT_DIR_ABS="$SCRIPT_DIR"
 export ORCHESTRATE_MANIFEST="$MANIFEST"
-export ROUND_NUM="$ROUND"
-export ROUNDS_DIR JSON_FILTER FILTER_LEVEL DRY_RUN_LOCAL="$DRY_RUN" PROJECT_DIR
-export -f run_one
+export ROUNDS_DIR JSON_FILTER FILTER_LEVEL PROJECT_DIR
+export DRY_RUN_LOCAL="$DRY_RUN"
+export REVIEW_FIXTURES_LOCAL="$REVIEW_FIXTURES"
+export -f run_one write_review_json_from_text
 
-awk -F'\t' '$6 != "converged" && $6 != "blocked" && $6 != "cap-reached"' "$WORKLIST" \
-  | tr '\n' '\0' \
-  | xargs -0 -n 1 -P "$JOBS" bash -c 'run_one "$0"'
+round=1
+while [[ "$round" -le "$MAX_ROUNDS" ]]; do
+  WORKLIST="$(mktemp)"
+  build_worklist "$WORKLIST"
+  if [[ ! -s "$WORKLIST" ]]; then
+    rm -f "$WORKLIST"
+    break
+  fi
+  echo "[run-review] manifest: $MANIFEST"
+  echo "[run-review] round:    $round/$MAX_ROUNDS"
+  echo "[run-review] entries:  $(wc -l < "$WORKLIST" | tr -d ' ') non-terminal"
+  export ROUND_NUM="$round"
+  awk -F'\t' 'NF >= 6' "$WORKLIST" \
+    | tr '\n' '\0' \
+    | xargs -0 -n 1 -P "$JOBS" bash -c 'run_one "$0"'
+  rm -f "$WORKLIST"
+  round=$((round + 1))
+done
+
+if [[ "$round" -gt "$MAX_ROUNDS" ]]; then
+  # Any branch still not terminal after the cap becomes cap_reached.
+  jq -r '
+    .entries[]
+    | select((.status // "queued") != "converged"
+             and (.status // "queued") != "blocked"
+             and (.status // "queued") != "failed"
+             and (.status // "queued") != "cap_reached")
+    | .id
+  ' "$MANIFEST" | while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    "$SCRIPT_DIR/manifest-update.sh" entry "$MANIFEST" "$id" \
+      status=cap_reached finished_at=now last_error="review max rounds reached" 2>/dev/null || true
+    echo "FAIL  $id (review max rounds reached)"
+  done
+fi
 
 echo "--- all jobs finished ---"

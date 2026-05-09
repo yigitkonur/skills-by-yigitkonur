@@ -5,9 +5,9 @@
 #   1. Verifies git repo (when applicable; batch/single can skip with SKIP_GIT=1).
 #   2. Verifies `codex` CLI is on PATH and authenticated (codex login status).
 #   3. Verifies jq + flock (mandatory for manifest-update.sh) + node (≥18 for codex-cc).
-#   4. Resolves the plugin-data dir (CLAUDE_PLUGIN_DATA → XDG_DATA_HOME → ~/.local/share/claude-code)
-#      and creates the per-workspace state dir under it. Manifest path is printed
-#      on stdout for the caller (orchestrate-codex.mjs) to capture.
+#   4. Resolves the same state dir as codex-cc/lib/state.mjs and creates the
+#      orchestrate-codex subdir. Manifest path is printed on stdout for the
+#      dispatcher to capture.
 #   5. Pins the baseline SHA when inside a git repo (HEAD at start of run).
 #   6. Advises on .gitignore coverage for the per-mode worktree pattern
 #      (../<repo>-wt-<mode>-*).
@@ -71,15 +71,14 @@ CODEX_VERSION="$(codex --version 2>/dev/null || echo unknown)"
 say "codex version: $CODEX_VERSION"
 say "model: $CODEX_MODEL  effort: $CODEX_EFFORT"
 
-# `codex login status` is the canonical auth probe in 0.129.x; on older
-# binaries that subcommand may differ. We treat a non-zero status here as a
-# soft warning unless we can determine it's truly unauthenticated.
 if codex login status >/dev/null 2>&1; then
   say "codex auth: OK"
 else
-  # The user may not be logged in. Don't hard-fail in case their environment
-  # uses CODEX_API_KEY directly; print a clear advisory.
-  say "WARN: codex login status returned non-zero. Run \`codex login\` if spawns fail with auth errors."
+  if [[ "${ORCHESTRATE_SKIP_CODEX_AUTH:-0}" == "1" ]]; then
+    say "WARN: codex login status returned non-zero; ORCHESTRATE_SKIP_CODEX_AUTH=1 bypassed the hard gate."
+  else
+    fail "codex login status returned non-zero. Run \`codex login\` before dispatching." 3
+  fi
 fi
 
 # ── 3. Git repo verification (skippable for batch w/o repo) ───
@@ -94,27 +93,33 @@ else
   say "git checks skipped (SKIP_GIT=1)"
 fi
 
-# ── 4. Plugin-data dir resolution ─────────────────────────────
-# Resolution order (matches the plan's universal/plugin-data.md):
-#   1. $CLAUDE_PLUGIN_DATA — set by Claude Code harness when present.
-#   2. $XDG_DATA_HOME/claude-code — XDG-compliant fallback.
-#   3. $HOME/.local/share/claude-code — last-resort fallback.
-PLUGIN_DATA_ROOT="${CLAUDE_PLUGIN_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-code}"
-
-# Workspace slug: stable per cwd, includes a short hash so two repos with the
-# same basename don't collide. Matches codex-cc's resolveStateDir(cwd).
+# ── 4. codex-cc state dir resolution ──────────────────────────
+# Mirrors scripts/codex-cc/lib/state.mjs exactly:
+#   $CLAUDE_PLUGIN_DATA/state/<slug>-<sha256(realpath)[:16]>
+#   or ${TMPDIR:-/tmp}/codex-companion/<slug>-<sha256(realpath)[:16]>
 if [[ -z "$ORCHESTRATE_SLUG" ]]; then
-  base="$(basename "$PROJECT_DIR")"
-  # md5 then take the first 8 chars; macOS has `md5`, Linux has `md5sum`.
-  if command -v md5 >/dev/null 2>&1; then
-    hash="$(printf '%s' "$PROJECT_DIR" | md5 -q 2>/dev/null | cut -c1-8)"
+  workspace_root="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PROJECT_DIR")"
+  canonical_root="$(cd "$workspace_root" 2>/dev/null && pwd -P || printf '%s' "$workspace_root")"
+  base="$(basename "$workspace_root")"
+  slug="$(printf '%s' "$base" | sed -E 's/[^a-zA-Z0-9._-]+/-/g; s/^-+|-+$//g')"
+  [[ -n "$slug" ]] || slug="workspace"
+  if command -v shasum >/dev/null 2>&1; then
+    hash="$(printf '%s' "$canonical_root" | shasum -a 256 | awk '{print substr($1,1,16)}')"
   else
-    hash="$(printf '%s' "$PROJECT_DIR" | md5sum | cut -c1-8)"
+    hash="$(printf '%s' "$canonical_root" | sha256sum | awk '{print substr($1,1,16)}')"
   fi
-  ORCHESTRATE_SLUG="${base}-${hash}"
+  ORCHESTRATE_SLUG="${slug}-${hash}"
 fi
 
-STATE_DIR="$PLUGIN_DATA_ROOT/state/$ORCHESTRATE_SLUG/orchestrate-codex"
+if [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]]; then
+  PLUGIN_DATA_ROOT="$CLAUDE_PLUGIN_DATA"
+  STATE_ROOT="$CLAUDE_PLUGIN_DATA/state"
+else
+  PLUGIN_DATA_ROOT=""
+  STATE_ROOT="${TMPDIR:-/tmp}/codex-companion"
+fi
+
+STATE_DIR="$STATE_ROOT/$ORCHESTRATE_SLUG/orchestrate-codex"
 MANIFEST_PATH="$STATE_DIR/manifest.json"
 MONITOR_ROOT="${MONITOR_ROOT:-$STATE_DIR/logs}"
 

@@ -11,8 +11,8 @@
 #   INPUT_LIST    path to file. Two formats accepted:
 #                   (a) tab-delimited "name<TAB>content" (one per line)
 #                   (b) plain lines — each line becomes both slug and content.
-#                   Collisions on the slug are warned to stderr and skipped;
-#                   the first occurrence wins.
+#                   Collisions on the slug are hard failures; disambiguate
+#                   the input before dispatching.
 #   TEMPLATE      template file containing PLACEHOLDER.
 #   PROMPTS_DIR   destination dir (created if missing).
 #   PLACEHOLDER   token to replace. Default: XXXXXXXXXXXXX.
@@ -20,7 +20,7 @@
 # Slug rule: chars outside [a-zA-Z0-9._-] are replaced with '-' and runs of
 # '-' collapse. Empty slugs are skipped with a stderr warning.
 #
-# Exit codes: 0 OK (some files possibly skipped on collision),
+# Exit codes: 0 OK,
 #             1 input list / template not found, 2 usage error.
 #
 # The awk substitution semantics (no regex, no backslash interpretation,
@@ -46,7 +46,6 @@ mkdir -p "$PROMPTS_DIR"
 
 template="$(cat "$TEMPLATE")"
 written=0
-skipped=0
 linenum=0
 
 while IFS= read -r line || [[ -n "$line" ]]; do
@@ -62,18 +61,16 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   fi
 
   # Sanitise slug
-  slug="$(printf '%s' "$name" | tr -c 'a-zA-Z0-9._-' '-' | sed -E 's/^-+|-+$//g; s/-+/-/g')"
+  slug="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9._-' '-' | sed -E 's/^-+|-+$//g; s/-+/-/g')"
   if [[ -z "$slug" ]]; then
-    echo "warn: line $linenum produced empty slug, skipping: $line" >&2
-    skipped=$((skipped + 1))
-    continue
+    echo "error: line $linenum produced empty slug: $line" >&2
+    exit 1
   fi
 
   out="$PROMPTS_DIR/$slug.md"
   if [[ -e "$out" ]]; then
-    echo "warn: collision on $slug.md (line $linenum), skipping — disambiguate input" >&2
-    skipped=$((skipped + 1))
-    continue
+    echo "error: collision on $slug.md (line $linenum); disambiguate input" >&2
+    exit 1
   fi
 
   # Substitute placeholder via awk for safe literal replacement (no regex,
@@ -95,7 +92,4 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 done < "$INPUT_LIST"
 
 echo "rendered: $written file(s) into $PROMPTS_DIR"
-if [[ "$skipped" -gt 0 ]]; then
-  echo "skipped:  $skipped (collisions or empty slugs — see warnings)" >&2
-fi
 exit 0

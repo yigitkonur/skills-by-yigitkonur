@@ -17,7 +17,7 @@
 # Final line: `--- all jobs finished ---`.
 #
 # Usage:
-#   run-fleet.sh [--dry-run] <manifest.json>
+#   run-fleet.sh --manifest <manifest.json> [--concurrency N] [--dry-run]
 #
 # The manifest's `entries[]` shape (relevant fields):
 #   { id, slug, branch, base_branch?, prompt_path, worktree_path?, status, ... }
@@ -47,20 +47,38 @@ PROJECT_DIR="${PROJECT_DIR:-$(pwd)}"
 AUTO_COMMIT="${AUTO_COMMIT:-1}"
 COMMIT_LEVEL="${COMMIT_LEVEL:-3}"
 POST_VERIFY="${POST_VERIFY:-1}"
+MANIFEST="${ORCHESTRATE_MANIFEST:-}"
+ONLY_IDS="${ONLY_IDS:-}"
+CONCURRENCY_JUSTIFICATION="${ORCHESTRATE_CONCURRENCY_JUSTIFICATION:-}"
 export ORCHESTRATE_MODE="${ORCHESTRATE_MODE:-exec}"
 
-# Allow --dry-run as a positional flag (DoD 10).
-if [[ "${1:-}" == "--dry-run" ]]; then
-  DRY_RUN=1
-  shift
-fi
-
-if [[ $# -lt 1 ]]; then
-  echo "usage: $0 [--dry-run] <manifest.json>" >&2
+usage() {
+  echo "usage: $0 --manifest <manifest.json> [--concurrency N] [--only id,id] [--dry-run]" >&2
   exit 1
-fi
+}
 
-MANIFEST="$1"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --manifest) MANIFEST="$2"; shift 2 ;;
+    --concurrency|--jobs) JOBS="$2"; shift 2 ;;
+    --project-dir) PROJECT_DIR="$2"; shift 2 ;;
+    --only) ONLY_IDS="$2"; shift 2 ;;
+    --i-have-measured) CONCURRENCY_JUSTIFICATION="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage ;;
+    -*)
+      echo "unknown arg: $1" >&2
+      usage
+      ;;
+    *)
+      if [[ -z "$MANIFEST" ]]; then MANIFEST="$1"; else usage; fi
+      shift
+      ;;
+  esac
+done
+
+[[ -n "$MANIFEST" ]] || usage
+export ORCHESTRATE_MANIFEST="$MANIFEST"
 
 if [[ ! -f "$MANIFEST" ]]; then
   echo "FATAL manifest not found: $MANIFEST" >&2
@@ -84,8 +102,13 @@ if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
   echo "FATAL JOBS must be a positive integer, got: $JOBS" >&2
   exit 3
 fi
-if [[ "$JOBS" -gt 20 ]]; then
-  echo "WARN JOBS=$JOBS exceeds soft cap of 20; consider lowering unless you've measured." >&2
+if [[ "$JOBS" -gt 100 ]]; then
+  echo "FATAL JOBS=$JOBS exceeds hard cap of 100" >&2
+  exit 3
+fi
+if [[ "$JOBS" -gt 20 && -z "$CONCURRENCY_JUSTIFICATION" ]]; then
+  echo "FATAL JOBS=$JOBS exceeds 20; pass --i-have-measured <justification>" >&2
+  exit 3
 fi
 
 # ── Build the work list — queued + failed entries only ─────────
@@ -106,6 +129,15 @@ jq -r '
     ]
   | @tsv
 ' "$MANIFEST" > "$WORKLIST"
+
+if [[ -n "$ONLY_IDS" ]]; then
+  FILTERED="$(mktemp)"
+  awk -F'\t' -v only="$ONLY_IDS" '
+    BEGIN { n = split(only, ids, ","); for (i = 1; i <= n; i++) wanted[ids[i]] = 1 }
+    wanted[$1]
+  ' "$WORKLIST" > "$FILTERED"
+  mv "$FILTERED" "$WORKLIST"
+fi
 
 if [[ ! -s "$WORKLIST" ]]; then
   echo "FATAL no entries in manifest: $MANIFEST" >&2
@@ -193,7 +225,11 @@ run_one() {
   # ── 4. Spawn codex exec ──────────────────────────────────────
   if [[ "$DRY_RUN_LOCAL" == "1" ]]; then
     echo "[dry-run] codex exec ${flags[*]} --json -C $wt_resolved -o $answer_path < $prompt_path > $log_path"
+    printf 'dry-run answer for %s\n' "$id" > "$answer_path"
+    printf '{"type":"turn.completed","dry_run":true}\n' > "$log_path"
     echo "DONE  $id (dry-run)"
+    "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
+      status=done finished_at=now exit_code=0 verify_status=dry-run 2>/dev/null || true
     return 0
   fi
 

@@ -16,9 +16,8 @@
 # Final line: `--- all jobs finished ---`.
 #
 # Usage:
-#   run-batch.sh                # default JOBS=10, ./prompts → ./answers
-#   JOBS=20 PROMPTS=p ANSWERS=a run-batch.sh
-#   DRY_RUN=1 run-batch.sh      # print planned commands; do not invoke codex
+#   run-batch.sh --manifest <manifest.json> --prompts-dir <dir> --answers-dir <dir>
+#   run-batch.sh --dry-run --prompts-dir prompts --answers-dir answers
 #
 # Inputs (env):
 #   JOBS         parallel concurrency (default 10; warns above 20)
@@ -50,17 +49,61 @@ ANSWERS="${ANSWERS:-answers}"
 LOGS="${LOGS:-logs}"
 DRY_RUN="${DRY_RUN:-0}"
 ORCHESTRATE_MANIFEST="${ORCHESTRATE_MANIFEST:-}"
+ONLY_IDS="${ONLY_IDS:-}"
+RUNNER_LOG="${RUNNER_LOG:-}"
+AUDIT_REPORT="${AUDIT_REPORT:-}"
+MIN_BYTES="${MIN_BYTES:-10000}"
+CONCURRENCY_JUSTIFICATION="${ORCHESTRATE_CONCURRENCY_JUSTIFICATION:-}"
+
+usage() {
+  cat >&2 <<'EOF'
+run-batch.sh — run rendered prompts through codex exec.
+
+Usage:
+  run-batch.sh --manifest <manifest.json> --prompts-dir <dir>
+               --answers-dir <dir> --logs-dir <dir>
+               [--concurrency N] [--only id,id] [--dry-run]
+EOF
+  exit 3
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --manifest) ORCHESTRATE_MANIFEST="$2"; shift 2 ;;
+    --inputs|--template) shift 2 ;; # already consumed by dispatcher/render step
+    --prompts-dir|--prompts) PROMPTS="$2"; shift 2 ;;
+    --answers-dir|--answers) ANSWERS="$2"; shift 2 ;;
+    --logs-dir|--logs) LOGS="$2"; shift 2 ;;
+    --runner-log) RUNNER_LOG="$2"; shift 2 ;;
+    --audit-report) AUDIT_REPORT="$2"; shift 2 ;;
+    --min-bytes) MIN_BYTES="$2"; shift 2 ;;
+    --concurrency|--jobs) JOBS="$2"; shift 2 ;;
+    --only) ONLY_IDS="$2"; shift 2 ;;
+    --i-have-measured) CONCURRENCY_JUSTIFICATION="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage ;;
+    *)
+      echo "unknown arg: $1" >&2
+      usage
+      ;;
+  esac
+done
 
 # ── Pre-flight ─────────────────────────────────────────────────
 if ! [[ "$JOBS" =~ ^[1-9][0-9]*$ ]]; then
   echo "FATAL JOBS must be a positive integer, got: $JOBS" >&2
   exit 3
 fi
-if [[ "$JOBS" -gt 20 ]]; then
-  echo "WARN JOBS=$JOBS exceeds soft cap of 20; consider lowering unless you've measured." >&2
+if [[ "$JOBS" -gt 100 ]]; then
+  echo "FATAL JOBS=$JOBS exceeds hard cap of 100" >&2
+  exit 3
+fi
+if [[ "$JOBS" -gt 20 && -z "$CONCURRENCY_JUSTIFICATION" ]]; then
+  echo "FATAL JOBS=$JOBS exceeds 20; pass --i-have-measured <justification>" >&2
+  exit 3
 fi
 
-if ! command -v codex >/dev/null 2>&1; then
+if ! command -v codex >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
   echo "FATAL codex CLI not found on PATH" >&2
   exit 2
 fi
@@ -79,6 +122,11 @@ if [[ "$prompt_count" -eq 0 ]]; then
 fi
 
 mkdir -p "$ANSWERS" "$LOGS"
+if [[ -n "$RUNNER_LOG" ]]; then
+  mkdir -p "$(dirname "$RUNNER_LOG")"
+  : > "$RUNNER_LOG"
+  exec > >(tee -a "$RUNNER_LOG") 2> >(tee -a "$RUNNER_LOG" >&2)
+fi
 
 # ── Per-job runner ─────────────────────────────────────────────
 # Exported below so xargs subshells can call it. We pass `CODEX_FLAGS` as a
@@ -88,12 +136,19 @@ run_one() {
   local prompt="$1"
   local name answer log tmp
   name="$(basename "$prompt" .md)"
+  if [[ -n "$ONLY_IDS_LOCAL" && ",$ONLY_IDS_LOCAL," != *",$name,"* ]]; then
+    return 0
+  fi
   answer="$ANSWERS/${name}.md"
   log="$LOGS/${name}.log"
   tmp="$ANSWERS/.${name}.partial"
+  local manifest_status=""
+  if [[ -n "$ORCHESTRATE_MANIFEST" && -f "$ORCHESTRATE_MANIFEST" ]]; then
+    manifest_status="$(jq -r --arg id "$name" '.entries[]? | select(.id == $id) | .status // ""' "$ORCHESTRATE_MANIFEST" 2>/dev/null | head -1)"
+  fi
 
   # Idempotent skip
-  if [[ -s "$answer" ]]; then
+  if [[ -s "$answer" && "$manifest_status" == "done" ]]; then
     echo "SKIP  $name"
     if [[ -n "$ORCHESTRATE_MANIFEST" && -x "$SCRIPT_DIR_ABS/manifest-update.sh" ]]; then
       "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$name" \
@@ -118,7 +173,13 @@ run_one() {
 
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[dry-run] codex exec ${flags[*]} --json -o $tmp < $prompt > $log"
+    printf 'dry-run answer for %s\n' "$name" > "$answer"
+    printf '{"type":"turn.completed","dry_run":true}\n' > "$log"
     echo "DONE  $name (dry-run)"
+    if [[ -n "$ORCHESTRATE_MANIFEST" && -x "$SCRIPT_DIR_ABS/manifest-update.sh" ]]; then
+      "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$name" \
+        status=done finished_at=now exit_code=0 2>/dev/null || true
+    fi
     return 0
   fi
 
@@ -157,11 +218,17 @@ run_one() {
 # through SCRIPT_DIR_ABS so the subshell can locate manifest-update.sh.
 CODEX_FLAGS_STR="$(printf '%s\n' "${CODEX_FLAGS[@]}")"
 SCRIPT_DIR_ABS="$SCRIPT_DIR"
-export CODEX_FLAGS_STR SCRIPT_DIR_ABS ANSWERS LOGS DRY_RUN ORCHESTRATE_MANIFEST
+export CODEX_FLAGS_STR SCRIPT_DIR_ABS ANSWERS LOGS DRY_RUN ORCHESTRATE_MANIFEST ONLY_IDS_LOCAL="$ONLY_IDS"
 export -f run_one
 
 # Fan-out via xargs. -0 (NUL-delimited) keeps filenames-with-spaces safe.
 find "$PROMPTS" -maxdepth 1 -name '*.md' -print0 \
   | xargs -0 -n 1 -P "$JOBS" bash -c 'run_one "$0"'
+
+if [[ -n "$AUDIT_REPORT" ]]; then
+  mkdir -p "$(dirname "$AUDIT_REPORT")"
+  "$SCRIPT_DIR/audit-sizes.sh" "$ANSWERS" "${RUNNER_LOG:-$LOGS/_runner.log}" "$MIN_BYTES" > "$AUDIT_REPORT" 2>&1 || true
+  echo "[run-batch] audit report: $AUDIT_REPORT"
+fi
 
 echo "--- all jobs finished ---"
