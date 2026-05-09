@@ -12,7 +12,8 @@ Scaffold a new MCP server using the v2 split-package SDK. Source-verified agains
 ```bash
 mkdir my-mcp-server && cd my-mcp-server
 npm init -y
-npm install @modelcontextprotocol/server zod
+npm install --save-exact @modelcontextprotocol/server@2.0.0-alpha.2
+npm install zod@^4
 npm install -D typescript @types/node
 npx tsc --init
 ```
@@ -116,7 +117,8 @@ Test: `npx @anthropic-ai/mcp-inspector npx tsx src/index.ts`
 ## Minimal HTTP server (Express, stateful)
 
 ```bash
-npm install @modelcontextprotocol/node @modelcontextprotocol/express express
+npm install --save-exact @modelcontextprotocol/node@2.0.0-alpha.2 @modelcontextprotocol/express@2.0.0-alpha.2
+npm install express
 ```
 
 ```typescript
@@ -205,4 +207,4 @@ app.listen(3000, () => console.error("MCP server on :3000"));
 - Add more tools → `references/guides/tools-and-schemas.md`
 - Add resources or prompts → `references/guides/resources-and-prompts.md`
 - Use Hono instead of Express → `references/guides/framework-adapters.md`
-- Deploy → `references/patterns/deployment.md`
+- Stage/package for production readiness → `references/patterns/deployment.md`

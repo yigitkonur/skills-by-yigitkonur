@@ -5,7 +5,7 @@ Build MCP clients using `@modelcontextprotocol/client`.
 ## Setup
 
 ```bash
-npm install @modelcontextprotocol/client
+npm install --save-exact @modelcontextprotocol/client@2.0.0-alpha.2
 ```
 
 ```typescript

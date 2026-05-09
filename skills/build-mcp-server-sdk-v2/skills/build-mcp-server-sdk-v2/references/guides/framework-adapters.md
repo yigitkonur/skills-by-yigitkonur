@@ -5,7 +5,8 @@ v2 provides dedicated adapter packages for Express and Hono. These replace v1's 
 ## Express adapter
 
 ```bash
-npm install @modelcontextprotocol/express express
+npm install --save-exact @modelcontextprotocol/express@2.0.0-alpha.2
+npm install express
 ```
 
 ```typescript
@@ -43,7 +44,8 @@ app.use(localhostHostValidation());
 ## Hono adapter
 
 ```bash
-npm install @modelcontextprotocol/hono hono
+npm install --save-exact @modelcontextprotocol/hono@2.0.0-alpha.2
+npm install hono
 ```
 
 ```typescript
@@ -68,7 +70,7 @@ import {
 ## Node.js transport (required for HTTP)
 
 ```bash
-npm install @modelcontextprotocol/node
+npm install --save-exact @modelcontextprotocol/node@2.0.0-alpha.2
 ```
 
 ```typescript

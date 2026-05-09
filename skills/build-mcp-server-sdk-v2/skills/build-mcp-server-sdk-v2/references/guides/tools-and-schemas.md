@@ -88,7 +88,7 @@ annotations: {
 }
 ```
 
-Defaults from spec: `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, `openWorldHint: true`. Set all four explicitly.
+Defaults from spec: `readOnlyHint: false`, `destructiveHint: true`, `idempotentHint: false`, `openWorldHint: true`. Set every relevant annotation deliberately; fill all four for public or high-risk tools.
 
 ### Structured output with outputSchema
 

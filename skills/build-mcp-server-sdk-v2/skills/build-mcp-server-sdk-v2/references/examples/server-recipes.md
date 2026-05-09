@@ -168,7 +168,7 @@ server.registerTool("deploy", {
   // Ask for confirmation via elicitation
   const result = await ctx.mcpReq.elicitInput({
     mode: "form",
-    message: `Deploy ${service} to production?`,
+    message: `Deploy ${service} to staging?`,
     requestedSchema: {
       type: "object",
       properties: {
@@ -186,7 +186,7 @@ server.registerTool("deploy", {
   // ... deploy logic ...
   await ctx.mcpReq.log("info", `${service} deployed successfully`);
 
-  return { content: [{ type: "text" as const, text: `${service} deployed to production` }] };
+  return { content: [{ type: "text" as const, text: `${service} deployed to staging` }] };
 });
 
 await server.connect(new StdioServerTransport());

@@ -76,15 +76,16 @@ Ask or infer:
 | Add tools | `references/guides/tools-and-schemas.md` |
 | Add resources or prompts | `references/guides/resources-and-prompts.md` |
 | Build an MCP client | `references/guides/client-api.md` |
-| Deploy to production | `references/patterns/deployment.md` |
+| Stage or package for production readiness | `references/patterns/deployment.md` |
 
 ### 4 — Preflight setup
 
 - [ ] Node.js 20+ installed
-- [ ] `npm install @modelcontextprotocol/server zod` (Zod v4)
-- [ ] If HTTP: `npm install @modelcontextprotocol/node` (Node.js transport)
-- [ ] If Express: `npm install @modelcontextprotocol/express express`
-- [ ] If Hono: `npm install @modelcontextprotocol/hono hono`
+- [ ] `npm install --save-exact @modelcontextprotocol/server@2.0.0-alpha.2`
+- [ ] `npm install zod@^4`
+- [ ] If HTTP: `npm install --save-exact @modelcontextprotocol/node@2.0.0-alpha.2`
+- [ ] If Express: `npm install --save-exact @modelcontextprotocol/express@2.0.0-alpha.2` plus `npm install express`
+- [ ] If Hono: `npm install --save-exact @modelcontextprotocol/hono@2.0.0-alpha.2` plus `npm install hono`
 - [ ] `"type": "module"` in package.json
 - [ ] TypeScript 5+ with `"module": "Node16"`, `"moduleResolution": "Node16"`
 
@@ -215,7 +216,7 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 - Prefer `ctx.mcpReq.log()` over `console.error()` — sends structured logs to the client
 - Prefer `ctx.mcpReq.elicitInput()` over `ctx.mcpReq.send()` for user input — cleaner API
 - Use `createMcpExpressApp()` or `createMcpHonoApp()` instead of raw Express/Hono setup
-- Set `annotations` on every tool
+- Set every relevant annotation deliberately; fill all four when safety or side effects matter
 
 ## Guardrails
 

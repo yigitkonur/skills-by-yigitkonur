@@ -95,10 +95,14 @@ Default to soft. Reach for `ProtocolError` only when the request itself is inval
 ### Input sanitization
 
 ```typescript
+import { isAbsolute, relative, resolve } from "node:path";
+
 function sanitizePath(input: string, rootDir: string): string | null {
-  const resolved = resolve(rootDir, input);
-  if (!resolved.startsWith(rootDir)) return null; // path traversal
-  return resolved;
+  const root = resolve(rootDir);
+  const target = resolve(root, input);
+  const rel = relative(root, target);
+  if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) return target;
+  return null;
 }
 
 function sanitizeUrl(input: string): string | null {
@@ -261,19 +265,31 @@ After a refresh, call `server.sendToolListChanged()` so connected clients re-fet
 
 ```typescript
 async function withTimeout<T>(
-  promise: Promise<T>,
+  operation: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,
   context: string,
+  parentSignal: AbortSignal,
 ): Promise<T> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`${context} timed out after ${timeoutMs}ms`)), timeoutMs)
-  );
-  return Promise.race([promise, timeout]);
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const signal = AbortSignal.any([parentSignal, timeoutSignal]);
+  try {
+    return await operation(signal);
+  } catch (error) {
+    if (timeoutSignal.aborted) {
+      throw new Error(`${context} timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
 }
 
 server.registerTool("slow-op", schema, async (args, ctx) => {
   try {
-    const result = await withTimeout(performSlowOperation(args), 30_000, "slow-op");
+    const result = await withTimeout(
+      (signal) => performSlowOperation(args, { signal }),
+      30_000,
+      "slow-op",
+      ctx.mcpReq.signal
+    );
     return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
   } catch (error) {
     return {
@@ -283,6 +299,8 @@ server.registerTool("slow-op", schema, async (args, ctx) => {
   }
 });
 ```
+
+`AbortSignal.timeout()` and `AbortSignal.any()` require Node 20-compatible runtimes. If a project pins an older runtime despite v2's Node 20+ requirement, use a controller-based fallback and still propagate `ctx.mcpReq.signal`.
 
 ## Cancellation via AbortSignal
 
