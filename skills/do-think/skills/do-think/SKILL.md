@@ -178,16 +178,24 @@ Full spec at `references/modes/interactive-brainstorm.md`. The 4-phase loop maps
 
 Skip-fork policy and one-question-at-a-time discipline live in `references/interaction-patterns.md`.
 
+If the Interactive artifact would exceed 3,000 words, re-scope to the highest-risk sub-problem before producing it.
+
 ## Output contract
 
-- **Solo mode** — Minto Pyramid:
-  - First sentence = chosen path
-  - Body = 3-5 evidence-backed key arguments
-  - Last sentence = verification check
-  - Fast-fail: missing first sentence OR last sentence = output incomplete
+- **Solo SenseMaking** — Minto Pyramid: first sentence = verdict, body = 3-5 evidence-backed arguments, last sentence = verification check.
+- **Solo non-Sense ops** — use the classified workflow file's output contract: Extraction schema/provenance, Composition artifact/provenance, Reshape diff/invariants, GroundedQA answer/citations, WatchTrigger trigger spec, Orchestration sequence, or SelfVerify oracle log.
 - **Interactive mode** — 10-section contract: Approach / Problem shape / Decomposition / Options explored / Evaluation / Assumptions / Blind spots / Second-order effects / Ranked summary / Recommended next step
 
 Full spec: `references/foundations/output-contract.md`.
+
+## Session completion contract
+
+Every finished session states:
+- chosen next move or produced artifact
+- assumptions that matter
+- risks/blind spots, plus rollback when `Tier: High`
+- verification check, shaped to the Op
+- handoff target when another skill should continue
 
 ## Anti-patterns
 
@@ -261,7 +269,7 @@ Foundations are self-sufficient (read directly when the loop says so). `framewor
 | [`references/foundations/stepwise-reasoning.md`](references/foundations/stepwise-reasoning.md) | When tempted to leap from symptom to cause |
 | [`references/foundations/stress-test-trio.md`](references/foundations/stress-test-trio.md) | Phase C2 *for SenseMaking* — Inversion + Ladder + Second-Order (other ops use op-specific stress-test from operation-classification.md) |
 | [`references/foundations/ultrathinking.md`](references/foundations/ultrathinking.md) | Tier High — irreversible / one-shot / broad blast radius |
-| [`references/foundations/output-contract.md`](references/foundations/output-contract.md) | Always — Minto for Solo, 10-section for Interactive (op-shaped variations inside) |
+| [`references/foundations/output-contract.md`](references/foundations/output-contract.md) | Always — SenseMaking Minto, op-shaped Solo contracts, 10-section Interactive |
 
 ### Modes (how the skill operates)
 

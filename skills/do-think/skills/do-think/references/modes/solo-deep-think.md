@@ -1,6 +1,6 @@
 # Solo Deep-Think Mode
 
-The default operating mode. The agent reasons alone — no user fork pauses — and produces a single artifact at the end (Minto-shaped output per `foundations/output-contract.md`).
+The default operating mode. The agent reasons alone — no user fork pauses — and produces one artifact at the end. SenseMaking uses the Minto shape in `foundations/output-contract.md`; non-Sense operations use their workflow file's output contract.
 
 Use Solo when:
 - The user asked for an answer, not a discussion
@@ -16,7 +16,7 @@ The 4-phase loop in `foundations/core-loop.md` runs end-to-end without pause.
 
 1. Emit the opening contract (`Mode: Solo  Op: <op>  Cynefin: <domain>  Tier: <tier>`) on the first response line.
 2. Phase A → B → C → D, internally. Each phase exit criterion must be satisfied before the next.
-3. Emit the Solo output (Minto Pyramid — `foundations/output-contract.md`).
+3. Emit the Solo output: SenseMaking Minto, or the classified workflow's op-shaped contract.
 
 The user sees the *output*, not the full Phase A → D trace. Trace is internal.
 
@@ -53,11 +53,13 @@ When switching, re-emit the opening contract with `Mode: Interactive`, then rout
 
 ## What Solo output looks like
 
-Per `foundations/output-contract.md` Minto Pyramid:
+SenseMaking uses the `foundations/output-contract.md` Minto Pyramid:
 
-- First sentence = chosen path
+- First sentence = chosen verdict
 - Body = 3-5 evidence-backed key arguments
 - Last sentence = verification check
+
+Extraction, Composition, Reshape, GroundedQA, WatchTrigger, Orchestration, and SelfVerify use the output contract in their workflow section.
 
 The opening contract line precedes the output. No fork pauses. No 10-section document.
 
@@ -79,6 +81,6 @@ The workflow files are Solo-mode recipes. They specialize the 4-phase loop for c
 |---|---|
 | Skipping the opening contract because "Solo is the default, why repeat it?" | The contract is the proof Phase A1 ran. Without it, the user has no evidence the classifier didn't get silently skipped. Always emit. |
 | Defaulting to Solo on a question the user clearly wanted to discuss | Read the trigger phrases ("help me think", "walk through", "brainstorm"). If they fire, Solo is the wrong mode. |
-| Producing a 10-section document in Solo mode | That's Interactive. Solo = Minto Pyramid. |
+| Producing a 10-section document in Solo mode | That's Interactive. Solo = SenseMaking Minto or the workflow's op-shaped contract. |
 | Asking the user a clarifying question mid-Solo | If you need to ask, you've hit an escalation trigger — switch to Interactive. Don't blend modes. |
 | Stopping at the first obstacle | Anti-stall discipline. See `workflows/continuous-execution.md`. |
