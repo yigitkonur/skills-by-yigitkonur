@@ -95,7 +95,7 @@ Every non-file target must be listed in `.PHONY`. Make's default rule is "run th
 Concrete failure mode: without `.PHONY: build`, if the project has a `build/` directory, `make build` would silently no-op because Make sees the directory and assumes it's up-to-date. The user retries, retries, swears, and the build never runs.
 
 Rules:
-- Add a target to `.PHONY` the moment you write it. Don't batch up; you'll forget one.
+- Add a target to `.PHONY` the moment it is written. Do not batch up; omissions are easy.
 - Helpers (`_free-port-%`) are still phony. Pattern rules need `.PHONY` too.
 - `.PHONY: %` is tempting but wrong — it disables file-based incremental rules globally.
 
@@ -120,7 +120,7 @@ target:
 
 This skill keeps tabs as the default for compatibility — macOS ships GNU Make 3.81 by default (no `.RECIPEPREFIX`), and most CI runners default to whatever `make` is on their image. Tabs always work.
 
-If your editor strips tabs, configure it to keep tabs in `Makefile`. VSCode: add `"[makefile]": { "editor.insertSpaces": false, "editor.detectIndentation": false }` to settings. Vim: `:set noexpandtab`.
+If the editor strips tabs, configure it to keep tabs in `Makefile`. VSCode: add `"[makefile]": { "editor.insertSpaces": false, "editor.detectIndentation": false }` to settings. Vim: `:set noexpandtab`.
 
 ## Helper-target naming convention
 

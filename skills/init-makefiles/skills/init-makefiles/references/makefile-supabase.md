@@ -292,7 +292,7 @@ Note: when the local stack is running, *other* targets (migrate, functions, type
 
 ## Branching — May 2026 model
 
-As of May 2026, Supabase's branching feature defaults to **branching without git** (each preview branch in your code creates its own Supabase instance, automatically):
+As of May 2026, Supabase's branching feature defaults to **branching without git** (each preview branch creates its own Supabase instance, automatically):
 
 > "branching without git is now the default" — `https://supabase.com/blog/branching-without-git-is-now-the-default` (2026-05)
 
@@ -300,7 +300,7 @@ What this means for the Makefile:
 
 - **Each branch deploy gets its own Supabase project instance** (preview branches in Vercel auto-link to a fresh Supabase branch via the Vercel-Supabase integration).
 - **The Vercel preview environment auto-syncs** the branch's `SUPABASE_URL` and `SUPABASE_ANON_KEY` into the preview build's env. No `make` plumbing required.
-- **Production stays separate** — your production code talks to the production Supabase project; preview branches talk to their own.
+- **Production stays separate** — production code talks to the production Supabase project; preview branches talk to their own.
 
 Implication: **the Makefile only operates on the linked production project**. Don't try to manage branches from `make`. The Vercel-Supabase integration owns branch lifecycle. The Makefile's `SUPABASE_PROJECT_REF` is the production reference; never branch-specific.
 
@@ -312,7 +312,7 @@ If a user needs to inspect a branch's DB or copy its schema, they do so via the 
 |---|---|
 | Always `--dry-run` first | `db push` is idempotent against new migrations but the migrations themselves can be destructive |
 | Never `db reset` against a remote connection string | `db reset` drops ALL tables and re-runs the full migration history. Catastrophic in prod. |
-| Never edit production schema via Dashboard SQL | Bypasses migration history; future deploys will skew. If you must, run `supabase-pull` immediately after to capture the drift. |
+| Never edit production schema via Dashboard SQL | Bypasses migration history; future deploys will skew. If Dashboard SQL is unavoidable, run `supabase-pull` immediately after to capture the drift. |
 | One migration per intent | A migration that adds 3 unrelated tables is harder to revert than 3 migrations with one each |
 | Test migrations against a clone first | Use Supabase's branching (preview env) or a manual `pg_dump` + `psql` round-trip on staging |
 | Never run two `db push --linked` simultaneously | The migration table is the lock; the second call may fail or worse, corrupt the history |
@@ -357,7 +357,7 @@ The Makefile's `supabase-secrets-push` reads `supabase/.env` (the gitignored cop
 |---|---|---|
 | `supabase link` errors with "project not found" | Wrong `SUPABASE_PROJECT_REF` or unauthorized token | Verify ref in Dashboard → Settings → General; verify token in Account → Tokens |
 | `db push --linked` errors with "no migrations found" | `supabase/migrations/` empty | Run `make supabase-migrate-new name=<n>` to create one |
-| `db push --linked` no-ops | All migrations already in remote history | Run `make supabase-pull` to detect drift; if no drift, you're up to date |
+| `db push --linked` no-ops | All migrations already in remote history | Run `make supabase-pull` to detect drift; if no drift, the schema is up to date |
 | `gen types typescript` produces empty output | Linked project has no public schema tables | Apply migrations first, then regen |
 | `secrets push` overwrites unintended keys | `--env-file` upserts every key in the file (doesn't diff against remote) | Review `supabase/.env` carefully; use `supabase-secrets-list` to see what's there before pushing |
 | Edge Function deploy succeeds but throws at runtime | Missing secret (set locally, never pushed) | `make supabase-secrets-list` shows what's set; push missing ones |
@@ -372,9 +372,9 @@ The Makefile's `supabase-secrets-push` reads `supabase/.env` (the gitignored cop
 - DO NOT manage auth providers / storage policies / realtime config via CLI. Most are NOT supported by `supabase` CLI in 2026 — manage via Dashboard or the Management API. The Makefile does not generate targets for these.
 - DO NOT bypass the `CONFIRM=1` gate by aliasing `supabase-migrate-apply` or `supabase-secrets-push` to a no-gate variant. The gate is the safety net.
 - DO NOT commit `supabase/.env`. Gitignore it; commit `supabase/.env.template` instead.
-- DO NOT push secrets while logged in to the wrong project. Run `make supabase-secrets-list` first to confirm the linked project ref matches what you expect.
+- DO NOT push secrets while logged in to the wrong project. Run `make supabase-secrets-list` first to confirm the linked project ref matches the intended project.
 - DO NOT auto-link to a new project from the Makefile. Linking is one-time, user-initiated (`make supabase-link`).
-- DO NOT edit production schema via Dashboard SQL. Always migration files. If you must, `make supabase-pull` immediately after.
+- DO NOT edit production schema via Dashboard SQL. Always migration files. If Dashboard SQL is unavoidable, run `make supabase-pull` immediately after.
 - DO NOT generate Supabase migrations in projects without a `supabase/` dir. Skip the targets entirely (skill detection catches this).
 
 ## Verification

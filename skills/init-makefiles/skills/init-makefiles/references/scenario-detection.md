@@ -1,4 +1,4 @@
-# Scenario detection — classify before you scaffold
+# Scenario detection — classify before scaffolding
 
 Pick exactly one scenario per deployable app. Single-app projects get one final tag. Monorepos get one tag per deployable app plus a dominant root orchestration tag. Run the signal commands top-to-bottom, take the first supported match, and stop. Ambiguity is resolved with one targeted question — never a guess.
 
@@ -16,7 +16,7 @@ For each scenario A–G:
 - **Primary signals** — must be present. If any one of these matches, the scenario is in play.
 - **Secondary signals** — nice-to-have evidence; raises confidence but isn't load-bearing.
 - **Exclusion signals** — must NOT be present. If any of these match, it's a different scenario.
-- **Typical deps** — exact `package.json` keys (or equivalent) you expect to see.
+- **Typical deps** — exact expected `package.json` keys (or equivalent).
 - **Typical config files** — what to check for on disk.
 
 All commands assume the project root as `cwd`. Replace nothing — copy and paste.
@@ -291,7 +291,7 @@ Map: (a) → A; (b) → C or E depending on follow-up; (c) → F; (d) → G; (e)
 
 - **Ask once.** One question per ambiguity. Don't chain three questions before generating.
 - **Binary or short-list.** y/n, or labelled options (a)/(b)/(c). Avoid open-ended prompts.
-- **State what you saw.** "I see X" up front so the user can correct misperception in the same answer.
+- **State observed evidence.** Use "I see X" up front so the user can correct misperception in the same answer.
 - **Never guess silently.** When ambiguous, refuse to start generation until the user answers. The cost of a guess is regenerating the wrong Makefile and burning the snapshot commit.
 
 ## Pre-generation checklist

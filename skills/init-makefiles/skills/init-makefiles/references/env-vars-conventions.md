@@ -27,7 +27,7 @@ Vercel env vars are scoped to a target environment:
 | `development` | `vercel dev`, `vercel env pull .env.local` | Local dev — mirrors `.env.local` |
 | `preview` | All non-main branch deploys + per-PR previews | Staging-like, safe to break |
 | `production` | Deploys to the production branch (usually `main`) | Real users, treat as immutable |
-| `<custom>` | Custom envs you create (e.g., `staging`, `qa`) | When the 3 defaults don't fit |
+| `<custom>` | Custom envs created by the project (e.g., `staging`, `qa`) | When the 3 defaults don't fit |
 
 A var can be set in 1, 2, 3, or all envs. They don't auto-cascade — adding to production does NOT add to preview.
 
@@ -62,7 +62,7 @@ env-pull: _check-vercel-tokens
 	@printf "$(G)✓$(Z) .env.local refreshed\n"
 ```
 
-To pull a different scope (rare — usually you pull development for local dev):
+To pull a different scope (rare — usually pull development for local dev):
 
 ```bash
 vercel env pull .env.production --environment=production    # DANGEROUS — pulls real prod secrets to disk
@@ -114,7 +114,7 @@ The Makefile does NOT generate a "blanket-push" target. For CI-driven secret man
 
 ## Railway built-in service variables
 
-Railway sets these automatically on every service deploy. **DO NOT shadow them** in your env. `railway variable list -s <svc>` shows them under "Railway-Managed Variables".
+Railway sets these automatically on every service deploy. **DO NOT shadow them** in app env. `railway variable list -s <svc>` shows them under "Railway-Managed Variables".
 
 | Var | Notes |
 |---|---|
@@ -170,11 +170,11 @@ The single-service Scenario C variant uses `.env.api` (or `.env.<RAILWAY_SERVICE
 
 ## Supabase per-project secret scoping
 
-Supabase secrets are **per-project**, NOT per-environment in any sub-project sense. There is no "dev / preview / prod" inside a single Supabase project — secrets you push apply to that project's runtime, full stop.
+Supabase secrets are **per-project**, NOT per-environment in any sub-project sense. There is no "dev / preview / prod" inside a single Supabase project — pushed secrets apply to that project's runtime, full stop.
 
-For preview / staging / production separation, you use one of two patterns:
+For preview / staging / production separation, use one of two patterns:
 
-1. **Two separate Supabase projects** — one for prod, one for staging/preview. Each has its own ref, its own secrets. The Makefile's `SUPABASE_PROJECT_REF` is whichever you've linked.
+1. **Two separate Supabase projects** — one for prod, one for staging/preview. Each has its own ref and secrets. The Makefile's `SUPABASE_PROJECT_REF` is the linked project.
 2. **Supabase Branching** — preview deploys auto-create a branch with its own instance and own secrets, lifecycle-managed by the Vercel-Supabase integration (May 2026 default). The Makefile only operates on the linked production project; branches are out of Make's scope.
 
 `supabase/.env` (the local file `make supabase-secrets-push` reads) corresponds to *one* linked project. Switching projects = re-running `supabase link --project-ref <new-ref>` + maintaining a separate `.env`. Don't try to multiplex secrets across projects from one file.
@@ -220,7 +220,7 @@ The agent's one-line print at generation:
 
 Three layers, by purpose:
 
-1. **Master copy** — 1Password, Bitwarden, or your team's vault. The single source of truth. If you need to rotate or recover, you start here.
+1. **Master copy** — 1Password, Bitwarden, or the team's vault. The single source of truth. Start here for rotation or recovery.
 2. **Provider-native runtime store** — Vercel sensitive vars, Railway sealed vars, Supabase secrets. Each provider holds the values it needs at runtime. The Makefile pulls FROM these, never TO them in the secret-leaking direction.
 3. **GitHub Actions secrets** — for CI/CD push-to-main flows. Set via `gh secret set <NAME> --body "$pasted"`. Workflow steps read via `${{ secrets.NAME }}`.
 
@@ -245,7 +245,7 @@ For the CI/CD wiring details, see `ci-cd-workflow.md`.
 | Supabase | Edge Functions at runtime + the database itself | Vercel env, Railway env |
 | GitHub Actions | The CI runner during deploy | n/a — it's a one-shot env per workflow run |
 
-The frontend on Vercel can call the backend on Railway over HTTPS — but the backend's `DATABASE_URL` lives in Railway env, not Vercel env. The frontend never needs (and must never see) `DATABASE_URL`. If you find yourself adding `DATABASE_URL` to Vercel env, you're either (a) running DB queries in a Vercel function (then the URL goes in Vercel, not Railway) or (b) leaking it. Pick.
+The frontend on Vercel can call the backend on Railway over HTTPS — but the backend's `DATABASE_URL` lives in Railway env, not Vercel env. The frontend never needs (and must never see) `DATABASE_URL`. Adding `DATABASE_URL` to Vercel env means either (a) DB queries run in a Vercel function, so the URL belongs in Vercel, not Railway, or (b) the URL is leaking. Pick one intentionally.
 
 ## DO-NOT list
 
@@ -254,7 +254,7 @@ The frontend on Vercel can call the backend on Railway over HTTPS — but the ba
 - DO NOT blanket-import `.env.local` into Vercel production via a loop over every key. Per-key, with intent. Or use `.env.production.template` + `gh secret set` flows.
 - DO NOT use `vercel pull` to write `.env.local` — wrong file path. The right command is `vercel env pull .env.local`.
 - DO NOT cross-pollute envs between providers. Vercel's env is the frontend's; Railway's is the backend's; Supabase's is the Edge Functions' / DB's. Each provider's runtime owns its own env.
-- DO NOT shadow Railway built-in variables (`RAILWAY_*`, `PORT`). Setting your own `PORT` will be silently overridden.
+- DO NOT shadow Railway built-in variables (`RAILWAY_*`, `PORT`). Setting a custom `PORT` will be silently overridden.
 - DO NOT leak `service_role` to the frontend (Supabase). `NEXT_PUBLIC_*` is public; service_role bypasses RLS — full DB access. Server / Edge Functions only.
 - DO NOT auto-rotate secrets from the Makefile. Rotation is user-initiated; the Makefile only refreshes local copies via `env-pull`.
 - DO NOT generate `make env-pull` for Scenarios B / F / G — they have no provider env to pull.

@@ -10,7 +10,7 @@ Railway is a Platform-as-a-Service for **long-running containers** — not a ser
 
 Two consequences for the Makefile:
 
-1. The deploy is `railway up` against a service that already exists in the project — you don't `vercel deploy`-style spawn ephemeral envs. Each service has identity (name, env, domain).
+1. The deploy is `railway up` against a service that already exists in the project — Railway does not `vercel deploy`-style spawn ephemeral envs. Each service has identity (name, env, domain).
 2. `PORT` is supplied by Railway at runtime; the app **must** bind to `0.0.0.0:$PORT`. Binding `localhost:3000` is the #1 cause of "Application Failed to Respond" 502s.
 
 ## The minimal `railway.toml` baseline

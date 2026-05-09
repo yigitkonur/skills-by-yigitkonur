@@ -165,7 +165,7 @@ The killed PID is printed for forensic value — if a developer's dev server cra
 | **5353** | mDNS / Bonjour broadcasts. Binding here breaks discovery for the whole machine. |
 | **3306** | MySQL default. Even if no MySQL is running, devs muscle-memory `mysql -P 3306` and confusion follows. |
 | **27017** | MongoDB default. Same muscle-memory argument. |
-| **49152–65535** | OS ephemeral range — your kernel hands these out for outgoing connections. Binding here works but risks a TIME_WAIT collision under load. |
+| **49152–65535** | OS ephemeral range — the kernel hands these out for outgoing connections. Binding here works but risks a TIME_WAIT collision under load. |
 | **0** | Make Make pick a random port at bind time? Not portable across frameworks (Next.js refuses; Vite accepts). Skip. |
 
 When in doubt, pick from the recommended dev-default list (3456 / 4321 / 5174). They are uncommon but memorable.

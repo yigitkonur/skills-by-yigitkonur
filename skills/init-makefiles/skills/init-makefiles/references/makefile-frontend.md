@@ -153,12 +153,12 @@ env-pull: _check-vercel-tokens
 
 | Command | Writes to | Used for |
 |---|---|---|
-| `vercel env pull .env.local` | `.env.local` (or path you pass) | The framework's dev server reads this — Next.js, Vite, etc. |
+| `vercel env pull .env.local` | `.env.local` (or a passed path) | The framework's dev server reads this — Next.js, Vite, etc. |
 | `vercel pull` | `.vercel/.env.<target>.local` | `vercel build` and `vercel dev` only — the local CLI build pipeline |
 
 Generate `vercel env pull .env.local`. The dev server reads `.env.local`, not anything under `.vercel/`. Confusing the two leads to "but my env vars aren't loading" debug spirals.
 
-Sensitivity defaults (post-2025): `vercel env add` against `production` / `preview` defaults to **sensitive (write-only)** — values aren't visible after creation. Override with `--no-sensitive` if your team policy permits. The skill never blanket-imports `.env.local` to production envs (that would leak dev secrets); production secrets are managed via GitHub Actions `${{ secrets.* }}` per `ci-cd-workflow.md`.
+Sensitivity defaults (post-2025): `vercel env add` against `production` / `preview` defaults to **sensitive (write-only)** — values aren't visible after creation. Override with `--no-sensitive` only when team policy permits. The skill never blanket-imports `.env.local` to production envs (that would leak dev secrets); production secrets are managed via GitHub Actions `${{ secrets.* }}` per `ci-cd-workflow.md`.
 
 ## `verify`
 
@@ -239,8 +239,8 @@ Each app has its own Vercel project. The dashboard's "Root Directory" setting is
 Set Root Directory in Vercel dashboard for each app project:
   https://vercel.com/<team>/<project>/settings → Build → Root Directory
 
-The Make target won't fight you — `vercel link --yes --project <name>` finds
-the project and Vercel respects the dashboard setting.
+The Make target leaves Root Directory alone — `vercel link --yes --project <name>`
+finds the project and Vercel respects the dashboard setting.
 ```
 
 This banner prints once, during scaffold, NOT in the Makefile. Don't bake user-facing setup chatter into runtime targets. See `makefile-monorepo.md` for the full root + per-app pattern.

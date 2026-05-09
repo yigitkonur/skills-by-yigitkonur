@@ -225,7 +225,7 @@ dscacheutil -q host -a name <node>.<tailnet>.ts.net
 scutil --dns
 ```
 
-For PUBLIC Funnel addresses (i.e. anything you'd expect a non-tailnet client to resolve), use a public resolver:
+For PUBLIC Funnel addresses (anything expected to resolve for a non-tailnet client), use a public resolver:
 
 ```bash
 # Use any public resolver — 1.1.1.1, 8.8.8.8, 9.9.9.9 all work

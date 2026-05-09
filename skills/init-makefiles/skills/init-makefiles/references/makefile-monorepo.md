@@ -222,10 +222,10 @@ The Make target won't fight this — `vercel link --yes --project <name>` finds 
 ## Anti-patterns
 
 - **Single Makefile owning all apps' targets.** Past 8 targets per app × 3 apps = 24 targets, the help banner is unreadable and the file is unmaintainable. Always split into root + per-app.
-- **`cd apps/<name> && make <target>` instead of `$(MAKE) -C apps/<name> <target>`.** The `cd && make` form: (a) doesn't propagate the `MAKEFLAGS` correctly under `-j`, (b) leaves you in the wrong dir if the recipe fails (no shell cleanup), (c) loses the parent's `make`-level error reporting. Always use `$(MAKE) -C`.
-- **Hardcoded paths in sub-Makefiles.** Use relative paths (`.`) or `$(CURDIR)`. Never hardcode `/Users/<you>/dev/<repo>/apps/web` — the Makefile must work for any clone.
+- **`cd apps/<name> && make <target>` instead of `$(MAKE) -C apps/<name> <target>`.** The `cd && make` form: (a) doesn't propagate the `MAKEFLAGS` correctly under `-j`, (b) can leave the shell in the wrong dir if the recipe fails, (c) loses the parent's `make`-level error reporting. Always use `$(MAKE) -C`.
+- **Hardcoded paths in sub-Makefiles.** Use relative paths (`.`) or `$(CURDIR)`. Never hardcode `/Users/example/dev/repo/apps/web` — the Makefile must work for any clone.
 - **Per-app Makefiles that `include` the root preamble.** Tempting (DRY) but breaks the "each Makefile must be standalone" rule. Users running `cd apps/web && make local` would have to chase up to the parent. Each per-app Makefile carries its own preamble verbatim. The minor duplication is the price of standalone-ness.
-- **Root Makefile with per-app target bodies.** The root delegates only. If you find yourself writing `vercel deploy --prod` in the root Makefile, that work belongs in `apps/web/Makefile`.
+- **Root Makefile with per-app target bodies.** The root delegates only. If `vercel deploy --prod` appears in the root Makefile, that work belongs in `apps/web/Makefile`.
 - **More than 4 Makefiles.** Hard ceiling. Use the "pick three" prompt above when there are more than three deployable apps.
 - **Different preamble per Makefile.** All four Makefiles use the same universal preamble (SHELL, ANSI palette, `.ONESHELL`, etc.) from `makefile-base.md`. Inconsistency confuses agents reading the project.
 

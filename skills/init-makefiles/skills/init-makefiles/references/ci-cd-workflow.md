@@ -97,7 +97,7 @@ Line-by-line rationale:
 | `actions/setup-node@v4 with: { node-version: '20' }` | Node 20 is LTS through April 2026; aligns with Vercel's default Node version and most Railway Railpack-built Node services. |
 | `npm i -g vercel` (in the Vercel block) | The Vercel CLI is the canonical deploy tool. `npm i -g` per-job is faster than caching for a small CLI; the install takes ~5s. |
 | `vercel deploy --prod --yes --token=$VERCEL_TOKEN` | `--prod` for production deploys (vs preview), `--yes` to skip the "set up and deploy?" prompt, `--token=$VERCEL_TOKEN` for non-interactive auth. |
-| `bash <(curl -fsSL railway.com/install.sh) -y` (Railway block) | Official Railway install. `-y` is the unattended flag for the install script. `-fsSL` are the standard curl flags for "fail silently, show errors, follow redirects, location-aware" — you want all four for an installer-curl. |
+| `bash <(curl -fsSL railway.com/install.sh) -y` (Railway block) | Official Railway install. `-y` is the unattended flag for the install script. `-fsSL` are the standard curl flags for "fail silently, show errors, follow redirects, location-aware" — all four belong on installer curl calls. |
 | `railway up --ci -s <service>` | `--ci` is non-interactive deploy mode (no progress bar, exits on completion); `-s` selects the service. For Scenario E, this step repeats per service. |
 | `npm i -g supabase` (Supabase block) | Supabase CLI is npm-distributed. |
 | `supabase link --project-ref $SUPABASE_PROJECT_REF` then `supabase db push --linked` | Two-step. The first establishes the project context via the access token (which auto-authenticates from `$SUPABASE_ACCESS_TOKEN` env); the second applies migrations. |
