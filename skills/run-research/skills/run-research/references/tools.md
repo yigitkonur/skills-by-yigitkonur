@@ -1,6 +1,21 @@
 # Tools — the 2×2 plus the planner
 
-Five tools. Two axes (raw vs smart × search vs scrape). One orchestrator.
+Use the Research Powerpack MCP server as the canonical tool surface.
+Short aliases in this reference map to the current tool IDs:
+
+| Alias | MCP tool |
+|---|---|
+| `start-research` | `mcp__research_powerpack__start_research` |
+| `smart-web-search` | `mcp__research_powerpack__smart_web_search` |
+| `raw-web-search` | `mcp__research_powerpack__raw_web_search` |
+| `smart-scrape-links` | `mcp__research_powerpack__smart_scrape_links` |
+| `raw-scrape-links` | `mcp__research_powerpack__raw_scrape_links` |
+
+If the MCP server is unavailable, use built-in `WebSearch` for targeted
+search and `WebFetch` for extraction. If those fail, use `curl` and parse
+the result manually.
+
+Five tools. Two axes (raw vs smart x search vs scrape). One planner.
 The decisive choice:
 
 - **If the output goes into context, prefer smart.** It returns less data

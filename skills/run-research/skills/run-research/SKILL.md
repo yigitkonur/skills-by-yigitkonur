@@ -33,34 +33,41 @@ Skip when:
 - A single docs page already in context is sufficient.
 - The user explicitly asked not to search the web.
 
-## The toolkit at a glance
+## Research tool surface
 
-Five tools. Two axes. One planner.
+Use the Research Powerpack MCP tools first. If they are unavailable or
+denied, fall back to built-in web tools; if those fail, use `curl` and
+parse the page manually.
 
-```
-                 RAW (capture)              SMART (synthesize)
-   SEARCH    raw-web-search             smart-web-search
-              URL pool + audit           tiered + gap analysis
-              context-pollutant          context-compressing
+| Capability | First choice | Fallback 1 | Fallback 2 |
+|---|---|---|---|
+| Research prelude | `mcp__research_powerpack__start_research` | manual query plan | - |
+| Targeted search | `mcp__research_powerpack__smart_web_search` or `mcp__research_powerpack__raw_web_search` | `WebSearch` | `curl` |
+| Page extraction | `mcp__research_powerpack__smart_scrape_links` or `mcp__research_powerpack__raw_scrape_links` | `WebFetch` | `curl` + parse |
 
-   SCRAPE    raw-scrape-links           smart-scrape-links
-              full markdown +            Matches + Not found +
-              Reddit threading           Follow-up + Contradictions
-              evidence grade             analysis-ready
+Short aliases in this skill mean the MCP tools above:
 
-           + start-research = stopping condition
-```
+- `start-research` -> `mcp__research_powerpack__start_research`
+- `smart-web-search` -> `mcp__research_powerpack__smart_web_search`
+- `raw-web-search` -> `mcp__research_powerpack__raw_web_search`
+- `smart-scrape-links` -> `mcp__research_powerpack__smart_scrape_links`
+- `raw-scrape-links` -> `mcp__research_powerpack__raw_scrape_links`
 
-The decisive choice: **if the output goes into context, prefer smart; if
-it goes to a file or subagent, prefer raw.** Reddit comment threads are
-the canonical exception — `raw-scrape-links` preserves vote-weighted
-dissent and reply-thread structure that `smart-scrape-links` compresses
-away.
+Scope selection:
 
-`start-research` is the planner: call it first, every session. It returns
-a goal-tailored brief whose `gaps_to_watch` and `stop_criteria` are the
-only structured stopping condition the toolkit provides. Treat them as
-binding contracts.
+| Scope | Use for |
+|---|---|
+| `web` | official docs, specs, bugs, CVEs, changelogs, pricing, API shape |
+| `reddit` | lived experience, migrations, regret, production gotchas |
+| `both` | only when opinion-heavy evidence and official facts both matter |
+
+The decisive choice: if the output goes into context, prefer smart; if it
+goes to a file or specialist reviewer, prefer raw. Reddit comment threads
+are the exception: `raw-scrape-links` preserves vote-weighted dissent and
+reply-thread structure that `smart-scrape-links` compresses away.
+
+`start-research` is the planner for substantive sessions. It returns
+`gaps_to_watch` and `stop_criteria`; treat both as binding contracts.
 
 For tool-by-tool API and operational thresholds, read `references/tools.md`.
 For prompting each tool well, read `references/prompting.md`.
@@ -85,9 +92,9 @@ Five steps. One pass minimum. Iterate until every gap is closed.
    wasted budget.
 
    **Fire search calls in parallel when scopes differ.** Two
-   `raw-web-search` calls in one turn — one web-scoped (vendor docs,
-   GitHub, blogs, changelog), one Reddit-scoped (sentiment, migration,
-   dissent) — is the canonical reconnaissance pattern, not an exotic
+   `raw-web-search` calls in one turn - one `web` scoped (vendor docs,
+   GitHub, blogs, changelog), one `reddit` scoped (sentiment, migration,
+   dissent) - is the canonical reconnaissance pattern, not an exotic
    move. The round runs in roughly the time of one call. Mixing scopes
    inside one keyword set produces worse results because budgets
    compete.
