@@ -1,6 +1,6 @@
 # run-playwright
 
-Controlling a live browser with @anthropic-ai/playwright-cli for navigation, forms, screenshots, tab workflows, or interactive debugging from the terminal.
+Driving playwright-cli from @playwright/cli for live browser navigation, forms, screenshots, tabs, sessions, or terminal debugging.
 
 **Category:** testing
 

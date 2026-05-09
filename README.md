@@ -56,7 +56,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
 | [run-industry-research](skills/run-industry-research/) | productivity | Industry research corpora with evidence packs and comparisons |
 | [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub-only issue trees with runtime dispatch |
-| [run-playwright](skills/run-playwright/) | testing | Browser testing with Playwright CLI |
+| [run-playwright](skills/run-playwright/) | testing | Live browser control with Playwright Agent CLI |
 | [run-repo-cleanup](skills/run-repo-cleanup/) | productivity | Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies |
 | [run-research](skills/run-research/) | productivity | Single-question technical research with source-backed synthesis |
 | [synthesize-skills](skills/synthesize-skills/) | productivity | Claude skill creation and research methodology |
