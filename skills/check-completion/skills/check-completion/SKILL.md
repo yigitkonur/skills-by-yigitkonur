@@ -217,19 +217,6 @@ Agents under pressure default to `Implemented`. High-signal counters:
 
 Full table + pressure scenarios: `references/rationalizations.md`.
 
-## Do this, not that
-
-| Do this | Not that |
-|---|---|
-| scan all 6 audit sources before classifying | enumerate from memory and skip the source scan |
-| produce the audit table as a discrete artifact before remediation | silently start fixing things while "auditing" |
-| pick the most-pessimistic applicable status when in doubt | default to `Implemented` and hope |
-| cite specific evidence per row | mark `Implemented` with "looks good" |
-| document blockers with a concrete next step and continue | halt remediation on the first blocker |
-| run the task-specific Gate Function per status | treat all `Implemented` candidates as equivalent |
-| finish every in-scope task or explicitly flag unresolvable | leave rows in ambiguous states at end |
-| use all 22 statuses; pick the closest if a task is borderline | invent new statuses |
-
 ## Guardrails and recovery
 
 - Do not deliver the completion report without the audit table preceding it.
