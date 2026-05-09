@@ -264,7 +264,6 @@ app.post("/query", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Agent execution failed" });
   } finally {
-    await agent.close();
     await client.closeAllSessions();   // tear down the subprocess for this request
   }
 });
@@ -1127,7 +1126,7 @@ const client = new MCPClient({
 });
 
 const agent = new MCPAgent({
-  llm: new ChatAnthropic({ model: "claude-sonnet-4-6" }),
+  llm: new ChatAnthropic({ model: process.env.ANTHROPIC_MODEL! }),
   client,
   maxSteps: 10,
 });
@@ -1159,7 +1158,7 @@ const client = new MCPClient({
 });
 
 const agent = new MCPAgent({
-  llm: new ChatAnthropic({ model: "claude-sonnet-4-6" }),
+  llm: new ChatAnthropic({ model: process.env.ANTHROPIC_MODEL! }),
   client,
   maxSteps: 10,
 });
@@ -1172,7 +1171,7 @@ try {
 }
 ```
 
-> **Note — model IDs drift.** As of April 2026, `claude-sonnet-4-6` is current. Always check https://docs.anthropic.com/en/docs/about-claude/models before pinning a model — retired IDs return `model_not_found` from the provider API.
+> **Note — model IDs drift.** Verify the exact provider model ID before pinning it. Retired IDs return `model_not_found` from the provider API.
 
 ### 17. Mixing Simplified and Explicit Mode — TypeScript Type Violation
 
@@ -1216,10 +1215,10 @@ const agentSimplified = new MCPAgent({
   maxSteps: 10,
 });
 
-// Other valid simplified mode strings (April 2026 — verify against provider catalogs):
-// llm: "anthropic/claude-sonnet-4-6"
+// Other valid simplified mode strings after provider catalog verification:
+// llm: `anthropic/${process.env.ANTHROPIC_MODEL}`
 // llm: "groq/llama-3.3-70b-versatile"
-// llm: "google/gemini-2.5-pro"
+// llm: `google/${process.env.GOOGLE_MODEL}`
 // llm: "openai/gpt-4o-mini"
 // Model names drift — if you get model_not_found, update against the provider's current catalog.
 
@@ -1747,7 +1746,7 @@ try {
 
 ## Remote Agents and OAuth
 
-mcp-use 1.x exports three first-party features that previously had no anti-pattern guidance: `RemoteAgent` (cloud-managed agent execution), `BrowserOAuthClientProvider` + `onMcpAuthorization` (browser OAuth for MCP servers like Linear or Slack). These are real public exports — confirmed in `dist/index.d.ts` of the published `mcp-use@1.25.0` tarball:
+mcp-use 1.x exports three first-party features that previously had no anti-pattern guidance: `RemoteAgent` (cloud-managed agent execution), `BrowserOAuthClientProvider` + `onMcpAuthorization` (browser OAuth for MCP servers like Linear or Slack). These are public exports in the published package; re-check `dist/index.d.ts` after `mcp-use` upgrades:
 
 ```typescript
 export { BrowserOAuthClientProvider, onMcpAuthorization, probeAuthParams } from "./src/auth/index.js";

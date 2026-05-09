@@ -21,7 +21,9 @@ Use this file when the question is not "how do I start?" but rather "which optio
 | Explicit | `llm` (LangChain model instance), plus `client` or `connectors` | Maximum control, custom clients, observability-heavy setup | More code at bootstrap |
 | Simplified | `llm` (a `"provider/model"` string), `mcpServers` | Short scripts, demos, runtime model selection from config | Agent creates the MCPClient internally; less direct lifecycle control |
 
-In simplified mode the agent creates its own `MCPClient` from the `mcpServers` map and resolves the LLM from the string identifier. In explicit mode you own both objects.
+In simplified mode the agent creates its own `MCPClient` from the `mcpServers` map and resolves the LLM from the string identifier. In explicit mode the caller owns the model and client.
+
+Configuration here means TypeScript constructor configuration. Simplified mode takes inline `mcpServers`; it does not load YAML or JSON config files by itself. If the app already uses `MCPClient` config-file helpers, load that config into `MCPClient` in explicit mode or route deterministic client work to `build-mcp-use-client`.
 
 ## Full `MCPAgent` constructor reference
 
@@ -322,7 +324,7 @@ The `MCPAgent` exposes the following methods.
 | Method | Returns | What it does |
 |---|---|---|
 | `initialize()` | `Promise<void>` | Creates sessions and prepares the tool set. Called automatically when `autoInitialize: true`. Call manually when `autoInitialize: false`. |
-| `close()` | `Promise<void>` | Closes all open sessions. Call when the agent is no longer needed to free resources. |
+| `close()` | `Promise<void>` | Closes agent-owned resources. Use for simplified/agent-owned clients; close explicit shared clients at the `MCPClient` owner boundary. |
 | `run({ prompt, schema?, maxSteps?, signal? })` | `Promise<string \| T>` | Executes a single interaction and returns the final response. Pass a Zod `schema` for typed output. Pass a `signal` to support cancellation. |
 | `stream({ prompt, schema?, maxSteps?, signal? })` | `AsyncGenerator<AgentStep, string \| T>` | Yields each `AgentStep` (`{ action: { tool, toolInput, log }, observation }`) as the agent executes. Returns the final answer when exhausted. |
 | `prettyStreamEvents(prompt: string)` or `prettyStreamEvents({ prompt, maxSteps?, schema? })` | async generator | Yields formatted events suitable for CLI-style output. Plain-string form is deprecated; prefer the options object. |
@@ -338,7 +340,7 @@ const agent = new MCPAgent({ llm, client });
 
 await agent.initialize();
 const result = await agent.run({ prompt: "Inspect the repository." });
-await agent.close();   // clean up sessions
+await client.closeAllSessions();   // explicit client owner cleanup
 ```
 
 ### Streaming example

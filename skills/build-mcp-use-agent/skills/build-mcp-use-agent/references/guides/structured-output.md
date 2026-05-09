@@ -540,9 +540,10 @@ for await (const event of agent.streamEvents({ prompt: "Produce JSON only", sche
 - Both `stream()` and `streamEvents()` accept either a plain `string` prompt (deprecated but supported) or a `RunOptions` object `{ prompt, schema?, maxSteps?, signal? }`.
 - The system retries formatting up to **3 times** before throwing an error.
 - Use `.describe()` on Zod fields to give the agent guidance on what each field should contain.
-- Call `await client.closeAllSessions()` at the application level when done — this is the canonical cleanup and matches the official examples.
+- Simplified or agent-owned client cleanup: call `await agent.close()`.
+- Explicit shared client cleanup: call `await client.closeAllSessions()` at the owner boundary.
 - Use `agent.clearConversationHistory()` to reset memory between runs.
-- `agent.close()` is a superset of `client.closeAllSessions()` (it also resets internal agent state). Pick **one** of the two — calling both in sequence is redundant and will attempt session cleanup twice.
+- Pick one cleanup owner per scope; do not call both methods for the same client.
 
 
 ---
@@ -555,21 +556,20 @@ These methods manage agent state and resources; they are not specific to structu
 // Reset conversation memory between independent runs
 agent.clearConversationHistory();
 
-// Canonical cleanup at the application level — closes all active MCP server sessions
+// Explicit mode: cleanup at the application owner level
 await client.closeAllSessions();
 
-// Alternative: agent.close() is a superset of closeAllSessions() that also
-// resets agent state. Pick ONE; calling both is redundant.
+// Simplified/agent-owned mode: cleanup through the agent.
 // await agent.close();
 ```
 
 | Method | On | Purpose |
 |---|---|---|
 | `clearConversationHistory()` | `MCPAgent` | Wipes stored conversation memory |
-| `closeAllSessions()` | `MCPClient` | Canonical cleanup — terminates all active MCP server sessions. Use when you own the `MCPClient` lifecycle (most common; matches official examples). |
-| `close()` | `MCPAgent` | Superset of `client.closeAllSessions()` that also resets internal agent state. Use when you own only the agent and want a single-method cleanup. |
+| `closeAllSessions()` | `MCPClient` | Explicit shared-client cleanup. Use when the application owns the `MCPClient` lifecycle. |
+| `close()` | `MCPAgent` | Simplified or agent-owned cleanup. Use when the agent owns its internal client. |
 
-> Pick **one** of `client.closeAllSessions()` or `agent.close()` per shutdown — they are not complementary. Calling both will attempt session cleanup twice.
+> Pick **one** of `client.closeAllSessions()` or `agent.close()` per ownership scope. They are not complementary cleanup steps.
 
 ---
 

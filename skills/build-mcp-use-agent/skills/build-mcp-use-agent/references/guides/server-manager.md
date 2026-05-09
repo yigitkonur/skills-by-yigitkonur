@@ -237,18 +237,18 @@ The official MCPClient `ServerConfig` uses `command` + `args` (STDIO) as its doc
 
 ## Server health and cleanup
 
-Use `agent.close()` or `client.closeAllSessions()` to clean up processes on shutdown.
+Use the ownership policy on shutdown: simplified/agent-owned clients use `agent.close()`; explicit shared clients use `client.closeAllSessions()` at the owner boundary.
 
 **Reconnection strategies:**
 
 1. **Agent-driven reconnect:** If a tool call fails, the agent can call `disconnect_from_mcp_server` then `connect_to_mcp_server` to re-establish the connection.
-2. **Graceful shutdown:** Always call `agent.close()` or `client.closeAllSessions()` when done to clean up STDIO processes and connections.
+2. **Graceful shutdown:** Close the owner once so STDIO processes and connections do not leak.
 3. **Health verification:** Use `get_active_mcp_server` to check the current connection state.
 
 ### Health monitoring checklist
 
 - [ ] Error handling around `agent.run()` calls
-- [ ] Graceful cleanup via `agent.close()` or `client.closeAllSessions()` on shutdown
+- [ ] Graceful cleanup follows the agent-owned vs explicit shared-client ownership rule
 
 ---
 
@@ -384,5 +384,5 @@ When `useServerManager: true`, the agent uses built-in management tools to disco
 - Add servers dynamically at runtime via the `add_mcp_server_from_config` tool with `{ serverName, serverConfig }` parameters.
 - `memoryEnabled` defaults to `true`; set it explicitly to avoid accidental cross-request contamination.
 - `maxSteps` defaults to `5`; raise it substantially for multi-server workflows.
-- Use `agent.close()` or `client.closeAllSessions()` for graceful shutdown.
+- Use `agent.close()` for agent-owned clients; use `client.closeAllSessions()` for explicit shared clients.
 - Use `verbose: true` on `MCPAgent` for detailed Server Manager logging.

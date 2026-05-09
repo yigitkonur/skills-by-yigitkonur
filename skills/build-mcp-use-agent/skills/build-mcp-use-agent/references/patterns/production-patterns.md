@@ -41,11 +41,7 @@ async function main() {
     console.log(`\n[${signal}] Shutting down gracefully...`);
 
     try {
-      // Close agent first — this stops any in-flight LLM calls
-      await agent.close();
-      console.log("Agent closed.");
-
-      // Then close all MCP server sessions
+      // Explicit mode: close the owner of the shared MCPClient once.
       await client.closeAllSessions();
       console.log("All MCP sessions closed.");
     } catch (err) {
@@ -78,7 +74,6 @@ async function main() {
 
 
   // Normal exit — still clean up
-  await agent.close();
   await client.closeAllSessions();
 }
 
@@ -87,7 +82,7 @@ main().catch(console.error);
 
 **Key points:**
 
-- Always close the agent before the client — stopping in-flight LLM calls first prevents dangling tool invocations.
+- In explicit mode, close the shared `MCPClient` owner once; do not also call `agent.close()` for the same client scope.
 - The `isShuttingDown` flag prevents double-cleanup if multiple signals arrive rapidly.
 - Register handlers for both `SIGINT` (Ctrl+C) and `SIGTERM` (container orchestrator stop).
 - In containerized environments (Docker, K8s), `SIGTERM` is sent first with a grace period before `SIGKILL`.
@@ -207,7 +202,6 @@ async function main() {
     );
     console.log("Success:", result);
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -353,8 +347,8 @@ const PROVIDERS: ProviderConfig[] = [
     maxSteps: 25,
   },
   {
-    name: "Anthropic Claude 3.5 Sonnet",
-    createLLM: () => new ChatAnthropic({ model: "claude-3-5-sonnet-20241022" }),
+    name: "Anthropic Claude",
+    createLLM: () => new ChatAnthropic({ model: process.env.ANTHROPIC_MODEL! }),
     maxSteps: 25,
   },
   {
@@ -397,7 +391,6 @@ async function runWithFallback(
       console.warn(`Provider ${provider.name} failed: ${message}`);
       errors.push({ provider: provider.name, error: message });
     } finally {
-      await agent.close();
       await client.closeAllSessions();
     }
   }
@@ -524,7 +517,6 @@ async function main() {
       console.log(`Done: ${prompt.slice(0, 40)}... → ${result.slice(0, 80)}`);
     }
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -626,7 +618,6 @@ async function runConcurrentTasks(
         error: error instanceof Error ? error.message : String(error),
       };
     } finally {
-      await agent.close();
       await client.closeAllSessions();
       semaphore.release();
     }
@@ -707,7 +698,7 @@ async function simplifiedCleanup() {
   }
 }
 
-// Pattern B: Explicit client — you manage both lifecycles
+// Pattern B: explicit client — close the client owner once
 async function explicitCleanup() {
   const client = new MCPClient({
     mcpServers: {
@@ -728,8 +719,7 @@ async function explicitCleanup() {
     const result = await agent.run({ prompt: "List files in /tmp" });
     console.log(result);
   } finally {
-    // Close agent first, then client
-    await agent.close();
+    // The caller owns the MCPClient in explicit mode.
     await client.closeAllSessions();
   }
 }
@@ -755,8 +745,7 @@ async function multiAgentCleanup() {
     const result = await writer.run({ prompt: `Transform this data and write it to /workspace/output.json: ${data}` });
     console.log(result);
   } finally {
-    // Close all agents before the shared client
-    await Promise.all([reader.close(), writer.close()]);
+    // Both agents share the same caller-owned MCPClient.
     await client.closeAllSessions();
   }
 }
@@ -878,7 +867,6 @@ class BoundedConversationAgent {
   }
 
   async close(): Promise<void> {
-    await this.agent.close();
     await this.client.closeAllSessions();
   }
 
@@ -1052,7 +1040,6 @@ class MonitoredAgent {
   }
 
   async close(): Promise<void> {
-    await this.agent.close();
     await this.client.closeAllSessions();
   }
 }
@@ -1258,7 +1245,6 @@ async function main() {
     });
     console.log(result);
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1333,7 +1319,6 @@ async function basicStreamWithErrorHandling() {
     console.error("Stream error:", error instanceof Error ? error.message : error);
     console.warn("Partial results may have been produced. Check tool side-effects.");
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1375,7 +1360,6 @@ async function streamWithPartialResults() {
     // Return partial results so caller can decide what to do
     return { success: false, steps: collectedSteps, error };
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1411,7 +1395,6 @@ async function streamWithStepTimeout() {
   } catch (error) {
     console.error("\nStream error:", error instanceof Error ? error.message : error);
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1533,7 +1516,6 @@ async function main() {
     console.log(`  Largest: ${analysis.largestFile.name}`);
     console.log(`  Summary: ${analysis.summary}`);
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1643,7 +1625,6 @@ async function main() {
       throw error;
     }
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1735,7 +1716,6 @@ async function main() {
     agent.setDisallowedTools([...disallowedTools, "list_directory"]);
     console.log("Updated disallowed:", agent.getDisallowedTools());
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
@@ -1905,7 +1885,6 @@ async function main() {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log(`\n[${signal}] Shutting down...`);
-    await agent.close();
     await client.closeAllSessions();
     const successRate = metrics.length
       ? metrics.filter((m) => m.ok).length / metrics.length
@@ -1948,7 +1927,6 @@ async function main() {
     const result = await safeRun("List and summarize all files in the directory");
     console.log("Result:", result);
   } finally {
-    await agent.close();
     await client.closeAllSessions();
   }
 }
