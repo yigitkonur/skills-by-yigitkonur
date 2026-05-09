@@ -6,6 +6,8 @@ This template is the per-round review focus passed via stdin or `--prompt`. It u
 
 The `<one-sentence summary of the branch's intent>` placeholder below would, in a future revision, be filled from the per-entry `round_focus` field documented in `references/modes/review.md`. **That field is not consumed by the runner today** — for now, the operator hand-fills the placeholder before invoking review on a custom prompt.
 
+**Custom prompt injection is not wired into `handleReview` today.** The dispatcher spawns `codex exec review` with hardcoded flags plus `--base` and no positional prompt; there is no `--prompt-file` or `--focus`. To redirect review focus toward a spec doc, perf concern, or hostile intent, see `references/modes/review.md` §"Custom-prompt injection: not supported in dispatcher today" for the three documented workarounds (single-mode bridge, repo-conventions discovery, bare `codex exec review`).
+
 ---
 
 ## Template

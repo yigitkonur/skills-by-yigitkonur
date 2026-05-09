@@ -51,6 +51,25 @@ Per-branch settings flow through `tasks.json`-like structure inside the manifest
 
 `round_focus` is **informational only — not consumed by the runner today; planned.** Neither `handleReview` (`orchestrate-codex.mjs:1700-1797`) nor `run-review.sh` reads this field. The review prompt template (`references/templates/review.tmpl.md`) leaves `<one-sentence summary of the branch's intent>` as a manual placeholder for the operator to fill before invoking review on a single branch with custom intent.
 
+### Custom-prompt injection: not supported in dispatcher today
+
+The dispatcher does NOT inject prompts into `codex exec review`. `handleReview` (`orchestrate-codex.mjs:1709-1710`) accepts only these value options: `branches | base | concurrency | cwd | monitor-root | run-id | i-have-measured`. There is no `--prompt`, `--prompt-file`, or `--focus` flag. `run-review.sh:284` invokes `codex exec review` with hardcoded flags plus `--base` and no positional prompt; `mode_state.task.prompt` is not read by the runner. So today there is no first-class path to:
+
+- Inject a custom spec doc as the review focus (e.g. "review against `specs/api-design-v2.md`").
+- Express a hostile / aggressive / perf-focused review intent.
+
+The only "intensity" dial wired today is the classifier's **default-when-ambiguous: major** rule (`classify-review-feedback.py:9, 157, 214, 332`), which over-promotes ambiguous findings to major. That is a conservative bias, not a hostility dial; it does not let you redirect codex's attention or change what codex flags.
+
+For perf-focused or hostile review, use workaround (a) below — the single-mode bridge with a hand-crafted brief is the highest-fidelity path. Cross-link `references/universal/prompt-discipline.md` for how to author a hostile-review brief (binary success criteria, explicit attack surface, forbidden hand-wavy verdicts).
+
+**Three documented workarounds** (use the existing fix pattern: do not preserve the dispatcher's hardcoded prompt — bypass it):
+
+1. **Single-mode bridge.** Run `node orchestrate-codex.mjs single --prompt-file <brief.md>` once per branch with a hand-written brief that names the spec doc or the perf focus and instructs codex to produce review-shaped findings. Loses manifest seeding for the review fleet, monitor wiring, and the markdown→JSON sidecar that feeds `classify-review-feedback.py`. Gains full prompt control. Best for the 1–3 branch case.
+2. **Repo-conventions discovery.** Place the spec or focus into `AGENTS.md` / `CLAUDE.md` / `CONTRIBUTING.md` at the repo root. The default review template's discovery step (`references/templates/review.tmpl.md:22`) reads those files transparently, so codex picks up the focus without any flag plumbing. Best when the focus is a durable repo concern (the spec is the spec, not a one-off).
+3. **Bare `codex exec review`.** Drop the dispatcher entirely for ad-hoc / one-shot needs: `cd <worktree> && codex exec review --base main --json -o <out.md> < <brief.md>`. Loses every piece of skill machinery (manifest, monitor, classifier, audit) but gains full prompt control with no bridge.
+
+Surfacing `--prompt-file` on `handleReview` is a known-but-not-yet-implemented enhancement. Do not promise it; use a workaround above.
+
 ## Pre-flight
 
 1. `git rev-parse --is-inside-work-tree` succeeds (`handleReview` refuses if `.git` is absent under the resolved workspace root).
