@@ -13,6 +13,8 @@ Extract every color from a codebase — CSS variables, Tailwind classes, hardcod
 
 ## Step 1: Locate All Color Sources
 
+For a deterministic first-pass inventory, run `scripts/capture-css-tokens.sh` from the skill directory against the target root. See `scripts/capture-css-tokens.md` for usage and limitations.
+
 ### CSS Custom Properties
 
 ```bash

@@ -6,6 +6,8 @@ Extract every spacing value (padding, margin, gap) from the codebase, count freq
 
 ## Step 1: Extract All Spacing Values
 
+For a deterministic first-pass count, run `scripts/audit-spacing-scale.sh` from the skill directory against the target root. See `scripts/audit-spacing-scale.md` for usage and limitations.
+
 ### Padding
 
 ```bash

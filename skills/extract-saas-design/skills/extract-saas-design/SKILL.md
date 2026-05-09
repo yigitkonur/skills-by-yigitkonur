@@ -144,6 +144,7 @@ Start with the smallest relevant set. Only expand if the task genuinely needs mo
 | Component extraction method | Agent prompt for per-component visual specs + template with all required sections | `references/extraction/target-modes.md`, `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
 | Dashboard/admin-specific patterns | Sidebar, metrics, tables, charts, cmdk, mega-component decomposition | `references/extraction/target-modes.md`, `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
 | Token translation and naming | W3C DTCG, CSS custom properties, oklch format, shadcn naming pattern | `references/extraction/target-modes.md`, `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
+| Deterministic evidence helpers | Shell helpers for token inventory and spacing counts; use only against the target root | `scripts/capture-css-tokens.md`, `scripts/audit-spacing-scale.md` |
 | Packaging the docs | `.design-soul/` directory structure, INDEX.md and _summary.md templates | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
 | Verification and audit | Extraction completeness checklist, token/component consistency matrix, WCAG contrast checks | `references/extraction/target-modes.md`, `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
 
