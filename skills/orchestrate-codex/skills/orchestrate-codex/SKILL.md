@@ -171,6 +171,12 @@ Manifest is **deleted** on successful tidy. **Preserved** during rescue — hist
 
 Soft gate: any `JOBS` above the mode default OR `JOBS > 20` (any mode) requires `--i-have-measured "<justification>"` and records the justification in `manifest.policy.overrides.concurrency` (the dispatcher's canonical write location). `JOBS > 100` is refused at the dispatcher boundary. The bash runners (`run-fleet.sh`, `run-batch.sh`) only emit a WARN above 20 — the dispatcher is the only hard-enforcement point. Read `references/universal/concurrency.md`.
 
+## Universal: rehearsal and preview
+
+`--dry-run` is the first-class preview path on every dispatcher mode (`exec`, `batch`, `single`, `review`, `rescue`). The dispatcher writes the manifest, spawns the runner with `--dry-run` propagated through, and the runner prints the planned `codex exec` invocation plus stub artifacts (`dry-run answer for <id>`, a stub JSONL turn) without invoking codex. Use it to inspect command shape, manifest layout, and Monitor output before committing to a real spawn.
+
+Read-only / audit paths that never mutate or spawn anything: `audit-fleet-state.py`, `list-worktrees.py`, `cleanup-worktrees.py` (default; `--execute` to mutate), `audit-sizes.sh`, `manifest-update.py` (default; `--execute` to mutate), `rescue` mode without `--apply` (classify-only). Beyond these and `--dry-run`, the only other rehearsal surface is reading the mode references and the runner script source — there is no "preview just the prompt expansion" sub-command. Per-mode `--dry-run` semantics in `references/modes/exec.md`, `references/modes/batch.md`, `references/modes/single.md`, `references/modes/review.md`, `references/modes/rescue.md`.
+
 ## Universal: destructive-action gates
 
 Every destructive action stops and asks. Bypass only when the orchestrator is invoked with `--non-interactive` AND a parent agent supplied that authorization.

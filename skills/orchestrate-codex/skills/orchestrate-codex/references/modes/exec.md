@@ -41,7 +41,7 @@ Field rules per element:
 - `id` (or `slug`) is the stable per-task key; must be unique. Auto-generated as `01`, `02`, ... if omitted.
 - `branch` (optional) is created on dispatch (or reused if already present and clean). If omitted the dispatcher derives one from the id.
 - `prompt_file` is the path to a rendered prompt; see `references/templates/exec.tmpl.md`. Pass either `prompt_file` (path) or `prompt` (inline text).
-- `post_verify_cmd` (**Planned — not yet wired.** `buildExecEntries` in `scripts/orchestrate-codex.mjs` currently drops this field; the runner only consults the auto-detect table below. Until wired, pre-bake your verify into the prompt's `## Self-check` section, or run the verify manually after the fleet returns.) Defaults auto-detect per language recipe.
+- `post_verify_cmd` is wired: `buildExecEntries` in `scripts/orchestrate-codex.mjs` threads it onto `mode_state.post_verify_cmd` (and `mode_state.exec.post_verify_cmd` for back-compat); `run-fleet.sh` prefers it over the auto-detect table below. Omit it to fall back to the auto-detect recipe per language.
 
 Per-run knobs flow through the dispatcher's CLI flags (`--concurrency N`, `--cwd <dir>`), not the tasks file.
 
@@ -144,7 +144,7 @@ If the wrapper sees nothing to commit AND codex exit is 0, the task is marked `f
 | `go.mod` (and `go` on PATH) | `go vet ./...` |
 | (none of the above) | skip post-verify |
 
-Per-task override via `tasks.json` `post_verify_cmd` is **Planned — not yet wired** (see Inputs note). For now the runner only uses the auto-detect table above, and writes `verify_status` (`pass` / `fail` / `not-run`) into the manifest.
+Per-task override via `tasks.json` `post_verify_cmd` is wired (see Inputs note): the runner prefers `mode_state.post_verify_cmd` (or `mode_state.task.post_verify_cmd`) over the auto-detect table when set. The runner writes `verify_status` (`pass` / `fail` / `not-run`) and `mode_state.post_verify_exit` into the manifest.
 
 ### Docs-only / asset-only tasks
 
@@ -195,7 +195,7 @@ After every task is terminal:
 ## Anti-patterns
 
 - Never auto-merge to main. Merging is operator-driven.
-- Never reuse a worktree across runs without an explicit decision (a per-task `--reuse <id>` flag is **Planned — not yet wired**; today reuse happens implicitly via `ALLOW_REUSE=1` inside `run-fleet.sh` when `worktree_path` is already recorded). Stale state contaminates new runs.
+- Never reuse a worktree across runs without an explicit decision. A per-task `--reuse <id>` flag is not implemented today; reuse happens implicitly via `ALLOW_REUSE=1` inside `run-fleet.sh:250` when an entry's `worktree_path` is already recorded. Stale state contaminates new runs.
 - Never raise concurrency past the default without `--i-have-measured`. Rate-limits cascade.
 - Never put two tasks that share files in the same fleet. Serialize them.
 - Never let post-verify mutate state. Post-verify is a check, not a setup step. The auto-detect commands above are read-only by design (`tsc --noEmit`, `cargo check`, `mypy --strict .`, `go vet ./...`); when per-task `post_verify_cmd` ships, keep it that way. Setup belongs in `setup-worktree.sh` or in the prompt itself.

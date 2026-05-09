@@ -51,13 +51,13 @@ Side effects:
 ## Behavior
 
 - Detects monorepo layout (multiple `package.json`s with workspace fields) and surfaces it in stdout for downstream tools.
-- Probes `.gitignore` for the in-repo worktree pattern only; see "Worktree advisory" below for the conditional.
+- Probes `.gitignore` for the worktree dir name on every run; see "Worktree advisory" below.
 - Falls back to `${TMPDIR:-/tmp}/codex-companion` when `${CLAUDE_PLUGIN_DATA}` is unset (matches the codex-companion resolver — see `references/universal/plugin-data.md`).
 - **`codex login status` is a hard gate** (`scripts/bootstrap.sh:74-82`): a non-zero exit fails bootstrap with exit 3 and the dispatcher surfaces the failure in its JSON envelope. The escape hatch is `ORCHESTRATE_SKIP_CODEX_AUTH=1`, which downgrades the gate to a stderr warning and proceeds. Use the escape hatch on ephemeral CI runners that do not carry codex-cli auth state; in any environment where spawns will exercise codex auth, leave the gate hard and run `codex login` if it fails.
 
 ### Worktree advisory
 
-`scripts/bootstrap.sh:148-155` advises adding the worktree dir to `.gitignore` **only when** the resolved `WORKTREE_DIR_NAME` (default `.worktrees`) is treated as in-repo. The default convention (per `references/universal/worktree-contract.md`) places worktrees OUT-of-repo at `<repo-parent>/<repo>-wt-<mode>-<slug>`, in which case `.gitignore` does not need to cover them. The advisory fires only when `WORKTREE_DIR_NAME` points inside the repo — typically when the user has overridden the default to a relative path like `.worktrees/`.
+`scripts/bootstrap.sh:149-156` probes `.gitignore` for the resolved `WORKTREE_DIR_NAME` (default `.worktrees`) on every run and prints an advisory when the probe is not covered. The default convention (per `references/universal/worktree-contract.md`) places worktrees OUT-of-repo at `<repo-parent>/<repo>-wt-<mode>-<slug>`, where `.gitignore` does not need to cover them — in that case the advisory is informational and can be ignored. The advisory is actionable only when `WORKTREE_DIR_NAME` has been overridden to an in-repo path (e.g. `.worktrees/`); add and commit that path to `.gitignore` to silence it.
 
 ## Notes
 

@@ -71,7 +71,7 @@ node scripts/orchestrate-codex.mjs <mode> --force-redo "slug-a,slug-b"
 node scripts/orchestrate-codex.mjs <mode> --force-redo-all
 ```
 
-Use `rescue --redo failed|never-started|all-non-done` (Yigit's HEAD shape) or `rescue --apply <subset>` (S8's structured shape) for the rescue-driven path. The three-step manual workflow above remains valid as a defense-in-depth path when you don't trust the dispatcher to flip status atomically.
+Use `rescue --apply failed-only|never-started-only|all-non-done|ids:...` (canonical) — `rescue --redo {failed,never-started,all-non-done}` is accepted as a back-compat alias and normalized into `--apply` — for the rescue-driven path. The three-step manual workflow above remains valid as a defense-in-depth path when you don't trust the dispatcher to flip status atomically.
 
 **Never delete `answers/.prev/`** until the new answer is verified. Codex non-determinism means a retry can produce a smaller (or larger but worse) output than the original.
 
@@ -85,7 +85,7 @@ node scripts/orchestrate-codex.mjs <mode> --force-redo-all
 
 Archives every existing answer file (batch) to `<answers>/.prev/<slug>-<ts>.md`, flips every entry to `queued`, and re-spawns the runner. The audit cost is real — surface a confirmation prompt before the operator triggers this.
 
-For non-done entries only, prefer `rescue --redo all-non-done` (Yigit's HEAD shape) or `rescue --apply all-non-done` (S8's shape) — both are wired and operate against the existing manifest without archiving any answer files.
+For non-done entries only, prefer `rescue --apply all-non-done` (canonical; `rescue --redo all-non-done` is the back-compat alias) — wired in the dispatcher and operates against the existing manifest without archiving any answer files.
 
 The fully-manual workflow (still valid as a defense-in-depth path):
 

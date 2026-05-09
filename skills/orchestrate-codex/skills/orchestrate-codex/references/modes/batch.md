@@ -119,11 +119,11 @@ if [ "$CODEX_EXIT" = "0" ] && [ -s "$tmp" ]; then
     mv -f "$tmp" "answers/$slug.md"
     bytes=$(wc -c < "answers/$slug.md")
     echo "DONE $slug ($bytes bytes)$([ $bytes -lt $MIN_BYTES ] && echo ' [SMALL]')"
-    # Note: mode_state.answer_size_bytes / mode_state.below_floor are
-    # **Planned — not yet wired** in run-batch.sh; the runner only writes
-    # status / finished_at / exit_code today. For size-flag flow, run
-    # `bash audit-sizes.sh` after `--- all jobs finished ---` (see Audit
-    # section below).
+    # mode_state.answer_size_bytes (the byte count) and mode_state.below_floor
+    # (true when bytes < MIN_BYTES) are written alongside status/finished_at/
+    # exit_code via manifest-update.sh entry (run-batch.sh:281-289). The
+    # `audit-sizes.sh` step after `--- all jobs finished ---` is still the
+    # cross-fleet bottom-decile + below-floor surface (see Audit section).
     python3 manifest-update.py ... --set 'status=done' --set "exit_code=0"
 else
     rm -f "$tmp"

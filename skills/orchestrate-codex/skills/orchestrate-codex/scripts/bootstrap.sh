@@ -149,8 +149,10 @@ say "run-id: $ORCHESTRATE_RUN_ID"
 if [[ "$SKIP_GIT" != "1" ]]; then
   WT_DIR_NAME="${WORKTREE_DIR_NAME:-.worktrees}"
   if ! git check-ignore -q "$WT_DIR_NAME/.test" 2>/dev/null; then
-    say "advisory: $WT_DIR_NAME/ is NOT in .gitignore."
-    say "  If you use in-repo worktrees, add and commit:  $WT_DIR_NAME/"
+    say "advisory: probed $WT_DIR_NAME/ against .gitignore and it is NOT covered."
+    say "  Ignore this if you use the default out-of-repo worktree convention"
+    say "  (../<repo>-wt-<mode>-<slug>); only relevant if you have set"
+    say "  WORKTREE_DIR_NAME to an in-repo path, in which case add: $WT_DIR_NAME/"
   fi
 fi
 
