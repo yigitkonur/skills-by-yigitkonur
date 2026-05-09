@@ -107,11 +107,14 @@ Refer to `references/examples/server-recipes.md` for complete working examples.
 
 ### 6 — Validate
 
-- **stdio**: Test with `npx @anthropic-ai/mcp-inspector` or pipe JSON-RPC messages directly
-- **HTTP**: Start the server, then test with `curl` or the MCP Inspector
-- **Tool schemas**: Verify Zod validation catches bad input (pass invalid args, confirm error response)
+- Run local type/build/unit checks first (`npm run build`, focused tests if present)
+- **stdio**: Test with `npx @anthropic-ai/mcp-inspector`, direct JSON-RPC, or `test-by-mcpc-cli`
+- **HTTP**: Start the server, then test with `curl`, the MCP Inspector, or `test-by-mcpc-cli`
+- **Live smoke**: Once the server runs, use `test-by-mcpc-cli` for stdio or Streamable HTTP. Minimum sequence: initialize/connect → `tools/list` → one successful tool call → one invalid-argument tool call returning `isError: true`.
+- **Tool schemas**: Verify Zod validation catches bad input (pass invalid args, confirm `isError: true`)
 - **Annotations**: Check that `readOnlyHint` / `destructiveHint` are accurate for each tool
 - **Capabilities**: Verify the server declares the correct capabilities during initialization
+- For a hardening or agentic-quality audit beyond SDK v1 correctness, route to `optimize-agent-ergonomics`; do not duplicate that deep audit workflow here.
 
 ## Quick start — minimal stdio server
 
@@ -251,9 +254,42 @@ Per spec: input validation errors SHOULD use `isError: true` (tool execution err
 - Never use `inputSchema: null` — for parameterless tools, omit `inputSchema` entirely
 - Servers MUST validate `Origin` header on HTTP transport to prevent DNS rebinding; respond with 403 for invalid origins
 
+## Output contract
+
+Report:
+
+- Target path and whether work was new-server build or existing-server maintenance
+- SDK package/version range from `package.json`
+- Transport(s): stdio, stateful Streamable HTTP, stateless Streamable HTTP, or web-standard
+- Tool/resource/prompt counts and names
+- Auth mode: none, static bearer, OAuth 2.1, or custom middleware
+- Validation actually run and verification rung reached
+- Publish/deploy path: npm `bin`/`npx` command for stdio, HTTP endpoint path for remote servers, Docker/serverless note when applicable
+- `server-info`:
+
+```json
+{
+  "name": "example-server",
+  "sdk": "@modelcontextprotocol/sdk@^1.x",
+  "transports": ["stdio"],
+  "tools": 3,
+  "resources": 0,
+  "prompts": 0,
+  "auth": "none",
+  "validatedWith": ["build", "test-by-mcpc-cli"]
+}
+```
+
 ## Reference routing
 
 Use the smallest relevant set for the branch of work.
+
+### Bundled scripts
+
+| Script | When to run |
+|---|---|
+| `scripts/check-mcp-sdk-v1-version.sh` | Existing project preflight; confirms v1 single-package SDK, no v2 split packages, and `zod` present. See `scripts/check-mcp-sdk-v1-version.sh.md`. |
+| `scripts/scaffold-v1-server.sh` | Empty greenfield target after choosing `stdio`, `http-stateful`, or `http-stateless`. See `scripts/scaffold-v1-server.sh.md`. |
 
 ### Start here
 
