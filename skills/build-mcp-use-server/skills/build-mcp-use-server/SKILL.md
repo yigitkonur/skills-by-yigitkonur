@@ -5,45 +5,83 @@ description: Use skill if you are building or extending TypeScript MCP servers w
 
 # Build mcp-use Server
 
-Use this skill for any `mcp-use` server work — tool servers, MCP Apps widgets, OAuth-protected servers, multi-server proxies, ChatGPT Apps, Inspector debugging, deployment. This skill replaces the legacy split between `build-mcp-use-server` and `build-mcp-use-apps-widgets`.
+Use this skill for `mcp-use/server` mechanics: tool servers, resources, prompts, MCP Apps widgets, OAuth-protected servers, sessions, transports, Inspector debugging, and deployment. Start from the trigger boundary and intent table, not the numbered reference folders.
 
-## When to use this skill vs neighbors
+## Trigger boundary
 
-- **This skill:** anything you build, extend, or audit using `mcp-use/server` (tools, resources, prompts, MCP Apps widgets, OAuth, sessions, transports, deploy).
-- **`build-mcp-use-client`:** building a client app that connects to an MCP server via the `mcp-use` client SDK.
-- **`build-mcp-use-agent`:** building an `MCPAgent` that orchestrates multiple MCP servers with an LLM.
-- **`build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2`:** building servers with the raw `@modelcontextprotocol/sdk` (no `mcp-use`).
+Use this skill for work that imports from `mcp-use/server` or needs the server-side `mcp-use` API surface:
 
-If the user is mixing — e.g. an `mcp-use` server _plus_ an `MCPAgent` client — start here for the server half and route to the agent skill for the client half.
+- `MCPServer`, `server.tool`, `server.resource`, `server.prompt`, `server.uiResource`
+- response helpers such as `text()`, `object()`, `mix()`, `error()`, `widget()`
+- server auth, session stores, transports, Inspector, deploy, and MCP Apps widget registration
+
+Do **not** use this skill as the primary guide for:
+
+- custom apps using `MCPClient` to connect to servers — use `build-mcp-use-client`
+- `MCPAgent` LLM orchestration over one or more servers — use `build-mcp-use-agent`
+- raw official SDK servers without `mcp-use` — use `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2`
+- layer placement, import direction, composition root design, config seams, or handler/presenter placement — use `apply-clean-mcp-architecture` first, then return here for mechanics
+
+Numbered folders under `references/` are local organization, not a required `01` to `31` reading sequence. Pick the intent route first. Inside a chosen cluster, read numeric files in order only when the files form a sequence.
+
+## Coordinate with neighboring skills
+
+- **`apply-clean-mcp-architecture` owns structure:** where files live, import direction, layer boundaries, composition root, config seam, handler/presenter placement. Its detailed contract is in its `coordinate-with-build-mcp-use-server.md` reference.
+- **This skill owns mechanics:** exact `mcp-use/server` APIs, Zod schemas, response helpers, auth/session/transport config, widget CSP, Inspector usage, deploy mechanics.
+- **Blended request:** load `apply-clean-mcp-architecture` first for placement, then this skill for API mechanics.
+
+Examples:
+
+| Request | Route |
+|---|---|
+| Add a new tool to a clean-layered repo | `apply-clean-mcp-architecture` for `handlers/`, use case, presenter, and bootstrap placement; then this skill for `server.tool`, Zod schema, response helper, and validation. |
+| Add OAuth to an existing clean architecture server | `apply-clean-mcp-architecture` for `infrastructure/auth` and config wiring; then this skill for DCR vs proxy, provider config, `ctx.auth`, and OAuth debugging. |
+| Decide whether a widget belongs in the server | `apply-clean-mcp-architecture` for placement and ownership; then this skill for MCP Apps vs tools-only, `server.uiResource`, `widget()`, and CSP. |
+| Debug wire-level handshake failures | This skill first: `references/27-troubleshooting/06-decision-tree.md`, `references/22-validate/02-curl-handshake.md`, and Inspector. Architecture is secondary unless the fix touches layers. |
+
+Positive routing:
+
+- **`build-mcp-use-client`:** custom apps that connect to MCP servers with `MCPClient`, list/call tools, read resources, handle callbacks, or mount client-side React providers.
+- **`build-mcp-use-agent`:** `MCPAgent` LLM orchestration over one or more MCP servers.
+- **`build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2`:** raw official SDK servers, especially strict stdio or direct transport control.
+- **`apply-clean-mcp-architecture`:** TypeScript MCP server layer placement and clean architecture.
+- **`test-by-mcpc-cli`:** live CLI verification after a server is running.
+- **`optimize-agent-ergonomics`:** broader agent-facing MCP/CLI surface design or audit before choosing a framework, or after a server exists and needs ergonomics review.
+
+## Detect intent
+
+| Intent | Start here | Then read |
+|---|---|---|
+| Extend an existing `mcp-use` server | `references/30-workflows/14-multi-server-hub-with-audit.md` for audit-shaped flow if proxying, otherwise scan with the workflow below | `references/04-tools/01-overview.md`, `references/05-responses/01-overview-decision-table.md`, `references/08-server-config/01-mcp-server-constructor.md`, `references/22-validate/` |
+| Greenfield HTTP tool server | `references/02-setup/05-manual-http-server.md` | `references/04-tools/01-overview.md`, `references/05-responses/01-overview-decision-table.md`, `references/22-validate/02-curl-handshake.md` |
+| Strict stdio requirement | `references/02-setup/04-manual-stdio-server.md` | `references/09-transports/02-stdio.md`, then route to `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2` |
+| MCP Apps / ChatGPT widget | `references/30-workflows/11-streaming-chart-widget.md` or `references/30-workflows/12-progress-and-elicit-widget.md` | `references/18-mcp-apps/01-what-are-mcp-apps.md`, `references/18-mcp-apps/server-surface/01-widget-helper.md`, `references/18-mcp-apps/widget-react/01-mcpuseprovider.md`, `references/20-inspector/11-protocol-toggle-and-csp-mode.md` |
+| Next.js drop-in | `references/30-workflows/10-add-mcp-to-existing-nextjs-app.md` | `references/19-nextjs-drop-in/01-overview.md`, `references/19-nextjs-drop-in/03-shared-aliases-and-tailwind.md`, `references/19-nextjs-drop-in/04-server-only-shimming.md`, `references/19-nextjs-drop-in/05-deploying-as-vercel-route.md` |
+| Auth / OAuth | `references/11-auth/01-overview-decision-matrix.md` | `references/11-auth/02-dcr-vs-proxy-mode.md`, `references/11-auth/03-ctx-auth-object.md`, `references/11-auth/08-debugging-checklist.md`, `references/27-troubleshooting/03-oauth-and-supabase-issues.md` |
+| Sessions, streaming, notifications, sampling, elicitation | `references/30-workflows/02-stateful-redis-streaming-server.md` | `references/10-sessions/01-overview.md`, `references/14-notifications/01-overview.md`, `references/13-sampling/01-overview.md`, `references/12-elicitation/01-overview.md` |
+| Deploy or production hardening | `references/25-deploy/01-decision-matrix.md` | `references/25-deploy/02-pre-deploy-checklist.md`, `references/24-production/05-health-routes.md`, `references/24-production/01-graceful-shutdown.md`, relevant `references/25-deploy/platforms/*.md` |
+| Troubleshoot a concrete error | `references/27-troubleshooting/06-decision-tree.md` | `references/27-troubleshooting/01-error-catalog.md`, `references/27-troubleshooting/02-quick-diagnostic-table.md`, then the exact cluster named by the symptom |
+| Migrate from raw SDK or older `mcp-use` | `references/28-migration/01-from-modelcontextprotocol-sdk.md` or `references/28-migration/02-mcp-use-v1-to-v2.md` | `references/17-advanced/03-mcp-use-vs-official-sdk.md`, `references/09-transports/01-overview.md`, affected setup/auth/widget references |
+
+Use `references/00-reference-index.md` only when the intent table is not specific enough or you need an exact filename.
 
 ## Core rules
 
-- Import server APIs from `mcp-use/server`. The one common exception is `Logger`, which comes from `mcp-use`.
-- Declare `zod` in the project's own dependencies. Do not assume `mcp-use` provides it.
-- Use `mcp-use` HTTP, stdio, or serverless patterns. Do not hand-wire raw SDK transports.
-- Work in the actual package, fixture, or subdirectory you will change. If the user named a monorepo package or fixture path, scan that path directly.
-- Never claim the server is scaffolded, installed, or runnable when the environment is read-only, notes-only, or missing prerequisites you cannot add in this run.
+- Import server APIs from `mcp-use/server`. The common exception is `Logger`, which comes from `mcp-use`.
+- Declare `zod` in the project's own dependencies. Do not rely on `mcp-use` to provide it.
+- Use `mcp-use` HTTP, Fetch/serverless, session, auth, and widget patterns. Do not hand-wire raw SDK transports.
+- Treat strict stdio as a raw-SDK requirement, not an `mcp-use/server` branch.
+- Work in the actual package, fixture, or subdirectory the user named. Do not widen to a repo-wide scan unless the target path is unknown.
+- Prefer improving an existing server over replacing it.
+- Never claim the server is scaffolded, installed, runnable, or verified when the environment is read-only, plan-only, or missing prerequisites you cannot add.
 
 ## Workflow
 
-### 1. Lock the target path and execution mode
+### 1. Lock target path and execution mode
 
-Identify the concrete path you will inspect and edit.
+Identify the concrete path to inspect and edit. If the user named a fixture, package, or subdirectory, use that path.
 
-- If the user named a fixture, package, or subdirectory, use that path instead of the repo root.
-- Detect both project state and execution limits before choosing an implementation path:
-  - Is there already an `mcp-use` server here?
-  - Does it already have MCP Apps widgets, OAuth, sessions, custom transports?
-  - Is this an implementation-capable run or a plan-only run?
-
-Treat the run as **plan-only** when any of these are true:
-
-- the environment is read-only or notes-only
-- package installation is blocked
-- required prerequisites are missing and you cannot add them in this run
-- the user asked for analysis or a concrete implementation plan rather than code changes
-
-For plan-only runs, keep gathering enough context to produce an exact implementation plan. Do not fabricate edits, installs, or validation results.
+Treat the run as **plan-only** when the environment is read-only, package installation is blocked, required prerequisites are missing and cannot be added, or the user asked for analysis rather than code. Plan-only output must include exact files, install commands, implementation steps, and validation commands. It must not claim runtime validation.
 
 ### 2. Scan what already exists
 
@@ -51,96 +89,38 @@ Inspect the target path for:
 
 - `package.json` with `mcp-use`, `zod`, `@mcp-use/cli`, `@mcp-use/react`
 - imports from `mcp-use/server` and `mcp-use/react`
-- `new MCPServer(...)` and `server.uiResource(...)`
-- registered tools, resources, prompts, widget responses
-- `resources/` folder with widget `.tsx` files
-- existing host entry files: `index.ts`, `src/index.ts`, `src/server.ts`, `src/mcp-server.ts`
-- deployment/runtime clues: `.mcp-use/`, Docker, edge-function folders, auth config, env files, health routes
-- widget signals: `widgetMetadata`, `useWidget`, `useCallTool`, `McpUseProvider`, `text/html;profile=mcp-app`, `text/html+skybridge`
+- `new MCPServer(...)`, `server.tool`, `server.resource`, `server.prompt`, `server.uiResource`
+- widget signals: `resources/`, `widgetMetadata`, `useWidget`, `useCallTool`, `McpUseProvider`, `text/html;profile=mcp-app`, `text/html+skybridge`
+- runtime signals: `.mcp-use/`, Docker, edge-function folders, auth config, session stores, health routes
 
-Summarize:
+Summarize target path, existing server vs no server, tools-only vs widgets, implementation-capable vs plan-only, likely server shape, and chosen entry file.
 
-- target path
-- existing server vs no server
-- has MCP Apps widgets vs tools-only
-- implementation-capable vs plan-only
-- likely server shape
-- chosen entry file
+### 3. Choose the branch
 
-### 3. Choose the right branch
+**Existing server:** do not rebuild. Follow the intent row that matches the requested change, then audit nearby mechanics: tools/schemas, responses, resources/prompts, config/transports, sessions, auth, widgets, production, deploy.
 
-#### Branch A — Existing `mcp-use` server
+**No server but enough repo context:** infer the server from REST endpoints, CLI commands, data sources, README/issue text, or a frontend that clearly needs a widget. Choose entrypoint deliberately:
 
-Do not rebuild from scratch. Audit and improve the live implementation in this order:
+- scaffolded project -> keep root `index.ts`
+- manual HTTP server -> default `src/server.ts`
+- existing app owns `src/index.ts` or `src/server.ts` -> add `src/mcp-server.ts`
+- Next.js drop-in -> follow `references/19-nextjs-drop-in/`
+- strict stdio -> route out to raw SDK skills
 
-1. **Tools and schemas** → `references/04-tools/`
-2. **Responses** → `references/05-responses/`
-3. **Resources and prompts** → `references/06-resources/` + `references/07-prompts/`
-4. **Server config and transports** → `references/08-server-config/` + `references/09-transports/`
-5. **Sessions** → `references/10-sessions/` + `references/10-sessions/stores/`
-6. **Auth** → `references/11-auth/` + `references/11-auth/providers/`
-7. **Advanced primitives** (elicit/sample/notify/log/client-introspection) → `references/12-elicitation/` through `references/16-client-introspection/`
-8. **Proxy / gateway** → `references/17-advanced/`
-9. **MCP Apps widgets** → `references/18-mcp-apps/` + sub-clusters
-10. **Production reliability** → `references/24-production/` + `references/26-anti-patterns/`
-11. **Deploy** → `references/25-deploy/` + `references/25-deploy/platforms/`
-
-Then either implement the highest-value fixes, or — if plan-only — produce a prioritized change plan with exact files, commands, and validation steps.
-
-#### Branch B — No `mcp-use` server, repo gives enough context
-
-Infer the server from the existing code or spec.
-
-Common signals:
-
-- REST or Hono/Express/Fastify endpoints that should become MCP tools
-- CLI commands that map naturally to tools
-- data sources that should become resources
-- a README, issue, or fixture that clearly defines the behavior
-- a frontend that clearly wants a widget UI → MCP Apps branch
-
-Choose the entrypoint deliberately:
-
-- scaffolded `create-mcp-use-app` project → keep root `index.ts` (`references/02-setup/02-scaffold-with-create-mcp-use-app.md`)
-- brand-new manual server → default to `src/server.ts` (`references/02-setup/05-manual-http-server.md`)
-- existing app already using `src/index.ts` or another host entry → keep the host entry and add `src/mcp-server.ts` (`references/02-setup/06-add-to-existing-app.md`)
-- widget-driven application → `references/02-setup/03-template-flags.md` mcp-apps template + `references/18-mcp-apps/`
-
-Use canonical setup before writing code:
-
-- `references/02-setup/01-prerequisites.md`
-- `references/02-setup/02-scaffold-with-create-mcp-use-app.md`
-- `references/02-setup/03-template-flags.md`
-- `references/29-templates/` for full layouts
-
-#### Branch C — Underspecified
-
-Ask only the missing questions needed to proceed. Skip anything the user or repo already answered.
-
-Prioritize:
-
-- what data, service, or UI the server exposes
-- transport/runtime target (stdio / streamable-http / serverless)
-- auth requirements (none / DCR / OAuth proxy)
-- tools vs resources vs prompts
-- MCP Apps widget vs tools-only
-- deployment target
-- whether sampling, elicitation, or notifications are required
-
-Ask one question at a time unless the user clearly wants a batch questionnaire.
+**Underspecified:** ask only for missing information that blocks implementation: exposed data/service/UI, transport/runtime, auth, tools/resources/prompts, widget vs tools-only, deploy target, and advanced primitives.
 
 ### 4. Preflight setup
 
-Use `references/02-setup/01-prerequisites.md` as the canonical setup matrix. Make these explicit instead of assuming them:
+Use `references/02-setup/01-prerequisites.md` as the setup matrix:
 
-- Node 18+ available, Node 22 LTS preferred when matching current examples
-- `package.json` uses `"type": "module"`
-- `mcp-use` and `zod` installed in dependencies
-- `@mcp-use/cli` present for CLI/HMR workflows unless the scaffold included it
-- `@mcp-use/react` present if building MCP Apps widgets
-- chosen entry file matches the project type
+- Node 18+ available; Node 22 LTS preferred for current examples.
+- `package.json` uses `"type": "module"`.
+- `mcp-use` and `zod` are dependencies.
+- `@mcp-use/cli` is present for CLI/HMR/build/start/deploy/typegen workflows unless scaffolded.
+- `@mcp-use/react` is present only when building widgets.
+- chosen entry file matches project shape.
 
-If prerequisites are missing and you cannot add them, switch to plan-only output.
+If prerequisites are missing and cannot be added, switch to plan-only output.
 
 ### 5. Build or extend
 
@@ -150,139 +130,101 @@ Default sequence:
 2. create or refine `MCPServer` config (`references/08-server-config/`)
 3. register tools with precise Zod schemas (`references/04-tools/`)
 4. add resources or prompts only when they improve the interface (`references/06-resources/`, `references/07-prompts/`)
-5. add advanced features only when needed: auth (`references/11-auth/`), sessions (`references/10-sessions/`), notifications (`references/14-notifications/`), elicit/sample (`references/12-elicitation/`, `references/13-sampling/`), MCP Apps widgets (`references/18-mcp-apps/`), proxy (`references/17-advanced/`)
-6. add health routes, deliberate logging (`references/15-logging/`), graceful shutdown (`references/24-production/01-graceful-shutdown.md`)
+5. add auth, sessions, notifications, sampling, elicitation, widgets, or proxy only when the intent requires them
+6. add health/readiness, logging, graceful shutdown, and deploy hardening when shipping beyond local dev
 
-### 6. Validate honestly
+### 6. Validate
 
-For implementation-capable runs, validate with the smallest relevant set:
+Pick the smallest validation set that proves the changed behavior. Do not imply a higher rung than observed.
 
-- `mcp-use dev` and/or `mcp-use start` (`references/03-cli/`)
-- MCP Inspector — full surface area at `references/20-inspector/`
-- curl initialize → list → call (`references/22-validate/02-curl-handshake.md`)
-- type generation: `mcp-use generate-types` (`references/03-cli/07-mcp-use-generate-types.md`)
-- build/deploy preflight when relevant (`references/25-deploy/02-pre-deploy-checklist.md`)
-- widget-specific surfaces: protocol toggle, CSP mode, device panels (`references/20-inspector/11-protocol-toggle-and-csp-mode.md`, `references/20-inspector/12-device-and-locale-panels.md`)
+- read-only scan: files inspected, no runtime exercised
+- typecheck/build: `npm run typecheck`, `npm run build`, or project equivalent
+- `mcp-use dev` / `mcp-use start`: server starts locally
+- Inspector: tools/resources/prompts/widgets observed and callable
+- curl handshake: initialize, tools/list, tools/call on `/mcp`
+- `test-by-mcpc-cli`: named `mcpc` session connected and commands run
+- deployed endpoint: health/readiness plus live MCP call against the deployed URL
 
-For plan-only runs, provide:
-
-- exact entry file(s)
-- exact install commands
-- exact scripts or config changes
-- exact tools/resources/prompts/widgets to add
-- exact validation commands to run later
+For widgets, verify the text fallback and, when possible, Inspector CSP mode. For deploys, verify `references/25-deploy/02-pre-deploy-checklist.md`, `/health`, and `/ready`.
 
 ## Decision rules
 
-- Prefer improving an existing server over replacing it.
-- Keep the host app's entrypoint when adding MCP to an existing app; use `src/mcp-server.ts` unless there is a strong reason not to.
-- Use `text()`, `object()`, `error()`, `mix()`, `widget()`, and the other helpers instead of hand-built MCP payloads.
-- Default to a concise, complete `content` response for broad conversational compatibility. Add `structuredContent` only when the tool has an `outputSchema`, typed/programmatic consumers, Code Mode, widget props, or another real downstream parser requirement.
-- If a tool returns both `content` and `structuredContent`, keep them semantically equivalent and put every essential result in both surfaces.
-- Use `_meta` only for private, large, or UI-only data. Treat `structuredContent` as potentially model-visible.
-- Use `error()` for expected failures and `throw` for truly unexpected failures.
-- Treat notifications as stateful-only unless you have explicitly verified the transport model supports them.
+- Use response helpers instead of hand-built MCP payloads.
+- Default to concise complete `content`. Add `structuredContent` when there is an `outputSchema`, a typed/programmatic consumer, Code Mode, widget props, or another real parser.
+- Keep `content` and `structuredContent` semantically equivalent when returning both.
+- Put private, bulky, or UI-only data in `_meta`; treat ordinary `structuredContent` as potentially model-visible.
+- Use `error()` for expected failures and `throw` for unexpected failures.
 - Guard `ctx.elicit()` with `ctx.client.can("elicitation")`.
 - Guard `ctx.sample()` with `ctx.client.can("sampling")`.
 - Guard widget-only behavior with `ctx.client.supportsApps()`.
-- For MCP Apps widgets: `tool.widget.name` must match `resources/<name>/widget.tsx`. Always provide a text `message` fallback. Treat widget `props` as model-visible; put private data in `metadata` / `_meta`.
-- Wrap the widget root in `McpUseProvider`. Use `useCallTool()`, never raw `fetch()`.
-- Declare CSP domains in `widgetMetadata.metadata.csp`. Use `Image` for public assets.
-- Prefer `type: "mcpApps"` on `server.uiResource()` for dual-protocol (ChatGPT + MCP Apps) support; `type: "appsSdk"` is deprecated.
-- For deployed widget builds, set `baseUrl` or `MCP_URL` so widget asset URLs resolve correctly.
+- For MCP Apps widgets, `tool.widget.name` must match `resources/<name>/widget.tsx`; always provide a text fallback.
+- Wrap widget roots in `McpUseProvider`. Use `useCallTool()`, not raw `fetch()`, for MCP tool calls from widgets.
+- Declare CSP domains in `widgetMetadata.metadata.csp`.
+- Prefer `type: "mcpApps"` on `server.uiResource()` for dual-protocol support; `type: "appsSdk"` is deprecated.
 
 ## Guardrails
 
 - Never import server primitives from `@modelcontextprotocol/sdk` directly.
 - Never omit `zod` from the project's own dependencies.
 - Never use `z.any()` or `z.unknown()` when a concrete schema is possible.
-- Never leave schema fields undocumented; use `.describe()` on every field the model must fill.
-- Never fall back to a repo-wide scan if the user named a narrower target path.
-- Never claim success in a blocked environment.
-- Never put secrets in source, logs, or widget state.
+- Never leave schema fields undocumented; use `.describe()` on model-filled fields.
+- Never put secrets in source, logs, widget props, widget state, or model-visible structured content.
 - Never skip `allowedOrigins` and CORS decisions for public HTTP servers.
-- Never put the primary answer only in one result surface when returning both `content` and `structuredContent`; mirror the essential fields.
-- Never access `window.openai` directly from a widget — use the `useWidget` / `useCallTool` hooks.
-- Never delegate widget rendering decisions; always handle the `isPending` state explicitly.
-- Never embed an `mcp-use` server as middleware inside another framework's app — extend the MCP server's own routes (`references/08-server-config/05-middleware-and-custom-routes.md`) or run it side-by-side (`references/02-setup/06-add-to-existing-app.md`).
-- Never skip running `mcp-use generate-types` after schema changes if the project consumes generated types.
+- Never access `window.openai` directly from a widget; use `useWidget` / `useCallTool`.
+- Never embed an `mcp-use` server as middleware inside another framework's app. Extend the MCP server's own routes or run it side-by-side.
+- Never skip `mcp-use generate-types` after schema changes if the project consumes generated widget types.
+
+## Validate honestly
+
+Report the exact rung reached:
+
+| Rung | Evidence |
+|---|---|
+| Read-only scan | Files and references inspected; no command ran against code. |
+| Static validation | Typecheck, lint, build, or generated types passed. |
+| Local runtime | `mcp-use dev` or `mcp-use start` ran and exposed `/mcp`. |
+| Inspector | Inspector connected; relevant surface observed or called. |
+| curl handshake | `initialize`, `tools/list`, and at least one relevant `tools/call` succeeded. |
+| `mcpc` live test | `test-by-mcpc-cli` session name and commands are reported. |
+| Deployed endpoint | health/readiness and live MCP operation verified against public URL. |
+
+If using `test-by-mcpc-cli`, name the session and list the exact commands. For plan-only runs, mark runtime validation blocked and provide exact commands to run later.
 
 ## Output contract
 
-Unless the user wants another format, report work in this order:
+Unless the user asks for another format, report:
 
 1. target path and scan summary
 2. chosen branch and entrypoint decision
 3. implementation or exact plan
-4. validation results or explicit blocker
-5. key reference files used (cluster paths, not individual files)
+4. validation rung reached, commands run, and blockers
+5. if widgets changed: text fallback and CSP-mode verification state
+6. if deploy/production changed: health/readiness and pre-deploy checklist state
+7. key references used, with exact paths for the route actually followed
 
-## Reference routing — by cluster
+## Reference routing
 
-Each cluster has numbered files; read in numeric order or jump to the topic you need. Files are ~50–200 lines each, one concept per file.
+Start with intent or symptoms; use inventory only as fallback.
 
-### Foundations
+- **Full inventory:** `references/00-reference-index.md`
+- **Foundations:** `references/01-concepts/*.md`
+- **Setup:** `references/02-setup/*.md`
+- **CLI:** `references/03-cli/*.md`
+- **Tools:** `references/04-tools/*.md`
+- **Responses:** `references/05-responses/*.md`
+- **Resources:** `references/06-resources/*.md`
+- **Prompts:** `references/07-prompts/*.md`
+- **Server config:** `references/08-server-config/*.md`
+- **Transports:** `references/09-transports/*.md`
+- **Sessions:** `references/10-sessions/*.md`, `references/10-sessions/stores/*.md`
+- **Auth:** `references/11-auth/*.md`, `references/11-auth/providers/*.md`
+- **Advanced protocol:** `references/12-elicitation/*.md`, `references/13-sampling/*.md`, `references/14-notifications/*.md`, `references/15-logging/*.md`, `references/16-client-introspection/*.md`, `references/17-advanced/*.md`
+- **MCP Apps widgets:** `references/18-mcp-apps/*.md`, `references/18-mcp-apps/server-surface/*.md`, `references/18-mcp-apps/widget-react/*.md`, `references/18-mcp-apps/streaming-tool-props/*.md`, `references/18-mcp-apps/chatgpt-apps/*.md`, `references/18-mcp-apps/widget-recipes/*.md`, `references/18-mcp-apps/widget-anti-patterns/*.md`
+- **Next.js and Inspector:** `references/19-nextjs-drop-in/*.md`, `references/20-inspector/*.md`
+- **Remote debugging:** `references/21-tunneling/*.md`
+- **Validate/debug:** `references/22-validate/*.md`, `references/23-debug/*.md`, `references/27-troubleshooting/*.md`
+- **Production/deploy:** `references/24-production/*.md`, `references/25-deploy/*.md`, `references/25-deploy/platforms/*.md`
+- **Anti-patterns and migration:** `references/26-anti-patterns/*.md`, `references/28-migration/*.md`
+- **Templates/workflows/examples:** `references/29-templates/*.md`, `references/30-workflows/*.md`, `references/31-canonical-examples/*.md`
 
-- **`01-concepts/`** — what mcp-use is, server vs client vs agent, transport overview, stateful vs stateless, MCP Apps vs widgets terminology, this skill vs neighbors
-- **`02-setup/`** — prerequisites, scaffold, manual stdio/http server, side-car, package scripts, tsconfig, env vars
-- **`03-cli/`** — every CLI command (one file per command), flags, `mcp-use org`, device-flow login, `MCP_DEBUG_LEVEL`, env vars
-
-### Core primitives
-
-- **`04-tools/`** — tool registration, Zod schemas (single source), `.describe()`, annotations, `ctx`, validation pipeline · canonical: `mcp-use/mcp-recipe-finder`
-- **`05-responses/`** — decision table + every helper · `widget()` lives in `18-mcp-apps/server-surface/01` · canonical: `mcp-use/mcp-media-mixer`
-- **`06-resources/`** — static, templates, binary/image, URI conventions, subscriptions · canonical: `mcp-use/mcp-resource-watcher`
-- **`07-prompts/`** — static, templates, `completable()` (single home), prompt engineering
-
-### Server runtime
-
-- **`08-server-config/`** — `MCPServer` constructor, network, CORS + `allowedOrigins` (single source), DNS rebinding, middleware/custom routes, CSP (non-widget), shutdown
-- **`09-transports/`** — overview, stdio, streamable-http, stateless mode, serverless handlers, SSE alias
-- **`10-sessions/`** — lifecycle, stream manager, distributed Redis, retention, multi-tenant · `stores/`: memory / filesystem / redis / custom
-- **`11-auth/`** — DCR vs proxy, `ctx.auth`, permission guards, browser flow, refresh, scopes, debug · `providers/`: auth0 / better-auth / workos / keycloak / supabase / oauth-proxy / custom
-
-### Advanced protocol
-
-- **`12-elicitation/`** — `ctx.elicit()`: form mode, URL mode, multi-step, anti-patterns
-- **`13-sampling/`** — `ctx.sample()`: string vs extended API, model preferences, callbacks, progress
-- **`14-notifications/`** — `server.sendNotification()`, progress tokens, list-changed, roots, when-it-fails · canonical: `mcp-use/mcp-progress-demo`
-- **`15-logging/`** — `ctx.log`, server `Logger`, `MCP_DEBUG_LEVEL`, Winston migration
-- **`16-client-introspection/`** — single home for `ctx.client.*` (info, can, supportsApps, extension, user) · canonical: `mcp-use/mcp-i18n-adaptive`
-- **`17-advanced/`** — `server.proxy()`, gateway composition, session-based proxy, mcp-use vs raw SDK · canonical: `mcp-use/mcp-multi-server-hub`
-
-### MCP Apps widgets (the merged cluster)
-
-- **`18-mcp-apps/`** — what MCP Apps are, MCP Apps vs ChatGPT Apps SDK, vocabulary, when to use vs tools-only, host capability detection
-- **`18-mcp-apps/server-surface/`** — `widget()`, `server.uiResource()`, tool `widget` config, `baseUrl` and asset serving, CSP metadata, `widgetMetadata` export, `resources/` folder conventions
-- **`18-mcp-apps/widget-react/`** — `McpUseProvider`, `MCPClientProvider`, `useWidget`, `useCallTool`, `Image`, `ErrorBoundary`, `ThemeProvider`, `WidgetControls`, state persistence, display modes, host context, follow-up messages, `openExternal`, `notifyIntrinsicHeight`
-- **`18-mcp-apps/streaming-tool-props/`** — three-phase render, state machine, fallback, server-side no-setup · canonical: `mcp-use/mcp-chart-builder`
-- **`18-mcp-apps/chatgpt-apps/`** — protocol overview, `window.openai` API, skybridge MIME, CSP format diffs, dual-protocol, `appsSdk` deprecation, runtime detection
-- **`18-mcp-apps/widget-recipes/`** — 8 patterns: weather dashboard, todo list, form builder, live data, image gallery, timer, markdown editor, chatbot
-- **`18-mcp-apps/widget-anti-patterns/`** — secrets in state, missing `isPending` guard, direct `window.openai`, missing CSP, state mutations, `fetch` instead of `callTool`
-- canonical (foundational): `mcp-use/mcp-widget-gallery`
-
-### Integrations and tooling
-
-- **`19-nextjs-drop-in/`** — `--mcp-dir` flag, shared aliases + Tailwind, `server-only` shimming, deploying as a Vercel route
-- **`20-inspector/`** — full mirror of canonical 13 inspector pages: overview, CLI, connection settings, URL params, shortcuts, command palette, RPC logging, integration, debugging ChatGPT Apps, self-hosting, protocol toggle + CSP mode, device/locale panels, changelog
-- **`21-tunneling/`** — when to tunnel, debugging remote clients
-
-### Validate, debug, ship
-
-- **`22-validate/`** — Inspector walkthrough, curl handshake, Claude Desktop, VSCode/Cursor, Add-to-Client, unit testing
-- **`23-debug/`** — `MCP_DEBUG_LEVEL`, observability/Langfuse, perf profiling, transport debugging, load testing, widget debugging
-- **`24-production/`** — graceful shutdown, env config, lazy init, error strategy, health routes, rate limiting, streaming large results, feature flags
-- **`25-deploy/`** — decision matrix, pre-deploy checklist, Docker, Claude Desktop distribution, `mcp-use org` · `platforms/`: mcp-use Cloud, Supabase, Google Cloud Run, Vercel, Fly, Cloudflare Workers, Deno Deploy
-- **`26-anti-patterns/`** — tight do-X-not-Y catalog: SDK misuse, tool design, schemas, responses, security/CORS
-- **`27-troubleshooting/`** — error catalog (greppable), quick diagnostic table, OAuth/Supabase issues, widget rendering, CSP violations, decision tree
-- **`28-migration/`** — from `@modelcontextprotocol/sdk`, mcp-use v1→v2, SSE→Streamable HTTP, `appsSdk`→`mcpApps`, DCR→proxy mode shift
-
-### Templates, workflows, canonical examples
-
-- **`29-templates/`** — copyable scaffolds: minimal stdio, production HTTP, MCP Apps widget, serverless Deno, side-car
-- **`30-workflows/`** — 15 end-to-end recipes covering common shapes (Vercel tool server, Redis streaming, OAuth+Supabase, Postgres, GitHub wrapper, multi-server proxy, elicit+sample, ticker, webhook, Next.js add-on, plus 5 widget workflows modeled on canonical repos)
-- **`31-canonical-examples/`** — one file per official `mcp-use/*` repo (12 repos), what each demonstrates, load-bearing files, which clusters reference it. Read `00-how-to-use-this-cluster.md` first.
-
-## Navigation note
-
-The cluster routing above is the canonical navigation surface. Use `references/00-reference-index.md` or `rg --files references` when you need an exact filename; the remaining inventory is covered by `references/**/*.md`.
+Migration note: legacy references to `build-mcp-use-apps-widgets` point to content now housed in `references/18-mcp-apps/`. Do not route new work to that legacy name.
