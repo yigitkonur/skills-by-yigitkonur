@@ -121,6 +121,7 @@ Read `references/failure-modes.md` for common agent failure modes to pre-empt.
 ### Step 4 — Present and offer depth
 
 Show the enhanced prompt in a code block. Below it, one line explaining the key improvement.
+Use `references/output-contract.md` for the exact response shape and prompt skeleton.
 
 Then always end with:
 
@@ -162,6 +163,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 |---|---|
 | `references/ask-user-tools.md` | Dispatching the planning round — picks the right tool name for the current runtime across 16 mapped agents (Claude Code / Codex / Factory Droid / Cursor / Gemini CLI / Cline / Roo / and 9 more), with a prose fallback when no structured tool is available |
 | `references/planning-questions.md` | Running Step 2 (Round 1) — canonical axis bank, picking the "(Recommended)" option, swap rules, worked examples |
+| `references/output-contract.md` | Producing the final enhanced prompt — response shape, prompt skeleton, code/non-code variants, assumptions, and prompt lint checklist |
 | `references/enhancement-layers.md` | Applying the 5 enhancement layers — detailed guidance per layer |
 | `references/code-prompt-patterns.md` | Prompt targets a coding agent — file paths, verification, tech-stack awareness |
 | `references/failure-modes.md` | Predicting and pre-empting common agent failure modes |
