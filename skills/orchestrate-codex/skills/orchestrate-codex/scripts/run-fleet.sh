@@ -4,8 +4,7 @@
 # For every queued/failed entry in the manifest, spawn a worker that:
 #   1. Calls setup-worktree.sh to create the per-task worktree.
 #   2. Spawns `codex exec` with the universal CODEX_FLAGS, --json, -o, -C.
-#   3. On success, auto-commits inside the worktree (auto-commit logic ported
-#      from run-codex-exec/codex-wrapper.sh, modernized for the new flag set).
+#   3. On success, auto-commits inside the worktree.
 #   4. Optionally runs a post-verify (auto-detected: tsc / mypy / cargo / go vet).
 #
 # Idempotent: entries already `done` are skipped. Entries `failed` are retried.
@@ -239,7 +238,7 @@ run_one() {
     fi
   fi
 
-  # ── 5. Auto-commit (ported from codex-wrapper.sh, modernized) ──
+  # ── 5. Auto-commit ──
   if [[ "$AUTO_COMMIT" == "1" ]]; then
     local commit_summary commit_stats commit_msg files
     commit_summary="$(head -1 < "$prompt_path" | cut -c1-60)"

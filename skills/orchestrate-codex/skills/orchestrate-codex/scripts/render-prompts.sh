@@ -23,10 +23,9 @@
 # Exit codes: 0 OK (some files possibly skipped on collision),
 #             1 input list / template not found, 2 usage error.
 #
-# This script is identical in shape to run-batch-codex-research's
-# render-prompts.sh — kept verbatim because the awk substitution semantics
-# (no regex, no backslash interpretation, ENVIRON-based value passing) are
-# load-bearing for inputs containing `\n`, `C:\path`, etc.
+# The awk substitution semantics (no regex, no backslash interpretation,
+# ENVIRON-based value passing) are load-bearing for inputs containing
+# `\n`, `C:\path`, etc.
 
 set -u
 

@@ -57,8 +57,8 @@ fi
 
 REPO_NAME="$(basename "$PROJECT_DIR")"
 
-# Resolve worktree path. Default to sibling-of-repo per the plan; allow legacy
-# in-repo path via WORKTREE_DIR_NAME for users porting from run-codex-exec.
+# Resolve worktree path. Default to sibling-of-repo per the worktree contract;
+# WORKTREE_DIR_NAME flips to in-repo placement when the user prefers it.
 if [[ -n "${WORKTREE_DIR:-}" ]]; then
   WT_PATH="$WORKTREE_DIR"
 elif [[ -n "${WORKTREE_DIR_NAME:-}" ]]; then

@@ -196,7 +196,7 @@ The skill **never opens PRs**. Use `ask-review` for that.
 - Multi-bot review wait — no third-party reviewers; codex is the only review source.
 - Foundation→leaf merge orchestration — use repo-cleanup tools or manual merging.
 - Auto-merge — operator-driven only.
-- The Applier-subagent pattern from older skills — replaced by main-agent direct apply via Edit.
+- An Applier sub-agent that evaluates and applies — main agent owns evaluation; main agent applies directly via `Edit`.
 
 ## Anti-patterns
 

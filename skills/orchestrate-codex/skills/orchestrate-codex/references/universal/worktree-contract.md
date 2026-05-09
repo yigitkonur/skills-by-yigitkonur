@@ -17,7 +17,7 @@ The `<mode>` token in the path makes provenance obvious in `git worktree list`. 
 
 The `<slug>` is the `entries[i].slug` from the manifest. The mapping is 1-to-1: one slug → one worktree path. If the worktree path is gone but the manifest entry still references it, rescue prunes (`git worktree prune`) and recreates.
 
-`<repo-parent>` is `dirname(workspace_root)`. `<repo-basename>` is `basename(workspace_root)`. The skill never creates worktrees inside the source repo (that pattern was used by older skills under `.worktrees/`; it pollutes `git status` and forces every consumer to update `.gitignore`).
+`<repo-parent>` is `dirname(workspace_root)`. `<repo-basename>` is `basename(workspace_root)`. The skill never creates worktrees inside the source repo by default — in-repo placement (`.worktrees/`) pollutes `git status` and forces every consumer to update `.gitignore`. Set `WORKTREE_DIR_NAME=.worktrees` to opt in if isolation requirements demand it.
 
 ## `.gitignore` requirement
 

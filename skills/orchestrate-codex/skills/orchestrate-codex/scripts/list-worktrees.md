@@ -1,6 +1,6 @@
 # list-worktrees.py
 
-Read-only enumeration of git worktrees with branch / dirty / unpushed / ahead-of-main columns. Ported from `run-repo-cleanup` verbatim.
+Read-only enumeration of git worktrees with branch / dirty / unpushed / ahead-of-main columns.
 
 ## Inputs
 

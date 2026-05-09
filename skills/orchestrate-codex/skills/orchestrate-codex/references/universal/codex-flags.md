@@ -42,7 +42,7 @@ These vary by mode; spelled out per mode in the spine and per-mode references:
 
 | Flag | Why forbidden |
 |---|---|
-| `--full-auto` | Deprecated and removed in codex 0.129.0. The replacement is `--dangerously-bypass-approvals-and-sandbox` plus `--sandbox <mode>`. Older skills still reference it. |
+| `--full-auto` | Deprecated and removed in codex 0.129.0. Use `--dangerously-bypass-approvals-and-sandbox` plus `--sandbox <mode>`. |
 | `-a on-failure` | Deprecated. Behaviorally similar to `on-request` for our purposes; explicit `never` is the policy. |
 | `-a untrusted` / `-a on-request` | Would block fleet flow. Every spawn must run unattended. |
 | `-s read-only` / `-s workspace-write` | Defeats the bypass policy. The skill is opinionated; downgrades silently change semantics. |

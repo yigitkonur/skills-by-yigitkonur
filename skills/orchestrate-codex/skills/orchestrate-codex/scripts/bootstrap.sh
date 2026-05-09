@@ -139,8 +139,8 @@ say "run-id: $ORCHESTRATE_RUN_ID"
 # ── 6. .gitignore advisory for the worktree pattern ───────────
 # orchestrate-codex's worktree convention is `../<repo>-wt-<mode>-<slug>`,
 # which lives OUTSIDE the repo, so .gitignore doesn't strictly need to cover
-# it. But many users run with WORKTREE_DIR_NAME=.worktrees inside the repo
-# (legacy from run-codex-exec). Probe and advise.
+# it. Users running with WORKTREE_DIR_NAME=.worktrees inside the repo will
+# want .gitignore to cover that path; probe and advise.
 if [[ "$SKIP_GIT" != "1" ]]; then
   WT_DIR_NAME="${WORKTREE_DIR_NAME:-.worktrees}"
   if ! git check-ignore -q "$WT_DIR_NAME/.test" 2>/dev/null; then

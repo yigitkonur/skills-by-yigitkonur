@@ -43,7 +43,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=codex-flags.sh
 . "$SCRIPT_DIR/codex-flags.sh"
 
-# Defaults — match run-batch-codex-research's conventions.
+# Defaults.
 JOBS="${JOBS:-10}"
 PROMPTS="${PROMPTS:-prompts}"
 ANSWERS="${ANSWERS:-answers}"
