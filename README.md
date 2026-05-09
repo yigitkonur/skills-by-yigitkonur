@@ -50,7 +50,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [optimize-agent-ergonomics](skills/optimize-agent-ergonomics/) | development | Decide CLI vs MCP and shared agent contracts |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
 | [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, and architect MCP servers for agent-readiness |
-| [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI in 5 modes: parallel worktree fleets, batched template runs, single-mission monitoring, per-branch review loops, rescue |
+| [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm package releases via GitHub Actions |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |

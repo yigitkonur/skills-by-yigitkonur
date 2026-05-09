@@ -2,6 +2,14 @@
 
 The Claude Code Monitor tool is the skill's observability surface. Each fleet has one Monitor (not one per worker). Each Monitor command tails a single source of truth — typically a runner log — and emits one line per state transition. The agent receives each line as a notification injected into the conversation.
 
+## Contents
+
+- Anatomy of a Monitor invocation
+- Load-bearing rules
+- Per-mode Monitor commands
+- Filter coverage
+- Test contract
+
 ## Anatomy of a Monitor invocation
 
 ```

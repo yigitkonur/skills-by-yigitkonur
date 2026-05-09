@@ -16,6 +16,9 @@ bash run-single.sh --manifest <path> --out <answer-file> --jsonl <jsonl-log> \
 | `--jsonl <file>` | Where the raw JSONL stream is `tee`'d for forensics |
 | `--prompt-file <file>` OR `--prompt <text>` | The prompt; one of the two required |
 | `--cwd <dir>` | The worktree (or current cwd if reused). Defaults to `$PWD`. |
+| `--entry-id <id>` | Manifest entry to update. Dispatcher uses `single`. |
+| `--reuse-worktree` | Records that the selected cwd is an existing worktree; no new worktree is created. |
+| `--dry-run` | Writes a synthetic answer/JSONL and marks the entry `done` without calling Codex. |
 
 ## Outputs
 
@@ -48,6 +51,7 @@ Side effects:
 ## Behavior
 
 - Sources `codex-flags.sh` for `CODEX_FLAGS`.
+- Supports inline `--prompt` by materializing a prompt file under `<cwd>/.orchestrate-codex/` when called directly. The dispatcher materializes prompt files before invoking the runner.
 - Runs `codex exec "${CODEX_FLAGS[@]}" --json -o <out> -C <cwd> <prompt> 2>&1 | tee <jsonl> | bash codex-json-filter.sh`.
 - Pipefail-safe: codex's exit code is captured via `${PIPESTATUS[0]}` despite the pipe.
 - Manifest writes via `manifest-update.sh` for atomicity.

@@ -14,9 +14,9 @@ entry into one of:
     unknown        — anything else (running w/ pid gone, stale codex state, etc)
 
 Read-only. Outputs JSON for the dispatcher (orchestrate-codex.mjs) or human
-text for direct invocation. The dispatcher uses the JSON output to drive the
-3-option AskUserQuestion (redo failures only / redo never-started only /
-redo all non-done).
+text for direct invocation. The dispatcher embeds the JSON output in the
+classification envelope; redispatch is explicit via
+`orchestrate-codex.mjs rescue --redo failed|never-started|all-non-done`.
 
 Usage:
     rescue-detect.py --manifest <path>

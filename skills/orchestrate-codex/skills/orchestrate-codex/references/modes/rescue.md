@@ -1,6 +1,6 @@
 # Rescue mode — resume a partial run
 
-Inspect an existing manifest, classify each entry's true state, ask the user which subset to redo, then re-spawn through the original mode's runner.
+Inspect an existing manifest, classify each entry's true state, then re-spawn an explicit subset through the original mode's runner.
 
 ## When rescue triggers
 
@@ -8,12 +8,15 @@ Inspect an existing manifest, classify each entry's true state, ask the user whi
 - The user explicitly invokes rescue: `node orchestrate-codex.mjs rescue [--manifest <path>]`.
 - The detection algorithm Q1 fires (manifest exists + resume keyword in prompt).
 
-Rescue never auto-runs. Always operator-confirmed.
+Rescue never auto-runs from classification. Redispatch requires an explicit `--redo` value.
 
 ## Inputs
 
 ```
 node orchestrate-codex.mjs rescue [--manifest /abs/path/to/manifest.json]
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --redo failed
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --redo never-started
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json --redo all-non-done --accept-stale
 ```
 
 If `--manifest` omitted, the dispatcher resolves from cwd via the universal slug+hash function (matches codex-companion's `resolveStateDir`). If no manifest at the resolved path, rescue refuses with `error.code="no_manifest_found"` and stops.
@@ -23,8 +26,8 @@ If `--manifest` omitted, the dispatcher resolves from cwd via the universal slug
 1. Manifest path resolved and parses.
 2. `manifest.schema_version <= skill_schema_version`. If newer, refuse with "skill upgrade needed."
 3. `manifest.mode` field present and valid (`exec | batch | single | review`).
-4. Manifest freshness ≤ 7 days OR user passes `--accept-stale`. Older manifests may reference deleted branches, removed files, or codex-companion job records that have aged out (MAX_JOBS=50 prune).
-5. Original mode's pre-flight runs (e.g. for review-mode rescue, `codex login status` is checked).
+4. If redispatching `unknown` entries, user passes `--accept-stale`. Older manifests may reference deleted branches, removed files, or codex-companion job records that have aged out (MAX_JOBS=50 prune).
+5. Original mode's runner preflight runs at redispatch time.
 
 ## Classification flow
 
@@ -44,35 +47,31 @@ Output (JSON):
   "manifest_path": "...",
   "run_id": "...",
   "mode": "exec",
-  "by_status": {
-    "done": ["01-search-rewrite", "03-cache-eviction"],
-    "failed": ["02-config-editor"],
-    "never_started": ["04-alert-fsm"],
-    "in_flight": [],
-    "unknown": []
+  "counts": {
+    "done": 2,
+    "failed": 1,
+    "never_started": 1,
+    "in_flight": 0,
+    "unknown": 0
   },
-  "total": 4,
-  "recommendations": [
-    "Redo 1 failed entry",
-    "Dispatch 1 never-started entry",
-    "Investigate 0 unknown entries"
-  ]
+  "redispatch_options": {
+    "failed_only": ["02-config-editor"],
+    "never_started_only": ["04-alert-fsm"],
+    "all_non_done": ["02-config-editor", "04-alert-fsm"]
+  },
+  "entries": []
 }
 ```
 
-## User decision
+## Redispatch decision
 
-After classification, the dispatcher emits a JSON envelope with the classification embedded. The skill SKILL.md instructs the agent to surface a 3-option `AskUserQuestion`:
+After classification, the dispatcher emits a JSON envelope with redispatch options embedded. To act, rerun with one explicit bucket:
 
+```bash
+node orchestrate-codex.mjs rescue --manifest <path> --redo failed
+node orchestrate-codex.mjs rescue --manifest <path> --redo never-started
+node orchestrate-codex.mjs rescue --manifest <path> --redo all-non-done --accept-stale
 ```
-Which subset do you want to redo?
-  - Redo failures only (1 entry: 02-config-editor)
-  - Redo never-started only (1 entry: 04-alert-fsm)
-  - Redo all non-done (2 entries: 02-config-editor, 04-alert-fsm)
-  - Stop, don't redo anything
-```
-
-Never auto-pick. Rescue is operator-confirmed.
 
 ## Pre-rescue cleanup
 
@@ -84,16 +83,16 @@ For each entry the user chose to redo, the runner does:
 4. **Stale partial answer (batch mode).** `rm -f answers/<slug>.partial` or any `<slug>.tmp`. Skip-existing guard reads `answers/<slug>.md` (the canonical path), so partials shouldn't matter, but clean for hygiene.
 5. **Stale codex thread.** If `codex_thread_id` is present, the rescue can pass it to `codex exec resume <id>` for single-mode entries. For exec/batch/review, start fresh (no resume).
 
-After cleanup, flip the entry to `queued`, increment `attempts`, clear `finished_at` / `exit_code` / `last_error`. History row appended for the cleanup + flip.
+After cleanup, flip the entry to `queued`, clear `started_at` / `finished_at` / `exit_code` / `last_error`, and append a history row. The runner increments `attempts` when the new attempt starts.
 
 ## Re-spawn
 
 Rescue does not re-implement the runners. It dispatches the original mode's runner with the chosen subset of entries marked `queued`. Skip-existing guards do the rest:
 
-- exec mode: `bash run-fleet.sh --manifest <path>` skips `done`, picks up `queued`.
-- batch mode: same.
-- single mode: re-spawns the one entry via `run-single.sh`.
-- review mode: continues per-branch loops where they left off (round counter preserved in manifest).
+- exec mode: `bash run-fleet.sh --manifest <path> --only <ids>`.
+- batch mode: `bash run-batch.sh --manifest <path> --only <ids>` with the manifest's prompt/answer/log dirs.
+- single mode: re-spawns the one selected entry via `run-single.sh`.
+- review mode: `bash run-review.sh --manifest <path> --only <ids>`.
 
 The user's chosen subset's entries are flipped to `queued` first; everything else stays as-is.
 
@@ -115,7 +114,7 @@ The user's chosen subset's entries are flipped to `queued` first; everything els
 
 Rescue inherits the original mode's success gate:
 - exec / batch / single: every chosen entry reaches a terminal status (`done` or `failed`); the original cleanup runs.
-- review: every chosen branch reaches a terminal state (`converged` / `cap_reached_*` / `blocked`).
+- review: every chosen branch reaches a terminal state (`converged` / `cap_reached` / `blocked` / `failed`).
 
 ## Recovery
 

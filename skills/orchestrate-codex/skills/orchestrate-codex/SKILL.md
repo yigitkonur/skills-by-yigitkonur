@@ -30,9 +30,9 @@ Do not reach for this skill when:
 |---|---|---|---|---|
 | exec | `codex exec` per task | `../<repo>-wt-exec-<slug>` per task | one-shot, auto-commit, exit | every entry done (commit + non-empty answer + post-verify pass) or failed (surfaced) |
 | batch | `codex exec` per input row | `<workdir>/answers/<id>.md` (no worktree) | bounded-concurrency runner, idempotent skip-existing | every input has non-empty answer + audit pass |
-| single | one `codex exec --json` | current cwd OR a fresh worktree (asked) | one-shot streaming via filter | `turn.completed` event seen + `-o` file non-empty |
-| review | one `codex exec review` per branch per round | `../<repo>-wt-review-<slug>` per branch | round-based convergence, cap 10 | every branch in {converged, cap-reached, blocked} |
-| rescue | re-attach to an existing manifest | inherits prior mode's workspace | redo failures / never-started / all (asked) | original mode's gate |
+| single | one `codex exec --json` | selected cwd; `--reuse-worktree` records current-worktree reuse | one-shot streaming via filter | `turn.completed` event seen + `-o` file non-empty |
+| review | one `codex exec review` per branch per round | `../<repo>-wt-review-<slug>` per branch | classifier-driven rounds, cap 10 | every branch in {converged, blocked, failed, cap_reached} |
+| rescue | re-attach to an existing manifest | inherits prior mode's workspace | classify, then `--redo failed|never-started|all-non-done` | original mode's gate |
 
 ## Step 1 — Detect the mode
 
@@ -65,11 +65,11 @@ Q6. Does the prompt name ≥2 branches/features/plan files
 Q7. Is the prompt one substantial coding task in a git repo, no list?
         → mode = single, MEDIUM
 
-Q8. None of the above → AskUserQuestion("Pick orchestration mode",
+Q8. None of the above → ask once using request_user_input("Pick orchestration mode",
     options: exec / batch / single / review / rescue).
 ```
 
-`<manifest-path>` resolution: `${CLAUDE_PLUGIN_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-code}/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`. The slug+hash is computed from cwd (see `references/universal/manifest-contract.md`).
+`<manifest-path>` resolution: `resolveStateDir(cwd)/orchestrate-codex/manifest.json`, where `resolveStateDir` is the vendored codex-cc algorithm: `$CLAUDE_PLUGIN_DATA/state/<slug>-<hash>` when set, otherwise `${TMPDIR:-/tmp}/codex-companion/<slug>-<hash>`. See `references/universal/manifest-contract.md`.
 
 If detection lands on MEDIUM confidence and the surrounding prompt is genuinely ambiguous, ask. Cheap to confirm; expensive to misroute.
 
@@ -77,14 +77,14 @@ If detection lands on MEDIUM confidence and the surrounding prompt is genuinely 
 
 Run before every mode. Stops the agent from improvising into a broken state.
 
-1. `codex --version` succeeds. The skill assumes codex 0.129.0 or later.
+1. `codex --version` succeeds. The skill assumes codex 0.130.0 or later for the verified `codex exec review` flags.
 2. `codex login status` exits 0 (authed). If not, surface and stop.
 3. cwd is resolved. If the chosen mode requires a git repo (exec, review), `git rev-parse --is-inside-work-tree` succeeds.
 4. Workspace slug+hash computed (see manifest contract).
-5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"` unless the user passed `--force-new-run`.
+5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"`. Use rescue, not a force-new run, to replay partial work.
 6. `.gitignore` (if a git repo) covers the worktree path pattern (`../<repo>-wt-*`) and any in-repo state files.
 7. Required scripts present: `<skill-root>/scripts/codex-flags.sh`, the per-mode runner, the helpers for the chosen mode.
-8. For review mode only: `<skill-root>/scripts/codex-cc/codex-companion.mjs` resolves; `gh auth status` succeeds.
+8. `<skill-root>/scripts/codex-cc/` is present because the dispatcher imports its `lib/` helpers. Review mode does not require `gh`; it uses native `codex exec review`.
 
 Per-mode preflight delta lives in `references/modes/<mode>.md`.
 
@@ -134,11 +134,11 @@ Cleanup gate: `scripts/cleanup-worktrees.py --execute` removes worktrees whose e
 
 ## Universal: manifest contract
 
-Path: `${CLAUDE_PLUGIN_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-code}/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`.
+Path: `resolveStateDir(cwd)/orchestrate-codex/manifest.json`, matching `scripts/codex-cc/lib/state.mjs`.
 
 Workspace slug+hash matches codex-companion's `lib/state.mjs:resolveStateDir(cwd)` so this manifest sits next to codex-companion's `state.json` and `jobs/` records — rescue can correlate by codex thread ID.
 
-Top-level fields: `schema_version, run_id, mode, started_at, base_commit, policy, concurrency_cap, monitor_root, entries[], history[]`. Entry status: `queued | running | done | failed | skipped | rescued`. `run_id` = `<UTC ISO compact>-<4-hex-from-os.urandom>`.
+Top-level fields: `schema_version, run_id, mode, started_at, base_commit, workspace_root, state_dir, policy, concurrency_cap, monitor_root, paths, preflight, entries[], history[]`. Entry status: `queued | running | done | failed | skipped | converged | blocked | cap_reached`. `run_id` = `<UTC ISO compact>-<4-hex-from-os.urandom>`.
 
 Atomic write: `flock(<manifest>.lock)` + `tempfile.mkstemp(dir=parent)` + `os.replace(tmp, manifest)`. Concurrent writers serialize; readers do not block. The helper is `scripts/manifest-update.py`. Bash callers shell out; do not hand-roll.
 
@@ -149,12 +149,12 @@ Manifest is **deleted** on successful tidy. **Preserved** during rescue — hist
 | Mode | Default cap | Mechanism | Override |
 |---|---|---|---|
 | exec | 5 | `xargs -P 5` in `run-fleet.sh` | `JOBS=N` env or `--concurrency N` |
-| batch | 10 | `xargs -P 10` in `run-batch.sh` | `JOBS=N` env |
+| batch | 10 | `xargs -P 10` in `run-batch.sh` | `--concurrency N` or `JOBS=N` env |
 | single | 1 | n/a | n/a |
-| review | 4 (per-branch parallel) | bash `&` + `wait` | `JOBS=N` env |
+| review | 4 (per-branch parallel) | `xargs -P 4` in `run-review.sh` | `--concurrency N` or `JOBS=N` env |
 | rescue | inherits original mode | manifest replay | `JOBS=N` env |
 
-Soft gate: `JOBS > 20` (any mode) requires `--i-have-measured` flag and records a justification in `manifest.policy.cap_override`. Read `references/universal/concurrency.md`.
+Soft gate: `JOBS > 20` (any mode) requires `--i-have-measured <justification>` and records the justification in `manifest.policy.overrides.concurrency`. `JOBS > 100` is refused at dispatcher and runner boundaries. Read `references/universal/concurrency.md`.
 
 ## Universal: destructive-action gates
 
@@ -192,7 +192,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 ### single mode — one big mission with live stream
 
 - **Trigger:** Q4 or Q7 (one substantial task).
-- **Pre-checks:** if cwd is already inside a worktree, ask whether to reuse or fork; the reuse rule from worktree-contract holds.
+- **Pre-checks:** choose cwd explicitly; if cwd is already inside a worktree, pass `--reuse-worktree` to record that choice.
 - **Read first:** `references/modes/single.md`, `references/universal/json-streaming.md`, `references/universal/monitor-contract.md`.
 - **Run:** `node scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`). The dispatcher writes a one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`. Surface the literal Monitor hint.
 - **Success gate:** `turn.completed` event observed AND `-o` file non-empty AND manifest entry `done`.
@@ -201,10 +201,10 @@ Each block is the router contract: trigger → pre-checks → read first → run
 ### review mode — per-branch convergence loop
 
 - **Trigger:** Q2 (branch list + review keyword).
-- **Pre-checks:** git repo; one worktree per branch; remote ref on `origin` for each branch; codex-plugin-cc resolvable (`<skill-root>/scripts/codex-cc/codex-companion.mjs` exists).
+- **Pre-checks:** git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable.
 - **Read first:** `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md`.
-- **Run:** `node scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher creates a worktree per branch, spawns `bash scripts/run-review.sh --manifest <path>` which iterates rounds: native `codex exec review --base <base> --json -o <findings.md>` per round per branch. `classify-review-feedback.py` produces `{major[], minor[]}`. If zero major: status=converged. If major: emit findings; main agent decides per-item; `apply-review-decisions.py` prints the apply queue; main agent applies via `Edit`. Round cap 10.
-- **Success gate:** every branch in {converged, cap-reached, blocked}; manifest entry has `last_findings_path`.
+- **Run:** `node scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher seeds branch entries, then `run-review.sh` iterates rounds: native `codex exec review --base <base> --json -o <findings.md>` per branch, then `classify-review-feedback.py`. If zero major: `converged`. If major or ambiguous: `blocked` with findings/classification paths for main-agent evaluation. Round cap 10.
+- **Success gate:** every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path`.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/review.md` §loops.
 
 ### rescue mode — resume an interrupted run
@@ -212,7 +212,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Trigger:** Q1 (manifest exists + resume keyword).
 - **Pre-checks:** manifest path resolved; freshness ≤ 7 days OR user confirms staleness; `manifest.mode` field present.
 - **Read first:** `references/modes/rescue.md`, `references/universal/manifest-contract.md`, then the original mode's reference (whatever `manifest.mode` says).
-- **Run:** `node scripts/orchestrate-codex.mjs rescue [--manifest <path>]`. The dispatcher invokes `python3 scripts/rescue-detect.py` (read-only classifier), embeds the classification in the envelope, surfaces a 3-option AskUserQuestion (redo failures only / redo never-started only / redo all non-done). After the user answers, re-spawn the chosen subset using the original mode's runner.
+- **Run:** `node scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only. Redispatch with `node scripts/orchestrate-codex.mjs rescue --manifest <path> --redo failed|never-started|all-non-done`; pass `--accept-stale` only when replaying unknown/stale entries intentionally.
 - **Success gate:** every NOT-DONE entry transitions to a terminal status; manifest history append-only.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/rescue.md` §edge-cases.
 
@@ -228,7 +228,27 @@ Every mode triages failures through this 7-row table first. Per-mode extensions 
 | 4 | output truncation | answer file < `MIN` bytes after DONE event | flag in audit, do NOT auto-retry, surface for human inspect |
 | 5 | worktree dirty unexpected | post-run `git status --short` non-empty in supposed-to-commit worktree | mark BLOCKED-DIRTY, do not auto-commit, surface |
 | 6 | manifest collision | second writer cannot acquire `manifest.lock` within 30s | hard fail, do not corrupt; surface "another run is active" |
-| 7 | plugin-data dir missing | `${CLAUDE_PLUGIN_DATA}` unresolved or unwritable | fall back to `~/.local/share/claude-code/...`; if that fails, surface |
+| 7 | state dir missing | `${CLAUDE_PLUGIN_DATA}` unset or state root unwritable | use codex-cc fallback under `${TMPDIR:-/tmp}/codex-companion`; if that fails, surface |
+
+## Terminal Output Contract
+
+| Mode | Required artifacts | Terminal manifest states |
+|---|---|---|
+| exec | per-entry prompt, log, answer, worktree path, auto-commit result | `done`, `failed`, `skipped` |
+| batch | rendered prompts, answers, logs, runner log, `audit-sizes.txt` | `done`, `failed`, `skipped` |
+| single | one prompt file, answer file, JSONL log | `done`, `failed` |
+| review | per-round findings, JSONL, classifier output | `converged`, `blocked`, `failed`, `cap_reached` |
+| rescue | classification JSON in envelope, append-only history rows, selected redispatch ids | inherits original mode |
+
+## Compatibility Boundaries
+
+The old codex trio (`run-codex-exec`, `run-codex-review`, `run-batch-codex-research`) are deprecated compatibility shims. Preserve their install paths, but do not restore their old bodies; route users here.
+
+Use `run-repo-cleanup` after exec/review fleets leave dirty branches, stale worktrees, unpushed commits, or foundation-to-leaf cleanup ordering. Use `ask-review` only for PR handoff. `orchestrate-codex` never opens PRs.
+
+Slash-command boundary: vendored `/codex:review` and codex-companion review remain in `scripts/codex-cc/` but are not used by this skill. Review mode uses `codex exec review`; per-item local review uses `do-review`; external/human/bot feedback consolidation uses `evaluate-code-review`; PR creation uses `ask-review`. There is no `/codex:resc` contract in this skill.
+
+The old third-party bot-wait timing constants from `run-codex-review` are retired. This skill does codex-only review. For third-party bot waits, route to `evaluate-code-review` or a future dedicated skill.
 
 ## Anti-patterns
 
@@ -250,20 +270,30 @@ Every mode triages failures through this 7-row table first. Per-mode extensions 
 
 | File | Role |
 |---|---|
+Read when routing:
+
+- **Mode files:** `references/modes/exec.md`, `batch.md`, `single.md`, `review.md`, `rescue.md`.
+- **Universal runtime contracts:** `manifest-contract.md`, `codex-flags.md`, `monitor-contract.md`, `worktree-contract.md`, `concurrency.md`, `idempotency.md`.
+- **Template authoring:** `references/templates/*.tmpl.md` and `references/universal/prompt-discipline.md`.
+- **Vendored codex-cc maintenance:** `references/universal/codex-companion.md`, `upstream-codex-cc.md`.
+- **Failure forensics:** `references/universal/failure-modes.md`, `json-streaming.md`, `output-size-signals.md`.
+
+| File | Role |
+|---|---|
 | `references/modes/exec.md` | Recipe for parallel codex exec across worktrees: tasks.json schema, prompt template, auto-commit + post-verify, recovery |
 | `references/modes/batch.md` | Recipe for template × N batch: input formats, slug rules, archive-before-retry, audit thresholds |
 | `references/modes/single.md` | Recipe for one mission with live stream: cwd-vs-worktree decision, JSONL filter setup |
 | `references/modes/review.md` | Recipe for per-branch convergence: round mechanics, classifier policy, evaluator/apply flow, terminal states |
 | `references/modes/rescue.md` | Recipe for resume: manifest read, classification table, redo decision matrix, edge cases |
 | `references/universal/codex-flags.md` | Every codex CLI flag the skill touches with rationale + per-flag edge cases |
-| `references/universal/codex-companion.md` | The vendored codex-plugin-cc tree: how rescue uses `task-resume-candidate` and `cancel` |
+| `references/universal/codex-companion.md` | The vendored codex-cc subtree, dispatcher imports, and rescue state correlation |
 | `references/universal/manifest-contract.md` | Full manifest schema with examples; atomic-write recipe; recovery; migration notes |
 | `references/universal/monitor-contract.md` | Awk/grep recipes per mode; `fflush()` rule; coverage rule; arm-before-runner; lifecycle |
 | `references/universal/worktree-contract.md` | Naming, lifecycle, reuse rules, dirty-state gates, recovery from interrupted state |
 | `references/universal/failure-modes.md` | Per-row remediation for every taxonomy entry above plus per-mode extensions |
 | `references/universal/concurrency.md` | Per-mode cap rationale; how to measure before raising; the `--i-have-measured` gate |
 | `references/universal/json-streaming.md` | JSONL event types codex emits; filter recipes; MCP-active fallback to `-o` |
-| `references/universal/idempotency.md` | Skip-existing guards across modes; archive-before-retry; force-redo per id |
+| `references/universal/idempotency.md` | Skip-existing guards across modes; archive-before-retry; explicit requeue rules |
 | `references/universal/output-size-signals.md` | Bottom-decile rule; absolute floor; when small ≠ bad |
 | `references/universal/prompt-discipline.md` | Mission-brief skeleton (Intent/Discovery/Constraints/Success/Out-of-scope/Failure protocol) |
 | `references/universal/plugin-data.md` | `${CLAUDE_PLUGIN_DATA}` resolution; the state directory pruning policy |
@@ -300,6 +330,7 @@ Every mode triages failures through this 7-row table first. Per-mode extensions 
 | `scripts/apply-review-decisions.py` | review | read-only apply-queue printer (main agent applies via Edit) |
 | `scripts/rescue-detect.py` | rescue | classify entries done/failed/never_started/in_flight/unknown |
 | `scripts/codex-cc/` | all | vendored OpenAI codex-plugin-cc tree (see `references/universal/upstream-codex-cc.md`) |
+| `scripts/test-runner-contracts.mjs` | test | dispatcher/runner dry-run contract fixtures for all modes |
 
 ## Bottom line
 

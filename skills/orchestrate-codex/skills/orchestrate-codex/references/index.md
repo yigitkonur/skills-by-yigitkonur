@@ -17,7 +17,7 @@ Cross-reference of every reference file in this skill. The spine routes to refer
 | Idempotency / skip-existing | `universal/idempotency.md` | every mode |
 | Output-size quality signals | `universal/output-size-signals.md` | batch (primary); audit-fleet-state surfaces in others |
 | Prompt-discipline (Intent/Constraints/Success/...) | `universal/prompt-discipline.md` | exec, batch, single (review uses templates/review.tmpl.md directly) |
-| Plugin-data dir resolution | `universal/plugin-data.md` | every mode (preflight) |
+| State dir resolution | `universal/plugin-data.md` | every mode (preflight) |
 | Anti-patterns | `universal/anti-patterns.md` | every mode |
 | Upstream codex-plugin-cc bumps | `universal/upstream-codex-cc.md` | maintenance (not runtime) |
 
@@ -66,13 +66,13 @@ Read in this order:
 4. `universal/monitor-contract.md` — `--review` per-tick line.
 5. `templates/review.tmpl.md` — round-focus prompt.
 6. `universal/json-streaming.md` — codex exec review JSONL.
-7. `universal/failure-modes.md` — round-cap, oscillation.
+7. `universal/failure-modes.md` — blocked/cap/failed recovery.
 
 ### rescue
 
-1. `modes/rescue.md` — classification → user choice → re-spawn.
+1. `modes/rescue.md` — classification → explicit `--redo` → re-spawn.
 2. `universal/manifest-contract.md` — entry schema, history rows.
-3. `universal/codex-companion.md` — `task-resume-candidate` correlation.
+3. `universal/codex-companion.md` — colocated state/job-record correlation.
 4. Then the original mode's reference (whatever `manifest.mode` says).
 5. `universal/failure-modes.md` — edge cases for in-flight, stale, unknown.
 

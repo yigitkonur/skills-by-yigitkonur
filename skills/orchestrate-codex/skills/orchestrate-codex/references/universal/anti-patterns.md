@@ -8,7 +8,7 @@ The spine carries a 13-bullet anti-pattern list. This file expands each with a c
 
 **Cost:** N existing answer files exist on disk. Re-running without skip-existing produces N new answers, doubling the audit cost. If codex non-determinism produced a worse output the second time, the original is lost.
 
-**Right pattern:** Use `--force-redo <slug>` per entry; the dispatcher archives the existing answer to `answers/.prev/` before re-spawning.
+**Right pattern:** Archive the existing answer to `answers/.prev/`, requeue the entry with the manifest helper, then rerun the original mode or rescue subset.
 
 ## 2. Raising `JOBS` past mode default without measuring
 
@@ -42,13 +42,13 @@ The spine carries a 13-bullet anti-pattern list. This file expands each with a c
 
 **Right pattern:** The skill stops at "every branch done; commits exist." The user merges manually using their normal flow (`gh pr merge`, manual `git merge`, etc.).
 
-## 6. Using `/tmp/...` as the manifest path of record
+## 6. Inventing a custom manifest path
 
 **Manifests:** `MANIFEST=/tmp/orchestrate-codex-manifest.json node orchestrate-codex.mjs ...`.
 
 **Cost:** Two Claude sessions running the skill on different repos both write to the same `/tmp` path. The second clobbers the first. Rescue from the lost manifest is impossible.
 
-**Right pattern:** Let the dispatcher resolve the manifest path via `${CLAUDE_PLUGIN_DATA}`. The path is unique per workspace. See `plugin-data.md`.
+**Right pattern:** Let the dispatcher resolve the manifest path via `codex-cc/lib/state.mjs`. The path is unique per workspace and shared by bootstrap/rescue. See `plugin-data.md`.
 
 ## 7. Inventing a `codex review` invocation outside the native CLI surface
 

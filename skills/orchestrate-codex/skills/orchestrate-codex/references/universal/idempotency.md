@@ -57,27 +57,13 @@ python3 manifest-update.py --manifest <path> --entry <slug> --set 'status=queued
 node orchestrate-codex.mjs <mode> ... # the runner picks up the queued entry
 ```
 
-Or in one shot:
-```bash
-node orchestrate-codex.mjs <mode> --force-redo <slug-1> <slug-2> ...
-```
-
-The dispatcher does the archive + status flip atomically.
+There is no mode-level `--force-redo` shortcut. Use rescue `--redo ...` for failed/never-started/non-done entries, or use the manifest helper intentionally after archiving prior answers.
 
 **Never delete `answers/.prev/`** until the new answer is verified. Codex non-determinism means a retry can produce a smaller (or larger but worse) output than the original.
 
-## Force-redo all
+## Redo all
 
-```bash
-node orchestrate-codex.mjs <mode> --force-redo-all
-```
-
-This is rare. Equivalent to:
-- Archive every `answers/<slug>.md` to `answers/.prev/`.
-- Flip every entry to `queued`.
-- Re-run.
-
-Used when the user has fixed the prompt template AND wants every output regenerated. Surface a confirmation before doing this — the audit cost is real.
+For completed entries, archive existing outputs, flip selected entries with `manifest-update`, and rerun the original mode. For non-done entries, prefer `rescue --redo all-non-done`.
 
 ## Idempotency under concurrent writes
 
@@ -111,15 +97,15 @@ If a manifest exists with non-terminal entries (`queued | running`), the dispatc
 Exit code 3. The user has options:
 - Wait for the running run to finish.
 - Run rescue mode (which is allowed against an active manifest — rescue's classification handles in-flight entries).
-- Pass `--force-new-run --run-id <custom>` to write to a separate manifest.
+- Tidy the completed run, then start a new run.
 
-Forcing a new run on an active manifest is rarely the right call; the runners would race on per-entry locks.
+Starting a new run on an active manifest is intentionally unsupported; the runners would race on per-entry state.
 
 ## Anti-patterns
 
-- Bypassing the skip guard by deleting the manifest. The answer files are still there; the new run will produce N more answers. Use `--force-redo` instead.
+- Bypassing the skip guard by deleting the manifest. The answer files are still there; the new run will produce N more answers. Archive prior outputs and intentionally requeue instead.
 - Hand-editing `manifest.json` to flip an entry's status. Use `manifest-update.py` so the history records the flip.
-- Treating "done" as eternal. If the input changes, the output should be regenerated — `--force-redo` per entry.
+- Treating "done" as eternal. If the input changes, archive the prior output and intentionally requeue the entry.
 - Auto-retrying inside the runner. The runner does not retry. Rescue is operator-confirmed.
 - Multiple runners over the same manifest. The dispatcher refuses concurrent runs; bypassing the dispatcher is unsafe.
 

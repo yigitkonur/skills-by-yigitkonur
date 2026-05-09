@@ -2,6 +2,15 @@
 
 Fan-out N coding tasks across N git worktrees. Each task gets a fresh worktree, a deterministic branch, a `codex exec --json` invocation, and an auto-commit at the end. The user merges the resulting branches manually.
 
+## Contents
+
+- When to pick exec mode
+- Inputs
+- Pre-flight
+- Runner behavior
+- Output contract
+- Recovery
+
 ## When to pick exec mode over alternatives
 
 - Multiple tasks (≥ 2) that touch disjoint files. Parallelism wins.

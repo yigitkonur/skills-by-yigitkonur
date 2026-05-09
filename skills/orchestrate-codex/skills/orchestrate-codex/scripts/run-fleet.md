@@ -5,13 +5,15 @@ Exec mode bounded-concurrency runner. Reads the manifest, fans out queued/failed
 ## Inputs
 
 ```bash
-bash run-fleet.sh --manifest <manifest-path> [--concurrency N] [--dry-run]
+bash run-fleet.sh --manifest <manifest-path> [--concurrency N] [--only id,id] [--dry-run]
 ```
 
 | Arg/env | Default | Notes |
 |---|---|---|
 | `--manifest <path>` | required | Path to the orchestrate-codex manifest |
 | `--concurrency N` / `JOBS=N` | 5 | Per-mode default; soft gate above 20 |
+| `--only id,id` | unset | Rescue subset replay. |
+| `--i-have-measured <why>` | unset | Required above concurrency 20; refused above 100. |
 | `--dry-run` / `DRY_RUN=1` | off | Print planned `codex exec` command per task; do NOT spawn |
 | `COMMIT_LEVEL=<1|2|3>` | 2 | 1=subject only / 2=subject+body / 3=subject+body+diffstat |
 
@@ -41,18 +43,19 @@ Manifest mutations:
 |---|---|
 | 0 | All entries reached terminal state (any mix of done/failed/skipped) |
 | 1 | Manifest missing or unreadable |
-| 2 | Concurrency cap above 20 without `--i-have-measured` |
+| 2 | `codex` or `jq` missing |
+| 3 | Invalid concurrency, missing entries, or cap above 20 without `--i-have-measured` |
 
 ## Behavior
 
-- Idempotent: skips entries with `status=done` AND worktree has commits past baseline. Re-running picks up `queued` and `failed`.
+- Idempotent: skips entries with `status=done`. Re-running picks up `queued` and `failed`; rescue can limit that replay with `--only`.
 - Auto-commit: if codex didn't commit (no commits past baseline) but worktree has changes, the wrapper commits them with a generated `<emoji> <type>(<scope>): <task-id> auto-commit` message.
 - Post-verify: auto-detects `tsc --noEmit` (if `tsconfig.json`), `mypy .` (if `pyproject.toml` with mypy), `cargo check` (if `Cargo.toml`), `go vet ./...` (if `go.mod`). Override per-task via `tasks.json` `post_verify_cmd`.
 - Failure surfaces: codex exit non-zero / no commits despite exit 0 / dirty worktree post-run / post-verify failed → `status=failed` with descriptive `last_error`.
 
 ## Notes
 
-The runner does NOT auto-merge. Each task's branch is pushed to `origin`; the user merges manually using their normal flow.
+The runner does NOT push or auto-merge. Each task's branch is committed locally; the user pushes and merges using their normal flow.
 
 Auto-commit is advisory: the commit lands even if post-verify fails (the marker `mode_state.post_verify_exit` records the failure). The user reviews the commit and decides whether to fix manually or rescue redo.
 

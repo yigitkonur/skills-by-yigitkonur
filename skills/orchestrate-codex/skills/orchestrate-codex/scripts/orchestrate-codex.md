@@ -12,11 +12,11 @@ Modes:
 
 | Mode | Required args | Optional |
 |---|---|---|
-| `exec` | `--tasks <tasks.json>` | `--concurrency N`, `--monitor-root <dir>` |
-| `batch` | `--inputs <file> --template <tmpl>` | `--answers-dir <dir>`, `--concurrency N` |
-| `single` | `--prompt-file <p>` OR `--prompt <text>` | `--cwd <dir>`, `--out <file>`, `--reuse-worktree` |
-| `review` | `--branches <a,b,c>` OR `--branches-file <file>` | `--base <main>`, `--max-rounds N`, `--concurrency N` |
-| `rescue` | none (resolves manifest from cwd) | `--manifest <path>`, `--accept-stale` |
+| `exec` | `--tasks <tasks.json>` | `--concurrency N`, `--monitor-root <dir>`, `--dry-run` |
+| `batch` | `--inputs <file> --template <tmpl>` | `--prompts-dir <dir>`, `--answers-dir <dir>`, `--logs-dir <dir>`, `--concurrency N`, `--dry-run` |
+| `single` | `--prompt-file <p>` OR `--prompt <text>` | `--cwd <dir>`, `--out <file>`, `--jsonl <file>`, `--reuse-worktree`, `--dry-run` |
+| `review` | `--branches <a,b,c>` OR `--branches-file <file>` OR branch positionals | `--base <main>`, `--max-rounds N`, `--concurrency N`, `--dry-run` |
+| `rescue` | none (resolves manifest from cwd) | `--manifest <path>`, `--redo failed|never-started|all-non-done`, `--accept-stale`, `--dry-run` |
 | `audit` | none | `--manifest <path>`, `--json` |
 | `tidy` | none | `--manifest <path>`, `--base <main>`, `--execute`, `--force-abandon <id>...` |
 | `--help` / no mode | n/a | n/a |
@@ -65,10 +65,12 @@ Failure:
 ## Behavior
 
 - Sources the workspace state-dir from `codex-cc/lib/state.mjs:resolveStateDir(cwd)`. Slug+hash matches codex-companion exactly.
+- Invokes `bootstrap.sh` once for exec, batch, single, and review unless `ORCHESTRATE_SKIP_PREFLIGHT=1` is set for tests.
 - Writes the seed manifest atomically (mktemp + rename in the same dir).
+- Materializes exec/single inline prompts and renders batch prompts before the runner starts.
 - Spawns the bash runner via `child_process.spawn(..., { detached: true, stdio: 'ignore' })` and `unref()`s it. The dispatcher returns instantly; the runner runs independently.
 - Refuses concurrent runs: if a manifest exists with `queued|running` entries, exits 3 with `error.code="concurrent_run_in_progress"`.
-- For `rescue|audit|tidy`: invokes the corresponding Python helper via `subprocess`, embeds the helper's JSON output under `result`.
+- For `rescue|audit|tidy`: invokes the corresponding Python helper via `subprocess`, embeds the helper's JSON output under `result`. Rescue redispatch uses `--redo ...` and invokes the original mode's runner with `--only`.
 
 ## Monitor hint contract
 
@@ -82,4 +84,11 @@ Every successful envelope includes `monitor.tool_hint`. The string is a literal 
 
 The dispatcher does NOT invoke `codex` directly. It spawns the bash runner; the runner sources `codex-flags.sh` and invokes `codex exec`. Updating the codex policy (model, effort, sandbox) is a one-line change in `codex-flags.sh`; the dispatcher need not be touched.
 
-Two test/dev hatches exist as env vars (`ORCHESTRATE_RUNNER_<MODE>` to point at a stub, `ORCHESTRATE_HELPER_<KIND>` to point at a stub). Production callers never set these; they exist for the integration test harness.
+Test/dev hatches exist as env vars:
+
+- `ORCHESTRATE_RUNNER_<MODE>` points a mode at a stub runner.
+- `ORCHESTRATE_HELPER_<KIND>` points rescue/audit/tidy at a stub helper.
+- `ORCHESTRATE_RUNNER_FOREGROUND=1` runs the selected runner synchronously so tests can inspect the resulting manifest.
+- `ORCHESTRATE_SKIP_PREFLIGHT=1` bypasses login/tool preflight for dry-run fixtures.
+
+Production callers do not set these.

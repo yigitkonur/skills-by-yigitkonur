@@ -57,7 +57,7 @@ The tick line's `flags=` field surfaces actionable signals:
 | `main-dirty:N` | Main branch has uncommitted changes | Fix immediately; nothing should touch main during exec |
 | `size-drift:+Nfiles` | File count changed without a commit | Could be generated files; usually benign |
 | `round-cap-near` (review only) | Branch ≥ round 8 of 10 | Decide if cap should extend or branch should be split |
-| `oscillation` (review only) | 3 consecutive all-rejected rounds | Branch will mark `three_all_rejected` next round |
+| `blocked` (review only) | Review found major or ambiguous items | Main agent evaluates findings before another review pass |
 
 ## Behavior
 

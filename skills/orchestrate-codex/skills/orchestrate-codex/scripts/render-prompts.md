@@ -17,7 +17,7 @@ bash render-prompts.sh <inputs-file> <template-file> <output-dir>
 ## Outputs
 
 - One file `<output-dir>/<slug>.md` per input row.
-- Stderr summary: `wrote N prompt files; first: <output-dir>/<first-slug>.md`.
+- Stdout summary: `rendered: N file(s) into <output-dir>`.
 
 ## Exit codes
 
@@ -34,13 +34,13 @@ bash render-prompts.sh <inputs-file> <template-file> <output-dir>
 
 ## Slug collisions
 
-If two inputs render to the same slug, the script writes a stderr warning and **skips the second**:
+If two inputs render to the same slug, the script writes an error and exits non-zero:
 
 ```
-WARN: slug collision 'foo-bar' on row 17 — keeping row 4; row 17 dropped
+error: collision on foo-bar.md (line 17); disambiguate input
 ```
 
-Disambiguate the input (add a discriminator) before re-rendering, or you'll lose work silently. The script does not auto-resolve collisions.
+Disambiguate the input before re-rendering. The dispatcher treats collisions as preflight failures.
 
 ## Substitution
 
@@ -48,4 +48,4 @@ The template's `XXXXXXXXXXXXX` placeholder (13 X's) is replaced by the input row
 
 ## Notes
 
-The placeholder is intentionally distinctive (13 X's) to avoid colliding with template prose. If your template legitimately contains 13 X's in a row, the subagent broke the world; pick a different placeholder and update both the template and this script.
+The placeholder is intentionally distinctive (13 X's) to avoid colliding with template prose. If a template must contain that literal token, pass a different placeholder and update the template consistently.

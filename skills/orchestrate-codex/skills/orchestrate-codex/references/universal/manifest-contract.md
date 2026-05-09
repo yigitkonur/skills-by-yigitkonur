@@ -2,20 +2,34 @@
 
 The manifest is the single source of truth for an orchestrate-codex run. Every mode reads from it; every status transition writes to it. It is the input to rescue mode and the audit gate for tidy.
 
+## Contents
+
+- Path
+- Top-level schema
+- Entry schema
+- Per-mode `mode_state`
+- History schema
+- Atomic write
+- Lifecycle
+- Concurrent runs
+- Recovery
+- Why outside the repo
+
 ## Path
 
 ```
-${CLAUDE_PLUGIN_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-code}/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json
+resolveStateDir(cwd)/orchestrate-codex/manifest.json
 ```
 
 The `<workspace-slug>-<hash>` is computed from cwd using the same algorithm codex-companion's `lib/state.mjs:resolveStateDir(cwd)` uses:
 
-- `workspace-slug` = `basename(workspace_root)` lowercased and sanitized to `[a-z0-9-]` (other chars → `-`, runs of `-` collapsed, leading/trailing `-` stripped). Empty result falls back to `workspace`.
+- `workspace-slug` = `basename(workspace_root)` sanitized to `[A-Za-z0-9._-]` (other chars → `-`, leading/trailing `-` stripped). Empty result falls back to `workspace`.
 - `hash` = first 16 hex characters of `sha256(realpath(workspace_root))`.
+- State root = `$CLAUDE_PLUGIN_DATA/state` when set; otherwise `${TMPDIR:-/tmp}/codex-companion`.
 
 Sharing the slug+hash with codex-companion is intentional: rescue mode correlates manifest entries with codex-companion's `state.json` and `jobs/<id>.json` records under the same `<workspace-slug>-<hash>` directory.
 
-If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-code/state/...` (Linux) or `~/.local/share/claude-code/state/...` (macOS). If neither resolves writably, the dispatcher surfaces `error.code = "plugin_data_unwritable"` and stops. Never use `/tmp` as the manifest path of record — cross-session collisions are silent.
+The dispatcher and `bootstrap.sh` both use this algorithm. There is no separate XDG or md5 path.
 
 ## Top-level schema
 
@@ -27,6 +41,7 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
   "started_at": "2026-05-08T18:20:30Z",
   "updated_at": "2026-05-08T18:42:11Z",
   "workspace_root": "/abs/path/to/repo",
+  "state_dir": "/abs/state/<slug-hash>/orchestrate-codex",
   "base_commit": "abc1234567890def...",
   "policy": {
     "model": "gpt-5.5",
@@ -37,6 +52,8 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
   },
   "concurrency_cap": 5,
   "monitor_root": "/abs/path/to/monitor-root",
+  "paths": {},
+  "preflight": {},
   "entries": [ /* one row per task; see below */ ],
   "history": [ /* append-only audit trail */ ]
 }
@@ -49,6 +66,7 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
 | `mode` | string | One of `exec | batch | single | review | rescue`. Rescue mode preserves the original mode here. |
 | `started_at` / `updated_at` | ISO 8601 UTC | `started_at` written once; `updated_at` bumped on every mutation. |
 | `workspace_root` | abs path | `git rev-parse --show-toplevel` for git repos; cwd otherwise. |
+| `state_dir` | abs path | `dirname(manifest_path)`. |
 | `base_commit` | sha | Pinned at start. Used by rescue and audit to detect "did the user move main?" |
 | `policy.model` | string | `gpt-5.5` default. Override via env `ORCHESTRATE_CODEX_MODEL`. |
 | `policy.effort` | string | `xhigh` default. Override via env `ORCHESTRATE_CODEX_EFFORT`. |
@@ -57,6 +75,8 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
 | `policy.overrides` | object | Free-form key/value of session overrides recorded for rescue replay. |
 | `concurrency_cap` | int | Mode-specific default; raise via `--concurrency N --i-have-measured`. |
 | `monitor_root` | abs path | Where the runner writes log files; the Monitor command tails files under here. |
+| `paths` | object | Mode-level artifact directories such as `prompts_dir`, `answers_dir`, `rounds_dir`, `audit_report`. |
+| `preflight` | object | Parsed `bootstrap.sh` KEY=VALUE output or `{skipped:true}` in dry-run tests. |
 
 ## Entry schema
 
@@ -64,7 +84,9 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
 {
   "id": "01-search-rewrite",
   "slug": "01-search-rewrite",
-  "mode_state": { /* mode-specific; see below */ },
+  "branch": "wave1/search-rewrite",
+  "base_branch": "main",
+  "prompt_path": "/abs/path/to/prompts/01-search-rewrite.md",
   "worktree_path": "/abs/path/to/repo-wt-exec-search-rewrite",
   "log_path": "/abs/path/to/monitor-root/01-search-rewrite.log",
   "jsonl_path": "/abs/path/to/monitor-root/01-search-rewrite.jsonl",
@@ -76,7 +98,8 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
   "exit_code": null,
   "last_error": null,
   "codex_thread_id": null,
-  "codex_session_id": null
+  "codex_session_id": null,
+  "mode_state": { /* mode-specific; see below */ }
 }
 ```
 
@@ -84,12 +107,15 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
 |---|---|---|
 | `id` | string | Stable, unique within the manifest. The runner identifies entries by id. |
 | `slug` | string | Same value as `id` by default; separately settable so display labels can differ from internal ids. |
+| `branch` | string \| null | Top-level branch field for exec/review runners. |
+| `base_branch` | string \| null | Base ref for worktree setup and review. |
+| `prompt_path` | abs path \| null | Prompt file consumed by exec/batch/single runners. |
 | `mode_state` | object | Mode-specific. See per-mode tables below. |
 | `worktree_path` | abs path \| null | Absolute path to the worktree (exec / review). Null for batch / single. |
 | `log_path` | abs path | Per-entry log of stdout+stderr. The runner's per-job redirect target. |
 | `jsonl_path` | abs path | Per-entry JSONL events captured from `codex exec --json`. |
 | `answer_path` | abs path \| null | Output of `codex exec -o <file>`. Null for review (review writes findings JSON). |
-| `status` | enum | `queued | running | done | failed | skipped | rescued`. |
+| `status` | enum | Common: `queued | running | done | failed | skipped`. Review adds `converged | blocked | cap_reached`. |
 | `attempts` | int | Incremented on each retry; rescue uses this to detect repeat failures. |
 | `started_at` / `finished_at` | ISO 8601 UTC | `started_at` set on first state-flip to `running`; `finished_at` set on terminal status. |
 | `exit_code` | int \| null | Exit code of the codex spawn (or wrapper). |
@@ -103,6 +129,8 @@ If `${CLAUDE_PLUGIN_DATA}` is unset, the fallback is `${XDG_DATA_HOME}/claude-co
 ```json
 {
   "branch": "wave1/search-rewrite",
+  "base_branch": "main",
+  "prompt": null,
   "prompt_file": "/abs/path/to/prompts/01-search-rewrite.md",
   "post_verify_cmd": "pnpm test",
   "post_verify_exit": null
@@ -165,7 +193,7 @@ Use cases:
 
 ## Atomic write
 
-Every mutation goes through this sequence (implemented by `scripts/manifest-update.py`):
+Every mutation goes through this sequence. The dispatcher uses Node `mktemp` + rename for seed/reset writes; bash runners use `scripts/manifest-update.sh`; Python diagnostics use `scripts/manifest-update.py` when they need write support.
 
 ```python
 import fcntl, json, os, tempfile
@@ -201,7 +229,7 @@ Properties:
 - Readers do not block. They may see a previous version until the rename completes; `os.replace` is atomic on the same filesystem.
 - The `.lock` file remains after release (intentional — saves an `unlink` race on next acquire). Tidy removes it.
 
-Concurrent invocations of `manifest-update.py` against the same manifest serialize through the lock. The bash runners shell out to `manifest-update.py` for every status flip; never write the manifest from bash directly.
+Concurrent invocations of either manifest-update helper against the same manifest serialize through the lock. Never hand-roll manifest edits inside a runner.
 
 ## Lifecycle
 
@@ -210,9 +238,9 @@ Concurrent invocations of `manifest-update.py` against the same manifest seriali
 | Run start | Dispatcher creates manifest; writes `schema_version`, `run_id`, `mode`, `started_at`, `policy`, `concurrency_cap`, all entries with `status="queued"`. |
 | Worker starts | Worker (via runner) sets `entries[i].status="running"`, `started_at`, increments `attempts`. |
 | Worker progresses | `codex_thread_id` written from first JSONL event; `log_path`/`jsonl_path` populated. |
-| Worker finishes OK | `status="done"`, `finished_at`, `exit_code=0`, possibly `mode_state.post_verify_exit`. |
+| Worker finishes OK | `status="done"` for exec/batch/single, `status="converged"` for review no-major rounds; `finished_at`, `exit_code=0`, possibly verify/classifier paths. |
 | Worker fails | `status="failed"`, `finished_at`, `exit_code=N`, `last_error="..."`. |
-| Rescue redispatch | Re-flip selected entries to `queued`, increment `attempts`, append history rows. The original `last_error` stays on the entry until the new attempt completes. |
+| Rescue redispatch | Re-flip selected entries to `queued`, clear prior terminal fields, append history rows, then invoke the original mode's runner with `--only`. The runner increments `attempts`. |
 | Tidy success | Manifest **deleted** (only after all entries terminal AND every worktree removed). |
 
 Hand-editing the manifest is forbidden. If audit reveals drift, fix via `manifest-update.py --entry <id> --set 'status=failed' --set 'last_error=manual-correction'`. The history shows the correction.
@@ -221,9 +249,7 @@ Hand-editing the manifest is forbidden. If audit reveals drift, fix via `manifes
 
 Only one run per workspace at a time. The dispatcher checks for an existing manifest at the resolved path; if one exists with non-terminal entries (`queued | running`), it refuses with `error.code="concurrent_run_in_progress"`.
 
-To start a second run on the same workspace:
-- Wait for the first to finish (its tidy will delete the manifest).
-- OR pass `--force-new-run` AND a custom `--run-id`, which writes to `manifest.<custom-run-id>.json` in the same directory. The Monitor must use this custom path. Use only when you genuinely have two parallel runs (e.g. a fleet PLUS a single-mission research task).
+To start another run on the same workspace, wait for the first to finish or rescue/tidy it. This dispatcher does not support multiple active manifests in one state-root.
 
 ## Recovery
 
@@ -231,13 +257,13 @@ If the manifest is corrupted (e.g. partially-written JSON because the disk fille
 
 1. Run `python3 scripts/audit-fleet-state.py --manifest <path> --json --repair-dry-run`. It reads the manifest with a tolerant parser, lists what's salvageable, and writes a candidate repaired JSON to stdout.
 2. Inspect the candidate. If acceptable, apply with `audit-fleet-state.py --repair-execute`.
-3. If unsalvageable, copy the manifest to `<path>.broken-<timestamp>` and start a fresh run with `--force-new-run`. Surface the broken file path so the user can inspect.
+3. If unsalvageable, copy the manifest to `<path>.broken-<timestamp>` and start a fresh run. Surface the broken file path so the user can inspect.
 
 Never silently delete a corrupted manifest. The history may be the only record of what was attempted.
 
 ## Why outside the repo
 
-The manifest lives under `${CLAUDE_PLUGIN_DATA}` instead of inside the repo because:
+The manifest lives under `resolveStateDir(cwd)` instead of inside the repo because:
 - The orchestrator owns the state, not the project. Multiple repos share the same orchestrate-codex skill but each has its own state.
 - It matches codex-companion's state model. Rescue can correlate by directory layout.
 - Multiple Claude Code sessions can run the skill on the same repo serially without leaving orphan files in the repo's working tree.

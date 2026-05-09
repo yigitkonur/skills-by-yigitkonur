@@ -1,6 +1,6 @@
 # Review mode prompt template
 
-Review mode invokes `codex exec review` per branch per round. The "prompt" for `codex review` is more constrained than exec/batch: it expects review focus instructions, not task instructions. The codex review subcommand also has its own narrower flag set (`--base`, `--commit`, `--uncommitted`, `--title`).
+Review mode invokes `codex exec review` per branch per round. The review focus is more constrained than exec/batch: it names what to review and what to ignore. In codex-cli 0.130.0, `codex exec review` accepts the same policy flags as `codex exec`, plus review-specific flags such as `--base`.
 
 This template is the per-round review focus passed via stdin or `--prompt`. The main agent reads the resulting `findings.<round>.json` and decides per-item.
 
@@ -68,8 +68,7 @@ Review focus prompts run 30–60 lines. The template is the upper bound; round c
 ## Round termination
 
 The skill caps rounds at 10. If a branch hasn't converged by round 10:
-- Mark `cap-reached` if there's been no progress at all.
-- Mark `converged-at-cap` if at least one round of fixes pushed and the branch is mergeable with the remaining items deferred to PR body.
+- Mark `cap_reached` if another terminal state has not been reached.
 - Mark `blocked` if items are persistently ambiguous or contradict each other.
 
 Read `references/modes/review.md` §terminal-states for the full taxonomy.

@@ -16,7 +16,7 @@ Sourced helper. Single source of truth for the codex spawn flags every runner us
 | `CODEX_MODEL` | string | resolved model name |
 | `CODEX_EFFORT` | string | resolved effort name |
 | `CODEX_FLAGS` | array | `--dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -m "$CODEX_MODEL" -c "model_reasoning_effort=$CODEX_EFFORT"` |
-| `CODEX_REVIEW_FLAGS` | array | narrower flag set for `codex review` (root subcommand): `-c "model_reasoning_effort=$CODEX_EFFORT"`. **Note:** `run-review.sh` uses `codex exec review` and reuses the full `CODEX_FLAGS` — `CODEX_REVIEW_FLAGS` is a safety rail for the rare bare `codex review` invocation. |
+| `CODEX_REVIEW_FLAGS` | array | alias of `CODEX_FLAGS`. Review mode uses `codex exec review`, which accepts the full policy flag set in codex-cli 0.130.0. |
 
 ## Usage
 

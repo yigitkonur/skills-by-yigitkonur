@@ -10,31 +10,32 @@ bash bootstrap.sh [MONITOR_ROOT]
 
 | Arg/env | Default | Effect |
 |---|---|---|
-| `MONITOR_ROOT` (positional) | derived from `${CLAUDE_PLUGIN_DATA}/state/<slug>-<hash>/` | where logs and per-entry artifacts go |
+| `MONITOR_ROOT` (env) | derived from `resolveStateDir(cwd)/orchestrate-codex/logs` | where logs and per-entry artifacts go |
 | `PROJECT_DIR` (env) | `$PWD` | the workspace root |
-| `CLAUDE_PLUGIN_DATA` (env) | resolved per `references/universal/plugin-data.md` | state root for the manifest |
+| `CLAUDE_PLUGIN_DATA` (env) | optional | when set, state root is `$CLAUDE_PLUGIN_DATA/state`; otherwise `${TMPDIR:-/tmp}/codex-companion` |
+| `SKIP_GIT=1` | off | batch/single may skip git checks. |
+| `ORCHESTRATE_SKIP_CODEX_AUTH=1` | off | test-only auth bypass. Production preflight hard-fails unauthenticated Codex. |
 
 ## Outputs
 
 stdout (KEY=VALUE block; the dispatcher parses it):
 
 ```
-PROJECT_DIR=/abs/path/to/repo
-WORKSPACE_SLUG=myrepo-abc1234567890def
-MONITOR_ROOT=/abs/path/.../state/myrepo-abc.../orchestrate-codex
-MANIFEST_PATH=/abs/path/.../state/myrepo-abc.../orchestrate-codex/manifest.json
+STATE_DIR=/abs/path/.../state/myrepo-abc1234567890def/orchestrate-codex
+MANIFEST_PATH=/abs/path/.../state/myrepo-abc1234567890def/orchestrate-codex/manifest.json
+MONITOR_ROOT=/abs/path/.../state/myrepo-abc1234567890def/orchestrate-codex/logs
 BASELINE_SHA=abc1234567890def
-CODEX_VERSION=codex-cli 0.129.0
-JQ_AVAILABLE=1
-GH_AVAILABLE=1
-NODE_VERSION=v22.x.x
-PYTHON_VERSION=3.11.x
+RUN_ID=20260509T033000Z-abcd
+PLUGIN_DATA_ROOT=/abs/plugin-data
+WORKSPACE_SLUG=myrepo-abc1234567890def
+CODEX_MODEL=gpt-5.5
+CODEX_EFFORT=xhigh
 ```
 
 Side effects:
 - Creates `MONITOR_ROOT` directory tree if missing.
-- Pins `BASELINE_SHA` (current `git rev-parse HEAD`) to the manifest dir for forensics.
-- Writes a stderr warning (non-fatal) when codex auth probe (`codex login status`) returns non-zero — auth probes are flaky on dev boxes; the actual spawns may still work.
+- Pins `BASELINE_SHA` (current `git rev-parse HEAD`) when git checks are enabled.
+- Exits non-zero when `codex login status` fails, unless `ORCHESTRATE_SKIP_CODEX_AUTH=1` is set for tests.
 
 ## Exit codes
 
@@ -42,13 +43,16 @@ Side effects:
 |---|---|
 | 0 | Pre-flight clean; safe to dispatch |
 | 1 | Not in a git repo (and the chosen mode requires one) |
-| 2 | `codex` not on `PATH` or unauthenticated |
+| 2 | `codex` not on `PATH` |
+| 3 | `codex login status` failed |
+| 4 | `jq`, `flock`, or `node` missing |
+| 5 | state dir unwritable |
 
 ## Behavior
 
-- Detects monorepo layout (multiple `package.json`s with workspace fields) and surfaces it in stdout for downstream tools.
-- Verifies `.gitignore` covers `<repo-name>-wt-*`; appends pattern to `.gitignore` if missing AND user passed `--gitignore-fix` (default off).
-- Soft-warns when `${CLAUDE_PLUGIN_DATA}` is unset and falls back to the XDG path.
+- Computes the same slug/hash path as `scripts/codex-cc/lib/state.mjs`.
+- Creates `STATE_DIR` and `MONITOR_ROOT`.
+- Emits an advisory when `.worktrees/` is not ignored and git checks are enabled.
 
 ## Notes
 

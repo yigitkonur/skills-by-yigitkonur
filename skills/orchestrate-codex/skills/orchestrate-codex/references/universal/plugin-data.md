@@ -1,27 +1,22 @@
 # `${CLAUDE_PLUGIN_DATA}` resolution and the state directory
 
-Every orchestrate-codex run writes its manifest under a state directory keyed off the workspace. The directory's path is derived from `${CLAUDE_PLUGIN_DATA}` with a documented fallback chain. Codex-companion uses the same workspace-slug+hash function, so our manifest sits next to its `state.json` and `jobs/` records — rescue can correlate by codex thread id.
+Every orchestrate-codex run writes its manifest under the same state directory algorithm used by vendored codex-cc. Codex-companion uses the same workspace-slug+hash function, so our manifest sits next to its `state.json` and `jobs/` records — rescue can correlate by codex thread id.
 
 ## Resolution chain
 
 ```
-1. ${CLAUDE_PLUGIN_DATA}
-2. ${XDG_DATA_HOME}/claude-code
-3. ${HOME}/.local/share/claude-code
+1. `${CLAUDE_PLUGIN_DATA}/state/<workspace-slug>-<hash>`
+2. `${TMPDIR:-/tmp}/codex-companion/<workspace-slug>-<hash>`
 ```
 
 Whichever resolves first AND is writable wins. The dispatcher computes:
 
 ```
-state-root = "<resolved-base>/state/<workspace-slug>-<hash>/orchestrate-codex"
+state-root = "<resolved-state-dir>/orchestrate-codex"
 manifest   = "<state-root>/manifest.json"
 ```
 
-If `${CLAUDE_PLUGIN_DATA}` is not set OR not writable, the dispatcher logs a warning to stderr (in JSON envelope's `meta.warnings`) and proceeds with the fallback. If even the fallback isn't writable, the dispatcher emits `error.code="plugin_data_unwritable"` and exits 5.
-
-**Important:** codex-companion's own state directory uses a different fallback (`os.tmpdir()/codex-companion/...`). When `${CLAUDE_PLUGIN_DATA}` is unset, our manifest and codex-companion's state may end up in different roots. Rescue mode handles this by computing codex-companion's path independently using the upstream `state.mjs:resolveStateDir` algorithm.
-
-`bootstrap.sh` ensures `${CLAUDE_PLUGIN_DATA}` is set before any spawn, keeping the two co-located.
+If the chosen state root is not writable, bootstrap/dispatcher surface the failure and stop. There is no XDG fallback in this skill; matching `codex-cc/lib/state.mjs` is the contract.
 
 ## Workspace slug + hash
 
@@ -33,7 +28,7 @@ import hashlib, os, re
 def resolve_state_dir_name(cwd: str) -> str:
     workspace_root = os.path.realpath(cwd)  # codex-companion uses fs.realpath
     raw_basename = os.path.basename(workspace_root) or "workspace"
-    slug = re.sub(r"[^a-z0-9-]+", "-", raw_basename.lower()).strip("-") or "workspace"
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", raw_basename).strip("-") or "workspace"
     digest = hashlib.sha256(workspace_root.encode("utf-8")).hexdigest()[:16]
     return f"{slug}-{digest}"
 ```
@@ -42,7 +37,7 @@ This is a verbatim port of codex-companion's `lib/state.mjs:resolveStateDir(cwd)
 
 Notes:
 - `realpath` resolves symlinks. macOS `/tmp` → `/private/tmp` matters; `cwd=/tmp/test` produces a different hash than the same script run from `/private/tmp/test`.
-- The slug is lowercase + dash-only; uppercase basenames are folded.
+- The slug preserves case and allows dot/underscore/dash, matching `state.mjs`.
 - The hash is 16 hex chars (64 bits) — ample collision resistance for any one user's workspaces.
 
 ## Why outside the repo
@@ -89,17 +84,9 @@ ls -t <workspace-slug>-<hash>/orchestrate-codex/manifest.*.json 2>/dev/null | ta
 
 The skill's tidy command (`node orchestrate-codex.mjs tidy`) does NOT remove the state directory; it only removes worktrees and clears the active manifest.
 
-## Multiple manifests in one state-root
+## One active manifest per state-root
 
-When `--force-new-run --run-id <custom>` is used, the manifest is written to:
-
-```
-<state-root>/manifest.<custom-id>.json
-```
-
-This lets parallel runs on the same workspace coexist (rare but valid for e.g. one fleet + one single-mission research task).
-
-The Monitor command must use the explicit path (not just `manifest.json`). The dispatcher's emitted hint includes the path.
+The dispatcher writes one active `manifest.json` per workspace state-root. If it contains non-terminal entries, the next dispatch refuses and routes to rescue. Use a different cwd/state root for truly independent concurrent orchestration.
 
 ## Recovery from a corrupt state-root
 
@@ -107,15 +94,15 @@ If the state directory is corrupt (e.g. `manifest.json` is partial JSON):
 
 1. `python3 audit-fleet-state.py --manifest <state-root>/manifest.json --json --repair-dry-run` — reads with a tolerant parser, lists what's salvageable.
 2. If salvageable, apply with `--repair-execute`.
-3. If unsalvageable, rename the broken file (`mv manifest.json manifest.json.broken-<ts>`) and start fresh with `--force-new-run`. Surface the broken file path so the user can inspect.
+3. If unsalvageable, rename the broken file (`mv manifest.json manifest.json.broken-<ts>`) and start fresh. Surface the broken file path so the user can inspect.
 
 Never `rm` a corrupt manifest silently. The history may be the only record of what was attempted.
 
 ## Anti-patterns
 
-- Hard-coding `${HOME}/.local/share/claude-code` in any script. Use the resolution chain.
-- Writing the manifest to `/tmp/...`. Cross-session collisions silently overwrite.
-- Relying on `${CLAUDE_PLUGIN_DATA}` being set without bootstrap. The skill's `bootstrap.sh` is the single setter.
+- Hard-coding `${HOME}/.local/share/claude-code` in any script. Use `codex-cc/lib/state.mjs`.
+- Inventing a custom manifest path. Dispatcher, bootstrap, and rescue must resolve the same state-root.
+- Assuming `${CLAUDE_PLUGIN_DATA}` is set. The codex-cc fallback is valid and shared by dispatcher/bootstrap/rescue.
 - Manually editing files under `<state-root>` other than the manifest. The lock file is advisory; broker.json is codex-companion's; meddling breaks both.
 - Running the skill in a directory that resolves to a different `realpath` between runs (e.g. mounting/unmounting filesystems). The slug+hash will differ; rescue won't find prior state.
 
@@ -128,10 +115,10 @@ If rescue can't find a manifest the user expects:
 node -e 'import("/path/to/scripts/codex-cc/lib/state.mjs").then(m => console.log(m.resolveStateDir(process.cwd())))'
 
 # What state-roots exist?
-ls -la "${CLAUDE_PLUGIN_DATA:-${XDG_DATA_HOME:-$HOME/.local/share}/claude-code}/state/"
+node -e 'import("/path/to/scripts/codex-cc/lib/state.mjs").then(m => console.log(m.resolveStateDir(process.cwd())))'
 
 # Which one matches the workspace's expected slug?
-ls -la "${CLAUDE_PLUGIN_DATA:-...}/state/" | grep "$(basename "$PWD")"
+ls -la "$(dirname "$(node -e 'import("/path/to/scripts/codex-cc/lib/state.mjs").then(m => console.log(m.resolveStateDir(process.cwd())))')")"
 
 # Is the manifest in the expected place?
 ls -la "${CLAUDE_PLUGIN_DATA:-...}/state/<slug>-<hash>/orchestrate-codex/"

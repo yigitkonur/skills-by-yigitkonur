@@ -1,6 +1,6 @@
 # Codex CLI flags the skill uses
 
-Authoritative for codex-cli 0.129.0 and later. Verify with `codex --help`, `codex exec --help`, `codex review --help`. The skill's `scripts/codex-flags.sh` is the single source of truth for the flag arrays every runner uses; if you find yourself typing `--dangerously-bypass-approvals-and-sandbox` inside a runner, source the helper instead.
+Authoritative for the installed codex-cli verified during this pass: `codex-cli 0.130.0`. Verify with `codex --help`, `codex exec --help`, and `codex exec review --help`. The skill's `scripts/codex-flags.sh` is the single source of truth for the flag arrays every runner uses; if you find yourself typing `--dangerously-bypass-approvals-and-sandbox` inside a runner, source the helper instead.
 
 ## The hard-wired set (every direct `codex exec` spawn)
 
@@ -18,13 +18,7 @@ codex exec "${CODEX_FLAGS[@]}" --json -o <answer-file> -C <cwd> "<prompt>"
 | `-m gpt-5.5` | Pinned model. The skill is opinionated. Bumping is a one-line edit in `codex-flags.sh`. |
 | `-c model_reasoning_effort=xhigh` | Pinned effort. Same rationale. |
 
-`CODEX_REVIEW_FLAGS` expands to a narrower set used for `codex exec review`:
-
-| Flag | Why |
-|---|---|
-| `-c model_reasoning_effort=xhigh` | Review benefits from deep reasoning. |
-
-The review subcommand has a narrower flag set than `codex exec`. It does not accept `--skip-git-repo-check` (review requires a repo), does not accept `-o` (review writes findings via the JSONL stream when `--json` is passed), does not accept `--ephemeral`, does not accept `-m` directly (model comes from config). Always pass `--json` to `codex exec review` for machine-readable findings.
+`CODEX_REVIEW_FLAGS` is an alias of `CODEX_FLAGS`. Review mode uses `codex exec review`, not bare `codex review`; in codex-cli 0.130.0 that surface accepts bypass, skip-git, `-m`, `-c`, `--json`, and `-o`.
 
 ## Per-spawn additions
 
@@ -33,7 +27,7 @@ These vary by mode; spelled out per mode in the spine and per-mode references:
 | Flag | Mode | Why |
 |---|---|---|
 | `--json` | exec, batch, single, review | JSONL events to stdout. Pair with `-o` for MCP-active dropout fallback. |
-| `-o <file>` / `--output-last-message <file>` | exec, batch, single | Final-message file. The skill reads this as truth for "did codex produce output." Pair with `--json` always. |
+| `-o <file>` / `--output-last-message <file>` | exec, batch, single, review | Final-message or findings file. The skill reads this as truth for "did codex produce output." Pair with `--json` always. |
 | `-C <dir>` / `--cd <dir>` | exec, single, review | Pin the worktree (or current cwd) for the spawned codex. Defaults to the spawning shell's cwd; explicit is safer in xargs subshells. |
 | `--add-dir <path>` | rare | When the worktree needs codex to write to a path outside it (e.g. a shared monorepo build cache). Prefer this over downgrading to `danger-full-access`'s effective scope. |
 | `--ephemeral` | batch only (optional) | Skips writing session files to disk. Useful for one-shot batch jobs that won't be resumed. **Forbidden** for review and rescue (kills resume capability). |

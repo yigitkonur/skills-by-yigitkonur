@@ -26,8 +26,8 @@ Every script gets a paired `<name>.md` doc. Detailed docs live alongside each sc
 | Templating | `render-prompts.sh` |
 | Review helpers | `classify-review-feedback.py`, `apply-review-decisions.py` |
 | Rescue | `rescue-detect.py` |
-| Test | `test-monitor-integration.mjs` |
-| Vendored | `codex-cc/codex-companion.mjs`, `codex-cc/app-server-broker.mjs`, `codex-cc/lib/*` (15 files) |
+| Test | `test-monitor-integration.mjs`, `test-runner-contracts.mjs` |
+| Vendored | `codex-cc/codex-companion.mjs`, `codex-cc/app-server-broker.mjs`, `codex-cc/lib/*` |
 
 ## By mode
 
@@ -35,9 +35,9 @@ Every script gets a paired `<name>.md` doc. Detailed docs live alongside each sc
 |---|---|---|---|---|---|
 | exec | `bootstrap.sh` | `orchestrate-codex.mjs exec` → `run-fleet.sh` (uses `setup-worktree.sh` per task) | `codex-monitor.sh` | `manifest-update.sh` (per task), `audit-fleet-state.py` | `cleanup-worktrees.py` |
 | batch | `bootstrap.sh` | `orchestrate-codex.mjs batch` → `render-prompts.sh` → `run-batch.sh` | `codex-monitor.sh --tail-runner-log` | `manifest-update.sh`, `audit-fleet-state.py`, `audit-sizes.sh` | (no worktrees to tidy; manifest deleted) |
-| single | `bootstrap.sh` | `orchestrate-codex.mjs single` → `run-single.sh` (uses `codex-json-filter.sh`) | filter pipe is the monitor | `manifest-update.sh` | `cleanup-worktrees.py` (if a fresh worktree was created) |
-| review | `bootstrap.sh` | `orchestrate-codex.mjs review` → `run-review.sh` (uses `setup-worktree.sh`, `classify-review-feedback.py`, `apply-review-decisions.py`) | `codex-monitor.sh --review` | `manifest-update.sh` | `cleanup-worktrees.py` |
-| rescue | `bootstrap.sh` | `orchestrate-codex.mjs rescue` → `rescue-detect.py` (classify) → original mode's runner | inherits original mode | `manifest-update.sh` | inherits original mode |
+| single | `bootstrap.sh` | `orchestrate-codex.mjs single` → `run-single.sh` (uses `codex-json-filter.sh`) | filter pipe is the monitor | `manifest-update.sh` | `cleanup-worktrees.py` only when prior exec/review worktrees need cleanup |
+| review | `bootstrap.sh` | `orchestrate-codex.mjs review` → `run-review.sh` (uses `setup-worktree.sh`, `classify-review-feedback.py`) | `codex-monitor.sh` | `manifest-update.sh` | `cleanup-worktrees.py` |
+| rescue | n/a for classify; original mode on redispatch | `orchestrate-codex.mjs rescue` → `rescue-detect.py`; `--redo ...` → original mode's runner with `--only` | inherits original mode | `manifest-update.sh` | inherits original mode |
 | audit | n/a | `orchestrate-codex.mjs audit` → `audit-fleet-state.py` | n/a (read-only) | n/a | n/a |
 | tidy | n/a | `orchestrate-codex.mjs tidy` → `cleanup-worktrees.py --execute` | n/a | manifest deleted post-tidy | n/a |
 
@@ -49,11 +49,11 @@ Every script gets a paired `<name>.md` doc. Detailed docs live alongside each sc
 | `orchestrate-codex.mjs` | writes manifest | concurrent-run refusal |
 | `bootstrap.sh` | creates state-dir | none (idempotent) |
 | `setup-worktree.sh` | creates worktree | refuses if exists unless `ALLOW_REUSE=1` |
-| `render-prompts.sh` | writes prompt files | none (skips collisions) |
-| `run-fleet.sh` | spawns codex, auto-commits, writes manifest | `--dry-run` flag |
-| `run-batch.sh` | spawns codex, writes answers, writes manifest | none (idempotent skip-existing) |
-| `run-single.sh` | spawns codex, writes answer, writes manifest | none |
-| `run-review.sh` | spawns codex review, writes findings, writes manifest | none |
+| `render-prompts.sh` | writes prompt files | hard-fails slug collisions |
+| `run-fleet.sh` | spawns codex, auto-commits, writes manifest | `--dry-run` flag; `--only` subset |
+| `run-batch.sh` | spawns codex, writes answers, writes manifest, writes audit report | `--dry-run` flag; idempotent skip when manifest status is `done` |
+| `run-single.sh` | spawns codex, writes answer, writes manifest | `--dry-run` flag |
+| `run-review.sh` | spawns codex review, writes findings/classifier output, writes manifest | `--dry-run` flag; terminal states only |
 | `codex-monitor.sh` | reads state | n/a (read-only loop) |
 | `codex-json-filter.sh` | filters stdin | n/a |
 | `audit-sizes.sh` | reads `answers/` | n/a (read-only) |
@@ -62,10 +62,11 @@ Every script gets a paired `<name>.md` doc. Detailed docs live alongside each sc
 | `cleanup-worktrees.py` | removes worktrees, deletes manifest | `--execute` flag |
 | `manifest-update.sh` | writes manifest | none (silent execute by design — runner-internal) |
 | `manifest-update.py` | writes manifest | `--execute` flag |
-| `classify-review-feedback.py` | writes classified.json | n/a |
+| `classify-review-feedback.py` | reads review JSON and prints classification | n/a |
 | `apply-review-decisions.py` | reads decisions.json | n/a (read-only — main agent applies) |
 | `rescue-detect.py` | reads manifest + filesystem | n/a (read-only) |
 | `test-monitor-integration.mjs` | writes /tmp test fixtures | n/a (test only) |
+| `test-runner-contracts.mjs` | writes /tmp test fixtures | n/a (test only) |
 
 ## Per-script paired docs
 
@@ -91,10 +92,11 @@ Every script gets a paired `<name>.md` doc. Detailed docs live alongside each sc
 | `apply-review-decisions.py` | `apply-review-decisions.md` |
 | `rescue-detect.py` | `rescue-detect.md` |
 | `test-monitor-integration.mjs` | `test-monitor-integration.md` |
+| `test-runner-contracts.mjs` | `test-runner-contracts.md` |
 
 ## Vendored tree
 
-`codex-cc/` is a vendored copy of `openai/codex-plugin-cc`'s `plugins/codex/scripts/` tree (minus the two hooks). See `codex-cc/UPSTREAM.md` for the pinned version, the patch (`codex.mjs.patch`), and the update procedure. Routing details for when the dispatcher / rescue uses these scripts: `references/universal/codex-companion.md`.
+`codex-cc/` is a vendored copy of `openai/codex-plugin-cc`'s `plugins/codex/scripts/` tree (minus the two hooks). The paired-doc rule does not apply inside this subtree; it is covered as one vendored unit by `codex-cc/UPSTREAM.md` and `references/universal/codex-companion.md`. Route `codex-cc/lib/*` as a subtree, not as individual top-level scripts.
 
 ## Adding a new script
 

@@ -23,11 +23,11 @@ python3 rescue-detect.py --manifest <path> [--workspace-root <dir>] [--stale-tic
   "manifest_run_id": "20260508T182030Z-7q4f",
   "manifest_mode": "exec",
   "counts": {"done": 3, "failed": 1, "never_started": 1, "in_flight": 0, "unknown": 0, "total": 5},
-  "redispatch_options": [
-    {"label": "Redo failures only", "ids": ["02-cache-eviction"]},
-    {"label": "Redo never-started only", "ids": ["04-alert-fsm"]},
-    {"label": "Redo all non-done", "ids": ["02-cache-eviction", "04-alert-fsm"]}
-  ],
+  "redispatch_options": {
+    "failed_only": ["02-cache-eviction"],
+    "never_started_only": ["04-alert-fsm"],
+    "all_non_done": ["02-cache-eviction", "04-alert-fsm"]
+  },
   "entries": [
     {"id": "01-search-rewrite", "manifest_status": "done", "classification": "done", "evidence": [...]},
     {"id": "02-cache-eviction", "manifest_status": "failed", "classification": "failed", "evidence": ["exit_code=1", "503 in log"]},
@@ -64,6 +64,6 @@ python3 rescue-detect.py --manifest <path> [--workspace-root <dir>] [--stale-tic
 
 ## Notes
 
-Rescue mode invokes this. The dispatcher embeds `redispatch_options` in the JSON envelope and the main agent surfaces a 3-option AskUserQuestion to the user. Never auto-pick.
+Rescue mode invokes this. The dispatcher embeds `redispatch_options` in the JSON envelope. Redispatch is explicit: rerun `orchestrate-codex.mjs rescue --redo failed|never-started|all-non-done`; pass `--accept-stale` only when replaying unknown entries intentionally.
 
 The `--stale-tick-seconds` and `--stale-multiplier` should match `codex-monitor.sh`'s `INTERVAL` env var. In production, set both consistently in `bootstrap.sh`.

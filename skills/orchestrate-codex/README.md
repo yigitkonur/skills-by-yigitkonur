@@ -31,8 +31,7 @@ The five modes:
 
 ## Prerequisites
 
-- `codex-cli` 0.129.0 or later, authenticated (`codex login status` exits 0).
+- `codex-cli` 0.130.0 or later, authenticated (`codex login status` exits 0).
 - `node` 22+ (for the dispatcher).
 - `python3` 3.10+ (for the helpers).
 - `jq` (for the bash manifest helper).
-- `gh` 2.x with `gh auth status` succeeding (review mode only).

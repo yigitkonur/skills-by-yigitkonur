@@ -2,6 +2,17 @@
 
 Seven universal rows. Per-mode extensions appear at the bottom. The spine carries the summary; this file carries the remediation.
 
+## Contents
+
+- 1. Rate-limit / 503
+- 2. Hung process
+- 3. MCP-active JSON drop
+- 4. Output truncation
+- 5. Worktree dirty unexpected
+- 6. Manifest collision
+- 7. State dir missing
+- Per-mode extensions
+
 ## 1. Rate-limit / 503
 
 **Trigger signal:**
@@ -105,24 +116,23 @@ Seven universal rows. Per-mode extensions appear at the bottom. The spine carrie
 **First-line mitigation:**
 1. The dispatcher refuses cleanly. Do not corrupt the manifest by force-writing.
 2. Inspect the lock file: `lsof manifest.lock` shows which process holds it. If stale (process is gone), remove the lock manually.
-3. To start a parallel run intentionally: `--force-new-run --run-id <custom>` writes to `manifest.<custom>.json` and uses a separate Monitor.
+3. Do not start a parallel run on the same manifest. Use a separate cwd/state root if concurrent orchestration is truly required.
 
 **Anti-pattern:** removing the lock without checking `lsof`. A live writer mid-update will produce a corrupt manifest if you yank the lock.
 
-## 7. Plugin-data dir missing or unwritable
+## 7. State dir missing or unwritable
 
 **Trigger signal:**
-- Dispatcher emits `error.code = "plugin_data_unwritable"`.
-- `${CLAUDE_PLUGIN_DATA}` is empty or points at a non-existent path.
+- Bootstrap or dispatcher cannot create `resolveStateDir(cwd)/orchestrate-codex`.
+- `${CLAUDE_PLUGIN_DATA}` is set to an unwritable path, or `${TMPDIR:-/tmp}/codex-companion` is unwritable.
 
-**Why:** The user's environment doesn't have `${CLAUDE_PLUGIN_DATA}` set, OR the path is on a read-only filesystem, OR permissions are wrong, OR the directory was tidied by another tool.
+**Why:** The state root is on a read-only filesystem, permissions are wrong, or another tool removed a parent directory.
 
 **First-line mitigation:**
-1. Fall back to `${XDG_DATA_HOME:-$HOME/.local/share}/claude-code/state/...`. The dispatcher does this automatically.
-2. If even the fallback fails, surface the path and stop. Likely a system-level permission issue.
-3. The user fixes the env var or permissions; re-run.
+1. Surface the exact state root and stop. Likely a system-level permission issue.
+2. The user fixes `${CLAUDE_PLUGIN_DATA}`, `${TMPDIR}`, or permissions; re-run.
 
-**Anti-pattern:** falling back to `/tmp`. Cross-session collisions are silent there; never use `/tmp` as the manifest path of record.
+**Anti-pattern:** inventing a third state path. The dispatcher, bootstrap, and rescue must all use `codex-cc/lib/state.mjs` semantics.
 
 ## Per-mode extensions
 
@@ -138,8 +148,8 @@ Seven universal rows. Per-mode extensions appear at the bottom. The spine carrie
 
 | Failure | Trigger | Mitigation |
 |---|---|---|
-| Slug collision | Two input rows render to the same slug | `render-prompts.sh` writes a stderr warning and SKIPS the second. The first wins. Disambiguate the input (add a discriminator) and re-render. |
-| Skip-existing race | Two runners over the same workdir | The skip-existing guard works at job start, not file-write time. Two runners would race. The dispatcher refuses concurrent runs; if you bypassed via `--force-new-run`, manage the workdirs separately. |
+| Slug collision | Two input rows render to the same slug | `render-prompts.sh` hard-fails. Disambiguate the input and re-render. |
+| Skip-existing race | Two runners over the same workdir | The skip-existing guard works at job start, not file-write time. Two runners would race. The dispatcher refuses concurrent runs; use separate workdirs for separate batches. |
 | Audit shows EVERYTHING below floor | `audit-sizes.sh` flags 100% of entries | The template is wrong. Inspect the template; adjust; re-render; re-run. Do not retry the same template — it'll produce the same thin outputs. |
 
 ### single mode
@@ -153,9 +163,9 @@ Seven universal rows. Per-mode extensions appear at the bottom. The spine carrie
 
 | Failure | Trigger | Mitigation |
 |---|---|---|
-| Round 10 reached, still has major items | `cap-reached` terminal | Surface the remaining major items in the deliverable. The user decides whether to extend the cap, split the branch, or accept-as-known. |
-| 3 consecutive all-rejected | `oscillation` flag | Mark `done` with `terminal_reason="three_all_rejected_codex_stuck"`. Codex is producing items the main agent rejects every round; further rounds won't converge. |
-| Findings JSON malformed | `classify-review-feedback.py` exits 2 | The codex review output drifted from expected schema. Surface the raw output; the user inspects. Skill version may need to bump. |
+| Round 10 reached | `cap_reached` terminal | Surface the remaining artifacts. The user decides whether to split the branch or rerun after fixes. |
+| Major findings present | `blocked` terminal | Main agent evaluates with `do-review` or local equivalent, applies accepted fixes, then reruns review. |
+| Classifier JSON malformed | `classify-review-feedback.py` exits 2 | The normalizer/classifier contract broke. Surface raw output; skill version may need to bump. |
 | Branch CI failed before review even started | Pre-flight detected unmerged red CI | Surface immediately. Do not dispatch review on a red branch — codex will flag CI errors as findings, polluting the review. |
 
 ### rescue mode
