@@ -82,6 +82,8 @@ Q8. None of the above → ask once. Compose option descriptions from the
     to see what each mode does.
 ```
 
+**Multi-mode prompts (Q1–Q7 fire on disjoint clauses).** When the user's prompt encodes more than one mode at once — e.g. "3 branches need review, 2 small refactors in parallel, 1 big refactor I want to watch live" matches Q2 + Q5 + Q4 simultaneously — the first-match-wins rule mis-routes by silently dropping the unmatched clauses. Don't pick one mode arbitrarily; one orchestrate-codex run is one mode. Surface the breakdown to the user (clause → mode mapping) and dispatch one invocation per mode in this default order: `review` → `exec` → `single` → `batch` (review first because its findings may shrink scope before code lands; rescue is its own track and only fires on Q1). Concurrent invocations against the same workspace require `--force-new-run --run-id <custom>` per dispatch (the dispatcher refuses overlapping runs otherwise). Sequential same-workspace runs without `--run-id` overwrite the prior manifest, so use distinct run-ids if any audit trail matters across the wave. See `references/universal/manifest-contract.md` for the run-id semantics.
+
 `<manifest-path>` resolution: `resolveStateDir(cwd)/orchestrate-codex/manifest.json`, where `resolveStateDir` is the vendored codex-cc algorithm: `$CLAUDE_PLUGIN_DATA/state/<slug>-<hash>` when set, otherwise `${TMPDIR:-/tmp}/codex-companion/<slug>-<hash>`. See `references/universal/manifest-contract.md` and `references/universal/plugin-data.md`.
 
 If detection lands on MEDIUM confidence and the surrounding prompt is genuinely ambiguous, ask. Cheap to confirm; expensive to misroute.
@@ -333,7 +335,7 @@ Cross-reference index of every reference and which mode pulls it: `references/in
 
 | Script | Mode | Purpose |
 |---|---|---|
-| `scripts/orchestrate-codex.mjs` | all | top-level dispatcher; emits JSON envelope |
+| `scripts/orchestrate-codex.mjs <subcommand>` | all | top-level dispatcher; emits JSON envelope. Subcommands: `exec`, `batch`, `single`, `review`, `rescue` (mode handlers); `audit` (read-only manifest+filesystem state dump); `tidy` (dry-run-default cleanup of completed worktrees and merged branches; pair with `--execute` to apply — wraps `cleanup-worktrees.py`). |
 | `scripts/codex-flags.sh` | all | sourced helper exporting `CODEX_FLAGS` and `CODEX_REVIEW_FLAGS` |
 | `scripts/bootstrap.sh` | all | one-shot pre-flight |
 | `scripts/setup-worktree.sh` | exec, review | create worktree, link artifacts, codegen |
