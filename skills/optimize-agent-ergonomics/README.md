@@ -4,6 +4,12 @@ Deciding CLI vs MCP or harmonizing shared agent-ergonomics contracts across both
 
 **Category:** development
 
+## Relationship to sibling skills
+
+`optimize-agent-ergonomics` is the canonical cross-surface successor for CLI/MCP agent ergonomics in this repo.
+
+Older installed packs may still include `optimize-agentic-cli` and `optimize-agentic-mcp`. Treat those as legacy surface-specific workflows until a maintainer chooses whether to deprecate them into redirect stubs or keep all three with narrower descriptions.
+
 ## Install
 
 Install this skill individually:
