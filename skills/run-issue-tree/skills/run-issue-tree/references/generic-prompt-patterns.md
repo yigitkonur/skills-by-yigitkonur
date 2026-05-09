@@ -4,7 +4,7 @@ How to write subagent prompts that work regardless of which AI coding tool execu
 
 ## Core principle
 
-The issue body IS the prompt. A well-written issue body should be executable by any competent AI coding agent without modification. The agent reading it might be Claude Code, Cursor, Codex, Devin, Windsurf, or a custom droid. The prompt must not assume any specific tool.
+The issue body IS the prompt. A well-written issue body should be executable by any competent AI coding agent without modification. The prompt must not assume any specific tool.
 
 ## Self-contained prompt requirements
 
