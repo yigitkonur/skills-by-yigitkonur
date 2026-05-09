@@ -1,27 +1,21 @@
 # Permissions and User Input
 
-## Permission handler (required)
+Check `dist/types.d.ts` and `dist/generated/rpc.d.ts` for the selected package. As of stable `0.3.0`, public docs and README prose may still show older permission result names, while the exported TypeScript result type uses protocol decision names.
+
+## Permission handler is required
 
 Every `createSession` and `resumeSession` requires `onPermissionRequest`:
 
 ```typescript
 import { approveAll } from "@github/copilot-sdk";
 
-// Auto-approve everything (unattended operation):
 const session = await client.createSession({
+  model: "gpt-5",
   onPermissionRequest: approveAll,
 });
-
-// Custom handler:
-const session = await client.createSession({
-  onPermissionRequest: async (request, invocation) => {
-    // request: PermissionRequest
-    // invocation: { sessionId: string }
-    console.log(`Permission request: ${request.kind}`);
-    return { kind: "approved" };
-  },
-});
 ```
+
+`approveAll` is useful for local demos and deliberately unattended tools. It is dangerous for production apps because it approves file writes, shell commands, MCP calls, URL access, custom tools, and memory operations.
 
 ## PermissionHandler type
 
@@ -32,111 +26,50 @@ type PermissionHandler = (
 ) => Promise<PermissionRequestResult> | PermissionRequestResult;
 ```
 
-## PermissionRequest
+Current stable `PermissionRequest.kind`:
 
 ```typescript
-interface PermissionRequest {
-  kind: "shell" | "write" | "read" | "mcp" | "url" | "memory" | "custom-tool";
-  toolCallId?: string;
-  [key: string]: unknown;
-}
-```
-
-### Permission request kinds and their fields
-
-**shell** — execute a shell command:
-```typescript
-{
-  kind: "shell",
-  toolCallId?: string,
-  fullCommandText: string,
-  intention: string,
-  commands: Array<{ identifier: string; readOnly: boolean }>,
-  possiblePaths: string[],
-  possibleUrls: Array<{ url: string }>,
-  hasWriteFileRedirection: boolean,
-  canOfferSessionApproval: boolean,
-  warning?: string,
-}
-```
-
-**write** — write/edit a file:
-```typescript
-{
-  kind: "write",
-  toolCallId?: string,
-  intention: string,
-  fileName: string,
-  diff: string,
-  newFileContents?: string,
-}
-```
-
-**read** — read a file:
-```typescript
-{
-  kind: "read",
-  toolCallId?: string,
-  intention: string,
-  path: string,
-}
-```
-
-**mcp** — invoke an MCP tool:
-```typescript
-{
-  kind: "mcp",
-  toolCallId?: string,
-  serverName: string,
-  toolName: string,
-  toolTitle: string,
-  args?: unknown,
-  readOnly: boolean,
-}
-```
-
-**url** — access a URL:
-```typescript
-{
-  kind: "url",
-  toolCallId?: string,
-  intention: string,
-  url: string,
-}
-```
-
-**memory** — store a memory:
-```typescript
-{
-  kind: "memory",
-  toolCallId?: string,
-  subject: string,
-  fact: string,
-  citations: unknown,
-}
-```
-
-**custom-tool** — invoke a custom tool:
-```typescript
-{
-  kind: "custom-tool",
-  toolCallId?: string,
-  toolName: string,
-  toolDescription: string,
-  args?: unknown,
-}
+type PermissionRequestKind =
+  | "shell"
+  | "write"
+  | "mcp"
+  | "read"
+  | "url"
+  | "custom-tool"
+  | "memory"
+  | "hook";
 ```
 
 ## PermissionRequestResult
 
+Current stable `PermissionRequestResult` is `PermissionDecisionRequest["result"] | { kind: "no-result" }`.
+
+Use these handler decisions in TypeScript:
+
 ```typescript
 type PermissionRequestResult =
-  | { kind: "approved" }
-  | { kind: "denied-by-rules"; rules: unknown[] }
-  | { kind: "denied-no-approval-rule-and-could-not-request-from-user" }
-  | { kind: "denied-interactively-by-user"; feedback?: string }
-  | { kind: "denied-by-content-exclusion-policy"; path: string; message: string };
+  | { kind: "approve-once" }
+  | { kind: "approve-for-session"; approval: ApprovalScope }
+  | { kind: "approve-for-location"; approval: ApprovalScope; locationKey: string }
+  | { kind: "reject"; feedback?: string }
+  | { kind: "user-not-available" }
+  | { kind: "no-result" };
 ```
+
+Approval scopes include:
+
+```typescript
+type ApprovalScope =
+  | { kind: "commands"; commandIdentifiers: string[] }
+  | { kind: "read" }
+  | { kind: "write" }
+  | { kind: "mcp"; serverName: string; toolName: string | null }
+  | { kind: "mcp-sampling"; serverName: string }
+  | { kind: "memory" }
+  | { kind: "custom-tool"; toolName: string };
+```
+
+`no-result` leaves v3 broadcast permission requests unanswered, but protocol v2 adapters reject it. Avoid it unless you are intentionally building an observer client.
 
 ## Permission patterns
 
@@ -144,142 +77,120 @@ type PermissionRequestResult =
 
 ```typescript
 onPermissionRequest: async (request) => {
-  // Approve reads and shell, deny writes
-  if (request.kind === "read" || request.kind === "shell") {
-    return { kind: "approved" };
+  switch (request.kind) {
+    case "read":
+      return { kind: "approve-once" };
+    case "shell":
+    case "write":
+      return { kind: "reject", feedback: "Writes and shell commands require explicit UI approval." };
+    default:
+      return { kind: "user-not-available" };
   }
-  if (request.kind === "write") {
-    return {
-      kind: "denied-interactively-by-user",
-      feedback: "Write operations are not allowed in this session",
-    };
+}
+```
+
+### Session-scoped approval
+
+```typescript
+onPermissionRequest: async (request) => {
+  if (request.kind === "read") {
+    return { kind: "approve-for-session", approval: { kind: "read" } };
   }
-  return { kind: "approved" };
+  return { kind: "reject" };
 }
 ```
 
 ### Interactive approval with UI
 
 ```typescript
-onPermissionRequest: async (request, { sessionId }) => {
-  const userApproval = await showPermissionDialog({
-    kind: request.kind,
-    details: request.kind === "shell" ? request.fullCommandText : request.fileName,
-  });
-  if (userApproval) {
-    return { kind: "approved" };
-  }
-  return { kind: "denied-interactively-by-user" };
+onPermissionRequest: async (request) => {
+  const approved = await showPermissionDialog(request);
+  return approved
+    ? { kind: "approve-once" }
+    : { kind: "reject", feedback: "Denied by user" };
 }
 ```
 
-### Multi-client permission handling
+If the handler throws, current stable source responds with `{ kind: "user-not-available" }`.
 
-When multiple clients connect to the same session:
-- `permission.requested` event broadcasts to ALL clients
-- First client to respond wins
-- Use a never-resolving handler on observer clients:
-
-```typescript
-// Observer client — never responds to permission requests
-const observerSession = await client2.resumeSession(sessionId, {
-  onPermissionRequest: () => new Promise(() => {}), // never resolves
-});
-```
-
-## User input (ask_user)
-
-When the model calls the `ask_user` tool, the SDK invokes `onUserInputRequest`.
-
-```typescript
-const session = await client.createSession({
-  onPermissionRequest: approveAll,
-  onUserInputRequest: async (request, invocation) => {
-    // request.question: string    — the model's question
-    // request.choices?: string[]  — optional choice list
-    // request.allowFreeform?: boolean — default true
-
-    // Pick from choices:
-    if (request.choices?.length) {
-      return { answer: request.choices[0], wasFreeform: false };
-    }
-
-    // Freeform answer:
-    return { answer: "Yes, proceed with the changes", wasFreeform: true };
-  },
-});
-```
-
-### UserInputRequest
-
-```typescript
-interface UserInputRequest {
-  question: string;
-  choices?: string[];
-  allowFreeform?: boolean; // default true
-}
-```
-
-### UserInputResponse
-
-```typescript
-interface UserInputResponse {
-  answer: string;
-  wasFreeform: boolean;
-}
-```
-
-### Without onUserInputRequest
-
-If `onUserInputRequest` is not provided and the model calls `ask_user`, the SDK throws. The model receives an error and may retry or proceed differently.
-
-## Elicitation (MCP forms)
-
-For MCP-style structured data collection, the SDK emits `elicitation.requested` events:
-
-```typescript
-session.on("elicitation.requested", (event) => {
-  console.log("Form request:", event.data.message);
-  console.log("Schema:", event.data.requestedSchema);
-  // requestedSchema: { type: "object", properties: {...}, required: [...] }
-  // mode?: "form"
-});
-```
-
-## Permission events on session
+## Permission events
 
 All clients connected to a session can observe permission flow:
 
 ```typescript
 session.on("permission.requested", (event) => {
-  console.log(`Permission needed: ${event.data.permissionRequest.kind}`);
+  console.log(event.data.permissionRequest.kind);
 });
 
 session.on("permission.completed", (event) => {
-  console.log(`Result: ${event.data.result.kind}`);
+  console.log(event.data.result.kind);
 });
 ```
 
-## User input events
+`permission.completed` event result kinds are event-facing labels, not handler return objects:
+
+- `approved`
+- `approved-for-session`
+- `approved-for-location`
+- `denied-by-rules`
+- `denied-no-approval-rule-and-could-not-request-from-user`
+- `denied-interactively-by-user`
+- `denied-by-content-exclusion-policy`
+- `denied-by-permission-request-hook`
+
+## User input (ask_user)
+
+When the model calls `ask_user`, the SDK invokes `onUserInputRequest`:
 
 ```typescript
-session.on("user_input.requested", (event) => {
-  console.log(`Question: ${event.data.question}`);
-  console.log(`Choices: ${event.data.choices}`);
+const session = await client.createSession({
+  onPermissionRequest: approveAll,
+  onUserInputRequest: async (request) => {
+    if (request.choices?.length) {
+      return { answer: request.choices[0], wasFreeform: false };
+    }
+    return { answer: "Proceed", wasFreeform: true };
+  },
+});
+```
+
+If `onUserInputRequest` is omitted and the model asks a question, the SDK throws and the model receives an error.
+
+## Elicitation
+
+Elicitation is structured form input. Observing `elicitation.requested` events is useful for UI logs, but a client that should answer forms must register `onElicitationRequest`:
+
+```typescript
+const session = await client.createSession({
+  onPermissionRequest: approveAll,
+  onElicitationRequest: async (context) => {
+    return {
+      action: "accept",
+      content: { confirmed: true },
+    };
+  },
+});
+```
+
+Supported result actions are `accept`, `decline`, or `cancel` in current package docs. When `onElicitationRequest` is provided, the session advertises `session.capabilities.ui?.elicitation`.
+
+Elicitation events:
+
+```typescript
+session.on("elicitation.requested", (event) => {
+  console.log(event.data.message);
+  console.log(event.data.requestedSchema);
 });
 
-session.on("user_input.completed", (event) => {
-  console.log(`Answered request: ${event.data.requestId}`);
+session.on("elicitation.completed", (event) => {
+  console.log(event.data.requestId);
 });
 ```
 
 ## Steering notes
 
-> Common mistakes agents make with permissions.
-
-- **`onPermissionRequest` is required** on every `createSession` and `resumeSession` call. Omitting it causes a runtime error, not a type error. Use `approveAll` from the SDK for unattended/automated tools.
-- **`approveAll` approves EVERYTHING** — including shell commands, file writes, MCP tool calls, URL access, and memory writes. For production apps, implement selective approval that checks `request.kind`.
-- **Permission kinds to watch for**: `"shell"`, `"write"`, `"read"`, `"mcp"`, `"url"`, `"memory"`, and `"custom-tool"`. Match on the kind first, then inspect the kind-specific fields shown above.
-- **Multi-client permission routing**: When using observer clients (read-only dashboards), their `onPermissionRequest` will receive requests but should never resolve them — only the primary client should. Return a never-resolving promise from observer handlers.
-- **`onUserInputRequest`** fires when the model calls `ask_user`. If you omit it and the model asks a question, the SDK throws `User input requested but no handler registered`. For unattended tools, always provide this handler with sensible defaults.
-- **Elicitation (MCP forms)** is surfaced through `elicitation.requested` / `elicitation.completed` session events in this API. It is separate from `ask_user`, which uses `onUserInputRequest`.
+- Use `approveAll` only when the blast radius is acceptable.
+- Match on `request.kind` first; fields are kind-specific.
+- Return current protocol decisions (`approve-once`, `reject`, etc.), not stale README prose values (`approved`, `denied-interactively-by-user`) unless installed types show those values.
+- For observer clients, use `{ kind: "no-result" }` only after verifying the connected protocol tolerates it.
+- For unattended apps, provide both `onPermissionRequest` and `onUserInputRequest` so the agent does not block on user prompts.

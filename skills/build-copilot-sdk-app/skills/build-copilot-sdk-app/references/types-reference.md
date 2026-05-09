@@ -145,6 +145,7 @@ interface Tool<TArgs = unknown> {
   parameters?: ZodSchema<TArgs> | Record<string, unknown>;
   handler: ToolHandler<TArgs>;
   overridesBuiltInTool?: boolean;
+  skipPermission?: boolean;
 }
 ```
 
@@ -174,7 +175,7 @@ interface ToolInvocation {
 type ToolResultObject = {
   textResultForLlm: string;
   binaryResultsForLlm?: ToolBinaryResult[];
-  resultType: "success" | "failure" | "rejected" | "denied";
+  resultType: "success" | "failure" | "rejected" | "denied" | "timeout";
   error?: string;
   sessionLog?: string;
   toolTelemetry?: Record<string, unknown>;
@@ -214,9 +215,8 @@ type PermissionHandler = (
 
 ```typescript
 interface PermissionRequest {
-  kind: "shell" | "write" | "read" | "mcp" | "url" | "memory" | "custom-tool";
+  kind: "shell" | "write" | "read" | "mcp" | "url" | "memory" | "custom-tool" | "hook";
   toolCallId?: string;
-  [key: string]: unknown;
 }
 ```
 
@@ -224,11 +224,12 @@ interface PermissionRequest {
 
 ```typescript
 type PermissionRequestResult =
-  | { kind: "approved" }
-  | { kind: "denied-by-rules"; rules: unknown[] }
-  | { kind: "denied-no-approval-rule-and-could-not-request-from-user" }
-  | { kind: "denied-interactively-by-user"; feedback?: string }
-  | { kind: "denied-by-content-exclusion-policy"; path: string; message: string };
+  | { kind: "approve-once" }
+  | { kind: "approve-for-session"; approval: unknown }
+  | { kind: "approve-for-location"; approval: unknown; locationKey: string }
+  | { kind: "reject"; feedback?: string }
+  | { kind: "user-not-available" }
+  | { kind: "no-result" };
 ```
 
 ## User input types

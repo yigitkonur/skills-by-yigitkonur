@@ -30,6 +30,7 @@ function defineTool<T>(
     parameters?: ZodSchema<T> | Record<string, unknown>;
     handler: ToolHandler<T>;
     overridesBuiltInTool?: boolean;
+    skipPermission?: boolean;
   }
 ): Tool<T>
 ```
@@ -95,6 +96,7 @@ interface Tool<TArgs = unknown> {
   parameters?: ZodSchema<TArgs> | Record<string, unknown>;
   handler: ToolHandler<TArgs>;
   overridesBuiltInTool?: boolean; // must be true to replace built-in tools
+  skipPermission?: boolean;       // bypass permission prompt for this tool
 }
 ```
 
@@ -145,7 +147,7 @@ handler: () => ({
 type ToolResultObject = {
   textResultForLlm: string;
   binaryResultsForLlm?: ToolBinaryResult[];
-  resultType: "success" | "failure" | "rejected" | "denied";
+  resultType: "success" | "failure" | "rejected" | "denied" | "timeout";
   error?: string;
   sessionLog?: string;
   toolTelemetry?: Record<string, unknown>;
@@ -181,12 +183,12 @@ const readFile = defineTool("read_file", {
 | Field | Type | Purpose |
 |-------|------|---------|
 | `textResultForLlm` | `string` | The text the model sees as the tool result |
-| `resultType` | `string` | Result status: `"success"`, `"failure"`, `"rejected"`, or `"denied"` |
+| `resultType` | `string` | Result status: `"success"`, `"failure"`, `"rejected"`, `"denied"`, or `"timeout"` |
 | `toolTelemetry` | `Record<string, unknown>` | Metadata logged but not sent to model |
 
 ## Error handling in tools
 
-If the handler throws, the SDK catches the error and sends a sanitized error to the model. The raw exception message is NOT exposed.
+If the handler throws, current stable source catches the error and sends `error.message` or `String(error)` through `tools.handlePendingToolCall({ error })`. Do not include secrets or raw provider payloads in thrown messages. Prefer returning a structured `ToolResultObject` when you need to control the model-visible failure text.
 
 ```typescript
 handler: async (args) => {
@@ -196,6 +198,21 @@ handler: async (args) => {
   return "result";
 }
 ```
+
+## Skip permission for safe tools
+
+Set `skipPermission: true` only for deterministic, read-only, low-risk tools:
+
+```typescript
+const lookupIssue = defineTool("lookup_issue", {
+  description: "Read public issue metadata by number",
+  parameters: z.object({ number: z.number().int().positive() }),
+  skipPermission: true,
+  handler: async ({ number }) => ({ number, title: "Example" }),
+});
+```
+
+Do not use `skipPermission` for shell, file write, network mutation, secret access, or provider-billing actions.
 
 ## Override built-in tools
 
@@ -241,6 +258,25 @@ const tools = await client.rpc.tools.list({ model: "gpt-4.1" });
 // [{ name, namespacedName?, description, parameters?, instructions? }]
 ```
 
+## Slash commands
+
+Current `SessionConfig` supports `commands` for CLI TUI slash commands:
+
+```typescript
+const session = await client.createSession({
+  onPermissionRequest: approveAll,
+  commands: [{
+    name: "deploy",
+    description: "Deploy the app",
+    handler: async ({ commandName, args, sessionId }) => {
+      console.log(`${commandName} ${args} for ${sessionId}`);
+    },
+  }],
+});
+```
+
+When a command handler throws, current stable source forwards the thrown message as the command error. Keep thrown messages user-safe.
+
 ## Tool execution flow (protocol v3)
 
 1. Server sends `external_tool.requested` session event with `{ requestId, toolName, arguments, toolCallId }`
@@ -248,7 +284,7 @@ const tools = await client.rpc.tools.list({ model: "gpt-4.1" });
 3. Executes handler: `handler(args, { sessionId, toolCallId, toolName, arguments })`
 4. Normalizes result to string (JSON.stringify if object)
 5. Responds via `session.rpc.tools.handlePendingToolCall({ requestId, result })`
-6. On error: responds with `{ requestId, error: message }`
+6. On error: responds with `{ requestId, error: message }` where `message` is the thrown error message/string
 
 ## Multi-client tool architecture
 
@@ -280,3 +316,4 @@ const session2 = await client2.resumeSession(session1.sessionId, {
 - **Tool names must be globally unique** across all extensions loaded in the session.
 - **Return plain objects** from handlers for simple cases. The SDK auto-wraps them into `ToolResultObject` with `JSON.stringify()` for `textResultForLlm`.
 - **`.describe()` matters**. The description strings on Zod fields become the parameter descriptions the model sees. Be specific — "City name (e.g., 'San Francisco')" not just "city".
+- **`skipPermission` is not a security model**. It removes the prompt for that custom tool, so only use it after constraining the handler itself.
