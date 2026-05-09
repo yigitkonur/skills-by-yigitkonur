@@ -168,7 +168,7 @@ const notifId = await chrome.notifications.create("order-shipped", {
   type: "basic",
   iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
   title: "Order Shipped",
-  message: "Your package #12345 is on its way!",
+  message: "Package #12345 is on its way!",
   priority: 2,
   buttons: [
     { title: "Track Package" },
@@ -539,7 +539,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 **Offscreen reasons enum:** `TESTING`, `AUDIO_PLAYBACK`, `IFRAME_SCRIPTING`, `DOM_SCRAPING`, `DOM_PARSER`, `BLOBS`, `CLIPBOARD`, `DISPLAY_MEDIA`, `GEOLOCATION`, `WEB_RTC`, `LOCAL_STORAGE`, and others.
 
-> **Only one offscreen document** can exist at a time per extension. Plan accordingly if you need multiple DOM capabilities.
+> **Only one offscreen document** can exist at a time per extension. Plan accordingly when multiple DOM capabilities are required.
 
 **When to use:** DOM parsing, canvas rendering, audio playback, clipboard access, or any task requiring `document` or `window` APIs from the service worker.
 
@@ -715,8 +715,8 @@ try {
   const url = new URL(responseUrl!);
   const code = url.searchParams.get("code");
 
-  // Exchange code for token via your backend (never expose client_secret in extension)
-  const tokenResp = await fetch("https://your-backend.com/api/github/token", {
+  // Exchange code for token via a backend (never expose client_secret in extension)
+  const tokenResp = await fetch("https://backend.example.com/api/github/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }),

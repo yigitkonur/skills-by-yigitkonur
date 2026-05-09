@@ -311,7 +311,7 @@ Must declare in manifest:
 }
 ```
 
-Only expose the minimum necessary. Exposed resources let websites detect your extension.
+Only expose the minimum necessary. Exposed resources let websites detect the extension.
 
 ## Common Content Script Pitfalls
 
@@ -319,7 +319,7 @@ Only expose the minimum necessary. Exposed resources let websites detect your ex
 |---|---|---|
 | Not handling SPA navigation | Script runs once; new views missed | `MutationObserver` or `popstate`/`hashchange` |
 | CSS leaking into page | Extension styles break page layout | Shadow DOM or unique-prefix selectors |
-| Page CSS affecting extension UI | `* { margin: 0 }` breaks your panel | Shadow DOM with `:host { all: initial }` |
+| Page CSS affecting extension UI | `* { margin: 0 }` breaks the panel | Shadow DOM with `:host { all: initial }` |
 | `chrome.*` in MAIN world | `chrome.runtime` is `undefined` | Bridge via CustomEvent to ISOLATED world |
 | `querySelector` returns null | NPE crash | Always null-check |
 | `window.onload` at `document_idle` | Already fired — never runs | Check `document.readyState` |
@@ -327,4 +327,4 @@ Only expose the minimum necessary. Exposed resources let websites detect your ex
 | Injecting large frameworks | Bloats page, slows it down | Keep content scripts minimal |
 | CSP blocks inline scripts | `script.textContent = ...` fails | Use files via `web_accessible_resources` |
 | Multiple injection (no guard) | Duplicate UI, duplicate listeners | Check sentinel flag before running |
-| Race with page scripts | Page modifies DOM after your changes | `MutationObserver` for reactive updates |
+| Race with page scripts | Page modifies DOM after extension changes | `MutationObserver` for reactive updates |

@@ -76,7 +76,7 @@ chrome.runtime.onMessage.addListener(
 );
 ```
 
-> **The `return true` rule:** If your handler does any asynchronous work before calling `sendResponse`, you **must** `return true` from the listener synchronously. Otherwise Chrome closes the message channel and the sender receives `undefined`.
+> **The `return true` rule:** If a handler does asynchronous work before calling `sendResponse`, it **must** `return true` from the listener synchronously. Otherwise Chrome closes the message channel and the sender receives `undefined`.
 
 ### Sending from Background to a Specific Content Script
 
@@ -401,7 +401,7 @@ document.addEventListener("my-ext-event", (e: CustomEvent) => {
 });
 ```
 
-Alternatively, in Manifest V3 you can use `chrome.scripting.executeScript` with `world: "MAIN"` to inject directly into the page context without a separate file.
+Alternatively, Manifest V3 supports `chrome.scripting.executeScript` with `world: "MAIN"` to inject directly into the page context without a separate file.
 
 ---
 
@@ -426,7 +426,7 @@ Alternatively, in Manifest V3 you can use `chrome.scripting.executeScript` with 
 
 1. **Always define a `type` field** on every message. Route with a `switch` or handler map -- never rely on the shape of the payload alone.
 2. **Use the typed messaging wrapper** above to get compile-time safety on both sender and receiver.
-3. **Prefer one-time messages** for simple request/response. Use ports only when you need streaming or high-frequency updates.
+3. **Prefer one-time messages** for simple request/response. Use ports only for streaming or high-frequency updates.
 4. **Handle service worker suspension.** Ports are not durable storage and idle ports do not keep Chrome 114+ service workers alive. Design for reconnection or fall back to one-time messages with storage-based state.
 5. **Validate `sender`** in `onMessage` and `onMessageExternal`. Check `sender.id` (extension ID), `sender.url`, or `sender.tab` to prevent spoofing.
 6. **Never assume the other end exists.** Wrap `sendMessage` in try/catch. Check for `chrome.runtime.lastError` in callbacks.

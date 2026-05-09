@@ -148,7 +148,7 @@ Define a schema once, get typed getters and setters everywhere:
 ```typescript
 // lib/storage.ts
 
-/** Define your full storage schema here */
+/** Define the full storage schema here */
 interface StorageSchema {
   userSettings: {
     theme: "light" | "dark" | "system";
@@ -411,7 +411,7 @@ After this call, content scripts can read/write `chrome.storage.session`.
 |---|---|---|
 | **Storing non-serializable values** | Functions, `Date` objects, `Map`, `Set`, `undefined` values are silently dropped or converted to `null` | Convert to JSON-safe types before storing: `date.toISOString()`, `Array.from(set)`, `Object.fromEntries(map)` |
 | **Exceeding sync per-item limit** | Items > 8,192 bytes in `chrome.storage.sync` are rejected | Split large objects across multiple keys, or move to `local` |
-| **Forgetting `await`** | `chrome.storage.local.set(...)` returns a Promise in MV3 — forgetting `await` means you proceed before the write completes | Always `await` storage operations |
+| **Forgetting `await`** | `chrome.storage.local.set(...)` returns a Promise in MV3; missing `await` lets later code run before the write completes | Always `await` storage operations |
 | **Reading in content script on page load** | Content script runs before storage is ready if the extension was just installed | Use `chrome.storage.local.get` with defaults; listen for `onChanged` to update |
 | **Using `localStorage` in service worker** | `localStorage` is synchronous and DOM-only — not available in service workers | Use `chrome.storage.session` for ephemeral data, `chrome.storage.local` for persistent data |
 | **Race conditions in read-modify-write** | Two contexts read the same key, modify it, and write back — last write wins, first write's changes are lost | Serialize writes through the background service worker (see write queue pattern above) |
