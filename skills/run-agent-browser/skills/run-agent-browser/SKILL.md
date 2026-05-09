@@ -34,6 +34,31 @@ Do not use this skill for:
 - static research that does not require active browser interaction
 - DevTools-first debugging or profiling unless the task still centers on `agent-browser`
 
+## Mode and persistence gates
+
+| Mode | Use when |
+|---|---|
+| default/headless | deterministic local/staging navigation, forms, extraction, screenshots |
+| `--headed` | manual auth, 2FA, visual debugging, anti-bot pressure, human-observed flows |
+| `--profile` | long-lived single-user auth across restarts |
+| `--session-name` | named auto-persisted state for one app/account |
+| `--session` | parallel isolated contexts in one run |
+| `-p browserbase/browseruse/kernel/ios` | hosted, mobile, geo, or provider-backed browser runs through the CLI |
+| `--engine lightpanda` | fast read-only/simple extraction where Lightpanda limitations are acceptable |
+
+Choose one persistence strategy. Prefer the default ephemeral session, then `--session` for parallel isolation, `--session-name` for auto-persisted app state, `--profile` for native Chrome persistence, and `state save/load` only when a portable state file is required.
+
+## Capture handoff
+
+`convert-url-to-nextjs` may use this skill to capture live routes, DOM snapshots, screenshots, runtime metadata, and asset URLs before reconstruction. `extract-saas-design` may use this skill to inspect implemented UI evidence when source or snapshots need browser verification. After capture, hand artifacts back to the owning skill; do not take over rebuild or design-doc output.
+
+For cross-skill calls, name the minimal artifacts:
+- current URL and title
+- `snapshot -i --json` or scoped snapshots
+- relevant `get text`, `get attr`, or `get styles` outputs
+- screenshot paths when visual evidence matters
+- saved state or profile path only if intentionally created and safe to retain
+
 ## Non-negotiable operating rules
 
 1. **Observe before acting.** After open, navigation, tab switch, popup, frame change, or major click, wait for state and run `snapshot -i` before choosing the next action.
@@ -98,6 +123,7 @@ agent-browser snapshot -i
   2. semantic `find`
   3. CSS selectors
   4. XPath only as a last resort
+- When extracting structured data, prefer JSON arrays or objects unless the user asked for CSV or a table. Include selector/ref provenance and count checks; route deeper patterns to `references/workflows.md`.
 
 ### 4) Interact one state change at a time
 
@@ -223,6 +249,16 @@ Capture screenshots only when you need:
 - `references/safety.md`
 - `references/session-management.md`
 - `references/workflows.md`
+
+## Output contract
+
+When browser work ends, report:
+- final active URL and title
+- session, profile, provider, engine, or headed mode used when non-default
+- deterministic verification performed, such as `get url`, `get title`, `get text`, `get value`, `is visible`, or `diff snapshot`
+- screenshot, video, trace, profile, or saved-state paths if created
+- extracted data shape when data was extracted, such as JSON array, CSV rows, table, or key-value map, plus selectors/refs used and count checks
+- cleanup performed: tabs closed, sessions closed, state files kept/deleted, or persistent profile left in place
 
 ## Final reminder
 
