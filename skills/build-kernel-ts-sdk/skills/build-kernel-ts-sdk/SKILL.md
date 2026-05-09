@@ -45,6 +45,28 @@ Do not use this skill for:
 
 You can mix — most production setups deploy long-running browser work as a Kernel App and invoke it from an embedding service. Don't try to make a single function do both.
 
+## Quick start / first runnable path
+
+For a new scratch project, use the scaffold script so package pins come from npm at generation time:
+
+```bash
+bash scripts/scaffold-kernel-app.sh --mode embed --dir ./kernel-embed-demo
+cd ./kernel-embed-demo
+npm install
+export KERNEL_API_KEY=...   # never commit this; use .env.example only as a template
+npm run check
+npm run start
+```
+
+For an existing repo, install explicitly and keep a pinned range:
+
+```bash
+npm install @onkernel/sdk@^$(npm view @onkernel/sdk version) playwright
+npm install -D tsx typescript @types/node
+```
+
+First browser creation must print the `session_id`, do the work, then call `kernel.browsers.deleteByID(session_id)` in `finally`. If a browser, pool lease, auth session, deployment, or invocation is intentionally left alive, report the ID, timeout, and reason.
+
 ## Current-doc/version check
 
 - Existing repo: run `scripts/check-kernel-sdk-version.sh` before changing Kernel code. Read `scripts/check-kernel-sdk-version.sh.md` for output interpretation.
@@ -86,6 +108,7 @@ You can mix — most production setups deploy long-running browser work as a Ker
 | Script | Use |
 |---|---|
 | `scripts/check-kernel-sdk-version.sh` | Preflight Node/npm, installed Kernel package versions, npm latest versions, local `api.md`, and `KERNEL_API_KEY` presence. See `scripts/check-kernel-sdk-version.sh.md`. |
+| `scripts/scaffold-kernel-app.sh` | Generate a minimal embedded SDK example or deployable Kernel App in an empty directory. See `scripts/scaffold-kernel-app.sh.md`. |
 
 ## Reference routing
 
