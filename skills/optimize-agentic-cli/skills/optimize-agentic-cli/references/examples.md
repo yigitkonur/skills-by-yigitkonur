@@ -4,6 +4,31 @@ Production-ready code examples in Go, Python, Node.js, Rust, and Shell/Bash for 
 
 ---
 
+## Table of Contents
+
+- [Standard Flag Names](#standard-flag-names)
+- [Standard Exit Codes](#standard-exit-codes)
+- [Standard JSON Envelope](#standard-json-envelope)
+- [1. Structured Output (Go)](#1-structured-output-go)
+- [2. JSONL Streaming (Python)](#2-jsonl-streaming-python)
+- [3. Non-Interactive Mode (Node.js)](#3-non-interactive-mode-nodejs)
+- [4. Exit Code Handling (Go)](#4-exit-code-handling-go)
+- [5. Dry-Run Implementation (Python)](#5-dry-run-implementation-python)
+- [6. Batch Operations with Partial Failure (Go)](#6-batch-operations-with-partial-failure-go)
+- [7. Auth Credential Resolution (Python)](#7-auth-credential-resolution-python)
+- [8. Help Generation (Node.js with Commander)](#8-help-generation-nodejs-with-commander)
+- [9. Long-Running Task with Progress (Go)](#9-long-running-task-with-progress-go)
+- [10. Complete CLI Skeleton (Go with Cobra)](#10-complete-cli-skeleton-go-with-cobra)
+- [11. Real-World CLI Audit: GitHub CLI (gh)](#11-real-world-cli-audit-github-cli-gh)
+- [12. Real-World CLI Audit: kubectl](#12-real-world-cli-audit-kubectl)
+- [13. Real-World CLI Audit: AWS CLI](#13-real-world-cli-audit-aws-cli)
+- [14. Structured Output (Rust with Serde + Clap)](#14-structured-output-rust-with-serde--clap)
+- [15. Shell/Bash Wrapper Scripts](#15-shellbash-wrapper-scripts)
+- [16. Testing CLI Output](#16-testing-cli-output)
+- [Cross-Language Consistency Reference](#cross-language-consistency-reference)
+
+Use this file for implementation examples and audit case studies. Use `output-contracts.md`, `discovery-and-auth.md`, and `execution-patterns.md` as canonical standards when examples repeat those tables.
+
 ## Standard Flag Names
 
 All examples in this document use consistent flag names:

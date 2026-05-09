@@ -4,6 +4,25 @@ This reference covers patterns that make CLI tools predictable, retry-safe, and 
 
 ---
 
+## Table of Contents
+
+- [1. Idempotency Patterns](#1-idempotency-patterns)
+- [2. Retry Logic](#2-retry-logic)
+- [3. Dry-Run Modes](#3-dry-run-modes)
+- [4. Non-Interactive Mode](#4-non-interactive-mode)
+- [5. Batch Operations](#5-batch-operations)
+- [6. Transaction/Rollback](#6-transactionrollback)
+- [7. Long-Running Task Handling](#7-long-running-task-handling)
+- [8. Timeout and Cancellation](#8-timeout-and-cancellation)
+- [9. Pagination Patterns](#9-pagination-patterns)
+- [10. Batch Operation Limits](#10-batch-operation-limits)
+- [11. Rate Limiting (Client-Side)](#11-rate-limiting-client-side)
+- [16. Continuation Modes for Research and SEO CLIs](#16-continuation-modes-for-research-and-seo-clis)
+- [Summary: Agent-Friendly Execution Patterns](#summary-agent-friendly-execution-patterns)
+- [Standard Flag Reference](#standard-flag-reference)
+
+This file owns execution behavior: retry, idempotency, dry-run, non-interactive, async, batch, timeout, pagination, rate-limit, and continuation patterns.
+
 ## 1. Idempotency Patterns
 
 Idempotent operations produce the same result regardless of how many times they're executed. This is critical for retry logic and agent workflows.

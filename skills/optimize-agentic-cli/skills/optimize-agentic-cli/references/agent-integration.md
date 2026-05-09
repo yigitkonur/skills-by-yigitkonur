@@ -2,6 +2,28 @@
 
 > Patterns for calling agent-ready CLIs from AI systems
 
+## Table of Contents
+
+- [1. Basic CLI Invocation Pattern](#1-basic-cli-invocation-pattern)
+- [2. Exit Code Routing](#2-exit-code-routing)
+- [3. Retry Logic with Exponential Backoff](#3-retry-logic-with-exponential-backoff)
+- [4. Error Recovery Flow](#4-error-recovery-flow)
+- [5. Batch Processing with Partial Failure](#5-batch-processing-with-partial-failure)
+- [6. Agent System Prompt Template](#6-agent-system-prompt-template)
+- [7. Function Calling Schema](#7-function-calling-schema-claudegpt)
+- [8. Integration Test Script](#8-integration-test-script)
+- [9. Debugging Agent CLI Failures](#9-debugging-agent-cli-failures)
+- [10. TypeScript/JavaScript Integration](#10-typescriptjavascript-integration)
+- [11. Go Integration](#11-go-integration)
+- [12. Error Recovery Patterns](#12-error-recovery-patterns)
+- [13. Agent Framework Integration](#13-agent-framework-integration)
+- [14. Observability](#14-observability)
+- [15. Standard CLI Flags Reference](#15-standard-cli-flags-reference)
+- [16. Steering Contract](#16-steering-contract-put-next-step-guidance-in-cli-stdout)
+- [17. Bounded Planner-in-the-CLI](#17-planner-in-the-cli-is-valid-if-it-is-bounded-and-disclosed)
+
+Canonical standards live elsewhere: use `output-contracts.md` for envelopes and exit codes, `discovery-and-auth.md` for flags, and this file for wrappers and invocation patterns.
+
 ## 1. Basic CLI Invocation Pattern
 
 ```python

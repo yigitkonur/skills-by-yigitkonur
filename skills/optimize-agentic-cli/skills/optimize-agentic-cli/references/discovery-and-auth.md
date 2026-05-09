@@ -4,6 +4,24 @@ Reference patterns for CLI discoverability, help systems, authentication, and co
 
 ---
 
+## Table of Contents
+
+- [Standard Flag Reference](#standard-flag-reference)
+- [Exit Codes](#exit-codes)
+- [Configuration Precedence](#configuration-precedence)
+- [Authentication Flow Diagrams](#authentication-flow-diagrams)
+- [1. Command Grammar](#1-command-grammar)
+- [2. Self-Documenting Help](#2-self-documenting-help)
+- [3. Version and Capabilities](#3-version-and-capabilities)
+- [4. Authentication Patterns](#4-authentication-patterns)
+- [5. Configuration Management](#5-configuration-management)
+- [6. Multi-Provider Support](#6-multi-provider-support)
+- [7. Secret Handling Rules](#7-secret-handling-rules)
+- [8. Environment Detection](#8-environment-detection)
+- [Quick Reference](#quick-reference)
+
+This file owns help, flags, auth, config, and environment discovery. Use `output-contracts.md` as the canonical source for detailed JSON envelopes and exit-code taxonomy.
+
 ## Standard Flag Reference
 
 All well-designed CLIs should support these standard flags consistently:

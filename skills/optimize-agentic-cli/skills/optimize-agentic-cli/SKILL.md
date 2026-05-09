@@ -48,6 +48,12 @@ Read the smallest reference set that matches the task:
 | Implementation code examples and real-world audits | `references/examples.md` |
 | Agent wrapper and invocation patterns | `references/agent-integration.md` |
 
+Canonical homes:
+
+- JSON envelopes, structured errors, stream separation, and exit-code taxonomy live in `references/output-contracts.md`.
+- Standard flags, help text, auth, config, and environment detection live in `references/discovery-and-auth.md`.
+- Retry, idempotency, async, batch, timeout, pagination, rate-limit, and continuation patterns live in `references/execution-patterns.md`.
+
 ## Bundled Scripts
 
 Use the scripts only for read-only discovery support:

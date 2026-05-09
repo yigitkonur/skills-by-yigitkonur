@@ -4,6 +4,21 @@ This document defines the output standards that make CLIs agent-friendly. Follow
 
 ---
 
+## Table of Contents
+
+- [1. Structured Output Standards](#1-structured-output-standards)
+- [2. JSON Schema Definitions](#2-json-schema-definitions-draft-07)
+- [3. Exit Code Taxonomy](#3-exit-code-taxonomy)
+- [4. Error Classes](#4-error-classes)
+- [JSONL Streaming](#4-jsonl-streaming)
+- [5. Field Selection](#5-field-selection)
+- [6. Pagination](#6-pagination)
+- [7. Quiet Mode](#7-quiet-mode)
+- [8. Stream Separation Best Practices](#8-stream-separation-best-practices)
+- [Quick Reference](#quick-reference)
+
+This file is the canonical home for JSON envelopes, structured errors, stdout/stderr separation, stream formats, and exit-code taxonomy.
+
 ## 1. Structured Output Standards
 
 ### JSON Output Requirements
