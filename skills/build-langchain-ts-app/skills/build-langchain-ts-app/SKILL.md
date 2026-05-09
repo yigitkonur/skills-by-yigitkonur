@@ -30,6 +30,7 @@ Before coding, inspect the target repo and record:
 - Version script: run `scripts/check-langchain-versions.sh` for a read-only package report; docs live in `scripts/check-langchain-versions.sh.md`.
 - Provider environment: `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, Anthropic/Google/Azure keys, LangSmith keys, MCP credentials.
 - Work mode: greenfield scaffold vs existing app integration; for existing apps, follow local file layout and test conventions.
+- Greenfield utility: use `scripts/scaffold-createagent-app.sh` only for a minimal `createAgent` app; docs live in `scripts/scaffold-createagent-app.sh.md`.
 
 ## Choose the path
 
@@ -75,6 +76,8 @@ Use `@latest` only in update commands or exploratory refreshes, not as the docum
 
 For existing apps, run `scripts/check-langchain-versions.sh` before diagnosing API drift or changing package pins. The paired docs are `scripts/check-langchain-versions.sh.md`.
 
+For greenfield `createAgent` demos, run `scripts/scaffold-createagent-app.sh` to generate the smallest pinned TypeScript app. The paired docs are `scripts/scaffold-createagent-app.sh.md`.
+
 ## Reliability guardrails
 
 For RAG, make these decisions before implementation:
@@ -110,6 +113,7 @@ Load only the files needed for the selected path.
 | Models, providers, and MCP | `references/providers/models.md`, `references/providers/providers.md`, `references/providers/mcp.md` |
 | Local and production deployment | `references/ops/deployment-local.md`, `references/ops/deployment-production.md` |
 | Tracing, evaluation, and online feedback | `references/ops/observability-tracing.md`, `references/ops/observability-evaluation.md` |
+| Deterministic utilities | `scripts/check-langchain-versions.sh.md`, `scripts/scaffold-createagent-app.sh.md` |
 
 ## Scope boundaries
 
