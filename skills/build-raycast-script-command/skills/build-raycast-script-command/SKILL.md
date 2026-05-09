@@ -215,6 +215,15 @@ When a user wants a quick scaffold, start from:
 
 Then adapt the template to the user's exact mode, arguments, and dependencies.
 
+## Scripts
+
+Every script lives in `scripts/` and has a paired `<name>.md` doc next to it.
+
+| Script | Purpose | Mutates? |
+|---|---|---|
+| `scripts/check-raycast-script-metadata.sh` | Validate shebang, required metadata, mode, inline refresh, and typed argument JSON. See `scripts/check-raycast-script-metadata.md`. | No |
+| `scripts/preview-script.sh` | Run a command and preview the Raycast stdout display contract for its mode. See `scripts/preview-script.md`. | No |
+
 ## Common pitfalls
 
 | Pitfall | Fix |
