@@ -1,6 +1,6 @@
 # build-mcp-use-client
 
-Building MCP client applications with the mcp-use TypeScript SDK — MCPClient, sessions, tools, resources, React hooks, code mode, and authentication.
+Building or auditing MCP client apps with mcp-use TypeScript, including MCPClient, sessions, React hooks, code mode, auth, CLI.
 
 **Category:** development
 
