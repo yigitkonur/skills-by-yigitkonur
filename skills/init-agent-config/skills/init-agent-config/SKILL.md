@@ -285,41 +285,19 @@ Adapter defaults:
 - Devin -> keep `REVIEW.md` as the main review surface, add scoped `REVIEW.md` only where needed, and reuse the completed `AGENTS.md` hierarchy for coding behavior
 - Greptile -> generate `.greptile/config.json` plus optional `rules.md` and `files.json`; keep `scope` as arrays, `ignorePatterns` as a newline string, and note source-branch behavior
 
-## Steering experiences
+## Anti-Derail Table
 
-These are common mistakes observed during real-world execution. See `references/agents-md-format.md` for the detailed authoring and derailment guidance behind them.
+Keep this short. Read `references/agents-md-format.md` for the full authoring, bloat, and derailment catalog.
 
-| ID | Pattern | Key correction |
-|----|---------|----------------|
-| S-01 | AGENTS-second drafting | Write `AGENTS.md` first, agent-native files second |
-| S-02 | One-wave exploration | Complete both waves before writing |
-| S-03 | Weak explorer prompts | Use 500-2500 word prompts with concrete deliverables |
-| S-04 | Writer starts too early | Merge Wave 1 and Wave 2 before dispatching writers |
-| S-05 | Missing folder coverage | Give each meaningful `src` subtree local instruction ownership |
-| S-06 | Root duplication in child files | Keep child files local and lean |
-| S-07 | Invented commands | Verify or mark `[unverified]` -- never guess |
-| S-08 | Generic best practices | Every convention must be specific, measurable, project-specific |
-| S-09 | Missing WHY for non-obvious decisions | Pair every non-obvious WHAT with a brief WHY |
-| S-10 | Missing `CLAUDE.md` companion | Create the sibling symlink or call out the fallback exception |
-| S-11 | Unknowns in files | Call out unknowns in response text, not inside config files |
-| S-12 | Over-nesting without signal | Add local files only where the folder scope is real |
-
-## Do this, not that
-
-| Do this | Not that |
-|--------|----------|
-| Ground every rule in repo evidence | Paste a generic best-practices template |
-| Verify commands in manifests, makefiles, or CI | Invent `test`, `lint`, or `build` commands |
-| Put shared rules in `AGENTS.md` | Put agent-native syntax in `AGENTS.md` |
-| Create `CLAUDE.md` after `AGENTS.md` is stable | Hand-maintain duplicate instructions in both files |
-| Preserve existing warning/boundary rules during migration | Drop `Never` / `CRITICAL` rules because they feel repetitive |
-| Use local `AGENTS.md` files for meaningful `src` subfolders | Stuff every package-specific rule into the root file |
-| Point to existing docs for bulky detail | Copy `README.md` or API docs into agent config |
-| Use templates only after both discovery waves | Fill a template before you know the repo shape |
-| Build platform adapters from the completed `REVIEW.md` | Treat review tooling as disconnected from the repo's standardization layer |
-| Mark unverified commands as `[unverified]` | Guess at command syntax |
-| Create sections only when 3+ facts justify them | Add single-bullet sections to match a template |
-| Call out unknowns in your response to the user | Embed unknowns as comments inside generated config files |
+| Derail | Correction |
+|--------|------------|
+| AGENTS-second drafting | Write `AGENTS.md` first, then companion/native files |
+| One-wave exploration | Complete Wave 2 before writing folder files |
+| Writer starts from partial findings | Merge both discovery waves before dispatch |
+| Child file repeats root | Keep child files local and lean |
+| Invented commands | Verify or mark `[unverified]` |
+| `REVIEW.md` duplicates `AGENTS.md` | Keep operating guidance and diff scrutiny separate |
+| Native file becomes source of truth | Symlink, wrap, or point back to AGENTS |
 
 ## Reference routing
 
