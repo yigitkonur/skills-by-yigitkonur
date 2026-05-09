@@ -26,7 +26,7 @@ Before coding, inspect the target repo and record:
 
 - `package.json`: module type, scripts, framework, existing LangChain packages, and test command.
 - Runtime: Node.js 20+ and TypeScript 5+; stop and fix lower versions before debugging LangChain behavior.
-- Installed versions: `npm ls langchain @langchain/core @langchain/langgraph @langchain/openai` when dependencies are installed.
+- Installed versions: `npm ls langchain @langchain/core @langchain/langgraph @langchain/openai` when dependencies are installed; use `references/start/version-discipline.md` for drift checks.
 - Provider environment: `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, Anthropic/Google/Azure keys, LangSmith keys, MCP credentials.
 - Work mode: greenfield scaffold vs existing app integration; for existing apps, follow local file layout and test conventions.
 
@@ -70,7 +70,7 @@ Use path-specific package subsets and pin compatible versions in real apps:
 | MCP | `langchain @langchain/core @langchain/mcp-adapters @modelcontextprotocol/sdk zod` |
 | LangSmith eval/tracing | `langsmith` plus `openevals` only when evaluation workflows need it |
 
-Use `@latest` only in update commands or exploratory refreshes, not as the documented tested state. When package APIs matter, verify the current package matrix before editing examples and record the research date.
+Use `@latest` only in update commands or exploratory refreshes, not as the documented tested state. When package APIs matter, verify the current package matrix before editing examples and record the research date. See `references/start/version-discipline.md`.
 
 ## Reliability guardrails
 
@@ -96,7 +96,7 @@ Load only the files needed for the selected path.
 
 | Intent | Read |
 |---|---|
-| First runnable app and baseline commands | `references/start/getting-started.md`, `references/start/common-errors.md` |
+| First runnable app, baseline commands, and version drift | `references/start/getting-started.md`, `references/start/common-errors.md`, `references/start/version-discipline.md` |
 | Agent orchestration and tool contracts | `references/agents/agents.md`, `references/agents/tools.md` |
 | Structured output and streaming | `references/agents/structured-output.md`, `references/agents/streaming.md` |
 | Multi-agent and knowledge-domain agents | `references/agents/multi-agent.md`, `references/agents/knowledge-agents.md` |
