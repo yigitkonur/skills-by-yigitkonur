@@ -2,6 +2,25 @@
 
 Complete reference for notifications and logging — real-time server events, roots management, and structured log messages.
 
+## Table of Contents
+
+- [Notification Flow](#notification-flow)
+- [Type Definitions](#type-definitions)
+- [Receiving Notifications (Server → Client)](#receiving-notifications-server-client)
+- [Standard MCP Notifications](#standard-mcp-notifications)
+- [Custom Notification Handling](#custom-notification-handling)
+- [Sending Notifications (Client → Server)](#sending-notifications-client-server)
+- [Initial Roots at Connection](#initial-roots-at-connection)
+- [Root-Level onNotification Callback](#root-level-onnotification-callback)
+- [Per-Server onNotification Callback](#per-server-onnotification-callback)
+- [Complete Example — Notification Dashboard](#complete-example-notification-dashboard)
+- [React Notification Management](#react-notification-management)
+- [Requirements for Notifications](#requirements-for-notifications)
+- [Logging](#logging)
+- [Available Imports](#available-imports)
+- [Anti-Patterns](#anti-patterns)
+- [Run the Example](#run-the-example)
+
 ---
 
 ## Notification Flow

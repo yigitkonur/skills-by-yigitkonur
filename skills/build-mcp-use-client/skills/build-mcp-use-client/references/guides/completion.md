@@ -2,6 +2,21 @@
 
 Request autocomplete suggestions for prompt and resource template arguments.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Basic Usage with MCPClient](#basic-usage-with-mcpclient)
+- [Using with useMcp Hook](#using-with-usemcp-hook)
+- [Using with McpClientProvider](#using-with-mcpclientprovider)
+- [Completion Request Parameters](#completion-request-parameters)
+- [Completion Response](#completion-response)
+- [Contextual Completions](#contextual-completions)
+- [Autocomplete UI Example](#autocomplete-ui-example)
+- [Server Implementation](#server-implementation)
+- [Best Practices](#best-practices)
+- [Error Handling](#error-handling)
+- [Run the Example](#run-the-example)
+
 ---
 
 ## Overview

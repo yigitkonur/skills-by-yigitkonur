@@ -2,6 +2,22 @@
 
 Complete reference for authentication — OAuth 2.1, bearer tokens, custom headers, and browser OAuth flows.
 
+## Table of Contents
+
+- [Supported Methods](#supported-methods)
+- [OAuth Authentication (Browser / React)](#oauth-authentication-browser-react)
+- [Bearer Token Authentication (Browser / React)](#bearer-token-authentication-browser-react)
+- [Node.js Client Authentication](#nodejs-client-authentication)
+- [CLI Authentication](#cli-authentication)
+- [OAuth Flow Modes](#oauth-flow-modes)
+- [Manual Authentication Control](#manual-authentication-control)
+- [Custom OAuthClientProvider](#custom-oauthclientprovider)
+- [Configuration Options](#configuration-options)
+- [Example Servers](#example-servers)
+- [Token Expiry And Re-Auth Routing](#token-expiry-and-re-auth-routing)
+- [Security Best Practices](#security-best-practices)
+- [Available Imports](#available-imports)
+
 ---
 
 ## Supported Methods
@@ -305,7 +321,7 @@ if (mcp.state === "pending_auth" || mcp.state === "authenticating") {
 }
 ```
 
-To enable automatic OAuth flow, omit `preventAutoAuth` or set it to `false`:
+To enable automatic OAuth flow, set `preventAutoAuth: false` explicitly:
 
 ```typescript
 const mcp = useMcp({
@@ -346,7 +362,7 @@ When supplied via `authProvider`, `useMcp` bypasses the built-in browser provide
 | `callbackUrl` | `string` | No (OAuth) | URL the OAuth provider redirects to after consent. Defaults to `/oauth/callback` on the current origin |
 | `authProvider` | `OAuthClientProvider` | No | Custom provider instance for headless/testing environments |
 | `useRedirectFlow` | `boolean` | No (default `false`) | Switch to redirect flow instead of popup |
-| `preventAutoAuth` | `boolean` | No (default `false`) | If `true`, connection enters `pending_auth` and waits for `authenticate()` |
+| `preventAutoAuth` | `boolean` | No; set explicitly | If `true`, connection enters `pending_auth` and waits for `authenticate()`; if `false`, OAuth starts automatically |
 | `headers` | `Record<string, string>` | No | Additional HTTP headers for the MCP connection |
 | `enabled` | `boolean` | No (default `true`) | When `false`, no connection is attempted (similar to TanStack Query's `enabled`) |
 

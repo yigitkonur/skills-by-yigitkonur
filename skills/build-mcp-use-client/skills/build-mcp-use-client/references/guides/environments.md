@@ -2,6 +2,21 @@
 
 Complete reference for mcp-use client environments — Node.js, Browser, React, and CLI entry points.
 
+## Table of Contents
+
+- [Entry Points Overview](#entry-points-overview)
+- [Node.js](#nodejs)
+- [Browser](#browser)
+- [React](#react)
+- [CLI](#cli)
+- [Feature Support Matrix](#feature-support-matrix)
+- [Import Reference](#import-reference)
+- [Security Considerations](#security-considerations)
+- [Running Examples](#running-examples)
+- [Decision Matrix — When to Use Which Environment](#decision-matrix-when-to-use-which-environment)
+- [Common Patterns Across Environments](#common-patterns-across-environments)
+- [Migration Between Environments](#migration-between-environments)
+
 ---
 
 ## Entry Points Overview

@@ -2,6 +2,13 @@
 
 Starter project structures for building MCP client applications with mcp-use.
 
+## Table of Contents
+
+- [Template 1: Minimal Node.js Client](#template-1-minimal-nodejs-client)
+- [Template 2: Production HTTP Client](#template-2-production-http-client)
+- [Template 3: React MCP Dashboard](#template-3-react-mcp-dashboard)
+- [Template 4: Browser Extension Client](#template-4-browser-extension-client)
+
 ---
 
 ## Template 1: Minimal Node.js Client

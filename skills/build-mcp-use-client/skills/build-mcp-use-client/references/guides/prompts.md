@@ -2,6 +2,26 @@
 
 Complete reference for using MCP prompts — listing, retrieval, arguments, completions, and LLM integration.
 
+## Table of Contents
+
+- [Understanding Prompts](#understanding-prompts)
+- [Listing Prompts](#listing-prompts)
+- [Getting a Prompt](#getting-a-prompt)
+- [PromptResult Interface](#promptresult-interface)
+- [Prompt Arguments](#prompt-arguments)
+- [Completion for Prompt Arguments](#completion-for-prompt-arguments)
+- [CompleteRequestParams](#completerequestparams)
+- [CompleteResult](#completeresult)
+- [Using Prompts with LLMs](#using-prompts-with-llms)
+- [Multi-Message Prompt Patterns](#multi-message-prompt-patterns)
+- [CLI Usage](#cli-usage)
+- [React Hook Usage](#react-hook-usage)
+- [Prompt Change Notifications](#prompt-change-notifications)
+- [Error Handling](#error-handling)
+- [Common Mistakes](#common-mistakes)
+- [Browser Usage](#browser-usage)
+- [Summary](#summary)
+
 ---
 
 ## Understanding Prompts

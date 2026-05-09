@@ -2,6 +2,23 @@
 
 Complete reference for client-side elicitation — handling server requests for user input via form and URL modes.
 
+## Table of Contents
+
+- [What Is Elicitation](#what-is-elicitation)
+- [Type Definitions](#type-definitions)
+- [Client Helpers](#client-helpers)
+- [Setting the Global Elicitation Callback](#setting-the-global-elicitation-callback)
+- [Per-Server Elicitation Callbacks](#per-server-elicitation-callbacks)
+- [Callback Precedence](#callback-precedence)
+- [React Hook Elicitation](#react-hook-elicitation)
+- [Form-Mode Minimal Example](#form-mode-minimal-example)
+- [URL-Mode Example](#url-mode-example)
+- [Validation Example](#validation-example)
+- [SEP-1330 Enum Schema Variants](#sep-1330-enum-schema-variants)
+- [Complete Example — Full Elicitation Handler](#complete-example-full-elicitation-handler)
+- [Error Handling](#error-handling)
+- [Available Imports](#available-imports)
+
 ---
 
 ## What Is Elicitation

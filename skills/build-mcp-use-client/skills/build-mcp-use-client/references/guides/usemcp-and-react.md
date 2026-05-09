@@ -313,7 +313,7 @@ interface McpServerOptions {
   autoProxyFallback?: boolean | { enabled?: boolean; proxyAddress?: string };
 
   // OAuth
-  preventAutoAuth?: boolean;     // Prevent automatic OAuth popup (default: true)
+  preventAutoAuth?: boolean;     // true: require authenticate(); false: auto-start OAuth
   useRedirectFlow?: boolean;     // Use redirect instead of popup (default: false)
   callbackUrl?: string;          // OAuth callback URL
   authProvider?: OAuthClientProvider; // Optional external OAuth provider
@@ -601,9 +601,9 @@ addServer("authenticated-server", {
 
 ### OAuth Authentication
 
-**Manual OAuth Trigger (Default)**
+**Manual OAuth Trigger**
 
-By default, `preventAutoAuth: true` — you must explicitly trigger OAuth when a server reaches `"pending_auth"` state:
+Set `preventAutoAuth: true` when the UI must require explicit user action before OAuth starts. Do not rely on package defaults for auth behavior; set the flag explicitly:
 
 ```typescript
 function ServerCard({ serverId }: { serverId: string }) {
@@ -1218,7 +1218,7 @@ The standalone `useMcp` hook accepts the following options:
 | `proxyConfig` | `{ proxyAddress?: string; headers?: Record<string, string> }` | — | Custom proxy configuration |
 | `autoReconnect` | `boolean \| number \| object` | `3000` | Reconnection config. Default enables health checks at 10s intervals |
 | `reconnectionOptions` | `ReconnectionOptions` | — | SDK-level transport retry configuration |
-| `preventAutoAuth` | `boolean` | `true` | When `true`, OAuth requires explicit `authenticate()` call |
+| `preventAutoAuth` | `boolean` | set explicitly | When `true`, OAuth requires explicit `authenticate()` call; when `false`, OAuth starts automatically |
 | `useRedirectFlow` | `boolean` | `false` | Use full-page redirect OAuth instead of popup |
 | `callbackUrl` | `string` | `/oauth/callback` on current origin | OAuth redirect URI |
 | `authProvider` | `OAuthClientProvider` | — | External OAuth provider for headless/testing environments |

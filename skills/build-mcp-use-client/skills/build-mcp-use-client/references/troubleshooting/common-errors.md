@@ -2,6 +2,63 @@
 
 Diagnose and fix the most frequent errors encountered when building MCP clients with the `mcp-use` library — connection, session, tool, resource, sampling, elicitation, React, code mode, and import issues.
 
+## Table of Contents
+
+- [Connection Errors](#connection-errors)
+  - [Error: Cannot connect to server](#error-cannot-connect-to-server)
+  - [Error: ECONNREFUSED](#error-econnrefused)
+  - [Error: Session not found (404)](#error-session-not-found-404)
+  - [Error: CORS blocked](#error-cors-blocked)
+  - [Error: WebSocket connection failed](#error-websocket-connection-failed)
+  - [Error: Authentication required (401 Unauthorized)](#error-authentication-required-401-unauthorized)
+  - [Error: Connection drops after ~60 seconds](#error-connection-drops-after-60-seconds)
+  - [Error: Reconnected but tools, resources, or prompts are stale](#error-reconnected-but-tools-resources-or-prompts-are-stale)
+- [Session Errors](#session-errors)
+  - [Error: Client not ready — calling methods before session creation](#error-client-not-ready-calling-methods-before-session-creation)
+  - [Error: Session already exists](#error-session-already-exists)
+  - [Error: No active session — getSession returns null](#error-no-active-session-getsession-returns-null)
+  - [Error: Cannot create STDIO session in browser](#error-cannot-create-stdio-session-in-browser)
+- [Tool Errors](#tool-errors)
+  - [Error: Tool not found](#error-tool-not-found)
+  - [Error: Invalid arguments — tool call validation failure](#error-invalid-arguments-tool-call-validation-failure)
+  - [Error: Request timeout](#error-request-timeout)
+  - [Error: Method not found (-32601)](#error-method-not-found-32601)
+- [Resource Errors](#resource-errors)
+  - [Error: Resource not found](#error-resource-not-found)
+  - [Error: Invalid URI — malformed resource URI](#error-invalid-uri-malformed-resource-uri)
+  - [Error: Resource read failed — server-side error](#error-resource-read-failed-server-side-error)
+- [Sampling Errors](#sampling-errors)
+  - [Error: No sampling callback configured](#error-no-sampling-callback-configured)
+  - [Error: Sampling callback returned invalid result](#error-sampling-callback-returned-invalid-result)
+  - [Error: Sampling request not approved (React provider)](#error-sampling-request-not-approved-react-provider)
+- [Elicitation Errors](#elicitation-errors)
+  - [Error: No elicitation callback configured](#error-no-elicitation-callback-configured)
+  - [Error: Elicitation validation failed — form data doesn't match schema](#error-elicitation-validation-failed-form-data-doesnt-match-schema)
+  - [Error: Elicitation callback returns wrong action for URL mode](#error-elicitation-callback-returns-wrong-action-for-url-mode)
+- [React Errors](#react-errors)
+  - [Error: useMcpClient must be used within McpClientProvider](#error-usemcpclient-must-be-used-within-mcpclientprovider)
+  - [Error: Server not found — useMcpServer with wrong ID](#error-server-not-found-usemcpserver-with-wrong-id)
+  - [State stuck on "discovering"](#state-stuck-on-discovering)
+  - [State stuck on "pending_auth"](#state-stuck-on-pendingauth)
+  - [Error: State is "failed" with no clear error](#error-state-is-failed-with-no-clear-error)
+- [Logging Errors](#logging-errors)
+  - [Server log messages not appearing](#server-log-messages-not-appearing)
+- [Code Mode Errors](#code-mode-errors)
+  - [Error: Code mode not enabled](#error-code-mode-not-enabled)
+  - [Error: E2B API key required](#error-e2b-api-key-required)
+  - [Error: Execution timeout — code exceeded timeoutMs](#error-execution-timeout-code-exceeded-timeoutms)
+  - [Error: Code mode not available in browser](#error-code-mode-not-available-in-browser)
+- [Import Errors](#import-errors)
+  - [Error: Cannot find module 'mcp-use/browser'](#error-cannot-find-module-mcp-usebrowser)
+  - [Error: MCPClient is not a constructor — CommonJS vs ESM](#error-mcpclient-is-not-a-constructor-commonjs-vs-esm)
+  - [Error: Wrong import path for environment](#error-wrong-import-path-for-environment)
+- [TypeScript Configuration Errors](#typescript-configuration-errors)
+  - [Error: TypeScript compilation errors with mcp-use types](#error-typescript-compilation-errors-with-mcp-use-types)
+- [Miscellaneous Errors](#miscellaneous-errors)
+  - [Error: Config file not found — loadConfigFile](#error-config-file-not-found-loadconfigfile)
+  - [Error: closeAllSessions not called — resource leak](#error-closeallsessions-not-called-resource-leak)
+- [Quick Diagnostic Checklist](#quick-diagnostic-checklist)
+
 ---
 
 ## Connection Errors
@@ -226,6 +283,46 @@ const mcp = useMcp({
 ```
 
 **Prevention:** Always enable `autoReconnect` in production. Prefer HTTP Streamable transport over SSE to reduce proxy issues.
+
+---
+
+### Error: Reconnected but tools, resources, or prompts are stale
+
+**When:** The connection recovers after an idle proxy timeout, 404 session recovery, or server restart, but the UI still shows old tools, resources, prompts, or subscribed resource data.
+
+**Cause:** The transport recovered, but application state was not refreshed after server capability changes or list-change notifications.
+
+**Fix:**
+1. Prefer Streamable HTTP (`transportType: "auto"` or `"http"`) for new HTTP clients. Use legacy SSE only for compatibility. Do not build a WebSocket client for MCP.
+2. In React, use both layers when needed:
+```typescript
+useMcp({
+  url: "https://api.example.com/mcp",
+  autoReconnect: { enabled: true, healthCheckInterval: 30_000 },
+  reconnectionOptions: {
+    initialReconnectionDelay: 2_000,
+    maxReconnectionDelay: 60_000,
+    maxRetries: 5,
+  },
+});
+```
+3. Refresh cached state when the server sends list-change notifications:
+```typescript
+session.on("notification", async (notification) => {
+  if (notification.method === "notifications/tools/list_changed") {
+    await refreshTools(await session.listTools());
+  }
+  if (notification.method === "notifications/resources/list_changed") {
+    await refreshResources(await session.listResources());
+  }
+  if (notification.method === "notifications/prompts/list_changed") {
+    await refreshPrompts(await session.listPrompts());
+  }
+});
+```
+4. For resource subscriptions, resubscribe after reconnect if the server does not preserve subscriptions across sessions.
+
+**Prevention:** Treat reconnection as transport recovery, not cache invalidation. Pair `autoReconnect`/`reconnectionOptions` with notification-driven refresh and resource-subscription rehydration.
 
 ---
 
@@ -1368,7 +1465,7 @@ Client not working?
 │   ├── Check URL is correct (include /mcp path)
 │   ├── Check server is running: curl http://localhost:3000/mcp
 │   ├── Check CORS: enable autoProxyFallback for browser
-│   ├── Check transport: MCP uses HTTP/SSE, not WebSocket
+│   ├── Check transport: MCP uses Streamable HTTP/SSE, not WebSocket
 │   └── Check auth: provide headers, authProvider, or callbackUrl
 │
 ├── Tools not listing?
@@ -1398,7 +1495,7 @@ Client not working?
 ├── Auth not working?
 │   ├── Check callbackUrl matches OAuth redirect URI
 │   ├── Check authProvider config (clientId, URLs)
-│   ├── Check preventAutoAuth — call authenticate() manually
+│   ├── Check preventAutoAuth — call authenticate() manually or set it false
 │   └── For bearer tokens: check headers.Authorization format
 │
 ├── React not rendering?
@@ -1441,7 +1538,7 @@ Client not working?
 | React context error | `McpClientProvider` wrapping component tree? |
 | Server not found (React) | `useMcpServer` ID matches `addServer` ID? |
 | Stuck on discovering | URL reachable? CORS? Check DevTools Network tab |
-| Stuck on pending_auth | Call `mcp.authenticate()` — it's manual by default |
+| Stuck on pending_auth | If manual auth is enabled, call `mcp.authenticate()`; otherwise set `preventAutoAuth: false` intentionally |
 | Code mode not enabled | `codeMode: true` in MCPClientOptions? |
 | Server logs missing | `loggingCallback` configured in MCPClientOptions? |
 | E2B API key missing | `E2B_API_KEY` in env? `executorOptions.apiKey` set? |

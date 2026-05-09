@@ -2,6 +2,23 @@
 
 Complete reference for the mcp-use CLI client — connection management, tool execution, resource access, and scripting.
 
+## Table of Contents
+
+- [Installation and Setup](#installation-and-setup)
+- [Connection Management](#connection-management)
+- [Session Management](#session-management)
+- [Tools Commands](#tools-commands)
+- [Resources Commands](#resources-commands)
+- [Prompts Commands](#prompts-commands)
+- [Interactive Mode](#interactive-mode)
+- [Global Flags](#global-flags)
+- [Command Reference Table](#command-reference-table)
+- [Session Storage Path](#session-storage-path)
+- [Scripting Patterns](#scripting-patterns)
+- [Troubleshooting](#troubleshooting)
+- [Tips and Best Practices](#tips-and-best-practices)
+- [Quick Reference Card](#quick-reference-card)
+
 ---
 
 ## Installation and Setup

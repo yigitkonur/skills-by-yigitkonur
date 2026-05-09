@@ -2,6 +2,20 @@
 
 Complete, copy-pasteable client examples using the mcp-use TypeScript library. These examples target the current verified `mcp-use@1.27.0` line; run `scripts/check-mcp-use-version.sh` before copying into a project.
 
+## Table of Contents
+
+- [Recipe 1: Multi-Server CLI Client](#recipe-1-multi-server-cli-client)
+- [Recipe 2: HTTP Client with Auth](#recipe-2-http-client-with-auth)
+- [Recipe 3: Browser Client with Proxy Fallback](#recipe-3-browser-client-with-proxy-fallback)
+- [Recipe 4: React Multi-Server Dashboard](#recipe-4-react-multi-server-dashboard)
+- [Recipe 5: Sampling Integration (Connect Client to LLM)](#recipe-5-sampling-integration-connect-client-to-llm)
+- [Recipe 6: Elicitation Handler](#recipe-6-elicitation-handler)
+- [Recipe 7: Resource Monitor](#recipe-7-resource-monitor)
+- [Recipe 8: Code Mode Client](#recipe-8-code-mode-client)
+- [Recipe 9: CLI Scripting](#recipe-9-cli-scripting)
+- [Recipe 10: Logging Callback](#recipe-10-logging-callback)
+- [Key Patterns](#key-patterns)
+
 ---
 
 ## Recipe 1: Multi-Server CLI Client

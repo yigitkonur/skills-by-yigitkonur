@@ -2,6 +2,23 @@
 
 Complete reference for accessing MCP resources — listing, reading, templates, subscriptions, and content types.
 
+## Table of Contents
+
+- [Understanding Resources](#understanding-resources)
+- [Types of Resources](#types-of-resources)
+- [Listing Resources](#listing-resources)
+- [Reading Resources](#reading-resources)
+- [Resource Content Types](#resource-content-types)
+- [Working with Resource Templates](#working-with-resource-templates)
+- [Resource Subscriptions](#resource-subscriptions)
+- [React Hook Usage](#react-hook-usage)
+- [URI Patterns and Conventions](#uri-patterns-and-conventions)
+- [Error Handling](#error-handling)
+- [Caching Strategies](#caching-strategies)
+- [Browser Usage](#browser-usage)
+- [Complete Workflow Example](#complete-workflow-example)
+- [Quick Reference](#quick-reference)
+
 ---
 
 ## Understanding Resources

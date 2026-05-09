@@ -2,6 +2,22 @@
 
 Complete reference for code mode — executing tool calls as code, executor types, tool namespaces, and search_tools.
 
+## Table of Contents
+
+- [Why Code Mode](#why-code-mode)
+- [MCPClientOptions — codeMode](#mcpclientoptions-codemode)
+- [Executor Types](#executor-types)
+- [ExecutionResult Interface](#executionresult-interface)
+- [Tool Namespaces in Code Mode](#tool-namespaces-in-code-mode)
+- [search_tools() Function](#searchtools-function)
+- [MCPClient Code Mode Methods](#mcpclient-code-mode-methods)
+- [Agent Integration with PROMPTS.CODE_MODE](#agent-integration-with-promptscodemode)
+- [Error Handling](#error-handling)
+- [Security Considerations](#security-considerations)
+- [Decision Matrix — VM vs E2B vs Custom](#decision-matrix-vm-vs-e2b-vs-custom)
+- [Complete Example — VM Code Mode with Agent](#complete-example-vm-code-mode-with-agent)
+- [Available Imports](#available-imports)
+
 ---
 
 Code mode is a Node.js `MCPClient` feature. Browser clients, React hooks/providers, and the CLI client do not expose `executeCode()` or code-mode executors.

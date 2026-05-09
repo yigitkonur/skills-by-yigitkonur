@@ -2,6 +2,17 @@
 
 Avoid these mistakes when building MCP client applications with **mcp-use** — connection management, tool calling, configuration, sessions, React, and security.
 
+## Table of Contents
+
+- [1. Connection Anti-Patterns](#1-connection-anti-patterns)
+- [2. Tool Calling Anti-Patterns](#2-tool-calling-anti-patterns)
+- [3. Configuration Anti-Patterns](#3-configuration-anti-patterns)
+- [4. Session Anti-Patterns](#4-session-anti-patterns)
+- [5. React Anti-Patterns](#5-react-anti-patterns)
+- [6. Security Anti-Patterns](#6-security-anti-patterns)
+- [Quick Reference: Severity Guide](#quick-reference-severity-guide)
+- [Quick Reference: Environment Constraints](#quick-reference-environment-constraints)
+
 ---
 
 ## 1. Connection Anti-Patterns

@@ -2,6 +2,26 @@
 
 Complete reference for MCPClient configuration — connection types, options, callbacks, and factory methods.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Constructor](#constructor)
+- [MCPClientConfig](#mcpclientconfig)
+- [Connection Types](#connection-types)
+- [MCPClientOptions](#mcpclientoptions)
+- [ClientInfo Interface (per-server)](#clientinfo-interface-per-server)
+- [Callback Configuration](#callback-configuration)
+- [Factory Methods](#factory-methods)
+- [Session Management](#session-management)
+- [Multiple Server Configuration](#multiple-server-configuration)
+- [Environment Variable Support](#environment-variable-support)
+- [Automatic 404 Recovery (HTTP/SSE)](#automatic-404-recovery-httpsse)
+- [Session Persistence (HTTP/SSE)](#session-persistence-httpsse)
+- [Browser and React Imports](#browser-and-react-imports)
+- [Best Practices](#best-practices)
+- [Common Mistakes](#common-mistakes)
+- [Quick Reference](#quick-reference)
+
 ---
 
 ## Overview

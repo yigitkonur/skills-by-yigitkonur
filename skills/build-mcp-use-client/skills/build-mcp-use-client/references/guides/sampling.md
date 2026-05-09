@@ -2,6 +2,21 @@
 
 Complete reference for client-side sampling — handling server LLM completion requests via callbacks.
 
+## Table of Contents
+
+- [What Is Sampling](#what-is-sampling)
+- [Type Definitions](#type-definitions)
+- [Setting the Global Sampling Callback](#setting-the-global-sampling-callback)
+- [Per-Server Sampling Callbacks](#per-server-sampling-callbacks)
+- [Callback Precedence Order](#callback-precedence-order)
+- [Model Preference Handling](#model-preference-handling)
+- [Image Content in Sampling](#image-content-in-sampling)
+- [Integration with Real LLMs](#integration-with-real-llms)
+- [React Hook Sampling](#react-hook-sampling)
+- [Error Handling](#error-handling)
+- [Available Imports](#available-imports)
+- [Anti-Patterns](#anti-patterns)
+
 ---
 
 ## What Is Sampling

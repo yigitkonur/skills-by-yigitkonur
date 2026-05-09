@@ -2,6 +2,22 @@
 
 Complete reference for discovering and calling MCP tools — listing, execution, timeouts, and error handling.
 
+## Table of Contents
+
+- [Understanding Tools](#understanding-tools)
+- [Listing Tools](#listing-tools)
+- [Calling Tools](#calling-tools)
+- [Timeout Configuration](#timeout-configuration)
+- [Progress Notifications](#progress-notifications)
+- [Cancelling a Tool Call](#cancelling-a-tool-call)
+- [Batch Tool Calling](#batch-tool-calling)
+- [Tool Discovery with Code Mode](#tool-discovery-with-code-mode)
+- [Error Handling Patterns](#error-handling-patterns)
+- [React Hook Usage](#react-hook-usage)
+- [Common Mistakes](#common-mistakes)
+- [Quick Reference](#quick-reference)
+- [Checklist](#checklist)
+
 ---
 
 ## Understanding Tools

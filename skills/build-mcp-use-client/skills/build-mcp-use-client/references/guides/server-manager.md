@@ -4,6 +4,19 @@ Manage and connect to multiple MCP servers simultaneously.
 
 The Server Manager enables applications to connect to multiple MCP servers at once, combining capabilities from different sources to build powerful, integrated workflows.
 
+## Table of Contents
+
+- [Why Use Multiple Servers?](#why-use-multiple-servers)
+- [Configuration Reference](#configuration-reference)
+- [MCPClient API](#mcpclient-api)
+- [Basic Multi-Server Configuration](#basic-multi-server-configuration)
+- [Using Multiple Servers](#using-multiple-servers)
+- [Managing Server Dependencies](#managing-server-dependencies)
+- [Advanced Client Features](#advanced-client-features)
+- [Performance Optimization](#performance-optimization)
+- [Troubleshooting Multi-Server Setups](#troubleshooting-multi-server-setups)
+- [Best Practices](#best-practices)
+
 ---
 
 ## Why Use Multiple Servers?

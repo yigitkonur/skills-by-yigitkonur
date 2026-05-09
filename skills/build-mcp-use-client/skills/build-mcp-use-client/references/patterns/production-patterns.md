@@ -2,6 +2,24 @@
 
 Complete reference for building reliable, production-grade MCP client applications — graceful shutdown, connection management, retry logic, multi-server orchestration, and observability.
 
+## Table of Contents
+
+- [1. Graceful Shutdown](#1-graceful-shutdown)
+- [2. Connection Pooling](#2-connection-pooling)
+- [3. Retry with Exponential Backoff](#3-retry-with-exponential-backoff)
+- [4. Auto-Reconnection](#4-auto-reconnection)
+- [5. 404 Session Recovery](#5-404-session-recovery)
+- [6. Timeout Management](#6-timeout-management)
+- [7. Multi-Server Orchestration](#7-multi-server-orchestration)
+- [8. Error Boundary Patterns](#8-error-boundary-patterns)
+- [9. Environment-Based Configuration](#9-environment-based-configuration)
+- [10. Logging and Observability](#10-logging-and-observability)
+- [11. Resource Caching](#11-resource-caching)
+- [12. Session Lifecycle Management](#12-session-lifecycle-management)
+- [13. React Production Patterns](#13-react-production-patterns)
+- [14. Code Mode Security](#14-code-mode-security)
+- [Quick Reference: Pattern Selection Guide](#quick-reference-pattern-selection-guide)
+
 ---
 
 > **Note:** All examples use `mcp-use` for Node.js imports, `mcp-use/browser` for browser, and `mcp-use/react` for React. Use `OnNotificationCallback` (not `NotificationHandler`) for typed notification handlers. Set `clientInfo` at the top-level config object (alongside `mcpServers`) to identify your client to all servers, or per-server in the server config object to override per-connection. Current verified baseline: `mcp-use@1.27.0`; run `scripts/check-mcp-use-version.sh` before upgrading or copying examples.
@@ -234,6 +252,8 @@ function Dashboard() {
 |---|---|---|
 | `autoReconnect` | Application | Health checks, reconnect delay, transparent recovery |
 | `reconnectionOptions` | SDK transport | Low-level transport reconnection with backoff |
+
+Use Streamable HTTP for new HTTP clients. Keep legacy SSE only for compatibility with older servers, and do not introduce WebSocket transports for MCP. After a reconnect, refresh any local tool/resource/prompt caches from `notifications/*/list_changed`; for resource subscriptions, re-subscribe if the server does not preserve subscriptions across recovered sessions.
 
 ---
 
