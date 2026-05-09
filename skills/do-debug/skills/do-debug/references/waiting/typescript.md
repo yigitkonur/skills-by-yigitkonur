@@ -53,7 +53,7 @@ export async function waitForEventCount(
   opts: WaitOptions = {},
 ): Promise<void> {
   await waitFor(
-    async () => (await getCount()) >= expected,
+    async () => ((await getCount()) >= expected ? true : null),
     { ...opts, description: opts.description ?? `event count >= ${expected}` },
   );
 }
