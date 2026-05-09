@@ -44,6 +44,24 @@ A 1-2 paragraph "category-understanding note" captures these answers and is show
 
 ## The maximalist `_PRODUCT_TEMPLATE.md`
 
+## Evidence file header
+
+Use this header for high-impact evidence files: pricing, security/compliance/legal, benchmarks, claims ledgers, and cross rankings. It is optional for very short files where the same data is obvious from the surrounding folder and source ledger.
+
+```markdown
+## Evidence metadata
+
+| Field | Value |
+|---|---|
+| Entity | [entity name] |
+| Section | [template section or cross-criterion] |
+| Capture date | YYYY-MM-DD |
+| Evidence confidence | high / medium / low |
+| Source IDs used | S001, S002 |
+| Claim IDs created/updated | C001, C002 |
+| Open gaps | [specific missing variable, or "none material"] |
+```
+
 ### Structure
 
 ```markdown
@@ -235,6 +253,14 @@ Every cross-criterion folder produces:
 
 ## Required matrix axes
 
+Every `_COMPARISON_TEMPLATE_<criterion>.md` matrix starts with this base shape before criterion-specific columns:
+
+| Entity | Comparable status | Scenario | Measured/claimed value | Source IDs | Confidence | Caveat | What would change ranking |
+|---|---|---|---|---|---|---|---|
+| [entity] | direct / adjacent / not comparable | [scenario] | [value or claim] | S001, S002 | high / medium / low | [limitation] | [test, source, or threshold] |
+
+Add criterion-specific columns after the base columns.
+
 For [criterion], the matrix MUST include columns for:
 - [axis 1] — [definition + source expectation]
 - [axis 2] — [definition + source expectation]
@@ -338,8 +364,10 @@ Before locking the templates and proceeding to Phase 3:
 - [ ] Total distinct sections across all subfolders ≥ 30
 - [ ] Total template length 200-400 lines (or 400-500 for rich verticals)
 - [ ] Insufficient-evidence handling is explicitly stated in the template
+- [ ] High-impact files require the evidence metadata header
 - [ ] Filename guidance is explicitly stated (subagents pick names)
 - [ ] One `_COMPARISON_TEMPLATE_<criterion>.md` per cross-criterion (or one master for `compact`)
+- [ ] Every comparison template starts with the base matrix columns before criterion-specific columns
 - [ ] Every comparison template lists required matrix axes + required ranking dimensions + required granular files
 - [ ] Every comparison template has a "tests that would change the recommendation" section
 - [ ] Templates were written AFTER the deep category pre-pass, not before discovery
