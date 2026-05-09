@@ -1,6 +1,6 @@
 # MCP Client Recipes
 
-Complete, copy-pasteable client examples using the mcp-use TypeScript library (v1.21.5).
+Complete, copy-pasteable client examples using the mcp-use TypeScript library. These examples target the current verified `mcp-use@1.27.0` line; run `scripts/check-mcp-use-version.sh` before copying into a project.
 
 ---
 

@@ -30,8 +30,7 @@ The Node.js entry point provides the full feature set. Use it for backend servic
 automation scripts, CLI tools, and any environment with access to the file system and
 child process spawning.
 
-**Node.js 18.0.0 or higher required.** The library supports both ESM (`import`) and
-CommonJS (`require`) syntax.
+**Node.js `^20.19.0 || >=22.12.0` required for current `mcp-use@1.27.0`.** The library supports both ESM (`import`) and CommonJS (`require`) syntax. Re-check with `scripts/check-mcp-use-version.sh` before upgrading or copying examples.
 
 ### Import
 

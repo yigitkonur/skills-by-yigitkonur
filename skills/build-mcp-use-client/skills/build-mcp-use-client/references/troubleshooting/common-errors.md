@@ -78,7 +78,7 @@ The client handles this automatically with 404 auto-recovery:
 [StreamableHttp] Re-initialization successful, retrying request
 ```
 If auto-recovery is not working:
-1. Ensure you are using `mcp-use` v1.21.1+ (the version that introduced stable auto-recovery; latest is v1.21.5).
+1. Run `scripts/check-mcp-use-version.sh` and upgrade if the installed package is behind npm latest. Stable 404 auto-recovery was introduced in the 1.21.x line; current verified npm latest is `1.27.0`.
 2. Check that the server correctly returns 404 (not 500) for expired sessions.
 3. Manually reconnect:
 ```typescript
@@ -1454,5 +1454,5 @@ Client not working?
 | Server logs missing | `loggingCallback` configured in MCPClientOptions? |
 | E2B API key missing | `E2B_API_KEY` in env? `executorOptions.apiKey` set? |
 | Process hangs on exit | `closeAllSessions()` called in finally block? Code mode: use `close()` instead |
-| 404 after server restart | Client auto-recovers; check mcp-use version ≥1.21.1 (latest: v1.21.5) |
+| 404 after server restart | Client auto-recovers; run the version script and verify the project is not pinned behind npm latest |
 | Auth 401 | Token expired? Headers correct? OAuth config complete? |

@@ -26,7 +26,7 @@ minimal-mcp-client/
     "start:built": "node dist/client.js"
   },
   "dependencies": {
-    "mcp-use": "^1.21.0"
+    "mcp-use": "^1.27.0"
   },
   "devDependencies": {
     "tsx": "^4.0.0",
@@ -144,7 +144,7 @@ production-mcp-client/
     "start:built": "node dist/client.js"
   },
   "dependencies": {
-    "mcp-use": "^1.21.0",
+    "mcp-use": "^1.27.0",
     "dotenv": "^16.4.0"
   },
   "devDependencies": {
@@ -434,7 +434,7 @@ react-mcp-dashboard/
     "preview": "vite preview"
   },
   "dependencies": {
-    "mcp-use": "^1.21.0",
+    "mcp-use": "^1.27.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -755,7 +755,7 @@ browser-extension-client/
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "mcp-use": "^1.21.0"
+    "mcp-use": "^1.27.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0"

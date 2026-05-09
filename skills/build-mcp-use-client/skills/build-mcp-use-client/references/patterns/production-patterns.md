@@ -4,7 +4,7 @@ Complete reference for building reliable, production-grade MCP client applicatio
 
 ---
 
-> **Note:** All examples use `mcp-use` for Node.js imports, `mcp-use/browser` for browser, and `mcp-use/react` for React. Use `OnNotificationCallback` (not `NotificationHandler`) for typed notification handlers. Set `clientInfo` at the top-level config object (alongside `mcpServers`) to identify your client to all servers, or per-server in the server config object to override per-connection. Latest version: **v1.21.5**.
+> **Note:** All examples use `mcp-use` for Node.js imports, `mcp-use/browser` for browser, and `mcp-use/react` for React. Use `OnNotificationCallback` (not `NotificationHandler`) for typed notification handlers. Set `clientInfo` at the top-level config object (alongside `mcpServers`) to identify your client to all servers, or per-server in the server config object to override per-connection. Current verified baseline: `mcp-use@1.27.0`; run `scripts/check-mcp-use-version.sh` before upgrading or copying examples.
 
 ---
 

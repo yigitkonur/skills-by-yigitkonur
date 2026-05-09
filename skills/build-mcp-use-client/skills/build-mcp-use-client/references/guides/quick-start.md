@@ -24,7 +24,7 @@ Complete reference for getting started with the mcp-use client — installation,
 
 ## Installation
 
-Install the `mcp-use` package from npm. This single package provides Node.js, browser, and React entry points. Node.js 18+ is supported; Node 22 LTS is the best default when you want parity with current examples.
+Install the `mcp-use` package from npm. This single package provides Node.js, browser, and React entry points. Current `mcp-use@1.27.0` metadata requires Node `^20.19.0 || >=22.12.0`; run `scripts/check-mcp-use-version.sh` before copying examples into a project.
 
 ```bash
 npm install mcp-use
@@ -650,7 +650,7 @@ my-mcp-client/
     "build": "tsc"
   },
   "dependencies": {
-    "mcp-use": "latest"
+    "mcp-use": "^1.27.0"
   },
   "devDependencies": {
     "tsx": "latest",
@@ -752,7 +752,7 @@ Reference table for `package.json` fields relevant to mcp-use client projects.
 | Field                     | Value              | Purpose                                           |
 | ------------------------- | ------------------ | ------------------------------------------------- |
 | `"type"`                  | `"module"`         | Enable ESM imports (required for `mcp-use`)       |
-| `"dependencies.mcp-use"`  | `"latest"`         | The mcp-use client library                        |
+| `"dependencies.mcp-use"`  | `"^1.27.0"`        | Current verified mcp-use client baseline; re-run the version script before copying |
 | `"devDependencies.tsx"`   | `"latest"`         | TypeScript execution without compilation step     |
 | `"devDependencies.typescript"` | `"latest"`    | TypeScript compiler for type checking and builds  |
 | `"scripts.start"`         | `"tsx src/client.ts"` | Run the client directly during development      |
