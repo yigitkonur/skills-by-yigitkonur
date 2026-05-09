@@ -86,14 +86,12 @@ When renaming a published skill:
 7. Search cross-skill references and update each
 8. Run `python3 scripts/validate-skills.py`
 
-## Current Canonical Skill Names (47)
+## Current Canonical Skill Names
 
 - `apply-clean-architecture`
 - `ask-review`
 - `build-chrome-extension`
 - `build-copilot-sdk-app`
-- `build-effect-ts-v3`
-- `build-kernel-ts-sdk`
 - `build-langchain-ts-app`
 - `build-macos-app`
 - `build-mcp-server-sdk-v1`
@@ -102,7 +100,6 @@ When renaming a published skill:
 - `build-mcp-use-client`
 - `build-mcp-use-server`
 - `build-raycast-script-command`
-- `build-tinacms-nextjs`
 - `check-completion`
 - `convert-mcp-server-sdk-v1-to-v2`
 - `convert-url-to-nextjs`
@@ -122,7 +119,6 @@ When renaming a published skill:
 - `optimize-agentic-mcp`
 - `publish-npm-package`
 - `run-agent-browser`
-- `run-batch-codex-research`
 - `run-codex-exec`
 - `run-codex-review`
 - `run-github-scout`
