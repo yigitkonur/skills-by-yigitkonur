@@ -11,7 +11,7 @@ Language-agnostic systematic debugging method. Four mandatory phases before any 
 
 Use this skill when the task is to:
 
-- debug a runtime bug you can reproduce but whose causal mechanism is unknown
+- debug a reproducible runtime bug whose causal mechanism is unknown — start in `do-debug`, not `do-think`
 - recover from a fix that failed — the symptom persists, regressed, or moved
 - investigate an intermittent ("sometimes") failure where pattern-matching a quick fix is tempting
 - stop yourself mid-diagnosis when you feel pulled toward "let me just try X"
@@ -20,11 +20,13 @@ Use this skill when the task is to:
 Prefer another skill when:
 
 - a specific diagnostic tool is available and loaded (Chrome DevTools, profiler, language-specific debugger) → use the tool's specific skill if available
-- the task is "reason about a design tradeoff" with no bug to reproduce → `do-think`
-- the user explicitly wants a user-in-the-loop brainstorm about architecture → `do-think` (Mode: Interactive — this skill routes there at the 3-fails gate)
+- the task is a design tradeoff or architecture question with no reproducible runtime bug → `do-think`
+- the user explicitly wants a user-in-the-loop brainstorm about architecture → `do-think` (Mode: Interactive)
 - only "confirm what's actually done" is needed on already-fixed items → `check-completion`
 - the code is not running yet — pure design or scoping work → `do-think` (Solo or Interactive depending on user presence)
 - the bug is an external-service outage the agent cannot inspect → out of scope; surface the fact and stop
+
+Boundary with `do-think`: Fail 3 routes to `do-think` (Mode: Interactive) with the handoff template. After `do-think` returns, re-enter `do-debug` at Phase 2 with the new framing, not Phase 1.
 
 ## Non-negotiable rules
 
@@ -125,7 +127,7 @@ This skill does not handle everything alone. The matrix below is the first-class
 | Phase 3: "confirmation" also fits a different mechanism | Stay | Back to Phase 2; write the distinguishing test | Do not hand off |
 | Fail #1 (first fix didn't stick) | Stay | Re-open Phase 2 inline | Pattern was wrong |
 | Fail #2 (second fix didn't stick) | Stay | Re-open Phase 1 inline | Symptom was wrong or repro was fake |
-| Fail #3 (third fix didn't stick) | **Out — stop fixing** | `do-think` (Mode: Interactive) with handoff template in `references/integration.md` | Architecture-shaped, not a bug |
+| Fail #3 (third fix didn't stick) | **Out — stop fixing** | `do-think` (Mode: Interactive) with handoff template in `references/integration.md` | Architecture-shaped; re-enter Phase 2 after `do-think` returns |
 | Phase 4: fix applied, verification passed | Out | `check-completion` | Audit for related-but-forgotten scope |
 | "Bug" is a design disagreement, not a bug | **Do not start** | `do-think` (Solo or Interactive) | Not a runtime failure |
 | No way to run code (env/repo missing) | **Do not start** | Ask user for a repro, or exit | Phase 1 cannot complete |
@@ -138,7 +140,7 @@ A "failed fix" = a hypothesis-driven change that did not make Phase 1's repro pa
 
 - **Fail 1** → re-open Phase 2. The pattern family was likely wrong.
 - **Fail 2** → re-open Phase 1. The symptom definition or repro was probably incomplete.
-- **Fail 3** → **Stop fixing.** Route to `do-think` (Mode: Interactive). Three failures means the problem is architecture-shaped, not a bug. Full handoff format in `references/escalation.md` and `references/integration.md`.
+- **Fail 3** → **Stop fixing.** Route to `do-think` (Mode: Interactive). Three failures means the problem is architecture-shaped, not a bug. Full handoff format in `references/escalation.md` and `references/integration.md`. After `do-think` returns, re-enter at Phase 2 with the new framing.
 
 The rule is load-bearing under pressure. See `references/rationalizations.md` for the verbatim excuses agents generate to skip it.
 
