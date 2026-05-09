@@ -83,6 +83,8 @@ Never mention unavailable tools in the enhanced prompt.
 
 Apply these layers to the prompt. Read `references/enhancement-layers.md` for the full guide.
 
+Budget rule: preserve user intent and voice; target the smallest prompt that blocks the likely failure modes. For normal tasks, keep the enhanced prompt under ~1,200 words or roughly 2x the original, whichever is smaller, unless the user explicitly asks for a full brief.
+
 **Layer 1: Narrative structure**
 Give the prompt a beginning-middle-end. The agent needs to know: where are we, what's the problem, what does success look like.
 
@@ -158,7 +160,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 |---|---|
 | `references/ask-user-tools.md` | Step 2 decides to ask — use the current runtime's structured question tool or the prose fallback |
 | `references/planning-questions.md` | Step 2 decides to ask — conditional axis bank, "(Recommended)" selection rules, swap rules, worked examples |
-| `references/output-contract.md` | Producing the final enhanced prompt — response shape, prompt skeleton, code/non-code variants, assumptions, and prompt lint checklist |
+| `references/output-contract.md` | Producing the final enhanced prompt — response shape, prompt skeleton, budget guardrails, verification examples, assumptions, and prompt lint checklist |
 | `references/enhancement-layers.md` | Applying the 5 enhancement layers — detailed guidance per layer |
 | `references/code-prompt-patterns.md` | Prompt targets a coding agent — file paths, verification, tech-stack awareness |
 | `references/failure-modes.md` | Predicting and pre-empting common agent failure modes |

@@ -15,6 +15,14 @@ Key improvement: <one sentence naming the main execution risk you blocked>
 
 Do not add a generic offer, tutorial, or analysis unless the user requested it or the prompt's risk warrants a brief note.
 
+## Token Budget Guardrail
+
+Preserve the user's intent and voice. Target the smallest prompt that blocks the likely failure modes.
+
+For normal tasks, keep the enhanced prompt under ~1,200 words or roughly 2x the original, whichever is smaller, unless the user explicitly asks for a full brief.
+
+Do not add examples, policy dumps, tool tutorials, or long principle lists unless they materially change execution.
+
 ## Enhanced Prompt Skeleton
 
 Use the smallest structure that makes the executor less likely to fail:
@@ -63,6 +71,16 @@ Include:
 - Audience and use context: who the output is for and what decision it supports.
 - Acceptance criteria: what a useful answer must contain or avoid.
 - Verification method: citation check, consistency check, stakeholder review, rubric pass, or other observable check.
+
+## Verification By Prompt Type
+
+| Prompt type | Verification layer to include |
+|---|---|
+| Code | Tests, lint/typecheck, smoke path, and diff scope check when known |
+| Research | Primary-source requirement, citation/date requirement, and explicit "unknown" handling |
+| Planning | Success criteria, decision threshold, and what evidence changes the plan |
+| Writing/content | Audience fit, factual checks, source constraints, and acceptance criteria |
+| Automation/ops | Dry-run step, rollback condition, credentials halt, and no-production-change boundary |
 
 ## Assumptions
 
