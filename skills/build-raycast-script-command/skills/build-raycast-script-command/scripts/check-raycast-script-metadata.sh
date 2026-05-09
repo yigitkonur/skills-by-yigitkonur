@@ -8,7 +8,6 @@ fi
 
 python3 - "$1" <<'PY'
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -46,6 +45,10 @@ for line in top_lines:
 for required in ("schemaVersion", "title", "mode"):
     if required not in metadata:
         errors.append(f"missing @raycast.{required} near the top of the file")
+
+schema_versions = metadata.get("schemaVersion", [])
+if schema_versions and schema_versions[0] != "1":
+    errors.append(f"unsupported schemaVersion {schema_versions[0]!r}; expected 1")
 
 mode_values = metadata.get("mode", [])
 if mode_values:
@@ -85,6 +88,15 @@ for key, values in metadata.items():
             choices = data.get("data")
             if not isinstance(choices, list) or not choices:
                 errors.append(f"@raycast.{key} dropdown requires non-empty data array")
+            else:
+                for index, choice in enumerate(choices, start=1):
+                    if not isinstance(choice, dict):
+                        errors.append(f"@raycast.{key} dropdown item {index} must be an object")
+                        continue
+                    if "title" not in choice or "value" not in choice:
+                        errors.append(
+                            f"@raycast.{key} dropdown item {index} requires title and value"
+                        )
 
 if len(set(argument_numbers)) > 3:
     errors.append("Script Commands support no more than three arguments")

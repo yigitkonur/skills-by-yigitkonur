@@ -16,10 +16,12 @@ Run it before previewing the command. It does not execute the command.
 - file exists and has a `.py` or `.sh` extension
 - first line is a shebang
 - `@raycast.schemaVersion`, `@raycast.title`, and `@raycast.mode` appear near the top
+- `@raycast.schemaVersion` is `1`
 - mode is one of `fullOutput`, `compact`, `silent`, `inline`
 - `inline` has `@raycast.refreshTime`
 - `@raycast.argument1`, `@raycast.argument2`, and `@raycast.argument3` values parse as JSON
 - argument types are only `text`, `password`, or `dropdown`
+- dropdown `data` entries include `title` and `value`
 - no argument beyond `@raycast.argument3` is used
 
 ## Result
