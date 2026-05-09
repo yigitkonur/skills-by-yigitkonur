@@ -1394,7 +1394,7 @@ async function handleExec(argv) {
     runnerLogPath,
   });
 
-  return okEnvelope(command, {
+  const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
     manifest_path: manifestPath,
@@ -1408,6 +1408,8 @@ async function handleExec(argv) {
     concurrency_source: cap.source,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("exec", { manifestPath, runId, monitorRoot }));
+  env.meta.dry_run = !!options["dry-run"];
+  return env;
 }
 
 async function handleBatch(argv) {
@@ -1544,7 +1546,7 @@ async function handleBatch(argv) {
     runnerLogPath,
   });
 
-  return okEnvelope(command, {
+  const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
     manifest_path: manifestPath,
@@ -1561,6 +1563,8 @@ async function handleBatch(argv) {
     concurrency_source: cap.source,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("batch", { manifestPath, runId, monitorRoot }));
+  env.meta.dry_run = !!options["dry-run"];
+  return env;
 }
 
 async function handleSingle(argv) {
@@ -1676,7 +1680,7 @@ async function handleSingle(argv) {
     runnerLogPath,
   });
 
-  return okEnvelope(command, {
+  const env = okEnvelope(command, {
     phase: "running",
     next_action: "arm Monitor and wait",
     manifest_path: manifestPath,
@@ -1695,6 +1699,8 @@ async function handleSingle(argv) {
             null,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("single", { manifestPath, runId, monitorRoot, jsonlPath }));
+  env.meta.dry_run = !!options["dry-run"];
+  return env;
 }
 
 async function handleReview(argv) {
@@ -1780,7 +1786,7 @@ async function handleReview(argv) {
     runnerLogPath,
   });
 
-  return okEnvelope(command, {
+  const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
     manifest_path: manifestPath,
@@ -1794,6 +1800,8 @@ async function handleReview(argv) {
     concurrency_source: cap.source,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("review", { manifestPath, runId, monitorRoot }));
+  env.meta.dry_run = !!options["dry-run"];
+  return env;
 }
 
 // ----------------------------------------------------------------------------
@@ -2019,6 +2027,36 @@ async function handleRescue(argv) {
     });
   }
 
+  const dryRun = !!options["dry-run"];
+
+  // DRY-RUN PREVIEW: do NOT mutate the manifest, do NOT spawn the runner, do
+  // NOT run pre-rescue cleanup. Build a preview envelope describing what the
+  // real path WOULD do, so the operator can probe redispatch shape safely.
+  // (Mode validity was already enforced above at the rescue-of-rescue / RUNNERS
+  // gate; we don't re-check here.)
+  if (dryRun) {
+    const rerunCmd = `node orchestrate-codex.mjs rescue --manifest ${manifestPath} --apply ${String(options.apply)}`;
+    const env = okEnvelope(command, {
+      phase: "preview",
+      next_action: {
+        kind: "preview",
+        reason: "dry-run; manifest not modified, runner not spawned",
+        rerun_with: rerunCmd,
+      },
+      manifest_path: manifestPath,
+      run_id: m.run_id,
+      mode: m.mode,
+      apply: String(options.apply),
+      flipped_entries: [],
+      redispatch: { selected_ids: subset.ids, subset: String(options.apply) },
+      workspace_root: wsRoot,
+      classification,
+      dry_run: true,
+    });
+    env.meta.dry_run = true;
+    return env;
+  }
+
   const codexErr = ensureCodexAvailable(command);
   if (codexErr) return codexErr;
 
@@ -2045,11 +2083,9 @@ async function handleRescue(argv) {
 
   let runnerArgs;
   let runnerEnv = {};
-  const dryRun = !!options["dry-run"];
   if (m.mode === "exec") {
     runnerArgs = [manifestPath];
     runnerEnv = { JOBS: String(cap), PROJECT_DIR: wsRoot };
-    if (dryRun) runnerEnv.DRY_RUN = "1";
   } else if (m.mode === "batch") {
     runnerArgs = [];
     const promptsDir = path.join(monitorRoot, "prompts", m.run_id || "");
@@ -2062,7 +2098,6 @@ async function handleRescue(argv) {
       LOGS: logsDir,
       ORCHESTRATE_MANIFEST: manifestPath,
     };
-    if (dryRun) runnerEnv.DRY_RUN = "1";
   } else if (m.mode === "single") {
     const entry = (m.entries || []).find((e) => e.id === subset.ids[0]) || (m.entries || [])[0];
     runnerArgs = [
@@ -2084,9 +2119,8 @@ async function handleRescue(argv) {
     } else {
       runnerArgs.push("--resume-last");
     }
-    if (dryRun) runnerArgs.push("--dry-run");
   } else if (m.mode === "review") {
-    runnerArgs = dryRun ? ["--dry-run", manifestPath, "1"] : [manifestPath, "1"];
+    runnerArgs = [manifestPath, "1"];
     runnerEnv = { JOBS: String(cap), PROJECT_DIR: wsRoot };
   } else {
     return errEnvelope(command, "bad_argument", `unsupported mode for rescue: ${m.mode}`);
@@ -2100,7 +2134,7 @@ async function handleRescue(argv) {
     runnerLogPath,
   });
 
-  return okEnvelope(command, {
+  const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
     manifest_path: manifestPath,
@@ -2115,8 +2149,10 @@ async function handleRescue(argv) {
     runner_log_path: runnerLogPath,
     workspace_root: wsRoot,
     classification,
-    dry_run: dryRun,
+    dry_run: false,
   }, buildMonitorForMode(m.mode, { manifestPath, runId: m.run_id, monitorRoot, jsonlPath: ((m.entries || [])[0] || {}).jsonl_path }));
+  env.meta.dry_run = false;
+  return env;
 }
 
 async function handleAudit(argv) {
@@ -2161,7 +2197,16 @@ async function handleAudit(argv) {
     });
   }
   const r = runPythonHelper(PY_HELPERS.audit, ["--manifest", manifestPath, "--json"], wsRoot);
-  if (r.status !== 0) {
+  // audit-fleet-state.py exit-code contract:
+  //   0 = clean (no drift)
+  //   1 = actionable (drift detected and/or manifest absent) — STILL a successful audit
+  //   2 = manifest unreadable (env-level failure)
+  //   3 = environmental error (e.g. permission denied)
+  // Only exits >= 2 (or non-zero/non-one) indicate a real helper failure. Exits
+  // 0 and 1 both produce a valid JSON report on stdout that the agent should
+  // see as ok:true; the report itself carries `drift_total` / `actionable` so
+  // the caller can distinguish clean from drift without re-reading the exit code.
+  if (r.status !== 0 && r.status !== 1) {
     return errEnvelope(command, "python_helper_failed",
       `audit-fleet-state.py exited ${r.status}: ${(r.stderr || "").trim() || "no stderr"}`,
       { stdout: r.stdout, stderr: r.stderr });
@@ -2171,10 +2216,15 @@ async function handleAudit(argv) {
     return errEnvelope(command, "python_helper_failed",
       `audit-fleet-state.py produced non-JSON stdout: ${e.message}`, { stdout: r.stdout });
   }
+  const driftTotal = (audit && typeof audit.drift_total === "number") ? audit.drift_total : 0;
+  const orphans = (audit && Array.isArray(audit.orphan_worktrees)) ? audit.orphan_worktrees.length : 0;
   return okEnvelope(command, {
     phase: "done",
-    next_action: "review the manifest",
+    next_action: (driftTotal > 0 || orphans > 0)
+      ? "review the drift summary; consider rescue mode"
+      : "review the manifest",
     manifest_path: manifestPath,
+    drift_total: driftTotal,
     audit,
     workspace_root: wsRoot,
   });

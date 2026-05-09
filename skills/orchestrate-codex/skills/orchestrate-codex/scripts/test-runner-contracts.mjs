@@ -161,11 +161,19 @@ function scenarioRescue() {
   expect(classify.status === 0 && classify.json?.ok === true, "rescue classification returns ok");
   expect(classify.json.result.classification.redispatch_options.failed_only.includes("alpha"), "rescue classifies failed entry");
 
+  // Snapshot the manifest BEFORE the dry-run probe so we can verify byte-for-
+  // byte that --dry-run does NOT mutate it (Bug A fix).
+  const manifestBefore = fs.readFileSync(manifestPath, "utf8");
   const redo = runNode(["rescue", "--cwd", cwd, "--manifest", manifestPath, "--redo", "failed", "--dry-run"], cwd);
   expect(redo.status === 0 && redo.json?.ok === true, "rescue redispatch returns ok");
   expect(redo.json.result.redispatch.selected_ids.includes("alpha"), "rescue redispatch selects failed entry");
-  const manifest = readJson(manifestPath);
-  expect(manifest.entries.find((e) => e.id === "alpha")?.status === "done", "redispatched entry reaches done");
+  const manifestAfter = fs.readFileSync(manifestPath, "utf8");
+  expect(
+    manifestBefore === manifestAfter
+      && redo.json.result.dry_run === true
+      && redo.json?.meta?.dry_run === true,
+    "rescue --dry-run leaves manifest byte-identical and flags dry_run in result+meta"
+  );
 }
 
 scenarioHelpAndBadArgs();

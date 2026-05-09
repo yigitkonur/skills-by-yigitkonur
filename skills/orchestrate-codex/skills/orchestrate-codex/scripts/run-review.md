@@ -57,7 +57,7 @@ Manifest mutations:
   orchestrator (Claude main agent), not this runner.
 - On round-success the runner writes `status=done` (NOT `reviewed`, which
   isn't in the manifest's documented status enum). The orchestrator advances
-  to `converged` / `cap-reached` / `blocked` after reading the classifier.
+  to `converged` / `cap_reached` / `blocked` after reading the classifier.
 
 ## Exit codes
 

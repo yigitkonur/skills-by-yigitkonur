@@ -37,7 +37,7 @@
 #     ({round, findings_md, findings_json, jsonl, ts})
 #   - last_findings_path / codex_thread_id / round
 #   - status `done` on round success (the orchestrator advances to
-#     `converged` / `cap-reached` / `blocked` based on the classifier).
+#     `converged` / `cap_reached` / `blocked` based on the classifier).
 #
 # Signal handling: a `trap 'kill 0' TERM INT EXIT` near top propagates
 # SIGTERM to xargs and codex children — no orphan codex review processes
@@ -164,7 +164,7 @@ jq -r '
   .entries[]
   | select((.status // "queued") != "converged"
            and (.status // "queued") != "blocked"
-           and (.status // "queued") != "cap-reached")
+           and (.status // "queued") != "cap_reached")
   | [
       .id,
       (.slug // .id),
@@ -435,7 +435,7 @@ run_one() {
 
   # Status `done` per the documented manifest enum (not `reviewed`, which
   # isn't in the taxonomy). The orchestrator advances to converged /
-  # cap-reached / blocked after reading the classifier's verdict.
+  # cap_reached / blocked after reading the classifier's verdict.
   echo "DONE  $id (runtime=${elapsed}s findings=$(wc -c < "$findings" | tr -d ' ')B json=$findings_json)"
   "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
     status=done finished_at=now exit_code=0 \
@@ -454,7 +454,7 @@ export -f run_one
 
 # Running xargs in the background + `wait` lets bash dispatch TERM/INT
 # traps immediately (otherwise they queue until xargs returns).
-awk -F'\t' '$6 != "converged" && $6 != "blocked" && $6 != "cap-reached"' "$WORKLIST" \
+awk -F'\t' '$6 != "converged" && $6 != "blocked" && $6 != "cap_reached"' "$WORKLIST" \
   | tr '\n' '\0' \
   | xargs -0 -n 1 -P "$JOBS" bash -c 'run_one "$0"' &
 _run_review_xargs_pid=$!
