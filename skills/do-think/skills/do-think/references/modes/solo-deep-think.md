@@ -35,7 +35,7 @@ Solo is autonomous, but autonomy ≠ recklessness. Three legitimate stop conditi
 | Stop condition | Action |
 |---|---|
 | **Real external blocker** (missing credentials, unavailable system, requires destructive action with no rollback) | Stop, surface the blocker, ask the user the minimum question that unblocks |
-| **All three options die in C2 stress-test** | Switch Mode to Interactive — the option space needs the user to expand it |
+| **All candidates/attempts die in C2 stress-test** | Switch Mode to Interactive — the option space needs the user to expand it |
 | **Tier was wrong — calibration matrix mis-fired** | Re-enter Phase B1, re-emit the opening contract |
 
 Anything else: keep moving. See `workflows/continuous-execution.md` for the anti-stall discipline.
@@ -44,7 +44,7 @@ Anything else: keep moving. See `workflows/continuous-execution.md` for the anti
 
 Mid-session, switch to Interactive if any of:
 
-- Phase C2 stress-test kills all three options (escalation gate)
+- Phase C2 stress-test kills all candidates/attempts (escalation gate)
 - The user's framing required Abstraction Laddering and the up-rung is meaningfully different — surface and confirm
 - Tier escalates from Medium to High mid-session AND the new Tier requires a decision the user owns (e.g., "this is now a one-shot deploy")
 - The decision requires expert knowledge the agent does not have access to
@@ -67,7 +67,7 @@ The opening contract line precedes the output. No fork pauses. No 10-section doc
 
 | Task shape | Workflow file |
 |---|---|
-| Bug or regression | `workflows/bug-tracing.md` |
+| Ambiguous/post-debug runtime hypothesis | `workflows/bug-tracing.md` |
 | Refactor or redesign | `workflows/refactor-thinking.md` |
 | Recurring issue ("we already fixed this") | `workflows/recurring-issue.md` |
 | Planning a complex task | `workflows/task-planning.md` |

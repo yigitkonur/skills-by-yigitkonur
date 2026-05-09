@@ -8,7 +8,7 @@ LLMs default to one operation (usually Sense-Making — "evaluate, then decide")
 
 | # | Operation | Essence | Recognize when… | Workflow |
 |---|---|---|---|---|
-| 1 | **Sense-Making & Judgment** | Context → verdict | "Should we…?", "Is this risky?", "What's wrong?", "Why does this fail?" | `workflows/sense-making.md` (generic) · `workflows/bug-tracing.md` (bug variant) · `workflows/recurring-issue.md` (systemic variant) |
+| 1 | **Sense-Making & Judgment** | Context → verdict | "Should we…?", "Is this risky?", "What's wrong?", "Why does this fail?" | `workflows/sense-making.md` (generic) · `workflows/bug-tracing.md` (ambiguous/post-debug hypothesis variant) · `workflows/recurring-issue.md` (systemic variant) |
 | 2 | **Structured Extraction** | Mess → schema | "Pull the X from this Y", "Parse this into fields", "Get all the action items" | `workflows/structured-extraction.md` |
 | 3 | **Generative Composition** | Context + form → artifact | "Write a…", "Draft a…", "Create the X document", "Build this feature" | `workflows/generative-composition.md` |
 | 4 | **Reshape & Repurpose** | Same meaning, new form | "Translate", "Summarize", "Refactor", "Convert", "Migrate" | `workflows/refactor-thinking.md` (code variant) · inline section below (text variant) |
@@ -51,7 +51,7 @@ The trio (Inversion + Ladder + Second-Order) was designed for Sense-Making. **Do
 
 **Pitfall LLMs hit**: jumping to the first plausible explanation. The trio (Inversion + Ladder + Second-Order) exists exactly to counter this.
 
-**Use**: `workflows/sense-making.md` for the generic version. `workflows/bug-tracing.md` for runtime bugs. `workflows/recurring-issue.md` when point fixes haven't worked.
+**Use**: `workflows/sense-making.md` for the generic version. `workflows/bug-tracing.md` only for ambiguous or post-`do-debug` runtime hypotheses that need a falsifier handoff; reproducible runtime failures route to `do-debug`. `workflows/recurring-issue.md` when point fixes haven't worked.
 
 ## Operation 2 — Structured Extraction
 
@@ -155,7 +155,7 @@ Most user prompts contain a verb that signals the operation:
 
 | User says… | Operation |
 |---|---|
-| "Should we…?", "Is X safe?", "What's wrong?", "Why does X fail?", "Evaluate Y", "Review Z" | Sense-Making |
+| "Should we…?", "Is X safe?", "What's wrong?", "Why does X fail?", "Evaluate Y", "Review Z" | Sense-Making (route reproducible runtime failures to `do-debug`) |
 | "Extract", "Parse", "Pull out", "Get all the X from Y", "Categorize", "Tag", "Log to" | Extraction |
 | "Write", "Draft", "Compose", "Create the X", "Build the Y feature", "Generate" | Composition |
 | "Translate", "Summarize", "Refactor", "Convert", "Migrate", "Rename", "Reformat" | Reshape |
@@ -172,7 +172,7 @@ Many real tasks are layered:
 
 | Task | Outer op | Inner op |
 |---|---|---|
-| "Investigate this bug, then write the fix" | Sense-Making | Generative Composition (then Self-Verification) |
+| "Investigate this bug, then write the fix" | Sense-Making only when the failure is ambiguous or post-`do-debug`; otherwise `do-debug` owns it | Generative Composition (then Self-Verification) |
 | "Extract the action items, then turn them into a summary email" | Extraction | Reshape |
 | "Find the slow query (research the codebase), then refactor it" | Sense-Making | Reshape |
 | "Read the contract, draft the demand letter" | Sense-Making | Generative Composition |

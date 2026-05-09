@@ -4,7 +4,7 @@ What deep thinking produces. Two top-level shapes — pick by Mode (Solo vs Inte
 
 The structure below covers the **Sense-Making** Solo shape and the universal Interactive shape. For non-Sense-Making Solo outputs, follow the per-op shape in the relevant workflow file.
 
-## Solo mode — Minto Pyramid
+## Solo SenseMaking — Minto Pyramid
 
 **Required structure**:
 
@@ -84,7 +84,7 @@ Chosen frameworks + one-sentence rationale per. The Minto headline of the docume
 
 Chosen frameworks: <framework 1>, <framework 2>, <framework 3>.
 Why: <framework 1> for <reason>; <framework 2> for <reason>; <framework 3> for <reason>.
-Cynefin domain: <domain>. Op: <op>. Emit style: <progressive | one-shot> (Interactive only — Solo emits as a single Minto artifact).
+Cynefin domain: <domain>. Op: <op>. Emit style: <progressive | one-shot> (Interactive only — Solo emits one op-shaped artifact).
 ```
 
 #### 2. Problem shape (Cynefin) (3-5 lines)

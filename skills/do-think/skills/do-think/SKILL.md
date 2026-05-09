@@ -119,7 +119,7 @@ Read the smallest set that fits the situation. Files listed are the *minimum*; a
 | Situation (by Op) | Read this set |
 |---|---|
 | Generic Sense-Making (research, judgment, evaluation) | `references/modes/solo-deep-think.md`, `references/foundations/operation-classification.md`, `references/workflows/sense-making.md`, `references/foundations/stress-test-trio.md` |
-| Bug or regression (Sense-Making, bug variant) | `references/workflows/bug-tracing.md`, `references/foundations/evidence-and-falsification.md` |
+| Ambiguous/post-debug runtime hypothesis (Sense-Making, bug variant) | `references/workflows/bug-tracing.md`, `references/foundations/evidence-and-falsification.md` |
 | Recurring / "we already fixed this" (Sense-Making, systemic) | `references/workflows/recurring-issue.md` |
 | Structured Extraction (mess → schema) | `references/workflows/structured-extraction.md` |
 | Generative Composition (artifact production, code feature, doc) | `references/workflows/generative-composition.md` |
@@ -247,7 +247,7 @@ Foundations are self-sufficient. `frameworks/` is a library accessed from this t
 | File | Op | Read when |
 |---|---|---|
 | [`references/workflows/sense-making.md`](references/workflows/sense-making.md) | SenseMaking | Generic research / judgment / evaluation (non-bug, non-systemic) |
-| [`references/workflows/bug-tracing.md`](references/workflows/bug-tracing.md) | SenseMaking (bug variant) | A specific bug with a known symptom |
+| [`references/workflows/bug-tracing.md`](references/workflows/bug-tracing.md) | SenseMaking (bug variant) | Ambiguous/post-`do-debug` runtime hypothesis framing |
 | [`references/workflows/recurring-issue.md`](references/workflows/recurring-issue.md) | SenseMaking (systemic variant) | "We already fixed this and it's back" — Iceberg + Connection Circles |
 | [`references/workflows/structured-extraction.md`](references/workflows/structured-extraction.md) | Extraction | Mess → schema (transcript → todos, invoice → ledger, email → CRM) |
 | [`references/workflows/generative-composition.md`](references/workflows/generative-composition.md) | Composition | Context + form → artifact (cover letter, RFP, deck, code feature) |

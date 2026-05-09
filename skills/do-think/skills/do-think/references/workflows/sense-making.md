@@ -2,7 +2,7 @@
 
 Operation: **Sense-Making & Judgment** (`Op: SenseMaking`).
 
-The default cognitive operation: take fragmented context, apply a mental model, produce a position. Use this workflow for research, judgment, evaluation, and analysis tasks that are NOT bug investigations (`bug-tracing.md`) or recurring-systemic issues (`recurring-issue.md`).
+The default cognitive operation: take fragmented context, apply a mental model, produce a position. Use this workflow for research, judgment, evaluation, and analysis tasks that are NOT ambiguous/post-debug bug hypothesis work (`bug-tracing.md`) or recurring-systemic issues (`recurring-issue.md`).
 
 ## Triggers
 
@@ -11,7 +11,7 @@ The default cognitive operation: take fragmented context, apply a mental model, 
 - Evaluation: "Score this resume against the JD", "Triage these tickets by priority", "Which customer is at churn risk?"
 - Analysis: "What's driving this metric?", "Why are these reviews trending negative?"
 
-If the task is a *runtime* bug → `bug-tracing.md`. If symptoms recur after fixes → `recurring-issue.md`. Otherwise: this file.
+If the task is a reproducible runtime bug → `do-debug`. If `do-debug` needs a falsifiable hypothesis handoff → `bug-tracing.md`. If symptoms recur after fixes → `recurring-issue.md`. Otherwise: this file.
 
 ## Phase A — Frame
 

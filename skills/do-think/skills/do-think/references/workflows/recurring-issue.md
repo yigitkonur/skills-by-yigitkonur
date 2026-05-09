@@ -1,10 +1,10 @@
 # Recurring Issue — "We Already Fixed This"
 
-Operation: **Sense-Making** (`Op: SenseMaking`), systemic variant. For one-off bugs use `bug-tracing.md`; for generic research/judgment use `sense-making.md`.
+Operation: **Sense-Making** (`Op: SenseMaking`), systemic variant. For reproducible one-off bugs use `do-debug`; for ambiguous/post-debug bug hypotheses use `bug-tracing.md`; for generic research/judgment use `sense-making.md`.
 
 Workflow for problems where point fixes haven't worked, the symptom keeps coming back (or moves to a different surface), or a fix in one place re-creates the problem somewhere else.
 
-The bug-tracing workflow (`bug-tracing.md`) finds the smallest causal point for a *specific* failure. Recurring-issue workflow finds the *structural* cause that generates the failure class. Use this when bug-tracing has already been applied 2-3 times and the same family of symptoms returns.
+The bug-tracing workflow (`bug-tracing.md`) frames the smallest falsification experiment or fix boundary for a *specific* failure. Recurring-issue workflow finds the *structural* cause that generates the failure class. Use this when point debugging has already been applied 2-3 times and the same family of symptoms returns.
 
 ## Triggers
 
@@ -84,9 +84,9 @@ test_coverage   (−)→ untested_paths   ← closes loop (REINFORCING, vicious)
 
 ## When NOT to use this workflow
 
-- The bug is genuinely a one-off (no pattern across releases) → use `bug-tracing.md`
-- The system is stable (no feedback dynamics) → use `bug-tracing.md` + `frameworks/decomposition-tools.md`
-- You are at Fail #1 of the 3-fails rule in `do-debug` — don't escalate prematurely; use bug-tracing first
+- The bug is genuinely a reproducible one-off (no pattern across releases) → use `do-debug`
+- The system is stable (no feedback dynamics) → use `do-debug`, or `bug-tracing.md` only for an ambiguous/post-debug hypothesis handoff
+- You are at Fail #1 of the 3-fails rule in `do-debug` — don't escalate prematurely; keep debugging first
 - The "recurring" pattern is actually three distinct bugs that share a vague symptom → split them, treat each as its own bug
 
 ## Output (for Solo mode)

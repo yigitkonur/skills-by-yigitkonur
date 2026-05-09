@@ -1,19 +1,19 @@
 # Bug Tracing
 
-Operation: **Sense-Making** (`Op: SenseMaking`), bug variant. For generic Sense-Making (research, judgment, evaluation), use `sense-making.md`. For recurring or systemic bugs where point fixes haven't worked, use `recurring-issue.md`.
+Operation: **Sense-Making** (`Op: SenseMaking`), ambiguous/post-debug bug variant. For reproducible runtime failures, use `do-debug` first. Use this workflow when `do-debug` needs a falsifiable hypothesis handoff or the failure is not reproducible enough for runtime debugging. For generic Sense-Making (research, judgment, evaluation), use `sense-making.md`. For recurring or systemic bugs where point fixes haven't worked, use `recurring-issue.md`.
 
-Bug reasoning starts with the symptom and ends at the smallest causal fix.
+Bug reasoning starts with the symptom and ends with the smallest falsification experiment or fix boundary to hand back to `do-debug`.
 
 ## Bug Trace Loop
 
-1. reproduce the bug
+1. capture the symptom or observed failure
 2. define the exact symptom
 3. trace the execution path layer by layer
 4. list 2-3 plausible causes
 5. falsify weak causes quickly
 6. prove the surviving mechanism
-7. fix the smallest causal point
-8. add a regression guard
+7. choose the smallest diagnostic or fix boundary
+8. hand back to `do-debug` with the verification check
 
 ## Symptom Discipline
 
@@ -48,9 +48,9 @@ The real cause is the earliest point where the system stopped meeting the assump
 ## Fix Discipline
 
 Prefer:
-- the smallest fix that restores the broken assumption
-- the narrowest regression guard that proves the bug stays fixed
+- the smallest falsification experiment that tests the mechanism
+- the narrowest diagnostic or fix boundary for `do-debug`
 
 Avoid:
 - broad rewrites before the mechanism is proven
-- speculative cleanup mixed into the bug fix
+- speculative cleanup mixed into the diagnostic or fix boundary

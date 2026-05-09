@@ -38,7 +38,7 @@ Casing matters. Lookup is exact-match.
 ### Picking at runtime
 
 1. Look up the runtime in the table.
-2. If the runtime isn't listed → try `request_user_input` once on OpenAI/Codex, `AskUserQuestion` once on PascalCase runtimes, then `ask_user` once; otherwise prose fallback.
+2. On OpenAI/Codex, try `request_user_input`; if unavailable, try legacy `ask_user_question`; otherwise use prose fallback. If another runtime isn't listed, try `AskUserQuestion` once on PascalCase runtimes, then `ask_user` once; otherwise prose fallback.
 3. Never silently skip a fork. If no tool works, fall back to prose. Do not proceed without the user's answer.
 
 ## Portable payload shape
