@@ -96,15 +96,15 @@ Forestry migration tooling has been retired. For Forestry → TinaCMS:
 
 ```bash
 pnpm dlx @tinacms/cli@latest --version
-# 2.2.5
+# 2.2.6
 ```
 
 Pin the same major as `tinacms`:
 
 ```json
 {
-  "dependencies": { "tinacms": "3.7.5" },
-  "devDependencies": { "@tinacms/cli": "2.2.5" }
+  "dependencies": { "tinacms": "3.7.6" },
+  "devDependencies": { "@tinacms/cli": "2.2.6" }
 }
 ```
 

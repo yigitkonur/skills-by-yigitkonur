@@ -124,8 +124,8 @@ cat tina/__generated__/queries.gql
 
 ```json
 {
-  "dependencies": { "tinacms": "3.7.5" },
-  "devDependencies": { "@tinacms/cli": "2.2.5" }
+  "dependencies": { "tinacms": "3.7.6" },
+  "devDependencies": { "@tinacms/cli": "2.2.6" }
 }
 ```
 

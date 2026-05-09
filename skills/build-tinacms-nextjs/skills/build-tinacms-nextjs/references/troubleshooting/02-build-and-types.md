@@ -46,7 +46,7 @@ In CI:
 - Corrupted install
 - `--no-optional` or `--omit=optional` flag used
 - Missing `react`/`react-dom` peers
-- Used npm/yarn instead of pnpm (TinaCMS 2.7.3+)
+- Mixed lockfiles or package-manager-specific hoisting/module-resolution issues
 
 **Fix:**
 
@@ -54,6 +54,8 @@ In CI:
 rm -rf node_modules pnpm-lock.yaml
 pnpm install
 ```
+
+Use the command for the package manager the project actually owns. For npm/yarn projects, remove the matching lockfile and reinstall with npm/yarn instead of switching package managers blindly.
 
 Verify:
 

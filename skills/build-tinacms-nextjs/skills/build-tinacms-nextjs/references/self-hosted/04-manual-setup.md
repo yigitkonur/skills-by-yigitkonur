@@ -78,6 +78,6 @@ For most projects, the starter saves hours.
 | Mistake | Effect | Fix |
 |---|---|---|
 | Forgot to install one of the packages | Module not found at runtime | Re-check installs |
-| Used npm/yarn instead of pnpm | Module resolution issues | Use pnpm |
+| Mixed lockfiles or install flags omit optional deps | Module resolution issues | Keep one package manager; avoid `--no-optional` / `--omit=optional` |
 | Missed `bcryptjs` | Password hashing fails | Install |
 | Used Auth.js without `tinacms-authjs` integration | Auth doesn't tie into Tina's user collection | Use `tinacms-authjs` |

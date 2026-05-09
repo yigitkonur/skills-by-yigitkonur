@@ -4,10 +4,10 @@ For projects that already use Next.js App Router and want to add a CMS layer.
 
 ## Prerequisites for the existing project
 
-- Next.js `>= 15` (Next.js 16 strongly recommended)
+- Next.js App Router. Check the installed version before copying patterns; Next 14/15/16 differ on async `params`, async `draftMode()`, caching, and `proxy.ts`.
 - App Router (Pages Router works but is a legacy path — see `references/rendering/02-pages-router-pattern.md`)
 - TypeScript (works with JS but TS gives you generated types)
-- React `>= 18.3.1` and `< 20`
+- React version compatible with the installed Next.js version. Current Next.js accepts React 18.2+ or React 19.
 
 ## Add TinaCMS
 

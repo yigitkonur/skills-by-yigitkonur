@@ -120,8 +120,8 @@ If your `package.json` `build` script chains them properly (`tinacms build && ne
 ```json
 {
   "dependencies": {
-    "tinacms": "3.7.5",
-    "@tinacms/cli": "2.2.5"
+    "tinacms": "3.7.6",
+    "@tinacms/cli": "2.2.6"
   }
 }
 ```
@@ -135,7 +135,7 @@ The TinaCMS admin SPA assets are CDN-served and may drift if you let caret range
 | Committed `__generated__/` | CI build produces stale types; type drift | `git rm -r tina/__generated__/`, add to `.gitignore`, recommit |
 | Forgot to commit `tina/tina-lock.json` | Production "schema not found" | `git add tina/tina-lock.json && git commit && redeploy` |
 | Both `package-lock.json` and `pnpm-lock.yaml` present | Inconsistent installs across team | Delete one, regenerate from package.json |
-| `^tinacms` caret range | Admin UI version drifts from local CLI | Pin exact: `"tinacms": "3.7.5"` |
+| `^tinacms` caret range | Admin UI version drifts from local CLI | Pin exact after checking npm, e.g. `"tinacms": "3.7.6"` |
 | Committed `.env.local` with real secrets | Token leak | Rotate token; remove from git history |
 
 ## Quick verification

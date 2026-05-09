@@ -66,7 +66,7 @@ Schema vs content consistency check. Run after schema changes.
 
 ```bash
 pnpm tinacms --version
-# 2.2.5 or current
+# 2.2.6 or current
 
 pnpm tinacms --help
 # Lists all commands and options
