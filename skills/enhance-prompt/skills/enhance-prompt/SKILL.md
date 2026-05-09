@@ -5,7 +5,7 @@ description: Use skill if you are rewriting a task prompt for an LLM or coding a
 
 # Enhance Prompt
 
-Intercept a user's raw prompt, turbocharge it with context and steering, and return it ready to execute. Fast. No bloat. No agent-spawning — you're just crafting a better user message.
+Rewrite a user's raw task prompt with enough context, steering, verification, and halt conditions for another LLM or coding agent to execute it well. Keep the result focused.
 
 ## Trigger boundary
 
@@ -115,14 +115,11 @@ Every enhanced prompt MUST end with:
 Read `references/code-prompt-patterns.md` for code-specific patterns.
 Read `references/failure-modes.md` for common agent failure modes to pre-empt.
 
-### Step 4 — Present and offer depth
+### Step 4 — Present the artifact
 
 Show the enhanced prompt in a code block. Below it, one line explaining the key improvement.
 Use `references/output-contract.md` for the exact response shape and prompt skeleton.
-
-Then always end with:
-
-> Want me to dig deeper? I can add more context, tighten the scope, or research the topic first.
+Offer deeper context, tighter scope, or research only when the user asks or the prompt's risk warrants it.
 
 If the user says "run it" — execute the enhanced prompt directly. Reset framing completely.
 
@@ -130,7 +127,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 
 | Input quality | Action |
 |---|---|
-| Already good (clear intent, specific, has constraints) | Light touch: add halt condition + verification only. Say "This is solid — I just added a done signal." |
+| Already good (clear intent, specific, has constraints) | Light touch: add halt condition + verification only. Say "Added a done signal and verification step." |
 | Decent intent, vague on details | Moderate: add narrative arc + failure pre-emption + halt |
 | Raw idea or stream-of-consciousness | Full restructure: all 5 layers. Show the transformation. |
 
@@ -152,7 +149,7 @@ If the user says "run it" — execute the enhanced prompt directly. Reset framin
 - No "Option A / B / C" filler labels — every option must be a meaningful choice the user can compare
 - No manually-added "Other" option — Claude Code auto-provides it and most runtimes mimic this; see `references/ask-user-tools.md` if running on a runtime that differs
 - No rewriting the user's voice — enhance the content, preserve the tone
-- No spawning agents — this skill enhances a user message, period
+- No spawning agents — this skill enhances a user message only
 
 ## Reference routing
 
