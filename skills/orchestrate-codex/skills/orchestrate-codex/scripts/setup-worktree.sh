@@ -3,10 +3,10 @@
 # symlink shared heavy artifacts (node_modules, .env.local), and run
 # per-worktree codegen (Prisma client, etc).
 #
-# Naming convention (per the plan): `../<repo>-wt-<mode>-<slug>` (sibling of
-# the repo, not inside it). For backward compatibility, callers can still
-# place worktrees at `<repo>/<WORKTREE_DIR_NAME>/<slug>` by passing a path
-# explicitly via WORKTREE_DIR.
+# Naming convention: `../<repo>-wt-<mode>-<slug>` (sibling of the repo,
+# not inside it). Callers that prefer in-repo placement can override by
+# setting WORKTREE_DIR_NAME to `<repo>/<dir>/<slug>` or by passing a
+# fully-explicit WORKTREE_DIR.
 #
 # Usage:
 #   setup-worktree.sh <slug> <branch> [<base-branch>]
