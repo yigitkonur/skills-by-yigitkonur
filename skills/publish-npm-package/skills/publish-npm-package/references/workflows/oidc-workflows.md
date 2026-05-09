@@ -1,30 +1,71 @@
-# OIDC-Based npm Publishing Workflows
+# Trusted-Publishing npm Workflows
 
-Production-ready GitHub Actions workflows using OIDC for npm authentication.
-OIDC eliminates long-lived tokens — GitHub requests a short-lived token from npm at publish time.
+GitHub Actions templates for npm trusted publishing. These templates use OIDC auth, zero npm tokens, and automatic provenance for eligible public packages from public repositories.
 
-> **⚠️ Steering:** OIDC workflows do **NOT** use `NPM_TOKEN` or `NODE_AUTH_TOKEN` — authentication is handled entirely by GitHub’s OIDC identity provider. If you need token-based auth, see `token-workflows.md`.
+## Contents
 
-> **⚠️ Steering — First-publish prerequisite:** OIDC authentication **only works for packages that already exist on npm**. You must publish the first version using a token (`npm publish --access public` with `NPM_TOKEN`) or the npm CLI locally, then link the package to your GitHub repo for OIDC. See `token-workflows.md` for the initial publish.
+- [Template policy](#template-policy)
+- [Package-manager blocks](#package-manager-blocks)
+- [1. Trusted publishing + semantic-release](#1-trusted-publishing--semantic-release)
+- [2. Trusted publishing + changesets](#2-trusted-publishing--changesets)
+- [3. Trusted publishing + release-please](#3-trusted-publishing--release-please)
+- [4. Trusted publishing + manual trigger](#4-trusted-publishing--manual-trigger)
+- [Pre-release patterns](#pre-release-patterns)
+- [Production hardening](#production-hardening)
 
-> **⚠️ Steering — Config precedence:** These workflow templates are the **baseline**. The versioning tool reference (semantic-release, changesets, or release-please) is the **customization layer**. When in doubt, the versioning tool’s docs take priority for plugin config; the workflow template takes priority for CI/CD structure (permissions, concurrency, triggers).
+## Template policy
 
-> **⚠️ Steering — SHA pinning:** Templates below use `@v4` tags for readability. For production, pin actions to full commit SHAs (e.g., `actions/checkout@<sha>`) to prevent supply-chain attacks. Use [pin-github-action](https://github.com/mheap/pin-github-action) or Dependabot to manage SHA updates.
+- Use `actions/checkout@v6` and `actions/setup-node@v6` for new examples.
+- Use Node 24 in release jobs so npm CLI satisfies trusted-publishing requirements.
+- Set `package-manager-cache: false` in release jobs; cache can be used in test-only jobs.
+- Keep templates tag-readable. Pin actions to full SHAs before production rollout and leave the version tag in a comment.
+- Do not add `NPM_TOKEN`, `NODE_AUTH_TOKEN`, `--provenance`, `NPM_CONFIG_PROVENANCE`, or `publishConfig.provenance` to pure trusted-publishing templates.
 
-### OIDC Setup Prerequisite
+## Package-manager blocks
 
-Link your npm package to your GitHub repo **before** using any workflow below:
+Default npm block:
 
-1. Go to `https://www.npmjs.com/package/<pkg>/access`
-2. Under **Publishing access**, select **Require two-factor authentication or an automation token or a linked GitHub repository**
-3. Click **Add GitHub Actions** and link your repo
-4. The package must already exist on npm (publish v0.0.1 with a token first if needed)
+```yaml
+- uses: actions/setup-node@v6
+  with:
+    node-version: '24'
+    registry-url: https://registry.npmjs.org
+    package-manager-cache: false
 
----
+- run: npm ci
+```
 
-## 1. OIDC + semantic-release
+pnpm block:
 
-Fully automated: push to `main` → analyze commits → bump version → publish → GitHub release.
+```yaml
+- uses: actions/setup-node@v6
+  with:
+    node-version: '24'
+    registry-url: https://registry.npmjs.org
+    package-manager-cache: false
+- uses: pnpm/action-setup@v4
+  with:
+    run_install: false
+- run: pnpm install --frozen-lockfile
+```
+
+Yarn Berry block:
+
+```yaml
+- uses: actions/setup-node@v6
+  with:
+    node-version: '24'
+    registry-url: https://registry.npmjs.org
+    package-manager-cache: false
+- run: corepack enable
+- run: yarn install --immutable
+```
+
+Use Bun only when the repo already has `bun.lockb` and a committed Bun workflow convention.
+
+## 1. Trusted publishing + semantic-release
+
+Fully automated: push to `main` -> analyze commits -> bump version -> publish -> GitHub release.
 
 ### `.github/workflows/release.yml`
 
@@ -37,29 +78,29 @@ on:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false          # never cancel a publish mid-flight
+  cancel-in-progress: false
 
 permissions:
-  contents: write      # push tags + GitHub releases
-  issues: write        # comment on resolved issues
-  pull-requests: write # comment on merged PRs
-  id-token: write      # OIDC token for npm
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0              # full history for commit analysis
+          fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
@@ -80,7 +121,7 @@ jobs:
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
-    ["@semantic-release/npm", { "provenance": true }],
+    "@semantic-release/npm",
     ["@semantic-release/git", {
       "assets": ["CHANGELOG.md", "package.json"],
       "message": "chore(release): ${nextRelease.version} [skip ci]"
@@ -90,32 +131,16 @@ jobs:
 }
 ```
 
-### Install
+Checklist:
 
-```bash
-npm i -D semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
-```
+- package already exists on npm and is linked to this workflow as trusted publisher
+- repo uses Conventional Commits
+- `@semantic-release/npm` version supports npm trusted publishing
+- no npm token is present in the release job
 
-### Files to create
+## 2. Trusted publishing + changesets
 
-| File | Purpose |
-|---|---|
-| `.github/workflows/release.yml` | CI/CD workflow (template above) |
-| `.releaserc.json` | semantic-release plugin config |
-
-### Checklist
-
-- [ ] Package already published to npm (first publish must use token)
-- [ ] npm package linked to GitHub repo (npmjs.com → package settings)
-- [ ] Repo uses Conventional Commits (`feat:`, `fix:`, `BREAKING CHANGE:`)
-- [ ] `package.json` has `name`, `version`, and `repository` fields
-- [ ] No `NPM_TOKEN` needed — OIDC handles auth
-
----
-
-## 2. OIDC + changesets
-
-Human-curated changelogs with PR-based version bumps via the Changesets bot.
+Human-curated changesets with a Version Packages PR, then publish when that PR merges.
 
 ### `.github/workflows/release.yml`
 
@@ -139,20 +164,21 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
 
       - uses: changesets/action@v1
         with:
-          version: npm run version    # opens/updates "Version Packages" PR
-          publish: npm run release    # publishes when that PR is merged
+          version: npm run version
+          publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -163,58 +189,16 @@ jobs:
 {
   "scripts": {
     "version": "changeset version && npm install --package-lock-only",
-    "release": "npm run build && changeset publish --access public"
-  },
-  "publishConfig": { "provenance": true }
+    "release": "npm run build --if-present && changeset publish --access public"
+  }
 }
 ```
 
-### `.changeset/config.json`
+For pnpm or Yarn, change the `version` and `release` scripts to the repo's package manager commands.
 
-```json
-{
-  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-  "changelog": "@changesets/cli/changelog",
-  "commit": false,
-  "access": "public",
-  "baseBranch": "main",
-  "updateInternalDependencies": "patch"
-}
-```
+## 3. Trusted publishing + release-please
 
-### Install & workflow
-
-```bash
-npm i -D @changesets/cli @changesets/changelog-github
-npx changeset init
-```
-
-1. Create feature branch → make changes.
-2. Run `npx changeset` → select packages, bump type, write summary.
-3. Commit the `.changeset/<id>.md` file with your PR.
-4. Merge PR → bot opens a **"Version Packages"** PR.
-5. Merge that PR → workflow publishes to npm.
-
-### Files to create
-
-| File | Purpose |
-|---|---|
-| `.github/workflows/release.yml` | CI/CD workflow (template above) |
-| `.changeset/config.json` | Changesets configuration |
-| `package.json` scripts | `version` and `release` scripts |
-
-### Checklist
-
-- [ ] Package already published to npm (first publish must use token)
-- [ ] npm package linked to GitHub repo for OIDC
-- [ ] `"publishConfig": { "provenance": true }` in `package.json`
-- [ ] `.changeset/config.json` committed with `"access": "public"`
-
----
-
-## 3. OIDC + release-please
-
-Two-job pattern: release-please creates the release, then a separate job publishes.
+Two-job pattern: release-please creates the GitHub Release; a separate publish job publishes only when a release was created.
 
 ### `.github/workflows/release.yml`
 
@@ -237,11 +221,14 @@ jobs:
       pull-requests: write
     outputs:
       release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
     steps:
       - id: rp
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   publish:
     needs: release-please
@@ -251,62 +238,24 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm run build --if-present
       - run: npm test
-      - run: npm publish --provenance --access public
+      - run: npm publish --access public
 ```
 
-### `.release-please-config.json`
+Manifest version must match `package.json` before the first release-please run.
 
-```json
-{
-  "packages": {
-    ".": {
-      "release-type": "node",
-      "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true
-    }
-  }
-}
-```
+## 4. Trusted publishing + manual trigger
 
-### `.release-please-manifest.json`
-
-```json
-{ ".": "0.1.0" }
-```
-
-> Example above assumes `package.json` is also `0.1.0`. Always set the manifest to the version in `package.json`. For never-published packages, use the `package.json` version exactly.
-
-### Files to create
-
-| File | Purpose |
-|---|---|
-| `.github/workflows/release.yml` | CI/CD workflow (template above) |
-| `.release-please-config.json` | Release-please package config |
-| `.release-please-manifest.json` | Current version tracker |
-
-### Checklist
-
-- [ ] Package already published to npm (first publish must use token)
-- [ ] npm package linked to GitHub repo for OIDC
-- [ ] Both config files committed; manifest version matches `package.json`
-- [ ] Uses Conventional Commits
-
----
-
-## 4. OIDC + Manual Trigger
-
-Publish when a GitHub Release is created. No automation tools needed.
+Publish when a GitHub Release is created. Use for low-frequency releases or repos that do not need a versioning bot.
 
 ### `.github/workflows/publish.yml`
 
@@ -329,151 +278,47 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
       - run: npm run build --if-present
-      - run: npm publish --provenance --access public
+      - run: npm publish --access public
 ```
 
-### Files to create
-
-| File | Purpose |
-|---|---|
-| `.github/workflows/publish.yml` | CI/CD workflow (template above) |
-
-### Developer workflow
+Developer workflow:
 
 ```bash
-npm version patch      # or minor / major
+npm version patch
 git push --follow-tags
 gh release create v1.2.3
 ```
 
----
+## Pre-release patterns
 
-## Adding npm Caching
-
-Already included in all workflows above via `cache: npm` in `actions/setup-node`.
-For monorepos with multiple lock files:
-
-```yaml
-- uses: actions/setup-node@v4
-  with:
-    node-version: lts/*
-    cache: npm
-    cache-dependency-path: packages/*/package-lock.json
-```
-
----
-
-## Matrix Testing Before Publish
-
-Add a `test` job and make the release job depend on it:
-
-```yaml
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18, 20, 22]
-      fail-fast: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-      - run: npm ci
-      - run: npm test
-
-  release:
-    needs: test
-    # ... publish steps from any workflow above
-```
-
-Cross-OS testing — add `os: [ubuntu-latest, windows-latest, macos-latest]` to the matrix.
-
----
-
-## Pre-release / Beta Patterns
-
-### semantic-release
-
-```json
-{ "branches": ["main", { "name": "beta", "prerelease": true }] }
-```
-
-Update trigger: `branches: [main, beta]`. Pushes to `beta` → `1.2.3-beta.1`.
-
-### changesets
-
-```bash
-npx changeset pre enter beta   # enter pre-release mode
-# ... work normally, each publish → 1.2.3-beta.0, etc.
-npx changeset pre exit          # exit when ready for stable
-```
-
-### release-please
-
-```json
-{ "packages": { ".": { "release-type": "node", "prerelease": true, "prerelease-type": "beta" } } }
-```
-
-### Manual — publish to dist-tag
+Use npm dist-tags without adding provenance flags:
 
 ```yaml
 - run: |
     TAG="${{ github.event.release.tag_name }}"
     if [[ "$TAG" == *"-"* ]]; then
-      npm publish --provenance --access public --tag beta
+      npm publish --access public --tag beta
     else
-      npm publish --provenance --access public
+      npm publish --access public
     fi
 ```
 
----
+For semantic-release, use prerelease branches in `.releaserc.json`. For changesets, use `npx changeset pre enter beta`. For release-please, configure `prerelease-type`.
 
-## Branch Protection Recommendations
+## Production hardening
 
-| Setting | Value | Why |
-|---|---|---|
-| Require PR reviews | 1+ approvals | Prevent unreviewed publishes |
-| Require status checks | `test` job | Never publish broken code |
-| Require linear history | Enabled | Cleaner commit analysis |
-| Require signed commits | Recommended | Verify committer identity |
-
----
-
-## Concurrency Control
-
-### Basic — prevent overlapping publishes
-
-```yaml
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-```
-
-### With approval gate
-
-```yaml
-jobs:
-  publish:
-    environment: npm   # configure required reviewers in Settings → Environments
-```
-
-### Monorepo — parallel packages, sequential per-package
-
-```yaml
-concurrency:
-  group: publish-${{ matrix.package }}
-  cancel-in-progress: false
-```
+- Pin GitHub Actions to full SHAs before production rollout.
+- Add a separate test matrix job if the package needs multi-version Node coverage.
+- Use `concurrency.cancel-in-progress: false` for publish jobs.
+- Protect release branches/tags and require review for release environments when needed.
+- Verify after publish with `npm audit signatures` when provenance/signatures are expected.

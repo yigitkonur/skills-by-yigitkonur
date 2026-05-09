@@ -1,36 +1,61 @@
 # Token-Based npm Publishing Workflows
 
-Production-ready GitHub Actions workflows using `NPM_TOKEN` for npm authentication.
-Use when OIDC is unavailable (private npm orgs, self-hosted runners, GHES, or custom registries).
+GitHub Actions templates using `NPM_TOKEN` / `NODE_AUTH_TOKEN` for npm authentication. Use these when trusted publishing is unavailable or for first-publish bootstrap.
 
-> **⚠️ Steering:** Use token workflows when OIDC is unavailable, when publishing to private registries, or for the **first publish** of a new package (OIDC requires the package to already exist on npm). Once the package exists, consider migrating to `oidc-workflows.md` for stronger security.
+## Contents
 
-> **⚠️ Steering — SHA pinning:** Templates below use `@v4` tags for readability. For production, pin actions to full commit SHAs (e.g., `actions/checkout@<sha>`) to prevent supply-chain attacks. Use [pin-github-action](https://github.com/mheap/pin-github-action) or Dependabot to manage SHA updates.
+- [When to use token auth](#when-to-use-token-auth)
+- [Token diagnostics](#token-diagnostics)
+- [Template policy](#template-policy)
+- [1. Token + semantic-release](#1-token--semantic-release)
+- [2. Token + changesets](#2-token--changesets)
+- [3. Token + release-please](#3-token--release-please)
+- [4. Token + manual trigger](#4-token--manual-trigger)
+- [Adding provenance to token workflows](#adding-provenance-to-token-workflows)
+- [Private registries](#private-registries)
+- [Token rotation](#token-rotation)
 
-> **⚠️ Steering — Config precedence:** These workflow templates are the **baseline**. The versioning tool reference (semantic-release, changesets, or release-please) is the **customization layer**. When in doubt, the versioning tool’s docs take priority for plugin config; the workflow template takes priority for CI/CD structure (permissions, concurrency, triggers).
+## When to use token auth
 
----
+Use token auth for:
 
-## Creating and Storing the npm Token
+- private packages
+- self-hosted runners or GHES
+- private registries
+- first publish of a package before trusted publishing can be linked
+- non-GitHub CI when trusted publishing is not configured
+- token+provenance workflows where `NODE_AUTH_TOKEN` authenticates and `id-token: write` signs provenance
 
-### 1. Generate the token
+After a public package is bootstrapped and linked to a supported trusted publisher, switch to `oidc-workflows.md` unless a constraint keeps token auth necessary.
 
-1. Log in to [npmjs.com](https://www.npmjs.com/) → Avatar → **Access Tokens** → **Generate New Token**.
-2. Select **Granular Access Token** (recommended over legacy Automation tokens).
-3. Configure: name it `github-actions-<repo>`, set 90–365 day expiry, scope to specific packages, grant Read+Write.
-4. Copy the token — shown only once.
+## Token diagnostics
 
-### 2. Add to GitHub
+`npm whoami` is useful only for token/login auth. It does not validate trusted publishing.
 
-Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** → Name: `NPM_TOKEN`, paste token.
-
-### 3. Verify locally
+Local token check:
 
 ```bash
-NODE_AUTH_TOKEN="<token>" npm whoami --registry https://registry.npmjs.org
+npm whoami --registry https://registry.npmjs.org \
+  --//registry.npmjs.org/:_authToken="${NPM_TOKEN}"
 ```
 
----
+CI token check:
+
+```yaml
+- run: npm whoami --registry https://registry.npmjs.org
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+Run this diagnostic before a dry-run publish, not as proof that trusted publishing works.
+
+## Template policy
+
+- Use `actions/checkout@v6` and `actions/setup-node@v6` for new examples.
+- Use Node 24 in release jobs.
+- Set `package-manager-cache: false` in release jobs.
+- Use `NODE_AUTH_TOKEN` in the publish step or release tool step that needs npm auth.
+- Do not add `id-token: write` unless this is the token+provenance lane.
 
 ## 1. Token + semantic-release
 
@@ -51,24 +76,22 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
-  # No id-token — using NPM_TOKEN instead
-  # Add id-token: write if you also want provenance (see section below)
 
 jobs:
   release:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
@@ -76,7 +99,7 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}    # ← token auth
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
 ```
 
@@ -100,29 +123,7 @@ jobs:
 }
 ```
 
-> **vs OIDC:** No `"provenance": true` in the npm plugin config. Add it back
-> if you also set `id-token: write` (see [Adding Provenance](#adding-provenance-to-token-workflows)).
-
-### Install
-
-```bash
-npm i -D semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
-```
-
-### Files to create
-
-| File | Purpose |
-|---|---|
-| `.github/workflows/release.yml` | CI/CD workflow (template above) |
-| `.releaserc.json` | semantic-release plugin config |
-
-### Checklist
-
-- [ ] `NPM_TOKEN` secret added to GitHub repo
-- [ ] Conventional Commits in use
-- [ ] Token has write permission for the target package
-
----
+Add semantic-release npm provenance config only in the token+provenance lane.
 
 ## 2. Token + changesets
 
@@ -147,12 +148,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
@@ -166,14 +167,11 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-### `.npmrc` (required for changesets with token auth)
+### `.npmrc`
 
 ```ini
 //registry.npmjs.org/:_authToken=${NPM_TOKEN}
 ```
-
-> **vs OIDC:** Changesets needs `.npmrc` to find the token. The OIDC version
-> doesn't need `.npmrc` because `actions/setup-node` configures auth automatically.
 
 ### `package.json` scripts
 
@@ -181,31 +179,14 @@ jobs:
 {
   "scripts": {
     "version": "changeset version && npm install --package-lock-only",
-    "release": "npm run build && changeset publish --access public"
+    "release": "npm run build --if-present && changeset publish --access public"
   }
 }
 ```
 
-### Files to create
-
-| File | Purpose |
-|---|---|
-| `.github/workflows/release.yml` | CI/CD workflow (template above) |
-| `.npmrc` | Token auth config (required for changesets) |
-| `.changeset/config.json` | Changesets configuration |
-| `package.json` scripts | `version` and `release` scripts |
-
-### Checklist
-
-- [ ] `NPM_TOKEN` secret added
-- [ ] `.npmrc` committed with `${NPM_TOKEN}` placeholder
-- [ ] `.changeset/config.json` committed (same as OIDC version)
-
----
+For pnpm/Yarn, replace install and version scripts with the repo's package-manager commands.
 
 ## 3. Token + release-please
-
-Two-job pattern: release-please creates the release, publish job pushes to npm.
 
 ### `.github/workflows/release.yml`
 
@@ -228,11 +209,14 @@ jobs:
       pull-requests: write
     outputs:
       release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
     steps:
       - id: rp
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   publish:
     needs: release-please
@@ -241,43 +225,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
-      - run: npm test
       - run: npm run build --if-present
-
+      - run: npm test
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-> **vs OIDC:** No `id-token: write`, no `--provenance`. Auth via `NODE_AUTH_TOKEN` env var.
-
-### Files to create
-
-| File | Purpose |
-|---|---|
-| `.github/workflows/release.yml` | CI/CD workflow (template above) |
-| `.release-please-config.json` | Release-please package config |
-| `.release-please-manifest.json` | Current version tracker |
-
-### Checklist
-
-- [ ] `NPM_TOKEN` secret added
-- [ ] `.release-please-config.json` and `.release-please-manifest.json` committed
-- [ ] Uses Conventional Commits
-
----
-
-## 4. Token + Manual Trigger
-
-### `.github/workflows/publish.yml`
+## 4. Token + manual trigger
 
 ```yaml
 name: Publish to npm
@@ -297,140 +260,67 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
-          cache: npm
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
       - run: npm run build --if-present
-
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-> **vs OIDC:** No `id-token: write`, no `--provenance`.
+## Adding provenance to token workflows
 
-### Files to create
+Token+provenance is a separate lane: token auth performs the publish, and OIDC signs provenance. It needs npm CLI 9.5.0+, a supported cloud-hosted runner, `id-token: write`, and explicit provenance config.
 
-| File | Purpose |
-|---|---|
-| `.github/workflows/publish.yml` | CI/CD workflow (template above) |
-
----
-
-## Adding Provenance to Token Workflows
-
-Combine token auth with OIDC provenance — the token authenticates, the OIDC token provides attestation.
-
-Add `id-token: write` to permissions and `--provenance` to the publish command:
+Add the permission:
 
 ```yaml
 permissions:
   contents: read
-  id-token: write   # ← add for provenance
-# ...
+  id-token: write
+```
+
+Add provenance to direct publish:
+
+```yaml
 - run: npm publish --provenance --access public
   env:
     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-For semantic-release: add `["@semantic-release/npm", { "provenance": true }]` to `.releaserc.json`.
-For changesets: add `"publishConfig": { "provenance": true }` to `package.json`.
+For third-party tools:
 
----
+- semantic-release: configure `["@semantic-release/npm", { "provenance": true }]`
+- changesets: use `changeset publish --provenance --access public` or `NPM_CONFIG_PROVENANCE=true`
+- release-please: add `--provenance` to the separate publish job
 
-## Publishing to Private Registries
+Do not copy these settings into pure trusted publishing. Trusted publishing already handles eligible provenance automatically.
 
-Change `registry-url` and token secret. Everything else stays the same.
+## Private registries
+
+Change `registry-url`, `.npmrc`, and token secret for non-npmjs registries.
 
 | Registry | `registry-url` | Token secret |
 |---|---|---|
-| GitHub Packages | `https://npm.pkg.github.com` | `GITHUB_TOKEN` (built-in) |
-| Artifactory | `https://company.jfrog.io/artifactory/api/npm/npm-local/` | `ARTIFACTORY_TOKEN` |
-| Verdaccio | `https://verdaccio.internal.example.com/` | `VERDACCIO_TOKEN` |
+| GitHub Packages | `https://npm.pkg.github.com` | `GITHUB_TOKEN` or package token |
+| Artifactory | registry-specific URL | `ARTIFACTORY_TOKEN` |
+| Verdaccio | registry-specific URL | `VERDACCIO_TOKEN` |
 
-GitHub Packages also needs `scope: '@your-org'` in setup-node and `"publishConfig": { "registry": "https://npm.pkg.github.com" }` in `package.json`.
+GitHub Packages also needs `scope: '@your-org'` in setup-node and `publishConfig.registry` in `package.json`.
 
----
+## Token rotation
 
-## Multi-Registry Publishing
+1. Create a new granular token with the same or narrower package scope.
+2. Update the `NPM_TOKEN` GitHub secret.
+3. Verify with `scripts/check-npm-auth.sh --token` or `npm whoami`.
+4. Run `npm publish --dry-run` if safe for the package.
+5. Revoke the old token on npmjs.com.
 
-Use parallel jobs — one per registry. Each job sets its own `registry-url` and token:
-
-```yaml
-jobs:
-  publish-npm:
-    runs-on: ubuntu-latest
-    permissions: { contents: read, id-token: write }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: lts/*, cache: npm, registry-url: 'https://registry.npmjs.org' }
-      - run: npm ci && npm test
-      - run: npm publish --provenance --access public
-        env: { NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}' }
-
-  publish-gpr:
-    runs-on: ubuntu-latest
-    permissions: { contents: read, packages: write }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: lts/*, cache: npm, registry-url: 'https://npm.pkg.github.com' }
-      - run: npm ci
-      - run: npm publish
-        env: { NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
-```
-
----
-
-## Token Rotation
-
-1. **Create** new token on npmjs.com with the same permissions.
-2. **Update** `NPM_TOKEN` in repo Settings → Secrets.
-3. **Verify** — trigger a `workflow_dispatch` dry-run:
-
-```yaml
-name: Verify npm token
-on: workflow_dispatch
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: lts/*, registry-url: 'https://registry.npmjs.org' }
-      - run: npm publish --dry-run && npm whoami
-        env: { NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}' }
-```
-
-4. **Revoke** old token on npmjs.com.
-
-**Schedule:** Granular tokens every 90 days, legacy Automation tokens every 30 days.
-
-### Automated reminder (optional)
-
-```yaml
-name: Token rotation reminder
-on:
-  schedule:
-    - cron: '0 9 1 */3 *'
-jobs:
-  remind:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.create({
-              owner: context.repo.owner, repo: context.repo.repo,
-              title: '🔑 NPM_TOKEN rotation due',
-              body: '1. Create new token\n2. Update secret\n3. Verify\n4. Revoke old',
-              labels: ['maintenance'],
-            });
-```
+Use short-lived bootstrap tokens for first publish and revoke them immediately after switching to trusted publishing.

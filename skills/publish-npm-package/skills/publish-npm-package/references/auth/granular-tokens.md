@@ -1,10 +1,21 @@
 # npm Access Tokens for CI/CD Publishing
 
-Granular access tokens and automation tokens for npm publishing in GitHub Actions. Use when OIDC is not available (private packages, self-hosted runners, non-GitHub CI).
+Granular access tokens and automation tokens for npm publishing in GitHub Actions. Use when trusted publishing is not available or for first-publish bootstrap.
 
-> **⚠️ Steering:** Granular tokens are the **fallback** auth method, not the default. For public packages on GitHub Actions with GitHub-hosted runners, always prefer [OIDC trusted publishing](oidc-trusted-publishing.md) — it requires zero secrets and provides cryptographic provenance. Use granular tokens only when OIDC is unavailable (private packages, self-hosted runners, non-GitHub CI) or for the [first-publish bootstrap](#using-granular-tokens-for-first-publish-bootstrap) before switching to OIDC.
+## Contents
 
----
+- [Granular access tokens](#granular-access-tokens)
+- [Workflow configuration](#workflow-configuration)
+- [Adding provenance with a granular token](#adding-provenance-with-a-granular-token)
+- [Rotation best practices](#rotation-best-practices)
+- [Using granular tokens for first-publish bootstrap](#using-granular-tokens-for-first-publish-bootstrap)
+- [Automation tokens](#automation-tokens-classic--legacy)
+- [2FA requirements](#2fa-requirements)
+- [Token security best practices](#token-security-best-practices)
+- [Decision matrix](#decision-matrix-oidc-vs-granular-vs-automation)
+- [Common mistakes](#common-mistakes)
+
+> **Guardrail:** Granular tokens are the fallback auth method, not the default. For public packages on GitHub Actions with GitHub-hosted runners, prefer [OIDC trusted publishing](oidc-trusted-publishing.md). Use granular tokens when trusted publishing is unavailable or for the first-publish bootstrap before switching to trusted publishing.
 
 ## Granular access tokens
 
@@ -73,12 +84,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20.x'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
 
       - run: npm ci
       - run: npm test
@@ -97,7 +109,7 @@ The `NODE_AUTH_TOKEN` env var is substituted at runtime. The actual token value 
 
 ### Adding provenance with a granular token
 
-Combine a granular token with OIDC-based provenance signing:
+Combine a granular token with OIDC-based provenance signing. This is token auth with provenance, not pure trusted publishing:
 
 ```yaml
 permissions:
@@ -108,11 +120,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20.x'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
       - run: npm ci && npm test
       - run: npm publish --provenance --access public
         env:
@@ -130,7 +143,7 @@ jobs:
 | **180 days** | Rotate at day 170 | Low-frequency publishing, internal tools | Higher risk |
 | **365 days** | Rotate at day 350 | Legacy projects with infrequent releases (avoid if possible) | Highest risk |
 
-> **⚠️ Steering:** Shorter expiry = less blast radius if leaked. If your package is public and on GitHub Actions, skip the rotation burden entirely — switch to [OIDC trusted publishing](oidc-trusted-publishing.md) which has zero secrets to rotate.
+> **Guardrail:** Shorter expiry means less blast radius if leaked. If the package is public and on GitHub Actions, switch to [OIDC trusted publishing](oidc-trusted-publishing.md) after bootstrap so no publish secret remains.
 
 **90-day rotation cycle** (recommended):
 
@@ -157,7 +170,7 @@ gh workflow run publish.yml -f dry-run=true
 
 ## Using Granular Tokens for First-Publish Bootstrap
 
-> **⚠️ Steering (F-11):** OIDC trusted publishing requires the package to already exist on npm. For brand-new (greenfield) packages, you must publish once with a granular token before OIDC can be configured.
+> **Guardrail:** Trusted publishing requires the package to already exist on npm. For brand-new packages, publish once with a granular token before configuring trusted publishing.
 
 **Quick bootstrap flow:**
 
@@ -165,7 +178,7 @@ gh workflow run publish.yml -f dry-run=true
 2. Publish the package: `npm publish --access public` (with `NODE_AUTH_TOKEN` set)
 3. Configure OIDC linking at `https://npmjs.com/package/<pkg>/access` → Add GitHub Actions
 4. Delete the granular token and remove the `NPM_TOKEN` secret
-5. Switch to the OIDC workflow — see [oidc-trusted-publishing.md](oidc-trusted-publishing.md) for the full guide
+5. Switch to the trusted-publishing workflow; see [oidc-trusted-publishing.md](oidc-trusted-publishing.md) for the full guide
 
 See the detailed [First Publish Bootstrap](oidc-trusted-publishing.md#first-publish-bootstrap-greenfield-packages) section in the OIDC reference for step-by-step instructions.
 
@@ -279,7 +292,7 @@ rm .npmrc
 NODE_AUTH_TOKEN="${NPM_TOKEN}" npm publish   # → will use npm login session, may trigger EOTP
 ```
 
-> **⚠️ Steering (F-21):** The CI "❌ Wrong" patterns flip for local usage. The CLI flag `--//registry.npmjs.org/:_authToken=TOKEN` is the most reliable local method because it doesn't depend on `.npmrc` state. It's only wrong in CI because GitHub Actions logs would expose the token.
+> **Guardrail:** The CI "wrong" patterns flip for local usage. The CLI flag `--//registry.npmjs.org/:_authToken=TOKEN` is the most reliable local method because it does not depend on `.npmrc` state. It is wrong in CI because GitHub Actions logs can expose the token.
 
 **Always check for existing tokens before creating new ones:**
 
@@ -309,21 +322,21 @@ echo "${NPM_TOKEN:0:10}..."  # first 10 chars only
 
 ## Decision matrix: OIDC vs Granular vs Automation
 
-> **⚠️ Steering:** If you're choosing between these options for a **public package on GitHub Actions**, the answer is almost always OIDC. Use the matrix below only when OIDC is genuinely unavailable. After first-publish bootstrap, transition to OIDC by following [oidc-trusted-publishing.md](oidc-trusted-publishing.md).
+> **Guardrail:** For a public package on GitHub Actions, prefer trusted publishing when available. Use the matrix below only when trusted publishing is unavailable. After first-publish bootstrap, transition by following [oidc-trusted-publishing.md](oidc-trusted-publishing.md).
 
 | Factor | OIDC | Granular Token | Automation Token |
 |---|---|---|---|
 | **Security** | Highest — zero secrets | High — scoped + expiring | Lowest — broad + permanent |
-| **Public packages** | ✅ Best choice | ✅ Works | ⚠️ Avoid |
-| **Private packages** | ❌ Requires npm Enterprise | ✅ Best choice | ⚠️ Avoid |
-| **GitHub Actions** | ✅ Native | ✅ Works | ✅ Works |
-| **Non-GitHub CI** | ❌ Not available | ✅ Best choice | ✅ Works |
-| **Self-hosted runners** | ❌ Not available | ✅ Works | ✅ Works |
+| **Public packages** | Best choice | Works | Avoid |
+| **Private packages** | Requires npm Enterprise | Best choice | Avoid |
+| **GitHub Actions** | Native | Works | Works |
+| **Non-GitHub CI** | Not available | Best choice | Works |
+| **Self-hosted runners** | Not available | Works | Works |
 | **Secret management** | None | Rotation required | No rotation (risky) |
-| **Provenance** | ✅ Native | ✅ Add `id-token: write` | ✅ Add `id-token: write` |
-| **2FA bypass** | ✅ Automatic | ✅ By design | ✅ By design |
-| **IP restriction** | N/A (bound to workflow) | ✅ Configurable | ❌ Not available |
-| **Package scoping** | Automatic (repo-bound) | ✅ Configurable | ❌ Account-wide |
+| **Provenance** | Automatic when eligible | Add `id-token: write` for token+provenance | Add `id-token: write` for token+provenance |
+| **2FA bypass** | Automatic | By design | By design |
+| **IP restriction** | N/A (bound to workflow) | Configurable | Not available |
+| **Package scoping** | Automatic (repo-bound) | Configurable | Account-wide |
 
 ### Quick decision
 
