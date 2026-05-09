@@ -141,6 +141,8 @@ Sources scanned: <6 sources with one-line summary each>
 
 See `references/output-format.md` for full formatting rules.
 
+If the audit table is saved to a markdown file, run `bash scripts/check-task-status.sh <audit.md>` before Phase 2. The checker reports status counts, invented statuses, and non-`Implemented` rows missing `Action Required`; usage is documented in `scripts/check-task-status.md`.
+
 ### Phase 2 — Remediate
 
 #### 5. Execute in priority order
@@ -187,6 +189,8 @@ Status totals: audited tasks=<N>; Phase 1 rows needing remediation=<M>; rows rem
 ```
 
 Every row ends at a terminal status: `Implemented`, `Deferred to Human`, `Deprioritized`, `Cancelled`, `Out of Scope`, `Superseded` with the replacement verified `Implemented`, or `Blocked — unresolvable` with a concrete next step.
+
+If the completion report is saved to a markdown file, run `bash scripts/check-task-status.sh <completion-report.md>` before declaring done. The checker reports final status counts and fails if any `Ended` value is invented or non-terminal; usage is documented in `scripts/check-task-status.md`.
 
 ## Output contract
 
@@ -259,6 +263,8 @@ Recovery moves:
 | `references/rationalizations.md` | RED baseline — excuses that bypass audit rigor; pressure scenario to confirm discipline holds |
 | `references/scope-disambiguation.md` | Step 1 — picking the right scope when the user's ask is broad; session vs. plan vs. branch vs. PR |
 | `references/voice-discipline.md` | Writing audit rows and remediation log entries — forbidden phrases ("probably fine", "looks good"), preferred phrasing, citation style |
+| `scripts/check-task-status.sh` | Deterministic table check for saved audit/completion markdown — status counts, unknown statuses, missing actions, non-terminal endings |
+| `scripts/check-task-status.md` | Usage, input table shapes, output fields, and exit codes for `scripts/check-task-status.sh` |
 
 ## Final checks
 
@@ -273,5 +279,6 @@ Before declaring done, confirm:
 - [ ] blockers documented with concrete next steps; remediation did not halt on first blocker
 - [ ] completion report shows every row at a terminal status
 - [ ] completion report status totals show non-terminal rows remaining = 0
+- [ ] saved audit/completion markdown passes `bash scripts/check-task-status.sh <file>` when a file artifact exists
 - [ ] zero forbidden phrases in the report (grep-checked)
 - [ ] rationalizations table consulted before declaring "everything looks done"
