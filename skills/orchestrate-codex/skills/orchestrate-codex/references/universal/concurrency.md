@@ -92,6 +92,23 @@ Every override is recorded once at `manifest.policy.overrides.concurrency` (sing
 
 This makes the cap-raise auditable: a later run can inspect the manifest, see the prior justification, and decide whether the same cap is still appropriate for the new workload.
 
+## Fleet size vs parallelism cap
+
+The cap (`JOBS=5` exec, `JOBS=10` batch) is the maximum *in-flight at once*; it is not the total entry count. With `JOBS=5` and a 12-entry fleet, the runner processes the work in roughly 3 waves (5 + 5 + 2) — wall-clock time is `ceil(fleet_size / cap) × per_task_time`, not `per_task_time`.
+
+Calibration heuristic for larger fleets:
+
+1. Estimate per-task time from a single-entry probe (`JOBS=1` on one representative entry).
+2. Compute waves: `ceil(fleet_size / cap)`.
+3. Estimate wall-clock: `waves × per_task_time` (loose upper bound — real runs interleave, but the bound is sane).
+4. If the estimate exceeds your reasonable budget, choose one:
+   - **Raise the cap** — only with `--i-have-measured` and the TPM math from "How to measure" above. Rate-limits dominate above the empirical sweet spot.
+   - **Split the fleet across multiple `--run-id` dispatches.** Two 6-entry fleets back-to-back free your workspace between them and let you interleave unrelated work; one 12-entry fleet ties up the workspace for the full duration.
+
+Concrete example: 30-entry refactor fleet at `JOBS=5` with ~10-min per-task time = 6 waves × 10 min = 60 min wall-clock at the dispatched cap. Splitting into three 10-entry fleets of `JOBS=5` is the same total CPU but lets you cancel/inspect/redirect between fleets.
+
+Splitting a fleet is also the right move when the entries naturally cluster (e.g. all-react vs all-eslint upgrades). One fleet per cluster keeps the manifests readable and rescue replays scoped.
+
 ## Hard ceiling
 
 `JOBS > 100` is refused unconditionally. The skill assumes a single user's auth tier; concurrency above 100 is structurally pathological for this skill. If you genuinely need it, you're not running orchestrate-codex — you're running a queue worker.

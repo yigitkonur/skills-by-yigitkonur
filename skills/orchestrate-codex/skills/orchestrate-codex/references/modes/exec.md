@@ -42,6 +42,8 @@ Field rules per element:
 - `branch` (optional) is created on dispatch (or reused if already present and clean). If omitted the dispatcher derives one from the id.
 - `prompt_file` is the path to a rendered prompt; see `references/templates/exec.tmpl.md`. Pass either `prompt_file` (path) or `prompt` (inline text).
 - `post_verify_cmd` is wired: `buildExecEntries` in `scripts/orchestrate-codex.mjs` threads it onto `mode_state.post_verify_cmd` (and `mode_state.exec.post_verify_cmd` for back-compat); `run-fleet.sh` prefers it over the auto-detect table below. Omit it to fall back to the auto-detect recipe per language.
+- `label` (optional) is a human-readable display string surfaced through `mode_state.task.label` and `mode_state.exec.label`. Useful when `id` is terse (`01`, `02`) and the operator wants the manifest / monitor lines to read meaningfully (e.g. `"Bump react in web/"`). Defaults to `null`.
+- `base_branch` / `base` (optional) overrides the per-task base branch the new branch is created from; the first one set wins, default `"main"`. Use this when one entry in a mixed fleet should branch off `develop` (or a feature branch) instead of `main`. The override propagates as `mode_state.exec.base_branch` for `setup-worktree.sh` to consume.
 
 Per-run knobs flow through the dispatcher's CLI flags (`--concurrency N`, `--cwd <dir>`), not the tasks file.
 
@@ -125,12 +127,16 @@ SKIP  03-already-done
 ## Auto-commit logic
 
 If the agent committed during its run (it usually does for coding tasks), the wrapper sees a clean working tree and skips its own commit. If the agent did NOT commit (e.g. wrote files but bailed), the wrapper:
-- Stages everything that's both a) modified vs baseline and b) not gitignored.
+- Stages everything in the worktree via `git add -A` (`run-fleet.sh:381`). That means everything git considers tracked-and-modified or untracked-and-not-ignored. There is no baseline-aware diff filter and no per-file allowlist; if codex creates scratch files in the worktree (notes, intermediate artifacts, debug dumps), they get staged and committed too. Use `.gitignore` (or an explicit `Out-of-scope` clause in the prompt forbidding scratch files) to keep noise out.
 - Generates a commit message: `<emoji> <type>(<scope>): <task-id> auto-commit` based on the task id's heuristic.
 - Commits.
 - Logs `[wrapper] auto-committed N files`.
 
 If the wrapper sees nothing to commit AND codex exit is 0, the task is marked `failed` with `last_error="codex_exit_0_no_changes"` (the agent claimed success but produced no work — usually a meta-skill rumination loop).
+
+### Audit-style / findings-only tasks
+
+If the user's task produces a deliverable that is NOT a code change — accessibility audits, security findings, code reviews stored as markdown reports, design reviews — the success-gate above ("≥1 commit on branch since baseline") trips with `codex_exit_0_no_changes` because no code was modified. The fix is in the prompt: instruct codex to write the deliverable to a file inside the worktree AND commit it. Concretely, end your prompt with: *"Write the findings to `audit/<task-id>.md` (or whatever path is appropriate for your repo's convention) and commit it with `git add audit/<task-id>.md && git commit -m '<descriptive subject>'` before exiting."* The wrapper sees the commit, the success gate passes, and the audit report is preserved as a regular tracked artifact. See `references/universal/prompt-discipline.md` for the success-criterion pattern.
 
 ## Post-verify auto-detection
 

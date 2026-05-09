@@ -57,6 +57,19 @@ Single mode is the natural mode for one-shot structured outputs (config files, p
 
 For fixed-N deliverables (10 rows, 30-line file, 5 entries), see `references/universal/prompt-discipline.md` §"Size-budget anti-patterns" — restate the count in Constraints AND Success criteria AND Failure protocol; a single mention is fragile.
 
+## When the deliverable is N source-file edits, not a parseable artifact
+
+Multi-file source refactors (instrument `lib/db.ts`, `lib/cache.ts`, `lib/queue.ts` with OTel spans; rename a symbol across 12 files; migrate a config call site) do NOT produce a single parseable artifact. The "first byte / canonical opener" structure above does not apply — there is no JSON / YAML / CSV to validate.
+
+For these missions:
+
+- Skip the canonical-opener and code-fence rules in the Output format section. They are noise here.
+- Success is `(N target files modified) AND (post-verify cmd exit 0)`. Encode this as binary checks in Success criteria — e.g. `grep -l 'tracer.startSpan' lib/db.ts lib/cache.ts lib/queue.ts | wc -l` reports `3`; `pnpm typecheck` exits 0; `pnpm test` exits 0.
+- The `-o` answer file is the agent's *summary* of what changed (which files, what shape), not the deliverable itself. Treat it as a hand-off log, not as a parseable contract. The operator reads it before merging.
+- The actual deliverable is the diff on the worktree's branch — use `references/modes/exec.md` semantics: codex commits, post-verify runs, the success gate fires on (codex exit 0) ∧ (≥ 1 commit) ∧ (`-o` non-empty) ∧ (post-verify pass-or-not-run).
+
+If the mission has both a parseable deliverable AND source edits (rare — e.g. "generate `openapi.yaml` AND wire it into the express app"), split into two missions; single mode runs each cleaner than one bundled prompt.
+
 ## When to add the SUBAGENT-STOP prefix
 
 Add the prefix from `references/templates/exec.tmpl.md` when ALL of these hold:

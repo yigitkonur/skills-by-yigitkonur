@@ -102,6 +102,7 @@ Codex defaults to "while I'm here, also fix...". Out-of-scope items prevent that
 - Do NOT update doc files unless explicitly asked.
 - Do NOT add new dependencies.
 - Do NOT modify the existing public API shape.
+- Canonical test-fence (copy-paste when source edits should not touch tests): `Do NOT modify any file matching test/**, *.test.ts, *.spec.ts, __tests__/**, jest.config.*, vitest.config.*, *.test.go, *_test.py.`
 
 **Categorical-exclusion** ("do NOT use language/feature Y at all"):
 - Do NOT use any `<script>` tag. Do NOT use inline JavaScript event handlers. Do NOT use `javascript:` URLs. Do NOT use any framework — pure HTML+CSS only.

@@ -17,6 +17,17 @@ The `<mode>` token in the path makes provenance obvious in `git worktree list`. 
 
 The `<slug>` is the `entries[i].slug` from the manifest. The mapping is 1-to-1: one slug → one worktree path. If the worktree path is gone but the manifest entry still references it, rescue prunes (`git worktree prune`) and recreates.
 
+### Slug disambiguation across tracks
+
+Ids must be globally unique within a single `tasks.json`. The dispatcher's `buildExecEntries` (`scripts/orchestrate-codex.mjs:530`) refuses the run with `duplicate id: <id>` if two entries share an id. This bites when the operator's natural slug is the package name and multiple upgrade tracks touch the same package — e.g. one fleet that bumps `react` in `web/` and another that bumps `eslint` in `web/`, both naturally slugged `web`.
+
+Fix by track-prefixing the id (and therefore the worktree path):
+
+- `react-web`, `eslint-web` — two distinct ids, two distinct worktrees, both modifying files inside the `web/` package on different branches.
+- The branch can keep the operator's preferred name (`bump/react/web`, `bump/eslint/web`) — `branch` and `id` are independent fields.
+
+Same-package work across tracks ⇒ different ids ⇒ different worktrees. The 1-to-1 mapping (one slug → one worktree path) is preserved because the slug carries the track prefix.
+
 `<repo-parent>` is `dirname(workspace_root)`. `<repo-basename>` is `basename(workspace_root)`. The skill never creates worktrees inside the source repo by default — in-repo placement (`.worktrees/`) pollutes `git status` and forces every consumer to update `.gitignore`. Set `WORKTREE_DIR_NAME=.worktrees` to opt in if isolation requirements demand it.
 
 ## `.gitignore` requirement
