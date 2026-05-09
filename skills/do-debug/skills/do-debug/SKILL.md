@@ -14,7 +14,7 @@ Use this skill when the task is to:
 - debug a reproducible runtime bug whose causal mechanism is unknown — start in `do-debug`, not `do-think`
 - recover from a fix that failed — the symptom persists, regressed, or moved
 - investigate an intermittent ("sometimes") failure where pattern-matching a quick fix is tempting
-- stop yourself mid-diagnosis when you feel pulled toward "let me just try X"
+- stop mid-diagnosis when pulled toward "let me just try X"
 - audit a multi-layer bug where the obvious layer has been checked but the bug persists
 
 Prefer another skill when:
@@ -63,7 +63,7 @@ Steps:
 1. **State the symptom precisely** — where (file/line/frame), when (on what input/action), expected vs. actual, first-seen commit or version if known.
 2. **Reproduce deterministically** — the smallest repro that fails 10/10. If intermittent, route to `references/bisection-strategies.md` input-space bisection before continuing.
 3. **Capture evidence** — stack trace, log excerpt, diff vs. last-known-good, relevant config/env values. Copy-pasteable.
-4. **Write the symptom card** — one paragraph a stranger could read and reproduce the bug without additional context. If you cannot, you are still storytelling, not investigating.
+4. **Write the symptom card** — one paragraph a stranger could read and reproduce the bug without additional context. If unable to write it, the work is still storytelling, not investigating.
 
 **Exit criteria**: symptom card + 10/10 repro + copy-pasteable evidence.
 
@@ -78,11 +78,11 @@ Steps:
 1. **Trace backward** — apply `references/root-cause-tracing.md` to walk from the symptom frame back to the earliest frame where state was still correct.
 2. **Map to pattern families** — test-pollution, race condition, silent error-swallowing, serialization boundary, off-by-one, null propagation, config drift, ACL/permission, resource leak.
 3. **Produce 1-3 candidate mechanisms** — each a one-sentence hypothesis of the form *"X caused Y because Z."* Evidence attached.
-4. **Rank by disprovability** — the candidate you can disprove cheapest is tested first.
+4. **Rank by disprovability** — the cheapest disprovable candidate is tested first.
 
 **Exit criteria**: 1-3 ranked, evidence-backed candidate mechanisms written down.
 
-**Red flags → back to Phase 1**: evidence gaps appear (you need a log you don't have); candidates are all "maybe the code is wrong" (pattern not identified); only one candidate is possible (force a second — absence of alternatives is over-commitment).
+**Red flags → back to Phase 1**: evidence gaps appear (missing log, trace, or value); candidates are all "maybe the code is wrong" (pattern not identified); only one candidate is possible (force a second — absence of alternatives is over-commitment).
 
 ### Phase 3 — Hypothesis Testing
 
@@ -90,14 +90,14 @@ Steps:
 
 Steps:
 
-1. **Design falsifiable experiments** — for the top candidate, write down the predicted result if the hypothesis is true AND the predicted result if false. If you cannot state the false-case prediction, the experiment is cover for a pre-decided fix.
+1. **Design falsifiable experiments** — for the top candidate, write down the predicted result if the hypothesis is true AND the predicted result if false. If unable to state the false-case prediction, the experiment is cover for a pre-decided fix.
 2. **Run the cheapest experiment first** — log addition, print, unit test, bisect step, feature-flag toggle. See `references/instrumentation.md` and `references/bisection-strategies.md`.
-3. **Read the result honestly** — even if it invalidates your preferred candidate. Especially then.
+3. **Read the result honestly** — even if it invalidates the preferred candidate. Especially then.
 4. **If all candidates falsified → route to `do-think`** to re-form the space of mechanisms before repeating Phase 2.
 
 **Exit criteria**: one candidate mechanism confirmed with evidence the experiment produced.
 
-**Red flags → back to Phase 2**: your "confirmation" also fits a different mechanism (experiment was not falsifying); you changed product code mid-experiment (left Phase 3 early); you accepted a partial confirmation "because it kind of matched."
+**Red flags → back to Phase 2**: the "confirmation" also fits a different mechanism (experiment was not falsifying); product code changed mid-experiment (left Phase 3 early); partial confirmation was accepted "because it kind of matched."
 
 ### Phase 4 — Implementation
 
@@ -113,7 +113,7 @@ Steps:
 
 **Exit criteria**: symptom gone (evidence) + regression guard (test/assertion) + `check-completion` result.
 
-**Red flags → back to Phase 3**: the repro still fails (hypothesis was wrong, not just the fix); the regression guard passes without the fix (guard doesn't test the mechanism); new symptoms appear (you widened the blast radius).
+**Red flags → back to Phase 3**: the repro still fails (hypothesis was wrong, not just the fix); the regression guard passes without the fix (guard doesn't test the mechanism); new symptoms appear (blast radius widened).
 
 ## Integration decision matrix
 
@@ -122,7 +122,7 @@ This skill does not handle everything alone. The matrix below is the first-class
 | Situation | Route? | Destination | Why |
 |---|---|---|---|
 | Phase 1: repro is not 10/10, need wider frame | Stay | `references/bisection-strategies.md` input-space bisection | Inline technique |
-| Phase 2: only "it feels like X" as evidence | Out | `do-think` (its `workflows/bug-tracing.md`) | Stronger reasoning loop re-grounds you |
+| Phase 2: only "it feels like X" as evidence | Out | `do-think` (its `workflows/bug-tracing.md`) | Stronger reasoning loop re-grounds the investigation |
 | Phase 3: 2-3 candidates look equally plausible | Out | `do-think` foundations/evidence-and-falsification | Stronger evidence framework before the experiment |
 | Phase 3: "confirmation" also fits a different mechanism | Stay | Back to Phase 2; write the distinguishing test | Do not hand off |
 | Fail #1 (first fix didn't stick) | Stay | Re-open Phase 2 inline | Pattern was wrong |
@@ -155,7 +155,7 @@ Abridged table. Full set + pressure-scenario sidebars in `references/rationaliza
 | "Sunk cost — 4 hours in, can't restart." | The 4 hours are the evidence the current path is dead. Restart Phase 1. |
 | "We don't have time for root cause — production is down." | Cost of a blind fix that regresses = cost of the outage × 2. |
 | "The tests pass now, so it's fixed." | Passing tests without a regression guard prove nothing durable. Add the guard. |
-| "I see the issue." (no mechanism stated) | Say the mechanism out loud, or you have not seen it. |
+| "I see the issue." (no mechanism stated) | Say the mechanism out loud, or the mechanism has not been seen. |
 | "This is an emergency — rules off." | Rules are *especially* on under pressure. Emergencies multiply the cost of skipping. |
 
 ## Voice discipline (short form)

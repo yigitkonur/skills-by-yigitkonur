@@ -1,6 +1,6 @@
 # Workflow Deep — 4-Phase Walkthrough with Worked Examples
 
-Extended version of SKILL.md's 4-phase workflow. Read when SKILL.md's phase block does not give enough signal — e.g., you are stuck in Phase 2 and need a concrete pattern-analysis example.
+Extended version of SKILL.md's 4-phase workflow. Read when SKILL.md's phase block does not give enough signal — e.g., Phase 2 is blocked and a concrete pattern-analysis example is needed.
 
 ## Contents
 - [How to use this file](#how-to-use-this-file)
@@ -12,12 +12,12 @@ Extended version of SKILL.md's 4-phase workflow. Read when SKILL.md's phase bloc
 
 ## How to use this file
 
-Read the phase that matches where you currently are, not all four. Each phase section has:
+Read the phase that matches the current phase, not all four. Each phase section has:
 
 - A **goal statement**
 - A **three-example spread** (Node test-pollution, Python race, Rust lifetime) showing the phase end-to-end
 - **Exit criteria** (mirrors SKILL.md, restated for completeness)
-- **Red flags** that send you back to the previous phase
+- **Red flags** that send back to the previous phase
 
 The examples are deliberately different languages and different bug classes so the pattern-shape generalizes.
 
@@ -98,7 +98,7 @@ Symptom: `error[E0597]: 'x' does not live long enough` at compile, at `src/worke
 
 - "It happens sometimes." — 10/10 is the bar; make it deterministic first.
 - "Some config mismatch." — What config, what value? Name it.
-- "The code looks wrong." — You are guessing. Phase 1 is observation only.
+- "The code looks wrong." — That is guessing. Phase 1 is observation only.
 
 ## Phase 2 — Pattern analysis, in depth
 
@@ -154,15 +154,15 @@ Rank: #1 (trivially testable by compiling with the suggested fix), #2 (review-ba
 
 ### Red flags → back to Phase 1
 
-- Evidence gaps: you need a log you don't have. Return to Phase 1 and add instrumentation to make the evidence collectable.
+- Evidence gaps: missing log, trace, or value. Return to Phase 1 and add instrumentation to make the evidence collectable.
 - All candidates are "maybe the code is wrong": pattern not identified. Revisit `root-cause-tracing.md`.
-- Only one candidate fits: you may be over-committed. Force a second candidate, even an unlikely one.
+- Only one candidate fits: over-commitment risk. Force a second candidate, even an unlikely one.
 
 ## Phase 3 — Hypothesis testing, in depth
 
-**Goal**: run an experiment designed to fail if your top candidate is wrong.
+**Goal**: run an experiment designed to fail if the top candidate is wrong.
 
-**Key rule**: *an experiment that cannot fail proves nothing.* Before running the test, write down in one sentence what result would kill the hypothesis. If you cannot, the experiment is cover for a pre-decided fix.
+**Key rule**: *an experiment that cannot fail proves nothing.* Before running the test, write down in one sentence what result would kill the hypothesis. If unable to state that result, the experiment is cover for a pre-decided fix.
 
 ### Example 3.1 — Node test pollution
 
@@ -207,8 +207,8 @@ Top candidate: `#1 — captured reference across spawn`.
 ### Red flags → back to Phase 2
 
 - "Confirmation" also fits another mechanism: design the distinguishing test.
-- You edited product code mid-experiment: you left Phase 3 early; back up.
-- You accepted a partial confirmation: "because it kind of matched" is not confirmation.
+- Product code was edited mid-experiment: Phase 3 was left early; back up.
+- Partial confirmation was accepted: "because it kind of matched" is not confirmation.
 
 ## Phase 4 — Implementation, in depth
 
@@ -297,7 +297,7 @@ tokio::spawn(async move { use_x(x_for_task).await });
 
 - The repro still fails: the hypothesis was wrong, not just the fix.
 - The regression guard passes without the fix: the guard does not test the mechanism.
-- New symptoms appear: you widened the blast radius. Phase 1 on the new symptom.
+- New symptoms appear: blast radius widened. Phase 1 on the new symptom.
 
 ## Language coverage matrix
 

@@ -1,16 +1,16 @@
 # Instrumentation — Print, Log, Stack Trace Per Language
 
-Phase 2 and Phase 3 need evidence. When the existing logging doesn't surface what you need, you add temporary instrumentation. This file covers the three modes and the per-language idioms.
+Phase 2 and Phase 3 need evidence. When existing logging doesn't surface the needed facts, add temporary instrumentation. This file covers the three modes and the per-language idioms.
 
 ## The three instrumentation modes
 
 | Mode | When | Lifetime |
 |---|---|---|
 | **Stdout print** | Quick-check during active debugging. "Does this branch run?" | Temporary — removed in Phase 4 |
-| **Structured log** | Evidence you want retained. "This path is rare; log it with context." | Often persists after the fix |
+| **Structured log** | Evidence worth retaining. "This path is rare; log it with context." | Often persists after the fix |
 | **Stack-trace capture** | "Who called this function?" — tracing the call chain backward | Temporary unless the anomaly is rare-and-recurring |
 
-Pick by longevity: if the anomaly should leave a production breadcrumb, use a structured log. If it's scaffolding for this debug session only, use a print. If you need the caller's identity, capture the stack.
+Pick by longevity: if the anomaly should leave a production breadcrumb, use a structured log. If it's scaffolding for this debug session only, use a print. If caller identity is needed, capture the stack.
 
 ## Universal patterns
 
@@ -28,7 +28,7 @@ Anti-pattern: `println(x)`. Too low context to survive five minutes of debugging
 
 Fields to always include:
 
-- The identifier that lets you correlate this log with others (request ID, task ID, user ID, operation key)
+- The identifier that correlates this log with others (request ID, task ID, user ID, operation key)
 - The value being reported, with unambiguous units
 - The reason this log was added ("rare branch", "retry attempt", "cache miss with age")
 
@@ -166,7 +166,7 @@ Phase 4 removes temporary diagnosis code. Decide per-line: stays or comes out.
 | Logging at INFO level for noise that should be DEBUG | Use DEBUG for rare-branch diagnostics; INFO is user-facing |
 | Logging secrets or PII during debugging | Redact (`"***"` for secrets, `hash(user_id)` for PII) even in temporary instrumentation |
 | Removing the log after the fix "because it's noisy" | If it helped once, it will help again. Either keep at DEBUG or convert to a metric. |
-| Adding 20 `println` calls in one round | Add 2-3 with specific hypotheses; more means you are fishing, not testing. |
+| Adding 20 `println` calls in one round | Add 2-3 with specific hypotheses; more means fishing, not testing. |
 | Logging "here" / "reached here 1" | Logs must carry context (file, line, values). "Here" is a placeholder, not a log. |
 
 ## When logging is not enough
@@ -175,4 +175,4 @@ If the symptom is performance (not correctness), stdout/log is the wrong tool. U
 
 ## When the existing logging is enough
 
-Before adding any instrumentation, read the existing logs with the symptom's timestamp and identifiers. In mature codebases, 70%+ of bugs have enough evidence in existing logs if you query them correctly. Run the query first, add instrumentation only when the existing logs genuinely don't surface the needed evidence.
+Before adding any instrumentation, read the existing logs with the symptom's timestamp and identifiers. In mature codebases, 70%+ of bugs have enough evidence in existing logs when queried correctly. Run the query first, add instrumentation only when the existing logs genuinely don't surface the needed evidence.

@@ -42,7 +42,7 @@ The script outputs:
 
 1. List all tests that ran before the failing one in CI.
 2. Binary-search: run the first half as pre-setup, then the target. If fails, the polluter is in the first half. Else it's in the second.
-3. Recurse until you've narrowed to a single polluting test.
+3. Recurse until narrowed to a single polluting test.
 
 This is obra's `find-polluter.sh` approach, generalized.
 
@@ -51,8 +51,8 @@ This is obra's `find-polluter.sh` approach, generalized.
 **When**: a specific test or behavior was green at commit A, is red at commit B. Commits between may be numerous.
 
 **Preconditions**:
-- You have a deterministic test that fails on B and passes on A (usually produced by Phase 1).
-- The test takes <60 seconds to run (or you have patience).
+- A deterministic test fails on B and passes on A (usually produced by Phase 1).
+- The test takes <60 seconds to run (or patience is available).
 
 **Recipe**:
 
@@ -74,13 +74,13 @@ Git checks out the middle commit, runs the script; exit 0 = good, non-zero = bad
 
 ### Gotchas
 
-- If your repo needs `pnpm install` between checkouts (dependency changes), include it in the script.
+- If the repo needs `pnpm install` between checkouts (dependency changes), include it in the script.
 - If builds take minutes, narrow the commit range first by spot-checking midpoint-commits manually.
 - If the script has side effects (DB migration, file writes), reset between runs.
 
 ## 3. Feature-flag toggle bisection
 
-**When**: the failure appears only when some combination of N feature flags is enabled, and you don't know which subset.
+**When**: the failure appears only when some combination of N feature flags is enabled, and the subset is unknown.
 
 **Mechanism**: binary search the flag set.
 
@@ -89,7 +89,7 @@ Git checks out the middle commit, runs the script; exit 0 = good, non-zero = bad
 1. List all recently-toggled flags (N flags).
 2. Split the flags into two halves. Enable half-A, disable half-B; reproduce. Then enable half-B, disable half-A; reproduce.
 3. Whichever half reproduces: the culprit is in there. Recurse.
-4. After log2(N) rounds, you have the minimal flag set that triggers the failure.
+4. After log2(N) rounds, the minimal flag set that triggers the failure is known.
 
 **Example**: 16 flags toggled recently. Split into sets of 8. Group A (flags 1-8) triggers the bug; group B (flags 9-16) does not. Group A splits into 1-4 and 5-8. Group 5-8 triggers. Split 5-6 and 7-8. Group 7-8 triggers. Split 7 and 8. Flag 7 alone reproduces. Root cause: flag 7's code path.
 
@@ -98,7 +98,7 @@ Git checks out the middle commit, runs the script; exit 0 = good, non-zero = bad
 1. Keep the A-on/B-off and A-off/B-on probes as the first split; both will be green.
 2. Run A-on+B-on (the original failing state). Confirm it reproduces.
 3. Pair-bisect: hold one flag from half A on; toggle half B in halves. Find the smallest subset of B that co-triggers with the held A flag.
-4. Repeat for each A-flag until you identify the minimum pair (or triple) that reproduces.
+4. Repeat for each A-flag until identifying the minimum pair (or triple) that reproduces.
 
 Cross-half interactions are uncommon but they do happen — often when two unrelated flags both feature-gate code paths that share a data structure. Spot the "neither half alone fails" symptom and switch to pair-bisection instead of concluding "can't be reproduced."
 
@@ -106,9 +106,9 @@ Cross-half interactions are uncommon but they do happen — often when two unrel
 
 ## 4. Input-space bisection
 
-**When**: the bug is intermittent, there is no clear commit or flag trigger, and you suspect the input data triggers it.
+**When**: the bug is intermittent, there is no clear commit or flag trigger, and input data is suspected as the trigger.
 
-**Mechanism**: halve the input until the failure disappears. What you removed contains the trigger.
+**Mechanism**: halve the input until the failure disappears. The removed half contains the trigger.
 
 **Recipe**:
 
@@ -125,7 +125,7 @@ Cross-half interactions are uncommon but they do happen — often when two unrel
 
 ### Coupling to Phase 1 — making an intermittent bug deterministic
 
-Input-space bisection is often how you move from "fails sometimes" to "fails 10/10 on this specific input." Once you have the minimal failing input, the bug becomes deterministic on that input, and Phase 1's 10/10 requirement is satisfied.
+Input-space bisection is often how to move from "fails sometimes" to "fails 10/10 on this specific input." Once the minimal failing input exists, the bug becomes deterministic on that input, and Phase 1's 10/10 requirement is satisfied.
 
 ## Handoff from bisection to Phase 2
 
@@ -136,14 +136,14 @@ Bisection narrows the problem space. It does NOT provide a mechanism on its own.
 - A minimal flag combination (→ trace the flag's code path, the mechanism is in the guarded code)
 - A minimal failing input (→ trace what branches the input activates, the mechanism is in one of them)
 
-Do not skip from bisection straight to Phase 4. The bisection tells you *where to look*, not *what's broken*. Phase 2 still applies.
+Do not skip from bisection straight to Phase 4. The bisection identifies *where to look*, not *what's broken*. Phase 2 still applies.
 
 ## When NOT to bisect
 
 - The repro is 10/10 on the current code with any input. Don't bisect — go straight to Phase 2.
-- The commit range is known to be small (<5 commits) and you can read the diff directly. Reading is cheaper.
+- The commit range is known to be small (<5 commits) and reading the diff directly is cheaper.
 - The bug is a compile error or type error. The compiler *is* the bisection — it points at the line.
-- The bug is in third-party code you cannot modify. Bisection finds the trigger, not the fix; you still need a workaround.
+- The bug is in third-party code that cannot be modified. Bisection finds the trigger, not the fix; a workaround is still needed.
 
 ## Anti-patterns
 

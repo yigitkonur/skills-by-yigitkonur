@@ -18,15 +18,15 @@ Never route to yourself (`do-debug` → `do-debug` is infinite regress). When a 
 
 ### When it helps
 
-1. **Phase 2 candidates are weak** — you can articulate only "it feels like X" for every candidate. Evidence is thin across the board.
-2. **Phase 3 candidates tied** — two candidates fit the evidence equally well and you cannot design a cheap distinguishing test.
-3. **Phase 1 repro is solid but Phase 2 is blocked** — the symptom is clear; you just can't form a mechanism hypothesis worth testing.
+1. **Phase 2 candidates are weak** — every candidate is only "it feels like X." Evidence is thin across the board.
+2. **Phase 3 candidates tied** — two candidates fit the evidence equally well and no cheap distinguishing test is available.
+3. **Phase 1 repro is solid but Phase 2 is blocked** — the symptom is clear; no mechanism hypothesis is worth testing yet.
 
 ### When it doesn't help
 
 - Phase 1 is incomplete (no 10/10 repro). `do-think` can't fix an unreproducible bug; go back to Phase 1.
-- Phase 3 experiment was falsifying and a candidate was confirmed. You have a mechanism; go to Phase 4.
-- You are at the 3-fails gate. That's `do-think` Interactive mode territory, not Solo.
+- Phase 3 experiment was falsifying and a candidate was confirmed. A mechanism exists; go to Phase 4.
+- At the 3-fails gate. That's `do-think` Interactive mode territory, not Solo.
 
 ### Worked handoff examples
 
@@ -54,9 +54,9 @@ Re-enter this skill at **Phase 2** with the sharper evidence frame. Do not re-ru
 
 ### When it doesn't help
 
-- You haven't tried three fixes yet. Stay in this skill and use the re-open cycles first.
+- Fewer than three fixes have been tried. Stay in this skill and use the re-open cycles first.
 - The bug is clearly technical (no product/scope/architecture implication). Stay technical.
-- You just want to "bounce ideas" but don't have the 3-fails evidence. Interactive mode expects substantive input.
+- The goal is only to "bounce ideas" without 3-fails evidence. Interactive mode expects substantive input.
 
 ### Worked handoff example
 
@@ -105,7 +105,7 @@ If `do-think` Interactive returns "this is not a bug, it's a scope decision; def
 
 ### When it helps
 
-1. **Phase 4 fix applied and Phase 1 repro passes** — the bug is fixed, but you want to verify nothing else in scope was broken by the change.
+1. **Phase 4 fix applied and Phase 1 repro passes** — the bug is fixed, but verification is needed that nothing else in scope was broken by the change.
 2. **Multiple files / modules touched** — the fix crossed module boundaries. `check-completion` audits whether the session's full scope is still intact.
 3. **Fix landed but the session started with multiple tasks** — `check-completion`'s scope-disambiguation will identify what's still outstanding.
 
@@ -120,12 +120,12 @@ If `do-think` Interactive returns "this is not a bug, it's a scope decision; def
 Usually `check-completion` returns a list of things to verify. Either:
 
 - Everything is clean → declare the debug session done, commit, move on.
-- Something else broke → that's a new bug. Start a new `do-debug` session on the new symptom. Do NOT treat the original bug as unresolved; it's fixed. You have a *new* bug.
+- Something else broke → that's a new bug. Start a new `do-debug` session on the new symptom. Do NOT treat the original bug as unresolved; it's fixed. This is a *new* bug.
 
 ## Do NOT route when...
 
 1. **Phase 1 is incomplete.** Routing out without a 10/10 repro makes the receiving skill invent evidence. Finish Phase 1 first.
-2. **You are tired and looking for a shortcut.** `do-think` (in either mode) is not a substitute for the work you should be doing in this skill. It is a genuine handoff for genuine stuck-points.
+2. **Shortcut-seeking.** `do-think` (in either mode) is not a substitute for this skill's work. It is a genuine handoff for genuine stuck-points.
 3. **The session has already routed out twice.** Three skill handoffs in one debug session means the problem is something else entirely — surface this to the user and stop.
 4. **The route would be recursive** (`do-debug` → `do-debug`). Never. If more debugging is needed, re-enter at the correct phase.
 
@@ -193,6 +193,6 @@ session-related tests regressed.">
 |---|---|
 | Routing to `do-think` (Solo) at Fail 1 | No — use the re-open-Phase-2 block first. Solo deep-think is for stuck evidence, not stuck hypotheses. |
 | Routing to `do-think` (Interactive) at Fail 2 | Try the re-open-Phase-1 block first. Fail 3 is the gate, not Fail 2. |
-| Routing to `check-completion` before Phase 4 is done | You don't have a fix yet — nothing to audit. |
+| Routing to `check-completion` before Phase 4 is done | No fix exists yet — nothing to audit. |
 | Routing to multiple skills in sequence without re-entering this one | Re-enter at the correct phase; the handoffs are not a pipeline. |
 | Restarting `do-debug` from Phase 1 after any routed-out skill returns | Re-enter at Phase 2 (post-`do-think`) or declare done (post-`check-completion`). Never Phase 1 unless the symptom actually changed. |

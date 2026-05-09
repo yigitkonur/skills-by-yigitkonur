@@ -1,6 +1,6 @@
 # Escalation — The 3-Fails Gate
 
-Three failed fixes means you are in the wrong frame. This file defines what counts as a "failed fix," how to re-enter the prior phase cleanly, when to route out to `do-think` (Mode: Interactive), and how to write the handoff so the receiving skill has the context.
+Three failed fixes means the frame is wrong. This file defines what counts as a "failed fix," how to re-enter the prior phase cleanly, when to route out to `do-think` (Mode: Interactive), and how to write the handoff so the receiving skill has the context.
 
 ## What "one failed fix" means
 
@@ -12,7 +12,7 @@ A **failed fix** is a hypothesis-driven change that:
 
 What does **not** count as a failed fix:
 
-- Compilation / lint errors unrelated to the hypothesis (you fixed a typo, not tested the fix)
+- Compilation / lint errors unrelated to the hypothesis (typo fix, not hypothesis test)
 - The fix works but a `pnpm install` / `cargo build` / build step was stale
 - The fix works in dev but not in a staging environment with different config (that's a new symptom; restart Phase 1 on the new symptom)
 
@@ -28,7 +28,7 @@ Fail 3 → STOP. Route to do-think (Mode: Interactive). The problem is architect
 
 ### Fail 1 — re-open Phase 2
 
-The pattern you matched (test-pollution / race / serialization / etc.) was probably wrong. Go back to the evidence from Phase 1 and force a **different** pattern family this round.
+The matched pattern (test-pollution / race / serialization / etc.) was probably wrong. Go back to the evidence from Phase 1 and force a **different** pattern family this round.
 
 What to keep from round 1:
 
@@ -45,15 +45,15 @@ What to discard:
 
 The symptom or repro was incomplete. Common signs:
 
-- You treated an intermittent bug as deterministic ("fails 10/10 on this input" but actually "fails 6/10")
-- The repro works but misses a contributing condition (the bug only fires with feature flag X, and your repro didn't set it)
+- An intermittent bug was treated as deterministic ("fails 10/10 on this input" but actually "fails 6/10")
+- The repro works but misses a contributing condition (the bug only fires with feature flag X, and the repro didn't set it)
 - The symptom is actually two symptoms merged (a race condition that *also* triggers a silent error-swallow; fixing one without the other leaves half the bug)
 
 Restart Phase 1 with the new information from the two failed fixes — what did those failures teach about the real symptom?
 
 ### Fail 3 — stop and route
 
-Three failures with three different hypotheses means the problem is structurally different from what you thought. Common terminal patterns:
+Three failures with three different hypotheses means the problem is structurally different from the initial framing. Common terminal patterns:
 
 - The "bug" is a design limitation — the code works as written, but what was written is wrong at the architecture level
 - Two independent bugs are interacting; single-fix attempts each address one but not both
@@ -90,7 +90,7 @@ What the 2 fails revealed about the real symptom: <what's actually different or 
 New repro conditions to include: <what was missing>
 ```
 
-Then re-run the Phase 1 workflow. The new symptom card should be measurably richer than the previous one. If it isn't — if re-opening produced the same symptom card you started with — that's evidence the pattern families you're considering are exhausted. Proceed to **Fail 3 immediately** (don't wait for a third fix attempt) and route to `do-think` (Mode: Interactive) with the two-fails handoff template below. The 3-fails rule is the upper bound; hitting it earlier when the signal is clear is not a violation, it's a time-saver.
+Then re-run the Phase 1 workflow. The new symptom card should be measurably richer than the previous one. If it isn't — if re-opening produced the same symptom card as before — that's evidence the current pattern families are exhausted. Proceed to **Fail 3 immediately** (don't wait for a third fix attempt) and route to `do-think` (Mode: Interactive) with the two-fails handoff template below. The 3-fails rule is the upper bound; hitting it earlier when the signal is clear is not a violation, it's a time-saver.
 
 ## Handoff format to `do-think` (Mode: Interactive)
 
@@ -134,7 +134,7 @@ No pressure. If the skill works here, the 3-fails rule is load-bearing. If the a
 
 $15k/min outage. Fail 1 happens at minute 15, Fail 2 at minute 28. Temptation: try fix #3 fast, skip the re-open-Phase-1 block.
 
-**Counter**: the re-open block takes 2 minutes. If you skip it and fix #3 also fails, you are now at minute 35, Fail 3, and routing to `do-think` Interactive with incomplete context. The 2-minute re-open is the cheaper path even under outage pressure.
+**Counter**: the re-open block takes 2 minutes. If it is skipped and fix #3 also fails, the session reaches minute 35, Fail 3, and routes to `do-think` Interactive with incomplete context. The 2-minute re-open is the cheaper path even under outage pressure.
 
 ### Sunk cost
 
@@ -144,9 +144,9 @@ $15k/min outage. Fail 1 happens at minute 15, Fail 2 at minute 28. Temptation: t
 
 ### Authority / social
 
-Senior engineer diagnosed the bug as pattern X. You ran Phase 2 with X as the lead candidate, it failed (Fail 1). Temptation: the senior is rarely wrong; fix #2 within the same pattern family ("maybe I applied X wrong").
+Senior engineer diagnosed the bug as pattern X. Phase 2 ran with X as the lead candidate, and it failed (Fail 1). Temptation: the senior is rarely wrong; fix #2 within the same pattern family ("maybe I applied X wrong").
 
-**Counter**: the senior's diagnosis is a *candidate mechanism*, not a *confirmed one*. If your experiment on X falsified it, X is out. Re-open Phase 2 with a genuinely different pattern family. If the senior pushes back, route to `do-think` Interactive early — the architectural question is now social as well as technical.
+**Counter**: the senior's diagnosis is a *candidate mechanism*, not a *confirmed one*. If the experiment on X falsified it, X is out. Re-open Phase 2 with a genuinely different pattern family. If the senior pushes back, route to `do-think` Interactive early — the architectural question is now social as well as technical.
 
 ## Anti-patterns at the escalation gate
 

@@ -1,17 +1,17 @@
 # Root-Cause Tracing — The Backward Call-Chain Walk
 
-Ported from obra's `root-cause-tracing.md`, generalized across languages. Read during Phase 2 when you have a symptom location but do not know what created the conditions that led there.
+Ported from obra's `root-cause-tracing.md`, generalized across languages. Read during Phase 2 when a symptom location exists but the conditions that led there are unknown.
 
 ## When to use
 
 - The stack trace / error message points at a frame, but that frame is the *victim*, not the *cause*.
 - State is wrong when it arrives at a function, but the function itself looks correct.
-- The symptom moves around as you fix it — classic sign of treating frames instead of mechanisms.
+- The symptom moves around after fixes — classic sign of treating frames instead of mechanisms.
 
 Do **not** use when:
 
-- You do not yet have a 10/10 repro (return to Phase 1).
-- The failure is in third-party code you cannot read (use `references/bisection-strategies.md` instead).
+- No 10/10 repro yet (return to Phase 1).
+- The failure is in third-party code that cannot be read (use `references/bisection-strategies.md` instead).
 
 ## The five-step trace
 
@@ -86,7 +86,7 @@ Root cause: the spawn on line 95 requires `'static`, but the code tries to pass 
 
 | Confusion | Correct move |
 |---|---|
-| "The error is thrown at frame 1, so fix frame 1." | The *throw* is not the *cause*. Walk backward until you find the first frame that produced bad state. |
+| "The error is thrown at frame 1, so fix frame 1." | The *throw* is not the *cause*. Walk backward until the first frame that produced bad state is found. |
 | "Exceptions are always rethrown / wrapped — the real error is in frame N deep." | Exception chaining hides frames. Read `__cause__` / `.source()` / inner exception to continue the trace. |
 | "I found the violating frame, so the root cause is there." | Maybe. Check the caller of that frame: did the caller produce a bad input that the violating frame was merely forced to handle? |
 | "The bug is intermittent, so there's no deterministic trace." | Make it deterministic first (Phase 1 + `references/bisection-strategies.md`). Tracing a flaky stack is unreliable. |
@@ -102,7 +102,7 @@ Mechanism: <one sentence — what caused the violation>
 Narrowest fix location: <frame or layer, see defense-in-depth.md>
 ```
 
-If you cannot fill all three lines, you do not yet have the root cause. Continue tracing.
+If unable to fill all three lines, the root cause is not yet known. Continue tracing.
 
 ## Anti-pattern: "symptom whack-a-mole"
 
@@ -113,4 +113,4 @@ Fixing the observable frame instead of the causal frame produces:
 - A week later, a different symptom surfaces (or the same one under slightly different input)
 - Re-investigation reveals the never-fixed causal frame
 
-The Iron Law (no fix before root cause) exists specifically to prevent this. If a "fix" you are writing is a null-check at the throwing frame without a traced cause, stop and restart Phase 2.
+The Iron Law (no fix before root cause) exists specifically to prevent this. If a planned "fix" is a null-check at the throwing frame without a traced cause, stop and restart Phase 2.
