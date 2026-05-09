@@ -2,6 +2,13 @@
 
 Copy-paste working server examples for common patterns.
 
+## Contents
+
+- [Recipe 1 — API wrapper server (stdio)](#recipe-1--api-wrapper-server-stdio)
+- [Recipe 2 — File system server (stdio)](#recipe-2--file-system-server-stdio)
+- [Recipe 3 — Database query server (HTTP, stateful)](#recipe-3--database-query-server-http-stateful)
+- [Recipe 4 — Multi-capability server with prompts](#recipe-4--multi-capability-server-with-prompts)
+
 ## Recipe 1 — API wrapper server (stdio)
 
 Wraps a REST API as MCP tools. The most common server pattern.
@@ -343,11 +350,11 @@ function createServer(): McpServer {
   return server;
 }
 
-// Replace with your actual database client
+// Replace with a concrete database client
 async function executeQuery(sql: string, params?: unknown[]): Promise<unknown[]> {
   // Example: const { rows } = await pool.query(sql, params);
   // return rows;
-  throw new Error("Implement with your database client");
+  throw new Error("Implement a concrete database client");
 }
 
 app.post("/mcp", async (req, res) => {

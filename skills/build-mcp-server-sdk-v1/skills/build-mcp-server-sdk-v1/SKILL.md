@@ -237,7 +237,7 @@ Per spec: input validation errors SHOULD use `isError: true` (tool execution err
 - Prefer stateful HTTP (with `sessionIdGenerator`) when the server needs progress notifications, resumability, or multi-turn context
 - Prefer stateless HTTP (`sessionIdGenerator: undefined`) for simple request-response tools
 - Set `annotations` on every tool — LLMs use them to decide execution safety; treat annotations as untrusted unless from a trusted server
-- Use `server.server` (the underlying `Server`) only when `McpServer` lacks the method you need
+- Use `server.server` (the underlying `Server`) only when `McpServer` lacks the needed method
 - Use `outputSchema` when the tool must return validated structured data alongside text content
 - Tool names: use `service_action_resource` format (e.g. `github_search_repos`), 1-64 characters per SEP-986
 

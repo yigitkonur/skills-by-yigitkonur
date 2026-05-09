@@ -363,4 +363,4 @@ For Claude Desktop configuration, secrets use `${VAR_NAME}` syntax:
 - [ ] Set appropriate token expiration (`expiresAt` in `AuthInfo`)
 - [ ] Validate scopes before performing privileged operations
 - [ ] Use environment variables for all secrets
-- [ ] Check `authInfo.resource` matches your server's URL (RFC 8707)
+- [ ] Check `authInfo.resource` matches the server URL (RFC 8707)
