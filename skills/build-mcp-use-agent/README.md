@@ -1,6 +1,6 @@
 # build-mcp-use-agent
 
-Building TypeScript AI agents with mcp-use MCPAgent — configuration, LLM integration, streaming, structured output, observability, and production deployment.
+Building TypeScript mcp-use MCPAgent code where an LLM chooses and orchestrates MCP tools.
 
 **Category:** development
 
