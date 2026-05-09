@@ -1,6 +1,6 @@
 # build-copilot-sdk-app
 
-Building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK.
+Building directly on @github/copilot-sdk for Copilot SDK sessions, tools, streaming, hooks, custom agents, or BYOK.
 
 **Category:** development
 

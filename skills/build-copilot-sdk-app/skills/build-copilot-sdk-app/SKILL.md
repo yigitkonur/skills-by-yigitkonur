@@ -1,11 +1,23 @@
 ---
 name: build-copilot-sdk-app
-description: Use skill if you are building TypeScript applications with the GitHub Copilot SDK (@github/copilot-sdk), including sessions, tools, streaming, hooks, custom agents, or BYOK.
+description: Use skill if you are building directly on @github/copilot-sdk for Copilot SDK sessions, tools, streaming, hooks, custom agents, or BYOK.
 ---
 
 # Build Copilot SDK App
 
 Build applications powered by GitHub Copilot using the `@github/copilot-sdk` TypeScript/Node.js package (protocol v3). The SDK communicates with the Copilot CLI over JSON-RPC (stdio or TCP) and exposes a session-based API for sending prompts, receiving streamed responses, registering custom tools, handling permissions, and managing agent workflows.
+
+## Trigger boundary
+
+Use this skill only for applications built directly on `@github/copilot-sdk` and the GitHub Copilot SDK agent runtime.
+
+Do not use this skill for:
+
+- LangChain.js or LangGraph TypeScript agents — use `build-langchain-ts-app`
+- `mcp-use` `MCPAgent` applications — use `build-mcp-use-agent`
+- Kernel browser automation via `@onkernel/sdk` — use `build-kernel-ts-sdk`
+- Effect-TS applications without Copilot SDK — use `build-effect-ts-v3`
+- Generic OpenAI, Vercel AI SDK, or provider-SDK chatbots that do not import `@github/copilot-sdk`
 
 ## Decision tree
 
