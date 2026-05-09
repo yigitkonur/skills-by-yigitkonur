@@ -45,7 +45,14 @@ An untested fix is a guess dressed as work. A guess that appears to succeed is t
 
 ## Required workflow
 
-### 1. Investigation
+| Phase | Gate to exit |
+|---|---|
+| Phase 1 | symptom card + deterministic repro + copy-pasteable evidence |
+| Phase 2 | 1-3 ranked mechanisms with evidence |
+| Phase 3 | one mechanism confirmed by falsifying experiment |
+| Phase 4 | narrow fix + regression guard + Phase 1 repro passing |
+
+### Phase 1 — Investigation
 
 **Goal**: define the exact failing behavior, reproduce it deterministically, capture minimum evidence.
 
@@ -60,7 +67,7 @@ Steps:
 
 **Red flags → back to step 1**: "it happens sometimes" (repro not 10/10); "some config mismatch" (no concrete values); "the code looks wrong" (guessing, not observing).
 
-### 2. Pattern analysis
+### Phase 2 — Pattern Analysis
 
 **Goal**: identify 1-3 candidate mechanisms by matching evidence to known failure patterns.
 
@@ -75,7 +82,7 @@ Steps:
 
 **Red flags → back to Phase 1**: evidence gaps appear (you need a log you don't have); candidates are all "maybe the code is wrong" (pattern not identified); only one candidate is possible (force a second — absence of alternatives is over-commitment).
 
-### 3. Hypothesis testing
+### Phase 3 — Hypothesis Testing
 
 **Goal**: prove or disprove each candidate with an experiment designed to fail *if the hypothesis is wrong*.
 
@@ -90,7 +97,7 @@ Steps:
 
 **Red flags → back to Phase 2**: your "confirmation" also fits a different mechanism (experiment was not falsifying); you changed product code mid-experiment (left Phase 3 early); you accepted a partial confirmation "because it kind of matched."
 
-### 4. Implementation
+### Phase 4 — Implementation
 
 **Goal**: apply the narrowest fix that restores the broken assumption, verify it, land it with a regression guard.
 
