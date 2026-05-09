@@ -51,9 +51,16 @@ Side effects:
 ## Behavior
 
 - Sources `codex-flags.sh` for `CODEX_FLAGS`.
-- Supports inline `--prompt` by materializing a prompt file under `<cwd>/.orchestrate-codex/` when called directly. The dispatcher materializes prompt files before invoking the runner.
-- Runs `codex exec "${CODEX_FLAGS[@]}" --json -o <out> -C <cwd> <prompt> 2>&1 | tee <jsonl> | bash codex-json-filter.sh`.
-- Pipefail-safe: codex's exit code is captured via `${PIPESTATUS[0]}` despite the pipe.
+- Runs roughly:
+  ```
+  codex exec "${CODEX_FLAGS[@]}" --json -o <out> -C <cwd> < <prompt> \
+      2> <err.log> | tee <jsonl> | codex-json-filter.sh
+  ```
+  stderr is redirected to a separate `<err.log>` (NOT merged via `2>&1`)
+  because codex deprecation warnings on stderr would otherwise corrupt the
+  JSONL pipe. The runner's manifest entry sets `log_path=<err.log>`,
+  `jsonl_path=<jsonl>`, `answer_path=<out>` per `manifest-contract.md`.
+- Pipefail-safe: codex's exit code is captured via `${PIPESTATUS[1]}` despite the pipe.
 - Manifest writes via `manifest-update.sh` for atomicity.
 
 ## Notes

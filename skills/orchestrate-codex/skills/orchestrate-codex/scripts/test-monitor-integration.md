@@ -1,6 +1,6 @@
 # test-monitor-integration.mjs
 
-Monitor tool smoke harness. Verifies the dispatcher's per-mode Monitor hints parse as JS, carry `--line-buffered` in grep pipes, carry `fflush()` in awk pipes, and stream events live (events arrive within 250 ms of emission, not blocked until producer EOF).
+Smoke harness for the dispatcher. Verifies the per-mode Monitor hints parse as JS, carry the right shape (`codex-monitor.sh` for fleet modes, `tail -F | awk fflush()` for single), have their `timeout_ms` clamped to Monitor's hard ceiling (1h), and that core argv-validation surface (strict parse, concurrency gate, rescue-subset selection) holds.
 
 ## Inputs
 
@@ -8,28 +8,24 @@ Monitor tool smoke harness. Verifies the dispatcher's per-mode Monitor hints par
 node test-monitor-integration.mjs
 ```
 
-No flags. Reads the dispatcher (`orchestrate-codex.mjs`) at the same path; runs 8 scenarios; reports pass/fail.
+No flags. Reads the dispatcher (`orchestrate-codex.mjs`) at the same path; runs 10 scenarios; reports pass/fail.
 
 ## Outputs
 
 ```
-==> Scenario: exec mode hint parseability
-PASS: tool_hint parses as JS
-  description: orchestrate-codex exec fleet (run_id=...)
-  persistent: true
+test-monitor-integration.mjs — orchestrate-codex Monitor + dispatcher harness
 
-==> Scenario: batch mode hint parseability
-PASS: tool_hint parses as JS
+[1] exec mode tool_hint
+  PASS  monitor.tool_hint exists and is a string
+  PASS  tool_hint parses as JS expression
+  ...
 
-...
+[10] selectRescueSubset
+  PASS  failed-only matches failed entries
+  ...
 
-==> Scenario: live-streaming
-PASS: 3 events received within 250ms each (line-buffered confirmed)
-
-==> Scenario: failure-coverage grep
-PASS: filter surfaces all 5 terminal-state lines
-
-PASS: 43   FAIL: 0
+=========================================
+PASS: 57   FAIL: 0
 OK
 ```
 
@@ -39,20 +35,23 @@ OK
 |---|---|
 | 0 | All scenarios pass |
 | 1 | At least one scenario fails (the failure is printed inline) |
+| 2 | Harness crash (uncaught exception) |
 
 ## Scenarios covered
 
-1. **exec mode hint parses as JS.** `new Function("return (" + hint.replace("Monitor","") + ")")()` succeeds.
-2. **batch mode hint parses as JS.**
-3. **single mode hint parses as JS.**
-4. **review mode hint parses as JS.**
-5. **Failure-coverage grep.** Synthetic stream emits success + failure + crash; the filter must surface ALL three (silent failure = bug).
-6. **Line-buffered streaming.** Synthetic stream emits 3 events with 1 s sleeps between; filter must emit each event within 250 ms of its source.
-7. **Awk fflush correctness.** Same pattern but through an awk pipe.
-8. **Monitor-hint quoting safety.** Verifies the dispatcher's hint strings survive shell-injection-resistant quoting.
+1. **exec mode hint parses as JS.** `new Function("return (" + hint.replace("Monitor","") + ")")()` succeeds; the command invokes `codex-monitor.sh`.
+2. **batch mode hint parses as JS.** Same fleet shape as exec.
+3. **single mode hint parses as JS.** Tail through `awk '{ print; fflush(); }'` and `tail -n +1 -F`.
+4. **review mode hint parses as JS.** Same fleet shape as exec.
+5. **Monitor timeout clamp.** Oversized `timeout_ms` (99h input) is clamped to `MONITOR_HARD_MAX_MS = 3,600,000`.
+6. **Monitor-hint quoting safety.** Description with backslashes, double-quotes, and newlines round-trips through `JSON.stringify` cleanly.
+7. **Awk fflush correctness.** A 5-event producer with 100 ms sleeps reaches the consumer with > 200 ms total span — events streamed live, not bunched at producer EOF.
+8. **parseArgsStrict — unknown options error out.** Known flags accepted; `--bogus-flag` produces `error.code="unknown_option"` with the offending flag in the message; stray `-x` short flags rejected.
+9. **resolveConcurrency soft gate + override capture.** Default cap accepted; above-default rejected without `--i-have-measured`; with justification, the override is captured at `{value, justification, set_at}`. Above hard-cap (20) gated identically. Above absolute ceiling (100) rejected unconditionally. Flag wins over `JOBS` env.
+10. **selectRescueSubset.** `failed-only` / `never-started-only` / `all-non-done` / `ids:s1,s2` resolve correctly; unknown ids surface; garbage subset reports invalid.
 
 ## Notes
 
-Run after every dispatcher change to catch regressions in Monitor template hygiene. Pre-flight gate: this passes before the dispatcher ships.
+Run after every dispatcher change to catch regressions in Monitor template hygiene AND argv-validation surface. Pre-flight gate: this passes before the dispatcher ships.
 
-The harness uses `/tmp` stubs for the bash runners and Python helpers (so it doesn't depend on the parallel subagent's output to run). Stubs are documented inline; production users never see them.
+The harness does not need a real codex binary, manifest, or runner — it imports the dispatcher's exported pure functions and exercises them directly.

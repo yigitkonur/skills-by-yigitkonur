@@ -30,8 +30,8 @@ def sh(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
         return 127, "", f"command not found: {cmd[0]}"
 
 
-def find_repo_root() -> Path | None:
-    rc, out, _ = sh(["git", "rev-parse", "--show-toplevel"])
+def find_repo_root(cwd: Path | None = None) -> Path | None:
+    rc, out, _ = sh(["git", "rev-parse", "--show-toplevel"], cwd=cwd)
     return Path(out) if rc == 0 else None
 
 
@@ -146,9 +146,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--cwd", default=None,
+                    help="Override cwd for the `git worktree list` invocation")
     args = ap.parse_args()
 
-    root = find_repo_root()
+    cwd_override = Path(args.cwd) if args.cwd else None
+    root = find_repo_root(cwd_override)
     if root is None:
         print("not inside a git repository", file=sys.stderr)
         return 2

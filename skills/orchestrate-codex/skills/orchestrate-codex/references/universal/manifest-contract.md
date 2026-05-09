@@ -21,22 +21,26 @@ The manifest is the single source of truth for an orchestrate-codex run. Every m
 resolveStateDir(cwd)/orchestrate-codex/manifest.json
 ```
 
-The `<workspace-slug>-<hash>` is computed from cwd using the same algorithm codex-companion's `lib/state.mjs:resolveStateDir(cwd)` uses:
+The `<workspace-slug>-<hash>` is computed from cwd using the same algorithm codex-companion's `lib/state.mjs:resolveStateDir(cwd)` uses (verified against `scripts/codex-cc/lib/state.mjs:38-39`):
 
-- `workspace-slug` = `basename(workspace_root)` sanitized to `[A-Za-z0-9._-]` (other chars → `-`, leading/trailing `-` stripped). Empty result falls back to `workspace`.
-- `hash` = first 16 hex characters of `sha256(realpath(workspace_root))`.
-- State root = `$CLAUDE_PLUGIN_DATA/state` when set; otherwise `${TMPDIR:-/tmp}/codex-companion`.
+- `workspace-slug` = `basename(workspace_root)`, sanitized by replacing every run of characters outside `[a-zA-Z0-9._-]` with a single `-`, then stripping leading/trailing `-`. Empty result falls back to `workspace`. **Implementation note:** `state.mjs` **preserves case** and **allows `.` and `_`**; it does NOT lowercase, does NOT collapse internal `-` runs to a single `-`, and does NOT strip `.`/`_`. Treat the implementation as truth; this contract was reworded to match. (TODO: align spine wording or `state.mjs` if a future iteration tightens the slug rule.)
+- `hash` = first 16 hex characters of `sha256(realpath(workspace_root))`. The `realpath` fallback is the unresolved `workspace_root` if `realpath` errors.
 
 Sharing the slug+hash with codex-companion is intentional: rescue mode correlates manifest entries with codex-companion's `state.json` and `jobs/<id>.json` records under the same `<workspace-slug>-<hash>` directory.
 
-The dispatcher and `bootstrap.sh` both use this algorithm. There is no separate XDG or md5 path.
+Plugin-data resolution has two distinct branches and a per-component fallback:
+
+1. **Orchestrate-codex (this skill, dispatcher + bash runners):** if `${CLAUDE_PLUGIN_DATA}` is set, manifests live at `${CLAUDE_PLUGIN_DATA}/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`. If unset, the documented fallback is `${XDG_DATA_HOME:-$HOME/.local/share}/claude-code/state/<workspace-slug>-<hash>/orchestrate-codex/manifest.json`. If neither resolves writably, the dispatcher surfaces `error.code = "plugin_data_unwritable"` and stops.
+2. **Vendored codex-companion (`scripts/codex-cc/lib/state.mjs`):** if `${CLAUDE_PLUGIN_DATA}` is set, state lives at `${CLAUDE_PLUGIN_DATA}/state/<slug>-<hash>/`. If unset, codex-companion falls back to `${os.tmpdir()}/codex-companion/<slug>-<hash>/` — **not** the XDG path. The asymmetry is intentional in upstream codex-cc and preserved by the vendored copy; rescue mode correlates by `<slug>-<hash>` regardless of which root each component used, but if the two roots diverge (e.g. `CLAUDE_PLUGIN_DATA` set partway through the session) rescue cannot correlate.
+
+The dispatcher and `bootstrap.sh` both use this algorithm. There is no separate XDG or md5 path beyond the documented fallback above. Never use `/tmp` as the manifest path of record yourself — cross-session collisions are silent. The `os.tmpdir()` fallback above is codex-companion's behavior, not the orchestrator's.
 
 ## Top-level schema
 
 ```json
 {
   "schema_version": 1,
-  "run_id": "20260508T182030Z-7q4f",
+  "run_id": "20260508T182030Z-7a4f",
   "mode": "exec",
   "started_at": "2026-05-08T18:20:30Z",
   "updated_at": "2026-05-08T18:42:11Z",
@@ -59,24 +63,42 @@ The dispatcher and `bootstrap.sh` both use this algorithm. There is no separate 
 }
 ```
 
-| Field | Type | Notes |
-|---|---|---|
-| `schema_version` | int | Currently `1`. Rescue refuses to resume a manifest with newer `schema_version` than the skill version. |
-| `run_id` | string | `<UTC ISO compact>-<4-hex>`. `os.urandom(2).hex()` for the suffix; collision-resistant for sub-second double-starts. |
-| `mode` | string | One of `exec | batch | single | review | rescue`. Rescue mode preserves the original mode here. |
-| `started_at` / `updated_at` | ISO 8601 UTC | `started_at` written once; `updated_at` bumped on every mutation. |
-| `workspace_root` | abs path | `git rev-parse --show-toplevel` for git repos; cwd otherwise. |
-| `state_dir` | abs path | `dirname(manifest_path)`. |
-| `base_commit` | sha | Pinned at start. Used by rescue and audit to detect "did the user move main?" |
-| `policy.model` | string | `gpt-5.5` default. Override via env `ORCHESTRATE_CODEX_MODEL`. |
-| `policy.effort` | string | `xhigh` default. Override via env `ORCHESTRATE_CODEX_EFFORT`. |
-| `policy.sandbox` | string | `danger-full-access`. The skill always uses bypass; this field documents what was passed. |
-| `policy.bypass` | bool | `true` always. Documenting the bypass for auditing. |
-| `policy.overrides` | object | Free-form key/value of session overrides recorded for rescue replay. |
-| `concurrency_cap` | int | Mode-specific default; raise via `--concurrency N --i-have-measured`. |
-| `monitor_root` | abs path | Where the runner writes log files; the Monitor command tails files under here. |
-| `paths` | object | Mode-level artifact directories such as `prompts_dir`, `answers_dir`, `rounds_dir`, `audit_report`. |
-| `preflight` | object | Parsed `bootstrap.sh` KEY=VALUE output or `{skipped:true}` in dry-run tests. |
+All ISO 8601 timestamps in this manifest are written by `manifest-update.py` and `manifest-update.sh` at **second precision** with a `Z` suffix and **no fractional seconds, no numeric offset** (e.g. `2026-05-08T18:20:30Z`). Readers should not assume milliseconds.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `schema_version` | int | Yes | Currently `1`. Rescue refuses to resume a manifest with newer `schema_version` than the skill version. |
+| `run_id` | string | Yes | `<UTC ISO compact>-<4-hex>`. `os.urandom(2).hex()` for the suffix (lowercase `[0-9a-f]{4}`); collision-resistant for sub-second double-starts. |
+| `mode` | string | Yes | One of `exec | batch | single | review | rescue`. Rescue mode preserves the original mode here. |
+| `started_at` | ISO 8601 UTC | Yes | Written once at run start. Second precision, `Z` suffix. |
+| `updated_at` | ISO 8601 UTC | No | Bumped on every mutation when the writer chooses to set it. Not written by every helper invocation today; treat as advisory. |
+| `workspace_root` | abs path | Yes | `git rev-parse --show-toplevel` for git repos; cwd otherwise. |
+| `base_commit` | sha \| `""` | Yes | Pinned at start. Empty string for non-git workdirs (batch mode). Used by rescue and audit to detect "did the user move main?" |
+| `policy.model` | string | Yes | `gpt-5.5` default. Override via env `ORCHESTRATE_CODEX_MODEL`. |
+| `policy.effort` | string | Yes | `xhigh` default. Override via env `ORCHESTRATE_CODEX_EFFORT`. |
+| `policy.sandbox` | string | Yes | `danger-full-access`. The skill always uses bypass; this field documents what was passed. |
+| `policy.bypass` | bool | Yes | `true` always. Documenting the bypass for auditing. |
+| `policy.overrides` | object | Yes | Container for session overrides recorded for rescue replay. Concurrency-cap override lands at `policy.overrides.concurrency` (see Concurrency cap section below). |
+| `concurrency_cap` | int | Yes | Mode-specific default (see table below); raise via `--concurrency N --i-have-measured`. |
+| `monitor_root` | abs path | Yes | Where the runner writes log files; the Monitor command tails files under here. |
+| `entries` | array | Yes | One row per task. May be empty during rescue-detect inspection but never absent. |
+| `history` | array | Yes | Append-only audit trail. Empty `[]` is valid at run start. |
+
+### `concurrency_cap` per-mode defaults
+
+The dispatcher (`scripts/orchestrate-codex.mjs:64-69`) seeds `concurrency_cap` from this table when the user does not pass `--concurrency`:
+
+| Mode | Default `concurrency_cap` |
+|---|---|
+| exec | 5 |
+| batch | 10 |
+| single | 1 |
+| review | 4 |
+| rescue | inherits the original mode's cap (read from the manifest being rescued) |
+
+Hard ceiling: `--concurrency > 20` is refused unless `--i-have-measured "<justification>"` is also passed. The justification is recorded in `policy.overrides.concurrency` (see Concurrency below). Absolute ceiling at 100 is refused unconditionally.
+
+`paths` and `preflight` (top-level objects, not in the field table above): `paths` carries mode-level artifact directories such as `prompts_dir`, `answers_dir`, `rounds_dir`, `audit_report`. `preflight` carries parsed `bootstrap.sh` KEY=VALUE output or `{skipped:true}` in dry-run tests. Both are optional, defaulting to `{}`.
 
 ## Entry schema
 
@@ -103,25 +125,26 @@ The dispatcher and `bootstrap.sh` both use this algorithm. There is no separate 
 }
 ```
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string | Stable, unique within the manifest. The runner identifies entries by id. |
-| `slug` | string | Same value as `id` by default; separately settable so display labels can differ from internal ids. |
-| `branch` | string \| null | Top-level branch field for exec/review runners. |
-| `base_branch` | string \| null | Base ref for worktree setup and review. |
-| `prompt_path` | abs path \| null | Prompt file consumed by exec/batch/single runners. |
-| `mode_state` | object | Mode-specific. See per-mode tables below. |
-| `worktree_path` | abs path \| null | Absolute path to the worktree (exec / review). Null for batch / single. |
-| `log_path` | abs path | Per-entry log of stdout+stderr. The runner's per-job redirect target. |
-| `jsonl_path` | abs path | Per-entry JSONL events captured from `codex exec --json`. |
-| `answer_path` | abs path \| null | Output of `codex exec -o <file>`. Null for review (review writes findings JSON). |
-| `status` | enum | Common: `queued | running | done | failed | skipped`. Review adds `converged | blocked | cap_reached`. |
-| `attempts` | int | Incremented on each retry; rescue uses this to detect repeat failures. |
-| `started_at` / `finished_at` | ISO 8601 UTC | `started_at` set on first state-flip to `running`; `finished_at` set on terminal status. |
-| `exit_code` | int \| null | Exit code of the codex spawn (or wrapper). |
-| `last_error` | string \| null | Free-form last-failure reason. Populated on `status="failed"` or as advisory (e.g. `json_event_dropped`). |
-| `codex_thread_id` | string \| null | Captured from the first `thread.started` JSONL event; rescue uses it for `codex exec resume`. |
-| `codex_session_id` | string \| null | Captured for codex-companion correlation. |
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `id` | string | Yes | Stable, unique within the manifest. The runner identifies entries by id. |
+| `slug` | string | Yes | Same value as `id` by default; separately settable so display labels can differ from internal ids. |
+| `branch` | string \| null | No | Top-level branch field for exec/review runners. |
+| `base_branch` | string \| null | No | Base ref for worktree setup and review. |
+| `prompt_path` | abs path \| null | No | Prompt file consumed by exec/batch/single runners. |
+| `mode_state` | object | Yes | Mode-specific. See per-mode tables below. May be `{}` for rescue-amended entries. |
+| `worktree_path` | abs path \| null | Yes | Absolute path to the worktree (exec / review). Null for batch / single. |
+| `log_path` | abs path | Yes | Per-entry log of stdout+stderr. The runner's per-job redirect target. |
+| `jsonl_path` | abs path | Yes | Per-entry JSONL events captured from `codex exec --json`. |
+| `answer_path` | abs path \| null | Yes | Output of `codex exec -o <file>`. Null for review (review writes findings JSON). |
+| `status` | enum | Yes | Common: `queued | running | done | failed | skipped | rescued`. Review adds `converged | blocked | cap_reached`. The enum has no hung-specific value; record hung-process failures as `status="failed"` with `last_error="hung_25min"`. |
+| `attempts` | int | Yes | Incremented on each retry; rescue uses this to detect repeat failures. |
+| `started_at` | ISO 8601 UTC \| null | Yes | Set on first state-flip to `running`. Null while `queued`. Second precision, `Z` suffix. |
+| `finished_at` | ISO 8601 UTC \| null | Yes | Set on terminal status. Null otherwise. Second precision, `Z` suffix. |
+| `exit_code` | int \| null | Yes | Exit code of the codex spawn (or wrapper). Null while non-terminal. |
+| `last_error` | string \| null | Yes | Free-form last-failure reason. Populated on `status="failed"` or as advisory (e.g. `json_event_dropped`, `hung_25min`). |
+| `codex_thread_id` | string \| null | Yes | Captured from the first `thread.started` JSONL event; rescue uses it for `codex exec resume`. |
+| `codex_session_id` | string \| null | Yes | Captured for codex-companion correlation. |
 
 ### Per-mode `mode_state`
 
@@ -180,11 +203,18 @@ The `history` array is append-only. Every status flip appends one record:
   "ts": "2026-05-08T18:21:01Z",
   "entry_id": "01-search-rewrite",
   "from": "queued",
-  "to": "running",
-  "actor": "run-fleet.sh",
-  "reason": null
+  "to": "running"
 }
 ```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `ts` | ISO 8601 UTC | Yes | Second precision, `Z` suffix. |
+| `entry_id` | string | Yes | Matches an `entries[].id`. |
+| `from` | status enum \| null | Yes | Previous status; `null` if entry was just created. |
+| `to` | status enum | Yes | New status. |
+| `actor` | string | **Optional — writers do not currently populate; reserved for future iterations.** Both `manifest-update.py` and `manifest-update.sh` emit only `{ts, entry_id, from, to}`. Audit code must treat the key as missing-by-default. |
+| `reason` | string \| null | **Optional — writers do not currently populate; reserved for future iterations.** Same status as `actor`. |
 
 Use cases:
 - Rescue inspects history to detect oscillation (`failed → queued → failed → queued → ...`).
@@ -249,7 +279,10 @@ Hand-editing the manifest is forbidden. If audit reveals drift, fix via `manifes
 
 Only one run per workspace at a time. The dispatcher checks for an existing manifest at the resolved path; if one exists with non-terminal entries (`queued | running`), it refuses with `error.code="concurrent_run_in_progress"`.
 
-To start another run on the same workspace, wait for the first to finish or rescue/tidy it. This dispatcher does not support multiple active manifests in one state-root.
+To start a second run on the same workspace:
+- Wait for the first to finish (its tidy will delete the manifest).
+- Run rescue mode against the existing manifest (the supported path).
+- Pass `--force-new-run --run-id <custom>` to write a sibling manifest at `manifest.<custom-run-id>.json` in the same state directory. **Implemented** in `orchestrate-codex.mjs` for exec/batch/single. See `references/universal/idempotency.md` for the runner-level race caveats.
 
 ## Recovery
 
@@ -257,7 +290,7 @@ If the manifest is corrupted (e.g. partially-written JSON because the disk fille
 
 1. Run `python3 scripts/audit-fleet-state.py --manifest <path> --json --repair-dry-run`. It reads the manifest with a tolerant parser, lists what's salvageable, and writes a candidate repaired JSON to stdout.
 2. Inspect the candidate. If acceptable, apply with `audit-fleet-state.py --repair-execute`.
-3. If unsalvageable, copy the manifest to `<path>.broken-<timestamp>` and start a fresh run. Surface the broken file path so the user can inspect.
+3. If unsalvageable, copy the manifest to `<path>.broken-<timestamp>`, then **delete the original manifest** so the dispatcher's concurrency gate clears, then start a fresh run via the normal `node scripts/orchestrate-codex.mjs <mode>` invocation (or `--force-new-run --run-id <custom>` if you want the broken manifest preserved at its original path). Surface the broken file path so the user can inspect.
 
 Never silently delete a corrupted manifest. The history may be the only record of what was attempted.
 

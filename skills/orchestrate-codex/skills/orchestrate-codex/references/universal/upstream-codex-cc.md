@@ -38,9 +38,10 @@ Total vendored: 17 files (`codex-companion.mjs`, `app-server-broker.mjs`, 15 `li
 Source: ~/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/
 Version: 1.0.4
 Vendored: 2026-05-08
+codex-cli verified against: 0.130.0 (last test wave; previous version 0.129.0 also exercised)
 ```
 
-Captured in `scripts/codex-cc/UPSTREAM.md`. Bumped on every update.
+Captured in `scripts/codex-cc/UPSTREAM.md`. Bumped on every update. The `codex-cli verified against` line is a record of which CLI versions the vendored `codex-companion.mjs` was last smoke-tested against; bump it when you re-run the smoke tests under §"Behavioral drift" below.
 
 ## The patch
 

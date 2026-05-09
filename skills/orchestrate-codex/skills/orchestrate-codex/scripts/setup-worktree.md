@@ -20,19 +20,27 @@ bash setup-worktree.sh <slug> <branch> [<base>]
 
 ## Outputs
 
-- Worktree at `../<repo>-wt-<slug>`.
-- Symlinks: `node_modules`, `.env.local`, `.env.development` (if present in source).
-- Codegen run: `npx prisma generate` if `prisma/schema.prisma` exists; `pnpm run generate:openapi` if `openapi.yaml` + `package.json` script present; `buf generate` if `proto/` + `buf.yaml`.
-- Marker file `.worktree-setup-complete` in worktree root for re-run detection.
+- Worktree at `../<repo>-wt-<mode>-<slug>` (sibling of the repo). The `<mode>`
+  segment is folded in so two modes targeting the same slug don't collide.
+- Symlinks (relative paths so a moved `<repo-parent>/` tree keeps working):
+  - `node_modules` (when `LINK_NODE_MODULES=1`, the default, AND the source has `node_modules/`)
+  - one env file named by `LINK_ENV_FILE` (default `.env.local`; set
+    `LINK_ENV_FILE=` to skip; alternate names like `.env.development` are
+    enabled by passing `LINK_ENV_FILE=.env.development`)
+- Codegen: `npx --no-install prisma generate` when `prisma/schema.prisma`
+  exists in the source AND `package.json` exists in the worktree (auto-detected
+  unless `PRISMA_GENERATE` is set explicitly).
+- Final stdout breadcrumb `WORKTREE_PATH=<abs path>` (consumed by run-fleet /
+  run-review to capture the resolved path).
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
-| 0 | Worktree ready |
-| 1 | Not a git repo |
-| 2 | Worktree already exists AND `ALLOW_REUSE=0` |
-| 3 | Codegen failed (worktree exists; user investigates) |
+| 0 | Worktree ready (or reused with `ALLOW_REUSE=1`) |
+| 1 | Not a git repo OR worktree already exists with `ALLOW_REUSE=0` |
+| 2 | Base branch unknown (not in local refs or `origin/`) |
+| 3 | `git worktree add` failed |
 
 ## Behavior
 

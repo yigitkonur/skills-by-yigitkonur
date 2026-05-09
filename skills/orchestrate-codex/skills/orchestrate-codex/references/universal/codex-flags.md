@@ -1,6 +1,6 @@
 # Codex CLI flags the skill uses
 
-Authoritative for the installed codex-cli verified during this pass: `codex-cli 0.130.0`. Verify with `codex --help`, `codex exec --help`, and `codex exec review --help`. The skill's `scripts/codex-flags.sh` is the single source of truth for the flag arrays every runner uses; if you find yourself typing `--dangerously-bypass-approvals-and-sandbox` inside a runner, source the helper instead.
+Authoritative for codex-cli **0.130.0** and later (verified during this pass). Verify with `codex --help`, `codex exec --help`, `codex exec review --help`, and `codex review --help`. The skill's `scripts/codex-flags.sh` is the single source of truth for the flag arrays every runner uses; if you find yourself typing `--dangerously-bypass-approvals-and-sandbox` inside a runner, source the helper instead.
 
 ## The hard-wired set (every direct `codex exec` spawn)
 
@@ -18,7 +18,19 @@ codex exec "${CODEX_FLAGS[@]}" --json -o <answer-file> -C <cwd> "<prompt>"
 | `-m gpt-5.5` | Pinned model. The skill is opinionated. Bumping is a one-line edit in `codex-flags.sh`. |
 | `-c model_reasoning_effort=xhigh` | Pinned effort. Same rationale. |
 
-`CODEX_REVIEW_FLAGS` is an alias of `CODEX_FLAGS`. Review mode uses `codex exec review`, not bare `codex review`; in codex-cli 0.130.0 that surface accepts bypass, skip-git, `-m`, `-c`, `--json`, and `-o`.
+### Two review surfaces — different flag sets
+
+Codex exposes review through two distinct entry points and they accept different flags. This is the most common source of confusion.
+
+**`codex exec review` (the surface this skill drives, non-interactive):** accepts the **full** `CODEX_FLAGS` array plus `--json`, `-o`, `--ephemeral`, `--ignore-rules`, `--ignore-user-config`. It is `codex exec` with `review` as the action verb — the parent's flag surface is reused. The `run-review.sh` runner sources `codex-flags.sh` and passes `${CODEX_FLAGS[@]}` directly.
+
+**`codex review` (root command, interactive TUI):** has a much narrower flag surface. This is the only place `CODEX_REVIEW_FLAGS` matters as a safety rail — a thin set the skill exports for the rare case an operator drops out of the orchestrator and wants to launch the TUI manually with the same effort/model policy:
+
+| Flag | Why included in `CODEX_REVIEW_FLAGS` |
+|---|---|
+| `-c model_reasoning_effort=xhigh` | Review benefits from deep reasoning. The TUI reads model from config; effort can still be overridden. |
+
+Always pass `--json` to `codex exec review` for machine-readable findings. The skill never invokes `codex review` (root) programmatically — it is interactive-only by design.
 
 ## Per-spawn additions
 

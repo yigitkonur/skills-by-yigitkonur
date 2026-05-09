@@ -24,7 +24,9 @@ Each mode has a default cap. Raising the cap requires explicit acknowledgement t
 
 ## Soft gate
 
-Raising `JOBS` above the default OR setting `JOBS > 20` (any mode) triggers a stderr warning and requires `--i-have-measured` flag. The justification is recorded in `manifest.policy.cap_override`:
+Raising `JOBS` above the mode default OR setting `JOBS > 20` (any mode) triggers a stderr warning and requires `--i-have-measured` flag at the dispatcher level. The justification is recorded at `manifest.policy.overrides.concurrency` (the canonical write location seeded by `seedManifest()` in `scripts/orchestrate-codex.mjs`):
+
+> **Enforcement asymmetry, important.** Only the dispatcher (`orchestrate-codex.mjs:checkConcurrency`) actually refuses runs that exceed the cap without `--i-have-measured`. The bash runners `run-fleet.sh` and `run-batch.sh` only emit a stderr WARN above 20 (verified at `run-fleet.sh:87-89` and `run-batch.sh:59-61`); they will run at any positive `JOBS`. Bypassing the dispatcher (e.g. invoking `bash scripts/run-fleet.sh` directly with `JOBS=50`) bypasses the gate. Always invoke through `node scripts/orchestrate-codex.mjs <mode>` if you want the safety rail.
 
 ```bash
 JOBS=15 ./run-batch.sh --i-have-measured "60-row batch; gpt-5.5 TPM at 200k; per-job ~2k tokens; sustainable at 15"
@@ -68,7 +70,7 @@ If you hit rate-limit 503s mid-run:
 
 ## Cap-override tracking
 
-Every override is recorded once per entry in `manifest.policy.cap_override.history`:
+Every override is recorded once at `manifest.policy.overrides.concurrency` (single record per run, not a history; rescue replays the same justification):
 
 ```json
 {

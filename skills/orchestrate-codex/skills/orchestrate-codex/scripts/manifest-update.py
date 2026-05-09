@@ -28,12 +28,14 @@ When `status=<v>` appears in an entry update, the script also appends a
 Default mode is **dry-run** — the script prints the resulting manifest to
 stdout and does NOT touch disk. Pass --execute to write it.
 
-Exit codes:
+Exit codes (canonical table — bash sibling agrees):
     0  OK (executed) or DRY-RUN preview rendered cleanly
     1  Dry-run with mutations to apply (caller may want to run --execute)
-    2  Usage error / bad input / manifest missing or malformed
-    3  Environmental error (lock acquisition timeout, permission denied)
+       [python only — bash has no dry-run]
+    2  Usage error / bad input / manifest missing or malformed / entry not found
+    3  Environmental error (lock acquisition timeout, permission denied, write fail)
     4  Hard failure (resulting manifest would be invalid JSON)
+    5  Missing required dependency (bash sibling only — jq)
 """
 
 from __future__ import annotations
@@ -51,8 +53,67 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-NUMERIC_KEYS = {"exit_code", "attempts", "schema_version", "concurrency_cap", "round"}
+NUMERIC_KEYS = {
+    "exit_code", "attempts", "schema_version", "concurrency_cap", "round",
+    # codex-side numeric fields
+    "codex_pid", "post_verify_exit", "answer_size_bytes",
+    "major_count", "minor_count",
+}
 LOCK_TIMEOUT_SECONDS = 30
+
+
+def split_dotted_key(key: str) -> list[str]:
+    """Split a dotted key path into segments.
+
+    Treats `.` as the path separator. Empty segments (e.g. `..` or trailing
+    `.`) are rejected by the caller. Backslash escaping is not supported —
+    manifest keys do not contain literal `.` characters.
+    """
+    return key.split(".")
+
+
+def assign_nested(target: dict, dotted_key: str, value: Any) -> None:
+    """Assign `value` at the nested path `dotted_key` inside `target`.
+
+    Creates intermediate dicts as needed. Refuses to overwrite a non-dict
+    value with a dict (would silently nuke prior data).
+
+    Examples:
+        assign_nested({}, "mode_state.codex_pid", 12345)
+            # {"mode_state": {"codex_pid": 12345}}
+        assign_nested({"a": {"b": 1}}, "a.c", 2)
+            # {"a": {"b": 1, "c": 2}}
+    """
+    parts = split_dotted_key(dotted_key)
+    if not parts or any(p == "" for p in parts):
+        raise SystemExit(f"manifest-update: bad dotted key (empty segment): {dotted_key!r}")
+    cur = target
+    for seg in parts[:-1]:
+        nxt = cur.get(seg)
+        if not isinstance(nxt, dict):
+            if nxt is None:
+                cur[seg] = {}
+                cur = cur[seg]
+            else:
+                raise SystemExit(
+                    f"manifest-update: cannot nest under non-dict at {seg!r} "
+                    f"(in path {dotted_key!r}); existing value type "
+                    f"{type(nxt).__name__}"
+                )
+        else:
+            cur = nxt
+    cur[parts[-1]] = value
+
+
+def read_nested(target: dict, dotted_key: str, default: Any = None) -> Any:
+    """Read a nested value or return default. Used for increment baseline."""
+    parts = split_dotted_key(dotted_key)
+    cur: Any = target
+    for seg in parts:
+        if not isinstance(cur, dict) or seg not in cur:
+            return default
+        cur = cur[seg]
+    return cur
 
 
 def utc_now_iso() -> str:
@@ -80,7 +141,10 @@ def coerce_value(key: str, raw: str) -> tuple[str, Any]:
         except OSError as exc:
             raise SystemExit(f"manifest-update: cannot read @file: {path}: {exc}")
 
-    if key in NUMERIC_KEYS:
+    # For dotted paths the leaf segment determines numeric coercion (e.g.
+    # `mode_state.exit_code` should coerce because the leaf key is exit_code).
+    leaf = key.rsplit(".", 1)[-1]
+    if leaf in NUMERIC_KEYS:
         try:
             if re.fullmatch(r"-?\d+", raw):
                 return "literal", int(raw)
@@ -111,22 +175,29 @@ def parse_set_pairs(pairs: list[str]) -> list[tuple[str, str, Any]]:
 
 def apply_assignments_to_dict(target: dict, assignments: list[tuple[str, str, Any]]) -> None:
     """Mutate `target` in-place by assigning each (key, kind, value).
-    kind in {'literal', 'increment'}. Increment requires existing value
-    (default 0) be numeric-coercible.
+
+    kind in {'literal', 'increment'}. Keys are dotted paths (e.g.
+    'mode_state.codex_pid'); intermediate dicts are auto-created. Increment
+    requires the existing value (default 0) be numeric-coercible.
     """
     for key, kind, value in assignments:
         if kind == "increment":
-            cur = target.get(key, 0)
+            cur = read_nested(target, key, 0)
             try:
                 cur_num = int(cur) if cur is not None else 0
             except (TypeError, ValueError):
                 cur_num = 0
-            target[key] = cur_num + value
+            assign_nested(target, key, cur_num + value)
         else:
-            target[key] = value
+            assign_nested(target, key, value)
 
 
 def find_status_change(assignments: list[tuple[str, str, Any]]) -> Any:
+    """Return the new top-level `status` value from assignments, if present.
+
+    Only top-level `status=` (not nested like `mode_state.status=`) triggers
+    a history-row append.
+    """
     for key, _kind, value in assignments:
         if key == "status":
             return value
@@ -239,14 +310,31 @@ def update_entry(
     return True, old_status, new_status
 
 
-def append_history_row(manifest: dict, entry_id: str, old_status: Any, new_status: Any) -> None:
+def append_history_row(
+    manifest: dict,
+    entry_id: str,
+    old_status: Any,
+    new_status: Any,
+    actor: str | None = None,
+    reason: str | None = None,
+) -> None:
+    """Append one row to manifest.history.
+
+    `actor` defaults to the script basename (`manifest-update.py`).
+    `reason` is `None` unless the caller supplies `--reason`.
+    Both fields are documented in `references/universal/manifest-contract.md:184-191`.
+    """
     if "history" not in manifest or not isinstance(manifest["history"], list):
         manifest["history"] = []
+    if actor is None:
+        actor = os.path.basename(sys.argv[0]) if sys.argv and sys.argv[0] else "manifest-update.py"
     manifest["history"].append({
         "ts": utc_now_iso(),
         "entry_id": entry_id,
         "from": old_status,
         "to": new_status,
+        "actor": actor,
+        "reason": reason,
     })
 
 
@@ -314,6 +402,16 @@ def build_argparser() -> argparse.ArgumentParser:
         default=LOCK_TIMEOUT_SECONDS,
         help=f"Max seconds to wait for the manifest lock. Default {LOCK_TIMEOUT_SECONDS}.",
     )
+    parser.add_argument(
+        "--actor",
+        default=None,
+        help="Override the actor recorded on history rows. Default: script basename.",
+    )
+    parser.add_argument(
+        "--reason",
+        default=None,
+        help="Optional free-form reason recorded on history rows for this update.",
+    )
     return parser
 
 
@@ -352,7 +450,10 @@ def main(argv: list[str] | None = None) -> int:
                     manifest, args.entry, assignments
                 )
                 if old_status != new_status:
-                    append_history_row(manifest, args.entry, old_status, new_status)
+                    append_history_row(
+                        manifest, args.entry, old_status, new_status,
+                        actor=args.actor, reason=args.reason,
+                    )
             else:
                 update_top(manifest, assignments)
                 old_status = new_status = None
@@ -389,7 +490,10 @@ def main(argv: list[str] | None = None) -> int:
                         manifest, args.entry, assignments
                     )
                     if old_status != new_status:
-                        append_history_row(manifest, args.entry, old_status, new_status)
+                        append_history_row(
+                            manifest, args.entry, old_status, new_status,
+                            actor=args.actor, reason=args.reason,
+                        )
                 else:
                     update_top(manifest, assignments)
                     old_status = new_status = None

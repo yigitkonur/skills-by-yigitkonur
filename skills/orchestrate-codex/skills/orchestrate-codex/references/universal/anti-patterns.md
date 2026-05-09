@@ -114,6 +114,18 @@ find prompts -name '*.md' -print0 | xargs -0 -P 4 -n 1 bash -c \
 
 **Right pattern:** The skill is pure orchestration. `bootstrap.sh` runs at dispatch time, not at session start. If the user wants session-end auto-cleanup, install `codex-plugin-cc` separately — its hooks own that surface.
 
+## Cross-cutting prompt-discipline anti-pattern
+
+### Mixing a soft target with a hard ceiling in the same prompt
+
+**Manifests:** "Aim for around 20 lines, but the file MUST NOT exceed 30 lines."
+
+**Cost:** Codex anchors on the soft target ("aim for ~20") and produces output near it; when its first draft exceeds 20 by ~50% it considers itself done at, say, 32 lines — overshooting the hard ceiling. Verified at A10 derailment: a CSS spinner mission with `aim for ~20 + ≤30` landed at 32 lines on the first draft. The soft target dilutes the hard ceiling.
+
+**Right pattern:** State the ceiling, stop. `[ "$(wc -l < FILE)" -le 30 ]` is the BSV success criterion; no soft language anywhere in the prompt about line counts. Cross-link: `references/universal/prompt-discipline.md` Anti-patterns section, "Floor-style language / soft targets diluting hard ceilings."
+
+This belongs in both files because (a) prompt-discipline.md owns the writing-side guidance, and (b) anti-patterns.md is the cross-mode catalogue an agent reads when something derailed; the same lesson must surface from either side.
+
 ## Composite anti-patterns
 
 These combinations are each individually a problem and together a disaster:

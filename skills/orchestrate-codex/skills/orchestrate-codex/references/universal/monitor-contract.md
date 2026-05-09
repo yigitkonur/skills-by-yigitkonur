@@ -15,7 +15,7 @@ The Claude Code Monitor tool is the skill's observability surface. Each fleet ha
 ```
 Monitor({
   description: "<mode> fleet (run_id=<run-id>)",
-  command: "ORCHESTRATE_MANIFEST=<manifest-path> bash <skill-root>/scripts/codex-monitor.sh",
+  command: "ORCHESTRATE_MANIFEST=<manifest-path> ORCHESTRATE_QUIET_AFTER=1 bash <skill-root>/scripts/codex-monitor.sh | grep -E --line-buffered '(streak:[0-9]+x|agent-done-committed|manifest-changed|fleet-quiet|^--- fleet quiet ---)'",
   persistent: true,
   timeout_ms: 300000
 })
@@ -25,6 +25,8 @@ Monitor({
 - `command` runs continuously until killed. Stdout lines become notifications. Stderr is logged but does not notify.
 - `persistent: true` means the Monitor lives until the session ends or `TaskStop` is called. `timeout_ms` is required by the schema but ignored when `persistent: true` — pass `300000` as convention.
 - `persistent: false` for run-single mode (bounded duration), with `timeout_ms` set to the expected wall-clock cap.
+- `ORCHESTRATE_QUIET_AFTER=1` (or any value ≥ 1) is required for the script to emit the `--- fleet quiet ---` terminal sentinel; the default (0) means the script never auto-exits. See "Per-mode Monitor commands → exec mode" below.
+- The grep filter above is a known-good coverage filter keyed on the script's actual flag vocabulary (`streak:Nx`, `agent-done-committed`, `manifest-changed`, `fleet-quiet`) plus the terminal sentinel. Drop it if you want every per-tick line through; keep it when notification volume must be tight.
 
 ## The two load-bearing rules
 
@@ -45,25 +47,36 @@ Test before shipping: feed your filter a synthetic stream that crashes mid-strea
 ### exec mode
 
 ```bash
-ORCHESTRATE_MANIFEST=<manifest> bash <skill-root>/scripts/codex-monitor.sh
+ORCHESTRATE_MANIFEST=<manifest> ORCHESTRATE_QUIET_AFTER=1 \
+    bash <skill-root>/scripts/codex-monitor.sh
 ```
 
-`codex-monitor.sh` reads the manifest every tick (default 60 s) and prints:
+`codex-monitor.sh` reads the manifest every tick (default 30 s, override with `CODEX_MONITOR_INTERVAL`) and prints exactly one line per tick (one notification each):
 
 ```
-<UTC-iso>  procs=codex:N/wrap:M  m=q:Q/r:R/d:D/f:F  base=<sha7> note=<note>  flags=<flags>  :: <per-entry summary>
+HH:MM:SSZ procs=codex:N commits=main:M/all:A manifest=[queued=Q running=R done=D failed=F skipped=S reviewed=V total=T] (note) [flag1,flag2,...] :: <worktree-summary>
 ```
 
-- `procs` = live `codex exec` parents and `run-fleet.sh` per-task wrappers.
-- `m=` = manifest counts (queued / running / done / failed).
-- `base=` = baseline SHA tail.
-- `note=` = ad-hoc note (e.g. "main-dirty:N", "size-drift:+Nfiles").
-- `flags=` = action signals: `silent-edit`, `agent-done-committed`, `streak:6x`, `main-dirty:N`, `size-drift:+Nfiles`.
+Field-by-field — verified against `scripts/codex-monitor.sh:222`:
+
+- `procs=codex:N` — live `codex exec` parents (`pgrep -f 'codex exec'`). There is **no** `wrap:M` count and there is no `base=<sha7>` field on the tick line.
+- `commits=main:M/all:A` — commits since the pinned baseline on `HEAD` (`M`) and across all refs (`A`).
+- `manifest=[...]` — full manifest counts (`queued`, `running`, `done`, `failed`, `skipped`, `reviewed`, `total`). When no manifest is set, the field reads `manifest=[manifest=none]`.
+- `(note)` — ad-hoc parenthesized note. Possible notes: `(idle)`, `(working/no-commit-yet)`, `(+Ncommit)`. The note is **inline parentheses**, not a `note=<value>` k=v field.
+- `[flag1,flag2]` — action signals. Canonical flag vocabulary (verified at `scripts/codex-monitor.sh:196,199,203,208`):
+  - `streak:Nx` — N consecutive ticks with the same parenthesized note. Fires when N reaches `CONSEC_WARN_AT` (default 3). The literal `streak:6x` will appear at the sixth identical tick — but `streak:3x`, `streak:4x`, `streak:5x` etc. all fire on their respective ticks. Filter on the prefix `streak:`, not on a specific count.
+  - `agent-done-committed` — `procs=codex:0` AND `all_commits` advanced this tick.
+  - `manifest-changed` — manifest summary string differs from the prior tick.
+  - `fleet-quiet` — manifest is all-terminal AND `procs=codex:0`. When `ORCHESTRATE_QUIET_AFTER>0`, this flag also drives auto-exit (see Stopping a Monitor below).
+- `:: <worktree-summary>` — per-worktree `<name>=<commits>c/<dirty>d` pairs (e.g. `myrepo-wt-exec-foo=2c/0d`). Reads `wts=0` when no worktrees exist.
 
 The agent acts on flags:
 - `agent-done-committed` → review and (optionally) merge that branch.
-- `streak:6x` → check the agent's log for rate-limit 503s or rumination.
-- `main-dirty:N` → fix immediately; nothing else should touch main during parallel exec.
+- `streak:` (any N≥3 by default) → check the agent's log for rate-limit 503s or rumination.
+- `manifest-changed` → re-read the manifest; some entry transitioned status.
+- `fleet-quiet` → all entries terminal; consider `TaskStop` and run `audit-fleet-state.py`.
+
+**Flags the doc previously listed but the script does NOT emit:** `silent-edit`, `main-dirty:N`, `size-drift:+Nfiles`. Filters keyed on these will match zero events. They were aspirational and remain unimplemented — do not depend on them.
 
 ### batch mode
 
@@ -137,10 +150,16 @@ Without these, a 4 KB pipe buffer means events arrive in batches separated by mi
 
 | Method | When |
 |---|---|
-| `TaskStop` | When the agent decides to release the Monitor (typically after `--- all jobs finished ---`). |
+| `TaskStop` | When the agent decides to release the Monitor (typically after `fleet-quiet` or `--- all jobs finished ---`). |
 | Session end | All Monitors die with the Claude session. |
-| Command exits naturally | If the watched script exits, the Monitor closes. `tail -F` does NOT exit on its own — the file just stops growing. Always `TaskStop` after manifest is terminal. |
+| Command exits naturally | If the watched script exits, the Monitor closes. `tail -F` does NOT exit on its own — the file just stops growing. `codex-monitor.sh` only auto-exits when `ORCHESTRATE_QUIET_AFTER>0` AND the fleet has been quiet (terminal + no codex procs) for that many consecutive ticks; without it the script loops forever. Always `TaskStop` after manifest is terminal. |
 | Auto-kill for volume | The system kills Monitors that emit too many events. Tighten the filter and re-arm. Volume budget is hidden but well below 1 line/second sustained. |
+
+### Terminal sentinels per mode
+
+- **exec / review** (`codex-monitor.sh`): `--- fleet quiet ---` is emitted on stdout **only when** `ORCHESTRATE_QUIET_AFTER` is set to a positive integer AND the fleet has been quiet for that many consecutive ticks (see `scripts/codex-monitor.sh:43, 231-233`). Default is `0` = never auto-exit. Set `ORCHESTRATE_QUIET_AFTER=1` (or higher to debounce) when you want a terminal sentinel; otherwise rely on the `fleet-quiet` flag inside per-tick lines and `TaskStop` from the agent.
+- **batch** (`codex-monitor.sh --tail-runner-log`): `--- all jobs finished ---` is emitted by `run-batch.sh` itself when the runner exits. The Monitor sees it as a regular tail line.
+- **single**: filter sees `[TURN<]` followed by codex exit; no special sentinel — the runner exits and `tail -F` stays attached. `TaskStop` after the runner pid disappears.
 
 ## Forbidden patterns
 
@@ -165,7 +184,11 @@ codex-json-filter.sh --level normal    # add [CMD>], [CMD✓], [TURN<]
 codex-json-filter.sh --level verbose   # add [THINK], [FILE], full command output
 ```
 
-`codex-monitor.sh` accepts `INTERVAL=N` (seconds between ticks; default 60).
+`codex-monitor.sh` accepts:
+- `CODEX_MONITOR_INTERVAL=N` — seconds between ticks (default 30).
+- `CONSEC_WARN_AT=N` — number of identical-note ticks before `streak:Nx` flag fires (default 3).
+- `ORCHESTRATE_QUIET_AFTER=N` — fleet-quiet ticks before the loop emits `--- fleet quiet ---` and exits (default 0 = never auto-exit).
+- `MONITOR_ROOT=<dir>` — log directory (default `/tmp/orchestrate-codex-monitor`).
 
 For batch mode the `MIN_BYTES` env var controls the `[SMALL]` flag threshold (default 10000 bytes).
 

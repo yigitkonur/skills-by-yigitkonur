@@ -4,7 +4,7 @@
 
 ## Event types and their payloads
 
-Authoritative for codex-cli 0.129.0+. Verify with a smoke test if codex bumps:
+Authoritative for codex-cli 0.129.0–0.130.0. Verify with a smoke test if codex bumps:
 
 ```bash
 codex exec --dangerously-bypass-approvals-and-sandbox --json --skip-git-repo-check \
@@ -77,19 +77,32 @@ Reads JSONL on stdin, emits one human-readable line per event with a UTC timesta
 02:08:30Z [TURN<] tokens: in=8234 out=1567 cached=1200
 ```
 
-Verbosity levels:
+Verbosity levels — verified by walking the `case` statement in `scripts/codex-json-filter.sh:89-166`:
 
-| Level | Includes |
+| Level | Tags emitted |
 |---|---|
-| `minimal` | `[START]`, `[SAID]`, `[ERR]` only |
-| `normal` (default) | minimal + `[CMD>]`, `[CMD✓]`, `[TURN<]` |
-| `verbose` | normal + `[THINK]`, `[FILE]`, `[MCP>]`, full `aggregated_output` |
+| `minimal` | `[START]`, `[CMD>]`, `[CMD✓]` (exit-0 short form), `[CMD✗]`, `[SAID]`, `[TURN<]`, `[ERR]` |
+| `normal` (default) | minimal + `[TURN>]`, `[THINK]`, `[FILE]`, `[ITEM>]` (item.started for non-command items), `[ITEM<]` (item.completed for `mcp_tool_call` / `dynamic_tool_call` / `web_search` / `plan_update` / `todo_list`) |
+| `verbose` | normal + `[?] <type>` (unknown event types) + `[CMD✓]` extended form (with command output tail), and `[ITEM<] <type>` for any other item type |
 
-Set via `--level <minimal|normal|verbose>` flag or `LEVEL=verbose` env.
+Notes on the table — each row reflects what `scripts/codex-json-filter.sh` actually emits:
+- `[CMD>]`, `[CMD✓]`, `[CMD✗]` are emitted at every level (the `command_execution` arm has no level guard at lines 103, 117, 124). The previous doc claimed they were `normal`-only — that was wrong.
+- `[THINK]` and `[FILE]` are emitted at `normal` and `verbose` (the `reasoning` and `file_change` arms gate on `[[ "$LEVEL" != "minimal" ]]` at lines 128, 140). The previous doc claimed they were `verbose`-only — also wrong.
+- `[SAID]` is **first-line-only**: line 137 takes the first non-empty line of `item.text` via `awk 'NF { print; exit }'`. For multi-line structured outputs (JSON / YAML / TOML), Monitor surfaces a useless `[SAID] {` or `[SAID] ---`. **Do not validate structured deliverables from Monitor `[SAID]` lines — parse the `-o` file directly.**
+- `[ERR]` at the top level (`error` event) is correct, but **`item.completed` events with `item.type=error` (codex deprecation warnings, item-level errors) are silently dropped at every level** — the `case "$item_type"` block at lines 111-148 has no `error)` arm. Until the script is patched, expect these to surface only via `-o` content, the `*.err.log` stderr capture, or by post-run `jq` over the JSONL file.
+
+Set via `CODEX_FILTER_LEVEL=minimal|normal|verbose` env. The script does **not** parse argv — a `--level <…>` flag passed on the command line is silently ignored.
 
 ## Line buffering
 
-The filter uses `awk '{...; fflush();}'` and `grep --line-buffered` whenever it pipes through grep. Without these, a 4 KB pipe buffer means events arrive in batches separated by minutes. Test before shipping any custom filter:
+The filter is implemented as a bash `while IFS= read -r raw; do … jq … printf …; done` loop (see `scripts/codex-json-filter.sh:58-167`). It does **not** use `awk` or `fflush()`. Buffering works because:
+- `read -r` consumes one line at a time, so JSONL input lands in the loop as it arrives.
+- `jq` is invoked once per line on the parsed event.
+- `printf` to a downstream pipe writes one line per call; no intermediate stdio buffer is held inside the loop.
+
+If you stack additional filter stages (`grep`, `awk`, `sed`) on top of this filter's stdout, you must still pass `--line-buffered` / `fflush()` / `stdbuf -oL` per the rules in `monitor-contract.md`. The filter itself is naturally line-flushed; downstream stages are not.
+
+Test before shipping any custom filter:
 
 ```bash
 ( for i in 1 2 3; do printf '{"type":"item.completed","item":{"type":"agent_message","text":"line %d"}}\n' "$i"; sleep 1; done ) \
@@ -108,7 +121,7 @@ python3 manifest-update.py --manifest "$MANIFEST" --entry "$slug" \
     --set "codex_thread_id=$thread_id"
 ```
 
-Rescue uses `codex_thread_id` to invoke `codex exec resume <id>` for single-mode entries.
+**Planned — single-mode rescue currently re-runs from scratch.** The `codex_thread_id` is captured into the manifest, but `scripts/run-single.sh` (lines 130, 136) only ever calls a fresh `codex exec`; `handleRescue` in `scripts/orchestrate-codex.mjs` classifies and exits without re-dispatching. Until the dispatcher is wired up, an operator who needs context-preserving resume must invoke `codex exec resume <id>` manually outside the skill. See `references/universal/failure-modes.md` rescue rows for the full surface.
 
 ## Capturing token usage
 

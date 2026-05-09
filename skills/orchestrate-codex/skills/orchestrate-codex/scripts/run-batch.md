@@ -4,23 +4,29 @@ Batch mode bounded-concurrency runner. Iterates `prompts/*.md`, fans out via `xa
 
 ## Inputs
 
+Both flag-style and env-style invocations work; flags win when both are given.
+
 ```bash
-bash run-batch.sh --manifest <path> --prompts-dir <dir> --answers-dir <dir> --logs-dir <dir> [--concurrency N] [--only id,id] [--dry-run]
+# Flag-style (preferred for one-off invocations)
+bash run-batch.sh --manifest <path> --prompts-dir <p> --answers-dir <a> \
+                  [--logs-dir <l>] [--concurrency N] [--min-bytes N] [--dry-run]
+
+# Env-style (preferred when the dispatcher spawns the runner)
+PROMPTS=p ANSWERS=a LOGS=l JOBS=N MIN_BYTES=N \
+  ORCHESTRATE_MANIFEST=<path> bash run-batch.sh
 ```
 
-| Arg/env | Default | Notes |
-|---|---|---|
-| `--manifest <path>` | required | Path to orchestrate-codex manifest |
-| `--inputs <file>` | n/a | Accepted for dispatcher compatibility; render already happened before runner start. |
-| `--template <tmpl>` | n/a | Accepted for dispatcher compatibility; runtime reads from `--prompts-dir`. |
-| `--prompts-dir <dir>` | `prompts/` | Rendered prompt files. |
-| `--answers-dir <dir>` | `answers/` (relative to workdir) | Where atomic answer files land |
-| `--logs-dir <dir>` | `logs/` | Per-input JSONL/log files. |
-| `--runner-log <file>` | unset | Optional combined runner log for `audit-sizes.sh`. |
-| `--audit-report <file>` | unset | If set, `audit-sizes.sh` runs after all jobs finish and writes here. |
-| `--only id,id` | unset | Rescue subset replay. |
-| `JOBS=N` / `--concurrency N` | 10 | Soft gate above 20 |
-| `MIN_BYTES=N` | 10000 | Floor for `[SMALL]` flag in stdout |
+| Flag | Env | Default | Notes |
+|---|---|---|---|
+| `--manifest <path>` | `ORCHESTRATE_MANIFEST` | unset | Path to orchestrate-codex manifest. Required for manifest writes; absent is a valid no-manifest mode. |
+| `--prompts-dir <p>` | `PROMPTS` | `./prompts` | Source of `*.md` prompt files |
+| `--answers-dir <a>` | `ANSWERS` | `./answers` | Where atomic answer files land |
+| `--logs-dir <l>` | `LOGS` | `./logs` | Per-job `<slug>.log` and `<slug>.jsonl` |
+| `--concurrency N` | `JOBS` | `10` | Soft warn above 20 |
+| `--min-bytes N` | `MIN_BYTES` | `10000` | Floor for `[SMALL]` flag and `mode_state.below_floor` |
+| `--dry-run` | `DRY_RUN=1` | off | Print planned commands; do not invoke codex |
+| `--inputs <file>` | n/a | accepted-and-ignored | Used only at seed time (the dispatcher renders prompts before invoking the runner). |
+| `--template <tmpl>` | n/a | accepted-and-ignored | Same — used at seed time. |
 
 ## Outputs
 
@@ -52,9 +58,23 @@ Manifest mutations: same shape as run-fleet.sh; `mode_state.answer_size_bytes` a
 
 ## Behavior
 
-- Skip-existing guard: `[ -s answers/<slug>.md ]` short-circuits only when the manifest entry is already `done`. Rescue can replay a failed id even if an old answer file exists.
-- Atomic answer move: codex writes to `mktemp -t answers-<slug>.XXXXXX`; only after exit 0 AND non-empty does the runner `mv -f` to the canonical path.
-- Pairs `--json` with `-o <tmp>`: the temp is the source of truth for "did codex produce output." JSONL events flow to the `.jsonl` log for forensics.
+- Skip-existing guard: `[ -s answers/<slug>.md ]` short-circuits before spawn. Re-running the runner is safe.
+- **SKIP preserves `done`**: when the answer already exists, the runner only
+  flips manifest status to `skipped` if the prior status was `queued` (or
+  empty / unset). A pre-existing `done` entry is left as `done` — this avoids
+  silently demoting completed work on a re-run.
+- Atomic answer move: codex writes to `<answers-dir>/<slug>.partial`; only
+  after exit 0 AND non-empty does the runner `mv -f` to `<slug>.md`. Crashes
+  leave no `<slug>.md`, so the next run retries. (Filename uses **no leading
+  dot** so `find` and `ls` show partial files plainly.)
+- Pairs `--json` with `-o <tmp>`: the temp is the source of truth for "did codex produce output." JSONL events flow to `<logs-dir>/<slug>.jsonl`; stderr (auth errors, deprecation warnings) goes to `<logs-dir>/<slug>.log` so the JSONL pipeline stays parseable.
+- **Per-entry path fields**: `log_path`, `jsonl_path`, `answer_path` are
+  populated on every entry on the same write that flips status to `running`
+  (per `manifest-contract.md`). `mode_state.answer_size_bytes` and
+  `mode_state.below_floor` are populated when the answer lands cleanly.
+- **Signal handling**: `trap 'kill 0' TERM INT EXIT` runs near the top so SIGTERM
+  on the runner propagates to xargs and every codex child. No orphan codex
+  processes survive a runner kill.
 - No retries; re-run for retries (rescue mode).
 
 ## Notes

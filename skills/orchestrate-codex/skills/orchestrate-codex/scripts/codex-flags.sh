@@ -39,11 +39,18 @@ CODEX_FLAGS=(
   -c "model_reasoning_effort=$CODEX_EFFORT"
 )
 
-# `codex exec review` is the review surface this skill uses. In codex-cli
-# 0.130.0 it accepts the same bypass, skip-git, model, effort, --json, and -o
-# policy as direct `codex exec`, so review runners use CODEX_FLAGS too. This
-# alias is kept for callers that source the helper and expect a review-named
-# array.
-CODEX_REVIEW_FLAGS=("${CODEX_FLAGS[@]}")
+# Bare `codex review` (the root subcommand, NOT `codex exec review`) accepts
+# a narrower flag set: no --skip-git-repo-check, no -o, no --json, no -m. It
+# only accepts `-c key=value`. CODEX_REVIEW_FLAGS is the safety rail for that
+# rare invocation.
+#
+# `codex exec review`, despite its name, accepts the SAME flag surface as
+# plain `codex exec` per codex-cli 0.130 — `--dangerously-bypass-approvals-
+# and-sandbox`, `--skip-git-repo-check`, `-m`, `--json`, `-o`, `--ephemeral`,
+# etc. all work. The skill's `run-review.sh` uses `codex exec review` and
+# expands the full `${CODEX_FLAGS[@]}`, NOT this narrower array.
+CODEX_REVIEW_FLAGS=(
+  -c "model_reasoning_effort=$CODEX_EFFORT"
+)
 
 export CODEX_MODEL CODEX_EFFORT CODEX_FLAGS CODEX_REVIEW_FLAGS

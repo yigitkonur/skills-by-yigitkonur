@@ -18,7 +18,6 @@ The prompt is the single lever between dispatch and result. A vague prompt with 
 
 - <hard fact 1>
 - <hard fact 2>
-- <out-of-scope: do NOT touch X / Y / Z>
 
 # Success criteria
 
@@ -77,21 +76,39 @@ Compliant:
 - ≥ 3 commits on the branch.
 - File `db/migrations/<timestamp>_add_users.sql` exists.
 - Function `getUserSession()` in `lib/auth.ts` accepts `tenantId: string` as a parameter.
+- `[ "$(wc -l < FILE)" -le 30 ]` is true (size-budget ceiling).
+- Output file has exactly N lines (verify: `wc -l <file>` reports N).
+- `grep -c '<pattern>' FILE` returns exactly N (presence-count ceiling/floor).
 
 Non-compliant (banned):
 - "Code is clean."
 - "Performance is acceptable."
 - "Error handling is good."
 - "Tests are comprehensive."
+- "Aim for ~20 lines" (soft target; codex anchors on the soft number and ignores the hard ceiling).
+- "Keep it short" / "around N entries" (interpretable, not binary).
+
+Size-budget anti-patterns (count-once is fragile):
+- **Stating a count once is fragile.** If the deliverable is "exactly N rows", restate N in Constraints AND Success criteria AND Failure protocol. Single-shot LLMs lose count over long outputs; redundancy across three sections is cheap insurance.
+- **Mixing soft target with hard ceiling.** Codex anchors on the soft target. State only the hard ceiling, e.g. `≤30 lines`, never `aim for 20`. Pick one number. State it three times.
+- **Pair counts with executable checks.** `wc -l`, `awk NF` count, `grep -c` — give codex the exact command it must run before declaring success, and require the output in the success report.
 
 ### Out-of-scope — explicit non-goals
 
-Codex defaults to "while I'm here, also fix...". Out-of-scope items prevent that drift:
+Codex defaults to "while I'm here, also fix...". Out-of-scope items prevent that drift. Two distinct patterns:
 
+**Scope-fence** ("do NOT touch existing X"):
 - Do NOT refactor unrelated functions in the same file.
 - Do NOT update doc files unless explicitly asked.
 - Do NOT add new dependencies.
 - Do NOT modify the existing public API shape.
+
+**Categorical-exclusion** ("do NOT use language/feature Y at all"):
+- Do NOT use any `<script>` tag. Do NOT use inline JavaScript event handlers. Do NOT use `javascript:` URLs. Do NOT use any framework — pure HTML+CSS only.
+- Do NOT use `eval`, `Function`, or any dynamic code execution.
+- Do NOT use external CDN imports — every byte of the deliverable must be in the file.
+
+These two patterns read differently to codex. Scope-fence says "don't touch what already exists"; categorical-exclusion says "don't use this technique anywhere in the new work". Treating them as equivalent risks under-armed prompts for "build X without Y" missions. For categorical-exclusion, list every plausible loophole (`<script>` AND inline handlers AND `javascript:` URLs) — a single line is weaker than a triple-redundant ban.
 
 The Out-of-scope section is the single most underrated leverage in the prompt. Skip it and codex inflates the diff 2-3x.
 
@@ -104,6 +121,17 @@ If you cannot satisfy success criteria: stop, write a `.fleet-failure-<task-id>.
 ```
 
 The `.fleet-failure-*.md` marker is read by `audit-fleet-state.py` and surfaces in the manifest as `last_error`. This makes failure observable without ambiguity.
+
+**Failure protocol — mode-specific shapes.** The example above is exec-mode shape. Each mode has its own clean-exit signal that downstream tooling reads. **The per-mode template is authoritative for this section.** Do not generalize across modes:
+
+| Mode | Failure signal | Reader |
+|---|---|---|
+| exec | `.fleet-failure-<task-id>.md` in the worktree root, exit non-zero | `audit-fleet-state.py` → manifest `last_error` |
+| single | summary in the last-message (`-o`) file, exit non-zero | manifest `exit_code` + `-o` content |
+| batch | 5-line "could not research" output (no marker file) | `audit-sizes.sh` flags below-floor outputs |
+| review | single line `REVIEW_BLOCKED: <reason>` to stdout | `classify-review-feedback.py` |
+
+When writing a prompt, copy the Failure protocol verbatim from the matching template; do not rewrite it from this doc's exec-mode example.
 
 ## SUBAGENT-STOP prefix (exec mode only)
 

@@ -2,6 +2,8 @@
 
 Inspect an existing manifest, classify each entry's true state, then re-spawn an explicit subset through the original mode's runner.
 
+> **Status: read-only classification today.** `handleRescue` (`scripts/orchestrate-codex.mjs`) reads the manifest, runs `rescue-detect.py` (or a fallback bucket count), and emits an envelope describing what's redo-able. It **does not currently re-spawn**, **does not flip entries to `queued`**, and **does not perform pre-rescue cleanup.** The "Pre-rescue cleanup" and "Re-spawn" sections below describe **Planned** behavior; each section also shows the working manual sequence for today.
+
 ## When rescue triggers
 
 - A prior orchestrate-codex run ended with non-terminal entries.
@@ -26,8 +28,8 @@ If `--manifest` omitted, the dispatcher resolves from cwd via the universal slug
 1. Manifest path resolved and parses.
 2. `manifest.schema_version <= skill_schema_version`. If newer, refuse with "skill upgrade needed."
 3. `manifest.mode` field present and valid (`exec | batch | single | review`).
-4. If redispatching `unknown` entries, user passes `--accept-stale`. Older manifests may reference deleted branches, removed files, or codex-companion job records that have aged out (MAX_JOBS=50 prune).
-5. Original mode's runner preflight runs at redispatch time.
+4. Manifest freshness ≤ 7 days OR user passes `--accept-stale`. Older manifests may reference deleted branches, removed files, or codex-companion job records that have aged out (MAX_JOBS=50 prune). Redispatching any `unknown` entry also requires `--accept-stale` regardless of manifest age.
+5. Original mode's pre-flight runs at redispatch time. For modes that surface a `codex login status` check (single, batch, review pre-flights describe one), treat it as a soft warning — warn unless `~/.codex/config.toml` declares no `model_provider`, then proceed.
 
 ## Classification flow
 
@@ -65,7 +67,7 @@ Output (JSON):
 
 ## Redispatch decision
 
-After classification, the dispatcher emits a JSON envelope with redispatch options embedded. To act, rerun with one explicit bucket:
+After classification, the dispatcher emits a JSON envelope with the classification and redispatch options embedded. The envelope's `next_action` is a structured `ask_user_question` object — the orchestrator should surface a 3-option `AskUserQuestion` to the user. To act on the user's choice, rerun with one explicit bucket:
 
 ```bash
 node orchestrate-codex.mjs rescue --manifest <path> --redo failed
@@ -73,28 +75,82 @@ node orchestrate-codex.mjs rescue --manifest <path> --redo never-started
 node orchestrate-codex.mjs rescue --manifest <path> --redo all-non-done --accept-stale
 ```
 
+Sample question shape:
+
+```
+Which subset do you want to redo?
+  - Redo failures only (1 entry: 02-config-editor)
+  - Redo never-started only (1 entry: 04-alert-fsm)
+  - Redo all non-done (2 entries: 02-config-editor, 04-alert-fsm)
+```
+
+The orchestrator should always offer a fourth implicit option: **decline** the AskUserQuestion (the user cancels). Don't add a literal "Stop" option to the question itself — the envelope only describes three. If the user wants to stop, they cancel.
+
+Never auto-pick. Rescue is operator-confirmed.
+
 ## Pre-rescue cleanup
 
-For each entry the user chose to redo, the runner does:
+**Planned — not yet wired.** The current `handleRescue` is read-only and does none of the steps below. They describe the intended future behavior.
 
 1. **`in_flight` with stale pid.** `kill -TERM <pid>`; wait; `kill -KILL` if alive; mark entry `last_error="killed_by_rescue"`.
 2. **Stale worktree (exec/review mode).** If `worktree_path` exists in manifest but `git worktree list` doesn't show it: `git worktree prune`; recreate via `setup-worktree.sh`.
 3. **Dirty worktree (exec/review mode).** `git -C <wt> stash --include-untracked`; record stash ref into `manifest.entries[i].mode_state.pre_rescue_stash`. Do NOT abandon work silently.
-4. **Stale partial answer (batch mode).** `rm -f answers/<slug>.partial` or any `<slug>.tmp`. Skip-existing guard reads `answers/<slug>.md` (the canonical path), so partials shouldn't matter, but clean for hygiene.
-5. **Stale codex thread.** If `codex_thread_id` is present, the rescue can pass it to `codex exec resume <id>` for single-mode entries. For exec/batch/review, start fresh (no resume).
+4. **Stale partial answer (batch mode).** `rm -f answers/.<slug>.partial`. The runner writes its in-flight temp file at `answers/.<slug>.partial` (leading dot — see `run-batch.sh`); the canonical answer path is `answers/<slug>.md`. Partials are atomic-renamed away on success, so they only linger after a crash.
+5. **Stale codex thread.** If `codex_thread_id` is present, future rescue may pass it to `codex exec resume <id>` for single-mode entries. For exec/batch/review, start fresh (no resume).
 
-After cleanup, flip the entry to `queued`, clear `started_at` / `finished_at` / `exit_code` / `last_error`, and append a history row. The runner increments `attempts` when the new attempt starts.
+After cleanup, the planned behavior is to flip the chosen entries to `queued`, increment `attempts`, clear `started_at` / `finished_at` / `exit_code` / `last_error`, and append a history row for the cleanup + flip. None of this is wired today.
+
+### Manual workaround (today)
+
+```bash
+# 1. Inspect what classifier saw.
+node orchestrate-codex.mjs rescue --manifest /abs/path/to/manifest.json
+# (read the envelope; note which entries are failed / never-started / in-flight.)
+
+# 2. For in-flight with stale pid:
+kill -TERM <pid> 2>/dev/null; sleep 2; kill -KILL <pid> 2>/dev/null || true
+
+# 3. For dirty worktrees:
+git -C <worktree-path> stash push --include-untracked -m "pre-rescue stash <id>"
+bash scripts/manifest-update.sh entry <manifest> <id> \
+    "mode_state.pre_rescue_stash=$(git -C <worktree-path> rev-parse stash@{0})"
+
+# 4. For batch-mode partials:
+rm -f answers/.<slug>.partial
+
+# 5. Flip chosen entries back to queued so the runner picks them up.
+bash scripts/manifest-update.sh entry <manifest> <id> \
+    status=queued exit_code= finished_at= last_error=
+
+# 6. Re-invoke the original mode's runner manually.
+```
 
 ## Re-spawn
 
-Rescue does not re-implement the runners. It dispatches the original mode's runner with the chosen subset of entries marked `queued`. Skip-existing guards do the rest:
+**Planned — not yet wired.** The intended behavior is for rescue to dispatch the original mode's runner with the chosen subset of entries marked `queued`, letting the skip-existing guards take care of everything else. Today, after manually flipping entries to `queued`, you re-invoke the runner yourself:
 
-- exec mode: `bash run-fleet.sh --manifest <path> --only <ids>`.
-- batch mode: `bash run-batch.sh --manifest <path> --only <ids>` with the manifest's prompt/answer/log dirs.
-- single mode: re-spawns the one selected entry via `run-single.sh`.
-- review mode: `bash run-review.sh --manifest <path> --only <ids>`.
+```bash
+# exec mode (positional manifest, runner reads JOBS / etc. from env):
+bash scripts/run-fleet.sh /abs/path/to/manifest.json
 
-The user's chosen subset's entries are flipped to `queued` first; everything else stays as-is.
+# batch mode (env-var invocation; see batch.md "Standalone runner"):
+JOBS=10 PROMPTS=./prompts ANSWERS=./answers LOGS=./logs \
+    ORCHESTRATE_MANIFEST=/abs/path/to/manifest.json \
+    bash scripts/run-batch.sh
+
+# single mode:
+bash scripts/run-single.sh \
+    --manifest /abs/path/to/manifest.json \
+    --entry-id single \
+    --prompt-file <prompt> \
+    --cwd <cwd> \
+    --out <answer-path>
+
+# review mode (one round at a time; see review.md):
+bash scripts/run-review.sh /abs/path/to/manifest.json <round-number>
+```
+
+The skip-existing guards in each runner mean entries already at `done` are passed over; only the freshly-`queued` ones run.
 
 ## Edge cases
 
@@ -105,14 +161,16 @@ The user's chosen subset's entries are flipped to `queued` first; everything els
 | All entries are `done` | Print "nothing to rescue" and exit cleanly. Manifest can be tidied. |
 | All entries are `unknown` | Surface; the codex-companion state aged out. Rescue can still try (filesystem signals only) but warn the user the context is limited. |
 | Manifest references a worktree path that no longer exists AND no stash recorded | Treat as `never_started` for that entry; recreate via setup-worktree.sh on dispatch. |
-| Manifest references a branch that no longer exists locally OR remotely | Surface; ask user to recreate the branch from `codex_thread_id` (if present) or to skip the entry. |
+| Manifest references a branch that no longer exists locally OR remotely | Surface; ask user to recreate the branch (from local reflog, from a teammate's fork, from scratch) or to skip the entry. The `codex_thread_id` field is recorded for diagnostic purposes; it does **not** today reconstruct branch state — `codex exec resume` replays the thread but does not regenerate git refs. |
 | Manifest is older than 7 days | Surface freshness warning; user passes `--accept-stale` to proceed. Old manifests may reference deleted branches, ignored issues, or aged-out codex-companion state. |
 | User chose "redo all non-done" but `unknown` entries exist | Treat `unknown` as `failed` for redispatch purposes. Log the assumption in history. |
 | The original mode is not implemented in this skill version | Refuse; surface the manifest's mode field and the supported modes. Skill upgrade or downgrade needed. |
 
 ## Success gate
 
-Rescue inherits the original mode's success gate:
+For today's read-only rescue, the success gate is just: classifier exited 0, envelope was emitted, and the user picked a subset (or declined). The actual redispatch — and the inherited per-mode terminal gates below — kick in once you've manually flipped entries and re-invoked the original runner.
+
+Once redispatch is wired (or after manual redispatch), rescue inherits the original mode's success gate:
 - exec / batch / single: every chosen entry reaches a terminal status (`done` or `failed`); the original cleanup runs.
 - review: every chosen branch reaches a terminal state (`converged` / `cap_reached` / `blocked` / `failed`).
 

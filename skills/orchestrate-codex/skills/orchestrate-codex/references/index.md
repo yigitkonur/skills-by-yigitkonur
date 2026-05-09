@@ -2,6 +2,8 @@
 
 Cross-reference of every reference file in this skill. The spine routes to references by purpose; this index routes by topic.
 
+> **Reading the mode references:** each `modes/*.md` file is the recipe for one mode. Where the runtime currently implements only part of a recipe, the doc marks the gap with **Planned — not yet wired** plus the working manual workaround for today. Trust the Planned markers — aspirational behavior is preserved for the next implementation pass, but the runtime will not produce it.
+
 ## By topic
 
 | Topic | File | Modes that read it |

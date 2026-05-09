@@ -13,8 +13,11 @@ Read-only. Never modifies state.
 
 Usage:
     classify-review-feedback.py --review-json <path>
+    classify-review-feedback.py --input <path>            (alias for --review-json)
     classify-review-feedback.py --review-json <path> --policy <policy.json>
     classify-review-feedback.py --review-json <path> --json
+    classify-review-feedback.py --review-json <path> --output <path>
+        # Writes the partitioned {major[], minor[], counts} JSON to <path>.
 
 Exit codes:
     0  ≥1 major item — caller continues the review loop
@@ -271,12 +274,26 @@ def render_text(result: dict) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--review-json", required=True,
-                    help="Path to normalized review-round JSON")
+    # Accept both `--review-json` (canonical) and `--input` (legacy/doc alias).
+    ap.add_argument(
+        "--review-json", "--input",
+        dest="review_json", required=True,
+        help="Path to normalized review-round JSON",
+    )
     ap.add_argument("--policy", default=None,
                     help="Path to policy.json overrides")
     ap.add_argument("--json", action="store_true",
-                    help="Emit JSON instead of text")
+                    help="Emit JSON to stdout instead of text")
+    ap.add_argument(
+        "--output", "--out",
+        dest="output", default=None,
+        help="Optional: write the JSON partition to <path> (still prints to "
+             "stdout unless combined with --quiet).",
+    )
+    ap.add_argument(
+        "--quiet", action="store_true",
+        help="Suppress stdout output (useful with --output).",
+    )
     args = ap.parse_args()
 
     try:
@@ -297,10 +314,20 @@ def main() -> int:
     policy = load_policy(args.policy)
     result = classify_review(review, policy)
 
-    if args.json:
-        print(json.dumps(result, indent=2, default=str))
-    else:
-        print(render_text(result))
+    if args.output:
+        try:
+            with open(args.output, "w") as f:
+                json.dump(result, f, indent=2, default=str)
+                f.write("\n")
+        except OSError as e:
+            print(f"failed to write --output: {e}", file=sys.stderr)
+            return 2
+
+    if not args.quiet:
+        if args.json:
+            print(json.dumps(result, indent=2, default=str))
+        else:
+            print(render_text(result))
 
     has_major = result["summary"]["major_n"] > 0 or result["summary"]["unclassified_n"] > 0
     return 0 if has_major else 1

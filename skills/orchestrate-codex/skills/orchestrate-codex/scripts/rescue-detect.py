@@ -194,6 +194,101 @@ def worktree_has_commits_past_base(wt: str, base_commit: str | None) -> bool | N
         return None
 
 
+def _fs_fallback_paths(entry: dict, mode: str | None,
+                       workspace_root: Path, monitor_root: str | None,
+                       answers_dir_hint: str | None) -> tuple[str, str]:
+    """Derive `(log_path, answer_path)` from filesystem when the manifest
+    entry has them as null. Used for batch and (best-effort) single mode.
+
+    For batch:
+      - answer_path: <workspace_root>/answers/<slug>.md (run-batch.sh default)
+                     or <answers_dir_hint>/<slug>.md
+      - log_path:    <monitor_root>/logs/<slug>.log     (per-run-id subdir
+                     varies; we glob the simple form first, then look one
+                     directory deeper).
+
+    Returns paths (possibly empty strings) the caller can stat.
+    """
+    log_path = entry.get("log_path") or ""
+    answer_path = entry.get("answer_path") or ""
+
+    if log_path and answer_path:
+        return log_path, answer_path
+
+    slug = entry.get("slug") or entry.get("id")
+    if not slug:
+        return log_path, answer_path
+
+    if not answer_path and mode == "batch":
+        candidates: list[Path] = []
+        if answers_dir_hint:
+            candidates.append(Path(answers_dir_hint) / f"{slug}.md")
+        candidates.append(workspace_root / "answers" / f"{slug}.md")
+        if monitor_root:
+            candidates.append(Path(monitor_root) / "answers" / f"{slug}.md")
+        for cand in candidates:
+            try:
+                if cand.is_file() and cand.stat().st_size > 0:
+                    answer_path = str(cand)
+                    break
+            except OSError:
+                continue
+
+    if not log_path and mode == "batch":
+        log_candidates: list[Path] = []
+        if monitor_root:
+            log_candidates.append(Path(monitor_root) / "logs" / f"{slug}.log")
+            # also consider one nested level (run-id subdir)
+            mr = Path(monitor_root)
+            try:
+                if mr.is_dir():
+                    for sub in mr.glob("logs/*/{}.log".format(slug)):
+                        log_candidates.append(sub)
+            except OSError:
+                pass
+        log_candidates.append(workspace_root / "logs" / f"{slug}.log")
+        for cand in log_candidates:
+            try:
+                if cand.is_file():
+                    log_path = str(cand)
+                    break
+            except OSError:
+                continue
+
+    return log_path, answer_path
+
+
+def _log_shows_clean_exit(log_path: str) -> bool | None:
+    """Best-effort: does the log file end with a codex success marker?
+
+    Returns True if a clean exit pattern is detected, False if a non-zero
+    pattern is detected, None if uncertain. Used to override status=failed
+    when filesystem evidence disagrees.
+    """
+    if not log_path:
+        return None
+    try:
+        with open(log_path, "rb") as f:
+            try:
+                f.seek(-4096, os.SEEK_END)
+            except OSError:
+                f.seek(0)
+            tail = f.read().decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    low = tail.lower()
+    # `--- all jobs finished ---` is run-batch.sh's success sentinel.
+    if "all jobs finished" in low:
+        return True
+    if "codex exit 0" in low or '"exit_code": 0' in low:
+        return True
+    if re.search(r"codex exit [1-9]\d*", low):
+        return False
+    if re.search(r'"exit_code"\s*:\s*[1-9]\d*', low):
+        return False
+    return None
+
+
 def classify_entry(
     entry: dict,
     cc_jobs: dict[str, dict],
@@ -201,6 +296,9 @@ def classify_entry(
     mode: str | None,
     now: float,
     stale_secs: int,
+    workspace_root: Path | None = None,
+    monitor_root: str | None = None,
+    answers_dir_hint: str | None = None,
 ) -> dict:
     """Apply the rescue classification rules.
 
@@ -219,8 +317,19 @@ def classify_entry(
     status = entry.get("status")
     exit_code = entry.get("exit_code")
     wt = entry.get("worktree_path") or ""
+
+    # Filesystem-fallback for batch entries with null answer/log paths.
     log_path = entry.get("log_path") or ""
     answer_path = entry.get("answer_path") or ""
+    fs_fallback_used = False
+    if (not log_path or not answer_path) and workspace_root is not None:
+        derived_log, derived_answer = _fs_fallback_paths(
+            entry, mode, workspace_root, monitor_root, answers_dir_hint
+        )
+        if derived_log != log_path or derived_answer != answer_path:
+            fs_fallback_used = True
+        log_path = derived_log
+        answer_path = derived_answer
 
     log_size = file_size(log_path)
     log_mtime = file_mtime(log_path)
@@ -238,7 +347,13 @@ def classify_entry(
 
     wt_committed = worktree_has_commits_past_base(wt, base_commit)
 
-    sid = entry.get("codex_session_id") or entry.get("codex_thread_id")
+    # Try codex_session_id first (cc-companion's job id), fall back to
+    # codex_thread_id (batch never sets session_id).
+    sid = (
+        entry.get("codex_session_id")
+        or entry.get("codex_thread_id")
+        or None
+    )
     cc = cc_jobs.get(sid) if sid else None
     cc_pid = cc.get("pid") if cc else None
     cc_alive = pid_alive(cc_pid) if cc_pid else None
@@ -252,6 +367,7 @@ def classify_entry(
     # ----- Apply rules -----
     classification = "unknown"
     reason = None
+    warnings: list[str] = []
 
     if status == "done":
         # done: log present, answer non-empty if applicable, committed past base if exec
@@ -268,12 +384,37 @@ def classify_entry(
             classification = "unknown"
             reason = reason or "status=done but evidence is missing"
 
-    elif status == "failed":
-        classification = "failed"
-        reason = "status=failed"
-    elif (exit_code is not None) and isinstance(exit_code, (int, float)) and exit_code != 0:
-        classification = "failed"
-        reason = f"exit_code={exit_code}"
+    elif status == "skipped":
+        # `skipped` is a terminal-OK status (e.g. batch found a pre-existing
+        # non-empty answer). For redispatch purposes it's equivalent to done.
+        classification = "done"
+        reason = "status=skipped (treated as done for redispatch)"
+
+    elif status == "failed" or (
+        (exit_code is not None) and isinstance(exit_code, (int, float)) and exit_code != 0
+    ):
+        # Cross-check: if the manifest says failed but the worktree carries
+        # commits past base AND the log shows a clean codex exit, the failure
+        # marker may be stale (writer crashed before flipping status). Surface
+        # as `unknown` with a warning instead of silently treating as failure.
+        log_clean = _log_shows_clean_exit(log_path)
+        if (
+            wt_committed is True
+            and log_clean is True
+        ):
+            classification = "unknown"
+            reason = (
+                "status=failed but worktree has commits past base AND log "
+                "shows codex exit 0 — manifest writer may have crashed before "
+                "status flip; verify before redispatching"
+            )
+            warnings.append(reason)
+        elif status == "failed":
+            classification = "failed"
+            reason = "status=failed"
+        else:
+            classification = "failed"
+            reason = f"exit_code={exit_code}"
 
     elif status == "queued":
         if not log_present and (mode != "exec" or not wt_present):
@@ -309,9 +450,34 @@ def classify_entry(
             classification = "in_flight"
             reason = "pid alive, log presence undetermined"
 
+    elif status == "rescued":
+        # `rescued` is a terminal status (rescue mode replayed and superseded
+        # this entry). Treated as done for redispatch purposes.
+        classification = "done"
+        reason = "status=rescued (terminal; treated as done)"
+
     else:
         classification = "unknown"
         reason = f"unrecognized status: {status!r}"
+
+    # Filesystem-fallback inference for batch entries: when the manifest
+    # entry has null log/answer paths but evidence on disk says the work
+    # finished, surface a soft hint. Don't override an explicit `failed`.
+    if (
+        mode == "batch"
+        and fs_fallback_used
+        and answer_present
+        and classification not in ("done", "failed", "in_flight")
+    ):
+        warnings.append(
+            f"manifest paths null but found {answer_path} ({answer_size}B) "
+            f"on filesystem — promoted to done"
+        )
+        classification = "done"
+        reason = (
+            "filesystem fallback: answer file present and non-empty "
+            "despite null/missing manifest paths"
+        )
 
     recommended_action = {
         "done":          "skip (already complete)",
@@ -321,13 +487,14 @@ def classify_entry(
         "unknown":       "operator-decision (gather logs, then choose)",
     }[classification]
 
-    return {
+    result: dict = {
         "id": eid,
         "slug": entry.get("slug"),
         "manifest_status": status,
         "exit_code": exit_code,
         "classification": classification,
         "reason": reason,
+        "warnings": warnings,
         "recommended_action": recommended_action,
         "evidence": {
             "log_path": log_path,
@@ -339,14 +506,26 @@ def classify_entry(
             "worktree_present": wt_present,
             "worktree_dirty": wt_dirty,
             "worktree_committed_past_base": wt_committed,
-            "codex_session_id": sid,
+            "codex_session_id": entry.get("codex_session_id"),
+            "codex_thread_id": entry.get("codex_thread_id"),
+            "correlation_id": sid,
             "cc_pid": cc_pid,
             "cc_pid_alive": cc_alive,
             "cc_status": cc_status,
             "cc_updated_at": cc_updated_at,
             "cc_age_seconds": int(cc_age) if cc_age is not None else None,
+            "fs_fallback_used": fs_fallback_used,
         },
     }
+
+    # For single mode, surface a `codex exec resume <thread-id>` hint when
+    # the entry carries a thread id. Callers (orchestrator) use this to build
+    # a one-line action without re-deriving from evidence.
+    thread_id = entry.get("codex_thread_id")
+    if mode == "single" and thread_id:
+        result["resume_hint"] = f"codex exec resume {thread_id}"
+
+    return result
 
 
 def main() -> int:
@@ -390,16 +569,29 @@ def main() -> int:
     # function below mirrors codex-companion's `fs.realpathSync.native` +
     # JS-side catch fallback exactly; pre-resolving here would diverge for
     # symlinked roots like /tmp on macOS or for missing paths.
-    workspace_root = (
-        Path(args.workspace_root) if args.workspace_root
-        else Path.cwd()
-    )
+    #
+    # Workspace-root resolution priority:
+    #   1. explicit --workspace-root
+    #   2. manifest.workspace_root (when present)
+    #   3. cwd
+    workspace_root_source = "cwd"
+    if args.workspace_root:
+        workspace_root = Path(args.workspace_root)
+        workspace_root_source = "flag"
+    elif isinstance(manifest.get("workspace_root"), str) and manifest["workspace_root"]:
+        workspace_root = Path(manifest["workspace_root"])
+        workspace_root_source = "manifest"
+    else:
+        workspace_root = Path.cwd()
+
     repo_root = find_repo_root(workspace_root)
     cc_state = codex_companion_state_dir(repo_root if repo_root else workspace_root)
     cc_jobs = load_codex_companion_jobs(cc_state)
 
     base_commit = manifest.get("base_commit")
     mode = manifest.get("mode")
+    monitor_root = manifest.get("monitor_root")
+    answers_dir_hint = manifest.get("answers_dir")  # set by some dispatcher paths
     now = time.time()
     stale_secs = max(1, args.stale_tick_seconds * args.stale_multiplier)
 
@@ -408,7 +600,10 @@ def main() -> int:
         if not isinstance(entry, dict):
             continue
         classified.append(classify_entry(
-            entry, cc_jobs, base_commit, mode, now, stale_secs
+            entry, cc_jobs, base_commit, mode, now, stale_secs,
+            workspace_root=workspace_root,
+            monitor_root=monitor_root,
+            answers_dir_hint=answers_dir_hint,
         ))
 
     counts = {"done": 0, "failed": 0, "never_started": 0, "in_flight": 0, "unknown": 0}
@@ -424,12 +619,19 @@ def main() -> int:
         if c["classification"] in ("failed", "never_started", "unknown")
     ]
 
+    # Aggregate per-entry warnings into a top-level list for callers.
+    aggregated_warnings: list[str] = []
+    for c in classified:
+        for w in c.get("warnings") or []:
+            aggregated_warnings.append(f"[{c['id']}] {w}")
+
     out = {
         "manifest_path": str(manifest_path),
         "manifest_run_id": manifest.get("run_id"),
         "manifest_mode": mode,
         "manifest_base_commit": base_commit,
         "workspace_root": str(workspace_root),
+        "workspace_root_source": workspace_root_source,
         "repo_root": str(repo_root) if repo_root else None,
         "codex_companion_state_dir": str(cc_state),
         "codex_companion_state_present": cc_state.is_dir(),
@@ -441,6 +643,7 @@ def main() -> int:
             "never_started_only": redispatch_never_started_only,
             "all_non_done": redispatch_all_non_done,
         },
+        "warnings": aggregated_warnings,
         "entries": classified,
     }
 

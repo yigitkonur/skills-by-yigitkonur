@@ -25,7 +25,6 @@ YOU ARE A CODING AGENT. SKIP ALL META-SKILLS. DO NOT READ SKILL FILES. DO NOT WR
 
 - <language strictness, e.g. TypeScript strict + exactOptionalPropertyTypes>
 - <framework conventions, e.g. TanStack Query, follow existing return shapes>
-- <out-of-scope: do NOT touch X / Y / Z>
 - <one concern per commit>
 
 # Success criteria
@@ -35,10 +34,19 @@ YOU ARE A CODING AGENT. SKIP ALL META-SKILLS. DO NOT READ SKILL FILES. DO NOT WR
 - ≥ <N> commits on the worktree's branch
 - <specific file/function exists with the documented shape>
 
+# Out-of-scope
+
+- Do NOT touch <X / Y / Z>
+- Do NOT refactor unrelated functions in the same file
+- Do NOT add new dependencies
+- Do NOT update doc files unless explicitly asked
+
 # Failure protocol
 
 If you cannot satisfy success criteria: stop, write a `.fleet-failure-<task-id>.md` in the worktree root with the reason, exit non-zero. Do not improvise. Do not partial-commit.
 ```
+
+Note: the Failure protocol shape above is exec-mode specific (the `.fleet-failure-*.md` marker is read by `audit-fleet-state.py`). This per-mode template is authoritative for that section; see `references/universal/prompt-discipline.md` §"Failure protocol — mode-specific shapes".
 
 ## Why each section
 
@@ -47,6 +55,7 @@ If you cannot satisfy success criteria: stop, write a `.fleet-failure-<task-id>.
 - **Discovery** — concept-level guidance, not search-query guidance. The agent picks the right grep.
 - **Constraints** — hard facts the agent treats as walls. Use this for "do NOT" rules.
 - **Success criteria** — BSV (binary, specific, verifiable). Every line should be runnable as a check, not interpretable as "good enough."
+- **Out-of-scope** — explicit non-goals. Codex defaults to "while I'm here, also fix..."; this section is the single most underrated leverage in the prompt.
 - **Failure protocol** — gives the agent a clean exit when blocked. The `.fleet-failure-*.md` marker is read by `audit-fleet-state.py` and surfaces in the manifest as `last_error`.
 
 ## What to leave OUT

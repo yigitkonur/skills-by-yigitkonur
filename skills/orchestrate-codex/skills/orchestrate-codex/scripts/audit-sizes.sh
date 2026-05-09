@@ -14,9 +14,13 @@
 #   audit-sizes.sh [ANSWERS_DIR] [LOG] [MIN_BYTES]
 #
 # Inputs (positional or env):
-#   ANSWERS_DIR / $1   answers dir (default: ./answers)
-#   LOG / $2           runner log path (default: ./logs/_runner.log)
-#   MIN_BYTES / $3 / $MIN_BYTES   absolute floor (default: 10000)
+#   ANSWERS_DIR / $1                answers dir (default: ./answers)
+#   LOG / $2 / $LOG                 runner log path (default: ./logs/_runner.log).
+#                                   When the dispatcher manages the run, the
+#                                   runner stdout is redirected to
+#                                   ${monitor_root}/logs/<run_id>/_runner.log
+#                                   — set LOG= explicitly to that path.
+#   MIN_BYTES / $3 / $MIN_BYTES     absolute floor (default: 10000)
 #
 # Exit codes: 0 audit ran (regardless of flags), 1 ANSWERS_DIR not found.
 

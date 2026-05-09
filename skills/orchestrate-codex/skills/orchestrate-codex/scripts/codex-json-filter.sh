@@ -8,34 +8,100 @@
 # buffered when stdout is a pipe to another program that reads line-by-line,
 # which is the Monitor case).
 #
+# Implementation: pure bash `while read` loop with `jq` invoked per line.
+# (Earlier doc revisions referred to an awk + fflush impl; that was never
+# accurate.) The bash impl flushes naturally because `printf` writes one line
+# at a time and there is no intermediate stdio buffer between us and the pipe.
+#
 # Usage:
 #   codex exec --dangerously-bypass-approvals-and-sandbox --json <args> "<prompt>" 2>&1 \
-#     | codex-json-filter.sh
+#     | codex-json-filter.sh [--level <minimal|normal|verbose>]
 #
-# Inputs (env):
+# Inputs:
+#   --level <name>       same as CODEX_FILTER_LEVEL; CLI flag wins over env.
 #   CODEX_FILTER_LEVEL   minimal | normal (default) | verbose
-#                        minimal: [START] [CMD>] [CMD✓/✗] [SAID] [TURN<] [ERR]
-#                        normal : + [TURN>] [THINK] [ITEM>]
-#                        verbose: + command output tail on success, [?] for
-#                                 unknown event types.
+#                        Tags emitted at each level (strict subset relation
+#                        minimal ⊂ normal ⊂ verbose):
+#                          minimal: [START] [CMD>] [CMD✓] [CMD✗] [SAID]
+#                                   [TURN<] [ERR]
+#                          normal : minimal + [TURN>] [THINK] [FILE] [ITEM>]
+#                                   [ITEM<]
+#                          verbose: normal  + [?] (unknown event types) and
+#                                   command-output tail on [CMD✓]
+#                        ([ITEM>] is item.started, [ITEM<] is item.completed
+#                        for item types we don't have a dedicated tag for.)
 #   CODEX_FILTER_MAXLEN  max chars per emitted line (default: 200)
 #
-# Event schema (codex-cli 0.129.x; verified live):
+# Exit codes:
+#   0  EOF on stdin (codex finished) OR downstream closed pipe (SIGPIPE).
+#   1  Internal error (rare).
+#   2  Bad CLI flag.
+#
+# SIGPIPE: when a downstream consumer (e.g. `head`, the Monitor) closes the
+# pipe, the filter exits 0. The PIPE trap converts the signal into a clean
+# `exit 0`; every emit is wrapped so the loop also exits cleanly if `printf`
+# returns EPIPE before the signal is delivered.
+#
+# Event schema (codex-cli 0.130.x; verified live):
 #   thread.started    { type, thread_id }
 #   turn.started      { type }
 #   item.started      { type, item: { id, type, command?, status, aggregated_output, exit_code } }
-#   item.completed    { type, item: { id, type, text|command|aggregated_output, exit_code, status, phase? } }
+#   item.completed    { type, item: { id, type, text|command|aggregated_output|message, exit_code, status, phase? } }
 #   turn.completed    { type, usage: { input_tokens, cached_input_tokens, output_tokens } }
 #   error             { type, message } or { error: { message } }
 #
 # Known item.type values: command_execution, reasoning, agent_message,
 #   todo_list, file_change, mcp_tool_call, dynamic_tool_call, web_search,
-#   plan_update.
+#   plan_update, error.
 
 set -uo pipefail
 
+# SIGPIPE handling: when a downstream reader (`head`, the Monitor, etc.)
+# closes the pipe we want to exit 0 cleanly — not 141, which would propagate
+# under callers using `set -o pipefail`. The trap converts the signal into
+# a clean exit; the `emit` wrapper handles the EPIPE-before-signal race.
+trap 'exit 0' PIPE
+
 LEVEL="${CODEX_FILTER_LEVEL:-normal}"
 MAXLEN="${CODEX_FILTER_MAXLEN:-200}"
+
+# Parse CLI flags. Only --level is honored; everything else errors out.
+# In the documented pipeline `codex exec --json | codex-json-filter.sh`
+# argv is empty, so this loop is a no-op for the common case.
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --level)
+      LEVEL="${2:-normal}"
+      shift 2
+      ;;
+    --level=*)
+      LEVEL="${1#--level=}"
+      shift
+      ;;
+    -h|--help)
+      sed -n '2,55p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *)
+      printf 'codex-json-filter: unknown flag %s\n' "$1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$LEVEL" in
+  minimal|normal|verbose) ;;
+  *)
+    printf 'codex-json-filter: invalid --level %s (expected minimal|normal|verbose)\n' "$LEVEL" >&2
+    exit 2
+    ;;
+esac
+
+# Single emission point. Suppresses EPIPE stderr noise and exits 0 if the
+# downstream pipe is gone — both belt and suspenders next to `trap PIPE`.
+emit() {
+  printf '%s\n' "$1" 2>/dev/null || exit 0
+}
 
 trunc() {
   local s="$1"
@@ -60,7 +126,7 @@ while IFS= read -r raw; do
   # Surface error-shaped lines so the Monitor sees rate limits / 503s.
   if [[ "$raw" != \{* ]]; then
     if printf '%s' "$raw" | grep -qiE 'error|503|rate limit|failed|timeout'; then
-      printf '%s [ERR] %s\n' "$(ts)" "$(trunc "$(oneline "$raw")")"
+      emit "$(ts) [ERR] $(trunc "$(oneline "$raw")")"
     fi
     continue
   fi
@@ -75,6 +141,7 @@ while IFS= read -r raw; do
       exit: (.item.exit_code // ""),
       output: (.item.aggregated_output // ""),
       text: (.item.text // ""),
+      item_msg: (.item.message // ""),
       phase: (.item.phase // ""),
       thread: (.thread_id // ""),
       err_msg: (.error.message // .message // ""),
@@ -89,20 +156,20 @@ while IFS= read -r raw; do
   case "$type" in
     thread.started)
       thread="$(printf '%s' "$parsed" | jq -r .thread)"
-      printf '%s [START] thread=%s\n' "$(ts)" "${thread:0:8}"
+      emit "$(ts) [START] thread=${thread:0:8}"
       ;;
 
     turn.started)
-      [[ "$LEVEL" != "minimal" ]] && printf '%s [TURN>] model-turn begin\n' "$(ts)"
+      [[ "$LEVEL" != "minimal" ]] && emit "$(ts) [TURN>] model-turn begin"
       ;;
 
     item.started)
       item_type="$(printf '%s' "$parsed" | jq -r .item_type)"
       if [[ "$item_type" == "command_execution" ]]; then
         cmd="$(printf '%s' "$parsed" | jq -r .cmd)"
-        printf '%s [CMD>] %s\n' "$(ts)" "$(trunc "$(oneline "$cmd")")"
+        emit "$(ts) [CMD>] $(trunc "$(oneline "$cmd")")"
       elif [[ "$LEVEL" != "minimal" ]]; then
-        printf '%s [ITEM>] %s starting\n' "$(ts)" "$item_type"
+        emit "$(ts) [ITEM>] $item_type starting"
       fi
       ;;
 
@@ -114,36 +181,42 @@ while IFS= read -r raw; do
           cmd="$(printf '%s' "$parsed" | jq -r .cmd)"
           if [[ -n "$exit_code" && "$exit_code" != "0" ]]; then
             out="$(printf '%s' "$parsed" | jq -r .output)"
-            printf '%s [CMD✗] exit=%s %s :: %s\n' "$(ts)" "$exit_code" \
-              "$(trunc "$(oneline "$cmd")")" "$(trunc "$(oneline "$out")")"
+            emit "$(ts) [CMD✗] exit=$exit_code $(trunc "$(oneline "$cmd")") :: $(trunc "$(oneline "$out")")"
           elif [[ "$LEVEL" == "verbose" ]]; then
             out="$(printf '%s' "$parsed" | jq -r .output)"
-            printf '%s [CMD✓] %s :: %s\n' "$(ts)" \
-              "$(trunc "$(oneline "$cmd")")" "$(trunc "$(oneline "$out")")"
+            emit "$(ts) [CMD✓] $(trunc "$(oneline "$cmd")") :: $(trunc "$(oneline "$out")")"
           else
-            printf '%s [CMD✓] exit=0 %s\n' "$(ts)" "$(trunc "$(oneline "$cmd")")"
+            emit "$(ts) [CMD✓] exit=0 $(trunc "$(oneline "$cmd")")"
           fi
           ;;
         reasoning)
           if [[ "$LEVEL" != "minimal" ]]; then
             text="$(printf '%s' "$parsed" | jq -r .text)"
             first_line="$(printf '%s' "$text" | awk 'NF { print; exit }')"
-            printf '%s [THINK] %s\n' "$(ts)" "$(trunc "$first_line")"
+            emit "$(ts) [THINK] $(trunc "$first_line")"
           fi
           ;;
         agent_message)
           text="$(printf '%s' "$parsed" | jq -r .text)"
           first_line="$(printf '%s' "$text" | awk 'NF { print; exit }')"
-          printf '%s [SAID] %s\n' "$(ts)" "$(trunc "$first_line")"
+          emit "$(ts) [SAID] $(trunc "$first_line")"
+          ;;
+        error)
+          # codex emits item.completed{type:error} for things like config
+          # deprecation warnings. They're real errors per the Monitor
+          # contract — surface them at every level.
+          msg="$(printf '%s' "$parsed" | jq -r .item_msg)"
+          [[ -z "$msg" ]] && msg="(no message)"
+          emit "$(ts) [ERR] $(trunc "$(oneline "$msg")")"
           ;;
         file_change)
-          [[ "$LEVEL" != "minimal" ]] && printf '%s [FILE] %s\n' "$(ts)" "$item_type"
+          [[ "$LEVEL" != "minimal" ]] && emit "$(ts) [FILE] $item_type"
           ;;
         mcp_tool_call|dynamic_tool_call|web_search|plan_update|todo_list)
-          [[ "$LEVEL" != "minimal" ]] && printf '%s [ITEM<] %s\n' "$(ts)" "$item_type"
+          [[ "$LEVEL" != "minimal" ]] && emit "$(ts) [ITEM<] $item_type"
           ;;
         *)
-          [[ "$LEVEL" == "verbose" ]] && printf '%s [ITEM<] %s\n' "$(ts)" "$item_type"
+          [[ "$LEVEL" == "verbose" ]] && emit "$(ts) [ITEM<] $item_type"
           ;;
       esac
       ;;
@@ -152,16 +225,18 @@ while IFS= read -r raw; do
       tin="$(printf '%s' "$parsed" | jq -r .usage_in)"
       tout="$(printf '%s' "$parsed" | jq -r .usage_out)"
       tcached="$(printf '%s' "$parsed" | jq -r .usage_cached)"
-      printf '%s [TURN<] tokens: in=%s out=%s cached=%s\n' "$(ts)" "$tin" "$tout" "$tcached"
+      emit "$(ts) [TURN<] tokens: in=$tin out=$tout cached=$tcached"
       ;;
 
     error|*.error)
       msg="$(printf '%s' "$parsed" | jq -r .err_msg)"
-      printf '%s [ERR] %s\n' "$(ts)" "$(trunc "$(oneline "$msg")")"
+      emit "$(ts) [ERR] $(trunc "$(oneline "$msg")")"
       ;;
 
     *)
-      [[ "$LEVEL" == "verbose" ]] && printf '%s [?] %s\n' "$(ts)" "$type"
+      [[ "$LEVEL" == "verbose" ]] && emit "$(ts) [?] $type"
       ;;
   esac
 done
+
+exit 0

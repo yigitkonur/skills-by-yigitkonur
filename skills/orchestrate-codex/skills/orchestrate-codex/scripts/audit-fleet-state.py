@@ -186,14 +186,49 @@ def load_codex_companion_jobs(state_dir: Path) -> dict[str, dict]:
     return out
 
 
+def _resolve_answer_fallback(entry: dict, manifest_mode: str | None,
+                             workspace_root: Path, monitor_root: str | None) -> str | None:
+    """Filesystem-fallback for batch entries with null `answer_path`.
+
+    When mode is batch and the manifest entry doesn't carry an answer_path,
+    look at <workspace_root>/answers/<slug>.md (the run-batch.sh default).
+    Returns the absolute path if a non-empty file exists; else None.
+    """
+    if manifest_mode != "batch":
+        return None
+    if entry.get("answer_path"):
+        return None
+    slug = entry.get("slug") or entry.get("id")
+    if not slug:
+        return None
+    candidates = []
+    candidates.append(workspace_root / "answers" / f"{slug}.md")
+    if monitor_root:
+        candidates.append(Path(monitor_root) / "answers" / f"{slug}.md")
+    for cand in candidates:
+        try:
+            if cand.is_file() and cand.stat().st_size > 0:
+                return str(cand)
+        except OSError:
+            continue
+    return None
+
+
 def assess_entry(
     entry: dict,
     cc_jobs: dict[str, dict],
     fs_worktree_set: set[str],
     now: float,
     stale_secs: int,
+    manifest_mode: str | None = None,
+    workspace_root: Path | None = None,
+    monitor_root: str | None = None,
 ) -> dict:
-    """Build per-entry drift annotations. Read-only; doesn't mutate `entry`."""
+    """Build per-entry drift annotations. Read-only; doesn't mutate `entry`.
+
+    `drift` is a list of human strings. `drift_kinds` is a parallel list of
+    stable slugs (e.g. "worktree_missing") for tooling.
+    """
     annotation: dict[str, Any] = {
         "id": entry.get("id"),
         "slug": entry.get("slug"),
@@ -201,6 +236,7 @@ def assess_entry(
         "attempts": entry.get("attempts"),
         "exit_code": entry.get("exit_code"),
         "drift": [],
+        "drift_kinds": [],
     }
 
     wt = entry.get("worktree_path") or ""
@@ -208,8 +244,20 @@ def assess_entry(
         annotation["worktree_path"] = wt
         annotation["worktree_present"] = os.path.isdir(wt)
         annotation["worktree_in_git"] = wt in fs_worktree_set
-        if annotation["worktree_present"] and not annotation["worktree_in_git"]:
-            annotation["drift"].append("worktree_path exists on disk but not registered with git")
+        # Drift: worktree_path is set in manifest but the directory doesn't
+        # exist on disk AND git doesn't know about it. This is the most
+        # common operational drift (worktree deleted out from under us).
+        if (not annotation["worktree_present"]) and (not annotation["worktree_in_git"]):
+            msg = (
+                f"worktree_path set but missing on disk and not in "
+                f"`git worktree list`: {wt}"
+            )
+            annotation["drift"].append(msg)
+            annotation["drift_kinds"].append("worktree_missing")
+        elif annotation["worktree_present"] and not annotation["worktree_in_git"]:
+            msg = "worktree_path exists on disk but not registered with git"
+            annotation["drift"].append(msg)
+            annotation["drift_kinds"].append("worktree_unregistered")
     else:
         annotation["worktree_present"] = None
         annotation["worktree_in_git"] = None
@@ -224,8 +272,15 @@ def assess_entry(
         annotation["log_age_seconds"] = None
 
     answer_path = entry.get("answer_path") or ""
+    answer_fallback_used = False
+    if not answer_path and workspace_root is not None:
+        fb = _resolve_answer_fallback(entry, manifest_mode, workspace_root, monitor_root)
+        if fb:
+            answer_path = fb
+            answer_fallback_used = True
     annotation["answer_path"] = answer_path
-    annotation["answer_size"] = file_size_or_none(answer_path)
+    annotation["answer_size"] = file_size_or_none(answer_path) if answer_path else None
+    annotation["answer_path_source"] = "fallback" if answer_fallback_used else "manifest"
 
     jsonl_path = entry.get("jsonl_path") or ""
     annotation["jsonl_path"] = jsonl_path
@@ -252,23 +307,40 @@ def assess_entry(
     if status == "running":
         if annotation["cc_pid"] is not None and annotation["cc_pid_alive"] is False:
             annotation["drift"].append("status=running but codex-companion pid is dead")
+            annotation["drift_kinds"].append("pid_dead")
         if annotation["log_age_seconds"] is not None and annotation["log_age_seconds"] > stale_secs:
             annotation["drift"].append(
                 f"status=running but log is stale ({annotation['log_age_seconds']}s)"
             )
+            annotation["drift_kinds"].append("log_stale")
         if log_path and annotation["log_size"] in (None, 0):
             annotation["drift"].append("status=running but log is missing or empty")
+            annotation["drift_kinds"].append("log_missing")
     elif status == "done":
         if log_path and not annotation["log_size"]:
             annotation["drift"].append("status=done but log file missing or empty")
+            annotation["drift_kinds"].append("log_missing")
         if answer_path and (annotation["answer_size"] is None or annotation["answer_size"] == 0):
             annotation["drift"].append("status=done but answer file missing or empty")
+            annotation["drift_kinds"].append("answer_missing")
+        # Batch-mode advisory: if the entry's answer_path was null in the
+        # manifest but a filesystem-fallback turned up evidence, surface it
+        # as a soft drift so the operator knows the manifest is sparse.
+        if (manifest_mode == "batch" and not entry.get("answer_path")
+                and answer_fallback_used and annotation["answer_size"]):
+            annotation["drift"].append(
+                f"manifest answer_path null but found {answer_path} "
+                f"({annotation['answer_size']}B) on filesystem fallback"
+            )
+            annotation["drift_kinds"].append("answer_path_null_with_fs_evidence")
     elif status == "failed":
         if entry.get("exit_code") in (None, 0):
             annotation["drift"].append("status=failed but exit_code is 0/null")
+            annotation["drift_kinds"].append("failed_without_exit_code")
     elif status == "queued":
         if log_path and annotation["log_size"] not in (None, 0):
             annotation["drift"].append("status=queued but log file already has content")
+            annotation["drift_kinds"].append("queued_with_log_content")
 
     return annotation
 
@@ -298,11 +370,24 @@ def detect_orphan_worktrees(
 
 
 def build_report(args, manifest: dict | None) -> dict:
+    # Workspace-root resolution priority:
+    #   1. explicit --workspace-root flag
+    #   2. manifest's recorded `workspace_root` field
+    #   3. cwd
     # NOTE: do NOT pre-resolve symlinks (no `.resolve()`). The slug-hash
     # function below mirrors codex-companion's `fs.realpathSync.native` +
     # JS-side catch fallback exactly; pre-resolving here would diverge for
     # symlinked roots like /tmp on macOS or for missing paths.
-    workspace_root = Path(args.workspace_root) if args.workspace_root else Path.cwd()
+    workspace_root_source = "cwd"
+    if args.workspace_root:
+        workspace_root = Path(args.workspace_root)
+        workspace_root_source = "flag"
+    elif manifest and isinstance(manifest.get("workspace_root"), str) and manifest["workspace_root"]:
+        workspace_root = Path(manifest["workspace_root"])
+        workspace_root_source = "manifest"
+    else:
+        workspace_root = Path.cwd()
+
     repo_root = find_repo_root(workspace_root)
     repo_name = repo_root.name if repo_root else workspace_root.name
 
@@ -315,12 +400,20 @@ def build_report(args, manifest: dict | None) -> dict:
     now = time.time()
     stale_secs = args.stale_minutes * 60
 
+    manifest_mode = manifest.get("mode") if manifest else None
+    monitor_root = manifest.get("monitor_root") if manifest else None
+
     entries_report = []
     if manifest and isinstance(manifest.get("entries"), list):
         for entry in manifest["entries"]:
             if isinstance(entry, dict):
                 entries_report.append(
-                    assess_entry(entry, cc_jobs, fs_worktree_set, now, stale_secs)
+                    assess_entry(
+                        entry, cc_jobs, fs_worktree_set, now, stale_secs,
+                        manifest_mode=manifest_mode,
+                        workspace_root=workspace_root,
+                        monitor_root=monitor_root,
+                    )
                 )
 
     orphans = detect_orphan_worktrees(fs_worktrees, manifest or {}, repo_name)
@@ -338,10 +431,21 @@ def build_report(args, manifest: dict | None) -> dict:
 
     drift_total = sum(len(e.get("drift") or []) for e in entries_report)
 
+    # Aggregate drift kinds for the summary line + recommendations.
+    drift_kind_counts: dict[str, int] = {}
+    for er in entries_report:
+        for k in er.get("drift_kinds") or []:
+            drift_kind_counts[k] = drift_kind_counts.get(k, 0) + 1
+
+    drift_summary = _format_drift_summary(drift_kind_counts, len(orphans))
+    recommendations = _build_recommendations(drift_kind_counts, len(orphans),
+                                             counts["running"])
+
     return {
         "manifest_path": str(args.manifest),
         "manifest_present": manifest is not None,
         "workspace_root": str(workspace_root),
+        "workspace_root_source": workspace_root_source,
         "repo_root": str(repo_root) if repo_root else None,
         "repo_name": repo_name,
         "codex_companion_state_dir": str(cc_state_dir),
@@ -351,15 +455,81 @@ def build_report(args, manifest: dict | None) -> dict:
         "fs_worktrees": fs_worktrees,
         "orphan_worktrees": orphans,
         "manifest_run_id": manifest.get("run_id") if manifest else None,
-        "manifest_mode": manifest.get("mode") if manifest else None,
+        "manifest_mode": manifest_mode,
         "manifest_started_at": manifest.get("started_at") if manifest else None,
         "manifest_concurrency_cap": manifest.get("concurrency_cap") if manifest else None,
         "manifest_policy": manifest.get("policy") if manifest else None,
-        "monitor_root": manifest.get("monitor_root") if manifest else None,
+        "monitor_root": monitor_root,
         "counts": counts,
         "entries": entries_report,
         "drift_total": drift_total,
+        "drift_kinds": drift_kind_counts,
+        "drift_summary": drift_summary,
+        "recommendations": recommendations,
     }
+
+
+def _format_drift_summary(drift_kind_counts: dict[str, int], orphans_count: int) -> str:
+    """Compose the one-line drift summary."""
+    if not drift_kind_counts and not orphans_count:
+        return "no drift detected"
+    parts = []
+    label_map = {
+        "worktree_missing": "missing worktree",
+        "worktree_unregistered": "unregistered worktree",
+        "log_stale": "stale running log",
+        "log_missing": "missing/empty log",
+        "pid_dead": "dead pid (status=running)",
+        "answer_missing": "missing/empty answer",
+        "answer_path_null_with_fs_evidence": "answer_path null with fs evidence",
+        "failed_without_exit_code": "failed w/o exit_code",
+        "queued_with_log_content": "queued but log non-empty",
+    }
+    for kind, count in sorted(drift_kind_counts.items()):
+        label = label_map.get(kind, kind)
+        parts.append(f"{count} {label}")
+    if orphans_count:
+        parts.append(f"{orphans_count} orphan worktree(s)")
+    return "Drift summary: " + "; ".join(parts) + "."
+
+
+def _build_recommendations(drift_kind_counts: dict[str, int],
+                           orphans_count: int, running_count: int) -> list[str]:
+    """Per drift kind, suggest the next action. One string per recommendation."""
+    recs: list[str] = []
+    if drift_kind_counts.get("worktree_missing"):
+        recs.append(
+            "Run rescue mode for entries with `worktree_missing` drift "
+            "(manifest still says active but worktree is gone)."
+        )
+    if drift_kind_counts.get("pid_dead") or drift_kind_counts.get("log_stale"):
+        recs.append(
+            "Run `python3 scripts/rescue-detect.py --manifest <m> --json` and "
+            "redispatch the stale/dead-pid entries via rescue mode."
+        )
+    if drift_kind_counts.get("answer_missing"):
+        recs.append(
+            "Flip status=failed via `manifest-update.py --set status=failed` "
+            "for done-without-answer entries; then rescue."
+        )
+    if drift_kind_counts.get("answer_path_null_with_fs_evidence"):
+        recs.append(
+            "Update batch entries' answer_path via "
+            "`manifest-update.py --set answer_path=<found-path>` so future "
+            "audits see the evidence."
+        )
+    if drift_kind_counts.get("failed_without_exit_code"):
+        recs.append(
+            "Fill in `exit_code` on failed entries (manifest-update.py); "
+            "audit treats null exit_code on failed status as drift."
+        )
+    if orphans_count:
+        recs.append(
+            f"{orphans_count} orphan worktree(s) on disk are not in the "
+            "manifest. Inspect with `list-worktrees.py` before deciding to "
+            "remove them."
+        )
+    return recs
 
 
 def actionable(report: dict) -> bool:
@@ -384,7 +554,10 @@ def render(report: dict) -> str:
         lines.append(f"  mode:          {report['manifest_mode']}")
         lines.append(f"  started_at:    {report['manifest_started_at']}")
         lines.append(f"  concurrency:   {report['manifest_concurrency_cap']}")
-    lines.append(f"workspace_root:  {report['workspace_root']}")
+    lines.append(
+        f"workspace_root:  {report['workspace_root']} "
+        f"(source: {report.get('workspace_root_source', 'cwd')})"
+    )
     lines.append(f"repo_root:       {report['repo_root']}")
     lines.append(f"cc state dir:    {report['codex_companion_state_dir']}")
     lines.append(f"  present:       {report['codex_companion_state_present']}")
@@ -432,6 +605,13 @@ def render(report: dict) -> str:
         for p in report["orphan_worktrees"]:
             lines.append(f"  • {p}")
 
+    lines.append("")
+    lines.append(report.get("drift_summary") or "Drift summary: no drift detected.")
+    if report.get("recommendations"):
+        lines.append("")
+        lines.append("Recommendations:")
+        for rec in report["recommendations"]:
+            lines.append(f"  • {rec}")
     lines.append("")
     return "\n".join(lines)
 

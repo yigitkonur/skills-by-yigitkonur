@@ -17,9 +17,9 @@ The template should produce a deterministic, focused, non-trivial document per i
 
 XXXXXXXXXXXXX
 
-# Discovery (research mode only — skip for code-generation prompts)
+# Discovery — read first
 
-Use up to 80 web search angles if the input warrants it; you may finish under that. Prefer primary sources (official docs, changelogs, source code, RFCs) over aggregators. Use forums and community threads only for edge cases not in the primary sources.
+Use up to 80 web search angles if the input warrants it; you may finish under that. Prefer primary sources (official docs, changelogs, source code, RFCs) over aggregators. Use forums and community threads only for edge cases not in the primary sources. (For pure code-generation batch prompts where the Input is self-contained, replace this section with the paths/concepts the agent should read.)
 
 For each cited claim, note the source with title + URL + access date.
 
@@ -35,10 +35,19 @@ For each cited claim, note the source with title + URL + access date.
 - All factual claims are sourced
 - File size is non-trivial (≥ MIN bytes; default MIN=10000)
 
+# Out-of-scope
+
+- Do NOT fabricate sources or invent URLs.
+- Do NOT include unrelated tangents from web searches.
+- Do NOT mix outputs across inputs (one input → one output file).
+- Do NOT add prose preamble or trailing commentary outside the documented format.
+
 # Failure protocol
 
 If the input is malformed (parked domain, deleted resource, empty page): produce a 5-line "could not research" output explaining what was tried and what was found. Do not fabricate content. The audit step will flag the small output for human review.
 ```
+
+Note: the Failure protocol shape above is batch-mode specific (the 5-line "could not research" output is what `audit-sizes.sh` flags for human review). This per-mode template is authoritative for that section; see `references/universal/prompt-discipline.md` §"Failure protocol — mode-specific shapes".
 
 ## Why each section
 

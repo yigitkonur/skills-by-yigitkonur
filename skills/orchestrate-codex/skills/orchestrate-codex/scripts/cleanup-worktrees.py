@@ -72,9 +72,22 @@ def worktree_present(path: str) -> bool:
     return bool(path) and os.path.isdir(path)
 
 
-def worktree_dirty(path: str) -> bool:
-    rc, out, _ = sh(["git", "status", "--porcelain=1"], cwd=Path(path))
-    return rc != 0 or bool(out.strip())
+def worktree_dirty(path: str) -> tuple[bool, str | None]:
+    """Returns (is_dirty, git_error_message_or_None).
+
+    Distinguishes:
+      - clean tree            → (False, None)
+      - dirty (status output) → (True, None)
+      - git command failed    → (False, "<stderr>")  — caller surfaces error,
+                                  does NOT silently treat as dirty.
+    """
+    rc, out, err = sh(["git", "status", "--porcelain=1"], cwd=Path(path))
+    if rc != 0:
+        return False, (err.strip() or f"git status exit {rc}")
+    return bool(out.strip()), None
+
+
+TERMINAL_STATUSES = {"done", "failed", "skipped", "rescued"}
 
 
 def detect_worktree_branch(path: str) -> str | None:
@@ -211,6 +224,7 @@ def main() -> int:
     actions: list[dict] = []
     refused = 0
     failed = 0
+    cleaned_ids: set[str] = set()
 
     for entry in entries:
         if not isinstance(entry, dict):
@@ -228,6 +242,7 @@ def main() -> int:
                 "entry_id": entry_id, "action": "noop",
                 "message": "already cleaned up; skipping",
             })
+            cleaned_ids.add(entry_id)
             continue
 
         # No worktree path or path missing on disk
@@ -237,33 +252,44 @@ def main() -> int:
                 "message": f"worktree not present at {wt!r}; marking cleaned",
                 "worktree_path": wt,
             })
-            entry["cleaned_up"] = True
-            entry["updated_at"] = utc_now_iso()
+            cleaned_ids.add(entry_id)
             continue
 
         branch = detect_worktree_branch(wt)
         merged = branch_is_merged(args.base, branch, root) if branch else False
-        dirty = worktree_dirty(wt) if wt else False
+        dirty, dirty_err = worktree_dirty(wt)
 
-        # Refuse if branch not merged into base, unless force or no branch (detached)
-        if branch and not merged and not force:
+        # Surface a git failure as a hard error (NOT silently as dirty).
+        if dirty_err is not None:
+            failed += 1
+            actions.append({
+                "entry_id": entry_id, "action": "failed",
+                "message": f"git status failed at {wt!r}: {dirty_err}",
+                "worktree_path": wt,
+            })
+            continue
+
+        # Build refusal reasons. When BOTH dirty AND unmerged are true, surface
+        # both — operator needs to know they're committing to abandoning both
+        # uncommitted work AND unmerged work when they pass --force-abandon.
+        refusal_reasons: list[str] = []
+        if branch and not merged:
+            refusal_reasons.append(
+                f"branch {branch!r} not merged into {args.base}"
+            )
+        if dirty:
+            refusal_reasons.append(f"worktree {wt!r} is dirty (uncommitted changes)")
+
+        if refusal_reasons and not force:
             refused += 1
             actions.append({
                 "entry_id": entry_id, "action": "refuse",
                 "message": (
-                    f"branch {branch!r} not merged into {args.base}; "
-                    f"pass --force-abandon {entry_id} to remove anyway"
+                    "; ".join(refusal_reasons)
+                    + f"; pass --force-abandon {entry_id} to remove anyway"
                 ),
+                "reasons": refusal_reasons,
                 "worktree_path": wt, "branch": branch,
-            })
-            continue
-
-        if dirty and not force:
-            refused += 1
-            actions.append({
-                "entry_id": entry_id, "action": "refuse",
-                "message": f"worktree {wt!r} is dirty; pass --force-abandon {entry_id} to discard",
-                "worktree_path": wt,
             })
             continue
 
@@ -291,33 +317,66 @@ def main() -> int:
             })
             continue
 
-        entry["cleaned_up"] = True
-        entry["updated_at"] = utc_now_iso()
+        cleaned_ids.add(entry_id)
         actions.append({
             "entry_id": entry_id, "action": "removed",
             "message": f"worktree removed at {wt}" + (" (forced)" if force else ""),
             "worktree_path": wt,
         })
 
-    # Persist manifest changes (only on actual mutations)
+    # Persist manifest changes (only on actual mutations).
+    # Single write path: re-read under lock, mark every cleaned id, write
+    # back. If after the write every entry is in a terminal status AND every
+    # applicable entry is cleaned_up, delete the manifest + lock (lifecycle
+    # rule documented in references/universal/manifest-contract.md:248).
     write_failed = False
-    if args.execute and any(a["action"] in ("removed", "noop") for a in actions):
+    manifest_deleted = False
+    if args.execute and cleaned_ids:
         try:
             with manifest_lock(manifest_path):
-                # Re-read under lock and merge our cleaned_up flags onto fresh data
                 fresh = load_manifest(manifest_path)
-                if fresh is not None and isinstance(fresh.get("entries"), list):
-                    cleaned_ids = {
-                        a["entry_id"] for a in actions
-                        if a["action"] in ("removed", "noop")
-                    }
-                    for fe in fresh["entries"]:
-                        if isinstance(fe, dict) and fe.get("id") in cleaned_ids:
-                            fe["cleaned_up"] = True
-                            fe["updated_at"] = utc_now_iso()
-                    atomic_write(manifest_path, json.dumps(fresh, indent=2) + "\n")
-                else:
-                    atomic_write(manifest_path, json.dumps(manifest, indent=2) + "\n")
+                if fresh is None or not isinstance(fresh.get("entries"), list):
+                    fresh = manifest  # fall back to in-memory copy
+
+                ts = utc_now_iso()
+                for fe in fresh["entries"]:
+                    if isinstance(fe, dict) and fe.get("id") in cleaned_ids:
+                        fe["cleaned_up"] = True
+                        fe["updated_at"] = ts
+
+                # Decide whether to delete the manifest.
+                all_terminal_and_cleaned = all(
+                    isinstance(fe, dict)
+                    and fe.get("status") in TERMINAL_STATUSES
+                    and (
+                        # entries with no worktree don't need cleaned_up
+                        not fe.get("worktree_path")
+                        or fe.get("cleaned_up") is True
+                    )
+                    for fe in fresh["entries"]
+                )
+
+                atomic_write(manifest_path, json.dumps(fresh, indent=2) + "\n")
+
+                if all_terminal_and_cleaned and fresh["entries"]:
+                    # Delete the manifest and its lock file (the cleanup
+                    # contract: every entry terminal and tidy → state is
+                    # gone). The lock file stays open until the with-block
+                    # exits, so unlink the manifest here and let the lock
+                    # cleanup run after.
+                    try:
+                        os.unlink(str(manifest_path))
+                        manifest_deleted = True
+                    except OSError as exc:
+                        print(
+                            f"cleanup-worktrees: manifest delete failed: {exc}",
+                            file=sys.stderr,
+                        )
+            # After the lock context closes, remove the lock file too.
+            if manifest_deleted:
+                lock_path = manifest_path.with_name(manifest_path.name + ".lock")
+                with contextlib.suppress(OSError):
+                    os.unlink(str(lock_path))
         except (OSError, SystemExit) as exc:
             print(f"cleanup-worktrees: manifest write failed: {exc}", file=sys.stderr)
             write_failed = True
@@ -328,6 +387,7 @@ def main() -> int:
             "ok": failed == 0 and not write_failed,
             "executed": args.execute,
             "manifest_path": str(manifest_path),
+            "manifest_deleted": manifest_deleted,
             "actions": actions,
             "summary": {
                 "total": len(actions),
@@ -342,7 +402,7 @@ def main() -> int:
     else:
         for a in actions:
             marker = {
-                "removed":  "[DO]",
+                "removed":  "[OK]",
                 "plan":     "[DRY]",
                 "refuse":   "[REFUSE]",
                 "failed":   "[FAIL]",
@@ -350,9 +410,11 @@ def main() -> int:
             }.get(a["action"], "[?]")
             print(f"  {marker} {a['entry_id']}: {a['message']}")
         print()
-        if args.execute and any(a["action"] in ("removed", "noop") for a in actions):
+        if args.execute and cleaned_ids:
             if write_failed:
                 print("✗ manifest write failed; some changes may be unpersisted")
+            elif manifest_deleted:
+                print(f"✓ manifest deleted (all entries terminal+cleaned): {manifest_path}")
             else:
                 print(f"✓ manifest updated: {manifest_path}")
         print()

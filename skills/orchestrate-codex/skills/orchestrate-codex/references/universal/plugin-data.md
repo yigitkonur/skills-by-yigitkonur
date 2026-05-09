@@ -4,6 +4,8 @@ Every orchestrate-codex run writes its manifest under the same state directory a
 
 ## Resolution chain
 
+orchestrate-codex's resolver:
+
 ```
 1. `${CLAUDE_PLUGIN_DATA}/state/<workspace-slug>-<hash>`
 2. `${TMPDIR:-/tmp}/codex-companion/<workspace-slug>-<hash>`
@@ -16,7 +18,28 @@ state-root = "<resolved-state-dir>/orchestrate-codex"
 manifest   = "<state-root>/manifest.json"
 ```
 
-If the chosen state root is not writable, bootstrap/dispatcher surface the failure and stop. There is no XDG fallback in this skill; matching `codex-cc/lib/state.mjs` is the contract.
+If `${CLAUDE_PLUGIN_DATA}` is not set OR not writable, the dispatcher logs a warning to stderr (in JSON envelope's `meta.warnings`) and proceeds with the fallback. If even the fallback isn't writable, the dispatcher emits `error.code="plugin_data_unwritable"` and exits 5.
+
+### Asymmetric fallback — orchestrate-codex vs codex-companion
+
+The vendored codex-companion uses a **different** fallback chain than the dispatcher above:
+
+```
+1. ${CLAUDE_PLUGIN_DATA}            (same as orchestrate-codex)
+2. os.tmpdir()/codex-companion/     (i.e. /tmp/... or /var/folders/.../T/...)
+```
+
+Verify at `scripts/codex-cc/lib/state.mjs:10` (`FALLBACK_STATE_ROOT_DIR = path.join(os.tmpdir(), "codex-companion")`) and lines 41-43 (resolver returns `pluginDataDir ? <plugin-data>/state : <tmpdir>/codex-companion`). Codex-companion never consults `XDG_DATA_HOME` and never falls back to `~/.local/share/claude-code`.
+
+**Consequence:** when `${CLAUDE_PLUGIN_DATA}` is unset, the two writers diverge:
+- orchestrate-codex's manifest lands under `${XDG_DATA_HOME}/claude-code/state/<slug>-<hash>/orchestrate-codex/manifest.json` (or the `${HOME}` fallback).
+- codex-companion's `state.json` and `jobs/<id>.json` land under `<tmpdir>/codex-companion/<slug>-<hash>/`.
+
+Same `<slug>-<hash>` directory name, **completely different roots**. Rescue's correlation between manifest entries (which live next to orchestrate-codex's manifest) and codex-companion job records (which live in tmpdir) silently breaks: `rescue-detect.py` looks under `${CLAUDE_PLUGIN_DATA}/state/.../jobs/`, finds nothing, and classifies entries as `unknown` with "limited rescue context".
+
+**Operators MUST set `${CLAUDE_PLUGIN_DATA}` explicitly to keep the two co-located.** `bootstrap.sh` does this on dispatch, but if the user invokes `rescue-detect.py` or `audit-fleet-state.py` from a fresh shell without sourcing the bootstrap, the env var is empty and correlation fails. Recommended: export `${CLAUDE_PLUGIN_DATA}` in your shell rc, OR always invoke `node orchestrate-codex.mjs <mode>` (which goes through bootstrap) rather than the helper scripts directly.
+
+`bootstrap.sh` ensures `${CLAUDE_PLUGIN_DATA}` is set before any spawn, keeping the two co-located.
 
 ## Workspace slug + hash
 
@@ -52,17 +75,28 @@ The cost: rescue is local-machine-only. A run on machine A cannot resume on mach
 
 ## Layout under state-root
 
+What orchestrate-codex itself writes:
+
 ```
 <state-root>/
 ├── manifest.json                    # the orchestrate-codex manifest
-├── manifest.json.lock               # advisory lock file (flock)
-└── (siblings via codex-companion when CLAUDE_PLUGIN_DATA is shared:)
-    ├── ../state.json                # codex-companion's job index (one level up)
-    ├── ../jobs/<id>.json            # codex-companion's per-job records
-    └── ../broker.json               # codex-companion's broker endpoint
+└── manifest.json.lock               # advisory lock file (flock)
 ```
 
-Note the slight asymmetry: orchestrate-codex's manifest is in `<state-root>/manifest.json` where `<state-root>` ends in `/orchestrate-codex/`. Codex-companion's `state.json` is one directory up, in `<workspace-slug>-<hash>/state.json`. Both are under the same `<workspace-slug>-<hash>` so rescue's correlation works.
+That's it. The skill writes no other state files at this level — no jobs/, no broker.json, no per-run logs (logs land under `<monitor-root>/logs/<run-id>/`, configurable via `MONITOR_ROOT` env, default `/tmp/orchestrate-codex-monitor/`).
+
+When `${CLAUDE_PLUGIN_DATA}` is set consistently AND codex-companion is also using it, codex-companion's siblings appear one level up:
+
+```
+<workspace-slug>-<hash>/
+├── orchestrate-codex/manifest.json       # this skill's manifest
+├── orchestrate-codex/manifest.json.lock
+├── state.json                            # codex-companion's job index
+├── jobs/<id>.json                        # codex-companion's per-job records
+└── broker.json                           # codex-companion's broker endpoint
+```
+
+Note the slight asymmetry: orchestrate-codex's manifest is in `<state-root>/manifest.json` where `<state-root>` ends in `/orchestrate-codex/`. Codex-companion's `state.json` is one directory up, in `<workspace-slug>-<hash>/state.json`. Both are under the same `<workspace-slug>-<hash>` so rescue's correlation works **when `${CLAUDE_PLUGIN_DATA}` is set** — see "Asymmetric fallback" above for what breaks when it isn't.
 
 ## Pruning
 

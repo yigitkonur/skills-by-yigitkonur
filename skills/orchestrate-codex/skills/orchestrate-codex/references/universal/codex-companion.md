@@ -1,8 +1,10 @@
 # codex-companion — the vendored OpenAI dispatcher
 
-`scripts/codex-cc/codex-companion.mjs` is the vendored upstream dispatcher for `openai/codex-plugin-cc`. The skill keeps the subtree for install-independent state helpers and rescue forensics. The hot path imports `lib/args.mjs`, `lib/state.mjs`, and `lib/workspace.mjs`; rescue reads the colocated `state.json` and `jobs/` records when present.
+`scripts/codex-cc/codex-companion.mjs` is the vendored upstream dispatcher for `openai/codex-plugin-cc`. The skill keeps the subtree for install-independent state helpers and rescue forensics. **The skill does NOT use `codex-companion task --background` for any of its modes.** All four modes (exec / batch / single / review) call `codex exec` (or `codex exec review`) directly via the bash runners (`scripts/run-fleet.sh`, `run-batch.sh`, `run-single.sh`, `run-review.sh`). The hot path imports `lib/args.mjs`, `lib/state.mjs`, and `lib/workspace.mjs`; rescue reads the colocated `state.json` and `jobs/` records when present. The `task --background` surface exists in the vendored tree but is not on the skill's hot path.
 
-For the four normal modes (exec / batch / single / review), the skill spawns `codex exec` directly via the bash runners. We do NOT route through `codex-companion task --background` — that path uses codex's app-server RPC, which is a different surface than the `codex exec --json` we want for Monitor-friendly streaming.
+The vendored `codex-companion.mjs` is invoked by the skill in exactly **one** place: `task-resume-candidate` for rescue-mode correlation with codex's app-server job records. (Even that path is partially wired: `rescue-detect.py` reads codex-companion job records, but the dispatcher's `handleRescue` does not yet drive `codex exec resume` based on them — see C1/C9 derailments and `references/universal/failure-modes.md`.)
+
+The reason for routing exec/batch/single/review through `codex exec` directly rather than `codex-companion task`: we need the `codex exec --json` JSONL stream for Monitor-friendly observability. `codex-companion task --background` returns a `jobId` and requires `status` polling — that's the wrong primitive for a Monitor-driven skill.
 
 ## Subcommands and which we use
 
@@ -23,6 +25,29 @@ For the four normal modes (exec / batch / single / review), the skill spawns `co
 ## Rescue correlation
 
 `rescue-detect.py` mirrors `state.mjs` in Python, locates the codex-companion state directory, and reads `jobs/*.json` directly when those records exist. If records are gone, rescue falls back to manifest status, logs, answers, worktrees, and exit codes.
+
+For single-mode rescue, the forensic call is:
+
+```bash
+node <skill-root>/scripts/codex-cc/codex-companion.mjs task-resume-candidate --json --cwd <workspace-root>
+```
+
+Status: `rescue-detect.py` reads codex-companion job records under `<plugin-data>/state/<slug>-<hash>/jobs/<id>.json` for forensic correlation. The dispatcher's `handleRescue` does not yet invoke `task-resume-candidate` to drive a re-spawn (C1/C9 derailments verified rescue is half-implemented as of 2026-05-08). Until the gap is closed, `task-resume-candidate` is a forensic-only surface for the skill — operators who need a context-preserving resume must call `codex exec resume <id>` themselves.
+
+Output is a JSON list of resumable thread descriptors:
+
+```json
+[
+  {
+    "thread_id": "019e0a7e-...",
+    "started_at": "2026-05-08T18:21:01Z",
+    "last_message_at": "2026-05-08T18:25:11Z",
+    "summary": "<first agent_message text>"
+  }
+]
+```
+
+The classifier uses this to enrich `unknown` entries (where the manifest's `codex_thread_id` field is missing or stale). For exec / batch / review, the manifest's own `codex_thread_id` is the source of truth — captured from the JSONL stream's `thread.started` event during the original run.
 
 ## Lib modules the dispatcher imports
 

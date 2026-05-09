@@ -39,10 +39,20 @@ In each case, **read the head of the file before deciding to retry**.
 | Bottom-decile inspection | always (10% of outputs flagged) | n/a |
 | Median-tail variance | 30% below median flags | n/a |
 
-10000 bytes ≈ 1500 words ≈ 1 page of typical research output. Adjust to your prompt's expected output:
-- Research / summarization template: 10000–15000.
-- Code-extraction template: 2000–5000 (less prose).
-- Data-transformation template: 100 (just the transformed value).
+**The 10000-byte default is biased toward research / summarization templates.** A code-extraction or data-transformation fleet run with the default will surface every entry as `[SMALL]` and bury the real signal. **Always override `MIN_BYTES` to match your prompt type before you trust the audit.** Verified at `scripts/audit-sizes.sh` (B5 derailment) — the default exists for one specific use case and is wrong for most others.
+
+10000 bytes ≈ 1500 words ≈ 1 page of typical research output. Per-prompt-type calibration table:
+
+| Prompt type | Suggested `MIN_BYTES` | Rationale |
+|---|---|---|
+| Research / summarization (default fit) | 10000–15000 | One page of structured prose with citations. |
+| Code review / audit narrative | 5000–10000 | Findings-style output; less prose density. |
+| Code-extraction template | 2000–5000 | Mostly code blocks, less prose. |
+| Bug-fix / refactor commit message | 500–2000 | Short by design. |
+| Data-transformation template | 100–500 | Just the transformed value. |
+| Single fact extraction (e.g. "answer with the number") | 1–50 | A successful answer can be one byte. |
+
+Set per-fleet via `MIN_BYTES=<N>` env. Set per-entry via `mode_state.min_bytes` (see "Per-input MIN" below) when one fleet has heterogeneous prompts.
 
 ## Inspection workflow
 
@@ -59,11 +69,29 @@ done
 
 # 3. Decide per file:
 #    - Accept (small but correct → record `mode_state.below_floor=true, accepted_small=true`)
-#    - Retry (small and broken → archive + redo)
+#    - Retry (small and broken → manual archive + redo, see below)
 #    - Drop (input was bad → mark skipped with `last_error="input_unrecoverable"`)
 ```
 
 The skill never auto-retries by size. Always inspect before deciding.
+
+### Archive + redo (manual workflow)
+
+There is no dispatcher flag like `--force-redo <slug>` today. The retry workflow is manual three-step:
+
+```bash
+# 1. Archive the original.
+mkdir -p answers/.prev && mv "answers/${slug}.md" "answers/.prev/${slug}.$(date -u +%Y%m%dT%H%M%SZ).md"
+
+# 2. Reset the manifest entry so the runner re-dispatches.
+python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$slug" \
+    --set status=queued --set finished_at=null --set exit_code=null --execute
+
+# 3. Re-run with the runner; skip-existing will pass since the answer is gone.
+JOBS=1 bash scripts/run-batch.sh "$MANIFEST"
+```
+
+A `--force-redo` convenience flag is in the design notes (see `references/universal/idempotency.md:61`) but is **not implemented**. Treat any older instruction that mentions `--force-redo` as out-of-date.
 
 ## Recording acceptance
 

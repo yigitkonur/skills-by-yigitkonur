@@ -50,9 +50,14 @@ Side effects:
 
 ## Behavior
 
-- Computes the same slug/hash path as `scripts/codex-cc/lib/state.mjs`.
-- Creates `STATE_DIR` and `MONITOR_ROOT`.
-- Emits an advisory when `.worktrees/` is not ignored and git checks are enabled.
+- Detects monorepo layout (multiple `package.json`s with workspace fields) and surfaces it in stdout for downstream tools.
+- Verifies `.gitignore` covers `<repo-name>-wt-*`; appends pattern to `.gitignore` if missing AND user passed `--gitignore-fix` (default off).
+- Soft-warns when `${CLAUDE_PLUGIN_DATA}` is unset and falls back to the XDG path.
+- **`codex login status` is a soft probe**: a non-zero exit emits a stderr
+  warning but does not fail bootstrap. The user may have authenticated via
+  `CODEX_API_KEY` (which the probe cannot see), or the auth subcommand shape
+  may differ on older binaries (`0.129.x` introduced `login status`). If
+  spawns later fail with auth errors, run `codex login` and retry.
 
 ## Notes
 

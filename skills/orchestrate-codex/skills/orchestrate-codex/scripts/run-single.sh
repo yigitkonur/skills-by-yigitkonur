@@ -114,16 +114,25 @@ if [[ ! -x "$JSON_FILTER" ]]; then
   echo "WARN $JSON_FILTER not executable; events will not be filtered." >&2
 fi
 
-# ── Manifest start row ────────────────────────────────────────
+# ── Path resolution + manifest start row ─────────────────────
+# Per the manifest contract every entry carries log_path / jsonl_path /
+# answer_path. Single mode runs one entry: we resolve them up front and
+# populate them on the same write that flips status to `running`.
+LOG_PATH="$(dirname "$OUT")/${ORCHESTRATE_ENTRY_ID}.jsonl"
+ERR_LOG="$(dirname "$OUT")/${ORCHESTRATE_ENTRY_ID}.err.log"
+mkdir -p "$(dirname "$LOG_PATH")" "$(dirname "$ERR_LOG")"
+
 if [[ -n "$ORCHESTRATE_MANIFEST" && -f "$ORCHESTRATE_MANIFEST" ]]; then
   "$SCRIPT_DIR/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$ORCHESTRATE_ENTRY_ID" \
-    status=running started_at=now attempts=+1 2>/dev/null || true
+    status=running started_at=now attempts=+1 \
+    log_path="$ERR_LOG" \
+    jsonl_path="$LOG_PATH" \
+    answer_path="$OUT" 2>/dev/null || true
 fi
 
 echo "START $ORCHESTRATE_ENTRY_ID"
 
 # ── Spawn codex ────────────────────────────────────────────────
-LOG_PATH="$JSONL"
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[dry-run] codex exec ${CODEX_FLAGS[*]} --json -C $CWD -o $OUT < $PROMPT_FILE"
@@ -139,10 +148,10 @@ if [[ "$DRY_RUN" == "1" ]]; then
 fi
 
 # Stream codex's JSONL stdout through:
-#   1. tee → log file (so we have the raw event log on disk for rescue/audit)
+#   1. tee → jsonl file (LOG_PATH; raw event log on disk for rescue/audit)
 #   2. codex-json-filter.sh (so Monitor sees compact lines)
-# stderr goes to a separate log file (auth errors, rate limits, etc).
-ERR_LOG="$(dirname "$OUT")/${ORCHESTRATE_ENTRY_ID}.err.log"
+# stderr (ERR_LOG, set above) holds auth errors, deprecation warnings,
+# panics — kept separate so the JSONL pipeline stays parseable.
 START_TS="$(date +%s)"
 EXIT_CODE=0
 
@@ -152,7 +161,7 @@ if [[ -x "$JSON_FILTER" ]]; then
   cat "$PROMPT_FILE" | codex exec "${CODEX_FLAGS[@]}" --json -C "$CWD" -o "$OUT" 2>"$ERR_LOG" \
     | tee "$LOG_PATH" \
     | CODEX_FILTER_LEVEL="$FILTER_LEVEL" "$JSON_FILTER"
-  # PIPESTATUS[0] is codex's exit code.
+  # Pipeline: cat | codex | tee | filter — codex is at index 1.
   EXIT_CODE="${PIPESTATUS[1]}"
 else
   cat "$PROMPT_FILE" | codex exec "${CODEX_FLAGS[@]}" --json -C "$CWD" -o "$OUT" 2>"$ERR_LOG" \

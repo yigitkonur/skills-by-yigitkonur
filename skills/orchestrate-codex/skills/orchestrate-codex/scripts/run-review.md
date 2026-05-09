@@ -30,11 +30,34 @@ DONE  docs-quickstart (blocked: 2 major finding(s); see /state/rounds/docs-quick
 --- all jobs finished ---
 ```
 
-Per-round findings at `<rounds-dir>/<branch-slug>.r<round>.md` and JSONL at `<rounds-dir>/<branch-slug>.r<round>.jsonl`.
-Per-round normalized review JSON at `<rounds-dir>/<branch-slug>.r<round>.review.json`.
-Per-round classified output at `<rounds-dir>/<branch-slug>.r<round>.classification.json`.
+Per-round artefacts under `<rounds-dir>/`:
 
-Manifest mutations: `status`, `round`, `last_findings_path`, `classification_path`, `worktree_path`, `attempts`, timestamps, and `last_error` when blocked/failed.
+| File | Producer | Consumer |
+|---|---|---|
+| `<slug>.r<round>.md` | `codex exec review -o` | Human review; the runner's `answer_path` slot points here |
+| `<slug>.r<round>.jsonl` | `codex exec review --json` | The classifier never reads this directly; forensics only |
+| `<slug>.r<round>.json` | This runner (synthesised from JSONL events via jq) | `classify-review-feedback.py` |
+| `<slug>.r<round>.classified.json` | `classify-review-feedback.py` | Orchestrator (Claude main agent) |
+| `<slug>.r<round>.apply-queue.json` | Main agent evaluation | Apply step (main agent) |
+| `<slug>.r<round>.err.log` | `codex exec review` stderr | Forensics; the runner's `log_path` slot points here |
+
+The `<slug>.r<round>.json` file is built by walking the JSONL stream for
+`item.type=agent_message` events and extracting the structured findings,
+since `codex exec review -o` writes markdown despite `--json`. The classifier
+consumes the synthesised JSON, preserving the documented contract that the
+classifier reads JSON.
+
+Manifest mutations:
+- Per-entry `log_path` / `jsonl_path` / `answer_path` populated on the same
+  write that flips status to `running` (per `manifest-contract.md`).
+- One record appended to `mode_state.rounds[]` per completed round, of shape
+  `{round, findings_md, findings_json, jsonl, ts}`. Round count is recoverable
+  from `length(.entries[i].mode_state.rounds // [])`.
+- Terminal state goes on `mode_state.terminal_state` — written by the
+  orchestrator (Claude main agent), not this runner.
+- On round-success the runner writes `status=done` (NOT `reviewed`, which
+  isn't in the manifest's documented status enum). The orchestrator advances
+  to `converged` / `cap-reached` / `blocked` after reading the classifier.
 
 ## Exit codes
 
@@ -49,8 +72,22 @@ Manifest mutations: `status`, `round`, `last_findings_path`, `classification_pat
 
 - Uses `codex exec review` (not bare `codex review`). Verified against codex-cli 0.130.0: `exec review` accepts full `CODEX_FLAGS`, `--json`, and `-o`.
 - Sources `codex-flags.sh` for `CODEX_FLAGS`.
-- Round cap = 10. Terminal states: `converged`, `blocked`, `failed`, `cap_reached`.
+- **One invocation = one round.** The script does not loop rounds itself —
+  the orchestrator (Claude main agent) re-invokes `run-review.sh` with the
+  next `<round-number>` after the classifier returns its verdict. Round cap
+  enforcement (≤ 10) and terminal-state assignment (`converged` /
+  `cap_reached_with_progress` / `cap_reached_no_progress` / `three_all_rejected` /
+  `blocked` / `failed`) live in the orchestrator, NOT this runner.
+- 3-consecutive-all-rejected detection: per branch, if 3 rounds in a row produce major items where the main agent rejects every one, the orchestrator marks `done` with `terminal_state="three_all_rejected"` and `terminal_reason="codex stuck"`.
 - Per-branch worktrees created via `setup-worktree.sh` on round 1; reused for subsequent rounds.
+- **Signal handling**: `trap 'kill 0' TERM INT EXIT` runs near the top so SIGTERM
+  on the runner propagates to xargs and every `codex exec review` child. No
+  orphan codex processes survive a runner kill.
+- **Per-round JSON synthesis**: the runner reads the JSONL event stream and
+  emits a structured `<slug>.r<round>.json` sidecar. If JSONL parsing fails
+  (truncated stream, non-JSON banner lines), a stub is written with
+  `error="jsonl_parse_failed"` so the classifier can still find the markdown
+  and report a parse error to the orchestrator.
 
 ## Notes
 

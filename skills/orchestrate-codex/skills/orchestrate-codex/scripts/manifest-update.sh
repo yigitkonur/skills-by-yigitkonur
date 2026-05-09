@@ -9,28 +9,36 @@
 #     manifest-update.sh entry <manifest> <entry-id> <key=value>...
 #
 #       Updates entries[?id==<entry-id>].<key> for each key=value pair.
+#       <key> may be a dotted path (e.g. mode_state.codex_pid); intermediate
+#       objects are auto-created via jq's setpath.
 #       Special handling:
-#         - status=<v>: also pushes a {ts, entry_id, from, to} row onto history
+#         - status=<v>: also pushes a {ts, entry_id, from, to, actor, reason}
+#           row onto history
 #         - <key>=now: substitute UTC ISO timestamp
 #         - <key>=null: write JSON null
-#         - <key>=+1: increment counter (only for known counters: attempts)
-#         - exit_code/attempts/schema_version/concurrency_cap/round: numeric
+#         - <key>=+1: increment counter (uses ((... // 0) + 1))
+#         - exit_code/attempts/schema_version/concurrency_cap/round/
+#           codex_pid/post_verify_exit/answer_size_bytes/major_count/
+#           minor_count: numeric (also when leaf-segment of dotted key)
 #
 #   Top-level update:
 #     manifest-update.sh top <manifest> <key=value>...
 #
+# Optional flags (may appear before mode or after the manifest):
+#   --reason "<text>"   record reason on history rows for status changes
+#   --actor "<name>"    override actor (default: script basename)
+#
 # Concurrency model: flock(<manifest>.lock) for exclusive writer access;
 # read → mutate → atomic os.replace via mv. 50 concurrent updates against the
 # same manifest produce a manifest that parses cleanly and reflects every
-# update (DoD 11).
+# update.
 #
-# Exit codes:
-#   0  OK
-#   1  manifest missing or malformed (or jq filter produced invalid output)
-#   2  usage error
-#   3  entry id not found
-#   4  jq missing
-#   5  lock acquire timeout (30s)
+# Exit codes (canonical table — python sibling agrees):
+#   0  OK — update applied
+#   2  usage error / bad input / manifest missing or malformed / entry not found
+#   3  environmental error (lock acquire timeout, write failure)
+#   4  hard failure (resulting manifest invalid JSON)
+#   5  missing required dependency (jq)
 
 set -uo pipefail
 
@@ -42,60 +50,145 @@ Usage:
   manifest-update.sh entry <manifest.json> <entry-id> <key=value>...
   manifest-update.sh top   <manifest.json> <key=value>...
 
+Optional flags (anywhere before the trailing key=value list):
+  --reason "<text>"  record on history rows
+  --actor "<name>"   override the actor recorded on history rows
+
 Special values:
-  now    → UTC ISO timestamp (current time)
-  null   → JSON null
-  +1     → numeric increment (counter += 1)
+  now    UTC ISO timestamp (current time)
+  null   JSON null
+  +1     numeric increment (counter += 1)
 
 Examples:
   manifest-update.sh entry m.json 01-foo status=running started_at=now
   manifest-update.sh entry m.json 01-foo status=done finished_at=now exit_code=0
-  manifest-update.sh entry m.json 01-foo status=failed last_error="rate limited"
+  manifest-update.sh entry m.json 01-foo mode_state.codex_pid=12345
+  manifest-update.sh entry m.json 01-foo --reason "rescue redispatch" status=queued
   manifest-update.sh top   m.json finished_at=now
 EOF
   exit 2
 }
 
+# ── Pre-flight ─────────────────────────────────────────────────
 if ! command -v jq >/dev/null 2>&1; then
   echo "manifest-update: jq not found on PATH" >&2
-  exit 4
+  exit 5
 fi
+
+ACTOR=""
+REASON=""
+
+# Pull --reason / --actor out of the argv (anywhere). Remaining argv shifts
+# down so the positional layout below still works.
+declare -a POSARGS=()
+while (( $# > 0 )); do
+  case "$1" in
+    --reason)
+      shift
+      [[ $# -gt 0 ]] || { echo "manifest-update: --reason requires a value" >&2; exit 2; }
+      REASON="$1"
+      shift
+      ;;
+    --reason=*)
+      REASON="${1#--reason=}"
+      shift
+      ;;
+    --actor)
+      shift
+      [[ $# -gt 0 ]] || { echo "manifest-update: --actor requires a value" >&2; exit 2; }
+      ACTOR="$1"
+      shift
+      ;;
+    --actor=*)
+      ACTOR="${1#--actor=}"
+      shift
+      ;;
+    *)
+      POSARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Restore positional args.
+set -- "${POSARGS[@]+"${POSARGS[@]}"}"
 
 if [[ $# -lt 3 ]]; then usage; fi
 
 MODE="$1"; shift
 MANIFEST="$1"; shift
 
+if [[ -z "$ACTOR" ]]; then
+  ACTOR="$(basename -- "$0")"
+fi
+
 if [[ ! -f "$MANIFEST" ]]; then
   echo "manifest-update: manifest not found: $MANIFEST" >&2
-  exit 1
+  exit 2
 fi
 
 # Pre-validate the manifest parses before acquiring the lock — a corrupt
 # manifest would otherwise block every concurrent caller behind the flock.
 if ! jq -e . "$MANIFEST" >/dev/null 2>&1; then
   echo "manifest-update: manifest is not valid JSON: $MANIFEST" >&2
-  exit 1
+  exit 2
 fi
 
 LOCK="${MANIFEST}.lock"
 TS_NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# Numeric-coercible keys (we'll use --argjson for these when the value parses
-# as a number; otherwise fall back to --arg / string).
-is_numeric_key() {
+# Numeric-coercible leaf keys (we'll use --argjson for these when the value
+# parses as a number; otherwise fall back to --arg / string). Matches the
+# python sibling's NUMERIC_KEYS allowlist.
+is_numeric_leaf() {
   case "$1" in
     exit_code|attempts|schema_version|concurrency_cap|round) return 0 ;;
+    codex_pid|post_verify_exit|answer_size_bytes) return 0 ;;
+    major_count|minor_count) return 0 ;;
     *) return 1 ;;
   esac
 }
 
+# Convert a dotted key path "a.b.c" to a jq array literal: ["a","b","c"].
+# Single-segment keys produce ["a"]. Empty segments are rejected.
+dotted_to_jq_path() {
+  local key="$1"
+  local IFS='.'
+  # shellcheck disable=SC2206
+  local -a parts=( $key )
+  local out="["
+  local first=1 seg
+  for seg in "${parts[@]}"; do
+    if [[ -z "$seg" ]]; then
+      echo "manifest-update: bad dotted key (empty segment): $key" >&2
+      exit 2
+    fi
+    if (( first )); then
+      first=0
+    else
+      out+=","
+    fi
+    # JSON-escape the segment by encoding via jq -nR.
+    local escaped
+    escaped="$(printf '%s' "$seg" | jq -nR 'inputs')"
+    out+="$escaped"
+  done
+  out+="]"
+  printf '%s' "$out"
+}
+
+# Returns the leaf segment of a dotted key (the part after the last `.`).
+leaf_of() {
+  local key="$1"
+  printf '%s' "${key##*.}"
+}
+
 # Builds two parallel structures from the trailing key=value pairs:
-#   - JQ_ARGS: array of jq argument flags ( --arg vN VAL ... )
-#   - CHAIN:   pipeline fragment ( | .key = $vN | .key2 = ... )
+#   - JQ_ARGS: array of jq argument flags ( --arg vN VAL ... --argjson pN PATH ... )
+#   - CHAIN:   pipeline fragment ( | setpath($p0; $v0) | ... )
 # Caller declares JQ_ARGS and CHAIN before invoking.
 build_chain() {
-  local i=0 pair key value
+  local i=0 pair key value path_arr leaf
   for pair in "$@"; do
     if [[ "$pair" != *=* ]]; then
       echo "manifest-update: bad pair (no '='): $pair" >&2
@@ -103,24 +196,32 @@ build_chain() {
     fi
     key="${pair%%=*}"
     value="${pair#*=}"
+    if [[ -z "$key" ]]; then
+      echo "manifest-update: empty key in pair: $pair" >&2
+      exit 2
+    fi
+    path_arr="$(dotted_to_jq_path "$key")"
+    leaf="$(leaf_of "$key")"
+    JQ_ARGS+=( --argjson "p$i" "$path_arr" )
     case "$value" in
       now)
         JQ_ARGS+=( --arg "v$i" "$TS_NOW" )
-        CHAIN+=" | .${key} = \$v$i"
+        CHAIN+=" | setpath(\$p$i; \$v$i)"
         ;;
       null)
-        CHAIN+=" | .${key} = null"
+        CHAIN+=" | setpath(\$p$i; null)"
         ;;
       +1)
-        CHAIN+=" | .${key} = ((.${key} // 0) + 1)"
+        # Increment leaf counter: read current via getpath, default 0.
+        CHAIN+=" | setpath(\$p$i; ((getpath(\$p$i) // 0) + 1))"
         ;;
       *)
-        if is_numeric_key "$key" && [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+        if is_numeric_leaf "$leaf" && [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
           JQ_ARGS+=( --argjson "v$i" "$value" )
         else
           JQ_ARGS+=( --arg "v$i" "$value" )
         fi
-        CHAIN+=" | .${key} = \$v$i"
+        CHAIN+=" | setpath(\$p$i; \$v$i)"
         ;;
     esac
     i=$((i + 1))
@@ -133,7 +234,7 @@ acquire_lock() {
   exec 9>"$LOCK"
   if ! flock -w 30 9; then
     echo "manifest-update: failed to acquire lock $LOCK within 30s" >&2
-    exit 5
+    exit 3
   fi
 }
 
@@ -143,7 +244,8 @@ case "$MODE" in
     ENTRY_ID="$1"; shift
     if [[ $# -eq 0 ]]; then usage; fi
 
-    # Detect status-change pairs to also append to history[].
+    # Detect status-change pairs to also append to history[]. Only top-level
+    # `status=` triggers history; nested `mode_state.status=` does not.
     NEW_STATUS=""
     for pair in "$@"; do
       if [[ "$pair" == status=* ]]; then
@@ -155,17 +257,24 @@ case "$MODE" in
 
     if ! jq -e --arg id "$ENTRY_ID" 'any(.entries[]?; .id == $id)' "$MANIFEST" >/dev/null 2>&1; then
       echo "manifest-update: entry id not found in $MANIFEST: $ENTRY_ID" >&2
-      exit 3
+      exit 2
     fi
 
-    JQ_ARGS=( --arg id "$ENTRY_ID" --arg ts "$TS_NOW" )
+    JQ_ARGS=( --arg id "$ENTRY_ID" --arg ts "$TS_NOW" --arg actor "$ACTOR" )
+    if [[ -n "$REASON" ]]; then
+      JQ_ARGS+=( --arg reason "$REASON" )
+      REASON_JQ='$reason'
+    else
+      REASON_JQ='null'
+    fi
     CHAIN=""
     build_chain "$@"
 
     # Single-pass jq filter:
-    #   1. Capture old status as $old.
-    #   2. Apply CHAIN to the matching entry.
-    #   3. If status changed, append a history row.
+    #   1. Capture old status as $old_status.
+    #   2. Apply CHAIN to the matching entry (CHAIN starts with " | ", so we
+    #      anchor on `.` and the pipeline composes cleanly).
+    #   3. If status changed, append a history row with actor/reason.
     if [[ -n "$NEW_STATUS" ]]; then
       FILTER='
         . as $root
@@ -175,7 +284,8 @@ case "$MODE" in
           )
         | (.entries | map(select(.id == $id))[0].status // null) as $new_status
         | .history = ((.history // []) + [
-            { ts: $ts, entry_id: $id, from: $old_status, to: $new_status }
+            { ts: $ts, entry_id: $id, from: $old_status, to: $new_status,
+              actor: $actor, reason: '"$REASON_JQ"' }
           ])
       '
     else
@@ -190,14 +300,18 @@ case "$MODE" in
     if ! jq "${JQ_ARGS[@]}" "$FILTER" "$MANIFEST" > "$TMP" 2>/dev/null; then
       rm -f "$TMP"
       echo "manifest-update: jq filter failed (entry id=$ENTRY_ID, pairs=$*)" >&2
-      exit 1
+      exit 4
     fi
     if ! jq -e . "$TMP" >/dev/null 2>&1; then
       rm -f "$TMP"
       echo "manifest-update: produced invalid JSON; aborting" >&2
-      exit 1
+      exit 4
     fi
-    mv -f "$TMP" "$MANIFEST"
+    if ! mv -f "$TMP" "$MANIFEST"; then
+      rm -f "$TMP"
+      echo "manifest-update: failed to write $MANIFEST" >&2
+      exit 3
+    fi
     ;;
 
   top)
@@ -208,21 +322,25 @@ case "$MODE" in
     CHAIN=""
     build_chain "$@"
 
-    # Top-level chain begins from `.` — strip the leading " | " from CHAIN.
+    # Top-level chain composes from `.` — CHAIN already begins with " | ".
     FILTER=".${CHAIN}"
 
     TMP="$(mktemp "${MANIFEST}.tmp.XXXXXX")"
     if ! jq "${JQ_ARGS[@]}" "$FILTER" "$MANIFEST" > "$TMP" 2>/dev/null; then
       rm -f "$TMP"
       echo "manifest-update: jq filter failed for top-level update (pairs=$*)" >&2
-      exit 1
+      exit 4
     fi
     if ! jq -e . "$TMP" >/dev/null 2>&1; then
       rm -f "$TMP"
       echo "manifest-update: produced invalid JSON; aborting" >&2
-      exit 1
+      exit 4
     fi
-    mv -f "$TMP" "$MANIFEST"
+    if ! mv -f "$TMP" "$MANIFEST"; then
+      rm -f "$TMP"
+      echo "manifest-update: failed to write $MANIFEST" >&2
+      exit 3
+    fi
     ;;
 
   *)

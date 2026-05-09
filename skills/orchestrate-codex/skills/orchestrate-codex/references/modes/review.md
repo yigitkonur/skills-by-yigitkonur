@@ -48,29 +48,113 @@ Per-branch settings flow through `tasks.json`-like structure inside the manifest
 
 ## Pre-flight
 
-1. `git rev-parse --is-inside-work-tree` succeeds.
+1. `git rev-parse --is-inside-work-tree` succeeds (`handleReview` refuses if `.git` is absent under the resolved workspace root).
 2. Each branch in `--branches` exists locally OR can be fetched from `origin`.
 3. Each branch has a remote ref on `origin` (if not, push first).
-4. `codex login status` exits 0.
+4. `codex login status` — warn unless `~/.codex/config.toml` declares no `model_provider`. Note that `handleReview` itself does **not** call `codex login status` (earlier drafts of SKILL.md claimed it did); the operator should check it manually before invoking review mode if their setup is unusual.
 5. `<skill-root>/scripts/codex-cc/lib/args.mjs`, `state.mjs`, and `workspace.mjs` are present; the dispatcher imports them.
 6. `codex exec review --help` shows `--json`, `-o`, `--base`, `-m`, and `--dangerously-bypass-approvals-and-sandbox`.
 
-## Per-branch round flow
+## Per-branch flow
 
-`run-review.sh` iterates rounds for each branch. Up to `max_rounds=10` per branch. Per-branch parallelism is bounded by `JOBS` (default 4).
+**The runner is single-round per invocation.** `run-review.sh <manifest.json> <round-number>` runs exactly one round across every non-terminal branch in the manifest, in parallel (default `JOBS=4`). The dispatcher fires it with round `1`; the operator (or a follow-up wrapper) re-invokes for round 2, 3, … until convergence.
+
+The multi-round looping shown in earlier drafts of this doc is **Planned — not yet wired** in `run-review.sh`. Until it ships, the operator drives rounds manually.
+
+### What one round actually does
 
 ```bash
-for round in $(seq 1 "$max_rounds"); do
-  # 1. Select non-terminal entries.
-  # 2. Set up/reuse each branch worktree.
-  # 3. Run native codex exec review with CODEX_FLAGS, --base, --json, and -o.
-  # 4. Normalize findings to <slug>.r<round>.review.json.
-  # 5. Run classify-review-feedback.py --review-json ... --json.
-  # 6. If major_count == 0, mark status=converged.
-  # 7. If major_count > 0, mark status=blocked and record findings/classification paths.
-done
+# In run-review.sh, for each non-terminal entry, in parallel:
 
-# Anything still non-terminal after the cap becomes cap_reached.
+# 1. Setup worktree (or reuse if worktree_path is recorded in the manifest).
+ALLOW_REUSE=1 bash setup-worktree.sh "$slug" "$branch" "$base"
+WORKTREE="../$repo-wt-review-$slug"  # via worktree-contract
+
+# 2. Mark entry running with round counter.
+manifest-update.sh entry "$MANIFEST" "$id" status=running attempts=+1 \
+    round="$ROUND_NUM" started_at=now
+
+# 3. Run codex exec review. Note: emits MARKDOWN, not JSON, despite --json.
+findings_path="$ROUNDS_DIR/$slug.r$ROUND_NUM.md"
+jsonl_path="$ROUNDS_DIR/$slug.r$ROUND_NUM.jsonl"
+errlog="$ROUNDS_DIR/$slug.r$ROUND_NUM.err.log"
+
+(cd "$WORKTREE" && \
+    codex exec review "${CODEX_FLAGS[@]}" --base "$base" --json -o "$findings_path" \
+    2>"$errlog") \
+    | tee "$jsonl_path" \
+    | CODEX_FILTER_LEVEL="$FILTER_LEVEL" bash codex-json-filter.sh \
+    | sed "s/^/[review:$slug] /"
+
+# 4. Mark terminal.
+if [ ${PIPESTATUS[0]} -eq 0 ] && [ -s "$findings_path" ]; then
+    manifest-update.sh entry "$MANIFEST" "$id" \
+        status=reviewed finished_at=now exit_code=0 \
+        last_findings_path="$findings_path"
+else
+    manifest-update.sh entry "$MANIFEST" "$id" \
+        status=failed finished_at=now exit_code="$rc" \
+        last_error="codex review exit $rc"
+fi
+```
+
+That's the entire runner. There is no internal round counter, no apply queue, no all-rejected-streak detection, no terminal-state logic. The runner emits a `reviewed` status when a round produces non-empty findings; the **orchestrator** (Claude main agent) is responsible for:
+
+1. Reading `last_findings_path` after the round terminates.
+2. Bridging the markdown findings into JSON (see "Findings format" below).
+3. Running `classify-review-feedback.py` on the JSON.
+4. Calling `Skill(do-review)` to evaluate each major item.
+5. Applying accepted items via `Edit` directly in the worktree.
+6. Pushing the worktree's branch (`git -C <wt> push`).
+7. Deciding whether to call the runner again for round 2 — and writing the terminal-state field (`converged`, `cap_reached_*`, `three_all_rejected`, `blocked`) into the manifest by hand via `manifest-update.sh`.
+
+### Findings format
+
+`codex exec review` emits **Markdown** to the path passed to `-o`, even with `--json` set (see `run-review.sh` line ~218 — the file extension is `.md`, and codex review's `-o` output is its own narrative report, not the JSONL stream). `classify-review-feedback.py` requires JSON input.
+
+There is **no built-in bridge** in the current skill. Until one ships, the orchestrator must transform the markdown findings into JSON shaped like:
+
+```json
+{
+  "branch": "feat/auth",
+  "round": 1,
+  "items": [
+    {"id": "f1", "severity": "major|minor", "file": "src/foo.ts", "line": 42,
+     "category": "correctness|stability|data-integrity|security|regression|hygiene|branch-structure|formatting|naming|docs|perf|scope",
+     "summary": "...", "rationale": "..."}
+  ]
+}
+```
+
+Workarounds:
+
+- **Manual bridge.** Read the markdown by hand, hand-craft the JSON above, run `classify-review-feedback.py --input <hand-crafted.json>`.
+- **Agent bridge.** Spawn a small `single` mode mission with a prompt that converts the markdown findings to the JSON schema; pipe its `-o` file into the classifier.
+
+Either path is currently the operator's responsibility. Markdown-to-JSON inside `run-review.sh` is **Planned**.
+
+### Multi-round loop (Planned)
+
+The behavior in earlier drafts — "loop until converged or `max_rounds=10`, detect three-all-rejected streaks, set `terminal_state` automatically" — is **Planned**. Manual workaround for today:
+
+```bash
+# Round 1 — fired by the dispatcher automatically.
+node orchestrate-codex.mjs review --branches feat/auth,feat/billing
+
+# Wait for run-review.sh to flip every entry to `reviewed` or `failed`.
+# Then for each branch with status=reviewed:
+#   - Read mode_state.last_findings_path
+#   - Bridge to JSON, classify, evaluate via /do-review, apply via Edit, push.
+#   - If round produced fixes → bump round counter, fire round 2:
+
+bash scripts/run-review.sh /abs/path/to/manifest.json 2
+
+# Repeat until convergence or until you've decided one of the terminal states
+# below applies. Write the chosen terminal state by hand:
+
+bash scripts/manifest-update.sh entry /abs/path/to/manifest.json <id> \
+    status=converged \
+    mode_state.terminal_state=converged
 ```
 
 ## Why the role split (read this once)
@@ -106,14 +190,26 @@ Default-when-ambiguous (classifier): **major**, conservative. The user's repo `C
 
 ## Terminal states
 
-| State | Meaning | Acceptable? |
+The runner writes one of two `status` values to each entry:
+
+| Status (written by runner) | Meaning |
+|---|---|
+| `reviewed` | One round produced non-empty findings cleanly; the orchestrator must now read `last_findings_path` and decide whether more rounds are needed. **This is a `running`-flavored status, not a final terminal.** Treat `reviewed` as "round complete, awaiting orchestrator decision." |
+| `failed` | The codex-review spawn errored, exited non-zero, produced empty findings, or worktree setup failed. |
+
+The orchestrator-driven terminal taxonomy (the values you write into `mode_state.terminal_state` by hand once you've decided a branch is finished):
+
+| Terminal state | Meaning | Acceptable? |
 |---|---|---|
-| `converged` | Latest round produced 0 major items. | yes — branch is done |
-| `blocked` | Major or ambiguous findings require contextual evaluation/apply, or a contradiction needs a human decision. | surface; branch is not converged |
-| `cap_reached` | Round cap hit before a branch reached another terminal state. | surface; branch likely needs splitting |
+| `converged` | Latest round produced 0 major items after evaluation. | yes — branch is done |
+| `cap_reached_with_progress` | Round 10 hit; at least one round pushed fixes; remaining items go to PR body as known-deferred. | yes — branch is done with carry-over |
+| `cap_reached_no_progress` | Round 10 hit; no round produced apply-able fixes. | surface — branch likely needs splitting |
+| `cap_reached` | Generic round-cap-hit umbrella state when granular sub-state is undecided. | surface; pick `_with_progress` or `_no_progress` once you've inspected the rounds |
+| `three_all_rejected` | 3 consecutive rounds where main agent rejected every item. Codex is producing items that don't survive evaluation. | mark done-with-reason; further rounds won't help |
+| `blocked` | Major or ambiguous findings require contextual evaluation/apply, persistent ambiguous items, oscillation, or contradictions that need a human decision. | surface for human decision |
 | `failed` | Tooling crash past retry budget; codex review crashed; classifier crashed. | surface for human |
 
-Do not invent additional states. If a situation doesn't fit, pick `blocked` with a `terminal_reason` describing the mismatch, surface it, and file the issue.
+Do not invent additional states. If a situation doesn't fit, pick `blocked` with a `terminal_reason` describing the mismatch, surface it, and file the issue. Mapping rule for the runner's `reviewed`: it is **not** a terminal state. Convert to one of the orchestrator-driven values above as soon as you've decided the branch's outcome; leaving entries at `reviewed` indefinitely confuses rescue (which treats `reviewed` as in-flight-ish).
 
 ## Recovery
 

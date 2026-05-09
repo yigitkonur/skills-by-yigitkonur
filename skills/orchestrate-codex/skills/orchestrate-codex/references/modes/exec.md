@@ -27,8 +27,7 @@ The dispatcher accepts a `tasks.json` file. The shape is a top-level JSON array 
   {
     "id": "01-search-rewrite",
     "branch": "wave1/search-rewrite",
-    "prompt_file": "/abs/path/to/prompts/01-search-rewrite.md",
-    "post_verify_cmd": "pnpm test"
+    "prompt_file": "/abs/path/to/prompts/01-search-rewrite.md"
   },
   {
     "id": "02-cache-eviction",
@@ -42,7 +41,7 @@ Field rules per element:
 - `id` (or `slug`) is the stable per-task key; must be unique. Auto-generated as `01`, `02`, ... if omitted.
 - `branch` (optional) is created on dispatch (or reused if already present and clean). If omitted the dispatcher derives one from the id.
 - `prompt_file` is the path to a rendered prompt; see `references/templates/exec.tmpl.md`. Pass either `prompt_file` (path) or `prompt` (inline text).
-- `post_verify_cmd` is optional; defaults auto-detect per language recipe (`tsc --noEmit`, `mypy`, `cargo check`, `go vet`).
+- `post_verify_cmd` (**Planned — not yet wired.** `buildExecEntries` in `scripts/orchestrate-codex.mjs` currently drops this field; the runner only consults the auto-detect table below. Until wired, pre-bake your verify into the prompt's `## Self-check` section, or run the verify manually after the fleet returns.) Defaults auto-detect per language recipe.
 
 Per-run knobs flow through the dispatcher's CLI flags (`--concurrency N`, `--cwd <dir>`), not the tasks file.
 
@@ -50,7 +49,7 @@ Per-run knobs flow through the dispatcher's CLI flags (`--concurrency N`, `--cwd
 
 Before any spawn:
 1. `git rev-parse --is-inside-work-tree` succeeds.
-2. cwd is the repo root (or `--repo <path>` is provided).
+2. cwd is the repo root (or `--cwd <path>` is provided to the dispatcher; there is no `--repo` flag).
 3. main is clean (`git status --short` empty on main; if you're on a feature branch, the branch is clean).
 4. No in-progress merge / rebase / cherry-pick / bisect.
 5. `.gitignore` covers `../<repo>-wt-*`.
@@ -89,11 +88,20 @@ if [ "$CODEX_EXIT" = "0" ] && [ -n "$(git -C "$WORKTREE" status --porcelain)" ];
     git -C "$WORKTREE" commit -m "$(generate_commit_message "$task_id")"
 fi
 
-# 5. Post-verify (per the auto-detected POST_VERIFY_CMD).
-(cd "$WORKTREE" && eval "$post_verify_cmd") || POST_VERIFY_EXIT=$?
+# 5. Post-verify (auto-detected only; see table below).
+verify_status="not-run"
+if [ -n "$pv_cmd" ]; then
+    if (cd "$WORKTREE" && eval "$pv_cmd" >/dev/null 2>&1); then
+        verify_status="pass"
+    else
+        verify_status="fail"
+    fi
+fi
 
 # 6. Mark entry terminal.
-if [ "$CODEX_EXIT" = "0" ] && commits-landed-since-baseline && [ "${POST_VERIFY_EXIT:-0}" = "0" ]; then
+# verify_status=fail does NOT flip to `failed` today — it's recorded for
+# operator review. The codex+commit+answer triad is the actual gate.
+if [ "$CODEX_EXIT" = "0" ] && commits-landed-since-baseline; then
     status=done
 else
     status=failed
@@ -101,16 +109,16 @@ fi
 python3 manifest-update.py --manifest "$MANIFEST" --entry "$task_id" \
     --set "status=$status" --set "exit_code=$CODEX_EXIT" \
     --set "finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --set "mode_state.post_verify_exit=${POST_VERIFY_EXIT:-0}"
+    --set "verify_status=$verify_status"
 ```
 
 The runner emits one stdout line per state transition:
 
 ```
 START 01-search-rewrite
-DONE 01-search-rewrite (commits=3, post_verify=0)
-FAIL 02-cache-eviction (codex_exit=1, see logs/02-cache-eviction.log)
-SKIP 03-already-done
+DONE  01-search-rewrite (runtime=187s verify=pass)
+FAIL  02-cache-eviction (codex exit=1; runtime=42s; see <worktree>/.orchestrate-codex/02-cache-eviction.log)
+SKIP  03-already-done
 --- all jobs finished ---
 ```
 
@@ -126,31 +134,43 @@ If the wrapper sees nothing to commit AND codex exit is 0, the task is marked `f
 
 ## Post-verify auto-detection
 
-`run-fleet.sh` (and `setup-worktree.sh`) detect the project type:
+`run-fleet.sh` detects the project type from files at the worktree root:
 
 | Repo signal | POST_VERIFY_CMD |
 |---|---|
-| `tsconfig.json` | `tsc --noEmit` |
-| `pyproject.toml` (with `[tool.mypy]`) | `mypy .` |
-| `Cargo.toml` | `cargo check` |
-| `go.mod` | `go vet ./...` |
+| `tsconfig.json` (and `npx` available) | `npx --no-install tsc --noEmit` |
+| `pyproject.toml` or `mypy.ini` (and `mypy` on PATH) | `mypy --strict .` |
+| `Cargo.toml` (and `cargo` on PATH) | `cargo check --quiet` |
+| `go.mod` (and `go` on PATH) | `go vet ./...` |
 | (none of the above) | skip post-verify |
 
-Per-task override via `tasks.json` `post_verify_cmd`. The check runs inside the worktree and its exit code is captured into `mode_state.post_verify_exit`. Non-zero is `failed`.
+Per-task override via `tasks.json` `post_verify_cmd` is **Planned — not yet wired** (see Inputs note). For now the runner only uses the auto-detect table above, and writes `verify_status` (`pass` / `fail` / `not-run`) into the manifest.
+
+### Docs-only / asset-only tasks
+
+When the worktree contains no language signal — pure documentation, copy edits, image assets, JSON config — none of the auto-detect rows match, so `verify_status` is `not-run`. This is **first-class behavior**, not a misconfiguration. The success gate degrades automatically:
+
+- The post-verify clause drops out.
+- The task is `done` on (codex exit 0) ∧ (≥ 1 commit) ∧ (`-o` answer file non-empty).
+
+There is currently no built-in `package.json` row (no auto-pick of `pnpm test` / `npm test` / `bun test`); a JS-only repo without `tsconfig.json` will also fall through to `not-run`. If you need a JS test gate, run it manually after the fleet returns, or include the verify command in the prompt's `## Self-check` so the agent runs it before committing.
 
 ## Success gate
 
-A task is `done` when ALL of:
+A task is `done` when ALL of these hold:
 - `codex exit code == 0`.
 - ≥ 1 new commit on the worktree's branch since baseline.
 - `-o` answer file exists and is non-empty.
-- Post-verify exit code is 0 (or post-verify was skipped per language recipe).
+- Post-verify is `pass` OR `not-run` (no language signal). Post-verify `fail` does NOT currently flip the status to `failed` on its own — it's recorded as `verify_status=fail` in the manifest and the operator decides. The wrapper marks `done` regardless of post-verify outcome as long as the codex+commit+answer triad passes.
 
 A task is `failed` when ANY of:
 - `codex exit code != 0`.
-- Codex exit 0 but no commits landed (meta-skill rumination, agent bailed without a marker).
-- Worktree is dirty post-run (unexpected uncommitted changes).
-- Post-verify failed.
+- Codex exit 0 but `-o` answer file is empty AND the JSONL log is non-empty (drop-detection signal).
+- Auto-commit failed (e.g. `pre-commit` hook rejected).
+- `setup-worktree.sh` failed.
+- The prompt path was missing.
+
+Independent post-verify failure showing up as `done` with `verify_status=fail` is the current shape; if you need the verify to gate the status, treat `verify_status=fail` as a hand-off signal and re-dispatch via rescue with a refined prompt.
 
 ## Recovery
 
@@ -175,7 +195,7 @@ After every task is terminal:
 ## Anti-patterns
 
 - Never auto-merge to main. Merging is operator-driven.
-- Never reuse a worktree across runs without explicit `--reuse <id>`. Stale state contaminates new runs.
+- Never reuse a worktree across runs without an explicit decision (a per-task `--reuse <id>` flag is **Planned — not yet wired**; today reuse happens implicitly via `ALLOW_REUSE=1` inside `run-fleet.sh` when `worktree_path` is already recorded). Stale state contaminates new runs.
 - Never raise concurrency past the default without `--i-have-measured`. Rate-limits cascade.
 - Never put two tasks that share files in the same fleet. Serialize them.
-- Never set a `post_verify_cmd` that mutates state (e.g. `pnpm install`). Post-verify is a check, not a setup step. Setup happens in `setup-worktree.sh`.
+- Never let post-verify mutate state. Post-verify is a check, not a setup step. The auto-detect commands above are read-only by design (`tsc --noEmit`, `cargo check`, `mypy --strict .`, `go vet ./...`); when per-task `post_verify_cmd` ships, keep it that way. Setup belongs in `setup-worktree.sh` or in the prompt itself.

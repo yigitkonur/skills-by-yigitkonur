@@ -62,7 +62,7 @@ State `failed` short-circuits the lifecycle: the worktree is preserved with a `.
 | `<source-repo>/.env.local` | `<worktree>/.env.local` | If present (gitignored env) |
 | `<source-repo>/.env.development` | `<worktree>/.env.development` | If present |
 
-Symlinks are relative paths so moving the entire `<repo-parent>/` tree doesn't break links.
+Symlinks are relative paths (e.g. `../<source-basename>/node_modules`) so moving the entire `<repo-parent>/` tree as a single unit doesn't break links. **Do not "fix" these to absolute paths** — absolute paths bind the worktree to its current filesystem location and break the moment the user moves their dev tree (a common operation when switching machines, reorganizing `~/dev`, or migrating across filesystems). Verified at `scripts/setup-worktree.sh` (B4 derailment).
 
 Codegen runs after symlinks are in place:
 
@@ -133,8 +133,22 @@ git -C <source-repo> worktree list
 python3 <skill-root>/scripts/list-worktrees.py --json | jq '.'
 
 # Which manifest entries reference them?
-python3 <skill-root>/scripts/audit-fleet-state.py --manifest <path> --json | jq '.entries[] | {id, status, worktree_path}'
+# IMPORTANT: audit-fleet-state.py defaults workspace_root to cwd. If you invoke
+# from a directory that is NOT the workspace, orphan-worktree detection runs
+# against the wrong tree. Either cd into the workspace first OR pass
+# --workspace-root <path>. The canonical workspace_root is recorded inside the
+# manifest's top-level metadata; cross-check before running the audit from
+# elsewhere.
+cd <workspace-root> && \
+    python3 <skill-root>/scripts/audit-fleet-state.py --manifest <path> --json \
+        | jq '.entries[] | {id, status, worktree_path}'
 
 # Are any orphaned (worktree on disk, not in manifest)?
-python3 <skill-root>/scripts/audit-fleet-state.py --manifest <path> --json | jq '.orphan_worktrees[]'
+# audit-fleet-state.py emits these under .orphan_worktrees[]. Detection is
+# verified working — a worktree that exists on disk under the contract path
+# (`<repo-parent>/<repo-basename>-wt-*`) but has no matching manifest entry
+# surfaces here (B10 derailment confirmed this for both exec and review modes).
+python3 <skill-root>/scripts/audit-fleet-state.py \
+    --workspace-root <workspace-root> --manifest <path> --json \
+    | jq '.orphan_worktrees[]'
 ```

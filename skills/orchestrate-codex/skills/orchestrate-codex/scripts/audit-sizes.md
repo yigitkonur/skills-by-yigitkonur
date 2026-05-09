@@ -10,8 +10,8 @@ bash audit-sizes.sh <answers-dir> [<runner-log>] [<min-bytes>]
 
 | Arg | Default | Notes |
 |---|---|---|
-| `<answers-dir>` | required | Directory containing per-input answer files |
-| `<runner-log>` | `logs/_runner.log` | Optional; for cross-checking DONE/FAIL/SKIP counts |
+| `<answers-dir>` | `./answers` (env: `ANSWERS`) | Directory containing per-input answer files |
+| `<runner-log>` | `./logs/_runner.log` (env: `LOG`) | Optional; for cross-checking DONE/FAIL/SKIP counts. When the dispatcher manages the run, the runner stdout is redirected to `${monitor_root}/logs/<run_id>/_runner.log` — point `LOG=` at that path when auditing a dispatcher-managed run. |
 | `<min-bytes>` | 10000 (env: `MIN_BYTES`) | Absolute floor for `[BELOW-FLOOR]` flag |
 
 ## Outputs

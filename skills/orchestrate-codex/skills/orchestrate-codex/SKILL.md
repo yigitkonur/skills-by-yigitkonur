@@ -78,10 +78,10 @@ If detection lands on MEDIUM confidence and the surrounding prompt is genuinely 
 Run before every mode. Stops the agent from improvising into a broken state.
 
 1. `codex --version` succeeds. The skill assumes codex 0.130.0 or later for the verified `codex exec review` flags.
-2. `codex login status` exits 0 (authed). If not, surface and stop.
+2. `codex login status` is a soft probe. If it exits non-zero AND `~/.codex/config.toml` declares no `model_provider` (i.e. nothing else is supplying auth), surface and stop. Otherwise warn and proceed — bearer-token / managed-companion / proxy auth all spawn cleanly while `login status` reports "Not logged in". The bash `bootstrap.sh` hard-fails on non-zero exit; set `ORCHESTRATE_SKIP_CODEX_AUTH=1` to bypass when alternate auth is in play.
 3. cwd is resolved. If the chosen mode requires a git repo (exec, review), `git rev-parse --is-inside-work-tree` succeeds.
 4. Workspace slug+hash computed (see manifest contract).
-5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"`. Use rescue, not a force-new run, to replay partial work.
+5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"` (a `--force-new-run` escape hatch is **planned, not yet implemented** — see `references/universal/idempotency.md`; rescue mode is the supported path).
 6. `.gitignore` (if a git repo) covers the worktree path pattern (`../<repo>-wt-*`) and any in-repo state files.
 7. Required scripts present: `<skill-root>/scripts/codex-flags.sh`, the per-mode runner, the helpers for the chosen mode.
 8. `<skill-root>/scripts/codex-cc/` is present because the dispatcher imports its `lib/` helpers. Review mode does not require `gh`; it uses native `codex exec review`.
@@ -154,7 +154,7 @@ Manifest is **deleted** on successful tidy. **Preserved** during rescue — hist
 | review | 4 (per-branch parallel) | `xargs -P 4` in `run-review.sh` | `--concurrency N` or `JOBS=N` env |
 | rescue | inherits original mode | manifest replay | `JOBS=N` env |
 
-Soft gate: `JOBS > 20` (any mode) requires `--i-have-measured <justification>` and records the justification in `manifest.policy.overrides.concurrency`. `JOBS > 100` is refused at dispatcher and runner boundaries. Read `references/universal/concurrency.md`.
+Soft gate: any `JOBS` above the mode default OR `JOBS > 20` (any mode) requires `--i-have-measured "<justification>"` and records the justification in `manifest.policy.overrides.concurrency` (the dispatcher's canonical write location). `JOBS > 100` is refused at the dispatcher boundary. The bash runners (`run-fleet.sh`, `run-batch.sh`) only emit a WARN above 20 — the dispatcher is the only hard-enforcement point. Read `references/universal/concurrency.md`.
 
 ## Universal: destructive-action gates
 
@@ -174,7 +174,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 ### exec mode — parallel codex agents in worktrees
 
 - **Trigger:** Q5 or Q6 (≥2 discrete coding tasks; git repo).
-- **Pre-checks:** repo clean main; `.gitignore` covers `../<repo>-wt-exec-*`; no in-progress merge / rebase / cherry-pick; baseline tests pass.
+- **Pre-checks:** repo clean main; `.gitignore` covers `../<repo>-wt-*`; no in-progress merge / rebase / cherry-pick; baseline tests pass.
 - **Read first:** `references/modes/exec.md`, `references/universal/worktree-contract.md`, `references/universal/monitor-contract.md`, `references/universal/json-streaming.md`.
 - **Run:** `node scripts/orchestrate-codex.mjs exec --tasks <tasks.json>`. The dispatcher writes the seed manifest, spawns `bash scripts/run-fleet.sh --manifest <path>` detached, emits the JSON envelope. Surface the literal `Monitor({...})` from `envelope.monitor.tool_hint`.
 - **Success gate:** every entry in {done, failed-surfaced}; Monitor sees `--- all jobs finished ---`.
@@ -223,7 +223,7 @@ Every mode triages failures through this 7-row table first. Per-mode extensions 
 | # | Failure | Trigger signal | First-line mitigation |
 |---|---|---|---|
 | 1 | rate-limit / 503 | `503 Service Unavailable` in JSONL or log | wait 15 min, redispatch failed only — never touch done entries |
-| 2 | hung process | no progress event ≥ 25 min OR wrapper wall-clock cap hit | mark FAILED-HUNG, terminate codex PID after gate, surface for rescue |
+| 2 | hung process | no progress event ≥ 25 min OR wrapper wall-clock cap hit | flip entry to `status=failed` with `last_error="hung_25min"` (the status enum has no hung-specific value), terminate codex PID after gate, surface for rescue |
 | 3 | MCP-active JSON drop | events absent in `--json` while child alive | rely on `-o` file as truth; advisory `last_error="json_event_dropped"` |
 | 4 | output truncation | answer file < `MIN` bytes after DONE event | flag in audit, do NOT auto-retry, surface for human inspect |
 | 5 | worktree dirty unexpected | post-run `git status --short` non-empty in supposed-to-commit worktree | mark BLOCKED-DIRTY, do not auto-commit, surface |
@@ -253,7 +253,7 @@ The old third-party bot-wait timing constants from `run-codex-review` are retire
 ## Anti-patterns
 
 - Never silently overwrite a `done` manifest entry. Skip-existing is the only acceptable behavior.
-- Never raise `JOBS` past mode default without `--i-have-measured` AND a logged justification in `manifest.policy.cap_override`.
+- Never raise `JOBS` past mode default without `--i-have-measured` AND a logged justification in `manifest.policy.overrides.concurrency`.
 - Never replace `--dangerously-bypass-approvals-and-sandbox`. The skill assumes bypass; downgrades silently change semantics.
 - Never run unbounded concurrency (`xargs -P 0`, naked `&` fan-out). Cap is mode-specific.
 - Never auto-merge to `main` / `canary` / default branch. Merging is operator-driven.

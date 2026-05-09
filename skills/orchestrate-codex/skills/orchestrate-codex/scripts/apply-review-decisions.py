@@ -36,6 +36,7 @@ Expected `<branch>.evaluation.json` shape (produced by main agent or evaluator):
 
 Usage:
     apply-review-decisions.py --eval <path.json>
+    apply-review-decisions.py --input <path.json>            (alias for --eval)
     apply-review-decisions.py --eval <path.json> --json
     apply-review-decisions.py --eval <path.json> --branch feat/foo
 
@@ -251,9 +252,9 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument(
-        "--eval", "--evaluation",
+        "--eval", "--evaluation", "--input",
         dest="eval_path", required=True,
-        help="Path to <branch>.evaluation.json",
+        help="Path to <branch>.evaluation.json (--input is an alias)",
     )
     ap.add_argument(
         "--branch", default=None,

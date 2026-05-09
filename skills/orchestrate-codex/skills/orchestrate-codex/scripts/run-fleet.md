@@ -50,8 +50,36 @@ Manifest mutations:
 
 - Idempotent: skips entries with `status=done`. Re-running picks up `queued` and `failed`; rescue can limit that replay with `--only`.
 - Auto-commit: if codex didn't commit (no commits past baseline) but worktree has changes, the wrapper commits them with a generated `<emoji> <type>(<scope>): <task-id> auto-commit` message.
-- Post-verify: auto-detects `tsc --noEmit` (if `tsconfig.json`), `mypy .` (if `pyproject.toml` with mypy), `cargo check` (if `Cargo.toml`), `go vet ./...` (if `go.mod`). Override per-task via `tasks.json` `post_verify_cmd`.
-- Failure surfaces: codex exit non-zero / no commits despite exit 0 / dirty worktree post-run / post-verify failed → `status=failed` with descriptive `last_error`.
+- **Post-verify resolution order** (first match wins):
+  1. `entries[i].mode_state.post_verify_cmd` — per-task override threaded by
+     the dispatcher from `tasks.json`. This is the ground-truth.
+  2. `entries[i].mode_state.task.post_verify_cmd` — alternate shape used when
+     the dispatcher nests under `.task`.
+  3. Auto-detect from project files in the worktree:
+     - `package.json` + `pnpm-lock.yaml` → `pnpm test`
+     - `package.json` + `bun.lockb`      → `bun test`
+     - `package.json` (default)          → `npm test --silent`
+     - `tsconfig.json` (no `package.json`) → `npx --no-install tsc --noEmit`
+     - `pyproject.toml` | `mypy.ini`     → `mypy --strict .`
+     - `Cargo.toml`                      → `cargo check --quiet`
+     - `go.mod`                          → `go vet ./...`
+  4. Nothing — `verify_status` stays `not-run`.
+  Resolved command + exit code are persisted to `mode_state.post_verify_cmd`
+  and `mode_state.post_verify_exit` so audit / rescue can reconstruct what was
+  actually run.
+- Failure surfaces: codex exit non-zero / no commits despite exit 0 / dirty worktree post-run → `status=failed` with descriptive `last_error`. Post-verify failures are advisory: `mode_state.post_verify_exit` records them but the codex run still lands as `done`.
+- **Signal handling**: `trap 'kill 0' TERM INT EXIT` runs near the top so SIGTERM
+  on the runner propagates to xargs and every codex child. Killing the runner
+  leaves no orphan codex processes.
+- **Per-entry path fields**: `log_path`, `jsonl_path`, `answer_path` are populated
+  on every entry before each spawn (per `manifest-contract.md`). `log_path`
+  holds stderr (auth errors, deprecation warnings, panics); `jsonl_path` holds
+  the raw `--json` event stream; `answer_path` is `codex exec -o`. Default
+  base dir: `${monitor_root}/logs/${run_id}/<id>.{log,jsonl,last.md}`; falls
+  back to `<worktree>/.orchestrate-codex/` when `monitor_root` is missing.
+- **Concurrency cap**: when `JOBS` is unset in the env, the runner reads
+  `manifest.policy.concurrency_cap` (or top-level `concurrency_cap`) so the
+  dispatcher's seed wins. A bare `JOBS=3` from the operator overrides.
 
 ## Notes
 

@@ -21,21 +21,45 @@ Use this template for: large refactors with live observability needed; research 
 # Constraints
 
 - <hard facts the agent must respect>
-- <out-of-scope items>
 
 # Success criteria
 
 - <specific deliverables>
 - <verification commands the agent should run before finishing>
 
+# Out-of-scope
+
+- <explicit non-goals — Do NOT touch X / Y / Z>
+- <categorical exclusions if any — Do NOT use language/feature Y at all>
+
 # Failure protocol
 
 If blocked: stop, summarize what was tried and what was discovered, exit non-zero with the summary in the last-message file.
 ```
 
+## Structured-deliverable callout (JSON / YAML / CSV / fixed-shape markdown)
+
+Single mode is the natural mode for one-shot structured outputs (config files, parseable tables, fixed-schema JSON). Codex writes its **final assistant message verbatim** to `-o`, so for parseable deliverables the prompt MUST forbid the natural reply pattern:
+
+- Output ONLY the artifact. NO prose preamble. NO trailing prose. NO commentary.
+- NO markdown fences (no triple-backticks, no ```json, no ```yaml).
+- NO leading/trailing blank lines.
+- The first byte of `-o` must be the first byte of the artifact (`{` for JSON, `---` or first key for YAML, header row for CSV, first table row for markdown).
+- Validate post-run with the appropriate parser; the parser's exit code is the actual success rung, not byte count.
+
+For fixed-N deliverables (10 rows, 30-line file, 5 entries), see `references/universal/prompt-discipline.md` §"Size-budget anti-patterns" — restate the count in Constraints AND Success criteria AND Failure protocol; a single mention is fragile.
+
 ## When to add the SUBAGENT-STOP prefix
 
-Add the prefix from `references/templates/exec.tmpl.md` if the user's task is coding work AND the cwd is a repo where codex has loaded meta-skills (visible in the early JSONL events as long `agent_message` items about planning before any `command_execution` event). For research / non-repo missions, skip the prefix — meta-skills don't fire in non-coding contexts.
+Add the prefix from `references/templates/exec.tmpl.md` when ALL of these hold:
+- The task is coding work (writing/modifying source files), not research or analysis.
+- The cwd is a git repo (`git rev-parse --is-inside-work-tree` exits 0).
+- Codex's installed meta-skills include planning skills (visible in the early JSONL events as long `agent_message` items about planning before any `command_execution` event).
+
+Skip the prefix when ANY of these hold:
+- The mission is research, summarization, or non-coding.
+- The cwd is not a git repo (codex doesn't load coding meta-skills there — confirmed by inspection of installed skill triggers).
+- The deliverable is a single structured artifact (JSON config, markdown table, CSS file) where meta-skill triggers don't fire.
 
 ## What single mode unlocks vs exec mode
 

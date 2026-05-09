@@ -43,27 +43,65 @@ Properties:
 
 ## Force-redo per entry
 
-Sometimes the entry is `done` but the user wants a different output (different prompt, different model, codex non-determinism produced a worse result the first time):
+Sometimes the entry is `done` but the user wants a different output (different prompt, different model, codex non-determinism produced a worse result the first time). Today this is a manual three-step workflow:
 
 ```bash
-# Archive the existing answer.
+# 1. Archive the existing answer.
 mkdir -p answers/.prev
 mv answers/<slug>.md answers/.prev/
 
-# Mark the entry queued for redispatch.
-python3 manifest-update.py --manifest <path> --entry <slug> --set 'status=queued' --set 'attempts=0'
+# 2. Mark the entry queued for redispatch (note the --execute; default is dry-run).
+python3 scripts/manifest-update.py entry --manifest <path> --entry <slug> \
+    --set status=queued --set attempts=0 --execute
 
-# Re-run.
-node orchestrate-codex.mjs <mode> ... # the runner picks up the queued entry
+# 3. Re-run. The runner picks up the queued entry on its next pass.
+node scripts/orchestrate-codex.mjs <mode> ...
 ```
 
-There is no mode-level `--force-redo` shortcut. Use rescue `--redo ...` for failed/never-started/non-done entries, or use the manifest helper intentionally after archiving prior answers.
+**Implemented.** A dispatcher convenience flag `--force-redo <slug>[,<slug2>,...]` is wired in `orchestrate-codex.mjs` for `exec` and `batch` modes. It archives the existing answer file (batch) to `<answers>/.prev/<slug>-<ts>.md`, flips the entry's status back to `queued`, and re-spawns the runner.
+
+```bash
+# Force re-run of one entry (exec or batch):
+node scripts/orchestrate-codex.mjs <mode> --force-redo <slug>
+
+# Force re-run multiple entries (comma-separated; one --force-redo flag):
+node scripts/orchestrate-codex.mjs <mode> --force-redo "slug-a,slug-b"
+
+# Force re-run every entry:
+node scripts/orchestrate-codex.mjs <mode> --force-redo-all
+```
+
+Use `rescue --redo failed|never-started|all-non-done` (Yigit's HEAD shape) or `rescue --apply <subset>` (S8's structured shape) for the rescue-driven path. The three-step manual workflow above remains valid as a defense-in-depth path when you don't trust the dispatcher to flip status atomically.
 
 **Never delete `answers/.prev/`** until the new answer is verified. Codex non-determinism means a retry can produce a smaller (or larger but worse) output than the original.
 
 ## Redo all
 
-For completed entries, archive existing outputs, flip selected entries with `manifest-update`, and rerun the original mode. For non-done entries, prefer `rescue --redo all-non-done`.
+**Implemented** for exec and batch modes:
+
+```bash
+node scripts/orchestrate-codex.mjs <mode> --force-redo-all
+```
+
+Archives every existing answer file (batch) to `<answers>/.prev/<slug>-<ts>.md`, flips every entry to `queued`, and re-spawns the runner. The audit cost is real — surface a confirmation prompt before the operator triggers this.
+
+For non-done entries only, prefer `rescue --redo all-non-done` (Yigit's HEAD shape) or `rescue --apply all-non-done` (S8's shape) — both are wired and operate against the existing manifest without archiving any answer files.
+
+The fully-manual workflow (still valid as a defense-in-depth path):
+
+```bash
+# Archive every answer to answers/.prev/.
+mkdir -p answers/.prev && mv answers/*.md answers/.prev/ 2>/dev/null
+
+# Flip every entry back to queued.
+for slug in $(jq -r '.entries[].id' <manifest>); do
+  python3 scripts/manifest-update.py entry --manifest <manifest> \
+      --entry "$slug" --set status=queued --set attempts=0 --execute
+done
+
+# Re-run.
+node scripts/orchestrate-codex.mjs <mode> ...
+```
 
 ## Idempotency under concurrent writes
 
@@ -98,14 +136,15 @@ Exit code 3. The user has options:
 - Wait for the running run to finish.
 - Run rescue mode (which is allowed against an active manifest — rescue's classification handles in-flight entries).
 - Tidy the completed run, then start a new run.
+- Pass `--force-new-run --run-id <custom>` to write a sibling manifest (`manifest.<custom-run-id>.json` in the same state directory). **Implemented** in `orchestrate-codex.mjs` for exec/batch/single. The runners would still race on per-entry locks if both runs target overlapping entries; use this only when the new run touches a disjoint task set.
 
-Starting a new run on an active manifest is intentionally unsupported; the runners would race on per-entry state.
+Starting a new run on an active manifest is intentionally gated; the runners would race on per-entry state without `--force-new-run`.
 
 ## Anti-patterns
 
-- Bypassing the skip guard by deleting the manifest. The answer files are still there; the new run will produce N more answers. Archive prior outputs and intentionally requeue instead.
+- Bypassing the skip guard by deleting the manifest. The answer files are still there; the new run will produce N more answers. Archive prior outputs (use `--force-redo` / `--force-redo-all`) and intentionally requeue instead.
 - Hand-editing `manifest.json` to flip an entry's status. Use `manifest-update.py` so the history records the flip.
-- Treating "done" as eternal. If the input changes, archive the prior output and intentionally requeue the entry.
+- Treating "done" as eternal. If the input changes, archive the prior output and intentionally requeue the entry — `--force-redo <slug>` does it atomically.
 - Auto-retrying inside the runner. The runner does not retry. Rescue is operator-confirmed.
 - Multiple runners over the same manifest. The dispatcher refuses concurrent runs; bypassing the dispatcher is unsafe.
 

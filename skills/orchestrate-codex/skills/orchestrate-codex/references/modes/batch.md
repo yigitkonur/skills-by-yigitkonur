@@ -35,12 +35,14 @@ A workdir laid out:
 │   └── <slug>.md
 ├── answers/            # codex output, one per input
 │   └── <slug>.md
-├── logs/               # per-job stdout+stderr + the runner log
-│   ├── <slug>.log
-│   ├── <slug>.jsonl
-│   └── _runner.log
-└── manifest.json       # the orchestrate-codex manifest (under resolveStateDir(cwd))
+└── logs/               # per-job stdout+stderr captured here
+    ├── <slug>.log      # codex stdout (combined w/ stderr) — one per input
+    └── <slug>.jsonl    # parallel JSONL stream when codex was invoked with --json
 ```
+
+`manifest.json` lives under `resolveStateDir(cwd)/orchestrate-codex/`, not in the workdir.
+
+The dispatcher's runner stdout/stderr are redirected to `${monitor_root}/logs/<run_id>/_runner.log` (see `spawnRunnerDetached` in `scripts/orchestrate-codex.mjs`); that file lives under the state dir, **not** the workdir. Per-job artifacts (`logs/<slug>.log`, manifest entry rows) are the primary observability path; the Monitor tail target is the manifest, not a runner log.
 
 Two input formats:
 
@@ -49,13 +51,22 @@ Two input formats:
 | Tab-delimited | `name<TAB>content` per line | `name` becomes the slug | URL lists where you derive deterministic slugs upstream |
 | Plain lines | one line per input | line becomes both slug and content (sanitized) | short ID lists |
 
+### Two slug spaces
+
+Batch mode has **two intentional slug naming conventions** that operators must keep straight:
+
+- **Bare slug** — what `bash render-prompts.sh inputs.txt template.md prompts/` produces. The first field of each input is sanitized (`tr -c 'a-zA-Z0-9._-' '-'`) and used directly as `prompts/<slug>.md`. No prefix, no index. Use this path when you're driving `run-batch.sh` standalone (env-var invocation; see "Standalone runner" below).
+- **`NNN-` prefixed slug** — what the dispatcher's `buildBatchEntries` generates. Each entry is keyed by `<NNN>-<sanitized-first-field>` (e.g. `001-acme-corp`, `002-globex`); the dispatcher's own `renderBatchPromptFiles` writes prompt files under that NNN-prefix. Use this path when you're invoking `node orchestrate-codex.mjs batch ...`.
+
+The two paths are not interchangeable. If you pre-render with `render-prompts.sh` and then invoke the dispatcher, the dispatcher will overwrite your bare-slug prompts with NNN-prefixed ones (different filenames). Pick one slug space per workflow and stick to it.
+
 ## Pre-flight
 
 1. `inputs.txt` exists and is non-empty.
 2. `template.md` exists and contains the literal `XXXXXXXXXXXXX` placeholder.
 3. `render-prompts.sh inputs.txt template.md prompts/` runs cleanly. If it warns about slug collisions, **resolve before launching** — the second collider gets silently dropped otherwise.
 4. `answers/` and `logs/` directories exist (created by render).
-5. `codex login status` exits 0.
+5. `codex login status` — warn unless `~/.codex/config.toml` declares no `model_provider`. Some setups (vendored OpenAI key, ChatGPT subscription, custom auth shim) leave login-status non-zero even when `codex exec` works. Soft warning, not a hard fail.
 
 ## Per-input spawn flow
 
@@ -89,9 +100,12 @@ if [ "$CODEX_EXIT" = "0" ] && [ -s "$tmp" ]; then
     mv -f "$tmp" "answers/$slug.md"
     bytes=$(wc -c < "answers/$slug.md")
     echo "DONE $slug ($bytes bytes)$([ $bytes -lt $MIN_BYTES ] && echo ' [SMALL]')"
-    python3 manifest-update.py ... --set 'status=done' --set "exit_code=0" \
-        --set "mode_state.answer_size_bytes=$bytes" \
-        --set "mode_state.below_floor=$( [ $bytes -lt $MIN_BYTES ] && echo true || echo false )"
+    # Note: mode_state.answer_size_bytes / mode_state.below_floor are
+    # **Planned — not yet wired** in run-batch.sh; the runner only writes
+    # status / finished_at / exit_code today. For size-flag flow, run
+    # `bash audit-sizes.sh` after `--- all jobs finished ---` (see Audit
+    # section below).
+    python3 manifest-update.py ... --set 'status=done' --set "exit_code=0"
 else
     rm -f "$tmp"
     echo "FAIL $slug (codex_exit=$CODEX_EXIT, see logs/$slug.log)"
@@ -119,11 +133,13 @@ The `mv -f tmp answers/<slug>.md` only happens after codex exits 0 AND the tmp i
 ## Audit after `--- all jobs finished ---`
 
 ```bash
-bash audit-sizes.sh answers/ logs/_runner.log "${MIN_BYTES:-10000}"
+bash audit-sizes.sh answers/ "${MIN_BYTES:-10000}"
 ```
 
+(Earlier drafts of this doc referenced a `logs/_runner.log` argument; that file does not exist — the runner's stdout is discarded by `spawnRunnerDetached`. Read `audit-sizes.sh --help` for current arguments.)
+
 `audit-sizes.sh` prints:
-- Total `DONE / FAIL / SKIP` counts.
+- Total `DONE / FAIL / SKIP` counts derived from the `answers/` and `logs/` dirs.
 - Per-answer byte size, sorted ascending.
 - Bottom decile flagged for review.
 - Any answer below `MIN_BYTES` flagged.
@@ -132,39 +148,57 @@ bash audit-sizes.sh answers/ logs/_runner.log "${MIN_BYTES:-10000}"
 
 ## Concurrency
 
-Default `JOBS=10`. Tuned for codex-cli current TPM/RPM caps with gpt-5.5 + xhigh; adjust:
+Default `JOBS=10`. Tuned for codex-cli current TPM/RPM caps with gpt-5.5 + xhigh; raise via env var, not a flag (the runner parses no flags — see "Standalone runner" below):
 
 ```bash
-JOBS=15 ./run-batch.sh ...
+JOBS=15 PROMPTS=./prompts ANSWERS=./answers LOGS=./logs \
+    bash run-batch.sh
 ```
 
-Above 20, the soft gate kicks in: `--i-have-measured` flag required and a justification recorded in `manifest.policy.cap_override`. The recommended approach is to measure single-job latency first (one entry, see how long it takes), then divide your TPM budget by per-job token consumption to find the sustainable rate.
+Above 20, the soft gate kicks in via the **dispatcher** (`--i-have-measured` flag on `node orchestrate-codex.mjs batch`). The standalone runner just warns and proceeds. The recommended approach is to measure single-job latency first (one entry, see how long it takes), then divide your TPM budget by per-job token consumption to find the sustainable rate.
+
+## Standalone runner
+
+`run-batch.sh` parses **no command-line flags** — it reads everything from environment variables:
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `JOBS` | `10` | parallelism |
+| `PROMPTS` | `./prompts` | input prompts dir |
+| `ANSWERS` | `./answers` | output answers dir |
+| `LOGS` | `./logs` | per-job log dir |
+| `DRY_RUN` | `0` | `1` → print planned commands, no codex spawn |
+| `ORCHESTRATE_MANIFEST` | unset | optional path to manifest.json for status writes |
+
+There is no `--only <slug>`, no `--manifest`, no `--prompts-dir` — earlier drafts of this doc named flags that don't exist. Single-entry retry happens via the skip-existing guard plus filesystem manipulation:
+
+```bash
+# Force one slug to retry: remove its answer + log, then re-run with JOBS=1.
+rm -f answers/<slug>.md logs/<slug>.log
+JOBS=1 PROMPTS=./prompts ANSWERS=./answers LOGS=./logs \
+    bash run-batch.sh
+```
+
+Flag-style invocation (`bash run-batch.sh --manifest ... --prompts-dir ...`) is **Planned — not yet wired**. Use the env-var form above.
 
 ## Retry / rescue
 
-A single failed entry retried in isolation:
-
-```bash
-mv answers/.prev/<slug>.md answers/.prev/<slug>.md.older 2>/dev/null
-JOBS=1 ./run-batch.sh --only <slug>
-```
-
-A batch retry of all FAILed:
+A batch retry of all FAILed entries:
 
 ```bash
 node orchestrate-codex.mjs rescue --manifest <path>
-# Pick "redo failures only".
+# Pick "redo failures only". (Today this is read-only classification; see
+# rescue.md — manual redispatch may be required.)
 ```
 
-The skip-existing guard handles the rest.
+The skip-existing guard handles the rest: `answers/<slug>.md` non-empty → `SKIP`.
 
 To re-run an entry that's already `done` (you want a different output):
 
 ```bash
 mkdir -p answers/.prev
 mv answers/<slug>.md answers/.prev/
-node orchestrate-codex.mjs rescue --manifest <path>
-# Pick "redo failures only" — the missing answer file makes this entry classify as failed.
+# Then re-invoke run-batch.sh (env-var form above) or rescue.
 ```
 
 **Never delete `.prev/`** until you've confirmed the new answer is acceptable. Codex non-determinism means a retry can produce a smaller (or larger but worse) output than the original.
@@ -174,7 +208,7 @@ node orchestrate-codex.mjs rescue --manifest <path>
 - Auto-retry-by-size. Codex output varies; surface and inspect, never auto-retry.
 - Two runners on the same workdir. Race on the skip-existing guard. The dispatcher refuses concurrent runs.
 - Naming-collision drop without resolving. Two inputs render to the same slug → second is silently skipped at render time. Always resolve before launching.
-- `tail -F` outliving the runner. The Monitor's tail process keeps tailing `_runner.log` after the runner exits. The log stays static, no events fire, but the process lingers. Always `TaskStop` the Monitor when `--- all jobs finished ---` lands.
+- `tail -F` outliving the runner. The Monitor's tail process keeps tailing the manifest path (or a per-job log) after the runner exits. The file stays static, no events fire, but the process lingers. Always `TaskStop` the Monitor once every entry reaches a terminal status. (There is no `_runner.log` to tail — see workdir layout above.)
 - `MIN_BYTES` set so high that every entry flags. The threshold should match prompt-shape expectations. Recalibrate per template.
 - One template doing N research types. If your inputs are heterogeneous (some URLs, some IDs, some product names), they probably want N templates. Render and run separately.
 

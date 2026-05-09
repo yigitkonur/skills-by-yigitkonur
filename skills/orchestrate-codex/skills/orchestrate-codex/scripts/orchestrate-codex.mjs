@@ -51,6 +51,8 @@ const PY_HELPERS = {
   rescue: process.env.ORCHESTRATE_HELPER_RESCUE || path.join(SCRIPT_DIR, "rescue-detect.py"),
   audit: process.env.ORCHESTRATE_HELPER_AUDIT || path.join(SCRIPT_DIR, "audit-fleet-state.py"),
   tidy: process.env.ORCHESTRATE_HELPER_TIDY || path.join(SCRIPT_DIR, "cleanup-worktrees.py"),
+  manifestUpdate: process.env.ORCHESTRATE_HELPER_MANIFEST_UPDATE
+    || path.join(SCRIPT_DIR, "manifest-update.py"),
 };
 
 const BOOTSTRAP_SCRIPT = path.join(SCRIPT_DIR, "bootstrap.sh");
@@ -71,8 +73,25 @@ const DEFAULT_CONCURRENCY = {
   review: 4,
 };
 
-const CONCURRENCY_MEASURE_GATE = 20;
-const CONCURRENCY_HARD_CAP = 100;
+// Soft gate: above this requires --i-have-measured "<justification>".
+// Aligns with references/universal/concurrency.md.
+const CONCURRENCY_HARD_CAP = 20;
+// Hard ceiling: refused unconditionally — assumes a single user's auth tier.
+const CONCURRENCY_ABSOLUTE_CEILING = 100;
+// Legacy alias retained for any external code that imported the old name.
+const CONCURRENCY_MEASURE_GATE = CONCURRENCY_HARD_CAP;
+
+// Monitor's hard timeout ceiling — Claude Code's Monitor tool refuses
+// timeout_ms > 1h. Any larger value is silently clamped. We clamp here so the
+// envelope value reflects what Monitor will actually honor.
+const MONITOR_HARD_MAX_MS = 60 * 60 * 1000;
+
+// Subsets recognised by `rescue --apply <subset>` (S8 rescue redispatch UI).
+const RESCUE_APPLY_SUBSETS = new Set([
+  "failed-only",
+  "never-started-only",
+  "all-non-done",
+]);
 
 const POLICY = {
   model: process.env.ORCHESTRATE_CODEX_MODEL || "gpt-5.5",
@@ -132,6 +151,7 @@ function emitEnvelope(env) {
 // Map error codes to exit codes per DoD §Exit codes.
 const EXIT_CODE_BY_ERROR = {
   unknown_mode: 2,
+  unknown_option: 2,
   missing_required_arg: 2,
   bad_argument: 2,
   bad_inputs_file: 2,
@@ -139,19 +159,62 @@ const EXIT_CODE_BY_ERROR = {
   bad_template_file: 2,
   bad_prompt_input: 2,
   bad_branches_input: 2,
+  bad_schema_file: 2,
   not_a_repo: 2,
   manifest_not_found: 3,
   manifest_corrupt: 3,
   concurrent_run_in_progress: 3,
+  manifest_inflight_race: 3,
   spawn_failed: 4,
   python_helper_failed: 4,
   codex_unauthenticated: 5,
+  codex_unavailable: 5,
 };
 
 function exitFor(env) {
   if (env.ok) return 0;
   const code = env?.error?.code;
   return EXIT_CODE_BY_ERROR[code] ?? 1;
+}
+
+// ----------------------------------------------------------------------------
+// Strict argv parsing — wrap parseArgs so unknown long-options error out
+// instead of being silently shoved into `positionals`.
+// ----------------------------------------------------------------------------
+
+function parseArgsStrict(argv, command, config) {
+  // Underlying parseArgs is permissive: unknown long-options end up in
+  // positionals (token starts with "--" but didn't match valueOptions or
+  // booleanOptions). Catch those here.
+  let parsed;
+  try {
+    parsed = parseArgs(argv, config);
+  } catch (e) {
+    return { err: errEnvelope(command, "bad_argument", e.message) };
+  }
+  const unknownLong = parsed.positionals.filter((t) => typeof t === "string" && t.startsWith("--"));
+  if (unknownLong.length > 0) {
+    return {
+      err: errEnvelope(command, "unknown_option",
+        `Unknown option: ${unknownLong[0]}. ` +
+        `Run \`node orchestrate-codex.mjs help\` for the supported flags.`,
+        { unknown_options: unknownLong }),
+    };
+  }
+  // Strip stray short-form flags too — the dispatcher uses long-form
+  // exclusively, and a stray `-x` is almost certainly a typo.
+  const unknownShort = parsed.positionals.filter(
+    (t) => typeof t === "string" && t.startsWith("-") && t.length > 1 && t !== "-",
+  );
+  if (unknownShort.length > 0) {
+    return {
+      err: errEnvelope(command, "unknown_option",
+        `Unknown option: ${unknownShort[0]}. ` +
+        `The dispatcher only accepts long-form flags (--name).`,
+        { unknown_options: unknownShort }),
+    };
+  }
+  return { value: parsed };
 }
 
 // ----------------------------------------------------------------------------
@@ -164,11 +227,19 @@ function workspaceFor(cwd) {
   return resolveWorkspaceRoot(cwd);
 }
 
-function manifestPathFor(cwd) {
+function manifestPathFor(cwd, runId = null) {
   // Matches codex-companion's state dir + an orchestrate-codex/ subdir so our
   // manifest sits next to its `state.json`+`jobs/<id>.json` and rescue can
   // correlate via jobId. Plan §Manifest schema confirms.
-  return path.join(resolveStateDir(cwd), "orchestrate-codex", "manifest.json");
+  //
+  // When runId is provided (force-new-run), the manifest is named
+  // `manifest.<run_id>.json` so a concurrent second run on the same workspace
+  // gets its own file and doesn't collide with the live manifest. See
+  // references/universal/idempotency.md "force-new-run".
+  const base = path.join(resolveStateDir(cwd), "orchestrate-codex");
+  return runId
+    ? path.join(base, `manifest.${runId}.json`)
+    : path.join(base, "manifest.json");
 }
 
 function ensureManifestDir(manifestPath) {
@@ -247,14 +318,53 @@ function refuseIfConcurrent(command, manifestPath, { allowResume = false } = {})
   if (hasInflightEntries(m)) {
     const inflight = (m.entries || []).filter((e) => e.status === "queued" || e.status === "running");
     return errEnvelope(command, "concurrent_run_in_progress",
-      `Manifest at ${manifestPath} has ${inflight.length} non-terminal entries (status in {queued,running}). Wait for the current run, or rescue mode it.`,
+      `Manifest at ${manifestPath} has ${inflight.length} non-terminal entries (status in {queued,running}). ` +
+      `Recovery options: (1) wait for the current run to finish; (2) run \`rescue\` mode to redispatch the partial run; ` +
+      `(3) force a parallel run with \`--force-new-run --run-id <custom>\` (writes to manifest.<custom>.json).`,
       {
         manifest_path: manifestPath,
         inflight_count: inflight.length,
         inflight_ids: inflight.map((e) => e.id),
+        recovery_options: [
+          "wait",
+          "rescue",
+          "--force-new-run --run-id <custom>",
+        ],
       });
   }
   return null;
+}
+
+// ----------------------------------------------------------------------------
+// Codex CLI pre-flight
+// ----------------------------------------------------------------------------
+
+function ensureCodexAvailable(command) {
+  // The dispatcher must NOT seed a manifest if `codex` is missing — the
+  // detached runner would exit immediately, leaving every entry `queued`
+  // forever, and every subsequent run would hit `concurrent_run_in_progress`
+  // until the operator nuked the manifest by hand.
+  //
+  // Test/dev hatch: setting ORCHESTRATE_RUNNER_<MODE> to a stub means the
+  // operator is running the integration suite without a real codex binary;
+  // skip the check in that case. We detect "any RUNNER override is set" as
+  // the integration-test signal.
+  if (
+    process.env.ORCHESTRATE_RUNNER_EXEC ||
+    process.env.ORCHESTRATE_RUNNER_BATCH ||
+    process.env.ORCHESTRATE_RUNNER_SINGLE ||
+    process.env.ORCHESTRATE_RUNNER_REVIEW ||
+    process.env.ORCHESTRATE_SKIP_CODEX_PREFLIGHT === "1"
+  ) {
+    return null;
+  }
+  const r = spawnSync("command", ["-v", "codex"], { shell: true, encoding: "utf8" });
+  if (r.status === 0 && (r.stdout || "").trim()) return null;
+  return errEnvelope(command, "codex_unavailable",
+    "codex CLI not found on PATH. Install codex-cli before invoking the dispatcher; " +
+    "the detached runner would otherwise exit immediately and strand the manifest in `queued` state. " +
+    "Verify with `command -v codex && codex --version`.",
+    { hint: "https://github.com/openai/codex" });
 }
 
 // ----------------------------------------------------------------------------
@@ -279,33 +389,28 @@ function jsString(s) {
 // stdio buffering inside the pipeline holds events for kilobytes, defeating
 // the "live" Monitor stream. Plan §Monitor contract is explicit about this.
 function buildMonitorHint({ description, command, persistent, timeoutMs }) {
+  // Monitor's hard ceiling is 1h. Larger values are silently clamped, which
+  // means the envelope lies about how long Monitor will watch. Clamp here.
+  const clamped = Math.max(1, Math.min(MONITOR_HARD_MAX_MS, Math.floor(timeoutMs)));
   const parts = [];
   parts.push(`  description: ${jsString(description)},`);
   parts.push(`  command: ${jsString(command)},`);
   parts.push(`  persistent: ${persistent ? "true" : "false"},`);
-  parts.push(`  timeout_ms: ${Math.max(1, Math.floor(timeoutMs))}`);
+  parts.push(`  timeout_ms: ${clamped}`);
   return `Monitor({\n${parts.join("\n")}\n})`;
 }
 
-// codex-monitor.sh is the rule-engine ticker. We pipe through a grep that
-// surfaces every terminal state — `done`, `failed`, `skipped`, `--- all jobs
-// finished ---`, plus the codex JSONL `error {message}` event so rate-limits
-// and 503s surface live, and `turn.completed`/`thread.started` so the agent
-// sees the lifecycle.
-//
-// The grep is tagged with --line-buffered so events arrive promptly, not in
-// 4 KB chunks. The trailing `; echo "monitor exited"` ensures the Monitor
-// tool sees a closing line even when the runner crashes mid-stream — without
-// it, a SIGKILL'd runner leaves the pipe hanging and the Monitor tool waits
-// for its idle timeout.
+// codex-monitor.sh is the rule-engine ticker. It already emits one
+// line-buffered progress row per tick plus terminal markers such as
+// `--- fleet quiet ---`; do not grep-filter it or real progress disappears.
 function fleetMonitorCommand({ manifestPath, monitorRoot }) {
-  const env = `ORCHESTRATE_MANIFEST=${shellQuote(manifestPath)} MONITOR_ROOT=${shellQuote(monitorRoot)}`;
+  const env = [
+    `ORCHESTRATE_MANIFEST=${shellQuote(manifestPath)}`,
+    `MONITOR_ROOT=${shellQuote(monitorRoot)}`,
+    `ORCHESTRATE_QUIET_AFTER=${shellQuote(process.env.ORCHESTRATE_QUIET_AFTER || "1")}`,
+  ].join(" ");
   const monitorBin = shellQuote(MONITOR_SCRIPT);
-  // The grep extended-regex covers: lifecycle (started/done/failed/skipped),
-  // crashes (error {), terminal sentinel (all jobs finished), and the
-  // monitor's own progress ticks. --line-buffered flushes per-line.
-  const grep = `grep -E --line-buffered '\\[(START|DONE|FAIL|SKIP|TICK|MON)\\]|--- all jobs finished ---|^error |^turn\\.completed|^thread\\.started'`;
-  return `${env} bash ${monitorBin} 2>&1 | ${grep}; echo "monitor exited rc=$?"`;
+  return `${env} bash ${monitorBin} 2>&1; echo "monitor exited rc=$?"`;
 }
 
 // Single-mission tail — pipes the codex --json output through codex-json-filter.sh.
@@ -330,9 +435,10 @@ function buildMonitorForMode(mode, ctx) {
           description: `orchestrate-codex ${mode} (run_id=${runId})`,
           command: fleetMonitorCommand({ manifestPath, monitorRoot }),
           persistent: true,
-          // 4-hour ceiling — the agent's Monitor closes when the runner emits
-          // "all jobs finished". This guards against hung runners.
-          timeoutMs: 4 * 60 * 60 * 1000,
+          // Hard-clamped to MONITOR_HARD_MAX_MS by buildMonitorHint. The
+          // long-running fleet monitor closes when codex-monitor.sh emits
+          // `--- fleet quiet ---`, which the agent's Monitor sees and stops.
+          timeoutMs: MONITOR_HARD_MAX_MS,
         }),
       };
     case "single":
@@ -341,9 +447,9 @@ function buildMonitorForMode(mode, ctx) {
           description: `orchestrate-codex single (run_id=${runId})`,
           command: singleMonitorCommand({ jsonlPath: jsonlPath || path.join(monitorRoot, "single.jsonl") }),
           // single mode is bounded — Monitor closes at turn.completed; we
-          // give it a 2-hour cap.
+          // give it the platform max (1h, see MONITOR_HARD_MAX_MS).
           persistent: false,
-          timeoutMs: 2 * 60 * 60 * 1000,
+          timeoutMs: MONITOR_HARD_MAX_MS,
         }),
       };
     default:
@@ -404,6 +510,7 @@ function newEntry({ id, slug, branch = null, baseBranch = null, promptPath = nul
   };
 }
 
+
 // tasks.json schema (lenient): array of {id?, slug?, branch?, base_branch?,
 // prompt, prompt_file?, label?, post_verify_cmd?}.
 // We coerce to the manifest entries[] shape.
@@ -430,6 +537,11 @@ function buildExecEntries(tasks, command) {
     }
     const branch = t.branch || id;
     const baseBranch = t.base_branch || t.base || "main";
+    // Per-task post_verify_cmd: thread through to mode_state so the runner
+    // (run-fleet.sh) can prefer it over auto-detect (B4 from S8 fix wave).
+    const postVerify = (typeof t.post_verify_cmd === "string" && t.post_verify_cmd.trim())
+      ? t.post_verify_cmd.trim()
+      : (t.post_verify_cmd ?? null);
     entries.push(newEntry({
       id,
       slug: t.slug || id,
@@ -437,15 +549,25 @@ function buildExecEntries(tasks, command) {
       baseBranch,
       promptPath: t.prompt_file ?? null,
       modeState: {
+        // `task` is the canonical per-task shape the runner reads first
+        // (`mode_state.post_verify_cmd` first, then `mode_state.task.post_verify_cmd`).
+        task: {
+          prompt: t.prompt ?? null,
+          prompt_file: t.prompt_file ?? null,
+          label: t.label ?? null,
+        },
+        // Yigit's `exec` shape is preserved for code that grew up reading
+        // mode_state.exec.* — both are populated so neither path breaks.
         exec: {
           branch,
           base_branch: baseBranch,
           prompt: t.prompt ?? null,
           prompt_file: t.prompt_file ?? null,
           label: t.label ?? null,
-          post_verify_cmd: t.post_verify_cmd ?? null,
+          post_verify_cmd: postVerify,
           post_verify_exit: null,
         },
+        post_verify_cmd: postVerify,
       },
     }));
   });
@@ -472,7 +594,7 @@ function buildBatchEntries(inputsText, command) {
     return newEntry({
       id,
       slug: id,
-      modeState: { batch: { input_row: line, prompt_file: null, answer_size_bytes: null, below_floor: null } },
+      modeState: { batch: { input: line, input_row: line, prompt_file: null, answer_size_bytes: null, below_floor: null } },
     });
   });
   const dup = entries.find((e) => e.__err);
@@ -524,10 +646,11 @@ function buildReviewEntries(branches, command, baseBranch = "main", maxRounds = 
   if (branches.length === 0) {
     return { err: errEnvelope(command, "bad_branches_input", "review mode requires at least one branch (file or comma-list).") };
   }
-  const entries = branches.map((branch) => {
+  const entries = branches.map((branch, i) => {
+    const idx = String(i + 1).padStart(2, "0");
     const slug = slugify(branch);
     return newEntry({
-      id: slug,
+      id: `${idx}-${slug}`,
       slug,
       branch,
       baseBranch,
@@ -556,7 +679,10 @@ function writePromptFile(dir, name, content) {
 
 function materializeExecPrompts(entries, cwd, promptDir, command) {
   for (const entry of entries) {
-    const state = entry.mode_state.exec;
+    // Read prompt content from either mode_state.exec.* (Yigit's shape) or
+    // mode_state.task.* (S8's shape). buildExecEntries populates both, but
+    // older manifests may only carry one.
+    const state = entry.mode_state?.exec || entry.mode_state?.task || {};
     if (state.prompt_file) {
       const promptPath = path.isAbsolute(state.prompt_file)
         ? state.prompt_file
@@ -565,11 +691,18 @@ function materializeExecPrompts(entries, cwd, promptDir, command) {
         return errEnvelope(command, "bad_tasks_file", `prompt_file not found for ${entry.id}: ${promptPath}`);
       }
       entry.prompt_path = promptPath;
-      state.prompt_file = promptPath;
+      // Mirror to both shapes so downstream readers don't have to choose.
+      if (entry.mode_state?.task) entry.mode_state.task.prompt_file = promptPath;
+      if (entry.mode_state?.exec) entry.mode_state.exec.prompt_file = promptPath;
       continue;
     }
-    entry.prompt_path = writePromptFile(promptDir, entry.id, state.prompt);
-    state.prompt_file = entry.prompt_path;
+    if (state.prompt) {
+      entry.prompt_path = writePromptFile(promptDir, entry.id, state.prompt);
+      if (entry.mode_state?.task) entry.mode_state.task.prompt_file = entry.prompt_path;
+      if (entry.mode_state?.exec) entry.mode_state.exec.prompt_file = entry.prompt_path;
+      continue;
+    }
+    return errEnvelope(command, "bad_tasks_file", `task ${entry.id} requires prompt or prompt_file`);
   }
   return null;
 }
@@ -593,6 +726,9 @@ function materializeSinglePrompt(entry, cwd, promptDir, command) {
 }
 
 function renderBatchPrompts({ inputsPath, templatePath, promptsDir, cwd, command }) {
+  // Yigit's path: shell out to render-prompts.sh (preserves the bare-slug
+  // standalone-runner workflow). S8's renderBatchPromptFiles below renders
+  // inline in Node for the dispatcher path. handleBatch decides which to call.
   const r = spawnSync("bash", [RENDER_PROMPTS_SCRIPT, inputsPath, templatePath, promptsDir], {
     cwd,
     encoding: "utf8",
@@ -604,6 +740,23 @@ function renderBatchPrompts({ inputsPath, templatePath, promptsDir, cwd, command
       { stdout: r.stdout, stderr: r.stderr }) };
   }
   return { value: { stdout: r.stdout, stderr: r.stderr } };
+}
+
+function renderBatchPromptFiles(entries, templatePath, promptDir, command, placeholder = "XXXXXXXXXXXXX") {
+  // S8 dispatcher path: renders inline for the NNN-prefixed slug space.
+  // See references/modes/batch.md "Two slug spaces".
+  const template = readTextFile(templatePath, command, "bad_template_file");
+  if (template.err) return template.err;
+  fs.mkdirSync(promptDir, { recursive: true });
+  for (const entry of entries) {
+    const input = entry.mode_state?.batch?.input ?? "";
+    const content = input.includes("\t") ? input.slice(input.indexOf("\t") + 1) : input;
+    const prompt = template.value.split(placeholder).join(content);
+    const promptPath = path.join(promptDir, `${entry.id}.md`);
+    fs.writeFileSync(promptPath, `${prompt.replace(/\s+$/g, "")}\n`, "utf8");
+    entry.prompt_path = promptPath;
+  }
+  return null;
 }
 
 // ----------------------------------------------------------------------------
@@ -624,11 +777,15 @@ function seedManifest({
   concurrencyCap,
   monitorRoot,
   cwd,
-  policyOverrides = {},
+  // Both names accepted: HEAD uses `policyOverrides`, S8 uses `overrides`.
+  policyOverrides,
+  overrides,
   paths = {},
   preflight = {},
 }) {
   ensureManifestDir(manifestPath);
+  const overridesMerged = { ...(policyOverrides || {}), ...(overrides || {}) };
+  const policy = { ...POLICY, overrides: overridesMerged };
   const manifest = {
     schema_version: SCHEMA_VERSION,
     run_id: runId,
@@ -637,7 +794,7 @@ function seedManifest({
     base_commit: getBaseCommit(cwd),
     workspace_root: cwd,
     state_dir: path.dirname(manifestPath),
-    policy: { ...POLICY, overrides: policyOverrides },
+    policy,
     concurrency_cap: concurrencyCap,
     monitor_root: monitorRoot,
     paths,
@@ -647,18 +804,23 @@ function seedManifest({
   };
   // Initial-write race guard: refuse to overwrite an in-flight manifest. The
   // refuseIfConcurrent gate above caught this for non-rescue paths; this is
-  // defense in depth in case two seedManifest calls interleave.
+  // defense in depth in case two seedManifest calls interleave. Surfaces as
+  // the same error envelope shape the operator sees from the primary gate.
   if (fs.existsSync(manifestPath)) {
     const prev = readManifestIfPresent(manifestPath);
     if (hasInflightEntries(prev)) {
-      throw new Error("manifest already has in-flight entries; refusing to overwrite");
+      return {
+        err: errEnvelope("seed", "manifest_inflight_race",
+          `Another writer seeded ${manifestPath} with in-flight entries between the concurrent-run gate and seedManifest. Re-run after the existing run finishes, or run rescue to redispatch.`,
+          { manifest_path: manifestPath }),
+      };
     }
   }
   // Atomic write: write to a temp file in the same directory, then rename.
   const tmp = `${manifestPath}.tmp.${process.pid}.${Date.now()}`;
   fs.writeFileSync(tmp, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   fs.renameSync(tmp, manifestPath);
-  return manifest;
+  return { value: manifest };
 }
 
 // ----------------------------------------------------------------------------
@@ -674,16 +836,29 @@ function ensureRunnerExists(runnerPath, command) {
   return null;
 }
 
-function spawnRunnerDetached({ runnerPath, args, cwd }) {
-  // detached + stdio:'ignore' + unref() = the dispatcher returns immediately,
-  // the runner survives across the dispatcher's exit, and the agent's
-  // Monitor reads progress via the JSONL/log files the runner writes. This is
-  // the codex-companion 'task --background' pattern, adapted for bash.
+function ensureLogPath(monitorRoot, runId) {
+  // Per DoD: redirect runner stdout+stderr to ${monitor_root}/logs/<run_id>/_runner.log
+  // so codex-monitor.sh / audit-sizes.sh can rediscover the runner's
+  // START/DONE/FAIL/SKIP lines after the dispatcher exits.
+  const logDir = path.join(monitorRoot, "logs", runId);
+  fs.mkdirSync(logDir, { recursive: true });
+  return path.join(logDir, "_runner.log");
+}
+
+function spawnRunnerDetached({ runnerPath, args, cwd, env = {}, runnerLogPath = null }) {
+  // detached + unref() = the dispatcher returns immediately, the runner
+  // survives across the dispatcher's exit, and the agent's Monitor reads
+  // progress via the JSONL/log files the runner writes. This is the
+  // codex-companion 'task --background' pattern, adapted for bash.
+  //
+  // ORCHESTRATE_RUNNER_FOREGROUND=1 is a test/dev escape hatch — runs the
+  // runner in the foreground via spawnSync so integration tests can assert on
+  // the runner's exit status without scraping the runner log.
   if (process.env.ORCHESTRATE_RUNNER_FOREGROUND === "1") {
     const r = spawnSync("bash", [runnerPath, ...args], {
       cwd,
       encoding: "utf8",
-      env: process.env,
+      env: { ...process.env, ...env },
       maxBuffer: 16 * 1024 * 1024,
     });
     return {
@@ -694,18 +869,32 @@ function spawnRunnerDetached({ runnerPath, args, cwd }) {
       stderr: r.stderr,
     };
   }
+  // stdout+stderr go to <monitor_root>/logs/<run_id>/_runner.log (B5/B7).
+  // Without the redirect, audit-sizes.sh and codex-monitor.sh have nothing
+  // to grep for the runner's START/DONE/FAIL/SKIP markers.
+  let stdio = "ignore";
+  let logFd = null;
+  if (runnerLogPath) {
+    logFd = fs.openSync(runnerLogPath, "a");
+    stdio = ["ignore", logFd, logFd];
+  }
   const child = spawn("bash", [runnerPath, ...args], {
     cwd,
     detached: true,
-    stdio: "ignore",
-    env: process.env,
+    stdio,
+    env: { ...process.env, ...env },
   });
+  if (logFd !== null) {
+    // Close our handle now that the child owns the fd. Matters on macOS where
+    // unclosed parent fds keep the file open even after the child exits.
+    try { fs.closeSync(logFd); } catch { /* ignore */ }
+  }
   child.unref();
   return { pid: child.pid, foreground: false };
 }
 
 // ----------------------------------------------------------------------------
-// Python helpers (rescue / audit / tidy)
+// Python helpers (rescue / audit / tidy / manifest-update)
 // ----------------------------------------------------------------------------
 
 function runPythonHelper(scriptPath, args, cwd) {
@@ -829,6 +1018,142 @@ function runnerArgsForRedispatch(manifest, manifestPath, selectedIds, cap) {
       return null;
   }
 }
+function flipEntryToQueued(manifestPath, entryId, wsRoot) {
+  // manifest-update.py defaults to dry-run; --execute writes. We blank
+  // exit_code/finished_at/last_error so audit doesn't carry stale failure
+  // signals into the next attempt.
+  const args = [
+    "entry",
+    "--manifest", manifestPath,
+    "--entry", entryId,
+    "--set", "status=queued",
+    "--set", "exit_code=null",
+    "--set", "finished_at=null",
+    "--set", "last_error=null",
+    "--execute",
+  ];
+  return runPythonHelper(PY_HELPERS.manifestUpdate, args, wsRoot);
+}
+
+// ----------------------------------------------------------------------------
+// Concurrency resolution + override persistence
+// ----------------------------------------------------------------------------
+
+function resolveConcurrency(opts, command) {
+  // Precedence: --concurrency flag > JOBS env > mode default.
+  // The user's JOBS=10 must win when no --concurrency flag is set; the flag
+  // wins when both are set. (Documented in references/universal/concurrency.md.)
+  const flagVal = opts.concurrency != null && opts.concurrency !== "" ? opts.concurrency : null;
+  const envVal = process.env.JOBS && process.env.JOBS !== "" ? process.env.JOBS : null;
+  const defaultVal = DEFAULT_CONCURRENCY[command] || 1;
+  const sourceRaw = flagVal != null ? flagVal : (envVal != null ? envVal : String(defaultVal));
+  const source = flagVal != null ? "flag" : (envVal != null ? "env" : "default");
+  const cap = Number(sourceRaw);
+  if (!Number.isFinite(cap) || cap < 1 || !Number.isInteger(cap)) {
+    return {
+      err: errEnvelope(command, "bad_argument",
+        `concurrency must be a positive integer (got ${JSON.stringify(sourceRaw)} from ${source}).`),
+    };
+  }
+  if (cap > CONCURRENCY_ABSOLUTE_CEILING) {
+    return {
+      err: errEnvelope(command, "bad_argument",
+        `concurrency=${cap} exceeds the absolute ceiling (${CONCURRENCY_ABSOLUTE_CEILING}). ` +
+        `references/universal/concurrency.md §Hard ceiling: this skill assumes a single user's auth tier; ` +
+        `concurrency above ${CONCURRENCY_ABSOLUTE_CEILING} is structurally pathological.`),
+    };
+  }
+  // Soft gate: above mode default OR above hard cap (whichever lower) requires
+  // --i-have-measured "<justification>". Aligns with references/universal/concurrency.md.
+  const overDefault = cap > defaultVal;
+  const overHardCap = cap > CONCURRENCY_HARD_CAP;
+  const measured = opts["i-have-measured"];
+  if (overDefault || overHardCap) {
+    if (typeof measured !== "string" || !measured.trim()) {
+      const which = overHardCap
+        ? `the hard cap (${CONCURRENCY_HARD_CAP})`
+        : `the ${command} default (${defaultVal})`;
+      return {
+        err: errEnvelope(command, "bad_argument",
+          `concurrency=${cap} (source=${source}) exceeds ${which}. ` +
+          `Pass \`--i-have-measured "<justification>"\` to override (the justification is recorded in ` +
+          `manifest.policy.overrides.concurrency for audit). See references/universal/concurrency.md.`,
+          { source, default: defaultVal, requested: cap, hard_cap: CONCURRENCY_HARD_CAP }),
+      };
+    }
+  }
+  const override = (overDefault || overHardCap)
+    ? { value: cap, justification: measured.trim(), set_at: nowIso() }
+    : null;
+  return { value: cap, source, override };
+}
+
+function defaultMonitorRoot(manifestPath) {
+  return path.dirname(manifestPath);
+}
+
+// ----------------------------------------------------------------------------
+// Force-redo helpers (exec/batch)
+// ----------------------------------------------------------------------------
+
+function listForceRedoSlugs(opts) {
+  // --force-redo is value-or-comma-list. parseArgs only takes one value per
+  // invocation; document `--force-redo a,b,c` as the supported form.
+  const raw = opts["force-redo"];
+  if (!raw) return [];
+  return String(raw).split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function archiveAnswerToPrev(answerDir, slug) {
+  // answer dir layout: <answers>/<slug>.md ; archive moves to .prev/<slug>-<ts>.md.
+  const src = path.join(answerDir, `${slug}.md`);
+  if (!fs.existsSync(src)) return { archived: false, reason: "no answer file" };
+  const prevDir = path.join(answerDir, ".prev");
+  fs.mkdirSync(prevDir, { recursive: true });
+  const ts = compactStamp();
+  const dest = path.join(prevDir, `${slug}-${ts}.md`);
+  fs.renameSync(src, dest);
+  return { archived: true, dest };
+}
+
+function applyForceRedo({ manifestPath, manifest, slugs, answerDir, wsRoot, all = false }) {
+  const out = { archived: [], flipped: [], unknown: [] };
+  const entries = manifest.entries || [];
+  const targetIds = all
+    ? entries.map((e) => e.id)
+    : entries.filter((e) => slugs.includes(e.id) || slugs.includes(e.slug)).map((e) => e.id);
+  if (!all) {
+    for (const slug of slugs) {
+      const found = entries.find((e) => e.id === slug || e.slug === slug);
+      if (!found) out.unknown.push(slug);
+    }
+  }
+  if (out.unknown.length > 0 && !all) {
+    return {
+      err: errEnvelope("force-redo", "bad_argument",
+        `--force-redo: unknown slug(s): ${out.unknown.join(", ")}. ` +
+        `Run \`audit\` to list known entries.`,
+        { unknown_slugs: out.unknown }),
+    };
+  }
+  for (const id of targetIds) {
+    if (answerDir) {
+      const slug = entries.find((e) => e.id === id)?.slug || id;
+      const arch = archiveAnswerToPrev(answerDir, slug);
+      if (arch.archived) out.archived.push({ slug, dest: arch.dest });
+    }
+    const r = flipEntryToQueued(manifestPath, id, wsRoot);
+    if (r.status !== 0) {
+      return {
+        err: errEnvelope("force-redo", "python_helper_failed",
+          `manifest-update.py failed for ${id}: ${(r.stderr || "").trim() || "no stderr"}`,
+          { stdout: r.stdout, stderr: r.stderr }),
+      };
+    }
+    out.flipped.push(id);
+  }
+  return { value: out };
+}
 
 // ----------------------------------------------------------------------------
 // Mode handlers
@@ -843,65 +1168,47 @@ function dispatchHelp() {
       "",
       "Modes:",
       "  exec    --tasks <tasks.json> [--concurrency N] [--cwd <dir>]",
+      "          [--i-have-measured \"<justification>\"]",
+      "          [--force-redo <slug[,slug2,...]> | --force-redo-all]",
+      "          [--force-new-run --run-id <custom>]",
       "          parallel codex exec across worktrees",
       "  batch   --inputs <file> --template <tmpl> [--concurrency N] [--cwd <dir>]",
+      "          [--i-have-measured \"<justification>\"]",
+      "          [--force-redo <slug[,slug2,...]> | --force-redo-all]",
+      "          [--force-new-run --run-id <custom>] [--answers-dir <dir>]",
       "          template x N inputs",
-      "  single  (--prompt <text> | --prompt-file <file>) [--cwd <dir>]",
+      "  single  (--prompt <text> | --prompt-file <file>) [--cwd <dir>] [--out <file>]",
+      "          [--reuse-worktree] [--output-schema <schema.json>]",
+      "          [--resume-last | --resume-thread <id>]",
+      "          [--force-new-run --run-id <custom>]",
       "          one mission with live monitor",
-      "  review  --branches <list-or-file> [--base <ref>] [--cwd <dir>]",
+      "  review  --branches <list-or-file> [--base <ref>] [--cwd <dir>] [--concurrency N]",
+      "          [--i-have-measured \"<justification>\"]",
       "          per-branch convergence loop using native codex review",
-      "  rescue  [--manifest <path>] [--redo failed|never-started|all-non-done] [--cwd <dir>]",
-      "          classify a partial prior run; optionally redispatch a selected bucket",
-      "  audit   [--manifest <path>] [--cwd <dir>]",
+      "  rescue  [--manifest <path>] [--cwd <dir>]",
+      "          [--apply failed-only|never-started-only|all-non-done|ids:s1,s2]",
+      "          classify a partial prior run; with --apply, re-spawn the runner",
+      "  audit   [--manifest <path>] [--cwd <dir>] [--json]",
       "          read-only manifest+filesystem state dump",
       "  tidy    [--manifest <path>] [--cwd <dir>] [--execute]",
       "          gated worktree cleanup",
       "",
       "Every invocation emits one JSON envelope on stdout.",
+      "Unknown long-options are rejected with error.code=\"unknown_option\".",
       "Policy: --dangerously-bypass-approvals-and-sandbox + gpt-5.5 + xhigh effort.",
     ].join("\n"),
   });
 }
 
-function checkConcurrency(opts, command) {
-  const cap = Number(opts.concurrency || DEFAULT_CONCURRENCY[command] || 1);
-  if (!Number.isFinite(cap) || cap < 1) {
-    return { err: errEnvelope(command, "bad_argument", `--concurrency must be a positive integer (got ${opts.concurrency})`) };
-  }
-  if (cap > CONCURRENCY_HARD_CAP) {
-    return { err: errEnvelope(command, "bad_argument",
-      `--concurrency=${cap} exceeds the hard cap (${CONCURRENCY_HARD_CAP}).`) };
-  }
-  if (cap > CONCURRENCY_MEASURE_GATE && !opts["i-have-measured"]) {
-    return { err: errEnvelope(command, "bad_argument",
-      `--concurrency=${cap} exceeds ${CONCURRENCY_MEASURE_GATE}. Pass --i-have-measured <justification> to override.`) };
-  }
-  return { value: cap };
-}
-
-function concurrencyOverride(command, cap, opts) {
-  const reason = opts["i-have-measured"];
-  if (cap <= CONCURRENCY_MEASURE_GATE && !reason) return {};
-  return {
-    concurrency: {
-      value: cap,
-      default: DEFAULT_CONCURRENCY[command] || 1,
-      set_at: nowIso(),
-      justification: typeof reason === "string" ? reason : "caller supplied --i-have-measured",
-    },
-  };
-}
-
-function defaultMonitorRoot(manifestPath) {
-  return path.dirname(manifestPath);
-}
-
 async function handleExec(argv) {
   const command = "exec";
-  const { options } = parseArgs(argv, {
-    valueOptions: ["tasks", "concurrency", "cwd", "monitor-root", "run-id", "i-have-measured"],
-    booleanOptions: ["dry-run"],
+  const parsed = parseArgsStrict(argv, command, {
+    valueOptions: ["tasks", "concurrency", "cwd", "monitor-root", "run-id",
+                   "i-have-measured", "force-redo"],
+    booleanOptions: ["force-redo-all", "force-new-run", "dry-run"],
   });
+  if (parsed.err) return parsed.err;
+  const { options } = parsed.value;
   if (!options.tasks) {
     return errEnvelope(command, "missing_required_arg", "exec mode requires --tasks <tasks.json>.");
   }
@@ -910,55 +1217,109 @@ async function handleExec(argv) {
   if (!fs.existsSync(tasksPath)) {
     return errEnvelope(command, "bad_tasks_file", `tasks file not found: ${tasksPath}`);
   }
-  const parsed = readJsonFile(tasksPath, command, "bad_tasks_file");
-  if (parsed.err) return parsed.err;
-  const built = buildExecEntries(parsed.value, command);
+  const parsedJson = readJsonFile(tasksPath, command, "bad_tasks_file");
+  if (parsedJson.err) return parsedJson.err;
+  const built = buildExecEntries(parsedJson.value, command);
   if (built.err) return built.err;
 
-  const cap = checkConcurrency(options, command);
+  const cap = resolveConcurrency(options, command);
   if (cap.err) return cap.err;
 
+  const codexErr = ensureCodexAvailable(command);
+  if (codexErr) return codexErr;
+
   const wsRoot = workspaceFor(cwd);
-  const manifestPath = manifestPathFor(cwd);
+
+  // --force-new-run: write to manifest.<run_id>.json instead of manifest.json
+  // so a second concurrent run on the same workspace doesn't collide.
+  const runId = options["run-id"] || generateRunId();
+  const useCustomManifest = !!options["force-new-run"];
+  if (options["force-new-run"] && !options["run-id"]) {
+    return errEnvelope(command, "missing_required_arg",
+      "--force-new-run requires an explicit --run-id <custom> so the resulting manifest.<run_id>.json is discoverable.");
+  }
+  const manifestPath = manifestPathFor(cwd, useCustomManifest ? runId : null);
+
+  // --force-redo / --force-redo-all are dispatcher conveniences that operate
+  // on a PRIOR manifest, not the seeded one. They run BEFORE seedManifest
+  // (and BEFORE the concurrent-run gate, since the operator's intent is to
+  // pick up an in-flight manifest deliberately). If the operator wants to
+  // re-run a partial fleet, they pass --force-redo against the existing
+  // manifest, then this branch flips entries and exits before seeding.
+  const forceRedoSlugs = listForceRedoSlugs(options);
+  const wantsForceRedoAll = !!options["force-redo-all"];
+  if (forceRedoSlugs.length > 0 || wantsForceRedoAll) {
+    const m = readManifestIfPresent(manifestPath);
+    if (!m || m.__corrupt) {
+      return errEnvelope(command, "manifest_not_found",
+        `--force-redo requires an existing manifest at ${manifestPath}; none found.`,
+        { manifest_path: manifestPath });
+    }
+    const answerDir = null; // exec mode doesn't have a single answer dir
+    const out = applyForceRedo({
+      manifestPath, manifest: m, slugs: forceRedoSlugs,
+      answerDir, wsRoot, all: wantsForceRedoAll,
+    });
+    if (out.err) return out.err;
+    // After flipping entries, fall through to spawn the runner. We do NOT
+    // re-seed the manifest — the existing one's entries / overrides / monitor
+    // root remain authoritative; we only flipped status fields.
+    const runnerErr = ensureRunnerExists(RUNNERS.exec, command);
+    if (runnerErr) return runnerErr;
+    const runnerLogPath = ensureLogPath(m.monitor_root || defaultMonitorRoot(manifestPath), m.run_id || runId);
+    const pid = spawnRunnerDetached({
+      runnerPath: RUNNERS.exec,
+      args: [manifestPath],
+      cwd: wsRoot,
+      env: { JOBS: String(cap.value), PROJECT_DIR: wsRoot },
+      runnerLogPath,
+    });
+    return okEnvelope(command, {
+      phase: "queued",
+      next_action: "arm Monitor and wait",
+      manifest_path: manifestPath,
+      run_id: m.run_id || runId,
+      entries_count: out.value.flipped.length,
+      flipped_entries: out.value.flipped,
+      runner_pid: pid,
+      runner_log_path: runnerLogPath,
+      workspace_root: wsRoot,
+      mode: "force-redo",
+    }, buildMonitorForMode("exec", { manifestPath, runId: m.run_id || runId, monitorRoot: m.monitor_root || defaultMonitorRoot(manifestPath) }));
+  }
+
+  // Concurrent-run gate runs AFTER force-redo (which deliberately re-uses
+  // an in-flight manifest) but BEFORE seedManifest (which would overwrite it).
   const concurrent = refuseIfConcurrent(command, manifestPath);
   if (concurrent) return concurrent;
 
-  const runId = options["run-id"] || generateRunId();
   const monitorRoot = options["monitor-root"] || defaultMonitorRoot(manifestPath);
   fs.mkdirSync(monitorRoot, { recursive: true });
-  const preflight = runBootstrap({ command, cwd: wsRoot, mode: command, runId, monitorRoot, skipGit: false });
-  if (preflight.err) return preflight.err;
-
-  const runDir = path.join(monitorRoot, runId);
-  const promptDir = path.join(runDir, "prompts");
+  const promptDir = path.join(monitorRoot, "prompts", runId);
   const promptErr = materializeExecPrompts(built.value, cwd, promptDir, command);
   if (promptErr) return promptErr;
-  const logsDir = path.join(runDir, "logs");
-  const answersDir = path.join(runDir, "answers");
-  fs.mkdirSync(logsDir, { recursive: true });
-  fs.mkdirSync(answersDir, { recursive: true });
-  for (const entry of built.value) {
-    entry.log_path = path.join(logsDir, `${entry.id}.jsonl`);
-    entry.answer_path = path.join(answersDir, `${entry.id}.md`);
-  }
 
-  seedManifest({
+  const seeded = seedManifest({
     manifestPath, mode: "exec", runId, entries: built.value,
     concurrencyCap: cap.value, monitorRoot, cwd: wsRoot,
-    policyOverrides: concurrencyOverride(command, cap.value, options),
-    paths: { prompts_dir: promptDir, logs_dir: logsDir, answers_dir: answersDir },
-    preflight: preflight.value,
+    overrides: cap.override ? { concurrency: cap.override } : {},
   });
+  if (seeded.err) return seeded.err;
 
   const runnerErr = ensureRunnerExists(RUNNERS.exec, command);
   if (runnerErr) return runnerErr;
-  const runnerArgs = ["--manifest", manifestPath, "--concurrency", String(cap.value), "--project-dir", wsRoot];
-  if (options["dry-run"]) runnerArgs.push("--dry-run");
-  if (options["i-have-measured"]) runnerArgs.push("--i-have-measured", options["i-have-measured"]);
-  const runner = spawnRunnerDetached({
+  const runnerLogPath = ensureLogPath(monitorRoot, runId);
+  const execEnv = {
+    JOBS: String(cap.value),
+    PROJECT_DIR: wsRoot,
+  };
+  if (options["dry-run"]) execEnv.DRY_RUN = "1";
+  const pid = spawnRunnerDetached({
     runnerPath: RUNNERS.exec,
-    args: runnerArgs,
+    args: [manifestPath],
     cwd: wsRoot,
+    env: execEnv,
+    runnerLogPath,
   });
 
   return okEnvelope(command, {
@@ -967,22 +1328,25 @@ async function handleExec(argv) {
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: built.value.length,
-    runner_pid: runner.pid,
-    runner_status: runner.foreground ? runner.status : null,
+    runner_pid: pid,
+    runner_status: pid.foreground ? pid.status : null,
+    runner_log_path: runnerLogPath,
     workspace_root: wsRoot,
+    concurrency_cap: cap.value,
+    concurrency_source: cap.source,
+    dry_run: !!options["dry-run"],
   }, buildMonitorForMode("exec", { manifestPath, runId, monitorRoot }));
 }
 
 async function handleBatch(argv) {
   const command = "batch";
-  const { options } = parseArgs(argv, {
-    valueOptions: [
-      "inputs", "template", "concurrency", "cwd", "monitor-root", "run-id",
-      "prompts-dir", "answers-dir", "logs-dir", "audit-report", "min-bytes",
-      "i-have-measured",
-    ],
-    booleanOptions: ["dry-run"],
+  const parsed = parseArgsStrict(argv, command, {
+    valueOptions: ["inputs", "template", "concurrency", "cwd", "monitor-root", "run-id",
+                   "answers-dir", "i-have-measured", "force-redo"],
+    booleanOptions: ["force-redo-all", "force-new-run", "dry-run"],
   });
+  if (parsed.err) return parsed.err;
+  const { options } = parsed.value;
   if (!options.inputs) return errEnvelope(command, "missing_required_arg", "batch mode requires --inputs <file>.");
   if (!options.template) return errEnvelope(command, "missing_required_arg", "batch mode requires --template <tmpl>.");
 
@@ -997,85 +1361,112 @@ async function handleBatch(argv) {
   const built = buildBatchEntries(text.value, command);
   if (built.err) return built.err;
 
-  const cap = checkConcurrency(options, command);
+  const cap = resolveConcurrency(options, command);
   if (cap.err) return cap.err;
+
+  const codexErr = ensureCodexAvailable(command);
+  if (codexErr) return codexErr;
 
   // batch mode does not require a git repo; workspaceFor falls back to cwd.
   const wsRoot = workspaceFor(cwd);
-  const manifestPath = manifestPathFor(cwd);
+
+  const runId = options["run-id"] || generateRunId();
+  const useCustomManifest = !!options["force-new-run"];
+  if (options["force-new-run"] && !options["run-id"]) {
+    return errEnvelope(command, "missing_required_arg",
+      "--force-new-run requires an explicit --run-id <custom>.");
+  }
+  const manifestPath = manifestPathFor(cwd, useCustomManifest ? runId : null);
+
+  const answersDir = options["answers-dir"] ? path.resolve(cwd, options["answers-dir"]) : path.join(cwd, "answers");
+
+  // Force-redo pre-flight (operates on existing manifest).
+  const forceRedoSlugs = listForceRedoSlugs(options);
+  const wantsForceRedoAll = !!options["force-redo-all"];
+  if (forceRedoSlugs.length > 0 || wantsForceRedoAll) {
+    const m = readManifestIfPresent(manifestPath);
+    if (!m || m.__corrupt) {
+      return errEnvelope(command, "manifest_not_found",
+        `--force-redo requires an existing manifest at ${manifestPath}; none found.`,
+        { manifest_path: manifestPath });
+    }
+    const out = applyForceRedo({
+      manifestPath, manifest: m, slugs: forceRedoSlugs,
+      answerDir: answersDir, wsRoot, all: wantsForceRedoAll,
+    });
+    if (out.err) return out.err;
+    const monitorRootExisting = m.monitor_root || defaultMonitorRoot(manifestPath);
+    const runnerErr = ensureRunnerExists(RUNNERS.batch, command);
+    if (runnerErr) return runnerErr;
+    const promptsDir = path.join(monitorRootExisting, "prompts", m.run_id || runId);
+    const logsDir = path.join(monitorRootExisting, "logs", m.run_id || runId);
+    const runnerLogPath = ensureLogPath(monitorRootExisting, m.run_id || runId);
+    const pid = spawnRunnerDetached({
+      runnerPath: RUNNERS.batch,
+      args: [],
+      cwd: wsRoot,
+      env: {
+        JOBS: String(cap.value),
+        PROMPTS: promptsDir,
+        ANSWERS: answersDir,
+        LOGS: logsDir,
+        ORCHESTRATE_MANIFEST: manifestPath,
+      },
+      runnerLogPath,
+    });
+    return okEnvelope(command, {
+      phase: "queued",
+      next_action: "arm Monitor and wait",
+      manifest_path: manifestPath,
+      run_id: m.run_id || runId,
+      entries_count: out.value.flipped.length,
+      flipped_entries: out.value.flipped,
+      archived_answers: out.value.archived,
+      runner_pid: pid,
+      runner_log_path: runnerLogPath,
+      workspace_root: wsRoot,
+      answers_dir: answersDir,
+      mode: "force-redo",
+    }, buildMonitorForMode("batch", { manifestPath, runId: m.run_id || runId, monitorRoot: monitorRootExisting }));
+  }
+
   const concurrent = refuseIfConcurrent(command, manifestPath);
   if (concurrent) return concurrent;
 
-  const runId = options["run-id"] || generateRunId();
   const monitorRoot = options["monitor-root"] || defaultMonitorRoot(manifestPath);
   fs.mkdirSync(monitorRoot, { recursive: true });
-  const preflight = runBootstrap({ command, cwd: wsRoot, mode: command, runId, monitorRoot, skipGit: true });
-  if (preflight.err) return preflight.err;
+  const promptsDir = path.join(monitorRoot, "prompts", runId);
+  const logsDir = path.join(monitorRoot, "logs", runId);
+  const renderErr = renderBatchPromptFiles(built.value, templatePath, promptsDir, command);
+  if (renderErr) return renderErr;
 
-  const runDir = path.join(monitorRoot, runId);
-  const promptsDir = options["prompts-dir"]
-    ? path.resolve(cwd, options["prompts-dir"])
-    : path.join(runDir, "prompts");
-  const answersDir = options["answers-dir"]
-    ? path.resolve(cwd, options["answers-dir"])
-    : path.join(runDir, "answers");
-  const logsDir = options["logs-dir"]
-    ? path.resolve(cwd, options["logs-dir"])
-    : path.join(runDir, "logs");
-  const runnerLog = path.join(logsDir, "_runner.log");
-  const auditReport = options["audit-report"]
-    ? path.resolve(cwd, options["audit-report"])
-    : path.join(monitorRoot, "audit-sizes.txt");
-
-  const rendered = renderBatchPrompts({ inputsPath, templatePath, promptsDir, cwd, command });
-  if (rendered.err) return rendered.err;
-  for (const entry of built.value) {
-    const promptPath = path.join(promptsDir, `${entry.id}.md`);
-    if (!fs.existsSync(promptPath)) {
-      return errEnvelope(command, "bad_inputs_file", `rendered prompt missing for ${entry.id}: ${promptPath}`);
-    }
-    entry.prompt_path = promptPath;
-    entry.answer_path = path.join(answersDir, `${entry.id}.md`);
-    entry.log_path = path.join(logsDir, `${entry.id}.log`);
-    entry.mode_state.batch.prompt_file = promptPath;
-  }
-
-  seedManifest({
+  const seeded = seedManifest({
     manifestPath, mode: "batch", runId, entries: built.value,
     concurrencyCap: cap.value, monitorRoot, cwd: wsRoot,
-    policyOverrides: concurrencyOverride(command, cap.value, options),
-    paths: {
-      inputs_path: inputsPath,
-      template_path: templatePath,
-      prompts_dir: promptsDir,
-      answers_dir: answersDir,
-      logs_dir: logsDir,
-      runner_log: runnerLog,
-      audit_report: auditReport,
-    },
-    preflight: preflight.value,
+    overrides: cap.override ? { concurrency: cap.override } : {},
   });
+  if (seeded.err) return seeded.err;
 
   const runnerErr = ensureRunnerExists(RUNNERS.batch, command);
   if (runnerErr) return runnerErr;
-  const runnerArgs = [
-    "--manifest", manifestPath,
-    "--inputs", inputsPath,
-    "--template", templatePath,
-    "--prompts-dir", promptsDir,
-    "--answers-dir", answersDir,
-    "--logs-dir", logsDir,
-    "--runner-log", runnerLog,
-    "--audit-report", auditReport,
-    "--concurrency", String(cap.value),
-  ];
-  if (options["dry-run"]) runnerArgs.push("--dry-run");
-  if (options["min-bytes"]) runnerArgs.push("--min-bytes", options["min-bytes"]);
-  if (options["i-have-measured"]) runnerArgs.push("--i-have-measured", options["i-have-measured"]);
-  const runner = spawnRunnerDetached({
+  const runnerLogPath = ensureLogPath(monitorRoot, runId);
+  const auditReportPath = path.join(monitorRoot, "logs", runId, "audit-sizes.txt");
+  const batchEnv = {
+    JOBS: String(cap.value),
+    PROMPTS: promptsDir,
+    ANSWERS: answersDir,
+    LOGS: logsDir,
+    ORCHESTRATE_MANIFEST: manifestPath,
+    AUDIT_REPORT: auditReportPath,
+    RUNNER_LOG: runnerLogPath,
+  };
+  if (options["dry-run"]) batchEnv.DRY_RUN = "1";
+  const pid = spawnRunnerDetached({
     runnerPath: RUNNERS.batch,
-    args: runnerArgs,
+    args: [],
     cwd: wsRoot,
+    env: batchEnv,
+    runnerLogPath,
   });
 
   return okEnvelope(command, {
@@ -1084,22 +1475,28 @@ async function handleBatch(argv) {
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: built.value.length,
-    runner_pid: runner.pid,
-    runner_status: runner.foreground ? runner.status : null,
+    runner_pid: pid,
+    runner_status: pid.foreground ? pid.status : null,
+    runner_log_path: runnerLogPath,
     workspace_root: wsRoot,
     prompts_dir: promptsDir,
     answers_dir: answersDir,
-    logs_dir: logsDir,
-    audit_report: auditReport,
+    audit_report: auditReportPath,
+    concurrency_cap: cap.value,
+    concurrency_source: cap.source,
+    dry_run: !!options["dry-run"],
   }, buildMonitorForMode("batch", { manifestPath, runId, monitorRoot }));
 }
 
 async function handleSingle(argv) {
   const command = "single";
-  const { options } = parseArgs(argv, {
-    valueOptions: ["prompt", "prompt-file", "out", "jsonl", "cwd", "monitor-root", "run-id"],
-    booleanOptions: ["reuse-worktree", "dry-run"],
+  const parsed = parseArgsStrict(argv, command, {
+    valueOptions: ["prompt", "prompt-file", "out", "cwd", "monitor-root", "run-id",
+                   "output-schema", "resume-thread"],
+    booleanOptions: ["reuse-worktree", "resume-last", "force-new-run", "dry-run"],
   });
+  if (parsed.err) return parsed.err;
+  const { options } = parsed.value;
   const cwd = path.resolve(options.cwd || process.cwd());
   let promptFile = options["prompt-file"] ? path.resolve(cwd, options["prompt-file"]) : null;
   if (promptFile && !fs.existsSync(promptFile)) {
@@ -1111,51 +1508,94 @@ async function handleSingle(argv) {
   });
   if (built.err) return built.err;
 
+  // Validate --output-schema (DoD #2).
+  let outputSchema = null;
+  if (options["output-schema"]) {
+    outputSchema = path.isAbsolute(options["output-schema"])
+      ? options["output-schema"]
+      : path.resolve(cwd, options["output-schema"]);
+    if (!fs.existsSync(outputSchema)) {
+      return errEnvelope(command, "bad_schema_file",
+        `--output-schema file not found: ${outputSchema}`);
+    }
+    // Lightweight JSON validity check — codex itself enforces JSON-Schema
+    // semantics; here we only catch typos that would otherwise silently fail.
+    try { JSON.parse(fs.readFileSync(outputSchema, "utf8")); }
+    catch (e) {
+      return errEnvelope(command, "bad_schema_file",
+        `--output-schema file is not valid JSON: ${e.message}`,
+        { schema_path: outputSchema });
+    }
+  }
+
+  // --resume-last and --resume-thread <id> are mutually exclusive.
+  if (options["resume-last"] && options["resume-thread"]) {
+    return errEnvelope(command, "bad_argument",
+      "--resume-last and --resume-thread are mutually exclusive; pick one.");
+  }
+
+  const codexErr = ensureCodexAvailable(command);
+  if (codexErr) return codexErr;
+
   const wsRoot = workspaceFor(cwd);
-  const manifestPath = manifestPathFor(cwd);
+  const runId = options["run-id"] || generateRunId();
+  const useCustomManifest = !!options["force-new-run"];
+  if (options["force-new-run"] && !options["run-id"]) {
+    return errEnvelope(command, "missing_required_arg",
+      "--force-new-run requires an explicit --run-id <custom>.");
+  }
+  const manifestPath = manifestPathFor(cwd, useCustomManifest ? runId : null);
   const concurrent = refuseIfConcurrent(command, manifestPath);
   if (concurrent) return concurrent;
 
-  const runId = options["run-id"] || generateRunId();
   const monitorRoot = options["monitor-root"] || defaultMonitorRoot(manifestPath);
   fs.mkdirSync(monitorRoot, { recursive: true });
-  const preflight = runBootstrap({ command, cwd: wsRoot, mode: command, runId, monitorRoot, skipGit: true });
-  if (preflight.err) return preflight.err;
-
-  const promptDir = path.join(monitorRoot, runId, "prompts");
-  const promptErr = materializeSinglePrompt(built.value[0], cwd, promptDir, command);
-  if (promptErr) return promptErr;
-  const jsonlPath = options.jsonl ? path.resolve(cwd, options.jsonl) : path.join(monitorRoot, `single-${runId}.jsonl`);
   const outPath = options.out ? path.resolve(cwd, options.out) : path.join(monitorRoot, `single-${runId}.md`);
+  const jsonlPath = path.join(path.dirname(outPath), `${built.value[0].id}.jsonl`);
+  if (!promptFile && options.prompt) {
+    promptFile = writePromptFile(path.join(monitorRoot, "prompts", runId), "single", options.prompt);
+    built.value[0].prompt_path = promptFile;
+    built.value[0].mode_state.single.prompt_file = promptFile;
+  }
   built.value[0].jsonl_path = jsonlPath;
   built.value[0].log_path = jsonlPath;
   built.value[0].answer_path = outPath;
-  if (options["reuse-worktree"]) built.value[0].worktree_path = cwd;
+  // Persist the single-mode flags so audit + rescue can see them.
+  if (outputSchema) built.value[0].mode_state.single.output_schema = outputSchema;
+  if (options["reuse-worktree"]) built.value[0].mode_state.single.reuse_worktree = true;
+  if (options["resume-last"]) built.value[0].mode_state.single.resume_last = true;
+  if (options["resume-thread"]) built.value[0].mode_state.single.resume_thread = String(options["resume-thread"]);
 
-  seedManifest({
+  const seeded = seedManifest({
     manifestPath, mode: "single", runId, entries: built.value,
     concurrencyCap: 1, monitorRoot, cwd: wsRoot,
-    paths: { prompts_dir: promptDir, answer_path: outPath, jsonl_path: jsonlPath },
-    preflight: preflight.value,
+    overrides: {},
   });
+  if (seeded.err) return seeded.err;
 
   const runnerErr = ensureRunnerExists(RUNNERS.single, command);
   if (runnerErr) return runnerErr;
   const runnerArgs = [
-    "--manifest", manifestPath,
-    "--entry-id", "single",
-    "--prompt-file", built.value[0].prompt_path,
+    "--prompt-file", promptFile,
+    "--cwd", wsRoot,
     "--out", outPath,
-    "--jsonl", jsonlPath,
-    "--cwd", cwd,
+    "--manifest", manifestPath,
+    "--entry-id", built.value[0].id,
   ];
-  if (options.prompt) runnerArgs.push("--prompt", options.prompt);
+  if (outputSchema) {
+    runnerArgs.push("--output-schema", outputSchema);
+  }
   if (options["reuse-worktree"]) runnerArgs.push("--reuse-worktree");
+  if (options["resume-last"]) runnerArgs.push("--resume-last");
+  if (options["resume-thread"]) runnerArgs.push("--resume-thread", String(options["resume-thread"]));
   if (options["dry-run"]) runnerArgs.push("--dry-run");
-  const runner = spawnRunnerDetached({
+
+  const runnerLogPath = ensureLogPath(monitorRoot, runId);
+  const pid = spawnRunnerDetached({
     runnerPath: RUNNERS.single,
     args: runnerArgs,
     cwd: wsRoot,
+    runnerLogPath,
   });
 
   return okEnvelope(command, {
@@ -1164,43 +1604,52 @@ async function handleSingle(argv) {
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: 1,
-    runner_pid: runner.pid,
-    runner_status: runner.foreground ? runner.status : null,
+    runner_pid: pid,
+    runner_status: pid.foreground ? pid.status : null,
+    runner_log_path: runnerLogPath,
     workspace_root: wsRoot,
     answer_path: outPath,
     jsonl_path: jsonlPath,
+    output_schema: outputSchema,
+    reuse_worktree: !!options["reuse-worktree"],
+    resume: options["resume-last"] ? { kind: "last" } :
+            options["resume-thread"] ? { kind: "thread", thread_id: String(options["resume-thread"]) } :
+            null,
+    dry_run: !!options["dry-run"],
   }, buildMonitorForMode("single", { manifestPath, runId, monitorRoot, jsonlPath }));
 }
 
 async function handleReview(argv) {
   const command = "review";
-  const { options, positionals } = parseArgs(argv, {
-    valueOptions: [
-      "branches", "branches-file", "base", "concurrency", "cwd",
-      "monitor-root", "run-id", "max-rounds", "i-have-measured",
-    ],
-    booleanOptions: ["dry-run"],
+  const parsed = parseArgsStrict(argv, command, {
+    valueOptions: ["branches", "base", "concurrency", "cwd", "monitor-root", "run-id",
+                   "i-have-measured"],
+    booleanOptions: ["force-new-run", "dry-run"],
   });
+  if (parsed.err) return parsed.err;
+  const { options, positionals } = parsed.value;
   const cwd = path.resolve(options.cwd || process.cwd());
-  if (!options.branches && !options["branches-file"] && positionals.length === 0) {
-    return errEnvelope(command, "missing_required_arg", "review mode requires --branches <list-or-file> or branch positionals.");
-  }
-  const maxRounds = Number(options["max-rounds"] || 10);
-  if (!Number.isInteger(maxRounds) || maxRounds < 1) {
-    return errEnvelope(command, "bad_argument", `--max-rounds must be a positive integer (got ${options["max-rounds"]})`);
-  }
+  // --branches accepts a single token (file path OR comma-list); additional
+  // bare branch tokens may be supplied as positionals (e.g.
+  // `review --branches feat/auth feat/billing`).
+  const branchPositionals = (positionals || []).filter((t) => typeof t === "string" && !t.startsWith("-"));
   const branches = expandBranches({
-    branchSpec: options.branches,
-    branchesFile: options["branches-file"],
-    positionals,
+    branchSpec: options.branches || null,
+    branchesFile: null,
+    positionals: branchPositionals,
     cwd,
   });
-  const baseBranch = options.base || "main";
-  const built = buildReviewEntries(branches, command, baseBranch, maxRounds);
+  if (!options.branches && branches.length === 0) {
+    return errEnvelope(command, "missing_required_arg", "review mode requires --branches <list-or-file>.");
+  }
+  const built = buildReviewEntries(branches, command, options.base || "main");
   if (built.err) return built.err;
 
-  const cap = checkConcurrency(options, command);
+  const cap = resolveConcurrency(options, command);
   if (cap.err) return cap.err;
+
+  const codexErr = ensureCodexAvailable(command);
+  if (codexErr) return codexErr;
 
   const wsRoot = workspaceFor(cwd);
   if (!fs.existsSync(path.join(wsRoot, ".git"))) {
@@ -1208,39 +1657,46 @@ async function handleReview(argv) {
     // unhelpful here.
     return errEnvelope(command, "not_a_repo", `review mode requires a git repository (cwd=${cwd}).`);
   }
-  const manifestPath = manifestPathFor(cwd);
+
+  const runId = options["run-id"] || generateRunId();
+  const useCustomManifest = !!options["force-new-run"];
+  if (options["force-new-run"] && !options["run-id"]) {
+    return errEnvelope(command, "missing_required_arg",
+      "--force-new-run requires an explicit --run-id <custom>.");
+  }
+  const manifestPath = manifestPathFor(cwd, useCustomManifest ? runId : null);
   const concurrent = refuseIfConcurrent(command, manifestPath);
   if (concurrent) return concurrent;
 
-  const runId = options["run-id"] || generateRunId();
   const monitorRoot = options["monitor-root"] || defaultMonitorRoot(manifestPath);
   fs.mkdirSync(monitorRoot, { recursive: true });
   const preflight = runBootstrap({ command, cwd: wsRoot, mode: command, runId, monitorRoot, skipGit: false });
   if (preflight.err) return preflight.err;
 
-  seedManifest({
+  const seeded = seedManifest({
     manifestPath, mode: "review", runId, entries: built.value,
     concurrencyCap: cap.value, monitorRoot, cwd: wsRoot,
-    policyOverrides: concurrencyOverride(command, cap.value, options),
-    paths: { rounds_dir: path.join(monitorRoot, runId, "rounds") },
-    preflight: preflight.value,
+    overrides: cap.override ? { concurrency: cap.override } : {},
   });
+  if (seeded.err) return seeded.err;
 
   const runnerErr = ensureRunnerExists(RUNNERS.review, command);
   if (runnerErr) return runnerErr;
-  const runnerArgs = [
-    "--manifest", manifestPath,
-    "--concurrency", String(cap.value),
-    "--base", baseBranch,
-    "--max-rounds", String(maxRounds),
-    "--state-dir", path.join(monitorRoot, runId),
-  ];
-  if (options["dry-run"]) runnerArgs.push("--dry-run");
-  if (options["i-have-measured"]) runnerArgs.push("--i-have-measured", options["i-have-measured"]);
-  const runner = spawnRunnerDetached({
+  // run-review.sh accepts --dry-run as the FIRST positional flag, then
+  // <manifest> <round-number>.
+  const runnerArgs = options["dry-run"]
+    ? ["--dry-run", manifestPath, "1"]
+    : [manifestPath, "1"];
+  const runnerLogPath = ensureLogPath(monitorRoot, runId);
+  const pid = spawnRunnerDetached({
     runnerPath: RUNNERS.review,
     args: runnerArgs,
     cwd: wsRoot,
+    env: {
+      JOBS: String(cap.value),
+      PROJECT_DIR: wsRoot,
+    },
+    runnerLogPath,
   });
 
   return okEnvelope(command, {
@@ -1249,18 +1705,124 @@ async function handleReview(argv) {
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: built.value.length,
-    runner_pid: runner.pid,
-    runner_status: runner.foreground ? runner.status : null,
+    runner_pid: pid,
+    runner_status: pid.foreground ? pid.status : null,
+    runner_log_path: runnerLogPath,
     workspace_root: wsRoot,
+    concurrency_cap: cap.value,
+    concurrency_source: cap.source,
+    dry_run: !!options["dry-run"],
   }, buildMonitorForMode("review", { manifestPath, runId, monitorRoot }));
+}
+
+// ----------------------------------------------------------------------------
+// Rescue helpers
+// ----------------------------------------------------------------------------
+
+function selectRescueSubset(manifest, applySpec) {
+  // applySpec ∈ failed-only | never-started-only | all-non-done | ids:s1,s2,...
+  const entries = manifest.entries || [];
+  if (applySpec.startsWith("ids:")) {
+    const wanted = applySpec.slice(4).split(",").map((s) => s.trim()).filter(Boolean);
+    const matched = entries.filter((e) => wanted.includes(e.id) || wanted.includes(e.slug));
+    const unknown = wanted.filter((w) => !entries.find((e) => e.id === w || e.slug === w));
+    return { ids: matched.map((e) => e.id), unknown };
+  }
+  switch (applySpec) {
+    case "failed-only":
+      return { ids: entries.filter((e) => e.status === "failed").map((e) => e.id), unknown: [] };
+    case "never-started-only":
+      return { ids: entries.filter((e) => e.status === "queued" && (e.attempts || 0) === 0).map((e) => e.id), unknown: [] };
+    case "all-non-done":
+      return { ids: entries.filter((e) => e.status !== "done").map((e) => e.id), unknown: [] };
+    default:
+      return { ids: [], unknown: [], invalid: applySpec };
+  }
+}
+
+function killStalePid(pid) {
+  if (!pid) return { killed: false, reason: "no pid" };
+  try {
+    process.kill(pid, 0); // probe
+  } catch { return { killed: false, reason: "not alive" }; }
+  try { process.kill(pid, "SIGTERM"); } catch { /* ignore */ }
+  // Brief wait; if still alive after, SIGKILL.
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    try { process.kill(pid, 0); } catch { return { killed: true, signal: "SIGTERM" }; }
+  }
+  try { process.kill(pid, "SIGKILL"); } catch { /* ignore */ }
+  return { killed: true, signal: "SIGKILL" };
+}
+
+function preRescueCleanup(manifest, ids, wsRoot) {
+  // Per references/modes/rescue.md "Pre-rescue cleanup":
+  //   1. Kill stale pids on entries whose status is `running`.
+  //   2. Stash dirty worktrees (record stash ref into mode_state).
+  //   3. Best-effort prune missing worktrees.
+  // We do (1) here directly; (2)+(3) are best-effort via git CLI.
+  const report = { killed: [], stashed: [], pruned_worktrees: false };
+  const entries = manifest.entries || [];
+  for (const id of ids) {
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) continue;
+    if (entry.status === "running" && entry.runner_pid) {
+      const r = killStalePid(entry.runner_pid);
+      if (r.killed) report.killed.push({ id, pid: entry.runner_pid, signal: r.signal });
+    }
+    const wt = entry.worktree_path;
+    if (wt && fs.existsSync(wt)) {
+      // Stash dirty work, recording the stash ref so the operator can recover.
+      const status = spawnSync("git", ["-C", wt, "status", "--porcelain"], { encoding: "utf8" });
+      if (status.status === 0 && (status.stdout || "").trim().length > 0) {
+        const stash = spawnSync("git", ["-C", wt, "stash", "push", "--include-untracked",
+          "-m", `pre-rescue stash ${id}`], { encoding: "utf8" });
+        if (stash.status === 0) {
+          const ref = spawnSync("git", ["-C", wt, "rev-parse", "stash@{0}"], { encoding: "utf8" });
+          report.stashed.push({ id, worktree_path: wt, stash_ref: (ref.stdout || "").trim() });
+        }
+      }
+    }
+  }
+  // Prune any worktrees the manifest references that no longer exist on disk.
+  if (entries.some((e) => e.worktree_path && !fs.existsSync(e.worktree_path))) {
+    spawnSync("git", ["-C", wsRoot, "worktree", "prune"], { encoding: "utf8" });
+    report.pruned_worktrees = true;
+  }
+  return report;
 }
 
 async function handleRescue(argv) {
   const command = "rescue";
-  const { options } = parseArgs(argv, {
-    valueOptions: ["manifest", "cwd", "redo", "concurrency", "i-have-measured"],
+  const parsed = parseArgsStrict(argv, command, {
+    // `--redo` is HEAD/Yigit's flag name (failed | never-started | all-non-done).
+    // `--apply` is S8's flag name (failed-only | never-started-only | all-non-done | ids:s1,s2).
+    // We accept both; --redo is normalized into --apply below so the rest of the
+    // handler has one code path. The docs reference --redo; --apply is the new
+    // structured form. References: rescue.md, SKILL.md.
+    valueOptions: ["manifest", "cwd", "apply", "redo", "concurrency", "i-have-measured"],
     booleanOptions: ["json", "accept-stale", "dry-run"],
   });
+  if (parsed.err) return parsed.err;
+  const { options } = parsed.value;
+  // Normalize --redo into --apply (HEAD's bucket names → S8's bucket names).
+  if (options.redo && !options.apply) {
+    const redoMap = {
+      "failed": "failed-only",
+      "failed-only": "failed-only",
+      "never-started": "never-started-only",
+      "never-started-only": "never-started-only",
+      "all-non-done": "all-non-done",
+      "non-done": "all-non-done",
+      "all": "all-non-done",
+    };
+    const normalized = redoMap[String(options.redo).trim().toLowerCase()];
+    if (!normalized) {
+      return errEnvelope(command, "bad_argument",
+        `--redo must be one of: failed, never-started, all-non-done. Got: ${options.redo}`);
+    }
+    options.apply = normalized;
+  }
   const cwd = path.resolve(options.cwd || process.cwd());
   const wsRoot = workspaceFor(cwd);
   const manifestPath = options.manifest ? path.resolve(options.manifest) : manifestPathFor(cwd);
@@ -1317,83 +1879,173 @@ async function handleRescue(argv) {
     };
   }
 
-  if (options.redo) {
-    const redoKey = normalizeRedoOption(options.redo);
-    if (!redoKey) {
-      return errEnvelope(command, "bad_argument",
-        "--redo must be one of: failed, never-started, all-non-done.");
-    }
-    const selectedIds = selectedRedispatchIds(classification, redoKey);
-    if (selectedIds.length === 0) {
-      return okEnvelope(command, {
-        phase: "done",
-        next_action: "nothing to redispatch for selected rescue bucket",
-        manifest_path: manifestPath,
-        run_id: m.run_id,
-        mode: m.mode,
-        classification,
-        redispatch: { redo: redoKey, selected_ids: [] },
-        workspace_root: wsRoot,
-      });
-    }
-    if (selectedIncludesUnknown(classification, selectedIds) && !options["accept-stale"]) {
-      return errEnvelope(command, "bad_argument",
-        "Selected rescue bucket contains unknown/stale entries. Pass --accept-stale to redispatch them.",
-        { selected_ids: selectedIds });
-    }
-    const runnerPlan = runnerArgsForRedispatch(m, manifestPath, selectedIds, Number(options.concurrency || m.concurrency_cap || 1));
-    if (!runnerPlan) {
-      return errEnvelope(command, "bad_argument", `Cannot redispatch manifest mode: ${m.mode}`);
-    }
-    const runnerErr = ensureRunnerExists(runnerPlan.runner, command);
-    if (runnerErr) return runnerErr;
-    const cap = checkConcurrency({ ...options, concurrency: options.concurrency || m.concurrency_cap || 1 }, m.mode || command);
-    if (cap.err) return cap.err;
-    const changedIds = resetEntriesForRedispatch(m, selectedIds);
-    writeManifestAtomic(manifestPath, m);
-    if (options["dry-run"]) runnerPlan.args.push("--dry-run");
-    if (options["i-have-measured"]) runnerPlan.args.push("--i-have-measured", options["i-have-measured"]);
-    const runner = spawnRunnerDetached({
-      runnerPath: runnerPlan.runner,
-      args: runnerPlan.args,
-      cwd: m.workspace_root || wsRoot,
-    });
+  // No --apply → classify-only (the original read-only behavior). The
+  // envelope's next_action is now a structured AskUserQuestion-style object
+  // so the calling agent doesn't have to parse English.
+  if (!options.apply) {
+    const failedIds = (m.entries || []).filter((e) => e.status === "failed").map((e) => e.id);
+    const neverStartedIds = (m.entries || []).filter((e) => e.status === "queued" && (e.attempts || 0) === 0).map((e) => e.id);
+    const nonDoneIds = (m.entries || []).filter((e) => e.status !== "done").map((e) => e.id);
     return okEnvelope(command, {
-      phase: "queued",
-      next_action: "arm Monitor and wait",
+      phase: "done",
+      next_action: {
+        kind: "ask_user_question",
+        prompt: "Which subset to redo?",
+        choices: [
+          { id: "failed-only", label: `Redo failures only (${failedIds.length} entries)`, entry_ids: failedIds },
+          { id: "never-started-only", label: `Redo never-started only (${neverStartedIds.length} entries)`, entry_ids: neverStartedIds },
+          { id: "all-non-done", label: `Redo all non-done (${nonDoneIds.length} entries)`, entry_ids: nonDoneIds },
+        ],
+        rerun_with: `node orchestrate-codex.mjs rescue --manifest ${manifestPath} --apply <subset>`,
+      },
       manifest_path: manifestPath,
       run_id: m.run_id,
       mode: m.mode,
       classification,
-      redispatch: { redo: redoKey, selected_ids: changedIds },
-      runner_pid: runner.pid,
-      runner_status: runner.foreground ? runner.status : null,
-      workspace_root: m.workspace_root || wsRoot,
-    }, buildMonitorForMode(m.mode, {
-      manifestPath,
-      runId: m.run_id,
-      monitorRoot: m.monitor_root || path.dirname(manifestPath),
-      jsonlPath: m.entries?.[0]?.jsonl_path,
-    }));
+      workspace_root: wsRoot,
+    });
   }
 
+  // --apply <subset>: select, cleanup, flip-to-queued, re-spawn the original
+  // mode's runner. Refuses rescue-of-rescue.
+  if (m.mode === "rescue") {
+    return errEnvelope(command, "bad_argument",
+      "Refusing rescue-of-rescue: the manifest's mode is `rescue`. Resume the original mode.");
+  }
+  if (!RUNNERS[m.mode]) {
+    return errEnvelope(command, "bad_argument",
+      `Manifest's mode (${m.mode}) is not a re-spawnable mode. Supported: ${Object.keys(RUNNERS).join(", ")}.`);
+  }
+
+  const subset = selectRescueSubset(m, String(options.apply));
+  if (subset.invalid !== undefined) {
+    return errEnvelope(command, "bad_argument",
+      `--apply must be one of: ${[...RESCUE_APPLY_SUBSETS].join(" | ")} | ids:s1,s2,...  Got: ${subset.invalid}`);
+  }
+  if ((subset.unknown || []).length > 0) {
+    return errEnvelope(command, "bad_argument",
+      `--apply ids: unknown slug(s): ${subset.unknown.join(", ")}.`);
+  }
+  if (subset.ids.length === 0) {
+    return okEnvelope(command, {
+      phase: "done",
+      next_action: { kind: "noop", reason: "subset is empty; nothing to redispatch." },
+      manifest_path: manifestPath,
+      run_id: m.run_id,
+      mode: m.mode,
+      classification,
+      workspace_root: wsRoot,
+    });
+  }
+
+  const codexErr = ensureCodexAvailable(command);
+  if (codexErr) return codexErr;
+
+  // Pre-rescue cleanup: kill stale pids, stash dirty worktrees, prune.
+  const cleanup = preRescueCleanup(m, subset.ids, wsRoot);
+
+  // Flip selected entries → queued.
+  for (const id of subset.ids) {
+    const r = flipEntryToQueued(manifestPath, id, wsRoot);
+    if (r.status !== 0) {
+      return errEnvelope(command, "python_helper_failed",
+        `manifest-update.py failed flipping ${id}: ${(r.stderr || "").trim() || "no stderr"}`,
+        { stdout: r.stdout, stderr: r.stderr });
+    }
+  }
+
+  // Re-spawn the original mode's runner.
+  const runnerPath = RUNNERS[m.mode];
+  const runnerErr = ensureRunnerExists(runnerPath, command);
+  if (runnerErr) return runnerErr;
+  const monitorRoot = m.monitor_root || defaultMonitorRoot(manifestPath);
+  const runnerLogPath = ensureLogPath(monitorRoot, m.run_id || generateRunId());
+  const cap = m.concurrency_cap || DEFAULT_CONCURRENCY[m.mode] || 1;
+
+  let runnerArgs;
+  let runnerEnv = {};
+  const dryRun = !!options["dry-run"];
+  if (m.mode === "exec") {
+    runnerArgs = [manifestPath];
+    runnerEnv = { JOBS: String(cap), PROJECT_DIR: wsRoot };
+    if (dryRun) runnerEnv.DRY_RUN = "1";
+  } else if (m.mode === "batch") {
+    runnerArgs = [];
+    const promptsDir = path.join(monitorRoot, "prompts", m.run_id || "");
+    const logsDir = path.join(monitorRoot, "logs", m.run_id || "");
+    const answersDir = path.join(wsRoot, "answers");
+    runnerEnv = {
+      JOBS: String(cap),
+      PROMPTS: promptsDir,
+      ANSWERS: answersDir,
+      LOGS: logsDir,
+      ORCHESTRATE_MANIFEST: manifestPath,
+    };
+    if (dryRun) runnerEnv.DRY_RUN = "1";
+  } else if (m.mode === "single") {
+    const entry = (m.entries || []).find((e) => e.id === subset.ids[0]) || (m.entries || [])[0];
+    runnerArgs = [
+      "--prompt-file", entry.prompt_path || (entry.mode_state?.single?.prompt_file || ""),
+      "--cwd", wsRoot,
+      "--out", entry.answer_path || "",
+      "--manifest", manifestPath,
+      "--entry-id", entry.id,
+    ];
+    if (entry.mode_state?.single?.output_schema) {
+      runnerArgs.push("--output-schema", entry.mode_state.single.output_schema);
+    }
+    if (entry.mode_state?.single?.reuse_worktree) runnerArgs.push("--reuse-worktree");
+    if (entry.mode_state?.single?.resume_thread) {
+      runnerArgs.push("--resume-thread", entry.mode_state.single.resume_thread);
+    } else if (entry.codex_thread_id) {
+      // Default rescue-of-single: resume the recorded thread.
+      runnerArgs.push("--resume-thread", entry.codex_thread_id);
+    } else {
+      runnerArgs.push("--resume-last");
+    }
+    if (dryRun) runnerArgs.push("--dry-run");
+  } else if (m.mode === "review") {
+    runnerArgs = dryRun ? ["--dry-run", manifestPath, "1"] : [manifestPath, "1"];
+    runnerEnv = { JOBS: String(cap), PROJECT_DIR: wsRoot };
+  } else {
+    return errEnvelope(command, "bad_argument", `unsupported mode for rescue: ${m.mode}`);
+  }
+
+  const pid = spawnRunnerDetached({
+    runnerPath,
+    args: runnerArgs,
+    cwd: wsRoot,
+    env: runnerEnv,
+    runnerLogPath,
+  });
+
   return okEnvelope(command, {
-    phase: "done",
-    next_action: "choose a rescue redispatch bucket and rerun with --redo failed|never-started|all-non-done",
+    phase: "queued",
+    next_action: "arm Monitor and wait",
     manifest_path: manifestPath,
     run_id: m.run_id,
     mode: m.mode,
-    classification,
+    apply: String(options.apply),
+    flipped_entries: subset.ids,
+    redispatch: { selected_ids: subset.ids, subset: String(options.apply) },
+    cleanup,
+    runner_pid: pid,
+    runner_status: pid.foreground ? pid.status : null,
+    runner_log_path: runnerLogPath,
     workspace_root: wsRoot,
-  });
+    classification,
+    dry_run: dryRun,
+  }, buildMonitorForMode(m.mode, { manifestPath, runId: m.run_id, monitorRoot, jsonlPath: ((m.entries || [])[0] || {}).jsonl_path }));
 }
 
 async function handleAudit(argv) {
   const command = "audit";
-  const { options } = parseArgs(argv, {
+  const parsed = parseArgsStrict(argv, command, {
     valueOptions: ["manifest", "cwd"],
     booleanOptions: ["json"],
   });
+  if (parsed.err) return parsed.err;
+  const { options } = parsed.value;
   const cwd = path.resolve(options.cwd || process.cwd());
   const wsRoot = workspaceFor(cwd);
   const manifestPath = options.manifest ? path.resolve(options.manifest) : manifestPathFor(cwd);
@@ -1449,10 +2101,12 @@ async function handleAudit(argv) {
 
 async function handleTidy(argv) {
   const command = "tidy";
-  const { options } = parseArgs(argv, {
-    valueOptions: ["manifest", "cwd"],
+  const parsed = parseArgsStrict(argv, command, {
+    valueOptions: ["manifest", "cwd", "base", "force-abandon"],
     booleanOptions: ["execute"],
   });
+  if (parsed.err) return parsed.err;
+  const { options } = parsed.value;
   const cwd = path.resolve(options.cwd || process.cwd());
   const wsRoot = workspaceFor(cwd);
   const manifestPath = options.manifest ? path.resolve(options.manifest) : manifestPathFor(cwd);
@@ -1546,5 +2200,12 @@ export {
   manifestPathFor,
   workspaceFor,
   seedManifest,
+  parseArgsStrict,
+  resolveConcurrency,
+  selectRescueSubset,
   POLICY,
+  MONITOR_HARD_MAX_MS,
+  CONCURRENCY_HARD_CAP,
+  CONCURRENCY_ABSOLUTE_CEILING,
+  DEFAULT_CONCURRENCY,
 };
