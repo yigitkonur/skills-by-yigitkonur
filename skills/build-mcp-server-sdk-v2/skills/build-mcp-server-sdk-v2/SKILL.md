@@ -272,7 +272,7 @@ What this means in practice:
 - **Plan rollback** before deploying — keep the v1 branch deployable.
 - **The `@modelcontextprotocol/sdk` meta-package** remains v1 on npm unless fresh npm verification proves otherwise; main-branch meta-package PRs are migration signals, not an install target.
 - **`@modelcontextprotocol/server-auth-legacy`** is a planned/open transitional package until `npm view` succeeds and PR #1908 or release notes confirm publication.
-- Some MCP clients and third-party tooling still target v1 patterns; verify your host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
+- Some MCP clients and third-party tooling still target v1 patterns; verify the target host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
 
 The SDK is actively maintained on the `main` branch (which is now the v2 branch). Subscribe to release notes for the duration of any v2 work.
 

@@ -4,7 +4,7 @@ Patterns for shipping v2 MCP servers under realistic load. Focused on logging, e
 
 ## Logging — two channels
 
-v2 servers should write to two channels: **stderr** for operator visibility (logs you ssh in to read) and **`ctx.mcpReq.log()`** for client visibility (structured log notifications the LLM and host can act on).
+v2 servers should write to two channels: **stderr** for operator visibility and **`ctx.mcpReq.log()`** for client visibility (structured log notifications the LLM and host can act on).
 
 ### Stderr structured logger
 
@@ -63,7 +63,7 @@ async function safeApiCall<T>(
       return { error: "Rate limit exceeded. Wait a moment and try again." };
     }
     if (/401|403/.test(message)) {
-      return { error: "Authentication failed. Check your API credentials." };
+      return { error: "Authentication failed. Check API credentials." };
     }
     if (/404/.test(message)) {
       return { error: "Resource not found. Verify the ID or path." };
@@ -225,7 +225,7 @@ function loadConfig(): ServerConfig {
 }
 ```
 
-In v2 ESM-only contexts, prefer `import process from "node:process"` over the implicit global if you've enabled stricter lint rules.
+In v2 ESM-only contexts, prefer `import process from "node:process"` over the implicit global when stricter lint rules are enabled.
 
 ## Dynamic tool registration
 
@@ -357,7 +357,7 @@ Skipping shutdown handling leaks transports during deploys, which surfaces as or
 
 - `"type": "module"` in `package.json`. v2 has no CommonJS dual-publish.
 - `"engines": { "node": ">=20" }`. v2 uses Node 20 features (`AbortSignal.any`, etc.) at the SDK level.
-- Avoid `require()` in production code. If you absolutely must interop with a CommonJS-only dependency, use `createRequire(import.meta.url)` from `node:module`.
+- Avoid `require()` in production code. If CommonJS-only interop is unavoidable, use `createRequire(import.meta.url)` from `node:module`.
 
 ## Production checklist
 
