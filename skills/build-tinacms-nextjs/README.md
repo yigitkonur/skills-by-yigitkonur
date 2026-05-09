@@ -1,6 +1,6 @@
 # build-tinacms-nextjs
 
-Building a Next.js App Router site with TinaCMS — git-backed MDX content, schema-driven collections, visual editing, and dynamic page rendering.
+Building or extending TinaCMS-backed Next.js App Router sites with MDX/git-backed content, schema modeling, visual editing, or editorial deployment.
 
 **Category:** development
 

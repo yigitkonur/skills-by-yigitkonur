@@ -1,6 +1,6 @@
 ---
 name: build-tinacms-nextjs
-description: Use skill if you are building a Next.js App Router site with TinaCMS — git-backed MDX content, schema-driven collections, visual editing, and dynamic page rendering.
+description: Use skill if you are building or extending TinaCMS-backed Next.js App Router sites with MDX/git-backed content, schema modeling, visual editing, or editorial deployment.
 ---
 
 # Build TinaCMS Next.js

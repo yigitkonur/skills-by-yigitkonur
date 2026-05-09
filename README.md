@@ -34,7 +34,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-mcp-use-client](skills/build-mcp-use-client/) | development | MCP clients with mcp-use SDK |
 | [build-mcp-use-server](skills/build-mcp-use-server/) | development | MCP servers with mcp-use — tools, schemas, responses, auth, sessions, transports, MCP Apps widgets, ChatGPT Apps, Inspector, deploy |
 | [build-raycast-script-command](skills/build-raycast-script-command/) | development | Raycast Script Commands in Python/Bash |
-| [build-tinacms-nextjs](skills/build-tinacms-nextjs/) | development | Next.js App Router sites with TinaCMS — git-backed MDX, schemas, visual editing, dynamic pages |
+| [build-tinacms-nextjs](skills/build-tinacms-nextjs/) | development | TinaCMS-backed App Router sites with MDX, schemas, visual editing |
 | [check-completion](skills/check-completion/) | productivity | Check what's done vs. claimed done via a 22-status taxonomy; remediate until every in-scope task reaches a terminal status |
 | [convert-mcp-server-sdk-v1-to-v2](skills/convert-mcp-server-sdk-v1-to-v2/) | development | Port v1 MCP servers to the v2 split-package SDK |
 | [convert-url-to-nextjs](skills/convert-url-to-nextjs/) | design | Live URLs or HTML snapshots to Next.js projects |
