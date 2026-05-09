@@ -1,6 +1,6 @@
 # Brainstorming a New MCP from Scratch
 
-Interview flow the subagent runs **before** touching code or any other decision tree. Collects intent, converts it to an architecture sketch, picks a framework, and routes to the right companion skill. Run this whenever the user says "I want to build an MCP server" and the repo has no MCP yet.
+Interview flow an agent runs **before** touching code or any other decision tree. Collects intent, converts it to an architecture sketch, picks a framework, and routes to the right companion skill. Run this whenever the user says "I want to build an MCP server" and the repo has no MCP yet.
 
 ## Decision Tree
 
@@ -19,9 +19,9 @@ START: User wants to build a new MCP server
 |   |   --> Official TS SDK v1 (stdio-canonical)
 |   |   --> Install build-mcp-server-sdk-v1
 |   +-- Remote HTTP
-|       +-- New project, HTTP-first, want modern DX --> mcp-use server (install build-mcp-use-server)
+|       +-- New project, HTTP-first, want modern DX --> mcp-use/server (install build-mcp-use-server)
 |       +-- Mixed stdio + HTTP, widest compatibility --> Official TS SDK v1 (install build-mcp-server-sdk-v1)
-|       +-- Willing to try beta, new project only    --> Official TS SDK v2 (read build-mcp-server-sdk-v2 SKILL.md first)
+|       +-- Willing to accept alpha/pre-release risk  --> Official TS SDK v2 (read build-mcp-server-sdk-v2 SKILL.md first)
 |
 +-- Q4..Q12: auth, stateful, clients, tool count, destructive, distribution, advanced features, success metric
 |
@@ -47,10 +47,20 @@ START: User wants to build a new MCP server
 
 | Framework | Best for | Transport | stdio | OAuth | Maturity | Install command |
 |---|---|---|---|---|---|---|
-| **mcp-use server** | New remote MCP in TypeScript, HTTP-first, widgets/UI, modern DX | Streamable HTTP (native), SSE fallback | No — mcp-use is HTTP-only; use the official SDK if you need stdio | Built-in OAuth helpers | GA; default for new remote servers | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-server` |
-| **Official TS SDK v1** (`@modelcontextprotocol/sdk`) | stdio MCPs, local dev tools, Claude Desktop plugins, anything shipping as `npx` | stdio + Streamable HTTP | Yes — canonical stdio path | BYO or via wrapper (e.g. Cloudflare `workers-oauth-provider`) | GA, widely adopted | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server-sdk-v1` |
-| **Official TS SDK v2 beta** (`@modelcontextprotocol/server`) | New projects willing to adopt the split-package v2 API; cleaner ergonomics | stdio + Streamable HTTP | Yes | Client-side only (server-side OAuth removed; use `better-auth`) | **Beta** — API may shift; not production-default. Read `build-mcp-server-sdk-v2` SKILL.md before picking | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server-sdk-v2` |
-| **SKIP — use CLI / skills** | Agent already has a well-maintained CLI / SDK access; static guidance would suffice | N/A | N/A | N/A | N/A | See `../patterns/mcp-vs-cli.md` |
+| **mcp-use/server** | New remote MCP in TypeScript, HTTP-first, widgets/apps, OAuth helpers, modern DX | Streamable HTTP (native), SSE fallback | No — mcp-use is HTTP-first; use the official SDK if you need stdio | Built-in OAuth helpers | GA; default for new remote servers that want its conventions | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-use-server` |
+| **Official TS SDK v1** (`@modelcontextprotocol/sdk`) | stdio MCPs, local dev tools, widest compatibility, anything shipping as `npx` | stdio + Streamable HTTP | Yes — production-default raw SDK path | BYO or via wrapper (e.g. Cloudflare `workers-oauth-provider`) | GA, widely adopted | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server-sdk-v1` |
+| **Official TS SDK v2 alpha** (`@modelcontextprotocol/server`) | New projects that want the split-package v2 API and accept pre-release risk | stdio + Streamable HTTP | Yes | Client-side only; server-side OAuth removed | **Alpha if npm still shows alpha** — not production-default. Read `build-mcp-server-sdk-v2` SKILL.md before picking | `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/build-mcp-server-sdk-v2` |
+| **SKIP — use CLI / agent skill** | Agent already has well-maintained CLI/SDK access, or static workflow guidance would suffice | N/A | N/A | N/A | N/A | See `../patterns/mcp-vs-cli.md` and `companion-toolchain.md` |
+
+Before relying on this table, rerun:
+
+```bash
+npm view @modelcontextprotocol/sdk version dist-tags --json
+npm view @modelcontextprotocol/server version dist-tags --json
+npm view mcp-use version dist-tags --json
+```
+
+The 2026-05-09 npm check for this revision showed `@modelcontextprotocol/sdk` `1.29.0`, `@modelcontextprotocol/server` `2.0.0-alpha.2`, and `mcp-use` `1.27.0`; treat those as evidence for this edit, not permanent facts.
 
 ## Architecture-Sketch Template
 
@@ -87,7 +97,7 @@ After Q1-Q12, produce this sketch verbatim and ask the user to approve before an
 <Claude Desktop, Claude Code, Cursor, VS Code, ...>
 
 ## Framework choice
-<mcp-use / official SDK v1 / v2 beta> — rationale:
+<mcp-use/server / official SDK v1 / SDK v2 alpha-if-accepted> — rationale:
 
 ## Distribution
 <internal / Smithery / Docker Catalog / NPM / none> — routes to ../patterns/deployment-platforms.md
@@ -109,7 +119,8 @@ After Q1-Q12, produce this sketch verbatim and ask the user to approve before an
 - Auth / threat model depth → `security-posture.md`, `../patterns/security.md`, `../patterns/threat-catalog.md`
 - Scaling and multi-server composition → `scaling.md`, `../patterns/composition.md`
 - Production readiness → `production-readiness.md`, `../patterns/transport-and-ops.md`
-- CLI / skills / bash would dominate → `../patterns/mcp-vs-cli.md`
+- Companion skill or non-MCP route → `companion-toolchain.md`
+- CLI / agent skills / bash would dominate → `../patterns/mcp-vs-cli.md`
 - Client feature parity (sampling, elicitation, VS Code extras) → `../patterns/client-compatibility.md`, `../patterns/advanced-protocol.md`
 - Destructive / approval flows → `../patterns/agentic-patterns.md`, `../patterns/prompt-gates.md`
 
@@ -121,4 +132,4 @@ After Q1-Q12, produce this sketch verbatim and ask the user to approve before an
 - Cost per session exceeds budget → `../patterns/context-engineering.md` and `../patterns/mcp-vs-cli.md` Pattern 3.
 - Single-user scope grows to multi-tenant → `security-posture.md` and `../patterns/security.md` (OBO / CIMD).
 - Trust incident or security concern → `../patterns/threat-catalog.md` + `../patterns/security.md`.
-- Beta v2 framework API changes land → re-read `build-mcp-server-sdk-v2` SKILL.md; consider falling back to v1.
+- SDK v2 npm dist-tags or official docs change → re-read `build-mcp-server-sdk-v2` SKILL.md; if v2 remains alpha, consider falling back to v1.
