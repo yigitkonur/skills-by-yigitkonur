@@ -159,6 +159,12 @@ Debugging-specific forbidden phrases (distinct from `check-completion`'s general
 
 ## Reference routing
 
+### Scripts
+
+| File | Read when |
+|---|---|
+| `scripts/find-polluter.md` | Test-pollution bisection is needed; documents `scripts/find-polluter.sh` usage, runner selectors, caveats, and expected output |
+
 ### Top-level
 
 | File | Read when |
