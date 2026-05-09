@@ -140,13 +140,22 @@ Start with the smallest relevant set. Only expand if the task genuinely needs mo
 | Need | What it contains | Read |
 |---|---|---|
 | Target root and snapshot path handling | How to reinterpret repo-style example commands for repo-backed UIs vs copied HTML/CSS snapshots | `references/extraction/target-modes.md` |
-| Foundation extraction method | Agent prompts for scanning tokens + grep commands + output templates | `references/extraction/target-modes.md`, `references/foundations-agent.md`, `references/extraction/color-extraction.md`, `references/extraction/typography-extraction.md`, `references/extraction/spacing-extraction.md`, `references/system-template.md` |
-| Component extraction method | Agent prompt for per-component visual specs + template with all required sections | `references/extraction/target-modes.md`, `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
-| Dashboard/admin-specific patterns | Sidebar, metrics, tables, charts, cmdk, mega-component decomposition | `references/extraction/target-modes.md`, `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
+| Foundation extraction method | Extraction-pass prompt (`foundations-agent.md`), token methods, and system output template (`system-template.md`) | `references/extraction/target-modes.md`, `references/foundations-agent.md`, `references/extraction/color-extraction.md`, `references/extraction/typography-extraction.md`, `references/extraction/spacing-extraction.md`, `references/system-template.md` |
+| Component extraction method | Extraction-pass prompt (`components-agent.md`), component output template (`component-template.md`), and icon/asset method | `references/extraction/target-modes.md`, `references/components-agent.md`, `references/component-template.md`, `references/extraction/icons-and-assets.md` |
+| Dashboard/admin-specific patterns | Dashboard-specific pattern coverage (`dashboard-patterns.md`) plus layout and responsive rules | `references/extraction/target-modes.md`, `references/dashboard-patterns.md`, `references/layout/grid-and-responsive.md` |
 | Token translation and naming | W3C DTCG, CSS custom properties, oklch format, shadcn naming pattern | `references/extraction/target-modes.md`, `references/tokens/token-formats.md`, `references/tokens/naming-conventions.md` |
 | Deterministic evidence helpers | Shell helpers for token inventory and spacing counts; use only against the target root | `scripts/capture-css-tokens.md`, `scripts/audit-spacing-scale.md` |
-| Packaging the docs | `.design-soul/` directory structure, INDEX.md and _summary.md templates | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
-| Verification and audit | Extraction completeness checklist, token/component consistency matrix, WCAG contrast checks | `references/extraction/target-modes.md`, `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
+| Packaging the docs | `.design-soul/` structure plus output templates (`system-template.md`, `component-template.md`) | `references/documentation/output-format.md`, `references/system-template.md`, `references/component-template.md` |
+| Verification and audit | Verification checklist (`quality-checklist.md`), consistency audit, and WCAG contrast checks | `references/extraction/target-modes.md`, `references/quality-checklist.md`, `references/audit/consistency-checklist.md`, `references/audit/accessibility-review.md` |
+
+## Handoff verification
+
+Report exactly what was verified, not what was intended. Expected verification for skill maintenance is:
+
+- Target skill references remain fully routed from this `SKILL.md`.
+- `python3 scripts/validate-skills.py` has no `extract-saas-design` errors.
+- Helper scripts, if changed or used, run on a mini fixture or the target root.
+- Boundary with `convert-url-to-nextjs` remains intact: documentation here, rebuild/convert/clone/recover there.
 
 ## Steering Notes for Agents
 
