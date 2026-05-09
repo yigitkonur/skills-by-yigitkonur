@@ -1,6 +1,6 @@
 ---
 name: build-kernel-ts-sdk
-description: Use skill if you are building browser-automation agents or apps with the Kernel TypeScript SDK (@onkernel/sdk) — sessions, CDP/Playwright wiring, deployments/invocations, profiles, managed auth.
+description: Use skill if you are building TypeScript code with Kernel browsers, Apps, profiles, Managed Auth, browser pools, or CDP/Playwright wiring via @onkernel/sdk.
 ---
 
 # Build Kernel TS SDK
@@ -25,6 +25,16 @@ Do not use this skill for:
 - The `agent-browser` CLI directly without the Kernel provider — use `run-agent-browser`
 - Python Kernel SDK
 - Building a GitHub Copilot SDK app — use `build-copilot-sdk-app`
+
+## Cross-skill disambiguation
+
+| Situation | Use |
+|---|---|
+| Build TypeScript code using `@onkernel/sdk` or deploy/invoke Kernel Apps | `build-kernel-ts-sdk` |
+| Terminal-drive a browser through `agent-browser`, including `agent-browser -p kernel` command loops | `run-agent-browser` for CLI operation; this skill only for Kernel SDK/provider wiring |
+| Drive local/generic Playwright CLI workflows, browser inspection, forms, screenshots, or live debugging outside Kernel | `run-playwright` |
+| Build a GitHub Copilot SDK TypeScript app | `build-copilot-sdk-app` |
+| Build a LangChain.js/LangGraph agent that may call browser tools but is not Kernel-specific | `build-langchain-ts-app` |
 
 ## Two operating modes — decide first
 

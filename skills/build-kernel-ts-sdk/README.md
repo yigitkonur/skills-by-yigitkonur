@@ -1,6 +1,6 @@
 # build-kernel-ts-sdk
 
-Building browser-automation agents or apps with the Kernel TypeScript SDK (@onkernel/sdk) — sessions, CDP/Playwright wiring, deployments/invocations, profiles, managed auth.
+Building TypeScript code with Kernel browsers, Apps, profiles, Managed Auth, browser pools, or CDP/Playwright wiring via @onkernel/sdk.
 
 **Category:** development
 
