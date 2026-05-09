@@ -64,6 +64,12 @@ Extract the implemented visual system of an existing SaaS dashboard, admin panel
    - Detect the color space: modern shadcn uses `oklch()`, older uses `hsl()`.
    - Check for variant systems: CVA (`class-variance-authority`) defines variant/size matrices.
    - Capture recurring values, mode switching, state styling, and composition patterns.
+
+   **Evidence capture**
+   - If the target is a live URL or interactive local app, use `run-agent-browser` to capture DOM, screenshots, computed text, responsive states, and interaction evidence before writing docs.
+   - If the user explicitly asks for Playwright CLI, or the target project already has a Playwright CLI workflow, use `run-playwright` instead.
+   - Browser tools are evidence capture only; do not let capture drift into a rebuild or generated app.
+   - Store browser artifacts, if produced, under `.design-soul/evidence/` at the target codebase root. Record at minimum: route or page name, viewport, screenshot path, DOM/source path, and which states were observed.
 3. **Extract foundations first when needed**
    - Spacing, colors, typography, shadows/depth, radius, animations, and shared state conventions.
    - For dashboard products, explicitly check sidebar overrides, chart palettes, density zones, and tabular/monospace usage.
