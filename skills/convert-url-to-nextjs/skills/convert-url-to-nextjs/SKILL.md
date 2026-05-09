@@ -43,6 +43,7 @@ Convert live sites or saved HTML snapshots into grounded Next.js App Router buil
 |---|---|---|
 | Capture Wave | `scripts/capture-url.sh` — read `scripts/capture-url.md` | Create the route capture skeleton, record expected artifact paths, and run a supplied browser-capture command without writing success signals on failure. |
 | Wave 0 | `scripts/extract-styles.sh` — read `scripts/extract-styles.md` | Detect the page CSS corpus and emit manifests plus custom-property, font, media-query, and keyframe summaries before manual extraction. |
+| Wave 4 | `scripts/diff-screenshots.sh` — read `scripts/diff-screenshots.md` | Compare source/build screenshots or paired directories and emit `.design-soul/visual/{route}/summary.json` without faking unavailable diff metrics. |
 
 ## Start with these decisions
 
