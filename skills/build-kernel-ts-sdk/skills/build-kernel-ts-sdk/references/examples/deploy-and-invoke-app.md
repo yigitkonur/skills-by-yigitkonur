@@ -2,6 +2,8 @@
 
 Full walk-through: write an action, deploy it, invoke it from another TypeScript service, stream logs, handle the result.
 
+Source note: Verified against Kernel app develop/invoke docs and CLI docs on 2026-05-09. Payload-size docs conflict; use file/object-storage paths for large artifacts.
+
 ## The app (`app.ts`)
 
 ```ts
@@ -142,9 +144,9 @@ await kernel.invocations.update(inv.id, { status: 'failed' });
 
 If your action's `browsers.create` calls did not set `invocation_id`, those browsers are NOT reaped — they live until their `timeout_seconds`.
 
-## Pull large outputs (>4.5 MB)
+## Pull large outputs / avoid payload-size ambiguity
 
-`payload` and `output` are JSON-encoded strings, max 4.5 MB each. For results over that limit (multi-MB screenshots, large HTML dumps), the action must NOT delete the browser in `finally` — the caller has to read the file before the browser goes away. Two patterns:
+Kernel docs currently disagree on payload size: `apps/develop` and CLI docs say 64 KB, while `apps/invoke` says stringified JSON payloads max at 4.5 MB. Treat payload/output as control-plane JSON, not an artifact channel. For multi-MB screenshots, large HTML dumps, or archives, use one of these patterns.
 
 **Pattern A — Caller reads the browser fs, then explicitly reaps:**
 
@@ -191,6 +193,8 @@ const out = JSON.parse(inv.output ?? 'null');
 ```
 
 Sync invocations block on the HTTP request. The hard cap is around 100 seconds — anything that may hit that ceiling must be `async: true`.
+
+CLI note: `kernel invoke <app> <action>` queues asynchronously by default. Use `--sync` only for short actions; current CLI docs list its wait timeout as 60 seconds.
 
 ## CI deploy snippet
 

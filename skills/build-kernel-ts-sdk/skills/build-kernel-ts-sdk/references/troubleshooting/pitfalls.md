@@ -114,13 +114,13 @@ The 16 production pitfalls in priority order. Read top-to-bottom before shipping
 
 **Fix:** Don't oversize pools "just in case" — there is no idle disk cost, but the `size` cap consumes plan quota. Read `kernel.browserPools.retrieve` for `available_count`/`acquired_count` and tune accordingly. Use `flush()` to reset after a config change.
 
-## 15. Payload max 4.5 MB JSON-encoded
+## 15. Payload limits are doc-conflicted
 
-**Symptom:** `invocations.create` rejects a fat payload, or `output` is truncated.
+**Symptom:** `invocations.create` or `kernel invoke` rejects a fat payload, or `output` is truncated.
 
-**Cause:** `payload` and `output` are JSON-encoded strings, max **4.5 MB** each (per kernel.sh/docs/apps/invoke).
+**Cause:** Kernel docs currently disagree. `apps/develop` and CLI docs say payload max **64 KB**; `apps/invoke` says stringified JSON payloads max **4.5 MB**. Treat the smaller number as the safe default unless live docs and a real invocation prove otherwise.
 
-**Fix:** Move multi-MB artifacts (screenshots, archives, harvested HTML) through `kernel.browsers.fs.*` (write inside the action, read out from the caller via `session_id`) or PUT them to your own object store and pass a URL. For payloads under 4.5 MB, JSON-encode directly.
+**Fix:** Move multi-MB artifacts (screenshots, archives, harvested HTML) through `kernel.browsers.fs.*` (write inside the action, read out from the caller via `session_id`) or PUT them to your own object store and pass a URL. Keep invocation payload/output small enough for the verified live limit.
 
 ## 16. Cleanup is your responsibility
 

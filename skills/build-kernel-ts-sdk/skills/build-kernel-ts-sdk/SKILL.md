@@ -45,6 +45,13 @@ Do not use this skill for:
 
 You can mix — most production setups deploy long-running browser work as a Kernel App and invoke it from an embedding service. Don't try to make a single function do both.
 
+## Deploy vs invoke mini-glossary
+
+- **App:** named deployed codebase containing one or more actions.
+- **Action:** named function registered inside an app.
+- **Deployment:** build/version event that creates or updates an app version; track `deployment.id`, app name, and version.
+- **Invocation:** one execution of one action; track `invocation.id`, sync/async mode, status, logs/events, and output handling.
+
 ## Quick start / first runnable path
 
 For a new scratch project, use the scaffold script so package pins come from npm at generation time:
@@ -95,7 +102,7 @@ For each resource, decide the cleanup path before running: `deleteByID`, pool `r
 5. **Default browser context only.** Kernel browsers ship with one default context and one open page. Use `browser.contexts()[0]` and `pages()[0]` — do not call `browser.newContext()` / `context.newPage()` to make a "fresh" one.
 6. **Project scoping is header-driven.** With an org-wide API key, scope to a project by passing `defaultHeaders: { 'X-Kernel-Project-Id': '…' }` to the constructor (the SDK does NOT auto-read a `KERNEL_PROJECT` env var — that's a user convention you have to wire through). OAuth (CLI) is always org-wide.
 7. **Runtime requirements.** TypeScript ≥ 4.9. Per `@onkernel/sdk` README, supported runtimes are: Web browsers (up-to-date Chrome, Firefox, Safari, Edge), Node 20 LTS+, Deno 1.28+, Bun 1.0+, Cloudflare Workers, Vercel Edge Runtime, Jest 28+ (with the `"node"` environment), and Nitro v2.6+. React Native is unsupported.
-8. **Payload max 4.5 MB.** `invocation.payload` and `invocation.output` are JSON-encoded strings — caller must `JSON.parse`. Larger artifacts (e.g. screenshots, multi-MB blobs) go through `browsers.fs.*` or your own object store.
+8. **Payload limits are doc-conflicted.** Kernel docs currently disagree: app development and CLI docs say 64 KB, while app invocation docs say 4.5 MB. Verify live docs before relying on large payloads; put multi-MB artifacts through `browsers.fs.*` or object storage.
 
 ## Default stance
 

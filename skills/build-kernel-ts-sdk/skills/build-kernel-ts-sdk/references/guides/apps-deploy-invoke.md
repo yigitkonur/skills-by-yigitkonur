@@ -2,6 +2,8 @@
 
 A Kernel **App** is a deployed codebase exposing one or more **Actions**. Each **Invocation** runs an action with a `payload`, and the action runs on a unikernel co-located with its browser VMs — no CDP latency.
 
+Source note: Verified against Kernel app develop/invoke docs, CLI docs, and invocation API reference on 2026-05-09. Payload-size docs currently conflict; verify live limits before shipping large-payload code.
+
 ## When to deploy an app vs embed the SDK
 
 | Deploy a Kernel App when… | Embed `@onkernel/sdk` directly when… |
@@ -93,6 +95,15 @@ for await (const evt of await kernel.deployments.follow(deployment.id)) {
 }
 ```
 
+## Identifiers to keep straight
+
+| Identifier | Comes from | Use |
+|---|---|---|
+| `deployment.id` | `kernel deploy` / `deployments.create` | Build/deploy event; use for deployment logs and terminal deployment state |
+| `app_name` + `version` | `kernel.app('name')` and deploy version | Stable target for invocations |
+| `action_name` | `app.action('name', fn)` | Function entry point within the app |
+| `invocation.id` | `invocations.create` / `kernel invoke` | One execution; use for status, logs/events, and browser cleanup by `invocation_id` |
+
 ## Invoke (sync vs async)
 
 ```ts
@@ -121,7 +132,15 @@ const async_inv = await kernel.invocations.create({
 });
 ```
 
-`payload` is a string. Stringify on the way in, parse on the way out. Max **4.5 MB** encoded — bigger artifacts go through `kernel.browsers.fs.*` (write inside the action, read from outside via the same `session_id`).
+`payload` is a string. Stringify on the way in, parse on the way out.
+
+Payload size is currently documented inconsistently:
+
+- `apps/develop` says the action payload max is **64 KB**.
+- `apps/invoke` says stringified JSON payloads max at **4.5 MB**.
+- CLI reference says `kernel invoke --payload` max is **64 KB**.
+
+Do not rely on the larger limit without re-checking live docs and testing the target path. Default multi-MB screenshots, HTML dumps, archives, and model traces to `kernel.browsers.fs.*` or your own object storage, then pass a small JSON pointer.
 
 ## Stream status and logs
 
@@ -182,6 +201,14 @@ const inv = await kernel.invocations.retrieve(async_inv.id);
 console.log(inv.status, inv.status_reason);
 ```
 
+## CLI vs SDK invocation behavior
+
+- SDK `kernel.invocations.create({...})` is synchronous by default and returns the final invocation response unless `async: true` queues it.
+- SDK async mode returns queued status and should be followed with `kernel.invocations.follow(id)` or polling.
+- CLI `kernel invoke <app> <action>` defaults to queued/asynchronous and returns immediately after queueing.
+- CLI `kernel invoke --sync` waits for completion with its own CLI timeout. As of the 2026-05-09 CLI docs check, that timeout is 60 seconds.
+- CLI `--output json` emits JSONL invocation events; consume it as a stream, not one JSON object.
+
 ## Apps surface
 
 Apps are a **read view** of deployed code — the SDK exposes `apps.list` and that's it:
@@ -219,4 +246,4 @@ For VM-level logs (everything inside the browser VM, not just your action's `con
 
 - Full end-to-end deploy + invoke walk-through: `references/examples/deploy-and-invoke-app.md`
 - Why your invocation hangs at exactly 100s: `references/troubleshooting/pitfalls.md`
-- Pulling an invocation's output as a file (>4.5 MB): `references/troubleshooting/files-and-replays.md`
+- Pulling large invocation artifacts as files: `references/troubleshooting/files-and-replays.md`
