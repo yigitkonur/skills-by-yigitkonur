@@ -152,10 +152,10 @@ const llm = new ChatOpenAI({
 ```
 
 ```typescript
-// Anthropic (current generation as of April 2026)
+// Anthropic
 import { ChatAnthropic } from "@langchain/anthropic";
 const llm = new ChatAnthropic({
-  model: "claude-sonnet-4-6",   // or "claude-opus-4-7" for hardest reasoning
+  model: process.env.ANTHROPIC_MODEL!,
   temperature: 0.7,
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -165,7 +165,7 @@ const llm = new ChatAnthropic({
 // Google Gemini
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 const llm = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-pro",      // or "gemini-2.0-flash" for lower latency
+  model: process.env.GOOGLE_MODEL!,
   temperature: 0.7,
   apiKey: process.env.GOOGLE_API_KEY,
 });
@@ -183,7 +183,7 @@ const llm = new ChatGroq({
 
 All LLM instances are passed directly to `MCPAgent` as `llm`. Tool calling, structured output, and streaming are available for any provider that supports these features through LangChain's unified interface.
 
-> Model IDs drift. If you see `model_not_found` / `404`, check the provider's current model list (Anthropic, Google AI Studio, Groq) — the snapshots above were current as of April 2026.
+> Model IDs drift. If `model_not_found` or `404` appears, check the provider's current model list and update the environment/config value instead of editing scattered literals.
 
 ---
 

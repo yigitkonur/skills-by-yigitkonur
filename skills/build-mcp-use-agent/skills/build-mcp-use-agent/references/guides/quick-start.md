@@ -24,12 +24,12 @@ Use `references/guides/agent-configuration.md` after the first successful run if
 
 | Requirement | Why it matters | Notes |
 |---|---|---|
-| Node.js ≥ 18 | Minimum runtime version required by the SDK | Use Node.js LTS for stability |
+| Node.js matching `mcp-use` `engines` | Required by the current package | Check with `npm view mcp-use engines --json`; latest npm currently reports `^20.19.0 || >=22.12.0` |
 | `mcp-use` | Provides `MCPAgent`, `MCPClient`, and streaming helpers | Required in every setup |
 | One LangChain provider package | Supplies the chat model | Install only what you use |
 | A working MCP server config | Gives the agent tools to call | Local `command` or remote `url` is fine |
 | Provider API keys | Required for the selected LLM | Keep them in `.env` |
-| A shutdown strategy | Prevents leaked sessions or sandboxes | Always call `await agent.close()` |
+| A shutdown strategy | Prevents leaked sessions or sandboxes | Simplified/agent-owned: `await agent.close()`; shared explicit client: close the client owner once |
 
 Before the first `run()`, verify both sides of the setup:
 

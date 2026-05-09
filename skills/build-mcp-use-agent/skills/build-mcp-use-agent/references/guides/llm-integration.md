@@ -53,7 +53,7 @@ Use one of two integration styles.
 | Client layer | `MCPClient` | Connects to local or remote MCP servers |
 | Server layer | MCP servers | Expose tools, prompts, and resources |
 
-Use the provider sections below as concrete, runnable templates.
+Use the provider sections below as provider wiring templates.
 
 ## Supported Providers Table
 
@@ -61,19 +61,25 @@ Install the provider package that matches the chat model you want to use.
 
 | Provider | Package | Install | String shorthand |
 |---|---|---|---|
-| OpenAI | `@langchain/openai` | `npm install @langchain/openai` | `openai/gpt-4o` |
-| Anthropic | `@langchain/anthropic` | `npm install @langchain/anthropic` | `anthropic/claude-3-5-sonnet-20241022` |
-| Google Gemini | `@langchain/google-genai` | `npm install @langchain/google-genai` | `google/gemini-pro` |
-| Groq | `@langchain/groq` | `npm install @langchain/groq` | `groq/llama-3.1-70b-versatile` |
+| OpenAI | `@langchain/openai` | `npm install @langchain/openai` | `openai/${OPENAI_MODEL}` |
+| Anthropic | `@langchain/anthropic` | `npm install @langchain/anthropic` | `anthropic/${ANTHROPIC_MODEL}` |
+| Google Gemini | `@langchain/google-genai` | `npm install @langchain/google-genai` | `google/${GOOGLE_MODEL}` |
+| Groq | `@langchain/groq` | `npm install @langchain/groq` | `groq/${GROQ_MODEL}` |
 
 ### Provider environment variables
 
 | Provider | Primary env var | Notes |
 |---|---|---|
-| OpenAI | `OPENAI_API_KEY` | Required for `ChatOpenAI` and for string shorthand that targets OpenAI |
-| Anthropic | `ANTHROPIC_API_KEY` | Required for Claude models |
-| Google Gemini | `GOOGLE_API_KEY` | Some setups also accept `GOOGLE_GENERATIVE_AI_API_KEY`, but standardize on `GOOGLE_API_KEY` in your docs and code |
-| Groq | `GROQ_API_KEY` | Required for Groq-hosted models |
+| OpenAI | `OPENAI_API_KEY` | Keep the model ID in `OPENAI_MODEL` or equivalent app config |
+| Anthropic | `ANTHROPIC_API_KEY` | Keep the model ID in `ANTHROPIC_MODEL` or equivalent app config |
+| Google Gemini | `GOOGLE_API_KEY` | Keep the model ID in `GOOGLE_MODEL`; some setups also accept `GOOGLE_GENERATIVE_AI_API_KEY` |
+| Groq | `GROQ_API_KEY` | Keep the model ID in `GROQ_MODEL` or equivalent app config |
+
+### Model ID and provider scope policy
+
+Provider model IDs drift. Verify the exact tool-capable model ID against the provider's current docs or account before shipping, then keep it in environment or app config rather than scattering literals through source files.
+
+This guide documents OpenAI, Anthropic, Google, Groq, and custom LangChain-compatible adapters. Treat OpenRouter, Ollama, and local-model routes as custom-adapter work unless primary provider docs were checked during the task. Do not invent provider recipes from shorthand strings alone.
 
 ### Shared package setup
 
@@ -149,7 +155,7 @@ async function main() {
 
     console.log(result);
   } finally {
-    await agent.close();
+    await client.closeAllSessions();
   }
 }
 
@@ -224,8 +230,13 @@ async function main() {
     },
   });
 
+  const model = process.env.ANTHROPIC_MODEL;
+  if (!model) {
+    throw new Error("ANTHROPIC_MODEL must name a current tool-capable Claude model.");
+  }
+
   const llm = new ChatAnthropic({
-    model: "claude-3-5-sonnet-20241022",
+    model,
     temperature: 0,
     maxTokens: 2048,
     topP: 1,
@@ -248,7 +259,7 @@ async function main() {
 
     console.log(result);
   } finally {
-    await agent.close();
+    await client.closeAllSessions();
   }
 }
 
@@ -262,7 +273,7 @@ main().catch((error) => {
 
 | Option | Type | Example | Required | What it controls |
 |---|---|---|---|---|
-| `model` | `string` | `"claude-3-5-sonnet-20241022"` | Yes | Selects the Claude model variant |
+| `model` | `string` | `process.env.ANTHROPIC_MODEL` | Yes | Selects the Claude model variant |
 | `temperature` | `number` | `0` | No | Controls creativity vs determinism |
 | `maxTokens` | `number` | `2048` | No | Limits completion size |
 | `topP` | `number` | `1` | No | Controls nucleus sampling. Change it only when you understand the tradeoff |
@@ -278,7 +289,7 @@ main().catch((error) => {
 
 ### Practical guidance
 
-- Start with `claude-3-5-sonnet-20241022` unless your team has already standardized on another tool-capable model.
+- Set `ANTHROPIC_MODEL` to a verified tool-capable Claude model before startup.
 - Keep temperature low for tasks that inspect code, route tools, fetch data, or summarize structured output.
 - Raise output limits only when you observe truncation in real runs.
 - Log provider-level errors near startup so missing credentials fail early.
@@ -323,8 +334,13 @@ async function main() {
     },
   });
 
+  const model = process.env.GOOGLE_MODEL;
+  if (!model) {
+    throw new Error("GOOGLE_MODEL must name a current tool-capable Gemini model.");
+  }
+
   const llm = new ChatGoogleGenerativeAI({
-    model: "gemini-pro",
+    model,
     temperature: 0,
     maxOutputTokens: 2048,
     topP: 1,
@@ -347,7 +363,7 @@ async function main() {
 
     console.log(result);
   } finally {
-    await agent.close();
+    await client.closeAllSessions();
   }
 }
 
@@ -361,7 +377,7 @@ main().catch((error) => {
 
 | Option | Type | Example | Required | What it controls |
 |---|---|---|---|---|
-| `model` | `string` | `"gemini-pro"` | Yes | Chooses the Gemini model ID |
+| `model` | `string` | `process.env.GOOGLE_MODEL` | Yes | Chooses the Gemini model ID |
 | `temperature` | `number` | `0` | No | Controls output diversity |
 | `maxOutputTokens` | `number` | `2048` | No | Caps generated output for Gemini responses |
 | `topP` | `number` | `1` | No | Applies nucleus sampling. Leave it default unless you are tuning deliberately |
@@ -370,14 +386,14 @@ main().catch((error) => {
 
 ### When to use Google Gemini
 
-- Use `gemini-pro` when you want fast responses and efficient tool orchestration.
+- Use a verified Gemini model ID when fast responses and efficient tool orchestration matter.
 - Keep the Google API key in the environment, not inside source files.
 - Use `maxOutputTokens` instead of `maxTokens` for this provider class.
 - Standardize on `GOOGLE_API_KEY` across your repo even if alternate variable names exist elsewhere.
 
 ### Practical guidance
 
-- Start with `gemini-pro` unless your team has already standardized on another tool-capable model.
+- Set `GOOGLE_MODEL` to a verified tool-capable Gemini model before startup.
 - Keep temperature low for tasks that inspect code, route tools, fetch data, or summarize structured output.
 - Raise output limits only when you observe truncation in real runs.
 - Log provider-level errors near startup so missing credentials fail early.
@@ -446,7 +462,7 @@ async function main() {
 
     console.log(result);
   } finally {
-    await agent.close();
+    await client.closeAllSessions();
   }
 }
 
@@ -554,8 +570,8 @@ main().catch((error) => {
 | Provider prefix | Example string | Required env var | Install this package |
 |---|---|---|---|
 | `openai` | `"openai/gpt-4o"` | `OPENAI_API_KEY` | `@langchain/openai` |
-| `anthropic` | `"anthropic/claude-3-5-sonnet-20241022"` | `ANTHROPIC_API_KEY` | `@langchain/anthropic` |
-| `google` | `"google/gemini-pro"` | `GOOGLE_API_KEY` | `@langchain/google-genai` |
+| `anthropic` | `"anthropic/${ANTHROPIC_MODEL}"` | `ANTHROPIC_API_KEY` | `@langchain/anthropic` |
+| `google` | `"google/${GOOGLE_MODEL}"` | `GOOGLE_API_KEY` | `@langchain/google-genai` |
 | `groq` | `"groq/llama-3.1-70b-versatile"` | `GROQ_API_KEY` | `@langchain/groq` |
 
 ### When to choose string shorthand
@@ -607,8 +623,12 @@ function createLlm(provider: Provider) {
       apiKey: process.env.OPENAI_API_KEY,
     });
   }
+  const model = process.env.ANTHROPIC_MODEL;
+  if (!model) {
+    throw new Error("ANTHROPIC_MODEL must name a current tool-capable Claude model.");
+  }
   return new ChatAnthropic({
-    model: "claude-3-5-sonnet-20241022",
+    model,
     temperature: 0,
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
@@ -634,7 +654,7 @@ async function main(provider: Provider) {
     });
     console.log(result);
   } finally {
-    await agent.close();
+    await client.closeAllSessions();
   }
 }
 main((process.argv[2] as Provider) ?? "openai").catch(console.error);
@@ -647,8 +667,8 @@ import "dotenv/config";
 import { MCPAgent } from "mcp-use";
 type ProviderString =
   | "openai/gpt-4o"
-  | "anthropic/claude-3-5-sonnet-20241022"
-  | "google/gemini-pro"
+  | `anthropic/${string}`
+  | `google/${string}`
   | "groq/llama-3.1-70b-versatile";
 async function runWithModel(llm: ProviderString) {
   const agent = new MCPAgent({
@@ -699,12 +719,12 @@ Use a model that can perform **tool calling** or **function calling**. This is t
 
 ### Provider-level model guidance
 
-| Provider | Safe starting model | Why it is a good baseline |
+| Provider | Model source | Why it is a good baseline |
 |---|---|---|
-| OpenAI | `gpt-4o` | Strong tool use, balanced latency, widely used baseline |
-| Anthropic | `claude-3-5-sonnet-20241022` | Strong reasoning and good instruction following for tool-heavy flows |
-| Google Gemini | `gemini-pro` | Fast and practical for many agent tasks |
-| Groq | `llama-3.1-70b-versatile` | Fast serving plus broad general capability when tool calling is supported in your environment |
+| OpenAI | `OPENAI_MODEL` | Strong tool use, balanced latency, widely used baseline |
+| Anthropic | `ANTHROPIC_MODEL` | Strong reasoning and good instruction following for tool-heavy flows |
+| Google Gemini | `GOOGLE_MODEL` | Fast and practical for many agent tasks |
+| Groq | `GROQ_MODEL` | Fast serving plus broad general capability when tool calling is supported in the target environment |
 
 ### Models to avoid
 
@@ -768,7 +788,7 @@ const llm = new ChatOpenAI({
 
 ```typescript
 const llm = new ChatAnthropic({
-  model: "claude-3-5-sonnet-20241022",
+  model: process.env.ANTHROPIC_MODEL!,
   temperature: 0.1,
   maxTokens: 4096,
   topP: 1,
@@ -780,7 +800,7 @@ const llm = new ChatAnthropic({
 
 ```typescript
 const llm = new ChatGoogleGenerativeAI({
-  model: "gemini-pro",
+  model: process.env.GOOGLE_MODEL!,
   temperature: 0,
   maxOutputTokens: 2048,
   topP: 1,
@@ -941,7 +961,7 @@ const agent = new MCPAgent({ llm, client: new MCPClient({ mcpServers: {} }) });
 import "dotenv/config";
 import { ChatAnthropic } from "@langchain/anthropic";
 const llm = new ChatAnthropic({
-  model: "claude-3-5-sonnet-20241022",
+  model: process.env.ANTHROPIC_MODEL!,
   temperature: 0,
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -1023,7 +1043,7 @@ const llm = new ChatOpenAI({
 const agent = new MCPAgent({ llm, client, autoInitialize: true });
 const result = await agent.run({ prompt: "Describe this repo." });
 console.log(result);
-await agent.close();
+await client.closeAllSessions();
 ```
 
 ### Minimal simplified-mode setup

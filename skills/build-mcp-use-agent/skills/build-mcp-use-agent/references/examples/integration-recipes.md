@@ -789,7 +789,7 @@ const PROVIDERS: ProviderConfig[] = [
     name: "anthropic",
     createLLM: () =>
       new ChatAnthropic({
-        model: "claude-3-5-sonnet-20241022",
+        model: process.env.ANTHROPIC_MODEL!,
         apiKey: process.env.ANTHROPIC_API_KEY,
       }),
     maxRetries: 1,

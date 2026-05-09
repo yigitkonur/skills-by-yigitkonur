@@ -660,7 +660,7 @@ const result = await agent.run({
 console.log(result); // { city: "Tokyo", temperature: 22, conditions: "sunny" }
 await agent.close();
 ```
-2. Use a more capable model — `gpt-4o` and `claude-sonnet` handle schemas much better than `gpt-4o-mini`.
+2. Use a verified model with strong structured-output support instead of a small fallback model.
 3. Simplify the schema — flatten nested objects and reduce the number of fields.
 
 **Prevention:** Always use `.describe()` on Zod fields. Test your schema with the target model before deploying. Keep schemas under 10 fields when possible.
@@ -700,7 +700,7 @@ const SimpleSchema = z.object({
 });
 ```
 2. Break complex outputs into multiple agent runs with simpler schemas.
-3. Use `gpt-4o` or `claude-sonnet-4-5` — they have the best structured output adherence.
+3. Use a verified model with strong structured-output adherence.
 
 **Prevention:** Design schemas with the LLM's capabilities in mind. Test with the cheapest model first — if `gpt-4o-mini` can handle it, any model can.
 
@@ -1075,7 +1075,6 @@ const agent = new MCPAgent({ llm, client });
 try {
   await agent.run({ prompt: "List files in /tmp" });
 } finally {
-  await agent.close();
   await client.closeAllSessions();
 }
 ```
@@ -1618,10 +1617,10 @@ for await (const _ of agent.prettyStreamEvents({ prompt: "List files in /tmp" })
 
 **Step 8: Check Node.js version and dependencies**
 
-Ensure you are running a supported Node.js version and all dependencies are up to date. `mcp-use@1.25.0` declares `"engines": { "node": "^20.19.0 || >=22.12.0" }` — Node 18.x and 21.x are NOT supported, and Node 20.x must be at least `20.19.0`:
+Ensure the process uses a Node.js version supported by the installed `mcp-use` package. The latest npm check for `mcp-use@1.27.0` reported `"engines": { "node": "^20.19.0 || >=22.12.0" }` — Node 18.x and 21.x are not supported, and Node 20.x must be at least `20.19.0`:
 
 ```bash
-node --version          # mcp-use@1.25.0 requires ^20.19.0 || >=22.12.0
+node --version          # current mcp-use requires ^20.19.0 || >=22.12.0
 npm list mcp-use        # Check installed version
 npm outdated mcp-use    # Check for updates
 ```
