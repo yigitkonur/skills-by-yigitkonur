@@ -309,7 +309,7 @@ Each `_COMPARISON_TEMPLATE_<criterion>.md` is typically 100-250 lines. The cloud
 
 | Corpus scale | Recommendation |
 |---|---|
-| `compact` (1-10 entities) | Single master `_meta/_COMPARISON_TEMPLATE.md` |
+| `compact` (5-10 entities) | Single master `_meta/_COMPARISON_TEMPLATE.md` |
 | `standard` (10-40 entities) | Per-criterion (8-12 templates) |
 | `deep` / `tiered` (40+ entities) | Per-criterion, mandatory |
 
@@ -342,16 +342,16 @@ This is what produces depth uniformly across the corpus. One agent can't shortcu
 
 ## Worked-example artifacts
 
-The cloud-browsers corpus already implements this pattern. Inspect the actual artifacts:
+The cloud-browsers walkthrough in `references/workflow/worked-example-cloud-browsers.md` is the portable example. If the optional owner-local corpus exists, these are the corresponding files:
 
 | Artifact | Path | Lines | Role |
 |---|---|---|---|
-| Master comparison template (single, multi-criterion) | `/Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/_meta/comparison-template.md` | 246 | The Phase 2 cross-comparison template; covers metadata, scope, headline findings, platform matrix, pricing matrix, ops matrix, integrations matrix, audience matrix, benchmarks matrix, buyer-fit matrix |
-| Per-product research brief (acts as `_PRODUCT_TEMPLATE.md`) | `/Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/_meta/product-folder-research-brief.md` | 162 | The Phase 2 entity-pack template; lists ~50 distinct file candidates across 10 subfolders with required questions per file |
-| Comparison-research brief | `/Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/_meta/comparison-research-brief.md` | 156 | Phase 5 mission brief that references the comparison template |
-| Profile-enhancement brief | `/Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/_meta/profile-enhancement-brief.md` | 159 | Phase 6 mission brief that references the profile-page pattern |
+| Master comparison template (single, multi-criterion) | `_meta/comparison-template.md` | 246 | Phase 2 cross-comparison template: metadata, scope, headline findings, and matrices |
+| Per-product research brief (acts as `_PRODUCT_TEMPLATE.md`) | `_meta/product-folder-research-brief.md` | 162 | Phase 2 entity-pack template: ~50 file/section candidates across 10 subfolders |
+| Comparison-research brief | `_meta/comparison-research-brief.md` | 156 | Phase 5 mission brief that references the comparison template |
+| Profile-enhancement brief | `_meta/profile-enhancement-brief.md` | 159 | Phase 6 mission brief that references the profile-page pattern |
 
-Read the actual `comparison-template.md` and `product-folder-research-brief.md` before authoring your own templates. They are battle-tested examples of the maximalist style this skill mandates.
+Use the walkthrough excerpts when the local files are absent. Do not require agents to read paths outside the installed skill pack.
 
 The cloud-browsers templates were tight (162 + 246 lines). For richer or more regulated categories — fintech, healthcare, security tooling — your templates will likely run 300-500 lines because the vertical demands more axes (compliance, audit, certifications, regional variations).
 

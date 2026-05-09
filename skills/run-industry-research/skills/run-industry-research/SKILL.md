@@ -107,7 +107,7 @@ Clarify outcome if missing:
 
 ### Phase 1 — Discovery (with deep category pre-pass)
 
-Phase 1 has TWO outputs: the entity list AND the category understanding that feeds Phase 2 template authoring.
+Phase 1 has TWO outputs: the entity list AND the category understanding that feeds Phase 2 template authoring. **Think first:** Which candidate clusters would a generic top-10 search miss?
 
 1. **Decompose the topic into 3-5 sub-questions.** Each sub-question surfaces a different candidate cluster.
 2. **Run discovery searches** via `start-research` (preferred) or web-capable research agents with `WebSearch`/`WebFetch` (fallback).
@@ -122,7 +122,7 @@ Read `references/workflow/discovery.md` for the full discovery sub-workflow and 
 
 ### Phase 2 — Template authoring
 
-This is the keystone phase. The orchestrator translates the deep category understanding into maximalist templates that define minimum coverage for every entity pack and every cross-criterion comparison.
+This is the keystone phase. The orchestrator translates the deep category understanding into maximalist templates that define minimum coverage for every entity pack and every cross-criterion comparison. **Think first:** Which buyer axes, native units, risks, and practitioner channels make this vertical different?
 
 1. **Pick the matching archetype** from `references/architecture/category-taxonomies.md` (SaaS, OSS ecosystem, dev infra, data/API provider, regulated, consumer/media). The archetype is the starting skeleton.
 2. **Adapt the archetype to the vertical.** Rename slugs so each path says what the file answers in the buyer's language. Run the **category completeness check** before locking the slug list.
@@ -150,7 +150,7 @@ Plan the tree before any entity-pack file creation.
 
 ### Phase 4 — Evidence packs
 
-Research each `core` entity into its evidence pack, **driven by the Phase 2 templates**.
+Research each `core` entity into its evidence pack, **driven by the Phase 2 templates**. **Think first:** Which template sections must every entity prove with sources or mark as insufficient evidence?
 
 1. **Dispatch up to 20 entity-research agents in parallel per wave.** Each agent owns ONE entity folder; write scopes are disjoint. For >20 entities, run multiple waves.
 2. **Each agent's brief includes the resolved template list** (`_meta/_PRODUCT_TEMPLATE.md`) plus the discovered-entities scope boundary and the source-hierarchy rules.
@@ -164,7 +164,7 @@ Research each `core` entity into its evidence pack, **driven by the Phase 2 temp
 
 ### Phase 5 — Cross-entity synthesis
 
-Compare entities by criterion across the population, **driven by the per-criterion comparison templates**.
+Compare entities by criterion across the population, **driven by the per-criterion comparison templates**. **Think first:** Which entities are directly comparable, adjacent, or not comparable for this criterion?
 
 1. **Read every `core` entity pack personally** before synthesis. Do not delegate this read.
 2. **Dispatch up to 20 Cross-Category Comparison Agents in parallel per wave** — one agent per criterion (pricing, capabilities, integrations, security, audience, benchmarks, buyer-fit, sources). Each agent owns one cross-criterion folder.
@@ -186,7 +186,7 @@ Write the standalone `[entity-slug].md` decision pages at the corpus root for `c
 
 ### Phase 7 — Verification
 
-Run the completion gate before declaring done.
+Run the completion gate before declaring done. **Think first:** Which verification failure would invalidate the corpus as a decision aid?
 
 ```bash
 # Template-coverage audit (THE comprehensiveness check)
@@ -244,9 +244,7 @@ Each folder name reveals the buyer or researcher question it answers. Numeric pr
 
 ## Worked example
 
-A complete reference corpus exists at `/Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/` (12 vendor evidence packs + cross-product comparisons + profile pages, 293 files, with `_meta/comparison-template.md` (246 lines) and `_meta/product-folder-research-brief.md` (162 lines) as concrete examples of the templates this skill mandates).
-
-Read `references/workflow/worked-example-cloud-browsers.md` for an annotated walkthrough — taxonomy choices, template-authoring process, mission brief examples, and the verification artifacts that proved the corpus complete. **Mirror its discipline; never copy its slugs.**
+Read `references/workflow/worked-example-cloud-browsers.md` for a self-contained walkthrough of taxonomy choices, template excerpts, mission brief shape, verification artifacts, and the optional owner-local corpus path. **Mirror its discipline; never copy its slugs.**
 
 ## Output contract
 
@@ -265,7 +263,7 @@ Never batch all artifacts to the end. Each artifact should appear when its phase
 
 ## Self-correction triggers
 
-If you notice yourself doing any of the following — **stop**:
+Stop and correct when any of these appears:
 
 - **Skipping Phase 2 template authoring and going straight to entity-pack research** → STOP. Templates are the comprehensiveness boundary; without them, depth varies by entity and the corpus loses comparability. Write the templates first.
 - **Writing a thin, generic `_PRODUCT_TEMPLATE.md`** → STOP. The template is supposed to be maximalist and overcrowded. If it has fewer than ~30 distinct sections, you have not done the deep category pre-pass. Re-do Phase 1's category understanding and re-author the template.

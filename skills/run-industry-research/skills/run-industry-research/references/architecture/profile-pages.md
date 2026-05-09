@@ -29,7 +29,7 @@ If the profile page is shorter than the evidence-pack `00-overview/01-executive-
 
 | Corpus scale | Profile pages |
 |---|---|
-| `compact` (1-10 entities) | Optional — small enough that the evidence pack alone may suffice |
+| `compact` (5-10 entities) | Optional — small enough that the evidence pack alone may suffice |
 | `standard` (10-40 entities) | Default yes for `core` tier |
 | `deep` (40-100 entities) | Required for `core` tier |
 | `tiered` (100+ entities) | Required for top-tier; secondary tier gets compact profile-only (no full pack) |
@@ -186,7 +186,7 @@ The cloud-browsers corpus has 12 profile pages (one per `core` entity). Notable 
 - **`anchor-browser.md`** (631 lines) — longest profile because Anchor dominates Reddit migration recommendations and required a substantial audience-evidence synthesis
 - **`bright-data-agent-browser.md`** (608 lines) — different vertical positioning (proxy-network-first); profile structure adapts (`05-security/` content elevated to a more prominent profile section)
 
-Read three of these before writing your first profile page to internalize the synthesis-with-links pattern.
+When the optional owner-local corpus is available, inspect these profiles for extra texture. When it is absent, use the section ordering and linking pattern above.
 
 ## Validation checklist
 

@@ -6,13 +6,15 @@ Use this as a discipline mirror, **not a slug template.** Every category has dif
 
 Read this when you want to see the phases applied end-to-end on a real category.
 
-## Where the corpus lives
+## Optional owner-local corpus path
 
 ```
 /Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/
 ```
 
-This was produced for the cloud-browser category (vendors that run real Chrome/Chromium browsers in cloud datacenters for AI agents). The category has well-defined buyers (engineering teams building agent workflows), a competitive incumbent (Browserbase), a fast-rising challenger (Anchor Browser), and meaningful Reddit discussion.
+This path is an optional local-owner example and may not exist for installed users. Normal execution does not require reading outside the skill pack; the excerpts below carry the reusable method.
+
+The corpus was produced for the cloud-browser category (vendors that run real Chrome/Chromium browsers in cloud datacenters for AI agents). The category has well-defined buyers (engineering teams building agent workflows), a competitive incumbent (Browserbase), a fast-rising challenger (Anchor Browser), and meaningful Reddit discussion.
 
 ## Phase 0 — Charter (what was clarified)
 
@@ -224,7 +226,7 @@ find 01-ai-native-cloud-browsers -name '.DS_Store' -o -name '*.tmp'
 
 ```bash
 grep -rE '(05-stealth-security-compliance|06-audience-reddit|07-benchmarks-performance|...)' \
-  --include='*.md' /Users/yigitkonur/research/browser-system/
+  --include='*.md' [optional-owner-local-path]/
 # (empty — no stale references after rename pass)
 ```
 
@@ -252,18 +254,12 @@ grep -rE '(05-stealth-security-compliance|06-audience-reddit|07-benchmarks-perfo
 - **The cross-product file count (10).** That number reflects this category's 10 decision criteria. Yours may have 6 or 14.
 - **The profile-page length range (479-631 lines).** That reflects each entity's evidence density. Compact entities should not be padded to hit 500 lines.
 
-## Pointer to the corpus itself
+## Optional local corpus inspection
 
-If you have file system access, the corpus is at:
+If file system access to the owner-local path exists, inspect these files for additional texture:
 
-```
-/Users/yigitkonur/research/browser-system/01-ai-native-cloud-browsers/
-```
+1. `README.md` — navigation entry point
+2. `airtop.md` and `airtop/README.md` side-by-side — synthesis vs. pack distinction
+3. `_cross-product/06-audience/00-overall-comparison.md` — cross-criterion synthesis at scale
 
-Read three things in order to internalize the pattern:
-
-1. **`README.md`** — the navigation entry point
-2. **`airtop.md`** (profile page) and **`airtop/README.md`** (pack index) side-by-side — to see synthesis vs. pack distinction
-3. **`_cross-product/06-audience/00-overall-comparison.md`** — to see cross-criterion synthesis at scale (425 lines, 12-entity comparison with confidence levels)
-
-Then start Phase 0 of your own corpus with confidence that the discipline is reproducible.
+The walkthrough above is sufficient when the local path is absent.
