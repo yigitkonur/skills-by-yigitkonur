@@ -2,7 +2,7 @@
 
 The core discipline — **two phases, never default to `Implemented`, evidence before status** — is bypassable under pressure. This file captures verbatim rationalizations and counters from audit-specific excuses observed when agents are finishing a long session under token or time pressure.
 
-See `synthesize-skills/references/authoring/tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
+See `skills/synthesize-skills/skills/synthesize-skills/references/authoring/tdd-for-skills.md` for the general RED-GREEN-REFACTOR pattern.
 
 ## Why the discipline breaks
 
