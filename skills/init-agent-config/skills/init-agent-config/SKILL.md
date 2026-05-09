@@ -80,6 +80,15 @@ Quick boundary:
 - Do not create shared defaults in `AGENTS.override.md` or `CLAUDE.local.md`; those are override/personal layers.
 - If existing config is already mostly correct, switch from rewrite mode to audit/tighten mode.
 
+## Scripts
+
+Resolve script paths relative to this skill directory.
+
+| Script | Use when | Mutates |
+|--------|----------|---------|
+| `scripts/audit-agents-md.sh` | Step 1 audits existing instruction surfaces, line counts, companion status, native adapters, and duplicate-source risks. See `scripts/audit-agents-md.sh.md`. | No |
+| `scripts/scaffold-agents-md.sh` | After discovery and file planning, emit one minimal root/folder `AGENTS.md` or `REVIEW.md` skeleton. See `scripts/scaffold-agents-md.sh.md`. | Only with explicit `--write` |
+
 ## Workflow
 
 ### 1) Scope the request and current instruction surfaces
@@ -101,6 +110,8 @@ Check which instruction surfaces already exist:
 - `.github/copilot-instructions.md`
 - `.greptile/`, `greptile.json`
 - `README.md`, `CONTRIBUTING.md`, architecture docs
+
+For existing repositories, run `scripts/audit-agents-md.sh` or perform equivalent read-only checks before editing.
 
 ### 2) Build the folder map locally
 
@@ -169,6 +180,7 @@ Translate the discovery findings into a file plan.
 - If a folder needs only a small local delta, keep that file short rather than folding it back into the root.
 - If a `src` folder has first-level subfolders, default to one local `AGENTS.md` per first-level subfolder.
 - Each planned file should have a one-sentence purpose before writing begins.
+- Use `scripts/scaffold-agents-md.sh` only after this file plan is known; never use it to invent structure before discovery.
 
 ### 6) Audit existing files before rewriting them
 
