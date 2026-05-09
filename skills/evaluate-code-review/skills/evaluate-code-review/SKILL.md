@@ -53,7 +53,7 @@ The skill handles three input modes. Detect the mode from the user's phrasing; i
 
 | Mode | Trigger phrasing | Source |
 |---|---|---|
-| **PR mode** | "the review comments on PR #42", "what do the bots say on my PR", "address the review" | `gh pr view <N> --comments`, thread replies via `gh api` |
+| **PR mode** | "the review comments on PR #42", "what do the bots say on my PR", "address the review" | `scripts/parse-pr-comments.sh --repo <owner/name> --pr <N> --out <dir>`, then thread replies via `gh api` |
 | **Session-audit mode** | "audit what we just did", "check the review notes from earlier", "go back and evaluate the reviewer's feedback" (without PR context) | Previous messages in this conversation |
 | **Markdown-doc mode** | "read review.md and give me an action plan", "the reviewer's notes are in audit.md" | Named file(s) on disk |
 
@@ -65,7 +65,9 @@ The skill handles three input modes. Detect the mode from the user's phrasing; i
 
 State which mode is active. Extract every piece of review feedback as a flat list of items. Do not paraphrase yet — capture the verbatim text, its source (which reviewer, which comment ID, which line of which file in which message), and any code-range metadata.
 
-For each item, record: `{source, file?, line?, severity_hint?, verbatim_text}`.
+For PR mode, use `scripts/parse-pr-comments.sh` to fetch all three GitHub feedback channels before evaluating. See `scripts/parse-pr-comments.md`.
+
+For each item, record: `{id?, channel?, source, source_type, file?, line?, original_line?, commit_id?, severity_hint?, verbatim_text}`.
 
 ### 2. Understand what was actually reviewed (ground truth)
 
@@ -103,7 +105,7 @@ If 2+ reviewers (e.g., Copilot + CodeRabbit on the same PR, or human + two AI bo
 - **Resolve conflicts** — if two reviewers disagree, surface the disagreement explicitly in the action plan; do not silently pick one.
 - **Discard noise** — obvious false positives (e.g., a bot flags a dependency it doesn't understand). Tag as "dismissed with reason".
 
-See `references/multi-agent-consolidation.md`.
+For PR JSONL snapshots, use `scripts/cluster-feedback.py --input normalized.jsonl --output clusters.json` before manual verification. See `scripts/cluster-feedback.md` and `references/multi-agent-consolidation.md`.
 
 ### 5. Evaluate each item against the codebase
 
@@ -239,6 +241,8 @@ Recovery moves:
 | `references/gh-review-workflow.md` | Pulling PR comments via `gh`; thread replies; PR-discussion vs. review-comment channels |
 | `references/action-plan-output.md` | Formatting the action plan — per mode (PR / session / markdown-doc) |
 | `references/rationalizations.md` | RED-baseline excuses that bypass the verify-before-implement discipline; counters |
+| `scripts/parse-pr-comments.md` | Capturing PR reviews, inline comments, and discussion comments into raw snapshots plus normalized JSONL |
+| `scripts/cluster-feedback.md` | Preparing normalized JSONL into stable clustered items before verification |
 
 ## Final checks
 
