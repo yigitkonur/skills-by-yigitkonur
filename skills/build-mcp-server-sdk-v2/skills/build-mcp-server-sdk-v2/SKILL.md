@@ -30,7 +30,7 @@ Core rules:
 - Always use `registerTool` / `registerResource` / `registerPrompt` — positional overloads removed
 - Always use Zod v4 full schemas (`z.object({...})`) — raw shapes not accepted in v2
 - Always use `NodeStreamableHTTPServerTransport` from `@modelcontextprotocol/node` for HTTP
-- Server-side OAuth is removed from the SDK — wire HTTP-layer auth (jose, Passport, custom Bearer) and forward `req.auth` into `ctx.http?.authInfo`; for OAuth-heavy servers that can't drop the v1 router, use the frozen `@modelcontextprotocol/server-auth-legacy` package as a transition
+- Server-side OAuth is removed from the SDK — wire HTTP-layer auth (external AS + `jose`, Passport, custom Bearer middleware) and forward `req.auth` into `ctx.http?.authInfo`; treat `@modelcontextprotocol/server-auth-legacy` as planned/open until npm and PR #1908 confirm publication
 - SSE server transport is removed — use Streamable HTTP
 - ESM-only — no CommonJS support
 - Node.js 20+ required
@@ -240,7 +240,7 @@ return { content: [{ type: "text", text: "Error: not found" }], isError: true };
 | Reference | When to read |
 |---|---|
 | `references/guides/resources-and-prompts.md` | Resources (static/template URI) and prompts |
-| `references/guides/authentication.md` | Server-side auth: JWT/Passport middleware, server-auth-legacy, scope checks, DNS rebinding |
+| `references/guides/authentication.md` | Server-side auth: JWT/Passport middleware, planned server-auth-legacy caveat, scope checks, DNS rebinding |
 | `references/guides/client-api.md` | Building MCP clients, auth providers, middleware |
 | `references/guides/framework-adapters.md` | Express and Hono adapters, DNS rebinding protection |
 | `references/guides/context-and-lifecycle.md` | ServerContext fields, sampling, elicitation, sessions, shutdown |
@@ -263,7 +263,7 @@ What this means in practice:
 - **Pin alpha versions exactly** (no `^` ranges) — alphas can break between patches.
 - **Plan rollback** before deploying — keep the v1 branch deployable.
 - **The `@modelcontextprotocol/sdk` meta-package** remains v1 on npm unless fresh npm verification proves otherwise; main-branch meta-package PRs are migration signals, not an install target.
-- **`@modelcontextprotocol/server-auth-legacy`** publishes the frozen v1 OAuth router for users who can't drop server-side OAuth on the migration path.
+- **`@modelcontextprotocol/server-auth-legacy`** is a planned/open transitional package until `npm view` succeeds and PR #1908 or release notes confirm publication.
 - Some MCP clients and third-party tooling still target v1 patterns; verify your host (Claude Desktop, Cursor, Cline, custom) handles v2-specific features end-to-end before relying on them.
 
 The SDK is actively maintained on the `main` branch (which is now the v2 branch). Subscribe to release notes for the duration of any v2 work.

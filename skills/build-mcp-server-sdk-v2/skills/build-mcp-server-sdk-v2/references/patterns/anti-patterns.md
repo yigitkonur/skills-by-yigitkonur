@@ -76,8 +76,10 @@ server.server.setRequestHandler("tools/call", handler);
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 app.use(mcpAuthRouter({ provider: myProvider }));
 
-// RIGHT — use external auth library
-// v2 removes all server-side OAuth. Use better-auth, passport, etc.
+// RIGHT — authenticate before the MCP route
+// Use an external AS with jose, Passport, or custom Bearer middleware.
+// Do not adopt better-auth/plugins/mcp for new v2 work while its docs
+// flag successor migration and it still shows v1 SDK import paths.
 ```
 
 ## Using SSE server transport

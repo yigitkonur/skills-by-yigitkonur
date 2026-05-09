@@ -104,22 +104,22 @@ app.use((req, res, next) => {
 });
 ```
 
-## When you need server-side OAuth: server-auth-legacy
+## Main-branch Resource-Server helpers
 
-If the server needs to issue tokens itself — multi-tenant SaaS, dynamic client registration, custom grant flows — install `@modelcontextprotocol/server-auth-legacy`. This is the v1 `mcpAuthRouter` code, frozen, packaged as a separate dependency. It runs on v2.
+PR #1907 restored `@modelcontextprotocol/express` Resource-Server helpers (`requireBearerAuth`, `mcpAuthMetadataRouter`) on the main branch after npm `2.0.0-alpha.2`. Treat them as post-alpha source signal unless the installed `@modelcontextprotocol/express` package exports them.
 
-```typescript
-import { mcpAuthRouter } from "@modelcontextprotocol/server-auth-legacy";
+Use them only after re-checking package exports in the current release. If unavailable, keep the auth boundary as normal Express/Hono middleware that sets `req.auth` before the MCP route.
 
-const authRouter = mcpAuthRouter({
-  provider: yourOAuthServerProvider,
-  baseUrl: new URL(process.env.PUBLIC_URL!),
-  // ...same options as v1
-});
-app.use(authRouter);
-```
+## Server-side OAuth transition: server-auth-legacy
 
-Treat it as transitional. The package is frozen — no new spec features land here. Plan a follow-up to a dedicated AS once your replacement of choice (better-auth's OAuth Provider Plugin, Authentik, custom Authorization Server, etc.) reaches the maturity bar.
+If the server needs to issue tokens itself — multi-tenant SaaS, dynamic client registration, custom grant flows — `@modelcontextprotocol/server-auth-legacy` is the planned transitional package for the frozen v1 `mcpAuthRouter` code. As of 2026-05-09 UTC, npm returns 404 and upstream PR #1908 is open, not merged or published.
+
+Do not recommend installing it unless fresh checks prove both:
+
+- `npm view @modelcontextprotocol/server-auth-legacy version dist-tags --json` succeeds.
+- PR #1908 is merged or release notes explicitly document the package.
+
+Even if it becomes available, treat it as transitional. The destination for new v2 auth remains HTTP middleware plus `ctx.http?.authInfo`, backed by an external authorization server or a dedicated AS implementation.
 
 ## What to avoid: better-auth MCP plugin (current state, 2026-05-08)
 
@@ -132,13 +132,13 @@ Do not adopt it as a new dependency for a v2 server. Re-evaluate after the OAuth
 
 ## Authorization server metadata
 
-Whichever path you take, MCP clients discover OAuth endpoints via `/.well-known/oauth-authorization-server` (RFC 8414). Make sure the metadata endpoint:
+MCP clients discover OAuth endpoints via `/.well-known/oauth-authorization-server` (RFC 8414). Make sure the metadata endpoint:
 
 - Lives on the same origin as the MCP endpoint (or is reachable via CORS).
 - Returns the issuer, authorization, token, and revocation endpoint URLs.
 - Lists supported response types, grant types, code challenge methods.
 
-For Path 1 / Path 2, the external AS handles this. For `server-auth-legacy`, the router exposes it. For Path 3, you don't need it (no OAuth).
+For Path 1 / Path 2, the external AS handles this. For a future verified `server-auth-legacy` release, the router should expose it. For Path 3, metadata is unnecessary because it is not OAuth.
 
 ## Scope checks belong in handlers
 
@@ -166,7 +166,7 @@ Independent of token verification: HTTP servers must validate the `Host` header.
 ```typescript
 import { hostHeaderValidation } from "@modelcontextprotocol/express";
 
-app.use(hostHeaderValidation({ allowedHosts: ["mcp.example.com"] }));
+app.use(hostHeaderValidation(["mcp.example.com"]));
 ```
 
 Skipping this lets attackers trigger MCP tool calls from arbitrary websites by abusing DNS rebinding. See `references/guides/transports.md` for the full transport-layer security walkthrough.
