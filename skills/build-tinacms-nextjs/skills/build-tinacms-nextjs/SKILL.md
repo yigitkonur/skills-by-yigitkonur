@@ -46,6 +46,11 @@ Read first:
 - [references/setup/05-env-vars.md](references/setup/05-env-vars.md)
 - [references/cli/01-overview.md](references/cli/01-overview.md)
 
+Optional read-only helpers:
+
+- `bash scripts/check-tina-versions.sh /path/to/project` - package versions, package manager, App/Pages Router shape, scripts, and next routes. See [scripts/check-tina-versions.md](scripts/check-tina-versions.md).
+- `bash scripts/check-tina-env.sh /path/to/project` - env names, config files, generated client, preview/admin/API files, and likely TinaCloud vs self-hosted lane. See [scripts/check-tina-env.md](scripts/check-tina-env.md).
+
 Prefer `pnpm` for greenfield work because the official TinaCMS App Router docs recommend it, but respect an existing project's package manager if its lockfile is consistent. Do not claim npm/yarn are unsupported; treat module-resolution failures as a known failure mode to diagnose.
 
 ## Choose Backend Lane Early
