@@ -33,7 +33,7 @@ For each cited claim, note the source with title + URL + access date.
 
 - Output is structured per the format above
 - All factual claims are sourced
-- File size is non-trivial (≥ MIN bytes; default MIN=10000)
+- File size is non-trivial (≥ MIN bytes; calibrate `MIN_BYTES` to your prompt type — see `references/universal/output-size-signals.md` "Per-prompt-type calibration table". The 10000-byte default is tuned for research / summarization; for a short prose deliverable like a 200-word TL;DR, set MIN ≈ 1000–2000)
 
 # Out-of-scope
 
@@ -64,7 +64,32 @@ The render script takes the input file and produces `prompts/<slug>.md`. Slug ru
 - Tab-delimited input (`name<TAB>content`): `name` becomes the slug. Use this for URL lists where you control the slug derivation upstream.
 - Plain-line input: each line is the slug AND the content. Use this for short ID lists.
 
-If two inputs render to the same slug, the render script writes a stderr warning and **skips the second**. Disambiguate the input (add a discriminator) before re-rendering.
+If two inputs render to the same slug, `render-prompts.sh` exits 1 with `error: collision on <slug>.md` and writes nothing further. Disambiguate the input (add a discriminator) before re-rendering.
+
+## Shared file + per-input variable
+
+A common batch shape is "one shared rubric / spec / context file + N varying inputs". `render-prompts.sh` only knows about one placeholder (`XXXXXXXXXXXXX`), so the shared file has to enter the prompt one of two ways:
+
+1. **Inline the shared file's content into the template** above the placeholder. Recommended — the rendered `prompts/<slug>.md` is fully self-contained, the prompt is deterministic regardless of cwd or filesystem state at codex spawn time, and audit / replay is trivial. Build the template from the shared file before rendering:
+
+   ```bash
+   { cat rubric.md; printf '\n\n# Input\n\nXXXXXXXXXXXXX\n'; } > template.md
+   bash render-prompts.sh inputs.txt template.md prompts/
+   ```
+
+2. **`Read /abs/path/to/rubric.md` inside the prompt.** Works because batch passes `--dangerously-bypass-approvals-and-sandbox`, so codex can read arbitrary paths without an approval prompt. The runner's cwd at spawn is the workspace root (`--cwd` to the dispatcher), so use absolute paths or paths relative to that root. Less deterministic — the rubric file at the time codex reads it, not at the time you rendered.
+
+   ```
+   # Context
+
+   Read /Users/me/project/rubric.md before applying the rubric below to the Input.
+
+   # Input
+
+   XXXXXXXXXXXXX
+   ```
+
+Prefer pattern 1 unless the shared file is large enough that inlining bloats every per-input prompt past your token budget.
 
 ## Sizing
 

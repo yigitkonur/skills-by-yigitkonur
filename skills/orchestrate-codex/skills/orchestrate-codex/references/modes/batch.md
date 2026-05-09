@@ -51,20 +51,39 @@ Two input formats:
 | Tab-delimited | `name<TAB>content` per line | `name` becomes the slug | URL lists where you derive deterministic slugs upstream |
 | Plain lines | one line per input | line becomes both slug and content (sanitized) | short ID lists |
 
+### Dispatcher flags
+
+`node orchestrate-codex.mjs batch` accepts the following flags (`handleBatch` in `scripts/orchestrate-codex.mjs:1413`). Value options: `inputs`, `template`, `concurrency`, `cwd`, `monitor-root`, `run-id`, `answers-dir`, `i-have-measured`, `force-redo`. Boolean options: `force-redo-all`, `force-new-run`, `dry-run`.
+
+| Flag | Default | When to set it |
+|---|---|---|
+| `--inputs <file>` | required | path to `inputs.txt` (relative to `--cwd`) |
+| `--template <file>` | required | path to `template.md` (relative to `--cwd`) |
+| `--cwd <dir>` | `process.cwd()` | workspace root; affects relative-path resolution and the manifest's `state` directory |
+| `--answers-dir <dir>` | `<cwd>/answers` | where to write `answers/<slug>.md`. Override when you want outputs alongside your workdir instead of nested under `<cwd>/answers/` — e.g. `--answers-dir /Users/me/research/parked-domain-survey/out` keeps the deliverables in your project tree while the manifest lives under `<state>/orchestrate-codex/`. |
+| `--concurrency N` | `10` | parallelism (above 20 requires `--i-have-measured`; hard cap 100) |
+| `--i-have-measured "<text>"` | unset | required when `--concurrency > 20`; the text is recorded on the manifest |
+| `--monitor-root <dir>` | `<state>/orchestrate-codex/<run_id>` | where prompts/, logs/ and the runner log land |
+| `--run-id <id>` | auto-generated | reuse to resume / inspect a prior run |
+| `--force-new-run` | off | requires `--run-id <custom>`; writes to a per-run manifest path instead of the shared one |
+| `--force-redo <slug,…>` | unset | archive `answers/<slug>.md` to `.prev/`, flip the entry to `queued`, re-spawn |
+| `--force-redo-all` | off | same as above, every entry |
+| `--dry-run` | off | runner prints planned commands and writes stub artifacts; no codex spawn |
+
 ### Two slug spaces
 
 Batch mode has **two intentional slug naming conventions** that operators must keep straight:
 
-- **Bare slug** — what `bash render-prompts.sh inputs.txt template.md prompts/` produces. The first field of each input is sanitized (`tr -c 'a-zA-Z0-9._-' '-'`) and used directly as `prompts/<slug>.md`. No prefix, no index. Use this path when you're driving `run-batch.sh` standalone (env-var invocation; see "Standalone runner" below).
-- **`NNN-` prefixed slug** — what the dispatcher's `buildBatchEntries` generates. Each entry is keyed by `<NNN>-<sanitized-first-field>` (e.g. `001-acme-corp`, `002-globex`); the dispatcher's own `renderBatchPromptFiles` writes prompt files under that NNN-prefix. Use this path when you're invoking `node orchestrate-codex.mjs batch ...`.
+- **Bare slug** (default) — what both `bash render-prompts.sh inputs.txt template.md prompts/` and the dispatcher's `buildBatchEntries` produce. The first field of each input is sanitized (`slugify(firstField)` in `scripts/orchestrate-codex.mjs:589`; `tr`-equivalent in `render-prompts.sh:64`) and used directly as the entry id and `prompts/<slug>.md` filename. No prefix, no index — `acme-corp`, `globex`, etc.
+- **`row-NNN` fallback** — only when the first-field slug is empty after sanitization (e.g. an all-symbols input). The dispatcher falls back to `row-001`, `row-002`, …; `render-prompts.sh` hard-fails on empty slugs instead. The fallback is a safety net, not the default shape.
 
-The two paths are not interchangeable. If you pre-render with `render-prompts.sh` and then invoke the dispatcher, the dispatcher will overwrite your bare-slug prompts with NNN-prefixed ones (different filenames). Pick one slug space per workflow and stick to it.
+Both code paths agree on the bare-slug naming, so pre-rendering with `render-prompts.sh` and then invoking the dispatcher produces consistent filenames — provided your inputs sanitize to non-empty slugs.
 
 ## Pre-flight
 
 1. `inputs.txt` exists and is non-empty.
 2. `template.md` exists and contains the literal `XXXXXXXXXXXXX` placeholder.
-3. `render-prompts.sh inputs.txt template.md prompts/` runs cleanly. If it warns about slug collisions, **resolve before launching** — the second collider gets silently dropped otherwise.
+3. `render-prompts.sh inputs.txt template.md prompts/` runs cleanly. **Slug collisions are a hard fail** — `render-prompts.sh:71-74` exits 1 the moment the second input would write the same `<slug>.md`. The dispatcher's `buildBatchEntries` likewise rejects duplicate rendered slugs with `bad_inputs_file`. Disambiguate the input (add a discriminator) before dispatching.
 4. `answers/` and `logs/` directories exist (created by render).
 5. `codex login status` — warn unless `~/.codex/config.toml` declares no `model_provider`. Some setups (vendored OpenAI key, ChatGPT subscription, custom auth shim) leave login-status non-zero even when `codex exec` works. Soft warning, not a hard fail.
 
@@ -148,7 +167,7 @@ bash audit-sizes.sh answers/ "${MIN_BYTES:-10000}"
 
 ## Concurrency
 
-Default `JOBS=10`. Tuned for codex-cli current TPM/RPM caps with gpt-5.5 + xhigh; raise via env var, not a flag (the runner parses no flags — see "Standalone runner" below):
+Default `JOBS=10`. Tuned for codex-cli current TPM/RPM caps with gpt-5.5 + xhigh; raise via env var or `--concurrency N` (see "Standalone runner" below):
 
 ```bash
 JOBS=15 PROMPTS=./prompts ANSWERS=./answers LOGS=./logs \
@@ -159,27 +178,35 @@ Above 20, the soft gate kicks in via the **dispatcher** (`--i-have-measured` fla
 
 ## Standalone runner
 
-`run-batch.sh` parses **no command-line flags** — it reads everything from environment variables:
+`run-batch.sh` accepts **both env-style and flag-style invocation**. Flags win when both are given. The full set:
 
-| Env var | Default | Meaning |
-|---|---|---|
-| `JOBS` | `10` | parallelism |
-| `PROMPTS` | `./prompts` | input prompts dir |
-| `ANSWERS` | `./answers` | output answers dir |
-| `LOGS` | `./logs` | per-job log dir |
-| `DRY_RUN` | `0` | `1` → print planned commands, no codex spawn |
-| `ORCHESTRATE_MANIFEST` | unset | optional path to manifest.json for status writes |
+| Flag | Env var | Default | Meaning |
+|---|---|---|---|
+| `--concurrency N` / `--jobs N` | `JOBS` | `10` | parallel concurrency (warns above 20; hard cap 100; above 20 requires `--i-have-measured`) |
+| `--prompts-dir <p>` / `--prompts <p>` | `PROMPTS` | `./prompts` | input prompts dir |
+| `--answers-dir <a>` / `--answers <a>` | `ANSWERS` | `./answers` | output answers dir |
+| `--logs-dir <l>` / `--logs <l>` | `LOGS` | `./logs` | per-job log dir |
+| `--manifest <m>` | `ORCHESTRATE_MANIFEST` | unset | path to `manifest.json`; runner writes status / size / below_floor here |
+| `--min-bytes N` | `MIN_BYTES` | `10000` | `[SMALL]` flag threshold; recorded as `mode_state.below_floor` |
+| `--only id,id` | `ONLY_IDS` | unset | restrict the run to a comma-separated subset of slugs (per-job filter; non-matching prompts are skipped silently) |
+| `--runner-log <file>` | `RUNNER_LOG` | unset | optional out-of-band runner-log path (the runner does NOT tee here; the dispatcher binds stdio to this fd) |
+| `--audit-report <file>` | `AUDIT_REPORT` | unset | post-run, write `audit-sizes.sh` output to this file |
+| `--i-have-measured "<text>"` | `ORCHESTRATE_CONCURRENCY_JUSTIFICATION` | unset | required justification when `JOBS > 20` |
+| `--dry-run` | `DRY_RUN=1` | `0` | print planned commands and stub artifacts; do not invoke codex |
+| `--inputs <f>` / `--template <f>` | n/a | n/a | accepted-and-ignored (these are dispatcher render-time concerns; the runner consumes already-rendered prompts) |
 
-There is no `--only <slug>`, no `--manifest`, no `--prompts-dir` — earlier drafts of this doc named flags that don't exist. Single-entry retry happens via the skip-existing guard plus filesystem manipulation:
+Single-entry retry can use either filesystem manipulation or `--only`:
 
 ```bash
-# Force one slug to retry: remove its answer + log, then re-run with JOBS=1.
+# Filesystem path: drop the answer + log, then re-run.
 rm -f answers/<slug>.md logs/<slug>.log
-JOBS=1 PROMPTS=./prompts ANSWERS=./answers LOGS=./logs \
-    bash run-batch.sh
-```
+JOBS=1 bash run-batch.sh --prompts-dir ./prompts --answers-dir ./answers --logs-dir ./logs
 
-Flag-style invocation (`bash run-batch.sh --manifest ... --prompts-dir ...`) is **Planned — not yet wired**. Use the env-var form above.
+# Flag path: restrict to one slug (skip-existing still applies, so archive first).
+mkdir -p answers/.prev && mv answers/<slug>.md answers/.prev/
+bash run-batch.sh --prompts-dir ./prompts --answers-dir ./answers --logs-dir ./logs \
+    --only <slug> --concurrency 1
+```
 
 ## Retry / rescue
 
@@ -207,7 +234,7 @@ mv answers/<slug>.md answers/.prev/
 
 - Auto-retry-by-size. Codex output varies; surface and inspect, never auto-retry.
 - Two runners on the same workdir. Race on the skip-existing guard. The dispatcher refuses concurrent runs.
-- Naming-collision drop without resolving. Two inputs render to the same slug → second is silently skipped at render time. Always resolve before launching.
+- Treating slug collisions as warnings. Two inputs that sanitize to the same slug make `render-prompts.sh` exit 1 (and the dispatcher reject the inputs file). Disambiguate the input row before dispatch — there is no recovery path mid-run.
 - `tail -F` outliving the runner. The Monitor's tail process keeps tailing the manifest path (or a per-job log) after the runner exits. The file stays static, no events fire, but the process lingers. Always `TaskStop` the Monitor once every entry reaches a terminal status. (There is no `_runner.log` to tail — see workdir layout above.)
 - `MIN_BYTES` set so high that every entry flags. The threshold should match prompt-shape expectations. Recalibrate per template.
 - One template doing N research types. If your inputs are heterogeneous (some URLs, some IDs, some product names), they probably want N templates. Render and run separately.

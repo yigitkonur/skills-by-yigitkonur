@@ -75,23 +75,22 @@ done
 
 The skill never auto-retries by size. Always inspect before deciding.
 
-### Archive + redo (manual workflow)
+### Archive + redo
 
-There is no dispatcher flag like `--force-redo <slug>` today. The retry workflow is manual three-step:
+The dispatcher exposes a wired `--force-redo` flag for `exec` and `batch` modes. It archives the existing answer to `<answers>/.prev/<slug>-<ts>.md`, flips the manifest entry's status to `queued`, and re-spawns the runner:
 
 ```bash
-# 1. Archive the original.
-mkdir -p answers/.prev && mv "answers/${slug}.md" "answers/.prev/${slug}.$(date -u +%Y%m%dT%H%M%SZ).md"
+# Force re-run of one entry (exec or batch).
+node scripts/orchestrate-codex.mjs <mode> --force-redo <slug>
 
-# 2. Reset the manifest entry so the runner re-dispatches.
-python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$slug" \
-    --set status=queued --set finished_at=null --set exit_code=null --execute
+# Force re-run multiple entries (comma-separated; one --force-redo flag).
+node scripts/orchestrate-codex.mjs <mode> --force-redo "slug-a,slug-b"
 
-# 3. Re-run with the runner; skip-existing will pass since the answer is gone.
-JOBS=1 bash scripts/run-batch.sh "$MANIFEST"
+# Force re-run every entry.
+node scripts/orchestrate-codex.mjs <mode> --force-redo-all
 ```
 
-A `--force-redo` convenience flag is in the design notes (see `references/universal/idempotency.md:61`) but is **not implemented**. Treat any older instruction that mentions `--force-redo` as out-of-date.
+For non-done entries only, prefer `rescue --redo failed|never-started|all-non-done`, which operates against the existing manifest without archiving any answer files. The defense-in-depth manual three-step (archive → flip-to-queued → re-run) remains valid when you don't trust the dispatcher's atomic flip; see `references/universal/idempotency.md` for the canonical sequence.
 
 ## Recording acceptance
 

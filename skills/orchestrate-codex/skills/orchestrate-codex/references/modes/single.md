@@ -27,23 +27,23 @@ node orchestrate-codex.mjs single \
     [--run-id <id>]
 ```
 
-The dispatcher's full `valueOptions` for single mode are: `prompt`, `prompt-file`, `out`, `cwd`, `monitor-root`, `run-id` (see `handleSingle` in `scripts/orchestrate-codex.mjs`). It declares no boolean options; any unrecognized flag is silently swallowed by the permissive parser.
+The dispatcher's full `valueOptions` for single mode are: `prompt`, `prompt-file`, `out`, `cwd`, `monitor-root`, `run-id`, `output-schema`, `resume-thread`. Boolean options: `reuse-worktree`, `resume-last`, `force-new-run`, `dry-run` (see `handleSingle` in `scripts/orchestrate-codex.mjs`). Any unrecognized flag is rejected by the strict parser.
 
 If `--cwd` is omitted, the dispatcher uses `pwd`. **Single mode runs in `cwd` directly — it does NOT create a worktree, does NOT require a git repo, and does NOT touch `.gitignore`.** A non-git working directory (e.g. a research folder, a mounted notebook, a scratch dir) is fully supported; codex runs in place. If you want isolation in a real repo, create a worktree yourself first and pass it as `--cwd`.
 
 The prompt file follows `references/templates/single.tmpl.md`.
 
-> **`--reuse-worktree` is Planned — not yet wired.** Earlier drafts of this skill exposed `--reuse-worktree`, but `handleSingle`'s parser declares no boolean options, so the flag is silently dropped. Manual workaround for today:
->
-> ```bash
-> # 1. cd into the existing worktree.
-> cd ../myrepo-wt-feat-auth
-> # 2. Invoke single mode with --cwd "." (single mode never builds a worktree
-> #    on top of cwd, so cwd-is-already-a-worktree is the same code path).
-> node /path/to/orchestrate-codex.mjs single \
->     --prompt-file ./prompt.md \
->     --cwd "$PWD"
-> ```
+### `--reuse-worktree`
+
+`--reuse-worktree` is wired end-to-end: the dispatcher (`handleSingle` in `scripts/orchestrate-codex.mjs`) declares it as a boolean option, persists it on the entry's `mode_state.single.reuse_worktree`, and forwards `--reuse-worktree` to `run-single.sh`. Today the runner accepts the flag and threads it through; semantically single mode runs in `--cwd` directly either way (no worktree is created), so the flag's effect is to record the operator's intent on the manifest entry. If you've already cd'd into a worktree, you can either omit the flag (cwd-driven) or pass `--reuse-worktree` to make the intent explicit:
+
+```bash
+cd ../myrepo-wt-feat-auth
+node /path/to/orchestrate-codex.mjs single \
+    --prompt-file ./prompt.md \
+    --cwd "$PWD" \
+    --reuse-worktree
+```
 
 ## Pre-flight
 
@@ -123,7 +123,7 @@ The "reuse vs. fresh worktree" decision is the operator's, made before invoking 
 - **Fresh worktree** for isolation: create it manually first via `git worktree add ../myrepo-wt-single-<slug> <branch>`, then invoke single mode with `--cwd ../myrepo-wt-single-<slug>`.
 - **No git at all**: just invoke from the cwd you want; single mode doesn't care.
 
-The `--reuse-worktree` flag is Planned (see Inputs); today the cwd-driven flow above is the working substitute.
+Pass `--reuse-worktree` to record the intent on the manifest entry; the cwd-driven flow is what actually runs codex.
 
 ## Why pipe through codex-json-filter.sh
 
@@ -133,6 +133,21 @@ The raw `codex exec --json` stream is JSONL with verbose event types and full pa
 - Keeps the Monitor notification volume manageable.
 
 The raw stream is captured to disk via `tee` for post-mortem; `codex-json-filter.sh --level verbose` can replay it later if needed.
+
+### Setting verbosity (`minimal` | `normal` | `verbose`)
+
+There are **two independent filter pipelines**, each with its own verbosity. They are decoupled — setting one does NOT set the other:
+
+1. **Runner-side filter** (the pipe inside `run-single.sh`, where the codex stdout goes through `codex-json-filter.sh` before being captured). The runner reads `FILTER_LEVEL` from its own env (default `normal`). The dispatcher (`handleSingle` in `scripts/orchestrate-codex.mjs`) does NOT expose a `--filter-level` flag, but `spawnRunnerDetached` inherits `process.env`, so an env var set on the dispatcher invocation propagates to the spawned runner:
+
+   ```bash
+   FILTER_LEVEL=verbose node orchestrate-codex.mjs single \
+       --prompt-file ./prompt.md --cwd "$PWD"
+   ```
+
+2. **Monitor-pipe filter** (the `tail -F <jsonl> | bash codex-json-filter.sh` command the dispatcher emits in `singleMonitorCommand`). This pipe runs at the filter's default `normal` regardless of the dispatcher's `FILTER_LEVEL` env. To change the Monitor-pipe verbosity for an active run, edit the emitted Monitor command before arming Monitor, or replay the captured JSONL after the run with `codex-json-filter.sh --level <level> < <jsonl>`.
+
+So: the dispatcher's `FILTER_LEVEL` env reaches the runner; it does NOT reach the Monitor's filter. Set runner-side via env at dispatch time; control Monitor-side by replaying the on-disk JSONL.
 
 ## Recovery
 
