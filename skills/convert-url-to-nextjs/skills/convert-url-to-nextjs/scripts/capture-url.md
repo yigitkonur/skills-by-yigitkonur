@@ -37,7 +37,7 @@ Options:
 
 ## Browser Routing
 
-Prefer `run-agent-browser` for the command that creates the actual artifacts. Use `run-playwright` only when the user requested Playwright CLI, `run-agent-browser` is unavailable, or an existing Playwright CLI session is already active.
+Use `run-agent-browser` for the command that creates the actual artifacts.
 
 The script does not perform browser automation by itself. It delegates to the supplied command and then verifies that required files exist.
 

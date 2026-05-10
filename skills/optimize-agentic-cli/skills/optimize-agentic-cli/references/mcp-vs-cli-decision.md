@@ -4,7 +4,7 @@ Use this guide when deciding whether an agent workflow should stay CLI-first, mo
 
 Status: refreshed on April 15, 2026.
 
-Repo routing note: use `optimize-agentic-cli` only after the CLI surface is fixed. Use `optimize-agent-ergonomics` for cross-surface decisions and the MCP build/test skills for MCP implementation or protocol-level testing.
+Repo routing note: use `optimize-agentic-cli` only after the CLI surface is fixed. For MCP implementation or protocol-level testing, use the relevant `build-mcp-*` skill or `test-by-mcpc-cli`.
 
 ## 1. Recommended Default
 

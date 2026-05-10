@@ -2,7 +2,7 @@
 
 This skill is written natively for Claude Code but is designed to work on any runtime that supports an ask-user tool. This file covers runtime compatibility, the compact runtime lookup table, and the prose fallback for runtimes without structured tools.
 
-The table below is self-contained. If the `enhance-prompt` skill is also installed in this pack, its `ask-user-tools.md` reference uses the same convention — the two are intentionally kept in sync.
+The table below is self-contained. Duplicating the runtime mapping locally means this skill is usable standalone (one-level-deep rule).
 
 Used by `modes/interactive-brainstorm.md`. Solo mode does not need this file (no ask-user tool required).
 
@@ -161,11 +161,9 @@ This works but is friction-heavy. If the user is on such a runtime, suggest they
 
 **Do NOT silently degrade Interactive into Solo.** If the runtime can't support forks at all and the user wants Interactive, surface the limitation explicitly and offer Solo with a note that user co-authorship was requested but not feasible.
 
-## Mirroring the enhance-prompt convention
+## When a new runtime emerges
 
-If the `enhance-prompt` skill is installed in this pack, its ask-user-tool reference uses the same convention and the two files contain equivalent runtime mappings. Duplicating the table locally means this skill is usable standalone (one-level-deep rule).
-
-When a new runtime emerges with its own ask-user tool, update both files. The tables are small enough that manual propagation is cheap; single-source coupling across skills would break the one-level-deep rule.
+When a new runtime adds its own ask-user tool, update the matrix above. The table is small enough that maintaining it inside this skill keeps the one-level-deep rule intact and avoids cross-skill coupling.
 
 ## Common mistakes
 

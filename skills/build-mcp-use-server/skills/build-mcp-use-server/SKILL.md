@@ -36,7 +36,6 @@ Do **not** use this skill when:
 | `build-mcp-use-agent` | `MCPAgent` orchestration where an LLM picks tools. | Hand off when the work is agent loop, not server mechanics. |
 | `build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2` | Raw official SDK servers, stdio-only constraints, low-level transports. | Hand off if the user explicitly forbids `mcp-use` or needs raw SDK primitives. |
 | `test-by-mcpc-cli` | Live `mcpc` session verification once a server runs. | Use after this skill produces a running server. |
-| `optimize-agent-ergonomics` | Cross-surface MCP/CLI ergonomics audit. | Use before framework choice or after a server exists and needs ergonomics review. |
 
 Numbered folders under `references/` are local organization. Pick the intent route first; read numbered files in sequence only inside one cluster when the order matters.
 

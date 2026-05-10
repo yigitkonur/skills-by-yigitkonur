@@ -70,7 +70,6 @@ For specific tooling ecosystems:
 | Raycast Script Commands | `build-raycast-script-command` |
 | GitHub CLI scripting | `run-github-scout` |
 | Codex CLI orchestration | `orchestrate-codex` |
-| Playwright CLI | `run-playwright` |
 | Railway CLI | `use-railway` |
 
 If the PR introduces or modifies a CLI's agent-readiness (flag taxonomy, JSON output, error shapes), route additionally to `optimize-agentic-cli`.

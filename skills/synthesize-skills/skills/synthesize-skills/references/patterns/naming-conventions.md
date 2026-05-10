@@ -10,7 +10,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 
 | Rule | Example | Why |
 |---|---|---|
-| Kebab-case only | `build-copilot-sdk-app` | Consistent, URL-safe, command-line friendly |
+| Kebab-case only | `build-chrome-extension` | Consistent, URL-safe, command-line friendly |
 | Lowercase letters and numbers | `do-review` | Case sensitivity varies across platforms |
 | Hyphens as separators | `create-component` | Underscores and spaces are non-standard |
 | No leading/trailing hyphens | `my-skill` not `-my-skill-` | Breaks parsing in some systems |
@@ -24,7 +24,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 |---|---|---|
 | Builder/creator | `build-{thing}` or `create-{thing}` | `build-mcp-server`, `create-component` |
 | Reviewer/analyzer | `do-review` or `review-{thing}` | `do-review`, `evaluate-code-review` |
-| Runner/executor | `run-{thing}` | `run-playwright`, `run-research` |
+| Runner/executor | `run-{thing}` | `run-agent-browser`, `run-research` |
 | Initializer | `init-{thing}` or `setup-{thing}` | `init-agent-config` |
 | Converter | `convert-{source}-{target}` | `convert-url-to-nextjs` |
 | Research/exploration | `research-{topic}` or `run-research` | `run-research` |

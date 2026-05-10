@@ -23,7 +23,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [apply-clean-mcp-architecture](skills/apply-clean-mcp-architecture/) | development | Clean Architecture standard for TypeScript MCP servers — folder layout, layer boundaries, mcp-use placement, TS quality |
 | [ask-review](skills/ask-review/) | productivity | Hand off work as a PR with domain-aware self-review, or produce a markdown review doc |
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
-| [build-copilot-sdk-app](skills/build-copilot-sdk-app/) | development | Direct @github/copilot-sdk apps |
 | [build-effect-ts-v3](skills/build-effect-ts-v3/) | development | Effect-TS v3 apps — typed errors, services, layers, Schema, Stream, HTTP, SQL |
 | [build-kernel-ts-sdk](skills/build-kernel-ts-sdk/) | development | Build browser-automation agents and apps with the Kernel TypeScript SDK |
 | [build-langchain-ts-app](skills/build-langchain-ts-app/) | development | LangChain.js agents, RAG, and tool-calling |
@@ -41,13 +40,11 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [do-debug](skills/do-debug/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to do-think Interactive |
 | [do-review](skills/do-review/) | productivity | Review PRs and branch diffs for merge readiness |
 | [do-think](skills/do-think/) | productivity | Deep thinking for ambiguous plans, architecture, refactors, or choices |
-| [enhance-prompt](skills/enhance-prompt/) | productivity | Rewrite task prompts for LLM or coding-agent execution |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [evaluate-code-review](skills/evaluate-code-review/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS-first instruction and review-context hierarchies |
 | [init-makefiles](skills/init-makefiles/) | workflow | Scaffold safe scenario Makefiles, AGENTS sync, optional deploy CI |
-| [optimize-agent-ergonomics](skills/optimize-agent-ergonomics/) | development | Decide CLI vs MCP and shared agent contracts |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
 | [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, and architect MCP servers for agent-readiness |
 | [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |
@@ -56,7 +53,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
 | [run-industry-research](skills/run-industry-research/) | productivity | Industry research corpora with evidence packs and comparisons |
 | [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub-only issue trees with runtime dispatch |
-| [run-playwright](skills/run-playwright/) | testing | Live browser control with Playwright Agent CLI |
 | [run-repo-cleanup](skills/run-repo-cleanup/) | productivity | Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies |
 | [run-research](skills/run-research/) | productivity | Single-question technical research with source-backed synthesis |
 | [synthesize-skills](skills/synthesize-skills/) | productivity | Claude skill creation and research methodology |

@@ -19,7 +19,6 @@ Use this skill when:
 - *another skill (`convert-url-to-nextjs`, `extract-saas-design`) needs live browser evidence — DOM, screenshots, runtime metadata, asset URLs — captured and handed back*
 
 Do NOT use this skill when:
-- the user explicitly asks for `@anthropic-ai/playwright-cli` / `playwright-cli` artifacts or stable end-to-end test code → use `run-playwright`
 - the deliverable is TypeScript code on `@onkernel/sdk` or Kernel Apps → use `build-kernel-ts-sdk`
 - the deliverable is a rebuilt Next.js project from a captured site → ownership stays with `convert-url-to-nextjs`; this skill is only invoked for capture
 - the deliverable is a SaaS visual-system writeup → ownership stays with `extract-saas-design`; this skill is only invoked for browser evidence
@@ -30,7 +29,6 @@ Do NOT use this skill when:
 | Need | Skill |
 |---|---|
 | `agent-browser`, `@ref`, `snapshot -i --json`, provider/stealth/session-name/profile flows | `run-agent-browser` |
-| `@anthropic-ai/playwright-cli`, `playwright-cli snapshot`, Playwright CLI console/network artifacts | `run-playwright` |
 | TypeScript browser automation code with `@onkernel/sdk` or Kernel Apps | `build-kernel-ts-sdk` |
 | Rebuild a captured site into Next.js | `convert-url-to-nextjs` owns the build; call this skill only for capture |
 | Document an existing SaaS/admin visual system | `extract-saas-design` owns the docs; call this skill only for browser evidence |

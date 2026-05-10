@@ -14,7 +14,7 @@ Choose the most deterministic screenshot path the project already supports.
 
 3. **Browser driver**
    - Use for Electron, hybrid, or browser-hosted app surfaces.
-   - Pair this skill with `run-playwright` or `run-agent-browser` when you need live browser control.
+   - Pair this skill with `run-agent-browser` when you need live browser control.
 
 4. **Accessibility or window-capture fallback**
    - Use only when no internal or test harness exists.

@@ -9,7 +9,7 @@ This example shows a Tier 3 skill covering a full SDK. It demonstrates extensive
 ### Structure
 
 ```
-build-copilot-sdk-app/
+build-chrome-extension/
 ├── SKILL.md                              # 343 lines
 └── references/
     ├── agents/

@@ -8,7 +8,7 @@ Verified: 2026-05-09 against:
 - [Chrome extension service worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)
 - [Chrome debug extensions tutorial](https://developer.chrome.com/docs/extensions/get-started/tutorial/debug)
 
-Route general browser-driving, broad E2E authoring, screenshots, form automation, and live page workflows to `run-playwright` or `run-agent-browser`.
+Route general browser-driving, screenshots, form automation, and live page workflows to `run-agent-browser`.
 
 ## Test Layers
 
@@ -155,7 +155,7 @@ if (!worker) worker = await context.waitForEvent("serviceworker");
 const extensionId = worker.url().split("/")[2];
 ```
 
-Keep this reference to launch and extension-ID mechanics. For full Playwright suite design, selectors, screenshots, traces, or browser workflows, route to `run-playwright`.
+Keep this reference to launch and extension-ID mechanics. Broader Playwright suite authoring is out of scope for this pack.
 
 ## Package Preflight
 

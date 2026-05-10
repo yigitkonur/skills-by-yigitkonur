@@ -2,7 +2,7 @@
 
 This skill runs on any runtime that supports an ask-user tool (needed at the 3-fails handoff fork, per `references/escalation.md`) or a prose fallback. Most debugging work is solo — the user is invoked only when the skill hands off to `do-think` (Mode: Interactive).
 
-If the `enhance-prompt` skill is installed in this pack, its `ask-user-tools.md` reference is the canonical source and uses the same mapping. The two are intentionally kept in sync.
+The runtime mapping below is self-contained. Duplicating the table locally keeps this skill usable standalone (one-level-deep rule).
 
 ## Runtime → tool lookup
 
@@ -86,9 +86,9 @@ does not repeat them.
 Reply with "1", "2", "3", or "other: <your note>".
 ```
 
-## Mirroring the enhance-prompt convention
+## When a new runtime emerges
 
-If `enhance-prompt` is installed, its `ask-user-tools.md` is the canonical source. When a new runtime emerges with its own ask-user tool, update both files. The tables are small enough that manual propagation is cheap; single-source coupling across skills would break the one-level-deep rule.
+When a new runtime adds its own ask-user tool, update the matrix above. Maintaining the table inside this skill keeps the one-level-deep rule intact and avoids cross-skill coupling.
 
 ## Picking at runtime
 

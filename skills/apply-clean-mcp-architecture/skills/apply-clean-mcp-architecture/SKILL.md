@@ -25,7 +25,7 @@ Do **NOT** use this skill when:
 - The question is a raw `@modelcontextprotocol/sdk` server mechanic — use `build-mcp-server-sdk-v1`, `build-mcp-server-sdk-v2`, or `convert-mcp-server-sdk-v1-to-v2`.
 - The question is an `mcp-use/server` API recipe (tool helpers, auth, sessions, transports, widgets, CSP, Inspector, deploy) — use `build-mcp-use-server`.
 - The work is on a client app or `MCPAgent` — use `build-mcp-use-client` or `build-mcp-use-agent`.
-- The concern is general agentic usability, token cost, tool-description quality, or runtime UX rather than folder layout or layer boundaries — use `optimize-agent-ergonomics`.
+- The concern is general agentic usability, token cost, tool-description quality, or runtime UX rather than folder layout or layer boundaries — that is out of scope for this structural skill.
 
 If the task is structural placement *inside* an `mcp-use/server` repo, this skill owns it. If it is a mechanical recipe *outside* of placement, route out.
 

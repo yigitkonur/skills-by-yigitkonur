@@ -174,7 +174,7 @@ Set Rollup inputs for every HTML and script entry point that Chrome will load. K
 |---|---|
 | "Need one codebase for Chrome, Firefox, Safari" | Do not solve inside this skill |
 | "Need Edge enterprise policy deployment" | Do not solve inside this skill |
-| "Need browser automation" | Use `run-playwright` or `run-agent-browser` |
+| "Need browser automation" | Use `run-agent-browser` |
 | "Need npm package publishing" | Use `publish-npm-package` |
 | "Need only a generic React widget" | Use the repo's frontend/app skill |
 

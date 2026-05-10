@@ -74,7 +74,7 @@ Target-root resolution and snapshot vs repo-backed handling: `references/extract
 
 ### 3. Capture evidence
 
-For live URLs or interactive local apps, use `run-agent-browser` to capture DOM, computed styles, screenshots, and state coverage. Use `run-playwright` only when the user explicitly asks for the Playwright CLI or the target project already runs one. Browser tools are evidence capture only — never let them drift into rebuilding.
+For live URLs or interactive local apps, use `run-agent-browser` to capture DOM, computed styles, screenshots, and state coverage. Browser tools are evidence capture only — never let them drift into rebuilding.
 
 Store browser artifacts under `.design-soul/evidence/` at the target codebase root: route or page name, viewport, screenshot path, DOM/source path, observed states.
 

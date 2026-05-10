@@ -28,7 +28,6 @@ Rebuild a live page or saved HTML snapshot as a faithful Next.js App Router proj
 | Need | Route to |
 |---|---|
 | Browser capture as part of *this* pipeline | `run-agent-browser` (preferred Capture Wave helper). |
-| Playwright capture | `run-playwright` only when explicitly requested or `run-agent-browser` is unavailable. |
 | Design-doc-only output for SaaS/dashboard/admin | `extract-saas-design`. Use this skill only when the deliverable is a buildable Next.js page. |
 | New CMS-backed Next.js site | `build-tinacms-nextjs`. This skill is for URL/snapshot reconstruction, not CMS scaffolding. |
 

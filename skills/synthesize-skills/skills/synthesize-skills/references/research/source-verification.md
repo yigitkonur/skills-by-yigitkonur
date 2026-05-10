@@ -90,7 +90,7 @@ For must-read candidates:
 Record findings inline in conversation output before synthesis, using this format for each candidate:
 
 ```markdown
-## Candidate: build-copilot-sdk-app
+## Candidate: build-chrome-extension
 
 **Source**: skills-by-yigitkonur
 **Install count**: N/A (local pack)

@@ -24,7 +24,6 @@ Do **not** use this skill when:
 - A simple **single-provider chat** call (e.g., `openai.chat.completions.create`) is enough — pull in the provider SDK directly.
 - The agent runtime is **`mcp-use` `MCPAgent`** — use `build-mcp-use-agent`.
 - The core runtime is **Effect / `@effect/*`** even if it calls LLMs — use `build-effect-ts-v3`.
-- The host SDK is **`@github/copilot-sdk`** — use `build-copilot-sdk-app`.
 
 ## Trigger signals (imports and idioms)
 

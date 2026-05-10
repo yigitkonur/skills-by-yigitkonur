@@ -18,15 +18,15 @@ Anchor on this set of plain-English intent verbs:
 | `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
 | `apply` | Apply a methodology or standard to a codebase | `apply-clean-mcp-architecture` |
 | `ask` | Hand off / request something | `ask-review` |
-| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-playwright`, `run-research` |
+| `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
 | `check` | Audit for completeness | `check-completion` |
 | `evaluate` | Triage existing feedback or input | `evaluate-code-review` |
 | `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
 | `init` | Generate config or instruction files | `init-agent-config` |
-| `enhance` | Improve a prompt, skill, or instruction | `enhance-prompt`, `enhance-skill-by-derailment` |
+| `enhance` | Improve a prompt, skill, or instruction | `enhance-skill-by-derailment` |
 | `orchestrate` | Coordinate N parallel agents under one policy and one observability surface | `orchestrate-codex` |
-| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agent-ergonomics` |
+| `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli` |
 | `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
@@ -50,8 +50,7 @@ When two skills overlap, use distinct verbs:
 - `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
 - `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
 - `run-research` (answer a technical research question) vs `run-industry-research` (build a full market/category research corpus)
-- `optimize-agent-ergonomics` decides CLI vs MCP and shared cross-surface contracts
-- `optimize-agentic-cli` handles CLI-only audits and command-contract design once the surface is fixed
+- `optimize-agentic-cli` handles CLI-only audits and command-contract design
 
 ## Canonical Rules
 

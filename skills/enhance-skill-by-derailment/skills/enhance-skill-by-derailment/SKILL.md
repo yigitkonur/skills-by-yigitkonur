@@ -21,7 +21,7 @@ Use this skill if you are:
 Do NOT use this skill if you are:
 
 - creating a new skill from scratch — use `synthesize-skills`
-- rewriting a one-off task prompt for an agent (not a skill) — use `enhance-prompt`
+- rewriting a one-off task prompt for an agent (not a skill) — that is out of scope for this pack
 - doing a tiny copy-edit where running a subagent would not change the result
 - judging output quality of a skill, rather than the skill text itself
 

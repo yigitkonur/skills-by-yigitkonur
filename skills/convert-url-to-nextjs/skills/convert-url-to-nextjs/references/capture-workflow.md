@@ -18,19 +18,18 @@ You need:
 
 Preferred browser tools:
 
-- Prefer `run-agent-browser` for Capture Wave browser work.
-- Use `run-playwright` only when the user explicitly requested Playwright CLI, `run-agent-browser` is unavailable, or the environment already has the Playwright CLI session.
+- Use `run-agent-browser` for Capture Wave browser work.
 
 If no browser automation tool is available, live capture mode is blocked. Fall back to saved snapshots or install/enable a browser driver first.
 
-`run-agent-browser` and `run-playwright` are capture helpers. They do not replace this conversion pipeline; this skill still owns route inventory, evidence contracts, extraction waves, Next.js output, and visual QA.
+`run-agent-browser` is the capture helper. It does not replace this conversion pipeline; this skill still owns route inventory, evidence contracts, extraction waves, Next.js output, and visual QA.
 
 ### Browser Capture Routing Table
 
 | Capture need | Preferred route | Required artifact |
 |---|---|---|
 | Live URL capture | `run-agent-browser` | Route URL/title, hydrated DOM, screenshots, asset/runtime metadata |
-| Local `file://` snapshots | `run-agent-browser` with file access; `run-playwright` only under the fallback conditions above | DOM export plus local asset path mapping |
+| Local `file://` snapshots | `run-agent-browser` with file access | DOM export plus local asset path mapping |
 | Interactive, lazy, or scroll-revealed routes | `run-agent-browser` first, preserving observe → act → verify notes | Default settled state, scroll slices, state notes |
 | Screenshots | Browser helper screenshot command | Desktop, tablet, mobile, and scroll-segment images |
 | DOM export | Browser helper DOM/eval command | `dom.html` after hydration and route settle |

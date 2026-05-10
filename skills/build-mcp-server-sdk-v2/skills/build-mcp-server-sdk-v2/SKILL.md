@@ -24,7 +24,7 @@ Do NOT use this skill if any of these are true:
 - *Handlers use `(args, extra)` with `extra.sendNotification`, `extra.authInfo`, or `extra.signal` — that is v1; use **`build-mcp-server-sdk-v1`**.*
 - *The job is **porting** an existing v1 server to v2 — use **`convert-mcp-server-sdk-v1-to-v2`** (covers package split, import rewrite, `extra → ctx` mapping, OAuth replacement, staging strategy).*
 - *The project uses the `mcp-use` wrapper or `@hono/mcp` community middleware — use **`build-mcp-use-server`**, or migrate before applying official adapter patterns.*
-- *The user wants an agentic-quality / hardening / context-budget audit, not SDK correctness — use **`optimize-agent-ergonomics`**.*
+- *The user wants an agentic-quality / hardening / context-budget audit, not SDK correctness — pair this skill with the relevant `build-mcp-*` reference for protocol patterns.*
 
 ## Detect v2 vs v1
 

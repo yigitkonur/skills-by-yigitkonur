@@ -25,7 +25,7 @@ Author or repair a Raycast **Script Command** (a single `.sh` or `.py` file with
 - Raycast **Extensions** (anything importing `@raycast/api`, using `ray build`/`ray develop`, JSX views, or an extension `package.json`) — this skill covers Script Commands only.
 - Building Chrome or browser extensions — use `build-chrome-extension`.
 - Plain Python/Bash scripts with no `# @raycast.*` header and no Raycast integration intent.
-- Browser automation flows (`run-playwright`, `run-agent-browser`).
+- Browser automation flows (`run-agent-browser`).
 
 If you see `import { ... } from "@raycast/api"` or a `package.json` declaring `"raycast": { ... }`, this is an extension — exit this skill.
 

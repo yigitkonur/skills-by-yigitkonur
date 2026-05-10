@@ -22,7 +22,7 @@ Trigger this skill when the user is doing CLI-only agent-readiness work:
 
 Do **not** use this skill for:
 
-- **Surface choice (CLI vs MCP vs hybrid).** Route to `optimize-agent-ergonomics`. Only after the surface decision is fixed as CLI does this skill apply.
+- **Surface choice (CLI vs MCP vs hybrid).** Make the surface decision first using your normal architecture process. Only after the surface decision is fixed as CLI does this skill apply.
 - **MCP server audits, schemas, transports, auth, or context budgets.** Route to `optimize-agentic-mcp` for audit/architecture, `build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2` / `build-mcp-use-server` for implementation, `test-by-mcpc-cli` for live MCP verification.
 - **Vendor CLI operations** when a vendor skill exists. Use `use-railway` or `use-linear-cli` instead.
 - **Generic shell scripting** unrelated to the CLI's agent contract.
