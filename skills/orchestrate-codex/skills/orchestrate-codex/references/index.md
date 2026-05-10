@@ -14,6 +14,7 @@ Cross-reference of every reference file in this skill. The spine routes to refer
 | Monitor tool integration | `universal/monitor-contract.md` | every mode |
 | Worktree naming, lifecycle, cleanup | `universal/worktree-contract.md` | exec, single, review, rescue |
 | Failure mode taxonomy | `universal/failure-modes.md` | every mode |
+| Dispatcher error-code catalog | `universal/errors.md` | every mode (envelope triage) |
 | Concurrency cap policy | `universal/concurrency.md` | exec, batch, review, rescue |
 | JSONL event types | `universal/json-streaming.md` | exec, batch, single, review |
 | Idempotency / skip-existing | `universal/idempotency.md` | every mode |
