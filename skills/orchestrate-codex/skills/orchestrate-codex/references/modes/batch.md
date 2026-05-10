@@ -151,11 +151,19 @@ The `mv -f tmp answers/<slug>.md` only happens after codex exits 0 AND the tmp i
 
 ## Audit after `--- all jobs finished ---`
 
+Prefer the manifest-aware invocation — it picks up the dispatcher's `--answers-dir <override>` automatically. The dispatcher's batch envelope surfaces the exact command in `result.post_run_audit_cmd`:
+
+```bash
+bash audit-sizes.sh --manifest <state-dir>/orchestrate-codex/manifest.json
+```
+
+The legacy positional form is preserved for direct/standalone use:
+
 ```bash
 bash audit-sizes.sh answers/ "${MIN_BYTES:-10000}"
 ```
 
-(Earlier drafts of this doc referenced a `logs/_runner.log` argument; that file does not exist — the runner's stdout is discarded by `spawnRunnerDetached`. Read `audit-sizes.sh --help` for current arguments.)
+Use `--manifest` whenever the run was dispatched through `node scripts/orchestrate-codex.mjs batch`. The positional form defaults `<answers-dir>` to `./answers/` and silently inspects the wrong directory when the operator passed `--answers-dir <override>` to the dispatcher (D2 silent-failure path).
 
 **Note:** `node scripts/orchestrate-codex.mjs audit` (the dispatcher's audit subcommand) wraps `audit-fleet-state.py`, which inspects manifest-vs-filesystem drift but does NOT read answer-file sizes beyond presence/non-emptiness. For batch fleets, run `bash scripts/audit-sizes.sh <answers-dir>` separately — a 50-byte truncated answer reports clean under `audit` but flags `[SMALL]` here. The two auditors are deliberately split; the operator must run both.
 
@@ -166,6 +174,19 @@ bash audit-sizes.sh answers/ "${MIN_BYTES:-10000}"
 - Any answer below `MIN_BYTES` flagged.
 
 **Size is a probabilistic quality signal, not a deterministic one.** A small answer can be high-quality if the input was thin (parked domain, niche product, deleted resource). Always read the head of any flagged answer before deciding to retry. Read `references/universal/output-size-signals.md` for the heuristics.
+
+### Calibrating MIN_BYTES per task type
+
+The default `MIN_BYTES=10000` is calibrated for research and long summarization. Other task shapes need different floors:
+
+| Task type | Suggested MIN_BYTES |
+|---|---|
+| Research / long summary | 10000 (default) |
+| Code review / audit narrative | 5000 |
+| Error remediation note / triage | 800–2000 |
+| One-line structured output (JSON, classification) | 100–500 |
+
+Set the env var BEFORE invoking the dispatcher: `MIN_BYTES=2000 node <skill-root>/scripts/orchestrate-codex.mjs batch ...`. The dispatcher forwards the value to the runner via `spawnRunnerDetached` (which inherits `process.env`). See the `1:N output` section for per-bucket `MIN_BYTES` examples.
 
 ## Concurrency
 

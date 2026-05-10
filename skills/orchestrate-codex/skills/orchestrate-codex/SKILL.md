@@ -97,7 +97,7 @@ Run before every mode. Stops the agent from improvising into a broken state.
 3. cwd is resolved. If the chosen mode requires a git repo (exec, review), `git rev-parse --is-inside-work-tree` succeeds.
 4. Workspace slug+hash computed (see manifest contract).
 5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"`. Two recovery paths: rescue mode (default — re-attach to the existing manifest), or `--force-new-run --run-id <custom>` (writes a parallel `manifest.<custom>.json` so the original run is left untouched). See `references/universal/idempotency.md`.
-6. `.gitignore` (if a git repo) covers the worktree path pattern (`../<repo>-wt-*`) and any in-repo state files.
+6. `.gitignore` (if you use in-repo worktrees via `WORKTREE_DIR_NAME=.worktrees`) covers the worktree path pattern. Default convention is OUT-of-repo worktrees (`<repo-parent>/<repo>-wt-*`), which need no `.gitignore` coverage.
 7. Required scripts present: `<skill-root>/scripts/codex-flags.sh`, the per-mode runner, the helpers for the chosen mode.
 8. `<skill-root>/scripts/codex-cc/` is present because the dispatcher imports its `lib/` helpers. Review mode does not require `gh`; it uses native `codex exec review`.
 
@@ -121,6 +121,8 @@ Override per session via env vars `ORCHESTRATE_CODEX_MODEL`, `ORCHESTRATE_CODEX_
 Forbidden: `--full-auto` (deprecated), `-a` other than `never`, `-s read-only`, `-s workspace-write`, `--ignore-rules`, `--ignore-user-config`. Read `references/universal/codex-flags.md` for the per-flag rationale.
 
 ## Universal: Monitor contract
+
+**Always pass `envelope.monitor.tool_hint` through unchanged — do NOT compose the Monitor command by hand. The example below is illustrative; the dispatcher emits per-mode-correct commands (single uses `tail -F | codex-json-filter.sh`; batch uses `--tail-runner-log`; exec/review use `codex-monitor.sh`).**
 
 One Monitor per fleet, not per worker. The dispatcher detaches the runner before returning the envelope, so the agent cannot literally pre-arm. Arm Monitor immediately on envelope receipt; first-wave loss is bounded by the runner-spawn-to-envelope-emit window (typically <100ms). Don't sleep, don't read other files, don't re-plan — the very next tool call after the dispatcher returns must be the Monitor invocation.
 
@@ -194,21 +196,25 @@ Skip-existing is never a destruction; the answer file already exists, the runner
 
 Each block is the router contract: trigger → pre-checks → read first → run → success gate → failure routing. Six lines, identical shape across modes so the agent scans all five in one pass.
 
+**Dispatcher path:** Replace `<skill-root>` in every `node` invocation below with the absolute path to the installed skill (e.g. `~/.claude/skills/orchestrate-codex/skills/orchestrate-codex` or wherever `npx skills add` placed it). Confirm with `ls <skill-root>/scripts/orchestrate-codex.mjs`.
+
 ### exec mode — parallel codex agents in worktrees
 
 - **Trigger:** Q5 or Q6 (≥2 discrete coding tasks; git repo).
 - **Pre-checks:** repo clean main; `.gitignore` covers `../<repo>-wt-*`; no in-progress merge / rebase / cherry-pick; baseline tests pass.
 - **Read first:** `references/modes/exec.md`, `references/universal/worktree-contract.md`, `references/universal/monitor-contract.md`, `references/universal/json-streaming.md`, `references/templates/exec.tmpl.md`.
-- **Run:** `node scripts/orchestrate-codex.mjs exec --tasks <tasks.json>`. The dispatcher writes the seed manifest, spawns `bash scripts/run-fleet.sh --manifest <path>` detached, emits the JSON envelope. Surface the literal `Monitor({...})` from `envelope.monitor.tool_hint`.
+- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs exec --tasks <tasks.json>`. The dispatcher writes the seed manifest, spawns `bash scripts/run-fleet.sh --manifest <path>` detached, emits the JSON envelope. Surface the literal `Monitor({...})` from `envelope.monitor.tool_hint`.
+- **Raw inputs:** If your prompts are raw description files (tickets, issue bodies, briefs) rather than pre-rendered templates, run `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode exec` first to wrap each file in the SUBAGENT-STOP prefix and 6-section skeleton. Otherwise codex may burn 20–80k tokens on meta-skill rumination before doing useful work. See `scripts/render-task-prompts.md`.
 - **Success gate:** every entry in {done, failed-surfaced}; Monitor sees `--- all jobs finished ---`.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/exec.md` §recovery.
+- **Audit-style note:** Findings-only / audit-style tasks (no code changes expected) MUST instruct codex to `git add` and `git commit` the report file in the prompt's Success criteria — otherwise the success gate fails with `codex_exit_0_no_changes`. See `references/modes/exec.md` 'Audit-style' subsection.
 
 ### batch mode — template × N inputs, no worktrees
 
 - **Trigger:** Q3 (input list + template).
 - **Pre-checks:** workdir confirmed; `inputs.txt` non-empty; `template.md` contains the `XXXXXXXXXXXXX` placeholder; slug collisions resolved before render.
 - **Read first:** `references/modes/batch.md`, `references/universal/idempotency.md`, `references/universal/monitor-contract.md`, `references/universal/output-size-signals.md`, `references/templates/batch.tmpl.md`.
-- **Run:** `node scripts/orchestrate-codex.mjs batch --inputs <file> --template <tmpl>`. The dispatcher renders prompts, writes the manifest, spawns `bash scripts/run-batch.sh --manifest <path>` detached, emits the envelope. Audit runs after `--- all jobs finished ---`.
+- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs batch --inputs <file> --template <tmpl>`. The dispatcher renders prompts, writes the manifest, spawns `bash scripts/run-batch.sh --manifest <path>` detached, emits the envelope. Audit runs after `--- all jobs finished ---`.
 - **Success gate:** every input has a non-empty `answers/<slug>.md`; `audit-sizes.sh` shows nothing below floor (or every flagged item explicitly waived).
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/batch.md` §retry.
 
@@ -217,8 +223,10 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Trigger:** Q4 or Q7 (one substantial task).
 - **Pre-checks:** choose cwd explicitly; if cwd is already inside a worktree, pass `--reuse-worktree` to record that choice.
 - **Read first:** `references/modes/single.md`, `references/universal/json-streaming.md`, `references/universal/monitor-contract.md`, `references/templates/single.tmpl.md`.
-- **Run:** `node scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`). The dispatcher writes a one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`. Surface the literal Monitor hint.
+- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`). The dispatcher writes a one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`. Surface the literal Monitor hint.
+- **Raw inputs:** If your prompt is a raw description file (ticket, issue body, brief) rather than a pre-rendered template, run `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode single` first to wrap it in the SUBAGENT-STOP prefix and 6-section skeleton (prefix is auto-skipped for research / analysis / audit inputs). Otherwise codex may burn 20–80k tokens on meta-skill rumination before doing useful work. See `scripts/render-task-prompts.md`.
 - **Success gate:** `-o` file non-empty AND manifest entry `done` (these are what `run-single.sh` actually checks; `turn.completed` is a Monitor observability signal, not a runner gate).
+- **Terminal sentinel:** the live JSONL stream ends with `--- single done (<id>: <status>) ---` (an `orchestrate.done` event the runner appends after the terminal manifest write). TaskStop the Monitor on this line — no manual pgrep, no guessing at `[TURN<]`.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/single.md` §recovery.
 
 ### review mode — per-branch convergence loop
@@ -226,7 +234,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Trigger:** Q2 (branch list + review keyword).
 - **Pre-checks:** git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable.
 - **Read first:** `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md`.
-- **Run:** `node scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher seeds branch entries; `run-review.sh <manifest> <round-N>` executes ONE round (native `codex exec review --base <base> --json -o <findings.md>` fanned out across branches). The orchestrator (this agent) calls `classify-review-feedback.py` on each round's findings, decides converged / blocked / continue, and re-invokes `run-review.sh` with `<round-N+1>` if continuing. The runner does NOT loop. Soft round cap is 10 — operator-driven.
+- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher seeds branch entries; `run-review.sh <manifest> <round-N>` executes ONE round (native `codex exec review --base <base> --json -o <findings.md>` fanned out across branches). The orchestrator (this agent) calls `classify-review-feedback.py` on each round's findings, decides converged / blocked / continue, and re-invokes `run-review.sh` with `<round-N+1>` if continuing. The runner does NOT loop. Soft round cap is 10 — operator-driven.
 - **Success gate:** every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path`.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/review.md` §loops.
 
@@ -235,7 +243,7 @@ Each block is the router contract: trigger → pre-checks → read first → run
 - **Trigger:** Q1 (manifest exists + resume keyword).
 - **Pre-checks:** manifest path resolved; freshness ≤ 7 days OR user confirms staleness; `manifest.mode` field present.
 - **Read first:** `references/modes/rescue.md`, `references/universal/manifest-contract.md`, then the original mode's reference (whatever `manifest.mode` says).
-- **Run:** `node scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only. Redispatch with `node scripts/orchestrate-codex.mjs rescue --manifest <path> --apply failed-only|never-started-only|all-non-done|ids:s1,s2,...`. The dispatcher's envelope prints `--apply` in its `rerun_with` template; `--redo failed|never-started|all-non-done` is accepted as a back-compat alias and normalized into `--apply`. Pass `--accept-stale` only when replaying unknown/stale entries intentionally.
+- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only. Redispatch with `node <skill-root>/scripts/orchestrate-codex.mjs rescue --manifest <path> --apply failed-only|never-started-only|all-non-done|ids:s1,s2,...`. The dispatcher's envelope prints `--apply` in its `rerun_with` template; `--redo failed|never-started|all-non-done` is accepted as a back-compat alias and normalized into `--apply`. Pass `--accept-stale` only when replaying unknown/stale entries intentionally.
 - **Success gate:** every NOT-DONE entry transitions to a terminal status; manifest history append-only.
 - **Failure routing:** `references/universal/failure-modes.md` + `references/modes/rescue.md` §edge-cases.
 
@@ -278,10 +286,10 @@ The old third-party bot-wait timing constants from `run-codex-review` are retire
 `orchestrate-codex` produces branches; `ask-review` produces PRs. The lifecycle is documented but not automated — the orchestrator drives it explicitly:
 
 1. **Finish first.** Wait for the manifest's success gate (every entry in a terminal state) before any handoff.
-2. **Confirm done.** Run `node scripts/orchestrate-codex.mjs audit --manifest <path>` and verify zero drift. A worktree-missing or dirty-worktree drift means the entry is not handoff-ready.
+2. **Confirm done.** Run `node <skill-root>/scripts/orchestrate-codex.mjs audit --manifest <path>` and verify zero drift. A worktree-missing or dirty-worktree drift means the entry is not handoff-ready.
 3. **Per-entry handoff loop.** For each `done` entry in the manifest, ask-review needs three fields lifted directly from the entry: `branch` (the commit target), `base_branch` (the merge target — usually `main`), `worktree_path` (where the work landed). The natural pattern is `cd <entry.worktree_path>` and invoke ask-review from inside the worktree so its git-aware probes operate on the correct ref. Loop one entry at a time; do not parallelize the handoff (`ask-review` interacts with GitHub auth that does not parallelize cleanly).
 4. **Wait for merges out-of-band.** ask-review opens the PR and exits. Reviews, CI runs, and merges happen asynchronously. The orchestrate-codex side is idle during this window — do not call `tidy` yet.
-5. **Tidy only after merges land.** `node scripts/orchestrate-codex.mjs tidy --execute` (or the underlying `cleanup-worktrees.py --execute`) refuses to remove a worktree whose branch is not merged. Run tidy only after every entry's branch has merged and you have confirmed via `gh pr list --state merged` (or equivalent). Tidy with unmerged branches will exit with `unmerged_branches` errors — that is the safety rail, not a bug.
+5. **Tidy only after merges land.** `node <skill-root>/scripts/orchestrate-codex.mjs tidy --execute` (or the underlying `cleanup-worktrees.py --execute`) refuses to remove a worktree whose branch is not merged. Run tidy only after every entry's branch has merged and you have confirmed via `gh pr list --state merged` (or equivalent). Tidy with unmerged branches will exit with `unmerged_branches` errors — that is the safety rail, not a bug.
 
 Key invariant: ask-review never touches the manifest. The manifest stays the source of truth for the orchestrate-codex side; ask-review's PR records live in GitHub. Tidy is the bridge that closes both sides — and it requires the GitHub side to have advanced to "merged" before it will collect the worktree.
 
@@ -353,6 +361,7 @@ Cross-reference index of every reference and which mode pulls it: `references/in
 | `scripts/bootstrap.sh` | all | one-shot pre-flight |
 | `scripts/setup-worktree.sh` | exec, review | create worktree, link artifacts, codegen |
 | `scripts/render-prompts.sh` | batch, exec | template substitution |
+| `scripts/render-task-prompts.sh` | exec, single | wrap raw description files (Linear tickets, issue bodies, audit briefs) in SUBAGENT-STOP prefix + 6-section skeleton; see `scripts/render-task-prompts.md` |
 | `scripts/run-fleet.sh` | exec | bounded-concurrency exec runner |
 | `scripts/run-batch.sh` | batch | bounded-concurrency batch runner |
 | `scripts/run-single.sh` | single | one-shot wrapper with JSONL filter pipe |

@@ -32,7 +32,7 @@ Same-package work across tracks ⇒ different ids ⇒ different worktrees. The 1
 
 ## `.gitignore` requirement
 
-Even though worktrees live outside the source repo by default, the skill writes `.gitignore` that covers `<repo-basename>-wt-*` in case a worktree is accidentally created inside the repo (for example, a user runs the skill with the repo as a sibling of the worktree dir). Pre-flight checks `.gitignore` for this pattern and adds it if missing.
+Default convention is OUT-of-repo worktrees (`<repo-parent>/<repo>-wt-*`), which live outside the source tree and need no `.gitignore` coverage. `.gitignore` is only relevant when you opt in to in-repo worktrees via `WORKTREE_DIR_NAME=.worktrees` — in that case, pre-flight checks `.gitignore` for the `<repo-basename>-wt-*` pattern and adds it if missing. If you use the default out-of-repo placement, the `.gitignore` check in pre-flight is advisory and can be skipped safely.
 
 ## Lifecycle
 

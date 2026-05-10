@@ -159,7 +159,7 @@ Without these, a 4 KB pipe buffer means events arrive in batches separated by mi
 
 - **exec / review** (`codex-monitor.sh`): `--- fleet quiet ---` is emitted on stdout **only when** `ORCHESTRATE_QUIET_AFTER` is set to a positive integer AND the fleet has been quiet for that many consecutive ticks (see `scripts/codex-monitor.sh:43, 231-233`). Default is `0` = never auto-exit. Set `ORCHESTRATE_QUIET_AFTER=1` (or higher to debounce) when you want a terminal sentinel; otherwise rely on the `fleet-quiet` flag inside per-tick lines and `TaskStop` from the agent.
 - **batch** (`codex-monitor.sh --tail-runner-log`): `--- all jobs finished ---` is emitted by `run-batch.sh` itself when the runner exits. The Monitor sees it as a regular tail line.
-- **single**: filter sees `[TURN<]` followed by codex exit; no special sentinel — the runner exits and `tail -F` stays attached. `TaskStop` after the runner pid disappears.
+- **single**: `run-single.sh` appends a `{"type":"orchestrate.done","entry_id":"<id>","status":"<status>"}` event to the JSONL log AFTER the terminal manifest write; `codex-json-filter.sh` translates it to the line `--- single done (<id>: <status>) ---`. Live-watch operators (`tail -F <jsonl> | codex-json-filter.sh`) see this final line and TaskStop the Monitor. The sentinel is emitted at every verbosity level. Existing JSONL consumers ignore unknown event types by default (the new event type is additive). Status values: `done` (success), `failed` (codex non-zero or empty `-o`).
 
 ## Forbidden patterns
 

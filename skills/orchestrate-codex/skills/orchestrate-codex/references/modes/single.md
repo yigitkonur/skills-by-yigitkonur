@@ -14,6 +14,10 @@ When to skip:
 - N parallel research jobs from one template → batch mode.
 - Trivial one-shot (< 5 minutes, no observability needed) → just type `codex exec` directly.
 
+### Sizing for huge audits
+
+For audits or reads spanning > ~50 files, expect context-window pressure. Codex's effective context is finite (gpt-5.5 xhigh has a generous budget but not unlimited). For very large reads, consider: (a) splitting into multiple single-mode runs by directory, (b) asking codex to traverse the tree directory-by-directory rather than reading everything at once, (c) using exec mode to fan out by file group. Context-exhaustion failures are not auto-recoverable today (`codex exec resume --last` is Planned but not wired).
+
 ## Inputs
 
 The dispatcher accepts:
@@ -90,7 +94,10 @@ The runner emits these lines (verbosity-dependent):
 [CMD✓] pnpm install (exit 0, 14.2s)
 [SAID] Done. New migration is at db/migrations/20260508_add_users.sql.
 [TURN<] tokens=in:8234/out:1567/cached:1200
+--- single done (single: done) ---
 ```
+
+The final `--- single done (<id>: <status>) ---` line is the terminal sentinel. `run-single.sh` appends a `{"type":"orchestrate.done","entry_id":...,"status":...}` event to the JSONL log AFTER the terminal manifest write; `codex-json-filter.sh` translates it. Live-watch operators (`tail -F <jsonl> | codex-json-filter.sh`) see this line and know to `TaskStop` the Monitor — no need to pgrep manually or guess at `[TURN<]`. Status is `done` on success, `failed` on codex non-zero or empty `-o`.
 
 ## Success gate
 
