@@ -256,8 +256,9 @@ run_one() {
     printf '{"type":"turn.completed","dry_run":true}\n' > "$jsonl"
     echo "DONE  $name (dry-run)"
     if [[ -n "$ORCHESTRATE_MANIFEST" && -x "$SCRIPT_DIR_ABS/manifest-update.sh" ]]; then
+      # P0-1: dry-run discriminator — see run-fleet.sh for rationale.
       "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$name" \
-        status=done finished_at=now exit_code=0 2>/dev/null || true
+        status=done finished_at=now exit_code=0 dry_run=true 2>/dev/null || true
     fi
     return 0
   fi

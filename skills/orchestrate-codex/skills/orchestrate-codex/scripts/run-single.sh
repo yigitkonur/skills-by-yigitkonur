@@ -47,6 +47,11 @@ FILTER_LEVEL="${FILTER_LEVEL:-normal}"
 ORCHESTRATE_MANIFEST="${ORCHESTRATE_MANIFEST:-}"
 ORCHESTRATE_ENTRY_ID="${ORCHESTRATE_ENTRY_ID:-single}"
 REUSE_WORKTREE=0
+ORCHESTRATE_OUTPUT_SCHEMA="${ORCHESTRATE_OUTPUT_SCHEMA:-}"
+# Rescue redispatch flags — set by --resume-thread / --resume-last from
+# orchestrate-codex.mjs:2210-2219. Default unset = fresh `codex exec`.
+RESUME_THREAD="${RESUME_THREAD:-}"
+RESUME_LAST=0
 
 usage() {
   cat >&2 <<'EOF'
@@ -74,6 +79,19 @@ while [[ $# -gt 0 ]]; do
     --entry-id)    ORCHESTRATE_ENTRY_ID="$2"; shift 2 ;;
     --filter-level) FILTER_LEVEL="$2"; shift 2 ;;
     --reuse-worktree) REUSE_WORKTREE=1; shift ;;
+    # P1-11: dispatcher forwards `--output-schema <path>` (handleSingle in
+    # orchestrate-codex.mjs records the schema path in the manifest entry
+    # then re-forwards). The runner has no schema-validation responsibility
+    # today; codex honours per-prompt schema instructions, and the manifest
+    # carries the path for downstream audit/rescue. Accept-and-record so
+    # the forward does not crash with `unknown arg`.
+    --output-schema) ORCHESTRATE_OUTPUT_SCHEMA="$2"; shift 2 ;;
+    # Rescue context-preserving resume. orchestrate-codex.mjs:2210-2218 picks one
+    # of these per the manifest entry's recorded codex_thread_id (or falls back
+    # to --resume-last when no thread_id was captured). Both forms turn the
+    # `codex exec` invocation into `codex exec resume <id>` / `codex exec resume --last`.
+    --resume-thread) RESUME_THREAD="$2"; shift 2 ;;
+    --resume-last)   RESUME_LAST=1; shift ;;
     --dry-run)     DRY_RUN=1; shift ;;
     -h|--help)     usage ;;
     *)
@@ -114,6 +132,19 @@ if [[ ! -x "$JSON_FILTER" ]]; then
   echo "WARN $JSON_FILTER not executable; events will not be filtered." >&2
 fi
 
+# Build resume head + schema tail. With set -u, empty arrays must be expanded
+# via ${arr[@]+"${arr[@]}"} to avoid "unbound variable" on macOS bash 3.2.
+INVOKE_HEAD=()
+if [[ -n "${RESUME_THREAD:-}" ]]; then
+  INVOKE_HEAD=(resume "$RESUME_THREAD")
+elif [[ "${RESUME_LAST:-0}" == "1" ]]; then
+  INVOKE_HEAD=(resume --last)
+fi
+SCHEMA_TAIL=()
+if [[ -n "${ORCHESTRATE_OUTPUT_SCHEMA:-}" ]]; then
+  SCHEMA_TAIL=(--output-schema "$ORCHESTRATE_OUTPUT_SCHEMA")
+fi
+
 # ── Path resolution + manifest start row ─────────────────────
 # Per the manifest contract every entry carries log_path / jsonl_path /
 # answer_path. Single mode runs one entry: we resolve them up front and
@@ -135,12 +166,13 @@ echo "START $ORCHESTRATE_ENTRY_ID"
 # ── Spawn codex ────────────────────────────────────────────────
 
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo "[dry-run] codex exec ${CODEX_FLAGS[*]} --json -C $CWD -o $OUT < $PROMPT_FILE"
+  echo "[dry-run] codex exec ${INVOKE_HEAD[*]:-} ${CODEX_FLAGS[*]} ${SCHEMA_TAIL[*]:-} --json -C $CWD -o $OUT < $PROMPT_FILE"
   printf 'dry-run answer for %s\n' "$ORCHESTRATE_ENTRY_ID" > "$OUT"
   printf '{"type":"turn.completed","dry_run":true}\n' > "$LOG_PATH"
   if [[ -n "$ORCHESTRATE_MANIFEST" && -f "$ORCHESTRATE_MANIFEST" ]]; then
+    # P0-1: dry-run discriminator — see run-fleet.sh for rationale.
     "$SCRIPT_DIR/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$ORCHESTRATE_ENTRY_ID" \
-      status=done finished_at=now exit_code=0 codex_thread_id=dry-run 2>/dev/null || true
+      status=done finished_at=now exit_code=0 codex_thread_id=dry-run dry_run=true 2>/dev/null || true
   fi
   # Sentinel: codex-json-filter.sh translates this to `--- single done ---`
   # so live-watch operators (tail -F | filter) see a clear stop signal and
@@ -163,13 +195,13 @@ EXIT_CODE=0
 set +e
 if [[ -x "$JSON_FILTER" ]]; then
   # shellcheck disable=SC2002
-  cat "$PROMPT_FILE" | codex exec "${CODEX_FLAGS[@]}" --json -C "$CWD" -o "$OUT" 2>"$ERR_LOG" \
+  cat "$PROMPT_FILE" | codex exec ${INVOKE_HEAD[@]+"${INVOKE_HEAD[@]}"} "${CODEX_FLAGS[@]}" ${SCHEMA_TAIL[@]+"${SCHEMA_TAIL[@]}"} --json -C "$CWD" -o "$OUT" 2>"$ERR_LOG" \
     | tee "$LOG_PATH" \
     | CODEX_FILTER_LEVEL="$FILTER_LEVEL" "$JSON_FILTER"
   # Pipeline: cat | codex | tee | filter — codex is at index 1.
   EXIT_CODE="${PIPESTATUS[1]}"
 else
-  cat "$PROMPT_FILE" | codex exec "${CODEX_FLAGS[@]}" --json -C "$CWD" -o "$OUT" 2>"$ERR_LOG" \
+  cat "$PROMPT_FILE" | codex exec ${INVOKE_HEAD[@]+"${INVOKE_HEAD[@]}"} "${CODEX_FLAGS[@]}" ${SCHEMA_TAIL[@]+"${SCHEMA_TAIL[@]}"} --json -C "$CWD" -o "$OUT" 2>"$ERR_LOG" \
     | tee "$LOG_PATH"
   EXIT_CODE="${PIPESTATUS[1]}"
 fi

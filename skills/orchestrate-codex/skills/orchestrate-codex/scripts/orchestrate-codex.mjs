@@ -164,6 +164,7 @@ const EXIT_CODE_BY_ERROR = {
   manifest_not_found: 3,
   manifest_corrupt: 3,
   manifest_stale: 3,
+  schema_version_too_new: 3,
   concurrent_run_in_progress: 3,
   manifest_inflight_race: 3,
   spawn_failed: 4,
@@ -183,7 +184,149 @@ function exitFor(env) {
 // instead of being silently shoved into `positionals`.
 // ----------------------------------------------------------------------------
 
+// P1-6: per-mode usage strings — short-circuit `<mode> --help` (or `-h`) at
+// parseArgsStrict so each mode handler returns a help envelope instead of
+// rejecting `--help` as unknown_option. Calling top-level `--help` keeps
+// returning the full multi-mode usage via dispatchHelp.
+const MODE_USAGE = {
+  exec: [
+    "Usage: node orchestrate-codex.mjs exec --tasks <tasks.json> [args]",
+    "",
+    "Required:",
+    "  --tasks <tasks.json>             JSON array of {id|slug, prompt|prompt_file, ...}",
+    "",
+    "Optional:",
+    "  --cwd <dir>                      workspace cwd (default: process.cwd)",
+    "  --concurrency N                  jobs (default 5; >20 needs --i-have-measured)",
+    "  --i-have-measured \"<reason>\"     justification for raised concurrency",
+    "  --force-redo <slug[,slug2,...]>  archive answers + flip selected entries to queued",
+    "  --force-redo-all                 archive + flip every entry in the manifest",
+    "  --force-new-run --run-id <id>    write to manifest.<id>.json (sibling run)",
+    "  --monitor-root <dir>             override monitor/state root",
+    "  --dry-run                        seed manifest + print runner cmd; no codex spawn",
+    "",
+    "Spawns N parallel codex exec workers in per-entry worktrees with auto-commit.",
+  ].join("\n"),
+  batch: [
+    "Usage: node orchestrate-codex.mjs batch --inputs <file> --template <tmpl> [args]",
+    "",
+    "Required:",
+    "  --inputs <file>                  newline- or tab-delimited input list",
+    "  --template <tmpl>                template file containing literal XXXXXXXXXXXXX",
+    "",
+    "Optional:",
+    "  --cwd <dir>                      workspace cwd (default: process.cwd)",
+    "  --concurrency N                  jobs (default 10; >20 needs --i-have-measured)",
+    "  --i-have-measured \"<reason>\"     justification for raised concurrency",
+    "  --answers-dir <dir>              override default <cwd>/answers/",
+    "  --force-redo <slug[,...]>        archive answers + flip selected entries",
+    "  --force-redo-all                 archive + flip every entry",
+    "  --force-new-run --run-id <id>    sibling run (manifest.<id>.json)",
+    "  --monitor-root <dir>             override monitor/state root",
+    "  --dry-run                        seed + plan-print; no codex spawn",
+    "",
+    "Renders one prompt per input row and writes one answer file per slug.",
+  ].join("\n"),
+  single: [
+    "Usage: node orchestrate-codex.mjs single (--prompt <text> | --prompt-file <file>) [args]",
+    "",
+    "Required (exactly one):",
+    "  --prompt <text>                  inline prompt",
+    "  --prompt-file <file>             prompt file path",
+    "",
+    "Optional:",
+    "  --cwd <dir>                      workspace cwd (default: process.cwd)",
+    "  --out <file>                     codex -o final-message file (default: <cwd>/.orchestrate-codex/single.last.md)",
+    "  --output-schema <schema.json>    record schema path in manifest entry",
+    "  --reuse-worktree                 record reuse intent (single mode runs in cwd; no worktree creation)",
+    "  --resume-last                    pick up codex's last session",
+    "  --resume-thread <id>             resume a specific codex thread",
+    "  --force-new-run --run-id <id>    sibling run (manifest.<id>.json)",
+    "  --monitor-root <dir>             override monitor/state root",
+    "  --dry-run                        seed + plan-print; no codex spawn",
+    "",
+    "One mission with live monitor; -o file is the source of truth.",
+  ].join("\n"),
+  review: [
+    "Usage: node orchestrate-codex.mjs review --branches <list-or-file> [--base <ref>] [args]",
+    "",
+    "Required:",
+    "  --branches <list|file|positionals>  comma-list, file path, or bare branch tokens",
+    "",
+    "Optional:",
+    "  --base <ref>                     base for codex review --base (default: main)",
+    "  --cwd <dir>                      git workspace (must be a repo)",
+    "  --concurrency N                  jobs (default 4; >20 needs --i-have-measured)",
+    "  --i-have-measured \"<reason>\"     justification for raised concurrency",
+    "  --force-new-run --run-id <id>    sibling run (manifest.<id>.json)",
+    "  --monitor-root <dir>             override monitor/state root",
+    "  --dry-run                        seed + plan-print; no codex spawn",
+    "",
+    "Per-branch convergence loop using native `codex review`. Single round per",
+    "invocation; orchestrator decides next round. Auto-loop is documented as",
+    "Planned-but-not-yet-wired.",
+  ].join("\n"),
+  rescue: [
+    "Usage: node orchestrate-codex.mjs rescue [--manifest <path>] [--cwd <dir>] [--apply <subset>]",
+    "",
+    "Optional:",
+    "  --manifest <path>                explicit manifest (else derived from --cwd)",
+    "  --cwd <dir>                      workspace cwd",
+    "  --apply <subset>                 redispatch subset:",
+    "                                     failed-only        — entries with status=failed",
+    "                                     never-started-only — status=queued AND attempts=0",
+    "                                     all-non-done       — every non-done entry",
+    "                                     ids:s1,s2,...      — explicit slug/id list (operator override)",
+    "  --accept-stale                   override the 7-day freshness gate",
+    "  --dry-run                        with --apply: preview-only (does not flip or spawn)",
+    "",
+    "Without --apply: read-only classification (done/failed/never_started/in_flight/unknown).",
+  ].join("\n"),
+  audit: [
+    "Usage: node orchestrate-codex.mjs audit [--manifest <path>] [--cwd <dir>] [--json]",
+    "",
+    "Optional:",
+    "  --manifest <path>                explicit manifest",
+    "  --cwd <dir>                      workspace cwd",
+    "  --json                           emit machine-readable report (always on within envelope)",
+    "",
+    "Read-only state dump: status counts, drift_kinds, orphan_worktrees[].",
+  ].join("\n"),
+  tidy: [
+    "Usage: node orchestrate-codex.mjs tidy [--manifest <path>] [--cwd <dir>] [--execute] [--json]",
+    "",
+    "Optional:",
+    "  --manifest <path>                explicit manifest",
+    "  --cwd <dir>                      workspace cwd (must be inside a git repo)",
+    "  --execute                        actually remove (default: dry-run preview)",
+    "  --force-abandon <id>             remove a refused entry (per-id escape hatch)",
+    "  --base <ref>                     branch-merged check base (default: main)",
+    "  --json                           machine-readable report",
+    "",
+    "Refuses dirty/unmerged/non-terminal worktrees unless --force-abandon names them.",
+  ].join("\n"),
+};
+
+function modeHelpEnvelope(command) {
+  return okEnvelope(command, {
+    phase: "help",
+    next_action: "select arguments and rerun",
+    usage: MODE_USAGE[command] ?? `No per-mode usage available for: ${command}`,
+  });
+}
+
+function argvHasHelp(argv) {
+  if (!Array.isArray(argv)) return false;
+  return argv.some((t) => t === "--help" || t === "-h");
+}
+
 function parseArgsStrict(argv, command, config) {
+  // P1-6: short-circuit per-mode --help / -h before strict parsing so the
+  // unknown-option guard does not reject these as typos. Top-level --help
+  // is still handled by dispatchHelp() in dispatch().
+  if (argvHasHelp(argv) && MODE_USAGE[command]) {
+    return { err: modeHelpEnvelope(command) };
+  }
   // Underlying parseArgs is permissive: unknown long-options end up in
   // positionals (token starts with "--" but didn't match valueOptions or
   // booleanOptions). Catch those here.
@@ -792,20 +935,36 @@ function getBaseCommit(cwd) {
 //   - no prior manifest: no-op (fresh seed behaviour).
 //   - older manifest schema lacks some fields: read with `??` defaults so the
 //     merge is forward-compatible.
+// Returns the count of entries whose terminal-state was carried forward.
+// Surfaced via result.carried_forward_count so operators can tell when a
+// re-invocation is overlaying a prior real run rather than starting fresh
+// (P0-3 — defensive envelope diagnostic).
 function carryForwardDoneEntries(priorManifestPath, freshEntries) {
-  if (!Array.isArray(freshEntries) || freshEntries.length === 0) return freshEntries;
+  if (!Array.isArray(freshEntries) || freshEntries.length === 0) return 0;
   const prior = readManifestIfPresent(priorManifestPath);
-  if (!prior || prior.__corrupt) return freshEntries;
+  if (!prior || prior.__corrupt) return 0;
   const priorEntries = Array.isArray(prior.entries) ? prior.entries : [];
-  if (priorEntries.length === 0) return freshEntries;
+  if (priorEntries.length === 0) return 0;
   const priorById = new Map();
   for (const entry of priorEntries) {
     if (entry && typeof entry.id === "string") priorById.set(entry.id, entry);
   }
+  let carried = 0;
   for (const entry of freshEntries) {
     if (!entry || typeof entry.id !== "string") continue;
     const prev = priorById.get(entry.id);
-    if (!prev || prev.status !== "done") continue;
+    if (!prev) continue;
+    // Carry forward terminal real-run state only. Skip:
+    //   - non-terminal statuses (handled by skip-existing in the runner)
+    //   - dry-run terminal entries (P0-1: a probe must not poison the next
+    //     real run via filesystem-keyed or status-keyed skip-existing).
+    //     `dry_run === true` is the runner-side discriminator (run-fleet.sh,
+    //     run-batch.sh, run-single.sh, run-review.sh emit this field on the
+    //     dry-run terminal write); `verify_status === "dry-run"` is the
+    //     audit-side mirror. Either signal disqualifies the carry.
+    const isTerminal = prev.status === "done" || prev.status === "converged";
+    if (!isTerminal) continue;
+    if (prev.dry_run === true || prev.verify_status === "dry-run") continue;
     // Restore terminal-state fields. mode_state is shallow-merged so the
     // freshly-seeded shape (e.g. mode_state.batch.input from the new inputs
     // file) wins for keys absent in the prior, and prior-run signals
@@ -826,8 +985,9 @@ function carryForwardDoneEntries(priorManifestPath, freshEntries) {
     if (prev.mode_state && typeof prev.mode_state === "object") {
       entry.mode_state = { ...(entry.mode_state || {}), ...prev.mode_state };
     }
+    carried += 1;
   }
-  return freshEntries;
+  return carried;
 }
 
 function seedManifest({
@@ -1038,60 +1198,13 @@ function resetEntriesForRedispatch(manifest, selectedIds) {
   return changed;
 }
 
-function runnerArgsForRedispatch(manifest, manifestPath, selectedIds, cap) {
-  const only = selectedIds.join(",");
-  const common = ["--manifest", manifestPath, "--concurrency", String(cap), "--only", only];
-  const paths = manifest.paths || {};
-  switch (manifest.mode) {
-    case "exec":
-      return {
-        mode: "exec",
-        runner: RUNNERS.exec,
-        args: [...common, "--project-dir", manifest.workspace_root || process.cwd()],
-      };
-    case "batch":
-      return {
-        mode: "batch",
-        runner: RUNNERS.batch,
-        args: [
-          ...common,
-          "--prompts-dir", paths.prompts_dir || path.join(manifest.monitor_root || path.dirname(manifestPath), "prompts"),
-          "--answers-dir", paths.answers_dir || path.join(manifest.monitor_root || path.dirname(manifestPath), "answers"),
-          "--logs-dir", paths.logs_dir || path.join(manifest.monitor_root || path.dirname(manifestPath), "logs"),
-          "--runner-log", paths.runner_log || path.join(paths.logs_dir || path.dirname(manifestPath), "_runner.log"),
-          "--audit-report", paths.audit_report || path.join(manifest.monitor_root || path.dirname(manifestPath), "audit-sizes.txt"),
-        ],
-      };
-    case "single": {
-      const entry = (manifest.entries || []).find((e) => selectedIds.includes(e.id));
-      if (!entry) return null;
-      return {
-        mode: "single",
-        runner: RUNNERS.single,
-        args: [
-          "--manifest", manifestPath,
-          "--entry-id", entry.id,
-          "--prompt-file", entry.prompt_path,
-          "--out", entry.answer_path,
-          "--jsonl", entry.jsonl_path || entry.log_path,
-          "--cwd", entry.mode_state?.single?.cwd || manifest.workspace_root || process.cwd(),
-        ],
-      };
-    }
-    case "review": {
-      const maxRounds = Math.max(...(manifest.entries || []).map((e) => Number(e.mode_state?.review?.max_rounds || 10)), 10);
-      const base = (manifest.entries || []).find((e) => e.base_branch)?.base_branch || "main";
-      const roundsDir = paths.rounds_dir || path.join(manifest.monitor_root || path.dirname(manifestPath), "rounds");
-      return {
-        mode: "review",
-        runner: RUNNERS.review,
-        args: [...common, "--base", base, "--max-rounds", String(maxRounds), "--state-dir", path.dirname(roundsDir)],
-      };
-    }
-    default:
-      return null;
-  }
-}
+// runnerArgsForRedispatch was removed in the round-8 fix pass. It was dead code
+// (never called; rescue redispatch builds args inline at handleRescue) and it
+// referenced flags (--manifest, --base, --concurrency, --max-rounds, --state-dir,
+// --only) that none of the bash runners actually accept. Wiring those flags is
+// a feature, not a fix; until that's done the rescue-redispatch path inside
+// handleRescue (below) is the canonical surface.
+
 function flipEntryToQueued(manifestPath, entryId, wsRoot) {
   // manifest-update.py defaults to dry-run; --execute writes. We blank
   // exit_code/finished_at/last_error so audit doesn't carry stale failure
@@ -1364,6 +1477,7 @@ async function handleExec(argv) {
     return okEnvelope(command, {
       phase: "queued",
       next_action: "arm Monitor and wait",
+      foreground_completed: pid?.foreground === true && pid?.status === 0,
       manifest_path: manifestPath,
       run_id: m.run_id || runId,
       entries_count: out.value.flipped.length,
@@ -1386,9 +1500,10 @@ async function handleExec(argv) {
   const promptErr = materializeExecPrompts(built.value, cwd, promptDir, command);
   if (promptErr) return promptErr;
 
-  // Bug 1 fix: carry forward `done` entries from a prior manifest at the
-  // same path so a re-run does not demote successful entries back to queued.
-  carryForwardDoneEntries(manifestPath, built.value);
+  // Bug 1 fix: carry forward real-run terminal entries from a prior manifest
+  // at the same path so a re-run does not demote successful entries back to
+  // queued. Dry-run terminal entries are skipped (P0-1).
+  const carriedForward = carryForwardDoneEntries(manifestPath, built.value);
 
   const seeded = seedManifest({
     manifestPath, mode: "exec", runId, entries: built.value,
@@ -1416,6 +1531,7 @@ async function handleExec(argv) {
   const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
+    foreground_completed: pid?.foreground === true && pid?.status === 0,
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: built.value.length,
@@ -1425,6 +1541,11 @@ async function handleExec(argv) {
     workspace_root: wsRoot,
     concurrency_cap: cap.value,
     concurrency_source: cap.source,
+    // P0-3: surface how many entries were inherited from a prior real run.
+    // 0 = fresh run; >0 = re-invocation overlaying real results (the runner's
+    // skip-existing guard will not redo those). Operators read this to detect
+    // accidental clobbering before arming Monitor.
+    carried_forward_count: carriedForward,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("exec", { manifestPath, runId, monitorRoot }));
   env.meta.dry_run = !!options["dry-run"];
@@ -1515,6 +1636,7 @@ async function handleBatch(argv) {
     return okEnvelope(command, {
       phase: "queued",
       next_action: "arm Monitor and wait",
+      foreground_completed: pid?.foreground === true && pid?.status === 0,
       manifest_path: manifestPath,
       run_id: m.run_id || runId,
       entries_count: out.value.flipped.length,
@@ -1541,8 +1663,9 @@ async function handleBatch(argv) {
   const renderErr = renderBatchPromptFiles(built.value, templatePath, promptsDir, command);
   if (renderErr) return renderErr;
 
-  // Bug 1 fix: preserve `done` entries from the prior manifest.
-  carryForwardDoneEntries(manifestPath, built.value);
+  // Bug 1 fix: preserve real-run terminal entries from the prior manifest;
+  // dry-run terminal entries are skipped (P0-1).
+  const carriedForward = carryForwardDoneEntries(manifestPath, built.value);
 
   const seeded = seedManifest({
     manifestPath, mode: "batch", runId, entries: built.value,
@@ -1581,6 +1704,7 @@ async function handleBatch(argv) {
   const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
+    foreground_completed: pid?.foreground === true && pid?.status === 0,
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: built.value.length,
@@ -1598,6 +1722,8 @@ async function handleBatch(argv) {
     post_run_audit_cmd: `bash ${AUDIT_SIZES_SCRIPT} --manifest ${manifestPath}`,
     concurrency_cap: cap.value,
     concurrency_source: cap.source,
+    // P0-3: see handleExec for rationale.
+    carried_forward_count: carriedForward,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("batch", { manifestPath, runId, monitorRoot }));
   env.meta.dry_run = !!options["dry-run"];
@@ -1682,8 +1808,9 @@ async function handleSingle(argv) {
   if (options["resume-last"]) built.value[0].mode_state.single.resume_last = true;
   if (options["resume-thread"]) built.value[0].mode_state.single.resume_thread = String(options["resume-thread"]);
 
-  // Bug 1 fix: preserve `done` entries from the prior manifest.
-  carryForwardDoneEntries(manifestPath, built.value);
+  // Bug 1 fix: preserve real-run terminal entries from the prior manifest;
+  // dry-run terminal entries are skipped (P0-1).
+  const carriedForward = carryForwardDoneEntries(manifestPath, built.value);
 
   const seeded = seedManifest({
     manifestPath, mode: "single", runId, entries: built.value,
@@ -1720,6 +1847,7 @@ async function handleSingle(argv) {
   const env = okEnvelope(command, {
     phase: "running",
     next_action: "arm Monitor and wait",
+    foreground_completed: pid?.foreground === true && pid?.status === 0,
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: 1,
@@ -1734,6 +1862,8 @@ async function handleSingle(argv) {
     resume: options["resume-last"] ? { kind: "last" } :
             options["resume-thread"] ? { kind: "thread", thread_id: String(options["resume-thread"]) } :
             null,
+    // P0-3: see handleExec for rationale.
+    carried_forward_count: carriedForward,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("single", { manifestPath, runId, monitorRoot, jsonlPath }));
   env.meta.dry_run = !!options["dry-run"];
@@ -1794,8 +1924,9 @@ async function handleReview(argv) {
   const preflight = runBootstrap({ command, cwd: wsRoot, mode: command, runId, monitorRoot, skipGit: false });
   if (preflight.err) return preflight.err;
 
-  // Bug 1 fix: preserve `done` entries from the prior manifest.
-  carryForwardDoneEntries(manifestPath, built.value);
+  // Bug 1 fix: preserve real-run terminal entries from the prior manifest;
+  // dry-run terminal entries are skipped (P0-1).
+  const carriedForward = carryForwardDoneEntries(manifestPath, built.value);
 
   const seeded = seedManifest({
     manifestPath, mode: "review", runId, entries: built.value,
@@ -1826,6 +1957,7 @@ async function handleReview(argv) {
   const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
+    foreground_completed: pid?.foreground === true && pid?.status === 0,
     manifest_path: manifestPath,
     run_id: runId,
     entries_count: built.value.length,
@@ -1835,6 +1967,8 @@ async function handleReview(argv) {
     workspace_root: wsRoot,
     concurrency_cap: cap.value,
     concurrency_source: cap.source,
+    // P0-3: see handleExec for rationale.
+    carried_forward_count: carriedForward,
     dry_run: !!options["dry-run"],
   }, buildMonitorForMode("review", { manifestPath, runId, monitorRoot }));
   env.meta.dry_run = !!options["dry-run"];
@@ -1961,6 +2095,27 @@ async function handleRescue(argv) {
   if (!m || m.__corrupt) {
     return errEnvelope(command, "manifest_corrupt", `Manifest at ${manifestPath} is not valid JSON.`,
       { manifest_path: manifestPath });
+  }
+
+  // Schema-version guard: rescue.md:70-72, failure-modes.md:179, manifest-contract.md:74.
+  // Refuse forward-incompatible manifests (newer schema than the skill knows). The
+  // refusal is the contract — newer schemas can carry semantically-required fields
+  // (e.g. mode_state.* additions) that this version cannot reason about safely.
+  // The user must upgrade the skill (or pull the latest pack) before resuming.
+  // Do NOT silently downgrade or strip unknown fields. P2 derailment fix.
+  const manifestSchema = typeof m.schema_version === "number" ? m.schema_version : 1;
+  if (manifestSchema > SCHEMA_VERSION) {
+    return errEnvelope(command, "schema_version_too_new",
+      `Manifest schema_version=${manifestSchema} is newer than this skill's ` +
+      `SCHEMA_VERSION=${SCHEMA_VERSION}. Upgrade the skill before resuming. ` +
+      `Newer manifests may carry semantically-required fields (mode_state.* additions, ` +
+      `policy fields) the older code cannot reason about; silent proceed risks corruption.`,
+      {
+        manifest_path: manifestPath,
+        manifest_schema_version: manifestSchema,
+        skill_schema_version: SCHEMA_VERSION,
+        recovery: "upgrade the skill (or its installed pack) to a version with schema_version >= " + manifestSchema,
+      });
   }
 
   // Freshness gate: rescue.md:51 contracts "≤ 7 days OR --accept-stale".
@@ -2153,9 +2308,19 @@ async function handleRescue(argv) {
     runnerEnv = { JOBS: String(cap), PROJECT_DIR: wsRoot };
   } else if (m.mode === "batch") {
     runnerArgs = [];
-    const promptsDir = path.join(monitorRoot, "prompts", m.run_id || "");
-    const logsDir = path.join(monitorRoot, "logs", m.run_id || "");
-    const answersDir = path.join(wsRoot, "answers");
+    const promptsDir = m.paths?.prompts_dir
+      ? path.resolve(wsRoot, m.paths.prompts_dir)
+      : path.join(monitorRoot, "prompts", m.run_id || "");
+    const logsDir = m.paths?.logs_dir
+      ? path.resolve(wsRoot, m.paths.logs_dir)
+      : path.join(monitorRoot, "logs", m.run_id || "");
+    // Honor original --answers-dir from manifest (persisted at mjs:877 + mjs:856).
+    // Stale-workspace edge: if the user moved cwd, run-batch.sh surfaces a clean
+    // error when the dir is missing — no dispatcher-side existence check needed.
+    const answersFromManifest = m.answers_dir || m.paths?.answers_dir;
+    const answersDir = answersFromManifest
+      ? path.resolve(wsRoot, answersFromManifest)
+      : path.join(wsRoot, "answers");
     runnerEnv = {
       JOBS: String(cap),
       PROMPTS: promptsDir,
@@ -2202,6 +2367,7 @@ async function handleRescue(argv) {
   const env = okEnvelope(command, {
     phase: "queued",
     next_action: "arm Monitor and wait",
+    foreground_completed: pid?.foreground === true && pid?.status === 0,
     manifest_path: manifestPath,
     run_id: m.run_id,
     mode: m.mode,
@@ -2232,6 +2398,22 @@ async function handleAudit(argv) {
   const cwd = path.resolve(options.cwd || process.cwd());
   const wsRoot = workspaceFor(cwd);
   const manifestPath = options.manifest ? path.resolve(options.manifest) : manifestPathFor(cwd);
+
+  // D-NEW-2 (round-8 follow-up): when the manifest exists on disk but won't
+  // parse as JSON (truncated mid-write, half-written, deliberately damaged),
+  // the Python helper silently treats it as "manifest absent" and the
+  // dispatcher emits ok:true / "no drift detected". That's a false-negative
+  // on a real recovery scenario (W3-S2 trial). Mirror handleRescue's
+  // pre-helper corruption check: if the file exists AND won't parse, return
+  // a typed `manifest_corrupt` envelope before delegating to the helper.
+  if (fs.existsSync(manifestPath)) {
+    const m = readManifestIfPresent(manifestPath);
+    if (m && m.__corrupt) {
+      return errEnvelope(command, "manifest_corrupt",
+        `Manifest at ${manifestPath} is not valid JSON. Repair or delete before retrying. Run rescue mode for partial-run recovery.`,
+        { manifest_path: manifestPath });
+    }
+  }
 
   if (!fs.existsSync(PY_HELPERS.audit)) {
     // No helper yet — fall back to a minimal manifest dump.
@@ -2294,6 +2476,13 @@ async function handleAudit(argv) {
   if (audit && orphans > 0) {
     audit.drift_kinds = { ...(audit.drift_kinds || {}), orphan_worktrees: orphans };
   }
+  // P2-15: mirror the orphan-corrected drift_total inside `result.audit` so
+  // operators reading `result.audit.drift_total` see the same number as
+  // `result.drift_total`. audit-fleet-state.py's own drift_total excludes
+  // orphans; the dispatcher is the layer that combines them.
+  if (audit && typeof audit === "object") {
+    audit.drift_total = driftTotal;
+  }
   return okEnvelope(command, {
     phase: "done",
     next_action: (driftTotal > 0)
@@ -2310,13 +2499,31 @@ async function handleTidy(argv) {
   const command = "tidy";
   const parsed = parseArgsStrict(argv, command, {
     valueOptions: ["manifest", "cwd", "base", "force-abandon"],
-    booleanOptions: ["execute"],
+    // P2-14: accept --json for parity with `audit`; cleanup-worktrees.py
+    // already takes --json (the dispatcher always passes it). The flag is a
+    // no-op at the dispatcher boundary because tidy's envelope is always
+    // JSON; accepting --json prevents `unknown_option` rejection when the
+    // operator mirrors the audit invocation shape.
+    booleanOptions: ["execute", "json"],
   });
   if (parsed.err) return parsed.err;
   const { options } = parsed.value;
   const cwd = path.resolve(options.cwd || process.cwd());
   const wsRoot = workspaceFor(cwd);
   const manifestPath = options.manifest ? path.resolve(options.manifest) : manifestPathFor(cwd);
+
+  // D-NEW-2 (round-8 follow-up): see handleAudit for rationale. Tidy's
+  // helper also silently absorbs corrupt manifests and reports "nothing to
+  // clean", which would let the operator believe a damaged-on-disk manifest
+  // is healthy (W3-S2 trial). Mirror handleRescue's corruption check.
+  if (fs.existsSync(manifestPath)) {
+    const m = readManifestIfPresent(manifestPath);
+    if (m && m.__corrupt) {
+      return errEnvelope(command, "manifest_corrupt",
+        `Manifest at ${manifestPath} is not valid JSON. Repair or delete before retrying. Run rescue mode for partial-run recovery.`,
+        { manifest_path: manifestPath });
+    }
+  }
 
   if (!fs.existsSync(PY_HELPERS.tidy)) {
     return errEnvelope(command, "python_helper_failed",
@@ -2325,8 +2532,28 @@ async function handleTidy(argv) {
   }
   const args = ["--manifest", manifestPath, "--json"];
   if (options.execute) args.push("--execute");
+  // D-NEW (round-8 follow-up, A4 audit): the dispatcher's tidy handler
+  // declares --base and --force-abandon in valueOptions, so they parse
+  // without `unknown_option`, but pre-patch the args list above did not
+  // forward either to cleanup-worktrees.py. The helper accepts both
+  // (cleanup-worktrees.py:160 / :164). The silent-drop was strictly worse
+  // than D11's loud `unknown arg` because the helper still emits its
+  // refusal message instructing the operator to "Pass --force-abandon
+  // <id>" — which they already did. Forward both flags here so the
+  // operator's destructive authorization actually reaches the helper.
+  if (options.base) args.push("--base", String(options.base));
+  if (options["force-abandon"]) args.push("--force-abandon", String(options["force-abandon"]));
   const r = runPythonHelper(PY_HELPERS.tidy, args, wsRoot);
-  if (r.status !== 0) {
+  // P1-5 / D17: align tidy's success contract with audit's. cleanup-worktrees.py
+  //   0 = clean / nothing to do
+  //   1 = actionable preview (planned removals OR dry-run-refused entries)
+  //   2 = refused during --execute (operator must pass --force-abandon)
+  //   3 = removal failed mid-execute
+  //   4 = manifest write failed
+  // Exits 0 and 1 are both successful audits/previews — the report itself
+  // carries `summary.refused` / `summary.planned` so the agent classifies
+  // outcomes from the JSON, not from the exit code alone.
+  if (r.status !== 0 && r.status !== 1) {
     return errEnvelope(command, "python_helper_failed",
       `cleanup-worktrees.py exited ${r.status}: ${(r.stderr || "").trim() || "no stderr"}`,
       { stdout: r.stdout, stderr: r.stderr });
@@ -2389,7 +2616,21 @@ async function main() {
 
 // Only run main when this file is the script entry. Lets tests `import` the
 // module (dispatch / buildMonitorHint / fleetMonitorCommand) without firing.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// P1-10 (symlink fix): equality on raw `import.meta.url` vs `process.argv[1]`
+// fails when the dispatcher is invoked through a symlink — Node resolves
+// `import.meta.url` to the real path while `process.argv[1]` keeps the
+// symlink path, so `main()` silently never fires and stdout is empty.
+// `fs.realpathSync` resolves both sides through symlinks; the try/catch
+// keeps non-existent / permission-denied argv[1] from throwing.
+function isMainModule() {
+  try {
+    return fs.realpathSync(fileURLToPath(import.meta.url))
+      === fs.realpathSync(process.argv[1]);
+  } catch {
+    return false;
+  }
+}
+if (isMainModule()) {
   main().catch((e) => {
     // Last-resort: still emit an envelope so the contract holds.
     emitEnvelope(errEnvelope("unknown", "spawn_failed",

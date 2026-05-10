@@ -322,8 +322,13 @@ run_one() {
     printf 'dry-run answer for %s\n' "$id" > "$answer_path"
     printf '{"type":"turn.completed","dry_run":true}\n' > "$jsonl_path"
     echo "DONE  $id (dry-run)"
+    # P0-1: dry-run discriminator. The `dry_run=true` field tells
+    # carryForwardDoneEntries (orchestrate-codex.mjs) to skip this entry on
+    # the next dispatcher pass, so a probe-then-real-run sequence does not
+    # silently SKIP every entry. `verify_status=dry-run` is preserved for
+    # audit/operator readability; `dry_run=true` is the machine-readable gate.
     "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
-      status=done finished_at=now exit_code=0 verify_status=dry-run 2>/dev/null || true
+      status=done finished_at=now exit_code=0 verify_status=dry-run dry_run=true 2>/dev/null || true
     return 0
   fi
 

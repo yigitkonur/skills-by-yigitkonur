@@ -267,9 +267,13 @@ run_one() {
     # round loop terminates cleanly in dry-run.
     mkdir -p "$(dirname "$findings")"
     printf '{"summary":"dry-run","comments":[]}\n' > "$findings"
+    # P0-1: dry-run discriminator — see run-fleet.sh for rationale. Review
+    # uses status=converged on dry-run to terminate the orchestrator's round
+    # loop cleanly; the dry_run=true flag prevents carryForwardDoneEntries
+    # from preserving this fake-converged entry across re-dispatch.
     "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \
       status=converged finished_at=now exit_code=0 \
-      last_findings_path="$findings" 2>/dev/null || true
+      last_findings_path="$findings" dry_run=true 2>/dev/null || true
     echo "DONE  $id (dry-run)"
     return 0
   fi

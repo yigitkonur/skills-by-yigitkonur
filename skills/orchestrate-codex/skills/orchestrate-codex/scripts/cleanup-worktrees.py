@@ -441,14 +441,20 @@ def main() -> int:
 
     if write_failed:
         return 4
-    if refused > 0:
-        if not args.json:
-            print(f"✗ {refused} entry/entries refused — re-run with --force-abandon for those")
-        return 2
     if failed > 0:
         if not args.json:
             print(f"✗ {failed} removal(s) failed — see stderr above")
         return 3
+    # P1-5: refused entries in dry-run are informational ("preview surfaced
+    # entries you have a decision to make on") — they are NOT a failure of
+    # the preview itself. Keep exit 2 for refused-during-execute (operator
+    # told us to remove and we couldn't, that's actionable). The dispatcher's
+    # tidy handler accepts exit 0 and 1 as success, mirroring audit's
+    # contract (audit-fleet-state.py: 0 clean, 1 actionable, ≥2 helper-fail).
+    if refused > 0:
+        if not args.json:
+            print(f"⚠ {refused} entry/entries refused — re-run with --force-abandon for those")
+        return 2 if args.execute else 1
     if not args.execute and any(a["action"] == "plan" for a in actions):
         if not args.json:
             print("DRY-RUN complete. Re-run with --execute to apply.")
