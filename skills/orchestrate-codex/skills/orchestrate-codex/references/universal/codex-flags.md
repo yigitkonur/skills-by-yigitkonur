@@ -2,6 +2,19 @@
 
 Authoritative for codex-cli **0.130.0** and later (verified during this pass). Verify with `codex --help`, `codex exec --help`, `codex exec review --help`, and `codex review --help`. The skill's `scripts/codex-flags.sh` is the single source of truth for the flag arrays every runner uses; if you find yourself typing `--dangerously-bypass-approvals-and-sandbox` inside a runner, source the helper instead.
 
+## Contents
+
+- The hard-wired set (every direct `codex exec` spawn)
+- Per-spawn additions
+- Forbidden flags
+- Per-session overrides
+- Model alias
+- Subcommand surfaces
+- JSONL event types (with `--json`)
+- MCP-active dropout — known issue
+- Verify before assuming
+- What this file is not
+
 ## The hard-wired set (every direct `codex exec` spawn)
 
 ```bash

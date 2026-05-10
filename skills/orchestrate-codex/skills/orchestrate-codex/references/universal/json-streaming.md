@@ -2,6 +2,20 @@
 
 `codex exec --json` (and `codex exec review --json`) emits newline-delimited JSON to stdout. Each line is one event. The skill captures the stream to disk via `tee`, parses it through `codex-json-filter.sh` for human-readable Monitor lines, and reads the structured events for manifest updates (e.g. capturing `thread_id`).
 
+## Contents
+
+- Event types and their payloads
+- Item types
+- Terminal success signal
+- MCP-active dropout
+- Filter pipeline (`codex-json-filter.sh`)
+- Line buffering
+- Capturing `thread_id`
+- Capturing token usage
+- Custom event handling
+- Anti-patterns
+- Forensics
+
 ## Event types and their payloads
 
 Authoritative for codex-cli 0.129.0–0.130.0. Verify with a smoke test if codex bumps:

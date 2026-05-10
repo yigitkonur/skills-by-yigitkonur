@@ -2,6 +2,18 @@
 
 Every orchestrate-codex run writes its manifest under the same state directory algorithm used by vendored codex-cc. Codex-companion uses the same workspace-slug+hash function, so our manifest sits next to its `state.json` and `jobs/` records — rescue can correlate by codex thread id.
 
+## Contents
+
+- Resolution chain
+- Workspace slug + hash
+- Why outside the repo
+- Layout under state-root
+- Pruning
+- One active manifest per state-root
+- Recovery from a corrupt state-root
+- Anti-patterns
+- Forensics
+
 ## Resolution chain
 
 orchestrate-codex's resolver:

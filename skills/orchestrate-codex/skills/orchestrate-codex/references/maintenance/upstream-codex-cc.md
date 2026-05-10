@@ -8,6 +8,17 @@ This file documents:
 - The update procedure when upstream ships a new version.
 - What to watch for during updates.
 
+## Contents
+
+- Why vendor, not resolve at runtime
+- What's vendored
+- Pinned version
+- The patch
+- Update procedure
+- What to watch for during updates
+- Rolling back an update
+- Anti-patterns
+
 ## Why vendor, not resolve at runtime
 
 Two reasons.

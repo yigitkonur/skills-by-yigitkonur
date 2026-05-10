@@ -2,6 +2,19 @@
 
 Re-running a runner against the same manifest skips entries that are already `done` and redoes only `queued` or `failed`. This makes every run safely re-runnable: rescue is cheap, partial runs are cheap, retries are cheap.
 
+## Contents
+
+- Skip-existing guards by mode
+- Why filesystem AND manifest
+- Atomic answer move (batch mode)
+- Force-redo per entry
+- Redo all
+- Idempotency under concurrent writes
+- Filesystem keying vs content hashing
+- Dispatcher refusal
+- Anti-patterns
+- Forensics
+
 ## Skip-existing guards by mode
 
 | Mode | Guard | Where |

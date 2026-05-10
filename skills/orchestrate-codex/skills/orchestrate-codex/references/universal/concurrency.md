@@ -2,6 +2,19 @@
 
 Each mode has a default cap. Raising the cap requires explicit acknowledgement that the user has measured the constraint they're loosening. Defaults are conservative on purpose — the cost of a too-high cap (rate-limit cascade, exhausted GraphQL budget, OOM on the local machine) far exceeds the cost of a too-low cap (a slightly slower run).
 
+## Contents
+
+- Per-mode defaults
+- Why these numbers
+- Soft gate
+- How to measure
+- When concurrency caps cascade
+- Cap-override tracking
+- Fleet size vs parallelism cap
+- Hard ceiling
+- Anti-patterns
+- Forensics
+
 ## Per-mode defaults
 
 | Mode | Default `JOBS` | Mechanism | Override env | Override flag |

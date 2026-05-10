@@ -4,6 +4,13 @@ One page, one row per `error.code` the dispatcher emits. Grep here first; jump t
 
 Source of truth: `scripts/orchestrate-codex.mjs` — every `errEnvelope(...)` call site plus the `EXIT_CODE_BY_ERROR` map (lines 134-178). Helper-internal codes (Python helpers, bash runners) are not catalogued here unless they bubble through the dispatcher envelope.
 
+## Contents
+
+- Catalog
+- How to read an error envelope
+- Common patterns
+- See also
+
 ## Catalog
 
 | `error.code` | What it means | Exit | First-line recovery | Deep-dive |

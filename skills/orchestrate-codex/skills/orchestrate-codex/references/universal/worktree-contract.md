@@ -2,6 +2,19 @@
 
 Worktrees isolate per-task work. The skill creates them, names them, populates them with shared artifacts, and removes them on success — all gated, all reproducible.
 
+## Contents
+
+- Naming
+- `.gitignore` requirement
+- Lifecycle
+- Symlinks and codegen
+- Reuse rule
+- Cleanup gate
+- Recovery from interrupted setup
+- Worktrees vs branches
+- Anti-patterns
+- Forensics
+
 ## Naming
 
 ```

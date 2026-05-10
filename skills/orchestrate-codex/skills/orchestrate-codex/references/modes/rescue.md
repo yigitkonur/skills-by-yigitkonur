@@ -2,6 +2,21 @@
 
 Inspect an existing manifest, classify each entry's true state, then re-spawn an explicit subset through the original mode's runner.
 
+## Contents
+
+- What rescue actually does today
+- When rescue triggers
+- Inputs
+- Pre-flight
+- Classification flow
+- Redispatch decision
+- Pre-rescue cleanup
+- Re-spawn
+- Edge cases
+- Success gate
+- Recovery
+- Anti-patterns
+
 ## What rescue actually does today
 
 Two distinct behaviors based on whether `--apply` is passed (`handleRescue` in `scripts/orchestrate-codex.mjs:1879-2120`):

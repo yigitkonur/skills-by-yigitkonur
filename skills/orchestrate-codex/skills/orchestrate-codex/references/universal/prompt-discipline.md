@@ -2,6 +2,15 @@
 
 The prompt is the single lever between dispatch and result. A vague prompt with N parallel jobs becomes N times the waste. Every per-task prompt — exec, batch, single, or review — carries six sections. The four templates in `references/templates/` instantiate this skeleton; this file documents the contract.
 
+## Contents
+
+- The six sections
+- Why each section
+- SUBAGENT-STOP prefix (exec mode only)
+- Sizing
+- Anti-patterns
+- Forensics
+
 ## The six sections
 
 ```

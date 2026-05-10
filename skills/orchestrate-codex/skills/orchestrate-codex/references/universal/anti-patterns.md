@@ -2,6 +2,25 @@
 
 The spine carries a 13-bullet anti-pattern list. This file expands each with a concrete example of how the anti-pattern manifests, what it costs, and what the right pattern looks like.
 
+## Contents
+
+- 1. Silently overwriting a `done` manifest entry
+- 2. Raising `JOBS` past mode default without measuring
+- 3. Replacing `--dangerously-bypass-approvals-and-sandbox` with something "safer"
+- 4. Unbounded concurrency (`xargs -P 0`, naked `&` fan-out)
+- 5. Auto-merging to `main` / `canary` / default branch
+- 6. Inventing a custom manifest path
+- 7. Inventing a `codex review` invocation outside the native CLI surface
+- 8. Skipping Monitor arming order (arm AFTER the runner)
+- 9. Deleting a worktree with uncommitted changes without an explicit gate
+- 10. Overwriting an answer file in batch mode
+- 11. Hand-editing the manifest
+- 12. Dropping `CODEX_FLAGS` inside an `xargs bash -c` subshell
+- 13. Bundling Claude Code hooks in the skill
+- Cross-cutting prompt-discipline anti-pattern
+- Composite anti-patterns
+- Forensics
+
 ## 1. Silently overwriting a `done` manifest entry
 
 **Manifests:** "Let me re-run from scratch; I'll just delete the manifest and re-run."

@@ -2,6 +2,20 @@
 
 Run one focused codex task with full Monitor visibility. The agent gets `[CMD>]`, `[CMD✓]`, `[THINK]`, `[SAID]` lines as they happen. Use this when the work is too big for a casual `codex exec` invocation but doesn't have N parallel siblings.
 
+## Contents
+
+- When to pick single mode
+- Inputs
+- Pre-flight
+- Spawn flow
+- Success gate
+- When `cwd` is already a worktree
+- Why pipe through codex-json-filter.sh
+- Aborting a running mission
+- Recovery
+- Cleanup
+- Anti-patterns
+
 ## When to pick single mode
 
 - One task, ≥ 5 minutes of agent time, benefits from observability.

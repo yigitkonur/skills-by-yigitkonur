@@ -2,6 +2,19 @@
 
 In batch mode, `audit-sizes.sh` runs after `--- all jobs finished ---` and surfaces the bottom decile + entries below the absolute floor (`MIN_BYTES`, default 10000). Size is a probabilistic quality screen, not a deterministic verdict.
 
+## Contents
+
+- What size correlates with
+- What size does NOT correlate with
+- When small ≠ bad
+- When small IS bad
+- Default thresholds
+- Inspection workflow
+- Recording acceptance
+- Per-input MIN
+- Anti-patterns
+- Forensics
+
 ## What size correlates with
 
 - **Source material depth.** A research prompt against a parked domain produces a thin output because there's nothing to research. That's correct, not a failure.
