@@ -515,6 +515,13 @@ def classify_entry(
             "cc_updated_at": cc_updated_at,
             "cc_age_seconds": int(cc_age) if cc_age is not None else None,
             "fs_fallback_used": fs_fallback_used,
+            # Surface the manifest's last_error verbatim so operators with
+            # mixed failure causes (rate_limit_503, dirty_worktree,
+            # post_verify_fail, …) can pick `--apply ids:s1,s2` surgically
+            # without re-reading the manifest. selectRescueSubset filters on
+            # status only; this field gives the operator (and downstream
+            # automation) the missing axis.
+            "last_error": entry.get("last_error"),
         },
     }
 

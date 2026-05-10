@@ -1317,6 +1317,11 @@ async function handleExec(argv) {
   // manifest, then this branch flips entries and exits before seeding.
   const forceRedoSlugs = listForceRedoSlugs(options);
   const wantsForceRedoAll = !!options["force-redo-all"];
+  if (forceRedoSlugs.length > 0 && wantsForceRedoAll) {
+    return errEnvelope(command, "bad_argument",
+      "Pass either `--force-redo <slug,…>` for named slugs OR `--force-redo-all` for the full fleet — not both. The named-list and fleet-wide modes are mutually exclusive.",
+      { force_redo_slugs: forceRedoSlugs, force_redo_all: true });
+  }
   if (forceRedoSlugs.length > 0 || wantsForceRedoAll) {
     const m = readManifestIfPresent(manifestPath);
     if (!m || m.__corrupt) {
@@ -1458,6 +1463,11 @@ async function handleBatch(argv) {
   // Force-redo pre-flight (operates on existing manifest).
   const forceRedoSlugs = listForceRedoSlugs(options);
   const wantsForceRedoAll = !!options["force-redo-all"];
+  if (forceRedoSlugs.length > 0 && wantsForceRedoAll) {
+    return errEnvelope(command, "bad_argument",
+      "Pass either `--force-redo <slug,…>` for named slugs OR `--force-redo-all` for the full fleet — not both. The named-list and fleet-wide modes are mutually exclusive.",
+      { force_redo_slugs: forceRedoSlugs, force_redo_all: true });
+  }
   if (forceRedoSlugs.length > 0 || wantsForceRedoAll) {
     const m = readManifestIfPresent(manifestPath);
     if (!m || m.__corrupt) {
@@ -2246,11 +2256,21 @@ async function handleAudit(argv) {
     return errEnvelope(command, "python_helper_failed",
       `audit-fleet-state.py produced non-JSON stdout: ${e.message}`, { stdout: r.stdout });
   }
-  const driftTotal = (audit && typeof audit.drift_total === "number") ? audit.drift_total : 0;
+  const helperDriftTotal = (audit && typeof audit.drift_total === "number") ? audit.drift_total : 0;
   const orphans = (audit && Array.isArray(audit.orphan_worktrees)) ? audit.orphan_worktrees.length : 0;
+  // Fold orphan worktrees into drift_total + drift_kinds so the top-level
+  // scalar matches `actionable`. audit-fleet-state.py reports orphans as a
+  // separate top-level array but excludes them from drift_total/drift_kinds;
+  // an operator scanning `result.drift_total` alone would otherwise miss
+  // orphan-only drift even though `actionable: true` and `next_action`
+  // already point at rescue.
+  const driftTotal = helperDriftTotal + orphans;
+  if (audit && orphans > 0) {
+    audit.drift_kinds = { ...(audit.drift_kinds || {}), orphan_worktrees: orphans };
+  }
   return okEnvelope(command, {
     phase: "done",
-    next_action: (driftTotal > 0 || orphans > 0)
+    next_action: (driftTotal > 0)
       ? "review the drift summary; consider rescue mode"
       : "review the manifest",
     manifest_path: manifestPath,
