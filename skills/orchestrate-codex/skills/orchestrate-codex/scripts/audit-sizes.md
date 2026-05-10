@@ -4,15 +4,22 @@ Post-batch quality audit. Prints byte-size distribution, bottom decile, below-fl
 
 ## Inputs
 
+Two invocation shapes. The manifest-aware shape is preferred for any run dispatched through `node scripts/orchestrate-codex.mjs batch` because it picks up the dispatcher's `--answers-dir <override>` automatically; the positional shape is preserved for direct/standalone use.
+
 ```bash
+# Manifest-aware (preferred; reads answers_dir + runner_log_path from manifest):
+bash audit-sizes.sh --manifest <manifest.json> [<min-bytes>]
+
+# Positional (back-compat; no manifest knowledge):
 bash audit-sizes.sh <answers-dir> [<runner-log>] [<min-bytes>]
 ```
 
 | Arg | Default | Notes |
 |---|---|---|
-| `<answers-dir>` | `./answers` (env: `ANSWERS`) | Directory containing per-input answer files |
-| `<runner-log>` | `./logs/_runner.log` (env: `LOG`) | Optional; for cross-checking DONE/FAIL/SKIP counts. When the dispatcher manages the run, the runner stdout is redirected to `${monitor_root}/logs/<run_id>/_runner.log` — point `LOG=` at that path when auditing a dispatcher-managed run. |
-| `<min-bytes>` | 10000 (env: `MIN_BYTES`) | Absolute floor for `[BELOW-FLOOR]` flag |
+| `--manifest <path>` | unset | Read `answers_dir` from the manifest's top-level field (or derive from `entries[].answer_path`); read `runner_log` from `paths.runner_log` or `<monitor_root>/logs/<run_id>/_runner.log`. Override avoids the silent-failure path where `--answers-dir custom/` lands outputs at `<cwd>/custom/<slug>.md` but the audit defaults to `./answers/` and reports zero outputs. |
+| `<answers-dir>` | `./answers` (env: `ANSWERS`) | Directory containing per-input answer files. Ignored when `--manifest` is set. |
+| `<runner-log>` | `./logs/_runner.log` (env: `LOG`) | Optional; for cross-checking DONE/FAIL/SKIP counts. When the dispatcher manages the run, the runner stdout is redirected to `${monitor_root}/logs/<run_id>/_runner.log` — point `LOG=` at that path or use `--manifest` to resolve it automatically. |
+| `<min-bytes>` | 10000 (env: `MIN_BYTES`) | Absolute floor for `[BELOW-FLOOR]` flag. With `--manifest`, the FIRST positional becomes `<min-bytes>` (since `--manifest` already provides answers-dir + runner-log). |
 
 ## Outputs
 
@@ -68,6 +75,7 @@ Or with `--json`:
 |---|---|
 | 0 | Audit ran cleanly |
 | 1 | `<answers-dir>` missing |
+| 2 | `--manifest` path missing / unreadable / lacks `answers_dir` and entries |
 
 ## Behavior
 

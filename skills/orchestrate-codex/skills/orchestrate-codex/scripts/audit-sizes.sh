@@ -11,7 +11,16 @@
 # head of any flagged answer before deciding to retry.
 #
 # Usage:
+#   audit-sizes.sh --manifest <manifest.json> [MIN_BYTES]
 #   audit-sizes.sh [ANSWERS_DIR] [LOG] [MIN_BYTES]
+#
+# Manifest mode (preferred): when --manifest <path> is passed, the audit reads
+# the dispatcher-seeded `answers_dir` from the manifest's top-level field (or,
+# if absent, derives it from the manifest entries' `answer_path`). This is the
+# correct shape for runs dispatched with `--answers-dir <override>`, where the
+# dispatcher's `--answers-dir custom/` lands outputs at `<cwd>/custom/<slug>.md`
+# rather than `<cwd>/answers/`. Without the manifest hint, the audit defaults
+# to `./answers/` and silently inspects the wrong directory.
 #
 # Inputs (positional or env):
 #   ANSWERS_DIR / $1                answers dir (default: ./answers)
@@ -22,13 +31,84 @@
 #                                   — set LOG= explicitly to that path.
 #   MIN_BYTES / $3 / $MIN_BYTES     absolute floor (default: 10000)
 #
-# Exit codes: 0 audit ran (regardless of flags), 1 ANSWERS_DIR not found.
+# Flag inputs:
+#   --manifest <path>               read answers_dir, runner_log_path, and
+#                                   monitor_root from the manifest. Overrides
+#                                   the positional ANSWERS_DIR / LOG defaults.
+#                                   MIN_BYTES still defaults to 10000 unless
+#                                   set positionally / via env.
+#
+# Exit codes: 0 audit ran (regardless of flags), 1 ANSWERS_DIR not found,
+#             2 manifest unreadable / malformed.
 
 set -u
 
-ANSWERS="${1:-${ANSWERS:-answers}}"
-LOG="${2:-${LOG:-logs/_runner.log}}"
-MIN="${3:-${MIN_BYTES:-10000}}"
+MANIFEST=""
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --manifest)
+      if [[ $# -lt 2 ]]; then
+        echo "audit-sizes.sh: --manifest requires a path argument" >&2
+        exit 2
+      fi
+      MANIFEST="$2"
+      shift 2
+      ;;
+    --manifest=*)
+      MANIFEST="${1#--manifest=}"
+      shift
+      ;;
+    -h|--help)
+      sed -n '2,42p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "$MANIFEST" ]]; then
+  if [[ ! -f "$MANIFEST" ]]; then
+    echo "audit-sizes.sh: --manifest path not found: $MANIFEST" >&2
+    exit 2
+  fi
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "audit-sizes.sh: --manifest mode requires jq on PATH" >&2
+    exit 2
+  fi
+  # Top-level `answers_dir` is the dispatcher-seeded canonical location. If
+  # absent (older manifests, hand-edited paths), derive from the first entry's
+  # `answer_path` (entries point at <answers_dir>/<slug>.md).
+  m_answers="$(jq -r '.answers_dir // (.paths.answers_dir // "")' "$MANIFEST" 2>/dev/null || echo "")"
+  if [[ -z "$m_answers" || "$m_answers" == "null" ]]; then
+    m_answers="$(jq -r '
+      ((.entries // []) | map(.answer_path // empty) | first) // ""
+      | if . == "" then "" else (. | split("/")[:-1] | join("/")) end
+    ' "$MANIFEST" 2>/dev/null || echo "")"
+  fi
+  m_log="$(jq -r '.paths.runner_log // ""' "$MANIFEST" 2>/dev/null || echo "")"
+  if [[ -z "$m_log" || "$m_log" == "null" ]]; then
+    m_monroot="$(jq -r '.monitor_root // ""' "$MANIFEST" 2>/dev/null || echo "")"
+    m_runid="$(jq -r '.run_id // ""' "$MANIFEST" 2>/dev/null || echo "")"
+    if [[ -n "$m_monroot" && "$m_monroot" != "null" && -n "$m_runid" && "$m_runid" != "null" ]]; then
+      m_log="$m_monroot/logs/$m_runid/_runner.log"
+    fi
+  fi
+  if [[ -z "$m_answers" || "$m_answers" == "null" ]]; then
+    echo "audit-sizes.sh: manifest does not declare answers_dir and has no entries with answer_path" >&2
+    exit 2
+  fi
+  ANSWERS="$m_answers"
+  LOG="${m_log:-${LOG:-logs/_runner.log}}"
+  MIN="${POSITIONAL[0]:-${MIN_BYTES:-10000}}"
+else
+  ANSWERS="${POSITIONAL[0]:-${ANSWERS:-answers}}"
+  LOG="${POSITIONAL[1]:-${LOG:-logs/_runner.log}}"
+  MIN="${POSITIONAL[2]:-${MIN_BYTES:-10000}}"
+fi
 
 if [[ ! -d "$ANSWERS" ]]; then
   echo "answers dir not found: $ANSWERS" >&2

@@ -843,10 +843,18 @@ function seedManifest({
   overrides,
   paths = {},
   preflight = {},
+  // Top-level answers_dir is the canonical post-run audit hint. The dispatcher
+  // surfaces this so `audit-sizes.sh --manifest <path>` finds outputs even
+  // when the operator passed `--answers-dir <override>`. Also mirrored into
+  // paths.answers_dir for the rerun-from-manifest path that reads paths[].
+  answersDir = null,
 }) {
   ensureManifestDir(manifestPath);
   const overridesMerged = { ...(policyOverrides || {}), ...(overrides || {}) };
   const policy = { ...POLICY, overrides: overridesMerged };
+  const pathsWithAnswers = answersDir
+    ? { ...paths, answers_dir: paths.answers_dir || answersDir }
+    : paths;
   const manifest = {
     schema_version: SCHEMA_VERSION,
     run_id: runId,
@@ -858,11 +866,16 @@ function seedManifest({
     policy,
     concurrency_cap: concurrencyCap,
     monitor_root: monitorRoot,
-    paths,
+    paths: pathsWithAnswers,
     preflight,
     entries,
     history: [],
   };
+  if (answersDir) {
+    // Top-level field — what audit-sizes.sh --manifest reads first. Persisted
+    // before paths so jq's `.answers_dir // .paths.answers_dir` picks it up.
+    manifest.answers_dir = answersDir;
+  }
   // Initial-write race guard: refuse to overwrite an in-flight manifest. The
   // refuseIfConcurrent gate above caught this for non-rescue paths; this is
   // defense in depth in case two seedManifest calls interleave. Surfaces as
@@ -1511,6 +1524,9 @@ async function handleBatch(argv) {
       runner_log_path: runnerLogPath,
       workspace_root: wsRoot,
       answers_dir: answersDir,
+      // Post-run audit hint: manifest-aware form is correct under
+      // `--answers-dir <override>` (D2 fix; same rationale as the seed envelope).
+      post_run_audit_cmd: `bash ${AUDIT_SIZES_SCRIPT} --manifest ${manifestPath}`,
       mode: "force-redo",
     }, buildMonitorForMode("batch", { manifestPath, runId: m.run_id || runId, monitorRoot: monitorRootExisting }));
   }
@@ -1532,6 +1548,11 @@ async function handleBatch(argv) {
     manifestPath, mode: "batch", runId, entries: built.value,
     concurrencyCap: cap.value, monitorRoot, cwd: wsRoot,
     overrides: cap.override ? { concurrency: cap.override } : {},
+    // Persist `answers_dir` at top-level so `audit-sizes.sh --manifest <path>`
+    // finds the right directory even when the operator passed
+    // `--answers-dir <override>`. Without this, the post-run audit defaults
+    // to `./answers/` and silently inspects the wrong directory (D2 fix).
+    answersDir,
   });
   if (seeded.err) return seeded.err;
 
@@ -1570,6 +1591,11 @@ async function handleBatch(argv) {
     prompts_dir: promptsDir,
     answers_dir: answersDir,
     audit_report: auditReportPath,
+    // Post-run audit hint: the manifest-aware form is correct under
+    // `--answers-dir <override>` (D2 fix). The legacy positional form
+    // `bash audit-sizes.sh <answers-dir> <min-bytes>` defaults to ./answers/
+    // and silently inspects the wrong directory when the operator overrode it.
+    post_run_audit_cmd: `bash ${AUDIT_SIZES_SCRIPT} --manifest ${manifestPath}`,
     concurrency_cap: cap.value,
     concurrency_source: cap.source,
     dry_run: !!options["dry-run"],

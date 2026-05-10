@@ -142,6 +142,11 @@ if [[ "$DRY_RUN" == "1" ]]; then
     "$SCRIPT_DIR/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$ORCHESTRATE_ENTRY_ID" \
       status=done finished_at=now exit_code=0 codex_thread_id=dry-run 2>/dev/null || true
   fi
+  # Sentinel: codex-json-filter.sh translates this to `--- single done ---`
+  # so live-watch operators (tail -F | filter) see a clear stop signal and
+  # know to TaskStop the Monitor. Existing JSONL consumers ignore unknown
+  # event types by default.
+  printf '{"type":"orchestrate.done","entry_id":"%s","status":"done"}\n' "$ORCHESTRATE_ENTRY_ID" >> "$LOG_PATH"
   echo "DONE  $ORCHESTRATE_ENTRY_ID (dry-run)"
   echo "--- all jobs finished ---"
   exit 0
@@ -180,6 +185,19 @@ if [[ -f "$LOG_PATH" ]]; then
                 | jq -r '.thread_id // ""' 2>/dev/null || echo "")"
 fi
 
+# Sentinel writer: appends one orchestrate.done JSONL event to the live log
+# AFTER the terminal manifest write. codex-json-filter.sh translates this to
+# `--- single done (<id>: <status>) ---` so live-watch operators see a clear
+# stop signal and know to TaskStop the Monitor. New event type — existing
+# JSONL consumers ignore unknown `type` values by default.
+emit_orchestrate_done() {
+  local status="$1"
+  if [[ -n "$LOG_PATH" ]]; then
+    printf '{"type":"orchestrate.done","entry_id":"%s","status":"%s"}\n' \
+      "$ORCHESTRATE_ENTRY_ID" "$status" >> "$LOG_PATH" 2>/dev/null || true
+  fi
+}
+
 if [[ "$EXIT_CODE" -ne 0 ]]; then
   echo "FAIL  $ORCHESTRATE_ENTRY_ID (codex exit=$EXIT_CODE; runtime=${ELAPSED}s; see $ERR_LOG)"
   if [[ -n "$ORCHESTRATE_MANIFEST" && -f "$ORCHESTRATE_MANIFEST" ]]; then
@@ -188,6 +206,7 @@ if [[ "$EXIT_CODE" -ne 0 ]]; then
       last_error="codex exit $EXIT_CODE" \
       codex_thread_id="$THREAD_ID" 2>/dev/null || true
   fi
+  emit_orchestrate_done "failed"
   echo "--- all jobs finished ---"
   exit 1
 fi
@@ -199,6 +218,7 @@ if [[ ! -s "$OUT" ]]; then
       status=failed finished_at=now exit_code=0 last_error="empty answer" \
       codex_thread_id="$THREAD_ID" 2>/dev/null || true
   fi
+  emit_orchestrate_done "failed"
   echo "--- all jobs finished ---"
   exit 2
 fi
@@ -209,6 +229,7 @@ if [[ -n "$ORCHESTRATE_MANIFEST" && -f "$ORCHESTRATE_MANIFEST" ]]; then
     status=done finished_at=now exit_code=0 \
     codex_thread_id="$THREAD_ID" 2>/dev/null || true
 fi
+emit_orchestrate_done "done"
 
 echo "--- all jobs finished ---"
 exit 0

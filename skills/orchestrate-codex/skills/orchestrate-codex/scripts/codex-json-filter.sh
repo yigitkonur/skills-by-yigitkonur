@@ -53,6 +53,14 @@
 # Known item.type values: command_execution, reasoning, agent_message,
 #   todo_list, file_change, mcp_tool_call, dynamic_tool_call, web_search,
 #   plan_update, error.
+#
+# Skill-specific extension (NOT emitted by codex itself):
+#   orchestrate.done  { type, entry_id, status }
+#     Appended to the JSONL log by `run-single.sh` AFTER the terminal manifest
+#     write. The filter translates this into `--- single done (<id>: <status>) ---`
+#     so live-watch operators (`tail -F <jsonl> | codex-json-filter.sh`) see a
+#     clear stop signal and know to TaskStop the Monitor. Existing JSONL
+#     consumers ignore unknown event types by default — additive.
 
 set -uo pipefail
 
@@ -147,7 +155,9 @@ while IFS= read -r raw; do
       err_msg: (.error.message // .message // ""),
       usage_in: (.usage.input_tokens // ""),
       usage_out: (.usage.output_tokens // ""),
-      usage_cached: (.usage.cached_input_tokens // "")
+      usage_cached: (.usage.cached_input_tokens // ""),
+      orch_entry_id: (.entry_id // ""),
+      orch_status: (.status // "")
     } | @json' 2>/dev/null)" || continue
 
   [[ -z "$parsed" ]] && continue
@@ -226,6 +236,17 @@ while IFS= read -r raw; do
       tout="$(printf '%s' "$parsed" | jq -r .usage_out)"
       tcached="$(printf '%s' "$parsed" | jq -r .usage_cached)"
       emit "$(ts) [TURN<] tokens: in=$tin out=$tout cached=$tcached"
+      ;;
+
+    orchestrate.done)
+      # Skill-specific terminal sentinel — appended by run-single.sh after the
+      # terminal manifest write. Live-watch operators see this and TaskStop the
+      # Monitor. Emitted at every verbosity level (it's the stop signal).
+      oid="$(printf '%s' "$parsed" | jq -r .orch_entry_id)"
+      ostat="$(printf '%s' "$parsed" | jq -r .orch_status)"
+      [[ -z "$oid" || "$oid" == "null" ]] && oid="single"
+      [[ -z "$ostat" || "$ostat" == "null" ]] && ostat="unknown"
+      emit "--- single done ($oid: $ostat) ---"
       ;;
 
     error|*.error)
