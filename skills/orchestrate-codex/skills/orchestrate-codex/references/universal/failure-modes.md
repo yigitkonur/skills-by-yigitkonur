@@ -26,9 +26,11 @@ Seven universal rows. Per-mode extensions appear at the bottom. The spine carrie
 1. Stop dispatching new entries. Existing in-flight entries that already started can finish.
 2. Wait at least 15 minutes from the most recent 503.
 3. Run rescue mode with "redo failures only." `rescue-detect.py` will classify the rate-limited entries as `failed`.
-4. The retry runs at the same concurrency cap. If rate limits persist after retry, halve the cap (`JOBS=2 ./run-fleet.sh ...`) and try again after another 15-minute wait.
+4. **Halve the concurrency cap immediately on first redispatch when rate-limit was the cause** (`JOBS=2 ./run-fleet.sh ...` from a default `JOBS=5`). Use the original cap only when the failure was unrelated to rate limits (network blip, MCP dropout, hung process). If 503s persist after halving, halve again and wait another 15 minutes. This matches the cascade policy in `references/universal/concurrency.md`.
 
 **Why never touch DONE entries:** rate-limit retries should never re-run already-successful work. The audit cost is real (re-validating commits) and the token cost is wasted.
+
+**Multi-Claude-session auth-tier sharing.** The Anthropic auth tier (and the codex/OpenAI auth tier driving spawns) is shared across every session running on the same account. If you have multiple Claude / orchestrate-codex / codex-cli sessions live concurrently, persistent rate-limits often mean another session is consuming the budget — the local concurrency cap is irrelevant if a sibling session is already saturating the tier. Pause the other sessions or coordinate dispatch order before redispatching; otherwise a halved cap still hits the same wall.
 
 **Anti-pattern:** auto-retry inside the runner. The runner does not retry. Rescue is operator-confirmed by design.
 

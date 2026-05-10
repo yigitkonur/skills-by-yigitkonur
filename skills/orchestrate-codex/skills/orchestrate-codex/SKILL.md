@@ -273,6 +273,18 @@ Slash-command boundary: vendored `/codex:review` and codex-companion review rema
 
 The old third-party bot-wait timing constants from `run-codex-review` are retired. This skill does codex-only review. For third-party bot waits, route to `evaluate-code-review` or a future dedicated skill.
 
+### Handoff to ask-review
+
+`orchestrate-codex` produces branches; `ask-review` produces PRs. The lifecycle is documented but not automated — the orchestrator drives it explicitly:
+
+1. **Finish first.** Wait for the manifest's success gate (every entry in a terminal state) before any handoff.
+2. **Confirm done.** Run `node scripts/orchestrate-codex.mjs audit --manifest <path>` and verify zero drift. A worktree-missing or dirty-worktree drift means the entry is not handoff-ready.
+3. **Per-entry handoff loop.** For each `done` entry in the manifest, ask-review needs three fields lifted directly from the entry: `branch` (the commit target), `base_branch` (the merge target — usually `main`), `worktree_path` (where the work landed). The natural pattern is `cd <entry.worktree_path>` and invoke ask-review from inside the worktree so its git-aware probes operate on the correct ref. Loop one entry at a time; do not parallelize the handoff (`ask-review` interacts with GitHub auth that does not parallelize cleanly).
+4. **Wait for merges out-of-band.** ask-review opens the PR and exits. Reviews, CI runs, and merges happen asynchronously. The orchestrate-codex side is idle during this window — do not call `tidy` yet.
+5. **Tidy only after merges land.** `node scripts/orchestrate-codex.mjs tidy --execute` (or the underlying `cleanup-worktrees.py --execute`) refuses to remove a worktree whose branch is not merged. Run tidy only after every entry's branch has merged and you have confirmed via `gh pr list --state merged` (or equivalent). Tidy with unmerged branches will exit with `unmerged_branches` errors — that is the safety rail, not a bug.
+
+Key invariant: ask-review never touches the manifest. The manifest stays the source of truth for the orchestrate-codex side; ask-review's PR records live in GitHub. Tidy is the bridge that closes both sides — and it requires the GitHub side to have advanced to "merged" before it will collect the worktree.
+
 ## Anti-patterns
 
 For worked examples of each, read `references/universal/anti-patterns.md`.

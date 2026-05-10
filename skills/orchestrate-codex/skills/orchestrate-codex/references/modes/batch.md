@@ -157,6 +157,8 @@ bash audit-sizes.sh answers/ "${MIN_BYTES:-10000}"
 
 (Earlier drafts of this doc referenced a `logs/_runner.log` argument; that file does not exist — the runner's stdout is discarded by `spawnRunnerDetached`. Read `audit-sizes.sh --help` for current arguments.)
 
+**Note:** `node scripts/orchestrate-codex.mjs audit` (the dispatcher's audit subcommand) wraps `audit-fleet-state.py`, which inspects manifest-vs-filesystem drift but does NOT read answer-file sizes beyond presence/non-emptiness. For batch fleets, run `bash scripts/audit-sizes.sh <answers-dir>` separately — a 50-byte truncated answer reports clean under `audit` but flags `[SMALL]` here. The two auditors are deliberately split; the operator must run both.
+
 `audit-sizes.sh` prints:
 - Total `DONE / FAIL / SKIP` counts derived from the `answers/` and `logs/` dirs.
 - Per-answer byte size, sorted ascending.

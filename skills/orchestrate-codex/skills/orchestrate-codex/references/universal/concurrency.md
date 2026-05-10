@@ -64,9 +64,9 @@ Now `JOBS=30 ./run-batch.sh --i-have-measured "..."`.
 If you hit rate-limit 503s mid-run:
 
 1. Stop dispatching new entries. Existing in-flight finish.
-2. Halve the cap on rescue redispatch.
+2. **Halve the cap immediately on first rescue redispatch** when the failure cause is rate-limit. If the failure was unrelated (network blip, MCP dropout, hung process), the original cap is fine.
 3. Wait at least 15 minutes from the most recent 503 before re-running.
-4. If 503s persist after halving twice, the auth tier is the bottleneck — no concurrency tuning fixes it. Wait longer or switch tiers.
+4. If 503s persist after halving twice, the auth tier is the bottleneck — no concurrency tuning fixes it. Wait longer, pause sibling Claude / orchestrate-codex sessions sharing the same auth tier, or switch tiers. See `references/universal/failure-modes.md` row 1 for the multi-session auth-sharing note.
 
 ## Cap-override tracking
 

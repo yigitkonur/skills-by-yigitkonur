@@ -71,6 +71,8 @@ node scripts/orchestrate-codex.mjs <mode> --force-redo "slug-a,slug-b"
 node scripts/orchestrate-codex.mjs <mode> --force-redo-all
 ```
 
+Each `--force-redo` cycle increments `attempts` by 2 (once on the queued-flip in `flipEntryToQueued` at `orchestrate-codex.mjs:1101`, once on runner START in `run-batch.sh:238`). This is a known artifact of the two-phase manifest write — the bookkeeping double-counts but does not affect skip-existing or rescue classification. When auditing `attempts` after one or more force-redos, divide by 2 to get the operator-visible cycle count.
+
 Use `rescue --apply failed-only|never-started-only|all-non-done|ids:...` (canonical) — `rescue --redo {failed,never-started,all-non-done}` is accepted as a back-compat alias and normalized into `--apply` — for the rescue-driven path. The three-step manual workflow above remains valid as a defense-in-depth path when you don't trust the dispatcher to flip status atomically.
 
 **Never delete `answers/.prev/`** until the new answer is verified. Codex non-determinism means a retry can produce a smaller (or larger but worse) output than the original.
@@ -139,6 +141,35 @@ Exit code 3. The user has options:
 - Pass `--force-new-run --run-id <custom>` to write a sibling manifest (`manifest.<custom-run-id>.json` in the same state directory). **Implemented** in `orchestrate-codex.mjs` for exec/batch/single. The runners would still race on per-entry locks if both runs target overlapping entries; use this only when the new run touches a disjoint task set.
 
 Starting a new run on an active manifest is intentionally gated; the runners would race on per-entry state without `--force-new-run`.
+
+### Enumerating manifest siblings
+
+`audit` and `rescue` resolve the canonical `manifest.json` from the cwd-derived state dir; they do **not** enumerate `manifest.<run-id>.json` siblings. To list every manifest in the active state dir (so an operator who forgot a custom `--run-id` can find it):
+
+```bash
+ls "$(node scripts/orchestrate-codex.mjs --resolve-state-dir)/manifest"*.json 2>/dev/null
+```
+
+Or, if `--resolve-state-dir` is unavailable, the same enumeration via the universal-fallback paths:
+
+```bash
+find "${CLAUDE_PLUGIN_DATA:-/nonexistent}/state" "${TMPDIR:-/tmp}/codex-companion" \
+    -type f \( -name 'manifest.json' -o -name 'manifest.*.json' \) 2>/dev/null
+```
+
+Pass any chosen sibling to `--manifest <abs-path>` directly. The dispatcher's resolver bypasses cwd-derivation when `--manifest` is explicit.
+
+### Disjoint-slug discipline across siblings
+
+`--force-new-run --run-id <custom>` writes a sibling manifest, but **slug uniqueness is not enforced across siblings**. Two parallel runs with overlapping entry slugs share the same `answers/<slug>.md` and (for exec) the same `<repo>-wt-<mode>-<slug>` worktree path. Both runners then race undetected — the skip-existing guard reads only its own manifest, so each runner believes the entry is queued for it. Last writer wins on the answer file; the loser's commits orphan inside a worktree the surviving manifest no longer references.
+
+The operator MUST keep slug spaces disjoint when running parallel siblings. Practical patterns:
+
+- **Per-bucket prefixes.** `--run-id translate-en` writes entries `translate-en-row-001`, `--run-id translate-es` writes `translate-es-row-001`. The slugs do not collide.
+- **Per-bucket `--answers-dir`.** Different output directories make the answer-file race impossible (batch mode); the worktree race remains a concern for exec mode and requires a slug-prefix anyway.
+- **Sequential, not parallel.** When in doubt, run siblings back-to-back — the second run starts after the first reaches a terminal manifest state. No race surface.
+
+This is operator discipline. The dispatcher cannot detect overlapping slugs across sibling manifests; it would have to read every manifest under the state dir on every dispatch, which is not how the contract is wired today.
 
 ## Anti-patterns
 

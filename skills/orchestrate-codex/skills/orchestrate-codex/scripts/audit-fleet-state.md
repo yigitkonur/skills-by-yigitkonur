@@ -112,3 +112,5 @@ When `manifest.mode == "batch"` and an entry's `answer_path` is `null`, the audi
 Drift detected → use `manifest-update.py` to flip the affected entries to `failed`, then run rescue. Never hand-edit the manifest based on drift; the history row matters.
 
 The `--repair-dry-run` and `--repair-execute` flags are reserved for a future iteration; current implementation is audit-only. The `recommendations` field gives the next action.
+
+For batch fleets, run `bash scripts/audit-sizes.sh <answers-dir>` separately to check below-floor outputs — `audit-fleet-state.py` does NOT inspect answer-file sizes beyond presence/non-emptiness. A 50-byte truncated batch answer (well under the default `MIN_BYTES=10000` floor) is non-empty and therefore reports clean here. The two auditors are intentionally split: this one walks manifest-vs-filesystem drift; `audit-sizes.sh` walks answer-content size signals. Both run after `--- all jobs finished ---`.

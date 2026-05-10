@@ -11,6 +11,8 @@ Two distinct behaviors based on whether `--apply` is passed (`handleRescue` in `
 
 Subsets accepted by `--apply`: `failed-only` | `never-started-only` | `all-non-done` | `ids:s1,s2,...`. The CLI also accepts `--redo {failed,never-started,all-non-done}` as an alias — it normalizes into `--apply` (`orchestrate-codex.mjs:1889-1906`). `--apply` is the canonical form (matches the envelope's `rerun_with` template).
 
+`ids:s1,s2,s3` is by-name regardless of status. The status filters (`failed-only` / `never-started-only` / `all-non-done`) apply only to the named-subset variants. A `done` entry named in `ids:` will be flipped to `queued` and redispatched (operator-override semantics) — use this when you intentionally want to re-run an already-successful entry without archiving its answer through `--force-redo` first.
+
 ## When rescue triggers
 
 - A prior orchestrate-codex run ended with non-terminal entries.
@@ -42,6 +44,8 @@ find "${CLAUDE_PLUGIN_DATA:-/nonexistent}/state" "${TMPDIR:-/tmp}/codex-companio
 ```
 
 Each match lives at `<state-root>/<slug>-<sha256-prefix>/orchestrate-codex/manifest.json`. The `<slug>` is the basename of the original workspace root, so you can usually identify the project by reading the directory name. Pass the chosen path to `--manifest <abs-path>` directly — bypasses the cwd-based resolver.
+
+Within a single state dir, `--force-new-run --run-id <custom>` writes `manifest.<custom>.json` siblings of the canonical `manifest.json`. Rescue and audit always resolve the canonical name; they do NOT enumerate siblings. Adjust the find above to `\( -name 'manifest.json' -o -name 'manifest.*.json' \)` to surface all sibling runs. See `references/universal/idempotency.md` (Enumerating manifest siblings) for the canonical recipe.
 
 ## Pre-flight
 
