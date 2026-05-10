@@ -1,5 +1,7 @@
 # Exec mode prompt template
 
+> Have raw ticket/issue files? Run `bash scripts/render-task-prompts.sh` first — see `scripts/render-task-prompts.md`.
+
 Every task in an exec-mode fleet ships a prompt file shaped like this. The dispatcher reads `tasks.json`; for each entry the bash runner reads the prompt file at `entries[i].mode_state.prompt_file` and pipes it to `codex exec` via stdin.
 
 The template prefix below is non-negotiable. Codex loads its own installed skills on every `codex exec`. Many of those skills push agents toward planning meta-skills before any code is written. The `SUBAGENT-STOP` prefix neutralizes that pull and saves 20–80k tokens of rumination per agent.
