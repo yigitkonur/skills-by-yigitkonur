@@ -9,7 +9,7 @@ Cross-reference of every reference file in this skill. The spine routes to refer
 | Topic | File | Modes that read it |
 |---|---|---|
 | codex CLI flags policy | `universal/codex-flags.md` | every mode |
-| codex-companion vendored dispatcher | `universal/codex-companion.md` | rescue (correlates jobs); review (reads to know what NOT to use) |
+| codex-companion runtime correlation | `universal/codex-companion.md` | rescue (correlates jobs + forensics) |
 | Manifest schema + atomic writes | `universal/manifest-contract.md` | every mode |
 | Monitor tool integration | `universal/monitor-contract.md` | every mode |
 | Worktree naming, lifecycle, cleanup | `universal/worktree-contract.md` | exec, single, review, rescue |
@@ -22,7 +22,13 @@ Cross-reference of every reference file in this skill. The spine routes to refer
 | Prompt-discipline (Intent/Constraints/Success/...) | `universal/prompt-discipline.md` | exec, batch, single (review uses templates/review.tmpl.md directly) |
 | State dir resolution | `universal/plugin-data.md` | every mode (preflight) |
 | Anti-patterns | `universal/anti-patterns.md` | every mode |
-| Upstream codex-plugin-cc bumps | `universal/upstream-codex-cc.md` | maintenance (not runtime) |
+
+### Maintenance (not runtime)
+
+| Topic | File |
+|---|---|
+| codex-companion vendored subtree (lib tour, dispatcher rationale) | `maintenance/codex-companion.md` |
+| Upstream codex-plugin-cc bumps and patch procedure | `maintenance/upstream-codex-cc.md` |
 
 ## By mode
 
@@ -75,7 +81,7 @@ Read in this order:
 
 1. `modes/rescue.md` — classification → explicit `--redo` → re-spawn.
 2. `universal/manifest-contract.md` — entry schema, history rows.
-3. `universal/codex-companion.md` — colocated state/job-record correlation.
+3. `universal/codex-companion.md` — colocated state/job-record correlation (runtime forensics).
 4. Then the original mode's reference (whatever `manifest.mode` says).
 5. `universal/failure-modes.md` — edge cases for in-flight, stale, unknown.
 
@@ -94,13 +100,14 @@ Read in this order:
 
 ### "I'm bumping the codex-plugin-cc version"
 
-- `universal/upstream-codex-cc.md` — update procedure.
+- `maintenance/upstream-codex-cc.md` — update procedure.
+- `maintenance/codex-companion.md` — vendored-subtree library tour and dispatcher imports to re-verify.
 
 ### "I'm writing a sister skill that needs to coexist"
 
 - `universal/plugin-data.md` — state directory layout.
 - `universal/manifest-contract.md` — schema, atomic writes.
-- `universal/codex-companion.md` — what NOT to step on.
+- `maintenance/codex-companion.md` — what NOT to step on (subcommands and skill use).
 
 ## File sizes
 
@@ -109,6 +116,7 @@ Reference files are short by design — typically 200–400 lines. Anything long
 | Topic group | File count | Approx lines each |
 |---|---|---|
 | modes/ | 5 | 150–300 |
-| universal/ | 13 | 100–300 |
+| universal/ | 14 | 100–300 |
+| maintenance/ | 2 | 90–175 |
 | templates/ | 4 | 30–80 |
-| index | 1 | 100 |
+| index | 1 | 120 |

@@ -96,7 +96,7 @@ Every script gets a paired `<name>.md` doc. Detailed docs live alongside each sc
 
 ## Vendored tree
 
-`codex-cc/` is a vendored copy of `openai/codex-plugin-cc`'s `plugins/codex/scripts/` tree (minus the two hooks). The paired-doc rule does not apply inside this subtree; it is covered as one vendored unit by `codex-cc/UPSTREAM.md` and `references/universal/codex-companion.md`. Route `codex-cc/lib/*` as a subtree, not as individual top-level scripts.
+`codex-cc/` is a vendored copy of `openai/codex-plugin-cc`'s `plugins/codex/scripts/` tree (minus the two hooks). The paired-doc rule does not apply inside this subtree; it is covered as one vendored unit by `codex-cc/UPSTREAM.md` and `references/maintenance/codex-companion.md` (with `references/maintenance/upstream-codex-cc.md` for the bump procedure). Route `codex-cc/lib/*` as a subtree, not as individual top-level scripts.
 
 ## Adding a new script
 
