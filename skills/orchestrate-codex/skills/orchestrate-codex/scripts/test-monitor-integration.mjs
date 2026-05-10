@@ -414,6 +414,32 @@ function scenarioRescueSubset() {
 }
 
 // ----------------------------------------------------------------------------
+// [11] Unknown subcommand surfaces stable error envelope
+// ----------------------------------------------------------------------------
+// Regression test: derailment-test round 8 confirmed mjs:2369-2371 returns
+// `error.code="unknown_mode"` for unrecognized subcommands. Pin that contract
+// so any future refactor of the dispatcher's argv parsing keeps the envelope
+// shape an agent depends on for AskUserQuestion fallback.
+
+function scenarioUnknownCommand() {
+  process.stdout.write(`\n[11] dispatcher rejects unknown subcommand cleanly\n`);
+  const dispatcher = path.join(SCRIPT_DIR, "orchestrate-codex.mjs");
+  const r = spawnSync(process.execPath, [dispatcher, "not-a-real-mode"], {
+    encoding: "utf8",
+    env: { ...process.env, ORCHESTRATE_SKIP_PREFLIGHT: "1" },
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  expect(r.status !== 0, "unknown subcommand exits non-zero");
+  let env = null;
+  try { env = JSON.parse(r.stdout); } catch (_) { /* leave null */ }
+  expect(env && env.ok === false, "unknown subcommand returns ok:false envelope");
+  expect(env && env.error && env.error.code === "unknown_mode",
+    `expected error.code='unknown_mode', got ${env?.error?.code}`);
+  expect(env && typeof env.error?.message === "string" && env.error.message.length > 0,
+    "unknown subcommand error has human message");
+}
+
+// ----------------------------------------------------------------------------
 // Run
 // ----------------------------------------------------------------------------
 
@@ -429,6 +455,7 @@ async function main() {
   scenarioStrictParse();
   scenarioConcurrency();
   scenarioRescueSubset();
+  scenarioUnknownCommand();
 
   process.stdout.write(`\n=========================================\n`);
   process.stdout.write(`PASS: ${passCount}   FAIL: ${failCount}\n`);
