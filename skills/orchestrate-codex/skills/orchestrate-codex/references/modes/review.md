@@ -75,7 +75,7 @@ Surfacing `--prompt-file` on `handleReview` is a known-but-not-yet-implemented e
 1. `git rev-parse --is-inside-work-tree` succeeds (`handleReview` refuses if `.git` is absent under the resolved workspace root).
 2. Each branch in `--branches` exists locally OR can be fetched from `origin`.
 3. Each branch has a remote ref on `origin` (if not, push first).
-4. `codex login status` — warn unless `~/.codex/config.toml` declares no `model_provider`. Note that `handleReview` itself does **not** call `codex login status` (earlier drafts of SKILL.md claimed it did); the operator should check it manually before invoking review mode if their setup is unusual.
+4. `codex login status` — gated by `bootstrap.sh:74` (called by the dispatcher at `orchestrate-codex.mjs:1794` *before* every mode handler). `handleReview` itself does not duplicate the check; the universal pre-flight covers it. Escape hatch for proxy / managed-auth setups: `ORCHESTRATE_SKIP_CODEX_AUTH=1` (per `SKILL.md` pre-flight). Skip entirely with `ORCHESTRATE_SKIP_CODEX_PREFLIGHT=1` when the workflow has already verified auth.
 5. `<skill-root>/scripts/codex-cc/lib/args.mjs`, `state.mjs`, and `workspace.mjs` are present; the dispatcher imports them.
 6. `codex exec review --help` shows `--json`, `-o`, `--base`, `-m`, and `--dangerously-bypass-approvals-and-sandbox`.
 

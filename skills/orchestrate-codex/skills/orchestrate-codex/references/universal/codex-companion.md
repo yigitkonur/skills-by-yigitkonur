@@ -22,7 +22,7 @@ For single-mode rescue, the forensic call is:
 node <skill-root>/scripts/codex-cc/codex-companion.mjs task-resume-candidate --json --cwd <workspace-root>
 ```
 
-Status: `rescue-detect.py` reads codex-companion job records under `<plugin-data>/state/<slug>-<hash>/jobs/<id>.json` for forensic correlation. The dispatcher's `handleRescue` does not yet invoke `task-resume-candidate` to drive a re-spawn (C1/C9 derailments verified rescue is half-implemented as of 2026-05-08). Until the gap is closed, `task-resume-candidate` is a forensic-only surface for the skill — operators who need a context-preserving resume must call `codex exec resume <id>` themselves.
+Status: `rescue-detect.py` reads codex-companion job records under `<plugin-data>/state/<slug>-<hash>/jobs/<id>.json` for forensic correlation. For single-mode rescue, the dispatcher reads `entry.codex_thread_id` directly from the manifest and threads it into `run-single.sh` as `--resume-thread <id>` (orchestrate-codex.mjs:2210-2218; run-single.sh resume case). The runner translates this into `codex exec resume <id>` — context preserved without going through `task-resume-candidate`. The companion's `task-resume-candidate` surface remains forensic-only: read it via `node <skill-root>/scripts/codex-cc/codex-companion.mjs task-resume-candidate --json --cwd <workspace-root>` to enumerate resumable threads when the manifest lacks a `codex_thread_id` (e.g. hand-rolled manifests, runner crashed before capturing thread.started).
 
 Output is a JSON list of resumable thread descriptors:
 

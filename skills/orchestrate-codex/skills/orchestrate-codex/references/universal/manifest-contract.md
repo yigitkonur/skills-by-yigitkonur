@@ -301,11 +301,13 @@ To start a second run on the same workspace:
 
 If the manifest is corrupted (e.g. partially-written JSON because the disk filled):
 
-1. Run `python3 scripts/audit-fleet-state.py --manifest <path> --json --repair-dry-run`. It reads the manifest with a tolerant parser, lists what's salvageable, and writes a candidate repaired JSON to stdout.
-2. Inspect the candidate. If acceptable, apply with `audit-fleet-state.py --repair-execute`.
-3. If unsalvageable, copy the manifest to `<path>.broken-<timestamp>`, then **delete the original manifest** so the dispatcher's concurrency gate clears, then start a fresh run via the normal `node scripts/orchestrate-codex.mjs <mode>` invocation (or `--force-new-run --run-id <custom>` if you want the broken manifest preserved at its original path). Surface the broken file path so the user can inspect.
+1. **Diagnose.** `python3 scripts/audit-fleet-state.py --manifest <path> --json` reports `manifest_present: false` for an unparseable manifest (the audit script never tries to repair). The dispatcher's `node scripts/orchestrate-codex.mjs rescue --manifest <path>` returns `error.code="manifest_corrupt"` with the parse error in `message`. Either signal confirms the file is broken.
+2. **Preserve.** Copy the manifest to `<path>.broken-<timestamp>` so its history survives.
+3. **Replace.** Delete the original at `<path>` so the dispatcher's concurrency gate clears, then start a fresh run via the normal `node scripts/orchestrate-codex.mjs <mode>` invocation. Or, to keep the broken file in place, use `--force-new-run --run-id <custom>` to write a sibling at `manifest.<custom-run-id>.json`. Surface the `.broken-<timestamp>` path so the user can inspect.
 
 Never silently delete a corrupted manifest. The history may be the only record of what was attempted.
+
+> *Note: an automated repair flow (`--repair-dry-run` / `--repair-execute`) is **Planned — not yet wired**. Today, audit-fleet-state.py is read-only by design; recovery is the preserve-and-replace flow above.*
 
 ## Why outside the repo
 

@@ -28,6 +28,8 @@ Subsets accepted by `--apply`: `failed-only` | `never-started-only` | `all-non-d
 
 `ids:s1,s2,s3` is by-name regardless of status. The status filters (`failed-only` / `never-started-only` / `all-non-done`) apply only to the named-subset variants. A `done` entry named in `ids:` will be flipped to `queued` and redispatched (operator-override semantics) — use this when you intentionally want to re-run an already-successful entry without archiving its answer through `--force-redo` first.
 
+> **Batch-mode caveat for `--apply ids:<done-entry>`.** Batch's runner-side skip-existing is filesystem-keyed (`-s answers/<slug>.md`), not status-keyed like exec's. Flipping the entry's status back to `queued` does not archive the answer file, so when the runner replays it sees the file is still on disk and writes `status=skipped` instead of redispatching codex. To actually re-run a `done` batch entry, use `--force-redo <slug>` (which atomically archives the answer to `answers/.prev/` AND flips the status), not `--apply ids:<slug>`. The asymmetry exists because exec's commit-based idempotency lives in git history while batch's lives on disk; archiving at the dispatcher boundary preserves the operator's prior answers without losing them.
+
 ## When rescue triggers
 
 - A prior orchestrate-codex run ended with non-terminal entries.

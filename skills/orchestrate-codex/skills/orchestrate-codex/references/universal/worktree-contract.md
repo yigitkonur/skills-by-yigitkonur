@@ -126,10 +126,12 @@ Default behavior is dry-run. `--execute` is the gate. `--force-abandon <id>` is 
 
 If `setup-worktree.sh` is interrupted partway through (e.g. Ctrl-C during `prisma generate`):
 1. The worktree may exist on disk but with stale codegen.
-2. Re-running `setup-worktree.sh` with `ALLOW_REUSE=1` re-symlinks and re-runs codegen idempotently.
-3. If the worktree is corrupt (e.g. `.git/` link is broken), `git worktree remove --force <path>` it and re-run setup.
+2. The runners (`run-fleet.sh:250`, `run-review.sh:232`) always invoke `setup-worktree.sh` with `ALLOW_REUSE=1`. With that flag set, `setup-worktree.sh` short-circuits cleanly when the worktree directory already exists, re-symlinks shared artefacts, and re-runs codegen idempotently. So a re-dispatch (rescue redo, or simply re-running the original mode) recovers the worktree without manual cleanup.
+3. If the worktree is corrupt (e.g. `.git/` link is broken), `git worktree remove --force <path>` and re-run setup.
 
-The runner detects "worktree exists, manifest entry expects setup not yet done" via the `mode_state.worktree_setup_complete=true` flag the setup script writes. If the flag is missing, setup re-runs.
+Detection is path-based: `setup-worktree.sh` keys off `[[ -d "$WT_PATH" ]]` plus `ALLOW_REUSE=1`. There is no manifest sentinel for "setup-in-progress"; the on-disk dir is the truth.
+
+> *Earlier drafts referenced a `mode_state.worktree_setup_complete=true` flag. **Not implemented**; the script writes nothing of the kind. The `ALLOW_REUSE=1` mechanism above is the only working surface today.*
 
 ## Worktrees vs branches
 

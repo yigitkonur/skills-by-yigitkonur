@@ -70,17 +70,30 @@ For these missions:
 
 If the mission has both a parseable deliverable AND source edits (rare — e.g. "generate `openapi.yaml` AND wire it into the express app"), split into two missions; single mode runs each cleaner than one bundled prompt.
 
+## When the deliverable is a single newly-written file written to disk
+
+A third shape — distinct from the parseable-`-o`-artifact case (top of this file) and the multi-file source-refactor case (above). Examples: codex writes `index.html`, `report.pdf`, a one-shot dataset, a generated image, or a single new `.py` script that didn't exist before.
+
+For these missions:
+
+- The deliverable is the **file on disk inside cwd**, not the `-o` answer file. The `-o` file should hold a one-line confirmation (e.g. `wrote index.html, 27 lines, no JS`) so the operator can verify the agent thinks it succeeded.
+- Skip the canonical-opener / first-byte rules from the parseable-artifact section — the disk file may have any shape (HTML/CSS/binary/whatever).
+- Success criteria are binary checks against the disk file: `[ -f index.html ]`, `wc -l index.html` reports ≤ ceiling, `grep -c '<script' index.html` reports 0, etc.
+- Restate any size ceiling in Constraints + Success criteria + Failure protocol per `prompt-discipline.md`. The Output format section stays size-silent.
+
 ## When to add the SUBAGENT-STOP prefix
 
-Add the prefix from `references/templates/exec.tmpl.md` when ALL of these hold:
-- The task is coding work (writing/modifying source files), not research or analysis.
-- The cwd is a git repo (`git rev-parse --is-inside-work-tree` exits 0).
-- Codex's installed meta-skills include planning skills (visible in the early JSONL events as long `agent_message` items about planning before any `command_execution` event).
+**Precedence:** if any *skip* rule matches, omit the prefix. Skip wins over include. Evaluate skip rules first; only apply the include rules when all skip rules miss.
 
 Skip the prefix when ANY of these hold:
 - The mission is research, summarization, or non-coding.
 - The cwd is not a git repo (codex doesn't load coding meta-skills there — confirmed by inspection of installed skill triggers).
 - The deliverable is a single structured artifact (JSON config, markdown table, CSS file) where meta-skill triggers don't fire.
+
+Add the prefix from `references/templates/exec.tmpl.md` when ALL of these hold (and no skip rule fires):
+- The task is coding work (writing/modifying source files), not research or analysis.
+- The cwd is a git repo (`git rev-parse --is-inside-work-tree` exits 0).
+- Codex's installed meta-skills include planning skills (visible in the early JSONL events as long `agent_message` items about planning before any `command_execution` event).
 
 ## What single mode unlocks vs exec mode
 

@@ -157,18 +157,14 @@ Starting a new run on an active manifest is intentionally gated; the runners wou
 
 ### Enumerating manifest siblings
 
-`audit` and `rescue` resolve the canonical `manifest.json` from the cwd-derived state dir; they do **not** enumerate `manifest.<run-id>.json` siblings. To list every manifest in the active state dir (so an operator who forgot a custom `--run-id` can find it):
-
-```bash
-ls "$(node scripts/orchestrate-codex.mjs --resolve-state-dir)/manifest"*.json 2>/dev/null
-```
-
-Or, if `--resolve-state-dir` is unavailable, the same enumeration via the universal-fallback paths:
+`audit` and `rescue` resolve the canonical `manifest.json` from the cwd-derived state dir; they do **not** enumerate `manifest.<run-id>.json` siblings. To list every manifest in the active state dir (so an operator who forgot a custom `--run-id` can find it), use the universal `find` enumeration over the resolved state-dir roots:
 
 ```bash
 find "${CLAUDE_PLUGIN_DATA:-/nonexistent}/state" "${TMPDIR:-/tmp}/codex-companion" \
     -type f \( -name 'manifest.json' -o -name 'manifest.*.json' \) 2>/dev/null
 ```
+
+(There is no `--resolve-state-dir` subcommand on the dispatcher; that recipe was wishful and would be rejected as `unknown_option`. The state-dir resolution chain is documented in `references/universal/plugin-data.md`.)
 
 Pass any chosen sibling to `--manifest <abs-path>` directly. The dispatcher's resolver bypasses cwd-derivation when `--manifest` is explicit.
 
@@ -183,6 +179,19 @@ The operator MUST keep slug spaces disjoint when running parallel siblings. Prac
 - **Sequential, not parallel.** When in doubt, run siblings back-to-back — the second run starts after the first reaches a terminal manifest state. No race surface.
 
 This is operator discipline. The dispatcher cannot detect overlapping slugs across sibling manifests; it would have to read every manifest under the state dir on every dispatch, which is not how the contract is wired today.
+
+## Audit helpers — two distinct exit-code contracts
+
+Two helpers share the `audit` prefix but are independent and use different exit-code conventions. Don't conflate them when scripting:
+
+| Helper | Purpose | Exit codes |
+|---|---|---|
+| `scripts/audit-fleet-state.py` | Manifest + filesystem drift dump (status counts, drift_kinds, orphan_worktrees) | `0` clean (no drift) — `1` actionable drift detected (manifest/fs disagree, orphans, etc.) — `2` manifest unreadable — `3` environmental error (e.g. permission denied) |
+| `scripts/audit-sizes.sh` | Batch-mode answer-file size auditor (bottom-decile flagging, `MIN_BYTES` floor) | `0` audit ran (regardless of flagged entries) — `1` ANSWERS_DIR not found — `2` manifest unreadable / malformed |
+
+The dispatcher's `audit` mode treats `audit-fleet-state.py` exits 0 and 1 as success (both produce a valid JSON report); only ≥2 surfaces as `python_helper_failed`. The dispatcher's `tidy` mode is identical for `cleanup-worktrees.py` after the round-8 alignment (exits 0/1 are success-with-report; 2+ is helper failure). `audit-sizes.sh` is invoked directly by the operator post-batch and has no dispatcher wrapper.
+
+When scripting against either, always read the helper's JSON `summary` to classify the run; do not re-derive intent from the exit code alone.
 
 ## Anti-patterns
 

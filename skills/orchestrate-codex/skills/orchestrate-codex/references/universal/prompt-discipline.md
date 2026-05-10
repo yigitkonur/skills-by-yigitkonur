@@ -101,6 +101,7 @@ Size-budget anti-patterns (count-once is fragile):
 - **Stating a count once is fragile.** If the deliverable is "exactly N rows", restate N in Constraints AND Success criteria AND Failure protocol. Single-shot LLMs lose count over long outputs; redundancy across three sections is cheap insurance.
 - **Mixing soft target with hard ceiling.** Codex anchors on the soft target. State only the hard ceiling, e.g. `≤30 lines`, never `aim for 20`. Pick one number. State it three times.
 - **Pair counts with executable checks.** `wc -l`, `awk NF` count, `grep -c` — give codex the exact command it must run before declaring success, and require the output in the success report.
+- **Output format covers shape, not size.** When the prompt also has an `Output format` section (parseable artifacts: JSON / YAML / markdown table / CSS / raw HTML — see `references/templates/single.tmpl.md`), use it for first-byte / last-byte / canonical-opener rules only. Do NOT restate the line count there. Three-section restatement is Constraints + Success criteria + Failure protocol; Output format stays size-silent.
 
 ### Out-of-scope — explicit non-goals
 

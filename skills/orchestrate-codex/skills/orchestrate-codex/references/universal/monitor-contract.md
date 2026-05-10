@@ -81,10 +81,10 @@ The agent acts on flags:
 ### batch mode
 
 ```bash
-bash <skill-root>/scripts/codex-monitor.sh --tail-runner-log
+ORCHESTRATE_MANIFEST=<manifest> MONITOR_ROOT=<dir> bash <skill-root>/scripts/codex-monitor.sh
 ```
 
-Tails the runner's `_runner.log` (one line per state transition emitted by `run-batch.sh`). The watcher injects size annotations on DONE/SKIP events:
+The dispatcher emits the canonical command via `envelope.monitor.tool_hint`; copy it verbatim. There is no `--tail-runner-log` flag — `codex-monitor.sh` is mode-agnostic and accepts no CLI arguments. The runner emits a state-transition stream (one line per START/DONE/FAIL/SKIP) which the manifest-aware tick line summarizes. To tail the raw runner log directly without ticking, `tail -F "$RUNNER_LOG"` instead. The watcher injects size annotations on DONE/SKIP events:
 
 ```
 START 01-foo
@@ -121,16 +121,14 @@ Verbosity is configurable: `minimal | normal | verbose`. Default is `normal`.
 ### review mode
 
 ```bash
-ORCHESTRATE_MANIFEST=<manifest> bash <skill-root>/scripts/codex-monitor.sh --review
+ORCHESTRATE_MANIFEST=<manifest> MONITOR_ROOT=<dir> bash <skill-root>/scripts/codex-monitor.sh
 ```
 
-The `--review` flag changes the per-tick line to:
+The dispatcher emits this verbatim via `envelope.monitor.tool_hint` for review just like exec/batch — `codex-monitor.sh` is mode-agnostic. There is no `--review` flag, no per-tick `branches=converged:C/in-loop:L/...` line shape, and no `round-cap-near` / `oscillation` flag emission; those were aspirational and never wired. The standard manifest-aware tick line carries `mode_state.review.round` per entry; an operator who wants per-round counts can `jq` the manifest separately:
 
+```bash
+jq '.entries[] | {id, status, round: .mode_state.review.round}' "$ORCHESTRATE_MANIFEST"
 ```
-<UTC-iso>  branches=converged:C/in-loop:L/blocked:B/cap:K/failed:X  rounds=<sum>  flags=<flags>
-```
-
-Per-branch round counts are logged. `flags=` includes `round-cap-near` (round ≥ 8 of 10) and `oscillation` (3-consecutive-all-rejected).
 
 ### rescue mode
 
@@ -158,7 +156,7 @@ Without these, a 4 KB pipe buffer means events arrive in batches separated by mi
 ### Terminal sentinels per mode
 
 - **exec / review** (`codex-monitor.sh`): `--- fleet quiet ---` is emitted on stdout **only when** `ORCHESTRATE_QUIET_AFTER` is set to a positive integer AND the fleet has been quiet for that many consecutive ticks (see `scripts/codex-monitor.sh:43, 231-233`). Default is `0` = never auto-exit. Set `ORCHESTRATE_QUIET_AFTER=1` (or higher to debounce) when you want a terminal sentinel; otherwise rely on the `fleet-quiet` flag inside per-tick lines and `TaskStop` from the agent.
-- **batch** (`codex-monitor.sh --tail-runner-log`): `--- all jobs finished ---` is emitted by `run-batch.sh` itself when the runner exits. The Monitor sees it as a regular tail line.
+- **batch** (`codex-monitor.sh`, mode-agnostic, no flags): `--- all jobs finished ---` is emitted by `run-batch.sh` itself when the runner exits. The manifest-aware ticker surfaces it on the same stream the Monitor tails. (No `--tail-runner-log` flag — see L87 above.)
 - **single**: `run-single.sh` appends a `{"type":"orchestrate.done","entry_id":"<id>","status":"<status>"}` event to the JSONL log AFTER the terminal manifest write; `codex-json-filter.sh` translates it to the line `--- single done (<id>: <status>) ---`. Live-watch operators (`tail -F <jsonl> | codex-json-filter.sh`) see this final line and TaskStop the Monitor. The sentinel is emitted at every verbosity level. Existing JSONL consumers ignore unknown event types by default (the new event type is additive). Status values: `done` (success), `failed` (codex non-zero or empty `-o`).
 
 ## Forbidden patterns

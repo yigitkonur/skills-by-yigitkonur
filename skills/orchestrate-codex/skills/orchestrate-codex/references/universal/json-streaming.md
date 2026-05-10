@@ -135,7 +135,7 @@ python3 manifest-update.py entry --manifest "$MANIFEST" --entry "$slug" \
     --set "codex_thread_id=$thread_id"
 ```
 
-**Planned — single-mode rescue currently re-runs from scratch.** The `codex_thread_id` is captured into the manifest, but `scripts/run-single.sh` (lines 130, 136) only ever calls a fresh `codex exec`; `handleRescue` in `scripts/orchestrate-codex.mjs` classifies and exits without re-dispatching. Until the dispatcher is wired up, an operator who needs context-preserving resume must invoke `codex exec resume <id>` manually outside the skill. See `references/universal/failure-modes.md` rescue rows for the full surface.
+**Single-mode rescue resumes the prior thread when `codex_thread_id` is recorded in the manifest.** `handleRescue` (`scripts/orchestrate-codex.mjs:2210-2218`) builds runner args including `--resume-thread <id>` from `entry.codex_thread_id`, and `run-single.sh` translates this into `codex exec resume <id>` — context-preserving rescue is wired end-to-end. When the manifest lacks `codex_thread_id` (rare; runner crashed before the `thread.started` event), the dispatcher falls back to `--resume-last` which the runner translates into `codex exec resume --last`. If neither is appropriate (operator wants a different thread), call `codex exec resume <correct-id>` manually outside the skill. See `references/universal/failure-modes.md` rescue rows for the full surface.
 
 ## Capturing token usage
 

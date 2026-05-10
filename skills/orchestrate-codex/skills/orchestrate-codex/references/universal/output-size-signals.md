@@ -120,15 +120,16 @@ Audit then shows the entry as flagged-but-accepted, not flagged-and-actionable. 
 
 ## Per-input MIN
 
-Sometimes inputs are heterogeneous and a single floor is wrong. Set `MIN_BYTES` per slug via `mode_state.min_bytes`:
+`audit-sizes.sh` today honors a single global floor — it has no per-entry override path. The working surface:
 
-```bash
-# In tasks.json or the input file's render annotation:
-{"id": "01-deep-research", "mode_state": {"min_bytes": 20000}}
-{"id": "02-quick-lookup", "mode_state": {"min_bytes": 500}}
-```
+- **Global override** (recommended): prefix every audit invocation with `MIN_BYTES=<N>`.
+  ```bash
+  MIN_BYTES=5000 bash scripts/audit-sizes.sh --manifest <manifest>
+  ```
+  Re-export in any new shell — the env doesn't survive across separate shells, so the dispatcher's `post_run_audit_cmd` envelope and a hand-typed audit invocation must each set `MIN_BYTES` themselves.
+- **Per-bucket runs**: when inputs are heterogeneous, split them into separate batch dispatches each with their own `MIN_BYTES`. Each manifest then audits against its own floor.
 
-`audit-sizes.sh` reads per-entry `mode_state.min_bytes` if set, falls back to `MIN_BYTES` env, falls back to 10000.
+> *Note: per-entry `mode_state.min_bytes` consumption inside `audit-sizes.sh` is **Planned — not yet wired**. The script's MIN value is resolved once at start (positional arg, then `MIN_BYTES` env, then default 10000) and applied uniformly. Setting `mode_state.min_bytes` on individual entries today is silently ignored by the auditor.*
 
 ## Anti-patterns
 

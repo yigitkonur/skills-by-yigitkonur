@@ -136,7 +136,17 @@ If the wrapper sees nothing to commit AND codex exit is 0, the task is marked `f
 
 ### Audit-style / findings-only tasks
 
-If the user's task produces a deliverable that is NOT a code change — accessibility audits, security findings, code reviews stored as markdown reports, design reviews — the success-gate above ("≥1 commit on branch since baseline") trips with `codex_exit_0_no_changes` because no code was modified. The fix is in the prompt: instruct codex to write the deliverable to a file inside the worktree AND commit it. Concretely, end your prompt with: *"Write the findings to `audit/<task-id>.md` (or whatever path is appropriate for your repo's convention) and commit it with `git add audit/<task-id>.md && git commit -m '<descriptive subject>'` before exiting."* The wrapper sees the commit, the success gate passes, and the audit report is preserved as a regular tracked artifact. See `references/universal/prompt-discipline.md` for the success-criterion pattern.
+If the user's task produces a deliverable that is NOT a code change — accessibility audits, security findings, code reviews stored as markdown reports, design reviews — the success-gate above ("≥1 commit on branch since baseline") trips with `codex_exit_0_no_changes` because no code was modified. The fix is in the prompt: instruct codex to write the deliverable to a file inside the worktree AND commit it.
+
+Verbatim form to drop into your prompt's Success criteria (copy-paste, adjust the path):
+
+```
+## Success criteria
+- `audit/<task-id>.md` exists, non-empty, ≤ <ceiling> lines.
+- File is committed: `git add audit/<task-id>.md && git commit -m "audit(<scope>): <one-line summary>"` ran cleanly before exit.
+```
+
+The wrapper sees the commit, the success gate passes, and the audit report is preserved as a regular tracked artifact. See `references/universal/prompt-discipline.md` for the success-criterion pattern.
 
 ## Post-verify auto-detection
 
