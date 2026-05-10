@@ -5,7 +5,9 @@ description: Use skill if you are routing codex CLI work across five modes (exec
 
 # Orchestrate Codex
 
-The skill orchestrates. Codex executes. One entry point, five modes. Detect mode → run pre-flight → write manifest → spawn runner detached → emit Monitor hint → exit. The agent that loaded this skill stays in the conversation; codex workers run in the background; the manifest is the source of truth for state.
+Run multiple codex CLI workers under one manifest, one Monitor, one policy. The skill detects mode → seeds a manifest → spawns a detached runner → emits a Monitor hint → exits. Codex workers run in the background; the agent stays in the conversation; the manifest is the source of truth.
+
+This skill is for codex-only orchestration. PRs go to `ask-review`. Bot-comment triage goes to `evaluate-code-review`. Cross-LLM batch fanout is out of scope.
 
 ## Trigger Boundary
 
@@ -82,7 +84,34 @@ Q8. None of the above → ask once. Compose option descriptions from the
     to see what each mode does.
 ```
 
-**Multi-mode prompts (Q1–Q7 fire on disjoint clauses).** When the user's prompt encodes more than one mode at once — e.g. "3 branches need review, 2 small refactors in parallel, 1 big refactor I want to watch live" matches Q2 + Q5 + Q4 simultaneously — the first-match-wins rule mis-routes by silently dropping the unmatched clauses. Don't pick one mode arbitrarily; one orchestrate-codex run is one mode. Surface the breakdown to the user (clause → mode mapping) and dispatch one invocation per mode in this default order: `review` → `exec` → `single` → `batch` (review first because its findings may shrink scope before code lands; rescue is its own track and only fires on Q1). Concurrent invocations against the same workspace require `--force-new-run --run-id <custom>` per dispatch (the dispatcher refuses overlapping runs otherwise). Sequential same-workspace runs without `--run-id` overwrite the prior manifest, so use distinct run-ids if any audit trail matters across the wave. See `references/universal/manifest-contract.md` for the run-id semantics.
+### Multi-mode prompts: when Q1-Q7 fire on disjoint clauses
+
+> **Trigger.** The user's prompt encodes more than one mode at once on disjoint clauses. The first-match-wins rule above mis-routes here by silently dropping the unmatched clauses. One orchestrate-codex run is one mode — never pick one clause and ignore the rest.
+
+**Example.** *"3 branches need review, 2 small refactors in parallel, 1 big refactor I want to watch live"* matches Q2 (review) + Q5 (exec) + Q4 (single) simultaneously.
+
+**Action.**
+
+1. Surface the breakdown to the user explicitly — one line per clause mapping it to a mode (e.g. `clause 1 (3 branches, ship-ready) → review`, `clause 2 (2 refactors, parallel) → exec`, `clause 3 (1 big refactor, watch live) → single`). Confirm before dispatching.
+2. Dispatch order is `review` → `exec` → `single` → `batch`. Review first because its findings may shrink scope before code lands.
+3. Concurrent invocations against the same workspace require `--force-new-run --run-id <custom>` per dispatch — the dispatcher refuses overlapping runs otherwise.
+4. Sequential same-workspace runs without `--run-id` overwrite the prior manifest. Use distinct run-ids if any audit trail matters across the wave.
+
+Rescue is its own track and only fires on Q1; it never participates in the multi-mode dispatch order. See `references/universal/manifest-contract.md` for run-id semantics.
+
+### Confidence policy
+
+After running Q1-Q8, the matched rule emits a confidence:
+
+| Confidence | Action |
+|---|---|
+| HIGH | Dispatch the matched mode immediately. State the match in the mode-declaration step (see Output contract). |
+| MEDIUM | If the surrounding prompt is unambiguous in your read, dispatch and state the MEDIUM stamp in the mode declaration ("matched Q5 (MEDIUM): treating these as discrete tasks because user enumerated them"). If ambiguous, ask once with the same option-composition rule as Q8. |
+| LOW (no rule fired, Q8 path) | Ask once. Compose option descriptions from the Trigger Boundary bullets — one user-facing sentence per mode. The 5-bare-word picker is unusable. |
+
+Examples of MEDIUM ambiguity:
+- "I have 3 features I'm working on" — could be Q5 (3 discrete tasks → exec) or Q4 (one big mission → single). Ask if the user wants parallel-fleet or one-mission shape.
+- "Check these branches" — could be Q2 (review-mode if shipping intent) or just a `git diff` ask. Ask for shipping/merge intent.
 
 `<manifest-path>` resolution: `resolveStateDir(cwd)/orchestrate-codex/manifest.json`, where `resolveStateDir` is the vendored codex-cc algorithm: `$CLAUDE_PLUGIN_DATA/state/<slug>-<hash>` when set, otherwise `${TMPDIR:-/tmp}/codex-companion/<slug>-<hash>`. See `references/universal/manifest-contract.md` and `references/universal/plugin-data.md`.
 
@@ -155,7 +184,7 @@ Cleanup gate: `scripts/cleanup-worktrees.py --execute` removes worktrees whose e
 
 Path: `resolveStateDir(cwd)/orchestrate-codex/manifest.json`, matching `scripts/codex-cc/lib/state.mjs`.
 
-Workspace slug+hash matches codex-companion's `lib/state.mjs:resolveStateDir(cwd)` so this manifest sits next to codex-companion's `state.json` and `jobs/` records — rescue can correlate by codex thread ID. See `references/universal/codex-companion.md` and `references/universal/upstream-codex-cc.md` for the vendored subtree contract.
+Workspace slug+hash matches codex-companion's `lib/state.mjs:resolveStateDir(cwd)` so this manifest sits next to codex-companion's `state.json` and `jobs/` records — rescue can correlate by codex thread ID. See `references/universal/codex-companion.md` for runtime correlation; `references/maintenance/codex-companion.md` and `references/maintenance/upstream-codex-cc.md` cover the vendored-subtree contract for maintainers.
 
 Top-level fields: `schema_version, run_id, mode, started_at, base_commit, workspace_root, state_dir, policy, concurrency_cap, monitor_root, paths, preflight, entries[], history[]`. Entry status: `queued | running | done | failed | skipped | converged | blocked | cap_reached`. `run_id` = `<UTC ISO compact>-<4-hex-from-os.urandom>`.
 
@@ -175,6 +204,8 @@ Manifest is **deleted** on successful tidy. **Preserved** during rescue — hist
 
 Soft gate: any `JOBS` above the mode default OR `JOBS > 20` (any mode) requires `--i-have-measured "<justification>"` and records the justification in `manifest.policy.overrides.concurrency` (the dispatcher's canonical write location). `JOBS > 100` is refused at the dispatcher boundary. The bash runners (`run-fleet.sh`, `run-batch.sh`) only emit a WARN above 20 — the dispatcher is the only hard-enforcement point. Read `references/universal/concurrency.md`.
 
+**Enforcement asymmetry — important.** Only the dispatcher refuses concurrency above the cap. The bash runners (`run-fleet.sh`, `run-batch.sh`) emit a stderr WARN above 20 but will run at any positive `JOBS`. Always invoke through `node <skill-root>/scripts/orchestrate-codex.mjs <mode>` if you want the safety rail; bypassing the dispatcher bypasses the gate. Full mechanics in `references/universal/concurrency.md`.
+
 ## Universal: rehearsal and preview
 
 `--dry-run` is the first-class preview path on every dispatcher mode (`exec`, `batch`, `single`, `review`, `rescue`). The dispatcher writes the manifest, spawns the runner with `--dry-run` propagated through, and the runner prints the planned `codex exec` invocation plus stub artifacts (`dry-run answer for <id>`, a stub JSONL turn) without invoking codex. Use it to inspect command shape, manifest layout, and Monitor output before committing to a real spawn.
@@ -192,60 +223,50 @@ Every destructive action stops and asks. Bypass only when the orchestrator is in
 
 Skip-existing is never a destruction; the answer file already exists, the runner just doesn't overwrite. Idempotency is free — see `references/universal/idempotency.md`.
 
-## Mode router
+## Output contract
 
-Each block is the router contract: trigger → pre-checks → read first → run → success gate → failure routing. Six lines, identical shape across modes so the agent scans all five in one pass.
+Surface these artifacts in order, each at the step that produces it — not batched at the end:
+
+1. **Mode declaration** (after Step 1) — `exec` / `batch` / `single` / `review` / `rescue`, plus confidence (HIGH / MEDIUM) and one-line reasoning.
+2. **Pre-flight summary** (after Step 2) — codex version, login status, manifest path resolved, slug+hash.
+3. **Manifest seed report** (after dispatcher returns) — `result.manifest_path`, `result.run_id`, `result.entries_count`, `result.runner_pid`, `result.concurrency_cap`.
+4. **Monitor invocation** (immediately on envelope receipt) — pass `envelope.monitor.tool_hint` through verbatim. Do not synthesize it.
+5. **Per-phase manifest reads during the run** — mode-appropriate (`audit-fleet-state.py` snapshots for fleet modes; live JSONL for single).
+6. **Terminal status report** — every entry's terminal status; surface `failed` / `blocked` for human attention.
+7. **Cleanup decision** (only after success gate fires) — `tidy --execute` only when every branch is merged.
+
+## Mode router
 
 **Dispatcher path:** Replace `<skill-root>` in every `node` invocation below with the absolute path to the installed skill (e.g. `~/.claude/skills/orchestrate-codex/skills/orchestrate-codex` or wherever `npx skills add` placed it). Confirm with `ls <skill-root>/scripts/orchestrate-codex.mjs`.
 
-### exec mode — parallel codex agents in worktrees
+| Mode | Trigger (Q-rule) | Pre-checks | Read first | Dispatcher invocation | Success gate |
+|---|---|---|---|---|---|
+| exec | Q5 or Q6 (≥2 discrete coding tasks; git repo) | repo clean main; `.gitignore` covers `../<repo>-wt-*`; no in-progress merge/rebase/cherry-pick; baseline tests pass | `references/modes/exec.md`, `references/universal/worktree-contract.md`, `references/universal/monitor-contract.md`, `references/universal/json-streaming.md`, `references/templates/exec.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs exec --tasks <tasks.json>` — seeds manifest, spawns `bash scripts/run-fleet.sh --manifest <path>` detached, emits envelope; surface literal `Monitor({...})` from `envelope.monitor.tool_hint` | every entry in {done, failed-surfaced}; Monitor sees `--- all jobs finished ---` |
+| batch | Q3 (input list + template) | workdir confirmed; `inputs.txt` non-empty; `template.md` contains `XXXXXXXXXXXXX` placeholder; slug collisions resolved before render | `references/modes/batch.md`, `references/universal/idempotency.md`, `references/universal/monitor-contract.md`, `references/universal/output-size-signals.md`, `references/templates/batch.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs batch --inputs <file> --template <tmpl>` — renders prompts, seeds manifest, spawns `bash scripts/run-batch.sh --manifest <path>` detached, emits envelope; audit runs after `--- all jobs finished ---` | every input has non-empty `answers/<slug>.md`; `audit-sizes.sh` shows nothing below floor (or every flagged item explicitly waived) |
+| single | Q4 or Q7 (one substantial task) | choose cwd explicitly; if cwd is already inside a worktree, pass `--reuse-worktree` to record that choice | `references/modes/single.md`, `references/universal/json-streaming.md`, `references/universal/monitor-contract.md`, `references/templates/single.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`) — one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`; surface literal Monitor hint | `-o` file non-empty AND manifest entry `done` (`turn.completed` is a Monitor observability signal, not a runner gate) |
+| review | Q2 (branch list + ship-intent) | git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable | `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs review --branches <list>` — seeds branch entries; `run-review.sh <manifest> <round-N>` executes ONE round (native `codex exec review --base <base> --json -o <findings.md>` fanned out across branches); the orchestrator calls `classify-review-feedback.py` on each round, decides converged/blocked/continue, re-invokes `run-review.sh` with `<round-N+1>` if continuing — the runner does NOT loop. Soft round cap 10 | every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path` |
+| rescue | Q1 (manifest exists + resume keyword) | manifest path resolved; freshness ≤ 7 days OR user confirms staleness; `manifest.mode` field present | `references/modes/rescue.md`, `references/universal/manifest-contract.md`, then the original mode's reference (whatever `manifest.mode` says) | `node <skill-root>/scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only; redispatch with `node <skill-root>/scripts/orchestrate-codex.mjs rescue --manifest <path> --apply failed-only\|never-started-only\|all-non-done\|ids:s1,s2,...` | every NOT-DONE entry transitions to a terminal status; manifest history append-only |
 
-- **Trigger:** Q5 or Q6 (≥2 discrete coding tasks; git repo).
-- **Pre-checks:** repo clean main; `.gitignore` covers `../<repo>-wt-*`; no in-progress merge / rebase / cherry-pick; baseline tests pass.
-- **Read first:** `references/modes/exec.md`, `references/universal/worktree-contract.md`, `references/universal/monitor-contract.md`, `references/universal/json-streaming.md`, `references/templates/exec.tmpl.md`.
-- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs exec --tasks <tasks.json>`. The dispatcher writes the seed manifest, spawns `bash scripts/run-fleet.sh --manifest <path>` detached, emits the JSON envelope. Surface the literal `Monitor({...})` from `envelope.monitor.tool_hint`.
-- **Raw inputs:** If your prompts are raw description files (tickets, issue bodies, briefs) rather than pre-rendered templates, run `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode exec` first to wrap each file in the SUBAGENT-STOP prefix and 6-section skeleton. Otherwise codex may burn 20–80k tokens on meta-skill rumination before doing useful work. See `scripts/render-task-prompts.md`.
-- **Success gate:** every entry in {done, failed-surfaced}; Monitor sees `--- all jobs finished ---`.
-- **Failure routing:** `references/universal/failure-modes.md` + `references/modes/exec.md` §recovery.
-- **Audit-style note:** Findings-only / audit-style tasks (no code changes expected) MUST instruct codex to `git add` and `git commit` the report file in the prompt's Success criteria — otherwise the success gate fails with `codex_exit_0_no_changes`. See `references/modes/exec.md` 'Audit-style' subsection.
+Failure routing for every mode: `references/universal/failure-modes.md` plus the per-mode reference's recovery section.
 
-### batch mode — template × N inputs, no worktrees
+### Verifying success per mode
 
-- **Trigger:** Q3 (input list + template).
-- **Pre-checks:** workdir confirmed; `inputs.txt` non-empty; `template.md` contains the `XXXXXXXXXXXXX` placeholder; slug collisions resolved before render.
-- **Read first:** `references/modes/batch.md`, `references/universal/idempotency.md`, `references/universal/monitor-contract.md`, `references/universal/output-size-signals.md`, `references/templates/batch.tmpl.md`.
-- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs batch --inputs <file> --template <tmpl>`. The dispatcher renders prompts, writes the manifest, spawns `bash scripts/run-batch.sh --manifest <path>` detached, emits the envelope. Audit runs after `--- all jobs finished ---`.
-- **Success gate:** every input has a non-empty `answers/<slug>.md`; `audit-sizes.sh` shows nothing below floor (or every flagged item explicitly waived).
-- **Failure routing:** `references/universal/failure-modes.md` + `references/modes/batch.md` §retry.
+| Mode | Verify with |
+|---|---|
+| exec | `node <skill-root>/scripts/orchestrate-codex.mjs audit --manifest <path>` reports zero drift; every entry status terminal |
+| batch | `audit` as above, plus `bash <skill-root>/scripts/audit-sizes.sh --manifest <path>` for below-floor outputs |
+| single | `-o` answer file non-empty AND manifest entry `done`; no `audit` needed for single missions |
+| review | `audit` as above; classifier output for each branch's `last_findings_json` shows zero majors OR cap reached |
+| rescue | original mode's verify path applies after redispatch terminates |
 
-### single mode — one big mission with live stream
+### Mode-specific gotchas
 
-- **Trigger:** Q4 or Q7 (one substantial task).
-- **Pre-checks:** choose cwd explicitly; if cwd is already inside a worktree, pass `--reuse-worktree` to record that choice.
-- **Read first:** `references/modes/single.md`, `references/universal/json-streaming.md`, `references/universal/monitor-contract.md`, `references/templates/single.tmpl.md`.
-- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`). The dispatcher writes a one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`. Surface the literal Monitor hint.
-- **Raw inputs:** If your prompt is a raw description file (ticket, issue body, brief) rather than a pre-rendered template, run `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode single` first to wrap it in the SUBAGENT-STOP prefix and 6-section skeleton (prefix is auto-skipped for research / analysis / audit inputs). Otherwise codex may burn 20–80k tokens on meta-skill rumination before doing useful work. See `scripts/render-task-prompts.md`.
-- **Success gate:** `-o` file non-empty AND manifest entry `done` (these are what `run-single.sh` actually checks; `turn.completed` is a Monitor observability signal, not a runner gate).
-- **Terminal sentinel:** the live JSONL stream ends with `--- single done (<id>: <status>) ---` (an `orchestrate.done` event the runner appends after the terminal manifest write). TaskStop the Monitor on this line — no manual pgrep, no guessing at `[TURN<]`.
-- **Failure routing:** `references/universal/failure-modes.md` + `references/modes/single.md` §recovery.
-
-### review mode — per-branch convergence loop
-
-- **Trigger:** Q2 (branch list + review keyword).
-- **Pre-checks:** git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable.
-- **Read first:** `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md`.
-- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs review --branches <list>`. The dispatcher seeds branch entries; `run-review.sh <manifest> <round-N>` executes ONE round (native `codex exec review --base <base> --json -o <findings.md>` fanned out across branches). The orchestrator (this agent) calls `classify-review-feedback.py` on each round's findings, decides converged / blocked / continue, and re-invokes `run-review.sh` with `<round-N+1>` if continuing. The runner does NOT loop. Soft round cap is 10 — operator-driven.
-- **Success gate:** every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path`.
-- **Failure routing:** `references/universal/failure-modes.md` + `references/modes/review.md` §loops.
-
-### rescue mode — resume an interrupted run
-
-- **Trigger:** Q1 (manifest exists + resume keyword).
-- **Pre-checks:** manifest path resolved; freshness ≤ 7 days OR user confirms staleness; `manifest.mode` field present.
-- **Read first:** `references/modes/rescue.md`, `references/universal/manifest-contract.md`, then the original mode's reference (whatever `manifest.mode` says).
-- **Run:** `node <skill-root>/scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only. Redispatch with `node <skill-root>/scripts/orchestrate-codex.mjs rescue --manifest <path> --apply failed-only|never-started-only|all-non-done|ids:s1,s2,...`. The dispatcher's envelope prints `--apply` in its `rerun_with` template; `--redo failed|never-started|all-non-done` is accepted as a back-compat alias and normalized into `--apply`. Pass `--accept-stale` only when replaying unknown/stale entries intentionally.
-- **Success gate:** every NOT-DONE entry transitions to a terminal status; manifest history append-only.
-- **Failure routing:** `references/universal/failure-modes.md` + `references/modes/rescue.md` §edge-cases.
+- **exec — raw inputs.** If your prompts are raw description files (tickets, issue bodies, briefs) rather than pre-rendered templates, run `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode exec` first to wrap each file in the SUBAGENT-STOP prefix and 6-section skeleton. Otherwise codex may burn 20-80k tokens on meta-skill rumination before doing useful work. See `scripts/render-task-prompts.md`.
+- **exec — audit-style.** Findings-only / audit-style tasks (no code changes expected) MUST instruct codex to `git add` and `git commit` the report file in the prompt's Success criteria — otherwise the success gate fails with `codex_exit_0_no_changes`. See `references/modes/exec.md` 'Audit-style' subsection.
+- **exec — cleanup gate.** `tidy --execute` only fires after every entry is done AND every branch is merged. See the handoff lifecycle in `## Compatibility boundaries`.
+- **single — raw inputs.** Same wrapping concern as exec; use `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode single` (the SUBAGENT-STOP prefix is auto-skipped for research / analysis / audit inputs).
+- **single — terminal sentinel.** The live JSONL stream ends with `--- single done (<id>: <status>) ---` (an `orchestrate.done` event the runner appends after the terminal manifest write). TaskStop the Monitor on this line — no manual pgrep, no guessing at `[TURN<]`.
+- **rescue — `--apply` semantics.** The dispatcher's envelope prints `--apply` in its `rerun_with` template; `--redo failed|never-started|all-non-done` is accepted as a back-compat alias and normalized into `--apply`. Pass `--accept-stale` only when replaying unknown/stale entries intentionally.
 
 ## Failure-mode taxonomy (universal)
 
@@ -297,19 +318,25 @@ Key invariant: ask-review never touches the manifest. The manifest stays the sou
 
 For worked examples of each, read `references/universal/anti-patterns.md`.
 
-- Never silently overwrite a `done` manifest entry. Skip-existing is the only acceptable behavior.
-- Never raise `JOBS` past mode default without `--i-have-measured` AND a logged justification in `manifest.policy.overrides.concurrency`.
 - Never replace `--dangerously-bypass-approvals-and-sandbox`. The skill assumes bypass; downgrades silently change semantics.
+  **Cost:** `workspace-write` blocks on non-write ops (network, exec) → codex hangs → runner sees no progress → rescue redispatches into same hang. The skill is built on bypass; downgrades change semantics silently.
+- Never raise `JOBS` past mode default without `--i-have-measured` AND a logged justification in `manifest.policy.overrides.concurrency`.
+  **Cost:** rate-limit cascade, queue starvation across other Anthropic sessions on the same auth tier, and the dispatcher can't tell whether the operator measured or guessed.
+- Never use `/tmp/...` as the manifest path of record. Cross-session collisions are silent. Never hand-edit the manifest. Use `audit-fleet-state.py` to inspect and `manifest-update.py` to mutate.
+  **Cost:** breaks `flock` invariant; concurrent writers corrupt entries; rescue can't classify safely; audit reports false drift.
+- Never invent a `codex review` invocation other than the native CLI. Review uses `codex exec review` with the documented flags.
+  **Cost:** loses classifier input shape (markdown vs JSON sidecar), no manifest entry, no Monitor wiring; review-mode loop machinery doesn't apply; bypasses the round-cap soft gate.
+- Never silently overwrite a `done` manifest entry. Skip-existing is the only acceptable behavior.
+  **Cost:** flips a verified terminal entry back to `queued`, double-spends API budget, may overwrite the answer file before its consumer (audit, ask-review) reads it.
 - Never run unbounded concurrency (`xargs -P 0`, naked `&` fan-out). Cap is mode-specific.
 - Never auto-merge to `main` / `canary` / default branch. Merging is operator-driven.
-- Never use `/tmp/...` as the manifest path of record. Cross-session collisions are silent.
-- Never invent a `codex review` invocation other than the native CLI. Review uses `codex exec review` with the documented flags.
 - Never skip Monitor arming order. Tail readers miss first-wave events when armed late.
 - Never delete a worktree with uncommitted changes without explicit user gate.
 - Never overwrite an answer file in batch mode. Archive to `answers/.prev/`, then re-run.
-- Never hand-edit the manifest. Use `audit-fleet-state.py` to inspect and `manifest-update.py` to mutate.
 - Never drop `CODEX_FLAGS` inside an `xargs bash -c` subshell. The subshell forgets the user's zsh function wrappers.
 - Never bundle Claude Code hooks. This is a skill, not a plugin — separation by design.
+
+Full cost-counter expansions for every anti-pattern: `references/universal/anti-patterns.md`.
 
 ## Prompt authoring discipline
 
@@ -332,8 +359,12 @@ Read on entry — universal contracts:
 - `references/universal/plugin-data.md` — `${CLAUDE_PLUGIN_DATA}` resolution, the state directory pruning policy.
 - `references/universal/prompt-discipline.md` — mission-brief skeleton and prompt smell tests.
 - `references/universal/anti-patterns.md` — the catalog above expanded with worked examples.
-- `references/universal/codex-companion.md` — the vendored codex-cc subtree, dispatcher imports, rescue state correlation.
-- `references/universal/upstream-codex-cc.md` — how to bump the vendored codex-plugin-cc, reapply the patch, what to watch for.
+- `references/universal/codex-companion.md` — runtime correlation surface for rescue: codex-companion job records, manifest-correlation, forensics calls.
+
+Maintenance (rare; not runtime — read only when bumping the vendored codex-plugin-cc tree):
+
+- `references/maintenance/codex-companion.md` — vendored subtree library tour, dispatcher imports, why we don't drive review/exec/batch through codex-companion.
+- `references/maintenance/upstream-codex-cc.md` — how to bump the vendored codex-plugin-cc, reapply the patch, what to watch for.
 
 Read on routing — per-mode recipes:
 
@@ -377,7 +408,7 @@ Cross-reference index of every reference and which mode pulls it: `references/in
 | `scripts/classify-review-feedback.py` | review | major-vs-minor classifier |
 | `scripts/apply-review-decisions.py` | review | read-only apply-queue printer (main agent applies via Edit) |
 | `scripts/rescue-detect.py` | rescue | classify entries done/failed/never_started/in_flight/unknown |
-| `scripts/codex-cc/` | all | vendored OpenAI codex-plugin-cc tree (see `references/universal/upstream-codex-cc.md`) |
+| `scripts/codex-cc/` | all | vendored OpenAI codex-plugin-cc tree (see `references/maintenance/upstream-codex-cc.md`) |
 | `scripts/test-runner-contracts.mjs` | test | dispatcher/runner dry-run contract fixtures for all modes |
 
 ## Known limitations
