@@ -151,7 +151,22 @@ If detection lands on MEDIUM confidence and the surrounding prompt is genuinely 
 Run before every mode. Stops the agent from improvising into a broken state.
 
 1. `codex --version` succeeds. The skill assumes codex 0.130.0 or later for the verified `codex exec review` flags.
-2. `codex login status` is a hard gate in `scripts/bootstrap.sh`: non-zero exit → bootstrap dies with exit 3 ("Run `codex login` before dispatching"). Escape hatch: `ORCHESTRATE_SKIP_CODEX_AUTH=1` downgrades the gate to a WARN — use this for ephemeral CI runners, bearer-token / managed-companion / proxy auth setups where `login status` reports "Not logged in" but spawns succeed anyway. If you bypass, verify auth another way before claiming pre-flight green. Note: only **review** runs `bootstrap.sh` at dispatch time (review spawns native `codex review` immediately, so deferring auth doesn't help); exec, batch, and single defer the auth check to the runner's own first codex spawn — same eventual error, but the failure surfaces from the runner's stderr, not the dispatcher's envelope. To force the dispatcher-level check on every mode, run `bash <skill-root>/scripts/bootstrap.sh` yourself before invoking the dispatcher.
+2. **Auth gate — interpret, don't trust the headline.** `codex login status` is the bootstrap.sh hard gate (non-zero exit → bootstrap dies with exit 3, `"Run codex login before dispatching"`). The trap: **"Not logged in" is a false alarm for many real setups**. 3rd-party private deployments, proxy / managed-companion / bearer-token / ephemeral CI all answer the API while `codex login status` keeps reporting "Not logged in" because it only inspects `~/.codex/auth.json` and ignores proxy or env-based credentials. **Do NOT reflexively tell the user to `codex login`** — first establish whether this machine is on a proxy/managed setup (check `~/.codex/config.toml` for non-default base URLs, ask the operator once, or just look for an `ORCHESTRATE_SKIP_CODEX_AUTH=1` pattern in prior commits / shell history). If proxy/managed is plausible, set `ORCHESTRATE_SKIP_CODEX_AUTH=1` (downgrades the bootstrap gate to WARN) and **prove auth with a tiny live smoke** before dispatching the real fleet:
+
+   ```bash
+   # Pre-flight smoke — 60-90s on xhigh; cheap insurance against a dead-fleet dispatch.
+   mkdir -p /tmp/codex-smoke-work && rm -f /tmp/codex-smoke-work/lorem.txt /tmp/codex-smoke.md
+   ORCHESTRATE_SKIP_CODEX_AUTH=1 codex exec \
+     --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check \
+     -m gpt-5.5 -c model_reasoning_effort=xhigh \
+     --json -o /tmp/codex-smoke.md -C /tmp/codex-smoke-work \
+     "Count 1 to 10 on one line then write a 3-line lorem ipsum to lorem.txt in the current working directory. Confirm both done in one sentence."
+   test -s /tmp/codex-smoke-work/lorem.txt && test -s /tmp/codex-smoke.md && echo "auth OK"
+   ```
+
+   If the smoke writes `lorem.txt` AND the `-o` file is non-empty AND a `turn.completed` JSONL event appears, the proxy is wired and you can dispatch. If it dies with an auth/credentials error, *then* ask the user to fix auth (either `codex login`, an `OPENAI_API_KEY` export, or their proxy config — operator's call). **Skipping the smoke is the canonical failure mode that wastes a full fleet's API budget on entries that all fail at the runner-spawn auth handshake** — that error doesn't surface in the dispatcher envelope, only in each entry's stderr after the runner has already spawned.
+
+   Note: only **review** runs `bootstrap.sh` at dispatch time (review spawns native `codex review` immediately, so deferring auth doesn't help); exec, batch, and single defer the auth check to the runner's own first codex spawn — same eventual error, but the failure surfaces from the runner's stderr, not the dispatcher's envelope. To force the dispatcher-level check on every mode, run `bash <skill-root>/scripts/bootstrap.sh` yourself before invoking the dispatcher.
 3. cwd is resolved. If the chosen mode requires a git repo (exec, review), `git rev-parse --is-inside-work-tree` succeeds.
 4. Workspace slug+hash computed (see manifest contract).
 5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"`. Two recovery paths: rescue mode (default — re-attach to the existing manifest), or `--force-new-run --run-id <custom>` (writes a parallel `manifest.<custom>.json` so the original run is left untouched). See `references/universal/idempotency.md`.
