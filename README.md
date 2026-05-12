@@ -44,7 +44,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [evaluate-code-review](skills/evaluate-code-review/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS-first instruction and review-context hierarchies |
-| [init-makefiles](skills/init-makefiles/) | workflow | Scaffold safe scenario Makefiles, AGENTS sync, optional deploy CI |
+| [init-makefiles](skills/init-makefiles/) | workflow | Scaffold safe scenario Makefiles (Vercel default; Cloudflare Pages opt-in), R2 bulk upload via rclone, AGENTS sync, optional deploy CI |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
 | [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, and architect MCP servers for agent-readiness |
 | [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |

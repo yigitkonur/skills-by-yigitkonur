@@ -60,6 +60,36 @@ ls *.xcodeproj *.xcworkspace 2>/dev/null
 jq -r '.dependencies | keys[]?' package.json 2>/dev/null | grep -E 'modelcontextprotocol|^mcp-use$'
 ```
 
+### Scenario A — provider variant (Vercel is the default; Cloudflare Pages is opt-in)
+
+**Default: Vercel.** Generate `makefile-frontend.md` deploy targets unless the user has explicitly asked for Cloudflare Pages. Disk signals alone do **not** flip the default — `wrangler.toml` is commonly present to drive R2 or Workers in a project whose frontend still ships to Vercel.
+
+| User intent (the only thing that flips the default) | Provider to generate |
+|---|---|
+| User explicitly says "Cloudflare", "Pages", "Wrangler", or names the Pages product | Cloudflare Pages — read `makefile-cloudflare-pages.md` |
+| User explicitly says "Vercel" | Vercel — read `makefile-frontend.md` |
+| **User says nothing about provider** | **Vercel — read `makefile-frontend.md`. Do NOT ask, do NOT auto-detect.** |
+
+Disk signals are **evidence**, not **deciders**. Print them in the classification block to help the user spot stale config or unintended setup, but treat them as below:
+
+| Signal observed | What to do |
+|---|---|
+| `wrangler.toml` / `wrangler.jsonc` exists | Inform the user it's there; **do not switch from Vercel unless the user explicitly asks.** It may be R2-only or Workers-only. |
+| `wrangler.toml` has `pages_build_output_dir` | Strong evidence of an existing Pages setup. Even so, confirm with the user before switching from Vercel default — they may be in the middle of a migration. |
+| `public/_redirects` exists | Pages-specific routing file. Same rule: inform, do not switch silently. |
+| `.vercel/` or `vercel.json` present | Confirms the default. No action needed. |
+| Both Vercel and Cloudflare signals present | One disambiguation question (case 8 below). |
+
+```bash
+# Inspect (read-only; never decides — just informs)
+ls wrangler.toml wrangler.jsonc public/_redirects .vercel vercel.json 2>/dev/null
+grep -l 'pages_build_output_dir' wrangler.* 2>/dev/null
+```
+
+After the provider is set, route to either `makefile-frontend.md` (Vercel) or `makefile-cloudflare-pages.md` (CF). The shared targets (`local`, `local-lan`, `tunnel`, `stop`, `clean`) come from `makefile-frontend.md` either way; only the deploy targets diverge.
+
+Independent of the provider choice: if the project ships large media (audio, video, raw images) and the user has named an R2 bucket or wants media on a custom domain, add the targets from `makefile-r2-bulk.md`. R2's S3-compatible API and custom-domain reads work the same with Vercel-hosted or Pages-hosted frontends — there is no coupling between the frontend host and R2.
+
 ## Scenario B — MCP server (local-facing service)
 
 | Field | Value |
@@ -286,6 +316,22 @@ Pick: (a) → Scenario A (Vercel) — `railway.toml` is leftover or for a relate
 > "I couldn't classify this project from on-disk signals. Is it primarily: (a) a web frontend / (b) a backend service / (c) a CLI tool / (d) a Mac app / (e) an MCP server / (f) something else (please describe)?"
 
 Map: (a) → A; (b) → C or E depending on follow-up; (c) → F; (d) → G; (e) → B; (f) → ask follow-up to identify.
+
+### 8. Scenario A: both Vercel and Cloudflare signals present
+
+> "I see both `.vercel/` (or `vercel.json`) AND `wrangler.toml` with `pages_build_output_dir`. The default is Vercel — should I keep that, or switch `make deploy` to Cloudflare Pages? (a) Vercel (default) / (b) Cloudflare Pages"
+
+Pick: (a) → `makefile-frontend.md` deploy targets; leave `wrangler.toml` alone (it may drive R2 or Workers, not Pages). (b) → `makefile-cloudflare-pages.md` deploy targets; flag `.vercel/` as stale and ask if it should be removed (don't delete autonomously). If the user wants both deploy paths available in one Makefile, refuse — that violates the "pick one" guardrail; the right shape is two repos or two app dirs.
+
+**Note: when only `wrangler.toml` exists (no Vercel signals) but the user hasn't explicitly named Cloudflare/Pages, still default to Vercel.** `wrangler.toml` alone often means R2/Workers usage with a Vercel-hosted frontend. Do not ask in that case — just default to Vercel.
+
+### 9. Cloudflare R2 bucket: single-tenant or multi-tenant?
+
+(Only invoked when R2 is in scope, regardless of provider variant.)
+
+> "I see an R2 bucket bound at `<custom-domain>`. Is this bucket dedicated to this project, or shared with other projects / data? (a) dedicated / (b) shared"
+
+Pick: (a) → still default to `rclone copy` (additive) for the first upload; the user can switch the recipe to `rclone sync` later when comfortable. (b) → MUST use `rclone copy`; surface that the existing bucket contents won't be touched. Probe `rclone size + lsf` before first sync regardless; surface any publicly-readable secret-looking paths via `make r2-audit-public`.
 
 ## Rules for asking
 

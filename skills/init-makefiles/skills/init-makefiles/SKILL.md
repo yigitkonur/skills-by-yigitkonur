@@ -1,6 +1,6 @@
 ---
 name: init-makefiles
-description: Use skill if you are scaffolding or refreshing a project's Makefile control plane (`make local`, `make tunnel`, `make deploy`) for Next.js, Node, Railway, Vercel, Supabase, or Mac-ship workflows.
+description: Use skill if you are scaffolding or refreshing a project's Makefile control plane (`make local`, `make tunnel`, `make deploy`, `make r2-sync`) for Next.js, Node, Railway, Vercel (default), Cloudflare Pages (opt-in), R2 + rclone bulk upload, Supabase, or Mac-ship workflows.
 ---
 
 # init-makefiles
@@ -51,7 +51,7 @@ Pick exactly one scenario per deployable app. The seven:
 
 | # | Scenario | Primary signal | What's in scope |
 |---|---|---|---|
-| **A** | Frontend-only | `next.config.*` / `vite.config.*` / etc.; no backend dir; no Supabase | Local, LAN, tunnel; Vercel deploy |
+| **A** | Frontend-only | `next.config.*` / `vite.config.*` / etc.; no backend dir; no Supabase | Local, LAN, tunnel; **Vercel deploy by default.** Cloudflare Pages is opt-in only — switch to it when (and only when) the user explicitly says "Cloudflare", "Pages", "Wrangler", or names the Pages product. Disk signals alone (a stray `wrangler.toml` for R2/Workers) never flip the default. |
 | **B** | MCP server | `@modelcontextprotocol/sdk` or `mcp-use` in deps | Local; no deploy; `inspect` target |
 | **C** | Frontend + backend | A signals + `apps/api` (or similar) with Express/Hono/Fastify | Frontend + Vercel + Railway |
 | **D** | Frontend + Supabase | A signals + `@supabase/supabase-js` + `supabase/` dir | Frontend + Vercel + Supabase CLI ops |
@@ -185,7 +185,9 @@ done < "$DELETION_MANIFEST"
 Compose the new Makefile(s) from the scenario's references:
 
 - Universal preamble + ANSI palette + helper conventions: `references/makefile-base.md` (every Makefile uses this)
-- Scenario A / C / D frontend targets: `references/makefile-frontend.md` (`local`, `local-lan`, `tunnel`, `deploy-vercel`, `verify`, `env-pull`, `build-check`)
+- Scenario A / C / D frontend targets (default for Scenario A): `references/makefile-frontend.md` (`local`, `local-lan`, `tunnel`, `deploy-vercel`, `verify`, `env-pull`, `build-check`)
+- Scenario A — Cloudflare Pages variant (**opt-in only**, when the user explicitly mentions Cloudflare / Pages / Wrangler): `references/makefile-cloudflare-pages.md` (`deploy-cloudflare`, `cf-project-init`, `cf-list`, `cf-tail`, `_redirects`, Pages 25 MiB/file + 20k-file limits)
+- R2 media bucket — single-file ops, CORS, hardlink staging, rclone bulk copy (≤20 transfers), wrangler-OAuth fallback: `references/makefile-r2-bulk.md` (orthogonal — works regardless of whether the frontend is hosted on Vercel or Pages, opt-in when R2 is part of the workflow)
 - Scenario C / E backend targets: `references/makefile-backend.md` (Railway deploy, multi-service parallel, healthcheck rules, `railway.toml` baseline)
 - Scenario D Supabase targets: `references/makefile-supabase.md` (`supabase-link`, `-migrate-*`, `-functions`, `-types`, `-secrets-*`)
 - Scenario G ship pipeline: `references/makefile-macbook.md` (preflights, rsync, atomic swap, kill-then-launch, verify)
@@ -294,6 +296,8 @@ Manual verification still required: <targets, especially rung 6>
 | `references/scenario-detection.md` | Classifying a project; resolving ambiguity; sample disambiguation prompts |
 | `references/makefile-base.md` | Universal preamble, ANSI palette, helper conventions; every Makefile uses this |
 | `references/makefile-frontend.md` | Generating Scenarios A / C / D frontend targets (`local`, `local-lan`, `tunnel`, `deploy-vercel`, `verify`, `env-pull`, `build-check`) |
+| `references/makefile-cloudflare-pages.md` | Scenario A **Cloudflare Pages variant — opt-in only.** Read this reference only when the user explicitly mentions Cloudflare / Pages / Wrangler. The Scenario A default is Vercel (`makefile-frontend.md`). Contents: `deploy-cloudflare`, `cf-project-init`, `cf-list`, `cf-tail`, `wrangler.toml` shape, `_redirects` proxying, 25 MiB-per-file / 20k-file limit checks. |
+| `references/makefile-r2-bulk.md` | Cloudflare R2 media (opt-in when R2 is part of the workflow; works with either Vercel or Pages-hosted frontends): `r2-info`, `r2-cors-apply`, single-file `r2-put`/`r2-get`/`r2-rm`, hardlink `r2-stage`, `rclone-configure`/`rclone-check`, `r2-sync` (`rclone copy` — additive default for mixed-tenant safety), wrangler-OAuth bulk fallback, public-access audit |
 | `references/makefile-backend.md` | Generating Scenarios C / E backend targets (Railway deploy, multi-service parallel, healthcheck rules, `railway.toml` baseline) |
 | `references/makefile-supabase.md` | Generating Scenario D Supabase targets (`supabase-link`, `-migrate-*`, `-functions`, `-types`, `-secrets-*`) |
 | `references/makefile-macbook.md` | Generating Scenario G ship pipeline (preflights, rsync, atomic swap, kill-then-launch, verify) |
@@ -321,6 +325,11 @@ Manual verification still required: <targets, especially rung 6>
 - **Never `kill -9` foreign processes on a port.** Port hygiene refuses, suggests `+10`.
 - **Never generate Railway config in projects without a custom backend.** Skip Scenarios A / B / D / F / G.
 - **Never generate Vercel config in projects without a frontend.** Skip Scenarios E / F / G.
+- **Default Scenario A to Vercel.** Cloudflare Pages is opt-in: switch only when the user explicitly names Cloudflare / Pages / Wrangler / Workers. Disk signals are NOT enough — `wrangler.toml` commonly exists alongside Vercel-deployed frontends to drive R2 or Workers, with the frontend itself still on Vercel.
+- **Never generate both Vercel and Cloudflare Pages deploy targets in the same Makefile.** Pick one — having both makes `make deploy` ambiguous. The user's stated intent decides; signals only inform the question to ask.
+- **Never default `make r2-sync` to `rclone sync`.** R2 buckets are often multi-tenant; `sync` would delete other projects' data. Default to `rclone copy` (additive). See `references/makefile-r2-bulk.md`.
+- **Never blanket-derive an R2 S3 Access Key ID from a `cfat_*` / `cfut_*` token.** They are independent values — the dashboard issues both at token creation. rclone / aws-cli need the AKID + Secret pair, not the cfat_/cfut_ value. See `references/makefile-r2-bulk.md`.
+- **Never declare an R2 upload complete without auditing the bucket for publicly-readable secrets.** Custom-domain binding makes every key reachable. Probe likely-leak paths (`.secrets/`, `.env`, `id_rsa`, `credentials.json`) after first sync; surface anything 200 to the user.
 - **Never generate Supabase migrations in projects without `supabase/`.** Skip Scenarios A / B / C / E / F / G.
 - **Never write tokens to disk except as `gh secret set` payloads.** Never echo tokens back to the user.
 - **Never edit a Makefile in place.** Manifest, snapshot, delete, and regenerate. The targeted snapshot commit is the safety net.

@@ -127,8 +127,45 @@ if [ "$mac_artifact" -eq 1 ] && grep -iE '^Host[[:space:]]+macbook([[:space:]]|$
   add_signal "SSH Host macbook present"
 fi
 
+# Frontend provider variant: Vercel vs Cloudflare Pages (mutually exclusive)
+cf_pages=0
+vercel=0
+if compgen -G 'wrangler.toml' >/dev/null || compgen -G 'wrangler.jsonc' >/dev/null; then
+  cf_pages=1
+  add_signal "wrangler config present (Cloudflare)"
+fi
+if [ "$cf_pages" -eq 1 ] && grep -lq 'pages_build_output_dir' wrangler.* 2>/dev/null; then
+  add_signal "wrangler config has pages_build_output_dir (CF Pages)"
+fi
+if [ -f public/_redirects ] || [ -f _redirects ]; then
+  cf_pages=1
+  add_signal "_redirects file present (CF Pages routing)"
+fi
+if [ -d .vercel ] || [ -f vercel.json ]; then
+  vercel=1
+  add_signal "Vercel config / .vercel directory present"
+fi
+
+# R2 media bucket signal — independent of provider; useful flag for makefile-r2-bulk.md
+if grep -lqE '(\.r2\.cloudflarestorage\.com|files\..+\.com.*r2|R2_BUCKET=)' .env .env.* 2>/dev/null; then
+  add_signal "R2 endpoint / bucket reference in .env (makefile-r2-bulk.md applies)"
+fi
+
 if [ "$frontend" -eq 1 ] && [ "$backend_count" -eq 0 ] && [ "$supabase" -eq 0 ] && [ "$mcp" -eq 0 ]; then
-  candidates+=("A — Frontend-only | high | frontend signals without backend, Supabase, or MCP exclusions")
+  # Scenario A defaults to Vercel. Cloudflare Pages is opt-in only — even
+  # if wrangler signals exist on disk, the user's explicit intent flips the
+  # default, not file presence. The detector reports signals as evidence;
+  # the human / agent decides.
+  base="A — Frontend-only | high | frontend signals without backend, Supabase, or MCP exclusions"
+  if [ "$cf_pages" -eq 1 ] && [ "$vercel" -eq 1 ]; then
+    candidates+=("$base — BOTH Vercel and Cloudflare config present; default is Vercel — confirm with user before switching to Pages")
+  elif [ "$cf_pages" -eq 1 ]; then
+    candidates+=("$base — Cloudflare config detected (may be R2/Workers only); default deploy is still Vercel — switch to Pages only if user explicitly asks")
+  elif [ "$vercel" -eq 1 ]; then
+    candidates+=("$base — Vercel config detected (confirms the default)")
+  else
+    candidates+=("$base — no deploy provider config yet; default to Vercel")
+  fi
 fi
 if [ "$mcp" -eq 1 ] && [ "$frontend" -eq 0 ] && [ "$backend_count" -eq 0 ]; then
   candidates+=("B — MCP server | high | MCP signal without public frontend/backend signal")
