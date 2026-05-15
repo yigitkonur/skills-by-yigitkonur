@@ -81,29 +81,7 @@ fi
 # ── Reuse path: if worktree exists and ALLOW_REUSE=1, no-op ───
 if [[ -d "$WT_PATH" ]]; then
   if [[ "$ALLOW_REUSE" == "1" ]]; then
-    echo "[setup-worktree] refreshing existing $WT_PATH"
-    if git rev-parse --verify "$BRANCH_NAME" >/dev/null 2>&1; then
-      target_ref="$BRANCH_NAME"
-    elif git rev-parse --verify "$BASE_BRANCH" >/dev/null 2>&1; then
-      target_ref="$BASE_BRANCH"
-    elif git rev-parse --verify "origin/$BASE_BRANCH" >/dev/null 2>&1; then
-      target_ref="origin/$BASE_BRANCH"
-    else
-      echo "ERROR: neither branch '$BRANCH_NAME' nor base '$BASE_BRANCH' resolves for reuse" >&2
-      exit 2
-    fi
-    if ! git -C "$WT_PATH" fetch --all --prune 2>&1 | sed 's/^/[setup-worktree] /'; then
-      echo "ERROR: git fetch failed for reused worktree" >&2
-      exit 3
-    fi
-    if ! git -C "$WT_PATH" reset --hard "$target_ref" 2>&1 | sed 's/^/[setup-worktree] /'; then
-      echo "ERROR: git reset failed for reused worktree" >&2
-      exit 3
-    fi
-    if ! git -C "$WT_PATH" clean -fd 2>&1 | sed 's/^/[setup-worktree] /'; then
-      echo "ERROR: git clean failed for reused worktree" >&2
-      exit 3
-    fi
+    echo "[setup-worktree] reusing existing $WT_PATH"
     echo "WORKTREE_PATH=$WT_PATH"
     exit 0
   fi

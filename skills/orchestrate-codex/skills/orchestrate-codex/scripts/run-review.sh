@@ -303,12 +303,8 @@ run_one() {
   elapsed=$(( end_ts - start_ts ))
 
   if [[ -f "$jsonl" ]]; then
-    thread_id="$(jq -r '
-      select(.type == "thread.started")
-      | select((.parent_thread_id // .parent_id // null) == null)
-      | select((.subagent // false) == false)
-      | .thread_id // empty
-    ' "$jsonl" 2>/dev/null | head -n 1 || echo "")"
+    thread_id="$(grep -m1 '"type":"thread.started"' "$jsonl" 2>/dev/null \
+                  | jq -r '.thread_id // ""' 2>/dev/null || echo "")"
   fi
 
   if [[ "$exit_code" -ne 0 ]]; then
@@ -365,11 +361,7 @@ run_one() {
           base:           $base,
           round:          $round,
           findings_md:    $md,
-          thread_id:      ([$events[]
-                            | select(.type == "thread.started")
-                            | select((.parent_thread_id // .parent_id // null) == null)
-                            | select((.subagent // false) == false)
-                            | .thread_id] | first // null),
+          thread_id:      ([$events[] | select(.type == "thread.started") | .thread_id] | first // null),
           agent_messages: [$events[] | select(.type == "agent_message" or .item.type == "agent_message")
                            | (.message // .item.message // .text // "")
                            | select(. != "")],
