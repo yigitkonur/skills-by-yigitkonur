@@ -965,6 +965,10 @@ function carryForwardDoneEntries(priorManifestPath, freshEntries) {
     const isTerminal = prev.status === "done" || prev.status === "converged";
     if (!isTerminal) continue;
     if (prev.dry_run === true || prev.verify_status === "dry-run") continue;
+    const prevWorktreePath = prev.worktree_path ?? entry.worktree_path;
+    const worktreePath = prevWorktreePath && fs.existsSync(prevWorktreePath)
+      ? prevWorktreePath
+      : null;
     // Restore terminal-state fields. mode_state is shallow-merged so the
     // freshly-seeded shape (e.g. mode_state.batch.input from the new inputs
     // file) wins for keys absent in the prior, and prior-run signals
@@ -978,7 +982,7 @@ function carryForwardDoneEntries(priorManifestPath, freshEntries) {
     entry.log_path = prev.log_path ?? entry.log_path;
     entry.jsonl_path = prev.jsonl_path ?? entry.jsonl_path;
     entry.answer_path = prev.answer_path ?? entry.answer_path;
-    entry.worktree_path = prev.worktree_path ?? entry.worktree_path;
+    entry.worktree_path = worktreePath;
     entry.codex_thread_id = prev.codex_thread_id ?? entry.codex_thread_id;
     entry.codex_session_id = prev.codex_session_id ?? entry.codex_session_id;
     entry.last_error = prev.last_error ?? entry.last_error;
@@ -1984,7 +1988,10 @@ function selectRescueSubset(manifest, applySpec) {
   const entries = manifest.entries || [];
   if (applySpec.startsWith("ids:")) {
     const wanted = applySpec.slice(4).split(",").map((s) => s.trim()).filter(Boolean);
-    const matched = entries.filter((e) => wanted.includes(e.id) || wanted.includes(e.slug));
+    const matched = entries.filter((e) => {
+      const isWanted = wanted.includes(e.id) || wanted.includes(e.slug);
+      return isWanted && e.status !== "done" && e.status !== "converged";
+    });
     const unknown = wanted.filter((w) => !entries.find((e) => e.id === w || e.slug === w));
     return { ids: matched.map((e) => e.id), unknown };
   }

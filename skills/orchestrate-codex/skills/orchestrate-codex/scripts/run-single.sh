@@ -213,8 +213,12 @@ ELAPSED=$(( END_TS - START_TS ))
 # ── Final state ────────────────────────────────────────────────
 THREAD_ID=""
 if [[ -f "$LOG_PATH" ]]; then
-  THREAD_ID="$(grep -m1 '"type":"thread.started"' "$LOG_PATH" 2>/dev/null \
-                | jq -r '.thread_id // ""' 2>/dev/null || echo "")"
+  THREAD_ID="$(jq -r '
+    select(.type == "thread.started")
+    | select((.parent_thread_id // .parent_id // null) == null)
+    | select((.subagent // false) == false)
+    | .thread_id // empty
+  ' "$LOG_PATH" 2>/dev/null | head -n 1 || echo "")"
 fi
 
 # Sentinel writer: appends one orchestrate.done JSONL event to the live log

@@ -345,10 +345,15 @@ run_one() {
   end_ts="$(date +%s)"
   elapsed=$(( end_ts - start_ts ))
 
-  # Parse thread_id from the JSONL stream (first thread.started event)
+  # Parse the root thread_id from the JSONL stream. Subagent threads may appear
+  # first, so prefer thread.started events without parent/subagent markers.
   if [[ -f "$jsonl_path" ]]; then
-    thread_id="$(grep -m1 '"type":"thread.started"' "$jsonl_path" 2>/dev/null \
-                  | jq -r '.thread_id // ""' 2>/dev/null || echo "")"
+    thread_id="$(jq -r '
+      select(.type == "thread.started")
+      | select((.parent_thread_id // .parent_id // null) == null)
+      | select((.subagent // false) == false)
+      | .thread_id // empty
+    ' "$jsonl_path" 2>/dev/null | head -n 1 || echo "")"
   fi
   if [[ -n "$thread_id" ]]; then
     "$SCRIPT_DIR_ABS/manifest-update.sh" entry "$ORCHESTRATE_MANIFEST" "$id" \

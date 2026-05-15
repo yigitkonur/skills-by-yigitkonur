@@ -172,8 +172,9 @@ for input in "${inputs[@]}"; do
     [[ "$PREFIX_OVERRIDE" == "on" ]] && use_prefix=1 || use_prefix=0
   else
     if [[ "$MODE" == "single" ]]; then
-      # single mode default: prefix off if input is research / analysis / audit.
-      if grep -qi -E '\b(research|analysis|audit)\b' "$input"; then
+      # single mode default: prefix off when the title declares research /
+      # analysis / audit. Body mentions should not disable coding discipline.
+      if head -n 1 "$input" | grep -qi -E '\b(research|analysis|audit)\b'; then
         use_prefix=0
       fi
     fi
