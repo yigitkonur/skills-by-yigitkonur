@@ -234,6 +234,15 @@ def atomic_write_json(path: Path, data: dict) -> None:
         raise
 
 
+class LockTimeout(RuntimeError):
+    """Raised when manifest lock cannot be acquired within the configured timeout.
+
+    KB-001 fix: previously raised SystemExit, which produced exit code 1.
+    Now raised as a typed exception and mapped to exit code 3 (environmental)
+    in main(), matching the bash sibling's behavior and the documented contract.
+    """
+
+
 @contextlib.contextmanager
 def manifest_lock(manifest_path: Path, timeout_seconds: int = LOCK_TIMEOUT_SECONDS):
     """Hold fcntl.LOCK_EX on <manifest>.lock for the duration of the block.
@@ -255,7 +264,7 @@ def manifest_lock(manifest_path: Path, timeout_seconds: int = LOCK_TIMEOUT_SECON
                 if exc.errno not in (errno.EWOULDBLOCK, errno.EAGAIN):
                     raise
                 if _monotonic_now() >= deadline:
-                    raise SystemExit(
+                    raise LockTimeout(
                         f"manifest-update: failed to acquire lock {lock_path} within {timeout_seconds}s"
                     )
                 _sleep(delay)
@@ -515,6 +524,21 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"manifest-update: failed to write {manifest_path}: {exc}",
                       file=sys.stderr)
                 return 3
+    except LockTimeout as exc:
+        # KB-001 fix: lock-timeout now exits 3 with error.code="lock_timeout"
+        # (was: uncaught SystemExit → exit 1). Matches bash sibling and the
+        # documented contract.
+        if args.json:
+            print(json.dumps({
+                "ok": False,
+                "executed": False,
+                "mode": args.mode,
+                "entry_id": args.entry,
+                "error": {"code": "lock_timeout", "message": str(exc)},
+            }, indent=2, default=str))
+        else:
+            print(str(exc), file=sys.stderr)
+        return 3
     except PermissionError as exc:
         print(f"manifest-update: permission denied: {exc}", file=sys.stderr)
         return 3
