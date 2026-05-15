@@ -75,7 +75,7 @@ def workspace_slug_hash(workspace_root: Path) -> tuple[str, str]:
     """
     raw = str(workspace_root)
     try:
-        canonical = os.path.realpath(raw, strict=True)
+        canonical = str(Path(raw).resolve(strict=True))
     except OSError:
         # Path does not exist or is unreadable — Node's `fs.realpathSync.native`
         # throws here and the JS `catch {}` falls back to the raw input.

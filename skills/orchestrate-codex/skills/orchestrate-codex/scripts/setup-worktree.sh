@@ -25,7 +25,8 @@
 #   LINK_ENV_FILE      env file to symlink, empty to skip (default: .env.local)
 #   PRISMA_GENERATE    1 to run `npx prisma generate` after setup (auto-detect
 #                      from prisma/schema.prisma if unset)
-#   ALLOW_REUSE        1 to no-op when the worktree already exists (default: 0)
+#   ALLOW_REUSE        1 to refresh an existing worktree to the requested ref
+#                      (default: 0)
 #                      run-fleet sets this to 1 when retrying a failed entry.
 #
 # Exit codes: 0 OK, 1 not a git repo or worktree exists (without ALLOW_REUSE),
@@ -78,10 +79,32 @@ if [[ -z "${PRISMA_GENERATE:-}" ]]; then
   fi
 fi
 
-# ── Reuse path: if worktree exists and ALLOW_REUSE=1, no-op ───
+# ── Reuse path: if worktree exists and ALLOW_REUSE=1, refresh it ───
 if [[ -d "$WT_PATH" ]]; then
   if [[ "$ALLOW_REUSE" == "1" ]]; then
-    echo "[setup-worktree] reusing existing $WT_PATH"
+    echo "[setup-worktree] refreshing existing $WT_PATH"
+    if git rev-parse --verify "$BRANCH_NAME" >/dev/null 2>&1; then
+      target_ref="$BRANCH_NAME"
+    elif git rev-parse --verify "$BASE_BRANCH" >/dev/null 2>&1; then
+      target_ref="$BASE_BRANCH"
+    elif git rev-parse --verify "origin/$BASE_BRANCH" >/dev/null 2>&1; then
+      target_ref="origin/$BASE_BRANCH"
+    else
+      echo "ERROR: neither branch '$BRANCH_NAME' nor base '$BASE_BRANCH' resolves for reuse" >&2
+      exit 2
+    fi
+    if ! git -C "$WT_PATH" fetch --all --prune 2>&1 | sed 's/^/[setup-worktree] /'; then
+      echo "ERROR: git fetch failed for reused worktree" >&2
+      exit 3
+    fi
+    if ! git -C "$WT_PATH" reset --hard "$target_ref" 2>&1 | sed 's/^/[setup-worktree] /'; then
+      echo "ERROR: git reset failed for reused worktree" >&2
+      exit 3
+    fi
+    if ! git -C "$WT_PATH" clean -fd 2>&1 | sed 's/^/[setup-worktree] /'; then
+      echo "ERROR: git clean failed for reused worktree" >&2
+      exit 3
+    fi
     echo "WORKTREE_PATH=$WT_PATH"
     exit 0
   fi

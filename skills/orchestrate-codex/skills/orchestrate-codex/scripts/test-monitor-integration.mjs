@@ -27,6 +27,7 @@
 import { spawn } from "node:child_process";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -36,6 +37,7 @@ import {
   buildMonitorHint,
   fleetMonitorCommand,
   singleMonitorCommand,
+  carryForwardDoneEntries,
   parseArgsStrict,
   resolveConcurrency,
   selectRescueSubset,
@@ -404,8 +406,8 @@ function scenarioRescueSubset() {
   expect(JSON.stringify(s.ids) === JSON.stringify(["02-bar", "03-baz", "04-qux"]),
     "all-non-done matches every non-done entry", JSON.stringify(s));
   s = selectRescueSubset(manifest, "ids:foo,baz");
-  expect(JSON.stringify(s.ids.sort()) === JSON.stringify(["01-foo", "03-baz"].sort()),
-    "ids: matches by slug or id", JSON.stringify(s));
+  expect(JSON.stringify(s.ids.sort()) === JSON.stringify(["03-baz"].sort()),
+    "ids: matches by slug or id but excludes terminal entries", JSON.stringify(s));
   s = selectRescueSubset(manifest, "ids:does-not-exist");
   expect(s.ids.length === 0 && s.unknown.includes("does-not-exist"),
     "ids: surfaces unknown");
@@ -414,7 +416,38 @@ function scenarioRescueSubset() {
 }
 
 // ----------------------------------------------------------------------------
-// [11] Unknown subcommand surfaces stable error envelope
+// Scenario 11 — carryForwardDoneEntries
+// ----------------------------------------------------------------------------
+
+function scenarioCarryForwardDoneEntries() {
+  process.stdout.write("\n[11] carryForwardDoneEntries\n");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orchestrate-carry-forward-"));
+  const manifestPath = path.join(dir, "manifest.json");
+  const staleWorktree = path.join(dir, "missing-worktree");
+  fs.writeFileSync(manifestPath, `${JSON.stringify({
+    entries: [
+      {
+        id: "01-alpha",
+        status: "done",
+        attempts: 1,
+        worktree_path: staleWorktree,
+        answer_path: path.join(dir, "answer.md"),
+      },
+    ],
+  })}\n`);
+  const freshEntries = [
+    { id: "01-alpha", status: "queued", attempts: 0, worktree_path: staleWorktree },
+  ];
+  const carried = carryForwardDoneEntries(manifestPath, freshEntries);
+  expect(carried === 1, "terminal entry carried forward");
+  expect(freshEntries[0].status === "done", "terminal status preserved");
+  expect(freshEntries[0].worktree_path === null,
+    "stale worktree_path is nulled instead of resurrected",
+    JSON.stringify(freshEntries[0]));
+}
+
+// ----------------------------------------------------------------------------
+// [12] Unknown subcommand surfaces stable error envelope
 // ----------------------------------------------------------------------------
 // Regression test: derailment-test round 8 confirmed mjs:2369-2371 returns
 // `error.code="unknown_mode"` for unrecognized subcommands. Pin that contract
@@ -422,7 +455,7 @@ function scenarioRescueSubset() {
 // shape an agent depends on for AskUserQuestion fallback.
 
 function scenarioUnknownCommand() {
-  process.stdout.write(`\n[11] dispatcher rejects unknown subcommand cleanly\n`);
+  process.stdout.write(`\n[12] dispatcher rejects unknown subcommand cleanly\n`);
   const dispatcher = path.join(SCRIPT_DIR, "orchestrate-codex.mjs");
   const r = spawnSync(process.execPath, [dispatcher, "not-a-real-mode"], {
     encoding: "utf8",
@@ -455,6 +488,7 @@ async function main() {
   scenarioStrictParse();
   scenarioConcurrency();
   scenarioRescueSubset();
+  scenarioCarryForwardDoneEntries();
   scenarioUnknownCommand();
 
   process.stdout.write(`\n=========================================\n`);

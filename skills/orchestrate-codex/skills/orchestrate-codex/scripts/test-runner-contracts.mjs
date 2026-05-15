@@ -46,6 +46,7 @@ function runNode(args, cwd, extraEnv = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
+      NODE_ENV: "test",
       ORCHESTRATE_SKIP_PREFLIGHT: "1",
       ORCHESTRATE_RUNNER_FOREGROUND: "1",
       ...extraEnv,
@@ -86,6 +87,36 @@ function scenarioHelpAndBadArgs() {
   const bad = runNode(["single"], cwd);
   expect(bad.status !== 0 && bad.json?.ok === false, "bad args return error envelope");
   expect(bad.json?.error?.code === "missing_required_arg", "bad arg code is stable");
+}
+
+function scenarioForegroundGuard() {
+  process.stdout.write("\n[1b] foreground runner guard\n");
+  const cwd = tmpdir("foreground-guard");
+  const r = spawnSync(process.execPath, [
+    DISPATCHER,
+    "single",
+    "--prompt", "guard smoke",
+    "--cwd", cwd,
+    "--run-id", "foreground-guard",
+    "--dry-run",
+  ], {
+    cwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      ORCHESTRATE_SKIP_PREFLIGHT: "1",
+      ORCHESTRATE_RUNNER_FOREGROUND: "1",
+      ORCHESTRATE_ALLOW_FOREGROUND: "",
+    },
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  let json = null;
+  try { json = JSON.parse(r.stdout); } catch (_) { /* leave null */ }
+  expect(r.status !== 0, "foreground hatch rejected outside test env");
+  expect(json?.ok === false, "foreground hatch returns error envelope");
+  expect(json?.error?.code === "bad_argument",
+    `expected bad_argument, got ${json?.error?.code}`);
 }
 
 function scenarioExec() {
@@ -569,6 +600,7 @@ function scenarioSchemaVersionGuard() {
 }
 
 scenarioHelpAndBadArgs();
+scenarioForegroundGuard();
 scenarioExec();
 scenarioBatch();
 scenarioSingle();

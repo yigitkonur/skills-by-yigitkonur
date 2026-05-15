@@ -73,7 +73,7 @@ def workspace_slug_hash(workspace_root: Path) -> tuple[str, str]:
     """
     raw = str(workspace_root)
     try:
-        canonical = os.path.realpath(raw, strict=True)
+        canonical = str(Path(raw).resolve(strict=True))
     except OSError:
         canonical = raw
     base = os.path.basename(raw) or "workspace"

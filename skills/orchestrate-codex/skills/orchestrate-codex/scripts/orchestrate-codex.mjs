@@ -965,6 +965,10 @@ function carryForwardDoneEntries(priorManifestPath, freshEntries) {
     const isTerminal = prev.status === "done" || prev.status === "converged";
     if (!isTerminal) continue;
     if (prev.dry_run === true || prev.verify_status === "dry-run") continue;
+    const priorWorktreePath = prev.worktree_path ?? entry.worktree_path;
+    const safeWorktreePath = priorWorktreePath && fs.existsSync(priorWorktreePath)
+      ? priorWorktreePath
+      : null;
     // Restore terminal-state fields. mode_state is shallow-merged so the
     // freshly-seeded shape (e.g. mode_state.batch.input from the new inputs
     // file) wins for keys absent in the prior, and prior-run signals
@@ -978,7 +982,7 @@ function carryForwardDoneEntries(priorManifestPath, freshEntries) {
     entry.log_path = prev.log_path ?? entry.log_path;
     entry.jsonl_path = prev.jsonl_path ?? entry.jsonl_path;
     entry.answer_path = prev.answer_path ?? entry.answer_path;
-    entry.worktree_path = prev.worktree_path ?? entry.worktree_path;
+    entry.worktree_path = safeWorktreePath;
     entry.codex_thread_id = prev.codex_thread_id ?? entry.codex_thread_id;
     entry.codex_session_id = prev.codex_session_id ?? entry.codex_session_id;
     entry.last_error = prev.last_error ?? entry.last_error;
@@ -1089,6 +1093,18 @@ function spawnRunnerDetached({ runnerPath, args, cwd, env = {}, runnerLogPath = 
   // runner in the foreground via spawnSync so integration tests can assert on
   // the runner's exit status without scraping the runner log.
   if (process.env.ORCHESTRATE_RUNNER_FOREGROUND === "1") {
+    const foregroundAllowed = process.env.NODE_ENV === "test"
+      || process.env.ORCHESTRATE_ALLOW_FOREGROUND === "1";
+    if (!foregroundAllowed) {
+      return {
+        pid: 0,
+        foreground: true,
+        status: 2,
+        stdout: "",
+        stderr: "ORCHESTRATE_RUNNER_FOREGROUND=1 is test-only; set NODE_ENV=test or ORCHESTRATE_ALLOW_FOREGROUND=1 to use it.",
+        foreground_rejected: true,
+      };
+    }
     const r = spawnSync("bash", [runnerPath, ...args], {
       cwd,
       encoding: "utf8",
@@ -1125,6 +1141,13 @@ function spawnRunnerDetached({ runnerPath, args, cwd, env = {}, runnerLogPath = 
   }
   child.unref();
   return { pid: child.pid, foreground: false };
+}
+
+function foregroundRejectedEnvelope(command, pid) {
+  if (!pid?.foreground_rejected) return null;
+  return errEnvelope(command, "bad_argument", pid.stderr, {
+    env: "ORCHESTRATE_RUNNER_FOREGROUND",
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -1474,6 +1497,8 @@ async function handleExec(argv) {
       env: { JOBS: String(cap.value), PROJECT_DIR: wsRoot },
       runnerLogPath,
     });
+    const foregroundErr = foregroundRejectedEnvelope(command, pid);
+    if (foregroundErr) return foregroundErr;
     return okEnvelope(command, {
       phase: "queued",
       next_action: "arm Monitor and wait",
@@ -1527,6 +1552,8 @@ async function handleExec(argv) {
     env: execEnv,
     runnerLogPath,
   });
+  const foregroundErr = foregroundRejectedEnvelope(command, pid);
+  if (foregroundErr) return foregroundErr;
 
   const env = okEnvelope(command, {
     phase: "queued",
@@ -1633,6 +1660,8 @@ async function handleBatch(argv) {
       },
       runnerLogPath,
     });
+    const foregroundErr = foregroundRejectedEnvelope(command, pid);
+    if (foregroundErr) return foregroundErr;
     return okEnvelope(command, {
       phase: "queued",
       next_action: "arm Monitor and wait",
@@ -1700,6 +1729,8 @@ async function handleBatch(argv) {
     env: batchEnv,
     runnerLogPath,
   });
+  const foregroundErr = foregroundRejectedEnvelope(command, pid);
+  if (foregroundErr) return foregroundErr;
 
   const env = okEnvelope(command, {
     phase: "queued",
@@ -1843,6 +1874,8 @@ async function handleSingle(argv) {
     cwd: wsRoot,
     runnerLogPath,
   });
+  const foregroundErr = foregroundRejectedEnvelope(command, pid);
+  if (foregroundErr) return foregroundErr;
 
   const env = okEnvelope(command, {
     phase: "running",
@@ -1953,6 +1986,8 @@ async function handleReview(argv) {
     },
     runnerLogPath,
   });
+  const foregroundErr = foregroundRejectedEnvelope(command, pid);
+  if (foregroundErr) return foregroundErr;
 
   const env = okEnvelope(command, {
     phase: "queued",
@@ -1984,7 +2019,10 @@ function selectRescueSubset(manifest, applySpec) {
   const entries = manifest.entries || [];
   if (applySpec.startsWith("ids:")) {
     const wanted = applySpec.slice(4).split(",").map((s) => s.trim()).filter(Boolean);
-    const matched = entries.filter((e) => wanted.includes(e.id) || wanted.includes(e.slug));
+    const matched = entries.filter((e) => {
+      const wantedEntry = wanted.includes(e.id) || wanted.includes(e.slug);
+      return wantedEntry && e.status !== "done" && e.status !== "converged";
+    });
     const unknown = wanted.filter((w) => !entries.find((e) => e.id === w || e.slug === w));
     return { ids: matched.map((e) => e.id), unknown };
   }
@@ -2363,6 +2401,8 @@ async function handleRescue(argv) {
     env: runnerEnv,
     runnerLogPath,
   });
+  const foregroundErr = foregroundRejectedEnvelope(command, pid);
+  if (foregroundErr) return foregroundErr;
 
   const env = okEnvelope(command, {
     phase: "queued",
