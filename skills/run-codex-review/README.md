@@ -1,6 +1,6 @@
 # run-codex-review
 
-Redirecting deprecated codex review orchestration installs to orchestrate-codex review mode.
+Redirecting deprecated codex review orchestration installs to use-codex review mode.
 
 **Category:** orchestration
 

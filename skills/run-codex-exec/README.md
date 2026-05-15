@@ -1,6 +1,6 @@
 # run-codex-exec
 
-Redirecting deprecated codex exec orchestration installs to orchestrate-codex exec mode.
+Redirecting deprecated codex exec orchestration installs to use-codex exec mode.
 
 **Category:** orchestration
 

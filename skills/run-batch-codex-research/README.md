@@ -1,6 +1,6 @@
 # run-batch-codex-research
 
-Migrating from retired run-batch-codex-research to orchestrate-codex batch mode for codex template fanout.
+Migrating from retired run-batch-codex-research to use-codex batch mode for codex template fanout.
 
 **Category:** orchestration
 
@@ -9,7 +9,7 @@ Migrating from retired run-batch-codex-research to orchestrate-codex batch mode 
 Install the active replacement:
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/orchestrate-codex
+npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/use-codex
 ```
 
 Or install the full pack:
@@ -18,4 +18,4 @@ Or install the full pack:
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 ```
 
-This old skill path is a compatibility redirect only. Use `orchestrate-codex` batch mode for template-by-input codex fanout.
+This old skill path is a compatibility redirect only. Use `use-codex` batch mode for template-by-input codex fanout.

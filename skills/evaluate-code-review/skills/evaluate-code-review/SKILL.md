@@ -24,7 +24,7 @@ Do **NOT** use this skill when:
 - *performing the review yourself* (reviewer-side, producing findings) → use `do-review`
 - *preparing a PR for review* (author-side, asking for feedback) → use `ask-review`
 - *checking what work is done vs. claimed done* with no review feedback in hand → use `check-completion`
-- *running `orchestrate-codex` per-branch convergence loops* — major-finding evaluation routes through `do-review`, not this skill
+- *running `use-codex` per-branch convergence loops* — major-finding evaluation routes through `do-review`, not this skill
 
 ## Non-negotiable rules
 
