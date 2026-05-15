@@ -1,0 +1,1 @@
+usage: setup-worktree.sh <slug> <branch> [<base-branch>]

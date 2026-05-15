@@ -1,0 +1,19 @@
+usage: list-worktrees.py [-h] [--json] [--cwd CWD]
+
+Enumerate git worktrees with branch, HEAD, dirty status, unpushed count.
+
+Human-readable or JSON output. Read-only.
+
+Usage:
+    list-worktrees.py           # text
+    list-worktrees.py --json    # machine-readable
+
+Exit codes:
+    0  enumerated (even if 1 worktree)
+    2  not in a git repository
+    3  environmental error (git not on PATH)
+
+optional arguments:
+  -h, --help  show this help message and exit
+  --json
+  --cwd CWD   Override cwd for the `git worktree list` invocation

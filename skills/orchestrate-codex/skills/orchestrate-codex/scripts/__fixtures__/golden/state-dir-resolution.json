@@ -1,0 +1,51 @@
+{
+  "_description": "Cross-language fixture: env combinations + cwd → expected state_dir. Both _lib.py::resolve_state_dir and _lib.sh's equivalent derivation must match.",
+  "_algorithm": {
+    "1": "If CLAUDE_PLUGIN_DATA is set, base = $CLAUDE_PLUGIN_DATA/state",
+    "2": "Else, base = ${TMPDIR:-/tmp}/codex-companion",
+    "3": "result = base/<slug>-<hash> where slug+hash come from slug-derivation.json algorithm applied to realpath(cwd)",
+    "note": "On macOS, /tmp and /private/tmp can alias; realpath normalizes. The resulting slug+hash is identical for both forms."
+  },
+  "cases": [
+    {
+      "name": "claude_plugin_data_set",
+      "env": {
+        "CLAUDE_PLUGIN_DATA": "/var/data/claude",
+        "TMPDIR": ""
+      },
+      "cwd": "/tmp/test-repo",
+      "expected_base": "/var/data/claude/state",
+      "expected_slug_prefix": "test-repo-"
+    },
+    {
+      "name": "claude_plugin_data_unset_tmpdir_set",
+      "env": {
+        "CLAUDE_PLUGIN_DATA": "",
+        "TMPDIR": "/private/var/folders/abc"
+      },
+      "cwd": "/tmp/test-repo",
+      "expected_base": "/private/var/folders/abc/codex-companion",
+      "expected_slug_prefix": "test-repo-"
+    },
+    {
+      "name": "both_unset_falls_back_to_tmp",
+      "env": {
+        "CLAUDE_PLUGIN_DATA": "",
+        "TMPDIR": ""
+      },
+      "cwd": "/tmp/test-repo",
+      "expected_base": "/tmp/codex-companion",
+      "expected_slug_prefix": "test-repo-"
+    },
+    {
+      "name": "empty_string_treated_as_unset",
+      "env": {
+        "CLAUDE_PLUGIN_DATA": "",
+        "TMPDIR": ""
+      },
+      "cwd": "/tmp/foo",
+      "expected_base": "/tmp/codex-companion",
+      "expected_slug_prefix": "foo-"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+usage: render-task-prompts.sh INPUT_DIR OUTPUT_DIR [--mode exec|single] [--prefix on|off] [--force]
+
+Wraps each *.md file in INPUT_DIR with the SUBAGENT-STOP prefix and the
+6-section orchestrate-codex prompt skeleton. Output goes to OUTPUT_DIR
+with the same basename. Idempotent: existing output files are skipped
+unless --force is passed.

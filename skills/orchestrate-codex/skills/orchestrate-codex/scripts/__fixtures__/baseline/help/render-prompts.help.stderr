@@ -1,0 +1,1 @@
+usage: render-prompts.sh INPUT_LIST TEMPLATE PROMPTS_DIR [PLACEHOLDER]

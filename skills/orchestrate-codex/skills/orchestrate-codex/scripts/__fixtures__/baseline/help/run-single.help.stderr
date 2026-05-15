@@ -1,0 +1,9 @@
+run-single.sh — spawn one codex exec, stream JSONL through the filter.
+
+Usage:
+  run-single.sh --prompt-file <file> [--cwd <dir>] [--out <file>]
+  run-single.sh --prompt <text> [--cwd <dir>] [--out <file>]
+                [--manifest <m.json> --entry-id <id>]
+                [--jsonl <path>]
+                [--filter-level minimal|normal|verbose]
+                [--dry-run]
