@@ -272,6 +272,38 @@ def render_text(result: dict) -> str:
 
 
 def main() -> int:
+    # Phase 3 (Decision 5): --apply-queue forwards to apply-review-decisions.py
+    # (folded into this entry-point per strategy/02). In v3.0 the implementation
+    # will move into this file; for now we exec the sibling script to preserve
+    # behavior verbatim. Detect the flag before argparse so the required
+    # --review-json doesn't fire on apply-queue invocations.
+    if "--apply-queue" in sys.argv:
+        import os as _os
+        idx = sys.argv.index("--apply-queue")
+        if idx + 1 >= len(sys.argv):
+            print("classify-review-feedback.py: --apply-queue requires a path argument",
+                  file=sys.stderr)
+            return 2
+        decisions_path = sys.argv[idx + 1]
+        # Build apply-review-decisions.py invocation.
+        sibling = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                                "apply-review-decisions.py")
+        forward_args = ["python3", sibling, "--eval", decisions_path]
+        # Pass through other classifier flags that apply-review understands:
+        # --json, --branch <name>.
+        i = 1
+        while i < len(sys.argv):
+            arg = sys.argv[i]
+            if arg == "--apply-queue":
+                i += 2; continue
+            if arg == "--json":
+                forward_args.append(arg); i += 1; continue
+            if arg == "--branch":
+                if i + 1 < len(sys.argv):
+                    forward_args += [arg, sys.argv[i + 1]]; i += 2; continue
+            i += 1
+        _os.execvp("python3", forward_args)
+
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     # Accept both `--review-json` (canonical) and `--input` (legacy/doc alias).
@@ -279,6 +311,13 @@ def main() -> int:
         "--review-json", "--input",
         dest="review_json", required=True,
         help="Path to normalized review-round JSON",
+    )
+    ap.add_argument(
+        "--apply-queue",
+        dest="_apply_queue_decoy",  # captured above; here only to surface in --help
+        default=None,
+        help="Path to decisions.json; switches to apply-queue formatter mode "
+             "(forwards to apply-review-decisions.py)",
     )
     ap.add_argument("--policy", default=None,
                     help="Path to policy.json overrides")

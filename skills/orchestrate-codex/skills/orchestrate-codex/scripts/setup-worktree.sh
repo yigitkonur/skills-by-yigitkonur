@@ -148,6 +148,27 @@ if [[ "$PRISMA_GENERATE" == "1" ]]; then
   fi
 fi
 
+# ── WORKTREE_SETUP_HOOK (Phase 3: wired per Decision 10 in
+# /Users/yigitkonur/dev/unification-strategy/strategy/02-consolidation-decisions.md).
+# When set to an executable path, runs after the built-in setup steps with
+# the worktree path as $1. Non-zero exit → exit code 6
+# (worktree_setup_hook_failed). Useful for stacks the built-in symlink
+# logic doesn't cover (Unity, Xcode, Gradle, Rust, embedded toolchains, etc.).
+if [[ -n "${WORKTREE_SETUP_HOOK:-}" ]]; then
+  if [[ -x "$WORKTREE_SETUP_HOOK" ]]; then
+    echo "[setup-worktree] running WORKTREE_SETUP_HOOK: $WORKTREE_SETUP_HOOK"
+    if "$WORKTREE_SETUP_HOOK" "$WT_PATH"; then
+      echo "[setup-worktree] WORKTREE_SETUP_HOOK succeeded"
+    else
+      hook_rc=$?
+      echo "[setup-worktree] ERROR: WORKTREE_SETUP_HOOK failed (rc=$hook_rc)" >&2
+      exit 6
+    fi
+  else
+    echo "[setup-worktree] WARN: WORKTREE_SETUP_HOOK not executable: $WORKTREE_SETUP_HOOK" >&2
+  fi
+fi
+
 # Final breadcrumb so the runner can capture the resolved path.
 echo "WORKTREE_PATH=$WT_PATH"
 echo "[setup-worktree] ready"
