@@ -1,1 +1,1 @@
-usage: run-review.sh [--dry-run] <manifest.json> <round-number>
+usage: /Users/yigitkonur/dev/skills-by-yigitkonur-wt-unification-263c3eec/skills/orchestrate-codex/skills/orchestrate-codex/scripts/run-review.sh [--dry-run] <manifest.json> <round-number>

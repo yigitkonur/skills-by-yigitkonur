@@ -1,4 +1,5 @@
 usage: classify-review-feedback.py [-h] --review-json REVIEW_JSON
+                                   [--apply-queue _APPLY_QUEUE_DECOY]
                                    [--policy POLICY] [--json]
                                    [--output OUTPUT] [--quiet]
 
@@ -31,6 +32,9 @@ optional arguments:
   -h, --help            show this help message and exit
   --review-json REVIEW_JSON, --input REVIEW_JSON
                         Path to normalized review-round JSON
+  --apply-queue _APPLY_QUEUE_DECOY
+                        Path to decisions.json; switches to apply-queue
+                        formatter mode (forwards to apply-review-decisions.py)
   --policy POLICY       Path to policy.json overrides
   --json                Emit JSON to stdout instead of text
   --output OUTPUT, --out OUTPUT

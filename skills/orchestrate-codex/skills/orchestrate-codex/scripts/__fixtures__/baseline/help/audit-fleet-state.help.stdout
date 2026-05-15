@@ -1,36 +1,15 @@
-usage: audit-fleet-state.py [-h] --manifest MANIFEST
-                            [--workspace-root WORKSPACE_ROOT]
-                            [--stale-minutes STALE_MINUTES] [--json]
-
-Read-only state dump for an orchestrate-codex run.
-
-Surfaces drift between manifest.status and filesystem reality:
-  - per-entry: worktree exists?, log file exists & growing?, answer file size,
-    codex-companion job correlation (jobId, status, pid alive, stale).
-  - top-level: orphan worktrees on disk that the manifest doesn't list,
-    stale round logs (review mode), in-flight pid liveness summary.
-
-Read-only. Never modifies state. The companion script for mutations is
-manifest-update.py (entry/top updates).
-
-Usage:
-    audit-fleet-state.py --manifest <path>
-    audit-fleet-state.py --manifest <path> --json
-    audit-fleet-state.py --manifest <path> --stale-minutes 30
-    audit-fleet-state.py --manifest <path> --workspace-root /repo
-
-Exit codes:
-    0  CLEAN   — manifest matches reality, no drift
-    1  ACTIONABLE — drift detected (orphans, stale logs, dead pids w/ running)
-    2  Manifest missing or unreadable
-    3  Environmental error (permission denied, etc)
+usage: audit.py state [-h] [--manifest MANIFEST]
+                      [--workspace-root WORKSPACE_ROOT] [--cwd CWD]
+                      [--stale-minutes STALE_MINUTES] [--json]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --manifest MANIFEST   Path to manifest.json
+  --manifest MANIFEST   path to manifest.json (default: state-dir auto-
+                        resolution)
   --workspace-root WORKSPACE_ROOT
-                        Workspace root for repo / state-dir resolution.
-                        Default: cwd.
+                        workspace root (default: cwd)
+  --cwd CWD             working directory
   --stale-minutes STALE_MINUTES
-                        Log freshness threshold in minutes. Default 30.
-  --json                Emit JSON instead of human text.
+                        flag entries with no activity for N minutes (default
+                        30)
+  --json                emit machine-readable JSON envelope

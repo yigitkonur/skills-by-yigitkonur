@@ -1,4 +1,4 @@
-[bootstrap] mode=unknown project=/Users/yigitkonur/dev/skills-by-yigitkonur-wt-unification-263c3eec/skills/orchestrate-codex/skills/orchestrate-codex/scripts
+[bootstrap] mode=unknown project=/Users/yigitkonur/dev/skills-by-yigitkonur
 [bootstrap] codex version: codex-cli 0.130.0
 [bootstrap] model: gpt-5.5  effort: xhigh
 [bootstrap] ERROR: codex login status returned non-zero. Run `codex login` before dispatching. 3

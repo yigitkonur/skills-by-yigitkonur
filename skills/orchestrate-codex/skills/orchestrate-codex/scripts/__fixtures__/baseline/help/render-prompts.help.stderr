@@ -1,1 +1,3 @@
-usage: render-prompts.sh INPUT_LIST TEMPLATE PROMPTS_DIR [PLACEHOLDER]
+render-prompts.sh — DEPRECATED shim forwarding to render.sh --mode template
+Removed in v3.0. Use:
+  bash render.sh --mode template INPUT_LIST TEMPLATE PROMPTS_DIR [PLACEHOLDER]

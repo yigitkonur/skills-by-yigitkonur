@@ -1,1 +1,1 @@
-usage: run-fleet.sh --manifest <manifest.json> [--concurrency N] [--only id,id] [--dry-run]
+usage: /Users/yigitkonur/dev/skills-by-yigitkonur-wt-unification-263c3eec/skills/orchestrate-codex/skills/orchestrate-codex/scripts/run-fleet.sh --manifest <manifest.json> [--concurrency N] [--only id,id] [--dry-run]
