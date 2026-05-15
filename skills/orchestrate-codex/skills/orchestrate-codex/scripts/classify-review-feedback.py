@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""Apply major-vs-minor policy to a normalized codex review JSON.
+
+Reads the per-round review-findings JSON written by run-review.sh (one file
+per branch per round) and partitions items into {major, minor,
+unclassified_treated_as_major} per the policy in
+references/major-vs-minor-policy.md.
+
+Default-when-ambiguous: major (conservative — better to over-loop than miss
+a real issue).
+
+Read-only. Never modifies state.
+
+Usage:
+    classify-review-feedback.py --review-json <path>
+    classify-review-feedback.py --input <path>            (alias for --review-json)
+    classify-review-feedback.py --review-json <path> --policy <policy.json>
+    classify-review-feedback.py --review-json <path> --json
+    classify-review-feedback.py --review-json <path> --output <path>
+        # Writes the partitioned {major[], minor[], counts} JSON to <path>.
+
+Exit codes:
+    0  ≥1 major item — caller continues the review loop
+    1  no major items — caller marks branch DONE / converged
+    2  fatal parse error / bad input
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+
+# Default trigger lists (kept in lock-step with references/major-vs-minor-policy.md)
+DEFAULT_MAJOR_TRIGGERS = [
+    # correctness
+    r"\bcorrectness\b", r"\bwrong\b", r"\bincorrect\b", r"\bbug\b",
+    r"\boff[- ]?by[- ]?one\b", r"\bdoes not handle\b", r"\breturns wrong\b",
+    # runtime stability
+    r"\bcrash\w*\b", r"\bpanic\b", r"\binfinite loop\b", r"\bdeadlock\b",
+    r"\bleak\b", r"\bunbounded\b", r"\boom\b", r"\bstack overflow\b",
+    # data integrity
+    r"\bdata loss\b", r"\bdata corruption\b", r"\blost write\b",
+    r"\brace condition\b", r"\bracey?\b", r"\binconsistent state\b",
+    r"\bnon[- ]?atomic\b",
+    # security
+    r"\binjection\b", r"\bxss\b", r"\bcsrf\b", r"\bsql inject\w*\b",
+    r"\bauth bypass\b", r"\bunsafe deserialization\b", r"\bsecret\b",
+    r"\bcredential\b", r"\brce\b", r"\bpath traversal\b", r"\bssrf\b",
+    r"\bsecurity\s+(risk|issue|hole)\b",
+    # regressions
+    r"\bregression\b", r"\bbreaks?\b", r"\bbroken\b",
+    r"\bpreviously worked\b", r"\bremoved without replacement\b",
+    # hygiene that hides bugs
+    r"\bsilently? swallow\b", r"\bsilent fail\b", r"\bunreachable\b",
+    r"\bdead code that should run\b", r"\bunhandled exception\b",
+    r"\bmissing error check\b",
+    # branch structure
+    r"\bmixed concerns?\b", r"\bcommit does too much\b",
+    r"\bshould be split\b", r"\bmultiple unrelated changes\b",
+]
+
+DEFAULT_MINOR_TRIGGERS = [
+    # formatting
+    r"\bformatting\b", r"\bwhitespace\b", r"\bindentation\b",
+    r"\bline length\b", r"\bsemicolon\b",
+    # naming
+    r"\brename\b", r"\bnaming\b", r"\bconsider naming\b",
+    r"\bconvention prefers\b", r"\bmore descriptive name\b",
+    # style
+    r"\bprefer\w*\b", r"\bidiomatic\b", r"\bstyle\b",
+    r"\bnits?\b", r"\bnitpicks?\b", r"\bcosmetic\b",
+    # docs polish
+    r"\btypo in comment\b", r"\bcomment phrasing\b",
+    r"\bdocs polish\b", r"\bwording\b",
+    # speculative perf
+    r"\bmight be faster\b", r"\bconsider caching\b",
+    r"\bspeculative\b", r"\bmicro[- ]?optimization\b",
+    # scope creep
+    r"\bwhile you'?re at it\b", r"\balso consider\b",
+    r"\bbonus\b", r"\bwould be nice\b",
+]
+
+SEVERITY_MAJOR = {"critical", "high", "error", "blocker", "must-fix"}
+SEVERITY_MINOR = {"low", "info", "style", "nit", "polish", "optional"}
+
+
+def load_policy(path: str | None) -> dict:
+    """Load policy.json overrides, or return defaults."""
+    policy = {
+        "major_triggers": list(DEFAULT_MAJOR_TRIGGERS),
+        "minor_triggers": list(DEFAULT_MINOR_TRIGGERS),
+        "severity_major": set(SEVERITY_MAJOR),
+        "severity_minor": set(SEVERITY_MINOR),
+    }
+    if not path or not Path(path).is_file():
+        return policy
+    try:
+        with open(path) as f:
+            override = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return policy
+    # promote_to_major: keywords that should now classify as major
+    for kw in override.get("promote_to_major", []):
+        pattern = rf"\b{re.escape(kw)}\b"
+        if pattern not in policy["major_triggers"]:
+            policy["major_triggers"].append(pattern)
+        policy["minor_triggers"] = [p for p in policy["minor_triggers"] if pattern not in p]
+    # demote_to_minor: keywords that should now classify as minor
+    for kw in override.get("demote_to_minor", []):
+        pattern = rf"\b{re.escape(kw)}\b"
+        if pattern not in policy["minor_triggers"]:
+            policy["minor_triggers"].append(pattern)
+        policy["major_triggers"] = [p for p in policy["major_triggers"] if pattern not in p]
+    # additional triggers (added without removing from the other list)
+    for kw in override.get("additional_major_triggers", []):
+        policy["major_triggers"].append(rf"\b{re.escape(kw)}\b")
+    for kw in override.get("additional_minor_triggers", []):
+        policy["minor_triggers"].append(rf"\b{re.escape(kw)}\b")
+    return policy
+
+
+def count_matches(text: str, patterns: list[str]) -> int:
+    """How many distinct patterns match the text (case-insensitive)."""
+    text_lower = text.lower() if text else ""
+    return sum(
+        1 for p in patterns
+        if re.search(p, text_lower, flags=re.IGNORECASE)
+    )
+
+
+def classify_item(item: dict, policy: dict) -> str:
+    """Return 'major', 'minor', or 'unclassified' for one item."""
+    severity_raw = (item.get("severity_raw") or item.get("severity") or "").strip().lower()
+
+    if severity_raw in policy["severity_major"]:
+        return "major"
+    if severity_raw in policy["severity_minor"]:
+        return "minor"
+
+    # Combine relevant text fields for keyword scan
+    body = item.get("body") or item.get("message") or item.get("description") or ""
+    title = item.get("title") or ""
+    text = f"{title}\n{body}"
+    major_n = count_matches(text, policy["major_triggers"])
+    minor_n = count_matches(text, policy["minor_triggers"])
+
+    if major_n > minor_n:
+        return "major"
+    if minor_n > major_n:
+        return "minor"
+    if major_n == 0 and minor_n == 0:
+        return "unclassified"
+    # tie with both > 0: default major (conservative)
+    return "major"
+
+
+def classify_unstructured(raw_text: str, policy: dict) -> tuple[list, list, list]:
+    """When items[] is empty, scan raw_text for triggers as a single virtual item."""
+    if not raw_text:
+        return [], [], []
+    virtual = {
+        "id": "raw-text-fallback",
+        "severity_raw": "unstructured",
+        "body": raw_text,
+        "file": None,
+        "line": None,
+    }
+    cls = classify_item(virtual, policy)
+    if cls == "major":
+        return [virtual], [], []
+    if cls == "minor":
+        return [], [virtual], []
+    return [], [], [virtual]
+
+
+def classify_review(review: dict, policy: dict) -> dict:
+    items = review.get("items") or review.get("findings") or []
+    if not items:
+        major, minor, unclassified = classify_unstructured(
+            review.get("raw_text") or review.get("text") or "", policy
+        )
+    else:
+        major, minor, unclassified = [], [], []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            cls = classify_item(item, policy)
+            if cls == "major":
+                major.append(item)
+            elif cls == "minor":
+                minor.append(item)
+            else:
+                unclassified.append(item)
+
+    return {
+        "review_id": review.get("review_id") or review.get("id"),
+        "branch": review.get("branch"),
+        "head_sha": review.get("head_sha"),
+        "round": review.get("round"),
+        "major": major,
+        "minor": minor,
+        "unclassified_treated_as_major": unclassified,
+        "summary": {
+            "total": len(major) + len(minor) + len(unclassified),
+            "major_n": len(major),
+            "minor_n": len(minor),
+            "unclassified_n": len(unclassified),
+        },
+        "counts": {
+            "major": len(major) + len(unclassified),
+            "minor": len(minor),
+            "ambiguous_promoted_to_major": len(unclassified),
+        },
+    }
+
+
+def render_text(result: dict) -> str:
+    lines = []
+    s = result["summary"]
+    lines.append(f"branch:    {result.get('branch')}")
+    lines.append(f"review:    {result.get('review_id')}")
+    if result.get("round") is not None:
+        lines.append(f"round:     {result['round']}")
+    lines.append(f"head:      {result.get('head_sha')}")
+    lines.append(
+        f"summary:   {s['total']} total  ({s['major_n']} major, "
+        f"{s['minor_n']} minor, {s['unclassified_n']} unclassified→major)"
+    )
+    lines.append("")
+    if result["major"]:
+        lines.append(f"MAJOR ({len(result['major'])}):")
+        for it in result["major"]:
+            loc = (f" {it.get('file', '')}:{it.get('line', '')}"
+                   if it.get("file") else "")
+            body = (it.get("body") or it.get("message") or "").splitlines()
+            head = body[0][:120] if body else (it.get("title") or "")[:120]
+            lines.append(
+                f"  • [{it.get('severity_raw') or it.get('severity', '?')}]{loc}  {head}"
+            )
+    if result["unclassified_treated_as_major"]:
+        lines.append("")
+        lines.append(f"UNCLASSIFIED → MAJOR ({len(result['unclassified_treated_as_major'])}):")
+        for it in result["unclassified_treated_as_major"]:
+            loc = (f" {it.get('file', '')}:{it.get('line', '')}"
+                   if it.get("file") else "")
+            body = (it.get("body") or "").splitlines()
+            head = body[0][:120] if body else ""
+            lines.append(
+                f"  • [{it.get('severity_raw') or it.get('severity', '?')}]{loc}  {head}"
+            )
+    if result["minor"]:
+        lines.append("")
+        lines.append(f"minor ({len(result['minor'])}):")
+        for it in result["minor"]:
+            loc = (f" {it.get('file', '')}:{it.get('line', '')}"
+                   if it.get("file") else "")
+            body = (it.get("body") or "").splitlines()
+            head = body[0][:80] if body else ""
+            lines.append(
+                f"  • [{it.get('severity_raw') or it.get('severity', '?')}]{loc}  {head}"
+            )
+    lines.append("")
+    if result["major"] or result["unclassified_treated_as_major"]:
+        lines.append("→ continue loop (≥1 major)")
+    else:
+        lines.append("→ DONE (no major)")
+    return "\n".join(lines)
+
+
+def main() -> int:
+    # Phase 3 (Decision 5): --apply-queue forwards to apply-review-decisions.py
+    # (folded into this entry-point per strategy/02). In v3.0 the implementation
+    # will move into this file; for now we exec the sibling script to preserve
+    # behavior verbatim. Detect the flag before argparse so the required
+    # --review-json doesn't fire on apply-queue invocations.
+    if "--apply-queue" in sys.argv:
+        import os as _os
+        idx = sys.argv.index("--apply-queue")
+        if idx + 1 >= len(sys.argv):
+            print("classify-review-feedback.py: --apply-queue requires a path argument",
+                  file=sys.stderr)
+            return 2
+        decisions_path = sys.argv[idx + 1]
+        # Build apply-review-decisions.py invocation.
+        sibling = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                                "apply-review-decisions.py")
+        forward_args = ["python3", sibling, "--eval", decisions_path]
+        # Pass through other classifier flags that apply-review understands:
+        # --json, --branch <name>.
+        i = 1
+        while i < len(sys.argv):
+            arg = sys.argv[i]
+            if arg == "--apply-queue":
+                i += 2; continue
+            if arg == "--json":
+                forward_args.append(arg); i += 1; continue
+            if arg == "--branch":
+                if i + 1 < len(sys.argv):
+                    forward_args += [arg, sys.argv[i + 1]]; i += 2; continue
+            i += 1
+        _os.execvp("python3", forward_args)
+
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    # Accept both `--review-json` (canonical) and `--input` (legacy/doc alias).
+    ap.add_argument(
+        "--review-json", "--input",
+        dest="review_json", required=True,
+        help="Path to normalized review-round JSON",
+    )
+    ap.add_argument(
+        "--apply-queue",
+        dest="_apply_queue_decoy",  # captured above; here only to surface in --help
+        default=None,
+        help="Path to decisions.json; switches to apply-queue formatter mode "
+             "(forwards to apply-review-decisions.py)",
+    )
+    ap.add_argument("--policy", default=None,
+                    help="Path to policy.json overrides")
+    ap.add_argument("--json", action="store_true",
+                    help="Emit JSON to stdout instead of text")
+    ap.add_argument(
+        "--output", "--out",
+        dest="output", default=None,
+        help="Optional: write the JSON partition to <path> (still prints to "
+             "stdout unless combined with --quiet).",
+    )
+    ap.add_argument(
+        "--quiet", action="store_true",
+        help="Suppress stdout output (useful with --output).",
+    )
+    args = ap.parse_args()
+
+    try:
+        with open(args.review_json) as f:
+            review = json.load(f)
+    except FileNotFoundError:
+        print(f"failed to read review JSON: not found: {args.review_json}", file=sys.stderr)
+        return 2
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"failed to read review JSON: {e}", file=sys.stderr)
+        return 2
+
+    if not isinstance(review, dict):
+        print(f"review JSON root must be an object (got {type(review).__name__})",
+              file=sys.stderr)
+        return 2
+
+    policy = load_policy(args.policy)
+    result = classify_review(review, policy)
+
+    if args.output:
+        try:
+            with open(args.output, "w") as f:
+                json.dump(result, f, indent=2, default=str)
+                f.write("\n")
+        except OSError as e:
+            print(f"failed to write --output: {e}", file=sys.stderr)
+            return 2
+
+    if not args.quiet:
+        if args.json:
+            print(json.dumps(result, indent=2, default=str))
+        else:
+            print(render_text(result))
+
+    has_major = result["summary"]["major_n"] > 0 or result["summary"]["unclassified_n"] > 0
+    return 0 if has_major else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

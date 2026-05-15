@@ -1,0 +1,15 @@
+usage: audit.py state [-h] [--manifest MANIFEST]
+                      [--workspace-root WORKSPACE_ROOT] [--cwd CWD]
+                      [--stale-minutes STALE_MINUTES] [--json]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --manifest MANIFEST   path to manifest.json (default: state-dir auto-
+                        resolution)
+  --workspace-root WORKSPACE_ROOT
+                        workspace root (default: cwd)
+  --cwd CWD             working directory
+  --stale-minutes STALE_MINUTES
+                        flag entries with no activity for N minutes (default
+                        30)
+  --json                emit machine-readable JSON envelope

@@ -1,0 +1,39 @@
+
+[1] dispatcher envelopes
+  PASS  help returns ok envelope
+  PASS  help lists modes
+  PASS  bad args return error envelope
+  PASS  bad arg code is stable
+
+[2] exec dry-run contract
+  PASS  exec dispatcher returns ok
+  PASS  exec runner accepted dispatcher flags
+  PASS  exec entry reaches done in dry-run
+  PASS  exec seeds branch fields
+  PASS  exec seeds prompt/log/answer paths
+
+[3] batch render + dry-run contract
+  PASS  batch dispatcher returns ok
+  PASS  batch runner accepted dispatcher flags
+  PASS  batch ids match rendered prompt basenames
+  PASS  batch entries reach done in dry-run
+  PASS  batch writes audit report
+
+[4] single dry-run contract
+  PASS  single dispatcher returns ok
+  PASS  single runner accepted dispatcher flags
+  PASS  single entry id and status are deterministic
+  PASS  single runner honors jsonl path
+  PASS  single writes answer file in dry-run
+  PASS  foreground_completed=true after synchronous successful runner
+
+[5] review loop fixture
+  PASS  review dispatcher returns ok
+  PASS  review runner accepted dispatcher flags
+  PASS  review parses --branches plus branch positionals
+  PASS  review entries reach terminal converged state
+  PASS  review records findings artifacts
+
+[6] rescue classification + redispatch
+  PASS  fixture can mark alpha failed
+  FAIL  rescue classification returns ok

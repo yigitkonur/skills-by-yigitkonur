@@ -1,0 +1,54 @@
+codex-json-filter.sh — read JSONL from `codex exec --json` on stdin, emit
+ONE compact human-readable line per interesting event.
+
+Designed for Claude Code's Monitor tool: each stdout line becomes one
+notification. Line-buffered: `read -r` reads one line at a time, jq parses
+one event at a time, and stdout is flushed line-by-line (printf is line-
+buffered when stdout is a pipe to another program that reads line-by-line,
+which is the Monitor case).
+
+Implementation: pure bash `while read` loop with `jq` invoked per line.
+(Earlier doc revisions referred to an awk + fflush impl; that was never
+accurate.) The bash impl flushes naturally because `printf` writes one line
+at a time and there is no intermediate stdio buffer between us and the pipe.
+
+Usage:
+  codex exec --dangerously-bypass-approvals-and-sandbox --json <args> "<prompt>" 2>&1 \
+    | codex-json-filter.sh [--level <minimal|normal|verbose>]
+
+Inputs:
+  --level <name>       same as CODEX_FILTER_LEVEL; CLI flag wins over env.
+  CODEX_FILTER_LEVEL   minimal | normal (default) | verbose
+                       Tags emitted at each level (strict subset relation
+                       minimal ⊂ normal ⊂ verbose):
+                         minimal: [START] [CMD>] [CMD✓] [CMD✗] [SAID]
+                                  [TURN<] [ERR]
+                         normal : minimal + [TURN>] [THINK] [FILE] [ITEM>]
+                                  [ITEM<]
+                         verbose: normal  + [?] (unknown event types) and
+                                  command-output tail on [CMD✓]
+                       ([ITEM>] is item.started, [ITEM<] is item.completed
+                       for item types we don't have a dedicated tag for.)
+  CODEX_FILTER_MAXLEN  max chars per emitted line (default: 200)
+
+Exit codes:
+  0  EOF on stdin (codex finished) OR downstream closed pipe (SIGPIPE).
+  1  Internal error (rare).
+  2  Bad CLI flag.
+
+SIGPIPE: when a downstream consumer (e.g. `head`, the Monitor) closes the
+pipe, the filter exits 0. The PIPE trap converts the signal into a clean
+`exit 0`; every emit is wrapped so the loop also exits cleanly if `printf`
+returns EPIPE before the signal is delivered.
+
+Event schema (codex-cli 0.130.x; verified live):
+  thread.started    { type, thread_id }
+  turn.started      { type }
+  item.started      { type, item: { id, type, command?, status, aggregated_output, exit_code } }
+  item.completed    { type, item: { id, type, text|command|aggregated_output|message, exit_code, status, phase? } }
+  turn.completed    { type, usage: { input_tokens, cached_input_tokens, output_tokens } }
+  error             { type, message } or { error: { message } }
+
+Known item.type values: command_execution, reasoning, agent_message,
+  todo_list, file_change, mcp_tool_call, dynamic_tool_call, web_search,
+  plan_update, error.

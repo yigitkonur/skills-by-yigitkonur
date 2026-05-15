@@ -1,0 +1,43 @@
+{
+  "_description": "Cross-language fixture: monitor tick rule-engine inputs → expected outputs. Consumed by _lib.sh::oc_monitor_rule (and a Python port if added). Each case describes the per-tick state and the expected note + flag list.",
+  "_inputs_schema": {
+    "codex_procs": "integer ≥ 0: pgrep -f 'codex exec' count",
+    "all_commits": "integer ≥ 0: git log --all --oneline $BASELINE.. | wc -l",
+    "prev_commits": "integer ≥ 0: all_commits from previous tick (0 on first tick)",
+    "manifest_changed": "boolean: did any entry-status change since last tick",
+    "consec_quiet_ticks": "integer ≥ 0: consecutive ticks with codex_procs=0 and all_commits unchanged",
+    "consec_no_commit_ticks": "integer ≥ 0: consecutive ticks with codex_procs>0 and all_commits unchanged"
+  },
+  "_outputs_schema": {
+    "note": "string: '(idle)' | '(working/no-commit-yet)' | '(+Ncommit)' | ''",
+    "flags": "string[]: ordered set; emitted as [a,b,c] in tick line",
+    "_note": "flag values include 'agent-done-committed', 'manifest-changed', 'fleet-quiet', 'streak:Nx'"
+  },
+  "cases": [
+    {
+      "name": "idle_no_codex_no_commits",
+      "input": {"codex_procs": 0, "all_commits": 0, "prev_commits": 0, "manifest_changed": false, "consec_quiet_ticks": 1, "consec_no_commit_ticks": 0},
+      "expected": {"note": "(idle)", "flags": ["fleet-quiet"]}
+    },
+    {
+      "name": "working_no_commit_yet",
+      "input": {"codex_procs": 2, "all_commits": 0, "prev_commits": 0, "manifest_changed": false, "consec_quiet_ticks": 0, "consec_no_commit_ticks": 1},
+      "expected": {"note": "(working/no-commit-yet)", "flags": []}
+    },
+    {
+      "name": "agent_done_committed",
+      "input": {"codex_procs": 0, "all_commits": 3, "prev_commits": 2, "manifest_changed": true, "consec_quiet_ticks": 0, "consec_no_commit_ticks": 0},
+      "expected": {"note": "(+1commit)", "flags": ["agent-done-committed", "manifest-changed"]}
+    },
+    {
+      "name": "commits_landed_codex_still_alive",
+      "input": {"codex_procs": 1, "all_commits": 5, "prev_commits": 3, "manifest_changed": true, "consec_quiet_ticks": 0, "consec_no_commit_ticks": 0},
+      "expected": {"note": "(+2commit)", "flags": ["manifest-changed"]}
+    },
+    {
+      "name": "working_streak_warn",
+      "input": {"codex_procs": 1, "all_commits": 0, "prev_commits": 0, "manifest_changed": false, "consec_quiet_ticks": 0, "consec_no_commit_ticks": 3},
+      "expected": {"note": "(working/no-commit-yet)", "flags": ["streak:3x"]}
+    }
+  ]
+}

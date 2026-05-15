@@ -1,0 +1,43 @@
+usage: classify-review-feedback.py [-h] --review-json REVIEW_JSON
+                                   [--apply-queue _APPLY_QUEUE_DECOY]
+                                   [--policy POLICY] [--json]
+                                   [--output OUTPUT] [--quiet]
+
+Apply major-vs-minor policy to a normalized codex review JSON.
+
+Reads the per-round review-findings JSON written by run-review.sh (one file
+per branch per round) and partitions items into {major, minor,
+unclassified_treated_as_major} per the policy in
+references/major-vs-minor-policy.md.
+
+Default-when-ambiguous: major (conservative — better to over-loop than miss
+a real issue).
+
+Read-only. Never modifies state.
+
+Usage:
+    classify-review-feedback.py --review-json <path>
+    classify-review-feedback.py --input <path>            (alias for --review-json)
+    classify-review-feedback.py --review-json <path> --policy <policy.json>
+    classify-review-feedback.py --review-json <path> --json
+    classify-review-feedback.py --review-json <path> --output <path>
+        # Writes the partitioned {major[], minor[], counts} JSON to <path>.
+
+Exit codes:
+    0  ≥1 major item — caller continues the review loop
+    1  no major items — caller marks branch DONE / converged
+    2  fatal parse error / bad input
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --review-json REVIEW_JSON, --input REVIEW_JSON
+                        Path to normalized review-round JSON
+  --apply-queue _APPLY_QUEUE_DECOY
+                        Path to decisions.json; switches to apply-queue
+                        formatter mode (forwards to apply-review-decisions.py)
+  --policy POLICY       Path to policy.json overrides
+  --json                Emit JSON to stdout instead of text
+  --output OUTPUT, --out OUTPUT
+                        Optional: write the JSON partition to <path> (still
+                        prints to stdout unless combined with --quiet).
+  --quiet               Suppress stdout output (useful with --output).
