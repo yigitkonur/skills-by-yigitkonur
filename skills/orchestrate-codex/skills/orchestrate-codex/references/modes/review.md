@@ -83,7 +83,7 @@ Surfacing `--prompt-file` on `handleReview` is a known-but-not-yet-implemented e
 
 **The runner is single-round per invocation.** `run-review.sh <manifest.json> <round-number>` runs exactly one round across every non-terminal branch in the manifest, in parallel (default `JOBS=4`). The dispatcher fires it with round `1`; the operator (or a follow-up wrapper) re-invokes for round 2, 3, … until convergence.
 
-The multi-round looping shown in earlier drafts of this doc is **Planned — not yet wired** in `run-review.sh`. Until it ships, the operator drives rounds manually.
+The runner stays single-round-per-invocation by design (it's a worker, not a coordinator). At v2.0-beta the orchestrator (operator or main agent) drives the round loop manually by re-invoking the runner with an incremented round number until convergence. The v3.0 trajectory moves the loop into `handleReview` in the dispatcher; see `../../../../../unification-strategy/tasks/04-phase-three-runners-and-dispatcher.md` Decision 11.
 
 ### What one round actually does
 

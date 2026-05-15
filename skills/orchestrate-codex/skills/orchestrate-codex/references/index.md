@@ -2,7 +2,7 @@
 
 Cross-reference of every reference file in this skill. The spine routes to references by purpose; this index routes by topic.
 
-> **Reading the mode references:** each `modes/*.md` file is the recipe for one mode. Where the runtime currently implements only part of a recipe, the doc marks the gap with **Planned — not yet wired** plus the working manual workaround for today. Trust the Planned markers — aspirational behavior is preserved for the next implementation pass, but the runtime will not produce it.
+> **Reading the mode references:** each `modes/*.md` file is the recipe for one mode. The v2.0-beta unification refactor (see `../BEHAVIOR-DELTA.md`) closed several previously-Planned gaps (`WORKTREE_SETUP_HOOK` is wired; `audit.py` consolidates three scripts; shared `_lib.{sh,py}` and `manifest-update.py` lock-timeout fix). A handful of gaps remain (multi-round review loop in the dispatcher; runner internals migration to `_lib.sh`). Remaining gaps name the working manual workaround and the v3.0 trajectory.
 
 ## By topic
 

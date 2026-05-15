@@ -166,7 +166,7 @@ Run before every mode. Stops the agent from improvising into a broken state.
 
    If the smoke writes `lorem.txt` AND the `-o` file is non-empty AND a `turn.completed` JSONL event appears, the proxy is wired and you can dispatch. If it dies with an auth/credentials error, *then* ask the user to fix auth (either `codex login`, an `OPENAI_API_KEY` export, or their proxy config — operator's call). **Skipping the smoke is the canonical failure mode that wastes a full fleet's API budget on entries that all fail at the runner-spawn auth handshake** — that error doesn't surface in the dispatcher envelope, only in each entry's stderr after the runner has already spawned.
 
-   Note: only **review** runs `bootstrap.sh` at dispatch time (review spawns native `codex review` immediately, so deferring auth doesn't help); exec, batch, and single defer the auth check to the runner's own first codex spawn — same eventual error, but the failure surfaces from the runner's stderr, not the dispatcher's envelope. To force the dispatcher-level check on every mode, run `bash <skill-root>/scripts/bootstrap.sh` yourself before invoking the dispatcher.
+   Note: pre-flight is named `preflight.sh` (was `bootstrap.sh` — kept as a deprecation shim through v2.x; see `BEHAVIOR-DELTA.md`). At v2.0-beta only **review** invokes `preflight.sh` from the dispatcher (review spawns native `codex review` immediately, so deferring auth doesn't help); exec, batch, and single defer the auth check to the runner's own first codex spawn — same eventual error, but the failure surfaces from the runner's stderr, not the dispatcher's envelope. To force the dispatcher-level check on every mode, run `bash <skill-root>/scripts/preflight.sh` yourself before invoking the dispatcher. (Universal pre-flight from every mode handler is part of the v3.0 dispatcher cleanup.)
 3. cwd is resolved. If the chosen mode requires a git repo (exec, review), `git rev-parse --is-inside-work-tree` succeeds.
 4. Workspace slug+hash computed (see manifest contract).
 5. Manifest path resolved. If a manifest already exists with non-terminal entries, refuse cleanly with `error.code = "concurrent_run_in_progress"`. Two recovery paths: rescue mode (default — re-attach to the existing manifest), or `--force-new-run --run-id <custom>` (writes a parallel `manifest.<custom>.json` so the original run is left untouched). See `references/universal/idempotency.md`.
@@ -296,7 +296,7 @@ Surface these artifacts in order, each at the step that produces it — not batc
 | exec | Q5 or Q6 (≥2 discrete coding tasks; git repo) | repo clean main; `.gitignore` covers `../<repo>-wt-*`; no in-progress merge/rebase/cherry-pick; baseline tests pass | `references/modes/exec.md`, `references/universal/worktree-contract.md`, `references/universal/monitor-contract.md`, `references/universal/json-streaming.md`, `references/templates/exec.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs exec --tasks <tasks.json>` — seeds manifest, spawns `bash scripts/run-fleet.sh --manifest <path>` detached, emits envelope; surface literal `Monitor({...})` from `envelope.monitor.tool_hint` | every entry in {done, failed-surfaced}; Monitor sees `--- all jobs finished ---` |
 | batch | Q3 (input list + template) | workdir confirmed; `inputs.txt` non-empty; `template.md` contains `XXXXXXXXXXXXX` placeholder; slug collisions resolved before render | `references/modes/batch.md`, `references/universal/idempotency.md`, `references/universal/monitor-contract.md`, `references/universal/output-size-signals.md`, `references/templates/batch.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs batch --inputs <file> --template <tmpl>` — renders prompts, seeds manifest, spawns `bash scripts/run-batch.sh --manifest <path>` detached, emits envelope; audit runs after `--- all jobs finished ---` | every input has non-empty `answers/<slug>.md`; `audit-sizes.sh` shows nothing below floor (or every flagged item explicitly waived) |
 | single | Q4 or Q7 (one substantial task) | choose cwd explicitly; if cwd is already inside a worktree, pass `--reuse-worktree` to record that choice | `references/modes/single.md`, `references/universal/json-streaming.md`, `references/universal/monitor-contract.md`, `references/templates/single.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs single --prompt-file <file>` (or `--prompt "..."`) — one-entry manifest, spawns `bash scripts/run-single.sh` which pipes `codex exec --json` through `codex-json-filter.sh`; surface literal Monitor hint | `-o` file non-empty AND manifest entry `done` (`turn.completed` is a Monitor observability signal, not a runner gate) |
-| review | Q2 (branch list + ship-intent) | git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable | `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs review --branches <list>` — seeds branch entries and dispatches **round 1 only** (`bash scripts/run-review.sh <manifest> 1`). After Monitor reports each round's `done`, the orchestrator (this agent) reads `<rounds-dir>/<slug>.r<N>.json`, runs `python3 classify-review-feedback.py`, decides converged/blocked/continue, and **manually re-invokes** `bash scripts/run-review.sh <manifest> 2` (then 3, …) until convergence or round-cap 10. **Multi-round automation: Planned — not yet wired** (see `references/modes/review.md:86`). | every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path` |
+| review | Q2 (branch list + ship-intent) | git repo; branch list resolved from comma-list, file, or positionals; codex-cc `lib/` helpers resolvable | `references/modes/review.md`, `references/universal/manifest-contract.md`, `references/templates/review.tmpl.md` | `node <skill-root>/scripts/orchestrate-codex.mjs review --branches <list>` — seeds branch entries and dispatches **round 1 only** (`bash scripts/run-review.sh <manifest> 1`). After Monitor reports each round's `done`, the orchestrator (this agent) reads `<rounds-dir>/<slug>.r<N>.json`, runs `python3 classify-review-feedback.py`, decides converged/blocked/continue, and **manually re-invokes** `bash scripts/run-review.sh <manifest> 2` (then 3, …) until convergence or round-cap 10. Multi-round automation in the dispatcher is on the v3.0 trajectory (see `BEHAVIOR-DELTA.md` "Deferred to follow-up" and the unification strategy's `tasks/04` Decision 11); the v2.0-beta runner stays single-round-per-invocation by design. | every branch in {converged, blocked, failed, cap_reached}; manifest entry has `last_findings_path` |
 | rescue | Q1 (manifest exists + resume keyword) | manifest path resolved; freshness ≤ 7 days OR user confirms staleness; `manifest.mode` field present | `references/modes/rescue.md`, `references/universal/manifest-contract.md`, then the original mode's reference (whatever `manifest.mode` says) | `node <skill-root>/scripts/orchestrate-codex.mjs rescue [--manifest <path>]` classifies only; redispatch with `node <skill-root>/scripts/orchestrate-codex.mjs rescue --manifest <path> --apply failed-only\|never-started-only\|all-non-done\|ids:s1,s2,...` | every NOT-DONE entry transitions to a terminal status; manifest history append-only |
 
 Failure routing for every mode: `references/universal/failure-modes.md` plus the per-mode reference's recovery section.
@@ -306,17 +306,17 @@ Failure routing for every mode: `references/universal/failure-modes.md` plus the
 | Mode | Verify with |
 |---|---|
 | exec | `node <skill-root>/scripts/orchestrate-codex.mjs audit --manifest <path>` reports zero drift; every entry status terminal |
-| batch | `audit` as above, plus `bash <skill-root>/scripts/audit-sizes.sh --manifest <path>` for below-floor outputs |
+| batch | `audit` as above, plus `python3 <skill-root>/scripts/audit.py sizes --manifest <path>` for below-floor outputs (was `audit-sizes.sh`; shim still works) |
 | single | `-o` answer file non-empty AND manifest entry `done`; no `audit` needed for single missions |
 | review | `audit` as above; classifier output for each branch's `last_findings_json` shows zero majors OR cap reached |
 | rescue | original mode's verify path applies after redispatch terminates |
 
 ### Mode-specific gotchas
 
-- **exec — raw inputs.** If your prompts are raw description files (tickets, issue bodies, briefs) rather than pre-rendered templates, run `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode exec` first to wrap each file in the SUBAGENT-STOP prefix and 6-section skeleton. Otherwise codex may burn 20-80k tokens on meta-skill rumination before doing useful work. See `scripts/render-task-prompts.md`.
+- **exec — raw inputs.** If your prompts are raw description files (tickets, issue bodies, briefs) rather than pre-rendered templates, run `bash <skill-root>/scripts/render.sh --mode wrap <input-dir> <output-dir> --mode-target exec` first to wrap each file in the SUBAGENT-STOP prefix and 6-section skeleton (was `render-task-prompts.sh`; shim still works). Otherwise codex may burn 20-80k tokens on meta-skill rumination before doing useful work. See `scripts/render.md`.
 - **exec — audit-style.** Findings-only / audit-style tasks (no code changes expected) MUST instruct codex to `git add` and `git commit` the report file in the prompt's Success criteria — otherwise the success gate fails with `codex_exit_0_no_changes`. See `references/modes/exec.md` 'Audit-style' subsection.
 - **exec — cleanup gate.** `tidy --execute` only fires after every entry is done AND every branch is merged. See the handoff lifecycle in `## Compatibility boundaries`.
-- **single — raw inputs.** Same wrapping concern as exec; use `bash <skill-root>/scripts/render-task-prompts.sh <input-dir> <output-dir> --mode single` (the SUBAGENT-STOP prefix is auto-skipped for research / analysis / audit inputs).
+- **single — raw inputs.** Same wrapping concern as exec; use `bash <skill-root>/scripts/render.sh --mode wrap <input-dir> <output-dir> --mode-target single` (the SUBAGENT-STOP prefix is auto-skipped for research / analysis / audit inputs).
 - **single — terminal sentinel.** The live JSONL stream ends with `--- single done (<id>: <status>) ---` (an `orchestrate.done` event the runner appends after the terminal manifest write). TaskStop the Monitor on this line — no manual pgrep, no guessing at `[TURN<]`.
 - **rescue — `--apply` semantics.** The dispatcher's envelope prints `--apply` in its `rerun_with` template; `--redo failed|never-started|all-non-done` is accepted as a back-compat alias and normalized into `--apply`. Pass `--accept-stale` only when replaying unknown/stale entries intentionally.
 
@@ -437,38 +437,59 @@ Cross-reference index of every reference and which mode pulls it: `references/in
 
 ## Scripts
 
+The skill is being unified (v2.0-beta; see `BEHAVIOR-DELTA.md`). Active scripts below are the canonical paths; deprecation shims preserve every old name for one release and are removed in v3.0.
+
+### Active
+
 | Script | Mode | Purpose |
 |---|---|---|
-| `scripts/orchestrate-codex.mjs <subcommand>` | all | top-level dispatcher; emits JSON envelope. Subcommands: `exec`, `batch`, `single`, `review`, `rescue` (mode handlers); `audit` (read-only manifest+filesystem state dump); `tidy` (dry-run-default cleanup of completed worktrees and merged branches; pair with `--execute` to apply — wraps `cleanup-worktrees.py`). |
-| `scripts/codex-flags.sh` | all | sourced helper exporting `CODEX_FLAGS` and `CODEX_REVIEW_FLAGS` |
-| `scripts/bootstrap.sh` | all | one-shot pre-flight |
-| `scripts/setup-worktree.sh` | exec, review | create worktree, link artifacts, codegen |
-| `scripts/render-prompts.sh` | batch, exec | template substitution |
-| `scripts/render-task-prompts.sh` | exec, single | wrap raw description files (Linear tickets, issue bodies, audit briefs) in SUBAGENT-STOP prefix + 6-section skeleton; see `scripts/render-task-prompts.md` |
+| `scripts/orchestrate-codex.mjs <subcommand>` | all | top-level dispatcher; emits JSON envelope. Subcommands: `exec`, `batch`, `single`, `review`, `rescue` (mode handlers); `audit` (read-only state dump; wraps `audit.py`); `tidy` (dry-run-default cleanup; wraps `cleanup-worktrees.py`). |
+| `scripts/constants.json` | all | single source of truth: timeouts, concurrency caps, codex model/effort defaults, exit-code map |
+| `scripts/_lib.sh` | all | sourced bash helpers: `oc_load_constants`, `oc_source_codex_flags` (+ `CODEX_FLAGS_STR` serialization), `oc_install_signal_trap`, `oc_manifest_set`, `oc_log_run_ledger`, `oc_concurrency_check`, `oc_compute_slug` |
+| `scripts/_lib.py` | all | shared Python helpers: `Manifest.with_lock` (atomic write + flock), `Constants`, `json_envelope`, `resolve_state_dir`, `log_ledger_line`, `STATUS_TERMINAL/NON_TERMINAL`, `coerce_value` with allowlist |
+| `scripts/codex-flags.sh` | all | sourced helper exporting `CODEX_FLAGS` and `CODEX_REVIEW_FLAGS` arrays |
+| `scripts/preflight.sh` | all | one-shot pre-flight (codex version, auth gate, slug+hash, run-id, state dir). Renamed from `bootstrap.sh`. |
+| `scripts/setup-worktree.sh` | exec, review | create worktree, link artifacts, codegen; honors `$WORKTREE_SETUP_HOOK` for non-Node stacks (new exit code 6 on hook failure) |
+| `scripts/render.sh --mode {template,wrap}` | batch, exec, single | unified prompt renderer. `template` mode (was `render-prompts.sh`) substitutes placeholder × N inputs. `wrap` mode (was `render-task-prompts.sh`) wraps each `*.md` with SUBAGENT-STOP prefix + 6-section skeleton. |
 | `scripts/run-fleet.sh` | exec | bounded-concurrency exec runner |
 | `scripts/run-batch.sh` | batch | bounded-concurrency batch runner |
 | `scripts/run-single.sh` | single | one-shot wrapper with JSONL filter pipe |
-| `scripts/run-review.sh` | review | per-branch round driver via native `codex exec review` |
+| `scripts/run-review.sh` | review | per-branch round driver via native `codex exec review` (single round per invocation; loop driven by dispatcher) |
 | `scripts/codex-monitor.sh` | all | rule-engine fleet ticker, manifest-aware |
 | `scripts/codex-json-filter.sh` | exec, single | JSONL → Monitor lines |
-| `scripts/audit-sizes.sh` | batch | output-size auditor (bottom-decile + below-floor) |
-| `scripts/audit-fleet-state.py` | all | read-only manifest+filesystem state dump |
-| `scripts/list-worktrees.py` | all | read-only worktree enumeration |
-| `scripts/cleanup-worktrees.py` | all | safe worktree removal with manifest cross-check |
-| `scripts/manifest-update.py` | all | atomic manifest field setter (Python; flock + os.replace) |
-| `scripts/manifest-update.sh` | all | atomic manifest field setter (bash; flock + jq + mv) — bash runners use this; dispatcher uses Python |
-| `scripts/classify-review-feedback.py` | review | major-vs-minor classifier |
-| `scripts/apply-review-decisions.py` | review | read-only apply-queue printer (main agent applies via Edit) |
+| `scripts/audit.py {state,sizes,worktrees}` | all | unified read-only audit. `state` (was `audit-fleet-state.py`) — manifest + filesystem drift; `sizes` (was `audit-sizes.sh`) — answer-file decile/floor; `worktrees` (was `list-worktrees.py`) — git worktree enumeration. JSON keys: real names (`dirty_count`, `commits_ahead_of_origin_main`). |
+| `scripts/cleanup-worktrees.py` | all | safe worktree removal with manifest cross-check (`--execute` to apply) |
+| `scripts/manifest-update.py` | all | atomic manifest field setter (Python; flock + tempfile + os.replace). Single canonical writer; bash callers shell to this via `_lib.sh::oc_manifest_set`. Lock-timeout exits 3 (KB-001 fix). |
+| `scripts/classify-review-feedback.py` | review | major-vs-minor classifier; `--apply-queue <path>` forwards to `apply-review-decisions.py` for the apply-queue formatter |
 | `scripts/rescue-detect.py` | rescue | classify entries done/failed/never_started/in_flight/unknown |
+| `scripts/build-docs.mjs` | maintenance | regenerates each `scripts/<name>.md` from `--help` output + WHY block. `--check` is the CI gate against drift. |
+| `scripts/test.mjs` | test | consolidated test harness. Sections: `pure-functions`, `subprocess`, `regression-pin`, `parity-fixtures`. |
+| `scripts/__fixtures__/` | test | baseline fixtures, golden cross-language fixtures, codex-stub, `run-parity.mjs` |
 | `scripts/codex-cc/` | all | vendored OpenAI codex-plugin-cc tree (see `references/maintenance/upstream-codex-cc.md`) |
-| `scripts/test-runner-contracts.mjs` | test | dispatcher/runner dry-run contract fixtures for all modes |
+
+### Deprecated (1-release shims; removed in v3.0)
+
+Every shim logs `WARN deprecated_script` to the run ledger (when `$OC_RUN_LEDGER` is set) and forwards to its replacement.
+
+| Old path | Forwards to |
+|---|---|
+| `scripts/bootstrap.sh` | `scripts/preflight.sh` |
+| `scripts/manifest-update.sh` | `python3 manifest-update.py --execute` |
+| `scripts/audit-fleet-state.py` | `audit.py state` |
+| `scripts/audit-sizes.sh` | `audit.py sizes` |
+| `scripts/list-worktrees.py` | `audit.py worktrees` |
+| `scripts/render-prompts.sh` | `render.sh --mode template` |
+| `scripts/render-task-prompts.sh` | `render.sh --mode wrap` (`--mode exec|single` → `--mode-target exec|single`) |
+| `scripts/apply-review-decisions.py` | `classify-review-feedback.py --apply-queue` |
+| `scripts/test-monitor-integration.mjs` | `test.mjs --section pure-functions` |
+| `scripts/test-runner-contracts.mjs` | `test.mjs --section subprocess` |
 
 ## Known limitations
 
 These are gaps the skill does not paper over. Hit the workaround; don't reinvent the dispatcher.
 
 - **Review prompt-injection / intensity dial.** `handleReview` valueOptions accept neither `--prompt-file` nor `--focus`; `run-review.sh` invokes `codex exec review` with hardcoded flags + `--base` and no positional prompt; `mode_state.task.prompt` is unread; `round_focus` is informational only. So no custom spec doc, no "hostile / adversarial" intensity dial, no focus bias through the dispatcher. Why: codex's own `review` subcommand takes a narrow flag set and the skill does not shell out to `codex-companion adversarial-review`. Workaround: drop to single mode per branch (`single --prompt-file <hostile-brief.md>`) — see `references/modes/review.md` "Custom-prompt injection". Trades classifier+round-loop for full prompt control.
-- **`setup-worktree.sh` symlinks are Node-only and link exactly one env file.** Only `node_modules` and one env file (`LINK_ENV_FILE`, default `.env.local`) are linked + optional `prisma generate`. To link a different env file, set `LINK_ENV_FILE=.env.development` (or whichever); to link more than one, fork the script — the loop only iterates a single path. No detection or affordance for Unity (`Library/`, `Assets/`), Xcode (`DerivedData/`), Gradle (`.gradle/`, `build/`), Rust (`target/`), or embedded toolchain configs. Why: ecosystem detection is open-ended; the skill stays narrow rather than ship half-detection. Workaround: pre-create the worktree manually and hand-symlink heavy artifacts before exec/review, OR fork `setup-worktree.sh` for your stack and override via `WORKTREE_SETUP_HOOK`.
+- **`setup-worktree.sh` built-in symlinks are Node-only.** Only `node_modules` and one env file (`LINK_ENV_FILE`, default `.env.local`) are linked + optional `prisma generate`. To link a different env file, set `LINK_ENV_FILE=.env.development`. For non-Node stacks (Unity, Xcode, Gradle, Rust, embedded toolchains): set `$WORKTREE_SETUP_HOOK` to an executable that runs after the built-in setup with `$1=<worktree-path>`. Non-zero hook exit produces exit code 6 (`worktree_setup_hook_failed`). The hook is now wired (v2.0-beta) — earlier doc revisions described it as fictional.
 - **Multi-Claude-session auth-tier sharing.** The skill assumes one Claude / orchestrate-codex session per Anthropic auth tier; persistent rate-limits often mean another session is consuming the budget. Why: tier-share state is invisible from inside any single CLI session. Workaround: pause the other sessions, OR coordinate dispatch order, OR halve concurrency on rescue redispatch (`--concurrency N --i-have-measured "post-503; tier shared"`). See `references/universal/failure-modes.md` rate-limit row.
 - **Manifest sibling enumeration is operator-managed.** `audit` and `rescue` default to `manifest.json` only; with sibling `manifest.<run-id>.json` files (from `--force-new-run`), the operator must remember every custom run-id out-of-band — there is no `audit --all` or `audit --list-manifests`. Why: enumeration adds dispatcher complexity without a clean answer for which sibling is "current". Workaround: keep an external log of run-ids, OR `ls "$(<state-dir>)/manifest"*.json` to enumerate. See `references/universal/idempotency.md` sibling discoverability paragraph.
 - **Exec success-gate requires ≥1 commit; audit-style tasks must commit their report.** Exec mode's gate is "≥1 new commit on the worktree's branch since baseline". Findings-only tasks (audit reports, code reviews) trip `codex_exit_0_no_changes` unless the prompt instructs codex to write the report file AND `git commit` it. Why: the gate detects code-mission failures (rumination loops, no-op exits) and cannot distinguish "produced no work" from "produced a report I forgot to commit". Workaround: prefer single mode for audit-style work (gate is non-empty `-o`, no commit). For exec-mode audit fleets, end the prompt with the canonical commit instruction at `references/modes/exec.md` "Audit-style / findings-only tasks".
