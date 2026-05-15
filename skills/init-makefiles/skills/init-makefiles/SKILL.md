@@ -1,6 +1,6 @@
 ---
 name: init-makefiles
-description: Use skill if you are scaffolding or refreshing a project's Makefile control plane (`make local`, `make tunnel`, `make deploy`, `make r2-sync`) for Next.js, Node, Railway, Vercel (default), Cloudflare Pages (opt-in), R2 + rclone bulk upload, Supabase, or Mac-ship workflows.
+description: Use skill if you are scaffolding or refreshing Makefile targets for local dev, tunnels, deploys, R2 sync, Supabase, Railway, Vercel, or Mac shipping.
 ---
 
 # init-makefiles
