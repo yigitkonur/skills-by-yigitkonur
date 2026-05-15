@@ -28,7 +28,7 @@ Do **NOT** use this skill for:
 - *Runtime debugging* — failing logs, repros, behavior diagnosis with no diff to judge. Use `do-debug`.
 - *Style-only or formatter feedback* — defer to lint/formatter automation; do not author findings.
 
-Boundary clarification: programmatic codex-review candidate validation inside `orchestrate-codex` stays here — that is reviewer-side merge-risk validation **before** PR handoff. Human or bot comments **already posted** on a PR are feedback triage and belong to `evaluate-code-review`.
+Boundary clarification: programmatic codex-review candidate validation inside `use-codex` stays here — that is reviewer-side merge-risk validation **before** PR handoff. Human or bot comments **already posted** on a PR are feedback triage and belong to `evaluate-code-review`.
 
 ## Invocation Contract
 
@@ -36,7 +36,7 @@ Boundary clarification: programmatic codex-review candidate validation inside `o
 |---|---|---|---|
 | User-prompt mode | PR number/URL, branch comparison, local diff, or working tree | Markdown review in chat by default | No GitHub mutation unless the request explicitly says submit, post, publish, or comment |
 | Skill-tool mode | PR target, local comparison, or candidate finding | Structured review/evaluation with evidence and severity | No mutation unless explicitly requested by the caller |
-| Slash-command / orchestrated mode | `orchestrate-codex` review mode (or legacy `run-codex-review` shim); may pass a branch diff plus one `codex exec review` candidate item | Machine-readable per-item decision JSON | Never apply fixes; caller owns apply |
+| Slash-command / orchestrated mode | `use-codex` review mode (or legacy `run-codex-review` shim); may pass a branch diff plus one `codex exec review` candidate item | Machine-readable per-item decision JSON | Never apply fixes; caller owns apply |
 
 Programmatic per-item shape:
 
@@ -313,7 +313,7 @@ Default output is markdown/chat. GitHub mutation is allowed only when the reques
 | Markdown review mode | Default | verdict, findings, specific positive observation, review-state summary, coverage, checks/CI state, and test/verification notes |
 | Formal GitHub review mode | Explicit submit/post/publish request | one `gh pr review` verdict with body; no surprise inline comments |
 | Inline comment mode | Explicit inline-comment request + line metadata | batch comments into one review event when possible |
-| Programmatic per-item mode | `orchestrate-codex` or legacy shim | JSON decision only; no posting or fixes |
+| Programmatic per-item mode | `use-codex` or legacy shim | JSON decision only; no posting or fixes |
 
 Compact output still must state:
 

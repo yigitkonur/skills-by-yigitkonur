@@ -25,12 +25,11 @@ Anchor on this set of plain-English intent verbs:
 | `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-skill-by-derailment` |
-| `orchestrate` | Coordinate N parallel agents under one policy and one observability surface | `orchestrate-codex` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli` |
 | `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
-| `use` | Drive a CLI utility for ongoing operations | `use-railway` |
+| `use` | Drive a CLI utility for ongoing operations | `use-codex`, `use-railway` |
 
 If none of these fit, propose a new verb in a PR alongside the new skill.
 

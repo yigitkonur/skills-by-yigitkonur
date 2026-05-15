@@ -48,7 +48,6 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [init-makefiles](skills/init-makefiles/) | workflow | Scaffold safe scenario Makefiles (Vercel default; Cloudflare Pages opt-in), R2 bulk upload via rclone, AGENTS sync, optional deploy CI |
 | [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
 | [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, and architect MCP servers for agent-readiness |
-| [orchestrate-codex](skills/orchestrate-codex/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm package releases via GitHub Actions |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
@@ -58,6 +57,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [run-research](skills/run-research/) | productivity | Single-question technical research with source-backed synthesis |
 | [synthesize-skills](skills/synthesize-skills/) | productivity | Claude skill creation and research methodology |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
+| [use-codex](skills/use-codex/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |
 | [use-linear-cli](skills/use-linear-cli/) | platform | linear-cli for Linear issue lifecycle, bulk creation, and git/PR loops |
 | [use-railway](skills/use-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |
 

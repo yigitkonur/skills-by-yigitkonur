@@ -22,7 +22,7 @@ Use this skill if you are:
 Do **not** use this skill if you are:
 
 - working in **Linear** rather than GitHub Issues — use `use-linear-cli` even when creating many issues from a spec
-- running **direct parallel Codex agents** without a GitHub issue tree — use `orchestrate-codex`
+- running **direct parallel Codex agents** without a GitHub issue tree — use `use-codex`
 - doing **generic planning** without GitHub issue creation, sub-issue linking, or wave labels
 - doing **PR review** rather than issue execution — use `do-review`
 

@@ -32,7 +32,7 @@ Do NOT use when:
 
 - The question is one technical question with one or two options — use `run-research` (single-question, web + Reddit, single markdown).
 - The user wants a single polished one-page summary or battlecard — use `run-research`; downstream skills polish.
-- The work is a codex-template fanout (same template, many inputs) — use `orchestrate-codex` batch mode (the retired `run-batch-codex-research` shim points there).
+- The work is a codex-template fanout (same template, many inputs) — use `use-codex` batch mode (the retired `run-batch-codex-research` shim points there).
 - The question is local-codebase only — use Explore-class agents, not corpus orchestration.
 - N < 5 entities — corpus overhead exceeds the value.
 

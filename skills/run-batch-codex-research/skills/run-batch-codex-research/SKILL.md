@@ -7,7 +7,7 @@ description: Use skill if you are fanning out codex or another LLM CLI over a li
 
 Fan out one prompt template across N inputs through an LLM CLI (codex, claude, gemini, ollama, …), running with bounded concurrency, writing one answer file per input, skipping inputs whose answer already exists, and retrying only the failed ones. The unit of work is `(template, input) → answers/<slug>.md`.
 
-This skill stays small on purpose. It is the generic, CLI-agnostic batch fanout pattern. If the run is codex-only and needs worktrees, manifests, monitor events, or one of the other codex modes (exec / single / review / rescue), reach for `orchestrate-codex` instead.
+This skill stays small on purpose. It is the generic, CLI-agnostic batch fanout pattern. If the run is codex-only and needs worktrees, manifests, monitor events, or one of the other codex modes (exec / single / review / rescue), reach for `use-codex` instead.
 
 ## When to reach for this skill
 
@@ -24,10 +24,10 @@ Do **NOT** use this skill when:
 
 | Situation | Use instead |
 |---|---|
-| One discrete codex invocation, no list. | `run-codex-exec` (deprecated compat shim → `orchestrate-codex` exec mode) |
+| One discrete codex invocation, no list. | `run-codex-exec` (deprecated compat shim → `use-codex` exec mode) |
 | One technical research question, web search, single Markdown synthesis. | `run-research` |
 | 5+ entities × multiple axes, multi-file evidence corpus, per-entity packs, cross-entity comparisons. | `run-corpus-research` (or `run-industry-research`) |
-| Codex-only fleet with worktrees, manifests, Monitor events, or rescue mode. | `orchestrate-codex` |
+| Codex-only fleet with worktrees, manifests, Monitor events, or rescue mode. | `use-codex` |
 
 The trigger shape: **a list of inputs + a prompt template + an LLM CLI on PATH**. If any of the three is missing, this is not the right skill.
 
@@ -225,9 +225,9 @@ Every observed failure maps to one of these. If the symptom does not match a row
 | `run-codex-exec` | one codex task in the current repo | single invocation, no list, no fanout |
 | `run-research` | one technical question + web search | single-question synthesis, not template×inputs |
 | `run-corpus-research` | 5+ entities, multi-axis evidence corpus | corpus orchestration via subagents, not a CLI fanout |
-| `orchestrate-codex` | codex-only fleet, worktrees, Monitor events, manifest, rescue mode | full codex runtime contract; this skill is the lighter CLI-agnostic cousin |
+| `use-codex` | codex-only fleet, worktrees, Monitor events, manifest, rescue mode | full codex runtime contract; this skill is the lighter CLI-agnostic cousin |
 
-If the request says "codex" plus "worktree" or "manifest" or "Monitor", route to `orchestrate-codex`. If it just says "run this prompt over each item in the list," stay here.
+If the request says "codex" plus "worktree" or "manifest" or "Monitor", route to `use-codex`. If it just says "run this prompt over each item in the list," stay here.
 
 ## Bottom line
 
