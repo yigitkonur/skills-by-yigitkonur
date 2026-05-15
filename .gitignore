@@ -10,6 +10,8 @@ derail-results/
 
 # Scratch audit output (per-skill fact-check inventories). Not shipped with the pack.
 violations/
+*.facts.md
+*.discrepancies.md
 
 # Temporary holding area for files whose fate has not yet been decided.
 to-delete/
