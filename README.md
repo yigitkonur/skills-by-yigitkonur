@@ -41,6 +41,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [do-review](skills/do-review/) | productivity | Review PRs and branch diffs for merge readiness |
 | [do-think](skills/do-think/) | productivity | Deep thinking for ambiguous plans, architecture, refactors, or choices |
 | [do-ui-audit](skills/do-ui-audit/) | productivity | Visual UI audit across pages and viewports with browser screenshots |
+| [enhance-agent-config](skills/enhance-agent-config/) | configuration | Audit AGENTS.md/CLAUDE.md/REVIEW.md for drift; refresh refs, recount tables, fill gap folders |
 | [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
 | [evaluate-code-review](skills/evaluate-code-review/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
