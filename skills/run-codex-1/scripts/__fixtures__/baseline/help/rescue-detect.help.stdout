@@ -1,0 +1,47 @@
+usage: rescue-detect.py [-h] --manifest MANIFEST
+                        [--workspace-root WORKSPACE_ROOT]
+                        [--stale-tick-seconds STALE_TICK_SECONDS]
+                        [--stale-multiplier STALE_MULTIPLIER] [--json]
+
+Classify run-codex-1 manifest entries for rescue-mode operator review.
+
+Reads the manifest, the filesystem (worktrees, log/answer/jsonl files) and
+codex-companion's per-job state records (when present) and classifies each
+entry into one of:
+
+    done           — completed successfully (status==done AND log/answer
+                     present AND, if exec mode, branch committed past base)
+    failed         — terminal failure (status==failed OR exit_code != 0)
+                     OR worktree dirty + no commits + worker pid dead
+    never_started  — status==queued AND no log file AND (no worktree if exec)
+    in_flight      — status==running AND worker pid alive AND log growing
+    unknown        — anything else (running w/ pid gone, stale codex state, etc)
+
+Read-only. Outputs JSON for the dispatcher (run-codex-1.mjs) or human
+text for direct invocation. The dispatcher embeds the JSON output in the
+classification envelope; redispatch is explicit via
+`run-codex-1.mjs rescue --redo failed|never-started|all-non-done`.
+
+Usage:
+    rescue-detect.py --manifest <path>
+    rescue-detect.py --manifest <path> --json
+    rescue-detect.py --manifest <path> --workspace-root /repo
+    rescue-detect.py --manifest <path> --stale-tick-seconds 60
+
+Exit codes:
+    0  classification complete (regardless of how many entries failed)
+    2  manifest missing or malformed; or bad input
+    3  environmental error (permission, etc)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --manifest MANIFEST   Path to run-codex-1 manifest.json
+  --workspace-root WORKSPACE_ROOT
+                        Workspace root for codex-companion state lookup.
+                        Default: cwd.
+  --stale-tick-seconds STALE_TICK_SECONDS
+                        Single-tick threshold (seconds). log/job idle > tick ×
+                        multiplier is treated as stale. Default 60.
+  --stale-multiplier STALE_MULTIPLIER
+                        Stale threshold multiplier. Default 3.
+  --json                Emit JSON output for run-codex-1.mjs.

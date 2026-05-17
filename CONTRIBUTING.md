@@ -9,19 +9,19 @@ Before naming or documenting a skill, read **[NAMING.md](NAMING.md)**. Directory
 Every skill lives in `skills/<skill-name>/` and follows this layout:
 
 ```
-skills/my-skill/                    # Skill root
-├── README.md                       # Install instructions and overview
-└── skills/
-    └── my-skill/                   # Skill content dir (must match skill name)
-        ├── SKILL.md                # Required -- the skill definition
-        └── references/
-            ├── topic-one.md        # Optional -- deep-dive reference docs
-            ├── topic-two.md
-            └── nested-domain/      # Optional -- nested grouping for large skills
-                └── detail.md
+skills/my-skill/                    # Skill root (parent dir name = skill name per agentskills.io spec)
+├── SKILL.md                        # Required -- the skill definition
+├── INSTALL.md                      # Required -- per-skill install command
+├── references/                     # Optional -- deep-dive reference docs
+│   ├── topic-one.md
+│   ├── topic-two.md
+│   └── nested-domain/              # Optional -- nested grouping for large skills
+│       └── detail.md
+├── scripts/                        # Optional -- executable helpers (.sh, .mjs, .py)
+└── assets/                         # Optional -- templates, fixtures
 ```
 
-The `skills/<name>/` subdirectory inside the skill root is required for Claude Code to discover and activate the skill.
+Flat layout per the agentskills.io specification (https://agentskills.io/specification): SKILL.md sits directly in the skill directory, alongside `references/`, `scripts/`, `assets/`. Claude Code's discovery paths (`~/.claude/skills/<name>/SKILL.md`, `.claude/skills/<name>/SKILL.md`, `<plugin>/skills/<name>/SKILL.md`) all assume this layout.
 
 ### SKILL.md
 
@@ -70,10 +70,10 @@ Good reference docs:
 
 1. **Create the directory** with the canonical name from `NAMING.md`.
    ```bash
-   mkdir -p skills/my-skill/skills/my-skill/references
+   mkdir -p skills/my-skill/references skills/my-skill/scripts
    ```
 
-2. **Write `SKILL.md`** at `skills/my-skill/skills/my-skill/SKILL.md` -- start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
+2. **Write `SKILL.md`** at `skills/my-skill/SKILL.md` -- start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
 
 3. **Add reference docs** if the skill needs them -- make sure every file is explicitly referenced in `SKILL.md`.
 
@@ -97,7 +97,7 @@ Good reference docs:
 
 Before submitting:
 
-- [ ] SKILL.md is at `skills/<name>/skills/<name>/SKILL.md` (required for Claude Code activation)
+- [ ] SKILL.md is at `skills/<name>/SKILL.md` (flat layout per agentskills.io spec)
 - [ ] `name` in `SKILL.md` frontmatter matches the directory name exactly
 - [ ] `description` starts with `Use skill if you are`
 - [ ] `description` is 30 words or fewer
