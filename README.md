@@ -20,9 +20,13 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 
 | Skill | Category | Description |
 |---|---|---|
-| [apply-clean-mcp-architecture](skills/apply-clean-mcp-architecture/) | development | Clean Architecture standard for TypeScript MCP servers — folder layout, layer boundaries, mcp-use placement, TS quality |
-| [ask-review](skills/ask-review/) | productivity | Hand off work as a PR with domain-aware self-review, or produce a markdown review doc |
+| [audit-agentic-cli](skills/audit-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
+| [audit-agentic-mcp](skills/audit-agentic-mcp/) | development | Audit, optimize, and architect MCP servers for agent-readiness |
+| [audit-completion](skills/audit-completion/) | productivity | Audit task/session/plan/branch completion claims; remediate to terminal status |
+| [audit-skill-by-derailment](skills/audit-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
+| [audit-ui](skills/audit-ui/) | productivity | Visual UI audit across pages and viewports with browser screenshots |
 | [build-chrome-extension](skills/build-chrome-extension/) | development | Chrome extensions with Manifest V3 |
+| [build-clean-mcp-architecture](skills/build-clean-mcp-architecture/) | development | Clean Architecture standard for TypeScript MCP servers — folder layout, layer boundaries, mcp-use placement, TS quality |
 | [build-effect-ts-v3](skills/build-effect-ts-v3/) | development | Effect-TS v3 apps — typed errors, services, layers, Schema, Stream, HTTP, SQL |
 | [build-kernel-ts-sdk](skills/build-kernel-ts-sdk/) | development | Build browser-automation agents and apps with the Kernel TypeScript SDK |
 | [build-langchain-ts-app](skills/build-langchain-ts-app/) | development | LangChain.js agents, RAG, and tool-calling |
@@ -33,34 +37,35 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 | [build-mcp-use-client](skills/build-mcp-use-client/) | development | MCP clients with mcp-use SDK |
 | [build-mcp-use-server](skills/build-mcp-use-server/) | development | MCP servers with mcp-use — tools, schemas, responses, auth, sessions, transports, MCP Apps widgets, ChatGPT Apps, Inspector, deploy |
 | [build-raycast-script-command](skills/build-raycast-script-command/) | development | Raycast Script Commands in Python/Bash |
+| [build-skill](skills/build-skill/) | productivity | Claude skill creation and research methodology |
 | [build-tinacms-nextjs](skills/build-tinacms-nextjs/) | development | TinaCMS-backed App Router sites with MDX, schemas, visual editing |
-| [check-completion](skills/check-completion/) | productivity | Audit task/session/plan/branch completion claims; remediate to terminal status |
-| [convert-mcp-server-sdk-v1-to-v2](skills/convert-mcp-server-sdk-v1-to-v2/) | development | Port v1 MCP servers to the v2 split-package SDK |
+| [convert-mcp-sdk-v1-to-v2](skills/convert-mcp-sdk-v1-to-v2/) | development | Port v1 MCP servers to the v2 split-package SDK |
 | [convert-url-to-nextjs](skills/convert-url-to-nextjs/) | design | Live URLs or HTML snapshots to Next.js projects |
-| [do-debug](skills/do-debug/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to do-think Interactive |
-| [do-review](skills/do-review/) | productivity | Review PRs and branch diffs for merge readiness |
-| [do-think](skills/do-think/) | productivity | Deep thinking for ambiguous plans, architecture, refactors, or choices |
-| [do-ui-audit](skills/do-ui-audit/) | productivity | Visual UI audit across pages and viewports with browser screenshots |
-| [enhance-agent-config](skills/enhance-agent-config/) | configuration | Audit AGENTS.md/CLAUDE.md/REVIEW.md for drift; refresh refs, recount tables, fill gap folders |
-| [enhance-skill-by-derailment](skills/enhance-skill-by-derailment/) | productivity | Skill quality testing via subagent execution and trace analysis |
-| [evaluate-code-review](skills/evaluate-code-review/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
+| [debug-runtime](skills/debug-runtime/) | productivity | Language-agnostic systematic debugging; four phases + Iron Law + 3-fails handoff to plan-tradeoff Interactive |
 | [extract-saas-design](skills/extract-saas-design/) | design | SaaS dashboard visual system extraction |
 | [init-agent-config](skills/init-agent-config/) | configuration | AGENTS-first instruction and review-context hierarchies |
 | [init-makefiles](skills/init-makefiles/) | workflow | Scaffold safe scenario Makefiles (Vercel default; Cloudflare Pages opt-in), R2 bulk upload via rclone, AGENTS sync, optional deploy CI |
-| [optimize-agentic-cli](skills/optimize-agentic-cli/) | development | Audit and design agent-ready CLI contracts |
-| [optimize-agentic-mcp](skills/optimize-agentic-mcp/) | development | Audit, optimize, and architect MCP servers for agent-readiness |
+| [plan-tradeoff](skills/plan-tradeoff/) | productivity | Deep thinking for ambiguous plans, architecture, refactors, or choices |
 | [publish-npm-package](skills/publish-npm-package/) | development | npm package releases via GitHub Actions |
+| [review-feedback](skills/review-feedback/) | productivity | Triage received human, bot, markdown, or multi-reviewer feedback |
+| [review-pr](skills/review-pr/) | productivity | Review PRs and branch diffs for merge readiness |
+| [review-self](skills/review-self/) | productivity | Hand off work as a PR with domain-aware self-review, or produce a markdown review doc |
 | [run-agent-browser](skills/run-agent-browser/) | testing | Browser automation with agent-browser CLI |
+| [run-batch-codex-research](skills/run-batch-codex-research/) | productivity | Fan out codex (or another LLM CLI) over inputs in parallel with retry |
+| [run-codex-1](skills/run-codex-1/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue (alias) |
+| [run-codex-2](skills/run-codex-2/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |
+| [run-codex-exec](skills/run-codex-exec/) | orchestration | Deprecated install-path stub for parallel codex exec agents |
+| [run-codex-review](skills/run-codex-review/) | orchestration | Per-branch codex review fix loops with multi-bot feedback handling |
+| [run-corpus-research](skills/run-corpus-research/) | productivity | Multi-entity evidence-corpus research with per-entity packs |
 | [run-github-scout](skills/run-github-scout/) | productivity | Adaptive GitHub repo discovery and shortlisting for concrete needs |
 | [run-industry-research](skills/run-industry-research/) | productivity | Industry research corpora with evidence packs and comparisons |
 | [run-issue-tree](skills/run-issue-tree/) | productivity | Plan and execute GitHub-only issue trees with runtime dispatch |
+| [run-linear-cli](skills/run-linear-cli/) | platform | linear-cli for Linear issue lifecycle, bulk creation, and git/PR loops |
+| [run-railway](skills/run-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |
 | [run-repo-cleanup](skills/run-repo-cleanup/) | productivity | Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies |
 | [run-research](skills/run-research/) | productivity | Single-question technical research with source-backed synthesis |
-| [synthesize-skills](skills/synthesize-skills/) | productivity | Claude skill creation and research methodology |
 | [test-by-mcpc-cli](skills/test-by-mcpc-cli/) | development | MCP server testing with mcpc 0.2.x |
-| [use-codex](skills/use-codex/) | orchestration | Drive codex CLI fleets, batches, review loops, and rescue |
-| [use-linear-cli](skills/use-linear-cli/) | platform | linear-cli for Linear issue lifecycle, bulk creation, and git/PR loops |
-| [use-railway](skills/use-railway/) | platform | Railway CLI commands, workflows, and version-drift routing |
+| [update-agent-config](skills/update-agent-config/) | configuration | Audit AGENTS.md/CLAUDE.md/REVIEW.md for drift; refresh refs, recount tables, fill gap folders |
 
 ## Notes
 

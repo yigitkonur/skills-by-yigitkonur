@@ -26,8 +26,12 @@ MAX_SKILL_MD_LINES = 1000
 
 
 def skill_content_dir(skill_dir, skill_name):
-    """Return the path to the skill content directory (SKILL.md + references/)."""
-    return os.path.join(skill_dir, "skills", skill_name)
+    """Return the path to the skill content directory (SKILL.md + references/).
+
+    Per agentskills.io/specification the layout is flat: the skill directory
+    itself contains SKILL.md (parent dir name = skill name = frontmatter name).
+    """
+    return skill_dir
 
 
 def parse_frontmatter(skill_md_path):
