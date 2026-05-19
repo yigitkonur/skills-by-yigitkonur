@@ -64,13 +64,17 @@ The killer move is to **always pin a version** in your probes. A query about `<s
 
 For hallucination suspicion, run the registry-existence check FIRST. If the package doesn't exist on the official registry, stop — it's hallucinated, don't waste rounds confirming it from other sources.
 
-## Tool selection
+## Tool selection (research-powerpack tool ladder)
 
-- `smart-web-search` — version-pinned doc + repo + migration angles.
-- `raw-web-search` — practitioner forum permalink discovery for migration sentiment.
-- `smart-scrape-links` — official doc pages, registry pages, with extraction "symbol name, signature, args, return, version introduced, deprecated, replacement". ≤5 per call.
-- `raw-scrape-links` — practitioner threads (always raw). ≤5 per call.
-- `WebFetch` — single-page registry lookup when that's all you need.
+Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+
+- `start-research` — **Call FIRST every session.** Goal sentence names the exact symbol or package + the version under audit; the brief comes back with the right registry / docs / repo sequencing.
+- `smart-web-search` — Version-pinned fan-out targeting registry, docs, and migration angles. Pass an `extract` instruction like `"symbol name | current signature | version introduced | version deprecated | replacement | install line"`.
+- `raw-web-search` — Practitioner-thread permalink discovery via `site:reddit.com/r/<sub>/comments` keywords when migration sentiment matters.
+- `smart-scrape-links` — Official doc pages, npm/PyPI/crates registry pages, migration guides with the extraction shape above. ≤5 URLs per call.
+- `raw-scrape-links` — Practitioner threads for migration sentiment. **Always raw** for community-forum sources to preserve attribution.
+
+For hallucination suspicion, the FIRST call sequence is `start-research → smart-web-search` aimed at the registry — if the registry page does not show the package, stop and return `not-found`. Do not reach for non-powerpack alternatives.
 
 ## Quote discipline
 

@@ -5,7 +5,7 @@ description: "Use this agent if choosing between 2-4 named libraries, frameworks
 
 <codex_agent_role>
 role: internet-researcher-tech-choice
-tools: Read, Write, Bash, Grep, Glob, WebSearch, WebFetch, mcp__context7__*, mcp__firecrawl__*, mcp__exa__*
+tools: Read, Write, Bash, Grep, Glob, mcp__research-powerpack__*
 purpose: Adoption decisions between 2-4 candidates with explicit flip conditions and native-unit cost math.
 </codex_agent_role>
 
@@ -75,14 +75,17 @@ Each recon call should target a different class. Don't restate the candidate nam
 
 For pricing: pin the workload in native vendor units (requests, tokens, GB-months, vCPU-hours) BEFORE searching. Cross-vendor comparisons in non-native units mislead. Quote the price table with the access date — pricing pages move silently.
 
-## Tool selection (Codex tool ladder)
+## Tool selection (research-powerpack tool ladder)
 
-- `WebSearch` — per-candidate ranked recon. Fan out across source classes.
-- `mcp__exa__*` — when available, for high-quality technical ranking on candidate comparisons.
-- `mcp__context7__*` — official library docs for each candidate (pin library + version).
-- `WebFetch` — vendor pricing pages, doc pages, release notes.
-- `mcp__firecrawl__*` — community forum threads (preserves vote weighting + per-comment attribution).
-- `Bash` + `git` — clone OSS candidate repos read-only to inspect commit history, recent issues label counts.
+Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+
+- `start-research` — **Call FIRST every session.** Goal sentence names the candidates and the criteria; the brief comes back with the right fan-out shape.
+- `smart-web-search` — Per-candidate ranked recon with an `extract` instruction targeting the criteria (architecture, limits, pricing, sentiment).
+- `raw-web-search` — Permalink hunting for community-forum threads via `site:reddit.com/r/<sub>/comments` keywords.
+- `smart-scrape-links` — Vendor pricing pages, official docs, release notes with extraction `"tier | unit | unit price | included quota | overage rate | free tier | limits"`. ≤5 URLs / ≤7 facets per call.
+- `raw-scrape-links` — **Always for Reddit / HN forum threads** (preserves vote weighting + per-comment attribution).
+
+If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
 
 ## Quote discipline
 

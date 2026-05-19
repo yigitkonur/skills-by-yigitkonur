@@ -70,14 +70,17 @@ Illustrative rewrite (one example, not a recipe):
 
 Verbatim error strings and verbatim API symbols are gold; quote them exactly inside the search query.
 
-## Tool selection
+## Tool selection (research-powerpack tool ladder)
 
-- `mcp__research-powerpack__smart-web-search` — ranked + classified results into your context. Pack 15-50 keywords across distinct source classes per call.
-- `mcp__research-powerpack__raw-web-search` — output to file, or to a subagent for triage, or for community-forum permalink discovery.
-- `mcp__research-powerpack__smart-scrape-links` — docs / blogs with a known extraction schema. ≤5 URLs per call, ≤7 facets.
-- `mcp__research-powerpack__raw-scrape-links` — community-forum threads (always raw — preserves vote weighting, threading, attribution), unknown shapes, full markdown capture. ≤5 per call.
-- `mcp__research-powerpack__start-research` — long autonomous session with stable goal.
-- `WebFetch` — single-URL fallback.
+Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+
+- `start-research` — **Call FIRST every session.** Hand it the goal in one or two sentences. It returns a tailored brief: primary branch (web / reddit / both), exact first-call sequence, 25-50 keyword seeds, iteration hints, gap warnings, stop criteria.
+- `smart-web-search` — Default search. Fan out 5-50 keywords in parallel with LLM classification + synthesis. Pass an `extract` instruction that names the evidence you want.
+- `raw-web-search` — Same fan-out, no classification. Use for raw discovery, Reddit permalink hunting via `site:reddit.com/r/<sub>/comments` keywords, or when output is destined for a file / sub-agent.
+- `smart-scrape-links` — Fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction. The `extract` parameter (pipe-separated shape) is your most precise instrument.
+- `raw-scrape-links` — Fetch ≤5 URLs per call without extraction. **Always use this for Reddit / HN / forum threads** — preserves vote weighting, attribution, threading.
+
+If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
 
 ## Quote discipline
 

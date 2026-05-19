@@ -62,12 +62,17 @@ Each recon call should target a different class. Don't restate the candidate nam
 
 For pricing: pin the workload in native vendor units (requests, tokens, GB-months, vCPU-hours) BEFORE searching. Cross-vendor comparisons in non-native units mislead. Quote the price table with the access date — pricing pages move silently.
 
-## Tool selection
+## Tool selection (research-powerpack tool ladder)
 
-- `smart-web-search` — per-candidate ranked recon into context.
-- `raw-web-search` — permalink discovery for community forums.
-- `smart-scrape-links` — vendor pricing pages, doc pages, with extraction schema "tier, unit, price, included quota, overage, limits". ≤5 URLs / ≤7 facets per call.
-- `raw-scrape-links` — community-forum threads (always raw — preserves vote weighting). ≤5 per call.
+Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+
+- `start-research` — **Call FIRST every session.** Goal sentence names the candidates and the criteria; the brief comes back with the right fan-out shape.
+- `smart-web-search` — Per-candidate ranked recon with an `extract` instruction targeting the criteria (architecture, limits, pricing, sentiment).
+- `raw-web-search` — Permalink hunting for community-forum threads via `site:reddit.com/r/<sub>/comments` keywords.
+- `smart-scrape-links` — Vendor pricing pages, official docs, release notes with extraction `"tier | unit | unit price | included quota | overage rate | free tier | limits"`. ≤5 URLs / ≤7 facets per call.
+- `raw-scrape-links` — **Always for Reddit / HN forum threads** (preserves vote weighting + per-comment attribution).
+
+If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
 
 ## Quote discipline
 

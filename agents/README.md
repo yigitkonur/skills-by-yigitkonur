@@ -97,25 +97,19 @@ Source classes (uniform across all agents):
 
 No `site:URL` recipe templates in the agent bodies. Each agent has ONE illustrative bad-vs-good rewrite — not a four-row table.
 
-### Tool selection per runtime
+### Tool selection (research-powerpack only — both runtimes)
 
-**Claude Code** (uses research-powerpack MCP):
+The entire suite is built on the `mcp__research-powerpack__*` toolset. Both runtimes (Claude Code, Codex CLI) have research-powerpack configured and use it exclusively. No native WebSearch, WebFetch, exa, context7, firecrawl, or shell-based search/scrape is referenced anywhere in the agent bodies.
 
-- `mcp__research-powerpack__smart-web-search` — ranked + classified results.
-- `mcp__research-powerpack__raw-web-search` — file/subagent output, permalink discovery.
-- `mcp__research-powerpack__smart-scrape-links` — docs with extraction schema (≤5 URLs, ≤7 facets).
-- `mcp__research-powerpack__raw-scrape-links` — forum threads (always raw).
-- `mcp__research-powerpack__start-research` — long autonomous session.
-- `WebFetch` — single-URL fallback.
+Five tools, one ladder:
 
-**Codex CLI** (uses native + standard MCP):
+- `start-research` — **Call FIRST every session.** Returns a goal-tailored brief: primary branch (web / reddit / both), exact first-call sequence, 25-50 keyword seeds, iteration hints, gap warnings, stop criteria. The single most under-used tool in the kit.
+- `smart-web-search` — Fan out 5-50 keywords in parallel with LLM classification + synthesis. Default search. Pass an `extract` instruction naming the evidence shape you want.
+- `raw-web-search` — Same fan-out, no classification. Use for raw discovery, Reddit permalink hunting via `site:reddit.com/r/<sub>/comments` keywords, or when output is destined for a file or sub-agent.
+- `smart-scrape-links` — Fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction. The `extract` parameter (pipe-separated shape) is the most precise instrument the suite has.
+- `raw-scrape-links` — Fetch ≤5 URLs per call without extraction. **Always for Reddit / HN / forum threads** — preserves vote weighting, attribution, threading.
 
-- `WebSearch` — initial broad recon.
-- `mcp__exa__*` — when available, prefer for technical ranking.
-- `mcp__context7__*` — library / framework docs.
-- `WebFetch` — individual page reads.
-- `mcp__firecrawl__*` — community forum threads, rich pages.
-- `Bash` + `git` — for source-of-truth artifacts in OSS repos.
+If a research-powerpack tool is unavailable in a session, agents return `blocked` with the missing-tool name. No fallbacks to non-powerpack alternatives are permitted by the agent prompts.
 
 ### Quote discipline
 

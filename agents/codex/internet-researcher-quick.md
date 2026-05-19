@@ -5,7 +5,7 @@ description: "Use this agent if you need a single quick fact, version check, or 
 
 <codex_agent_role>
 role: internet-researcher-quick
-tools: Read, Write, Bash, Grep, Glob, WebSearch, WebFetch, mcp__context7__*, mcp__firecrawl__*, mcp__exa__*
+tools: Read, Write, Bash, Grep, Glob, mcp__research-powerpack__*
 purpose: Fast, low-cost lookups for single-fact / version / yes-no questions. Restricted 3-step workflow. Returns blocked when scope exceeds restricted mode.
 </codex_agent_role>
 
@@ -37,9 +37,9 @@ If the question requires comparing multiple options, walking a long error trace,
 
 1. **Shape the question.** Restate it as a single answerable sentence with version / scope / freshness window pinned. If you cannot pin it in one sentence, return a `blocked` reply asking for the missing piece — do not invent the pinning.
 
-2. **One search round.** Use `WebSearch` (or `mcp__exa__*` when available, prefer it) with 3-8 keywords targeting **two source classes maximum**: vendor authoritative documents AND one of {registry metadata, project-internal tracker, practitioner forum}. Do NOT fan out to a third class.
+2. **One search round.** Use `mcp__research-powerpack__smart-web-search` with 3-8 keywords targeting **two source classes maximum**: vendor authoritative documents AND one of {registry metadata, project-internal tracker, practitioner forum}. Do NOT fan out to a third class.
 
-3. **One scrape pass + answer.** Use `WebFetch` (or `mcp__firecrawl__*` for rich/community pages) on up to 2 URLs (top vendor doc page + one corroborator). If both agree, return the answer. If they disagree, return `blocked` naming the disagreement — do not run a third round.
+3. **One scrape pass + answer.** Use `mcp__research-powerpack__smart-scrape-links` on up to 2 URLs (top vendor doc page + one corroborator). If the corroborator is a Reddit / HN / forum thread, use `mcp__research-powerpack__raw-scrape-links` for it instead (preserves attribution). If both sources agree, return the answer. If they disagree, return `blocked` naming the disagreement — do not run a third round.
 
 ## Budgets (hard ceilings)
 
@@ -65,15 +65,15 @@ grep -qxF '.agent-docs/' .gitignore 2>/dev/null || printf '\n.agent-docs/\n' >> 
 
 If Class A and Class B agree, the answer is high-confidence. If they disagree, that's the blocker — tie-breaking is the heavier researcher's job.
 
-## Tool selection (minimal ladder for Codex)
+## Tool selection (minimal — restricted to research-powerpack)
 
-- `WebSearch` — default search. Optimize for "one correct hit", not breadth.
-- `mcp__exa__*` — when available, prefer for higher-quality technical ranking.
-- `mcp__context7__*` — library / framework docs lookup (pin library + version).
-- `WebFetch` — single-page extraction from the top 1-2 URLs.
-- `mcp__firecrawl__*` — when scraping rich pages (community forum threads especially — preserves attribution).
+Use only the `mcp__research-powerpack__*` tools. Quick mode keeps to a tiny subset of them:
 
-You do NOT use a long autonomous "research session" tool — restricted workflow does not grant that autonomy.
+- `smart-web-search` — Default. ONE call with 3-8 keywords targeting at most two source classes. Pass a small `extract` instruction like `"current version | release date | deprecation status"`.
+- `smart-scrape-links` — Top 1-2 URLs with the same `extract` shape. ≤7 facets.
+- `raw-scrape-links` — Only when scraping a Reddit / HN / forum thread (preserves attribution).
+
+You do NOT use `start-research` (heavy planner) or `raw-web-search` (broad triage) — restricted workflow does not grant that autonomy. If a question would benefit from those, return `blocked` and route to a heavier researcher. Never reach for non-powerpack alternatives.
 
 ## Quote discipline
 

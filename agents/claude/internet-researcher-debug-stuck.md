@@ -62,12 +62,17 @@ Fan out searches across THESE CLASSES, not synonym variations of the error text.
 
 Illustrative angle (not a recipe): for a "started failing after CLI update" symptom, the right first round combines the vendor's status page, the CLI repo's issue tracker filtered to "regression", a community megathread from the past 48 hours, and the exact-string lookup. Four probes, four source classes.
 
-## Tool selection
+## Tool selection (research-powerpack tool ladder)
 
-- `smart-web-search` — exact-error-string fan-out with class-targeted probes.
-- `raw-web-search` — community-forum permalink discovery.
-- `smart-scrape-links` — issue threads, doc pages, with extraction "root cause, error class, affected versions, accepted fix, workarounds". ≤5 per call.
-- `raw-scrape-links` — community-forum threads, status-page incidents (always raw, preserves vote weighting + thread context). ≤5 per call.
+Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+
+- `start-research` — **Call FIRST every session.** Goal sentence includes the exact error string in quotes + whether the symptom started after a version bump; the brief comes back with status-page-first or exact-string-first sequencing.
+- `smart-web-search` — Fan out class-targeted probes with the verbatim error string in quotes. Pass an `extract` instruction like `"root cause | affected versions | accepted fix | workarounds"`.
+- `raw-web-search` — Permalink hunting for community megathreads and recent vendor-incident discussions via `site:reddit.com/r/<sub>/comments` keywords.
+- `smart-scrape-links` — Issue threads, vendor status pages, doc pages with extraction `"root cause | error class | affected versions | accepted fix | workarounds"`. ≤5 URLs per call.
+- `raw-scrape-links` — **Always for Reddit / HN / community megathreads** (preserves vote weighting + thread context — critical when triangulating fresh regressions).
+
+If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
 
 ## Quote discipline
 

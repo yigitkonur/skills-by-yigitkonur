@@ -61,12 +61,17 @@ Fan out each recon call across these classes. The leaked-source-map angle and th
 
 For each implementation you find, ask: is this maintained (commit in past N months)? Does it have install count or star count above a noise floor? If both fail, it's a demo, not a shipping pattern — drop it.
 
-## Tool selection
+## Tool selection (research-powerpack tool ladder)
 
-- `smart-web-search` — multi-class fanout. Mix repo / userscript / extension / blog / leaked-source angles per call.
-- `raw-web-search` — catalog-page hunting and community thread permalink discovery.
-- `smart-scrape-links` — implementation pages with extraction "platform, technique, key snippet, fallback chain, install count, last update". ≤5 per call.
-- `raw-scrape-links` — full repo READMEs, userscript source dumps, community threads. ≤5 per call.
+Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+
+- `start-research` — **Call FIRST every session.** Goal sentence names the pattern + the platform constraint; the brief comes back with the right OSS / userscript / extension / leaked-source mix.
+- `smart-web-search` — Multi-class fan-out. Mix repo / userscript-catalog / extension-store / blog / leaked-source angles per call. Pass an `extract` instruction like `"platform | technique | key snippet | fallback chain | install count | last update"`.
+- `raw-web-search` — Catalog-page hunting (userscript catalogs, awesome-lists) and community-thread permalink discovery via `site:reddit.com/r/<sub>/comments`.
+- `smart-scrape-links` — Individual implementation pages, READMEs, doc pages with the extraction shape above. ≤5 URLs per call.
+- `raw-scrape-links` — Full userscript source dumps, full repo READMEs, community threads. **Always raw** for forum sources (preserves attribution + vote weighting).
+
+If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
 
 ## Quote discipline
 
