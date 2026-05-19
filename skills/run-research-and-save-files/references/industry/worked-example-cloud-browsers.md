@@ -56,7 +56,7 @@ The corpus was produced for the cloud-browser category (vendors that run real Ch
 
 ## Phase 2 — Template authoring (taxonomy + maximalist templates)
 
-**Archetype selected:** SaaS / vendor category from `references/architecture/category-taxonomies.md`.
+**Archetype selected:** SaaS / vendor category from `references/industry/category-taxonomies.md`.
 
 **Why not OSS or dev-infra:** the entities are commercial vendors with public pricing, not open-source projects with maintainer dynamics. Dev-infra was close, but the buyer-decision shape (per-session pricing, Reddit migration stories, bot-detection concerns) is SaaS-shaped, not infrastructure-shaped.
 

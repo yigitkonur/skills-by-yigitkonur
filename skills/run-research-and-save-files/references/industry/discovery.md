@@ -2,7 +2,7 @@
 
 How to find the entities (products, projects, vendors, providers) that belong in the corpus — before any pack research starts.
 
-Read this in **Phase 1** of the run-industry-research workflow.
+Read this in the **discovery wave** when the corpus uses an industry / vendor-category framing.
 
 ## Why discovery is its own phase
 
@@ -108,7 +108,7 @@ smart-scrape-links:
 
 ### Fallback path (no MCP)
 
-Dispatch web-capable research agents — one per sub-question — to run `WebSearch`/`WebFetch` rounds and report back a candidate list. See `references/agents/research-powerpack-and-explore.md` for the dispatch recipe.
+Dispatch web-capable research agents — one per sub-question — to run `WebSearch`/`WebFetch` rounds and report back a candidate list. See `references/industry/research-powerpack-and-explore.md` for the dispatch recipe.
 
 If web-capable agents are unavailable, run sequential `WebSearch` queries against each sub-question. Reserve local-corpus Explore for searching the generated corpus, not open-web discovery.
 
@@ -214,4 +214,4 @@ Before locking the discovery list and starting Phase 2 (template authoring):
 
 ## Worked example reference
 
-For a complete discovery walkthrough on a real category, see `references/workflow/worked-example-cloud-browsers.md`. The cloud-browsers corpus surfaced 25 candidates across 5 sub-questions, tiered to 12 `core` + 8 `secondary` + 5 `discovered-only`, before any pack research started.
+For a complete discovery walkthrough on a real category, see `references/industry/worked-example-cloud-browsers.md`. The cloud-browsers corpus surfaced 25 candidates across 5 sub-questions, tiered to 12 `core` + 8 `secondary` + 5 `discovered-only`, before any pack research started.
