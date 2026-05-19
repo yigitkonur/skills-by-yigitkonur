@@ -19,6 +19,13 @@ Warning signs you are derailing:
 
 Replace those instincts with this pattern. Each command is its own message in the same `Bash` tool; the daemon keeps the browser alive between calls. The agent's job between calls is to **read the output** and **update the scratchpad**.
 
+The command names in this skill are literal. Do not invent aliases from other browser tools:
+
+- Use `agent-browser open URL`, not `agent-browser nav URL`.
+- Use `agent-browser --session NAME open URL` when you want a named session, not `agent-browser session start`.
+- Use `agent-browser snapshot -i` for interactive refs, not bare `snapshot` when you need `@e` targets.
+- Use refs exactly as returned (`@e14`, `@e3`). Do not write pseudo-flags such as `@ref=...`.
+
 ```
 1. $ agent-browser open https://example.com
 2. $ agent-browser wait --load networkidle
