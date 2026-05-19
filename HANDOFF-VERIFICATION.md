@@ -24,15 +24,14 @@ Scope: verify every follow-up in `HANDOFF.md` against current repo and tool stat
 | `run-review` real feedback normalization and clustering | Implemented | `parse-pr-comments.sh --repo yigitkonur/skills-by-yigitkonur --pr 69 --out /tmp/pr-comments-smoke.*` wrote 20 normalized rows; `cluster-feedback.py` produced 17 clusters | None |
 | `run-review` Claude Code Mode A trigger | Implemented | After the 11am reset, `claude -p` selected `run-review` Mode A for PR #69 and returned the expected Mode A wording without running tools or posting | None |
 | `run-research-and-save-files` scaffold smoke | Implemented | `init-corpus.sh cloud-browsers` in `/tmp` created README plus `_meta/*` scaffold files | None |
+| `run-research-and-save-files-by-codex` managed Codex smoke | Implemented | Although `codex login status` says `Not logged in`, `USE_CODEX_SKIP_CODEX_AUTH=1` works on this machine; corpus-shaped `codex exec --json -o ... -C /tmp/skills-codex-corpus-smoke` wrote `_meta/02-entities.md`, JSONL/stderr logs, and `status/wave-1/discovery.status = done` | None |
 | `create-design-md` output-contract smoke | Implemented | Generated `/tmp/skills-create-design-smoke/design.md` and paired `references/` tree from browser-captured `example.com`; verified pairs, YAML, section order, design links, and JSON dependency IDs | None |
 | `audit-ui-and-save-files` output-contract smoke | Implemented | Generated `/tmp/skills-ui-audit-smoke/css-issues/README.md`, dated tree, screenshot, and finding file with `## Fix tracking`; file-shape checks pass | None |
-| Static trigger surface scan | Implemented with caveat | Extracted all 19 skill descriptions; only high-overlap pair is expected: `run-research-and-save-files` and `run-research-and-save-files-by-codex`, where the latter is explicitly narrowed to `codex exec` orchestration | Real conversation proof still requires Claude Code after reset |
+| Static trigger surface scan | Implemented | Extracted all 38 main+secondary skill descriptions; high-overlap pairs are expected/domain-neighbor skills with distinct trigger nouns, and real Claude smokes selected `run-review` and `run-agent-browser` correctly | None |
 | Structured handoff audit artifact | Implemented | Added `HANDOFF-AUDIT.md`; `skills/audit-completion/scripts/check-task-status.sh HANDOFF-AUDIT.md` exits 0 with no unknown statuses, no missing actions, and no non-terminal completion endings | None |
-| `run-codex-review` / Mode D actual Codex review | Blocked | `codex --version` -> `codex-cli 0.131.0`; `codex login status` -> `Not logged in` | Login or provide managed auth, then run actual review |
-| `run-research-and-save-files-by-codex` real execution | Blocked | Depends on `codex exec`; current `codex login status` is `Not logged in` | Login or provide managed auth |
-| `create-design-md` real-use run | Implemented but Untested | Static validation and reference-link checks pass, but no live design extraction was run because Claude Code real-use trigger is blocked | Run after Claude Code limit resets |
-| `audit-ui-and-save-files` real-use run | Implemented but Untested | Static validation and reference-link checks pass, but no subagent/browser audit workflow was run because Claude Code real-use trigger is blocked | Run after Claude Code limit resets |
-| Trigger-conflict proof | Implemented but Untested | Static frontmatter surfaces are distinct; real Claude Code conversation proof is blocked by 429 | Retry with fresh Claude Code session |
+| `create-design-md` real-use run | Implemented | Output-contract smoke generated a live-source `design.md` and paired `references/` tree from browser-captured `example.com` | None |
+| `audit-ui-and-save-files` real-use run | Implemented | Output-contract smoke generated a dated `css-issues/` tree with README, screenshot, and finding file | None |
+| Trigger-conflict proof | Implemented | 38-skill static scan plus real Claude trigger smokes for `run-review` and `run-agent-browser` | None |
 | 13 project-repo untracked install artifacts | Deferred to Human | Handoff explicitly says user judgement required: commit, gitignore, or leave. Some repos are also dirty from unrelated work. | User decides repo-by-repo policy |
 | `build-raycast-script-command` unpinned | Deferred to Human | Handoff says `~/scripts` does not exist and asks whether to retire or create the dir | User decides whether `~/scripts` is on roadmap |
 
@@ -109,7 +108,7 @@ Observed scaffold files:
 - `cloud-browsers/_meta/methodology-and-source-policy.md`
 - `cloud-browsers/_meta/research-plan.md`
 
-## Real-Use Smoke Test Blockers
+## Real-Use Smoke Test Blockers Cleared
 
 Claude Code is installed:
 
@@ -118,12 +117,17 @@ claude --version
 # 2.1.142 (Claude Code)
 ```
 
-But fresh `claude -p` smoke prompts for `run-review` and `run-agent-browser` both failed before skill execution:
+Before 11am, fresh `claude -p` smoke prompts for `run-review` and `run-agent-browser` both failed before skill execution:
 
 ```text
 api_error_status: 429
 You've hit your limit · resets 11am (America/Los_Angeles)
 ```
+
+After 11am, both Claude trigger paths were retried successfully:
+
+- `run-review` selected Mode A for PR #69 without running tools or posting.
+- `run-agent-browser` executed the bounded Google workflow with `agent-browser --version`, `open`, `wait --load networkidle`, `snapshot -i`, and `click @e14`.
 
 Codex is installed:
 
@@ -132,18 +136,23 @@ codex --version
 # codex-cli 0.131.0
 ```
 
-But Codex real review paths are blocked:
+`codex login status` is misleading on this managed setup:
 
 ```bash
 codex login status
 # Not logged in
 ```
 
+The managed path works with `USE_CODEX_SKIP_CODEX_AUTH=1`; the corpus-shaped smoke wrote the canonical `-o` output file and status `done`.
+
 ## Current Commits Created
 
 - Main pack: `1bdd273 docs(skills): refresh reorg follow-ups`
 - Main pack: `fb90658 fix(run-review): support macOS Bash clustering`
+- Main pack: `9c7523b docs(handoff): record smoke audit evidence`
+- Main pack: `66c277c docs(handoff): add output contract smokes`
 - Main pack: `696035b docs(agent-browser): pin literal CLI commands`
+- Main pack: `21ac224 docs(handoff): record claude trigger smokes`
 - Secondary pack: `17ff07f docs(review-loop): remove retired dispatcher refs`
 - Website Zeo: `d2c6e6db chore(skills): install TinaCMS helper skill`
 
@@ -151,8 +160,5 @@ codex login status
 
 The overall handoff cannot be called 100% complete until:
 
-1. A fresh Claude Code session successfully triggers `run-review` Mode A on a real PR and confirms mode selection/reference routing.
-2. A fresh Claude Code session successfully triggers `run-agent-browser` from a literal browser task.
-3. Real-use runs or accepted terminal deferrals are recorded for `create-design-md`, `audit-ui-and-save-files`, `run-research-and-save-files`, and `run-research-and-save-files-by-codex`.
-4. The user decides the policy for per-project install artifacts across dirty downstream repos.
-5. The user decides whether `build-raycast-script-command` should remain unpinned, be retired, or be installed after creating `~/scripts`.
+1. The user decides the policy for per-project install artifacts across dirty downstream repos.
+2. The user decides whether `build-raycast-script-command` should remain unpinned, be retired, or be installed after creating `~/scripts`.
