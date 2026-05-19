@@ -15,19 +15,19 @@ Scope: verify every follow-up in `HANDOFF.md` against current repo and tool stat
 | `run-agent-browser` browser smoke | Implemented | Opened Google, `snapshot -i`, clicked `@e14`, filled `skills smoke test`, verified value/title/url, screenshot at `/tmp/skills-browser-smoke.png` | None |
 | `run-agent-browser` literal current-run smoke | Implemented | Re-ran literal Google task in session `skills-literal-now`: opened Google, waited, `snapshot -i`, clicked/filled `@e14`, verified value `skills browser verification`, saved `/tmp/skills-literal-now.png` (54206 bytes) | None |
 | `run-agent-browser` inspect helper | Implemented | `inspect-page.sh --screenshot https://example.com /tmp/agent-browser-inspect.*` wrote final URL, title, JSON/text snapshots, and screenshot | None |
+| `run-agent-browser` Claude Code execution smoke | Implemented after remediation | Initial summary-only Claude probe selected the skill but invented invalid `session start` / `navigate` commands; commit `696035b` added explicit literal-command guardrails, global reinstall refreshed `~/.agents` and `~/.claude`, and `claude -p --permission-mode bypassPermissions` then actually ran `agent-browser --version`, `open`, `wait --load networkidle`, `snapshot -i`, and `click @e14` | None |
 | `website-zeo` lock mismatch | Implemented | Committed `d2c6e6db chore(skills): install TinaCMS helper skill`; `skills-lock.json` now includes `build-tinacms-nextjs`; `.agents/skills/build-tinacms-nextjs/SKILL.md` exists | None |
 | Retired-skill references in current pack docs | Implemented | Commit `1bdd273 docs(skills): refresh reorg follow-ups`; grep only finds intentional history or explicit retired-skill notes | None |
 | Secondary `run-codex-review-loop` no longer routes to deleted dispatcher | Implemented | Commit `17ff07f docs(review-loop): remove retired dispatcher refs`; skill now uses native `codex exec review` loop | None |
 | `run-review` helper smoke | Implemented after remediation | `cluster-files.sh` initially failed on macOS Bash 3.2 (`mapfile: command not found`, then empty-array `set -u` issue); fixed and re-ran stdin and `--base HEAD~1 --head HEAD` modes successfully | Commit the script fix |
 | `run-review` real PR collection helper | Implemented | `parse-pr.sh yigitkonur/skills-by-yigitkonur 69` fetched merged PR #69 metadata, 1918 changed files, 2 reviews, 18 inline comments, and artifacts under `/var/folders/.../review-pr-yigitkonur-skills-by-yigitkonur-69.*` | None |
 | `run-review` real feedback normalization and clustering | Implemented | `parse-pr-comments.sh --repo yigitkonur/skills-by-yigitkonur --pr 69 --out /tmp/pr-comments-smoke.*` wrote 20 normalized rows; `cluster-feedback.py` produced 17 clusters | None |
+| `run-review` Claude Code Mode A trigger | Implemented | After the 11am reset, `claude -p` selected `run-review` Mode A for PR #69 and returned the expected Mode A wording without running tools or posting | None |
 | `run-research-and-save-files` scaffold smoke | Implemented | `init-corpus.sh cloud-browsers` in `/tmp` created README plus `_meta/*` scaffold files | None |
 | `create-design-md` output-contract smoke | Implemented | Generated `/tmp/skills-create-design-smoke/design.md` and paired `references/` tree from browser-captured `example.com`; verified pairs, YAML, section order, design links, and JSON dependency IDs | None |
 | `audit-ui-and-save-files` output-contract smoke | Implemented | Generated `/tmp/skills-ui-audit-smoke/css-issues/README.md`, dated tree, screenshot, and finding file with `## Fix tracking`; file-shape checks pass | None |
 | Static trigger surface scan | Implemented with caveat | Extracted all 19 skill descriptions; only high-overlap pair is expected: `run-research-and-save-files` and `run-research-and-save-files-by-codex`, where the latter is explicitly narrowed to `codex exec` orchestration | Real conversation proof still requires Claude Code after reset |
 | Structured handoff audit artifact | Implemented | Added `HANDOFF-AUDIT.md`; `skills/audit-completion/scripts/check-task-status.sh HANDOFF-AUDIT.md` exits 0 with no unknown statuses, no missing actions, and no non-terminal completion endings | None |
-| `run-review` real Claude Code Mode A smoke | Blocked | `claude -p ...` exits with API status `429`: `You've hit your limit · resets 11am (America/Los_Angeles)` | Retry after account limit resets |
-| `run-agent-browser` real Claude Code trigger smoke | Blocked | Same `claude -p` `429` limit before any skill-trigger output | Retry after account limit resets |
 | `run-codex-review` / Mode D actual Codex review | Blocked | `codex --version` -> `codex-cli 0.131.0`; `codex login status` -> `Not logged in` | Login or provide managed auth, then run actual review |
 | `run-research-and-save-files-by-codex` real execution | Blocked | Depends on `codex exec`; current `codex login status` is `Not logged in` | Login or provide managed auth |
 | `create-design-md` real-use run | Implemented but Untested | Static validation and reference-link checks pass, but no live design extraction was run because Claude Code real-use trigger is blocked | Run after Claude Code limit resets |
@@ -143,6 +143,7 @@ codex login status
 
 - Main pack: `1bdd273 docs(skills): refresh reorg follow-ups`
 - Main pack: `fb90658 fix(run-review): support macOS Bash clustering`
+- Main pack: `696035b docs(agent-browser): pin literal CLI commands`
 - Secondary pack: `17ff07f docs(review-loop): remove retired dispatcher refs`
 - Website Zeo: `d2c6e6db chore(skills): install TinaCMS helper skill`
 

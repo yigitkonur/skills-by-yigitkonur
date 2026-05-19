@@ -10,7 +10,7 @@ Sources scanned:
 - `HANDOFF-VERIFICATION.md`: reconciled prior local remediation and blocker evidence.
 - Git state: `git status --short`, `git log --oneline -8`, and current commits in the main, secondary, and website-zeo repos.
 - Validators and helper commands: reran both pack validators, GitHub PR collectors, feedback clustering, and agent-browser helpers.
-- Browser runtime: ran literal `agent-browser` Google search-box interaction and `inspect-page.sh` screenshot capture.
+- Browser runtime: ran literal `agent-browser` Google search-box interaction, `inspect-page.sh` screenshot capture, and a Claude Code browser-trigger execution.
 - External auth state: checked Claude Code, Codex CLI, and GitHub CLI behavior where required.
 
 ## Audit
@@ -22,11 +22,11 @@ Sources scanned:
 | 3 | `run-review` helper scripts work on macOS Bash | `Implemented` | Commit `fb90658`; `cluster-files.sh` stdin and `--base HEAD~1 --head HEAD` modes both emit `# File Cluster Map`; PR helper tests below also pass. | No | — |
 | 4 | `run-review` real PR metadata collection works | `Implemented` | `skills/run-review/scripts/parse-pr.sh yigitkonur/skills-by-yigitkonur 69` fetched merged PR #69 metadata, files, reviews, comments, and artifacts under `/var/folders/.../review-pr-yigitkonur-skills-by-yigitkonur-69.*`. | No | — |
 | 5 | `run-review` PR feedback normalization and clustering work | `Implemented` | `parse-pr-comments.sh --repo yigitkonur/skills-by-yigitkonur --pr 69 --out /tmp/pr-comments-smoke.*` wrote `normalized.jsonl` with 20 rows; `cluster-feedback.py` produced 17 clusters. | No | — |
-| 6 | `run-review` real Claude Code Mode A trigger | `Blocked` | Fresh `claude -p` attempts failed before skill execution with API 429: `You've hit your limit · resets 11am (America/Los_Angeles)`. | Yes | Retry after 11am account reset with the saved PR #69 prompt. |
+| 6 | `run-review` real Claude Code Mode A trigger | `Implemented` | After the 11am reset, `claude -p` selected `run-review` Mode A for PR #69 and returned the Mode A wording without running tools or posting. | No | — |
 | 7 | `run-agent-browser` CLI surface and flagged subcommands exist | `Implemented` | `agent-browser 0.24.0`; `auth --help`, `device --help`, `snapshot --help`, and `check-agent-browser-version.sh 0.24.0` all succeed. | No | — |
 | 8 | `run-agent-browser` literal browser task works | `Implemented` | `agent-browser --session skills-literal-now` opened Google, waited, `snapshot -i` exposed `@e14`, clicked and filled it with `skills browser verification`, verified value, and saved `/tmp/skills-literal-now.png` (54206 bytes). | No | — |
 | 9 | `run-agent-browser` helper inspection workflow works | `Implemented` | `inspect-page.sh --screenshot https://example.com /tmp/agent-browser-inspect.*` wrote final URL, title, JSON/text snapshots, and screenshot. | No | — |
-| 10 | `run-agent-browser` real Claude Code trigger | `Blocked` | Fresh `claude -p` trigger prompt failed before skill execution with the same API 429 account limit. | Yes | Retry after 11am account reset with a literal browser-task prompt. |
+| 10 | `run-agent-browser` real Claude Code trigger and execution | `Implemented` | After source fix `696035b` and global reinstall, `claude -p --permission-mode bypassPermissions` loaded `run-agent-browser` and actually ran `agent-browser --version`, `open`, `wait --load networkidle`, `snapshot -i`, and `click @e14` on Google. | No | — |
 | 11 | `run-research-and-save-files` scaffold helper works | `Implemented` | `init-corpus.sh cloud-browsers` in `/tmp/skills-corpus-smoke.*` created README and `_meta/*` template files. | No | — |
 | 12 | `run-research-and-save-files-by-codex` operator preflight | `Blocked` | `codex --version` prints `codex-cli 0.131.0`, but `codex login status` prints `Not logged in`; real codex fanout cannot run. | Yes | Login to Codex or provide managed auth, then run the tiny codex smoke before a real wave. |
 | 13 | `create-design-md` output-contract extraction smoke | `Implemented` | Generated `/tmp/skills-create-design-smoke/design.md` plus paired `references/` tree from browser-captured `example.com`; verified file pairs, YAML frontmatter, section order, design links, and JSON dependency IDs. | No | — |
@@ -41,7 +41,7 @@ Sources scanned:
 
 Started: 19 tasks audited, 8 rows needing remediation or terminal disposition.
 
-Status totals: audited=19; remediation rows=8; remediated to `Implemented`=6; terminal non-`Implemented`=4; non-terminal remaining=0.
+Status totals: audited=19; remediation rows=8; remediated to `Implemented`=8; terminal non-`Implemented`=2; non-terminal remaining=0.
 
 | # | Task | Started | Ended | Evidence |
 |---|------|---------|-------|----------|
@@ -50,11 +50,11 @@ Status totals: audited=19; remediation rows=8; remediated to `Implemented`=6; te
 | 3 | `run-review` helper scripts work on macOS Bash | `Implemented but Broken` | `Implemented` | Commit `fb90658`; cluster helper and PR helper smokes pass. |
 | 4 | `run-review` real PR metadata collection works | `Implemented but Untested` | `Implemented` | `parse-pr.sh` succeeded on PR #69. |
 | 5 | `run-review` PR feedback normalization and clustering work | `Implemented but Untested` | `Implemented` | `parse-pr-comments.sh` normalized 20 rows; `cluster-feedback.py` produced 17 clusters. |
-| 6 | `run-review` real Claude Code Mode A trigger | `Blocked` | `Blocked — unresolvable` | Blocked by Claude Code API 429 until account reset; retry prompt documented. |
+| 6 | `run-review` real Claude Code Mode A trigger | `Blocked` | `Implemented` | `claude -p` after reset selected Mode A for PR #69 and returned the expected Mode A wording. |
 | 7 | `run-agent-browser` CLI surface and flagged subcommands exist | `Implemented` | `Implemented` | Version and subcommand help checks pass. |
 | 8 | `run-agent-browser` literal browser task works | `Implemented but Untested` | `Implemented` | Google search-box interaction verified and screenshot saved. |
 | 9 | `run-agent-browser` helper inspection workflow works | `Implemented but Untested` | `Implemented` | `inspect-page.sh` produced URL/title/snapshots/screenshot. |
-| 10 | `run-agent-browser` real Claude Code trigger | `Blocked` | `Blocked — unresolvable` | Blocked by Claude Code API 429 until account reset; retry prompt documented. |
+| 10 | `run-agent-browser` real Claude Code trigger and execution | `Blocked` | `Implemented` | `claude -p --permission-mode bypassPermissions` executed the valid command sequence and clicked search ref `@e14`; source fix `696035b` pins literal commands. |
 | 11 | `run-research-and-save-files` scaffold helper works | `Implemented but Untested` | `Implemented` | `init-corpus.sh cloud-browsers` produced the expected scaffold. |
 | 12 | `run-research-and-save-files-by-codex` operator preflight | `Blocked` | `Blocked — unresolvable` | Codex CLI exists but is not logged in; auth required before execution. |
 | 13 | `create-design-md` output-contract extraction smoke | `Implemented but Untested` | `Implemented` | `/tmp/skills-create-design-smoke` verifies pairs, YAML, sections, links, and JSON dependency IDs. |
