@@ -60,32 +60,72 @@ grep -qxF '.agent-docs/' .gitignore 2>/dev/null || printf '\n.agent-docs/\n' >> 
 - URL visits / scrapes: max 250 (typical: <25, ~5-8 per candidate)
 - Search rounds: max 8 (typical: 3-4)
 
-## How to think about searching
+## How to research
 
-For an adoption decision, you need three orthogonal kinds of evidence and you fan out by source class, not keyword synonyms.
+Three questions to answer in your head BEFORE every search call. The quality of the answers determines the quality of the evidence you get back.
 
-Source classes that matter for tech choice:
+### 1. What shape of evidence am I looking for?
 
-1. **Vendor authoritative documents** — architecture page, limits page, pricing page, release notes.
-2. **Project-internal trackers** — issues labeled performance / scaling / production / bug; PRs that changed the core abstraction.
-3. **Practitioner forums** — production case studies, regret posts, "we migrated to X" dev blogs, vote-weighted dissent threads.
-4. **Registry metadata** — commit cadence, contributor count, release-tag distance, download trends.
+Not "information about X" — that's a topic label, not a question. The shape might be a version number, an exact API signature, a fix recipe with shell commands, a behavior model that includes edge cases, a price tier with overage rate, a maintainer's commit cadence, a community sentiment distribution. Different shapes live in different parts of the web. Name the shape before you search.
 
-Each recon call should target a different class. Don't restate the candidate name with different adjectives; restate it pointed at a different source class.
+### 2. Which source class holds that shape cleanest?
 
-For pricing: pin the workload in native vendor units (requests, tokens, GB-months, vCPU-hours) BEFORE searching. Cross-vendor comparisons in non-native units mislead. Quote the price table with the access date — pricing pages move silently.
+The web partitions cleanly into six classes for our purposes:
 
-## Tool selection (research-powerpack tool ladder)
+- **Vendor authoritative documents** — official docs, changelogs, release notes, RFCs, advisories. Most trustworthy for facts that are stable.
+- **Project-internal trackers** — maintainer-authored issues, PRs, commits, design docs on the upstream repo. Often more honest than docs about quirks.
+- **Practitioner forums** — Reddit, Hacker News, Discord archives, dev blogs from named engineering teams. Best for production reality + lived experience.
+- **Registry metadata** — npm / PyPI / crates timelines, GitHub stars + commit cadence, weekly downloads. Best for "is this real / maintained / widely adopted".
+- **Vendor status pages + community megathreads** — best for "is this a known incident right now". Fast path for any "it worked yesterday" regression.
+- **Source-of-truth artifacts** — open-source code, leaked sourcemaps, extension store source dumps, CLI tools whose source ships with their package.
 
-Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+The biggest mistake most agents make is fanning out across synonyms of the same noun phrase. Fan out across source classes instead. Each recon call should reach into 2-4 distinct classes — that's where the parallax comes from.
 
-- `start-research` — **Call FIRST every session.** Goal sentence names the candidates and the criteria; the brief comes back with the right fan-out shape.
-- `smart-web-search` — Per-candidate ranked recon with an `extract` instruction targeting the criteria (architecture, limits, pricing, sentiment).
-- `raw-web-search` — Permalink hunting for community-forum threads via `site:reddit.com/r/<sub>/comments` keywords.
-- `smart-scrape-links` — Vendor pricing pages, official docs, release notes with extraction `"tier | unit | unit price | included quota | overage rate | free tier | limits"`. ≤5 URLs / ≤7 facets per call.
-- `raw-scrape-links` — **Always for Reddit / HN forum threads** (preserves vote weighting + per-comment attribution).
+### 3. What's my retrieval probe?
 
-If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
+Not a topic label, not "X best practices". A real query that points at the chosen class:
+
+- Verbatim error strings in quotes when an error is on the table.
+- Verbatim API symbols when behavior is in question.
+- Pinned versions when the symbol or feature moved between versions.
+- `site:<official-domain>` operators when the class is "vendor docs".
+- `site:reddit.com/r/<sub>/comments` for community permalink hunting.
+- `site:github.com/<owner>/<repo>` + label filters for project-internal dives.
+
+Pack 5-15 distinct probes per recon call, each aimed at a different source class. Synonym fan-out is wasted budget; source-class fan-out is where the evidence is.
+
+### Specialty note — adoption decisions
+
+Force the criteria to surface BEFORE the candidates do. "Which is better, A or B?" is answerable only if you know what "better" means in context — cost? throughput? maintainer trust? lock-in tolerance? Pin those first, then map each candidate against them. Prices live in native vendor units (requests, tokens, GB-months, vCPU-hours); cross-vendor comparisons in non-native units mislead. Pricing pages move silently — capture the access date with every quoted number.
+
+## Iteration rhythm
+
+A research session is recon → triage → capture → synthesize. Two to four rounds is normal for a heavy question; one is enough for a small one. After each round, ask: did I learn enough to answer with high confidence, or do I have a clearly-named gap? High confidence → stop and write. Clearly-named gap → fan a new round aimed at that gap. Still vague → the framing was wrong, restate the question before searching again.
+
+## Triangulation + source-quality hierarchy
+
+A single strong source is one piece of evidence, not a conclusion. For load-bearing claims, find at least one corroborator from a different source class. When sources disagree, surface the disagreement with per-source attribution — never collapse it into a synthetic "consensus" that erases the dissent.
+
+Ranking competing claims:
+
+1. Official vendor docs, changelogs, release notes, RFCs, advisories.
+2. Maintainer-authored issues / PRs / commits.
+3. Stack Overflow accepted answers with high score AND date matching the affected version.
+4. Reddit / forum threads with vote-weighted dissent — attribute username, sub, date, score.
+5. Blog posts — weight by author authority + publication; treat solo posts as anecdotal unless cross-confirmed.
+6. AI-generated content / aggregator scrapes — never cite directly.
+
+## Tools available
+
+The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just five tools and your judgment:
+
+- `start-research` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (primary branch, first-call sequence, 25-50 keyword seeds, gap warnings, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
+- `smart-web-search` — fanned search with LLM classification + synthesis. Returns ranked + tiered results into your context.
+- `raw-web-search` — same fanned search, no classification. Returns raw markdown for triage or file storage.
+- `smart-scrape-links` — fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction.
+- `raw-scrape-links` — fetch ≤5 URLs per call without extraction. Required for Reddit / HN / forum threads to preserve vote weighting + per-comment attribution.
+
+If a research-powerpack tool is unavailable in a session, return `blocked` with the missing-tool name. Never fall back to non-powerpack alternatives.
 
 ## Quote discipline
 

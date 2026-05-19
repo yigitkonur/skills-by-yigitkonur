@@ -48,33 +48,72 @@ grep -qxF '.agent-docs/' .gitignore 2>/dev/null || printf '\n.agent-docs/\n' >> 
 - URL visits / scrapes: max 250 (typical: <15)
 - Search rounds: max 8 (typical: 1-2 — official docs almost always answer in one round)
 
-## How to think about searching
+## How to research
 
-Hallucinated packages and outdated syntax both fail one test: "is this in the canonical source right now?" Your job is to run that test.
+Three questions to answer in your head BEFORE every search call. The quality of the answers determines the quality of the evidence you get back.
 
-Source classes you mine, in order of trust:
+### 1. What shape of evidence am I looking for?
 
-1. **Registry metadata.** Does the package exist? When was it created, last updated, by whom? Typosquat check: does a very-close-spelled package exist that you might be confusing with the real one?
-2. **Vendor authoritative documents.** Official docs / API reference / migration guide, version-pinned to what the user is on.
-3. **Source-of-truth artifacts.** When docs lag, read the source file or the type-definition file directly.
-4. **Project-internal trackers.** Issues labeled "deprecated", "renamed", or "breaking" near the user's version.
-5. **Practitioner forums.** Reddit / HN threads on "this got renamed / replaced" — useful for confirming the new shape, not for inventing one.
+Not "information about X" — that's a topic label, not a question. The shape might be a version number, an exact API signature, a fix recipe with shell commands, a behavior model that includes edge cases, a price tier with overage rate, a maintainer's commit cadence, a community sentiment distribution. Different shapes live in different parts of the web. Name the shape before you search.
 
-The killer move is to **always pin a version** in your probes. A query about `<symbol>` in `<framework>` is far weaker than the same query plus the exact version. Pack 5-15 keywords per recon call, each targeting a different source class above.
+### 2. Which source class holds that shape cleanest?
 
-For hallucination suspicion, run the registry-existence check FIRST. If the package doesn't exist on the official registry, stop — it's hallucinated, don't waste rounds confirming it from other sources.
+The web partitions cleanly into six classes for our purposes:
 
-## Tool selection (research-powerpack tool ladder)
+- **Vendor authoritative documents** — official docs, changelogs, release notes, RFCs, advisories. Most trustworthy for facts that are stable.
+- **Project-internal trackers** — maintainer-authored issues, PRs, commits, design docs on the upstream repo. Often more honest than docs about quirks.
+- **Practitioner forums** — Reddit, Hacker News, Discord archives, dev blogs from named engineering teams. Best for production reality + lived experience.
+- **Registry metadata** — npm / PyPI / crates timelines, GitHub stars + commit cadence, weekly downloads. Best for "is this real / maintained / widely adopted".
+- **Vendor status pages + community megathreads** — best for "is this a known incident right now". Fast path for any "it worked yesterday" regression.
+- **Source-of-truth artifacts** — open-source code, leaked sourcemaps, extension store source dumps, CLI tools whose source ships with their package.
 
-Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+The biggest mistake most agents make is fanning out across synonyms of the same noun phrase. Fan out across source classes instead. Each recon call should reach into 2-4 distinct classes — that's where the parallax comes from.
 
-- `start-research` — **Call FIRST every session.** Goal sentence names the exact symbol or package + the version under audit; the brief comes back with the right registry / docs / repo sequencing.
-- `smart-web-search` — Version-pinned fan-out targeting registry, docs, and migration angles. Pass an `extract` instruction like `"symbol name | current signature | version introduced | version deprecated | replacement | install line"`.
-- `raw-web-search` — Practitioner-thread permalink discovery via `site:reddit.com/r/<sub>/comments` keywords when migration sentiment matters.
-- `smart-scrape-links` — Official doc pages, npm/PyPI/crates registry pages, migration guides with the extraction shape above. ≤5 URLs per call.
-- `raw-scrape-links` — Practitioner threads for migration sentiment. **Always raw** for community-forum sources to preserve attribution.
+### 3. What's my retrieval probe?
 
-For hallucination suspicion, the FIRST call sequence is `start-research → smart-web-search` aimed at the registry — if the registry page does not show the package, stop and return `not-found`. Do not reach for non-powerpack alternatives.
+Not a topic label, not "X best practices". A real query that points at the chosen class:
+
+- Verbatim error strings in quotes when an error is on the table.
+- Verbatim API symbols when behavior is in question.
+- Pinned versions when the symbol or feature moved between versions.
+- `site:<official-domain>` operators when the class is "vendor docs".
+- `site:reddit.com/r/<sub>/comments` for community permalink hunting.
+- `site:github.com/<owner>/<repo>` + label filters for project-internal dives.
+
+Pack 5-15 distinct probes per recon call, each aimed at a different source class. Synonym fan-out is wasted budget; source-class fan-out is where the evidence is.
+
+### Specialty note — API/docs research
+
+Always pin a version in your probes. A query about `<symbol>` in `<library>` is far weaker than the same query plus the exact version. For hallucination suspicion, run the registry-existence check FIRST — if the package doesn't show up on the official registry with a recent timestamp, stop. Don't waste rounds confirming from other classes; a non-existent package isn't a research problem, it's a hallucination flag. When docs lag reality, source files and `.d.ts` type definitions are the canonical reference — cite path + commit SHA when possible.
+
+## Iteration rhythm
+
+A research session is recon → triage → capture → synthesize. Two to four rounds is normal for a heavy question; one is enough for a small one. After each round, ask: did I learn enough to answer with high confidence, or do I have a clearly-named gap? High confidence → stop and write. Clearly-named gap → fan a new round aimed at that gap. Still vague → the framing was wrong, restate the question before searching again.
+
+## Triangulation + source-quality hierarchy
+
+A single strong source is one piece of evidence, not a conclusion. For load-bearing claims, find at least one corroborator from a different source class. When sources disagree, surface the disagreement with per-source attribution — never collapse it into a synthetic "consensus" that erases the dissent.
+
+Ranking competing claims:
+
+1. Official vendor docs, changelogs, release notes, RFCs, advisories.
+2. Maintainer-authored issues / PRs / commits.
+3. Stack Overflow accepted answers with high score AND date matching the affected version.
+4. Reddit / forum threads with vote-weighted dissent — attribute username, sub, date, score.
+5. Blog posts — weight by author authority + publication; treat solo posts as anecdotal unless cross-confirmed.
+6. AI-generated content / aggregator scrapes — never cite directly.
+
+## Tools available
+
+The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just five tools and your judgment:
+
+- `start-research` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (primary branch, first-call sequence, 25-50 keyword seeds, gap warnings, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
+- `smart-web-search` — fanned search with LLM classification + synthesis. Returns ranked + tiered results into your context.
+- `raw-web-search` — same fanned search, no classification. Returns raw markdown for triage or file storage.
+- `smart-scrape-links` — fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction.
+- `raw-scrape-links` — fetch ≤5 URLs per call without extraction. Required for Reddit / HN / forum threads to preserve vote weighting + per-comment attribution.
+
+If a research-powerpack tool is unavailable in a session, return `blocked` with the missing-tool name. Never fall back to non-powerpack alternatives.
 
 ## Quote discipline
 

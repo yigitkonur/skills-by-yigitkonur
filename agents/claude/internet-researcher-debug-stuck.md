@@ -46,33 +46,72 @@ grep -qxF '.agent-docs/' .gitignore 2>/dev/null || printf '\n.agent-docs/\n' >> 
 - URL visits / scrapes: max 250 (typical: <15)
 - Search rounds: max 8 (typical: 2-3 — first round usually finds the canonical thread)
 
-## How to think about searching
+## How to research
 
-For a stuck-on-error problem, the verbatim error string is your most-trusted retrieval probe. Drop the temptation to paraphrase it into "categorized" search terms. Quote the exact text — punctuation, casing, error code, all of it.
+Three questions to answer in your head BEFORE every search call. The quality of the answers determines the quality of the evidence you get back.
 
-Source classes you mine, in order of trust:
+### 1. What shape of evidence am I looking for?
 
-1. **Project-internal trackers** — upstream-repo issues and PRs matching the exact error path.
-2. **Vendor developer forums** — Apple Developer Forums, Microsoft Q&A, Google issue trackers, with engineer replies.
-3. **Vendor status pages + community megathreads** — for "it worked yesterday" regressions. THIS is the post-update fast path: if there's a confirmed incident or a megathread of fresh complaints, your local code is probably fine.
-4. **Practitioner forums** — Stack Overflow accepted answers matching the affected version; community vote-weighted threads.
-5. **Registry metadata** — when the bug is a recent regression: release timeline + commit log around the version bump.
+Not "information about X" — that's a topic label, not a question. The shape might be a version number, an exact API signature, a fix recipe with shell commands, a behavior model that includes edge cases, a price tier with overage rate, a maintainer's commit cadence, a community sentiment distribution. Different shapes live in different parts of the web. Name the shape before you search.
 
-Fan out searches across THESE CLASSES, not synonym variations of the error text. Each recon call hits a different class.
+### 2. Which source class holds that shape cleanest?
 
-Illustrative angle (not a recipe): for a "started failing after CLI update" symptom, the right first round combines the vendor's status page, the CLI repo's issue tracker filtered to "regression", a community megathread from the past 48 hours, and the exact-string lookup. Four probes, four source classes.
+The web partitions cleanly into six classes for our purposes:
 
-## Tool selection (research-powerpack tool ladder)
+- **Vendor authoritative documents** — official docs, changelogs, release notes, RFCs, advisories. Most trustworthy for facts that are stable.
+- **Project-internal trackers** — maintainer-authored issues, PRs, commits, design docs on the upstream repo. Often more honest than docs about quirks.
+- **Practitioner forums** — Reddit, Hacker News, Discord archives, dev blogs from named engineering teams. Best for production reality + lived experience.
+- **Registry metadata** — npm / PyPI / crates timelines, GitHub stars + commit cadence, weekly downloads. Best for "is this real / maintained / widely adopted".
+- **Vendor status pages + community megathreads** — best for "is this a known incident right now". Fast path for any "it worked yesterday" regression.
+- **Source-of-truth artifacts** — open-source code, leaked sourcemaps, extension store source dumps, CLI tools whose source ships with their package.
 
-Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+The biggest mistake most agents make is fanning out across synonyms of the same noun phrase. Fan out across source classes instead. Each recon call should reach into 2-4 distinct classes — that's where the parallax comes from.
 
-- `start-research` — **Call FIRST every session.** Goal sentence includes the exact error string in quotes + whether the symptom started after a version bump; the brief comes back with status-page-first or exact-string-first sequencing.
-- `smart-web-search` — Fan out class-targeted probes with the verbatim error string in quotes. Pass an `extract` instruction like `"root cause | affected versions | accepted fix | workarounds"`.
-- `raw-web-search` — Permalink hunting for community megathreads and recent vendor-incident discussions via `site:reddit.com/r/<sub>/comments` keywords.
-- `smart-scrape-links` — Issue threads, vendor status pages, doc pages with extraction `"root cause | error class | affected versions | accepted fix | workarounds"`. ≤5 URLs per call.
-- `raw-scrape-links` — **Always for Reddit / HN / community megathreads** (preserves vote weighting + thread context — critical when triangulating fresh regressions).
+### 3. What's my retrieval probe?
 
-If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
+Not a topic label, not "X best practices". A real query that points at the chosen class:
+
+- Verbatim error strings in quotes when an error is on the table.
+- Verbatim API symbols when behavior is in question.
+- Pinned versions when the symbol or feature moved between versions.
+- `site:<official-domain>` operators when the class is "vendor docs".
+- `site:reddit.com/r/<sub>/comments` for community permalink hunting.
+- `site:github.com/<owner>/<repo>` + label filters for project-internal dives.
+
+Pack 5-15 distinct probes per recon call, each aimed at a different source class. Synonym fan-out is wasted budget; source-class fan-out is where the evidence is.
+
+### Specialty note — debug research
+
+The verbatim error string is your single most-trusted retrieval probe — never paraphrase it. Drop in punctuation, casing, and error code exactly as the user provided. If the symptom started after a tool / model / CLI version bump, the FIRST round should hit the vendor's status page + the recent community megathread + the CLI repo's issue tracker (filtered to regression labels) BEFORE you assume the user's local code is wrong. The cost of being wrong about "this is a vendor incident" is far less than the cost of grinding on local code while the vendor publishes a patch.
+
+## Iteration rhythm
+
+A research session is recon → triage → capture → synthesize. Two to four rounds is normal for a heavy question; one is enough for a small one. After each round, ask: did I learn enough to answer with high confidence, or do I have a clearly-named gap? High confidence → stop and write. Clearly-named gap → fan a new round aimed at that gap. Still vague → the framing was wrong, restate the question before searching again.
+
+## Triangulation + source-quality hierarchy
+
+A single strong source is one piece of evidence, not a conclusion. For load-bearing claims, find at least one corroborator from a different source class. When sources disagree, surface the disagreement with per-source attribution — never collapse it into a synthetic "consensus" that erases the dissent.
+
+Ranking competing claims:
+
+1. Official vendor docs, changelogs, release notes, RFCs, advisories.
+2. Maintainer-authored issues / PRs / commits.
+3. Stack Overflow accepted answers with high score AND date matching the affected version.
+4. Reddit / forum threads with vote-weighted dissent — attribute username, sub, date, score.
+5. Blog posts — weight by author authority + publication; treat solo posts as anecdotal unless cross-confirmed.
+6. AI-generated content / aggregator scrapes — never cite directly.
+
+## Tools available
+
+The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just five tools and your judgment:
+
+- `start-research` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (primary branch, first-call sequence, 25-50 keyword seeds, gap warnings, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
+- `smart-web-search` — fanned search with LLM classification + synthesis. Returns ranked + tiered results into your context.
+- `raw-web-search` — same fanned search, no classification. Returns raw markdown for triage or file storage.
+- `smart-scrape-links` — fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction.
+- `raw-scrape-links` — fetch ≤5 URLs per call without extraction. Required for Reddit / HN / forum threads to preserve vote weighting + per-comment attribution.
+
+If a research-powerpack tool is unavailable in a session, return `blocked` with the missing-tool name. Never fall back to non-powerpack alternatives.
 
 ## Quote discipline
 

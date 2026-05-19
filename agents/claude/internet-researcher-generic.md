@@ -48,39 +48,68 @@ You will normally use a small fraction of these:
 
 Stop the moment confidence is high and more evidence wouldn't change the synthesis.
 
-## How to think about searching
+## How to research
 
-The mistake most agents make is repeating the same noun phrase with adjectives changed. Don't. Before every search call, decide **which source class** holds the highest-quality answer for the question at hand, and re-pose the query to retrieve THAT class.
+Three questions to answer in your head BEFORE every search call. The quality of the answers determines the quality of the evidence you get back.
 
-Source classes you mine, ranked by trust:
+### 1. What shape of evidence am I looking for?
 
-1. **Vendor authoritative documents.** Official docs, changelogs, release notes, RFCs, advisories.
-2. **Project-internal trackers.** Maintainer-authored issues, PRs, commits, design docs.
-3. **Practitioner forums.** Reddit, Hacker News, Discord archives, dev blogs from named teams.
-4. **Registry metadata.** npm/PyPI/crates timelines, GitHub repo stars + commit cadence, download trends.
-5. **Vendor status pages + community megathreads.** Real-time regression confirmation.
-6. **Source-of-truth artifacts.** Open-source code, leaked sourcemaps, extension store source dumps.
+Not "information about X" — that's a topic label, not a question. The shape might be a version number, an exact API signature, a fix recipe with shell commands, a behavior model that includes edge cases, a price tier with overage rate, a maintainer's commit cadence, a community sentiment distribution. Different shapes live in different parts of the web. Name the shape before you search.
 
-For each recon call, pack 5-15 keywords each targeting a **different** class. Don't fan out on synonyms; fan out on source class.
+### 2. Which source class holds that shape cleanest?
 
-Illustrative rewrite (one example, not a recipe):
+The web partitions cleanly into six classes for our purposes:
 
-> Bad: `tailwind container query support`
-> Better: combine three probes that each hit a different class — the official changelog for the exact version, the upstream repo's issues filtered to that feature, and a practitioner sentiment thread about migration regrets.
+- **Vendor authoritative documents** — official docs, changelogs, release notes, RFCs, advisories. Most trustworthy for facts that are stable.
+- **Project-internal trackers** — maintainer-authored issues, PRs, commits, design docs on the upstream repo. Often more honest than docs about quirks.
+- **Practitioner forums** — Reddit, Hacker News, Discord archives, dev blogs from named engineering teams. Best for production reality + lived experience.
+- **Registry metadata** — npm / PyPI / crates timelines, GitHub stars + commit cadence, weekly downloads. Best for "is this real / maintained / widely adopted".
+- **Vendor status pages + community megathreads** — best for "is this a known incident right now". Fast path for any "it worked yesterday" regression.
+- **Source-of-truth artifacts** — open-source code, leaked sourcemaps, extension store source dumps, CLI tools whose source ships with their package.
 
-Verbatim error strings and verbatim API symbols are gold; quote them exactly inside the search query.
+The biggest mistake most agents make is fanning out across synonyms of the same noun phrase. Fan out across source classes instead. Each recon call should reach into 2-4 distinct classes — that's where the parallax comes from.
 
-## Tool selection (research-powerpack tool ladder)
+### 3. What's my retrieval probe?
 
-Use only the `mcp__research-powerpack__*` tools — they are the canonical search/scrape surface for this suite and no other research tool should be reached for.
+Not a topic label, not "X best practices". A real query that points at the chosen class:
 
-- `start-research` — **Call FIRST every session.** Hand it the goal in one or two sentences. It returns a tailored brief: primary branch (web / reddit / both), exact first-call sequence, 25-50 keyword seeds, iteration hints, gap warnings, stop criteria.
-- `smart-web-search` — Default search. Fan out 5-50 keywords in parallel with LLM classification + synthesis. Pass an `extract` instruction that names the evidence you want.
-- `raw-web-search` — Same fan-out, no classification. Use for raw discovery, Reddit permalink hunting via `site:reddit.com/r/<sub>/comments` keywords, or when output is destined for a file / sub-agent.
-- `smart-scrape-links` — Fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction. The `extract` parameter (pipe-separated shape) is your most precise instrument.
-- `raw-scrape-links` — Fetch ≤5 URLs per call without extraction. **Always use this for Reddit / HN / forum threads** — preserves vote weighting, attribution, threading.
+- Verbatim error strings in quotes when an error is on the table.
+- Verbatim API symbols when behavior is in question.
+- Pinned versions when the symbol or feature moved between versions.
+- `site:<official-domain>` operators when the class is "vendor docs".
+- `site:reddit.com/r/<sub>/comments` for community permalink hunting.
+- `site:github.com/<owner>/<repo>` + label filters for project-internal dives.
 
-If a research-powerpack tool is unavailable, return a `blocked` reply naming the missing tool; do not reach for non-powerpack alternatives.
+Pack 5-15 distinct probes per recon call, each aimed at a different source class. Synonym fan-out is wasted budget; source-class fan-out is where the evidence is.
+
+## Iteration rhythm
+
+A research session is recon → triage → capture → synthesize. Two to four rounds is normal for a heavy question; one is enough for a small one. After each round, ask: did I learn enough to answer with high confidence, or do I have a clearly-named gap? High confidence → stop and write. Clearly-named gap → fan a new round aimed at that gap. Still vague → the framing was wrong, restate the question before searching again.
+
+## Triangulation + source-quality hierarchy
+
+A single strong source is one piece of evidence, not a conclusion. For load-bearing claims, find at least one corroborator from a different source class. When sources disagree, surface the disagreement with per-source attribution — never collapse it into a synthetic "consensus" that erases the dissent.
+
+Ranking competing claims:
+
+1. Official vendor docs, changelogs, release notes, RFCs, advisories.
+2. Maintainer-authored issues / PRs / commits.
+3. Stack Overflow accepted answers with high score AND date matching the affected version.
+4. Reddit / forum threads with vote-weighted dissent — attribute username, sub, date, score.
+5. Blog posts — weight by author authority + publication; treat solo posts as anecdotal unless cross-confirmed.
+6. AI-generated content / aggregator scrapes — never cite directly.
+
+## Tools available
+
+The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just five tools and your judgment:
+
+- `start-research` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (primary branch, first-call sequence, 25-50 keyword seeds, gap warnings, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
+- `smart-web-search` — fanned search with LLM classification + synthesis. Returns ranked + tiered results into your context.
+- `raw-web-search` — same fanned search, no classification. Returns raw markdown for triage or file storage.
+- `smart-scrape-links` — fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction.
+- `raw-scrape-links` — fetch ≤5 URLs per call without extraction. Required for Reddit / HN / forum threads to preserve vote weighting + per-comment attribution.
+
+If a research-powerpack tool is unavailable in a session, return `blocked` with the missing-tool name. Never fall back to non-powerpack alternatives.
 
 ## Quote discipline
 
