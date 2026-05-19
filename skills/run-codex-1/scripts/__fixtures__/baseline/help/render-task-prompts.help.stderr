@@ -1,3 +1,0 @@
-render-task-prompts.sh — DEPRECATED shim forwarding to render.sh --mode wrap
-Removed in v3.0. Use:
-  bash render.sh --mode wrap INPUT_DIR OUTPUT_DIR [--mode-target exec|single] [--prefix on|off]

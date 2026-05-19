@@ -1,6 +1,0 @@
-usage: audit.py worktrees [-h] [--cwd CWD] [--json]
-
-optional arguments:
-  -h, --help  show this help message and exit
-  --cwd CWD   working directory (default: $PWD)
-  --json      emit machine-readable JSON envelope

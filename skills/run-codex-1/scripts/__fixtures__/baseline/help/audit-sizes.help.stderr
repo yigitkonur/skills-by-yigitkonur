@@ -1,3 +1,0 @@
-audit-sizes.sh — DEPRECATED shim forwarding to audit.py sizes
-Removed in v3.0. Use:
-  python3 audit.py sizes [--manifest <p>] [--answers <d>] [--log <p>] [--min-bytes <N>] [--json]
