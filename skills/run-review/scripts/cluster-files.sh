@@ -43,9 +43,15 @@ if [ -n "$base" ] || [ -n "$head" ]; then
     printf 'error: git is required for --base/--head mode\n' >&2
     exit 127
   }
-  mapfile -t paths < <(git diff --name-only "$base...$head")
+  paths=()
+  while IFS= read -r path; do
+    paths+=("$path")
+  done < <(git diff --name-only "$base...$head")
 else
-  mapfile -t paths
+  paths=()
+  while IFS= read -r path; do
+    paths+=("$path")
+  done
 fi
 
 declare -a data=()
@@ -137,10 +143,13 @@ done
 
 print_bucket() {
   local title="$1"
-  shift
-  local items=("$@")
-  [ "${#items[@]}" -gt 0 ] || return 0
-  printf '\n### %s (%s)\n' "$title" "${#items[@]}"
+  local bucket="$2"
+  local count
+  eval "count=\${#$bucket[@]}"
+  [ "$count" -gt 0 ] || return 0
+  local items=()
+  eval "items=(\"\${$bucket[@]}\")"
+  printf '\n### %s (%s)\n' "$title" "$count"
   local item
   for item in "${items[@]}"; do
     printf -- '- `%s`\n' "$item"
@@ -160,17 +169,17 @@ else
   printf -- '- Comparison: stdin path list\n'
 fi
 
-print_bucket "Data / Migration" "${data[@]}"
-print_bucket "Security / Auth" "${security[@]}"
-print_bucket "API / Routes" "${api[@]}"
-print_bucket "Core / Business Logic" "${core[@]}"
-print_bucket "Frontend" "${frontend[@]}"
-print_bucket "Infrastructure" "${infra[@]}"
-print_bucket "Configuration" "${config[@]}"
-print_bucket "Documentation" "${docs[@]}"
-print_bucket "Tests" "${tests[@]}"
-print_bucket "Types / Schemas" "${types[@]}"
-print_bucket "Other / Mixed" "${other[@]}"
+print_bucket "Data / Migration" data
+print_bucket "Security / Auth" security
+print_bucket "API / Routes" api
+print_bucket "Core / Business Logic" core
+print_bucket "Frontend" frontend
+print_bucket "Infrastructure" infra
+print_bucket "Configuration" config
+print_bucket "Documentation" docs
+print_bucket "Tests" tests
+print_bucket "Types / Schemas" types
+print_bucket "Other / Mixed" other
 
 cat <<'EOF'
 
