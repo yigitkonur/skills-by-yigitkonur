@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-Skills for AI coding agents — review, planning, research, browser automation, multi-agent orchestration, debug workflows, config files. The everyday loadout. **22 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
+Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **19 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
 
 > the b-side pack lives at **[skills-by-yigitkonur-secondary](https://github.com/yigitkonur/skills-by-yigitkonur-secondary)** — framework builders, mcp variants, niche tools. mrbeast2 energy, less popular sibling, still goes hard. cherry-pick from there when the job calls.
 
@@ -55,8 +55,8 @@ Inspect an artifact; produce findings, no fixes.
 - **[audit-completion](skills/audit-completion/)** — Audit task / session / plan / branch completion claims; remediate to terminal status.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-completion`
 
-- **[audit-ui](skills/audit-ui/)** — Visual UI audit across pages and viewports with browser screenshots. *(being upgraded to `audit-ui-and-save-files` with dated `css-issues/[YY-MM-DD]/[context]/[device]/` tree + approval-gated fix dispatch)*
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ui`
+- **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — Visual UI audit across pages and viewports with browser screenshots, writing per-bug findings to `css-issues/[YY-MM-DD]/[context]/[device]/NN-slug.md` and ending with an approval-gated fix-subagent dispatch plan.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ui-and-save-files`
 
 > the agentic-cli / agentic-mcp / skill-by-derailment audits moved to the [b-side pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) — they're project-shaped (you usually want them inside one repo, not globally chatting at every prompt). install per-project from there.
 
@@ -66,16 +66,8 @@ Inspect an artifact; produce findings, no fixes.
 
 Evaluate a code change for merge-readiness; produce reviewer feedback.
 
-- **[review-feedback](skills/review-feedback/)** — Triage received human, bot, markdown, or multi-reviewer feedback.
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/review-feedback`
-
-- **[review-pr](skills/review-pr/)** — Review PRs and branch diffs for merge readiness.
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/review-pr`
-
-- **[review-self](skills/review-self/)** — Hand off work as a PR with domain-aware self-review, or produce a markdown review doc.
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/review-self`
-
-> these three are being merged into a single `run-review` entry-point with mode selection (A: do a review, B: self-review handoff, C: triage feedback, D: delegate to `codex review`). once landed, install one skill instead of three.
+- **[run-review](skills/run-review/)** — Single entry-point with four modes. Mode A: do a PR / branch review. Mode B: open your branch as a self-review PR. Mode C: triage received feedback (human, bot, markdown, multi-reviewer). Mode D: delegate to `codex review` CLI.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-review`
 
 ---
 
@@ -97,15 +89,15 @@ Investigate runtime bugs.
 
 ---
 
-## 🔄 Convert & extract
+## 🔄 Convert & create
 
-Transform an artifact A → B, or pull data / design out of existing artifacts.
+Transform an artifact A → B, or generate a portable spec from existing artifacts.
 
 - **[convert-url-to-nextjs](skills/convert-url-to-nextjs/)** — Rebuild a deployed site as a Next.js project AS-IS pixel-faithful from a live URL — for the "we lost the frontend repo" recovery scenario. L0+L1 unique-type crawl + back-to-back agent-browser verification.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-url-to-nextjs`
 
-- **[extract-saas-design](skills/extract-saas-design/)** — SaaS dashboard visual system extraction. *(being rebuilt as `create-design-md`: master `design.md` spec + per-asset `references/[context]/NN-asset.{md,json}` pairs)*
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/extract-saas-design`
+- **[create-design-md](skills/create-design-md/)** — Produce a `design.md` spec (Google Labs DESIGN.md format) plus per-asset `references/[context]/NN-asset.{md,json}` references tree from a live URL, codebase, or HTML snapshot.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/create-design-md`
 
 ---
 
@@ -116,17 +108,8 @@ Drive a CLI, API, browser, or other live tool during the session.
 - **[run-agent-browser](skills/run-agent-browser/)** — Browser automation with agent-browser CLI.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-browser`
 
-- **[run-batch-codex-research](skills/run-batch-codex-research/)** — Fan out codex (or another LLM CLI) over inputs in parallel with retry. *(being merged into `run-research-and-save-files-by-codex`)*
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-batch-codex-research`
-
-- **[run-corpus-research](skills/run-corpus-research/)** — Multi-entity evidence-corpus research with per-entity packs. *(being merged into `run-research-and-save-files`)*
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-corpus-research`
-
 - **[run-github-scout](skills/run-github-scout/)** — Adaptive GitHub repo discovery and shortlisting for concrete needs.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-github-scout`
-
-- **[run-industry-research](skills/run-industry-research/)** — Industry research corpora with evidence packs and comparisons. *(being merged into `run-research-and-save-files`)*
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-industry-research`
 
 - **[run-railway](skills/run-railway/)** — Railway CLI commands, workflows, and version-drift routing.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-railway`
@@ -136,6 +119,12 @@ Drive a CLI, API, browser, or other live tool during the session.
 
 - **[run-research](skills/run-research/)** — Single-question technical research with source-backed synthesis.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research`
+
+- **[run-research-and-save-files](skills/run-research-and-save-files/)** — Wave-based corpus research that persists evidence to disk. Filesystem is the context channel between waves. Replaces the old `run-corpus-research` + `run-industry-research`.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research-and-save-files`
+
+- **[run-research-and-save-files-by-codex](skills/run-research-and-save-files-by-codex/)** — Same shape as `run-research-and-save-files`, but every web-research task is delegated to parallel `codex exec` subprocesses. Claude orchestrates; codex executes. Effort routing: low/medium per wave, high only for synthesis waves.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research-and-save-files-by-codex`
 
 > the codex orchestration fleet (`run-codex-1` / `run-codex-2` / `run-codex-exec`) and `run-issue-tree` were retired. `run-codex-review` moved to the [b-side pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) as `run-codex-review-loop`. `run-linear-cli` lives there too. `plan-tradeoff` was pulled — use `debug-runtime`'s phase-0 framing when you need to think through a problem.
 

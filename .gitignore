@@ -4,6 +4,10 @@
 node_modules/
 .design-soul/
 DERAILMENT_TEST_INVENTION/
+
+# Per-project skills CLI artifacts — this repo is the skills source, not an install target.
+skills-lock.json
+skills/*@
 derail-notes/
 derailment-notes/
 derail-results/
