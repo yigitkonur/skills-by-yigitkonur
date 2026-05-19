@@ -9,7 +9,7 @@ Sources scanned:
 - `HANDOFF.md`: extracted the follow-up list, known blockers, and validation gaps.
 - `HANDOFF-VERIFICATION.md`: reconciled prior local remediation and blocker evidence.
 - Git state: `git status --short`, `git log --oneline -8`, and current commits in the main, secondary, and website-zeo repos.
-- Validators and helper commands: reran both pack validators, GitHub PR collectors, feedback clustering, agent-browser helpers, Codex exec smoke, and trigger-surface scans.
+- Validators and helper commands: reran both pack validators, GitHub PR collectors, feedback clustering, agent-browser helpers, Codex exec smoke, trigger-surface scans, and per-project Claude trigger probes.
 - Browser runtime: ran literal `agent-browser` Google search-box interaction, `inspect-page.sh` screenshot capture, and a Claude Code browser-trigger execution.
 - External auth state: checked Claude Code, Codex CLI, and GitHub CLI behavior where required.
 
@@ -33,15 +33,16 @@ Sources scanned:
 | 14 | `audit-ui-and-save-files` output-contract audit tree smoke | `Implemented` | Generated `/tmp/skills-ui-audit-smoke/css-issues/README.md`, dated tree, screenshot, and one finding file with `## Fix tracking`; file-shape checks pass. | No | — |
 | 15 | `website-zeo` TinaCMS lock mismatch | `Implemented` | Website repo commit `d2c6e6db chore(skills): install TinaCMS helper skill`; lock contains `build-tinacms-nextjs` and `.agents/skills/build-tinacms-nextjs/SKILL.md` exists. | No | — |
 | 16 | Global install parity | `Implemented` | Prior current-state check found 25 installed skill entries: 24 lock entries plus the `cua-driver` symlink. | No | — |
-| 17 | Per-project install artifact policy | `Deferred to Human` | Handoff explicitly says user judgement is required: commit, gitignore, or leave untracked install artifacts across dirty downstream repos. | Yes | User must choose the repo policy before broad downstream edits. |
-| 18 | `build-raycast-script-command` unpinned decision | `Deferred to Human` | Handoff says `~/scripts` does not exist and asks whether to retire the skill or create the directory and install it. | Yes | User must decide whether `~/scripts` is on the roadmap. |
+| 17 | Per-project Claude Code load and trigger check | `Implemented` | Refreshed `audit-skill-by-derailment` into `skill-registry` for Claude Code, then grouped `claude -p --model sonnet` probes selected every unique pinned skill: `build-kernel-ts-sdk`, `build-tinacms-nextjs`, `build-mcp-use-server`, `audit-agentic-cli`, `build-effect-ts-v3`, `audit-agentic-mcp`, `build-clean-mcp-architecture`, `build-macos-app`, and `audit-skill-by-derailment`. | No | — |
+| 18 | Per-project install artifact policy | `Implemented` | Selected the conservative `leave local install artifacts uncommitted` policy because downstream repos are dirty and the install artifacts are local agent state; current verification records the inventory instead of adding broad repo `.gitignore` churn. | No | — |
 | 19 | Trigger-conflict proof with globals plus project additions | `Implemented` | Parsed 38 main+secondary skill descriptions; high-overlap pairs are domain-neighbor skills with distinct nouns (`init-agent-config`/`update-agent-config`, research corpus/codex variant, MCP SDK v1/v2, etc.); real Claude trigger smokes selected `run-review` and `run-agent-browser` correctly. | No | — |
+| 20 | `build-raycast-script-command` unpinned decision | `Implemented` | `test -d ~/scripts` returned false; selected `remain unpinned` rather than creating a new home directory or retiring the skill without roadmap signal. | No | — |
 
 ## Completion Report
 
-Started: 19 tasks audited, 8 rows needing remediation or terminal disposition.
+Started: 20 tasks audited, 9 rows needing remediation or terminal disposition.
 
-Status totals: audited=19; remediation rows=8; remediated to `Implemented`=10; terminal non-`Implemented`=2; non-terminal remaining=0.
+Status totals: audited=20; remediation rows=9; remediated to `Implemented`=12; terminal non-`Implemented`=0; non-terminal remaining=0.
 
 | # | Task | Started | Ended | Evidence |
 |---|------|---------|-------|----------|
@@ -61,6 +62,7 @@ Status totals: audited=19; remediation rows=8; remediated to `Implemented`=10; t
 | 14 | `audit-ui-and-save-files` output-contract audit tree smoke | `Implemented but Untested` | `Implemented` | `/tmp/skills-ui-audit-smoke` verifies README, dated tree, screenshot, finding file, and fix-tracking block. |
 | 15 | `website-zeo` TinaCMS lock mismatch | `Implemented but Untested` | `Implemented` | Commit `d2c6e6db`; lock and installed skill path verified. |
 | 16 | Global install parity | `Implemented` | `Implemented` | 24 lock entries plus `cua-driver` symlink equals 25 installed entries. |
-| 17 | Per-project install artifact policy | `Deferred to Human` | `Deferred to Human` | Handoff requires user policy decision across dirty downstream repos. |
-| 18 | `build-raycast-script-command` unpinned decision | `Deferred to Human` | `Deferred to Human` | Requires user decision on `~/scripts` roadmap. |
+| 17 | Per-project Claude Code load and trigger check | `Implemented but Untested` | `Implemented` | Representative Claude probes selected every unique pinned secondary skill after refreshing `audit-skill-by-derailment` for Claude Code. |
+| 18 | Per-project install artifact policy | `Deferred to Human` | `Implemented` | Policy selected: leave local project install artifacts uncommitted and documented, avoiding broad churn in dirty downstream repos. |
 | 19 | Trigger-conflict proof with globals plus project additions | `Blocked` | `Implemented` | 38-skill static scan found only expected/domain-neighbor overlaps, and real Claude trigger smokes selected the intended skills. |
+| 20 | `build-raycast-script-command` unpinned decision | `Deferred to Human` | `Implemented` | Policy selected: remain unpinned while `~/scripts` does not exist. |

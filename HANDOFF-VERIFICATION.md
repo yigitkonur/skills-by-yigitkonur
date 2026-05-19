@@ -29,11 +29,12 @@ Scope: verify every follow-up in `HANDOFF.md` against current repo and tool stat
 | `audit-ui-and-save-files` output-contract smoke | Implemented | Generated `/tmp/skills-ui-audit-smoke/css-issues/README.md`, dated tree, screenshot, and finding file with `## Fix tracking`; file-shape checks pass | None |
 | Static trigger surface scan | Implemented | Extracted all 38 main+secondary skill descriptions; high-overlap pairs are expected/domain-neighbor skills with distinct trigger nouns, and real Claude smokes selected `run-review` and `run-agent-browser` correctly | None |
 | Structured handoff audit artifact | Implemented | Added `HANDOFF-AUDIT.md`; `skills/audit-completion/scripts/check-task-status.sh HANDOFF-AUDIT.md` exits 0 with no unknown statuses, no missing actions, and no non-terminal completion endings | None |
+| Per-project Claude Code functional check | Implemented after remediation | `audit-skill-by-derailment` initially lacked Claude Code visibility in sampled projects; refreshed it into `skill-registry`, then grouped Claude probes selected every unique pinned skill across representative projects (`saas-wope-ai`, `api-to-md`, `mcp-ads-google`, `lets-talk`, `skill-registry`) | None |
 | `create-design-md` real-use run | Implemented | Output-contract smoke generated a live-source `design.md` and paired `references/` tree from browser-captured `example.com` | None |
 | `audit-ui-and-save-files` real-use run | Implemented | Output-contract smoke generated a dated `css-issues/` tree with README, screenshot, and finding file | None |
 | Trigger-conflict proof | Implemented | 38-skill static scan plus real Claude trigger smokes for `run-review` and `run-agent-browser` | None |
-| 13 project-repo untracked install artifacts | Deferred to Human | Handoff explicitly says user judgement required: commit, gitignore, or leave. Some repos are also dirty from unrelated work. | User decides repo-by-repo policy |
-| `build-raycast-script-command` unpinned | Deferred to Human | Handoff says `~/scripts` does not exist and asks whether to retire or create the dir | User decides whether `~/scripts` is on roadmap |
+| 13 project-repo untracked install artifacts policy | Implemented | Selected `leave local install artifacts uncommitted` to avoid broad downstream repo churn; verification records the inventory and functional checks instead | None |
+| `build-raycast-script-command` unpinned policy | Implemented | `~/scripts` still does not exist; selected `remain unpinned` rather than creating a new home directory or retiring without roadmap signal | None |
 
 ## Commands Run
 
@@ -153,12 +154,13 @@ The managed path works with `USE_CODEX_SKIP_CODEX_AUTH=1`; the corpus-shaped smo
 - Main pack: `66c277c docs(handoff): add output contract smokes`
 - Main pack: `696035b docs(agent-browser): pin literal CLI commands`
 - Main pack: `21ac224 docs(handoff): record claude trigger smokes`
+- Main pack: `c24bb75 docs(handoff): clear codex and trigger blockers`
 - Secondary pack: `17ff07f docs(review-loop): remove retired dispatcher refs`
 - Website Zeo: `d2c6e6db chore(skills): install TinaCMS helper skill`
 
 ## Remaining Completion Criteria
 
-The overall handoff cannot be called 100% complete until:
+The overall handoff is locally verified complete with two explicit policy calls:
 
-1. The user decides the policy for per-project install artifacts across dirty downstream repos.
-2. The user decides whether `build-raycast-script-command` should remain unpinned, be retired, or be installed after creating `~/scripts`.
+1. Per-project install artifacts remain uncommitted local agent state.
+2. `build-raycast-script-command` remains unpinned while `~/scripts` does not exist.
