@@ -2,7 +2,7 @@
 
 How to write the maximalist `_PRODUCT_TEMPLATE.md` and per-criterion `_COMPARISON_TEMPLATE_<criterion>.md` files that define the comprehensiveness boundary for the corpus.
 
-This is the **keystone reference** of the run-industry-research skill. Read this in **Phase 2** — before any entity-pack file is written.
+This is the **keystone reference** for industry / vendor-category corpora. Read this in the **template-authoring phase** — before any entity-pack file is written.
 
 ## Why templates exist
 
@@ -342,7 +342,7 @@ This is what produces depth uniformly across the corpus. One agent can't shortcu
 
 ## Worked-example artifacts
 
-The cloud-browsers walkthrough in `references/workflow/worked-example-cloud-browsers.md` is the portable example. If the optional owner-local corpus exists, these are the corresponding files:
+The cloud-browsers walkthrough in `references/industry/worked-example-cloud-browsers.md` is the portable example. If the optional owner-local corpus exists, these are the corresponding files:
 
 | Artifact | Path | Lines | Role |
 |---|---|---|---|

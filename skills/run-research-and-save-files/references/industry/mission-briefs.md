@@ -74,7 +74,7 @@ If MCP tools fail, fall back to WebSearch/WebFetch. Do not stop because one tool
 - [ ] Every non-trivial claim cites a source URL or local source file
 - [ ] Pricing/economics use native units first and normalize only when variables permit
 - [ ] Practitioner evidence includes source, date, author/user, and bias label
-- [ ] `[entity-slug]/09-sources/01-source-map.md` and `02-claims-ledger.md` are populated or updated using the schemas in `references/workflow/evidence-and-synthesis.md`
+- [ ] `[entity-slug]/09-sources/01-source-map.md` and `02-claims-ledger.md` are populated or updated using the schemas in `references/industry/evidence-and-synthesis.md`
 - [ ] No stub files; no placeholder TBD/TODO content
 - [ ] `[entity-slug]/README.md` indexes every file in the pack
 
@@ -235,11 +235,11 @@ We are writing standalone `<entity>.md` decision pages at the corpus root. Each 
 - `[entity-slug]/README.md` (pack index)
 - Every file in `[entity-slug]/` (the full evidence pack)
 - `_cross-[scope]/00-overview/00-overall-comparison.md` (where this entity ranks)
-- `references/architecture/profile-pages.md` (the profile-page pattern this skill enforces)
+- `references/industry/profile-pages.md` (the profile-page pattern this skill enforces)
 
 ## Mission
 
-Write `[entity-slug].md` at corpus root, following the profile-page pattern in `references/architecture/profile-pages.md`. Section ordering:
+Write `[entity-slug].md` at corpus root, following the profile-page pattern in `references/industry/profile-pages.md`. Section ordering:
 
 1. One-line positioning statement
 2. Research metadata (capture date, confidence, source-corpus link)
@@ -318,6 +318,6 @@ All entity-pack and cross-comparison briefs reference the Phase 2 templates:
 
 - Entity-pack agents receive `_meta/_PRODUCT_TEMPLATE.md` as the comprehensiveness contract. They MUST address every section (with content or with a one-paragraph "insufficient evidence" entry naming the data gap). They MAY pick `01-meaningful-title.md` filenames within each section based on the evidence they find.
 - Cross-comparison agents receive the matching `_meta/_COMPARISON_TEMPLATE_<criterion>.md`. They MUST produce every required granular file in the template and address every required matrix axis and ranking dimension.
-- Profile-writer agents receive `references/architecture/profile-pages.md` plus the entity's completed pack.
+- Profile-writer agents receive `references/industry/profile-pages.md` plus the entity's completed pack.
 
 Briefs that do not pass templates to subagents produce non-comparable corpora.

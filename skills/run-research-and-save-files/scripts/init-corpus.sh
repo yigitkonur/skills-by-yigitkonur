@@ -5,7 +5,7 @@ usage() {
   cat <<'USAGE'
 Usage: init-corpus.sh <topic-slug> [entity-slug ...]
 
-Create deterministic run-industry-research corpus scaffolding:
+Create deterministic run-research-and-save-files corpus scaffolding:
   <topic-slug>/
     README.md
     _meta/research-plan.md

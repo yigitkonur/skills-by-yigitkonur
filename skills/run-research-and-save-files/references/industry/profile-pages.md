@@ -2,7 +2,7 @@
 
 How to write the standalone `<entity-slug>.md` decision pages at the corpus root.
 
-Read this in **Phase 6** of the run-industry-research workflow.
+Read this in the **profile page wave** when the corpus uses an industry / vendor-category framing and the user needs standalone decision pages.
 
 ## What a profile page is
 
