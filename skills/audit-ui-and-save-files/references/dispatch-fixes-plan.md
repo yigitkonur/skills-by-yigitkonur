@@ -103,22 +103,22 @@ The table columns are fixed; do not invent new columns. Print this in chat in Ma
 | TinaCMS-backed App Router page bugs | `build-tinacms-nextjs` | Tina's MDX + schema patterns are non-obvious |
 | Chrome-extension popup or content-script UI bugs | `build-chrome-extension` | MV3 lifecycle constraints differ from regular web apps |
 | Native macOS app SwiftUI/AppKit bugs | `build-macos-app` | HIG and Liquid Glass guidance lives here |
-| Cross-page design-system / token-level fixes (a brand color, a spacing scale, a type ramp) | `extract-saas-design` for taxonomy + plain `Edit` for the fix | Use extract-saas-design as the spec authority for "what the correct token is" |
+| Cross-page design-system / token-level fixes (a brand color, a spacing scale, a type ramp) | `create-design-md` for existing-token evidence + plain `Edit` for the fix | Use create-design-md only to document the current system; the fix still happens through normal code edits |
 | Bug requires browser verification mid-fix (regression check after each edit) | `run-agent-browser` (called by the fix subagent itself) | Same browser tool the audit used |
 | Convert a saved HTML page into a Next.js implementation | `convert-url-to-nextjs` | Owned, scoped, opinionated |
-| Post-fix self-review before marking done | `review-self` | Mandatory for non-trivial changes (>~50 LOC) |
+| Post-fix self-review before marking done | `run-review` Mode A | Mandatory for non-trivial changes (>~50 LOC) |
 
-For a single theme, the `Suggested skill(s)` cell can list 1–3 skills (e.g. `build-tinacms-nextjs` + `review-self`). Most themes are single-skill. A theme that demands more than 3 skills is probably two themes — split it.
+For a single theme, the `Suggested skill(s)` cell can list 1–3 skills (e.g. `build-tinacms-nextjs` + `run-review` Mode A). Most themes are single-skill. A theme that demands more than 3 skills is probably two themes — split it.
 
 ### Table example (12-finding audit on a TinaCMS site)
 
 ```markdown
 | # | Theme | Findings (count + paths) | Files likely touched | Outcome | Suggested skill(s) |
 |---|---|---|---|---|---|
-| 1 | BrandLogo fallback across pages | 4 — homepage/desktop-1440/01-..., features/desktop-1440/02-..., pricing/desktop-1440/02-..., customers/desktop-1440/01-... | src/components/shared/BrandLogo.tsx | BrandLogo renders the real logo on every page at desktop-1440 and mobile-375 | Edit, review-self |
-| 2 | Dashboard table mobile-375 overflow | 3 — dashboard/mobile-375/01-..., dashboard/mobile-375/03-..., dashboard/mobile-375/05-... | src/components/DataTable/DataTable.tsx, src/components/DataTable/Row.tsx | No horizontal overflow on /dashboard at mobile-375 | Edit, run-agent-browser, review-self |
-| 3 | Pricing CTA clipped by cookie banner | 2 — pricing/desktop-1440/04-..., pricing/mobile-375/02-... | src/components/CookieBanner.tsx, src/app/pricing/page.tsx | Pricing CTA fully visible above CookieBanner at all viewports | Edit, review-self |
-| 4 | Bento spacing tokens cross-page | 3 — homepage/desktop-1440/06-..., features/desktop-1440/03-..., features/desktop-1280/01-... | src/styles/tokens.css, src/components/Bento/*.tsx | Bento spacing matches design tokens on every page; no per-page overrides | extract-saas-design, Edit, review-self |
+| 1 | BrandLogo fallback across pages | 4 — homepage/desktop-1440/01-..., features/desktop-1440/02-..., pricing/desktop-1440/02-..., customers/desktop-1440/01-... | src/components/shared/BrandLogo.tsx | BrandLogo renders the real logo on every page at desktop-1440 and mobile-375 | Edit, run-review Mode A |
+| 2 | Dashboard table mobile-375 overflow | 3 — dashboard/mobile-375/01-..., dashboard/mobile-375/03-..., dashboard/mobile-375/05-... | src/components/DataTable/DataTable.tsx, src/components/DataTable/Row.tsx | No horizontal overflow on /dashboard at mobile-375 | Edit, run-agent-browser, run-review Mode A |
+| 3 | Pricing CTA clipped by cookie banner | 2 — pricing/desktop-1440/04-..., pricing/mobile-375/02-... | src/components/CookieBanner.tsx, src/app/pricing/page.tsx | Pricing CTA fully visible above CookieBanner at all viewports | Edit, run-review Mode A |
+| 4 | Bento spacing tokens cross-page | 3 — homepage/desktop-1440/06-..., features/desktop-1440/03-..., features/desktop-1280/01-... | src/styles/tokens.css, src/components/Bento/*.tsx | Bento spacing matches design tokens on every page; no per-page overrides | create-design-md, Edit, run-review Mode A |
 ```
 
 `N=4` for a 12-finding audit. `N` is driven by theme count, not finding count.
@@ -134,7 +134,7 @@ The 57-issue real run from the legacy `audit-ui` skill clustered cleanly into 8 
 5. Particle canvas escaping containers (4 findings, 2 source files)
 6. Cookie banner sticky overlap (5 findings, 1 source file)
 7. Stub-page `<HeroPlaceholder>` showing debug text (7 findings, 1 source file)
-8. Dark-surface contrast cluster (4 findings, design-token level — used `extract-saas-design`)
+8. Dark-surface contrast cluster (4 findings, design-token level — used `create-design-md` for evidence)
 
 8 subagents, each tightly scoped. `N=8`, well under 20.
 
@@ -194,7 +194,7 @@ You are fix subagent #<N> in a Phase 5 fix-dispatch pass following an audit of <
 **Your outcome criterion** (declare done only when this is observably true):
 <outcome>
 
-**Suggested skill(s) to invoke**: <suggested-skills>. If a `build-*` skill is suggested, invoke it via the Skill tool before editing — it carries framework patterns you need. If `review-self` is suggested, run it as your final step before reporting done.
+**Suggested skill(s) to invoke**: <suggested-skills>. If a `build-*` skill is suggested, invoke it via the Skill tool before editing — it carries framework patterns you need. If `run-review Mode A` is suggested, run it as your final step before reporting done.
 
 # Mission Objective
 
@@ -220,7 +220,7 @@ Make the outcome true. Edit `src/...` files as needed. For each finding file you
 - Outcome criterion is observably true.
 - Every assigned finding file has `## Fix tracking` updated (checked + subagent #, or `wontfix` with reason).
 - `git status --short` shows only your src/ changes and your finding-file updates.
-- If `review-self` is in your suggested-skills, the self-review has run and any flagged issues have been addressed.
+- If `run-review Mode A` is in your suggested-skills, the self-review has run and any flagged issues have been addressed.
 
 # Handback Format
 

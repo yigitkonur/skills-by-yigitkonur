@@ -388,7 +388,7 @@ Codex's review text, surfaced verbatim (in chat or in `/tmp/codex-review/<ts>-re
 
 ### Hand-off contract
 
-After Mode D: the user has codex's review (text on stdout or markdown on disk). No git mutation, no PR opened, no fixes applied. Codex review never opens PRs (`review-self` / Mode B does); codex review never auto-applies fixes (the user does, or Mode C orchestrates).
+After Mode D: the user has codex's review (text on stdout or markdown on disk). No git mutation, no PR opened, no fixes applied. Codex review never opens PRs (Mode B does); codex review never auto-applies fixes (the user does, or Mode C orchestrates).
 
 ## Cross-mode rules
 

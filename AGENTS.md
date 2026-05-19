@@ -16,11 +16,11 @@ A single combined skills pack — not a loose collection. Every skill must feel 
 .
 ├── skills/                         # All skills live here
 │   └── <verb>-<object>/            # Each skill directory
-│       ├── README.md               # Required — install instructions and overview
-│       └── skills/
-│           └── <verb>-<object>/    # Skill content dir (must match skill name)
-│               ├── SKILL.md        # Required — the skill definition (hand-written)
-│               └── references/     # Optional — deep-dive docs routed from SKILL.md
+│       ├── SKILL.md                # Required — the skill definition (hand-written)
+│       ├── INSTALL.md              # Required — per-skill install instructions
+│       ├── references/             # Optional — deep-dive docs routed from SKILL.md
+│       ├── scripts/                # Optional — helper scripts paired with docs
+│       └── assets/                 # Optional — templates or fixtures
 ├── scripts/
 │   └── validate-skills.py          # Validates all skills (references, frontmatter, junk)
 ├── .github/workflows/
@@ -66,7 +66,7 @@ Anchor on this set of plain-English verbs:
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
 | `check` | Audit for completeness | `check-completion` |
 | `evaluate` | Triage existing feedback or input | _(retired — see `run-review` Mode C)_ |
-| `extract` | Pull data, design, or assets from existing artifacts | `create-design-md` |
+| `create` | Produce documentation or structured data from source evidence | `create-design-md` |
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-skill-by-derailment` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli` |
@@ -96,7 +96,7 @@ Anchor on this set of plain-English verbs:
 |---|---|
 | No verb prefix (`agent-browser`) | Add the natural intent verb (`run-agent-browser`) |
 | Awkward verb (`do-X` when a better verb fits) | Use the better verb (`create-design-md`, not `do-extract-design`) |
-| Stripping a distinctive method (`enhance-skill` instead of `enhance-skill-by-derailment`) | Keep the method, normalize the verb only |
+| Stripping a distinctive method (`skill-derailment` instead of `audit-skill-by-derailment`) | Keep the method, normalize the verb only |
 | Generic noun-only object (`build-app`) | Specific noun (`build-chrome-extension`) |
 | Mismatched names | Directory = frontmatter `name` = README label, all identical |
 
@@ -108,20 +108,20 @@ Every skill lives at `skills/<skill-name>/` with this layout:
 
 ```
 skills/<verb>-<object>/
-├── README.md                   # Required — install instructions and overview
-└── skills/
-    └── <verb>-<object>/        # Skill content dir (must match skill name)
-        ├── SKILL.md            # Required — the skill definition
-        └── references/         # Optional — deep-dive docs
-            ├── topic-one.md
-            ├── topic-two.md
-            └── nested-domain/  # Nested folders are valid for large skills
-                └── detail.md
+├── SKILL.md                    # Required — the skill definition
+├── INSTALL.md                  # Required — per-skill install instructions
+├── references/                 # Optional — deep-dive docs
+│   ├── topic-one.md
+│   ├── topic-two.md
+│   └── nested-domain/          # Nested folders are valid for large skills
+│       └── detail.md
+├── scripts/                    # Optional — executable helpers
+└── assets/                     # Optional — templates or fixtures
 ```
 
 Rules:
 - `SKILL.md` is the main skill definition file
-- `README.md` at the skill root has the skill name, description, category, and install command
+- `INSTALL.md` at the skill root has the skill name, description, category, and install command
 - Every file in `references/` **must** be explicitly referenced from `SKILL.md` — unreferenced files are dead weight
 - No junk files (`.DS_Store`, `.swp`, LICENSE files inside skill directories)
 - No eval-related files or eval instructions
@@ -199,9 +199,9 @@ Write for an AI agent, not a human tutorial reader. Keep under 500 lines — mov
 
 ---
 
-## README.md for each skill
+## INSTALL.md for each skill
 
-Every skill needs a `README.md` at its root (`skills/<skill-name>/README.md`) with this format:
+Every skill needs an `INSTALL.md` at its root (`skills/<skill-name>/INSTALL.md`) with this format:
 
 ```markdown
 # <skill-name>
@@ -276,11 +276,11 @@ The canonical name is the directory name; do not maintain a hard-coded list here
    Build a comparison table before synthesizing. Never copy a source skill wholesale.
 4. **Create the skill directory:**
    ```bash
-   mkdir -p skills/<skill-name>/skills/<skill-name>/references
+   mkdir -p skills/<skill-name>/references
    ```
-5. **Write `SKILL.md`** at `skills/<skill-name>/skills/<skill-name>/SKILL.md` with correct frontmatter
+5. **Write `SKILL.md`** at `skills/<skill-name>/SKILL.md` with correct frontmatter
 6. **Add `references/`** docs only if the skill needs them — reference every file from `SKILL.md`
-7. **Create `README.md`** at the skill root with install instructions (see format above)
+7. **Create `INSTALL.md`** at the skill root with install instructions (see format above)
 8. **Update root `README.md`** — add a row to the alphabetical table
 9. **Validate:**
    ```bash
@@ -291,7 +291,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 ## Editing an existing skill
 
 1. **Read** the full existing SKILL.md and its references before changing anything
-2. **Normalize** frontmatter `name`, `description`, and README label to current standards
+2. **Normalize** frontmatter `name`, `description`, and INSTALL label to current standards
 3. **Remove** stale internal references and old names everywhere
 4. If you **add** a reference file, route to it from `SKILL.md`
 5. If you **remove** a reference file, remove all references to it from `SKILL.md`
@@ -309,7 +309,7 @@ Use the `enhance-skill-by-derailment` workflow: launch a Sonnet subagent with a 
 Before finishing any skill work, verify **all** of the following:
 
 - [ ] Directory name is canonical `kebab-case`, starts with an intent verb
-- [ ] SKILL.md is at `skills/<name>/skills/<name>/SKILL.md` (required for Claude Code activation)
+- [ ] SKILL.md is at `skills/<name>/SKILL.md` (required for Claude Code activation)
 - [ ] Frontmatter `name` exactly matches the directory name
 - [ ] Frontmatter `description` starts with `Use skill if you are`
 - [ ] Frontmatter `description` is 30 words or fewer
@@ -323,7 +323,7 @@ Before finishing any skill work, verify **all** of the following:
 - [ ] No eval-related files or eval instructions
 - [ ] SKILL.md under 500 lines
 - [ ] Trigger phrasing does not accidentally collide with nearby skills
-- [ ] `README.md` exists at skill root with install command
+- [ ] `INSTALL.md` exists at skill root with install command
 - [ ] Root README row added in alphabetical order with short description
 - [ ] `python3 scripts/validate-skills.py` passes
 - [ ] The skill reads like it belongs in the same repo family as the other skills in this pack

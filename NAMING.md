@@ -11,11 +11,11 @@ Memory beats taxonomy. A small verb set is easier to recall than a precise one.
 | `build-` | Write application code with a framework / SDK / library; produce a runnable project or component | The output is config / instructions for another tool (`init-`), or you're refreshing existing code (`update-`) | `build-chrome-extension`, `build-macos-app`, `build-mcp-server-sdk-v2`, `build-skill` |
 | `init-` | Generate config / instruction files that another tool will consume (AGENTS.md hierarchies, Makefiles, Greptile rules, Copilot prompts) | The output is application code (`build-`) | `init-agent-config`, `init-makefiles` |
 | `update-` | Refresh stale claims, counts, or references in an artifact that already exists and has drifted | Audit-only with no edits (`audit-`); writing from scratch (`build-` / `init-`) | `update-agent-config` |
-| `convert-` | Transform an artifact from format A to format B; input and output shapes differ structurally | Producing documentation from existing code without a buildable output (`extract-`) | `convert-mcp-sdk-v1-to-v2`, `convert-url-to-nextjs` |
-| `extract-` | Pull data, design tokens, or assets out of existing artifacts — output is documentation / structured data, not a runnable project | The output is a buildable project (`convert-`) | _(was here; see `create-design-md`)_ |
+| `convert-` | Transform an artifact from format A to format B; input and output shapes differ structurally | Producing documentation from existing code without a buildable output (`create-`) | `convert-mcp-sdk-v1-to-v2`, `convert-url-to-nextjs` |
+| `create-` | Produce a new documentation or data artifact from source evidence | The output is a buildable project (`convert-`) | `create-design-md` |
 | `run-` | Drive an external CLI / API / browser / tool for the user's current task during the session | The skill produces static config (`init-`) or writes app code (`build-`) | `run-railway`, `run-research`, `run-agent-browser` |
 | `audit-` | Read-only inspection; produce findings, no fixes | The skill also applies fixes (`update-`); the output is pass / fail (`test-`) | `audit-agentic-cli`, `audit-completion`, `audit-skill-by-derailment` |
-| `review-` | Evaluate a code change for merge-readiness; produce reviewer feedback | Triaging *received* review feedback as input (that's `review-feedback` — distinct object); driving the review tool (`run-`) | `review-pr`, `review-self`, `review-feedback` |
+| `review-` | Historical verb for code-review skills | New review workflows use `run-review`; do not add new `review-*` skills | _(retired into `run-review`)_ |
 | `test-` | Verify functional behavior with binary pass / fail evidence | The output is qualitative findings (`audit-` or `review-`); chasing a bug (`debug-`) | `test-by-mcpc-cli` |
 | `debug-` | Chase a reproducible runtime bug or intermittent failure; methodology over inspection | Inspecting code statically (`audit-`); reviewing a diff (`review-`) | `debug-runtime` |
 | `publish-` | Set up automated release / CI / packaging for a registry | Authoring the code being released (`build-`); single-shot ad-hoc deploy (`run-`) | `publish-npm-package` |
@@ -29,7 +29,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 - *"I want to **audit** my agentic CLI"* → `audit-agentic-cli` ✓
 - *"I want to **update** my AGENTS.md after the refactor"* → `update-agent-config` ✓
 - *"I want to **run** Railway commands"* → `run-railway` ✓
-- *"I want to **review** this PR"* → `review-pr` ✓
+- *"I want to **review** this PR"* → `run-review` ✓
 - *"I want to **debug** a runtime bug"* → `debug-runtime` ✓
 - *"I want to **plan** between three architectural options"* → _(retired)_ ✓
 
@@ -46,12 +46,12 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 
 | Overlap | Rule |
 |---|---|
-| `audit-` vs `review-` | Audit produces a report. Review produces feedback **on a change** (PR, branch, diff). `audit-completion` (check claims), `review-pr` (judge a diff). |
+| `audit-` vs `run-review` | Audit produces a report. Review produces feedback **on a change** (PR, branch, diff). `audit-completion` checks claims; `run-review` judges or delegates review. |
 | `audit-` vs `test-` | Audit produces narrative findings. Test produces binary pass / fail. (visual findings), `test-by-mcpc-cli` (does it work? yes / no). |
 | `update-` vs `audit-` | Update applies fixes. Audit only reports. `update-agent-config` does both phases — when in doubt, the action verb wins. |
 | `run-` vs `build-` | Run drives a live tool during the session. Build produces an artifact. `run-railway` (drive Railway CLI), `build-tinacms-nextjs` (write TinaCMS code). |
 | `init-` vs `build-` | Init outputs config for another tool. Build outputs runnable code. `init-makefiles` (configure Make), `build-mcp-use-server` (write a server). |
-| `convert-` vs `extract-` | Convert produces a usable B from an existing A. Extract produces documentation / structured data. `convert-url-to-nextjs` (buildable project), _(was here; see `create-design-md`)_ (documentation). |
+| `convert-` vs `create-` | Convert produces a usable B from an existing A. Create produces documentation / structured data. `convert-url-to-nextjs` builds a project; `create-design-md` documents a design system. |
 | `plan-` vs `debug-` | Plan frames a decision without code. Debug chases a bug at runtime. _(retired)_ (architectural decisions), `debug-runtime` (active bug hunt). |
 
 ## Canonical Rules
@@ -105,7 +105,7 @@ The verb registry was rewritten on 2026-05-17. Renames applied in the same commi
 |---|---|---|
 | `do-` | Too generic — every concrete intent fits a specific verb | The specific verb (`debug-`, `plan-`, `review-`, `audit-`) |
 | `apply-` | Single-use; overlaps with `init-` (apply config) and `build-` (apply patterns to code) | `init-` or `build-` |
-| `ask-` | Single-use; folded into the receiving verb | `review-self`, `request-` if needed |
+| `ask-` | Single-use; folded into the active workflow | `run-review` Mode B |
 | `check-` | Overlaps with `audit-` and `test-` | `audit-` for read-only; `test-` for pass / fail |
 | `evaluate-` | Overlaps with `audit-` and `review-` | `audit-` when read-only; `review-` when feedback-producing |
 | `enhance-` | Overlaps with `update-` | `update-` for stale refresh |

@@ -77,7 +77,7 @@ Good reference docs:
 
 3. **Add reference docs** if the skill needs them -- make sure every file is explicitly referenced in `SKILL.md`.
 
-4. **Create `README.md`** at the skill root (`skills/my-skill/README.md`) with the skill name, description, and install command.
+4. **Create `INSTALL.md`** at the skill root (`skills/my-skill/INSTALL.md`) with the skill name, description, and install command.
 
 5. **Validate locally** (catches errors before CI):
    ```bash

@@ -22,7 +22,7 @@ The output is one Next.js template per unique page type the source actually uses
 
 ## Do NOT use this skill when
 
-- The only source is a screenshot, PDF, Figma, or "vibe" reference — there is no parseable HTML/CSS or live route. Use `extract-saas-design` or a generic UI-build skill instead.
+- The only source is a screenshot, PDF, Figma, or "vibe" reference — there is no parseable HTML/CSS or live route. Use `create-design-md` only when there is inspectable implementation to document; otherwise use a generic UI-build path.
 - The user wants a **redesign, simplification, or "same vibe" rewrite** rather than faithful reconstruction.
 - The user wants generic Next.js UI work with no source URL or snapshot grounding.
 - The user wants a TinaCMS-backed editorial site from scratch — use `build-tinacms-nextjs`.
@@ -32,7 +32,7 @@ The output is one Next.js template per unique page type the source actually uses
 | Need | Route to |
 |---|---|
 | Browser capture and the back-to-back verification loop in *this* pipeline | `run-agent-browser` is the helper this skill drives. |
-| Design-doc-only output for SaaS/dashboard/admin | `extract-saas-design`. Use this skill only when the deliverable is a buildable Next.js page. |
+| Design-doc-only output for SaaS/dashboard/admin | `create-design-md`. Use this skill only when the deliverable is a buildable Next.js page. |
 | New CMS-backed Next.js site | `build-tinacms-nextjs`. This skill is for URL/snapshot reconstruction, not CMS scaffolding. The user typically uses `build-tinacms-nextjs` *after* this skill, to wire content onto the recovered templates. |
 
 ## Setup contract

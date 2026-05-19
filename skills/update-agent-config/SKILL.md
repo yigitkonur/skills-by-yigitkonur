@@ -23,7 +23,7 @@ This skill assumes the AGENTS hierarchy already exists. For greenfield creation 
 ## Do NOT use for
 
 - **Greenfield setup** (root + folder AGENTS.md from scratch) → use `init-agent-config`
-- **PR review** → use `review-pr`
+- **PR review** → use `run-review` Mode A
 - **Skill creation/maintenance** → use `build-skill`
 - **One-off doc fix** where the audit overhead doesn't pay off (e.g., correct a single typo)
 - **Native review adapter generation** (Copilot/Devin/Greptile) when AGENTS is already accurate — the existing `init-agent-config` Step 12 covers that

@@ -40,7 +40,7 @@ A markdown block with these three sections, nothing else:
 
 ## Context you have
 - Run `git diff BASE_SHA..HEAD_SHA -- <path list>` to read the cluster.
-- Read `skills/review-self/skills/review-self/references/domains/<domain>.md` for the checklist.
+- Read `skills/run-review/references/mode-b-ask-review/domains/<domain>.md` for the checklist.
 - Do NOT read the full repo. Do NOT speculate on changes outside your cluster.
 - Your output is one of N — do NOT write the overall summary, the Files touched table, the Follow-ups section, or the Verification section. The parent agent handles those.
 

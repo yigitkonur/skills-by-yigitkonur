@@ -21,9 +21,9 @@ Trigger on phrases and git states like:
 
 Do **NOT** use this skill for:
 
-- *Reviewing someone else's PR* for merge readiness — use `review-pr`.
-- *A single feature branch handoff* with one clean PR and a self-review body — use `review-self`.
-- *Triaging review feedback* already posted on a PR (human or bot comments) — use `review-feedback`.
+- *Reviewing someone else's PR* for merge readiness — use `run-review` Mode A.
+- *A single feature branch handoff* with one clean PR and a self-review body — use `run-review` Mode B.
+- *Triaging review feedback* already posted on a PR (human or bot comments) — use `run-review` Mode C.
 - *Runtime debugging* of failing logs or repros — use `debug-runtime`.
 
 ## Pinned Defaults

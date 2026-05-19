@@ -152,7 +152,7 @@ When running the voice discipline, replies to bots are usually machine-parsed; s
 
 ## Repo-explicit `--repo` rule
 
-Every `gh pr`-family command can infer the repo from `git remote`. **Don't rely on it.** On forks, inference is often wrong. Always pass `--repo <owner>/<name>` explicitly, as the sibling `review-self` skill also requires.
+Every `gh pr`-family command can infer the repo from `git remote`. **Don't rely on it.** On forks, inference is often wrong. Always pass `--repo <owner>/<name>` explicitly, as Mode B also requires.
 
 For `gh api` calls, the repo is explicit in the URL path — no inference risk.
 

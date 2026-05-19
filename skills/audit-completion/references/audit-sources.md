@@ -149,9 +149,9 @@ Each missing source expands the suspect-status surface area. If multiple sources
 
 ## Cross-reference
 
-The fallback chain for understanding what changed is similar to (but not the same as) the `review-feedback` skill's `understand-changes.md`. Boundary: `audit-completion` audits internal completion state for tasks, plans, sessions, and branches; `review-feedback` triages external review feedback, reviewer comments, bot comments, and review docs. The two chains share mechanics (git → tool trace → bash) but differ in purpose.
+The fallback chain for understanding what changed is similar to (but not the same as) `run-review` Mode C's `understand-changes.md`. Boundary: `audit-completion` audits internal completion state for tasks, plans, sessions, and branches; `run-review` Mode C triages external review feedback, reviewer comments, bot comments, and review docs. The two chains share mechanics (git → tool trace → bash) but differ in purpose.
 
-Do not require reading `review-feedback/understand-changes.md` to act on this file. This file is self-sufficient.
+Do not require reading `run-review` Mode C's `understand-changes.md` to act on this file. This file is self-sufficient.
 
 ## Budget
 

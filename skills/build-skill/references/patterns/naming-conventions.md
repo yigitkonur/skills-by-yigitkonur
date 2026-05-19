@@ -11,7 +11,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 | Rule | Example | Why |
 |---|---|---|
 | Kebab-case only | `build-chrome-extension` | Consistent, URL-safe, command-line friendly |
-| Lowercase letters and numbers | `review-pr` | Case sensitivity varies across platforms |
+| Lowercase letters and numbers | `run-review` | Case sensitivity varies across platforms |
 | Hyphens as separators | `create-component` | Underscores and spaces are non-standard |
 | No leading/trailing hyphens | `my-skill` not `-my-skill-` | Breaks parsing in some systems |
 | No consecutive hyphens | `my-skill` not `my--skill` | Ambiguous in URLs and CLIs |
@@ -23,7 +23,7 @@ The directory name is the skill's primary identifier. It becomes the `/slash-com
 | Skill type | Pattern | Examples |
 |---|---|---|
 | Builder/creator | `build-{thing}` or `create-{thing}` | `build-mcp-server`, `create-component` |
-| Reviewer/analyzer | `review-pr` or `review-{thing}` | `review-pr`, `review-feedback` |
+| Reviewer/analyzer | `run-review` or `audit-{thing}` | `run-review`, `audit-completion` |
 | Runner/executor | `run-{thing}` | `run-agent-browser`, `run-research` |
 | Initializer | `init-{thing}` or `setup-{thing}` | `init-agent-config` |
 | Converter | `convert-{source}-{target}` | `convert-url-to-nextjs` |

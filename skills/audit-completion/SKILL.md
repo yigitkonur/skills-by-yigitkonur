@@ -20,9 +20,9 @@ Two-phase audit-and-remediate skill. **Phase 1 — Audit:** scan task / session 
 Do NOT use when:
 
 - verifying a single claim before making it — use the Gate Function inline as a local verification gate, not the full audit
-- evaluating reviewer comments, bot comments, or external review docs → `review-feedback`
+- evaluating reviewer comments, bot comments, or external review docs → `run-review` Mode C
 - planning *upcoming* work from GitHub issues → the `gh` CLI directly (the run-issue-tree skill was retired)
-- reviewing someone else's PR or branch diff → `review-pr`
+- reviewing someone else's PR or branch diff → `run-review` Mode A
 - debugging a runtime failure → `debug-runtime`
 
 ## The 22-status taxonomy (load-bearing)

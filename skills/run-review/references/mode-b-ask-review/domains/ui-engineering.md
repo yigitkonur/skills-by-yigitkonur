@@ -70,7 +70,7 @@ For PRs that touch specific UI ecosystems, route additionally:
 | Ecosystem | Skill |
 |---|---|
 | macOS SwiftUI / AppKit (HIG, Liquid Glass, snapshots, hooks, Convex+Clerk) | `build-macos-app` |
-| SaaS design extraction | `extract-saas-design` |
+| SaaS design extraction | `create-design-md` |
 | HTML → Next.js | `convert-url-to-nextjs` |
 | React compositional patterns | `composition-patterns` (external pack) |
 | Web Interface Guidelines | `web-design-guidelines` (external pack) |

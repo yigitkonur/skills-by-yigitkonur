@@ -378,7 +378,7 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 
 - Writing TypeScript browser-automation code with `@onkernel/sdk` → use `build-kernel-ts-sdk`.
 - Reconstructing a Next.js project from a captured site → ownership stays with `convert-url-to-nextjs`; this skill is only invoked for live capture.
-- Documenting a SaaS visual system → ownership stays with `extract-saas-design`; this skill is only invoked for browser evidence.
+- Documenting a SaaS visual system → ownership stays with `create-design-md`; this skill is only invoked for browser evidence.
 - Static research, no live browser context needed.
 
 ## Reference routing

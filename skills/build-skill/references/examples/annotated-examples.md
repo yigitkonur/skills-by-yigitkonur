@@ -335,7 +335,7 @@ This example shows a standalone skill that creates output using only Claude's bu
 ### Structure (conceptual)
 
 ```
-frontend-design/
+create-design-md/
 ├── SKILL.md                              # ~300 lines
 └── references/
     ├── design-principles.md
