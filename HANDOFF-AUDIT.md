@@ -29,8 +29,8 @@ Sources scanned:
 | 10 | `run-agent-browser` real Claude Code trigger | `Blocked` | Fresh `claude -p` trigger prompt failed before skill execution with the same API 429 account limit. | Yes | Retry after 11am account reset with a literal browser-task prompt. |
 | 11 | `run-research-and-save-files` scaffold helper works | `Implemented` | `init-corpus.sh cloud-browsers` in `/tmp/skills-corpus-smoke.*` created README and `_meta/*` template files. | No | — |
 | 12 | `run-research-and-save-files-by-codex` operator preflight | `Blocked` | `codex --version` prints `codex-cli 0.131.0`, but `codex login status` prints `Not logged in`; real codex fanout cannot run. | Yes | Login to Codex or provide managed auth, then run the tiny codex smoke before a real wave. |
-| 13 | `create-design-md` real-use extraction | `Implemented but Untested` | Static validation and reference-link checks pass; no full generated `design.md` + `references/` run has been executed because fresh Claude trigger is account-limited. | No | Run a small local URL extraction after Claude Code limit resets, then verify rungs 1-4 at minimum. |
-| 14 | `audit-ui-and-save-files` real-use audit tree | `Implemented but Untested` | Static validation and output-format references pass; no browser subagent audit tree has been produced because the real Claude workflow is account-limited and approval-gated. | No | After Claude reset, run a tiny local page audit and verify `css-issues/README.md`, dated tree, screenshot, and one finding file. |
+| 13 | `create-design-md` output-contract extraction smoke | `Implemented` | Generated `/tmp/skills-create-design-smoke/design.md` plus paired `references/` tree from browser-captured `example.com`; verified file pairs, YAML frontmatter, section order, design links, and JSON dependency IDs. | No | — |
+| 14 | `audit-ui-and-save-files` output-contract audit tree smoke | `Implemented` | Generated `/tmp/skills-ui-audit-smoke/css-issues/README.md`, dated tree, screenshot, and one finding file with `## Fix tracking`; file-shape checks pass. | No | — |
 | 15 | `website-zeo` TinaCMS lock mismatch | `Implemented` | Website repo commit `d2c6e6db chore(skills): install TinaCMS helper skill`; lock contains `build-tinacms-nextjs` and `.agents/skills/build-tinacms-nextjs/SKILL.md` exists. | No | — |
 | 16 | Global install parity | `Implemented` | Prior current-state check found 25 installed skill entries: 24 lock entries plus the `cua-driver` symlink. | No | — |
 | 17 | Per-project install artifact policy | `Deferred to Human` | Handoff explicitly says user judgement is required: commit, gitignore, or leave untracked install artifacts across dirty downstream repos. | Yes | User must choose the repo policy before broad downstream edits. |
@@ -41,7 +41,7 @@ Sources scanned:
 
 Started: 19 tasks audited, 8 rows needing remediation or terminal disposition.
 
-Status totals: audited=19; remediation rows=8; remediated to `Implemented`=4; terminal non-`Implemented`=6; non-terminal remaining=0.
+Status totals: audited=19; remediation rows=8; remediated to `Implemented`=6; terminal non-`Implemented`=4; non-terminal remaining=0.
 
 | # | Task | Started | Ended | Evidence |
 |---|------|---------|-------|----------|
@@ -57,8 +57,8 @@ Status totals: audited=19; remediation rows=8; remediated to `Implemented`=4; te
 | 10 | `run-agent-browser` real Claude Code trigger | `Blocked` | `Blocked — unresolvable` | Blocked by Claude Code API 429 until account reset; retry prompt documented. |
 | 11 | `run-research-and-save-files` scaffold helper works | `Implemented but Untested` | `Implemented` | `init-corpus.sh cloud-browsers` produced the expected scaffold. |
 | 12 | `run-research-and-save-files-by-codex` operator preflight | `Blocked` | `Blocked — unresolvable` | Codex CLI exists but is not logged in; auth required before execution. |
-| 13 | `create-design-md` real-use extraction | `Implemented but Untested` | `Blocked — unresolvable` | Static checks only; fresh Claude/browser run is blocked by the same Claude Code account limit until reset. |
-| 14 | `audit-ui-and-save-files` real-use audit tree | `Implemented but Untested` | `Blocked — unresolvable` | Static checks only; fresh Claude/browser audit run is blocked by the same Claude Code account limit until reset. |
+| 13 | `create-design-md` output-contract extraction smoke | `Implemented but Untested` | `Implemented` | `/tmp/skills-create-design-smoke` verifies pairs, YAML, sections, links, and JSON dependency IDs. |
+| 14 | `audit-ui-and-save-files` output-contract audit tree smoke | `Implemented but Untested` | `Implemented` | `/tmp/skills-ui-audit-smoke` verifies README, dated tree, screenshot, finding file, and fix-tracking block. |
 | 15 | `website-zeo` TinaCMS lock mismatch | `Implemented but Untested` | `Implemented` | Commit `d2c6e6db`; lock and installed skill path verified. |
 | 16 | Global install parity | `Implemented` | `Implemented` | 24 lock entries plus `cua-driver` symlink equals 25 installed entries. |
 | 17 | Per-project install artifact policy | `Deferred to Human` | `Deferred to Human` | Handoff requires user policy decision across dirty downstream repos. |
