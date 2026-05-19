@@ -1,298 +1,402 @@
 ---
 name: run-agent-browser
 description: Use skill if you are driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, sessions, forms, extraction, screenshots, headed/stealth, or provider runs.
-allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*), Bash(bash scripts/check-agent-browser-version.sh:*), Bash(bash scripts/inspect-page.sh:*)
+allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 ---
 
-# Browser Automation with agent-browser
+# run-agent-browser
 
-Drive the `agent-browser` CLI as the agent's hands inside a browser: open URLs, snapshot interactive refs, fill forms, click, extract DOM, screenshot, switch tabs, persist sessions, run headed/stealth, or dispatch through providers. This skill owns ad hoc, terminal-driven browser tasks where a human-style operator loop (observe → act → verify) is appropriate.
+This skill exists because the agent is being asked to operate a terminal REPL, not author a script. The pattern is type-one-command, read-its-output, decide, type-the-next. Scripts and templates are not the protocol here. Run `agent-browser` inline, one command at a time, and update the session/tab/ref scratchpad after every state-changing call. The transcripts below are the muscle memory — read them before reading any rules table.
 
-## When to use this skill
+## STOP — if you find yourself writing a `*.sh` file or composing a multi-line heredoc before any inline command has been run
 
-Use this skill when:
-- *the user names `agent-browser`, `npx agent-browser`, `@ref` snapshots, `snapshot -i`, or any agent-browser flag (`--session-name`, `--profile`, `--headed`, `-p browserbase|browseruse|kernel|ios`, `--engine lightpanda`)*
-- *the task is one-off browser automation done by the agent itself — log in, click, fill a form, scrape data, take a screenshot, capture page state*
-- *the workflow needs deterministic DOM-grounded verification (`get url`, `get text`, `get value`, `is visible`, `diff snapshot`) rather than asserted test code*
-- *multi-tab, popup, OAuth, or session-isolated flows must reuse one browser context across many commands*
-- *hosted, mobile, geo, or anti-bot pressure requires `--headed`, stealth, profiles, or a remote provider through the same CLI*
-- *another skill (`convert-url-to-nextjs`, `extract-saas-design`) needs live browser evidence — DOM, screenshots, runtime metadata, asset URLs — captured and handed back*
+Warning signs you are derailing:
 
-Do NOT use this skill when:
-- the deliverable is TypeScript code on `@onkernel/sdk` or Kernel Apps → use `build-kernel-ts-sdk`
-- the deliverable is a rebuilt Next.js project from a captured site → ownership stays with `convert-url-to-nextjs`; this skill is only invoked for capture
-- the deliverable is a SaaS visual-system writeup → ownership stays with `extract-saas-design`; this skill is only invoked for browser evidence
-- the task is static research, DevTools-first profiling, or anything that does not require an active browser context
+1. Drafting a `.sh` file with `set -euo pipefail` for a task the user asked you to perform once.
+2. Planning the whole flow in advance — "first I'll open, then fill, then click, then verify" — without having opened anything yet.
+3. Writing a `for` loop to iterate over URLs / accounts / selectors before you have observed a single page.
+4. Writing `if` branches on output you have not yet seen.
 
-## Decision gate (which CLI?)
+Replace those instincts with this pattern. Each command is its own message in the same `Bash` tool; the daemon keeps the browser alive between calls. The agent's job between calls is to **read the output** and **update the scratchpad**.
 
-| Need | Skill |
-|---|---|
-| `agent-browser`, `@ref`, `snapshot -i --json`, provider/stealth/session-name/profile flows | `run-agent-browser` |
-| TypeScript browser automation code with `@onkernel/sdk` or Kernel Apps | `build-kernel-ts-sdk` |
-| Rebuild a captured site into Next.js | `convert-url-to-nextjs` owns the build; call this skill only for capture |
-| Document an existing SaaS/admin visual system | `extract-saas-design` owns the docs; call this skill only for browser evidence |
-
-## Non-negotiable operating rules
-
-1. **Observe before acting.** After open, navigation, tab switch, popup, frame change, or major click, wait for state and run `snapshot -i` before choosing the next action.
-2. **Reuse the current session by default.** Do not spawn a new session just because you changed pages.
-3. **Prefer a new tab over a new window.** Use `window new` only when the site or task truly requires a separate window.
-4. **Track focus before every action.** Know the active tab, URL, and title before clicking or typing.
-5. **Verify after every meaningful interaction.** Check URL, title, text, value, visibility, checked state, or `diff snapshot` before assuming success.
-6. **Treat DOM evidence as the source of truth.** Screenshots are supporting evidence for layout, failures, or human review.
-7. **Close only what you opened.** Leave pre-existing tabs, windows, and reusable sessions alone unless the user asked to close them.
-8. **Keep output scoped.** Prefer `snapshot -i`, scoped snapshots, `--json`, `get text`, and `get attr` over verbose full-page output.
-
-## Mode and persistence gate
-
-| Mode | Use when |
-|---|---|
-| default/headless | deterministic local/staging navigation, forms, extraction, screenshots |
-| `--headed` | manual auth, 2FA, visual debugging, anti-bot pressure, human-observed flows |
-| `--profile` | long-lived single-user auth across restarts |
-| `--session-name` | named auto-persisted state for one app/account |
-| `--session` | parallel isolated contexts in one run |
-| `-p browserbase/browseruse/kernel/ios` | hosted, mobile, geo, or provider-backed browser runs through the CLI |
-| `--engine lightpanda` | fast read-only/simple extraction where Lightpanda limitations are acceptable |
-
-Choose one persistence strategy. Prefer the default ephemeral session, then `--session` for parallel isolation, `--session-name` for auto-persisted app state, `--profile` for native Chrome persistence, and `state save/load` only when a portable state file is required.
-
-## Default loop: observe → act → verify → clean up
-
-### 1) Establish session and baseline
-
-- Verify agent-browser is available before your first command. Run `agent-browser --version` (or `npx agent-browser --version`). If the command is not found, install with `npm install -g agent-browser` (pin a specific version in production — see `references/safety.md`).
-- For repeatable bootstrap checks, run `bash scripts/check-agent-browser-version.sh` from this skill directory before live automation.
-- If the first real browser command fails because Chromium is missing, run `agent-browser install` once, then retry the same command. Treat browser-binary installation as part of the happy path, not a troubleshooting detour.
-- If you may be joining an existing browser context, inspect it first:
-
-```bash
-agent-browser tab
-agent-browser get url
-agent-browser get title
-agent-browser snapshot -i
+```
+1. $ agent-browser open https://example.com
+2. $ agent-browser wait --load networkidle
+3. $ agent-browser snapshot -i
+   (observe refs; pick one)
+4. $ agent-browser fill @e3 "query"
+5. $ agent-browser click @e4
+6. $ agent-browser wait --load networkidle
+7. $ agent-browser get url
+8. $ agent-browser snapshot -i
+   (verify new state; refs are fresh)
 ```
 
-- Reuse the default session for a single continuous task.
-- Use `--session SESSION_NAME` only for isolated concurrent work.
-- Use `--session-name SESSION_NAME` only when deliberate persistence across runs is valuable and safe.
-- Use `--profile PATH` for permanent authentication persistence without manual save/load. When set globally (config.json or env var), all sessions automatically retain cookies, IndexedDB, service workers, and cache across browser restarts and reboots. See `references/authentication.md`.
-- Use `--auto-connect` to import authentication from a running Chrome session the user is already logged into — fastest way to bootstrap auth for one-off tasks. See `references/authentication.md`.
+Six to ten inline calls solve almost any 80% task. Reach for a script only when the user explicitly asked for a reusable harness, or when the task is genuinely loop-shaped over a pre-known list. Even then, prefer running the inline flow once and only generalizing after the happy path works.
 
-### 2) Navigate or focus the correct page
+## Session/tab/ref scratchpad — maintain this mentally
 
-- Open the target URL or switch to the correct tab.
-- Local fixtures are valid targets. For local HTML or PDF files, use an absolute `file:///...` URL and add `--allow-file-access` when needed:
-
-```bash
-agent-browser --allow-file-access open "file:///absolute/path/to/fixture.html"
+```yaml
+session: default          # or --session NAME / --session-name NAME
+profile: null             # or --profile PATH (persistent Chrome user data dir)
+active_tab: 0             # always know which tab the next command targets
+tabs:                     # list every tab you opened
+  - {index: 0, url: ..., title: ...}
+last_snapshot_at: step_N  # refs are valid ONLY until the next nav/click that changes DOM
+refs: [e1, e2, ...]       # mark stale after nav, tab switch, modal open, SPA route change
+sensitive_state: false    # true if you loaded auth, used --profile, or saved state to disk
 ```
 
-- After any focus change, verify focus immediately:
+Update after every `open`, `click`-that-navigates, `tab new`, `tab N`, `back`, modal open/close, or any state change. If you cannot answer "which tab is active, and when was the last snapshot?" from memory, run `agent-browser tab` and `agent-browser snapshot -i` before the next action.
 
-```bash
-agent-browser tab
-agent-browser get url
-agent-browser get title
-agent-browser snapshot -i
+## Verify the CLI is reachable, then go
+
+```
+$ agent-browser --version
+0.24.0
 ```
 
-- Never assume a newly opened tab, popup, or site-driven redirect left you on the expected page.
+If the command is not found, install once: `npm install -g agent-browser` (pin in production — see `references/safety.md`). If the first browser command fails because Chromium is missing, run `agent-browser install` once and retry. Treat that as part of the happy path, not troubleshooting.
 
-### 3) Inspect before interacting
+---
 
-- Use `snapshot -i` first. Note: `snapshot -i` shows only interactive elements (links, buttons, inputs, checkboxes). Non-interactive text (headings, paragraphs, spans) is invisible in this view.
-- Use `snapshot -i --json` when you need structured extraction or machine-readable branching logic. The JSON schema is `{success, data: {origin, refs: {refId: {name, role, ...}}, snapshot: string}, error}` — access refs via `.data.refs`, not `.elements[]`.
-- For data extraction from non-interactive text, use `get text CSS_SELECTOR` (must match exactly one element) or `eval --stdin` with a heredoc for multi-element extraction.
-- If expected UI elements are missing from `snapshot -i`, the page may use custom components (dropdowns, popovers, accordions) whose children only appear after clicking the trigger. Click the likely trigger → re-snapshot → verify new elements appeared.
-- Use `screenshot --annotate` only when visual layout, canvas content, or element disambiguation matters.
-- Selector priority:
-  1. `@refs` from `snapshot -i`
-  2. semantic `find`
-  3. CSS selectors
-  4. XPath only as a last resort
-- When extracting structured data, prefer JSON arrays or objects unless the user asked for CSV or a table. Include selector/ref provenance and count checks; route deeper patterns to `references/workflows.md`.
+### Scenario A — Login form, verify by URL and title
 
-### 4) Interact one state change at a time
+Goal: log into a SaaS app and confirm landing on `/dashboard`.
 
-- Prefer small, verifiable steps over long blind chains.
-- Chain commands only when you do not need intermediate output.
-- After any action that can change DOM or focus, wait and re-snapshot before reusing refs.
-- Refs are invalid after navigation, SPA route changes, modal expansion, dynamic loading, tab switching, and many form submissions.
-- Use `agent-browser back` (not `go back`) to return to the previous page. Prefer `back` over re-navigating with `open URL` to preserve history. Treat it like a navigation event: re-snapshot after.
-- Note: `check` and `uncheck` return the new checked state (`true`/`false`) rather than `✓ Done`. This is expected.
+─── state ───
+tab: 0 | session: default | refs: none yet | sensitive_state: false
 
-### 5) Verify the result before moving on
+1. ```
+   $ agent-browser open https://app.example.com/login
+   → ok | url=https://app.example.com/login | title=Sign in
+   ```
+   (what I now know: I am on the login page; no refs yet — must snapshot.)
 
-Use at least one deterministic check after each major interaction:
-- `agent-browser get url`
-- `agent-browser get title`
-- `agent-browser get text REF_OR_SELECTOR` — selector must match exactly one element; for multiple matches use `eval --stdin` with JS
-- `agent-browser get value REF_OR_SELECTOR`
-- `agent-browser is visible REF`
-- `agent-browser is checked REF` — works for both checkboxes and radio buttons
-- `agent-browser diff snapshot`
-- If `snapshot -i` returns `(no interactive elements)` (e.g. after form submission to a raw response page), verify with `get text body` for page content or `get url` / `get title` for navigation confirmation.
-- For visual verification or archival: `agent-browser screenshot /tmp/descriptive-name.png`
+2. ```
+   $ agent-browser wait --load networkidle
+   → ok
+   ```
+   (state: page settled; safe to snapshot.)
 
-Capture screenshots only when you need:
-- visual evidence for a human
-- layout or styling confirmation
-- failure triage
-- annotated element mapping
+3. ```
+   $ agent-browser snapshot -i
+   → 4 refs:
+     @e1 [input type="email"] placeholder="Email"
+     @e2 [input type="password"] placeholder="Password"
+     @e3 [button] "Sign in"
+     @e4 [a] "Forgot password?"
+   ```
+   (what I now know: e1=email, e2=password, e3=submit. last_snapshot_at = step 3.)
 
-### 6) Clean up deliberately
+4. ```
+   $ agent-browser fill @e1 "user@example.com"
+   → ok
+   ```
+   (state: refs still valid; no nav.)
 
-- If you opened auxiliary tabs, close them with `agent-browser tab close INDEX` (get the index from `tab` listing) and return to the original tab.
-- If you started isolated sessions, close those sessions when their work is done.
-- If you used persisted state or state files, secure them and avoid leaving secrets behind.
-- If you opened a fresh disposable default session for the task, close it at the end.
+5. ```
+   $ agent-browser fill @e2 "$APP_PASSWORD"
+   → ok
+   ```
+   (state: refs still valid.)
 
-## Session, tab, and window hygiene
+6. ```
+   $ agent-browser click @e3
+   → ok
+   ```
+   (state: click probably triggers navigation; refs MUST be treated stale after the wait below.)
 
-### Session choice
+7. ```
+   $ agent-browser wait --url "**/dashboard"
+   → ok
+   ```
+   (what I now know: URL pattern matched — login succeeded.)
 
-- Same task, same auth context: stay in the current or default session.
-- Concurrent or role-separated work: use named `--session` sessions.
-- Intentional long-lived login reuse across runs: use `--session-name`, `auth`, or `state save/load`.
-- Permanent auth persistence without manual save/load: use `--profile` (set globally via config.json `{"profile": "~/.myapp"}` or `AGENT_BROWSER_PROFILE` env var).
+8. ```
+   $ agent-browser get url
+   → https://app.example.com/dashboard
+   ```
+   (verification rung: URL confirms. Now title too.)
 
-### Tab and window rules
+9. ```
+   $ agent-browser get title
+   → Dashboard — Example
+   ```
+   (verified. last_snapshot_at = stale; if I act again I re-snapshot first.)
 
-- Prefer `tab new URL` for side routes, docs, exports, or OAuth flows that should not disturb the current page.
-- Prefer switching back to the original tab instead of reopening pages from scratch.
-- Use `window new` only if the site truly requires a separate window or the user asked for one.
-- After `tab new`, `tab INDEX`, or any action that opens a popup or new tab, verify focus with `tab`, `get url`, `get title`, then `snapshot -i`.
-- Treat tab switches like navigation for ref lifecycle purposes: re-snapshot after every switch.
+If step 7 times out, the click did not navigate — re-snapshot, look for an inline error toast (`agent-browser get text ".error"`), and either fix the credentials or escalate to `--headed` (Scenario E pattern). Do not retry the same click in a loop.
 
-### Cleanup rules
+---
 
-- Record which tab or session you started in.
-- Record which tabs, windows, or sessions you created.
-- Close only the ones you created.
-- If the browser context pre-existed, leave it in a sane state and avoid shutting it down unnecessarily.
+### Scenario B — Multi-tab side trip, return to original task
 
-## Capture handoff
+Goal: while on a product page, open the docs in a new tab, copy one value, come back, and continue editing the form.
 
-`convert-url-to-nextjs` may use this skill to capture live routes, DOM snapshots, screenshots, runtime metadata, and asset URLs before reconstruction. `extract-saas-design` may use this skill to inspect implemented UI evidence when source or snapshots need browser verification. After capture, hand artifacts back to the owning skill; do not take over rebuild or design-doc output.
+─── state ───
+tab: 0 | session: default | refs: valid as of step 1 | sensitive_state: false
 
-For cross-skill calls, name the minimal artifacts:
-- current URL and title
-- `snapshot -i --json` or scoped snapshots
-- relevant `get text`, `get attr`, or `get styles` outputs
-- screenshot paths when visual evidence matters
-- saved state or profile path only if intentionally created and safe to retain
+1. ```
+   $ agent-browser snapshot -i
+   → @e1 [input] "Name"  @e2 [a href="/docs/api"] "API docs"  @e3 [button] "Save"
+   ```
+   (active_tab=0; refs fresh.)
+
+2. ```
+   $ agent-browser click @e2 --new-tab
+   → ok | opened in new tab
+   ```
+   (state: tab 1 was opened, but **focus does not auto-switch**. active_tab still = 0.)
+
+3. ```
+   $ agent-browser tab
+   → [0] https://app.example.com/edit/42  *active
+     [1] https://docs.example.com/api
+   ```
+   (confirms two tabs; I still need to switch.)
+
+4. ```
+   $ agent-browser tab 1
+   → ok | switched to tab 1
+   ```
+   (state update: active_tab = 1. ALL refs from step 1 are now stale.)
+
+5. ```
+   $ agent-browser wait --load networkidle
+   → ok
+   ```
+
+6. ```
+   $ agent-browser get text "code.api-key-example"
+   → sk_live_xxxxxxxxxxxxxxxx
+   ```
+   (extracted one value; no need to snapshot — selector matched exactly one.)
+
+7. ```
+   $ agent-browser tab close 1
+   → ok | tab 1 closed, focus returned to tab 0
+   ```
+   (state update: active_tab = 0. refs from step 1 are STILL stale — modal/nav can change them, but more importantly I have been gone for several steps. Re-snapshot.)
+
+8. ```
+   $ agent-browser snapshot -i
+   → @e1 [input] "Name"  @e2 [a] "API docs"  @e3 [button] "Save"
+   ```
+   (refs may have the same IDs by coincidence — they are still a NEW snapshot. last_snapshot_at = step 8.)
+
+9. ```
+   $ agent-browser fill @e1 "Service using sk_live_xxxxxxxxxxxxxxxx"
+   → ok
+   ```
+
+10. ```
+    $ agent-browser click @e3
+    → ok
+    ```
+
+The headline lesson: `--new-tab` opens a tab but does not focus it. `tab 1` switches focus. Every tab switch is a navigation event for ref lifecycle purposes — re-snapshot.
+
+---
+
+### Scenario C — Structured multi-element extraction with `eval --stdin`
+
+Goal: extract the top 10 article titles and URLs from a listing page.
+
+─── state ───
+tab: 0 | session: default | refs: none | sensitive_state: false
+
+1. ```
+   $ agent-browser open https://news.example.com/
+   → ok | url=https://news.example.com/ | title=News
+   ```
+
+2. ```
+   $ agent-browser wait --load networkidle
+   → ok
+   ```
+
+3. ```
+   $ agent-browser get text ".story-title"
+   → Error: strict mode violation — 47 elements matched ".story-title"
+   ```
+   (what I now know: `get text` is strict-mode — fails when more than one element matches. This is the canonical signal to switch to `eval --stdin`.)
+
+4. ```
+   $ agent-browser get count ".story-title"
+   → 47
+   ```
+   (good — confirms the selector is right; just too many matches for `get text`.)
+
+5. ```
+   $ agent-browser eval --stdin <<'EVALEOF'
+   const items = document.querySelectorAll('article .story-title a');
+   JSON.stringify(
+     Array.from(items).slice(0, 10).map(el => ({
+       title: el.textContent.trim(),
+       url: el.href
+     })),
+     null, 2
+   );
+   EVALEOF
+   → [
+       {"title":"...","url":"https://..."},
+       ...10 entries...
+     ]
+   ```
+   (extracted. Use heredoc with `<<'EVALEOF'` — single-quoted delimiter — so the shell does not expand `$` or backticks inside the JS.)
+
+Do not try inline `eval "Array.from(document.querySelectorAll('.story-title a')).map(a => a.href)"`. Shell escaping with nested single/double quotes corrupts the JS. The heredoc pattern is the safe form.
+
+---
+
+### Scenario D — Recovery from stale refs after a SPA route change
+
+Goal: from a list view, click into one item; after the SPA route changes, the next snapshot's refs are different — narrate the recovery.
+
+─── state ───
+tab: 0 | session: default | refs: valid as of step 1
+
+1. ```
+   $ agent-browser snapshot -i
+   → @e1 [a] "Item A"  @e2 [a] "Item B"  @e3 [a] "Item C"
+   ```
+   (three list items; I want Item B.)
+
+2. ```
+   $ agent-browser click @e2
+   → ok
+   ```
+   (state: SPA route may change URL without a hard navigation. Refs are now SUSPECT.)
+
+3. ```
+   $ agent-browser wait --url "**/item/**"
+   → ok
+   ```
+   (URL pattern confirms route change happened.)
+
+4. ```
+   $ agent-browser get url
+   → https://app.example.com/item/B
+   ```
+
+5. ```
+   $ agent-browser click @e3
+   → Error: ref @e3 not found
+   ```
+   (predicted. The old refs are from the list view. Re-snapshot.)
+
+6. ```
+   $ agent-browser snapshot -i
+   → @e1 [button] "Edit"  @e2 [button] "Delete"  @e3 [a] "Back to list"  @e4 [input] "Title"
+   ```
+   (new refs for the detail view. `@e3` here is "Back to list" — completely different element from the old `@e3`.)
+
+7. ```
+   $ agent-browser click @e1
+   → ok
+   ```
+   (now safe.)
+
+Refs are scoped to the snapshot that produced them. Any navigation, SPA route change, tab switch, modal open, dynamic load, or form submission may invalidate them. Symptom: `ref not found` or wrong element clicked. Fix: re-snapshot, then act.
+
+---
+
+### Scenario E — Headed escalation when headless gets walled
+
+Goal: headless mode hits a Cloudflare challenge; re-run the same step with `--headed` and continue.
+
+─── state ───
+tab: 0 | session: default | refs: none | sensitive_state: false
+
+1. ```
+   $ agent-browser open https://shop.example.com/
+   → ok
+   $ agent-browser get title
+   → Just a moment...
+   ```
+   (Cloudflare interstitial — headless was detected.)
+
+2. ```
+   $ agent-browser close
+   → ok
+   $ agent-browser --headed --session-name shop open https://shop.example.com/
+   → ok | (visible browser window)
+   ```
+   (re-opening with `--headed` and a named session so state auto-persists. sensitive_state: true — there is now persistent state on disk for "shop".)
+
+3. ```
+   $ agent-browser --session-name shop wait --load networkidle
+   → ok
+   $ agent-browser --session-name shop get title
+   → Shop — Example
+   ```
+   (challenge passed.)
+
+4. Continue the task under `--session-name shop`. After the work is done, decide explicitly whether to keep the persisted state. If you keep it, note it in the output contract.
+
+Headed mode is also the right answer for 2FA, manual auth, or any flow where a human needs to look at the screen. For non-interactive provider escalation (Browserbase, Kernel) see `references/advanced.md`.
+
+---
+
+## Operating rules (commentary on the transcripts above)
+
+1. **Snapshot before acting.** Every transcript above starts with a snapshot before the first interaction. After any nav, click that nav'd, tab switch, modal open, or SPA route change, treat all refs as stale.
+2. **Re-snapshot after every state change.** Scenario D's recovery exists because refs are scoped to the snapshot that produced them.
+3. **`get text` is strict-mode.** Multi-element matches throw. Switch to `eval --stdin` with a single-quoted heredoc (Scenario C).
+4. **`--new-tab` opens a tab but does not focus it.** `tab N` switches focus. Both are navigation events for ref lifecycle (Scenario B).
+5. **Verify with at least one deterministic check after every meaningful interaction.** `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`. URL + title is the cheapest pair.
+6. **Reuse the current session by default.** Spawn a named `--session NAME` only for parallel isolated work. Spawn `--session-name NAME` only when state should auto-persist across runs. Spawn `--profile PATH` only when full-Chrome persistence (IndexedDB, service workers, cache) is needed.
+7. **Prefer `tab new` over `window new`.** Use `window new` only when the site truly requires a separate window.
+8. **`agent-browser back` not `go back`.** `back` preserves history and form state; re-opening the URL drops both.
+9. **`snapshot -i` hides non-interactive text.** Headings, paragraphs, spans, labels. For data extraction use `get text SELECTOR` (single match) or `eval --stdin` (multiple). See `references/sessions-and-refs.md` for the JSON schema and scoped snapshots.
+10. **`diff snapshot` requires the subcommand.** Bare `diff` fails.
+11. **`check` and `uncheck` return the new checked state (`true`/`false`)**, not `ok`. Expected.
+12. **Close only what you opened.** Tabs, sessions, state files, profiles. Leave pre-existing context alone.
 
 ## Do this, not that
 
-| Do this | Not that |
-|---|---|
-| Reuse the current session when the task stays in the same auth and state context | Start a brand-new session for every page |
-| Open a new tab for side work, then verify focus | Spawn unnecessary windows or assume the new tab is active |
-| Run `snapshot -i` before interaction and after every major change | Reuse stale refs after navigation or tab switches |
-| Use `get text`, `get value`, `is visible`, `diff snapshot`, and URL/title checks | Treat screenshots as the only proof an action worked |
-| Use `snapshot -i --json` or targeted getters for extraction | Pull huge raw outputs when a narrow query would do |
-| Use `eval --stdin` heredoc for multi-element data extraction | Use inline `eval "..."` with complex JS (shell escaping breaks) |
-| Use `agent-browser back` to return to previous page | Re-navigate with `open URL` (loses form state and history) |
-| Scope snapshots with `-s` on complex pages | Parse through 100+ flat elements looking for the right ref |
-| Close only tabs and sessions you created | Blindly run `agent-browser close` on a shared or reusable context |
+| Do this | Not that | Tied to |
+|---|---|---|
+| Reuse the default session for one continuous task | Spawn a new session per page | Scenario A |
+| `click @e2 --new-tab` then `tab 1` then re-snapshot | Click and assume focus moved | Scenario B |
+| `eval --stdin <<'EVALEOF' ... EVALEOF` for multi-element extraction | Inline `eval "Array.from(...)..."` with nested quotes | Scenario C |
+| Re-snapshot after every SPA route / nav / tab switch | Reuse a ref across a navigation | Scenario D |
+| Escalate to `--headed` when headless is walled; keep the same `--session-name` | Retry the same headless command in a loop | Scenario E |
+| Verify with `get url` + `get title` before declaring success | Trust that "click @e3 → ok" means the form submitted | Scenarios A, D |
 
-## Recovery paths
+## Recovery cookbook
 
-- **Ref not found or wrong element:** re-check focus, then `snapshot -i` again. If the page changed, old refs are stale. If the page is crowded, scope the snapshot or use `find`.
-- **Multiple elements match a CSS selector:** `get text CSS_SELECTOR` requires exactly one match (strict mode). For multi-element extraction, use `eval --stdin` with a heredoc to run a JS query:
-  ```bash
-  agent-browser eval --stdin <<'EVALEOF'
-  Array.from(document.querySelectorAll('.item-title')).map(el => el.textContent.trim()).slice(0, 10);
-  EVALEOF
-  ```
-- **Unexpected redirect or login screen:** verify URL and title first, then decide whether to load saved state, use auth vault, or continue with a login flow.
-- **Slow or flaky page:** use explicit waits, increase timeout if needed, then re-snapshot.
-- **Too much snapshot output:** use `snapshot -i`, `snapshot -i --json`, scoped snapshots, or targeted getters instead of full page dumps.
-- **Stale daemon or broken session:** try `agent-browser close`; if that fails, follow `references/troubleshooting.md`.
-- **Sensitive operations needed:** before `eval`, downloads, state persistence, storage writes, cookies, network routing, or unsafe flags, read `references/safety.md` and narrow scope first.
+- **`ref not found`** — page changed since the last snapshot. Run `agent-browser snapshot -i` and retry with the new ref.
+- **`strict mode violation — N elements matched`** — `get text`/`get value` requires exactly one match. Switch to `eval --stdin <<'EVALEOF'` (Scenario C) or narrow the selector.
+- **Unexpected redirect** — `agent-browser get url` and `agent-browser get title` first; if on a login screen, load saved state or follow the auth flow. See `references/sessions-and-refs.md`.
+- **Slow or flaky page** — `agent-browser wait --load networkidle`, then `agent-browser wait 2000` as a fallback, then re-snapshot. Increase `AGENT_BROWSER_DEFAULT_TIMEOUT` only when a specific page genuinely needs longer.
+- **Stale daemon / `EADDRINUSE`** — `agent-browser close`. If that fails, see `references/safety.md` § stale daemon for socket cleanup.
+- **Sensitive operation about to run** — before `eval` that mutates, `download`, `state save/load`, `cookies set`, `storage local set`, `network route`, `--allow-file-access`, `--executable-path`, `--cdp`, `--args`: stop and read `references/safety.md` for scope and approval rules.
+- **Hidden UI (dropdown / popover / accordion)** — initial snapshot will not show children. Click the trigger, `wait 500`, re-snapshot. See `references/sessions-and-refs.md` § hidden UI.
+
+## When NOT to use this skill
+
+- Writing TypeScript browser-automation code with `@onkernel/sdk` → use `build-kernel-ts-sdk`.
+- Reconstructing a Next.js project from a captured site → ownership stays with `convert-url-to-nextjs`; this skill is only invoked for live capture.
+- Documenting a SaaS visual system → ownership stays with `extract-saas-design`; this skill is only invoked for browser evidence.
+- Static research, no live browser context needed.
 
 ## Reference routing
 
-Treat `assets/templates/*.sh` as starting-point assets, not deterministic helper scripts. Adapt them before use; do not run them blindly against production or authenticated accounts.
-
 | Need | Read |
 |---|---|
-| Install, config, environment setup | `references/installation.md` |
-| Core commands, check-state commands, tabs, windows, diff | `references/commands.md` |
-| Ref lifecycle, scoped snapshots, stale-ref recovery, JSON schema | `references/snapshot-refs.md` |
-| Session reuse, named sessions, persistence, cleanup | `references/session-management.md` |
-| Login flows, auth vault, saved state, profiles, auto-connect | `references/authentication.md` |
-| Safe automation boundaries and sensitive-command policy | `references/safety.md` |
-| Observe and verify loops, DOM-evidence validation, extraction patterns | `references/workflows.md` |
-| Stale daemon, timeout, and focus-related failures | `references/troubleshooting.md` |
-| Proxies, geo, IP rotation | `references/proxy-support.md` |
-| Stealth, anti-bot evasion, fingerprint hardening | `references/stealth-automation.md` |
-| Extensions, iOS, advanced provider flags | `references/advanced.md` |
-| CDP profiling, perf traces | `references/profiling.md` |
-| Video recording, replay artifacts | `references/video-recording.md` |
-| Helper scripts: version/bootstrap check or first-pass page inspection smoke test | `scripts/check-agent-browser-version.sh`, `scripts/check-agent-browser-version.md`, `scripts/inspect-page.sh`, `scripts/inspect-page.md` |
-| Shell template assets to adapt before use | `assets/templates/ai-agent-workflow.sh`, `assets/templates/form-automation.sh`, `assets/templates/authenticated-session.sh`, `assets/templates/e2e-test-workflow.sh`, `assets/templates/capture-workflow.sh` |
+| Full command + flag reference (every subcommand, every option, env vars) | `references/commands.md` |
+| Session / tab / profile / snapshot-ref lifecycle / JSON schema / authentication / hidden UI | `references/sessions-and-refs.md` |
+| Safety policy, sensitive commands, stale daemon recovery, troubleshooting, SSL, serverless | `references/safety.md` |
+| Provider/stealth/proxy/profiling/video/iOS/extensions/network interception/install | `references/advanced.md` |
 
-## Minimal reading sets
+Helper scripts in `scripts/` (`check-agent-browser-version.sh`, `inspect-page.sh`) exist for one-off bootstrap or first-pass capture by other skills. Do not wrap normal browser work in them; run agent-browser inline.
 
-### Form or login automation
-- `references/snapshot-refs.md`
-- `references/authentication.md`
-- `references/commands.md`
+## Output contract — when work ends, report
 
-### Multi-tab, popup, or session-heavy work
-- `references/session-management.md`
-- `references/commands.md`
-- `references/troubleshooting.md`
-
-### Data extraction or verification
-- `references/snapshot-refs.md` (JSON schema, snapshot limitations, scoped snapshots)
-- `references/workflows.md` (multi-element extraction pattern, hidden UI discovery)
-- `references/commands.md` (get text, get count, eval --stdin, find commands)
-
-### Safe or production-like automation
-- `references/safety.md`
-- `references/session-management.md`
-- `references/workflows.md`
-
-### Hosted, stealth, or geo-sensitive runs
-- `references/stealth-automation.md`
-- `references/proxy-support.md`
-- `references/advanced.md`
-
-### Performance, replay, profiling
-- `references/profiling.md`
-- `references/video-recording.md`
-- `references/troubleshooting.md`
-
-## Output contract
-
-When browser work ends, report:
-- final active URL and title
-- session, profile, provider, engine, or headed mode used when non-default
-- deterministic verification performed, such as `get url`, `get title`, `get text`, `get value`, `is visible`, or `diff snapshot`
-- screenshot, video, trace, profile, or saved-state paths if created
-- extracted data shape when data was extracted, such as JSON array, CSV rows, table, or key-value map, plus selectors/refs used and count checks
-- cleanup performed: tabs closed, sessions closed, state files kept/deleted, or persistent profile left in place
-
-## Final reminder
-
-This SKILL.md is the steering layer. Keep the live loop disciplined:
-1. establish session and focus
-2. observe (`snapshot -i` for interaction, `get text`/`eval` for extraction)
-3. act (one state change, then verify)
-4. verify (URL, title, text, value, `diff snapshot`)
-5. record evidence only as needed (`screenshot` for visual proof)
-6. clean up only what you changed (`tab close INDEX`, `close`)
-
-Key rules to internalize:
-- `snapshot -i` hides non-interactive text — use `get text` or `eval --stdin` for data extraction
-- CSS selectors in `get text` must match exactly one element — use `eval --stdin` for multiples
-- `eval --stdin <<'EVALEOF'` heredoc is the safe JS execution pattern
-- `diff snapshot` is the correct diff form (not bare `diff`)
-- `back` works (not `go back`)
-- Refs expire after any page/DOM change — always re-snapshot
-
-When in doubt, stop acting, inspect state again, and route into the smallest relevant reference instead of guessing.
+- Final active URL and title.
+- Mode used (default / `--headed` / `--profile PATH` / `--session-name NAME` / `-p PROVIDER` / `--engine ENGINE`) when non-default.
+- Deterministic verifications run, e.g. `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`.
+- Evidence paths created — screenshots, videos, traces, profiles, saved state files.
+- Extracted data shape when data was extracted — JSON array, CSV rows, table, key-value map — plus selectors/refs used and a count check (`get count SELECTOR`).
+- Cleanup performed — tabs closed, sessions closed, state files kept or deleted, profile left in place or removed. If `sensitive_state` was ever true, name explicitly what persisted.
