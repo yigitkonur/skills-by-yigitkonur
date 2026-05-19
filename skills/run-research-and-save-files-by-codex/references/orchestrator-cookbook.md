@@ -120,7 +120,7 @@ Then the completion statement to the user.
 This skill plays well with:
 
 - `run-research-and-save-files` — the same corpus shape executed by Claude subagents. Switch when fan-out shrinks or the user pivots away from codex.
-- `run-codex-2` — the broader codex orchestration framework. Refer the user to it when they need batch/exec/review/single/rescue modes outside the corpus-research context.
+- the broader codex orchestration patterns — the broader codex orchestration framework. Refer the user to it when they need batch/exec/review/single/rescue modes outside the corpus-research context.
 - `run-research` — the single-question companion. Pop down to it when the user pivots from "build a corpus" to "answer one specific question I had about an entity."
 - `review-self` and `review-pr` — for the rare case where the corpus produces follow-up code work. Out of scope for this skill.
 

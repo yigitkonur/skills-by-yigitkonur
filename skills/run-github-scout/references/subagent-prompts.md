@@ -134,7 +134,7 @@ of guessing.
   or export artifact.**
 - **No mandatory `.githubresearch/` output tree.**
 - **No multi-wave dispatch.** This skill's shape is a shortlist in
-  conversation — wave dispatch belongs to `run-corpus-research`.
+  conversation — wave dispatch belongs to `run-research-and-save-files`.
 - **No run-research integration in evaluation/matrix subagents.**
   Their work is GitHub-only; embedding the run-research block would
   bloat the brief and signal the wrong tool path.

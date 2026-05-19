@@ -12,14 +12,14 @@ Memory beats taxonomy. A small verb set is easier to recall than a precise one.
 | `init-` | Generate config / instruction files that another tool will consume (AGENTS.md hierarchies, Makefiles, Greptile rules, Copilot prompts) | The output is application code (`build-`) | `init-agent-config`, `init-makefiles` |
 | `update-` | Refresh stale claims, counts, or references in an artifact that already exists and has drifted | Audit-only with no edits (`audit-`); writing from scratch (`build-` / `init-`) | `update-agent-config` |
 | `convert-` | Transform an artifact from format A to format B; input and output shapes differ structurally | Producing documentation from existing code without a buildable output (`extract-`) | `convert-mcp-sdk-v1-to-v2`, `convert-url-to-nextjs` |
-| `extract-` | Pull data, design tokens, or assets out of existing artifacts — output is documentation / structured data, not a runnable project | The output is a buildable project (`convert-`) | `extract-saas-design` |
-| `run-` | Drive an external CLI / API / browser / tool for the user's current task during the session | The skill produces static config (`init-`) or writes app code (`build-`) | `run-railway`, `run-codex-2`, `run-linear-cli`, `run-research`, `run-agent-browser` |
-| `audit-` | Read-only inspection; produce findings, no fixes | The skill also applies fixes (`update-`); the output is pass / fail (`test-`) | `audit-agentic-cli`, `audit-completion`, `audit-ui`, `audit-skill-by-derailment` |
+| `extract-` | Pull data, design tokens, or assets out of existing artifacts — output is documentation / structured data, not a runnable project | The output is a buildable project (`convert-`) | _(was here; see `create-design-md`)_ |
+| `run-` | Drive an external CLI / API / browser / tool for the user's current task during the session | The skill produces static config (`init-`) or writes app code (`build-`) | `run-railway`, `run-research`, `run-agent-browser` |
+| `audit-` | Read-only inspection; produce findings, no fixes | The skill also applies fixes (`update-`); the output is pass / fail (`test-`) | `audit-agentic-cli`, `audit-completion`, `audit-skill-by-derailment` |
 | `review-` | Evaluate a code change for merge-readiness; produce reviewer feedback | Triaging *received* review feedback as input (that's `review-feedback` — distinct object); driving the review tool (`run-`) | `review-pr`, `review-self`, `review-feedback` |
 | `test-` | Verify functional behavior with binary pass / fail evidence | The output is qualitative findings (`audit-` or `review-`); chasing a bug (`debug-`) | `test-by-mcpc-cli` |
 | `debug-` | Chase a reproducible runtime bug or intermittent failure; methodology over inspection | Inspecting code statically (`audit-`); reviewing a diff (`review-`) | `debug-runtime` |
 | `publish-` | Set up automated release / CI / packaging for a registry | Authoring the code being released (`build-`); single-shot ad-hoc deploy (`run-`) | `publish-npm-package` |
-| `plan-` | Frame a decision, compare options, or apply a named decision methodology; produce a recommendation, not code | The output is a runnable artifact (`build-` / `init-`) | `plan-tradeoff` |
+| `plan-` | Frame a decision, compare options, or apply a named decision methodology; produce a recommendation, not code | The output is a runnable artifact (`build-` / `init-`) | _(retired)_ |
 
 ## The Intent Verb Test
 
@@ -31,7 +31,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 - *"I want to **run** Railway commands"* → `run-railway` ✓
 - *"I want to **review** this PR"* → `review-pr` ✓
 - *"I want to **debug** a runtime bug"* → `debug-runtime` ✓
-- *"I want to **plan** between three architectural options"* → `plan-tradeoff` ✓
+- *"I want to **plan** between three architectural options"* → _(retired)_ ✓
 
 ## Object Rules
 
@@ -47,12 +47,12 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 | Overlap | Rule |
 |---|---|
 | `audit-` vs `review-` | Audit produces a report. Review produces feedback **on a change** (PR, branch, diff). `audit-completion` (check claims), `review-pr` (judge a diff). |
-| `audit-` vs `test-` | Audit produces narrative findings. Test produces binary pass / fail. `audit-ui` (visual findings), `test-by-mcpc-cli` (does it work? yes / no). |
+| `audit-` vs `test-` | Audit produces narrative findings. Test produces binary pass / fail. (visual findings), `test-by-mcpc-cli` (does it work? yes / no). |
 | `update-` vs `audit-` | Update applies fixes. Audit only reports. `update-agent-config` does both phases — when in doubt, the action verb wins. |
 | `run-` vs `build-` | Run drives a live tool during the session. Build produces an artifact. `run-railway` (drive Railway CLI), `build-tinacms-nextjs` (write TinaCMS code). |
 | `init-` vs `build-` | Init outputs config for another tool. Build outputs runnable code. `init-makefiles` (configure Make), `build-mcp-use-server` (write a server). |
-| `convert-` vs `extract-` | Convert produces a usable B from an existing A. Extract produces documentation / structured data. `convert-url-to-nextjs` (buildable project), `extract-saas-design` (documentation). |
-| `plan-` vs `debug-` | Plan frames a decision without code. Debug chases a bug at runtime. `plan-tradeoff` (architectural decisions), `debug-runtime` (active bug hunt). |
+| `convert-` vs `extract-` | Convert produces a usable B from an existing A. Extract produces documentation / structured data. `convert-url-to-nextjs` (buildable project), _(was here; see `create-design-md`)_ (documentation). |
+| `plan-` vs `debug-` | Plan frames a decision without code. Debug chases a bug at runtime. _(retired)_ (architectural decisions), `debug-runtime` (active bug hunt). |
 
 ## Canonical Rules
 
@@ -67,7 +67,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 | Anti-pattern | Fix |
 |---|---|
 | No verb prefix (`agent-browser`) | `run-agent-browser` |
-| Verb not in registry (`orchestrate-codex`, `synthesize-skills`) | Pick from the 12: `run-codex-*`, `build-skill` |
+| Verb not in registry (`synthesize-skills`) | Pick from the 12: `run-codex-*`, `build-skill` |
 | Generic suffix (`mcp-guide`, `claude-helper`) | Specific object: `build-mcp-server-sdk-v2` |
 | `claude` or `anthropic` in skill name | Forbidden — agent-agnostic |
 | `do-` or other generic verbs | Use the specific verb from the 12 |
@@ -81,23 +81,23 @@ The verb registry was rewritten on 2026-05-17. Renames applied in the same commi
 | Old | New | Reason |
 |---|---|---|
 | `apply-clean-mcp-architecture` | `build-clean-mcp-architecture` | `apply-` dropped; refactor IS code-writing → `build-` |
-| `ask-review` | `review-self` | `ask-` dropped; opening a self-review IS a review |
+| | `review-self` | `ask-` dropped; opening a self-review IS a review |
 | `check-completion` | `audit-completion` | `check-` dropped; read-only verification → `audit-` |
 | `convert-mcp-server-sdk-v1-to-v2` | `convert-mcp-sdk-v1-to-v2` | Shorten object |
-| `do-debug` | `debug-runtime` | `do-` dropped; `debug-` is the verb |
-| `do-review` | `review-pr` | `do-` dropped; `review-` is the verb |
-| `do-think` | `plan-tradeoff` | `do-` dropped; `plan-` is the verb |
-| `do-ui-audit` | `audit-ui` | `do-` dropped; `audit-` is the verb |
+| | `debug-runtime` | `do-` dropped; `debug-` is the verb |
+| | `review-pr` | `do-` dropped; `review-` is the verb |
+| | _(retired)_ | `do-` dropped; `plan-` is the verb |
+| | | `do-` dropped; `audit-` is the verb |
 | `enhance-agent-config` | `update-agent-config` | `enhance-` dropped; `update-` covers stale-ref refresh |
 | `enhance-skill-by-derailment` | `audit-skill-by-derailment` | `enhance-` dropped; the skill tests for friction → `audit-` |
-| `evaluate-code-review` | `review-feedback` | `evaluate-` dropped; triaging received feedback → `review-` |
+| | `review-feedback` | `evaluate-` dropped; triaging received feedback → `review-` |
 | `optimize-agentic-cli` | `audit-agentic-cli` | `optimize-` dropped; audit-then-tune → `audit-` |
 | `optimize-agentic-mcp` | `audit-agentic-mcp` | Same |
-| `orchestrate-codex` | `run-codex-1` | `orchestrate-` dropped; numbered alias with `use-codex` (test-and-decide period) |
+| `orchestrate-codex` | _(retired — `run-codex-1` / `run-codex-2` numbered aliases removed; rebuild with `codex exec` directly)_ | — |
 | `synthesize-skills` | `build-skill` | `synthesize-` dropped; output IS a SKILL.md artifact |
-| `use-codex` | `run-codex-2` | `use-` dropped → `run-`; numbered alias with `orchestrate-codex` |
-| `use-linear-cli` | `run-linear-cli` | `use-` → `run-` |
-| `use-railway` | `run-railway` | `use-` → `run-` |
+| | | `use-` dropped → `run-`; numbered alias with |
+| | | `use-` → `run-` |
+| `run-railway`| `run-railway` | `use-` → `run-` |
 
 ## Dropped Verbs (and why)
 

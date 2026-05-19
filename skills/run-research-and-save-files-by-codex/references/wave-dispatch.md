@@ -5,7 +5,7 @@ within a wave, tracks status on disk, audits the wave's outputs, and
 retries only what failed.
 
 This pattern is adapted from the canonical batch-fanout idiom
-documented in `run-codex-2`'s batch mode and the retired
+documented in the broader codex orchestration patterns's batch mode and the retired
 `run-batch-codex-research` skill. The corpus-specific adaptation:
 codex writes directly to the final corpus path (`-o <corpus-root>/...`),
 not to a `<workdir>/answers/` staging area. That removes a copy step
@@ -63,7 +63,7 @@ filesystem-friendly.
 
 Above 32, refuse. Above 8 without justification, require an
 `--i-have-measured "<reason>"` flag passed through and recorded in
-the wave's audit. Same gate as `run-codex-2`'s concurrency policy.
+the wave's audit. Same gate as the broader codex orchestration patterns's concurrency policy.
 
 The worker pool is a bounded semaphore — never naked `&` fanout,
 never `xargs -P 0`. The acceptable shapes:
@@ -247,7 +247,7 @@ Wave <N> dispatched
   next action:    wait for `failed + never-started == 0`, then read outputs
 ```
 
-This is the codex equivalent of `run-codex-2`'s dispatcher envelope.
+This is the codex equivalent of the broader codex orchestration patterns's dispatcher envelope.
 Surface it before any wave starts so the user sees what's running and
 where the artifacts will land.
 

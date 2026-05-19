@@ -14,7 +14,7 @@ Switch if **any** of these are true for the user's request:
 | Bypass interactive approvals (CI / sandbox already in place) | `--dangerously-bypass-approvals-and-sandbox` |
 | Skip the git work-tree precondition | `--skip-git-repo-check` |
 | Do not persist session files | `--ephemeral` |
-| The caller is a fleet driver (`run-codex-2` review mode) | always — fleet path uses `codex exec review` exclusively |
+| The caller is a fleet driver (multi-branch codex review orchestration) | always — fleet path uses `codex exec review` exclusively |
 
 Everything else (a quick human-readable review, custom prompt, base/uncommitted/commit target, `-c` config overrides, `--title`, `--enable`/`--disable`) works on root `codex review` and stays there.
 
@@ -125,7 +125,7 @@ When wiring downstream parsers, capture `-o <file>` rather than parsing JSONL li
 ## When `codex exec review` is **not** the right path
 
 - For a casual human-readable review, stay with root `codex review`. The extra flags are noise.
-- For multi-branch convergence loops, do **not** wire `codex exec review` by hand — route to `run-codex-2` review mode via its dispatcher (`node skills/run-codex-2/scripts/run-codex-2.mjs review --branches <list>`). The fleet path adds manifest seeding, monitor wiring, classification, and rescue — all things `codex exec review` alone does not provide.
+- For multi-branch convergence loops, do **not** wire `codex exec review` by hand — route to multi-branch codex review orchestration by writing a thin orchestrator that fans out `codex exec review --base <ref>` calls per branch (the dedicated dispatcher skill was retired). The fleet path adds manifest seeding, monitor wiring, classification, and rescue — all things `codex exec review` alone does not provide.
 - For "review my PR with three different model configs and compare", run `codex exec review` three times sequentially, each with a different `-m` or `-c` override, and capture each `-o` to a distinct file. Do not try to fan out via `--profile` only; multiple model identities need multiple invocations.
 
 ## Recovery and failure modes

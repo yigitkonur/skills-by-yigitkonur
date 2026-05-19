@@ -565,7 +565,7 @@ Quote discipline: every benchmark number verbatim with workload spec.
 
 Do not turn landscape scans into `run-research` goals. Route market,
 industry, vendor-category, 5+ entity, reusable evidence pack, and
-multi-file corpus requests to `run-industry-research`.
+multi-file corpus requests to `run-research-and-save-files`.
 
 If a landscape request contains one narrow technical question, rewrite
 only that question as a `run-research` goal.

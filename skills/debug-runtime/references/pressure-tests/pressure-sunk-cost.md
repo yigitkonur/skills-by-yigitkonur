@@ -31,7 +31,7 @@ If the test takes 5.5s today under CI load, it will take 7s in a month, 10s in s
 
 ## The correct path
 
-You have hit the 3-fails gate. The rule is: stop fixing. Route to `plan-tradeoff` (Mode: Interactive — or, given the time constraint, open a GitHub issue with the handoff template and come back tomorrow).
+You have hit the 3-fails gate. The rule is: stop fixing. Route to a structured reframe pause (Mode: Interactive — or, given the time constraint, open a GitHub issue with the handoff template and come back tomorrow).
 
 ### Re-read the three failures
 
@@ -99,7 +99,7 @@ If you physically cannot complete Phase 1 + 2 + 3 + 4 tonight:
 
 1. Write the handoff block from `escalation.md`.
 2. Open a GitHub issue with the full context: symptom card, three failures, pattern across them, the architectural question.
-3. Route to `plan-tradeoff` (Mode: Interactive) via the handoff — on most runtimes, this schedules the session for the next time.
+3. Route to a structured user-driven reframe pause via the handoff — on most runtimes, this schedules the session for the next time.
 4. Go to dinner.
 
 This is not "giving up." It is using the 3-fails rule to prevent a 4th guess that would have also failed.

@@ -41,7 +41,7 @@ Do NOT use when:
 | One technical question, single answer | `run-research` |
 | 1-4 entities, one polished single-page summary, no folder structure | `run-research` |
 | Finding or shortlisting GitHub repos as the deliverable | `run-github-scout` |
-| One codex template fanned out across N inputs (single-cli-fanout job) | `run-codex-2` batch mode |
+| One codex template fanned out across N inputs (single-cli-fanout job) | parallel `codex exec` fan-out |
 | The user wants the same shape but delegated to `codex exec` for the web research | `run-research-and-save-files-by-codex` |
 | Codebase analysis, code review, or implementation work | not this skill |
 | Polished single deliverable (HTML battlecard, slide deck) | downstream skills polish |

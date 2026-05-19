@@ -21,7 +21,7 @@ Trigger on phrasings like:
 
 Do NOT use when:
 
-- The user asks to research a **market, vendor category, or 5+ entities** with per-entity packs, comparison templates, or a reusable corpus. Use `run-industry-research` (or `run-corpus-research` for the legacy name).
+- The user asks to research a **market, vendor category, or 5+ entities** with per-entity packs, comparison templates, or a reusable corpus. Use `run-research-and-save-files` (or `run-research-and-save-files` for the legacy name).
 - The user asks to **find, shortlist, or compare GitHub repositories** for a concrete need. Use `run-github-scout`.
 - The question is **answerable from the local codebase alone**, or a docs page already in context is sufficient — just answer it.
 - The user **explicitly asked not to search the web**.
@@ -137,7 +137,7 @@ The output still defaults to **one** Markdown synthesis. If the user
 explicitly asks for files, a small numbered folder is allowed; do not
 build per-entity packs, product profiles, comparison templates, or
 reusable source-ledger corpora here — those are corpus shapes and
-belong in `run-industry-research`.
+belong in `run-research-and-save-files`.
 
 For the full orchestration protocol — subagent prompts, scope
 allocation, merge strategy, and contradiction resolution — read
@@ -214,5 +214,5 @@ handling, and worked output examples.
 - `run-research` target-specific validator checks pass
 - every reference file remains routed from `SKILL.md`
 - output contract includes source attribution and unresolved gaps
-- sibling redirects still name `run-industry-research` and
+- sibling redirects still name `run-research-and-save-files` and
   `run-github-scout`

@@ -25,7 +25,7 @@ This skill follows the open **DESIGN.md** format published by Google Labs (front
 - The user wants **buildable UI code** from a source. Use `convert-url-to-nextjs`.
 - The user wants a **redesign, restyle, or "make it better"** pass. This skill documents what exists; it never recommends changes.
 - The source is **Figma-only, screenshot-only, or "vibe"** with no inspectable implementation. The skill needs DOM, CSS, source files, or a parseable snapshot.
-- The user wants a **browser-driven audit only** (no file output). Use `audit-ui`.
+- The user wants a **browser-driven audit only** (no file output). Use `audit-ui-and-save-files`.
 
 ## Sibling routing
 
@@ -33,7 +33,7 @@ This skill follows the open **DESIGN.md** format published by Google Labs (front
 |---|---|
 | Buildable Next.js page from the source | `convert-url-to-nextjs` (this skill is documentation-only). |
 | Live browser capture (DOM, screenshots, computed styles) needed first | Call `run-agent-browser` from inside this skill's workflow — see `references/source-variants.md`. |
-| Visual UI audit across pages (no file output) | `audit-ui`. |
+| Visual UI audit across pages (no file output) | `audit-ui-and-save-files`. |
 
 ## Two trees, one mental model — load-bearing
 

@@ -69,7 +69,7 @@ For specific tooling ecosystems:
 | Agent-readiness audit | `audit-agentic-cli` |
 | Raycast Script Commands | `build-raycast-script-command` |
 | GitHub CLI scripting | `run-github-scout` |
-| Codex CLI orchestration | `run-codex-2` |
+| Codex CLI orchestration | parallel `codex exec` orchestration |
 | Railway CLI | `run-railway` |
 
 If the PR introduces or modifies a CLI's agent-readiness (flag taxonomy, JSON output, error shapes), route additionally to `audit-agentic-cli`.

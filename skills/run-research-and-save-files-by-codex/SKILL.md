@@ -142,7 +142,7 @@ For the broader codex orchestration surface this skill draws from —
 auth gating, the `--dangerously-bypass-approvals-and-sandbox` rationale,
 proxy / managed-companion setups, JSON-event taxonomy, sandbox/effort
 overrides via env — refer the user to the canonical codex skill,
-`run-codex-2`. This skill is the research-specific lens; `run-codex-2`
+the broader codex orchestration patterns. This skill is the research-specific lens; the broader codex orchestration patterns
 is the general codex orchestration framework.
 
 ## Two framings, same skeleton
@@ -274,7 +274,7 @@ Before the first wave dispatches, verify:
    machine uses a proxy or managed setup, set
    `USE_CODEX_SKIP_CODEX_AUTH=1` and run a tiny smoke test before
    dispatching the real fleet. The smoke recipe lives in
-   `run-codex-2`'s preflight; replicate it here before any wave.
+   the broader codex orchestration patterns's preflight; replicate it here before any wave.
 3. The corpus root path is chosen and writable.
 4. The workdir sidecar path is chosen (default `./corpus-runs/<run_id>/`).
 5. The effort plan is recorded — wave-by-wave, `low`/`medium`/`high`.

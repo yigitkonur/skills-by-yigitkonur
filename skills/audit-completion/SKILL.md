@@ -21,7 +21,7 @@ Do NOT use when:
 
 - verifying a single claim before making it — use the Gate Function inline as a local verification gate, not the full audit
 - evaluating reviewer comments, bot comments, or external review docs → `review-feedback`
-- planning *upcoming* work from GitHub issues → `run-issue-tree`
+- planning *upcoming* work from GitHub issues → the `gh` CLI directly (the run-issue-tree skill was retired)
 - reviewing someone else's PR or branch diff → `review-pr`
 - debugging a runtime failure → `debug-runtime`
 

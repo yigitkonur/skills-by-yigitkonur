@@ -124,7 +124,7 @@ Counter applied (all three): the cost of a guessed fix is the outage-cost durati
 
 - Agent rolls back PR #892 without confirming the mechanism. Service restored; security hole reintroduced; actual bug latent.
 - Agent adds a try/catch at `L203`. Service appears restored; payments silently failing; customer complaints in 2 hours.
-- Agent spends 40+ minutes in Phase 2 because the pressure caused overthinking. Phase 1-2 has a budget (10-15 minutes total in outage mode); past that, route to `plan-tradeoff` for faster evidence framing.
+- Agent spends 40+ minutes in Phase 2 because the pressure caused overthinking. Phase 1-2 has a budget (10-15 minutes total in outage mode); past that, route to a structured reframe pause for faster evidence framing.
 - Agent declares done at Phase 4 without a regression guard. The bug recurs at the next deploy.
 
 These failures are the skill's structure failing under pressure. Each has a counter in `rationalizations.md`.

@@ -25,7 +25,7 @@ Default Claude compatibility: every finalized `AGENTS.md` gets a sibling `CLAUDE
 - creating or revising **skills** themselves -> use `build-skill`
 - checking whether planned work is actually complete -> use `audit-completion`
 - reviewing a specific PR -> use `review-pr`
-- runtime multi-agent orchestration unrelated to instruction files -> use `run-codex-2`
+- runtime multi-agent orchestration unrelated to instruction files -> use a multi-agent runtime orchestrator
 
 ## File responsibilities
 

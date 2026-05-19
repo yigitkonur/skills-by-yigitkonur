@@ -30,15 +30,15 @@ Trigger on phrasings like:
 - The question is a **single technical decision or version/API/CVE/pricing
   lookup** with no repo-discovery focus → use `run-research`.
 - The user wants a **multi-file market/category corpus over 5+ entities**
-  with per-entity packs and source ledgers → use `run-industry-research`
-  (or `run-corpus-research` in this checkout). Repos can still be the
+  with per-entity packs and source ledgers → use `run-research-and-save-files`
+  (or `run-research-and-save-files` in this checkout). Repos can still be the
   entities — the discriminator is corpus shape, not the subject.
 - The candidates are **not on GitHub** (closed-source SaaS, marketplace
   apps, hosted-only products) → use `run-research` or
-  `run-industry-research`.
+  `run-research-and-save-files`.
 - The task is **codebase-local** (read this repo, fix this bug, plan
   these issues) → not this skill. For Issues planning specifically use
-  `run-issue-tree`.
+  the `gh` CLI directly (the run-issue-tree skill was retired).
 
 ## Five rules that prevent most derailments
 
@@ -69,7 +69,7 @@ These five upstream-discipline rules catch the bulk of failures. Read
 - Use `gh api graphql` only for top-N deep evidence when REST/README/search are insufficient.
 - Use direct `curl` only when `gh` is unavailable.
 - Use web/MCP tools (or `run-research`) for naming/landscape augmentation only; final repo truth comes from GitHub.
-- `run-issue-tree` also uses `gh`, but its intent is GitHub Issue planning/execution, not repo discovery.
+- the `gh` CLI directly (the run-issue-tree skill was retired) also uses `gh`, but its intent is GitHub Issue planning/execution, not repo discovery.
 
 Rate-limit rules:
 - Search has its own bucket; never fire unbounded waves.

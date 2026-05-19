@@ -59,21 +59,21 @@ Anchor on this set of plain-English verbs:
 | Verb | Use when | Example |
 |---|---|---|
 | `build` | Write app code with a framework or SDK | `build-chrome-extension`, `build-macos-app`, `build-mcp-server-sdk-v1` |
-| `do` | Generic "let me do this" entry-point skill | `do-debug`, `do-think`, `do-review` |
+| `do` | Generic "let me do this" entry-point skill | _(retired — see migration history)_ |
 | `apply` | Apply a methodology or standard to a codebase | `apply-clean-mcp-architecture` |
-| `ask` | Hand off / request something | `ask-review` |
+| `ask` | Hand off / request something | _(retired — see `run-review` Mode B)_ |
 | `run` | Drive a CLI, tool, or workflow | `run-agent-browser`, `run-research` |
 | `convert` | Transform A to B | `convert-url-to-nextjs` |
 | `check` | Audit for completeness | `check-completion` |
-| `evaluate` | Triage existing feedback or input | `evaluate-code-review` |
-| `extract` | Pull data, design, or assets from existing artifacts | `extract-saas-design` |
+| `evaluate` | Triage existing feedback or input | _(retired — see `run-review` Mode C)_ |
+| `extract` | Pull data, design, or assets from existing artifacts | `create-design-md` |
 | `init` | Generate config or instruction files | `init-agent-config` |
 | `enhance` | Improve a prompt, skill, or instruction | `enhance-skill-by-derailment` |
 | `optimize` | Tune for a constraint (e.g. agentic) | `optimize-agentic-cli` |
 | `develop` | Apply language-level patterns and standards | _(reserved — no current skill uses this verb)_ |
 | `publish` | Release to a registry | `publish-npm-package` |
 | `test` | Verify with pass/fail | `test-by-mcpc-cli` |
-| `use` | Drive a CLI utility for ongoing operations | `use-railway` |
+| `use` | _(retired verb — was used for ongoing CLI utilities, all migrated to `run-`)_ | — |
 
 ### Object rules
 
@@ -86,16 +86,16 @@ Anchor on this set of plain-English verbs:
 
 ### When two skills overlap, use distinct verbs to disambiguate
 
-- `do-review` (do a PR review) vs `ask-review` (ask for a review on your branch)
-- `do-debug` (entry-level systematic debug) vs `do-think` (deep reasoning framework)
-- `optimize-agentic-cli` covers CLI ergonomics; pair with the relevant `build-mcp-*` skill for MCP surfaces
+- `run-review` Modes A and B replaced what used to be `do-review` (do a PR review) and `ask-review` (ask for a review on your branch).
+- `debug-runtime` is the systematic-debug entry point; its three-fails gate hands off to an inline structured-reframe pause (the standalone `plan-tradeoff` skill was retired).
+- `audit-agentic-cli` and `audit-agentic-mcp` now live in the [b-side pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) — install per-project where they earn their context cost.
 
 ### Anti-patterns
 
 | Anti-pattern | Fix |
 |---|---|
 | No verb prefix (`agent-browser`) | Add the natural intent verb (`run-agent-browser`) |
-| Awkward verb (`do-X` when a better verb fits) | Use the better verb (`extract-saas-design`, not `do-extract-design`) |
+| Awkward verb (`do-X` when a better verb fits) | Use the better verb (`create-design-md`, not `do-extract-design`) |
 | Stripping a distinctive method (`enhance-skill` instead of `enhance-skill-by-derailment`) | Keep the method, normalize the verb only |
 | Generic noun-only object (`build-app`) | Specific noun (`build-chrome-extension`) |
 | Mismatched names | Directory = frontmatter `name` = README label, all identical |

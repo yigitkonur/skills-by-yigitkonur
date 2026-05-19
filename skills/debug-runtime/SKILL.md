@@ -5,7 +5,7 @@ description: Use skill if you are chasing a reproducible runtime bug, intermitte
 
 # Do Debug
 
-Language-agnostic systematic debugging. Four mandatory phases before any fix: **Investigation → Pattern analysis → Hypothesis testing → Implementation**. Works on any runtime, any language. Hands off to `plan-tradeoff` (Mode: Interactive) after three failed fixes.
+Language-agnostic systematic debugging. Four mandatory phases before any fix: **Investigation → Pattern analysis → Hypothesis testing → Implementation**. Works on any runtime, any language. Hands off to a structured user-driven reframe pause after three failed fixes.
 
 ## When to use this skill
 
@@ -21,14 +21,14 @@ Use when one of these is true:
 
 Do NOT use this skill when:
 
-- *the task is design, architecture, or refactor with no reproducible runtime bug* → `plan-tradeoff`
-- *the user explicitly wants user-in-the-loop brainstorm or co-authored reasoning* → `plan-tradeoff` (Mode: Interactive)
+- *the task is design, architecture, or refactor with no reproducible runtime bug* → a structured reframe pause
+- *the user explicitly wants user-in-the-loop brainstorm or co-authored reasoning* → a structured user-driven reframe pause
 - *a specialised diagnostic tool is already loaded* (Chrome DevTools, language profiler, native debugger session) → drive that tool's skill
 - *only "confirm what's actually done" on already-fixed items is needed* → `audit-completion`
 - *the failure is an external-service outage the agent cannot inspect* → out of scope; surface and stop
 - *no environment exists to run code yet* → Phase 1 cannot complete; ask user for a repro or exit
 
-Boundary with `plan-tradeoff`: three failed fixes routes here to `plan-tradeoff` (Mode: Interactive) with the handoff template. After `plan-tradeoff` returns, re-enter `debug-runtime` at **Phase 2** with the new framing — never Phase 1.
+Boundary with a structured reframe pause: three failed fixes routes here to a structured user-driven reframe pause with the handoff template. After a structured reframe pause returns, re-enter `debug-runtime` at **Phase 2** with the new framing — never Phase 1.
 
 ## The Iron Law
 
@@ -42,7 +42,7 @@ An untested fix is a guess dressed as work. A guess that *appears* to succeed is
 2. **Diagnosis and repair are separate steps.** Phases 1–3 allow only *diagnostic* edits (temporary logs, probes, repro tests, instrumentation). No edits to product logic until Phase 4.
 3. **Evidence per claim.** Every hypothesis cites a trace, log, diff, test run, or config value.
 4. **One hypothesis at a time.** Two simultaneous fixes destroy the falsification signal of both.
-5. **Escalate at 3.** Three failed fixes triggers the `plan-tradeoff` Interactive handoff (Escalation gate, below).
+5. **Escalate at 3.** Three failed fixes triggers the a user-driven reframe pause handoff (Escalation gate, below).
 6. **Verify before declaring fixed.** The same Phase 1 repro that failed must now pass with evidence captured.
 7. **Regression-proof before commit.** The fix lands with a test, guard, or assertion that proves the mechanism stays dead.
 8. **Keep the diagnosis trace.** Phase 1 → Phase 4 reasoning attaches to the fix (commit body, issue, or plan file).
@@ -85,7 +85,7 @@ Goal: prove or disprove one candidate with an experiment designed to fail *if th
 1. **Design a falsifiable experiment** — write the predicted result if true AND the predicted result if false. If unable to state the false-case prediction, the experiment is cover for a pre-decided fix.
 2. **Run the cheapest experiment first** — log, print, unit test, bisect step, feature flag. Patterns: `references/instrumentation.md`, `references/bisection-strategies.md`.
 3. **Read the result honestly** — even when it invalidates the preferred candidate. Especially then.
-4. **All candidates falsified** → route to `plan-tradeoff` to re-form the candidate space, then re-enter Phase 2.
+4. **All candidates falsified** → route to a structured reframe pause to re-form the candidate space, then re-enter Phase 2.
 
 Red flags → back to Phase 2: the "confirmation" also fits a different mechanism (experiment was not falsifying); product code changed mid-experiment; partial confirmation accepted "because it kind of matched."
 
@@ -108,14 +108,14 @@ First-class routing table — consult when a phase goes sideways.
 | Situation | Stay or route | Destination | Why |
 |---|---|---|---|
 | Phase 1: repro is not 10/10, need wider frame | Stay | `references/bisection-strategies.md` (input-space bisection) | Inline technique |
-| Phase 2: only "it feels like X" as evidence | Route | `plan-tradeoff` (`workflows/bug-tracing.md`) | Stronger reasoning loop re-grounds the investigation |
-| Phase 3: 2–3 candidates look equally plausible | Route | `plan-tradeoff` foundations / evidence-and-falsification | Stronger evidence framework before the experiment |
+| Phase 2: only "it feels like X" as evidence | Route | a structured reframe pause (`workflows/bug-tracing.md`) | Stronger reasoning loop re-grounds the investigation |
+| Phase 3: 2–3 candidates look equally plausible | Route | a structured reframe pause foundations / evidence-and-falsification | Stronger evidence framework before the experiment |
 | Phase 3: "confirmation" also fits a different mechanism | Stay | Back to Phase 2; design the distinguishing test | Do not hand off |
 | Fail #1 (first fix didn't stick) | Stay | Re-open Phase 2 inline | Pattern was wrong |
 | Fail #2 (second fix didn't stick) | Stay | Re-open Phase 1 inline | Symptom or repro was incomplete |
-| Fail #3 — **stop fixing** | Route | `plan-tradeoff` (Mode: Interactive); template in `references/integration.md` | Architecture-shaped; re-enter Phase 2 after return |
+| Fail #3 — **stop fixing** | Route | a structured user-driven reframe pause; template in `references/integration.md` | Architecture-shaped; re-enter Phase 2 after return |
 | Phase 4: fix applied, verification passed | Route | `audit-completion` | Audit for related-but-forgotten scope |
-| "Bug" is a design disagreement, not a bug | Don't start | `plan-tradeoff` (Solo or Interactive) | Not a runtime failure |
+| "Bug" is a design disagreement, not a bug | Don't start | a structured reframe pause | Not a runtime failure |
 | No way to run code (env/repo missing) | Don't start | Ask user for a repro, or exit | Phase 1 cannot complete |
 
 Full decision tree with edge cases: `references/integration.md`.
@@ -126,7 +126,7 @@ A "failed fix" = a hypothesis-driven change that did not make Phase 1's repro pa
 
 - **Fail 1** → re-open Phase 2. The pattern family was likely wrong.
 - **Fail 2** → re-open Phase 1. The symptom definition or repro was probably incomplete.
-- **Fail 3** → **Stop fixing.** Route to `plan-tradeoff` (Mode: Interactive). Three failures means the problem is architecture-shaped, not a bug. Handoff format: `references/escalation.md` and `references/integration.md`. After `plan-tradeoff` returns, re-enter at Phase 2 with the new framing.
+- **Fail 3** → **Stop fixing.** Route to a structured user-driven reframe pause. Three failures means the problem is architecture-shaped, not a bug. Handoff format: `references/escalation.md` and `references/integration.md`. After a structured reframe pause returns, re-enter at Phase 2 with the new framing.
 
 The rule is load-bearing under pressure. Verbatim excuses agents generate to skip it: `references/rationalizations.md`.
 
@@ -171,7 +171,7 @@ Full list: `references/voice.md`.
 | `references/bisection-strategies.md` | "Fails in CI only" / "worked last week" / "only with feature X" / intermittent without code change |
 | `references/instrumentation.md` | Phase 2–3 — print/log/stack-trace patterns per language |
 | `references/escalation.md` | Any failed fix — 3-fails protocol, pressure sidebars, handoff format |
-| `references/integration.md` | Unsure whether to stay in-skill or route to `plan-tradeoff` / `audit-completion` |
+| `references/integration.md` | Unsure whether to stay in-skill or route to a structured reframe pause / `audit-completion` |
 | `references/rationalizations.md` | The urge to skip Phase 1 or Phase 3 — counter table + 5 pressure scenarios |
 | `references/voice.md` | Writing progress updates — forbidden phrases and required forms |
 | `references/cross-runtime.md` | Running on a non-Claude runtime — ask-user-tool lookup for the 3-fails handoff |
@@ -222,7 +222,7 @@ Before declaring a bug fixed, produce these artifacts in order. Do not batch the
 | Phases 1–3 are read-only on product code | Edit product code while "investigating" |
 | Write the false-case prediction before running the experiment | Decide what "confirms" the hypothesis after running |
 | Cite a trace/log/diff/test/config for every claim | "It seems like…" / "I think it's…" |
-| Fail #1–#2 → re-open prior phases; Fail #3 → route to `plan-tradeoff` (Interactive) | Try fix #4, #5, #6 |
+| Fail #1–#2 → re-open prior phases; Fail #3 → route to a structured reframe pause (Interactive) | Try fix #4, #5, #6 |
 | Add a regression guard before declaring done | "The tests pass, shipping" |
 | Treat the senior's diagnosis as a candidate, not a verdict | Skip Phase 1 because "they already figured it out" |
 
@@ -232,13 +232,13 @@ Before declaring a bug fixed, produce these artifacts in order. Do not batch the
 - Do not declare "fixed" without a passing Phase 1 repro + regression guard.
 - Do not recommend `debug-runtime` as the next step (no infinite regress). State which phase to re-enter.
 - Do not skip the 3-fails handoff "just this once."
-- Do not consume `plan-tradeoff` (in either mode) as a substitute for Phase 1. It is a handoff, not a shortcut.
+- Do not consume a structured reframe pause as a substitute for Phase 1. It is a handoff, not a shortcut.
 
 Recovery moves:
 
 - **Phase 1 repro not 10/10** → input-space bisection (`references/bisection-strategies.md`); do not proceed with a flaky repro.
 - **Phase 3 experiment ambiguous** → design a distinguishing test; two mechanisms fitting the same evidence means the experiment was not falsifying.
-- **3 fails hit** → hand off to `plan-tradeoff` (Mode: Interactive) using the template in `references/integration.md`; do not retry.
+- **3 fails hit** → hand off to a structured user-driven reframe pause using the template in `references/integration.md`; do not retry.
 - **Post-fix regression detected** → Phase 1 on the new symptom; do not paper over with a second fix on top of the first.
 
 ## Final checks

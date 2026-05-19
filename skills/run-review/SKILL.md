@@ -29,10 +29,10 @@ Trigger phrases (any one is sufficient):
 
 Do **not** use this skill for:
 
-- per-branch codex review fix loops over a list of branches → `run-codex-2` review mode
+- per-branch codex review fix loops over a list of branches → multi-branch codex review orchestration
 - repo-cleanup of dirty trees across multiple worktrees with no review handoff yet → `run-repo-cleanup`
 - chasing a runtime bug with no diff to judge → `debug-runtime`
-- generic codex-CLI orchestration without a review intent → `run-codex-2` or `run-codex-1`
+- generic codex-CLI orchestration without a review intent → parallel `codex exec` orchestration or parallel `codex exec` orchestration
 
 ## Mode selection (load-bearing — do not skip)
 
@@ -128,7 +128,7 @@ After Mode A: the user has a markdown review (or, on explicit request, a posted 
 
 ### Per-item programmatic mode
 
-When this skill is called from `run-codex-2` review mode (or its `run-codex-review` shim) with a single candidate finding plus a branch diff, output **JSON only** per the contract:
+When this skill is called from multi-branch codex review orchestration (or its the retired the now-retired codex review skill shim) with a single candidate finding plus a branch diff, output **JSON only** per the contract:
 
 ```json
 {
@@ -356,7 +356,7 @@ The root `codex review` does **not** accept `--json`, `-o`, or `--dangerously-by
 - the user wants `-o <file>` to write the last message to disk,
 - the user wants `-m <model>` or `--dangerously-bypass-approvals-and-sandbox` (e.g. inside a CI worker / sandbox already),
 - the user wants `--ephemeral` (no session files persisted),
-- a fleet driver (`run-codex-2` review mode) is the caller — that path always uses `codex exec review`.
+- a fleet driver (multi-branch codex review orchestration) is the caller — that path always uses `codex exec review`.
 
 Quick `codex exec review` invocation (one-shot, machine-readable):
 
@@ -371,7 +371,7 @@ codex exec review \
   "Review the auth subsystem changes for replay and token-leak issues."
 ```
 
-For per-branch convergence loops over multiple branches, do **not** wire that yourself — route to `run-codex-2` review mode via its dispatcher (`node skills/run-codex-2/scripts/run-codex-2.mjs review --branches <list>`).
+For per-branch convergence loops over multiple branches, do **not** wire that yourself — route to multi-branch codex review orchestration by writing a thin orchestrator that fans out `codex exec review --base <ref>` calls per branch (the dedicated dispatcher skill was retired).
 
 ### Subagent dispatch — when to fan out
 
@@ -380,7 +380,7 @@ Mode D is **single-agent by default** — the codex CLI is itself the worker; Cl
 - the user names ≥ 3 review targets (e.g., three commits) that should each get their own codex pass, AND
 - the targets are independent (not stacked).
 
-In that case, dispatch one subagent per target with a self-contained prompt: target flag, optional brief, output path. Subagents collect codex output; the parent surfaces the merged result. For ≥ 2 branches with stacked dependencies, do **not** subagent — route to `run-codex-2` review mode.
+In that case, dispatch one subagent per target with a self-contained prompt: target flag, optional brief, output path. Subagents collect codex output; the parent surfaces the merged result. For ≥ 2 branches with stacked dependencies, do **not** subagent — route to multi-branch codex review orchestration.
 
 ### Output shape
 
@@ -397,8 +397,8 @@ After Mode D: the user has codex's review (text on stdout or markdown on disk). 
 3. **Authorization is per destructive action.** `gh pr create` (Mode B), `gh pr review --request-changes` (Mode A), `gh api .../replies` (Mode C posting replies), `git push` (Mode B), and any `codex exec` with `--dangerously-bypass-approvals-and-sandbox` (Mode D) all require explicit user authorization. Authorization for one such action is not authorization for the next.
 4. **No GitHub mutation in Modes A or D by default.** Mode A produces markdown by default; explicit submit/post/publish/comment switches it to GitHub mutation mode. Mode D never mutates GitHub at all.
 5. **Voice discipline applies in every mode.** No gratitude, no praise, no apology, no agreement-before-verification — most load-bearing in Mode C but never wrong anywhere. `references/mode-c-evaluate-feedback/voice.md` is the canonical phrase reference.
-6. **`run-codex-2` review mode owns multi-branch convergence.** If the user names ≥ 2 branches and a "review/ship/merge/close out" intent, this skill routes to `run-codex-2` — not Mode D, not Mode A.
-7. **`run-codex-review` is a routing shim.** It points at this skill plus `run-codex-2`. Do not restore the old runner; the canonical owners are `run-review` (this file) and `run-codex-2` review mode.
+6. **multi-branch codex review orchestration owns multi-branch convergence.** If the user names ≥ 2 branches and a "review/ship/merge/close out" intent, this skill routes to parallel `codex exec` orchestration — not Mode D, not Mode A.
+7. **the now-retired codex review skill is a routing shim.** It points at this skill plus parallel `codex exec` orchestration. Do not restore the old runner; the canonical owners are `run-review` (this file) and multi-branch codex review orchestration.
 
 ## Final checks (run after every mode)
 
