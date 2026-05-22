@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **19 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
+Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **20 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
 
 > the b-side pack lives at **[skills-by-yigitkonur-secondary](https://github.com/yigitkonur/skills-by-yigitkonur-secondary)** — framework builders, mcp variants, niche tools. mrbeast2 energy, less popular sibling, still goes hard. cherry-pick from there when the job calls.
 
@@ -125,6 +125,9 @@ Drive a CLI, API, browser, or other live tool during the session.
 
 - **[run-research-and-save-files-by-codex](skills/run-research-and-save-files-by-codex/)** — Same shape as `run-research-and-save-files`, but every web-research task is delegated to parallel `codex exec` subprocesses. Claude orchestrates; codex executes. Effort routing: low/medium per wave, high only for synthesis waves.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research-and-save-files-by-codex`
+
+- **[search-it-bulk-by-codex](skills/search-it-bulk-by-codex/)** — Bulk Codex-native web search with parseable answer files.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/search-it-bulk-by-codex`
 
 > the codex orchestration fleet (`run-codex-1` / `run-codex-2` / `run-codex-exec`) and `run-issue-tree` were retired. `run-codex-review` moved to the [b-side pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) as `run-codex-review-loop`. `run-linear-cli` lives there too. `plan-tradeoff` was pulled — use `debug-runtime`'s phase-0 framing when you need to think through a problem.
 
