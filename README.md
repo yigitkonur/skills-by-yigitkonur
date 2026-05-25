@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **20 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
+Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **21 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
 
 > the b-side pack lives at **[skills-by-yigitkonur-secondary](https://github.com/yigitkonur/skills-by-yigitkonur-secondary)** — framework builders, mcp variants, niche tools. mrbeast2 energy, less popular sibling, still goes hard. cherry-pick from there when the job calls.
 
@@ -107,6 +107,9 @@ Drive a CLI, API, browser, or other live tool during the session.
 
 - **[run-agent-browser](skills/run-agent-browser/)** — Browser automation with agent-browser CLI.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-agent-browser`
+
+- **[run-babysitter](skills/run-babysitter/)** — Autonomous per-repo maintenance loop: triage commits + issues + persistent memory, file one deduplicated GitHub issue per cycle.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-babysitter`
 
 - **[run-github-scout](skills/run-github-scout/)** — Adaptive GitHub repo discovery and shortlisting for concrete needs.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-github-scout`
