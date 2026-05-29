@@ -57,6 +57,8 @@ Inspect an artifact; produce findings, no fixes.
 
 - **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — Visual UI audit across pages and viewports with browser screenshots, writing per-bug findings to `css-issues/[YY-MM-DD]/[context]/[device]/NN-slug.md` and ending with an approval-gated fix-subagent dispatch plan.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ui-and-save-files`
+- **[audit-ux-and-save-files](skills/audit-ux-and-save-files/)** — Usability audit from real personas walking their journeys with browser screenshots, writing per-issue findings to `ux-findings/[YY-MM-DD]/[persona]/[journey]/NN-slug.md` and ending with a prioritized recommendations report (reports, does not fix).
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ux-and-save-files`
 
 > the agentic-cli / agentic-mcp / skill-by-derailment audits moved to the [b-side pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) — they're project-shaped (you usually want them inside one repo, not globally chatting at every prompt). install per-project from there.
 
