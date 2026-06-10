@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **21 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
+Skills for AI coding agents — review, research, UI audit, design extraction, browser automation, debug workflows, config files, publish. The everyday loadout. **22 skills** organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
 
 > the b-side pack lives at **[skills-by-yigitkonur-secondary](https://github.com/yigitkonur/skills-by-yigitkonur-secondary)** — framework builders, mcp variants, niche tools. mrbeast2 energy, less popular sibling, still goes hard. cherry-pick from there when the job calls.
 
@@ -54,6 +54,9 @@ Inspect an artifact; produce findings, no fixes.
 
 - **[audit-completion](skills/audit-completion/)** — Audit task / session / plan / branch completion claims; remediate to terminal status.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-completion`
+
+- **[audit-ux-laws](skills/audit-ux-laws/)** — Audit UI against the 30 Laws of UX (Fitts's, Hick's, Miller's, Jakob's, Gestalt, choice overload, cognitive load) with CRITICAL/MINOR severity and concrete code fixes.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ux-laws`
 
 - **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — Visual UI audit across pages and viewports with browser screenshots, writing per-bug findings to `css-issues/[YY-MM-DD]/[context]/[device]/NN-slug.md` and ending with an approval-gated fix-subagent dispatch plan.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ui-and-save-files`
