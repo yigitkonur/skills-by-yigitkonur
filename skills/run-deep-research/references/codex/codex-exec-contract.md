@@ -185,11 +185,12 @@ For production wave dispatch, every job runs detached (background)
 via the wave-dispatch loop. See `wave-dispatch.md` for the bounded
 worker-pool shape.
 
-## Cross-skill anchor: the broader codex orchestration patterns
+## Cross-skill anchor: broader codex orchestration
 
-This skill is the **research-specific lens** on codex orchestration.
-For the broader codex framework — five modes (exec/batch/single/
-review/rescue), manifest contract, Monitor wiring, rescue and
-re-attach mechanics, vendored codex-cc lib — refer the user to
-the broader codex orchestration patterns. Patterns there generalize beyond the corpus-research
-use case; pattern here is narrower and folder-tree-shaped.
+The codex executor here is the **research-specific lens** on codex
+orchestration. For the broader codex framework — exec/batch/single/
+review/rescue modes, manifest contract, Monitor wiring, rescue and
+re-attach mechanics — refer the user to the codex orchestration skills in
+the [secondary pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary).
+Those generalize beyond the corpus-research use case; the pattern here is
+narrower and folder-tree-shaped.

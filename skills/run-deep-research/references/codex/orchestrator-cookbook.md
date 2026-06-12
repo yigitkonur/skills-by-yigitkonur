@@ -65,8 +65,8 @@ Claude subagent for one job when:
 Record the fallback in the dispatch plan: `slug → executor (codex|claude-subagent) → reason`. The fallback is not a defeat — it's a recognition that codex and Claude subagents are complementary.
 
 If the fallback rate exceeds 20% of jobs in a wave, the wave is
-misshaped — reconsider whether this skill is the right choice vs.
-`run-research-and-save-files` (which is Claude-subagent-by-default).
+misshaped — reconsider whether the codex executor is the right choice
+vs. this skill's default Claude-subagent executor.
 
 ## When to stop and ask the user
 
@@ -119,14 +119,14 @@ Then the completion statement to the user.
 
 This skill plays well with:
 
-- `run-research-and-save-files` — the same corpus shape executed by Claude subagents. Switch when fan-out shrinks or the user pivots away from codex.
-- the broader codex orchestration patterns — the broader codex orchestration framework. Refer the user to it when they need batch/exec/review/single/rescue modes outside the corpus-research context.
+- the **default Claude-subagent executor** of this skill — the same corpus shape executed by Claude subagents instead of codex. Switch when fan-out shrinks or the user pivots away from codex.
+- the codex orchestration skills in the [secondary pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) — the broader codex orchestration framework. Refer the user there when they need batch/exec/review/single/rescue modes outside the corpus-research context.
 - `run-research` — the single-question companion. Pop down to it when the user pivots from "build a corpus" to "answer one specific question I had about an entity."
 - `run-review` — for the rare case where the corpus produces follow-up code work. Out of scope for this skill.
 
-The triggers for switching between this skill and Claude-variant
-`run-research-and-save-files` are listed in this skill's `SKILL.md`
-under "When to use this skill instead". Re-read those triggers if the
+The triggers for switching between the codex executor and the default
+Claude-subagent executor are listed in this skill's `SKILL.md` under
+"Executor — Claude subagents or codex". Re-read those triggers if the
 session shifts mid-run.
 
 ## The orchestrator's own preflight

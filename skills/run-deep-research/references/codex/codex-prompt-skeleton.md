@@ -2,8 +2,8 @@
 
 Every codex job in this skill receives a rendered prompt file at
 `<workdir>/prompts/<wave>/<slug>.md`. The prompt follows a fixed
-seven-section skeleton — derived from the run-research-and-save-files
-mission-brief shape and adapted for codex's prompt-following behavior.
+seven-section skeleton — derived from this skill's mission-brief shape
+and adapted for codex's prompt-following behavior.
 
 ## The seven sections
 
@@ -254,8 +254,8 @@ section, input paths) into the skeleton.
 
 For the wave-by-wave content shape of each kind of prompt (discovery,
 axes, entity pack, cross-axis, profile page, promoted research, source
-distillation), the closest cross-skill anchor is
-`run-research-and-save-files`'s `references/subagent-briefs.md` (for
-domain-agnostic briefs) and `references/industry/mission-briefs.md`
-(for industry framing). Lift the section bodies from those Claude
-subagent briefs — codex jobs accept the same prompt shapes.
+distillation), the anchor is this skill's own
+`references/subagent-briefs.md` (for domain-agnostic briefs) and
+`references/industry/mission-briefs.md` (for industry framing). Lift the
+section bodies from those Claude subagent briefs — codex jobs accept the
+same prompt shapes.
