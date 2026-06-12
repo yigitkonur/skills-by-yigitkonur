@@ -128,11 +128,8 @@ Drive a CLI, API, browser, or other live tool during the session.
 - **[run-research](skills/run-research/)** — Single-question technical research with source-backed synthesis.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research`
 
-- **[run-research-and-save-files](skills/run-research-and-save-files/)** — Wave-based corpus research that persists evidence to disk. Filesystem is the context channel between waves. Replaces the old `run-corpus-research` + `run-industry-research`.
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research-and-save-files`
-
-- **[run-research-and-save-files-by-codex](skills/run-research-and-save-files-by-codex/)** — Same shape as `run-research-and-save-files`, but every web-research task is delegated to parallel `codex exec` subprocesses. Claude orchestrates; codex executes. Effort routing: low/medium per wave, high only for synthesis waves.
-  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-research-and-save-files-by-codex`
+- **[run-deep-research](skills/run-deep-research/)** — Wave-based corpus research that persists evidence to disk over 5+ entities or a market/category. Opens with a batched `AskUserQuestion` intake (executor / scale / framing / scope), then dispatches research run by Claude subagents **or** parallel `codex exec` jobs. Filesystem is the context channel between waves. Replaces `run-research-and-save-files` (+ its `-by-codex` variant, now a codex executor mode) and the old `run-corpus-research` + `run-industry-research`.
+  `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-deep-research`
 
 - **[search-it-bulk-by-codex](skills/search-it-bulk-by-codex/)** — Bulk Codex-native web search with parseable answer files.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/search-it-bulk-by-codex`

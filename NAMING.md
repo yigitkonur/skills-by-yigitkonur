@@ -99,6 +99,12 @@ The verb registry was rewritten on 2026-05-17. Renames applied in the same commi
 | | | `use-` → `run-` |
 | `run-railway`| `run-railway` | `use-` → `run-` |
 
+Later consolidations (post-rewrite):
+
+| Old | New | Reason |
+|---|---|---|
+| `run-research-and-save-files` + `run-research-and-save-files-by-codex` | `run-deep-research` | Two corpus skills merged into one; codex is now a per-run executor *mode* chosen at the intake `AskUserQuestion` batch, not a separate skill. `run-deep-research` also subsumes the earlier `run-corpus-research` + `run-industry-research`. `run-research` (single-question) stays distinct. |
+
 ## Dropped Verbs (and why)
 
 | Verb | Why dropped | What to use instead |
