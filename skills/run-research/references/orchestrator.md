@@ -7,7 +7,7 @@ markdown synthesis.
 This is not corpus research. Do not create per-entity packs, product
 profiles, comparison-template trees, buyer guides, category landscapes,
 or reusable source-ledger corpora. Route those requests to
-`run-research-and-save-files`.
+`run-deep-research`.
 
 ## When to Use
 

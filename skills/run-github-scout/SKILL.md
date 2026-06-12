@@ -30,12 +30,12 @@ Trigger on phrasings like:
 - The question is a **single technical decision or version/API/CVE/pricing
   lookup** with no repo-discovery focus → use `run-research`.
 - The user wants a **multi-file market/category corpus over 5+ entities**
-  with per-entity packs and source ledgers → use `run-research-and-save-files`
-  (or `run-research-and-save-files` in this checkout). Repos can still be the
-  entities — the discriminator is corpus shape, not the subject.
+  with per-entity packs and source ledgers → use `run-deep-research`.
+  Repos can still be the entities — the discriminator is corpus shape,
+  not the subject.
 - The candidates are **not on GitHub** (closed-source SaaS, marketplace
   apps, hosted-only products) → use `run-research` or
-  `run-research-and-save-files`.
+  `run-deep-research`.
 - The task is **codebase-local** (read this repo, fix this bug, plan
   these issues) → not this skill. For Issues planning specifically use
   the `gh` CLI directly (the run-issue-tree skill was retired).

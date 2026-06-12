@@ -31,7 +31,7 @@ Four yes/no questions route to the right workflow:
 4. **What kind of mapping?**
    - Security exposure → Workflow 6 (Security audit).
    - State of an ecosystem, market, vendor category, or 5+ entities →
-     redirect to `run-research-and-save-files`.
+     redirect to `run-deep-research`.
 
 Every workflow except 4 and 5 starts with `start-research`.
 
@@ -410,7 +410,7 @@ the workload conditions under which it holds.
 Do not run ecosystem landscape scans in `run-research`. Requests such as
 "state of X", "market map", "category landscape", "compare 8 vendors",
 "build an evidence pack", or "research alternatives to X" are
-corpus-shaped. Use `run-research-and-save-files`.
+corpus-shaped. Use `run-deep-research`.
 
 If the user asks one narrow technical question inside a landscape, such
 as "is library A still maintained enough for production use?", keep that
