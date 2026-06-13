@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
-"""Read-only state dump for Phase 1 of the run-repo-cleanup flow.
+"""Read-only git inventory for the run-repo-cleanup flow.
 
-Prints a concise, scannable summary of:
-  - Current branch + its upstream + ahead/behind counts
-  - Remote configuration (origin vs upstream) with fork-safety verdict
-  - Modified / staged / untracked files, grouped by top-level directory
-  - Any in-progress rebase / merge / cherry-pick / bisect
-  - Unpushed commits on the current branch
-  - Open PRs on the fork (best-effort, requires gh CLI)
+Surveys every branch (local and remote-only), every worktree, the dirty
+working tree, mid-operation state, and remotes — then emits a verdict on
+whether the repo needs cleanup work. No git state is mutated; no network
+writes. Safe to run anywhere.
 
-No git state is mutated. No network writes. Safe to run anywhere.
+This skill merges all live branches/worktrees into the base branch LOCALLY.
+There is NO fork, NO upstream, NO PR concept here — just a single repo whose
+non-base branches need to be merged and retired.
 
 Usage:
-    python3 audit-state.py           # human-readable report
-    python3 audit-state.py --json    # machine-readable JSON
+    python3 audit-state.py                    # human-readable report
+    python3 audit-state.py --base main        # compare against `main`
+    python3 audit-state.py --stale-days 14    # age cutoff for "stale"
+    python3 audit-state.py --json             # machine-readable JSON
 
 Exit codes:
-    0  clean (nothing actionable)
-    1  actionable state (dirty files, unpushed commits, mid-operation, etc.)
-    2  could not determine state (not in a git repo, fatal shell error)
+    0  clean (no branches to merge/retire, no dirty tree, no mid-op, one worktree)
+    1  actionable (any non-base branch, dirty tree, mid-op, or extra worktree)
+    2  not inside a git repository
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
+import re
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -59,17 +61,18 @@ def find_repo_root() -> Path | None:
     return Path(out)
 
 
-def collect_remotes(root: Path) -> dict[str, dict[str, str]]:
+def collect_remotes(root: Path) -> dict[str, str]:
+    """Parse `git remote -v` to {name: url}. Informational only."""
     rc, out, _ = sh(["git", "remote", "-v"], cwd=root)
-    remotes: dict[str, dict[str, str]] = {}
+    remotes: dict[str, str] = {}
     if rc != 0:
         return remotes
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) < 3:
+        if len(parts) < 2:
             continue
-        name, url, kind = parts[0], parts[1], parts[2].strip("()")
-        remotes.setdefault(name, {})[kind] = url
+        name, url = parts[0], parts[1]
+        remotes.setdefault(name, url)
     return remotes
 
 
@@ -78,56 +81,23 @@ def current_branch(root: Path) -> str | None:
     return out if rc == 0 else None
 
 
-def branch_upstream(root: Path, branch: str) -> str | None:
-    rc, out, _ = sh(
-        ["git", "rev-parse", "--abbrev-ref", f"{branch}@{{upstream}}"],
-        cwd=root,
-    )
-    return out if rc == 0 else None
+def resolve_base(root: Path, requested: str) -> str:
+    """Resolve the base branch: requested if it exists, else main, else master,
+    else the branch HEAD points at on the primary worktree."""
+    def ref_exists(ref: str) -> bool:
+        rc, _, _ = sh(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{ref}"], cwd=root)
+        return rc == 0
 
-
-def ahead_behind(root: Path, branch: str, upstream: str) -> tuple[int, int]:
-    rc, out, _ = sh(
-        ["git", "rev-list", "--left-right", "--count", f"{upstream}...{branch}"],
-        cwd=root,
-    )
-    if rc != 0:
-        return 0, 0
-    parts = out.split()
-    if len(parts) != 2:
-        return 0, 0
-    try:
-        behind, ahead = int(parts[0]), int(parts[1])
-    except ValueError:
-        return 0, 0
-    return ahead, behind
-
-
-_PORCELAIN_LINE = __import__("re").compile(r"^(.{2})\s(.*)$")
-
-
-def dirty_files(root: Path) -> dict[str, list[tuple[str, str]]]:
-    """Return {group: [(status, path), ...]} where group is the top-level dir.
-
-    Parses `git status --porcelain=1` robustly: the XY status is always the
-    first two characters, then a single separator space, then the path (which
-    may be quoted if it contains special characters).
-    """
-    rc, out, _ = sh(["git", "status", "--porcelain=1"], cwd=root)
-    grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
-    if rc != 0:
-        return grouped
-    for line in out.splitlines():
-        m = _PORCELAIN_LINE.match(line)
-        if not m:
-            continue
-        status = m.group(1).strip() or "?"
-        path = m.group(2).strip().strip('"')
-        if " -> " in path:  # rename: "old -> new"
-            path = path.split(" -> ", 1)[1]
-        top = path.split("/", 1)[0] if "/" in path else "(root)"
-        grouped[top].append((status, path))
-    return grouped
+    if ref_exists(requested):
+        return requested
+    if ref_exists("main"):
+        return "main"
+    if ref_exists("master"):
+        return "master"
+    cur = current_branch(root)
+    if cur:
+        return cur
+    return requested
 
 
 def mid_operation(root: Path) -> str | None:
@@ -149,206 +119,271 @@ def mid_operation(root: Path) -> str | None:
     return None
 
 
-def open_prs_on_fork(fork_owner_repo: str | None) -> list[dict] | None:
-    """Query gh for open PRs; returns None if gh missing or query failed."""
-    if not fork_owner_repo:
-        return None
-    rc, out, _ = sh(
-        [
-            "gh",
-            "pr",
-            "list",
-            "--repo",
-            fork_owner_repo,
-            "--state",
-            "open",
-            "--json",
-            "number,title,baseRefName,headRefName,url",
-        ]
-    )
+_PORCELAIN_LINE = re.compile(r"^(.{2})\s(.*)$")
+
+
+def dirty_files(root: Path) -> dict[str, list[tuple[str, str]]]:
+    """Return {group: [(status, path), ...]} where group is the top-level dir."""
+    rc, out, _ = sh(["git", "status", "--porcelain=1"], cwd=root)
+    grouped: dict[str, list[tuple[str, str]]] = defaultdict(list)
     if rc != 0:
-        return None
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return None
+        return grouped
+    for line in out.splitlines():
+        m = _PORCELAIN_LINE.match(line)
+        if not m:
+            continue
+        status = m.group(1).strip() or "?"
+        path = m.group(2).strip().strip('"')
+        if " -> " in path:  # rename: "old -> new"
+            path = path.split(" -> ", 1)[1]
+        top = path.split("/", 1)[0] if "/" in path else "(root)"
+        grouped[top].append((status, path))
+    return grouped
 
 
-def open_prs_on_upstream(upstream_owner_repo: str | None) -> list[dict] | None:
-    if not upstream_owner_repo:
-        return None
-    rc, out, _ = sh(
-        [
-            "gh",
-            "pr",
-            "list",
-            "--repo",
-            upstream_owner_repo,
-            "--state",
-            "open",
-            "--author",
-            "@me",
-            "--json",
-            "number,title,url",
-        ]
-    )
-    if rc != 0:
-        return None
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return None
-
-
-def extract_owner_repo(remote_url: str | None) -> str | None:
-    """Extract 'owner/repo' from a github.com git URL, or return None."""
-    if not remote_url:
-        return None
-    url = remote_url.rstrip("/").removesuffix(".git")
-    if url.startswith("git@github.com:"):
-        return url.split(":", 1)[1]
-    for prefix in ("https://github.com/", "http://github.com/"):
-        if url.startswith(prefix):
-            return url[len(prefix):]
-    return None
-
-
-def list_worktrees(root: Path) -> list[dict]:
-    """Return list of worktree dicts parsed from `git worktree list --porcelain`."""
-    rc, out, _ = sh(["git", "worktree", "list", "--porcelain"], cwd=root)
+def local_branches(root: Path) -> list[str]:
+    rc, out, _ = sh(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/"], cwd=root)
     if rc != 0:
         return []
-    worktrees: list[dict] = []
-    current: dict = {}
-    for line in out.splitlines():
-        if not line:
-            if current:
-                worktrees.append(current)
-                current = {}
+    return [b.strip() for b in out.splitlines() if b.strip()]
+
+
+def remote_only_branches(root: Path, locals_: set[str]) -> list[str]:
+    """origin/ refs with no local counterpart, excluding origin/HEAD."""
+    rc, out, _ = sh(
+        ["git", "for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/"],
+        cwd=root,
+    )
+    if rc != 0:
+        return []
+    result = []
+    for b in out.splitlines():
+        b = b.strip()
+        if not b or b == "origin/HEAD" or b.endswith("/HEAD"):
             continue
-        if line.startswith("worktree "):
-            current["path"] = line[len("worktree "):]
-        elif line.startswith("HEAD "):
-            current["head"] = line[len("HEAD "):]
-        elif line.startswith("branch "):
-            current["branch"] = line[len("branch "):]
-        elif line == "bare":
-            current["bare"] = True
-        elif line == "detached":
-            current["detached"] = True
-        elif line.startswith("locked"):
-            current["locked"] = True
-        elif line.startswith("prunable"):
-            current["prunable"] = True
-    if current:
-        worktrees.append(current)
-    return worktrees
-
-
-def list_branches(root: Path) -> dict[str, list[str]]:
-    """Return {'local': [...], 'remote': [...]} branch names."""
-    result: dict[str, list[str]] = {"local": [], "remote": []}
-    rc, out, _ = sh(["git", "branch", "--list"], cwd=root)
-    if rc == 0:
-        result["local"] = [
-            b.removeprefix("* ").removeprefix("+ ").strip()
-            for b in out.splitlines() if b.strip()
-        ]
-    rc, out, _ = sh(["git", "branch", "-r", "--list"], cwd=root)
-    if rc == 0:
-        result["remote"] = [
-            b.strip().split(" -> ")[0]
-            for b in out.splitlines() if b.strip() and " -> " not in b
-        ]
+        short = b[len("origin/"):]
+        if short in locals_:
+            continue
+        result.append(b)
     return result
 
 
-def build_report(root: Path) -> dict:
-    branch = current_branch(root)
-    upstream = branch_upstream(root, branch) if branch else None
-    ahead = behind = 0
-    if branch and upstream:
-        ahead, behind = ahead_behind(root, branch, upstream)
+def last_commit_iso(root: Path, ref: str) -> str | None:
+    rc, out, _ = sh(["git", "log", "-1", "--format=%cI", ref], cwd=root)
+    return out if rc == 0 and out else None
 
-    remotes = collect_remotes(root)
-    origin_url = (remotes.get("origin") or {}).get("push")
-    upstream_url = (remotes.get("upstream") or {}).get("push")
 
-    fork_owner_repo = extract_owner_repo(origin_url)
-    upstream_owner_repo = extract_owner_repo(upstream_url)
+def last_commit_epoch(root: Path, ref: str) -> int | None:
+    rc, out, _ = sh(["git", "log", "-1", "--format=%ct", ref], cwd=root)
+    if rc != 0 or not out.strip():
+        return None
+    try:
+        return int(out.strip())
+    except ValueError:
+        return None
+
+
+def ahead_behind(root: Path, base: str, ref: str) -> tuple[int, int]:
+    """ahead/behind of ref relative to base via base...ref left-right count.
+    Left = behind (commits in base not ref), right = ahead (commits in ref not base)."""
+    rc, out, _ = sh(
+        ["git", "rev-list", "--left-right", "--count", f"{base}...{ref}"],
+        cwd=root,
+    )
+    if rc != 0:
+        return 0, 0
+    parts = out.split()
+    if len(parts) != 2:
+        return 0, 0
+    try:
+        behind, ahead = int(parts[0]), int(parts[1])
+    except ValueError:
+        return 0, 0
+    return ahead, behind
+
+
+def is_merged(root: Path, base: str, ref: str) -> bool:
+    rc, _, _ = sh(["git", "merge-base", "--is-ancestor", ref, base], cwd=root)
+    return rc == 0
+
+
+def n_files_changed(root: Path, base: str, ref: str) -> int:
+    rc, out, _ = sh(["git", "diff", "--name-only", f"{base}...{ref}"], cwd=root)
+    if rc != 0:
+        return 0
+    return len([l for l in out.splitlines() if l.strip()])
+
+
+def classify(merged: bool, age_days: int | None, stale_days: int) -> str:
+    if merged:
+        return "already-merged"
+    if age_days is not None and age_days > stale_days:
+        return "stale"
+    return "active"
+
+
+def survey_branches(root: Path, base: str, stale_days: int) -> list[dict]:
+    now = int(time.time())
+    locals_ = local_branches(root)
+    locals_set = set(locals_)
+    branches: list[dict] = []
+
+    def add(name: str, ref: str, is_remote_only: bool) -> None:
+        epoch = last_commit_epoch(root, ref)
+        age_days = (now - epoch) // 86400 if epoch is not None else None
+        ahead, behind = ahead_behind(root, base, ref)
+        merged = is_merged(root, base, ref)
+        branches.append({
+            "name": name,
+            "is_remote_only": is_remote_only,
+            "last_commit_iso": last_commit_iso(root, ref),
+            "age_days": age_days,
+            "ahead": ahead,
+            "behind": behind,
+            "merged": merged,
+            "n_files": n_files_changed(root, base, ref),
+            "classification": classify(merged, age_days, stale_days),
+        })
+
+    for name in locals_:
+        if name == base:
+            continue
+        add(name, name, False)
+
+    for ref in remote_only_branches(root, locals_set):
+        add(ref, ref, True)
+
+    return branches
+
+
+def parse_worktrees(root: Path) -> list[dict]:
+    rc, out, _ = sh(["git", "worktree", "list", "--porcelain"], cwd=root)
+    if rc != 0:
+        return []
+    trees: list[dict] = []
+    cur: dict = {}
+    for line in out.splitlines():
+        if not line:
+            if cur:
+                trees.append(cur)
+                cur = {}
+            continue
+        if line.startswith("worktree "):
+            cur["path"] = line[len("worktree "):]
+        elif line.startswith("HEAD "):
+            cur["head"] = line[len("HEAD "):]
+        elif line.startswith("branch "):
+            cur["branch"] = line[len("branch "):].removeprefix("refs/heads/")
+        elif line == "bare":
+            cur["bare"] = True
+        elif line == "detached":
+            cur["detached"] = True
+        elif line.startswith("locked"):
+            cur["locked"] = True
+        elif line.startswith("prunable"):
+            cur["prunable"] = True
+    if cur:
+        trees.append(cur)
+    return trees
+
+
+def survey_worktrees(root: Path, base: str) -> list[dict]:
+    trees = parse_worktrees(root)
+    result: list[dict] = []
+    for wt in trees:
+        path = wt.get("path")
+        entry = {
+            "path": path,
+            "branch": wt.get("branch") or ("(detached)" if wt.get("detached") else "(bare)" if wt.get("bare") else "?"),
+            "dirty_count": None,
+            "ahead_of_base": None,
+        }
+        p = Path(path) if path else None
+        if p and p.is_dir():
+            rc, out, _ = sh(["git", "status", "--porcelain=1"], cwd=p)
+            entry["dirty_count"] = len([l for l in out.splitlines() if l.strip()]) if rc == 0 else None
+
+            rc, out, _ = sh(["git", "rev-list", "--count", f"{base}..HEAD"], cwd=p)
+            if rc != 0:
+                rc, out, _ = sh(["git", "rev-list", "--count", f"origin/{base}..HEAD"], cwd=p)
+            if rc == 0:
+                try:
+                    entry["ahead_of_base"] = int(out.strip())
+                except ValueError:
+                    pass
+        result.append(entry)
+    return result
+
+
+def build_report(root: Path, requested_base: str, stale_days: int) -> dict:
+    base = resolve_base(root, requested_base)
+    branches = survey_branches(root, base, stale_days)
+    worktrees = survey_worktrees(root, base)
+    dirty = {k: v for k, v in dirty_files(root).items()}
+    mid = mid_operation(root)
+
+    has_dirty = bool(dirty)
+    has_branches = bool(branches)
+    has_extra_worktree = len(worktrees) > 1
+    is_actionable = has_dirty or bool(mid) or has_branches or has_extra_worktree
 
     return {
         "repo_root": str(root),
-        "branch": branch,
-        "branch_upstream": upstream,
-        "ahead_commits": ahead,
-        "behind_commits": behind,
-        "remotes": remotes,
-        "origin_owner_repo": fork_owner_repo,
-        "upstream_owner_repo": upstream_owner_repo,
-        "origin_is_upstream_owner_warning": bool(
-            fork_owner_repo and upstream_owner_repo and
-            fork_owner_repo.split("/", 1)[0] == upstream_owner_repo.split("/", 1)[0]
-        ),
-        "dirty_groups": {k: v for k, v in dirty_files(root).items()},
-        "mid_operation": mid_operation(root),
-        "worktrees": list_worktrees(root),
-        "branches": list_branches(root),
-        "open_prs_on_fork": open_prs_on_fork(fork_owner_repo),
-        "open_prs_on_upstream_by_me": open_prs_on_upstream(upstream_owner_repo),
+        "base": base,
+        "current_branch": current_branch(root),
+        "mid_operation": mid,
+        "stale_days": stale_days,
+        "branches": branches,
+        "worktrees": worktrees,
+        "dirty_groups": dirty,
+        "remotes": collect_remotes(root),
+        "verdict": "actionable" if is_actionable else "clean",
     }
 
 
-def actionable(report: dict) -> bool:
-    if report["mid_operation"]:
-        return True
+def _actionable_reason(report: dict) -> str:
+    reasons = []
     if report["dirty_groups"]:
-        return True
-    if report["ahead_commits"]:
-        return True
-    return False
+        n = sum(len(v) for v in report["dirty_groups"].values())
+        reasons.append(f"{n} dirty file(s)")
+    if report["mid_operation"]:
+        reasons.append(report["mid_operation"])
+    counts: dict[str, int] = defaultdict(int)
+    for b in report["branches"]:
+        counts[b["classification"]] += 1
+    branch_bits = [f"{counts[c]} {c}" for c in ("active", "stale", "already-merged") if counts.get(c)]
+    if branch_bits:
+        reasons.append("branches: " + ", ".join(branch_bits))
+    if len(report["worktrees"]) > 1:
+        reasons.append(f"{len(report['worktrees'])} worktrees")
+    return "; ".join(reasons) if reasons else "needs review"
 
 
 def render(report: dict) -> str:
-    lines = []
+    lines: list[str] = []
     lines.append(f"repo:    {report['repo_root']}")
-    lines.append(f"branch:  {report['branch']}")
-    if report["branch_upstream"]:
-        lines.append(
-            f"upstream: {report['branch_upstream']}  "
-            f"(ahead {report['ahead_commits']}, behind {report['behind_commits']})"
-        )
-    else:
-        lines.append("upstream: (none — this branch has no tracking ref)")
-
-    mid = report["mid_operation"]
-    if mid:
-        lines.append(f"⚠  mid-operation: {mid}")
+    lines.append(f"base:    {report['base']}")
+    lines.append(f"current: {report['current_branch']}")
+    if report["mid_operation"]:
+        lines.append(f"!!  mid-operation: {report['mid_operation']}")
 
     lines.append("")
-    lines.append("remotes:")
-    for name, urls in (report["remotes"] or {}).items():
-        push = urls.get("push") or urls.get("fetch") or "?"
-        lines.append(f"  {name:<10} {push}")
-    if report["origin_is_upstream_owner_warning"]:
-        lines.append(
-            "⚠  origin and upstream have the same owner — verify that origin is "
-            "genuinely the private fork, not the same upstream repo twice."
-        )
-
-    lines.append("")
-    groups = report["dirty_groups"]
-    if not groups:
-        lines.append("dirty files: (none — working tree is clean)")
+    branches = report["branches"]
+    if not branches:
+        lines.append(f"branches: (none other than base `{report['base']}`)")
     else:
-        lines.append(f"dirty files, grouped by top-level dir ({sum(len(v) for v in groups.values())} total):")
-        for group in sorted(groups):
-            items = groups[group]
-            lines.append(f"  {group}/  ({len(items)})")
-            for status, path in items[:8]:
-                lines.append(f"    [{status:<2}] {path}")
-            if len(items) > 8:
-                lines.append(f"    … and {len(items) - 8} more")
+        by_class: dict[str, list[dict]] = defaultdict(list)
+        for b in branches:
+            by_class[b["classification"]].append(b)
+        for cls in ("active", "stale", "already-merged"):
+            group = by_class.get(cls, [])
+            lines.append(f"{cls} ({len(group)}):")
+            for b in sorted(group, key=lambda x: x["name"]):
+                age = f"{b['age_days']}d" if b["age_days"] is not None else "?"
+                ro = " [remote-only]" if b["is_remote_only"] else ""
+                lines.append(
+                    f"  {b['name']}{ro}  {age}  +{b['ahead']}/-{b['behind']}  {b['n_files']} files"
+                )
 
     worktrees = report["worktrees"]
     lines.append("")
@@ -357,60 +392,49 @@ def render(report: dict) -> str:
     else:
         lines.append(f"worktrees: {len(worktrees)} — multi-worktree scenario")
         for wt in worktrees:
-            branch_or_detached = (
-                wt.get("branch", "").removeprefix("refs/heads/") or
-                ("(detached)" if wt.get("detached") else "(bare)" if wt.get("bare") else "?")
-            )
-            path = wt.get("path", "?")
-            head = (wt.get("head", "") or "")[:8]
-            flags = " ".join(k for k in ("locked", "prunable") if wt.get(k))
-            line = f"  {path}  @  {branch_or_detached}  ({head})"
-            if flags:
-                line += f"  [{flags}]"
-            lines.append(line)
-
-    branches = report["branches"]
-    n_local = len(branches.get("local", []))
-    n_remote = len(branches.get("remote", []))
-    lines.append("")
-    lines.append(f"branches: {n_local} local, {n_remote} remote")
-
-    fork_prs = report["open_prs_on_fork"]
-    if fork_prs is not None:
-        lines.append("")
-        if fork_prs:
-            lines.append(f"open PRs on fork ({report['origin_owner_repo']}):")
-            for pr in fork_prs:
-                lines.append(
-                    f"  #{pr['number']}  {pr['title'][:60]}  "
-                    f"({pr['baseRefName']} ← {pr['headRefName']})"
-                )
-        else:
-            lines.append(f"open PRs on fork ({report['origin_owner_repo']}): (none)")
-
-    upstream_prs = report["open_prs_on_upstream_by_me"]
-    if upstream_prs:
-        lines.append("")
-        lines.append(
-            f"⚠  open PRs on UPSTREAM ({report['upstream_owner_repo']}) authored by you:"
-        )
-        for pr in upstream_prs:
-            lines.append(f"  #{pr['number']}  {pr['title'][:60]}  {pr['url']}")
-        lines.append(
-            "    These are posted on the public upstream repo. If unintended, "
-            "close them immediately (see references/fork-safety.md)."
-        )
+            dirty = wt.get("dirty_count")
+            ahead = wt.get("ahead_of_base")
+            extras = []
+            if dirty is not None:
+                extras.append(f"{dirty} dirty")
+            if ahead is not None:
+                extras.append(f"{ahead} ahead of base")
+            suffix = ("  (" + ", ".join(extras) + ")") if extras else ""
+            lines.append(f"  {wt.get('path', '?')}  @  {wt.get('branch', '?')}{suffix}")
 
     lines.append("")
-    if actionable(report):
-        lines.append("→ state is ACTIONABLE (dirty tree, unpushed commits, or mid-op).")
+    groups = report["dirty_groups"]
+    if not groups:
+        lines.append("dirty files: (none — working tree is clean)")
     else:
-        lines.append("→ state is CLEAN.")
+        total = sum(len(v) for v in groups.values())
+        lines.append(f"dirty files, grouped by top-level dir ({total} total):")
+        for group in sorted(groups):
+            items = groups[group]
+            lines.append(f"  {group}/  ({len(items)})")
+            for status, path in items[:8]:
+                lines.append(f"    [{status:<2}] {path}")
+            if len(items) > 8:
+                lines.append(f"    ... and {len(items) - 8} more")
+
+    lines.append("")
+    if report["remotes"]:
+        lines.append("remotes:")
+        for name, url in report["remotes"].items():
+            lines.append(f"  {name:<10} {url}")
+        lines.append("")
+
+    if report["verdict"] == "clean":
+        lines.append("-> Repo is clean — nothing to do.")
+    else:
+        lines.append(f"-> ACTIONABLE: {_actionable_reason(report)}.")
     return "\n".join(lines)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Dump git + gh state for the run-repo-cleanup flow.")
+    ap = argparse.ArgumentParser(description="Read-only git inventory for run-repo-cleanup.")
+    ap.add_argument("--base", default="main", help="merge target branch to compare against (default: main)")
+    ap.add_argument("--stale-days", type=int, default=7, help="age cutoff in days for `stale` classification (default: 7)")
     ap.add_argument("--json", action="store_true", help="emit JSON instead of human report")
     args = ap.parse_args()
 
@@ -419,13 +443,13 @@ def main() -> int:
         print("not inside a git repository", file=sys.stderr)
         return 2
 
-    report = build_report(root)
+    report = build_report(root, args.base, args.stale_days)
     if args.json:
         print(json.dumps(report, indent=2))
     else:
         print(render(report))
 
-    return 1 if actionable(report) else 0
+    return 1 if report["verdict"] == "actionable" else 0
 
 
 if __name__ == "__main__":

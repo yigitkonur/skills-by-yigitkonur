@@ -65,7 +65,7 @@ def parse_worktrees(root: Path) -> list[dict]:
     return trees
 
 
-def enrich(wt: dict) -> dict:
+def enrich(wt: dict, base: str = "main") -> dict:
     path = wt.get("path")
     if not path or not Path(path).is_dir():
         return wt
@@ -92,11 +92,14 @@ def enrich(wt: dict) -> dict:
                 except ValueError:
                     pass
 
-    # commit count ahead of origin/main (useful for multi-worktree ordering)
-    rc, out, _ = sh(["git", "rev-list", "--count", "origin/main..HEAD"], cwd=p)
+    # commit count ahead of base (useful for multi-worktree ordering);
+    # try `<base>` first, fall back to `origin/<base>`.
+    rc, out, _ = sh(["git", "rev-list", "--count", f"{base}..HEAD"], cwd=p)
+    if rc != 0:
+        rc, out, _ = sh(["git", "rev-list", "--count", f"origin/{base}..HEAD"], cwd=p)
     if rc == 0:
         try:
-            wt["commits_ahead_of_origin_main"] = int(out.strip())
+            wt["commits_ahead_of_base"] = int(out.strip())
         except ValueError:
             pass
 
@@ -114,7 +117,7 @@ def render(trees: list[dict]) -> str:
         head = (wt.get("head", "") or "")[:8]
         dirty = wt.get("dirty_count")
         unpushed = wt.get("unpushed")
-        ahead = wt.get("commits_ahead_of_origin_main")
+        ahead = wt.get("commits_ahead_of_base")
         upstream = wt.get("upstream")
 
         lines.append(f"  • {path}")
@@ -127,7 +130,7 @@ def render(trees: list[dict]) -> str:
         if unpushed is not None:
             extras.append(f"{unpushed} unpushed")
         if ahead is not None:
-            extras.append(f"{ahead} ahead of origin/main")
+            extras.append(f"{ahead} ahead of base")
         flags = [k for k in ("locked", "prunable", "bare", "detached") if wt.get(k)]
         if flags:
             extras.append(",".join(flags))
@@ -141,6 +144,7 @@ def render(trees: list[dict]) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--base", default="main", help="base branch for ahead-of-base count (default: main)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -149,7 +153,7 @@ def main() -> int:
         print("not inside a git repository", file=sys.stderr)
         return 2
 
-    trees = [enrich(wt) for wt in parse_worktrees(root)]
+    trees = [enrich(wt, args.base) for wt in parse_worktrees(root)]
     if args.json:
         print(json.dumps(trees, indent=2))
     else:

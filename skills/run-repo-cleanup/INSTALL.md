@@ -1,6 +1,6 @@
 # run-repo-cleanup
 
-Sweep a dirty working tree, unpushed commits, or multiple worktrees into conventional commits grouped into contextually separated private-fork pull requests with self-review bodies.
+When you finish work on a project, sweep the repo clean: review and merge every live branch and worktree into the main branch locally (no PRs), retire all dangling branches (local and remote), and move non-essential files into a gitignored trash — with a report you can trust on re-run.
 
 **Category:** productivity
 

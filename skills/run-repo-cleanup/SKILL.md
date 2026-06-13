@@ -1,304 +1,241 @@
 ---
 name: run-repo-cleanup
-description: Use skill if you are sweeping a dirty working tree, unpushed commits, or multiple worktrees into focused private-fork PRs with conventional commits and self-review bodies.
+description: Use skill if you are finishing a project and want every live branch and worktree reviewed and merged into main locally, dangling branches retired, and junk swept aside.
 ---
 
 # Run Repo Cleanup
 
-Turn a messy repo — dirty working tree, unpushed commits, possibly multiple worktrees from parallel subagents — into a small number of focused PRs on the **private fork only**, each with diff-read commits inside and a comprehensive self-review body outside. End state must be **tidy**: no stale branches local or remote, no stale worktrees, working tree clean.
+You ran a project. You spawned branches and parallel worktrees. Now you are done and the repo is a mess: live branches, worktrees, a dirty tree, and AI/dev artifacts scattered around. This skill sweeps all of that into a clean end state:
+
+- Every **live** branch and worktree is **reviewed like a human dev and merged into the main branch** — locally, with `git merge --no-ff`. **No PRs. No fork. No remote review process.**
+- **Zero dangling branches** afterward — none local, none on the remote.
+- Every **stale or conflicting** branch is **reported, never silently dropped**.
+- Every **non-essential file** (including hidden ones) is moved to a gitignored `to-delete/` trash; docs are consolidated into a gitignored `docs/`.
+- A **trustworthy report** tells you exactly what happened — and a re-run on an already-clean repo says "nothing to do."
+
+This is a *finishing* tool. Run it when the work is done, not mid-feature.
 
 ## When To Use
 
 Trigger on phrases and git states like:
 
-- *"clean up this repo"*, *"tidy up before I push"*, *"land my work in PRs"*
-- *"my working tree is a mess — sort it out"*, *"sweep these uncommitted changes"*
-- *"I have N worktrees from the parallel subagents — merge them in order"*
-- *"open the cleanup PRs against the fork, not upstream"*
-- *"split this dirty branch into commits and a self-review body"*
-- *"retire merged branches and worktrees"*, *"prune the stale branches"*
-- Git state: `git status` is dirty + unpushed commits, *or* `git worktree list` shows ≥2 entries, *or* a fork-vs-upstream `origin` setup is active.
+- *"clean up this repo"*, *"tidy up — I'm done"*, *"sweep this before I move on"*
+- *"merge my branches into main"*, *"I have N worktrees from parallel agents — merge them in"*
+- *"retire the stale branches"*, *"no dangling branches left anywhere"*
+- Git state: ≥1 unmerged branch, *or* `git worktree list` shows ≥2 entries, *or* a dirty working tree after a finished task.
 
 Do **NOT** use this skill for:
 
-- *Reviewing someone else's PR* for merge readiness — use `run-review` Mode A.
-- *A single feature branch handoff* with one clean PR and a self-review body — use `run-review` Mode B.
-- *Triaging review feedback* already posted on a PR (human or bot comments) — use `run-review` Mode C.
-- *Runtime debugging* of failing logs or repros — use `debug-runtime`.
+- *Mid-feature work* — this finalizes; it assumes the work is done.
+- *Opening pull requests* — this skill deliberately does not. If you want fork-PRs, that is a different tool.
+- *Reviewing someone else's PR* — use `review-pr`.
+- *Runtime debugging* — use `debug-runtime`.
 
 ## Pinned Defaults
 
-Fill these once per project. If any cell is blank, ask — do not guess.
+Decided once; override per-project only if the repo says otherwise (`AGENTS.md` / `CLAUDE.md` / `CONTRIBUTING.md` win over this skill).
 
-| Key | Value |
-|---|---|
-| **origin (private fork)** | `git@github.com:<owner>/<repo>.git` |
-| **upstream (read-only)** | `git@github.com:<upstream-owner>/<upstream-repo>.git` |
-| **default base branch** | `main` (or `canary` / repo-local convention) |
-| **PR body soft cap** | 50,000 characters (GitHub hard limit: 65,536) |
-| **commit style** | Conventional Commits + gitmoji prefix (e.g. `✨ feat(scope): ...`) |
-
-If the repo has its own `AGENTS.md` / `CLAUDE.md` / `CONTRIBUTING.md`, those win over anything here. This skill is the fallback when the repo is silent.
+| Key | Default | Why |
+|---|---|---|
+| **main branch** | `main` (else `master` / repo convention) | merge target. |
+| **stale cutoff** | **7 days** since last commit | older branches are reported, not auto-merged. See `references/merge-rules.md`. |
+| **merge mode** | `git merge --no-ff` | keeps each branch's history as a revertable unit. |
+| **"significant" change** | >300 changed lines **or** >10 files | triggers a review subagent before merging. |
+| **conflict policy** | understand → resolve with reasoning, else **skip + report** | never blind-resolve. |
+| **commit style** | Conventional Commits + gitmoji | for committing the dirty tree. See `references/conventional-commits.md`. |
+| **keep at root** | `README*`, `AGENTS.md`, `CLAUDE.md`, `LICENSE*`, source + build/config | everything else is sweep-eligible. See `references/to-delete-and-docs.md`. |
 
 ## Non-Negotiable Safety Rails
 
-Load-bearing. Do not skip even on "small" cleanups.
+1. **Read the diff and commit messages before merging any branch.** A merge is a decision, not a button. You must be able to say in one sentence what each branch does. See `references/merge-rules.md`.
+2. **Never blind-resolve a conflict.** Read both sides, read the commit messages, understand intent. Resolve only when you understand it; otherwise abort the merge and report the branch as `skipped-conflict`. A skipped branch is a clean outcome; a wrongly-resolved conflict is silent data loss.
+3. **Move, don't `rm`.** Anything non-essential goes to `to-delete/` (gitignored), never deleted outright. The owner reviews later. See `references/to-delete-and-docs.md`.
+4. **Commit the dirty tree before merging anything.** You cannot merge into a dirty working tree. Diff-walk the dirty files into conventional commits first (Phase 1).
+5. **Never force-push or rewrite published history** unless explicitly asked. This skill works locally; deletion of *merged* remote branches is the only remote mutation, and only after `git fetch --prune`.
+6. **Stale ≠ delete.** A branch older than the cutoff is *reported and skipped by default*, not merged and not deleted, unless you confirm it is real work worth keeping. Old + disconnected from current code is the classic "ignore it" case.
+7. **Every mutating script defaults to dry-run.** `--execute` is required to change state. Always read the dry-run first.
 
-1. **`origin` is the private fork. `upstream` is read-only.** Every mutating `gh` command takes `--repo <fork-owner>/<fork-repo>` explicitly. `gh` CLI defaults are wrong often enough that you never rely on them. See `references/fork-safety.md`.
-2. **No `.env`, no secrets, no session artifacts in git.** `.env`, `*.pem`, `id_rsa*`, `.continues-handoff.md`, `*.claude-session*`, `derailment-notes/`. If project policy forbids `.env`, hardcode values into the scripts that need them — only when the repo is confirmed private.
-3. **Never commit without reading `git diff` first.** Diff → stage → `git diff --cached` → commit. No `git commit -am`. No blind stage-everything. See `references/diff-walk-discipline.md`.
-4. **Never touch `main` directly.** Branch first, always.
-5. **Never force-push or amend published commits** unless the user explicitly asks. A revert commit beats a history rewrite almost every time.
-6. **One concern per commit. One intent per PR.** If you can't describe a commit in one sentence, split it. If you can't describe a PR in one line, split it.
-7. **Move, don't `rm`.** Anything you didn't create this session goes to `to-delete/` (gitignored). See `references/to-delete-folder.md`.
-
-## The Five Phases
+## The Six Phases
 
 ```
-                dirty tree / unpushed / N worktrees
+        live branches + worktrees + dirty tree + AI artifacts
                               │
-       Phase 0 — pre-flight audit (.gitignore, worktrees, remotes, surprises)
+   Phase 0 — Inventory: every branch w/ age + merged-status, worktrees, dirty files
                               │
-       Phase 1 — diff-walk → conventional commits (+ to-delete/ for unsure files)
+   Phase 1 — Commit the dirty tree (diff-walk → conventional commits)
                               │
-       Phase 2 — multi-worktree merge ordering (if N > 1)
+   Phase 2 — Merge plan: order live branches foundation→leaf; flag stale
                               │
-       Phase 3 — commits → contextually separated PRs on the fork
+   Phase 3 — Reviewed merge into main: read diff, subagent if big, --no-ff, skip-on-conflict
                               │
-       Phase 4 — PR body = self-review (≤ 50k chars)
+   Phase 4 — Aggressive sweep: non-essential → to-delete/, docs → docs/, both gitignored
                               │
-       Phase 5 — post-PR verification + tidy: retire merged branches & worktrees
+   Phase 5 — Retire + verify + REPORT: prune merged branches local+remote, remove worktrees
                               │
-                   tidy repo, reviewable PRs, nothing stale
+        main holds all live work · zero dangling branches · clean tree · a report you trust
 ```
 
-Each phase has a checkpoint. Do not skip forward. If you find yourself tempted to skip, that is a red flag — re-audit. Per-phase mental models live in `references/agent-thinking-steering.md`.
+Each phase gates the next. If you are tempted to skip one, re-audit instead.
 
 ---
 
-## Phase 0 — Pre-flight Audit
+## Phase 0 — Inventory
 
-**Think first:** *"What state am I actually in? What would surprise me?"*
+**Think first:** *"What branches exist, how old is each, what's already merged, and what's genuinely live work?"*
 
-1. **Read `.gitignore`.** Know what's already ignored. Extend it (once) with session artifacts + `to-delete/`. Mechanics in `references/pre-flight-audit.md`.
-2. **Run `python3 scripts/audit-state.py`** — read-only state dump: current branch, remotes, dirty files grouped by domain, unpushed commit count, worktrees, open PRs on fork vs upstream.
-3. **List worktrees** explicitly if the output above is unclear: `python3 scripts/list-worktrees.py`.
-4. **Initialize the `to-delete/` pattern** if not present: `python3 scripts/init-to-delete.py`. Idempotent.
-5. **Verify remotes.** `git remote -v` must show `origin` = private fork, `upstream` = read-only source. If not, stop and fix before anything else.
+Run the read-only inventory:
 
-**Gate:** enter Phase 1 only when (a) no in-progress rebase / merge / cherry-pick / bisect, (b) `origin` is verified as the fork, (c) `.gitignore` is up to date.
+```bash
+python3 scripts/audit-state.py --base main           # human report
+python3 scripts/audit-state.py --base main --json    # machine-readable, for the report
+```
 
-**Phase 0 red flags:**
-- Surprise branch (you're on `main` instead of `feat/*`).
-- Surprise remote (`origin` points at upstream).
-- In-progress operation (rebase / merge / cherry-pick).
-- Existing worktrees you didn't create — may be a parallel subagent's work.
+It reports, per branch (local **and** remote-only):
+- last-commit date + **age in days**
+- commits ahead/behind `main`
+- already merged into `main`? (these go straight to Phase 5 retirement)
+- files touched, dirty status
+
+…plus all worktrees (branch, dirty count, ahead-of-main) and the dirty working tree grouped by directory.
+
+**Classification** (the script does this; you verify):
+- **`already-merged`** → nothing to merge; retire in Phase 5.
+- **`active`** (≤ 7 days) → merge in Phase 3.
+- **`stale`** (> 7 days, unmerged) → **report and skip by default.** Merge only if you confirm it is real, still-relevant work. Old + philosophically disconnected from current code → leave it, note it in the report.
+
+**Gate → Phase 1 when:** you have the branch inventory and no in-progress rebase/merge/cherry-pick (the script warns on mid-operation; finish or abort it first).
 
 ---
 
-## Phase 1 — Dirty Tree → Conventional Commits (Diff-Walk)
+## Phase 1 — Commit the Dirty Tree
 
-**Think first:** *"For each hunk, which logical concern does it belong to? If I can't name the concern, I don't understand the change yet."*
+**Think first:** *"You can't merge into a dirty tree. What concern does each uncommitted hunk belong to?"*
 
-### 1.1 Read before you stage
+For every modified file `git diff <file>`; for every untracked file read it. Then stage and commit **one concern at a time** — never `git commit -am`:
 
-For every modified file: `git diff <file>`. For every untracked file: `cat <file>` (or open it). Never stage a change you have not read.
-
-### 1.2 Group by domain, not by file
-
-Typical split for a feature branch:
-- Feature code.
-- Docs / README / AGENTS.md updates for the feature.
-- Env / config / scripts scaffolding.
-- Drive-by fixes unrelated to the feature → **separate branch/PR**.
-
-If one file contains two unrelated concerns, split with `git add -p`. Recipes in `references/diff-walk-discipline.md`.
-
-### 1.3 Move uncertain files to `to-delete/`
-
-Instead of `rm`, move anything you're not sure should live in the repo (AI session artifacts, stray scratch scripts, orphan docs) into `to-delete/`. That folder is in `.gitignore` (step 0.4), so moved files disappear from `git status`. The owner can review later and either promote them back or delete for real.
-
-**Do not** delete unknown files yourself. Move them. See `references/to-delete-folder.md`.
-
-### 1.4 Stage + commit one concern at a time
-
-```
+```bash
 git diff <files-for-this-concern>
 git add <files-for-this-concern>
 git diff --cached
 git commit -m "<emoji> <type>(<scope>): <imperative subject>"
 ```
 
-`git diff --cached` before commit catches "oops, that hunk wasn't supposed to be in this commit". Type + scope registry, gitmoji table, body/footer, breaking-change notation: `references/conventional-commits.md`.
+Type/scope/gitmoji registry: `references/conventional-commits.md`. Uncertain files do **not** get committed — they get swept in Phase 4. 
 
-### 1.5 Sweep loose scripts and docs into the project layout
-
-If cleanup uncovered scripts or docs sitting outside the repo's conventions, relocate them before committing:
-- **Scripts:** `scripts/<comprehensive-name>.<ext>` paired with `scripts/<comprehensive-name>.md` (same base name). Every script gets a doc.
-- **Docs:** `docs/<context>/NN-title-slug.md` — numbered atomic docs per context. `NN` is a zero-padded integer enforcing read order.
-
-Full convention in `references/scripts-and-docs-layout.md`.
-
-**Phase 1 gate:** `git status --short` returns empty (or only deliberate untracked items under `to-delete/`). Every commit message passes "describe in one sentence".
-
-**Phase 1 red flags:**
-- `git diff` output you skimmed but didn't actually read.
-- "Let me bundle these together, they're kinda related." → No. Split.
-- Unknown files you're about to `rm`. → Move to `to-delete/`.
-- A commit that touches `src/` and `docs/` and `scripts/` in one go. → Split.
+**Gate → Phase 2 when:** `git status --short` is empty (the only remaining untracked items, if any, are headed for `to-delete/`).
 
 ---
 
-## Phase 2 — Multi-Worktree Merge Ordering
+## Phase 2 — Merge Plan
 
-**Think first:** *"If I merge worktree A first, does worktree B need a rebase? Which worktree is the foundation?"*
+**Think first:** *"If I merge A before B, does B then conflict or rebase cleanly? Which branch is the foundation?"*
 
-Skip to Phase 3 if you have only one worktree. If you have two or more (typical when parallel subagents have been at work):
-
-1. **Enumerate** with `python3 scripts/list-worktrees.py` — shows each worktree's branch, HEAD, dirty status, unpushed commit count.
-2. **Classify each worktree** by what it produces: feature code, docs, infra, tests, etc.
-3. **Propose ordering** with `python3 scripts/suggest-merge-order.py --base main` — heuristic: worktree whose branch modifies files that other branches also modify goes first (foundation → leaves).
-4. **Agent decides.** The script suggests; you verify against your understanding. Foundation-first means later branches can rebase on a more-complete base. Leaf-last means the last PR is the smallest and most isolated.
-5. **Execute in order.** For each worktree, run Phases 1, 3, 4, 5 inside it. Push + PR the first before starting the second so reviewers see the stack in order.
-
-Full decomposition + worked example in `references/multi-worktree-merge-order.md`.
-
-**Phase 2 red flags:**
-- "I'll just merge them in whatever order I finish." → No. Order matters when branches overlap.
-- A worktree has unrelated commits mixed with the parallel subagent's work. → Isolate before proceeding.
-- Two worktrees claim they're both the "foundation". → They overlap too much; audit and possibly re-split.
-
----
-
-## Phase 3 — Commits → Contextually Separated PRs
-
-**Think first:** *"If the reviewer reads only the title and summary, do they know what to review?"*
-
-### 3.1 Boundaries by reviewer cognitive load
-
-Split when commits touch different domains, have different risk profiles, or a single PR exceeds ~500 lines of meaningful diff. Don't split when two commits must ship together to keep the product working.
-
-### 3.2 Flat or stacked
-
-**Flat** (default): every PR branches off `main` independently. Simpler to review.
-
-**Stacked** (only when PR N genuinely depends on PR N-1's content): child branch's base is the parent branch. Child PR body says "stacked on #N". Recipes in `references/worktree-and-stash.md`.
-
-### 3.3 Push and open — fork only
+Skip to Phase 3 if there is exactly one live branch. With two or more (the parallel-worktree case — could be 25):
 
 ```bash
-git push -u origin <branch>
-
-gh pr create \
-  --repo <fork-owner>/<fork-repo>      # ALWAYS explicit
-  --base <main-or-parent> \
-  --head <branch> \
-  --title "<emoji> <type>(<scope>): ..." \
-  --body-file /tmp/pr-body.md          # from Phase 4
+python3 scripts/plan-merge-order.py --base main --stale-days 7
+python3 scripts/plan-merge-order.py --base main --stale-days 7 --json
 ```
 
-Verify immediately:
-```bash
-gh pr view <number> --repo <fork-owner>/<fork-repo> --json url,baseRefName
-```
-URL must point to the fork, not upstream. Recovery if it lands on upstream: `references/fork-safety.md`.
+The heuristic: a branch whose files are also touched by other branches is more **foundational** (merge it first so later branches merge onto a more-complete base); independent leaves merge last; **stale** branches are listed separately for skip-unless-confirmed. Recency is a factor — newer foundational work sorts ahead of older.
 
-**Phase 3 red flags:**
-- "One big PR is easier for me to track." → Split by reviewer load.
-- `gh pr create` without `--repo`. → Stop.
-- PR opened on upstream. → Close it immediately, reopen on fork.
+**You decide the final order.** The script suggests; override when semantics demand it (e.g. "tests for X must merge after X"). Reasoning model + the 25-worktree worked example: `references/merge-rules.md`.
+
+**Gate → Phase 3 when:** you have an ordered list of `active` branches to merge and an explicit decision on each `stale` one.
 
 ---
 
-## Phase 4 — PR Body Is a Self-Review
+## Phase 3 — Reviewed Merge Into Main
 
-**Think first:** *"What would the reviewer ask? Answer it in the body now."*
+**Think first:** *"Would a human dev merge this branch as-is? What does it actually do?"*
 
-The PR body is not a changelog. It is you reviewing your own work for the reviewer — same tone, same rigor as a good external review. Make "LGTM" easier than "here are five questions".
+Get on the main branch first, working tree clean. Then, **for each branch in the planned order**:
 
-### 4.1 Structure
+1. **Read it.** `git log --oneline main..<branch>` for the commit messages, `git diff main...<branch>` for the change. Name what the branch does in one sentence.
+2. **Subagent-review if significant** (>300 lines or >10 files): dispatch a subagent to read the branch's diff and report whether it's safe to merge, what it touches, and any risk. Treat its report as a claim — spot-check before trusting.
+3. **Merge with `--no-ff`:**
 
-Use `python3 scripts/draft-pr-body.py --base <base> --head <head>` to get a skeleton, then hand-edit.
+   ```bash
+   # dry-run the whole set first to see which branches conflict
+   python3 scripts/merge-branches.py --base main --branches feat/a feat/b docs/c
 
-```
-# <title>
+   # then merge for real, in your chosen order
+   python3 scripts/merge-branches.py --base main --branches feat/a feat/b docs/c --execute
+   ```
 
-## Summary                       — 2-4 sentences, punch card
-## Context / Why now              — the problem this solves
-## The N items                    — per-item: files, rationale, verification
-## Files touched                  — aggregate table
-## Verification                   — automated + manual, checkbox list
-## Risks / Open items             — what the reviewer would ask anyway
-## Follow-ups                     — explicit "not in scope"
-```
+   The script merges each branch `--no-ff --no-commit` to detect conflicts *without* committing; clean merges it commits, conflicted merges it `git merge --abort`s and records as `skipped-conflict`. It **never resolves conflicts** — that's your judgment call.
 
-Stay under **50,000 characters**. Worked example in `references/pr-body-template.md`.
+4. **On a reported conflict:** do it by hand. Read both sides + the commit messages, understand the intent, resolve, `git diff --cached`, commit. If you can't resolve it confidently, leave the branch unmerged and let the report flag it. Do not guess.
 
-### 4.2 Self-review voice — receiving-code-review discipline inlined
-
-**Forbidden anywhere in the body:** "You're absolutely right!", "Great point!", "Thanks for …", "Hope this helps", "Please feel free to …", any gratitude or hedging. Use instead: "Fixed. X." "Pushed back because Y." "Can't verify without Z." Actions over words.
-
-**Verify before you claim.** "Type-check passes" ≠ "tests pass" ≠ "production verified". Say exactly what you ran.
-
-**YAGNI before expansion.** If a section feels like scope creep, grep the codebase for real callers. If unused, remove. PRs shrink by default.
-
-**Pre-empt objections.** If you expect "why not X?", answer it in the body with evidence.
-
-Full pattern set (verifying external suggestions before implementing, gracefully correcting your own pushback, GitHub thread replies vs top-level): `references/receiving-review-patterns.md`. That file is a full inlining of the receiving-code-review discipline — no external skill required.
-
-**Phase 4 red flags:**
-- "Thanks for reviewing!" in the body. → Delete.
-- Claiming tests passed when you ran only type-check. → Lie. Say exactly what you ran.
-- Missing risks section. → Reviewer will wonder why.
-- Body > 50,000 chars. → Split the PR.
+**Gate → Phase 4 when:** every `active` branch is either merged into main or explicitly recorded as `skipped-conflict` / `skipped-stale`.
 
 ---
 
-## Phase 5 — Post-PR Verification + Tidy
+## Phase 4 — Aggressive Sweep
 
-**Think first:** *"What state did I start in? Have I returned to it, plus the intended delta?"*
+**Think first:** *"What in this tree is needed to run, build, or understand the project? Everything else is trash."*
 
-### 5.1 Dispatch a subagent for an independent re-audit
-
-After the last PR opens, launch a subagent to verify the repo is tidy. It reports pass/fail on each item. Brief the subagent with the checklist below and a short context paragraph naming the fork, upstream, and open-PR numbers. Full subagent prompt + expected report shape: `references/post-pr-verification.md`.
-
-### 5.2 Tidy checklist — all must be true
-
-- [ ] `git status --short` is empty.
-- [ ] `git worktree list` shows only the main worktree.
-- [ ] `git branch -vv` shows only `main` and open-PR branches. No merged-local branches lingering.
-- [ ] `git branch -r` (after `git fetch --prune`) shows only origin/main and remote PR branches. No merged-remote branches lingering.
-- [ ] `python3 scripts/audit-state.py` exits 0.
-- [ ] `gh pr list --repo <fork>/<repo> --state open` matches what you intended to open.
-- [ ] `gh pr list --repo <upstream>/<upstream-repo> --author @me` is empty (nothing accidentally on upstream).
-
-### 5.3 Retire merged branches + worktrees
+Move aggressively — it's reversible (everything goes to a gitignored trash, nothing is deleted):
 
 ```bash
-# Fetch + prune so the remote list stays accurate
-git fetch --all --prune
-
-# Dry-run first: see what would be removed
-python3 scripts/retire-merged-branches.py --base main --dry-run
-
-# Execute when you're confident
-python3 scripts/retire-merged-branches.py --base main --execute
-
-# Remove worktrees for merged branches
-git worktree list
-git worktree remove <path-to-retired-worktree>
+python3 scripts/sweep-artifacts.py            # dry-run: shows what moves where
+python3 scripts/sweep-artifacts.py --execute  # move for real
 ```
 
-The script refuses to delete `main` / `master` / `default` and refuses to delete branches that are NOT merged to `--base`.
+The script:
+1. Ensures `to-delete/` and `docs/` exist and are in `.gitignore` (adds them if missing).
+2. **Moves non-essential files into `to-delete/`** — including hidden files/folders: handoff notes, `*.claude-session*`, `.aider*`, `derailment-notes/`, scratch scripts, stray plans, secrets, unknown binaries. Be aggressive.
+3. **Consolidates docs into `docs/`** — stray `*.md` (outside the keep-list) and doc-like folders (`agent-docs/`, `notes/`) are merged into a single `docs/`. Multiple doc folders always unify into one `docs/`.
+4. **Keeps at root:** `README*`, `AGENTS.md`, `CLAUDE.md`, `LICENSE*`, and everything required to run/build (source, `package.json`, lockfiles, configs).
 
-### 5.4 Final cleanliness probe
+Anything the script is unsure about it lists rather than moving — you make the call. Full keep/move rules + the rationale for gitignoring `docs/`: `references/to-delete-and-docs.md`.
 
-Re-run `scripts/audit-state.py`. If it says "state is CLEAN", you are done. If not, read the output and fix.
+**Gate → Phase 5 when:** the working tree contains only essential, tracked files (plus the gitignored `to-delete/` and `docs/`).
 
-**Phase 5 red flags:**
-- "The repo is mostly clean." → No. Tidy is binary. Finish or flag.
-- Retire script errored; I ran it with `--force`. → Don't. Retire refuses for a reason.
-- Open PR on upstream that wasn't there before. → Recovery in `references/fork-safety.md`.
+---
+
+## Phase 5 — Retire, Verify, Report
+
+**Think first:** *"Did I leave anything dangling? Can I prove the repo is clean?"*
+
+### 5.1 Retire merged branches + worktrees
+
+```bash
+git fetch --all --prune                                          # accurate remote view first
+python3 scripts/retire-merged-branches.py --base main            # dry-run
+python3 scripts/retire-merged-branches.py --base main --execute  # delete merged local + remote + worktrees
+```
+
+The script refuses to delete the main branch, the current branch, or any branch **not** fully merged into `main`. It removes worktrees whose branch is merged. Stale, unmerged branches you chose to skip are **kept** and named in the report — they are not dangling, they are deliberately retained.
+
+### 5.2 Verify — all must be true
+
+- [ ] `git status --short` empty.
+- [ ] `git worktree list` shows only the main worktree (or only deliberately-kept ones).
+- [ ] `git branch -vv` shows only the main branch + deliberately-kept stale branches. No merged branch lingering.
+- [ ] `git branch -r` (post-prune) shows no merged remote branch lingering.
+- [ ] `python3 scripts/audit-state.py --base main` reports CLEAN (exit 0).
+
+### 5.3 The report
+
+Produce the report the owner actually wants — generate it from the JSON the scripts emit:
+
+```bash
+python3 scripts/audit-state.py --base main --json   # before/after states feed the report
+```
+
+The report must state, per branch:
+
+| Branch | Age | What it did (from commits) | Disposition |
+|---|---|---|---|
+| `feat/x` | 2d | "add export endpoint" | **merged-now** → deleted local+remote |
+| `fix/y` | 1d | "null-check in parser" | **already-merged** → deleted |
+| `feat/z` | 40d | "old spike, conflicts" | **skipped-stale** → kept, review manually |
+| `docs/w` | 3d | "rewrite README" | **skipped-conflict** → kept, conflicts with #… |
+
+And the artifact summary: how many files moved to `to-delete/`, what got consolidated into `docs/`.
+
+**Idempotency:** on a re-run of an already-clean repo, every branch is `already-merged` or absent, nothing moves, and the report says **"Repo is clean — nothing to do."** That is the success signal for "I ran it again and everything was fine."
 
 ---
 
@@ -306,48 +243,34 @@ Re-run `scripts/audit-state.py`. If it says "state is CLEAN", you are done. If n
 
 | Mistake | Fix |
 |---|---|
-| `git commit -am "..."` without reading diff | Diff-walk; stage per-concern. |
-| `rm` an unknown file | Move to `to-delete/` instead. |
-| Opening PR on upstream by accident | `gh pr create` needs `--repo` explicit, every time. |
-| Committing `.env` / session artifacts | Check `.gitignore` in Phase 0; extend it if needed. |
-| Amending a published commit | New fix commit on top. Never amend. |
-| Force-push on reviewed branch | No. Add a commit. |
-| PR body says "various improvements" | Rewrite per-item. |
-| "Thanks for the review!" in body | Delete. State the fix. |
-| Skipping Phase 5 | Merge leaves debris. Retire it. |
-| Merging worktrees in arbitrary order | Foundation → leaves. |
-| Retiring a not-merged branch with `--force` | Refuse. Merge first. |
-
-If you catch yourself thinking *"let me just squash these together"*, *"I'll open this on upstream as a courtesy"*, *"this commit is close enough"*, *"I'll amend real quick"*, *"the reviewer will figure it out from the diff"*, or *"I'll clean up the worktrees later"* — stop and re-audit.
+| Merging a branch without reading its diff/commits | Read first. Name it in one sentence (Phase 3.1). |
+| Blind-resolving a conflict to "make it merge" | Understand intent or skip + report. Never guess. |
+| Merging a stale, disconnected branch by default | Stale = skip + report unless you confirm it's real. |
+| Auto-merging 25 worktrees in finish-order | Plan the order foundation→leaf first (Phase 2). |
+| `rm` an unknown file | Move to `to-delete/`. |
+| Deleting an unmerged branch | The retire script refuses — don't `--force` it. Merge or keep. |
+| Forgetting `git fetch --prune` before retiring | Stale refs → wrong merged-status. Always prune first. |
+| Re-run produces a confusing diff | A clean re-run must say "nothing to do." If it doesn't, read the inventory. |
 
 ## Scripts
 
-Every script lives in `scripts/` and has a paired `<name>.md` doc next to it. All scripts are Python 3 stdlib only — no dependencies, no `.env`, no secrets.
+All Python 3 stdlib only — no deps, no `.env`, no secrets. Every mutating script defaults to dry-run.
 
-| Script | Purpose | Mutates? |
-|---|---|---|
-| `scripts/audit-state.py` | Phase 0 state dump: dirty files by domain, worktrees, branches, unpushed commits, fork-vs-upstream PR check. | No |
-| `scripts/list-worktrees.py` | Phase 0 / 2: enumerate worktrees with branch + dirty + unpushed. | No |
-| `scripts/init-to-delete.py` | Phase 0: create `to-delete/` + add to `.gitignore`. Idempotent. | Yes (one-time) |
-| `scripts/suggest-merge-order.py` | Phase 2: propose foundation→leaf merge order for N branches. | No |
-| `scripts/draft-pr-body.py` | Phase 4: PR body skeleton from a commit range. | No |
-| `scripts/retire-merged-branches.py` | Phase 5: delete local + remote branches merged to `<base>`. Dry-run by default. | Yes (with `--execute`) |
+| Script | Phase | Purpose | Mutates? |
+|---|---|---|---|
+| `scripts/audit-state.py` | 0 / 5 | Inventory: branches with age + merged-status, worktrees, dirty tree. JSON feeds the report. | No |
+| `scripts/plan-merge-order.py` | 2 | Order live branches foundation→leaf; flag stale. | No |
+| `scripts/merge-branches.py` | 3 | Merge branches into base `--no-ff`; abort + report conflicts (never resolves). | Yes (`--execute`) |
+| `scripts/sweep-artifacts.py` | 4 | Move non-essential files → `to-delete/`; consolidate docs → `docs/`; manage `.gitignore`. | Yes (`--execute`) |
+| `scripts/retire-merged-branches.py` | 5 | Delete merged local+remote branches + worktrees. Refuses unmerged. | Yes (`--execute`) |
+| `scripts/list-worktrees.py` | 0 / 2 | Enumerate worktrees with branch + dirty + ahead-of-base. | No |
 
 ## References
 
-- `references/pre-flight-audit.md` — Phase 0 mechanics, `.gitignore` hygiene, surprise-state triage.
-- `references/diff-walk-discipline.md` — diff-first commit discipline, `git add -p` recipes, hunk-level splits.
-- `references/multi-worktree-merge-order.md` — Phase 2: classify worktrees, compute ordering, execute sequentially.
-- `references/to-delete-folder.md` — the `to-delete/` pattern: what goes there, how to flush it, never `rm`.
-- `references/scripts-and-docs-layout.md` — `scripts/<name>.<ext>` + `.md` pair; `docs/<context>/NN-title-slug.md` numbered atomics.
-- `references/post-pr-verification.md` — Phase 5 subagent dispatch: prompt, checklist, expected report.
-- `references/agent-thinking-steering.md` — meta-cognition per phase: decomposition, ordering, verification, when to stop.
-- `references/conventional-commits.md` — type + scope registry, gitmoji, body/footer, breaking-change notation.
-- `references/pr-body-template.md` — the copy-paste PR body skeleton with worked example. Stay under 50k chars.
-- `references/receiving-review-patterns.md` — full inlining of the receiving-code-review discipline (forbidden phrases, verification-first, YAGNI gate, pushback template, GitHub thread replies).
-- `references/fork-safety.md` — origin vs upstream verification, `--repo` rule, accidental-upstream recovery, secrets checklist.
-- `references/worktree-and-stash.md` — branch/stash/rebase recipes for switching between uncommitted work on different bases.
+- `references/merge-rules.md` — recency policy, foundation→leaf ordering, the 25-worktree example, conflict handling, when to dispatch a review subagent, `--no-ff` rationale.
+- `references/to-delete-and-docs.md` — what's essential vs sweep-eligible (incl. hidden files), the `to-delete/` trash pattern, docs consolidation into a single gitignored `docs/`, `.gitignore` management.
+- `references/conventional-commits.md` — type + scope registry, gitmoji, body/footer, breaking-change notation (for Phase 1).
 
 ## Bottom Line
 
-Audit → diff-walk commits → merge-order if multi-worktree → contextual PRs on the fork → self-review bodies → tidy up. Nothing stale, nothing on upstream, every commit read, every PR earned. One discipline, zero exceptions.
+Inventory by age → commit the dirty tree → plan the merge order → review each branch and merge it into main → sweep the trash → retire every merged branch local and remote, then report. Nothing dangling, nothing merged blindly, nothing deleted that you didn't see. Run it when you're done; run it again and it tells you you're clean.

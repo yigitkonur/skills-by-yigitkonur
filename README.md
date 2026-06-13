@@ -122,7 +122,7 @@ Drive a CLI, API, browser, or other live tool during the session.
 - **[run-railway](skills/run-railway/)** — Railway CLI commands, workflows, and version-drift routing.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-railway`
 
-- **[run-repo-cleanup](skills/run-repo-cleanup/)** — Sweep dirty tree + unpushed commits + N worktrees into focused private-fork PRs with self-review bodies.
+- **[run-repo-cleanup](skills/run-repo-cleanup/)** — Finish a project: review + merge every live branch and worktree into main locally (no PRs), retire dangling branches, sweep junk to a gitignored trash.
   `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-repo-cleanup`
 
 - **[run-research](skills/run-research/)** — Single-question technical research with source-backed synthesis.

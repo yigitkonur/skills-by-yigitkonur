@@ -5,9 +5,15 @@ Default is DRY-RUN. Requires explicit --execute to actually delete anything.
 Refuses to delete: main, master, default, the current branch, or any branch
 not fully merged into <base>.
 
+In --execute mode it runs `git fetch --all --prune` first (so remote
+merged-status is accurate) unless --no-fetch is passed. It also removes
+worktrees whose checked-out branch is merged into <base>, before deleting
+the corresponding local branch.
+
 Usage:
     python3 retire-merged-branches.py --base main             # dry-run
     python3 retire-merged-branches.py --base main --execute   # delete for real
+    python3 retire-merged-branches.py --base main --execute --no-fetch
     python3 retire-merged-branches.py --base main --remote-only --execute
     python3 retire-merged-branches.py --base main --local-only --execute
 
@@ -83,6 +89,34 @@ def merged_remote_branches(base: str, root: Path, remote: str = "origin") -> lis
     return result
 
 
+def worktrees(root: Path) -> list[dict[str, str]]:
+    """Parse `git worktree list --porcelain` into a list of dicts.
+
+    Each dict has keys 'path' and optionally 'branch' (short name).
+    The first entry is the main worktree.
+    """
+    rc, out, _ = sh(["git", "worktree", "list", "--porcelain"], cwd=root)
+    if rc != 0:
+        return []
+    result: list[dict[str, str]] = []
+    cur: dict[str, str] = {}
+    for raw in out.splitlines():
+        line = raw.rstrip()
+        if line.startswith("worktree "):
+            if cur:
+                result.append(cur)
+            cur = {"path": line[len("worktree "):]}
+        elif line.startswith("branch "):
+            ref = line[len("branch "):]
+            cur["branch"] = ref[len("refs/heads/"):] if ref.startswith("refs/heads/") else ref
+        elif line == "" and cur:
+            result.append(cur)
+            cur = {}
+    if cur:
+        result.append(cur)
+    return result
+
+
 def run_action(cmd: list[str], dry_run: bool, label: str, cwd: Path) -> bool:
     prefix = "[DRY]" if dry_run else "[DO] "
     print(f"  {prefix} {label}: {' '.join(cmd)}")
@@ -102,6 +136,7 @@ def main() -> int:
     ap.add_argument("--execute", action="store_true", help="actually perform deletions")
     ap.add_argument("--local-only", action="store_true", help="only retire local branches")
     ap.add_argument("--remote-only", action="store_true", help="only retire remote branches")
+    ap.add_argument("--no-fetch", action="store_true", help="skip the git fetch --all --prune step")
     args = ap.parse_args()
 
     root = repo_root()
@@ -121,8 +156,52 @@ def main() -> int:
     any_action = False
     errors = 0
 
+    # Fetch + prune first so remote merged-status is accurate.
+    if not args.no_fetch:
+        if dry_run:
+            print("(would run git fetch --all --prune)")
+        else:
+            print("fetching + pruning remotes...")
+            rc, _, err = sh(["git", "fetch", "--all", "--prune"], cwd=root)
+            if rc != 0:
+                print(f"  ⚠ git fetch --all --prune failed: {err}", file=sys.stderr)
+        print("")
+
     if not args.remote_only:
         local = merged_local_branches(args.base, root, current)
+        merged_set = set(local)
+
+        # Remove worktrees on merged branches BEFORE deleting those branches
+        # (a branch checked out in a worktree cannot be deleted).
+        wts = worktrees(root)
+        wts_to_remove = [
+            wt
+            for wt in wts[1:]  # skip main worktree (first entry)
+            if wt.get("branch") and wt["branch"] in merged_set
+        ]
+        if wts_to_remove:
+            any_action = True
+            print(f"{len(wts_to_remove)} worktree(s) on merged branches:")
+            for wt in wts_to_remove:
+                path = wt["path"]
+                branch = wt["branch"]
+                prefix = "[DRY]" if dry_run else "[DO] "
+                print(f"  {prefix} remove worktree ({branch}): git worktree remove {path}")
+                if not dry_run:
+                    rc, out, err = sh(["git", "worktree", "remove", path], cwd=root)
+                    if rc != 0:
+                        print(
+                            f"        ⚠ worktree {path} not removed (likely dirty): "
+                            f"{err or out}. Leaving it (NOT using --force); "
+                            f"branch {branch} kept too.",
+                            file=sys.stderr,
+                        )
+                        errors += 1
+                        # Don't delete a branch still checked out in a live worktree.
+                        if branch in merged_set:
+                            local = [b for b in local if b != branch]
+            print("")
+
         if local:
             any_action = True
             print(f"{len(local)} local branch(es) merged to {args.base}:")
