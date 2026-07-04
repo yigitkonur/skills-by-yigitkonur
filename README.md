@@ -1,201 +1,206 @@
 # skills-by-yigitkonur
 
-Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, design extraction, config files, publish. One combined pack, **45 skills**, organized under the 12-verb naming registry (see [NAMING.md](NAMING.md)).
+skills for ai coding agents — one pack, **45 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, design extraction, config files, publish. install what you need, skip the rest. no monolith.
 
-> Previously split into a main pack and a `-secondary` b-side. **They're now merged here** — one repo, one install surface. The old secondary repo is archived and redirects here.
+> used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
-## Install
+## install
 
-Two ways to install. **Both read from this one repo** — pick whichever fits your workflow.
+two ways in. both read the same `skills/` folder, so pick your vibe.
 
-### 1. As Claude Code plugins (easy install / uninstall via `/plugin`)
+### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
-Add the marketplace once:
+add the marketplace once:
 
 ```
 /plugin marketplace add yigitkonur/skills-by-yigitkonur
 ```
 
-Then install exactly what you want — a single skill, a themed bundle, or everything — and remove it just as easily:
+then grab exactly what you want — one skill, a themed bundle, the researcher agents, or everything — and drop it just as fast:
 
 ```
-/plugin install run-review@yigitkonur         # one skill
-/plugin install yk-mcp@yigitkonur             # a themed bundle
-/plugin install yk-everything@yigitkonur      # the whole pack
-/plugin uninstall run-review@yigitkonur       # gone
+/plugin install run-review@yigitkonur          # one skill
+/plugin install yk-mcp@yigitkonur              # a themed bundle
+/plugin install yk-researchers@yigitkonur      # just the internet-researcher agents
+/plugin install yk-everything@yigitkonur       # the whole thing
+/plugin uninstall run-review@yigitkonur        # gone
 ```
 
-Browse and toggle every plugin interactively with `/plugin`. Each **per-skill** plugin is named after the skill (`<skill-name>@yigitkonur`); **bundles** are the `yk-*` names in the table below.
+installed ≠ enabled. `/plugin` lets you flip stuff on and off without reinstalling — enable what you're working with, mute the rest so it doesn't eat your context. per-skill plugins are named after the skill (`<skill>@yigitkonur`); bundles are the `yk-*` names below.
 
-### 2. With the `skills` CLI
+### with the `skills` cli
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur                      # full pack
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>  # single skill
 ```
 
-Per-skill one-liners live in each skill's `INSTALL.md`.
+per-skill one-liners live in each skill's `INSTALL.md`.
+
+### staying fresh
+
+every push to `main` auto-bumps the version, so `/plugin marketplace update` always pulls the latest skills and agents. you don't chase releases — they chase you.
 
 ---
 
-## Bundles
+## bundles
 
-Themed groups for one-shot installs. Every skill also installs individually — see the sections below.
+themed groups for one-shot installs. every skill also installs on its own — see the sections under this.
 
-| Bundle | Skills | Install |
+| bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 45 | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 45 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
-| **yk-frontend** | url→next.js, design.md, UI/UX/Laws-of-UX audits | `/plugin install yk-frontend@yigitkonur` |
-| **yk-mcp** | build/audit/test/convert MCP servers, clients, CLIs | `/plugin install yk-mcp@yigitkonur` |
+| **yk-frontend** | url→next.js, design.md, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
+| **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
 | **yk-build** | chrome, effect-ts, kernel, langchain, macos, raycast, tinacms | `/plugin install yk-build@yigitkonur` |
-| **yk-research** | research, deep-research, github-scout, bulk-search (+ researcher agents) | `/plugin install yk-research@yigitkonur` |
+| **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | agent-browser, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
-| **yk-config** | AGENTS/CLAUDE/REVIEW files, drift audit, Makefiles | `/plugin install yk-config@yigitkonur` |
+| **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
 | **yk-ops** | railway, repo-cleanup, babysitter, linear, offload, vercel, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
 
 ---
 
-## 🏗️ Build apps & frameworks
+## 🏗️ build apps & frameworks
 
-Write application code with a specific framework or SDK.
+write app code against a specific framework or sdk.
 
-- **[build-chrome-extension](skills/build-chrome-extension/)** — Chrome MV3: manifest v3, service_worker, content_scripts, popup, side_panel, declarativeNetRequest, Web Store packaging.
-- **[build-effect-ts-v3](skills/build-effect-ts-v3/)** — Effect-TS v3: `Effect.gen`, `Layer`, `Schema`, typed errors, fibers, `Stream`.
-- **[build-kernel-ts-sdk](skills/build-kernel-ts-sdk/)** — Kernel SDK (`@onkernel/sdk`): browsers, Apps, profiles, Managed Auth, pools, Playwright/CDP wiring.
-- **[build-langchain-ts-app](skills/build-langchain-ts-app/)** — LangChain.js: agents, tool-calling, RAG retrievers, structured output, streaming, LangGraph `StateGraph`.
-- **[build-macos-app](skills/build-macos-app/)** — SwiftUI/AppKit: HIG, Liquid Glass, snapshot validation, SwiftLint hooks, Convex+Clerk sync.
-- **[build-raycast-script-command](skills/build-raycast-script-command/)** — Raycast Script Commands (`.sh`/`.py` with `@raycast.*` metadata): fields, modes, arguments, discovery.
-- **[build-tinacms-nextjs](skills/build-tinacms-nextjs/)** — TinaCMS + Next.js App Router: `tina/config.ts`, MDX/git content, schema modeling, `useTina` visual editing, deploys.
+- **[build-chrome-extension](skills/build-chrome-extension/)** — chrome mv3: manifest v3, service_worker, content_scripts, popup, side_panel, declarativenetrequest, web store packaging.
+- **[build-effect-ts-v3](skills/build-effect-ts-v3/)** — effect-ts v3: `Effect.gen`, `Layer`, `Schema`, typed errors, fibers, `Stream`.
+- **[build-kernel-ts-sdk](skills/build-kernel-ts-sdk/)** — kernel sdk (`@onkernel/sdk`): browsers, apps, profiles, managed auth, pools, playwright/cdp.
+- **[build-langchain-ts-app](skills/build-langchain-ts-app/)** — langchain.js: agents, tool-calling, rag retrievers, structured output, streaming, langgraph.
+- **[build-macos-app](skills/build-macos-app/)** — swiftui/appkit: hig, liquid glass, snapshot validation, swiftlint hooks, convex+clerk sync.
+- **[build-raycast-script-command](skills/build-raycast-script-command/)** — raycast script commands (`.sh`/`.py` with `@raycast.*` header): fields, modes, arguments, discovery.
+- **[build-tinacms-nextjs](skills/build-tinacms-nextjs/)** — tinacms + next.js app router: `tina/config.ts`, mdx/git content, schema modeling, `useTina` visual editing.
 
 `/plugin install yk-build@yigitkonur`
 
 ---
 
-## 🔌 MCP & agent interfaces
+## 🔌 mcp & agent interfaces
 
-Build, test, convert, and audit MCP servers, clients, and agent-facing CLIs.
+build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 
-- **[build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/)** — MCP server on `@modelcontextprotocol/sdk` v1.x: single-package, Zod, `McpServer`.
-- **[build-mcp-server-sdk-v2](skills/build-mcp-server-sdk-v2/)** — MCP server on `@modelcontextprotocol/server` v2 alpha: split packages, `registerTool`, `ctx.mcpReq`.
-- **[build-mcp-use-server](skills/build-mcp-use-server/)** — mcp-use/server: `server.tool`, response helpers, `ctx.auth`, sessions, transports, widgets, Inspector, deploy.
+- **[build-mcp-server-sdk-v1](skills/build-mcp-server-sdk-v1/)** — mcp server on `@modelcontextprotocol/sdk` v1.x: single-package, zod, `McpServer`.
+- **[build-mcp-server-sdk-v2](skills/build-mcp-server-sdk-v2/)** — mcp server on `@modelcontextprotocol/server` v2 alpha: split packages, `registerTool`, `ctx.mcpReq`.
+- **[build-mcp-use-server](skills/build-mcp-use-server/)** — mcp-use/server: `server.tool`, response helpers, `ctx.auth`, sessions, transports, widgets, inspector, deploy.
 - **[build-mcp-use-client](skills/build-mcp-use-client/)** — mcp-use client: `MCPClient`, `MCPSession`, `useMcp`, `mcp-use/react`, browser transport.
-- **[build-mcp-use-agent](skills/build-mcp-use-agent/)** — mcp-use `MCPAgent`: LLM picks & orchestrates MCP tools via `run`, `stream`, `streamEvents`.
-- **[build-clean-mcp-architecture](skills/build-clean-mcp-architecture/)** — Clean Architecture layer boundaries for TypeScript mcp-use/server code, import direction, dependency-cruiser gates.
-- **[convert-mcp-sdk-v1-to-v2](skills/convert-mcp-sdk-v1-to-v2/)** — Port a v1 MCP server to the v2 split-package SDK: package renames, `ServerContext`, Zod v4.
-- **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** — Drive the `mcpc` CLI (0.2.x) to test/debug/smoke-check an MCP server over stdio or Streamable HTTP.
-- **[audit-agentic-mcp](skills/audit-agentic-mcp/)** — Audit an MCP server for agent-readiness, or design a new one before code: framework, security, context posture.
-- **[audit-agentic-cli](skills/audit-agentic-cli/)** — Audit/design a CLI for agent consumption: stable JSON, exit codes, non-interactive flags, repair loops.
+- **[build-mcp-use-agent](skills/build-mcp-use-agent/)** — mcp-use `MCPAgent`: an llm picks & orchestrates mcp tools via `run`, `stream`, `streamEvents`.
+- **[build-clean-mcp-architecture](skills/build-clean-mcp-architecture/)** — clean architecture layer boundaries for typescript mcp-use/server code, import direction, dependency-cruiser gates.
+- **[convert-mcp-sdk-v1-to-v2](skills/convert-mcp-sdk-v1-to-v2/)** — port a v1 mcp server to the v2 split-package sdk: package renames, `ServerContext`, zod v4.
+- **[test-by-mcpc-cli](skills/test-by-mcpc-cli/)** — drive the `mcpc` cli (0.2.x) to test/debug/smoke-check an mcp server over stdio or streamable http.
+- **[audit-agentic-mcp](skills/audit-agentic-mcp/)** — audit an mcp server for agent-readiness, or design a new one before code: framework, security, context posture.
+- **[audit-agentic-cli](skills/audit-agentic-cli/)** — audit/design a cli for agent consumption: stable json, exit codes, non-interactive flags, repair loops.
 
 `/plugin install yk-mcp@yigitkonur`
 
 ---
 
-## ⚙️ Config & instruction files
+## ⚙️ config & instruction files
 
-Generate or refresh config / instruction files that another tool consumes.
+generate or refresh the config / instruction files another tool reads.
 
-- **[init-agent-config](skills/init-agent-config/)** — AGENTS.md / CLAUDE.md / REVIEW.md hierarchies; folder-scoped guidance; native review adapters.
-- **[init-makefiles](skills/init-makefiles/)** — Scaffold safe scenario Makefiles (local dev, tunnels, deploys, R2 sync, Supabase, Railway, Vercel, Mac shipping).
-- **[update-agent-config](skills/update-agent-config/)** — Audit AGENTS.md / CLAUDE.md / REVIEW.md for drift after refactors; refresh refs, recount frequency tables, fill gap folders.
+- **[init-agent-config](skills/init-agent-config/)** — agents.md / claude.md / review.md hierarchies; folder-scoped guidance; native review adapters.
+- **[init-makefiles](skills/init-makefiles/)** — scaffold safe scenario makefiles (local dev, tunnels, deploys, r2 sync, supabase, railway, vercel, mac shipping).
+- **[update-agent-config](skills/update-agent-config/)** — audit agents.md / claude.md / review.md for drift after refactors; refresh refs, recount frequency tables, fill gap folders.
 
 `/plugin install yk-config@yigitkonur`
 
 ---
 
-## 🎨 Frontend rebuild & audit
+## 🎨 frontend rebuild & audit
 
-Rebuild a live site, extract its design, or audit a running UI/UX.
+rebuild a live site, rip its design, or audit a running ui/ux.
 
-- **[convert-url-to-nextjs](skills/convert-url-to-nextjs/)** — Rebuild a deployed site AS-IS pixel-faithful as a Next.js project from a live URL — the "we lost the frontend repo" recovery. L0+L1 crawl + back-to-back agent-browser verification.
-- **[create-design-md](skills/create-design-md/)** — Produce a `design.md` spec (Google Labs DESIGN.md) plus per-asset `references/` tree from a live URL, codebase, or HTML snapshot.
-- **[audit-ux-laws](skills/audit-ux-laws/)** — Audit UI against the 30 Laws of UX (Fitts's, Hick's, Miller's, Jakob's, Gestalt, choice overload, cognitive load) with CRITICAL/MINOR severity and code fixes.
-- **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — Visual UI audit across pages/viewports with browser screenshots, per-bug findings to `css-issues/[YY-MM-DD]/...`, ending with an approval-gated fix-subagent plan.
-- **[audit-ux-and-save-files](skills/audit-ux-and-save-files/)** — Usability audit from real personas walking their journeys, per-issue findings to `ux-findings/[YY-MM-DD]/...`, ending with a prioritized recommendations report (reports, does not fix).
+- **[convert-url-to-nextjs](skills/convert-url-to-nextjs/)** — rebuild a deployed site as-is pixel-faithful as a next.js project from a live url — the "we lost the frontend repo" recovery. l0+l1 crawl + back-to-back agent-browser verification.
+- **[create-design-md](skills/create-design-md/)** — produce a `design.md` spec (google labs design.md format) plus a per-asset `references/` tree from a live url, codebase, or html snapshot.
+- **[audit-ux-laws](skills/audit-ux-laws/)** — audit ui against the 30 laws of ux (fitts's, hick's, miller's, jakob's, gestalt, choice overload, cognitive load) with critical/minor severity + code fixes.
+- **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — visual ui audit across pages/viewports with browser screenshots, per-bug findings to `css-issues/[yy-mm-dd]/...`, ending with an approval-gated fix-subagent plan.
+- **[audit-ux-and-save-files](skills/audit-ux-and-save-files/)** — usability audit from real personas walking their journeys, per-issue findings to `ux-findings/[yy-mm-dd]/...`, ending with a prioritized recommendations report (reports, doesn't fix).
 
 `/plugin install yk-frontend@yigitkonur`
 
 ---
 
-## 📝 Review & debug
+## 📝 review & debug
 
-Evaluate a change for merge-readiness, triage feedback, verify "done", and chase runtime bugs.
+judge a change for merge-readiness, triage feedback, verify "done", and chase runtime bugs.
 
-- **[run-review](skills/run-review/)** — One entry point, four modes: (A) do a PR/branch review, (B) open your branch as a self-review PR, (C) triage received feedback, (D) delegate to `codex review`.
-- **[run-codex-review-loop](skills/run-codex-review-loop/)** — Native `codex exec review` across multiple branches; compare findings; rescue a saved branch-review loop.
-- **[audit-completion](skills/audit-completion/)** — Audit task / session / plan / branch completion claims with evidence; remediate to terminal status.
-- **[debug-runtime](skills/debug-runtime/)** — Language-agnostic systematic debugging: four phases + Iron Law, for reproducible bugs and repeated failed fixes.
+- **[run-review](skills/run-review/)** — one entry point, four modes: (a) do a pr/branch review, (b) open your branch as a self-review pr, (c) triage received feedback, (d) delegate to `codex review`.
+- **[run-codex-review-loop](skills/run-codex-review-loop/)** — native `codex exec review` across multiple branches; compare findings; rescue a saved branch-review loop.
+- **[audit-completion](skills/audit-completion/)** — audit task / session / plan / branch completion claims with evidence; remediate to terminal status.
+- **[debug-runtime](skills/debug-runtime/)** — language-agnostic systematic debugging: four phases + iron law, for reproducible bugs and repeated failed fixes.
 
 `/plugin install yk-review@yigitkonur`
 
 ---
 
-## 🔬 Research & discovery
+## 🔬 research & discovery
 
-Answer questions and find things with current web evidence. Bundles the `internet-researcher-*` subagents.
+answer questions and find things with real web evidence. ships the `internet-researcher-*` subagents.
 
-- **[run-research](skills/run-research/)** — One technical question, current web + Reddit practitioner evidence, source-backed synthesis, optionally fanned across subagents.
-- **[run-deep-research](skills/run-deep-research/)** — Wave-based corpus research over 5+ entities or a market/category; evidence persisted to disk; Claude subagents or `codex exec` executors.
-- **[run-github-scout](skills/run-github-scout/)** — Adaptive GitHub repo discovery, shortlisting for a concrete need, OSS comparison with repo evidence.
-- **[search-it-bulk-by-codex](skills/search-it-bulk-by-codex/)** — Many small Codex-native web searches through `codex exec` with per-question, parseable answer files.
+- **[run-research](skills/run-research/)** — one technical question, current web + reddit practitioner evidence, source-backed synthesis, optionally fanned across subagents.
+- **[run-deep-research](skills/run-deep-research/)** — wave-based corpus research over 5+ entities or a market/category; evidence persisted to disk; claude subagents or `codex exec` executors.
+- **[run-github-scout](skills/run-github-scout/)** — adaptive github repo discovery, shortlisting for a concrete need, oss comparison with repo evidence.
+- **[search-it-bulk-by-codex](skills/search-it-bulk-by-codex/)** — many small codex-native web searches through `codex exec` with per-question, parseable answer files.
 
-`/plugin install yk-research@yigitkonur`
+`/plugin install yk-research@yigitkonur` · agents only: `/plugin install yk-researchers@yigitkonur`
 
 ---
 
-## 🤖 Live automation
+## 🤖 live automation
 
-Drive a browser, a phone, or a public tunnel during the session.
+drive a browser, a phone, or a public tunnel mid-session.
 
-- **[run-agent-browser](skills/run-agent-browser/)** — agent-browser CLI: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
-- **[mobilerun-control](skills/mobilerun-control/)** — Drive a connected Android phone via the mobilerun CLI: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
-- **[run-tailscale-funnel](skills/run-tailscale-funnel/)** — Expose a local HTTP server at a public `.ts.net` URL via Tailscale Funnel for browser navigation, mobile testing, webhooks, demos.
+- **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
+- **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
+- **[run-tailscale-funnel](skills/run-tailscale-funnel/)** — expose a local http server at a public `.ts.net` url via tailscale funnel for browser nav, mobile testing, webhooks, demos.
 
 `/plugin install yk-automation@yigitkonur`
 
 ---
 
-## 🚀 Ops & release
+## 🚀 ops & release
 
-Deploy, maintain, offload, and publish.
+deploy, maintain, offload, publish.
 
-- **[run-railway](skills/run-railway/)** — Railway CLI: deploys, logs, env vars, link, ssh, db shells, scaling, installed-vs-docs version-drift routing.
-- **[run-repo-cleanup](skills/run-repo-cleanup/)** — Finish a project: review + merge every live branch and worktree into main locally (no PRs), retire dangling branches, sweep junk to a gitignored trash.
-- **[run-babysitter](skills/run-babysitter/)** — Autonomous per-repo maintenance loop: triage commits + issues + persistent memory, file one deduplicated GitHub issue per cycle.
-- **[run-linear-cli](skills/run-linear-cli/)** — Drive the linear-cli binary: LIN- IDs, linear.app URLs, bulk creation, lifecycle, search, git/PR loops.
-- **[offload-run](skills/offload-run/)** — Run npm/pnpm install, tests, builds, tsc, eslint, pytest, or a dev server in a remote Sprites cloud sandbox instead of locally.
-- **[vercel-local-prebuild](skills/vercel-local-prebuild/)** — Convert Vercel projects to local `vercel build` + `vercel deploy --prebuilt` to save build minutes.
-- **[publish-npm-package](skills/publish-npm-package/)** — npm releases via GitHub Actions: trusted publishing, `NPM_TOKEN`, provenance, semantic-release, changesets, release-please.
+- **[run-railway](skills/run-railway/)** — railway cli: deploys, logs, env vars, link, ssh, db shells, scaling, installed-vs-docs version-drift routing.
+- **[run-repo-cleanup](skills/run-repo-cleanup/)** — finish a project: review + merge every live branch and worktree into main locally (no prs), retire dangling branches, sweep junk to a gitignored trash.
+- **[run-babysitter](skills/run-babysitter/)** — autonomous per-repo maintenance loop: triage commits + issues + persistent memory, file one deduplicated github issue per cycle.
+- **[run-linear-cli](skills/run-linear-cli/)** — drive the linear-cli binary: lin- ids, linear.app urls, bulk creation, lifecycle, search, git/pr loops.
+- **[offload-run](skills/offload-run/)** — run npm/pnpm install, tests, builds, tsc, eslint, pytest, or a dev server in a remote sprites cloud sandbox instead of locally.
+- **[vercel-local-prebuild](skills/vercel-local-prebuild/)** — convert vercel projects to local `vercel build` + `vercel deploy --prebuilt` to save build minutes.
+- **[publish-npm-package](skills/publish-npm-package/)** — npm releases via github actions: trusted publishing, `NPM_TOKEN`, provenance, semantic-release, changesets, release-please.
 
 `/plugin install yk-ops@yigitkonur`
 
 ---
 
-## 🧩 Skill authoring
+## 🧩 skill authoring
 
-Build and harden skills themselves.
+build and harden skills themselves.
 
-- **[build-skill](skills/build-skill/)** — Create/redesign/merge a Claude skill with evidence-based research and comparison before writing SKILL.md.
-- **[audit-skill-by-derailment](skills/audit-skill-by-derailment/)** — Stress-test an existing SKILL.md by running a fresh subagent on a real task and editing the skill where the trace shows friction.
+- **[build-skill](skills/build-skill/)** — create/redesign/merge a skill with evidence-based research and comparison before writing skill.md.
+- **[audit-skill-by-derailment](skills/audit-skill-by-derailment/)** — stress-test an existing skill.md by running a fresh subagent on a real task and editing the skill where the trace shows friction.
 
 `/plugin install yk-skills@yigitkonur`
 
 ---
 
-## Notes
+## notes
 
-- Each installed skill adds to the context window. Install only what you need — that's why the pack ships as per-skill plugins and small bundles, not one monolith.
-- The plugin path and the `skills` CLI path read the same `skills/` files; the plugin marketplace is defined in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json), regenerated by `python3 scripts/gen-marketplace.py`.
-- For the verb taxonomy and naming conventions, read [NAMING.md](NAMING.md).
-- For the canonical skill structure and contribution checklist, read [CONTRIBUTING.md](CONTRIBUTING.md).
-- The spec this pack follows: [agentskills.io/specification](https://agentskills.io/specification). Plugin/marketplace docs: [code.claude.com/docs/en/plugin-marketplaces](https://code.claude.com/docs/en/plugin-marketplaces).
-- If you see duplicate skill triggers, that's a known Claude Code issue ([#27721](https://github.com/anthropics/claude-code/issues/27721)).
+- every enabled skill costs context. that's the whole point of shipping per-skill plugins and small bundles instead of one blob — enable what you use.
+- the plugin path and the `skills` cli read the same `skills/` files. the marketplace catalog is [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json), generated by `python3 scripts/gen-marketplace.py`; the version comes from [`VERSION`](VERSION) and ci bumps it on every push to `main`.
+- naming/taxonomy → [NAMING.md](NAMING.md). structure + contribution checklist → [CONTRIBUTING.md](CONTRIBUTING.md).
+- spec: [agentskills.io/specification](https://agentskills.io/specification). plugin/marketplace docs: [code.claude.com/docs/en/plugin-marketplaces](https://code.claude.com/docs/en/plugin-marketplaces).
+- duplicate skill triggers? known claude code thing ([#27721](https://github.com/anthropics/claude-code/issues/27721)).
 
-## Contributing
+## contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). New skills must use a verb from the [12-verb registry](NAMING.md), pass `python3 scripts/validate-skills.py`, and be added to the marketplace via `python3 scripts/gen-marketplace.py`.
+see [CONTRIBUTING.md](CONTRIBUTING.md). new skills use a verb from the [12-verb registry](NAMING.md), pass `python3 scripts/validate-skills.py`, and land in the marketplace via `python3 scripts/gen-marketplace.py`.
 
-## License
+## license
 
-MIT
+mit
