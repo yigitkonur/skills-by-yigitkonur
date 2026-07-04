@@ -1,0 +1,687 @@
+{
+  "name": "yigitkonur",
+  "owner": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "metadata": {
+    "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, or a single skill.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "yk-everything",
+      "source": "./",
+      "description": "The whole pack — all 45 skills in one install. Heaviest context cost; prefer a themed bundle or single skill.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "strict": false,
+      "skills": [
+        "./skills/"
+      ],
+      "agents": [
+        "./agents/claude/"
+      ]
+    },
+    {
+      "name": "yk-review",
+      "source": "./",
+      "description": "Review & completion — code review, review-feedback triage, done-claim audits, runtime debugging.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "review"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/run-review",
+        "./skills/run-codex-review-loop",
+        "./skills/audit-completion",
+        "./skills/debug-runtime"
+      ]
+    },
+    {
+      "name": "yk-frontend",
+      "source": "./",
+      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, design.md extraction, UI/UX/Laws-of-UX audits.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "frontend"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/convert-url-to-nextjs",
+        "./skills/create-design-md",
+        "./skills/audit-ux-laws",
+        "./skills/audit-ui-and-save-files",
+        "./skills/audit-ux-and-save-files"
+      ]
+    },
+    {
+      "name": "yk-mcp",
+      "source": "./",
+      "description": "MCP & agent interfaces — build (SDK v1/v2, mcp-use), clean architecture, convert v1→v2, test, and agent-readiness audits for MCP servers and CLIs.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "mcp"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/audit-agentic-mcp",
+        "./skills/audit-agentic-cli",
+        "./skills/build-clean-mcp-architecture",
+        "./skills/build-mcp-server-sdk-v1",
+        "./skills/build-mcp-server-sdk-v2",
+        "./skills/build-mcp-use-agent",
+        "./skills/build-mcp-use-client",
+        "./skills/build-mcp-use-server",
+        "./skills/convert-mcp-sdk-v1-to-v2",
+        "./skills/test-by-mcpc-cli"
+      ]
+    },
+    {
+      "name": "yk-build",
+      "source": "./",
+      "description": "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, macOS SwiftUI, Raycast, TinaCMS+Next.js.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "build"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/build-chrome-extension",
+        "./skills/build-effect-ts-v3",
+        "./skills/build-kernel-ts-sdk",
+        "./skills/build-langchain-ts-app",
+        "./skills/build-macos-app",
+        "./skills/build-raycast-script-command",
+        "./skills/build-tinacms-nextjs"
+      ]
+    },
+    {
+      "name": "yk-research",
+      "source": "./",
+      "description": "Research & discovery — single-question and wave-based corpus research, GitHub repo scouting, bulk Codex search. Bundles the internet-researcher subagents.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "research"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/run-research",
+        "./skills/run-deep-research",
+        "./skills/run-github-scout",
+        "./skills/search-it-bulk-by-codex"
+      ],
+      "agents": [
+        "./agents/claude/"
+      ]
+    },
+    {
+      "name": "yk-automation",
+      "source": "./",
+      "description": "Live automation — agent-browser CLI, Android device control, Tailscale Funnel public tunnels.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "automation"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/run-agent-browser",
+        "./skills/mobilerun-control",
+        "./skills/run-tailscale-funnel"
+      ]
+    },
+    {
+      "name": "yk-config",
+      "source": "./",
+      "description": "Instruction & config files — AGENTS.md/CLAUDE.md/REVIEW.md hierarchies, drift audits, scenario Makefiles.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "config"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/init-agent-config",
+        "./skills/update-agent-config",
+        "./skills/init-makefiles"
+      ]
+    },
+    {
+      "name": "yk-ops",
+      "source": "./",
+      "description": "Ops & release — Railway, repo cleanup, autonomous babysitter, Linear CLI, remote offload runs, Vercel prebuild, npm publishing.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "ops"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/run-railway",
+        "./skills/run-repo-cleanup",
+        "./skills/run-babysitter",
+        "./skills/run-linear-cli",
+        "./skills/offload-run",
+        "./skills/vercel-local-prebuild",
+        "./skills/publish-npm-package"
+      ]
+    },
+    {
+      "name": "yk-skills",
+      "source": "./",
+      "description": "Skill authoring — research-driven skill creation and derailment stress-testing of existing SKILL.md files.",
+      "version": "1.0.0",
+      "category": "bundle",
+      "tags": [
+        "skills-meta"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/build-skill",
+        "./skills/audit-skill-by-derailment"
+      ]
+    },
+    {
+      "name": "audit-agentic-cli",
+      "source": "./",
+      "description": "Use skill if you are auditing or designing a CLI for agent/LLM consumption — stable JSON output, exit codes, non-interactive flags, or iterative repair loops for machine-generated artifacts.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/audit-agentic-cli"
+      ]
+    },
+    {
+      "name": "audit-agentic-mcp",
+      "source": "./",
+      "description": "Use skill if you are auditing an existing MCP server for agent-readiness, designing a new MCP server before any code, or deciding framework, security, and context posture.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/audit-agentic-mcp"
+      ]
+    },
+    {
+      "name": "audit-completion",
+      "source": "./",
+      "description": "Use skill if you are verifying claimed-done work, auditing session/plan/branch completion, finding partial or assumed-complete tasks, or answering \"are we done?\" with evidence.",
+      "version": "1.0.0",
+      "category": "review",
+      "strict": false,
+      "skills": [
+        "./skills/audit-completion"
+      ]
+    },
+    {
+      "name": "audit-skill-by-derailment",
+      "source": "./",
+      "description": "Use skill if you are testing or hardening an existing SKILL.md by running a fresh subagent on a real task and editing the skill where the trace shows friction.",
+      "version": "1.0.0",
+      "category": "skills-meta",
+      "strict": false,
+      "skills": [
+        "./skills/audit-skill-by-derailment"
+      ]
+    },
+    {
+      "name": "audit-ui-and-save-files",
+      "source": "./",
+      "description": "Use skill if you are auditing a running web app's UI across pages and viewports, saving per-bug findings to a dated tree, and dispatching approval-gated fix subagents.",
+      "version": "1.0.0",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/audit-ui-and-save-files"
+      ]
+    },
+    {
+      "name": "audit-ux-and-save-files",
+      "source": "./",
+      "description": "Use skill if you are auditing a running app's usability from real personas walking their journeys, saving per-issue findings to a dated persona/journey tree and recommending major changes, not fixes.",
+      "version": "1.0.0",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/audit-ux-and-save-files"
+      ]
+    },
+    {
+      "name": "audit-ux-laws",
+      "source": "./",
+      "description": "Use skill if you are building or auditing UI against the 30 Laws of UX — Fitts's, Hick's, Miller's, Jakob's, Gestalt, choice overload, or cognitive load.",
+      "version": "1.0.0",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/audit-ux-laws"
+      ]
+    },
+    {
+      "name": "build-chrome-extension",
+      "source": "./",
+      "description": "Use skill if you are building or debugging a Chrome MV3 extension — manifest.json v3, service_worker, content_scripts, chrome.runtime/storage/alarms, popup, side_panel, declarativeNetRequest, or Web Store packaging.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-chrome-extension"
+      ]
+    },
+    {
+      "name": "build-clean-mcp-architecture",
+      "source": "./",
+      "description": "Use skill if you are placing, refactoring, or auditing TypeScript mcp-use/server code under src/ and need Clean Architecture layer boundaries, folder layout, import direction, or dependency-cruiser gates.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/build-clean-mcp-architecture"
+      ]
+    },
+    {
+      "name": "build-effect-ts-v3",
+      "source": "./",
+      "description": "Use skill if you are building TypeScript code with Effect-TS v3 — effect@3.x, @effect/*, Effect.gen, Layer, Schema, typed errors, fibers, Stream.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-effect-ts-v3"
+      ]
+    },
+    {
+      "name": "build-kernel-ts-sdk",
+      "source": "./",
+      "description": "Use skill if you are building TypeScript browser-automation agents or apps on the Kernel SDK (`@onkernel/sdk`) — browsers, Apps, profiles, Managed Auth, pools, Playwright/CDP wiring.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-kernel-ts-sdk"
+      ]
+    },
+    {
+      "name": "build-langchain-ts-app",
+      "source": "./",
+      "description": "Use skill if you are building TypeScript apps that import `langchain` or `@langchain/*` for agents, tool-calling, RAG retrievers, structured output, streaming, or LangGraph `StateGraph` workflows.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-langchain-ts-app"
+      ]
+    },
+    {
+      "name": "build-macos-app",
+      "source": "./",
+      "description": "Use skill if you are building, auditing, or shipping a native macOS SwiftUI or AppKit app needing HIG, Liquid Glass, snapshot validation, SwiftLint hooks, or Convex+Clerk sync.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-macos-app"
+      ]
+    },
+    {
+      "name": "build-mcp-server-sdk-v1",
+      "source": "./",
+      "description": "Use skill if you are building or maintaining a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod schemas, RequestHandlerExtra, McpServer.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/build-mcp-server-sdk-v1"
+      ]
+    },
+    {
+      "name": "build-mcp-server-sdk-v2",
+      "source": "./",
+      "description": "Use skill if you are building or maintaining MCP servers on @modelcontextprotocol/server v2 alpha — split packages, McpServer, registerTool, ctx.mcpReq handler context.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/build-mcp-server-sdk-v2"
+      ]
+    },
+    {
+      "name": "build-mcp-use-agent",
+      "source": "./",
+      "description": "Use skill if you are building or auditing TypeScript mcp-use MCPAgent code where an LLM picks and orchestrates MCP tools via run, stream, or streamEvents.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/build-mcp-use-agent"
+      ]
+    },
+    {
+      "name": "build-mcp-use-client",
+      "source": "./",
+      "description": "Use skill if you are writing TypeScript MCP client code with mcp-use — MCPClient, MCPSession, useMcp, McpClientProvider, mcp-use/browser, mcp-use/react, or npx mcp-use client.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/build-mcp-use-client"
+      ]
+    },
+    {
+      "name": "build-mcp-use-server",
+      "source": "./",
+      "description": "Use skill if you are building TypeScript MCP servers with mcp-use/server — server.tool, response helpers, ctx.auth, sessions, transports, widgets, Inspector, deploy.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/build-mcp-use-server"
+      ]
+    },
+    {
+      "name": "build-raycast-script-command",
+      "source": "./",
+      "description": "Use skill if you are authoring or fixing a Raycast Script Command (.sh or .py with @raycast.* metadata header) and need correct fields, modes, arguments, or discovery.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-raycast-script-command"
+      ]
+    },
+    {
+      "name": "build-skill",
+      "source": "./",
+      "description": "Use skill if you are creating a new Claude skill, redesigning one, or merging multiple skills, and need evidence-based research and comparison before writing SKILL.md.",
+      "version": "1.0.0",
+      "category": "skills-meta",
+      "strict": false,
+      "skills": [
+        "./skills/build-skill"
+      ]
+    },
+    {
+      "name": "build-tinacms-nextjs",
+      "source": "./",
+      "description": "Use skill if you are building or extending a TinaCMS-backed Next.js App Router site with tina/config.ts, MDX/git-backed content, schema modeling, useTina visual editing, or TinaCloud/self-hosted deploys.",
+      "version": "1.0.0",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-tinacms-nextjs"
+      ]
+    },
+    {
+      "name": "convert-mcp-sdk-v1-to-v2",
+      "source": "./",
+      "description": "Use skill if you are porting an existing MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 split-package SDK with package renames, ServerContext, and Zod v4.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/convert-mcp-sdk-v1-to-v2"
+      ]
+    },
+    {
+      "name": "convert-url-to-nextjs",
+      "source": "./",
+      "description": "Use skill if you are rebuilding a deployed site as a Next.js project AS-IS pixel-faithful from a live URL, lost-frontend repo recovery, or .html snapshot.",
+      "version": "1.0.0",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/convert-url-to-nextjs"
+      ]
+    },
+    {
+      "name": "create-design-md",
+      "source": "./",
+      "description": "Use skill if you are producing a design.md spec plus per-asset references tree from a live URL, codebase, or HTML snapshot so another agent can reproduce the design.",
+      "version": "1.0.0",
+      "category": "frontend",
+      "strict": false,
+      "skills": [
+        "./skills/create-design-md"
+      ]
+    },
+    {
+      "name": "debug-runtime",
+      "source": "./",
+      "description": "Use skill if you are chasing a reproducible runtime bug, intermittent failure, or repeated failed fixes and need a language-agnostic 4-phase root-cause workflow before editing product code.",
+      "version": "1.0.0",
+      "category": "review",
+      "strict": false,
+      "skills": [
+        "./skills/debug-runtime"
+      ]
+    },
+    {
+      "name": "init-agent-config",
+      "source": "./",
+      "description": "Use skill if you are creating, auditing, or migrating CLAUDE.md, AGENTS.md, or REVIEW.md instruction files, folder-scoped agent guidance, or cross-agent companion entrypoints.",
+      "version": "1.0.0",
+      "category": "config",
+      "strict": false,
+      "skills": [
+        "./skills/init-agent-config"
+      ]
+    },
+    {
+      "name": "init-makefiles",
+      "source": "./",
+      "description": "Use skill if you are scaffolding or refreshing Makefile targets for local dev, tunnels, deploys, R2 sync, Supabase, Railway, Vercel, or Mac shipping.",
+      "version": "1.0.0",
+      "category": "config",
+      "strict": false,
+      "skills": [
+        "./skills/init-makefiles"
+      ]
+    },
+    {
+      "name": "mobilerun-control",
+      "source": "./",
+      "description": "Use skill if you are controlling, automating, or testing a connected Android phone via the mobilerun CLI — tapping, typing, swiping, reading the screen, or running a multi-step on-device task.",
+      "version": "1.0.0",
+      "category": "automation",
+      "strict": false,
+      "skills": [
+        "./skills/mobilerun-control"
+      ]
+    },
+    {
+      "name": "offload-run",
+      "source": "./",
+      "description": "Use skill if you are running a project's npm/pnpm install, tests, builds, tsc, eslint, pytest, macOS/Xcode builds, or a dev server in a remote Sprites cloud sandbox instead of locally.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/offload-run"
+      ]
+    },
+    {
+      "name": "publish-npm-package",
+      "source": "./",
+      "description": "Use skill if you are publishing to npm via GitHub Actions release workflow with trusted publishing, NPM_TOKEN, provenance, semantic-release, changesets, release-please, or fixing npm publish CI.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/publish-npm-package"
+      ]
+    },
+    {
+      "name": "run-agent-browser",
+      "source": "./",
+      "description": "Use skill if you are driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, sessions, forms, extraction, screenshots, headed/stealth, or provider runs.",
+      "version": "1.0.0",
+      "category": "automation",
+      "strict": false,
+      "skills": [
+        "./skills/run-agent-browser"
+      ]
+    },
+    {
+      "name": "run-babysitter",
+      "source": "./",
+      "description": "Use skill if you are running an autonomous maintenance loop over one git repo, reading commits, issues, and persistent memory, then filing one deduplicated GitHub issue per cycle via gh.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/run-babysitter"
+      ]
+    },
+    {
+      "name": "run-codex-review-loop",
+      "source": "./",
+      "description": "Use skill if you are running native codex review across multiple branches, comparing findings, or rescuing a saved branch-review loop.",
+      "version": "1.0.0",
+      "category": "review",
+      "strict": false,
+      "skills": [
+        "./skills/run-codex-review-loop"
+      ]
+    },
+    {
+      "name": "run-deep-research",
+      "source": "./",
+      "description": "Use skill if you are running deep multi-file research over 5+ entities or a market/category — a wave-dispatched evidence corpus on disk, executed by Claude subagents or codex exec.",
+      "version": "1.0.0",
+      "category": "research",
+      "strict": false,
+      "skills": [
+        "./skills/run-deep-research"
+      ]
+    },
+    {
+      "name": "run-github-scout",
+      "source": "./",
+      "description": "Use skill if you are discovering GitHub repos, shortlisting candidates for a concrete need, or comparing OSS projects with adaptive search and repo evidence.",
+      "version": "1.0.0",
+      "category": "research",
+      "strict": false,
+      "skills": [
+        "./skills/run-github-scout"
+      ]
+    },
+    {
+      "name": "run-linear-cli",
+      "source": "./",
+      "description": "Use skill if you are driving the linear-cli binary against Linear issues — LIN- IDs, linear.app URLs, bulk creation, lifecycle, search, or git/PR loops from an agent.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/run-linear-cli"
+      ]
+    },
+    {
+      "name": "run-railway",
+      "source": "./",
+      "description": "Use skill if you are running railway CLI commands for deploys, logs, env vars, link, ssh, db shells, scaling, or reconciling installed CLI vs upstream docs.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/run-railway"
+      ]
+    },
+    {
+      "name": "run-repo-cleanup",
+      "source": "./",
+      "description": "Use skill if you are finishing a project and want every live branch and worktree reviewed and merged into main locally, dangling branches retired, and junk swept aside.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/run-repo-cleanup"
+      ]
+    },
+    {
+      "name": "run-research",
+      "source": "./",
+      "description": "Use skill if you are answering one technical research question with current web evidence, Reddit practitioner experience, and source-backed synthesis, optionally fanned out across parallel subagents.",
+      "version": "1.0.0",
+      "category": "research",
+      "strict": false,
+      "skills": [
+        "./skills/run-research"
+      ]
+    },
+    {
+      "name": "run-review",
+      "source": "./",
+      "description": "Use skill if you are reviewing a PR or diff, asking for review on your branch, triaging received review feedback, or delegating review to codex.",
+      "version": "1.0.0",
+      "category": "review",
+      "strict": false,
+      "skills": [
+        "./skills/run-review"
+      ]
+    },
+    {
+      "name": "run-tailscale-funnel",
+      "source": "./",
+      "description": "Use skill if you are exposing a local HTTP server at a public `.ts.net` URL via Tailscale Funnel for agent-browser navigation, mobile testing, webhooks, or shared dev demos.",
+      "version": "1.0.0",
+      "category": "automation",
+      "strict": false,
+      "skills": [
+        "./skills/run-tailscale-funnel"
+      ]
+    },
+    {
+      "name": "search-it-bulk-by-codex",
+      "source": "./",
+      "description": "Use skill if you are running many small Codex-native web searches through codex exec with per-question files and parseable answer artifacts.",
+      "version": "1.0.0",
+      "category": "research",
+      "strict": false,
+      "skills": [
+        "./skills/search-it-bulk-by-codex"
+      ]
+    },
+    {
+      "name": "test-by-mcpc-cli",
+      "source": "./",
+      "description": "Use skill if you are driving the mcpc CLI (0.2.x) to test, debug, or smoke-check an MCP server over stdio or Streamable HTTP.",
+      "version": "1.0.0",
+      "category": "mcp",
+      "strict": false,
+      "skills": [
+        "./skills/test-by-mcpc-cli"
+      ]
+    },
+    {
+      "name": "update-agent-config",
+      "source": "./",
+      "description": "Use skill if you are auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: stale file:line refs, frequency-table recounts, invalidated rules, or missing AGENTS.md for code-bearing gap folders.",
+      "version": "1.0.0",
+      "category": "config",
+      "strict": false,
+      "skills": [
+        "./skills/update-agent-config"
+      ]
+    },
+    {
+      "name": "vercel-local-prebuild",
+      "source": "./",
+      "description": "Use skill if you are converting Vercel projects to local `vercel build` plus `vercel deploy --prebuilt` to save build minutes.",
+      "version": "1.0.0",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/vercel-local-prebuild"
+      ]
+    }
+  ]
+}

@@ -43,4 +43,18 @@ if ! python3 "$VALIDATOR" --quick; then
 fi
 
 echo ""
+echo "✅ Skill validation passed"
+
+# Marketplace consistency (advisory) — flag if marketplace.json is stale.
+GEN="$REPO_ROOT/scripts/gen-marketplace.py"
+if [ -f "$GEN" ]; then
+    if ! python3 "$GEN" --check; then
+        echo ""
+        echo "⚠️  .claude-plugin/marketplace.json is out of date."
+        echo "    Run: python3 scripts/gen-marketplace.py   (then commit the result)"
+        echo "    Push is continuing because this check is advisory."
+    fi
+fi
+
+echo ""
 echo "✅ All checks passed — pushing"

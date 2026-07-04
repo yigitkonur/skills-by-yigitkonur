@@ -6,13 +6,20 @@ Building or auditing UI against the 30 Laws of UX — Fitts's, Hick's, Miller's,
 
 ## Install
 
-Install this skill individually:
+**As a plugin (easy install / uninstall via `/plugin`):**
+
+```
+/plugin marketplace add yigitkonur/skills-by-yigitkonur
+/plugin install audit-ux-laws@yigitkonur
+```
+
+**Or with the `skills` CLI — this skill only:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-ux-laws
 ```
 
-Or install the full pack:
+**Or the full pack:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur

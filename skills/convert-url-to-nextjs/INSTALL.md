@@ -6,13 +6,20 @@ Converting live websites or saved HTML snapshots into grounded Next.js pages wit
 
 ## Install
 
-Install this skill individually:
+**As a plugin (easy install / uninstall via `/plugin`):**
+
+```
+/plugin marketplace add yigitkonur/skills-by-yigitkonur
+/plugin install convert-url-to-nextjs@yigitkonur
+```
+
+**Or with the `skills` CLI — this skill only:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/convert-url-to-nextjs
 ```
 
-Or install the full pack:
+**Or the full pack:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur

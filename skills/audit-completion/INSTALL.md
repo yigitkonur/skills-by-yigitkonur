@@ -6,13 +6,20 @@ Auditing task, session, plan, or branch completion claims - classify each item w
 
 ## Install
 
-Install this skill individually:
+**As a plugin (easy install / uninstall via `/plugin`):**
+
+```
+/plugin marketplace add yigitkonur/skills-by-yigitkonur
+/plugin install audit-completion@yigitkonur
+```
+
+**Or with the `skills` CLI — this skill only:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/audit-completion
 ```
 
-Or install the full pack:
+**Or the full pack:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur

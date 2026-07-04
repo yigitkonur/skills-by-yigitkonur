@@ -24,3 +24,7 @@ to-delete/
 .continues-handoff.md
 *.claude-session*
 /.claude/
+
+# Plugin marketplace catalog is shipped (a global ~/.gitignore may hide dotdirs).
+!.claude-plugin/
+!.claude-plugin/marketplace.json

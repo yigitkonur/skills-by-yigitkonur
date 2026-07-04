@@ -6,13 +6,20 @@ Run an autonomous maintenance loop over one git repo, reading commits, issues, a
 
 ## Install
 
-Install this skill individually:
+**As a plugin (easy install / uninstall via `/plugin`):**
+
+```
+/plugin marketplace add yigitkonur/skills-by-yigitkonur
+/plugin install run-babysitter@yigitkonur
+```
+
+**Or with the `skills` CLI — this skill only:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/run-babysitter
 ```
 
-Or install the full pack:
+**Or the full pack:**
 
 ```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
