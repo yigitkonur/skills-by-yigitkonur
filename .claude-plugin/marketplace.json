@@ -454,7 +454,7 @@
     {
       "name": "deploy-coolify-cloud",
       "source": "./",
-      "description": "Use skill if you are deploying a docker-compose service to Coolify Cloud (app.coolify.io) via its API, editing a service's compose, or verifying a Coolify deploy actually started.",
+      "description": "Use skill if you are deploying or updating a docker-compose service on Coolify Cloud (app.coolify.io) via its API — setting domains, connecting services, env secrets, or verifying a deploy.",
       "version": "1.0.5",
       "category": "ops",
       "strict": false,

@@ -1,6 +1,6 @@
 ---
 name: deploy-coolify-cloud
-description: Use skill if you are deploying a docker-compose service to Coolify Cloud (app.coolify.io) via its API, editing a service's compose, or verifying a Coolify deploy actually started.
+description: Use skill if you are deploying or updating a docker-compose service on Coolify Cloud (app.coolify.io) via its API — setting domains, connecting services, env secrets, or verifying a deploy.
 ---
 
 # deploy-coolify-cloud
@@ -31,6 +31,8 @@ Deploy and update docker-compose services on **Coolify Cloud** (`app.coolify.io`
 4. **A locally-built image (`image: foo:local`, no registry) is a singleton with no backup** — Docker/Coolify auto-cleanup deletes it and the next deploy fails `pull access denied`. Push to a registry or keep the build reproducible → `references/compose-authoring.md`.
 5. **Never inline the API token** in a compose file, script, or repo. Store it as an env file sourced from your shell → `references/api-contracts.md`.
 6. **Connecting a server in the Cloud UI does NOT mint an API token** — separate credentials. A `401` after "the server is connected" means you still need a token from **Keys & Tokens**.
+7. **Pin a custom domain with the `urls` API field, NOT the `SERVICE_FQDN_*` compose var** — the magic var is output-only and won't set your domain; `{"domains":...}`/`{"fqdn":...}` are rejected. DNS must resolve to the server *before* the deploy or the TLS cert silently fails → `references/domains-and-networking.md`.
+8. **App secrets go in service env vars, not inlined in `docker_compose_raw`** — push them via the envs API so they live in Coolify's encrypted store and arrive through the injected `.env` → `references/api-contracts.md`.
 
 ## Setup
 
@@ -50,7 +52,8 @@ Run it with `scripts/deploy-compose.sh` or by hand. Steps:
 2. **Author the compose** for Coolify — healthcheck, loopback binding, persistent volumes, image strategy → `references/compose-authoring.md`.
 3. **Create the service.** `POST /services` with `project_uuid`, `environment_uuid`, `server_uuid`, `name`, base64 `docker_compose_raw`, `instant_deploy: true`.
 4. **Verify on the box** (rule #1): container `healthy` + a real request returns 2xx, THEN confirm `coolify resource list` shows `running:healthy` (poller lags ~30–60s). → `references/verify-and-troubleshoot.md`.
-5. **Edit later** with `PATCH /services/{uuid}` (new base64 compose + `instant_deploy: true`), then re-verify.
+5. **Expose publicly / connect services.** Pin a custom domain with the `urls` PATCH (or `scripts/set-domain.sh`) and, for an app↔sidecar/DB, join a shared network — both, with the DNS/TLS preflight, in → `references/domains-and-networking.md`.
+6. **Edit later** with `PATCH /services/{uuid}` (new base64 compose + `instant_deploy: true`) — back up the current compose first (`GET .docker_compose_raw`) — then re-verify.
 
 ```bash
 # create
@@ -68,12 +71,14 @@ scripts/verify-deploy.sh --uuid <service-uuid> --url http://127.0.0.1:PORT/healt
 |---|---|
 | Exact API payloads: create/update service, projects, envs, control, response codes, token storage | `references/api-contracts.md` |
 | Writing a Coolify-friendly compose: healthcheck, loopback vs proxy, volumes, the local-image trap | `references/compose-authoring.md` |
-| Proving a deploy actually ran: `201`≠running, `401`, `exited`, status meanings, box-level checks | `references/verify-and-troubleshoot.md` |
+| Proving a deploy actually ran: `201`≠running, deploy queue, `401`, `exited`, `running:unknown`, TLS-cert failures, box-level checks | `references/verify-and-troubleshoot.md` |
+| Custom domains + Let's Encrypt TLS, and connecting one service to another (sidecar/DB) over a shared network | `references/domains-and-networking.md` |
 | The two-brains model (self-hosted vs Cloud), ownership diagnosis, safe teardown / migration | `references/self-hosted-vs-cloud.md` |
 
 ## Scripts
 
 - `scripts/deploy-compose.sh` — base64-encode a compose and create (`POST`) or update (`PATCH`) a service with `instant_deploy`; reads `$COOLIFY_CLOUD_API_TOKEN`, `$COOLIFY_BASE_URL` (default `https://app.coolify.io`).
+- `scripts/set-domain.sh` — pin a custom domain (+ TLS) on a compose sub-service via the `urls` API; warns if DNS doesn't resolve yet and prints the cert-verify command.
 - `scripts/verify-deploy.sh` — poll a resource to `running:healthy` (with timeout) and optionally probe an endpoint for a 2xx.
 - `scripts/install-coolify-cli.sh` — install the `coolify` CLI to `~/.local/bin`.
 
@@ -84,5 +89,9 @@ scripts/verify-deploy.sh --uuid <service-uuid> --url http://127.0.0.1:PORT/healt
 - Never rely on a `:local` image with no registry surviving a prune — push it or keep it reproducible.
 - Never publish an internal service on `0.0.0.0` — bind `127.0.0.1:` and route public traffic through Coolify's proxy (80/443) with an FQDN.
 - Never delete `coolify-proxy` / `coolify-sentinel` on a Cloud-managed box — they are Cloud's agents.
-- Never inline or commit the API token.
-- Don't try to create a service with the `coolify` CLI — it can't; use the API.
+- Never inline or commit the API token; never inline app secrets in `docker_compose_raw` — use the envs API.
+- Don't try to create a service, set a domain, or change env vars with the `coolify` CLI — it can't; use the API.
+- Don't expect `SERVICE_FQDN_*` in the compose to set a domain — it's output-only; use the `urls` PATCH.
+- Don't blanket-use host bind-mounts for stateful non-root images (ClickHouse/MinIO/…) — they hit `Permission denied`; use named volumes.
+- Don't treat a `running:unknown` on a multi-container service as broken, and don't trust an `https` domain until `openssl s_client` shows a real Let's Encrypt cert.
+- Check whether you're already **on** the target box (`docker ps | grep coolify-proxy`) before reaching for SSH.

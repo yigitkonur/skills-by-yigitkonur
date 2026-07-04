@@ -1,6 +1,6 @@
 # deploy-coolify-cloud
 
-Deploying a docker-compose service to Coolify Cloud via the API — create/update services, wire project/environment/server, and verify the container actually came up.
+Deploying or updating a docker-compose service on Coolify Cloud via the API — wiring project/server, custom domains + TLS, cross-service networking, env-var secrets, and verifying the container actually came up.
 
 **Category:** platform
 

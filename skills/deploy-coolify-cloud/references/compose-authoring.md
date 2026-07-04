@@ -15,12 +15,13 @@ Without a container healthcheck, Coolify reports the service as `running:unknown
       start_period: 20s
 ```
 
-If the image has `wget`/`curl` and an unauthenticated route, an HTTP probe is fine too — but don't probe an auth-gated route (busybox `wget` exits non-zero on a 401 and the container reads as unhealthy).
+If the image has `wget`/`curl` and an unauthenticated route, an HTTP probe is fine too — but don't probe an auth-gated route (busybox `wget` exits non-zero on a 401 and the container reads as unhealthy). **Use `127.0.0.1`, not `localhost`, in an HTTP probe** — busybox `wget` resolves `localhost` to IPv6 `::1` first, and an app bound to IPv4 `0.0.0.0` refuses it, so the container reads unhealthy forever while serving fine.
 
 ## Bind private services to loopback; publish through the proxy
 
 - **Internal / admin services:** `ports: ["127.0.0.1:8082:8082"]`. Loopback-only means the host firewall (typically 22/80/443 in) never exposes it. Reach it over an SSH tunnel.
-- **Public services:** don't publish a host port at all. Give the service an FQDN in Coolify and let its **Traefik proxy** (on 80/443) route to it with automatic Let's Encrypt TLS. Publishing `0.0.0.0:PORT` *and* routing through the proxy is a common double-exposure mistake.
+- **Public services:** don't publish a host port at all — use `expose: ["4000"]` for the routed port and give the service an FQDN so its **Traefik proxy** (80/443) routes to it with automatic Let's Encrypt TLS (→ `domains-and-networking.md`). Publishing `0.0.0.0:PORT` *and* routing through the proxy is a common double-exposure mistake. A loopback publish (`127.0.0.1:4000:4000`) is fine as a *temporary* handle for local `curl` while verifying — switch it to `expose` once the FQDN is live.
+- **Multi-network bind gotcha:** if the app respects a bind-host env var (Next.js/Node read `HOSTNAME`) and you attach it to a second network (e.g. a shared `edge`), it may bind **one** interface's IP instead of all — then the host port, peers, *and* the internal healthcheck all fail. Set `HOSTNAME: "0.0.0.0"` (or the app's equivalent) so it binds every interface.
 
 ## Persist state with host bind-mounts
 
@@ -33,6 +34,8 @@ Anything holding credentials, auth tokens, or a database must live on a **host b
 ```
 
 Bind-mounts live *outside* Coolify's own database, so they survive a service delete/recreate and even a **self-hosted → Cloud migration** — recreate the service pointing at the same host paths and no credentials are re-provisioned. (Pre-create a mounted config *file* before first deploy; if the path doesn't exist Docker makes it a **directory**, and the app fails with "is a directory".)
+
+**Caveat — non-root images crash-loop on bind-mounts.** A bind-mount to a root-owned host dir fails `Permission denied` for any image that runs as a **non-root** user (ClickHouse `uid 101`, MinIO, Grafana, Elasticsearch…) — it can't write the dir and restart-loops. Either `chown` the host dir to the container's UID first, or use a **named volume**, which Docker creates with the correct ownership. Rule of thumb: bind-mounts for credential/config **files** you pre-create and control; **named volumes** for a non-root service's data dir. (Postgres/Redis tolerate bind-mounts because they run as root / chown on init — don't generalize from them.)
 
 ## The local-image trap (the #1 failed-deploy cause)
 
@@ -50,6 +53,8 @@ Never assume a `:local` tag will still exist next week on a box with automated c
 ## What Coolify injects
 
 When you submit `docker_compose_raw`, Coolify re-renders it: it adds `container_name`, a per-resource network, `coolify.*` labels, `COOLIFY_*` env vars, and an `env_file: .env`. Your `image`, `ports`, `volumes`, `environment`, `restart`, and `healthcheck` are preserved. The rendered result lands on the box at `/data/coolify/services/<uuid>/docker-compose.yml` — read it there to see exactly what ran.
+
+Two injected vars are **output-only**: `SERVICE_FQDN_<name>` / `SERVICE_URL_<name>` are filled *from* the service's stored fqdn on every deploy — a value you write there is ignored (set domains via the API → `domains-and-networking.md`). Keep app **secrets** out of this compose too: push them as service env vars so they live in Coolify's encrypted store and arrive via the injected `.env` → `api-contracts.md`.
 
 ## Minimal example
 

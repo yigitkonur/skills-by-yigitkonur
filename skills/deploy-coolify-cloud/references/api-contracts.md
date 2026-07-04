@@ -68,6 +68,50 @@ curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application
 
 `instant_deploy:true` is what triggers the redeploy job. Without it the DB updates but nothing redeploys.
 
+## Set a custom domain (+ TLS)
+
+Coolify auto-assigns a `*.sslip.io` domain on create. Pin your own via the **`urls`** field — the only one that works (`{"domains":...}` and `{"fqdn":...}` both → `422 "This field is not allowed."`):
+
+```bash
+curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"urls":[{"name":"<compose-service>","url":"https://app.example.com"}],
+       "force_domain_override":true,"instant_deploy":true}' \
+  https://app.coolify.io/api/v1/services/<uuid>
+# -> 200 {"uuid":"...","domains":["https://app.example.com"]}
+```
+
+`name` = the compose service key (read it from `GET /services/{uuid}` → `.applications[].name`); `instant_deploy:true` regenerates the Traefik labels + Let's Encrypt request. `SERVICE_FQDN_*` env vars do **not** set the domain (they are output-only). Full workflow + DNS/TLS preflight → `domains-and-networking.md`.
+
+## Service env vars (the secret path — don't inline them in `docker_compose_raw`)
+
+App secrets (provider keys, master keys, DB passwords) belong here, not baked into the compose. Coolify stores them encrypted and injects them via the `env_file: .env` it adds to every service.
+
+```
+GET    /services/{uuid}/envs                # list; is_coolify:true marks Coolify's own vars
+POST   /services/{uuid}/envs   -d '{"key":"OPENROUTER_API_KEY","value":"sk-...","is_preview":false}'
+PATCH  /services/{uuid}/envs   -d '{"key":"...","value":"..."}'
+DELETE /services/{uuid}/envs/{ENV_UUID}     # by the var's UUID, NOT its key (key -> 404)
+```
+
+## Connect to the shared network
+
+```bash
+# join the predefined `coolify` network -> reach peers by their <service>-<uuid> container name
+curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"connect_to_docker_network":true,"instant_deploy":true}' \
+  https://app.coolify.io/api/v1/services/<uuid>
+```
+
+Clean-hostname alternative (a shared external `edge` network) + the tradeoff → `domains-and-networking.md`.
+
+## Watch a deploy (the queue)
+
+Create/update responses carry only `{"uuid","domains"}` — **no deployment handle**. To tell whether the queued job (rule #1) is running or failed, poll the deployments list; there is no `/services/{uuid}/deployments`:
+
+```
+GET /deployments        # array of in-flight deploys (empty when idle)
+```
+
 ## Read & control
 
 ```
@@ -76,8 +120,10 @@ GET    /services/{uuid}     # detail (add -s / can_read_sensitive for compose)
 POST   /services/{uuid}/start | /stop | /restart
 DELETE /services/{uuid}
 GET    /resources           # everything with status (coolify resource list)
-GET    /applications/{uuid}/logs?lines=200
+GET    /applications/{uuid}/logs?lines=200   # git/buildpack apps only
 ```
+
+> A **compose service's sub-service is NOT addressable at `/applications/{uuid}`** — that returns `404 "Application not found."` (`/applications/*` is for git/buildpack apps). For compose logs, read them on the box (`docker logs <container>`) or take state from `GET /services/{uuid}` → `.applications[]`.
 
 ## Response codes
 
