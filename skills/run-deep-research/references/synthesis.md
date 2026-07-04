@@ -59,7 +59,7 @@ them.
 | Official postmortems / incident reports | Very high | What broke; why; what changed in response |
 | Maintainer responses (issues, PRs) | High | Known bugs; intended behavior; workarounds |
 | Scraped benchmarks with disclosed methodology | High | Performance claims (verify workload conditions match) |
-| `## Synthesis` from `smart-web-search` | Moderate-high for analysis; low for facts | Trade-off reasoning. Never cite as evidence — it reads titles+snippets, not bodies |
+| `## Synthesis`-style reasoning from an LLM planner/classifier | Moderate-high for analysis; low for facts | Trade-off reasoning. Never cite as evidence — planners reason over titles/snippets and prior context, not scraped bodies |
 | Highly-upvoted Reddit (100+ votes, specifics) | Moderate-high | How things actually work in production |
 | Stack Overflow accepted + highly voted | Moderate-high | Common solutions (check date) |
 | Recent blog by named practitioner with specifics | Moderate | Single data point, useful if detailed |
@@ -69,9 +69,9 @@ them.
 ## Citation discipline
 
 The hard rule: **only scraped page content is evidence.** Search
-snippets are leads, not citations. The `## Synthesis` block from
-`smart-web-search` is a planning aid — its rank-citations point to
-URLs not yet scraped.
+snippets (from `web-search`) are leads, not citations — `web-search`
+never runs an LLM and never synthesizes; it only returns a ranked
+URL pool. Only `scrape-link` output is citable.
 
 For each non-trivial claim in any corpus file, capture:
 
@@ -114,10 +114,11 @@ Claims fall in three categories:
 Never blend. Inference paragraphs should look visibly different
 from evidence paragraphs.
 
-## The smart-* output sections as synthesis aids
+## The scrape-link output sections as synthesis aids
 
 Every Wave 2 subagent's run-research session produces structured
-output sections. The orchestrator can use these directly:
+output sections from `scrape-link` (the only tool that runs LLM
+extraction). The orchestrator can use these directly:
 
 - **`## Matches`** populates the claims ledger. Each claim with
   verbatim quote becomes a row in `<entity-slug>/09-sources.md`.
@@ -151,7 +152,8 @@ disagree:
   "does it work in practice"; trust docs for "how is it supposed
   to work".
 - **Smart-search synthesis vs scraped facts.** Always trust scraped
-  pages over smart-search synthesis for specific facts.
+  pages (via `scrape-link`) over an LLM planner's reasoning for
+  specific facts.
 - **Nobody agrees.** The answer is genuinely context-dependent.
   Do not force one recommendation; name the variables that
   determine which is best.
@@ -335,8 +337,9 @@ Before declaring the corpus complete:
 - [ ] Version-specific claims checked against changelog.
 - [ ] Sources actually independent (not citing each other).
 - [ ] Recency appropriate for the domain.
-- [ ] Smart-search `## Synthesis` claims about specific facts
-      verified against scraped pages.
+- [ ] Any LLM-planner reasoning (from `get-research-consultancy`)
+      about specific facts verified against pages actually scraped
+      via `scrape-link`.
 - [ ] `## Not found` sections from Wave 2 are reflected in the
       pack's "insufficient evidence" entries.
 - [ ] Every numeric / versioned / priced claim has a verbatim

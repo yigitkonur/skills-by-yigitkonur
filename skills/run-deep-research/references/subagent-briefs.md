@@ -42,49 +42,58 @@ You have the `run-research` skill available. Use it to drive every
 web/Reddit research call in this mission. Its discipline is
 non-negotiable for this brief.
 
-1. **First call**: invoke `start-research` with a goal paragraph
+1. **First call**: invoke `get-research-consultancy` with a goal paragraph
    that names — topic, your specific use case (research <X> for
    <decider> in this corpus), known unknowns to skip, what NOT to
    research, freshness window (default: weight last 90 days), quote
    discipline (every numeric/versioned/priced claim cites a verbatim
    quote).
 
-2. **Toolkit shape**: 5 tools in a 2×2 (raw/smart × search/scrape)
-   plus the planner.
-   - `raw-web-search`: URL pool plus audit. Use when output goes
-     to file or you will subagent-triage.
-   - `smart-web-search`: tiered triage with `## Synthesis` /
-     `## Gaps` / `## Suggested follow-up searches`. Use when
-     output goes directly to your context.
-   - `raw-scrape-links`: full markdown including Reddit threading
-     (author + score + indent depth). Use for Reddit threads
-     (≤5 per call) and undecided extraction shape.
-   - `smart-scrape-links`: per-URL extraction with `## Matches` /
-     `## Not found` / `## Follow-up signals` / `## Contradictions`.
-     Use when extraction shape is decided. Hard caps: ≤5 URLs and
-     ≤7 facets per call.
+2. **Toolkit shape**: 3 tools — the planner plus one search tool and
+   one extraction tool. There is no raw/smart split; each tool has a
+   single fixed contract.
+   - `get-research-consultancy`: goal-tailored brief — primary
+     branch, keyword seeds, iteration hints, gaps to watch, stop
+     criteria. Call this first, once per mission.
+   - `web-search`: `keywords` only (1-50), never calls an LLM. Returns
+     a ranked, de-duplicated, CTR-aggregated URL pool — no synthesis,
+     no tiering, no `## Gaps`/`## Synthesis` sections. Use it for
+     every reconnaissance round, including Reddit discovery via
+     explicit `site:reddit.com/r/.../comments` keyword probes fed
+     into the same tool (there is no separate reddit scope param).
+   - `scrape-link`: `urls` plus a REQUIRED `extract` string (pipe-
+     separated facets). Always runs LLM extraction and returns
+     `## Source` / `## Matches` / `## Not found` / `## Follow-up
+     signals` (and sometimes `## Contradictions`). Reddit permalinks
+     auto-route through the Reddit API (full threaded post +
+     comments) before extraction — use a quote-preserving `extract`
+     for sentiment/threading work. Hard caps: ~5 URLs and 5-7 facets
+     per call (~13s per URL).
 
-3. **Parallel dispatch**: fire two `raw-web-search` calls in one
-   turn when scopes differ (web + reddit). The reconnaissance
-   round runs in roughly the time of one call. This is the
-   canonical pattern, not an exotic move.
+3. **Parallel dispatch**: fire two `web-search` calls in one
+   turn when scopes differ (e.g. open web + a `site:reddit.com/
+   r/.../comments` probe set). The reconnaissance round runs in
+   roughly the time of one call. This is the canonical pattern, not
+   an exotic move.
 
 4. **Multi-round**: 2-4 search rounds is normal. Harvest
-   `## Follow-up signals` (from smart-scrape) and `## Suggested
-   follow-up searches` (from smart-search) to seed round 2.
-   Single-call sessions are under-researched.
+   `## Follow-up signals` (from `scrape-link`) to seed round 2 with
+   refined `web-search` keyword probes. Single-call sessions are
+   under-researched.
 
 5. **Citation discipline**: snippets are NOT evidence. Only scraped
-   page content is citable. Every numeric / versioned / priced
-   claim cites a verbatim quote with URL and scrape date.
+   page content (via `scrape-link`) is citable. Every numeric /
+   versioned / priced claim cites a verbatim quote with URL and
+   scrape date.
 
 6. **`## Not found` is mandatory reading**: it tells you which
    gaps to chase next round. Never skip a `## Not found` section.
 
-7. **Operational thresholds**: smart-scrape ≤ 5 URLs and ≤ 7
-   facets per call (9 URLs times out). Raw-search >25 keywords
-   across 2+ parallel calls overflows context — plan for
-   persistence, subagent-extract from the persisted file.
+7. **Operational thresholds**: `scrape-link` ≤ 5 URLs and ≤ 7
+   facets per call (going wider risks timing out). `web-search`
+   fans out cleanly across 2-4 parallel calls per round; beyond
+   that, plan for persistence and subagent-extract from the
+   persisted file.
 
 8. **For full discipline**, the run-research skill's references
    are at:
@@ -256,10 +265,10 @@ You own this mission end-to-end.
 <paste the run-research integration block verbatim>
 
 Adapt: freshness window = "weight last 12 months for category
-shifts". Tool steering: `smart-web-search` with extract = "decision
+shifts". Tool steering: `web-search` keyword probes for "decision
 axes deciders compare on for <topic>; native primitives per axis;
-not feature lists; not marketing"; `smart-scrape-links` on 2-3
-authoritative analyses.
+not feature lists; not marketing"; `scrape-link` with a matching
+`extract` on 2-3 authoritative analyses.
 
 [DEFINITION OF DONE]
 
@@ -352,7 +361,7 @@ judgment; adapt your approach as you learn more.
 [RESEARCH METHODOLOGY]
 <paste the run-research integration block verbatim>
 
-Adapt the goal paragraph for `start-research`:
+Adapt the goal paragraph for `get-research-consultancy`:
 - Topic: <entity name>.
 - Use case: research <entity> on every axis in this catalog for
   <decider use case>; focus on <decision-flipping axes>; treat
@@ -364,10 +373,12 @@ Adapt the goal paragraph for `start-research`:
 - Quote discipline: every numeric / versioned / priced claim
   cites a verbatim scraped quote.
 
-Tool steering: parallel `smart-web-search` (web + reddit) for
-reconnaissance; `smart-scrape-links` on docs/changelog/pricing
-pages (≤5 URLs and ≤7 facets per call); `raw-scrape-links` on
-Reddit threads for sentiment (≤5 threads per call).
+Tool steering: parallel `web-search` calls (open web + explicit
+`site:reddit.com/r/.../comments` probes) for reconnaissance;
+`scrape-link` with a facet-rich `extract` on docs/changelog/pricing
+pages (≤5 URLs and 5-7 facets per call); `scrape-link` with a
+quote-preserving `extract` on Reddit threads for sentiment (≤5
+threads per call).
 
 [DEFINITION OF DONE]
 

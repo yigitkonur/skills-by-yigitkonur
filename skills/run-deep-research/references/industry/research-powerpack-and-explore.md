@@ -12,13 +12,11 @@ Tool names vary by runtime. Verify the available tool names before Phase 1 and r
 
 | Portable API | What it does | Use for |
 |---|---|---|
-| `start-research` | Goal-tailored planning brief: scope, first searches, gaps, stop criteria. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
-| `web-search` / `smart-web-search` | Classified search with extraction/synthesis, relevance tiers, gaps, and follow-up searches. | Triage in context; gap-driven follow-ups |
-| `raw-web-search` | Unfiltered ranked URL lists and snippets. | Broad URL harvesting; Reddit permalink discovery; subagent triage |
-| `scrape-links` / `smart-scrape-links` | Structured page extraction with matches, not-found sections, and follow-up signals. | Docs/blog extraction; fact checks; source-backed synthesis |
-| `raw-scrape-links` | Full source markdown capture; preserves Reddit thread structure when available. | Source files, quote-safe evidence, Reddit/practitioner capture |
+| `get-research-consultancy` | Goal-tailored planning brief: goal_class, primary_branch, first_call_sequence (web-search/scrape-link steps only), keyword_seeds, gaps, stop criteria. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
+| `web-search` | Keywords-only ranked, de-duplicated, CTR-aggregated (CONSENSUS) URL list. Never calls an LLM, never tiers/classifies/synthesizes. Reddit discovery is a `site:reddit.com/r/.../comments` keyword probe, not a parameter. | Broad URL harvesting; Reddit permalink discovery; subagent triage; gap-driven follow-ups (expect multiple calls across 2-4 rounds) |
+| `scrape-link` | Structured page extraction (always LLM-driven; `extract` is required) with `## Source`, `## Matches`, `## Not found`, `## Follow-up signals`, and sometimes `## Contradictions` sections. Reddit permalinks route through the Reddit API (full threaded fetch) before the same extraction runs on top. | Docs/blog extraction; fact checks; source-backed synthesis; Reddit/practitioner capture |
 
-Use smart tools when the output goes directly into context and needs classification. Use raw tools when the output goes to files, subagents, source ledgers, or later triage.
+There is no raw/smart split anymore — `web-search` and `scrape-link` are each a single tool. Use `web-search` when you need a ranked URL pool and haven't decided what to read yet; use `scrape-link` (with a well-chosen `extract`) whenever you need actual page content, quotes, or Reddit thread analysis. Tiering, gap analysis, and follow-up-search suggestions are no longer tool output — the agent does that synthesis itself across search rounds.
 
 ### Web-capable research agents and local-corpus Explore
 
@@ -32,9 +30,9 @@ When the MCP is unavailable:
 
 | Lost capability | Fallback |
 |---|---|
-| `start-research` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
-| `web-search` / `smart-web-search` / `raw-web-search` | `WebSearch` direct |
-| `scrape-links` / `smart-scrape-links` / `raw-scrape-links` | `WebFetch` to the page + manual extraction, OR `curl` |
+| `get-research-consultancy` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
+| `web-search` | `WebSearch` direct |
+| `scrape-link` | `WebFetch` to the page + manual extraction, OR `curl` |
 
 State the fallback explicitly in the workflow. Do not silently degrade.
 
@@ -43,14 +41,14 @@ State the fallback explicitly in the workflow. Do not silently degrade.
 ```
 Need: discover entities in a category
 ├── Have: research-powerpack MCP
-│   └── Use: start-research with sub-question brief
+│   └── Use: get-research-consultancy with sub-question brief
 └── Have: only base tools
     └── Use: web-capable research agents, one per sub-question
 
 Need: research one entity in depth (Phase 4)
 ├── Have: research-powerpack MCP
-│   ├── Initial broad pass: start-research per entity
-│   └── Targeted gap-filling: smart/raw web-search + scrape-links
+│   ├── Initial broad pass: get-research-consultancy per entity
+│   └── Targeted gap-filling: web-search + scrape-link
 └── Have: only base tools
     └── One web-capable research agent per entity, dispatched in waves
 
@@ -58,16 +56,16 @@ Need: cross-reference inside the growing corpus
 └── Always: local-corpus Explore (read-only inside the corpus folder)
 
 Need: extract a candidate list from a category review page
-├── Have: smart-scrape-links or raw-scrape-links → use directly
+├── Have: scrape-link → use directly
 └── Have: only base tools → WebFetch + parse
 ```
 
-## Pattern A: discovery via start-research
+## Pattern A: discovery via get-research-consultancy
 
 Phase 1, full-MCP path.
 
 ```
-start-research:
+get-research-consultancy:
   goal: |
     # Discovery brief: [topic-slug] category
 
@@ -144,12 +142,12 @@ Return a markdown table of candidates plus a short narrative on:
 Report under 500 words.
 ```
 
-## Pattern C: per-entity research via start-research
+## Pattern C: per-entity research via get-research-consultancy
 
 Phase 4, full-MCP path. One MCP call per `core` entity (parallelizable in waves).
 
 ```
-start-research:
+get-research-consultancy:
   goal: |
     # Entity research: [entity-slug] in [topic-slug] corpus
 
@@ -193,14 +191,19 @@ start-research:
 Phase 4 or 5, when the orchestrator needs a specific fact:
 
 ```
-smart-web-search:
+web-search:
   keywords:
     - "site:browserbase.com pricing browser minutes"
-  extract: "pricing plans | native units | overages | enterprise gating"
-
-raw-web-search:
-  keywords:
     - "site:reddit.com/r/*/comments Anchor Browser Browserbase migration OR switched"
+```
+
+Then extract the facts from whichever URLs the search surfaced:
+
+```
+scrape-link:
+  urls:
+    - "[pricing page URL from the search above]"
+  extract: "pricing plans | native units | overages | enterprise gating"
 ```
 
 Use this when:
@@ -208,19 +211,20 @@ Use this when:
 - A claim needs cross-validation
 - A practitioner anecdote needs sourcing
 
-## Pattern E: candidate-list extraction via scrape-links
+## Pattern E: candidate-list extraction via scrape-link
 
 Phase 1 supplement. Useful when a category-review site lists 30 entities you want to harvest:
 
 ```
-smart-scrape-links:
+scrape-link:
   urls:
     - "https://www.g2.com/categories/[category]/products"
   extract: "listed products | vendor URLs | category labels | pagination signals"
 
-raw-scrape-links:
+scrape-link:
   urls:
     - "https://github.com/[curated-list-repo]"
+  extract: "listed projects | maintainer | last-update signal | readme description"
 ```
 
 Filter the returned links for plausible entity homepages, then status-check each via WebFetch.
@@ -242,10 +246,10 @@ When dispatching multiple agents in parallel (Phase 1 discovery, Phase 4 entity 
 A typical Phase 4 sequence for one entity:
 
 ```
-1. start-research → broad evidence pack draft
+1. get-research-consultancy → broad evidence pack draft
 2. Read the draft; identify gaps (missing pricing scenario, missing Reddit signal)
-3. smart-web-search or raw-web-search → fill specific gaps
-4. smart-scrape-links or raw-scrape-links → harvest related pages if needed
+3. web-search → fill specific gaps (fire a round of ranked-URL searches)
+4. scrape-link → extract from the URLs that matter, harvesting related pages if needed
 5. Local Explore → cross-reference inside the corpus to avoid duplicating cross-product files
 6. Write or refine the entity-pack files
 ```
@@ -256,7 +260,7 @@ Before Phase 1, run a one-line probe:
 
 ```
 # Check MCP availability
-Probe: which Research Power Pack tools are available (`start-research`, smart/raw search, smart/raw scrape), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
+Probe: which Research Power Pack tools are available (`get-research-consultancy`, `web-search`, `scrape-link`), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
 ```
 
 Capture the result in `_meta/methodology-and-source-policy.md` so the corpus records which tools were used (and which fallbacks).
@@ -276,8 +280,8 @@ Capture the result in `_meta/methodology-and-source-policy.md` so the corpus rec
 
 The cloud-browsers corpus (293 files, 12 entities) used:
 
-- **Phase 1:** 1 `start-research` call for category discovery, plus 5 `web-search` follow-ups per gap → 25 candidates → tiered to 12 core
-- **Phase 4:** 12 parallel `start-research` calls (2 waves of 6 each), 1 per `core` entity. Average ~30 follow-up `web-search` calls across all entities for gap-filling
+- **Phase 1:** 1 `get-research-consultancy` call for category discovery, plus 5 `web-search` follow-ups per gap → 25 candidates → tiered to 12 core
+- **Phase 4:** 12 parallel `get-research-consultancy` calls (2 waves of 6 each), 1 per `core` entity. Average ~30 follow-up `web-search` calls across all entities for gap-filling
 - **Phase 5:** 10 cross-criterion comparison agents (one per criterion folder), each a parallel Explore run reading completed entity packs locally
 - **Phase 6:** 12 profile pages written by orchestrator personally (no agent delegation)
 

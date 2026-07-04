@@ -87,7 +87,7 @@ These are sub-waves the orchestrator inserts when the corpus needs a
 high-volume, low-decision-density artifact:
 
 - **Per-source distillation:** 40 source URLs from `_meta/discovered-sources.md`; one structured row per URL (title, claim, evidence quality). Forty parallel `low` jobs.
-- **Reddit-thread quote extraction:** N Reddit permalinks; one row per thread (top voted comment, sentiment, bias label). Use `raw-scrape-links` inside the codex prompt and a fixed output schema.
+- **Reddit-thread quote extraction:** N Reddit permalinks; one row per thread (top voted comment, sentiment, bias label). Use `scrape-link` inside the codex prompt with a quote-preserving `extract` instruction (e.g. "preserve direct quotes with attribution and sentiment") and a fixed output schema.
 - **Pricing-table normalization:** N vendors with public pricing pages; one normalized row per vendor (native unit, included quota, overage shape). 
 - **Source-map maintenance:** read all per-entity source ledgers; emit one consolidated cross-corpus source map.
 

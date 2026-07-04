@@ -69,10 +69,10 @@ Each sub-question surfaces a different candidate cluster. Five sub-questions ret
 
 ### With Research Power Pack (preferred)
 
-Verify available tool names before searching and record them in `_meta/methodology-and-source-policy.md`. Use `start-research` with a research brief that names the sub-questions. The tool runs multi-source discovery and returns a consolidated candidate list or search plan.
+Verify available tool names before searching and record them in `_meta/methodology-and-source-policy.md`. Use `get-research-consultancy` with a research brief that names the sub-questions. The tool runs multi-source discovery and returns a consolidated candidate list or search plan.
 
 ```
-start-research:
+get-research-consultancy:
   goal: |
     Discover entities in the [topic] category. Decompose into these sub-questions:
     1. [sub-question 1]
@@ -83,24 +83,29 @@ start-research:
     that surfaced it.
 ```
 
-For targeted follow-ups on specific candidates, use smart search when the results should be classified in context and raw search when the goal is URL harvesting:
+For targeted follow-ups on specific candidates, use `web-search` to harvest a ranked URL pool (Reddit discovery via an explicit `site:reddit.com/r/.../comments` keyword probe), then `scrape-link` to extract from the URLs that matter:
 
 ```
-smart-web-search:
+web-search:
   keywords:
     - "[candidate name] alternatives 2025"
     - "[candidate name] vs [known competitor]"
-  extract: "direct competitors | adjacent alternatives | source quality | recency"
-
-raw-web-search:
-  keywords:
     - "site:reddit.com/r/*/comments [candidate name] [category] alternatives OR switched"
+```
+
+Then extract from the harvested URLs:
+
+```
+scrape-link:
+  urls:
+    - "[top candidate-alternatives URL from the search above]"
+  extract: "direct competitors | adjacent alternatives | source quality | recency"
 ```
 
 For extracting candidate lists from category review pages:
 
 ```
-smart-scrape-links:
+scrape-link:
   urls:
     - "https://example-review-site.com/[category]"
   extract: "listed entities | vendor URLs | category labels | access notes"

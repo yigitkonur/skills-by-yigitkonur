@@ -19,8 +19,8 @@ instructions for reading or subagent-extracting it.
 **Diagnosis:** Normal behavior, not error. Output volume exceeded ~50KB,
 which is structural for any of:
 
-- `raw-web-search` with 25+ keywords across multiple parallel calls
-- `raw-scrape-links` on 2+ non-Reddit pages with heavy chrome
+- `web-search` with 25+ keywords across multiple parallel calls
+- `scrape-link` on 2+ non-Reddit pages with heavy chrome
 - Any large parallel fan-out
 
 **Recovery:**
@@ -43,13 +43,15 @@ which is structural for any of:
 
 **Prevention:**
 
-- For `raw-web-search`: if expecting >25 keywords, plan a subagent-extract
+- For `web-search`: if expecting >25 keywords, plan a subagent-extract
   step from the start.
-- Prefer `smart-web-search` when output goes directly into context.
+- `web-search` already returns a token-optimized, de-duplicated URL list
+  rather than raw snippets — if it still overflows, split the keyword
+  batch across two calls instead of shrinking it blindly.
 
 ---
 
-## smart-scrape-links timeout
+## scrape-link timeout
 
 **Symptom:** `Operation timed out` after 50–60 seconds.
 
@@ -61,19 +63,20 @@ repeatedly.
 
 1. Split the call into batches of 4 URLs each.
 2. If still timing out, reduce the `extract` to ≤5 facets.
-3. If still timing out, switch to `raw-scrape-links` and subagent-extract.
+3. If still timing out, split further into single-URL calls and
+   subagent-extract the batch results.
 
 **Anti-patterns:**
 
 - Retrying the same 9-URL call. It will time out again.
 - Adding more facets to "save a call." Quality drops sharply past 7
   facets.
-- Falling back to a single URL per call. Wasteful; 4–5 URLs per call is
-  the sweet spot.
+- Falling back to a single URL per call as the default. Wasteful; 4–5
+  URLs per call is the sweet spot.
 
 **Prevention:**
 
-- Cap `smart-scrape-links` at 5 URLs per call as a hard rule.
+- Cap `scrape-link` at 5 URLs per call as a hard rule.
 - For 10 URLs, dispatch two parallel 5-URL calls.
 
 ---
@@ -118,8 +121,7 @@ the session. Note it for next session.
 
 ## Search returns empty for all keywords
 
-**Symptom:** `raw-web-search` or `smart-web-search` returns 0 results
-across every keyword.
+**Symptom:** `web-search` returns 0 results across every keyword.
 
 **Diagnosis:** Two possibilities:
 
@@ -132,8 +134,8 @@ across every keyword.
 
 1. Drop the `site:` operator on 30% of keywords.
 2. Replace exact phrases with quoted shorter substrings.
-3. Try `scope: "reddit"` — the topic might exist in community discussion
-   even if not in vendor docs.
+3. Try a batch of `site:reddit.com/r/.../comments` keyword probes — the
+   topic might exist in community discussion even if not in vendor docs.
 4. Broaden one axis: instead of "X feature in Y v3.2", try "X feature in
    Y" or "X feature".
 5. If still empty, the topic may genuinely not have web evidence yet.
@@ -149,7 +151,7 @@ across every keyword.
 
 ---
 
-## start-research returns generic brief
+## get-research-consultancy returns generic brief
 
 **Symptom:** The brief lists 25 keyword seeds that are all variants of
 the topic noun phrase. `gaps_to_watch` is one or two vague items.
@@ -172,7 +174,7 @@ more of:
    - Known knowns
    - Wanted unknowns
    - Skip list + freshness + quote discipline
-2. Re-call `start-research` with the new goal.
+2. Re-call `get-research-consultancy` with the new goal.
 3. The new brief will have specific seeds across source classes, sharper
    `gaps_to_watch`, and likely a different `primary_branch`.
 
@@ -188,7 +190,7 @@ more of:
 
 ## Reddit thread returns 0 comments
 
-**Symptom:** `raw-scrape-links` on a Reddit permalink returns the post
+**Symptom:** `scrape-link` on a Reddit permalink returns the post
 but `## Top comments` is empty or missing.
 
 **Diagnosis:** Three possibilities:
@@ -265,7 +267,7 @@ but `## Top comments` is empty or missing.
 1. Verify the page was actually scraped (not just listed in search
    results).
 2. If not scraped: scrape it now and find the verbatim text.
-3. If scraped but paraphrased: re-scrape with `smart-scrape-links` and a
+3. If scraped but paraphrased: re-scrape with `scrape-link` and a
    verbatim-discipline `extract`.
 4. Replace the paraphrase with the quoted text.
 
@@ -281,7 +283,7 @@ but `## Top comments` is empty or missing.
 
 ## Anti-bot / Cloudflare / SPA rendering failures
 
-**Symptom:** `raw-scrape-links` returns minimal content or boilerplate
+**Symptom:** `scrape-link` returns minimal content or boilerplate
 ("Just a moment...", "Please enable JavaScript", an empty body).
 
 **Diagnosis:**
@@ -307,7 +309,7 @@ agent keeps searching out of habit.
 
 **Stop when:**
 
-- Every `gaps_to_watch` item from `start-research` is closed.
+- Every `gaps_to_watch` item from `get-research-consultancy` is closed.
 - The last search round surfaced no new terms (no harvest from
   `## Follow-up signals`).
 - The agreed time or effort budget has been reached.

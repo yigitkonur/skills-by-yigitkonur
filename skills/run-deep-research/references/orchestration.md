@@ -73,11 +73,13 @@ outliers / recent entrants). Each sub-question surfaces a different
 candidate cluster.
 
 **Tool steering inside the subagent's run-research session**:
-- Parallel `raw-web-search` (web-scoped + reddit-scoped) per
-  sub-question. Two `raw-web-search` calls in one turn.
-- Optional `raw-scrape-links` on category-index pages or curated
-  lists.
-- Status-check each candidate via `smart-scrape-links` with extract
+- Parallel `web-search` calls per sub-question, mixing open-web
+  keyword probes with explicit `site:reddit.com/r/.../comments`
+  probes for reddit-sourced candidates. Two `web-search` calls in
+  one turn.
+- Optional `scrape-link` on category-index pages or curated lists
+  (pass an `extract` string naming what to pull from each index).
+- Status-check each candidate via `scrape-link` with extract
   = "active / dead / waitlist / acquired with last-update date".
 
 **Stop criteria**: every sub-question surfaced ≥3 candidates; every
@@ -103,12 +105,13 @@ this domain, the recent (last 12 months) shifts, the lock-in / exit
 shape.
 
 **Tool steering**:
-- `smart-web-search` with extract = "decision axes deciders compare
+- `web-search` keyword probes for "decision axes deciders compare
   on for <topic>; native primitives per axis; not feature lists; not
-  marketing".
-- `smart-scrape-links` on 2-3 authoritative analyses (practitioner
-  blog posts, analyst writeups, well-cited HN threads).
-- Reddit `smart-web-search` to capture practitioner-channel naming.
+  marketing" — then `scrape-link` with a matching `extract` on 2-3
+  authoritative analyses (practitioner blog posts, analyst writeups,
+  well-cited HN threads).
+- `web-search` with explicit `site:reddit.com/r/.../comments` probes
+  to capture practitioner-channel naming.
 
 **Stop criteria**: every axis has a name, a native primitive, and a
 decision weight (decision-flipping / important / nice-to-know).
@@ -216,16 +219,18 @@ ship sub-waves of ≤8.
 
 Each Wave 2 subagent's run-research session:
 
-- Call `start-research` with goal = "build full evidence pack for
+- Call `get-research-consultancy` with goal = "build full evidence pack for
   <entity> on every axis in the charter for <decider use case>;
   quote discipline = every numeric/versioned/priced claim verbatim".
-- Wave 2 reconnaissance: parallel `smart-web-search` (web) +
-  `smart-web-search` (reddit) — different scopes, one turn.
-- Per-axis evidence capture: `smart-scrape-links` on docs,
-  changelog, pricing pages (≤5 URLs per call); `raw-scrape-links`
-  on Reddit threads (≤5 threads per call).
-- Round 2: harvest `## Follow-up signals` and `## Suggested
-  follow-up searches`; fire refined searches.
+- Wave 2 reconnaissance: parallel `web-search` calls — open-web
+  keyword probes plus explicit `site:reddit.com/r/.../comments`
+  probes — different scopes, one turn.
+- Per-axis evidence capture: `scrape-link` with a facet-rich
+  `extract` on docs, changelog, pricing pages (≤5 URLs per call);
+  `scrape-link` on Reddit threads with a quote-preserving `extract`
+  (≤5 threads per call).
+- Round 2: harvest `## Follow-up signals`; fire refined `web-search`
+  probes.
 
 The orchestrator's brief sets the dispatch shape (parallel scopes,
 extract page-type hints, freshness window). The brief should not
@@ -371,11 +376,11 @@ changed.
 
 | Use case | Wave | Tool dispatch (inside the subagent's run-research session) |
 |---|---|---|
-| Find entities (Wave 1A) | 1 | Parallel `raw-web-search` (web + reddit) per sub-question; `raw-scrape-links` on category indexes |
-| Map axes (Wave 1B) | 1 | `smart-web-search` with extract = decision axes; `smart-scrape-links` on 2-3 authoritative analyses |
-| Per-entity overview (Wave 2) | 2 | `start-research` per entity → parallel `smart-web-search` (web + reddit) → `smart-scrape-links` on docs + `raw-scrape-links` on Reddit |
-| Per-entity sentiment (Wave 2) | 2 | `raw-scrape-links` on Reddit thread permalinks; preserves voting + threading |
-| Per-entity pricing/security (Wave 2) | 2 | `smart-scrape-links` with page-type-aware extract per run-research's prompting guide |
+| Find entities (Wave 1A) | 1 | Parallel `web-search` per sub-question (open web + explicit `site:reddit.com/r/.../comments` probes); `scrape-link` on category indexes |
+| Map axes (Wave 1B) | 1 | `web-search` keyword probes for decision axes; `scrape-link` with a matching `extract` on 2-3 authoritative analyses |
+| Per-entity overview (Wave 2) | 2 | `get-research-consultancy` per entity → parallel `web-search` (open web + reddit-scoped probes) → `scrape-link` on docs and Reddit threads with a facet-rich `extract` |
+| Per-entity sentiment (Wave 2) | 2 | `scrape-link` on Reddit thread permalinks with a quote-preserving `extract`; Reddit API fetches the full threaded post + comments before extraction |
+| Per-entity pricing/security (Wave 2) | 2 | `scrape-link` with page-type-aware `extract` per run-research's prompting guide |
 | Cross-entity synthesis (Wave 3) | 3 | LOCAL-ONLY: read files; no web tools |
 | Profile pages (Wave 4 / orch) | 4/7 | LOCAL-ONLY: read pack files, write profile |
 | Master summary (Phase 7) | 7 | LOCAL-ONLY: orchestrator reads everything, writes |

@@ -15,7 +15,7 @@ architects the folder tree, dispatches research in waves, gates between waves, a
 synthesizes the final master summary. The actual web research runs on a **chosen
 executor — Claude subagents or `codex exec`** — selected up front at intake (see
 **Executor — Claude subagents or codex**). The orchestrator role is identical either
-way: each research task invokes the `run-research` discipline (5-tool research
+way: each research task invokes the `run-research` discipline (3-tool research
 surface, `## Not found` harvesting, citation rules, parallel scope dispatch). The
 filesystem is the only context channel between waves — research tasks do not see each
 other's outputs except through files the orchestrator names in the next brief.
@@ -222,10 +222,10 @@ research task executes it (a Claude run-research session, or a codex exec job).
 
 | Use case | Wave | Tool dispatch |
 |---|---|---|
-| Find entities | 1A / Discovery | Parallel `raw-web-search` (web + reddit) → optional `raw-scrape-links` on category indexes |
-| Map axes / deep category pre-pass | 1B / Discovery | `smart-web-search` with extract = "decision axes / native pricing units / practitioner channels" → `smart-scrape-links` on 2-3 authoritative analyses |
-| Per-entity overview | 2 | `start-research` per entity → parallel `smart-web-search` (web + reddit) → `smart-scrape-links` on docs + `raw-scrape-links` on Reddit |
-| Per-entity sentiment | 2 | `raw-scrape-links` on Reddit thread permalinks (preserves voting + threading) |
+| Find entities | 1A / Discovery | Parallel `web-search` keyword probes (open web + explicit `site:reddit.com/r/.../comments` probes) → optional `scrape-link` on category indexes |
+| Map axes / deep category pre-pass | 1B / Discovery | `web-search` to surface candidate analyses → `scrape-link` with extract = "decision axes / native pricing units / practitioner channels" on 2-3 authoritative analyses |
+| Per-entity overview | 2 | `get-research-consultancy` per entity → parallel `web-search` (open web + reddit-scoped keyword probes) → `scrape-link` on docs and Reddit threads with a facet-rich `extract` |
+| Per-entity sentiment | 2 | `scrape-link` on Reddit thread permalinks with a quote-preserving `extract` (Reddit API fetches the full threaded post + comments; scrape-link extracts sentiment/quotes from it) |
 | Cross-entity synthesis | 3 | LOCAL-ONLY: read files, no web tools |
 | Profile pages | 4 / orch | LOCAL-ONLY: read pack, write profile |
 | Master summary | 7 | LOCAL-ONLY: orchestrator reads everything, writes |
@@ -438,7 +438,7 @@ exhausts context.
 | `references/industry/evidence-and-synthesis.md` | Wave 2-3 (industry framing) — source hierarchy, source-map and claims-ledger schemas, Reddit/practitioner rules, pricing/unit-economics standards, cross-category structure |
 | `references/industry/worked-example-cloud-browsers.md` | Any phase (industry framing) — annotated walkthrough of the cloud-browsers corpus including actual template artifacts. Mirror its *discipline*; do not copy slugs. |
 | `references/industry/mission-briefs.md` | Wave 1, 2, 3, 4 (industry framing) — prompts for discovery, entity-pack, cross-comparison, audience, source-verification, profile-writer tasks |
-| `references/industry/research-powerpack-and-explore.md` | Wave 1, 2, 3 (industry framing) — portable Research Power Pack API shapes (`start-research`, smart/raw search and scrape) plus web-capable research and local-corpus Explore patterns (≤20 per wave) |
+| `references/industry/research-powerpack-and-explore.md` | Wave 1, 2, 3 (industry framing) — portable Research Power Pack API shapes (`get-research-consultancy`, `web-search`, `scrape-link`) plus web-capable research and local-corpus Explore patterns (≤20 per wave) |
 | `scripts/init-corpus.sh` + `scripts/init-corpus.md` | Phase 0 or 3 — deterministic corpus scaffolding; root/meta starter files only, never entity evidence placeholders |
 
 ## Quick start

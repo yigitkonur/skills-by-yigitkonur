@@ -2,7 +2,7 @@
 
 Workflows are recipes — patterns for common research scenarios. Each fits
 the **Plan → Reconnoiter → Triage → Capture → Synthesize** template,
-names raw or smart at every tool call, and ends with explicit stop
+names the exact tool call at every step, and ends with explicit stop
 criteria.
 
 Use the decision worksheet first. The right workflow saves rounds.
@@ -15,7 +15,7 @@ Four yes/no questions route to the right workflow:
 
 1. **Is this an active production incident or sub-30-minute fact check?**
    - Yes → Workflow 5 (Production incident) or Workflow 4 (Fact check).
-     Skip `start-research`.
+     Skip `get-research-consultancy`.
    - No → continue.
 
 2. **Choosing between options or making a design decision?**
@@ -33,7 +33,7 @@ Four yes/no questions route to the right workflow:
    - State of an ecosystem, market, vendor category, or 5+ entities →
      redirect to `run-deep-research`.
 
-Every workflow except 4 and 5 starts with `start-research`.
+Every workflow except 4 and 5 starts with `get-research-consultancy`.
 
 ---
 
@@ -53,9 +53,9 @@ basic getting-started. Freshness: last 12 months. Quote discipline:
 stacktraces verbatim."
 ```
 
-**Reconnoiter.** Default to `raw-web-search` — exact-error queries
+**Reconnoiter.** `web-search` with exact-error queries — these
 typically return high-CONSENSUS GitHub issues that should land in the
-URL cache for round 2.
+URL pool for round 2.
 
 ```
 keywords: [
@@ -74,7 +74,7 @@ changelog entries, top 1–2 Reddit threads.
 
 **Capture.** Two parallel calls:
 
-- `smart-scrape-links` on GitHub issues + changelog (≤5 URLs):
+- `scrape-link` on GitHub issues + changelog (≤5 URLs):
   ```
   Page type hint: github-thread or changelog.
   extract:
@@ -87,7 +87,12 @@ changelog entries, top 1–2 Reddit threads.
 
   Discipline: Quote stacktraces verbatim. List Not found with reason.
   ```
-- `raw-scrape-links` on Reddit threads (preserves comment threading).
+- `scrape-link` on Reddit threads (auto-routes through the Reddit API
+  for full threaded comments):
+  ```
+  extract: verbatim quotes with author + score | recurring workaround
+  reports | affected version reports
+  ```
 
 **Synthesize.** Diagnosis with evidence chain. Before/after fix code.
 Caveats. Fallback. Start with immediate stabilization (what to deploy
@@ -120,17 +125,17 @@ multi-tenant. Freshness: last 90 days; >6mo as historical only.
 Quote discipline: every numeric/versioned/priced claim verbatim."
 ```
 
-**Reconnoiter.** Naturally `primary_branch: both`. Fan out twice in
-parallel:
+**Reconnoiter.** Naturally two orthogonal keyword clusters. Fan out
+twice in parallel:
 
-- `raw-web-search` (web-scoped, 20–30 keywords across vendor docs,
-  GitHub repos, changelogs, blogs, HN, comparison posts).
-- `raw-web-search` (Reddit-scoped, 10–15 keywords with negative-signal:
+- `web-search` (20–30 keywords across vendor docs, GitHub repos,
+  changelogs, blogs, HN, comparison posts).
+- `web-search` (10–15 Reddit-permalink keywords with negative-signal:
   "switched from", "regret", "limit", "broke", "migration").
 
 Expect persistence to file. Plan a subagent triage step from the start.
 
-**Triage.** Subagent reads both raw dumps, returns top 8–15 URLs
+**Triage.** Subagent reads both URL lists, returns top 8–15 URLs
 deduplicated by facet:
 
 - Vendor docs / overview pages
@@ -142,20 +147,24 @@ deduplicated by facet:
 
 **Capture.** Three parallel calls:
 
-- `smart-scrape-links` on vendor A docs (≤5 URLs):
+- `scrape-link` on vendor A docs (≤5 URLs):
   ```
-  Page type hint: official docs.
   extract: features by facet | sandbox/permissions verbatim | pricing
   tiers verbatim | install commands | recent changelog headlines verbatim.
   Discipline: preserve config keys, command syntax, version strings.
   List Not found with reason.
   ```
-- `smart-scrape-links` on vendor B docs (same shape).
-- `raw-scrape-links` on Reddit comparison threads (≤5 threads). Reddit
-  threading is the evidence — vote-weighted dissent and switcher quotes
-  cannot be reconstructed from compressed extracts.
+- `scrape-link` on vendor B docs (same shape).
+- `scrape-link` on Reddit comparison threads (≤5 threads):
+  ```
+  extract: verbatim quotes with author + score | agreement reasons |
+  dissent reasons | migration drivers
+  ```
+  Reddit threading is the evidence — the Reddit API fetches full
+  threaded comments before extraction, so vote-weighted dissent and
+  switcher quotes are preserved rather than compressed away.
 
-If the smart-scrape on vendor docs times out, split per the
+If the vendor-docs `scrape-link` call times out, split per the
 `failure-modes.md` playbook.
 
 **Synthesize.** Feature matrix with verbatim quotes per cell. "Pick X if
@@ -188,30 +197,33 @@ tutorials. Freshness: last 24 months for adoption; latest for
 benchmarks. Quote discipline: production-incident reports verbatim."
 ```
 
-**Reconnoiter.** `primary_branch: both`.
+**Reconnoiter.** Two orthogonal keyword clusters.
 
-- `smart-web-search` (web scope, 15–20 keywords): `martinfowler.com`,
-  `microservices.io`, vendor docs, "case study", "post-mortem", "at
-  scale", "failure modes".
-- `smart-web-search` (Reddit scope, 7–10 keywords): r/ExperiencedDevs,
+- `web-search` (15–20 keywords): `martinfowler.com`, `microservices.io`,
+  vendor docs, "case study", "post-mortem", "at scale", "failure modes".
+- `web-search` (7–10 Reddit-permalink keywords): r/ExperiencedDevs,
   r/softwarearchitecture, "regret went back to", "hidden operational
   cost", "<pattern> at <team-size> team".
 
-**Triage.** Use HIGHLY_RELEVANT tier from each plus the smart-search
-`## Suggested follow-up searches` if gaps remain.
+**Triage.** Sort both lists by CONSENSUS; pick the top URLs across
+source classes, checking the brief's `gaps_to_watch` for anything still
+uncovered.
 
 **Capture.**
 
-- `smart-scrape-links` on authoritative architecture pages (≤5 URLs):
+- `scrape-link` on authoritative architecture pages (≤5 URLs):
   ```
-  Page type hint: blog or qa.
   extract: decision criteria | trade-offs | scale thresholds | when
   NOT to use | team size recommendations | cost analysis | author's
   recommendation logic.
   Discipline: preserve recommendation logic verbatim.
   ```
-- `raw-scrape-links` on Reddit threads from r/ExperiencedDevs and
-  similar (≤5 threads).
+- `scrape-link` on Reddit threads from r/ExperiencedDevs and similar
+  (≤5 threads):
+  ```
+  extract: verbatim quotes with author + score | regret narratives |
+  hidden operational costs | migration friction reports
+  ```
 
 **Synthesize.** Trade-off matrix with cited sources per cell.
 Recommendation with confidence level. Conditions that would flip the
@@ -225,14 +237,15 @@ includes explicit reversal conditions.
 ## Workflow 4: Fact check / claim verification
 
 **When to use.** Verify a single claim against primary sources. Skip
-`start-research` — overhead outweighs value for sub-5-call sessions.
+`get-research-consultancy` — overhead outweighs value for sub-5-call
+sessions.
 
-**Plan.** Inline (no `start-research` call):
+**Plan.** Inline (no `get-research-consultancy` call):
 
 > Verify "<exact claim>" against the primary source. Need quoted text,
 > URL, scrape date, or confirmation that the claim cannot be substantiated.
 
-**Reconnoiter.** `smart-web-search` (web scope, 3–5 keywords):
+**Reconnoiter.** `web-search` (3–5 keywords):
 
 ```
 keywords: [
@@ -241,18 +254,13 @@ keywords: [
   '<topic> deprecated OR removed OR changed <year>',
   '<claim> CHANGELOG OR "release notes"'
 ]
-extract: "Verify whether '<exact claim>' is still accurate as of <date>.
-  Highly relevant: official docs, changelog, vendor blog. Maybe relevant:
-  recent maintainer-authored posts. Not relevant: third-party blogs that
-  do not link to primary source."
 ```
 
-**Triage.** Top 2–3 URLs from HIGHLY_RELEVANT.
+**Triage.** Top 2–3 URLs by CONSENSUS.
 
-**Capture.** `smart-scrape-links` (≤3 URLs):
+**Capture.** `scrape-link` (≤3 URLs):
 
 ```
-Page type hint: docs or changelog.
 extract: current status of <claim> verbatim | version | date | changes
 since <original claim date> | caveats.
 Discipline: only verbatim primary-source quotes count.
@@ -262,7 +270,8 @@ Discipline: only verbatim primary-source quotes count.
 explicit "claim cannot be substantiated from primary sources".
 
 **Stop criteria.** Two tool calls answered the question, OR the claim
-is contested — escalate to one Reddit-scoped search to gather dissent.
+is contested — escalate to one Reddit-permalink `web-search` call to
+gather dissent.
 
 This workflow is intentionally short. Most fact checks need 2 tool
 calls, not 10.
@@ -274,9 +283,10 @@ calls, not 10.
 **When to use.** Live incident. Speed is everything. Minimum viable
 research.
 
-**Plan.** No `start-research`. Latency matters more than tailoring.
+**Plan.** No `get-research-consultancy`. Latency matters more than
+tailoring.
 
-**Reconnoiter.** `raw-web-search` (3 focused keywords):
+**Reconnoiter.** `web-search` (3 focused keywords):
 
 ```
 keywords: [
@@ -288,13 +298,16 @@ keywords: [
 
 **Triage.** Top 2–3 URLs. Read.
 
-**Capture.** `raw-scrape-links` on top 2–3 URLs. Full markdown —
-extraction shape unclear in incident triage.
+**Capture.** `scrape-link` on top 2–3 URLs:
+
+```
+extract: root cause | fix steps | workarounds | error text verbatim
+```
 
 **Synthesize.** Most plausible fix. Apply.
 
-**If first fix does not work:** one more `raw-web-search` (Reddit
-scope, 2 keywords with negative signal), one more `raw-scrape-links`
+**If first fix does not work:** one more `web-search` (2–3
+Reddit-permalink keywords with negative signal), one more `scrape-link`
 on top 1–2 permalinks. Stop after 5 minutes regardless — escalate to
 human.
 
@@ -319,27 +332,20 @@ Freshness: published in last 18 months. Quote discipline: CVE-IDs,
 CVSS scores, affected ranges verbatim."
 ```
 
-**Reconnoiter.** `primary_branch: web` initially.
+**Reconnoiter.** Two rounds.
 
-- `smart-web-search` (web scope, 7–10 keywords): NVD, MITRE, OWASP,
-  Snyk, vendor security advisories, GitHub security advisories.
-  ```
-  extract: "Production-affecting CVEs and security advisories for
-  <library> in last 18 months. Highly relevant: NVD entries, CVE
-  databases, vendor advisories, GitHub security advisories. Maybe
-  relevant: Snyk, blog write-ups by named security researchers. Not
-  relevant: marketing comparison pages, generic best-practice listicles."
-  ```
-- Second pass: `smart-web-search` (Reddit scope, 5–7 keywords)
-  targeting r/netsec, r/AskNetsec, r/cybersecurity for real-world
-  exploit experience.
+- `web-search` (7–10 keywords): NVD, MITRE, OWASP, Snyk, vendor security
+  advisories, GitHub security advisories.
+- Second round: `web-search` (5–7 Reddit-permalink keywords) targeting
+  r/netsec, r/AskNetsec, r/cybersecurity for real-world exploit
+  experience.
 
-**Triage.** All HIGHLY_RELEVANT. Security claims need ≥3-source
-verification.
+**Triage.** All top-CONSENSUS URLs across both rounds. Security claims
+need ≥3-source verification.
 
 **Capture.**
 
-- `smart-scrape-links` on advisories (≤5 URLs):
+- `scrape-link` on advisories (≤5 URLs):
   ```
   Page type hint: cve.
   extract: CVE-ID verbatim | CVSS score verbatim | affected version
@@ -347,7 +353,11 @@ verification.
   exploit availability if stated.
   Discipline: never paraphrase impact statements.
   ```
-- `raw-scrape-links` on r/netsec threads (≤5 permalinks).
+- `scrape-link` on r/netsec threads (≤5 permalinks):
+  ```
+  extract: verbatim quotes with author + score | reported exploit
+  experience | mitigation reports | dissent on severity
+  ```
 
 **Synthesize.** Prioritized findings table: CVE-ID, severity, affected
 range, fix, exploit observed in wild (yes/no/unknown). Mark inference
@@ -374,11 +384,11 @@ benchmarks. Skip: marketing claims. Freshness: last 18 months.
 Quote discipline: every benchmark number verbatim with workload spec."
 ```
 
-**Reconnoiter.** Mostly web; Reddit for war stories.
+**Reconnoiter.** Mostly vendor/blog keywords; Reddit for war stories.
 
-- `smart-web-search` (web scope, 15–20 keywords): vendor docs,
-  benchmark posts, conference talks, profiling guides.
-- `raw-web-search` (Reddit scope, 7–10 keywords): r/programming,
+- `web-search` (15–20 keywords): vendor docs, benchmark posts,
+  conference talks, profiling guides.
+- `web-search` (7–10 Reddit-permalink keywords): r/programming,
   r/<language>, "p99 latency", "memory bloat", "saved <%> by switching".
 
 **Triage.** Benchmarks with disclosed methodology > marketing
@@ -386,15 +396,18 @@ comparisons.
 
 **Capture.**
 
-- `smart-scrape-links` on benchmark posts (≤5 URLs):
+- `scrape-link` on benchmark posts (≤5 URLs):
   ```
-  Page type hint: benchmark or blog.
   extract: results with verbatim numbers | methodology | hardware specs
   | versions tested | workload spec | caveats | author's verdict.
   Discipline: every benchmark number verbatim with workload spec.
   Reject any benchmark without disclosed methodology (note in Not found).
   ```
-- `raw-scrape-links` on Reddit threads (≤5 permalinks).
+- `scrape-link` on Reddit threads (≤5 permalinks):
+  ```
+  extract: verbatim quotes with author + score | reported numbers |
+  workload context | migration outcome
+  ```
 
 **Synthesize.** Benchmark summary table. Recommendation conditional on
 workload match. Explicit caveats where benchmarks did not match the
@@ -425,13 +438,13 @@ Workflows are starting points. Adapt based on what each step reveals.
 | What you find | What to do |
 |---|---|
 | Search returns excellent, clear results | Skip further rounds — scrape and conclude |
-| Search returns nothing relevant | Broaden terms; try the other scope; see `failure-modes.md` |
+| Search returns nothing relevant | Broaden terms; try Reddit-permalink keywords; see `failure-modes.md` |
 | Reddit threads all 3+ years old | Results may be stale — verify against current official docs |
 | Sources contradict each other | See `synthesis.md` for resolution patterns |
 | All sources agree | High confidence — stop researching |
 | First fix does not work | Run a second targeted round with what you learned |
-| Classifier `## Gaps` lists items the brief flagged in `gaps_to_watch` | Round 2 must close those specific gaps before stopping |
-| Smart-scrape `## Contradictions` surfaces unannounced | The disagreement may BE the answer — surface it in synthesis |
+| `scrape-link` `## Not found` lists items the brief flagged in `gaps_to_watch` | Round 2 must close those specific gaps before stopping |
+| `scrape-link` `## Contradictions` surfaces unannounced | The disagreement may BE the answer — surface it in synthesis |
 
 The most common mistake is over-researching a question that was answered
 in step 2. The second most common mistake is under-researching a

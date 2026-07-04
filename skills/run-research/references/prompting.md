@@ -13,14 +13,14 @@ The single most-asked-for output: `## Not found with reason`. Explicitly
 request it. The extractor will tell you which sources failed which facets,
 and that *changes which question you ask next*.
 
-The rest of this file is concrete: how to write a `start-research` goal,
-how to fan out keywords, how to shape `extract` for `smart-web-search`,
-how to shape `extract` for `smart-scrape-links` by page type, with worked
+The rest of this file is concrete: how to write a
+`get-research-consultancy` goal, how to fan out `web-search` keywords,
+how to shape `extract` for `scrape-link` by page type, with worked
 examples and anti-patterns.
 
 ---
 
-## Writing the start-research goal
+## Writing the get-research-consultancy goal
 
 A weak goal produces a generic brief, which produces wandering keywords,
 which produces shallow synthesis. The five to ten minutes spent sharpening
@@ -98,7 +98,7 @@ Before submitting, verify every component:
 
 If any component is missing, the planner will guess — usually generically.
 
-### When to re-call start-research
+### When to re-call get-research-consultancy
 
 Rare. Usually a goal update is enough. Re-call when:
 
@@ -179,8 +179,9 @@ When the topic does not naturally fan out across source classes, use the
 
 ### Negative-signal keywords for Reddit
 
-For `scope: "reddit"` searches, at least 25% of keywords should carry
-negative signal:
+For `web-search` keyword batches aimed at Reddit discovery (probes built
+around `site:reddit.com/r/<sub>/comments`), at least 25% of keywords
+should carry negative signal:
 
 - `"regret"`
 - `"switched from"`
@@ -243,115 +244,91 @@ single-call session is the unusual case, not the norm.
 Two search calls in one turn run in roughly the time of one. Use
 parallel dispatch when:
 
-- **Scopes differ.** Web-scoped (vendor docs + GitHub + blogs +
-  changelogs) and Reddit-scoped (sentiment + migration + dissent) are
-  orthogonal source classes. One call per scope.
+- **Scopes differ.** Vendor-docs-and-blog keywords and Reddit-permalink
+  keywords (`site:reddit.com/r/.../comments`) are orthogonal source
+  classes. One call per keyword cluster.
 - **Keyword angles compete for budget within a single call.** With 50
   keywords across truly orthogonal facets, splitting into 2× 25-keyword
-  calls produces better tier coverage than one 50-keyword call with
+  calls produces better CONSENSUS coverage than one 50-keyword call with
   mixed signal.
-- **Raw plus smart in the same round.** Raw call to populate the URL
-  pool for round 2; smart call to triage immediately.
+- **Multiple rounds in the same turn.** One `web-search` call to
+  populate the URL pool for round 2 while a `scrape-link` call
+  extracts from round 1's top picks in parallel.
 
 The canonical reconnaissance pattern for any comparison or survey:
 
 ```
 parallel in one turn:
-  - raw-web-search (web-scoped, 25 keywords across vendor docs / GitHub /
-    blogs / HN / changelog / pricing)
-  - raw-web-search (Reddit-scoped, 15 keywords with negative-signal
+  - web-search (25 keywords across vendor docs / GitHub / blogs / HN /
+    changelog / pricing)
+  - web-search (15 Reddit-permalink keywords with negative-signal
     discipline: "regret", "switched from", "broke in production")
 ```
 
 ### Across rounds
 
 Round 1 reconnaissance is rarely sufficient for a substantive question.
-After capturing the first batch of pages, every smart-* call returns
-explicit seeds for round 2:
+After capturing the first batch of pages, `scrape-link` returns explicit
+seeds for round 2:
 
-- `smart-scrape-links` → `## Follow-up signals` (concepts and URLs the
-  extractor surfaced) and `## Not found` (which facets a source did not
-  answer — those gaps drive the next query).
-- `smart-web-search` → `## Gaps` and `## Suggested follow-up searches`
-  (refine queries tied to gap IDs).
+- `## Follow-up signals` — concepts and URLs the extractor surfaced.
+- `## Not found` — which facets a source did not answer; those gaps
+  drive the next query.
 
-Feed harvested terms into round 2 search. Do not paraphrase queries
-already run; the classifier tracks them.
+Feed harvested terms into round 2 `web-search` calls. Do not paraphrase
+queries already run.
 
 **Two to four rounds per substantive session is normal.** The cost of
 an extra search call is much less than the cost of a missed source.
 
 ### When parallel hurts
 
-- **Output volume risk.** Two parallel `raw-web-search` calls of 25+
-  keywords each can return >100KB of context-polluting snippets. Plan
+- **Output volume risk.** Two parallel `web-search` calls of 25+
+  keywords each can return >100KB of context-polluting URL lists. Plan
   the subagent-extract step before fanning out.
 - **The same keywords twice.** If two calls would share >50% of
   keywords, run one call instead. Parallelism gives no benefit when
   budgets are not orthogonal.
 - **Search-only when scrape would close the gap.** If round 1 already
-  produced HIGHLY_RELEVANT URLs that would answer the question, scrape
+  produced high-CONSENSUS URLs that would answer the question, scrape
   them first; round 2 search runs after scrape harvests new terms.
 
 ---
 
-## Writing the smart-web-search extract
+## Writing the web-search keywords
 
-`extract` for `smart-web-search` tells the *classifier* what relevance
-means. It does not tell an extractor what fields to pull (the classifier
-sees only titles and snippets).
+`web-search` takes only `keywords` — no `extract`, no `scope`, no LLM
+involved. It ranks and de-duplicates URLs by CTR-weighted CONSENSUS
+across your keyword batch and returns a token-optimized list. It never
+tiers, classifies, or synthesizes; all of the judgment about which URLs
+matter happens in your own triage step (reading titles/URLs/CONSENSUS
+scores) and later in `scrape-link`'s extraction.
 
-### Template
-
-```
-extract: "<topic> for <use case> — <evidence type>, not <noise type>.
-Highly relevant: <source class A>, <source class B>.
-Maybe relevant: <source class C>.
-Not relevant: <noise class A>, <noise class B>."
-```
-
-### Worked example
-
-Bad:
-
-```
-extract: "MCP OAuth"
-```
-
-The classifier has no signal to tier on. It produces uniformly mediocre
-tiers.
-
-Strong:
-
-```
-extract: "OAuth 2.1 support in TypeScript MCP frameworks for production —
-runnable code, error reports, and version-specific behaviour. Highly
-relevant: vendor docs (modelcontextprotocol.io, sdk repos), GitHub
-issues with errors, Reddit threads with active sentiment. Maybe relevant:
-blog walkthroughs from last 6 months. Not relevant: marketing pages,
-listicles, conference talks without code."
-```
-
-This produces a HIGHLY_RELEVANT tier biased toward GitHub issues and
-vendor docs; marketing pages drop to OTHER quietly.
+Write keyword batches with the rewrite pairs and fan-out discipline
+above. Because there is no classifier to steer with an `extract`
+string, the entire signal budget lives in the keywords themselves —
+push source-class diversity and negative-signal terms into the
+keywords, not into a separate instruction.
 
 ### Anti-patterns
 
-- **Topic without use case.** "OAuth in MCP" tells the classifier nothing
-  about what kind of evidence wins.
-- **Use case without noise list.** Without "not relevant: marketing", the
-  marketing tier creeps into MAYBE.
-- **Asking for synthesis from smart-search.** Smart-search reads titles
-  and snippets, not bodies. It cannot synthesize evidence; only triage
-  candidates.
+- **Expecting synthesis from `web-search`.** It returns a ranked URL
+  list only — no `## Gaps`, no `## Suggested follow-up searches`, no
+  narrative. Harvest follow-up terms from `scrape-link`'s
+  `## Follow-up signals` instead, after you've scraped something.
+- **One giant keyword batch instead of several rounds.** Fire multiple
+  `web-search` calls across 2–4 rounds rather than trying to front-load
+  every angle into a single call.
 
 ---
 
-## Writing the smart-scrape-links extract
+## Writing the scrape-link extract
 
-`extract` for `smart-scrape-links` tells the *extractor* which facets to
-pull from each page body. The extractor classifies each page (docs /
-reddit / blog / cve / etc.) and adapts emphasis.
+`extract` for `scrape-link` is required on every call and tells the
+*extractor* which facets to pull from each page body. The extractor
+classifies each page (docs / reddit / blog / cve / etc.) and adapts
+emphasis. Reddit permalinks are auto-routed through the Reddit API
+(full threaded comments) before extraction runs.
 
 ### Base template
 
@@ -489,7 +466,7 @@ paraphrase.
 ## Eight worked goal examples
 
 Real research scenarios. Each shows a sample `goal` paragraph for
-`start-research`. The full search/scrape calls for each are in
+`get-research-consultancy`. The full search/scrape calls for each are in
 `workflows.md`.
 
 ### 1. Bug investigation across versions
@@ -577,7 +554,7 @@ only that question as a `run-research` goal.
 - **Specificity about user, source, and irrelevance.** All three or none.
 - **Match facet shape to page type.** Specs from docs verbatim; sentiment
   from Reddit attributed; verdicts from blogs with reasoning.
-- **Cap `smart-scrape-links` at ≤5 URLs and ≤7 facets per call.** Beyond
+- **Cap `scrape-link` at ≤5 URLs and ≤7 facets per call.** Beyond
   either, split.
 - **Ask for `## Not found with reason` explicitly every time.** It
   changes which question you ask next.

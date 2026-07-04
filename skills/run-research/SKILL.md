@@ -40,37 +40,36 @@ manually.
 
 | Capability | First choice | Fallback 1 | Fallback 2 |
 |---|---|---|---|
-| Research prelude | `mcp__research-powerpack__start-research` | manual query plan | - |
-| Targeted search | `mcp__research-powerpack__smart-web-search` or `mcp__research-powerpack__raw-web-search` | `WebSearch` | `curl` |
-| Page extraction | `mcp__research-powerpack__smart-scrape-links` or `mcp__research-powerpack__raw-scrape-links` | `WebFetch` | `curl` + parse |
+| Research prelude | `mcp__research-powerpack__get-research-consultancy` | manual query plan | - |
+| Targeted search | `mcp__research-powerpack__web-search` | `WebSearch` | `curl` |
+| Page extraction | `mcp__research-powerpack__scrape-link` | `WebFetch` | `curl` + parse |
 
 Short aliases used throughout this skill:
 
-- `start-research` -> `mcp__research-powerpack__start-research`
-- `smart-web-search` -> `mcp__research-powerpack__smart-web-search`
-- `raw-web-search` -> `mcp__research-powerpack__raw-web-search`
-- `smart-scrape-links` -> `mcp__research-powerpack__smart-scrape-links`
-- `raw-scrape-links` -> `mcp__research-powerpack__raw-scrape-links`
+- `get-research-consultancy` -> `mcp__research-powerpack__get-research-consultancy`
+- `web-search` -> `mcp__research-powerpack__web-search`
+- `scrape-link` -> `mcp__research-powerpack__scrape-link`
 
-Scope selection — pick before issuing the call, do not mix scopes inside
-one keyword set:
+There are only three tools: a planner, a keywords-only search, and an
+extraction-always scrape. `web-search` never classifies, tiers, or
+synthesizes — it always returns the same ranked URL pool, so there is no
+"prefer smart vs raw" decision to make. Scope is chosen by how you write
+`keywords`, not by a parameter: write plain probes for web evidence, and
+write explicit `site:reddit.com/r/.../comments` probes for Reddit
+permalink discovery. Mixing both intents in one keyword set wastes
+ranking budget — split into separate calls instead.
 
-| Scope | Use for |
-|---|---|
-| `web` | official docs, specs, bug trackers, CVEs, changelogs, pricing, API shape |
-| `reddit` | lived experience, migrations, regret threads, production gotchas |
-| `both` | only when opinion-heavy evidence and official facts both matter |
+`scrape-link` always requires `extract` and always runs LLM extraction,
+including on Reddit permalinks — the Reddit API still fetches the full
+threaded post + comments first, then extraction runs on top. For
+sentiment or dissent work, write an `extract` that explicitly asks for
+verbatim quotes with author/score attribution (e.g. `verbatim quotes
+with author + score | agreement reasons | dissent reasons | migration
+drivers`) so the threading detail survives extraction.
 
-Smart vs raw — the decisive choice:
-
-- If the output goes **directly into context**, prefer `smart`.
-- If the output goes **to a file or a subagent for triage**, prefer `raw`.
-- For **Reddit comment threads, always prefer `raw-scrape-links`** — the
-  Reddit API path preserves vote-weighted dissent and reply-thread depth
-  that smart compresses away.
-
-`start-research` is the planner for substantive sessions. It returns
-`gaps_to_watch` and `stop_criteria` — treat both as binding contracts.
+`get-research-consultancy` is the planner for substantive sessions. It
+returns `gaps_to_watch` and `stop_criteria` — treat both as binding
+contracts.
 
 For tool-by-tool API and operational thresholds, read `references/tools.md`.
 For prompting each tool well, read `references/prompting.md`.
@@ -79,35 +78,35 @@ For prompting each tool well, read `references/prompting.md`.
 
 Five steps. One pass minimum. Iterate until every gap is closed.
 
-1. **Plan.** Call `start-research` with a goal that names the topic, the
-   user's use case, known unknowns to skip, what NOT to research, freshness
-   window, and quote discipline. The goal is the highest-leverage prompting
-   decision in the entire loop — a weak goal produces a generic brief,
-   which produces wandering keywords, which produces shallow synthesis.
-   See `references/prompting.md`.
+1. **Plan.** Call `get-research-consultancy` with a goal that names the
+   topic, the user's use case, known unknowns to skip, what NOT to
+   research, freshness window, and quote discipline. The goal is the
+   highest-leverage prompting decision in the entire loop — a weak goal
+   produces a generic brief, which produces wandering keywords, which
+   produces shallow synthesis. See `references/prompting.md`.
 
-2. **Reconnoiter.** Fan out 15-50 keywords. Default to `smart-web-search`
-   when the output goes directly into context. Default to `raw-web-search`
-   when subagent triage is planned, multiple search rounds are expected,
-   or Reddit permalink discovery is the goal. Write keywords as Google
-   retrieval probes — name the source class, anchor on discriminating
-   terms, use one operator. Adjective-rotation on the same noun phrase is
+2. **Reconnoiter.** Fan out 15-50 keywords with `web-search`. Write
+   keywords as Google retrieval probes — name the source class, anchor on
+   discriminating terms, use one operator. For Reddit permalink discovery,
+   write explicit `site:reddit.com/r/.../comments` probes; there is no
+   separate scope parameter. Adjective-rotation on the same noun phrase is
    wasted budget.
 
-   **Fire search calls in parallel when scopes differ.** Two
-   `raw-web-search` calls in one turn — one `web` scoped (vendor docs,
-   GitHub, blogs, changelog), one `reddit` scoped (sentiment, migration,
-   dissent) — is the canonical reconnaissance pattern. The round runs in
-   roughly the time of one call.
+   **Fire search calls in parallel when intents differ.** Two `web-search`
+   calls in one turn — one with plain web probes (vendor docs, GitHub,
+   blogs, changelog), one with `site:reddit.com/r/.../comments` probes
+   (sentiment, migration, dissent) — is the canonical reconnaissance
+   pattern. The round runs in roughly the time of one call.
 
-3. **Triage.** Read tiered list (smart) or subagent-extract top URLs
-   (raw). Aim for 5-15 candidate URLs to scrape. Sort by CONSENSUS score
-   and source authority.
+3. **Triage.** Read the ranked URL list. Aim for 5-15 candidate URLs to
+   scrape. Sort by CONSENSUS score and source authority.
 
-4. **Capture.** Use `raw-scrape-links` for Reddit threads (≤5 per call)
-   and pages where the extraction shape is undecided. Use
-   `smart-scrape-links` for docs and blogs with a defined `extract`
-   (≤5 URLs per call, ≤7 facets per call). Read every `## Not found`
+4. **Capture.** Use `scrape-link` with a defined `extract`
+   (≤5 URLs per call, ≤7 facets per call). For Reddit threads, write an
+   extract that preserves attribution and dissent (e.g. `verbatim quotes
+   with author + score | agreement reasons | dissent reasons | migration
+   drivers`) — the Reddit API path still returns the full threaded post
+   and comments before extraction runs on top. Read every `## Not found`
    section returned; it tells you which gaps to chase next round.
 
 5. **Synthesize.** Every numeric, versioned, priced, or error-string claim
@@ -116,10 +115,11 @@ Five steps. One pass minimum. Iterate until every gap is closed.
    explicitly. Surface contradictions; do not paper over disagreement.
 
 Two to four search rounds per substantive session is normal. After each
-capture, harvest `## Follow-up signals`, `## Not found`, `## Gaps`, and
-`## Suggested follow-up searches`. Stop only when `gaps_to_watch` and
-`stop_criteria` are closed, or when remaining gaps are explicitly
-unresolvable from available sources.
+capture, harvest `## Follow-up signals` and `## Not found` from
+`scrape-link`, and re-run `web-search` with terms gathered from those
+sections. Stop only when `gaps_to_watch` and `stop_criteria` are closed,
+or when remaining gaps are explicitly unresolvable from available
+sources.
 
 ## Multi-agent orchestration (deep single-question path)
 
@@ -129,9 +129,9 @@ subdomains that benefit from independent reading lenses — e.g. security +
 performance + maintainer intent + migration experience.
 
 Pattern: dispatch one subagent per subdomain in parallel, each with its
-own `start-research` goal and its own search scope. Each returns a
-section synthesis. The orchestrator merges, reconciles contradictions
-between sections, and produces the unified answer.
+own `get-research-consultancy` goal and its own search intent. Each
+returns a section synthesis. The orchestrator merges, reconciles
+contradictions between sections, and produces the unified answer.
 
 The output still defaults to **one** Markdown synthesis. If the user
 explicitly asks for files, a small numbered folder is allowed; do not
@@ -149,7 +149,7 @@ for coherence.
 | Question | Read |
 |---|---|
 | How do I drive a specific tool? Parameters, output formats, thresholds. | `references/tools.md` |
-| How do I write a `start-research` goal or a smart `extract`? | `references/prompting.md` |
+| How do I write a `get-research-consultancy` goal or a `scrape-link` `extract`? | `references/prompting.md` |
 | What does an end-to-end research session look like for my scenario? | `references/workflows.md` |
 | How do I cite, mark inference, surface contradictions, format output? | `references/synthesis.md` |
 | A scrape timed out. A search returned 0 results. The provider cascade failed. Now what? | `references/failure-modes.md` |
@@ -195,14 +195,13 @@ handling, and worked output examples.
 
 ## Operational guardrails
 
-- Use `start-research` first for substantive sessions. A quick fact check
-  can skip it when the overhead does not pay back.
-- Cap `smart-scrape-links` at 5 URLs and 7 facets per call; split beyond
-  that.
+- Use `get-research-consultancy` first for substantive sessions. A quick
+  fact check can skip it when the overhead does not pay back.
+- Cap `scrape-link` at 5 URLs and 7 facets per call; split beyond that.
 - Read every `## Not found` section and feed unresolved gaps into the
   next query.
-- Plan for output volume before parallel raw searches; large raw results
-  may need file-backed triage.
+- Plan for output volume before parallel `web-search` calls; large URL
+  pools may need file-backed triage.
 - Treat provider cascade failure as blocking or WAF behavior. Route
   around to mirrors, archives, postmortems, or quoted discussions —
   see `references/failure-modes.md`.

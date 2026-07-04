@@ -113,24 +113,26 @@ wave:
 
 Use the run-research discipline for every web/Reddit call.
 
-1. First call: invoke `start-research` (if available) or its fallback
-   with a goal paragraph naming — topic, your specific use case
+1. First call: invoke `get-research-consultancy` (if available) or its
+   fallback with a goal paragraph naming — topic, your specific use case
    (research <X> for the corpus's decider), known unknowns to skip,
    what NOT to research, freshness window (default: weight last 90
    days), quote discipline (every numeric/versioned/priced claim cites
    a verbatim quote).
 
-2. Toolkit: 5 tools in a 2×2 (raw/smart × search/scrape) plus the
-   planner.
-   - raw-web-search: URL pool plus audit
-   - smart-web-search: tiered triage with ## Synthesis / ## Gaps /
-     ## Suggested follow-up searches
-   - raw-scrape-links: full markdown including Reddit threading
-     (≤5 per call)
-   - smart-scrape-links: per-URL extraction with ## Matches /
-     ## Not found / ## Follow-up signals (≤5 URLs, ≤7 facets per call)
+2. Toolkit: 3 tools plus the planner — no raw/smart split anymore.
+   - web-search: keywords-only ranked, de-duplicated, CTR-aggregated
+     URL pool; never calls an LLM, never tiers or synthesizes. Reddit
+     discovery is a `site:reddit.com/r/.../comments` keyword probe, not
+     a parameter.
+   - scrape-link: keywords → `urls` + a required `extract` string;
+     always runs LLM extraction. Reddit permalinks are auto-detected and
+     routed through the Reddit API (full threaded fetch) before the same
+     extraction runs on top. Output: `## Source` / `## Matches` /
+     `## Not found` / `## Follow-up signals` (and sometimes
+     `## Contradictions`) (≤5 URLs, 5-7 facets per call)
 
-3. Parallel dispatch: fire two raw-web-search calls in one turn when
+3. Parallel dispatch: fire two web-search calls in one turn when
    scopes differ (web + reddit). The reconnaissance round runs in
    roughly the time of one call.
 

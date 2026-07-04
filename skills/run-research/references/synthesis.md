@@ -24,7 +24,7 @@ conflict.
 | Official postmortems / incident reports | Very high | What broke, why, what changed in response |
 | GitHub issues/PRs (maintainer responses) | High | Known bugs, intended behavior, workarounds |
 | Scraped benchmarks with disclosed methodology | High | Performance claims (check workload conditions match yours) |
-| Tool-provided synthesis (`smart-web-search` `## Synthesis`) | Planning input only | Trade-off leads and gap hints. Never cite as evidence; it reads titles and snippets, not bodies. |
+| `get-research-consultancy` brief (`gaps_to_watch`, `iteration_hints`) | Planning input only | Session shaping. Never cite as evidence; it is generated before any page is scraped. |
 | Highly-upvoted Reddit (100+ votes, specific details) | Moderate-high | How things actually work in production |
 | Stack Overflow accepted + highly voted | Moderate-high | Common solutions (check date) |
 | Recent blog by named practitioner with specifics | Moderate | Single data point, useful if detailed |
@@ -47,9 +47,12 @@ conflict.
 ## Citation discipline
 
 The hard rule: **only scraped page content is evidence.** Search
-snippets and tool-provided synthesis are leads, not citations. The
-`## Synthesis` block returned by `smart-web-search` is a planning aid:
-its rank-citations point to URLs not yet scraped.
+results (URLs, titles, and CONSENSUS scores from `web-search`) and the
+`get-research-consultancy` brief are leads, not citations. `web-search`
+never synthesizes or classifies — it only ranks URLs — so there is no
+synthesis block to treat even as a planning aid; the brief's
+`gaps_to_watch` and `iteration_hints` are the only pre-scrape planning
+input, and they point at questions to close, not facts to cite.
 
 ### Source ledger fields
 
@@ -110,14 +113,13 @@ inference is marked.
 
 ### Snippets, banned
 
-`raw-web-search` and `smart-web-search` return snippets — short page
-fragments composed by Google for relevance signaling. Never cite from a
-snippet. They are designed to be misleading: composed from
-non-contiguous page text, ranked for click-through, frequently
-out-of-context. If a claim is interesting in a snippet, scrape the page
-and find the verbatim text. If the page does not contain it (sometimes
-it does not), the snippet was a hallucination and the claim is
-unsupported.
+`web-search` returns a ranked, de-duplicated URL list (titles, links,
+CONSENSUS scores) — not page bodies, and no Google-composed snippet
+text to quote from either way. Never cite from a URL you have not
+scraped. If a claim looks interesting from the title or CONSENSUS
+ranking alone, scrape the page with `scrape-link` and find the verbatim
+text. If the page does not contain it (sometimes it does not), the
+claim is unsupported.
 
 ---
 
@@ -144,20 +146,20 @@ limits, silent failure modes, and configuration gotchas the docs do not
 mention. Trust community for "does it work in practice?" Trust docs for
 "how is it supposed to work?"
 
-**Smart-search synthesis vs scraped facts.** Always trust scraped
-official docs over smart-search synthesis claims for specific facts
-(version numbers, pricing, API signatures). Smart-search synthesis is
-analysis-grade; scraped pages are evidence-grade.
+**Search ranking vs scraped facts.** Always trust scraped official docs
+over a `web-search` CONSENSUS ranking for specific facts (version
+numbers, pricing, API signatures). CONSENSUS ranks URL relevance; it
+carries no page-body content and no analysis.
 
 **Nobody agrees.** Usually means the answer is genuinely
 context-dependent. Do not force a single recommendation. Present the
 options, name the variables that determine which is best, apply them to
 the user's situation.
 
-### Using `## Contradictions` from smart-scrape
+### Using `## Contradictions` from scrape-link
 
-`smart-scrape-links` sometimes surfaces a `## Contradictions` section
-when commenters or sources disagree within a single page or across the
+`scrape-link` sometimes surfaces a `## Contradictions` section when
+commenters or sources disagree within a single page or across the
 batch. This is a free signal — the extractor noticed disagreement that
 might otherwise have stayed buried in dense prose.
 
@@ -312,8 +314,8 @@ Before finalizing any recommendation:
 - [ ] Version-specific claims checked against official docs/changelog.
 - [ ] Sources actually independent (not citing each other).
 - [ ] Recency appropriate for the technology area.
-- [ ] Smart-search `## Synthesis` claims about specific facts verified
-      by a scraped page.
+- [ ] `web-search` CONSENSUS rankings never treated as a substitute for
+      a scraped-page claim about a specific fact.
 - [ ] `## Not found` sections reviewed; gaps closed or explicitly
       flagged.
 - [ ] Every numeric / versioned / priced claim has a verbatim quote.
