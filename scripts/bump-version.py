@@ -39,10 +39,12 @@ def main():
     with open(VERSION_PATH, "w") as f:
         f.write(new + "\n")
 
-    # Propagate the new version into every plugin entry.
+    # Propagate the new version into every plugin entry (silence its stdout so
+    # callers capturing our stdout get only the version string).
     subprocess.run(
         [sys.executable, os.path.join(REPO_ROOT, "scripts", "gen-marketplace.py")],
         check=True,
+        stdout=subprocess.DEVNULL,
     )
     print(new)
 

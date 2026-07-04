@@ -35,7 +35,9 @@ jobs:
 
       - name: Bump patch version and regenerate marketplace
         id: bump
-        run: echo "version=$(python3 scripts/bump-version.py)" >> "$GITHUB_OUTPUT"
+        run: |
+          python3 scripts/bump-version.py
+          echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push
         run: |
