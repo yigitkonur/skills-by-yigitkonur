@@ -188,9 +188,8 @@ worker-pool shape.
 ## Cross-skill anchor: broader codex orchestration
 
 The codex executor here is the **research-specific lens** on codex
-orchestration. For the broader codex framework — exec/batch/single/
-review/rescue modes, manifest contract, Monitor wiring, rescue and
-re-attach mechanics — refer the user to the codex orchestration skills in
-the [secondary pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary).
-Those generalize beyond the corpus-research use case; the pattern here is
-narrower and folder-tree-shaped.
+orchestration. For codex review/rescue loops across branches — native
+`codex exec review`, finding comparison, saved-loop re-attach — use
+`run-codex-review-loop` in this pack. That skill generalizes beyond the
+corpus-research use case; the pattern here is narrower and
+folder-tree-shaped.

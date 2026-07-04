@@ -87,7 +87,7 @@ Good reference docs:
 
 6. **Check trigger collisions** -- if your skill overlaps with an existing one, test prompts that should go to both and make sure the descriptions are specific enough.
 
-7. **Update `README.md`** -- add a row to the root skills table (alphabetical order).
+7. **Update `README.md`** -- add the skill to the matching category section, then add it to a bundle in the `GROUPS` map of `scripts/gen-marketplace.py` and run `python3 scripts/gen-marketplace.py` to refresh the plugin marketplace.
 
 8. **Open a PR**.
 

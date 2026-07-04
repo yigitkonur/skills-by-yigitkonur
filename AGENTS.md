@@ -6,9 +6,14 @@ This repository is a curated skills pack for AI coding agents — skills sharing
 
 A single combined skills pack — not a loose collection. Every skill must feel like it belongs to the same family. Consistency, clarity, and install-path stability are more important than clever naming or one-off structure.
 
+This repo is both a `skills` CLI pack **and** a Claude Code plugin marketplace — both read the same `skills/` folder. The `-secondary` b-side repo was merged in and archived; never point anything back at it.
+
 **Distribution model:**
-- Users install the full pack: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur`
-- Or install a single skill: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>`
+- Plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`.
+- `skills` CLI full pack: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur`
+- `skills` CLI single skill: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>`
+
+The marketplace catalog is `.claude-plugin/marketplace.json`, **generated** from `skills/` by `scripts/gen-marketplace.py` (per-skill plugins + themed `yk-*` bundles + `yk-everything`, all `source: "./"` + `strict: false` + a `skills` allowlist so no files are duplicated). Regenerate it whenever you add, remove, or rename a skill, and edit the `GROUPS` map in that script to place a new skill in a bundle.
 
 ## Repository layout
 
@@ -22,7 +27,10 @@ A single combined skills pack — not a loose collection. Every skill must feel 
 │       ├── scripts/                # Optional — helper scripts paired with docs
 │       └── assets/                 # Optional — templates or fixtures
 ├── scripts/
-│   └── validate-skills.py          # Validates all skills (references, frontmatter, junk)
+│   ├── validate-skills.py          # Validates all skills (references, frontmatter, junk)
+│   └── gen-marketplace.py          # Generates .claude-plugin/marketplace.json from skills/
+├── .claude-plugin/
+│   └── marketplace.json            # Generated — plugin marketplace catalog (do not hand-edit)
 ├── .github/workflows/
 │   └── validate-skill-references.yml  # CI: validates on push/PR
 ├── .githooks/
@@ -37,6 +45,10 @@ A single combined skills pack — not a loose collection. Every skill must feel 
 ```bash
 # Validate all skills (run before every push)
 python3 scripts/validate-skills.py
+
+# Regenerate the plugin marketplace after adding/removing/renaming a skill
+python3 scripts/gen-marketplace.py
+python3 scripts/gen-marketplace.py --check   # CI: fail if stale
 
 # Enable pre-push hook (one-time setup)
 git config core.hooksPath .githooks
@@ -88,7 +100,7 @@ Anchor on this set of plain-English verbs:
 
 - `run-review` Modes A and B replaced what used to be `do-review` (do a PR review) and `ask-review` (ask for a review on your branch).
 - `debug-runtime` is the systematic-debug entry point; its three-fails gate hands off to an inline structured-reframe pause (the standalone `plan-tradeoff` skill was retired).
-- `audit-agentic-cli` and `audit-agentic-mcp` now live in the [b-side pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) — install per-project where they earn their context cost.
+- `audit-agentic-cli` and `audit-agentic-mcp` live here (merged from the retired b-side pack) — they earn their context cost inside CLI/MCP projects, so prefer installing them per-project (`/plugin install audit-agentic-mcp@yigitkonur`).
 
 ### Anti-patterns
 
@@ -212,13 +224,20 @@ Every skill needs an `INSTALL.md` at its root (`skills/<skill-name>/INSTALL.md`)
 
 ## Install
 
-Install this skill individually:
+**As a plugin (easy install / uninstall via `/plugin`):**
+
+​```
+/plugin marketplace add yigitkonur/skills-by-yigitkonur
+/plugin install <skill-name>@yigitkonur
+​```
+
+**Or with the `skills` CLI — this skill only:**
 
 ​```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>
 ​```
 
-Or install the full pack:
+**Or the full pack:**
 
 ​```bash
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
@@ -281,12 +300,14 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 5. **Write `SKILL.md`** at `skills/<skill-name>/SKILL.md` with correct frontmatter
 6. **Add `references/`** docs only if the skill needs them — reference every file from `SKILL.md`
 7. **Create `INSTALL.md`** at the skill root with install instructions (see format above)
-8. **Update root `README.md`** — add a row to the alphabetical table
-9. **Validate:**
+8. **Update root `README.md`** — add the skill to its category section
+9. **Regenerate the marketplace** — add the skill to a bundle in the `GROUPS` map of `scripts/gen-marketplace.py`, then run `python3 scripts/gen-marketplace.py`
+10. **Validate:**
    ```bash
    python3 scripts/validate-skills.py
+   python3 scripts/gen-marketplace.py --check
    ```
-10. **Commit and push**
+11. **Commit and push**
 
 ## Editing an existing skill
 
@@ -295,7 +316,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 3. **Remove** stale internal references and old names everywhere
 4. If you **add** a reference file, route to it from `SKILL.md`
 5. If you **remove** a reference file, remove all references to it from `SKILL.md`
-6. If you **rename**, update directory + frontmatter + README + NAMING.md + all cross-skill references together
+6. If you **rename**, update directory + frontmatter + README + NAMING.md + the `GROUPS` map in `scripts/gen-marketplace.py` + all cross-skill references together, then regenerate the marketplace
 7. **Validate** before pushing: `python3 scripts/validate-skills.py`
 
 ## Testing a skill's quality

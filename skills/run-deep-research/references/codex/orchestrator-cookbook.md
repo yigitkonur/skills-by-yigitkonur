@@ -120,7 +120,7 @@ Then the completion statement to the user.
 This skill plays well with:
 
 - the **default Claude-subagent executor** of this skill — the same corpus shape executed by Claude subagents instead of codex. Switch when fan-out shrinks or the user pivots away from codex.
-- the codex orchestration skills in the [secondary pack](https://github.com/yigitkonur/skills-by-yigitkonur-secondary) — the broader codex orchestration framework. Refer the user there when they need batch/exec/review/single/rescue modes outside the corpus-research context.
+- `run-codex-review-loop` — the codex review/rescue orchestration skill in this pack. Reach for it when the user needs native `codex exec review` loops across branches outside the corpus-research context.
 - `run-research` — the single-question companion. Pop down to it when the user pivots from "build a corpus" to "answer one specific question I had about an entity."
 - `run-review` — for the rare case where the corpus produces follow-up code work. Out of scope for this skill.
 
