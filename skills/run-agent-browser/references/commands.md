@@ -249,7 +249,7 @@ agent-browser diff url url1 url2 --screenshot  # Compare two URLs (visual diff)
 
 ```bash
 agent-browser --session <name> ...        # Isolated browser session
-agent-browser --session-name <name> ...   # Auto-save/restore session state (persisted across runs)
+agent-browser --session <name> --restore ...  # Auto-save/restore cookies+localStorage across runs
 agent-browser --profile <path> ...        # Persistent browser profile directory
 agent-browser --json ...                  # JSON output for parsing
 agent-browser --headed ...                # Show browser window (not headless)
@@ -265,7 +265,7 @@ agent-browser --executable-path <p>      # Custom browser executable
 agent-browser --extension <path> ...     # Load browser extension (repeatable)
 agent-browser --ignore-https-errors      # Ignore SSL certificate errors
 agent-browser --allow-file-access        # Enable file:// URLs
-agent-browser --native                   # Use native Rust daemon (experimental)
+agent-browser --native                   # No-op on current versions (native Rust is the default)
 agent-browser --engine <name>            # Browser engine: chrome (default), lightpanda
 agent-browser --color-scheme <mode>      # dark / light / no-preference
 agent-browser --state <path>             # Load storage state from JSON file
@@ -303,13 +303,26 @@ agent-browser profiler start              # Start Chrome DevTools profiling
 agent-browser profiler stop trace.json    # Stop and save profile
 ```
 
+## Maintenance & advanced surface
+
+```bash
+agent-browser doctor                      # Diagnose daemon/socket/state health
+agent-browser doctor --fix --json         # Auto-heal (prefer this over manual rm of *.pid/*.sock)
+agent-browser upgrade                     # Auto-detect install method (npm/brew/cargo) and update
+agent-browser read [url]                  # Extract readable page content
+agent-browser get cdp-url                 # Print the CDP endpoint for external tooling
+agent-browser batch script.txt --bail --json   # Run a command file, stop on first failure
+agent-browser chat "book the cheapest flight"   # Natural-language / REPL driving
+agent-browser mcp --tools core,state,debug      # Run agent-browser as an MCP server
+```
+
 ## Common Environment Variables
 
 This list focuses on the variables used elsewhere in this skill. Use `agent-browser --help` for the full surface.
 
 ```bash
 AGENT_BROWSER_SESSION="mysession"            # --session default
-AGENT_BROWSER_SESSION_NAME="myapp"           # --session-name default (auto-save/restore)
+AGENT_BROWSER_SESSION_NAME="myapp"           # legacy: old auto-save flag; prefer --session NAME --restore
 AGENT_BROWSER_STATE="/path/state.json"       # --state default
 AGENT_BROWSER_EXECUTABLE_PATH="/path/chrome" # Custom browser path
 AGENT_BROWSER_EXTENSIONS="/ext1,/ext2"       # Comma-separated extension paths

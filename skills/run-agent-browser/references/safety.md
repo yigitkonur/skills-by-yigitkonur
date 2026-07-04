@@ -84,7 +84,7 @@ Use `eval` only when the built-ins cannot do it (multi-element extraction, deriv
 5. Cap output: `export AGENT_BROWSER_MAX_OUTPUT=50000`.
 6. Apply an action policy file to gate destructive operations.
 7. Run as a non-root user.
-8. Pin the CLI version (`npm install -g agent-browser@0.24.0`).
+8. Pin the CLI version (`npm install -g agent-browser@0.31.1`).
 9. Set `AGENT_BROWSER_ENCRYPTION_KEY` for state file encryption.
 10. Set `AGENT_BROWSER_STATE_EXPIRE_DAYS` for auto-expiry.
 
@@ -133,7 +133,7 @@ Be specific. Avoid wildcards that could include untrusted subdomains.
 
 ### Supply-chain hygiene
 
-- Pin the CLI: `npm install -g agent-browser@0.24.0`.
+- Pin the CLI: `npm install -g agent-browser@0.31.1`.
 - Install in isolated environments — containers, VMs, dedicated CI runners.
 - Never run with `sudo`.
 - Review the changelog before updating.
@@ -185,15 +185,13 @@ Use the targeted removal first. Only fall back to `rm -f ~/.agent-browser/*.pid 
 
 ### Native binary not available
 
-The CLI auto-falls-back to the Node.js daemon. Ensure Node.js 18+ is installed. All commands work identically; only startup is slower.
+Current agent-browser is native-only (the old Node.js/Playwright daemon was removed), so there is no runtime fallback. If the binary is missing or stale, run `agent-browser doctor --fix`, then `agent-browser upgrade` (auto-detects npm / brew / cargo), or reinstall. Verify with `agent-browser --version`.
 
 | Platform | Native binary |
 |---|---|
 | macOS ARM64 / x64 | yes |
 | Linux ARM64 / x64 | yes |
 | Windows x64 | yes |
-
-Use `agent-browser close` before switching between native and Node.js daemon modes.
 
 ### "Ref not found" — page changed since last snapshot
 

@@ -164,8 +164,8 @@ A session is a browser context with its own cookies, storage, IndexedDB, cache, 
 |---|---|---|---|---|
 | (none) default ephemeral | nothing | no | — | one-off tasks, default for everything |
 | `--session NAME` | cookies + storage within one run | no (without `state save`) | yes, with explicit `state save/load` | parallel isolated work in one run (multi-account testing) |
-| `--session-name NAME` | cookies + localStorage | yes, auto | not with `--profile` or `--state` | named app/account state across runs |
-| `--profile PATH` | cookies + localStorage + IndexedDB + service workers + cache (full Chrome profile) | yes, native | not with `--state` or `--session-name` | single-user "always logged in" |
+| `--session NAME --restore` | cookies + localStorage | yes, auto | not with `--profile` | named app/account state across runs |
+| `--profile PATH` | cookies + localStorage + IndexedDB + service workers + cache (full Chrome profile) | yes, native | not with `--state` or `--session` | single-user "always logged in" |
 | `state save FILE` / `state load FILE` | snapshot of cookies + storage to JSON file | yes, manual | with `--session` for explicit imports | portable state files for CI |
 
 Pick exactly one. Mixing them confuses persistence.
@@ -188,19 +188,21 @@ agent-browser --session public get text body
 
 Each session has independent cookies/storage/history/tabs. Use named sessions when you genuinely need parallel isolated work in the same run (e.g., admin + viewer at the same time). Otherwise stay in the default session.
 
-### `--session-name` (auto-save across runs)
+### `--session NAME --restore` (auto-save/restore across runs)
 
 ```bash
-agent-browser --session-name myapp open  https://app.example.com
-agent-browser --session-name myapp fill  @e1 "user@example.com"
-agent-browser --session-name myapp close   # state auto-saved
+agent-browser --session myapp --restore open  https://app.example.com
+agent-browser --session myapp --restore fill  @e1 "user@example.com"
+agent-browser --session myapp --restore close   # state auto-saved
 
 # A day later:
-agent-browser --session-name myapp open  https://app.example.com
-# → cookies/storage restored; usually still logged in
+agent-browser --session myapp --restore open  https://app.example.com
+# → cookies/localStorage restored; usually still logged in
 ```
 
-The state file lives under `~/.agent-browser/states/` and is keyed by the session name. Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) before save/login to encrypt at rest. `AGENT_BROWSER_STATE_EXPIRE_DAYS` auto-expires stale states (default 30 days).
+`--restore` auto-saves and restores cookies + localStorage for the named session under `~/.agent-browser/sessions/`. To guard against a restored-but-expired session, add `--restore-check-text "<logged-in marker>"` (or set `AGENT_BROWSER_RESTORE_CHECK_URL` / `AGENT_BROWSER_RESTORE_CHECK_TEXT`). Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) before save/login to encrypt at rest.
+
+> Legacy: `--session-name NAME` / `AGENT_BROWSER_SESSION_NAME` was the old auto-persist flag. It still works but is deprecated — prefer `--session NAME --restore`.
 
 ### `--profile` (full Chrome persistence)
 
@@ -215,7 +217,7 @@ Or per-command:
 agent-browser --profile ~/.myapp open https://app.example.com
 ```
 
-`--profile` cannot be combined with `--state` or `--session-name`. The profile manages its own state natively.
+`--profile` cannot be combined with `--state` or `--session`. The profile manages its own state natively.
 
 Use different paths for different test users:
 
@@ -287,11 +289,11 @@ Treat every tab change as a navigation event for ref lifecycle. See `SKILL.md` S
 |---|---|
 | One-off scrape, no auth needed | default ephemeral |
 | Single test user, "always logged in" | `--profile PATH` (set `AGENT_BROWSER_PROFILE` globally) |
-| Named app, want auto-resume across runs | `--session-name NAME` |
+| Named app, want auto-resume across runs | `--session NAME` |
 | Already logged in to Chrome on the host | `--auto-connect`, save state once |
 | Multiple credentials managed centrally | `auth save` / `auth login` (auth vault) |
 | Portable state file for CI | `state save FILE` once, `--state FILE` in CI |
-| Manual auth / 2FA required | `--headed` with `--session-name`, complete in the window |
+| Manual auth / 2FA required | `--headed` with `--session NAME --restore`, complete in the window |
 
 ### Auth vault (recommended for credential reuse)
 
@@ -336,7 +338,7 @@ agent-browser --state ./my-auth.json open https://app.example.com/dashboard
 To make the imported auth auto-persist:
 
 ```bash
-agent-browser --session-name myapp state load ./my-auth.json
+agent-browser --session myapp state load ./my-auth.json
 # From now on, state is auto-saved/restored under the name "myapp".
 ```
 
@@ -382,14 +384,14 @@ agent-browser state save ./oauth-state.json
 
 ```bash
 # Show the browser so the human can complete the second factor
-agent-browser --headed --session-name myapp open https://app.example.com/login
-agent-browser --session-name myapp snapshot -i
-agent-browser --session-name myapp fill @e1 "user@example.com"
-agent-browser --session-name myapp fill @e2 "$APP_PASSWORD"
-agent-browser --session-name myapp click @e3
+agent-browser --headed --session myapp open https://app.example.com/login
+agent-browser --session myapp snapshot -i
+agent-browser --session myapp fill @e1 "user@example.com"
+agent-browser --session myapp fill @e2 "$APP_PASSWORD"
+agent-browser --session myapp click @e3
 
 # Wait for the human; long timeout
-AGENT_BROWSER_DEFAULT_TIMEOUT=120000 agent-browser --session-name myapp wait --url "**/dashboard"
+AGENT_BROWSER_DEFAULT_TIMEOUT=120000 agent-browser --session myapp wait --url "**/dashboard"
 # State is auto-saved under "myapp" on close.
 ```
 
@@ -426,4 +428,4 @@ If you discover the session is expired mid-task, do the inline login flow once m
 - Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) for at-rest encryption.
 - Pass passwords through env vars, stdin, or the auth vault — never as CLI args.
 - Set `AGENT_BROWSER_STATE_EXPIRE_DAYS` to auto-expire saved state.
-- After a job that used `--profile`, `--session-name`, or saved state, name explicitly in the output contract what state remains on disk.
+- After a job that used `--profile`, `--session --restore`, or saved state, name explicitly in the output contract what state remains on disk.

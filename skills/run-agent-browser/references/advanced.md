@@ -31,7 +31,7 @@ npx playwright install-deps chromium
 ### Pinning for production / CI
 
 ```bash
-npm install -g agent-browser@0.24.0
+npm install -g agent-browser@0.31.1
 agent-browser --version
 ```
 
@@ -74,7 +74,7 @@ RUN apt-get update && apt-get install -y \
     libdrm2 libxcomposite1 libxdamage1 libxrandr2 \
     libgbm1 libasound2 libpangocairo-1.0-0 libgtk-3-0 \
   && rm -rf /var/lib/apt/lists/*
-RUN npm install -g agent-browser@0.24.0 && agent-browser install
+RUN npm install -g agent-browser@0.31.1 && agent-browser install
 RUN useradd -m agent
 USER agent
 ```
@@ -84,7 +84,7 @@ USER agent
 ```yaml
 - name: Install agent-browser
   run: |
-    npm install -g agent-browser@0.24.0
+    npm install -g agent-browser@0.31.1
     agent-browser install --with-deps
 
 - name: Run browser checks
@@ -109,11 +109,11 @@ agent-browser -p browserbase open https://example.com
 
 # BrowserUse — agent-oriented hosted browser
 agent-browser -p browseruse open https://example.com
-# env: BROWSERUSE_API_KEY
+# env: BROWSER_USE_API_KEY
 
-# Kernel — Browserbase's stealth-optimized variant
+# Kernel — cloud browser provider (managed auth, stealth)
 agent-browser -p kernel open https://example.com
-# env: BROWSERBASE_API_KEY
+# env: KERNEL_API_KEY  (optional: KERNEL_STEALTH, KERNEL_HEADLESS, KERNEL_PROFILE_NAME)
 
 # Browserless
 agent-browser -p browserless open https://example.com
@@ -155,10 +155,10 @@ agent-browser --headed open https://example.com
 export AGENT_BROWSER_HEADED=1
 ```
 
-Combine with `--session-name` so state persists across cold starts:
+Combine with `--session NAME --restore` so state persists across cold starts:
 
 ```bash
-agent-browser --headed --session-name shop open https://shop.example.com
+agent-browser --headed --session shop open https://shop.example.com
 ```
 
 ### Human-paced typing
@@ -187,7 +187,7 @@ agent-browser wait "$((1500 + RANDOM % 2001))"
 
 ```bash
 agent-browser set geo 25.0330 121.5654                 # Taipei
-agent-browser --headed --session-name tw open https://shopee.tw
+agent-browser --headed --session tw open https://shopee.tw
 export AGENT_BROWSER_PROXY="http://tw-proxy.example.com:8080"
 agent-browser --headed open https://shopee.tw
 ```
@@ -197,7 +197,7 @@ agent-browser --headed open https://shopee.tw
 | Technique | Command / config |
 |---|---|
 | Headed mode | `--headed` or `AGENT_BROWSER_HEADED=1` |
-| Session persistence | `--session-name NAME` |
+| Session persistence | `--session NAME` |
 | Human-paced typing | `type` / `keyboard type` with `wait` between chunks |
 | Random waits | `agent-browser wait "$((1000 + RANDOM % 2001))"` |
 | Geolocation | `set geo LAT LON` |
@@ -337,17 +337,15 @@ Lightpanda limitations: no `--extension`, no `--profile`, no `--state`, no `--al
 
 ---
 
-## Native daemon (`--native`, experimental)
+## Native engine (default)
 
-A Rust daemon that talks to Chrome directly over CDP, bypassing Node.js + Playwright.
+agent-browser is 100% native Rust by default — a daemon that talks to Chrome directly over CDP. The old Node.js + Playwright daemon has been removed, so there is no Node.js runtime to install and `--native` / `AGENT_BROWSER_NATIVE` are no longer needed (they're accepted as no-ops on current versions).
 
 ```bash
-agent-browser --native open example.com
-# or
-export AGENT_BROWSER_NATIVE=1
+agent-browser open example.com   # already native; nothing to opt into
 ```
 
-Supports Chromium and Safari (via WebDriver). Firefox and WebKit not yet. All core commands work identically. Use `agent-browser close` before switching modes.
+Chromium is the primary engine; use `--engine lightpanda` for the fast read-only engine. Use `agent-browser close` before switching engines.
 
 ---
 

@@ -44,7 +44,7 @@ Six to ten inline calls solve almost any 80% task. Reach for a script only when 
 ## Session/tab/ref scratchpad — maintain this mentally
 
 ```yaml
-session: default          # or --session NAME / --session-name NAME
+session: default          # or --session NAME (add --restore to persist state across cold starts)
 profile: null             # or --profile PATH (persistent Chrome user data dir)
 active_tab: 0             # always know which tab the next command targets
 tabs:                     # list every tab you opened
@@ -60,7 +60,7 @@ Update after every `open`, `click`-that-navigates, `tab new`, `tab N`, `back`, m
 
 ```
 $ agent-browser --version
-0.24.0
+0.31.1
 ```
 
 If the command is not found, install once: `npm install -g agent-browser` (pin in production — see `references/safety.md`). If the first browser command fails because Chromium is missing, run `agent-browser install` once and retry. Treat that as part of the happy path, not troubleshooting.
@@ -326,20 +326,20 @@ tab: 0 | session: default | refs: none | sensitive_state: false
 2. ```
    $ agent-browser close
    → ok
-   $ agent-browser --headed --session-name shop open https://shop.example.com/
+   $ agent-browser --headed --session shop open https://shop.example.com/
    → ok | (visible browser window)
    ```
    (re-opening with `--headed` and a named session so state auto-persists. sensitive_state: true — there is now persistent state on disk for "shop".)
 
 3. ```
-   $ agent-browser --session-name shop wait --load networkidle
+   $ agent-browser --session shop wait --load networkidle
    → ok
-   $ agent-browser --session-name shop get title
+   $ agent-browser --session shop get title
    → Shop — Example
    ```
    (challenge passed.)
 
-4. Continue the task under `--session-name shop`. After the work is done, decide explicitly whether to keep the persisted state. If you keep it, note it in the output contract.
+4. Continue the task under `--session shop`. After the work is done, decide explicitly whether to keep the persisted state. If you keep it, note it in the output contract.
 
 Headed mode is also the right answer for 2FA, manual auth, or any flow where a human needs to look at the screen. For non-interactive provider escalation (Browserbase, Kernel) see `references/advanced.md`.
 
@@ -352,7 +352,7 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 3. **`get text` is strict-mode.** Multi-element matches throw. Switch to `eval --stdin` with a single-quoted heredoc (Scenario C).
 4. **`--new-tab` opens a tab but does not focus it.** `tab N` switches focus. Both are navigation events for ref lifecycle (Scenario B).
 5. **Verify with at least one deterministic check after every meaningful interaction.** `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`. URL + title is the cheapest pair.
-6. **Reuse the current session by default.** Spawn a named `--session NAME` only for parallel isolated work. Spawn `--session-name NAME` only when state should auto-persist across runs. Spawn `--profile PATH` only when full-Chrome persistence (IndexedDB, service workers, cache) is needed.
+6. **Reuse the current session by default.** Spawn a named `--session NAME` only for parallel isolated work. Add `--restore` to a named session only when state should auto-save/restore (cookies + localStorage) across separate runs. Spawn `--profile PATH` only when full-Chrome persistence (IndexedDB, service workers, cache) is needed.
 7. **Prefer `tab new` over `window new`.** Use `window new` only when the site truly requires a separate window.
 8. **`agent-browser back` not `go back`.** `back` preserves history and form state; re-opening the URL drops both.
 9. **`snapshot -i` hides non-interactive text.** Headings, paragraphs, spans, labels. For data extraction use `get text SELECTOR` (single match) or `eval --stdin` (multiple). See `references/sessions-and-refs.md` for the JSON schema and scoped snapshots.
@@ -368,7 +368,7 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 | `click @e2 --new-tab` then `tab 1` then re-snapshot | Click and assume focus moved | Scenario B |
 | `eval --stdin <<'EVALEOF' ... EVALEOF` for multi-element extraction | Inline `eval "Array.from(...)..."` with nested quotes | Scenario C |
 | Re-snapshot after every SPA route / nav / tab switch | Reuse a ref across a navigation | Scenario D |
-| Escalate to `--headed` when headless is walled; keep the same `--session-name` | Retry the same headless command in a loop | Scenario E |
+| Escalate to `--headed` when headless is walled; keep the same `--session` | Retry the same headless command in a loop | Scenario E |
 | Verify with `get url` + `get title` before declaring success | Trust that "click @e3 → ok" means the form submitted | Scenarios A, D |
 
 ## Recovery cookbook
@@ -385,7 +385,7 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 
 - Writing TypeScript browser-automation code with `@onkernel/sdk` → use `build-kernel-ts-sdk`.
 - Reconstructing a Next.js project from a captured site → ownership stays with `convert-url-to-nextjs`; this skill is only invoked for live capture.
-- Documenting a SaaS visual system → ownership stays with `create-design-md`; this skill is only invoked for browser evidence.
+- Documenting a SaaS visual system → this skill is only invoked for browser evidence, not for producing the design document itself.
 - Static research, no live browser context needed.
 
 ## Reference routing
@@ -402,7 +402,7 @@ Helper scripts in `scripts/` (`check-agent-browser-version.sh`, `inspect-page.sh
 ## Output contract — when work ends, report
 
 - Final active URL and title.
-- Mode used (default / `--headed` / `--profile PATH` / `--session-name NAME` / `-p PROVIDER` / `--engine ENGINE`) when non-default.
+- Mode used (default / `--headed` / `--profile PATH` / `--session NAME` / `-p PROVIDER` / `--engine ENGINE`) when non-default.
 - Deterministic verifications run, e.g. `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`.
 - Evidence paths created — screenshots, videos, traces, profiles, saved state files.
 - Extracted data shape when data was extracted — JSON array, CSV rows, table, key-value map — plus selectors/refs used and a count check (`get count SELECTOR`).
