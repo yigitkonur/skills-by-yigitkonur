@@ -48,7 +48,7 @@ GROUPS = {
     "yk-review": (
         "review",
         "Review & completion — code review, review-feedback triage, done-claim audits, runtime debugging.",
-        ["run-review", "run-codex-review-loop", "audit-completion", "debug-runtime"],
+        ["run-review", "run-codex-review-loop", "run-codex-adversarial-loop", "audit-completion", "debug-runtime"],
     ),
     "yk-frontend": (
         "frontend",

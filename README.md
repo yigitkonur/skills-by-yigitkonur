@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **40 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **41 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -61,9 +61,9 @@ themed groups for one-shot installs. every skill also installs on its own — se
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 40 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 41 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
-| **yk-review** | review, codex-review-loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
+| **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
 | **yk-build** | chrome, effect-ts, kernel, langchain, raycast, tinacms | `/plugin install yk-build@yigitkonur` |
@@ -140,6 +140,7 @@ judge a change for merge-readiness, triage feedback, verify "done", and chase ru
 
 - **[run-review](skills/run-review/)** — one entry point, four modes: (a) do a pr/branch review, (b) open your branch as a self-review pr, (c) triage received feedback, (d) delegate to `codex review`.
 - **[run-codex-review-loop](skills/run-codex-review-loop/)** — native `codex exec review` across multiple branches; compare findings; rescue a saved branch-review loop.
+- **[run-codex-adversarial-loop](skills/run-codex-adversarial-loop/)** — fan out parallel codex adversarial reviews across derived lenses, independently verify every finding, fix confirmed issues in grouped worktrees, loop until clean.
 - **[audit-completion](skills/audit-completion/)** — audit task / session / plan / branch completion claims with evidence; remediate to terminal status.
 - **[debug-runtime](skills/debug-runtime/)** — language-agnostic systematic debugging: four phases + iron law, for reproducible bugs and repeated failed fixes.
 
