@@ -5,7 +5,7 @@ Six evidence-grounded research agents for developers and AI coding agents stuck 
 ## Layout
 
 ```
-agents/
+subagents/
 ├── README.md           (this file)
 ├── claude/             Claude Code runtime (frontmatter: name, description, model, color)
 │   ├── internet-researcher-quick.md
@@ -122,13 +122,13 @@ Uniform across all heavy agents: exec summary → confidence → top findings wi
 ### Claude Code
 
 ```sh
-cp agents/claude/*.md ~/.claude/agents/
+cp subagents/claude/*.md ~/.claude/agents/
 ```
 
 ### Codex CLI
 
 ```sh
-cp agents/codex/*.md ~/.codex/agents/
+cp subagents/codex/*.md ~/.codex/agents/
 ```
 
 ## How to invoke
