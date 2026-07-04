@@ -322,7 +322,7 @@ Default execution model: **hybrid lean**.
 - The main agent owns intent parsing, search strategy, filtering, and synthesis.
 - Batch or parallelize queries when helpful, but keep the reasoning central.
 - Use subagents only for: very large landscapes; explicit deep-dive requests; optional feature-matrix generation; top-N code-level review.
-- When web augmentation is the gap and a subagent is dispatched for it, the subagent's brief embeds the `run-research` skill discipline (so the subagent uses the 5-tool toolkit correctly without re-deriving it). See `references/subagent-prompts.md` for the integration block.
+- When web augmentation is the gap and a subagent is dispatched for it, the subagent's brief embeds the `run-research` skill discipline (so the subagent uses the 3-tool toolkit correctly without re-deriving it). See `references/subagent-prompts.md` for the integration block.
 
 If you dispatch help, read `references/subagent-prompts.md`. Subagents
 gather evidence; the main agent still writes the final shortlist or

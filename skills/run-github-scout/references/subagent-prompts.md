@@ -29,21 +29,23 @@ vocabulary and curated alternative lists, then map findings back to
 GitHub repo names — not to produce a shortlist yourself.
 
 Use the `run-research` skill if it is available. The skill drives the
-5-tool toolkit (raw/smart × search/scrape plus the `start-research`
-planner) with built-in discipline:
+3-tool toolkit (the `get-research-consultancy` planner + `web-search` +
+`scrape-link`) with built-in discipline:
 
-1. First call: invoke `start-research` with a tight goal paragraph
-   naming the topic, the use case (you are scouting GitHub repos for
-   `{INTERPRETED_NEED}`), known unknowns to skip, freshness window
-   (last 12 months for category drift), and quote discipline (project
-   names verbatim).
-2. Toolkit shape: `raw-web-search` for URL pool discovery,
-   `smart-web-search` when the output goes directly into your context,
-   `raw-scrape-links` for Reddit threads (threading preserved),
-   `smart-scrape-links` for docs and curated lists with a defined
-   `extract`.
-3. Operational caps: `smart-scrape-links` ≤ 5 URLs and ≤ 7 facets per
-   call; raw-search >25 keywords risks persistence.
+1. First call: invoke `get-research-consultancy` with a tight goal
+   paragraph naming the topic, the use case (you are scouting GitHub
+   repos for `{INTERPRETED_NEED}`), known unknowns to skip, freshness
+   window (last 12 months for category drift), and quote discipline
+   (project names verbatim).
+2. Toolkit shape: `web-search` for URL pool discovery (including
+   Reddit permalink hunting via `site:reddit.com/r/.../comments`
+   keyword probes — it never classifies or synthesizes), `scrape-link`
+   for docs, curated lists, and Reddit threads alike, always with a
+   defined `extract` (use a quote-preserving `extract` for Reddit/HN
+   threads — permalinks auto-route through the Reddit API for full
+   threaded comments before extraction).
+3. Operational caps: `scrape-link` ≤ 5 URLs and ≤ 7 facets per
+   call; `web-search` >25 keywords per call risks persistence.
 4. Citation discipline: snippets are NOT evidence; only scraped
    content is citable.
 

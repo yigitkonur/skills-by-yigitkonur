@@ -101,13 +101,11 @@ No `site:URL` recipe templates in the agent bodies. Each agent has ONE illustrat
 
 The entire suite is built on the `mcp__research-powerpack__*` toolset. Both runtimes (Claude Code, Codex CLI) have research-powerpack configured and use it exclusively. No native WebSearch, WebFetch, exa, context7, firecrawl, or shell-based search/scrape is referenced anywhere in the agent bodies.
 
-Five tools, one ladder:
+Three tools, one ladder:
 
-- `start-research` — **Call FIRST every session.** Returns a goal-tailored brief: primary branch (web / reddit / both), exact first-call sequence, 25-50 keyword seeds, iteration hints, gap warnings, stop criteria. The single most under-used tool in the kit.
-- `smart-web-search` — Fan out 5-50 keywords in parallel with LLM classification + synthesis. Default search. Pass an `extract` instruction naming the evidence shape you want.
-- `raw-web-search` — Same fan-out, no classification. Use for raw discovery, Reddit permalink hunting via `site:reddit.com/r/<sub>/comments` keywords, or when output is destined for a file or sub-agent.
-- `smart-scrape-links` — Fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction. The `extract` parameter (pipe-separated shape) is the most precise instrument the suite has.
-- `raw-scrape-links` — Fetch ≤5 URLs per call without extraction. **Always for Reddit / HN / forum threads** — preserves vote weighting, attribution, threading.
+- `get-research-consultancy` — **Call FIRST every session.** Returns a goal-tailored brief: goal class, primary branch (web / reddit / both), exact first-call sequence (only `web-search`/`scrape-link` steps), 25-50 keyword seeds, iteration hints, gap warnings, stop criteria. The single most under-used tool in the kit.
+- `web-search` — Fan out 1-50 keywords in parallel. Ranked, de-duplicated, CTR-aggregated URL list — no LLM classification or synthesis. Use for discovery, Reddit permalink hunting via `site:reddit.com/r/<sub>/comments` keywords, or when output is destined for a file or sub-agent. Fire multiple calls across 2-4 rounds.
+- `scrape-link` — Fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction; `extract` is required. The `extract` parameter (pipe-separated shape) is the most precise instrument the suite has. **Always for Reddit / HN / forum threads too** — Reddit permalinks auto-route through the Reddit API for full threaded comments before extraction, so use a quote-preserving `extract` there.
 
 If a research-powerpack tool is unavailable in a session, agents return `blocked` with the missing-tool name. No fallbacks to non-powerpack alternatives are permitted by the agent prompts.
 

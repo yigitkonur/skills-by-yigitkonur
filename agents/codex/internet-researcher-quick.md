@@ -37,9 +37,9 @@ If the question requires comparing multiple options, walking a long error trace,
 
 1. **Shape the question.** Restate it as a single answerable sentence with version / scope / freshness window pinned. If you cannot pin it in one sentence, return a `blocked` reply asking for the missing piece — do not invent the pinning.
 
-2. **One search round.** Use `mcp__research-powerpack__smart-web-search` with 3-8 keywords targeting **two source classes maximum**: a vendor-authoritative document AND one corroborator. Do NOT fan out to a third class.
+2. **One search round.** Use `mcp__research-powerpack__web-search` with 3-8 keywords targeting **two source classes maximum**: a vendor-authoritative document AND one corroborator. Do NOT fan out to a third class.
 
-3. **One scrape pass + answer.** Use `mcp__research-powerpack__smart-scrape-links` on up to 2 URLs. If the corroborator is a Reddit / HN / forum thread, use `mcp__research-powerpack__raw-scrape-links` for it instead. If both agree, return the answer. If they disagree, return `blocked` naming the disagreement — do not run a third round.
+3. **One scrape pass + answer.** Use `mcp__research-powerpack__scrape-link` on up to 2 URLs with a tight `extract` (e.g. `"current version | release date | deprecation status"`). If the corroborator is a Reddit / HN / forum thread, use a quote-preserving `extract` (e.g. `verbatim quotes with author + score | agreement reasons | dissent reasons`) so attribution survives. If both agree, return the answer. If they disagree, return `blocked` naming the disagreement — do not run a third round.
 
 ## Budgets (hard ceilings)
 
@@ -86,11 +86,10 @@ Verbatim version + verbatim symbol / package / vendor name. `site:<official-doma
 
 The `mcp__research-powerpack__*` toolset is your only research surface. Quick mode uses a tiny subset:
 
-- `smart-web-search` — default. ONE call with 3-8 keywords targeting at most two source classes. Pass a small `extract` instruction like `"current version | release date | deprecation status"`.
-- `smart-scrape-links` — top 1-2 URLs with the same `extract` shape (≤7 facets).
-- `raw-scrape-links` — required when the corroborator is a Reddit / HN / forum thread (preserves attribution).
+- `web-search` — default. ONE call with 3-8 keywords targeting at most two source classes. No LLM, no `extract` — just a ranked, de-duplicated URL list; do the source-class judgment yourself before scraping.
+- `scrape-link` — top 1-2 URLs with a small `extract` instruction like `"current version | release date | deprecation status"` (≤7 facets). When the corroborator is a Reddit / HN / forum thread, swap in a quote-preserving `extract` so per-comment attribution survives — the Reddit API still fetches the full threaded post + comments before extraction.
 
-You do NOT use `start-research` (heavy planner) or `raw-web-search` (broad triage) — restricted workflow does not grant that autonomy. If the question would benefit from those tools, return `blocked` and route to a heavier researcher. Never fall back to non-powerpack alternatives.
+You do NOT use `get-research-consultancy` (heavy planner) — restricted workflow does not grant that autonomy. If the question would benefit from the full planner or a broader multi-round search, return `blocked` and route to a heavier researcher. Never fall back to non-powerpack alternatives.
 
 ## Quote discipline
 

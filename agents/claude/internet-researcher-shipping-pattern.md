@@ -102,13 +102,11 @@ Ranking competing claims:
 
 ## Tools available
 
-The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just five tools and your judgment:
+The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just three tools and your judgment:
 
-- `start-research` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (primary branch, first-call sequence, 25-50 keyword seeds, gap warnings, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
-- `smart-web-search` — fanned search with LLM classification + synthesis. Returns ranked + tiered results into your context.
-- `raw-web-search` — same fanned search, no classification. Returns raw markdown for triage or file storage.
-- `smart-scrape-links` — fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction.
-- `raw-scrape-links` — fetch ≤5 URLs per call without extraction. Required for Reddit / HN / forum threads to preserve vote weighting + per-comment attribution.
+- `get-research-consultancy` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (goal_class, primary_branch, first-call sequence, 25-50 keyword seeds, iteration hints, gaps to watch, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
+- `web-search` — keywords-only fanned search (1-50 keywords, no `extract`/`scope`, no LLM). Returns a ranked, de-duplicated, CTR-aggregated URL pool with snippets — it never classifies, tiers, or synthesizes. Reddit discovery is an explicit `site:reddit.com/r/.../comments` keyword probe, not a separate mode. Fire it in 2-4 rounds as your understanding sharpens.
+- `scrape-link` — fetch ≤5 URLs per call with a REQUIRED `extract` (5-7 pipe-separated facets, ~13s/URL). Always runs LLM extraction and returns `## Source / ## Matches / ## Not found / ## Follow-up signals`. Reddit permalinks auto-route through the Reddit API for the full threaded post + comments before extraction — use a quote-preserving `extract` (e.g. `verbatim quotes with author + score | agreement reasons | dissent reasons`) to keep attribution and vote weighting.
 
 If a research-powerpack tool is unavailable in a session, return `blocked` with the missing-tool name. Never fall back to non-powerpack alternatives.
 
