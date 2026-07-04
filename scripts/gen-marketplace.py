@@ -23,8 +23,17 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
 OUT_PATH = os.path.join(REPO_ROOT, ".claude-plugin", "marketplace.json")
+VERSION_PATH = os.path.join(REPO_ROOT, "VERSION")
 
 MARKETPLACE_NAME = "yigitkonur"
+
+
+def version():
+    """Single source of truth for every plugin's version (bumped by CI)."""
+    try:
+        return open(VERSION_PATH).read().strip()
+    except FileNotFoundError:
+        return "1.0.0"
 
 # Themed bundles. Every skill MUST appear in exactly one group (enforced below).
 # key -> (category label, human blurb, [skill dirs])
@@ -109,9 +118,9 @@ GROUPS = {
     ),
 }
 
-# Bundles that also ship the internet-researcher subagents from agents/claude/.
+# Bundles that also ship the internet-researcher subagents from subagents/claude/.
 AGENT_BUNDLES = {"yk-research"}
-CLAUDE_AGENTS = ["./agents/claude/"]
+CLAUDE_AGENTS = ["./subagents/claude/"]
 
 
 def load_validator():
@@ -155,16 +164,17 @@ def build():
         sys.exit(2)
 
     plugins = []
+    ver = version()
 
     # 1) everything bundle
     plugins.append(
         {
             "name": "yk-everything",
             "source": "./",
-            "description": "The whole pack — all {} skills in one install. Heaviest context cost; prefer a themed bundle or single skill.".format(
+            "description": "The whole pack — all {} skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.".format(
                 len(skills)
             ),
-            "version": "1.0.0",
+            "version": ver,
             "category": "bundle",
             "strict": False,
             "skills": ["./skills/"],
@@ -172,13 +182,28 @@ def build():
         }
     )
 
-    # 2) themed bundles
+    # 2) agents-only plugin — install just the internet-researcher subagents
+    plugins.append(
+        {
+            "name": "yk-researchers",
+            "source": "./",
+            "description": "Internet-researcher subagents only (no skills) — api-docs, debug-stuck, tech-choice, shipping-pattern, quick, generic. Fan them out for source-backed answers.",
+            "version": ver,
+            "category": "bundle",
+            "tags": ["agents"],
+            "strict": False,
+            "skills": [],
+            "agents": CLAUDE_AGENTS,
+        }
+    )
+
+    # 3) themed bundles
     for key, (category, blurb, members) in GROUPS.items():
         entry = {
             "name": key,
             "source": "./",
             "description": blurb,
-            "version": "1.0.0",
+            "version": ver,
             "category": "bundle",
             "tags": [category],
             "strict": False,
@@ -188,7 +213,7 @@ def build():
             entry["agents"] = CLAUDE_AGENTS
         plugins.append(entry)
 
-    # 3) one plugin per skill (fine-grained install/uninstall)
+    # 4) one plugin per skill (fine-grained install/uninstall)
     skill_to_cat = {s: cat for _k, (cat, _b, members) in GROUPS.items() for s in members}
     for s in skills:
         plugins.append(
@@ -196,7 +221,7 @@ def build():
                 "name": s,
                 "source": "./",
                 "description": skill_desc(v, s),
-                "version": "1.0.0",
+                "version": ver,
                 "category": skill_to_cat[s],
                 "strict": False,
                 "skills": [f"./skills/{s}"],
@@ -210,8 +235,8 @@ def build():
             "url": "https://github.com/yigitkonur",
         },
         "metadata": {
-            "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, or a single skill.",
-            "version": "1.0.0",
+            "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill, or just the researcher agents.",
+            "version": version(),
         },
         "plugins": plugins,
     }
