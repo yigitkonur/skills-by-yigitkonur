@@ -129,7 +129,20 @@ agent-browser open https://app.example.com         # allowed
 agent-browser open https://malicious.example.org   # blocked
 ```
 
-Be specific. Avoid wildcards that could include untrusted subdomains.
+Be specific. Avoid wildcards that could include untrusted subdomains. Note: `--allowed-domains` blocking of WebSocket / EventSource connections is best-effort — pair it with an `eval`-denying `--action-policy` for stronger isolation.
+
+### Confirmation gating
+
+```bash
+export AGENT_BROWSER_CONFIRM_ACTIONS=1     # or --confirm-actions
+agent-browser click @e3                    # state-changing actions wait for approval
+```
+
+Pending confirmations auto-deny after ~60 seconds. `--confirm-interactive` requires a TTY and auto-denies when none is present (so it fails safe in CI). Approve/reject a pending action with `agent-browser confirm <id>` / `agent-browser deny <id>`.
+
+### Encryption key
+
+Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex, AES-256-GCM) to encrypt the auth vault + saved sessions. If unset, a key is auto-generated at `~/.agent-browser/.encryption-key` — back that file up, or saved state becomes unreadable on another machine.
 
 ### Supply-chain hygiene
 
@@ -139,6 +152,7 @@ Be specific. Avoid wildcards that could include untrusted subdomains.
 - Review the changelog before updating.
 - Delete session data after use unless persistence is explicitly needed.
 - Only load trusted browser extensions.
+- Credential plugins run as unsandboxed local executables — install them only from trusted maintainers.
 
 ---
 
@@ -156,8 +170,6 @@ On Linux, system libraries are also required:
 
 ```bash
 agent-browser install --with-deps
-# or
-npx playwright install-deps chromium
 ```
 
 ### Daemon not responding / stale session / `EADDRINUSE`

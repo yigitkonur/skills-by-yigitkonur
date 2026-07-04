@@ -306,6 +306,7 @@ agent-browser profiler stop trace.json    # Stop and save profile
 ## Maintenance & advanced surface
 
 ```bash
+agent-browser install [--with-deps]       # Install Chromium (and OS deps) — run once after npm install
 agent-browser doctor                      # Diagnose daemon/socket/state health
 agent-browser doctor --fix --json         # Auto-heal (prefer this over manual rm of *.pid/*.sock)
 agent-browser upgrade                     # Auto-detect install method (npm/brew/cargo) and update
@@ -315,6 +316,21 @@ agent-browser batch script.txt --bail --json   # Run a command file, stop on fir
 agent-browser chat "book the cheapest flight"   # Natural-language / REPL driving
 agent-browser mcp --tools core,state,debug      # Run agent-browser as an MCP server
 ```
+
+### Credential vault (avoid passing secrets on the CLI)
+
+```bash
+agent-browser auth save  myapp --password-stdin      # store credentials (pipe the password in)
+agent-browser auth login myapp --url https://app.example.com/login \
+  --username-selector "#email" --password-selector "#pass" --submit-selector "button[type=submit]"
+agent-browser auth list                              # list stored profiles
+agent-browser auth show   myapp                      # profile metadata
+agent-browser auth delete myapp
+```
+
+Prefer `--password-stdin` over any `--password` flag (flags leak via shell history / process listing). Distinct from `set credentials user pass`, which is HTTP Basic auth.
+
+> This reference documents the everyday CLI surface. agent-browser also ships `clipboard`, `stream`, `dashboard`, `react`/`vitals`, `network har`, `plugin`, `skills`, and iOS `device` commands — run `agent-browser --help` or see agent-browser.dev/commands for the full list.
 
 ## Common Environment Variables
 

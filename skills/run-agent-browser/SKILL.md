@@ -54,7 +54,7 @@ refs: [e1, e2, ...]       # mark stale after nav, tab switch, modal open, SPA ro
 sensitive_state: false    # true if you loaded auth, used --profile, or saved state to disk
 ```
 
-Update after every `open`, `click`-that-navigates, `tab new`, `tab N`, `back`, modal open/close, or any state change. If you cannot answer "which tab is active, and when was the last snapshot?" from memory, run `agent-browser tab` and `agent-browser snapshot -i` before the next action.
+Update after every `open`, `click`-that-navigates, `tab new`, `tab tN`, `back`, modal open/close, or any state change. If you cannot answer "which tab is active, and when was the last snapshot?" from memory, run `agent-browser tab` and `agent-browser snapshot -i` before the next action.
 
 ## Verify the CLI is reachable, then go
 
@@ -163,7 +163,7 @@ tab: 0 | session: default | refs: valid as of step 1 | sensitive_state: false
    (confirms two tabs; I still need to switch.)
 
 4. ```
-   $ agent-browser tab 1
+   $ agent-browser tab t1
    → ok | switched to tab 1
    ```
    (state update: active_tab = 1. ALL refs from step 1 are now stale.)
@@ -180,7 +180,7 @@ tab: 0 | session: default | refs: valid as of step 1 | sensitive_state: false
    (extracted one value; no need to snapshot — selector matched exactly one.)
 
 7. ```
-   $ agent-browser tab close 1
+   $ agent-browser tab close t1
    → ok | tab 1 closed, focus returned to tab 0
    ```
    (state update: active_tab = 0. refs from step 1 are STILL stale — modal/nav can change them, but more importantly I have been gone for several steps. Re-snapshot.)
@@ -201,7 +201,7 @@ tab: 0 | session: default | refs: valid as of step 1 | sensitive_state: false
     → ok
     ```
 
-The headline lesson: `--new-tab` opens a tab but does not focus it. `tab 1` switches focus. Every tab switch is a navigation event for ref lifecycle purposes — re-snapshot.
+The headline lesson: `--new-tab` opens a tab but does not focus it. `tab t1` switches focus (tab targets take a `t` prefix — bare `tab 1` is rejected; use `t1`, `t2`, or a label). Every tab switch is a navigation event for ref lifecycle purposes — re-snapshot.
 
 ---
 
@@ -350,22 +350,23 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 1. **Snapshot before acting.** Every transcript above starts with a snapshot before the first interaction. After any nav, click that nav'd, tab switch, modal open, or SPA route change, treat all refs as stale.
 2. **Re-snapshot after every state change.** Scenario D's recovery exists because refs are scoped to the snapshot that produced them.
 3. **`get text` is strict-mode.** Multi-element matches throw. Switch to `eval --stdin` with a single-quoted heredoc (Scenario C).
-4. **`--new-tab` opens a tab but does not focus it.** `tab N` switches focus. Both are navigation events for ref lifecycle (Scenario B).
+4. **`--new-tab` opens a tab but does not focus it.** `tab t1` switches focus (tab targets need the `t` prefix — bare `tab 1` errors). Both are navigation events for ref lifecycle (Scenario B).
 5. **Verify with at least one deterministic check after every meaningful interaction.** `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`. URL + title is the cheapest pair.
 6. **Reuse the current session by default.** Spawn a named `--session NAME` only for parallel isolated work. Add `--restore` to a named session only when state should auto-save/restore (cookies + localStorage) across separate runs. Spawn `--profile PATH` only when full-Chrome persistence (IndexedDB, service workers, cache) is needed.
 7. **Prefer `tab new` over `window new`.** Use `window new` only when the site truly requires a separate window.
 8. **`agent-browser back` not `go back`.** `back` preserves history and form state; re-opening the URL drops both.
 9. **`snapshot -i` hides non-interactive text.** Headings, paragraphs, spans, labels. For data extraction use `get text SELECTOR` (single match) or `eval --stdin` (multiple). See `references/sessions-and-refs.md` for the JSON schema and scoped snapshots.
-10. **`diff snapshot` requires the subcommand.** Bare `diff` fails.
+10. **`diff snapshot` requires the subcommand.** Bare `diff` fails. Flags: `--baseline <file>`, `--selector <sel>`, `--compact`.
 11. **`check` and `uncheck` return the new checked state (`true`/`false`)**, not `ok`. Expected.
-12. **Close only what you opened.** Tabs, sessions, state files, profiles. Leave pre-existing context alone.
+12. **`find` is the ref-free alternative to `snapshot -i`.** `find role button click --name "Save"`, `find text "Sign in" click`, also `label`/`placeholder`/`testid` — targets a single element by accessible role/text without capturing refs first. Use it for one known control; use `snapshot -i` when exploring.
+13. **Close only what you opened.** Tabs, sessions, state files, profiles. Leave pre-existing context alone.
 
 ## Do this, not that
 
 | Do this | Not that | Tied to |
 |---|---|---|
 | Reuse the default session for one continuous task | Spawn a new session per page | Scenario A |
-| `click @e2 --new-tab` then `tab 1` then re-snapshot | Click and assume focus moved | Scenario B |
+| `click @e2 --new-tab` then `tab t1` then re-snapshot | Click and assume focus moved | Scenario B |
 | `eval --stdin <<'EVALEOF' ... EVALEOF` for multi-element extraction | Inline `eval "Array.from(...)..."` with nested quotes | Scenario C |
 | Re-snapshot after every SPA route / nav / tab switch | Reuse a ref across a navigation | Scenario D |
 | Escalate to `--headed` when headless is walled; keep the same `--session` | Retry the same headless command in a loop | Scenario E |

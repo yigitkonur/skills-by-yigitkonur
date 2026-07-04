@@ -105,7 +105,8 @@ The CLI command surface is identical — only the browser backend changes. Cloud
 ```bash
 # Browserbase — generic cloud Chrome
 agent-browser -p browserbase open https://example.com
-# env: BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID
+# env: BROWSERBASE_API_KEY   (BROWSERBASE_PROJECT_ID no longer required as of v0.18.0)
+# note: Browserbase is Chromium-only, no extensions/profile dirs, ~10s default timeout
 
 # BrowserUse — agent-oriented hosted browser
 agent-browser -p browseruse open https://example.com
@@ -117,9 +118,11 @@ agent-browser -p kernel open https://example.com
 
 # Browserless
 agent-browser -p browserless open https://example.com
+# env: BROWSERLESS_API_KEY  (optional: BROWSERLESS_API_URL, BROWSERLESS_STEALTH)
 
 # AWS Bedrock AgentCore
 agent-browser -p agentcore open https://example.com
+# env: AWS creds (AWS_PROFILE / standard AWS SDK vars) + AGENTCORE_REGION, AGENTCORE_BROWSER_ID
 
 # iOS Simulator (see iOS section below)
 agent-browser -p ios open https://example.com
@@ -130,7 +133,6 @@ To avoid repeating `-p`:
 ```bash
 export AGENT_BROWSER_PROVIDER=browserbase
 export BROWSERBASE_API_KEY=...
-export BROWSERBASE_PROJECT_ID=...
 agent-browser open https://example.com
 ```
 

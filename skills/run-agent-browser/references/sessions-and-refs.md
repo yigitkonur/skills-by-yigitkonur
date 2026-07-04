@@ -165,7 +165,8 @@ A session is a browser context with its own cookies, storage, IndexedDB, cache, 
 | (none) default ephemeral | nothing | no | — | one-off tasks, default for everything |
 | `--session NAME` | cookies + storage within one run | no (without `state save`) | yes, with explicit `state save/load` | parallel isolated work in one run (multi-account testing) |
 | `--session NAME --restore` | cookies + localStorage | yes, auto | not with `--profile` | named app/account state across runs |
-| `--profile PATH` | cookies + localStorage + IndexedDB + service workers + cache (full Chrome profile) | yes, native | not with `--state` or `--session` | single-user "always logged in" |
+| `--profile NAME` (Chrome profile reuse) | cookies + localStorage + extension state (read-only temp copy, **no cache/IndexedDB**) | yes | not with `--state` | reuse an existing Chrome login by profile name (`agent-browser profiles` lists them) |
+| `--profile PATH` (persistent dir) | cookies + localStorage + IndexedDB + service workers + cache (full profile) | yes, native | not with `--state` or `--session` | single-user "always logged in" |
 | `state save FILE` / `state load FILE` | snapshot of cookies + storage to JSON file | yes, manual | with `--session` for explicit imports | portable state files for CI |
 
 Pick exactly one. Mixing them confuses persistence.
@@ -173,9 +174,13 @@ Pick exactly one. Mixing them confuses persistence.
 ### Session command
 
 ```bash
-agent-browser session               # which session am I in?
-agent-browser session list          # list all active sessions
+agent-browser session                       # which session am I in?
+agent-browser session list                  # list all active sessions
+agent-browser session info --json           # daemon / launch / restore status
+agent-browser session id --scope worktree --prefix myapp   # stable, collision-free key (CI, parallel worktrees)
 ```
+
+Session ID is set by `--session NAME` or `AGENT_BROWSER_SESSION` (current env var; `AGENT_BROWSER_SESSION_NAME` is the legacy one). Restore/session names must be alphanumeric plus `-`/`_` only — spaces, slashes, and path traversal (`../`) are rejected.
 
 ### `--session` (one-run isolation)
 
@@ -200,9 +205,9 @@ agent-browser --session myapp --restore open  https://app.example.com
 # → cookies/localStorage restored; usually still logged in
 ```
 
-`--restore` auto-saves and restores cookies + localStorage for the named session under `~/.agent-browser/sessions/`. To guard against a restored-but-expired session, add `--restore-check-text "<logged-in marker>"` (or set `AGENT_BROWSER_RESTORE_CHECK_URL` / `AGENT_BROWSER_RESTORE_CHECK_TEXT`). Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) before save/login to encrypt at rest.
+`--restore` auto-saves and restores cookies + localStorage for the named session under `~/.agent-browser/sessions/`. To guard against a restored-but-expired session, add `--restore-check-text "<logged-in marker>"` (or set `AGENT_BROWSER_RESTORE_CHECK_URL` / `AGENT_BROWSER_RESTORE_CHECK_TEXT` / `AGENT_BROWSER_RESTORE_CHECK_FN`). `AGENT_BROWSER_RESTORE_SAVE` controls auto-save policy (`auto` default / `always` / `never`; a failed restore or failed validation skips the auto-save). Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) before save/login to encrypt at rest.
 
-> Legacy: `--session-name NAME` / `AGENT_BROWSER_SESSION_NAME` was the old auto-persist flag. It still works but is deprecated — prefer `--session NAME --restore`.
+> Legacy: the `AGENT_BROWSER_SESSION_NAME` env var (and its old `--session-name` alias) was the previous auto-persist mechanism. It still works but is deprecated — prefer `--session NAME --restore`.
 
 ### `--profile` (full Chrome persistence)
 
@@ -231,6 +236,13 @@ agent-browser --profile ~/.profiles/viewer open https://app.example.com
 ```bash
 agent-browser state save  ./auth-state.json
 agent-browser state load  ./auth-state.json
+
+# Restored-session hygiene (manage saved --restore state):
+agent-browser state list                    # list saved session states
+agent-browser state show  myapp             # inspect one
+agent-browser state rename myapp myapp-old
+agent-browser state clear --all             # wipe all saved states
+agent-browser state clean --older-than 30   # prune states older than N days
 ```
 
 The file contains:
