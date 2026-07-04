@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 39 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 40 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.3",
       "category": "bundle",
       "strict": false,
@@ -169,7 +169,7 @@
     {
       "name": "yk-ops",
       "source": "./",
-      "description": "Ops & release — Railway deploys, repo cleanup, npm publishing.",
+      "description": "Ops & release — Railway, Coolify Cloud compose deploys, repo cleanup, npm publishing.",
       "version": "1.0.3",
       "category": "bundle",
       "tags": [
@@ -178,6 +178,7 @@
       "strict": false,
       "skills": [
         "./skills/run-railway",
+        "./skills/deploy-coolify-cloud",
         "./skills/run-repo-cleanup",
         "./skills/publish-npm-package"
       ]
@@ -448,6 +449,17 @@
       "strict": false,
       "skills": [
         "./skills/debug-runtime"
+      ]
+    },
+    {
+      "name": "deploy-coolify-cloud",
+      "source": "./",
+      "description": "Use skill if you are deploying a docker-compose service to Coolify Cloud (app.coolify.io) via its API, editing a service's compose, or verifying a Coolify deploy actually started.",
+      "version": "1.0.3",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/deploy-coolify-cloud"
       ]
     },
     {

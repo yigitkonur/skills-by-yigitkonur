@@ -98,9 +98,10 @@ GROUPS = {
     ),
     "yk-ops": (
         "ops",
-        "Ops & release — Railway deploys, repo cleanup, npm publishing.",
+        "Ops & release — Railway, Coolify Cloud compose deploys, repo cleanup, npm publishing.",
         [
             "run-railway",
+            "deploy-coolify-cloud",
             "run-repo-cleanup",
             "publish-npm-package",
         ],
