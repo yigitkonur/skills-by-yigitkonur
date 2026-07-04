@@ -1,0 +1,50 @@
+name: version-bump
+
+# Auto-bump the patch version on every push to main so
+# `/plugin marketplace update` sees a new version and refreshes installed
+# plugins (including newly added skills and the researcher agents).
+
+on:
+  push:
+    branches: [main]
+
+# Don't re-trigger on the bot's own bump commit.
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && github.actor != 'github-actions[bot]' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Validate skills
+        run: python3 scripts/validate-skills.py
+
+      - name: Bump patch version and regenerate marketplace
+        id: bump
+        run: echo "version=$(python3 scripts/bump-version.py)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION .claude-plugin/marketplace.json
+          if git diff --cached --quiet; then
+            echo "nothing to bump"
+            exit 0
+          fi
+          git commit -m "chore(release): v${{ steps.bump.outputs.version }} [skip ci]"
+          git push
