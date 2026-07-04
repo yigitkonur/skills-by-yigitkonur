@@ -315,7 +315,7 @@ Manual verification still required: <targets, especially rung 6>
 
 - **`run-railway`** — for ad-hoc Railway CLI ops not covered by deploy targets (logs, scale, restart, env management beyond what the Makefile exposes)
 - **`build-mcp-use-server`** — for hosted-MCP scenarios beyond local-only MCP servers (Scenario B is for local-facing MCP only)
-- **`build-macos-app`** — for Mac-app development standards (this skill only does Make scaffolding; framework choice and SwiftUI patterns belong there)
+- Mac-app *development* standards (framework choice, SwiftUI patterns) are out of scope — this skill only does Make scaffolding.
 - **`init-agent-config`** — for AGENTS hierarchy, REVIEW.md, folder-scoped agent config, and broad repo governance
 
 ## Guardrails

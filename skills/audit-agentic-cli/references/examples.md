@@ -35,7 +35,7 @@ Use these repo-local skills as design anchors before reaching for generic exampl
 
 | Skill | Pattern worth copying |
 |---|---|
-| `run-linear-cli` | JSON on every command, `--dry-run` before bulk writes, `--id-only` for chaining, `--no-pager` discipline, explicit exit-code contract, and bulk mutation gates. |
+| `linear-cli` | JSON on every command, `--dry-run` before bulk writes, `--id-only` for chaining, `--no-pager` discipline, explicit exit-code contract, and bulk mutation gates. |
 | `run-railway` | Installed-help snapshot as local truth, upstream-vs-local command distinction, refresh scripts, and version-drift routing. |
 
 Real-world audits below should use the audit report contract from `SKILL.md`: scorecard, severity-ranked findings, command evidence, why it matters for agents, recommended fix, and verification command.

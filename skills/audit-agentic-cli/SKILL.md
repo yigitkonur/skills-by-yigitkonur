@@ -24,7 +24,7 @@ Do **not** use this skill for:
 
 - **Surface choice (CLI vs MCP vs hybrid).** Make the surface decision first using your normal architecture process. Only after the surface decision is fixed as CLI does this skill apply.
 - **MCP server audits, schemas, transports, auth, or context budgets.** Route to `audit-agentic-mcp` for audit/architecture, `build-mcp-server-sdk-v1` / `build-mcp-server-sdk-v2` / `build-mcp-use-server` for implementation, `test-by-mcpc-cli` for live MCP verification.
-- **Vendor CLI operations** when a vendor skill exists. Use `run-railway` or `run-linear-cli` instead.
+- **Vendor CLI operations** when a vendor skill exists. Use `run-railway` instead.
 - **Generic shell scripting** unrelated to the CLI's agent contract.
 
 ## Five Core Audit Checks
@@ -147,7 +147,7 @@ Pick one based on the task.
 
 ## Local Exemplars
 
-- `run-linear-cli` — strong agent-ready CLI: JSON everywhere, `--dry-run`, `--id-only`, non-pager flags, exit-code contract, bulk-mutation gates.
+- `linear-cli` — strong agent-ready CLI: JSON everywhere, `--dry-run`, `--id-only`, non-pager flags, exit-code contract, bulk-mutation gates.
 - `run-railway` — drift-aware CLI: installed-help snapshot, upstream-vs-local distinction, refresh scripts, version-drift routing.
 
 ## Reference Routing

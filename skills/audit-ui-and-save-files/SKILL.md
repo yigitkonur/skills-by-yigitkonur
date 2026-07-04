@@ -7,7 +7,7 @@ description: Use skill if you are auditing a running web app's UI across pages a
 
 Disciplined visual QA of a running web app, with a durable on-disk artifact and an explicit fix-dispatch step.
 
-Dispatch parallel audit subagents that each drive the `run-agent-browser` skill across an owned slice of pages, capture screenshots at canonical viewports, and write one markdown finding per real bug into a **dated, context-scoped, device-scoped tree** under `css-issues/`. When the audit returns, cluster findings into themes, present a Markdown dispatch table, **ask the user to approve**, and only then spawn fix subagents that route to the pack's `build-*`, `create-design-md`, or direct-edit paths as appropriate.
+Dispatch parallel audit subagents that each drive the `run-agent-browser` skill across an owned slice of pages, capture screenshots at canonical viewports, and write one markdown finding per real bug into a **dated, context-scoped, device-scoped tree** under `css-issues/`. When the audit returns, cluster findings into themes, present a Markdown dispatch table, **ask the user to approve**, and only then spawn fix subagents that route to the pack's `build-*` or direct-edit paths as appropriate.
 
 The skill owns three things: where files live, how findings are written, and how the fix-pass is dispatched. It does NOT own design taste (the subagents bring that) and does NOT perform the fixes itself (it dispatches them).
 
@@ -59,7 +59,7 @@ After every audit subagent returns, Claude does NOT silently spawn fix workers. 
 3. Choose `N` (1 ≤ N ≤ 20) — the number of fix subagents — driven by theme count, NOT by finding count.
 4. Build a Markdown table with the columns specified in "Approval-Gated Fix Dispatch" below.
 5. **Stop and ask the user to approve.** Banned: spawning any fix subagent before an explicit "go" reply.
-6. On approval, spawn the fix subagents; each works against its theme's finding list and routes to the appropriate `build-*` / `create-design-md` / direct-edit path.
+6. On approval, spawn the fix subagents; each works against its theme's finding list and routes to the appropriate `build-*` / direct-edit path.
 
 The full clustering rubric, table template, approval grammar, and post-dispatch reconciliation steps live in `references/dispatch-fixes-plan.md` — read it in full before clustering.
 
@@ -140,7 +140,7 @@ This phase is the headline new capability. Follow `references/dispatch-fixes-pla
    - `Findings (count + paths)` — count and the full per-finding paths (relative to repo root). For >5 findings, list the first 5 and `…+N more`; the full list goes into the subagent prompt.
    - `Files likely touched` — best-guess `src/...` paths derived from each finding's `Likely cause` field. Deduplicated.
    - `Outcome` — one-line success criterion (`bug is invisible at 1440×900 and 375×812`, `BrandLogo renders correctly on every page`).
-   - `Suggested skill(s) to invoke` — `frontend-design` is NOT a skill in this pack; route to canonical alternatives instead: `create-design-md` for documenting existing design-system/token evidence, `build-tinacms-nextjs` / `build-macos-app` / `build-chrome-extension` for framework-specific edits, plain `Edit` / `Write` for vanilla CSS/component fixes, `run-review` Mode A for the post-fix self-review step. See `references/dispatch-fixes-plan.md` for the full routing matrix.
+   - `Suggested skill(s) to invoke` — `frontend-design` is NOT a skill in this pack; route to canonical alternatives instead: `build-tinacms-nextjs` / `build-chrome-extension` for framework-specific edits, plain `Edit` / `Write` for vanilla CSS/component fixes, `run-review` Mode A for the post-fix self-review step. See `references/dispatch-fixes-plan.md` for the full routing matrix.
 
 4. **Show the full table to the user** in the chat. Then ask, verbatim or close to it:
 

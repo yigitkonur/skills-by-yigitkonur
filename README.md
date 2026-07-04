@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **45 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, design extraction, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **39 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -49,16 +49,16 @@ themed groups for one-shot installs. every skill also installs on its own — se
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 45 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 39 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
-| **yk-frontend** | url→next.js, design.md, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
+| **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
-| **yk-build** | chrome, effect-ts, kernel, langchain, macos, raycast, tinacms | `/plugin install yk-build@yigitkonur` |
+| **yk-build** | chrome, effect-ts, kernel, langchain, raycast, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | agent-browser, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
-| **yk-ops** | railway, repo-cleanup, babysitter, linear, offload, vercel, npm publish | `/plugin install yk-ops@yigitkonur` |
+| **yk-ops** | railway deploys, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
 
 ---
@@ -71,7 +71,6 @@ write app code against a specific framework or sdk.
 - **[build-effect-ts-v3](skills/build-effect-ts-v3/)** — effect-ts v3: `Effect.gen`, `Layer`, `Schema`, typed errors, fibers, `Stream`.
 - **[build-kernel-ts-sdk](skills/build-kernel-ts-sdk/)** — kernel sdk (`@onkernel/sdk`): browsers, apps, profiles, managed auth, pools, playwright/cdp.
 - **[build-langchain-ts-app](skills/build-langchain-ts-app/)** — langchain.js: agents, tool-calling, rag retrievers, structured output, streaming, langgraph.
-- **[build-macos-app](skills/build-macos-app/)** — swiftui/appkit: hig, liquid glass, snapshot validation, swiftlint hooks, convex+clerk sync.
 - **[build-raycast-script-command](skills/build-raycast-script-command/)** — raycast script commands (`.sh`/`.py` with `@raycast.*` header): fields, modes, arguments, discovery.
 - **[build-tinacms-nextjs](skills/build-tinacms-nextjs/)** — tinacms + next.js app router: `tina/config.ts`, mdx/git content, schema modeling, `useTina` visual editing.
 
@@ -115,7 +114,6 @@ generate or refresh the config / instruction files another tool reads.
 rebuild a live site, rip its design, or audit a running ui/ux.
 
 - **[convert-url-to-nextjs](skills/convert-url-to-nextjs/)** — rebuild a deployed site as-is pixel-faithful as a next.js project from a live url — the "we lost the frontend repo" recovery. l0+l1 crawl + back-to-back agent-browser verification.
-- **[create-design-md](skills/create-design-md/)** — produce a `design.md` spec (google labs design.md format) plus a per-asset `references/` tree from a live url, codebase, or html snapshot.
 - **[audit-ux-laws](skills/audit-ux-laws/)** — audit ui against the 30 laws of ux (fitts's, hick's, miller's, jakob's, gestalt, choice overload, cognitive load) with critical/minor severity + code fixes.
 - **[audit-ui-and-save-files](skills/audit-ui-and-save-files/)** — visual ui audit across pages/viewports with browser screenshots, per-bug findings to `css-issues/[yy-mm-dd]/...`, ending with an approval-gated fix-subagent plan.
 - **[audit-ux-and-save-files](skills/audit-ux-and-save-files/)** — usability audit from real personas walking their journeys, per-issue findings to `ux-findings/[yy-mm-dd]/...`, ending with a prioritized recommendations report (reports, doesn't fix).
@@ -168,10 +166,6 @@ deploy, maintain, offload, publish.
 
 - **[run-railway](skills/run-railway/)** — railway cli: deploys, logs, env vars, link, ssh, db shells, scaling, installed-vs-docs version-drift routing.
 - **[run-repo-cleanup](skills/run-repo-cleanup/)** — finish a project: review + merge every live branch and worktree into main locally (no prs), retire dangling branches, sweep junk to a gitignored trash.
-- **[run-babysitter](skills/run-babysitter/)** — autonomous per-repo maintenance loop: triage commits + issues + persistent memory, file one deduplicated github issue per cycle.
-- **[run-linear-cli](skills/run-linear-cli/)** — drive the linear-cli binary: lin- ids, linear.app urls, bulk creation, lifecycle, search, git/pr loops.
-- **[offload-run](skills/offload-run/)** — run npm/pnpm install, tests, builds, tsc, eslint, pytest, or a dev server in a remote sprites cloud sandbox instead of locally.
-- **[vercel-local-prebuild](skills/vercel-local-prebuild/)** — convert vercel projects to local `vercel build` + `vercel deploy --prebuilt` to save build minutes.
 - **[publish-npm-package](skills/publish-npm-package/)** — npm releases via github actions: trusted publishing, `NPM_TOKEN`, provenance, semantic-release, changesets, release-please.
 
 `/plugin install yk-ops@yigitkonur`

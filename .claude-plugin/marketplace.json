@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 45 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 39 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.2",
       "category": "bundle",
       "strict": false,
@@ -58,7 +58,7 @@
     {
       "name": "yk-frontend",
       "source": "./",
-      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, design.md extraction, UI/UX/Laws-of-UX audits.",
+      "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, UI/UX/Laws-of-UX audits.",
       "version": "1.0.2",
       "category": "bundle",
       "tags": [
@@ -67,7 +67,6 @@
       "strict": false,
       "skills": [
         "./skills/convert-url-to-nextjs",
-        "./skills/create-design-md",
         "./skills/audit-ux-laws",
         "./skills/audit-ui-and-save-files",
         "./skills/audit-ux-and-save-files"
@@ -99,7 +98,7 @@
     {
       "name": "yk-build",
       "source": "./",
-      "description": "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, macOS SwiftUI, Raycast, TinaCMS+Next.js.",
+      "description": "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
       "version": "1.0.2",
       "category": "bundle",
       "tags": [
@@ -111,7 +110,6 @@
         "./skills/build-effect-ts-v3",
         "./skills/build-kernel-ts-sdk",
         "./skills/build-langchain-ts-app",
-        "./skills/build-macos-app",
         "./skills/build-raycast-script-command",
         "./skills/build-tinacms-nextjs"
       ]
@@ -171,7 +169,7 @@
     {
       "name": "yk-ops",
       "source": "./",
-      "description": "Ops & release — Railway, repo cleanup, autonomous babysitter, Linear CLI, remote offload runs, Vercel prebuild, npm publishing.",
+      "description": "Ops & release — Railway deploys, repo cleanup, npm publishing.",
       "version": "1.0.2",
       "category": "bundle",
       "tags": [
@@ -181,10 +179,6 @@
       "skills": [
         "./skills/run-railway",
         "./skills/run-repo-cleanup",
-        "./skills/run-babysitter",
-        "./skills/run-linear-cli",
-        "./skills/offload-run",
-        "./skills/vercel-local-prebuild",
         "./skills/publish-npm-package"
       ]
     },
@@ -336,17 +330,6 @@
       ]
     },
     {
-      "name": "build-macos-app",
-      "source": "./",
-      "description": "Use skill if you are building, auditing, or shipping a native macOS SwiftUI or AppKit app needing HIG, Liquid Glass, snapshot validation, SwiftLint hooks, or Convex+Clerk sync.",
-      "version": "1.0.2",
-      "category": "build",
-      "strict": false,
-      "skills": [
-        "./skills/build-macos-app"
-      ]
-    },
-    {
       "name": "build-mcp-server-sdk-v1",
       "source": "./",
       "description": "Use skill if you are building or maintaining a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod schemas, RequestHandlerExtra, McpServer.",
@@ -457,17 +440,6 @@
       ]
     },
     {
-      "name": "create-design-md",
-      "source": "./",
-      "description": "Use skill if you are producing a design.md spec plus per-asset references tree from a live URL, codebase, or HTML snapshot so another agent can reproduce the design.",
-      "version": "1.0.2",
-      "category": "frontend",
-      "strict": false,
-      "skills": [
-        "./skills/create-design-md"
-      ]
-    },
-    {
       "name": "debug-runtime",
       "source": "./",
       "description": "Use skill if you are chasing a reproducible runtime bug, intermittent failure, or repeated failed fixes and need a language-agnostic 4-phase root-cause workflow before editing product code.",
@@ -512,17 +484,6 @@
       ]
     },
     {
-      "name": "offload-run",
-      "source": "./",
-      "description": "Use skill if you are running a project's npm/pnpm install, tests, builds, tsc, eslint, pytest, macOS/Xcode builds, or a dev server in a remote Sprites cloud sandbox instead of locally.",
-      "version": "1.0.2",
-      "category": "ops",
-      "strict": false,
-      "skills": [
-        "./skills/offload-run"
-      ]
-    },
-    {
       "name": "publish-npm-package",
       "source": "./",
       "description": "Use skill if you are publishing to npm via GitHub Actions release workflow with trusted publishing, NPM_TOKEN, provenance, semantic-release, changesets, release-please, or fixing npm publish CI.",
@@ -542,17 +503,6 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-browser"
-      ]
-    },
-    {
-      "name": "run-babysitter",
-      "source": "./",
-      "description": "Use skill if you are running an autonomous maintenance loop over one git repo, reading commits, issues, and persistent memory, then filing one deduplicated GitHub issue per cycle via gh.",
-      "version": "1.0.2",
-      "category": "ops",
-      "strict": false,
-      "skills": [
-        "./skills/run-babysitter"
       ]
     },
     {
@@ -586,17 +536,6 @@
       "strict": false,
       "skills": [
         "./skills/run-github-scout"
-      ]
-    },
-    {
-      "name": "run-linear-cli",
-      "source": "./",
-      "description": "Use skill if you are driving the linear-cli binary against Linear issues — LIN- IDs, linear.app URLs, bulk creation, lifecycle, search, or git/PR loops from an agent.",
-      "version": "1.0.2",
-      "category": "ops",
-      "strict": false,
-      "skills": [
-        "./skills/run-linear-cli"
       ]
     },
     {
@@ -685,17 +624,6 @@
       "strict": false,
       "skills": [
         "./skills/update-agent-config"
-      ]
-    },
-    {
-      "name": "vercel-local-prebuild",
-      "source": "./",
-      "description": "Use skill if you are converting Vercel projects to local `vercel build` plus `vercel deploy --prebuilt` to save build minutes.",
-      "version": "1.0.2",
-      "category": "ops",
-      "strict": false,
-      "skills": [
-        "./skills/vercel-local-prebuild"
       ]
     }
   ]

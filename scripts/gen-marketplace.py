@@ -45,10 +45,9 @@ GROUPS = {
     ),
     "yk-frontend": (
         "frontend",
-        "Frontend rebuild & audit — pixel-faithful URL→Next.js, design.md extraction, UI/UX/Laws-of-UX audits.",
+        "Frontend rebuild & audit — pixel-faithful URL→Next.js, UI/UX/Laws-of-UX audits.",
         [
             "convert-url-to-nextjs",
-            "create-design-md",
             "audit-ux-laws",
             "audit-ui-and-save-files",
             "audit-ux-and-save-files",
@@ -72,13 +71,12 @@ GROUPS = {
     ),
     "yk-build": (
         "build",
-        "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, macOS SwiftUI, Raycast, TinaCMS+Next.js.",
+        "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
         [
             "build-chrome-extension",
             "build-effect-ts-v3",
             "build-kernel-ts-sdk",
             "build-langchain-ts-app",
-            "build-macos-app",
             "build-raycast-script-command",
             "build-tinacms-nextjs",
         ],
@@ -100,14 +98,10 @@ GROUPS = {
     ),
     "yk-ops": (
         "ops",
-        "Ops & release — Railway, repo cleanup, autonomous babysitter, Linear CLI, remote offload runs, Vercel prebuild, npm publishing.",
+        "Ops & release — Railway deploys, repo cleanup, npm publishing.",
         [
             "run-railway",
             "run-repo-cleanup",
-            "run-babysitter",
-            "run-linear-cli",
-            "offload-run",
-            "vercel-local-prebuild",
             "publish-npm-package",
         ],
     ),

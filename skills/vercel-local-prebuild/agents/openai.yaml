@@ -1,4 +1,0 @@
-interface:
-  display_name: "Vercel Local Prebuild"
-  short_description: "Deploy Vercel projects with local builds"
-  default_prompt: "Use $vercel-local-prebuild to convert this Vercel project to a cost-safe local-prebuilt deploy flow."

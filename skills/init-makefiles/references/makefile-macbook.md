@@ -264,4 +264,4 @@ The right answer for repeated unsigned-app shipping is **sign + notarize**. That
 | Verification rungs (rung 2 is what `_remote-verify` claims) | `verification-ladder.md` |
 | AGENTS.md `## Make targets` section for Scenario G | `agents-md-update.md` |
 | GitHub Actions wiring (Scenario G is local-build-only — no CI step) | `ci-cd-workflow.md` |
-| Mac-app *development* standards (SwiftUI patterns, Xcode targets) | cross-skill: `build-macos-app` |
+| Mac-app *development* standards (SwiftUI patterns, Xcode targets) | out of scope — this skill only scaffolds Make targets |

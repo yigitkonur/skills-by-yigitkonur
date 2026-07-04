@@ -45,7 +45,7 @@ Author-side checklist for PRs focused on *visual* changes — CSS, design tokens
 - [ ] `prefers-reduced-motion: reduce` in DevTools — animations respect it
 - [ ] Screenshots attached to the PR body (before/after or `after` only if new)
 - [ ] Lint / stylelint passes if the project uses it
-- [ ] Screenshot diff tool (Chromatic, Percy, or the snapshot harness in `build-macos-app`) if available
+- [ ] Screenshot diff tool (Chromatic, Percy, or a snapshot harness) if available
 
 If screenshots would materially help the reviewer, include them. GitHub supports image paste in PR bodies.
 
@@ -69,8 +69,8 @@ For PRs that touch specific UI ecosystems, route additionally:
 
 | Ecosystem | Skill |
 |---|---|
-| macOS SwiftUI / AppKit (HIG, Liquid Glass, snapshots, hooks, Convex+Clerk) | `build-macos-app` |
-| SaaS design extraction | `create-design-md` |
+| macOS SwiftUI / AppKit (HIG, Liquid Glass, snapshots, hooks, Convex+Clerk) | — |
+| SaaS design extraction | — |
 | HTML → Next.js | `convert-url-to-nextjs` |
 | React compositional patterns | `composition-patterns` (external pack) |
 | Web Interface Guidelines | `web-design-guidelines` (external pack) |
