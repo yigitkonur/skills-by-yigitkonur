@@ -1,0 +1,40 @@
+{
+  "name": "skills-by-yigitkonur",
+  "version": "1.0.6",
+  "description": "Yigit Konur's curated skills pack for AI coding agents.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "claude-code",
+    "mcp",
+    "research",
+    "review"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Skills by Yigit Konur",
+    "shortDescription": "A curated skills pack for AI coding agents.",
+    "longDescription": "Install review, research, UI/UX audit, MCP, framework, automation, configuration, and release skills as one Codex plugin.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use a relevant skill for this task.",
+      "List the installed skills in this pack.",
+      "Use the research skills for this question."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

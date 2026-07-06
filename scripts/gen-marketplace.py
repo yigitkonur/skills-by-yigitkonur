@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate .claude-plugin/marketplace.json from the skills/ tree.
+"""Generate plugin metadata from the skills/ tree.
 
 Every skill becomes an individually installable plugin (so users can
 `/plugin install <skill>@yigitkonur` and uninstall it just as easily).
@@ -10,9 +10,13 @@ All plugins share the single skills/ folder at the repo root via
 `source: "./"` + `strict: false` + an explicit `skills` allowlist, so no
 skill files are duplicated (see code.claude.com/docs/en/plugin-marketplaces).
 
+Codex currently consumes this repo as one all-pack plugin from the repo root:
+`.codex-plugin/plugin.json` points at `./skills/`, and
+`.agents/plugins/marketplace.json` exposes the repo root as a Codex plugin.
+
 Run after adding/removing/renaming a skill:
-    python3 scripts/gen-marketplace.py            # write marketplace.json
-    python3 scripts/gen-marketplace.py --check    # verify it is up to date (CI)
+    python3 scripts/gen-marketplace.py            # write plugin metadata
+    python3 scripts/gen-marketplace.py --check    # verify metadata is up to date (CI)
 """
 
 import importlib.util
@@ -22,10 +26,13 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
-OUT_PATH = os.path.join(REPO_ROOT, ".claude-plugin", "marketplace.json")
+CLAUDE_OUT_PATH = os.path.join(REPO_ROOT, ".claude-plugin", "marketplace.json")
+CODEX_MARKETPLACE_OUT_PATH = os.path.join(REPO_ROOT, ".agents", "plugins", "marketplace.json")
+CODEX_MANIFEST_OUT_PATH = os.path.join(REPO_ROOT, ".codex-plugin", "plugin.json")
 VERSION_PATH = os.path.join(REPO_ROOT, "VERSION")
 
 MARKETPLACE_NAME = "yigitkonur"
+CODEX_PLUGIN_NAME = "skills-by-yigitkonur"
 
 
 def version():
@@ -138,7 +145,7 @@ def all_skills():
     )
 
 
-def build():
+def build_claude_marketplace():
     v = load_validator()
     skills = all_skills()
 
@@ -237,26 +244,104 @@ def build():
     }
 
 
+def build_codex_manifest():
+    ver = version()
+    return {
+        "name": CODEX_PLUGIN_NAME,
+        "version": ver,
+        "description": "Yigit Konur's curated skills pack for AI coding agents.",
+        "author": {
+            "name": "Yigit Konur",
+            "url": "https://github.com/yigitkonur",
+        },
+        "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+        "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+        "license": "MIT",
+        "keywords": [
+            "agent-skills",
+            "codex",
+            "claude-code",
+            "mcp",
+            "research",
+            "review",
+        ],
+        "skills": "./skills/",
+        "interface": {
+            "displayName": "Skills by Yigit Konur",
+            "shortDescription": "A curated skills pack for AI coding agents.",
+            "longDescription": "Install review, research, UI/UX audit, MCP, framework, automation, configuration, and release skills as one Codex plugin.",
+            "developerName": "Yigit Konur",
+            "category": "Productivity",
+            "capabilities": ["Read", "Write", "Interactive"],
+            "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+            "defaultPrompt": [
+                "Use a relevant skill for this task.",
+                "List the installed skills in this pack.",
+                "Use the research skills for this question.",
+            ],
+            "brandColor": "#10A37F",
+        },
+    }
+
+
+def build_codex_marketplace():
+    return {
+        "name": MARKETPLACE_NAME,
+        "interface": {
+            "displayName": "Yigit Konur",
+        },
+        "plugins": [
+            {
+                "name": CODEX_PLUGIN_NAME,
+                "source": {
+                    "source": "local",
+                    "path": "./",
+                },
+                "policy": {
+                    "installation": "AVAILABLE",
+                    "authentication": "ON_INSTALL",
+                },
+                "category": "Productivity",
+            }
+        ],
+    }
+
+
+def render_json(data):
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+
+def generated_files():
+    return {
+        CLAUDE_OUT_PATH: render_json(build_claude_marketplace()),
+        CODEX_MARKETPLACE_OUT_PATH: render_json(build_codex_marketplace()),
+        CODEX_MANIFEST_OUT_PATH: render_json(build_codex_manifest()),
+    }
+
+
 def main():
     check = "--check" in sys.argv
-    data = build()
-    rendered = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    files = generated_files()
 
     if check:
-        current = open(OUT_PATH).read() if os.path.isfile(OUT_PATH) else ""
-        if current != rendered:
-            print(
-                "marketplace.json is stale — run: python3 scripts/gen-marketplace.py",
-                file=sys.stderr,
-            )
+        stale = []
+        for path, rendered in files.items():
+            current = open(path).read() if os.path.isfile(path) else ""
+            if current != rendered:
+                stale.append(os.path.relpath(path, REPO_ROOT))
+        if stale:
+            print("plugin metadata is stale — run: python3 scripts/gen-marketplace.py", file=sys.stderr)
+            for path in stale:
+                print(f"  stale: {path}", file=sys.stderr)
             sys.exit(1)
-        print("marketplace.json is up to date")
+        print("plugin metadata is up to date")
         return
 
-    os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
-    with open(OUT_PATH, "w") as f:
-        f.write(rendered)
-    print(f"wrote {os.path.relpath(OUT_PATH, REPO_ROOT)} — {len(data['plugins'])} plugins")
+    for path, rendered in files.items():
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(rendered)
+        print(f"wrote {os.path.relpath(path, REPO_ROOT)}")
 
 
 if __name__ == "__main__":

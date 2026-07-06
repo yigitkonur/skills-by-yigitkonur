@@ -6,14 +6,20 @@ This repository is a curated skills pack for AI coding agents — skills sharing
 
 A single combined skills pack — not a loose collection. Every skill must feel like it belongs to the same family. Consistency, clarity, and install-path stability are more important than clever naming or one-off structure.
 
-This repo is both a `skills` CLI pack **and** a Claude Code plugin marketplace — both read the same `skills/` folder. The `-secondary` b-side repo was merged in and archived; never point anything back at it.
+This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex plugin marketplace — all read the same `skills/` folder. The `-secondary` b-side repo was merged in and archived; never point anything back at it.
 
 **Distribution model:**
 - Plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`.
+- Codex plugin marketplace: `codex plugin marketplace add yigitkonur/skills-by-yigitkonur`, then install `skills-by-yigitkonur@yigitkonur` from `/plugins`.
 - `skills` CLI full pack: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur`
 - `skills` CLI single skill: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>`
 
-The marketplace catalog is `.claude-plugin/marketplace.json`, **generated** from `skills/` by `scripts/gen-marketplace.py` (per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + a `skills` allowlist so no files are duplicated). Regenerate it whenever you add, remove, or rename a skill, and edit the `GROUPS` map in that script to place a new skill in a bundle.
+The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.py`:
+- `.claude-plugin/marketplace.json`: per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + a `skills` allowlist so no files are duplicated.
+- `.codex-plugin/plugin.json`: the root Codex plugin manifest for the all-pack plugin.
+- `.agents/plugins/marketplace.json`: the Codex repo marketplace entry for `skills-by-yigitkonur`.
+
+Regenerate plugin metadata whenever you add, remove, or rename a skill, and edit the `GROUPS` map in that script to place a new skill in a Claude bundle.
 
 **Agents:** the internet-researcher subagents live in `subagents/` — deliberately NOT the conventional `agents/` name, because every plugin uses `source: "./"` and Claude Code auto-discovers an `agents/` folder at the plugin root, which would attach the agents to *every* installed skill. Keeping them in `subagents/` means only the entries that explicitly set `"agents": ["./subagents/claude/"]` ship them (`yk-researchers`, `yk-research`, `yk-everything`). Never rename `subagents/` back to `agents/`.
 
@@ -38,8 +44,12 @@ The marketplace catalog is `.claude-plugin/marketplace.json`, **generated** from
 ├── subagents/                      # Internet-researcher subagents (NOT auto-discovered)
 │   ├── claude/                     # Claude Code variants — shipped by yk-researchers/-research/-everything
 │   └── codex/                      # Codex variants — for ~/.codex/agents, not the marketplace
+├── .agents/plugins/
+│   └── marketplace.json            # Generated — Codex plugin marketplace catalog (do not hand-edit)
 ├── .claude-plugin/
 │   └── marketplace.json            # Generated — plugin marketplace catalog (do not hand-edit)
+├── .codex-plugin/
+│   └── plugin.json                 # Generated — Codex all-pack plugin manifest (do not hand-edit)
 ├── .github/workflows/
 │   └── version-bump.yml            # CI: patch-bump version on every push to main
 ├── .githooks/
@@ -55,7 +65,7 @@ The marketplace catalog is `.claude-plugin/marketplace.json`, **generated** from
 # Validate all skills (run before every push)
 python3 scripts/validate-skills.py
 
-# Regenerate the plugin marketplace after adding/removing/renaming a skill
+# Regenerate plugin metadata after adding/removing/renaming a skill
 python3 scripts/gen-marketplace.py
 python3 scripts/gen-marketplace.py --check   # CI: fail if stale
 

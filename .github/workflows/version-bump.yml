@@ -33,7 +33,7 @@ jobs:
       - name: Validate skills
         run: python3 scripts/validate-skills.py
 
-      - name: Bump patch version and regenerate marketplace
+      - name: Bump patch version and regenerate plugin metadata
         id: bump
         run: |
           python3 scripts/bump-version.py
@@ -43,7 +43,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION .claude-plugin/marketplace.json
+          git add VERSION .claude-plugin/marketplace.json .codex-plugin/plugin.json .agents/plugins/marketplace.json
           if git diff --cached --quiet; then
             echo "nothing to bump"
             exit 0

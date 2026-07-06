@@ -28,6 +28,11 @@ to-delete/
 # Plugin marketplace catalog is shipped (a global ~/.gitignore may hide dotdirs).
 !.claude-plugin/
 !.claude-plugin/marketplace.json
+!.codex-plugin/
+!.codex-plugin/plugin.json
+!.agents/
+!.agents/plugins/
+!.agents/plugins/marketplace.json
 
 # CI workflows are shipped too (same dotdir-hiding caveat).
 !.github/
