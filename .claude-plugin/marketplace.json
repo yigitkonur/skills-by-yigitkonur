@@ -557,7 +557,7 @@
     {
       "name": "run-codex-review-loop",
       "source": "./",
-      "description": "Use skill if you are running native codex review across multiple branches, comparing findings, or rescuing a saved branch-review loop.",
+      "description": "Use skill if you are running Codex review loops across current branches, multiple lenses, comparisons, convergence rounds, or saved review runs.",
       "version": "1.0.9",
       "category": "review",
       "strict": false,
