@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 40 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 41 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.7",
       "category": "bundle",
       "strict": false,
@@ -51,6 +51,7 @@
       "skills": [
         "./skills/run-review",
         "./skills/run-codex-review-loop",
+        "./skills/run-codex-adversarial-loop",
         "./skills/audit-completion",
         "./skills/debug-runtime"
       ]
@@ -515,6 +516,17 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-browser"
+      ]
+    },
+    {
+      "name": "run-codex-adversarial-loop",
+      "source": "./",
+      "description": "Use skill if you are fanning out many parallel Codex adversarial reviews across derived lenses, independently verifying every finding, fixing confirmed issues in grouped worktrees, and looping until clean.",
+      "version": "1.0.7",
+      "category": "review",
+      "strict": false,
+      "skills": [
+        "./skills/run-codex-adversarial-loop"
       ]
     },
     {
