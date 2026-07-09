@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 41 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 42 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.8",
       "category": "bundle",
       "strict": false,
@@ -197,6 +197,20 @@
       "skills": [
         "./skills/build-skill",
         "./skills/audit-skill-by-derailment"
+      ]
+    },
+    {
+      "name": "yk-delivery",
+      "source": "./",
+      "description": "Aligned delivery — scored multi-round question alignment, a filename-state spec corpus, and waved parallel subagent orchestration for a large or ambiguous initiative.",
+      "version": "1.0.8",
+      "category": "bundle",
+      "tags": [
+        "delivery"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/run-aligned-delivery"
       ]
     },
     {
@@ -516,6 +530,17 @@
       "strict": false,
       "skills": [
         "./skills/run-agent-browser"
+      ]
+    },
+    {
+      "name": "run-aligned-delivery",
+      "source": "./",
+      "description": "Use skill if you are driving a large, ambiguous initiative (modernize, rewrite, migrate, greenfield, or a multi-component bug hunt) and want scored multi-round question alignment before orchestrating parallel execution.",
+      "version": "1.0.8",
+      "category": "delivery",
+      "strict": false,
+      "skills": [
+        "./skills/run-aligned-delivery"
       ]
     },
     {
