@@ -118,6 +118,11 @@ GROUPS = {
         "Skill authoring — research-driven skill creation and derailment stress-testing of existing SKILL.md files.",
         ["build-skill", "audit-skill-by-derailment"],
     ),
+    "yk-delivery": (
+        "delivery",
+        "Aligned delivery — scored multi-round question alignment, a filename-state spec corpus, and waved parallel subagent orchestration for a large or ambiguous initiative.",
+        ["run-aligned-delivery"],
+    ),
 }
 
 # Bundles that also ship the internet-researcher subagents from subagents/claude/.

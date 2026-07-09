@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **41 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **42 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -61,7 +61,7 @@ themed groups for one-shot installs. every skill also installs on its own — se
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 41 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 42 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -72,6 +72,7 @@ themed groups for one-shot installs. every skill also installs on its own — se
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
 | **yk-ops** | railway, coolify-cloud deploy, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
+| **yk-delivery** | scored alignment, spec corpus, waved orchestration for big initiatives | `/plugin install yk-delivery@yigitkonur` |
 
 ---
 
@@ -194,6 +195,16 @@ build and harden skills themselves.
 - **[audit-skill-by-derailment](skills/audit-skill-by-derailment/)** — stress-test an existing skill.md by running a fresh subagent on a real task and editing the skill where the trace shows friction.
 
 `/plugin install yk-skills@yigitkonur`
+
+---
+
+## 🧭 aligned delivery
+
+drive a large, ambiguous initiative front-to-back: scored question alignment, then a spec corpus, then waved subagent orchestration.
+
+- **[run-aligned-delivery](skills/run-aligned-delivery/)** — scored multi-round question alignment, then a filename-state spec corpus, then waved subagent orchestration — for a large or ambiguous initiative.
+
+`/plugin install yk-delivery@yigitkonur`
 
 ---
 
