@@ -44,7 +44,6 @@ The planner. Call first, every session. Returns a goal-tailored brief.
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `goal` | string | Yes (always pass one) | One paragraph stating topic, use case, known unknowns, skip list, freshness window, quote discipline. See `prompting.md` for goal-writing. |
-| `include_playbook` | bool | No (default false) | Attach the verbose 3-tool tactic reference on top of the brief. Default off; pass `true` only when the agent specifically needs the tactic playbook. |
 
 ### What it returns
 

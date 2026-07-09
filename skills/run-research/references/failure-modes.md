@@ -183,8 +183,6 @@ more of:
 - Proceeding with the generic brief and trying to compensate with manual
   keyword rewrites. The brief is the contract for the whole session;
   fixing it upstream is cheaper than fixing every downstream call.
-- Adding `include_playbook: true` hoping for richer output. The playbook
-  is a tactic reference, not a goal compensator.
 
 ---
 
