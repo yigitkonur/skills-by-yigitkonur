@@ -31,6 +31,14 @@ docker inspect coolify-sentinel --format '{{range .Config.Env}}{{println .}}{{en
 3. **Verify the Cloud-managed container is healthy and serving** (see verify-and-troubleshoot) — this is where the local-image trap usually strikes, because stopping the old container can GC the `:local` image out from under the new deploy.
 4. Only then tear down the self-hosted brain.
 
+### Stateful migrations: the encryption keys are part of the data
+
+When a service encrypts data at rest or issues credentials (master/salt keys, an `ENCRYPTION_KEY`, an app's JWT secret, a DB with its own password), those keys must move **with** the database dump — do not let the new deployment generate fresh ones. A fresh key + the old data means existing client API keys, sessions, or encrypted columns silently stop validating, and your own verification won't catch it if you test with a **newly minted** credential.
+
+- Copy the exact key env vars from the source before cutover; set them on the new service before first deploy.
+- Restore the real DB dump, not an empty volume.
+- Verify with a **pre-existing** client credential (or a known ciphertext round-trip), not one you just created — that is the only test that proves the keys still match the data.
+
 ## Safe teardown — two blast radii, not one
 
 Deleting "self-hosted Coolify" on a now-Cloud-managed box is **not** `rm -rf /data/coolify` or a whole-stack `compose down`.

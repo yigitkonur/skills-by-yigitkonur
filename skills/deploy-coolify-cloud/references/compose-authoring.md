@@ -50,6 +50,22 @@ Bind-mounts live *outside* Coolify's own database, so they survive a service del
 
 Never assume a `:local` tag will still exist next week on a box with automated cleanup.
 
+## Coolify eats `${VAR}` in your compose at parse time
+
+Coolify performs its **own** variable substitution on `docker_compose_raw` before the container runs — using Coolify's environment, not the container's. A `${REDIS_PASSWORD}` you expect Docker to pass through is resolved (to empty, if Coolify doesn't have it) at deploy time, silently blanking the value. This bites hardest in `command:` and `healthcheck.test:` (e.g. a Redis `--requirepass ${REDIS_PASSWORD}` becomes `--requirepass` with no argument → auth disabled, or a healthcheck logs in with an empty password).
+
+**Fix:** escape the dollar sign so Docker/Coolify leaves it for the container runtime, or move the logic into an entrypoint script that reads the environment inside the container:
+
+```yaml
+environment:
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?set in Coolify envs}
+command: ["sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\""]
+healthcheck:
+  test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
+```
+
+`$$VAR` is the important part: Compose-style interpolation collapses `$$` to a literal `$` for the container command. When in doubt, read the rendered file at `/data/coolify/services/<uuid>/docker-compose.yml` to see what the value actually became.
+
 ## What Coolify injects
 
 When you submit `docker_compose_raw`, Coolify re-renders it: it adds `container_name`, a per-resource network, `coolify.*` labels, `COOLIFY_*` env vars, and an `env_file: .env`. Your `image`, `ports`, `volumes`, `environment`, `restart`, and `healthcheck` are preserved. The rendered result lands on the box at `/data/coolify/services/<uuid>/docker-compose.yml` — read it there to see exactly what ran.
