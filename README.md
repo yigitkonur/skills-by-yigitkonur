@@ -47,7 +47,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur                      # f
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>  # single skill
 ```
 
-per-skill one-liners live in each skill's `INSTALL.md`.
+per-skill one-liners live in each skill's `README.md`.
 
 ### staying fresh
 

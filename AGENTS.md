@@ -32,7 +32,7 @@ Regenerate plugin metadata whenever you add, remove, or rename a skill, and edit
 ├── skills/                         # All skills live here
 │   └── <verb>-<object>/            # Each skill directory
 │       ├── SKILL.md                # Required — the skill definition (hand-written)
-│       ├── INSTALL.md              # Required — per-skill install instructions
+│       ├── README.md              # Required — per-skill install instructions
 │       ├── references/             # Optional — deep-dive docs routed from SKILL.md
 │       ├── scripts/                # Optional — helper scripts paired with docs
 │       └── assets/                 # Optional — templates or fixtures
@@ -140,7 +140,7 @@ Every skill lives at `skills/<skill-name>/` with this layout:
 ```
 skills/<verb>-<object>/
 ├── SKILL.md                    # Required — the skill definition
-├── INSTALL.md                  # Required — per-skill install instructions
+├── README.md                  # Required — per-skill install instructions
 ├── references/                 # Optional — deep-dive docs
 │   ├── topic-one.md
 │   ├── topic-two.md
@@ -152,7 +152,7 @@ skills/<verb>-<object>/
 
 Rules:
 - `SKILL.md` is the main skill definition file
-- `INSTALL.md` at the skill root has the skill name, description, category, and install command
+- `README.md` at the skill root has the skill name, description, category, and install command
 - Every file in `references/` **must** be explicitly referenced from `SKILL.md` — unreferenced files are dead weight
 - No junk files (`.DS_Store`, `.swp`, LICENSE files inside skill directories)
 - No eval-related files or eval instructions
@@ -230,9 +230,9 @@ Write for an AI agent, not a human tutorial reader. Keep under 500 lines — mov
 
 ---
 
-## INSTALL.md for each skill
+## README.md for each skill
 
-Every skill needs an `INSTALL.md` at its root (`skills/<skill-name>/INSTALL.md`) with this format:
+Every skill needs an `README.md` at its root (`skills/<skill-name>/README.md`) with this format:
 
 ```markdown
 # <skill-name>
@@ -318,7 +318,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
    ```
 5. **Write `SKILL.md`** at `skills/<skill-name>/SKILL.md` with correct frontmatter
 6. **Add `references/`** docs only if the skill needs them — reference every file from `SKILL.md`
-7. **Create `INSTALL.md`** at the skill root with install instructions (see format above)
+7. **Create `README.md`** at the skill root with install instructions (see format above)
 8. **Update root `README.md`** — add the skill to its category section
 9. **Regenerate the marketplace** — add the skill to a bundle in the `GROUPS` map of `scripts/gen-marketplace.py`, then run `python3 scripts/gen-marketplace.py`
 10. **Validate:**
@@ -331,7 +331,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 ## Editing an existing skill
 
 1. **Read** the full existing SKILL.md and its references before changing anything
-2. **Normalize** frontmatter `name`, `description`, and INSTALL label to current standards
+2. **Normalize** frontmatter `name`, `description`, and README label to current standards
 3. **Remove** stale internal references and old names everywhere
 4. If you **add** a reference file, route to it from `SKILL.md`
 5. If you **remove** a reference file, remove all references to it from `SKILL.md`
@@ -363,7 +363,7 @@ Before finishing any skill work, verify **all** of the following:
 - [ ] No eval-related files or eval instructions
 - [ ] SKILL.md under 500 lines
 - [ ] Trigger phrasing does not accidentally collide with nearby skills
-- [ ] `INSTALL.md` exists at skill root with install command
+- [ ] `README.md` exists at skill root with install command
 - [ ] Root README row added in alphabetical order with short description
 - [ ] `python3 scripts/validate-skills.py` passes
 - [ ] The skill reads like it belongs in the same repo family as the other skills in this pack

@@ -58,7 +58,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 
 1. **Directory name** — `kebab-case`, starts with a registry verb, install-path-friendly
 2. **Frontmatter `name`** — must exactly match the directory name (per agentskills.io spec)
-3. **Per-skill `INSTALL.md` heading** — must exactly match directory name
+3. **Per-skill `README.md` heading** — must exactly match directory name
 4. **Cross-skill references** — always use canonical repo-local names
 5. **Description** — starts with `Use skill if you are`, 30 words or fewer, describes when to trigger
 
@@ -125,7 +125,7 @@ Later consolidations (post-rewrite):
 
 1. Test the verb: *"I want to ___ ___"*. If the natural fit isn't one of the 12, **don't propose the new skill** — re-frame to use an existing verb. If you genuinely can't, propose a new verb in a PR with rationale and ≥3 candidate skills using it.
 2. Pick the object per the Object Rules.
-3. Create `skills/<name>/SKILL.md` and `skills/<name>/INSTALL.md`. Use `references/` and `scripts/` as siblings if needed (agentskills.io spec).
+3. Create `skills/<name>/SKILL.md` and `skills/<name>/README.md`. Use `references/` and `scripts/` as siblings if needed (agentskills.io spec).
 4. Add a row to the root `README.md` table in alphabetical order.
 5. Run `python3 scripts/validate-skills.py` — must pass.
 
