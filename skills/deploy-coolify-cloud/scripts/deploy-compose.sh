@@ -14,6 +14,9 @@
 #       Verify with verify-deploy.sh afterwards.
 set -euo pipefail
 
+# Auto-load the durable token file if present (see references/token-setup.md).
+[ -f "$HOME/.config/coolify-cloud.env" ] && source "$HOME/.config/coolify-cloud.env"
+
 BASE_URL="${COOLIFY_BASE_URL:-https://app.coolify.io}"
 TOKEN="${COOLIFY_CLOUD_API_TOKEN:-}"
 COMPOSE="" NAME="" SERVER="" PROJECT="" ENV_UUID="" SERVICE="" DESCRIPTION="" DEPLOY=true

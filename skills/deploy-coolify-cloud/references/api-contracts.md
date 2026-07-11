@@ -104,6 +104,17 @@ curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application
 
 Clean-hostname alternative (a shared external `edge` network) + the tradeoff → `domains-and-networking.md`.
 
+## Trigger a redeploy without resending the compose
+
+`instant_deploy:true` on a `POST`/`PATCH` redeploys as part of that change. To redeploy an **unchanged** service (e.g. to pull a new `:latest` image, or from cron/CI), hit the deploy endpoint by resource UUID — no compose body needed:
+
+```
+GET /deploy?uuid=<uuid>&force=false      # queue a redeploy; force=true rebuilds without cache
+# -> {"deployments":[{"message":"...started...","resource_uuid":"<uuid>"}]}
+```
+
+This is the idiomatic redeploy trigger for auto-update pollers and CI. A bogus uuid returns `404 "No resources found"` (endpoint exists, auth accepted). Full auto-update pattern → `auto-update.md`.
+
 ## Watch a deploy (the queue)
 
 Create/update responses carry only `{"uuid","domains"}` — **no deployment handle**. To tell whether the queued job (rule #1) is running or failed, poll the deployments list; there is no `/services/{uuid}/deployments`:
@@ -117,6 +128,7 @@ GET /deployments        # array of in-flight deploys (empty when idle)
 ```
 GET    /services            # list
 GET    /services/{uuid}     # detail (add -s / can_read_sensitive for compose)
+GET    /deploy?uuid={uuid}&force=false   # trigger a redeploy (no compose body); see above
 POST   /services/{uuid}/start | /stop | /restart
 DELETE /services/{uuid}
 GET    /resources           # everything with status (coolify resource list)

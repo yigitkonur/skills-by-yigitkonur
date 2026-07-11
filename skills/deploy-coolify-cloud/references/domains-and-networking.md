@@ -17,7 +17,7 @@ curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application
 
 - `instant_deploy:true` is **required** — Traefik labels + the Let's Encrypt request are (re)generated only on deploy. Set the domain without a deploy and nothing routes.
 - `force_domain_override:true` reclaims a domain already held by another record (e.g. the auto `sslip.io` one). Include it when *changing* an existing domain.
-- Multiple sub-services in one call: `"urls":[{"name":"web",...},{"name":"console",...}]`.
+- Multiple sub-services in one call: `"urls":[{"name":"web",...},{"name":"console",...}]`. A **multi-container** compose (e.g. a main app plus an `admin`/`console` sub-service) has one `urls` entry per sub-service `name` — the `name` is the compose service key, and each maps to its own public FQDN. Read the current per-container fqdns from `GET /services/{uuid}` → `.applications[].name` / `.applications[].fqdn` (often `null` until you set them).
 - **Rejected fields:** `{"domains":...}` and `{"fqdn":...}` both → `422 "This field is not allowed."` `domains` is a *read* field on `GET /services/{uuid}` only. Read the current value from `GET /services/{uuid}` → `.applications[].fqdn` (and `.name`, `.ports`).
 
 ### `SERVICE_FQDN_<NAME>` does NOT set the domain — it is output-only
@@ -43,7 +43,7 @@ Each Coolify service lands on its **own per-UUID Docker network**, so by default
 
 | Approach | Reach peer as | Needs box shell? |
 |---|---|---|
-| **A. Shared external network** (`edge`) with aliases | `http://cli-proxy-api:8082` (clean) | ✅ — no API creates a raw docker network |
+| **A. Shared external network** (`edge`) with aliases | `http://api:8082` (clean) | ✅ — no API creates a raw docker network |
 | **B. Predefined `coolify` network** (`connect_to_docker_network`) | `http://<service>-<uuid>:8082` (ugly, stable) | ❌ — pure API |
 
 **A — shared external network** (mirrors the cross-stack pattern; clean hostnames):
