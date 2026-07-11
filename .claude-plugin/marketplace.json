@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 42 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 43 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.11",
       "category": "bundle",
       "strict": false,
@@ -99,7 +99,7 @@
     {
       "name": "yk-build",
       "source": "./",
-      "description": "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
+      "description": "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
       "version": "1.0.11",
       "category": "bundle",
       "tags": [
@@ -108,6 +108,7 @@
       "strict": false,
       "skills": [
         "./skills/build-chrome-extension",
+        "./skills/build-cloudflare-email-sending",
         "./skills/build-effect-ts-v3",
         "./skills/build-kernel-ts-sdk",
         "./skills/build-langchain-ts-app",
@@ -310,6 +311,17 @@
       "strict": false,
       "skills": [
         "./skills/build-clean-mcp-architecture"
+      ]
+    },
+    {
+      "name": "build-cloudflare-email-sending",
+      "source": "./",
+      "description": "Use skill if you are migrating email to Cloudflare Email Service, replacing Resend, SES, Postmark, or Supabase Auth mailer, wiring a send_email Worker binding, or architecting Cloudflare email sending.",
+      "version": "1.0.11",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-cloudflare-email-sending"
       ]
     },
     {

@@ -78,9 +78,10 @@ GROUPS = {
     ),
     "yk-build": (
         "build",
-        "App & framework builders — Chrome MV3, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
+        "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
         [
             "build-chrome-extension",
+            "build-cloudflare-email-sending",
             "build-effect-ts-v3",
             "build-kernel-ts-sdk",
             "build-langchain-ts-app",

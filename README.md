@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **42 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **43 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -61,12 +61,12 @@ themed groups for one-shot installs. every skill also installs on its own — se
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 42 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 43 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
-| **yk-build** | chrome, effect-ts, kernel, langchain, raycast, tinacms | `/plugin install yk-build@yigitkonur` |
+| **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, raycast, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | agent-browser, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
@@ -81,6 +81,7 @@ themed groups for one-shot installs. every skill also installs on its own — se
 write app code against a specific framework or sdk.
 
 - **[build-chrome-extension](skills/build-chrome-extension/)** — chrome mv3: manifest v3, service_worker, content_scripts, popup, side_panel, declarativenetrequest, web store packaging.
+- **[build-cloudflare-email-sending](skills/build-cloudflare-email-sending/)** — cloudflare email service: `send_email` worker binding, wrangler domain onboarding, migrate from resend/ses/postmark, replace supabase auth's mailer.
 - **[build-effect-ts-v3](skills/build-effect-ts-v3/)** — effect-ts v3: `Effect.gen`, `Layer`, `Schema`, typed errors, fibers, `Stream`.
 - **[build-kernel-ts-sdk](skills/build-kernel-ts-sdk/)** — kernel sdk (`@onkernel/sdk`): browsers, apps, profiles, managed auth, pools, playwright/cdp.
 - **[build-langchain-ts-app](skills/build-langchain-ts-app/)** — langchain.js: agents, tool-calling, rag retrievers, structured output, streaming, langgraph.
