@@ -102,7 +102,7 @@ GROUPS = {
     "yk-config": (
         "config",
         "Instruction & config files — AGENTS.md/CLAUDE.md/REVIEW.md hierarchies, drift audits, scenario Makefiles.",
-        ["init-agent-config", "update-agent-config", "init-makefiles"],
+        ["init-agent-config", "update-agent-config", "init-makefiles", "init-jean-json"],
     ),
     "yk-ops": (
         "ops",
