@@ -172,6 +172,7 @@ drive a browser, a phone, or a public tunnel mid-session.
 
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
 - **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
+- **[orchestrate-projects-by-jean](skills/orchestrate-projects-by-jean/)** — supervise existing jean coding agents through mcp + computer use, bounded watchers, exact-state recovery, and completion gates.
 - **[run-tailscale-funnel](skills/run-tailscale-funnel/)** — expose a local http server at a public `.ts.net` url via tailscale funnel for browser nav, mobile testing, webhooks, demos.
 
 `/plugin install yk-automation@yigitkonur`

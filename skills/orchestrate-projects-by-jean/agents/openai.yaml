@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrate Projects by Jean"
+  short_description: "Hybrid Jean MCP and UI supervision with exact-state proof"
+  default_prompt: "Use $orchestrate-projects-by-jean to supervise my existing Jean sessions. Use the read-only Jean ops CLI for inventory and bounded waits, Computer Use for visible UI ownership and approvals, recover stalls in place without restarting Jean, and verify each terminal claim against exact repository and runtime evidence."

@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 46 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 47 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.24",
       "category": "bundle",
       "strict": false,
@@ -141,7 +141,7 @@
     {
       "name": "yk-automation",
       "source": "./",
-      "description": "Live automation — agent-browser CLI, Android device control, Tailscale Funnel public tunnels.",
+      "description": "Live automation — Jean agent supervision, agent-browser CLI, Android device control, Tailscale Funnel public tunnels.",
       "version": "1.0.24",
       "category": "bundle",
       "tags": [
@@ -151,6 +151,7 @@
       "skills": [
         "./skills/run-agent-browser",
         "./skills/mobilerun-control",
+        "./skills/orchestrate-projects-by-jean",
         "./skills/run-tailscale-funnel"
       ]
     },
@@ -556,6 +557,17 @@
       "strict": false,
       "skills": [
         "./skills/mobilerun-control"
+      ]
+    },
+    {
+      "name": "orchestrate-projects-by-jean",
+      "source": "./",
+      "description": "Use if supervising Jean agents through MCP and Computer Use for monitoring, recovery, or closure.",
+      "version": "1.0.24",
+      "category": "automation",
+      "strict": false,
+      "skills": [
+        "./skills/orchestrate-projects-by-jean"
       ]
     },
     {
