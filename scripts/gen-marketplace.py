@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Generate plugin metadata from the skills/ tree.
 
-Every skill becomes an individually installable plugin (so users can
-`/plugin install <skill>@yigitkonur` and uninstall it just as easily).
-Themed bundles group related skills for one-shot installs, and an
-`everything` bundle installs the whole pack.
+Every Claude-compatible skill becomes an individually installable plugin (so
+users can `/plugin install <skill>@yigitkonur` and uninstall it just as easily).
+Themed bundles group related skills for one-shot installs, and an `everything`
+bundle installs every Claude-compatible skill. Codex-only skills remain in the
+root `skills/` tree but are excluded from every Claude marketplace allowlist.
 
 All plugins share the single skills/ folder at the repo root via
 `source: "./"` + `strict: false` + an explicit `skills` allowlist, so no
@@ -34,6 +35,10 @@ VERSION_PATH = os.path.join(REPO_ROOT, "VERSION")
 MARKETPLACE_NAME = "yigitkonur"
 CODEX_PLUGIN_NAME = "skills-by-yigitkonur"
 
+# Runtime-specific skills that ship through the root Codex plugin only. Keep
+# these out of Claude's per-skill plugins, themed bundles, and yk-everything.
+CODEX_ONLY_SKILLS = {"orchestrate-projects-by-jean"}
+
 
 def version():
     """Single source of truth for every plugin's version (bumped by CI)."""
@@ -42,7 +47,8 @@ def version():
     except FileNotFoundError:
         return "1.0.0"
 
-# Themed bundles. Every skill MUST appear in exactly one group (enforced below).
+# Themed bundles. Every Claude-compatible skill MUST appear in exactly one
+# group; Codex-only skills MUST NOT appear in a group (enforced below).
 # key -> (category label, human blurb, [skill dirs])
 GROUPS = {
     "yk-review": (
@@ -98,8 +104,8 @@ GROUPS = {
     ),
     "yk-automation": (
         "automation",
-        "Live automation — Jean agent supervision, agent-browser CLI, Android device control, Tailscale Funnel public tunnels.",
-        ["run-agent-browser", "mobilerun-control", "orchestrate-projects-by-jean", "run-tailscale-funnel"],
+        "Live automation — agent-browser CLI, Android device control, Tailscale Funnel public tunnels.",
+        ["run-agent-browser", "mobilerun-control", "run-tailscale-funnel"],
     ),
     "yk-config": (
         "config",
@@ -155,13 +161,17 @@ def all_skills():
 
 def build_claude_marketplace():
     v = load_validator()
-    skills = all_skills()
+    repo_skills = all_skills()
+    skills = sorted(set(repo_skills) - CODEX_ONLY_SKILLS)
 
-    # Coverage invariant: every skill in exactly one group.
+    # Coverage invariant: every Claude-compatible skill is in exactly one
+    # group, while every declared Codex-only skill exists and is in no group.
     grouped = [s for _c, _b, members in GROUPS.values() for s in members]
     dupes = sorted({s for s in grouped if grouped.count(s) > 1})
     missing = sorted(set(skills) - set(grouped))
-    unknown = sorted(set(grouped) - set(skills))
+    unknown = sorted(set(grouped) - set(repo_skills))
+    missing_codex_only = sorted(CODEX_ONLY_SKILLS - set(repo_skills))
+    grouped_codex_only = sorted(CODEX_ONLY_SKILLS & set(grouped))
     problems = []
     if dupes:
         problems.append(f"skills in >1 group: {dupes}")
@@ -169,6 +179,10 @@ def build_claude_marketplace():
         problems.append(f"skills in NO group: {missing}")
     if unknown:
         problems.append(f"group lists non-existent skills: {unknown}")
+    if missing_codex_only:
+        problems.append(f"Codex-only skills do not exist: {missing_codex_only}")
+    if grouped_codex_only:
+        problems.append(f"Codex-only skills appear in Claude groups: {grouped_codex_only}")
     if problems:
         print("marketplace generation failed:\n  " + "\n  ".join(problems), file=sys.stderr)
         sys.exit(2)
@@ -181,13 +195,13 @@ def build_claude_marketplace():
         {
             "name": "yk-everything",
             "source": "./",
-            "description": "The whole pack — all {} skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.".format(
+            "description": "Every Claude-compatible skill — all {} skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.".format(
                 len(skills)
             ),
             "version": ver,
             "category": "bundle",
             "strict": False,
-            "skills": ["./skills/"],
+            "skills": [f"./skills/{s}" for s in skills],
             "agents": CLAUDE_AGENTS,
         }
     )

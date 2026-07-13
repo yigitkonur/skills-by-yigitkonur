@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **46 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — **47 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. all read the same `skills/` folder, so pick your vibe.
+three ways in. Codex gets the complete 47-skill pack; Claude Code gets 46 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -47,7 +47,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur                      # f
 npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>  # single skill
 ```
 
-per-skill one-liners live in each skill's `README.md`.
+per-skill one-liners live in each Claude-compatible skill's `README.md`; Codex-only skills document the Codex all-pack install instead.
 
 ### staying fresh
 
@@ -57,11 +57,11 @@ every push to `main` auto-bumps the version, so `/plugin marketplace update` alw
 
 ## bundles
 
-themed groups for one-shot installs. every skill also installs on its own — see the sections under this.
+Claude Code themed groups for one-shot installs. every Claude-compatible skill also installs on its own; Codex-only skills are listed separately below.
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 46 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 46 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -172,10 +172,19 @@ drive a browser, a phone, or a public tunnel mid-session.
 
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
 - **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
-- **[orchestrate-projects-by-jean](skills/orchestrate-projects-by-jean/)** — supervise existing jean coding agents through mcp + computer use, bounded watchers, exact-state recovery, and completion gates.
 - **[run-tailscale-funnel](skills/run-tailscale-funnel/)** — expose a local http server at a public `.ts.net` url via tailscale funnel for browser nav, mobile testing, webhooks, demos.
 
 `/plugin install yk-automation@yigitkonur`
+
+---
+
+## 🧠 codex-only
+
+skills that depend on Codex desktop/runtime capabilities. these are included in the Codex all-pack plugin and intentionally excluded from every Claude Code plugin and bundle.
+
+- **[orchestrate-projects-by-jean](skills/orchestrate-projects-by-jean/)** — supervise existing jean coding agents through mcp + computer use, bounded watchers, exact-state recovery, and completion gates.
+
+install `skills-by-yigitkonur@yigitkonur` from `/plugins` in Codex.
 
 ---
 

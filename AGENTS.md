@@ -6,20 +6,20 @@ This repository is a curated skills pack for AI coding agents — skills sharing
 
 A single combined skills pack — not a loose collection. Every skill must feel like it belongs to the same family. Consistency, clarity, and install-path stability are more important than clever naming or one-off structure.
 
-This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex plugin marketplace — all read the same `skills/` folder. The `-secondary` b-side repo was merged in and archived; never point anything back at it.
+This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex plugin marketplace. Codex consumes the complete `skills/` folder; Claude Code receives explicit allowlists that exclude entries in `CODEX_ONLY_SKILLS`. The `-secondary` b-side repo was merged in and archived; never point anything back at it.
 
 **Distribution model:**
-- Plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`.
+- Claude Code plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`. Codex-only skills are absent from all four Claude surfaces.
 - Codex plugin marketplace: `codex plugin marketplace add yigitkonur/skills-by-yigitkonur`, then install `skills-by-yigitkonur@yigitkonur` from `/plugins`.
 - `skills` CLI full pack: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur`
 - `skills` CLI single skill: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>`
 
 The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.py`:
-- `.claude-plugin/marketplace.json`: per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + a `skills` allowlist so no files are duplicated.
+- `.claude-plugin/marketplace.json`: Claude-compatible per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + explicit `skills` allowlists so Codex-only skills cannot leak through a broad directory reference.
 - `.codex-plugin/plugin.json`: the root Codex plugin manifest for the all-pack plugin.
 - `.agents/plugins/marketplace.json`: the Codex repo marketplace entry for `skills-by-yigitkonur`.
 
-Regenerate plugin metadata whenever you add, remove, or rename a skill, and edit the `GROUPS` map in that script to place a new skill in a Claude bundle.
+Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a Claude-compatible skill in exactly one `GROUPS` bundle; place a runtime-specific Codex skill in `CODEX_ONLY_SKILLS` and no Claude bundle.
 
 **Agents:** the internet-researcher subagents live in `subagents/` — deliberately NOT the conventional `agents/` name, because every plugin uses `source: "./"` and Claude Code auto-discovers an `agents/` folder at the plugin root, which would attach the agents to *every* installed skill. Keeping them in `subagents/` means only the entries that explicitly set `"agents": ["./subagents/claude/"]` ship them (`yk-researchers`, `yk-research`, `yk-everything`). Never rename `subagents/` back to `agents/`.
 
@@ -320,7 +320,7 @@ The canonical name is the directory name; do not maintain a hard-coded list here
 6. **Add `references/`** docs only if the skill needs them — reference every file from `SKILL.md`
 7. **Create `README.md`** at the skill root with install instructions (see format above)
 8. **Update root `README.md`** — add the skill to its category section
-9. **Regenerate the marketplace** — add the skill to a bundle in the `GROUPS` map of `scripts/gen-marketplace.py`, then run `python3 scripts/gen-marketplace.py`
+9. **Regenerate the marketplace** — add a Claude-compatible skill to one bundle in `GROUPS`, or add a Codex-only skill to `CODEX_ONLY_SKILLS` and no bundle; then run `python3 scripts/gen-marketplace.py`
 10. **Validate:**
    ```bash
    python3 scripts/validate-skills.py

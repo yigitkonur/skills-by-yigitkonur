@@ -6,21 +6,12 @@ Supervise existing coding-agent projects in Jean through MCP and Computer Use, i
 
 ## Install
 
-**As a plugin (easy install / uninstall via `/plugin`):**
+**Codex only.** This skill depends on Codex desktop/runtime capabilities and is intentionally excluded from every Claude Code marketplace plugin and bundle.
 
-```
-/plugin marketplace add yigitkonur/skills-by-yigitkonur
-/plugin install orchestrate-projects-by-jean@yigitkonur
-```
-
-**Or with the `skills` CLI — this skill only:**
+Add the Codex marketplace:
 
 ```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/orchestrate-projects-by-jean
+codex plugin marketplace add yigitkonur/skills-by-yigitkonur
 ```
 
-**Or the full pack:**
-
-```bash
-npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
-```
+Then open `/plugins` in Codex and install `skills-by-yigitkonur@yigitkonur`.
