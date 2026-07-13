@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 44 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 45 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.18",
       "category": "bundle",
       "strict": false,
@@ -99,7 +99,7 @@
     {
       "name": "yk-build",
       "source": "./",
-      "description": "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, TinaCMS+Next.js.",
+      "description": "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
       "version": "1.0.18",
       "category": "bundle",
       "tags": [
@@ -113,6 +113,7 @@
         "./skills/build-kernel-ts-sdk",
         "./skills/build-langchain-ts-app",
         "./skills/build-raycast-script-command",
+        "./skills/build-sentry-macos-swift",
         "./skills/build-tinacms-nextjs"
       ]
     },
@@ -422,6 +423,17 @@
       "strict": false,
       "skills": [
         "./skills/build-raycast-script-command"
+      ]
+    },
+    {
+      "name": "build-sentry-macos-swift",
+      "source": "./",
+      "description": "Use skill if you are adding, deepening, or auditing Sentry crash reporting and observability in a macOS or Swift app: install, dSYM, breadcrumbs, tags, tracing, privacy scrubbing.",
+      "version": "1.0.18",
+      "category": "build",
+      "strict": false,
+      "skills": [
+        "./skills/build-sentry-macos-swift"
       ]
     },
     {

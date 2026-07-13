@@ -86,6 +86,7 @@ write app code against a specific framework or sdk.
 - **[build-kernel-ts-sdk](skills/build-kernel-ts-sdk/)** — kernel sdk (`@onkernel/sdk`): browsers, apps, profiles, managed auth, pools, playwright/cdp.
 - **[build-langchain-ts-app](skills/build-langchain-ts-app/)** — langchain.js: agents, tool-calling, rag retrievers, structured output, streaming, langgraph.
 - **[build-raycast-script-command](skills/build-raycast-script-command/)** — raycast script commands (`.sh`/`.py` with `@raycast.*` header): fields, modes, arguments, discovery.
+- **[build-sentry-macos-swift](skills/build-sentry-macos-swift/)** — sentry-cocoa on macOS/swift: explore-repo → support matrix → deep integration (crash, nsexception, breadcrumbs, tags, scope, tracing, release health, dSYM, privacy scrubbing).
 - **[build-tinacms-nextjs](skills/build-tinacms-nextjs/)** — tinacms + next.js app router: `tina/config.ts`, mdx/git content, schema modeling, `useTina` visual editing.
 
 `/plugin install yk-build@yigitkonur`
