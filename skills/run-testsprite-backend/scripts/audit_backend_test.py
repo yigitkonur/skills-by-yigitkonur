@@ -403,38 +403,57 @@ def creates_session(value: ast.AST, modules: set[str], session_factories: set[st
     )
 
 
-def request_aliases(tree: ast.Module) -> tuple[set[str], set[str], set[str], set[str]]:
-    modules = {"requests"}
+def request_aliases_from_bindings(
+    bindings: dict[str, ast.AST],
+) -> tuple[set[str], set[str], set[str], set[str]]:
+    modules: set[str] = set()
     sessions: set[str] = set()
     direct_methods: set[str] = set()
     session_factories: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
+    for local, binding in bindings.items():
+        if isinstance(binding, ast.Import):
+            for alias in binding.names:
+                if (alias.asname or alias.name.split(".", 1)[0]) != local:
+                    continue
                 if alias.name == "requests" or alias.name.startswith("requests."):
-                    modules.add(alias.asname or alias.name.split(".", 1)[0])
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            if node.module == "requests" or node.module.startswith("requests."):
-                for alias in node.names:
-                    name = alias.name
-                    local = alias.asname or name
-                    if name.lower() in HTTP_METHODS:
-                        direct_methods.add(local)
-                    elif name == "Session":
-                        session_factories.add(local)
-                    elif name in {"api", "sessions"}:
-                        modules.add(local)
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Assign, ast.AnnAssign)):
-            value = node.value
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if value is not None and creates_session(value, modules, session_factories):
-                for target in targets:
-                    sessions.update(bound_names(target))
-        elif isinstance(node, (ast.With, ast.AsyncWith)):
-            for item in node.items:
+                    modules.add(local)
+        elif isinstance(binding, ast.ImportFrom) and binding.module and (
+            binding.module == "requests" or binding.module.startswith("requests.")
+        ):
+            for alias in binding.names:
+                if (alias.asname or alias.name) != local:
+                    continue
+                if alias.name.lower() in HTTP_METHODS:
+                    direct_methods.add(local)
+                elif alias.name == "Session":
+                    session_factories.add(local)
+                elif alias.name in {"api", "sessions"}:
+                    modules.add(local)
+
+    for local, value in bindings.items():
+        if creates_session(value, modules, session_factories):
+            sessions.add(local)
+    return modules, sessions, direct_methods, session_factories
+
+
+def request_aliases(tree: ast.Module) -> tuple[set[str], set[str], set[str], set[str]]:
+    return request_aliases_from_bindings(broad_bindings(tree))
+
+
+def scoped_request_aliases(
+    node: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    bindings: dict[str, ast.AST],
+) -> tuple[set[str], set[str], set[str], set[str]]:
+    modules, sessions, direct_methods, session_factories = request_aliases_from_bindings(bindings)
+    current = node
+    while current in parents:
+        parent = parents[current]
+        if isinstance(parent, (ast.With, ast.AsyncWith)) and current in parent.body:
+            for item in parent.items:
                 if creates_session(item.context_expr, modules, session_factories):
                     sessions.update(bound_names(item.optional_vars))
+        current = parent
     return modules, sessions, direct_methods, session_factories
 
 
@@ -1071,6 +1090,11 @@ def function_has_direct_request_prefix(function: ast.FunctionDef, module_state: 
     state = module_state.clone()
     clear_names(state, local_binding_names(function))
     for statement in function.body:
+        if isinstance(statement, (ast.Import, ast.ImportFrom)):
+            load_request_import(state, statement)
+            for name in bound_names_from_import(statement):
+                state.bindings[name] = statement
+            continue
         if direct_request_call(statement, state) is not None:
             return True
         if isinstance(statement, ast.Pass):
@@ -1221,10 +1245,15 @@ def validate_constrained_subset(
     request_sets: tuple[set[str], set[str], set[str], set[str]],
     report: Report,
 ) -> None:
-    modules, sessions, direct_methods, session_factories = request_sets
     state = ScopeState()
     available: dict[str, ast.FunctionDef] = {}
     seen_functions: set[str] = set()
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+    module_bindings = broad_bindings(tree)
     future_annotations = any(
         isinstance(node, ast.ImportFrom)
         and node.module == "__future__"
@@ -1253,11 +1282,17 @@ def validate_constrained_subset(
                     "Function defaults and annotations must be side-effect-free static expressions",
                     node.lineno,
                 )
-            if not node.name.startswith("test_") and any(
-                isinstance(child, ast.Call)
-                and is_request_call(child, modules, sessions, direct_methods, session_factories)
-                for child in ast.walk(node)
-            ):
+            helper_has_request = False
+            if not node.name.startswith("test_"):
+                for child in ast.walk(node):
+                    if not isinstance(child, ast.Call):
+                        continue
+                    child_bindings = scoped_bindings(child, parents, module_bindings)
+                    child_sets = scoped_request_aliases(child, parents, child_bindings)
+                    if is_request_call(child, *child_sets):
+                        helper_has_request = True
+                        break
+            if helper_has_request:
                 report.error(
                     "request-helper-unsupported",
                     "HTTP requests must be issued directly by test_* functions",
@@ -1327,24 +1362,73 @@ def validate_constrained_subset(
         )
 
 
-def broad_bindings(tree: ast.Module) -> dict[str, ast.AST]:
+def direct_bindings(statements: list[ast.stmt]) -> dict[str, ast.AST]:
     bindings: dict[str, ast.AST] = {}
-    for node in ast.walk(tree):
+    ambiguous: set[str] = set()
+
+    def record(name: str, value: ast.AST) -> None:
+        if name in bindings or name in ambiguous:
+            bindings.pop(name, None)
+            ambiguous.add(name)
+            return
+        bindings[name] = value
+
+    for node in statements:
         if isinstance(node, ast.Assign):
             targets, value = node.targets, node.value
         elif isinstance(node, ast.AnnAssign) and node.value is not None:
             targets, value = [node.target], node.value
         else:
-            continue
-        for target in targets:
-            if isinstance(target, ast.Name):
-                bindings[target.id] = value
-    for node in ast.walk(tree):
+            targets, value = [], None
+        if value is not None:
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    record(target.id, value)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            bindings.setdefault(node.name, node)
+            record(node.name, node)
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             for name in bound_names_from_import(node):
-                bindings.setdefault(name, node)
+                record(name, node)
+    return bindings
+
+
+def broad_bindings(tree: ast.Module) -> dict[str, ast.AST]:
+    """Return unambiguous module bindings only; never mix function-local scopes."""
+    return direct_bindings(tree.body)
+
+
+def enclosing_function_body(
+    node: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    current = node
+    while current in parents:
+        parent = parents[current]
+        if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return parent if current in parent.body else None
+        current = parent
+    return None
+
+
+def scoped_bindings(
+    node: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    module_bindings: dict[str, ast.AST],
+) -> dict[str, ast.AST]:
+    bindings = dict(module_bindings)
+    function = enclosing_function_body(node, parents)
+    if function is None:
+        return bindings
+
+    for name in local_binding_names(function):
+        bindings.pop(name, None)
+    line = getattr(node, "lineno", 0)
+    earlier = [
+        statement
+        for statement in function.body
+        if getattr(statement, "lineno", line) < line
+    ]
+    bindings.update(direct_bindings(earlier))
     return bindings
 
 
@@ -1368,7 +1452,8 @@ def validate_immutable_transport(
 ) -> None:
     modules, sessions, direct_methods, session_factories = request_sets
     transport_names = modules | sessions | direct_methods | session_factories
-    bindings = broad_bindings(tree)
+    module_bindings = broad_bindings(tree)
+    bindings = module_bindings
     managed = broad_managed_auth(bindings)
     parents = {
         child: parent
@@ -1528,6 +1613,12 @@ def validate_immutable_transport(
         )
 
     for node in ast.walk(tree):
+        bindings = scoped_bindings(node, parents, module_bindings)
+        managed = broad_managed_auth(bindings)
+        modules, sessions, direct_methods, session_factories = scoped_request_aliases(
+            node, parents, bindings
+        )
+        transport_names = modules | sessions | direct_methods | session_factories
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             parent = parents.get(node)
             managed_globals = (
@@ -2113,17 +2204,21 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
             )
 
     modules, sessions, direct_methods, session_factories = request_sets
-    bindings = broad_bindings(tree)
+    module_bindings = broad_bindings(tree)
     inspected_strings: set[str] = set()
-    broad_state = ScopeState(
-        bindings=bindings,
-        managed_auth=broad_managed_auth(bindings),
-        request_modules=set(modules),
-        sessions=set(sessions),
-        direct_methods=set(direct_methods),
-        session_factories=set(session_factories),
-    )
     for node in ast.walk(tree):
+        bindings = scoped_bindings(node, parents, module_bindings)
+        modules, sessions, direct_methods, session_factories = scoped_request_aliases(
+            node, parents, bindings
+        )
+        broad_state = ScopeState(
+            bindings=bindings,
+            managed_auth=broad_managed_auth(bindings),
+            request_modules=set(modules),
+            sessions=set(sessions),
+            direct_methods=set(direct_methods),
+            session_factories=set(session_factories),
+        )
         static_value = static_string_value(node, bindings)
         if static_value is not None and static_value not in inspected_strings:
             inspected_strings.add(static_value)
@@ -2633,9 +2728,18 @@ def run_self_test() -> None:
         "session": source(
             "import requests", "def test_case():", "    with requests.Session() as session:",
             '        session.get("https://staging.acme.com/me", timeout=30)', "test_case()"),
+        "session-name-scope": source(
+            "import requests", "def test_session_request():", "    with requests.Session() as session:",
+            '        session.get("https://staging.acme.com/one", timeout=30)',
+            "def test_plain_mapping():", '    session = {"status": 200}',
+            '    requests.get("https://staging.acme.com/two", timeout=30)',
+            '    assert session.get("status") == 200', "test_session_request()", "test_plain_mapping()"),
         "aliased-generic-request": source(
             "from requests import request as send", "def test_case():",
             '    send("GET", "https://staging.acme.com/me", timeout=30)', "test_case()"),
+        "local-imported-method": source(
+            "def test_case():", "    from requests import get as send",
+            '    send("https://staging.acme.com/me", timeout=30)', "test_case()"),
         "multiple-requests": source(
             "import requests", 'BASE_URL = "https://staging.acme.com"', "def test_case():",
             '    first = requests.get(f"{BASE_URL}/health", timeout=30)',
@@ -2710,6 +2814,33 @@ def run_self_test() -> None:
         target_report = Report()
         inspect_url(target, 1, target_report)
         assert not target_report.errors, (target, [finding.code for finding in target_report.errors])
+
+    scope_source = source(
+        "import requests", 'BASE_URL = "https://module.acme.com"', "def helper():",
+        '    BASE_URL = "https://helper.acme.com"', "    return BASE_URL", "def test_case():",
+        '    requests.get(f"{BASE_URL}/health", timeout=30)', "test_case()",
+    )
+    scope_tree = ast.parse(scope_source)
+    scope_report = audit_source(scope_source, auth_required=False, allowed_modules=set())
+    assert not scope_report.errors, [
+        (finding.code, finding.line) for finding in scope_report.errors
+    ]
+    scope_parents = {
+        child: parent
+        for parent in ast.walk(scope_tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+    scope_module = broad_bindings(scope_tree)
+    scope_request = next(
+        node
+        for node in ast.walk(scope_tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get"
+    )
+    scope_url = request_url_node(scope_request, scoped_bindings(scope_request, scope_parents, scope_module))
+    assert scope_url is not None
+    assert static_string_value(
+        scope_url, scoped_bindings(scope_request, scope_parents, scope_module)
+    ) == "https://module.acme.com/health"
     print("audit_backend_test self-test: ok")
 
 
