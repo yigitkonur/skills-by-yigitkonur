@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "The whole pack — all 46 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "The whole pack — all 47 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.24",
       "category": "bundle",
       "strict": false,
@@ -94,6 +94,20 @@
         "./skills/build-mcp-use-server",
         "./skills/convert-mcp-sdk-v1-to-v2",
         "./skills/test-by-mcpc-cli"
+      ]
+    },
+    {
+      "name": "yk-testing",
+      "source": "./",
+      "description": "Backend API testing — author, run, diagnose, and release-gate TestSprite cloud tests against real deployed services.",
+      "version": "1.0.24",
+      "category": "bundle",
+      "tags": [
+        "testing"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/run-testsprite-backend"
       ]
     },
     {
@@ -688,6 +702,17 @@
       "strict": false,
       "skills": [
         "./skills/run-tailscale-funnel"
+      ]
+    },
+    {
+      "name": "run-testsprite-backend",
+      "source": "./",
+      "description": "Use if creating, debugging, or release-gating TestSprite backend API tests against real services.",
+      "version": "1.0.24",
+      "category": "testing",
+      "strict": false,
+      "skills": [
+        "./skills/run-testsprite-backend"
       ]
     },
     {
