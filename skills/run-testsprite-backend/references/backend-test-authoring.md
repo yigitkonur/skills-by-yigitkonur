@@ -19,6 +19,8 @@ Do not import application modules or arbitrary packages. Test TypeScript, Python
 
 The saved code limit is 350 KB. Prefer one focused behavior per file.
 
+Whether TestSprite generated the Python in the Portal or an agent authored it through the CLI, review it as executable third-party test code before saving or running it. Generation does not prove that the target, auth, timeout, cleanup, or assertion matches the repository contract.
+
 ## Start from the installed scaffold
 
 ```bash
@@ -53,6 +55,8 @@ test_health_contract()
 ```
 
 The final call is load-bearing. A defined-but-uncalled function can produce a vacuous pass because no assertion executed. Keep top-level test functions synchronous and zero-argument; TestSprite does not inject pytest fixtures into a direct call, and calling an `async def` without an event loop only creates an unexecuted coroutine.
+
+Do not catch `AssertionError`, call `pytest.skip`, or convert exceptions into `print` output. A script that reaches module end after swallowing its only failure is a false pass.
 
 Avoid relying on this shape:
 
@@ -122,6 +126,17 @@ assert response.status_code == 201, (
 ```
 
 Avoid `print(response.text)`, full headers, cookies, tokens, or request bodies. TestSprite already records request/response evidence; treat artifacts as sensitive.
+
+Distinguish four independent clocks when diagnosing “timeout”:
+
+| Clock | Controlled by |
+|---|---|
+| Connect/read budget | Python `requests` `timeout=` |
+| CLI polling ceiling | `test run/rerun/wait --timeout` |
+| Edge/gateway deadline | CDN, load balancer, Worker, ingress, or reverse proxy |
+| Upstream/provider deadline | Application/provider client policy |
+
+Increasing one does not extend the others. An HTTP 524 or equivalent edge response is application architecture/runtime evidence, not a reason to increase the CLI polling ceiling.
 
 ## JSON contract helper
 
@@ -207,6 +222,20 @@ def collect_urls(value: object) -> list[str]:
 
 Avoid letting an unrelated help/documentation URL satisfy a citation contract. Assert that the expected citation/source container exists before collecting its URLs.
 
+For APIs that expose route metadata, validate it alongside sources instead of searching the whole body for convenient values:
+
+```python
+body = require_json_object(response)
+sources = body.get("sources")
+assert isinstance(sources, list), "missing documented sources array"
+urls = [item["url"] for item in sources if isinstance(item, dict) and isinstance(item.get("url"), str)]
+require_http_urls(urls)
+meta = body.get("x_meta")
+assert isinstance(meta, dict) and meta.get("routing") in {"primary", "secondary"}, "invalid routing metadata"
+```
+
+Replace the illustrative field names and route enum with the public contract. Never accept every route merely because another environment uses it.
+
 ## Defensive SSE example
 
 ```python
@@ -260,6 +289,8 @@ test_stream_contract()
 ```
 
 Adapt event fields and terminal semantics to the real API. Do not copy this parser unchanged when the endpoint uses event names, multiline `data:` blocks, OpenAI chunks, or NDJSON. Capture one sanitized real fixture and test the observed shape.
+
+If sources or routing metadata can arrive in stream events, accumulate them from the documented event shapes and assert them after `[DONE]`. Keep a separate non-stream test: production systems often use different mapper and accumulator code, so one path can preserve citations while the other drops them.
 
 ## Stateful self-contained example
 
@@ -347,7 +378,9 @@ This boundary is deliberate. Put the first create/read request before a `try/fin
 - No response/token/header dumps.
 - Assertions cover status, shape, and semantics.
 - Dynamic values use invariants.
+- Generated code was reviewed against repository truth before upload.
 - Streaming parser matches a real sanitized fixture.
+- Normal and streaming source paths are tested separately when their mappers differ.
 - Mutations have idempotent cleanup.
 - File passes `audit_backend_test.py`.
 - Test code is at most 350 KB.
@@ -360,6 +393,8 @@ This boundary is deliberate. Put the first create/read request before a `try/fin
 | Import error in cloud | Project/arbitrary package imported | Replace with HTTP and supported modules |
 | Authenticated endpoint returns 401 | Managed headers unused or project credential stale | Consume `__AUTH_HEADERS__`; verify project auth |
 | Run hangs | Missing/oversized timeout or stream terminal not handled | Bound connect/read timeout and terminal condition |
+| HTTP 524 persists after increasing CLI timeout | Edge deadline terminates the request before TestSprite polling matters | Fix or redesign the deployed request path; keep clocks distinct |
 | Citation test passes on wrong URL | Recursive collector saw unrelated URL | Assert citation container first |
+| Non-stream sources pass but stream sources fail | Separate accumulator/parser lost metadata | Capture a real stream fixture and fix/test that path independently |
 | SSE parser fails intermittently | Assumed chunk boundaries or wrong event shape | Parse protocol lines and use sanitized real fixture |
 | Test leaks fixture | Cleanup only on happy path | Use `try/finally` or verified teardown |

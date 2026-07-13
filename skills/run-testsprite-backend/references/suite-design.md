@@ -12,6 +12,8 @@ request accepted -> correct path executed -> response contract preserved -> sema
 
 HTTP 200 alone proves only that something answered.
 
+Before adding a scenario, state its independent failure value: which consumer-visible regression could pass native tests yet fail through the deployed HTTP boundary? Keep representative, contract-dense tests; omit duplicate status-only coverage.
+
 ## 1. Build a coverage matrix
 
 Start with capabilities, not endpoints. One endpoint may carry several materially different contracts; several endpoints may form one user outcome.
@@ -30,6 +32,8 @@ Start with capabilities, not endpoints. One endpoint may carry several materiall
 | External provider | unavailable account, CAPTCHA, timeout | correct classification, no false success |
 
 For a first TestSprite project, seed a broad suite across the main public capabilities. Do not report setup complete after one health test. For an existing project, add only gaps relevant to the change or stale contract.
+
+Generated plans are a draft. Review each row for contract authority, target safety, stable data, expected cost, and whether TestSprite can execute it faithfully before generating or saving code.
 
 ## 2. Prioritize by failure value
 
@@ -63,7 +67,7 @@ assert response.headers.get("content-type", "").startswith("application/json")
 body = response.json()
 assert isinstance(body.get("items"), list) and body["items"]
 assert all(isinstance(item.get("id"), str) and item["id"] for item in body["items"])
-assert body.get("routing") in {"account", "browserpool"}
+assert body.get("routing") in {"primary", "secondary"}
 ```
 
 Weak assertions:
@@ -103,6 +107,15 @@ def assert_real_urls(values: list[str]) -> None:
 ```
 
 Extract from the documented response shape first. Use a recursive URL collector only when the contract intentionally allows several citation shapes, and still assert the expected containing field or event so unrelated URLs cannot satisfy the test.
+
+When normal and streaming responses use different parser/accumulator paths, keep separate source-contract tests:
+
+| Mode | Minimum semantic proof |
+|---|---|
+| Non-streaming | non-empty answer, expected source container, valid real source URLs, required route metadata |
+| Streaming | parseable events, correct order, accumulated answer, terminal marker, sources retained in the documented event/final metadata shape |
+
+A non-streaming pass does not prove the stream accumulator, and a stream pass does not prove the ordinary response mapper.
 
 ## 5. Design streaming tests as protocols
 
@@ -149,6 +162,8 @@ Useful safe negatives:
 - exceed a tiny documented boundary using one request.
 
 Do not use TestSprite to brute-force authentication, enumerate other tenants, flood rate limits, submit exploit payload corpora, or induce expensive provider failures. Those require a separately authorized security/load methodology.
+
+Portal-generated plans may suggest boundary/load/security categories. Selection in a generated plan is not authorization to run them against production. Replace high-volume cases with one bounded contract probe or move them to the appropriate specialist environment.
 
 ## 7. Model state and cleanup
 
@@ -197,6 +212,16 @@ Account-backed AI APIs, payment sandboxes, email providers, browser pools, and o
 
 Three retries in product code do not justify three retries in the test. The test should observe the product's final contract, not multiply side effects.
 
+Tag resource-dependent tests in their names/descriptions and keep their prerequisites visible:
+
+```text
+P0 deterministic - auth rejection is typed 401
+P1 external - credential-backed success returns sources
+P2 browser - proxy-backed route returns typed metadata
+```
+
+Only deterministic tests should become unconditional release gates unless the organization deliberately provisions and monitors the required external capacity.
+
 ## 9. Define pass, block, and cleanup outcomes
 
 For each scenario, predeclare:
@@ -212,6 +237,8 @@ cleanup: operation and idempotent accepted statuses
 
 This prevents an LLM suggestion or convenient assertion edit from redefining success after a failure.
 
+Do not average unlike outcomes into one “mostly green” verdict. Report deterministic product failures, stale-deployment failures, dependency-blocked consumers, and runtime/provider gates separately; each has a different owner and remediation.
+
 ## Suite review checklist
 
 - Every main capability has at least one real success assertion.
@@ -224,6 +251,9 @@ This prevents an LLM suggestion or convenient assertion edit from redefining suc
 - Dependency graphs reflect real captured data.
 - Expensive/shared-capacity tests are safely scheduled.
 - Every test has a product-contract source and a failure classification.
+- Every test adds a distinct deployed-boundary signal over native coverage.
+- Normal and streaming response paths are covered separately when their mappers differ.
+- Resource-dependent cases declare prerequisites and are not unconditional gates by accident.
 
 ## Troubleshooting design
 
@@ -235,3 +265,5 @@ This prevents an LLM suggestion or convenient assertion edit from redefining suc
 | Cleanup leaves fixtures | Move cleanup into `finally` or a verified teardown wave |
 | Full batch exhausts provider slots | Filter and serialize capacity-heavy test IDs |
 | Negative test trips abuse controls | Replace with one bounded documented invalid case |
+| Generated suite is broad but low-signal | Keep scenarios tied to material contracts; remove duplicate 200-only cases |
+| Several tests fail for different layers | Report each classification; do not collapse them into one pass-rate diagnosis |
