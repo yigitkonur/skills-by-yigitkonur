@@ -78,13 +78,14 @@ GROUPS = {
     ),
     "yk-build": (
         "build",
-        "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
+        "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, LicenseSeat (macOS/Swift), Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
         [
             "build-chrome-extension",
             "build-cloudflare-email-sending",
             "build-effect-ts-v3",
             "build-kernel-ts-sdk",
             "build-langchain-ts-app",
+            "build-licenseseat-swift",
             "build-raycast-script-command",
             "build-sentry-macos-swift",
             "build-tinacms-nextjs",
