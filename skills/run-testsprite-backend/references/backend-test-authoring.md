@@ -328,6 +328,7 @@ The execution proof intentionally accepts a constrained subset rather than prete
 - each called `test_*` function issues its first HTTP request directly as a request expression, assignment, annotation assignment, return value, or inside one `with requests.Session()` block;
 - that request appears before branches, loops, `try`, returns, helper calls, mutation, or other dynamic control flow;
 - every request receiver and argument uses static data expressions, safe constructors, or previously bound values—not helper calls, mutators, process exits, or side-effecting Session constructor arguments;
+- request values carried by a loop use a simple loop target over a non-empty static list, tuple, or set; nested loop variants are all audited and are limited to 64 combinations;
 - HTTP calls stay in `test_*` functions; helpers parse and assert on responses after the first request;
 - module scope contains only imports, static assignments, function definitions, and direct zero-argument `test_*()` calls;
 - imports name every dependency explicitly and stay inside the auditor's data/parsing-oriented standard-library subset (`from module import *` is rejected); and

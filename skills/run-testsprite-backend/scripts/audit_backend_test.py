@@ -109,6 +109,15 @@ class ScopeState:
         )
 
 
+@dataclass
+class SensitiveProvenance:
+    request_modules: set[str] = field(default_factory=set)
+    sessions: set[str] = field(default_factory=set)
+    direct_methods: set[str] = field(default_factory=set)
+    session_factories: set[str] = field(default_factory=set)
+    managed_auth: set[str] = field(default_factory=lambda: {"__AUTH_HEADERS__"})
+
+
 def is_placeholder(value: str) -> bool:
     lowered = value.lower()
     return any(word in lowered for word in PLACEHOLDER_WORDS) or "<" in value or "${" in value
@@ -1254,6 +1263,7 @@ def validate_constrained_subset(
         for child in ast.iter_child_nodes(parent)
     }
     module_bindings = broad_bindings(tree)
+    provenance_cache: dict[ast.AST, SensitiveProvenance] = {}
     future_annotations = any(
         isinstance(node, ast.ImportFrom)
         and node.module == "__future__"
@@ -1287,8 +1297,9 @@ def validate_constrained_subset(
                 for child in ast.walk(node):
                     if not isinstance(child, ast.Call):
                         continue
-                    child_bindings = scoped_bindings(child, parents, module_bindings)
-                    child_sets = scoped_request_aliases(child, parents, child_bindings)
+                    _, child_sets, _ = scoped_sensitive_context(
+                        child, parents, module_bindings, provenance_cache
+                    )
                     if is_request_call(child, *child_sets):
                         helper_has_request = True
                         break
@@ -1362,11 +1373,16 @@ def validate_constrained_subset(
         )
 
 
-def direct_bindings(statements: list[ast.stmt]) -> dict[str, ast.AST]:
+def direct_bindings(
+    statements: list[ast.stmt], *, last_write_wins: bool = False
+) -> dict[str, ast.AST]:
     bindings: dict[str, ast.AST] = {}
     ambiguous: set[str] = set()
 
     def record(name: str, value: ast.AST) -> None:
+        if last_write_wins:
+            bindings[name] = value
+            return
         if name in bindings or name in ambiguous:
             bindings.pop(name, None)
             ambiguous.add(name)
@@ -1410,6 +1426,86 @@ def enclosing_function_body(
     return None
 
 
+def statement_lists(node: ast.AST) -> list[list[ast.stmt]]:
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return [node.body]
+    if isinstance(node, (ast.If, ast.For, ast.AsyncFor, ast.While)):
+        return [node.body, node.orelse]
+    if isinstance(node, (ast.With, ast.AsyncWith, ast.ExceptHandler)):
+        return [node.body]
+    if isinstance(node, ast.Try):
+        return [node.body, node.orelse, node.finalbody]
+    return []
+
+
+def preceding_scope_statements(
+    node: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[ast.stmt]:
+    groups: list[list[ast.stmt]] = []
+    current = node
+    while current in parents:
+        parent = parents[current]
+        for statements in statement_lists(parent):
+            if current in statements:
+                groups.append(statements[:statements.index(current)])
+                if isinstance(parent, ast.Try) and statements is parent.orelse:
+                    groups.append(parent.body)
+                break
+        if parent is function:
+            break
+        current = parent
+    return [statement for group in reversed(groups) for statement in group]
+
+
+def static_sequence_elements(
+    node: ast.AST,
+    bindings: dict[str, ast.AST],
+    visiting: frozenset[str] = frozenset(),
+) -> list[ast.AST] | None:
+    if isinstance(node, ast.Name):
+        if node.id in visiting or node.id not in bindings:
+            return None
+        return static_sequence_elements(bindings[node.id], bindings, visiting | {node.id})
+    if isinstance(node, (ast.List, ast.Set, ast.Tuple)) and not any(
+        isinstance(element, ast.Starred) for element in node.elts
+    ):
+        return list(node.elts)
+    return None
+
+
+def scoped_binding_variants(
+    node: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    bindings: dict[str, ast.AST],
+    limit: int = 64,
+) -> list[dict[str, ast.AST]] | None:
+    loops: list[ast.For | ast.AsyncFor] = []
+    current = node
+    while current in parents:
+        parent = parents[current]
+        if isinstance(parent, (ast.For, ast.AsyncFor)) and current in parent.body:
+            loops.append(parent)
+        current = parent
+
+    variants = [bindings]
+    for loop in reversed(loops):
+        if not isinstance(loop.target, ast.Name):
+            return None
+        expanded: list[dict[str, ast.AST]] = []
+        for variant in variants:
+            elements = static_sequence_elements(loop.iter, variant)
+            if not elements or len(expanded) + len(elements) > limit:
+                return None
+            for element in elements:
+                candidate = dict(variant)
+                candidate[loop.target.id] = element
+                expanded.append(candidate)
+        variants = expanded
+    return variants
+
+
 def scoped_bindings(
     node: ast.AST,
     parents: dict[ast.AST, ast.AST],
@@ -1422,14 +1518,121 @@ def scoped_bindings(
 
     for name in local_binding_names(function):
         bindings.pop(name, None)
-    line = getattr(node, "lineno", 0)
-    earlier = [
-        statement
-        for statement in function.body
-        if getattr(statement, "lineno", line) < line
-    ]
-    bindings.update(direct_bindings(earlier))
+    earlier = preceding_scope_statements(node, parents, function)
+    bindings.update(direct_bindings(earlier, last_write_wins=True))
     return bindings
+
+
+def function_sensitive_provenance(
+    function: ast.FunctionDef | ast.AsyncFunctionDef,
+    parents: dict[ast.AST, ast.AST],
+    module_bindings: dict[str, ast.AST],
+) -> SensitiveProvenance:
+    local_names = local_binding_names(function)
+    module_sets = request_aliases_from_bindings(module_bindings)
+    provenance = SensitiveProvenance(
+        request_modules=set(module_sets[0]) - local_names,
+        sessions=set(module_sets[1]) - local_names,
+        direct_methods=set(module_sets[2]) - local_names,
+        session_factories=set(module_sets[3]) - local_names,
+        managed_auth=(broad_managed_auth(module_bindings) - local_names) | {"__AUTH_HEADERS__"},
+    )
+    definitions: list[tuple[str, ast.AST]] = []
+
+    for child in ast.walk(function):
+        if child is function or enclosing_function_body(child, parents) is not function:
+            continue
+        if isinstance(child, (ast.Import, ast.ImportFrom)):
+            for name in bound_names_from_import(child):
+                request_sets = request_aliases_from_bindings({name: child})
+                provenance.request_modules.update(request_sets[0])
+                provenance.sessions.update(request_sets[1])
+                provenance.direct_methods.update(request_sets[2])
+                provenance.session_factories.update(request_sets[3])
+            continue
+        if isinstance(child, ast.Assign):
+            for target in child.targets:
+                definitions.extend((name, child.value) for name in bound_names(target))
+        elif isinstance(child, ast.AnnAssign) and child.value is not None:
+            definitions.extend((name, child.value) for name in bound_names(child.target))
+        elif isinstance(child, ast.NamedExpr):
+            definitions.extend((name, child.value) for name in bound_names(child.target))
+        elif isinstance(child, (ast.With, ast.AsyncWith)):
+            for item in child.items:
+                if item.optional_vars is not None:
+                    definitions.extend(
+                        (name, item.context_expr) for name in bound_names(item.optional_vars)
+                    )
+
+    while True:
+        before = (
+            frozenset(provenance.request_modules),
+            frozenset(provenance.sessions),
+            frozenset(provenance.direct_methods),
+            frozenset(provenance.session_factories),
+            frozenset(provenance.managed_auth),
+        )
+        for name, value in definitions:
+            if isinstance(value, ast.Name):
+                if value.id in provenance.request_modules:
+                    provenance.request_modules.add(name)
+                if value.id in provenance.sessions:
+                    provenance.sessions.add(name)
+                if value.id in provenance.direct_methods:
+                    provenance.direct_methods.add(name)
+                if value.id in provenance.session_factories:
+                    provenance.session_factories.add(name)
+                if value.id in provenance.managed_auth:
+                    provenance.managed_auth.add(name)
+            elif isinstance(value, ast.Attribute) and dotted_root(value) in provenance.request_modules:
+                if value.attr.lower() in HTTP_METHODS:
+                    provenance.direct_methods.add(name)
+                elif value.attr == "Session":
+                    provenance.session_factories.add(name)
+            if creates_session(
+                value, provenance.request_modules, provenance.session_factories
+            ):
+                provenance.sessions.add(name)
+            if managed_headers_copy(value, provenance.managed_auth, {}):
+                provenance.managed_auth.add(name)
+        after = (
+            frozenset(provenance.request_modules),
+            frozenset(provenance.sessions),
+            frozenset(provenance.direct_methods),
+            frozenset(provenance.session_factories),
+            frozenset(provenance.managed_auth),
+        )
+        if after == before:
+            return provenance
+
+
+def scoped_sensitive_context(
+    node: ast.AST,
+    parents: dict[ast.AST, ast.AST],
+    module_bindings: dict[str, ast.AST],
+    cache: dict[ast.AST, SensitiveProvenance],
+) -> tuple[
+    dict[str, ast.AST],
+    tuple[set[str], set[str], set[str], set[str]],
+    set[str],
+]:
+    bindings = scoped_bindings(node, parents, module_bindings)
+    modules, sessions, direct_methods, session_factories = scoped_request_aliases(
+        node, parents, bindings
+    )
+    managed = broad_managed_auth(bindings)
+    function = enclosing_function_body(node, parents)
+    if function is not None:
+        potential = cache.get(function)
+        if potential is None:
+            potential = function_sensitive_provenance(function, parents, module_bindings)
+            cache[function] = potential
+        modules |= potential.request_modules
+        sessions |= potential.sessions
+        direct_methods |= potential.direct_methods
+        session_factories |= potential.session_factories
+        managed |= potential.managed_auth
+    return bindings, (modules, sessions, direct_methods, session_factories), managed
 
 
 def broad_managed_auth(bindings: dict[str, ast.AST]) -> set[str]:
@@ -1460,6 +1663,7 @@ def validate_immutable_transport(
         for parent in ast.walk(tree)
         for child in ast.iter_child_nodes(parent)
     }
+    provenance_cache: dict[ast.AST, SensitiveProvenance] = {}
     annotation_roots = {
         annotation
         for node in ast.walk(tree)
@@ -1613,11 +1817,10 @@ def validate_immutable_transport(
         )
 
     for node in ast.walk(tree):
-        bindings = scoped_bindings(node, parents, module_bindings)
-        managed = broad_managed_auth(bindings)
-        modules, sessions, direct_methods, session_factories = scoped_request_aliases(
-            node, parents, bindings
+        bindings, request_context, managed = scoped_sensitive_context(
+            node, parents, module_bindings, provenance_cache
         )
+        modules, sessions, direct_methods, session_factories = request_context
         transport_names = modules | sessions | direct_methods | session_factories
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             parent = parents.get(node)
@@ -2205,20 +2408,13 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
 
     modules, sessions, direct_methods, session_factories = request_sets
     module_bindings = broad_bindings(tree)
+    provenance_cache: dict[ast.AST, SensitiveProvenance] = {}
     inspected_strings: set[str] = set()
     for node in ast.walk(tree):
-        bindings = scoped_bindings(node, parents, module_bindings)
-        modules, sessions, direct_methods, session_factories = scoped_request_aliases(
-            node, parents, bindings
+        bindings, request_context, managed_auth = scoped_sensitive_context(
+            node, parents, module_bindings, provenance_cache
         )
-        broad_state = ScopeState(
-            bindings=bindings,
-            managed_auth=broad_managed_auth(bindings),
-            request_modules=set(modules),
-            sessions=set(sessions),
-            direct_methods=set(direct_methods),
-            session_factories=set(session_factories),
-        )
+        modules, sessions, direct_methods, session_factories = request_context
         static_value = static_string_value(node, bindings)
         if static_value is not None and static_value not in inspected_strings:
             inspected_strings.add(static_value)
@@ -2296,15 +2492,32 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
         if isinstance(node, ast.Call) and is_request_call(
             node, modules, sessions, direct_methods, session_factories
         ):
-            if not request_evaluation_is_safe(node, broad_state):
+            binding_variants = scoped_binding_variants(node, parents, bindings)
+            if binding_variants is None:
                 report.error(
-                    "unsafe-request-expression",
-                    "Every HTTP request receiver and argument must stay inside the safe expression subset",
+                    "unresolved-loop-binding",
+                    "Request loops need a simple target and at most 64 statically enumerable variants",
                     node.lineno,
                 )
-            inspect_request_credentials(node, broad_state, report)
-            inspect_request_timeout(node, bindings, report)
-            inspect_request_target(node, bindings, report)
+                continue
+            for request_bindings in binding_variants:
+                broad_state = ScopeState(
+                    bindings=request_bindings,
+                    managed_auth=managed_auth,
+                    request_modules=set(modules),
+                    sessions=set(sessions),
+                    direct_methods=set(direct_methods),
+                    session_factories=set(session_factories),
+                )
+                if not request_evaluation_is_safe(node, broad_state):
+                    report.error(
+                        "unsafe-request-expression",
+                        "Every HTTP request receiver and argument must stay inside the safe expression subset",
+                        node.lineno,
+                    )
+                inspect_request_credentials(node, broad_state, report)
+                inspect_request_timeout(node, request_bindings, report)
+                inspect_request_target(node, request_bindings, report)
 
     return report
 
@@ -2694,6 +2907,51 @@ def run_self_test() -> None:
             '    session.cookies.set("session", "synthetic-cookie-value-123456")',
             '    session.get(f"{BASE_URL}/private", timeout=30)', "test_case()"),
             "transport-mutation"),
+        "nested-session-mutation": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)', "    if True:",
+            "        session = requests.Session()", "        session.cookies.clear()", "test_case()"),
+            "transport-mutation"),
+        "escaped-session-mutation": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)', "    if True:",
+            "        session = requests.Session()", "    session.cookies.clear()", "test_case()"),
+            "transport-mutation"),
+        "nested-session-rebind": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)', "    session = {}",
+            "    if True:", "        session = requests.Session()",
+            "        session.cookies.clear()", "test_case()"), "transport-mutation"),
+        "escaped-managed-auth": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)', "    if True:",
+            "        headers = dict(__AUTH_HEADERS__)", "    headers.clear()", "test_case()"),
+            "managed-auth-mutation"),
+        "nested-request-import-rebind": (False, source(
+            "import json", "import requests", "def test_case():",
+            '    first = requests.get("https://staging.acme.com/health", timeout=30)',
+            "    from json import loads as send", "    if first.status_code == 200:",
+            "        from requests import get as send",
+            '        send("https://staging.acme.com/detail")', "test_case()"), "missing-timeout"),
+        "static-loop-timeout": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)',
+            "    for timeout in (30, 0):",
+            '        requests.get("https://staging.acme.com/detail", timeout=timeout)',
+            "test_case()"), "unbounded-timeout"),
+        "destructured-request-loop": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)',
+            '    for username, password in [("agent", "synthetic-password-value-123456")]:',
+            '        requests.get("https://staging.acme.com/private",',
+            "            auth=(username, password), timeout=30)", "test_case()"),
+            "unresolved-loop-binding"),
+        "request-loop-variant-cap": (False, source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)',
+            f"    for value in {tuple(range(65))!r}:",
+            '        requests.get("https://staging.acme.com/detail", timeout=30)',
+            "test_case()"), "unresolved-loop-binding"),
         "header-update-keyword": (False, source(
             "import requests", "def test_case():", "    headers = {}",
             '    headers.update(Authorization="synthetic-password-value-123456")',
@@ -2745,6 +3003,18 @@ def run_self_test() -> None:
             '    first = requests.get(f"{BASE_URL}/health", timeout=30)',
             '    second = requests.get(f"{BASE_URL}/status", timeout=30)',
             "    assert first.status_code == second.status_code", "test_case()"),
+        "try-else-binding": source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)', "    try:",
+            '        detail_url = "https://staging.acme.com/detail"', "    except ValueError:",
+            "        return", "    else:", "        requests.get(detail_url, timeout=30)",
+            "test_case()"),
+        "static-loop-binding": source(
+            "import requests", "def test_case():",
+            '    requests.get("https://staging.acme.com/health", timeout=30)',
+            '    for detail_url in ("https://staging.acme.com/one",',
+            '                       "https://staging.acme.com/two"):',
+            "        requests.get(detail_url, timeout=30)", "test_case()"),
         "response-annotation": source(
             "import requests", "def status(response: requests.Response) -> int:",
             "    return response.status_code", "def test_case():",
