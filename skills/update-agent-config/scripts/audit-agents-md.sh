@@ -26,7 +26,18 @@ fi
 cd "$root"
 
 find_pruned() {
-  find . \( -path './.git' -o -path './node_modules' -o -path './.venv' -o -path './vendor' \) -prune -o "$@" -print | sort
+  find . \( -path './.git' -o -path '*/.claude/worktrees' -o -name 'node_modules' -o -name '.venv' -o -name 'venv' -o -name 'vendor' -o -name '__pycache__' -o -name 'dist' -o -name 'target' -o -name 'DerivedData' -o -name 'Pods' \) -prune -o "$@" -print | sort
+}
+
+# Source files under a directory, with build/dependency noise pruned.
+# Extend the extension list rather than removing prunes.
+src_find() {
+  find "$1" \( -path '*/.*' -o -name 'node_modules' -o -name '.venv' -o -name 'venv' -o -name 'vendor' -o -name '__pycache__' -o -name 'dist' -o -name 'build' -o -name 'out' -o -name 'target' -o -name 'coverage' -o -name 'DerivedData' -o -name 'Pods' \) -prune -o -type f \( \
+    -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \
+    -o -name '*.py' -o -name '*.rs' -o -name '*.go' -o -name '*.swift' -o -name '*.kt' -o -name '*.java' \
+    -o -name '*.rb' -o -name '*.php' -o -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \
+    -o -name '*.cs' -o -name '*.m' -o -name '*.mm' -o -name '*.vue' -o -name '*.svelte' -o -name '*.sql' \
+  \) -print
 }
 
 print_section() {
@@ -122,6 +133,29 @@ print_section "Line counts"
   find_pruned -path './greptile.json'
 } | sed '/^$/d' | sort -u | while IFS= read -r file; do
   print_line_count "$file"
+done
+
+print_section "Folder coverage map"
+echo "Code-bearing directories (depth <= 2) vs. their nearest own AGENTS.md."
+echo "src-files/LOC counted recursively with build+dependency noise pruned."
+printf '%-40s %9s %9s  %s\n' "DIRECTORY" "SRC-FILES" "SRC-LOC" "AGENTS.md"
+coverage_dirs=$( { echo .; find . -mindepth 1 -maxdepth 2 -type d \
+  ! -name '.*' ! -path './.*' ! -path '*/.*' \
+  ! -name 'node_modules' ! -name 'vendor' ! -name 'venv' ! -name '__pycache__' \
+  ! -name 'dist' ! -name 'build' ! -name 'out' ! -name 'target' ! -name 'coverage' \
+  ! -name 'DerivedData' ! -name 'Pods' ! -name 'docs' ! -name 'doc' \
+  ! -name 'assets' ! -name 'images' ! -name 'public' ! -name 'static' ! -name 'fixtures'; } | sort)
+printf '%s\n' "$coverage_dirs" | while IFS= read -r dir; do
+  [ -d "$dir" ] || continue
+  files=$(src_find "$dir" | wc -l | tr -d ' ')
+  [ "$files" -eq 0 ] && continue
+  loc=$(src_find "$dir" | tr '\n' '\0' | xargs -0 cat 2>/dev/null | wc -l | tr -d ' ')
+  if [ -f "$dir/AGENTS.md" ]; then
+    marker="yes ($(wc -l < "$dir/AGENTS.md" | tr -d ' ') lines)"
+  else
+    marker="—"
+  fi
+  printf '%-40s %9s %9s  %s\n' "$dir" "$files" "$loc" "$marker"
 done
 
 print_section "Likely stale duplicate source-of-truth risks"

@@ -119,7 +119,7 @@ generate or refresh the config / instruction files another tool reads.
 - **[init-agent-config](skills/init-agent-config/)** — agents.md / claude.md / review.md hierarchies; folder-scoped guidance; native review adapters.
 - **[init-jean-json](skills/init-jean-json/)** — onboard a repo to jean: author jean.json + .worktreeinclude, prove them in a throwaway worktree, document in agents.md, retire test worktrees.
 - **[init-makefiles](skills/init-makefiles/)** — scaffold safe scenario makefiles (local dev, tunnels, deploys, r2 sync, supabase, railway, vercel, mac shipping).
-- **[update-agent-config](skills/update-agent-config/)** — audit agents.md / claude.md / review.md for drift after refactors; refresh refs, recount frequency tables, fill gap folders.
+- **[update-agent-config](skills/update-agent-config/)** — audit agents.md / claude.md / review.md for drift after refactors; refresh refs, recount tables, map folder coverage, fill only invariant-dense gap folders.
 
 `/plugin install yk-config@yigitkonur`
 

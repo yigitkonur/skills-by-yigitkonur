@@ -130,14 +130,28 @@ Only create a section when repo evidence justifies it.
 
 Start from the filesystem, not from templates.
 
-1. Run `tree -d .` or `tree -dL 2 .`.
+1. Scan the tree with `treezip .` when available (compressed brace-grouped output with build
+   noise pre-filtered), otherwise `tree -d .` or `tree -dL 2 .`. If one subtree floods the
+   output anyway (vendored deps, checked-in worktrees), skip to where the real source resumes —
+   don't page through noise and don't write a parser for it.
 2. Mark the repo root plus each meaningful `src/*`, `apps/*`, `services/*`, or `packages/*` folder.
 3. After the audit, create a local `AGENTS.md` for each first-level subtree with its own workflow, entry points, or failure modes.
 4. If the audit proves a folder has no distinct workflow, risk, or convention, skip it or collapse the guidance into the parent.
 5. If a folder has a small but real local delta, keep the file short instead of moving the detail to the root.
 6. Add deeper nesting only when the second-level subtree has genuinely different rules from its parent.
 
-**Default bias:** if `src/` contains `api/`, `components/`, `lib/`, and `jobs/`, assume each is a candidate for its own file unless the audit proves there is no local signal.
+**Selection test — a folder earns its own file only when all four hold:**
+
+| Test | Passes when | Fails when (→ skip) |
+|------|-------------|---------------------|
+| Code-bearing | Real source files live here | Data, assets, generated output, planning docs |
+| Substantial | ~10+ source files or ~1,500+ LOC (soft floor) | A handful of small helpers — unless one holds a dangerous invariant |
+| Invariant-dense | Rules the code can't show: protocol facts, ordering contracts, "never do X" traps, test gotchas | Conventional glue: utility helpers, thin view wrappers, generated bindings, standard CRUD |
+| Not already covered | Nearest ancestor `AGENTS.md` lacks these rules | Parent file already carries them — prefer one file at the subsystem root over one per leaf |
+
+Expect to skip most folders. On a mid-size repo a healthy pass yields 2–4 folder files. Every
+skip is reported with a one-line reason so the user can veto — "conventional UI code",
+"8 files / 400 LOC utility folder", "covered by `src/AGENTS.md`".
 
 ## Example Hierarchy
 

@@ -1,6 +1,6 @@
 ---
 name: update-agent-config
-description: "Use skill if you are auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: stale file:line refs, frequency-table recounts, invalidated rules, or missing AGENTS.md for code-bearing gap folders."
+description: "Use skill if you are auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: stale file:line refs, recounts, invalidated rules, folder-coverage maps, or deciding which gap folders earn a folder-scoped AGENTS.md."
 ---
 
 # Update Agent Config
@@ -16,7 +16,8 @@ This skill assumes the AGENTS hierarchy already exists. For greenfield creation 
 - *"verify every `file:line` reference in `src/AGENTS.md` is correct"*
 - *"recompute the color / font-size / spacing frequency tables in `src/AGENTS.md`"*
 - *"the doc claims X but the code now says Y — sweep the drift across all docs"*
-- *"find every code folder without an `AGENTS.md` and write one"*
+- *"find every code folder without an `AGENTS.md` and write one"* (expect mostly skips — see Phase 0 selection test)
+- *"show me which folders have AGENTS.md coverage and how big each file is"*
 - *"the schema version changed; sweep all docs that quote the old literal"*
 - *"docs marked `NOT YET LANDED` for files that now exist — fix the manifest tables"*
 
@@ -65,6 +66,9 @@ Hard guardrails — read every run.
 | Voice rewrite ("I made it more readable") | Patch in place; if you can't make a surgical edit, the change isn't ready |
 | Auditing only headlines, missing prose claims | Every paragraph with a `file.ext:line` token is in scope |
 | Adding new sections during update | Update mode only — new content goes to a separate `init-agent-config` pass |
+| One AGENTS.md per directory ("coverage looks thorough") | Most folders are skips; a file needs invariants, not just code. 2–4 new files per pass is healthy |
+| Paging through build noise in the tree scan | Use treezip (or prune by hand), find where real source resumes, read that — never script around it |
+| Verifying claims inside a stale worktree / vendored copy | Resolve every path against the repo's live source tree before grepping |
 
 ## Scripts
 
@@ -72,7 +76,7 @@ Resolve script paths relative to this skill directory.
 
 | Script | Use when | Mutates |
 |---|---|---|
-| `scripts/audit-agents-md.sh` | Phase 0 inventory + post-edit re-audit: existing surfaces, line counts, companion symlink status, duplicate-source risk. See `scripts/audit-agents-md.sh.md`. | No |
+| `scripts/audit-agents-md.sh` | Phase 0 inventory + post-edit re-audit: existing surfaces, line counts, companion symlink status, folder coverage map (src-files / LOC / AGENTS.md per code folder), duplicate-source risk. See `scripts/audit-agents-md.sh.md`. | No |
 
 The init-only `scaffold-agents-md.sh` was dropped — update-mode never emits greenfield skeletons.
 
@@ -102,9 +106,16 @@ Each phase has a gate. Do not skip forward. See `references/audit-and-update.md`
 
 Three reads, no writes:
 
-1. **Existing surfaces.** `bash scripts/audit-agents-md.sh` from the repo root — lists every `AGENTS.md`, `CLAUDE.md` (with symlink target), `REVIEW.md`, native adapter, and current line counts.
-2. **Gap folders.** `tree -dL 2 .` (or `tree -dL 3` for monorepos). Cross-reference: which **code-bearing** folders (have `*.ts` / `*.py` / `*.rs` / etc., usually with a `tsconfig.json` / `package.json` of their own) have **no** local `AGENTS.md`? Those are gap candidates. Skip data/asset folders, generated output, and planning artifacts.
-3. **Churn signal — the steering trick.** For each existing doc, get its last edit timestamp:
+1. **Existing surfaces + coverage map.** `bash scripts/audit-agents-md.sh` from the repo root — lists every `AGENTS.md`, `CLAUDE.md` (with symlink target), `REVIEW.md`, native adapter, current line counts, **and a folder coverage map**: each code-bearing directory (depth ≤ 2) with its source-file count, source LOC, and whether it has its own `AGENTS.md` (with line count). This table is the gap-detection input — read it, don't recompute it by hand.
+2. **Tree scan.** Prefer `treezip .` (compressed, AI-readable tree; `npm i -g treezip`) over raw `tree` — it brace-groups siblings and hardcodes an aggressive noise filter (VCS dirs, `node_modules`, venvs, caches, `DerivedData`, worktrees under `.claude/`), so the structure fits in context without hand-filtering. Fall back to `tree -dL 2 .` (`-dL 3` for monorepos) when treezip isn't installed. Either way, **budget the read**: if the output is dominated by one noisy subtree (vendored deps, build products, checked-in worktrees), locate where the real source tree resumes and read that section — never page through build noise, and never write a one-off script to parse the tree.
+3. **Gap folders — select, don't enumerate.** From the coverage map, a folder is a gap **candidate** only when all of these hold:
+   - **Code-bearing:** it has real source files (the map's SRC-FILES column), not just data, assets, generated output, or planning artifacts.
+   - **Substantial:** rough floor ~10 source files or ~1,500 LOC. Below that, a folder earns a file only if it holds a genuinely dangerous invariant.
+   - **Invariant-dense:** it owns rules an agent can't infer from the code — protocol facts, ordering contracts, "never do X" traps, local test gotchas. A folder of conventional glue (small utility helpers, thin view wrappers, generated bindings, test scaffolding) gets **no file no matter its size** — the root doc plus code reading covers it.
+   - **Not already covered:** its nearest ancestor `AGENTS.md` doesn't already carry the folder's rules. Prefer one file at the subsystem root (e.g. `src/transcription/`) over one per leaf (`cloud/`, `engine/`, `streaming/`).
+
+   Expect to **skip most folders.** A healthy pass on a mid-size repo adds 2–4 folder files, not one per directory. In the Quality Report, list skipped candidates with a one-line reason each ("conventional UI code", "covered by root") so the user can veto.
+4. **Churn signal — the steering trick.** For each existing doc, get its last edit timestamp:
    ```bash
    git log -1 --format=%ct -- <doc>
    ```
@@ -126,7 +137,16 @@ Output the report — no edits yet. Format in `references/audit-and-update.md`. 
 | Gap folders | N | — | — | List |
 | Native adapters | N | — | — | List |
 
-Per-file: score + 5-line summary of what's drifted (line refs / invalidated rules / missing content / internal contradictions). Then ask the user:
+Then the **coverage table** — every code-bearing folder from the Phase 0 map, so the user sees what exists, how big it is, and what you propose:
+
+| Folder | Src files | Src LOC | AGENTS.md | Decision |
+|---|---|---|---|---|
+| `src/api/` | 41 | 7,200 | yes (65 lines) | audit for drift |
+| `src/transcription/` | 29 | 4,800 | — | **author** (invariant-dense) |
+| `src/components/` | 76 | 13,000 | — | skip: conventional UI, covered by root |
+| `src/utils/` | 8 | 400 | — | skip: small utility folder |
+
+Every skipped row carries its one-line reason. Per-file: score + 5-line summary of what's drifted (line refs / invalidated rules / missing content / internal contradictions). Then ask the user:
 
 1. Which files to fix (default: all flagged as drift > 0)
 2. Which gap folders to fill (default: code-bearing ones only)
@@ -194,6 +214,8 @@ These are the under-used patterns. Reach for them when the audit feels generic.
 - **Symbol rename detector.** If the auditor finds "function `foo` no longer exists at the cited line", run `git log -S 'foo' -- <file>` to find the rename commit. Update to the new name.
 - **Stub-graduation sweep.** Any line containing "NOT YET LANDED" / "not yet built" / "deferred" is a candidate for an `ls`-based audit.
 - **Test-file existence cross-check.** Manifest tables that claim "Tests: none" can be falsified by `ls <module>.test.*`.
+- **Coverage-map thresholds as a conversation, not a law.** The ~10-file / ~1,500-LOC floor filters candidates; the invariant-density test decides. A 4-file folder holding a wire protocol earns a file; a 40-file folder of CRUD forms doesn't.
+- **Mine merged-PR descriptions and review findings for gap-file content.** The invariants worth writing down usually surfaced somewhere: adversarial review rounds, PR descriptions, fix commits (`git log --grep=fix -- <folder>`). Verify each against HEAD before encoding it — a review finding may have been fixed differently than described.
 
 ## Reference routing
 

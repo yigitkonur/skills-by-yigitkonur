@@ -18,6 +18,12 @@ Run it during the initial audit before editing existing instruction files. It de
 - root and nested `REVIEW.md`
 - common native surfaces: `.claude/`, `GEMINI.md`, `.cursor/`, `.cursorrules`, Copilot, and Greptile files
 - line counts for discovered instruction files
+- **folder coverage map**: every code-bearing directory (depth ≤ 2) with recursive source-file
+  count, source LOC, and its own `AGENTS.md` status + line count — the gap-detection input.
+  Source counting prunes dot-directories, dependency dirs (`node_modules`, venvs, `vendor`,
+  `Pods`), and build output (`dist`, `build`, `out`, `target`, `coverage`, `DerivedData`), and
+  matches common source extensions only. A folder showing `—` is a gap *candidate*, not a
+  mandate — the skill's invariant-density test decides.
 - likely stale duplicate source-of-truth risks
 
 Wrapper detection treats symlinks, direct `@AGENTS.md` wrappers, and very small files that point to `AGENTS.md` as companions. Larger files that mention `AGENTS.md` are still reported as independent so they can be inspected for drift.
