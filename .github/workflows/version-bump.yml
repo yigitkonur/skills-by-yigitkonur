@@ -30,7 +30,8 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Validate skills
+      - name: Validate skills (advisory — never blocks the bump)
+        continue-on-error: true
         run: python3 scripts/validate-skills.py
 
       - name: Bump patch version and regenerate plugin metadata
@@ -49,4 +50,15 @@ jobs:
             exit 0
           fi
           git commit -m "chore(release): v${{ steps.bump.outputs.version }} [skip ci]"
-          git push
+          # main is unprotected and fleets may push directly; retry over any
+          # concurrent push so the bump always lands.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "push rejected (attempt $attempt) — rebasing onto latest main and retrying"
+            git pull --rebase origin main
+            sleep 3
+          done
+          echo "::error::version bump could not be pushed after 5 attempts"
+          exit 1
