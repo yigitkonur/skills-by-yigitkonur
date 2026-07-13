@@ -1,6 +1,6 @@
 ---
 name: search-it-bulk-by-codex
-description: Use skill if you are running many small Codex-native web searches through codex exec with per-question files and parseable answer artifacts.
+description: "Use if running many small Codex-native web searches via codex exec with parseable answers."
 ---
 
 # search-it-bulk-by-codex

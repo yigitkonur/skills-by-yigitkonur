@@ -1,6 +1,6 @@
 ---
 name: build-mcp-server-sdk-v2
-description: "Use skill if you are building or maintaining MCP servers on @modelcontextprotocol/server v2 alpha — split packages, McpServer, registerTool, ctx.mcpReq handler context."
+description: "Use if building MCP servers on @modelcontextprotocol/server v2 alpha — split packages, registerTool."
 ---
 
 # Build MCP Server (SDK v2 Alpha)

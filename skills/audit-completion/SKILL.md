@@ -1,6 +1,6 @@
 ---
 name: audit-completion
-description: Use skill if you are verifying claimed-done work, auditing session/plan/branch completion, finding partial or assumed-complete tasks, or answering "are we done?" with evidence.
+description: "Use if verifying claimed-done work or auditing session/plan/branch completion with evidence."
 ---
 
 # Check Completion

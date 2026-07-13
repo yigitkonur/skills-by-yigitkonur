@@ -1,6 +1,6 @@
 ---
 name: run-review
-description: Use skill if you are reviewing a PR or diff, asking for review on your branch, triaging received review feedback, or delegating review to codex.
+description: "Use if reviewing a PR/diff, requesting review on your branch, triaging feedback, or delegating."
 ---
 
 # run-review

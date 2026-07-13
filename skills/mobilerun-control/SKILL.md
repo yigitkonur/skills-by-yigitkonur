@@ -1,6 +1,6 @@
 ---
 name: mobilerun-control
-description: Use skill if you are controlling, automating, or testing a connected Android phone via the mobilerun CLI — tapping, typing, swiping, reading the screen, or running a multi-step on-device task.
+description: "Use if controlling or testing a connected Android phone via the mobilerun CLI — tap, type, swipe."
 allowed-tools: Bash(mobilerun:*) Bash(adb:*) Read
 ---
 

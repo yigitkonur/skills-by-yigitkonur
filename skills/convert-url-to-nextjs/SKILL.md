@@ -1,6 +1,6 @@
 ---
 name: convert-url-to-nextjs
-description: Use skill if you are rebuilding a deployed site as a Next.js project AS-IS pixel-faithful from a live URL, lost-frontend repo recovery, or .html snapshot.
+description: "Use if rebuilding a live URL or .html snapshot as a pixel-faithful AS-IS Next.js project."
 ---
 
 # Convert URL or HTML Snapshot to Next.js — AS-IS Pixel-Faithful Rebuild

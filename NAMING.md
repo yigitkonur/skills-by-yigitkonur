@@ -60,7 +60,7 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 2. **Frontmatter `name`** — must exactly match the directory name (per agentskills.io spec)
 3. **Per-skill `README.md` heading** — must exactly match directory name
 4. **Cross-skill references** — always use canonical repo-local names
-5. **Description** — starts with `Use skill if you are`, 30 words or fewer, describes when to trigger
+5. **Description** — starts with `Use if`, 100 characters or fewer, describes when to trigger
 
 ## Anti-Patterns
 

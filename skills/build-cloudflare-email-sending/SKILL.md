@@ -1,9 +1,6 @@
 ---
 name: build-cloudflare-email-sending
-description: >-
-  Use skill if you are migrating email to Cloudflare Email Service, replacing
-  Resend, SES, Postmark, or Supabase Auth mailer, wiring a send_email Worker
-  binding, or architecting Cloudflare email sending.
+description: "Use if sending email via Cloudflare Email Service, replacing Resend/SES/Postmark or send_email."
 ---
 
 # Build Cloudflare Email Sending

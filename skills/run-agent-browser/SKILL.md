@@ -1,6 +1,6 @@
 ---
 name: run-agent-browser
-description: Use skill if you are driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, sessions, forms, extraction, screenshots, headed/stealth, or provider runs.
+description: "Use if driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, forms."
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 ---
 

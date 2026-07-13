@@ -1,6 +1,6 @@
 ---
 name: init-makefiles
-description: Use skill if you are scaffolding or refreshing Makefile targets for local dev, tunnels, deploys, R2 sync, Supabase, Railway, Vercel, or Mac shipping.
+description: "Use if scaffolding Makefile targets for dev, tunnels, deploys, R2, Supabase, Railway, Vercel."
 ---
 
 # init-makefiles

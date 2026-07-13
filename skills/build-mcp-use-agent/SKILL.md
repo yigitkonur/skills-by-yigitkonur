@@ -1,6 +1,6 @@
 ---
 name: build-mcp-use-agent
-description: Use skill if you are building or auditing TypeScript mcp-use MCPAgent code where an LLM picks and orchestrates MCP tools via run, stream, or streamEvents.
+description: "Use if building TypeScript mcp-use MCPAgent code where an LLM orchestrates MCP tools (run/stream)."
 ---
 
 # Build MCP Use Agent
@@ -151,7 +151,7 @@ Scripts live in `scripts/` beside this skill. Use `--help` first when the task i
 ## Final checks
 
 - `SKILL.md` stays lean and routes every reference file.
-- Frontmatter description starts with `Use skill if you are` and is 30 words or fewer.
+- Frontmatter description starts with `Use if` and is 100 characters or fewer.
 - No stale hard-coded `mcp-use` version claims remain.
 - Node runtime guidance matches the latest npm `engines` result.
 - Provider/model claims follow the verification policy instead of dated catalogs.

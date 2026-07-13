@@ -1,6 +1,6 @@
 ---
 name: build-kernel-ts-sdk
-description: Use skill if you are building TypeScript browser-automation agents or apps on the Kernel SDK (`@onkernel/sdk`) — browsers, Apps, profiles, Managed Auth, pools, Playwright/CDP wiring.
+description: "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools."
 ---
 
 # Build Kernel TS SDK

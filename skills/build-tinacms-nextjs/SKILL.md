@@ -1,6 +1,6 @@
 ---
 name: build-tinacms-nextjs
-description: Use skill if you are building or extending a TinaCMS-backed Next.js App Router site with tina/config.ts, MDX/git-backed content, schema modeling, useTina visual editing, or TinaCloud/self-hosted deploys.
+description: "Use if building a TinaCMS + Next.js App Router site — tina/config.ts, MDX content, useTina editing."
 ---
 
 # Build TinaCMS Next.js

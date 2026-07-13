@@ -1,6 +1,6 @@
 ---
 name: build-effect-ts-v3
-description: "Use skill if you are building TypeScript code with Effect-TS v3 — effect@3.x, @effect/*, Effect.gen, Layer, Schema, typed errors, fibers, Stream."
+description: "Use if building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream."
 ---
 
 # Build Effect-TS v3

@@ -1,6 +1,6 @@
 ---
 name: audit-ux-and-save-files
-description: Use skill if you are auditing a running app's usability from real personas walking their journeys, saving per-issue findings to a dated persona/journey tree and recommending major changes, not fixes.
+description: "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree."
 ---
 
 # Audit UX and Save Files

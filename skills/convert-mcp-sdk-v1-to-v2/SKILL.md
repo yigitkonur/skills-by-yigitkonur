@@ -1,6 +1,6 @@
 ---
 name: convert-mcp-sdk-v1-to-v2
-description: "Use skill if you are porting an existing MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 split-package SDK with package renames, ServerContext, and Zod v4."
+description: "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK."
 ---
 
 # Convert MCP Server (SDK v1 → v2)

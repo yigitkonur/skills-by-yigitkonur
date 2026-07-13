@@ -1,6 +1,6 @@
 ---
 name: run-deep-research
-description: Use skill if you are running deep multi-file research over 5+ entities or a market/category — a wave-dispatched evidence corpus on disk, executed by Claude subagents or codex exec.
+description: "Use if running deep multi-file research over 5+ entities or a market — wave-dispatched corpus."
 ---
 
 # Run Deep Research

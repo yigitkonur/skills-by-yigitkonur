@@ -1,6 +1,6 @@
 ---
 name: run-research
-description: Use skill if you are answering one technical research question with current web evidence, Reddit practitioner experience, and source-backed synthesis, optionally fanned out across parallel subagents.
+description: "Use if answering one technical research question with current web + practitioner evidence."
 ---
 
 # Technical Research
@@ -208,8 +208,8 @@ handling, and worked output examples.
 
 ## Final checks
 
-- `description` is single-line, starts with `Use skill if you are`, and
-  is ≤30 words
+- `description` is single-line, starts with `Use if`, and
+  is ≤100 characters
 - `run-research` target-specific validator checks pass
 - every reference file remains routed from `SKILL.md`
 - output contract includes source attribution and unresolved gaps

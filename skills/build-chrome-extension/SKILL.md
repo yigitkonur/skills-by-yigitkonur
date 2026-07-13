@@ -1,6 +1,6 @@
 ---
 name: build-chrome-extension
-description: Use skill if you are building or debugging a Chrome MV3 extension — manifest.json v3, service_worker, content_scripts, chrome.runtime/storage/alarms, popup, side_panel, declarativeNetRequest, or Web Store packaging.
+description: "Use if building or debugging a Chrome MV3 extension — manifest v3, service_worker, content_scripts."
 ---
 
 # Build Chrome Extension

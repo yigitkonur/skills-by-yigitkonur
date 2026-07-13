@@ -1,6 +1,6 @@
 ---
 name: build-clean-mcp-architecture
-description: Use skill if you are placing, refactoring, or auditing TypeScript mcp-use/server code under src/ and need Clean Architecture layer boundaries, folder layout, import direction, or dependency-cruiser gates.
+description: "Use if structuring or auditing TypeScript mcp-use/server code for Clean Architecture boundaries."
 ---
 
 # Apply Clean MCP Architecture

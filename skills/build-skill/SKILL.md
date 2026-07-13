@@ -1,6 +1,6 @@
 ---
 name: build-skill
-description: Use skill if you are creating a new Claude skill, redesigning one, or merging multiple skills, and need evidence-based research and comparison before writing SKILL.md.
+description: "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md."
 ---
 
 # Synthesize Skills

@@ -1,6 +1,6 @@
 ---
 name: deploy-coolify-cloud
-description: Use skill if you are deploying or updating a docker-compose service on Coolify Cloud (app.coolify.io) via its API — setting domains, connecting services, env secrets, or verifying a deploy.
+description: "Use if deploying/updating a docker-compose service on Coolify Cloud via its API — domains, env."
 ---
 
 # deploy-coolify-cloud

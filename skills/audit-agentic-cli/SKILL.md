@@ -1,6 +1,6 @@
 ---
 name: audit-agentic-cli
-description: Use skill if you are auditing or designing a CLI for agent/LLM consumption — stable JSON output, exit codes, non-interactive flags, or iterative repair loops for machine-generated artifacts.
+description: "Use if auditing or designing a CLI for agent/LLM use — JSON output, exit codes, non-interactive."
 ---
 
 # audit-agentic-cli

@@ -1,6 +1,6 @@
 ---
 name: run-railway
-description: Use skill if you are running railway CLI commands for deploys, logs, env vars, link, ssh, db shells, scaling, or reconciling installed CLI vs upstream docs.
+description: "Use if running railway CLI — deploys, logs, env vars, link, ssh, db shells, scaling."
 ---
 
 # run-railway

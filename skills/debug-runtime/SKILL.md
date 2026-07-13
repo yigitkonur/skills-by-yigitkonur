@@ -1,6 +1,6 @@
 ---
 name: debug-runtime
-description: Use skill if you are chasing a reproducible runtime bug, intermittent failure, or repeated failed fixes and need a language-agnostic 4-phase root-cause workflow before editing product code.
+description: "Use if chasing a reproducible runtime bug or repeated failed fixes with a 4-phase root-cause pass."
 ---
 
 # Do Debug

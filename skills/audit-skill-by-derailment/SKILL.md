@@ -1,6 +1,6 @@
 ---
 name: audit-skill-by-derailment
-description: Use skill if you are testing or hardening an existing SKILL.md by running a fresh subagent on a real task and editing the skill where the trace shows friction.
+description: "Use if hardening a SKILL.md by running a fresh subagent on a real task and fixing where it snags."
 ---
 
 # Enhance Skill by Derailment

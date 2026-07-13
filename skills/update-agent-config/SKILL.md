@@ -1,6 +1,6 @@
 ---
 name: update-agent-config
-description: "Use skill if you are auditing AGENTS.md/CLAUDE.md/REVIEW.md hierarchies for drift after refactors: stale file:line refs, recounts, invalidated rules, folder-coverage maps, or deciding which gap folders earn a folder-scoped AGENTS.md."
+description: "Use if auditing AGENTS.md/CLAUDE.md/REVIEW.md for drift after refactors — stale refs, rules."
 ---
 
 # Update Agent Config

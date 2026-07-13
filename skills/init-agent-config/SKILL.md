@@ -1,6 +1,6 @@
 ---
 name: init-agent-config
-description: Use skill if you are creating, auditing, or migrating CLAUDE.md, AGENTS.md, or REVIEW.md instruction files, folder-scoped agent guidance, or cross-agent companion entrypoints.
+description: "Use if creating, auditing, or migrating CLAUDE.md/AGENTS.md/REVIEW.md instruction files."
 ---
 
 # Init Agent Config

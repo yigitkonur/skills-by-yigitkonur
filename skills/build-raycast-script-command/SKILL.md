@@ -1,6 +1,6 @@
 ---
 name: build-raycast-script-command
-description: Use skill if you are authoring or fixing a Raycast Script Command (.sh or .py with @raycast.* metadata header) and need correct fields, modes, arguments, or discovery.
+description: "Use if authoring or fixing a Raycast Script Command (@raycast.* metadata header) — fields, modes."
 ---
 
 # Build Raycast Script Command

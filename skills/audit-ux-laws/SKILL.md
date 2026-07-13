@@ -1,6 +1,6 @@
 ---
 name: audit-ux-laws
-description: "Use skill if you are building or auditing UI against the 30 Laws of UX — Fitts's, Hick's, Miller's, Jakob's, Gestalt, choice overload, or cognitive load."
+description: "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load)."
 ---
 
 # Audit UX Laws

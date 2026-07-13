@@ -1,6 +1,6 @@
 ---
 name: build-mcp-server-sdk-v1
-description: "Use skill if you are building or maintaining a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod schemas, RequestHandlerExtra, McpServer."
+description: "Use if building a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod."
 ---
 
 # Build MCP Server (SDK v1.x)

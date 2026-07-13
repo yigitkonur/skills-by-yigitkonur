@@ -1,6 +1,6 @@
 ---
 name: run-repo-cleanup
-description: Use skill if you are finishing a project and want every live branch and worktree reviewed and merged into main locally, dangling branches retired, and junk swept aside.
+description: "Use if finishing a project — review and merge every branch/worktree into main, retire dead branches."
 ---
 
 # Run Repo Cleanup

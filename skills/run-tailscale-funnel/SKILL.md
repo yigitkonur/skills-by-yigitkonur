@@ -1,6 +1,6 @@
 ---
 name: run-tailscale-funnel
-description: Use skill if you are exposing a local HTTP server at a public `.ts.net` URL via Tailscale Funnel for agent-browser navigation, mobile testing, webhooks, or shared dev demos.
+description: "Use if exposing a local HTTP server at a public .ts.net URL via Tailscale Funnel."
 ---
 
 # run-tailscale-funnel

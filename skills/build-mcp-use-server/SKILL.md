@@ -1,6 +1,6 @@
 ---
 name: build-mcp-use-server
-description: Use skill if you are building TypeScript MCP servers with mcp-use/server — server.tool, response helpers, ctx.auth, sessions, transports, widgets, Inspector, deploy.
+description: "Use if building TypeScript MCP servers with mcp-use/server — server.tool, ctx.auth, transports."
 ---
 
 # Build mcp-use Server

@@ -3,7 +3,7 @@
 
 Checks:
   1. Reference linkage — every file in references/ must be linked from SKILL.md
-  2. Frontmatter — name matches directory, description format and word count
+  2. Frontmatter — name matches directory, description format and length
   3. SKILL.md length — SKILL.md must stay under 500 lines
   4. No junk files (.DS_Store, .swp, evals, LICENSE inside skills)
 
@@ -133,7 +133,7 @@ def check_references(skill_name, skill_dir):
 
 
 def check_frontmatter(skill_name, skill_dir):
-    """Check frontmatter name, description format, and word count."""
+    """Check frontmatter name, description format, and length."""
     errors = []
     skill_md = os.path.join(skill_content_dir(skill_dir, skill_name), "SKILL.md")
 
@@ -154,14 +154,13 @@ def check_frontmatter(skill_name, skill_dir):
         errors.append("frontmatter missing description")
         return errors
 
-    if not description.startswith("Use skill if you are"):
+    if not description.startswith("Use if "):
         errors.append(
-            f'description must start with "Use skill if you are" — got: "{description[:60]}..."'
+            f'description must start with "Use if " — got: "{description[:60]}..."'
         )
 
-    word_count = len(description.split())
-    if word_count > 30:
-        errors.append(f"description is {word_count} words (max 30)")
+    if len(description) > 100:
+        errors.append(f"description is {len(description)} chars (max 100)")
 
     return errors
 

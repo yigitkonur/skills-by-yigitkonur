@@ -1,6 +1,6 @@
 ---
 name: run-codex-adversarial-loop
-description: Use skill if you are fanning out many parallel Codex adversarial reviews across derived lenses, independently verifying every finding, fixing confirmed issues in grouped worktrees, and looping until clean.
+description: "Use if fanning out parallel Codex adversarial reviews, verifying findings, fixing in worktrees."
 ---
 
 # Run Codex Adversarial Review Loop

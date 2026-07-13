@@ -1,6 +1,6 @@
 ---
 name: build-sentry-macos-swift
-description: Use skill if you are adding, deepening, or auditing Sentry crash reporting and observability in a macOS or Swift app: install, dSYM, breadcrumbs, tags, tracing, privacy scrubbing.
+description: "Use if adding or auditing Sentry crash reporting in a macOS/Swift app — dSYM, breadcrumbs, tracing."
 ---
 
 # Build Sentry Into a macOS / Swift App

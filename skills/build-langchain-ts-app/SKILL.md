@@ -1,6 +1,6 @@
 ---
 name: build-langchain-ts-app
-description: Use skill if you are building TypeScript apps that import `langchain` or `@langchain/*` for agents, tool-calling, RAG retrievers, structured output, streaming, or LangGraph `StateGraph` workflows.
+description: "Use if building TypeScript apps with langchain/@langchain — agents, RAG, structured output."
 ---
 
 # Build LangChain TypeScript App

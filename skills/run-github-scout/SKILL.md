@@ -1,6 +1,6 @@
 ---
 name: run-github-scout
-description: Use skill if you are discovering GitHub repos, shortlisting candidates for a concrete need, or comparing OSS projects with adaptive search and repo evidence.
+description: "Use if discovering GitHub repos, shortlisting candidates, or comparing OSS with repo evidence."
 version: 1.0.0
 ---
 

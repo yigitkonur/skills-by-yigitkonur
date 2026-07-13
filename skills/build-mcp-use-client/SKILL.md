@@ -1,6 +1,6 @@
 ---
 name: build-mcp-use-client
-description: Use skill if you are writing TypeScript MCP client code with mcp-use — MCPClient, MCPSession, useMcp, McpClientProvider, mcp-use/browser, mcp-use/react, or npx mcp-use client.
+description: "Use if writing TypeScript mcp-use MCP client code — MCPClient, MCPSession, useMcp, mcp-use/react."
 ---
 
 # Build mcp-use Client

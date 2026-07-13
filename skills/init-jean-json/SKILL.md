@@ -1,6 +1,6 @@
 ---
 name: init-jean-json
-description: Use skill if you are onboarding a repo to Jean or authoring jean.json and .worktreeinclude — worktree setup/run/teardown/ports proven in a throwaway test worktree, then documented in AGENTS.md.
+description: "Use if onboarding a repo to Jean — jean.json and .worktreeinclude setup, run, teardown, ports."
 ---
 
 # init-jean-json

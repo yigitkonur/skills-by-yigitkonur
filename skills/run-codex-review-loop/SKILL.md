@@ -1,6 +1,6 @@
 ---
 name: run-codex-review-loop
-description: Use skill if you are running Codex review loops across current branches, multiple lenses, comparisons, convergence rounds, or saved review runs.
+description: "Use if running Codex review loops across branches, lenses, comparisons, or convergence rounds."
 ---
 
 # run-codex-review-loop

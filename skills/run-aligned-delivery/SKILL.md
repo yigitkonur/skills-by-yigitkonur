@@ -1,6 +1,6 @@
 ---
 name: run-aligned-delivery
-description: Use skill if you are driving a large, ambiguous initiative (modernize, rewrite, migrate, greenfield, or a multi-component bug hunt) and want scored multi-round question alignment before orchestrating parallel execution.
+description: "Use if driving a large ambiguous initiative with scored question alignment before parallel exec."
 ---
 
 # Run Aligned Delivery

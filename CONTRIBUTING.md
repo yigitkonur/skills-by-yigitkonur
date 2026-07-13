@@ -30,7 +30,7 @@ The only required file. It has two parts: YAML frontmatter and markdown body.
 ```markdown
 ---
 name: my-skill
-description: Use skill if you are applying a specific workflow this skill owns.
+description: Use if applying a specific workflow this skill owns.
 ---
 
 # My Skill
@@ -40,8 +40,8 @@ The body is the actual instruction set the agent follows.
 
 **Frontmatter rules:**
 - `name` must exactly match the directory name
-- `description` must start with `Use skill if you are`
-- `description` must be 30 words or fewer
+- `description` must start with `Use if`
+- `description` must be 100 characters or fewer
 - `description` is the trigger -- write when to load the skill, not a body summary
 - Include concrete phrases, tools, file patterns, or workflows when they help routing
 - Keep it specific enough to avoid collisions with neighboring skills
@@ -73,7 +73,7 @@ Good reference docs:
    mkdir -p skills/my-skill/references skills/my-skill/scripts
    ```
 
-2. **Write `SKILL.md`** at `skills/my-skill/SKILL.md` -- start with a frontmatter trigger description that begins with `Use skill if you are`, stays within 30 words, and clearly tells the agent when to load the skill.
+2. **Write `SKILL.md`** at `skills/my-skill/SKILL.md` -- start with a frontmatter trigger description that begins with `Use if`, stays within 100 characters, and clearly tells the agent when to load the skill.
 
 3. **Add reference docs** if the skill needs them -- make sure every file is explicitly referenced in `SKILL.md`.
 
@@ -99,8 +99,8 @@ Before submitting:
 
 - [ ] SKILL.md is at `skills/<name>/SKILL.md` (flat layout per agentskills.io spec)
 - [ ] `name` in `SKILL.md` frontmatter matches the directory name exactly
-- [ ] `description` starts with `Use skill if you are`
-- [ ] `description` is 30 words or fewer
+- [ ] `description` starts with `Use if`
+- [ ] `description` is 100 characters or fewer
 - [ ] `description` includes trigger phrases a user would actually say
 - [ ] Every file in `references/` is explicitly referenced in `SKILL.md`
 - [ ] No unreferenced files, dead content, or stale sibling-skill names remain
@@ -135,7 +135,7 @@ git config core.hooksPath .githooks
 This runs `scripts/validate-skills.py` before every push. The hook catches:
 - Orphaned reference files not linked from SKILL.md
 - SKILL.md referencing non-existent files
-- Bad frontmatter (wrong name, missing "Use skill if you are", >30 words)
+- Bad frontmatter (wrong name, missing "Use if", >100 chars)
 - Junk files (evals/, .DS_Store, LICENSE inside skills)
 
 ---
@@ -150,6 +150,6 @@ This runs `scripts/validate-skills.py` before every push. The hook catches:
 | Reference layout | Flat or nested under `references/` |
 | SKILL.md size | Prefer lean routing files; move deep detail to references when needed |
 | Reference doc size | Split when navigation becomes hard, not by a rigid line count |
-| Frontmatter description | Start with `Use skill if you are`, stay within 30 words, and optimize for trigger clarity |
+| Frontmatter description | Start with `Use if`, stay within 100 characters, and optimize for trigger clarity |
 | Code examples in SKILL.md | Use fenced blocks with language tags |
 | Good/bad pattern examples | Label with `### Good` / `### Bad` headers |

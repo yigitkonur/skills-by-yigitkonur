@@ -1,6 +1,6 @@
 ---
 name: publish-npm-package
-description: Use skill if you are publishing to npm via GitHub Actions release workflow with trusted publishing, NPM_TOKEN, provenance, semantic-release, changesets, release-please, or fixing npm publish CI.
+description: "Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release."
 ---
 
 # Publish npm Package

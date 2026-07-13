@@ -1,6 +1,6 @@
 ---
 name: audit-agentic-mcp
-description: "Use skill if you are auditing an existing MCP server for agent-readiness, designing a new MCP server before any code, or deciding framework, security, and context posture."
+description: "Use if auditing or designing an MCP server for agent-readiness — framework, security, context."
 ---
 
 # audit-agentic-mcp — Audit, Optimize, Architect MCP Servers

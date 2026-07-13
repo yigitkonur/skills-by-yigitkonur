@@ -1,6 +1,6 @@
 ---
 name: audit-ui-and-save-files
-description: Use skill if you are auditing a running web app's UI across pages and viewports, saving per-bug findings to a dated tree, and dispatching approval-gated fix subagents.
+description: "Use if auditing a running web app UI across pages/viewports, saving per-bug findings to a tree."
 ---
 
 # Audit UI and Save Files

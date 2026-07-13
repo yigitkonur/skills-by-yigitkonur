@@ -1,6 +1,6 @@
 ---
 name: build-licenseseat-swift
-description: Use skill if you are integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, offline grace, entitlements, seat management — or debugging/reviewing LicenseSeat licensing code.
+description: "Use if integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats."
 ---
 
 # Build LicenseSeat Licensing Into a Swift App
