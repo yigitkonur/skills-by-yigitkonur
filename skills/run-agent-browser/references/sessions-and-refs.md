@@ -158,6 +158,19 @@ If clicking does nothing, try `hover @eN` then re-snapshot.
 
 ## Part 2 — Sessions
 
+### Managed Mac: let the wrapper own isolation
+
+On Yigit's Mac, plain `agent-browser` commands are already isolated by a transparent headed-CDP pool. The wrapper leases one of `general:9222`, `profound:9411`, or `peec:9444`, derives a unique `--session` and namespace from the calling agent process, and connects to that lane's persistent Chrome profile.
+
+```bash
+agent-browser pool status
+agent-browser pool use peec       # only when this task needs Peec's authenticated profile
+agent-browser open https://app.peec.ai
+agent-browser pool current
+```
+
+Do not layer manual `--session`, `--profile`, `--headed`, `--cdp`, or `--auto-connect` flags onto this path. Those flags either conflict with wrapper-managed state or explicitly bypass it. The strategy table below is for hosts where `agent-browser pool status` is not available.
+
 A session is a browser context with its own cookies, storage, IndexedDB, cache, history, and open tabs. agent-browser supports three persistence strategies that are NOT interchangeable:
 
 | Strategy | What persists | Across runs? | Combine with others? | Best for |
@@ -258,10 +271,20 @@ Treat state files as secrets — they contain session tokens. Add `*.auth-state.
 ```bash
 agent-browser close                      # close current session
 agent-browser --session auth close       # close a named session
-agent-browser close --all                # close every session (use with care)
+agent-browser close --all                # unmanaged hosts only; confirm exclusive ownership
 ```
 
 Close only sessions you created. If you joined a pre-existing context, leave it.
+
+On the managed Mac, replace that cleanup model with:
+
+```bash
+agent-browser tab                         # inventory tabs
+agent-browser tab close tN                # close only tabs this agent opened
+agent-browser close                       # release only this agent's lane
+```
+
+Never use `close --all`. Do not close pre-existing authenticated tabs. If normal cleanup is interrupted, `agent-browser pool release` releases only the current owner's lease.
 
 ---
 
@@ -273,9 +296,9 @@ Close only sessions you created. If you joined a pre-existing context, leave it.
 agent-browser tab                       # list (also `tab list`)
 agent-browser tab new                   # open blank new tab; focus does NOT auto-switch
 agent-browser tab new https://docs/...  # open URL in new tab; focus does NOT auto-switch
-agent-browser tab 2                     # switch focus to tab index 2
+agent-browser tab t2                    # switch focus to tab target t2
 agent-browser tab close                 # close current tab
-agent-browser tab close 1               # close tab index 1
+agent-browser tab close t1              # close tab target t1
 agent-browser click @eN --new-tab       # click a link, force it open in new tab
 agent-browser window new                # open a new browser window
 ```
@@ -299,13 +322,16 @@ Treat every tab change as a navigation event for ref lifecycle. See `SKILL.md` S
 
 | Situation | Strategy |
 |---|---|
+| Yigit's managed Mac, ordinary work | plain commands; wrapper automatically leases a headed persistent lane |
+| Yigit's managed Mac, Peec or Profound auth | `pool use peec` / `pool use profound`, then plain commands |
 | One-off scrape, no auth needed | default ephemeral |
 | Single test user, "always logged in" | `--profile PATH` (set `AGENT_BROWSER_PROFILE` globally) |
 | Named app, want auto-resume across runs | `--session NAME` |
 | Already logged in to Chrome on the host | `--auto-connect`, save state once |
 | Multiple credentials managed centrally | `auth save` / `auth login` (auth vault) |
 | Portable state file for CI | `state save FILE` once, `--state FILE` in CI |
-| Manual auth / 2FA required | `--headed` with `--session NAME --restore`, complete in the window |
+| Manual auth / 2FA on managed Mac | use the visible leased lane and let the human complete the challenge |
+| Manual auth / 2FA elsewhere | `--headed` with `--session NAME --restore`, complete in the window |
 
 ### Auth vault (recommended for credential reuse)
 
@@ -393,6 +419,10 @@ agent-browser state save ./oauth-state.json
 ```
 
 ### 2FA
+
+On the managed Mac, do not spawn another headed session. Navigate in the already-visible lane, ask the human to complete the second factor in that Chrome window, then continue with plain commands and verify the landing URL/title. The persistent lane profile keeps whatever site session the provider allows; some providers invalidate sessions after a browser restart, so verify auth every time.
+
+On an unmanaged host:
 
 ```bash
 # Show the browser so the human can complete the second factor

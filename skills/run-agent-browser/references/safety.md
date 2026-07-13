@@ -77,9 +77,24 @@ Use `eval` only when the built-ins cannot do it (multi-element extraction, deriv
 
 ## Part 2 — Safe-mode checklist for production / agent contexts
 
+### Managed headed-CDP pool invariants on Yigit's Mac
+
+The local wrapper is a shared-resource boundary, not merely a convenience. Each agent gets one exclusive lane while the three persistent Chrome profiles and LaunchAgents remain machine-wide infrastructure.
+
+| Invariant | Required behavior |
+|---|---|
+| One owner per lane | Use plain commands or `pool use LANE`; never attach a second agent manually to that port |
+| Agent-owned tabs only | Inventory with `tab`; close only tabs opened during the task |
+| Targeted release | Finish with top-level `agent-browser close` or `pool release` |
+| No global teardown | Never use `close --all`, kill Chrome, boot out LaunchAgents, or delete leases/locks/profile `Singleton*` files |
+| Loopback CDP | Never expose 9222, 9411, or 9444 over LAN, Tailscale, Funnel, SSH forwarding, or a public tunnel |
+| Persistent auth is sensitive | Treat general, Peec, and Profound profiles as credentials; do not inspect unrelated tabs/cookies/storage |
+
+The pool provides headed real Chrome and persistent profiles. It does not make automation invisible or guarantee CAPTCHA/anti-bot bypass.
+
 1. Set `AGENT_BROWSER_ALLOWED_DOMAINS` to restrict navigation scope (comma-separated; wildcards allowed).
 2. Disable `eval` and file access unless explicitly approved.
-3. Use ephemeral sessions by default — avoid persistent state.
+3. On unmanaged hosts, use ephemeral sessions by default. On the managed Mac, minimize access to the lane's persistent state.
 4. Enable output boundaries: `export AGENT_BROWSER_CONTENT_BOUNDARIES=1`.
 5. Cap output: `export AGENT_BROWSER_MAX_OUTPUT=50000`.
 6. Apply an action policy file to gate destructive operations.
@@ -172,11 +187,25 @@ On Linux, system libraries are also required:
 agent-browser install --with-deps
 ```
 
-### Daemon not responding / stale session / `EADDRINUSE`
+### Managed pool recovery on Yigit's Mac
+
+Use only the targeted, idempotent recovery ladder:
+
+```bash
+agent-browser pool status
+agent-browser pool recover
+agent-browser pool doctor
+```
+
+`pool recover` reclaims dead or expired owners and restarts unhealthy lanes through their LaunchAgents. If all three commands still fail, inspect `~/.agent-browser/cdp-pool/README.md` and `~/Library/Logs/agent-browser-cdp/` before changing infrastructure. Ordinary agents must not remove lock/socket files or kill Chrome.
+
+### Unmanaged daemon not responding / stale session / `EADDRINUSE`
+
+The following applies only when `agent-browser pool status` is unavailable:
 
 ```bash
 agent-browser close                      # try this first
-agent-browser close --all                # close every session
+agent-browser close --all                # unmanaged hosts only; confirm no other agent owns a session
 ```
 
 If `close` fails:

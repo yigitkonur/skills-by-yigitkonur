@@ -2,6 +2,24 @@
 
 Practical reference for the `agent-browser` commands used most often by this skill. For quick start and scenario-specific patterns, see `SKILL.md` and the routed references.
 
+## Managed macOS CDP pool commands
+
+Yigit's Mac installs a transparent wrapper at `~/.local/bin/agent-browser`. Plain browser commands lease an exclusive headed Chrome lane; no environment variables or browser flags are required.
+
+```bash
+agent-browser pool status          # Read-only health and ownership for all lanes
+agent-browser pool current         # Current agent's lane, port, and owner ID
+agent-browser pool use general     # Request general profile, port 9222
+agent-browser pool use profound    # Request Profound profile, port 9411
+agent-browser pool use peec        # Request Peec profile, port 9444
+agent-browser pool release         # Close this agent's daemon and release its lease
+agent-browser pool recover         # Reclaim stale owners and restart unhealthy lanes
+agent-browser pool doctor          # Wrapper/version/LaunchAgent/CDP health check
+agent-browser pool real --version  # Explicitly invoke the underlying CLI
+```
+
+Use top-level `agent-browser close` for normal final release. `tab close` does not release the lane. `close --all` is disabled. Explicit `--cdp`, `--auto-connect`, `--profile`, provider, engine, or `connect` commands bypass this wrapper and are not the default on this host.
+
 ## Navigation
 
 ```bash
@@ -12,7 +30,7 @@ agent-browser back            # Go back
 agent-browser forward         # Go forward
 agent-browser reload          # Reload page
 agent-browser close           # Close browser (aliases: quit, exit)
-agent-browser connect 9222    # Connect to browser via CDP port
+agent-browser connect 9222    # Explicit unmanaged CDP bypass; not needed with the managed pool
 ```
 
 ## Snapshot (page analysis)
@@ -179,9 +197,9 @@ agent-browser network requests --filter api    # Filter requests
 agent-browser tab                 # List tabs
 agent-browser tab list            # Explicit tab listing
 agent-browser tab new [url]       # New tab
-agent-browser tab 2               # Switch to tab by index
+agent-browser tab t2              # Switch to tab by target ID
 agent-browser tab close           # Close current tab
-agent-browser tab close 2         # Close tab by index
+agent-browser tab close t2        # Close tab by target ID
 agent-browser window new          # New window
 ```
 
@@ -255,8 +273,8 @@ agent-browser --json ...                  # JSON output for parsing
 agent-browser --headed ...                # Show browser window (not headless)
 agent-browser --full ...                  # Full page screenshot (-f)
 agent-browser --annotate ...              # Annotated screenshot labels
-agent-browser --cdp <port> ...           # Connect via Chrome DevTools Protocol
-agent-browser --auto-connect ...         # Auto-discover running Chrome instance
+agent-browser --cdp <port> ...           # Explicit CDP connection; bypasses the managed Mac pool
+agent-browser --auto-connect ...         # Auto-discover Chrome; bypasses the managed Mac pool
 agent-browser -p <provider> ...          # Cloud browser provider (--provider): browserbase, browseruse, kernel, ios
 agent-browser --proxy <url> ...          # Use proxy server
 agent-browser --proxy-bypass <hosts>     # Hosts to bypass proxy
@@ -288,10 +306,10 @@ agent-browser <command> --help           # Show detailed help for a command
 ## Debugging
 
 ```bash
-agent-browser --headed open example.com   # Show browser window
+agent-browser --headed open example.com   # Show browser window on unmanaged hosts; managed Mac is already headed
 agent-browser --debug open example.com    # Debug logging to stderr
-agent-browser --cdp 9222 snapshot         # Connect via CDP port
-agent-browser connect 9222                # Alternative: connect command
+agent-browser --cdp 9222 snapshot         # Explicit unmanaged CDP bypass
+agent-browser connect 9222                # Alternative explicit bypass
 agent-browser console                     # View console messages
 agent-browser console --clear             # Clear console
 agent-browser errors                      # View page errors

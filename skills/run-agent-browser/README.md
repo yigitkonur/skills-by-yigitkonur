@@ -1,6 +1,6 @@
 # run-agent-browser
 
-Driving agent-browser CLI @ref snapshots for stateful sessions, browser navigation, forms, screenshots, extraction, or provider/stealth runs.
+Driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.
 
 **Category:** testing
 

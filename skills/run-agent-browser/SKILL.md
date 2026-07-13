@@ -1,6 +1,6 @@
 ---
 name: run-agent-browser
-description: "Use if driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, forms."
+description: "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification."
 allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 ---
 
@@ -22,9 +22,42 @@ Replace those instincts with this pattern. Each command is its own message in th
 The command names in this skill are literal. Do not invent aliases from other browser tools:
 
 - Use `agent-browser open URL`, not `agent-browser nav URL`.
-- Use `agent-browser --session NAME open URL` when you want a named session, not `agent-browser session start`.
+- On unmanaged hosts, use `agent-browser --session NAME open URL` when you want a named session, not `agent-browser session start`. On the managed Mac, let the wrapper supply it.
 - Use `agent-browser snapshot -i` for interactive refs, not bare `snapshot` when you need `@e` targets.
 - Use refs exactly as returned (`@e14`, `@e3`). Do not write pseudo-flags such as `@ref=...`.
+
+## Managed headed-CDP pool on this Mac
+
+On Yigit's macOS host, `~/.local/bin/agent-browser` is a transparent dispatcher for three persistent, headed Google Chrome instances. It leases one lane per calling agent, derives a collision-free session/namespace, serializes that agent's commands, and recovers dead owners. This is the default runtime: use plain `agent-browser` commands with no environment variables and no `--cdp`, `--profile`, `--headed`, or `--session` flags.
+
+Start every browser task with the read-only health probe:
+
+```bash
+agent-browser pool status
+```
+
+Then use one of these routes:
+
+| Need | Command | Result |
+|---|---|---|
+| Ordinary browsing | `agent-browser open URL` | Automatically leases the best free lane and creates a fresh agent-owned tab |
+| Peec authenticated state | `agent-browser pool use peec` | Pins this agent to the Peec profile on port 9444 |
+| Profound authenticated state | `agent-browser pool use profound` | Pins this agent to the Profound profile on port 9411 |
+| Generic persistent Chrome | `agent-browser pool use general` | Pins this agent to the general profile on port 9222 |
+| Confirm ownership | `agent-browser pool current` | Prints lane, port, and derived owner ID |
+
+After the lease, continue with the normal one-command loop below. The pool Chrome is visible/headed and uses persistent profiles, but it is not an anti-detection guarantee. Do not claim that a site cannot detect automation.
+
+Managed-pool invariants:
+
+1. Close only tabs you opened, then run top-level `agent-browser close` once to release the lease. `tab close` closes a tab but intentionally does not release the lane.
+2. Never run `close --all`; the wrapper rejects it because other agents may own other lanes.
+3. Never kill shared Chrome processes or delete profile `Singleton*`, daemon socket, PID, lease, or lock files during ordinary browser work.
+4. Never expose ports 9222, 9411, or 9444 beyond loopback.
+5. Explicit `--cdp`, `--auto-connect`, `--profile`, `--provider`, `--engine`, and `connect` bypass the managed pool. Use a bypass only when the task genuinely requires a different runtime and the safety scope is authorized.
+6. If the pool is unhealthy, run `agent-browser pool status`, then `agent-browser pool recover`, then `agent-browser pool doctor`. Read `references/safety.md` only if that sequence still fails.
+
+The managed pool is host-specific. On any other machine, fall back to the standard session/profile guidance in `references/sessions-and-refs.md`.
 
 ```
 1. $ agent-browser open https://example.com
@@ -46,6 +79,10 @@ Six to ten inline calls solve almost any 80% task. Reach for a script only when 
 ```yaml
 session: default          # or --session NAME (add --restore to persist state across cold starts)
 profile: null             # or --profile PATH (persistent Chrome user data dir)
+managed_pool: false       # true on Yigit's Mac when plain commands use the CDP dispatcher
+lane: null                # general / profound / peec from `pool current`
+cdp_port: null            # 9222 / 9411 / 9444; never expose beyond loopback
+lease_owner: null         # derived owner ID from `pool current`
 active_tab: 0             # always know which tab the next command targets
 tabs:                     # list every tab you opened
   - {index: 0, url: ..., title: ...}
@@ -64,6 +101,8 @@ $ agent-browser --version
 ```
 
 If the command is not found, install once: `npm install -g agent-browser` (pin in production — see `references/safety.md`). If the first browser command fails because Chromium is missing, run `agent-browser install` once and retry. Treat that as part of the happy path, not troubleshooting.
+
+On the managed Mac, `agent-browser pool doctor` is the stronger runtime check: it verifies the wrapper, real CLI version, three CDP endpoints, LaunchAgents, and lease state.
 
 ---
 
@@ -308,9 +347,9 @@ Refs are scoped to the snapshot that produced them. Any navigation, SPA route ch
 
 ---
 
-### Scenario E — Headed escalation when headless gets walled
+### Scenario E — Managed headed Chrome when a site presents a challenge
 
-Goal: headless mode hits a Cloudflare challenge; re-run the same step with `--headed` and continue.
+Goal: a site presents a Cloudflare challenge; confirm the managed headed lane, allow a human interaction if needed, and continue without spawning another browser.
 
 ─── state ───
 tab: 0 | session: default | refs: none | sensitive_state: false
@@ -321,27 +360,25 @@ tab: 0 | session: default | refs: none | sensitive_state: false
    $ agent-browser get title
    → Just a moment...
    ```
-   (Cloudflare interstitial — headless was detected.)
+   (Cloudflare interstitial — this alone does not prove why the challenge appeared.)
 
 2. ```
-   $ agent-browser close
-   → ok
-   $ agent-browser --headed --session shop open https://shop.example.com/
-   → ok | (visible browser window)
+   $ agent-browser pool current
+   → general  9222  agent-12345-abc123
    ```
-   (re-opening with `--headed` and a named session so state auto-persists. sensitive_state: true — there is now persistent state on disk for "shop".)
+   (the current browser is already visible/headed with a persistent profile. Do not add `--headed` or `--session`; those would bypass or conflict with managed ownership.)
 
 3. ```
-   $ agent-browser --session shop wait --load networkidle
+   $ agent-browser wait --load networkidle
    → ok
-   $ agent-browser --session shop get title
+   $ agent-browser get title
    → Shop — Example
    ```
    (challenge passed.)
 
-4. Continue the task under `--session shop`. After the work is done, decide explicitly whether to keep the persisted state. If you keep it, note it in the output contract.
+4. Continue on the same lane. If the challenge requires CAPTCHA or 2FA, let the human complete that interaction in the visible Chrome window, then verify URL/title again. After the work, close only agent-owned tabs and run `agent-browser close` to release the lane; the lane profile remains persistent.
 
-Headed mode is also the right answer for 2FA, manual auth, or any flow where a human needs to look at the screen. For non-interactive provider escalation (Browserbase, Kernel) see `references/advanced.md`.
+On hosts without the managed pool, standard `--headed --session NAME --restore` remains the fallback. For cloud-provider escalation (Browserbase, Kernel) see `references/advanced.md`.
 
 ---
 
@@ -352,7 +389,7 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 3. **`get text` is strict-mode.** Multi-element matches throw. Switch to `eval --stdin` with a single-quoted heredoc (Scenario C).
 4. **`--new-tab` opens a tab but does not focus it.** `tab t1` switches focus (tab targets need the `t` prefix — bare `tab 1` errors). Both are navigation events for ref lifecycle (Scenario B).
 5. **Verify with at least one deterministic check after every meaningful interaction.** `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`. URL + title is the cheapest pair.
-6. **Reuse the current session by default.** Spawn a named `--session NAME` only for parallel isolated work. Add `--restore` to a named session only when state should auto-save/restore (cookies + localStorage) across separate runs. Spawn `--profile PATH` only when full-Chrome persistence (IndexedDB, service workers, cache) is needed.
+6. **Reuse the current session by default.** On the managed Mac, the wrapper supplies the lane, session, namespace, and persistent profile; do not add those flags. Elsewhere, spawn a named `--session NAME` only for parallel isolated work and use `--restore` or `--profile PATH` only when persistence is required.
 7. **Prefer `tab new` over `window new`.** Use `window new` only when the site truly requires a separate window.
 8. **`agent-browser back` not `go back`.** `back` preserves history and form state; re-opening the URL drops both.
 9. **`snapshot -i` hides non-interactive text.** Headings, paragraphs, spans, labels. For data extraction use `get text SELECTOR` (single match) or `eval --stdin` (multiple). See `references/sessions-and-refs.md` for the JSON schema and scoped snapshots.
@@ -369,7 +406,7 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 | `click @e2 --new-tab` then `tab t1` then re-snapshot | Click and assume focus moved | Scenario B |
 | `eval --stdin <<'EVALEOF' ... EVALEOF` for multi-element extraction | Inline `eval "Array.from(...)..."` with nested quotes | Scenario C |
 | Re-snapshot after every SPA route / nav / tab switch | Reuse a ref across a navigation | Scenario D |
-| Escalate to `--headed` when headless is walled; keep the same `--session` | Retry the same headless command in a loop | Scenario E |
+| On the managed Mac, confirm the headed lane and allow human interaction when needed | Spawn a second browser or claim headed Chrome is undetectable | Scenario E |
 | Verify with `get url` + `get title` before declaring success | Trust that "click @e3 → ok" means the form submitted | Scenarios A, D |
 
 ## Recovery cookbook
@@ -378,7 +415,8 @@ Headed mode is also the right answer for 2FA, manual auth, or any flow where a h
 - **`strict mode violation — N elements matched`** — `get text`/`get value` requires exactly one match. Switch to `eval --stdin <<'EVALEOF'` (Scenario C) or narrow the selector.
 - **Unexpected redirect** — `agent-browser get url` and `agent-browser get title` first; if on a login screen, load saved state or follow the auth flow. See `references/sessions-and-refs.md`.
 - **Slow or flaky page** — `agent-browser wait --load networkidle`, then `agent-browser wait 2000` as a fallback, then re-snapshot. Increase `AGENT_BROWSER_DEFAULT_TIMEOUT` only when a specific page genuinely needs longer.
-- **Stale daemon / `EADDRINUSE`** — `agent-browser close`. If that fails, see `references/safety.md` § stale daemon for socket cleanup.
+- **Managed pool / stale lease / CDP failure** — `agent-browser pool status`, then `pool recover`, then `pool doctor`. Never delete locks or kill Chrome. See `references/safety.md` § managed pool recovery.
+- **Unmanaged stale daemon / `EADDRINUSE`** — only on hosts without the pool, run `agent-browser close`; if that fails, see `references/safety.md` § unmanaged stale daemon.
 - **Sensitive operation about to run** — before `eval` that mutates, `download`, `state save/load`, `cookies set`, `storage local set`, `network route`, `--allow-file-access`, `--executable-path`, `--cdp`, `--args`: stop and read `references/safety.md` for scope and approval rules.
 - **Hidden UI (dropdown / popover / accordion)** — initial snapshot will not show children. Click the trigger, `wait 500`, re-snapshot. See `references/sessions-and-refs.md` § hidden UI.
 
@@ -403,8 +441,8 @@ Helper scripts in `scripts/` (`check-agent-browser-version.sh`, `inspect-page.sh
 ## Output contract — when work ends, report
 
 - Final active URL and title.
-- Mode used (default / `--headed` / `--profile PATH` / `--session NAME` / `-p PROVIDER` / `--engine ENGINE`) when non-default.
+- Mode used. On the managed Mac include lane, CDP port, and owner ID from `pool current`; elsewhere include `--headed`, `--profile PATH`, `--session NAME`, provider, or engine when non-default.
 - Deterministic verifications run, e.g. `get url`, `get title`, `get text`, `get value`, `is visible`, `is checked`, `diff snapshot`.
 - Evidence paths created — screenshots, videos, traces, profiles, saved state files.
 - Extracted data shape when data was extracted — JSON array, CSV rows, table, key-value map — plus selectors/refs used and a count check (`get count SELECTOR`).
-- Cleanup performed — tabs closed, sessions closed, state files kept or deleted, profile left in place or removed. If `sensitive_state` was ever true, name explicitly what persisted.
+- Cleanup performed — agent-owned tabs closed, lease released with top-level `close`, sessions closed, state files kept/deleted, profile left in place/removed. If `sensitive_state` was ever true, name explicitly what persisted.

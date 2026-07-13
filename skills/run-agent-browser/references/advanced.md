@@ -44,6 +44,8 @@ agent-browser snapshot -i
 agent-browser close
 ```
 
+On Yigit's managed Mac, use `agent-browser pool doctor` instead. Plain commands already connect to launchd-supervised headed Google Chrome; do not run `agent-browser install` or add `--headed` just to use the normal local path.
+
 ### Configuration precedence (low → high)
 
 1. Built-in defaults.
@@ -142,6 +144,10 @@ agent-browser open https://example.com
 
 Use these only when needed. Internal tools, staging environments, sites you control → standard headless is fine.
 
+No local technique makes automation "undetectable." Headed Chrome and persistent profiles remove some headless/cold-start signals, but sites can still use behavioral, account, network, CDP, extension, and challenge signals. Report only the mode you used and the observed outcome.
+
+On Yigit's Mac, the managed pool already supplies real headed Chrome, persistent profiles, and exclusive CDP lanes. Start with plain commands; use Peec/Profound lane selection when authenticated state matters. Do not launch a hidden duplicate Chrome or hardcode port 9222.
+
 ### Core principles
 
 1. Headed mode renders full browser UI and avoids most headless detection signals.
@@ -156,6 +162,8 @@ agent-browser --headed open https://example.com
 # or persistently
 export AGENT_BROWSER_HEADED=1
 ```
+
+These flags are for unmanaged hosts. On the managed Mac they are unnecessary and may bypass the dispatcher.
 
 Combine with `--session NAME --restore` so state persists across cold starts:
 

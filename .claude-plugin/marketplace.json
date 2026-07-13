@@ -572,7 +572,7 @@
     {
       "name": "run-agent-browser",
       "source": "./",
-      "description": "Use if driving the agent-browser CLI for ad hoc browser automation — @ref snapshots, forms.",
+      "description": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
       "version": "1.0.23",
       "category": "automation",
       "strict": false,
