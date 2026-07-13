@@ -1,6 +1,6 @@
 ---
 name: run-testsprite-backend
-description: Use if creating, debugging, or release-gating TestSprite backend API tests against real services.
+description: Use skill if you are creating, debugging, or release-gating TestSprite backend API tests against real services.
 ---
 
 # Run TestSprite Backend
