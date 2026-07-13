@@ -1,6 +1,8 @@
-# TestSprite CLI 0.3.0 Backend Reference
+# TestSprite CLI Backend Reference (verified on 0.3.0)
 
 Use this reference for exact backend-oriented commands, output contracts, exit handling, and links to the official TestSprite CLI documentation. Commands were checked against the installed 0.3.0 help on 2026-07-13.
+
+Treat `0.3.0` as the verified floor for these examples, not a timeless latest-version claim. For syntax, installed `--help` wins; for product intent, use the current official docs; for actual behavior, use a bounded dry-run or real pinned run. Record and resolve any disagreement instead of blending the sources.
 
 ## Authority and syntax
 
@@ -34,6 +36,18 @@ Core global flags:
 | `--dry-run` | Preview request/response shape without credentials or mutation |
 
 The JSON contract is additive within a major CLI version. Parse named fields and tolerate unknown fields.
+
+### Backend target truth
+
+The generic CLI exposes `--target-url`, but backend Python carries its own base URL. In the verified 0.3.0 surface:
+
+| Invocation | What to expect |
+|---|---|
+| `test create --type backend --run --target-url ...` | Accepted with an advisory that the backend target is code-defined |
+| `test run TEST --target-url ...` | Generic run accepts the flag, but it does not rewrite saved Python |
+| `test run --all --project ... --target-url ...` | Rejected because batch cannot apply a per-run URL override |
+
+Always inspect saved code and completed Data Flow. A generic flag appearing in help is not evidence that an embedded backend URL changed.
 
 ## Install, configure, and diagnose
 
@@ -157,6 +171,18 @@ testsprite --output json test code put "$TEST_ID" \
 
 Text output with `--out` writes source. JSON output exposes the wire envelope and code version. Prefer optimistic `--expected-version`; a 412/precondition failure means fetch the current version, reconcile edits, and retry. `--force` discards concurrency protection and is audit-logged.
 
+## Choose reuse, edit, rerun, or fresh run
+
+| Need | Operation | Rule |
+|---|---|---|
+| New contract not represented in the suite | `test create` | Create once after reviewing generated/authored code |
+| Existing test expresses the right intent but code is wrong | `test code put --expected-version` | Preserve identity/history; make the smallest correction |
+| Fast feedback using saved code and dependency closure | `test rerun` | No new code generation; backend attempts may consume credits |
+| Final regression/release evidence | `test run` | Fresh strict run after the intended revision is deployed |
+| Product contract deliberately changed | Portal refinement or reviewed `code put` | Inspect regenerated code and new `codeVersion`; do not auto-accept weaker assertions |
+
+Do not recreate durable tests on every implementation change. TestSprite's value compounds when stable consumer contracts survive refactors.
+
 ## Run one test
 
 ```bash
@@ -166,12 +192,12 @@ testsprite --output json test run "$TEST_ID" \
 
 Without `--wait`, exit 0 means queued, not passed. With `--wait`, the CLI polls to a terminal state or deadline. Ctrl-C stops local polling but does not cancel the server run; there is no CLI cancel command in 0.3.0.
 
-Backend targeting is code-defined. This diagnostic dry-run prints the current advisory and must not be used as a retargeting mechanism:
+Backend targeting is code-defined. An individual dry-run cannot resolve the saved test type, so accepting a generic override or showing a synthetic target does not prove that backend Python was retargeted:
 
 ```bash
 testsprite --dry-run --output json test run "$TEST_ID" \
   --target-url "https://other-environment.example"
-# advisory: --target-url has no effect for backend tests
+# generic command shape only; inspect saved backend code and real Data Flow
 ```
 
 On exit 7, stdout retains the run ID. Resume that run:
@@ -191,7 +217,7 @@ testsprite --output json test run --all --project "$PROJECT_ID" \
 
 The fresh batch runs producers before consumers and teardown last. Important limits:
 
-- `--target-url` has no effect for backend tests, whether individual or batched;
+- `--target-url` does not rewrite backend test code, and batch run rejects the flag;
 - each backend test is a billable run;
 - `--max-concurrency` limits in-flight CLI trigger/poll work, not application-internal concurrency; and
 - deferred tests appear separately and force a nonzero exit.
@@ -293,6 +319,12 @@ testsprite --output json agent status
 
 Agent install is pure-local; status can gate whether installed TestSprite guidance matches the CLI. Repository instructions remain authoritative when generic installed guidance conflicts.
 
+## CLI versus Portal scope
+
+The Web Portal exposes API discovery, plan review, natural-language refinement, Data Flow visualization, dynamic variables, dependency graphs, automatic cleanup views, schedules, billing, and credential management. Some data is shared with CLI tests and runs; not every Portal action has a CLI command.
+
+Use the CLI for scriptable create/edit/run/result/artifact workflows. Use the Portal when a task explicitly requires its visual discovery, refinement, or schedule surfaces. Never invent a CLI subcommand to mirror a Portal button.
+
 ## What not to invent
 
 The CLI does not currently expose every Portal feature. Do not fabricate commands for schedules, monitoring management, billing writes, site crawling, test-list/suite management, per-step regeneration, or run cancellation. Check `testsprite --help` and the Portal for current availability.
@@ -330,6 +362,16 @@ All links below are TestSprite primary documentation, accessed 2026-07-13:
 - [What is included](https://docs.testsprite.com/cli/reference/whats-included)
 - [Common issues](https://docs.testsprite.com/cli/troubleshooting/common-issues)
 
+### API Portal evidence surfaces
+
+- [API testing overview](https://docs.testsprite.com/web-portal/core/api/api-testing)
+- [API discovery](https://docs.testsprite.com/web-portal/core/api/api-discovery)
+- [Dependency chains](https://docs.testsprite.com/web-portal/core/api/dependency-chains)
+- [Data Flow](https://docs.testsprite.com/web-portal/core/api/data-flow)
+- [Auto Cleanup](https://docs.testsprite.com/web-portal/core/api/auto-cleanup)
+- [API rerun](https://docs.testsprite.com/web-portal/core/api/api-rerun)
+- [Refining tests](https://docs.testsprite.com/web-portal/core/working-with-test/refining-tests)
+
 ## Troubleshooting commands
 
 | Symptom | Command-first response |
@@ -342,3 +384,5 @@ All links below are TestSprite primary documentation, accessed 2026-07-13:
 | Artifact says not ready | wait for terminal failure, then retry artifact once |
 | Backend run did not use target override | Expected; update saved Python or use an environment-specific test |
 | Backend rerun used credits | Expected; only frontend saved-script replay is free |
+| Portal regenerated a weaker assertion | Export the new code/version, restore the contract, and rerun; refinement is not automatic approval |
+| A Portal feature has no matching command | Use the Portal or current documented surface; do not fabricate CLI syntax |

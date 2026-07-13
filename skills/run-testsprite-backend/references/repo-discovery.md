@@ -13,8 +13,11 @@ Produce this table before authoring tests:
 | How is the API authenticated? | Middleware, docs, secret wiring | public/static/auto-refresh auth |
 | Which URL is safe to test? | Deploy config, environment docs | Public target and mutation policy |
 | Which revision is live? | `/version`, image label, deploy API, CI | Expected and observed SHA |
+| Which serving lane answered? | Host, tenant, route metadata, account/browser lane | Faithful reproduction boundary |
+| Which external resources are required? | Account, proxy, provider, quota, human gates | Available, degraded, or blocked before run |
 | Which TestSprite project owns it? | Repo config and project API | Project ID/type |
 | What already exists? | Test list, saved code, result history | Reuse, edit, or create |
+| What would this test catch beyond native CI? | Contract/risk statement | Keep, refine, or omit |
 
 If any answer is unknown, gather evidence before filling it. Do not turn an assumption into a table entry.
 
@@ -68,6 +71,8 @@ Read the implementation and the public schema side by side. Extract:
 
 Use native tests to find invariants that generated OpenAPI descriptions omit. Use product docs to find semantic requirements code types cannot express, such as “sources must be real URLs” or “targeted routing must not fall back.”
 
+TestSprite Portal discovery can combine API documentation, natural-language intent, and live probes into an endpoint list. Treat that list as a candidate inventory: remove internal/deprecated/unsafe endpoints, correct inferred paths and auth, and reconcile it with repository truth before generation. Generated breadth is not evidence that every scenario is authorized or valuable.
+
 ### Conflict rule
 
 When sources disagree, do not pick the most convenient assertion. Rank evidence:
@@ -111,6 +116,20 @@ Find the narrowest faithful revision proof. Examples:
 
 Do not infer deployment from “workflow succeeded.” Verify the target is serving that artifact.
 
+### Target fingerprint
+
+Record enough identity to reproduce the same boundary later:
+
+| Field | Examples |
+|---|---|
+| Public target | scheme, host, base path, environment |
+| Revision | full commit SHA, immutable image digest, or release ID |
+| Route/lane | tenant, region, routing header, credential-backed vs login-less/browser lane |
+| Saved test | test ID and `codeVersion` |
+| Runtime resources | credential mode, account/slot/proxy/provider availability |
+
+Probe the fingerprint immediately before and after a release-gating run. If it changes mid-run, the result may still diagnose one response but cannot prove a single revision.
+
 ## 5. Verify public reachability and safety
 
 TestSprite cloud cannot call localhost, RFC1918/private addresses, or host-only tunnels. Confirm:
@@ -130,6 +149,8 @@ Before live writes, determine:
 - Is cleanup idempotent and guaranteed?
 - Can tests send notifications, charge money, consume scarce provider accounts, or trigger abuse controls?
 - What concurrency can the environment safely absorb?
+
+Also distinguish resource prerequisites from product behavior. A test that requires a scarce account, warm browser slot, healthy proxy, or third-party provider needs a preflight and a declared `runtime gate` outcome. CAPTCHA, SMS, payment, and other human challenges cannot be converted into a code pass.
 
 If only production exists, prefer read-only behavior, invalid-input checks, idempotent operations, and fixtures designed by the application owners. A TestSprite suite is not authorization for load or destructive testing.
 
@@ -162,6 +183,8 @@ For each existing test, record:
 - whether assertions still match the public contract; and
 - whether it is independent, a producer, a consumer, or teardown.
 
+Inspect the completed run's Data Flow as well as saved code. It reveals the actual host, request/response, producer/consumer wiring, cleanup calls, and “other observed” traffic; the test name and plan are only intent.
+
 Do not create duplicates just because a test name is unfamiliar. Read its saved code first.
 
 ## 7. Convert discovery into a suite brief
@@ -176,6 +199,8 @@ Example:
 | P1 | stream | metadata precedes terminal event | SSE parser + integration test | read-only | provider availability |
 | P1 | create/read/delete | created ID round-trips, then cleanup | route code + schema | reversible | test tenant |
 
+For each row, add the expected non-product outcomes (`deployment drift`, `resource gate`, `runner failure`) and how they will be recognized. This prevents a later environment failure from being mislabeled as a regression or silently accepted as a pass.
+
 Every planned assertion must point to a source. Every planned mutation must name cleanup. Every external gate must remain visible in the final report.
 
 ## Troubleshooting discovery
@@ -184,7 +209,9 @@ Every planned assertion must point to a source. Every planned mutation must name
 |---|---|
 | Multiple TestSprite projects match | Compare project type, test names, recent targets, and repo docs; do not guess |
 | OpenAPI and code disagree | Run the intended deployment, classify drift, then fix the authoritative layer |
+| Code fix exists but the target still fails identically | Compare revisions; an old deployment is expected to retain the old bug |
 | No public URL | Use the repository's approved tunnel/preview path or stop at native tests; TestSprite cannot prove runtime |
 | No revision endpoint | Use platform image/deployment provenance and record that proof explicitly |
 | Production is the only target | Restrict to safe operations and obtain explicit scope before mutations |
 | Existing tests have opaque names | Export saved code and history before replacing or duplicating them |
+| Success requires an unavailable account/proxy/provider | Record a runtime gate; verify typed degradation separately and do not weaken the success contract |

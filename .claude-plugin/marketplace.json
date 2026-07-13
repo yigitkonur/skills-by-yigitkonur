@@ -707,7 +707,7 @@
     {
       "name": "run-testsprite-backend",
       "source": "./",
-      "description": "Use skill if you are creating, debugging, or release-gating TestSprite backend API tests against real services.",
+      "description": "Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.",
       "version": "1.0.25",
       "category": "testing",
       "strict": false,

@@ -1,6 +1,6 @@
 ---
 name: run-testsprite-backend
-description: Use skill if you are creating, debugging, or release-gating TestSprite backend API tests against real services.
+description: Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.
 ---
 
 # Run TestSprite Backend
@@ -8,6 +8,19 @@ description: Use skill if you are creating, debugging, or release-gating TestSpr
 Use TestSprite as an independent HTTP client against a publicly reachable deployment. Build executable Python tests from repository truth, run them through the TestSprite cloud, inspect immutable run evidence, fix the demonstrated layer, and repeat until a fresh run verifies the intended deployed revision.
 
 This workflow is TypeScript-backend-first. For another stack, inspect and substitute that repository's route, schema, test, build, and deployment conventions; TestSprite still exercises the service over HTTP.
+
+## Value boundary
+
+TestSprite is valuable here because it behaves like an independent deployed client: it can catch defects that native tests and same-process mocks miss, retain the exact request/response path, and challenge semantic contracts such as citations, streaming order, routing metadata, and typed failures.
+
+It is not a deployment system, account/proxy provider, CAPTCHA solver, load tester, or autonomous repository maintainer. Its AI analysis proposes a cause and fix target; it does not prove either. A non-passing run can still be useful evidence when it correctly shows old production code, unavailable capacity, or an upstream gate.
+
+| TestSprite can prove | It cannot prove by itself |
+|---|---|
+| What the public target returned to its HTTP client | That the target serves the commit in the checkout |
+| Whether saved assertions held for one pinned run | That a suggested root cause is correct |
+| Request, response, Data Flow, dependency, and artifact evidence | That an account, proxy, provider, or human challenge is healthy |
+| A fresh external pass after deployment | Native unit correctness, load tolerance, or security completeness |
 
 ## Essential rules
 
@@ -17,7 +30,7 @@ This workflow is TypeScript-backend-first. For another stack, inspect and substi
 4. Call every backend `test_*` function. TestSprite executes Python top-to-bottom; it does not rely on pytest discovery.
 5. Use only Python stdlib plus the packages supported by the current backend sandbox. Exercise project code through HTTP, never by importing it.
 6. Keep live tests bounded, deterministic, and reversible. Do not turn a verification suite into load, abuse, or destructive production testing.
-7. Treat TestSprite's LLM analysis as a hypothesis. Accept a root cause only after artifacts, repository code, and runtime evidence agree.
+7. Treat TestSprite's LLM analysis as a hypothesis and saved tests as durable contracts: validate suggestions, then refine and reuse rather than regenerate by default.
 
 ## When to use this skill
 
@@ -31,6 +44,8 @@ Use it when the user asks to:
 - add TestSprite backend verification to CI.
 
 Do not use it for frontend browser plans, local unit tests alone, generic API-client implementation, load/security scanning, or a service with no publicly reachable test target. Use a frontend TestSprite workflow for browser journeys and the repository's native test framework for local tests.
+
+Before spending cloud runs, apply a value test: the scenario must protect a material consumer-visible contract, exercise a deployed boundary unavailable to native tests, or preserve evidence for a meaningful external integration. A duplicate 200-only check has little value.
 
 ## Reference router
 
@@ -66,6 +81,8 @@ Write down:
 - completion condition: a fresh TestSprite run, terminal verdict, and revision evidence.
 
 Separate code correctness from environment availability. An account shortage, CAPTCHA, proxy failure, or upstream outage is not evidence that repository code is wrong; it is also not a pass.
+
+Predeclare the possible end states: `verified`, `product defect`, `test defect`, `deployment drift`, `runtime/provider gate`, or `TestSprite execution failure`. Do not rename an inconvenient result after the run.
 
 ### 2. Discover repository truth
 
@@ -116,7 +133,9 @@ Do not guess when several projects plausibly match. Compare project type, existi
 
 TestSprite calls a deployed URL; it does not deploy or host the application. Confirm that the target is public HTTP(S), healthy, and serving the intended revision using the repository's version endpoint, image label, deployment API, or exact-SHA CI evidence.
 
-In TestSprite 0.3.0, backend tests define their base URL inside saved Python. The CLI accepts `--target-url` but prints an advisory that it has no effect for backend tests. Verify the saved code and completed run Data Flow point to the intended environment. To change environments, update the saved code optimistically or maintain clearly named environment-specific tests. If the revision cannot be proven, the run may diagnose the current deployment but cannot verify the change.
+In TestSprite 0.3.0, backend tests define their base URL inside saved Python. Backend create/run flows may accept the generic `--target-url` flag, but code-file creation reports that it does not retarget backend code and batch run rejects the override. Verify the saved code and completed run Data Flow point to the intended environment. To change environments, update the saved code optimistically or maintain clearly named environment-specific tests. If the revision cannot be proven, the run may diagnose the current deployment but cannot verify the change.
+
+Capture a target fingerprint before and after the run: base URL, revision or image digest, environment, relevant lane/tenant, and test code version. If production still serves an older revision, a failure reproducing the old bug is correct evidence; deploy first instead of editing the assertion or repeatedly rerunning.
 
 ### 6. Configure authentication without exposing it
 
@@ -146,6 +165,8 @@ Build a traceable matrix from documented behavior, not a pile of happy-path stat
 - cleanup for created fixtures.
 
 Use stable assertions: types, allowed enums, required non-empty values, URL validity, event ordering, and relationships between fields. Avoid exact model prose, timestamps, generated IDs, latency, or provider wording unless the contract guarantees them. See [suite design](references/suite-design.md).
+
+For each scenario, name the independent signal it adds over native tests. Preserve separate non-streaming and streaming cases when the application has separate accumulation/mapping paths; one passing path does not validate the other.
 
 ### 8. Author and audit executable Python
 
@@ -218,14 +239,16 @@ testsprite --output json test steps "$TEST_ID" --run-id "$RUN_ID" --max-items 10
 testsprite --output json test result "$TEST_ID" --include-analysis
 ```
 
-Classify the failure before editing anything: product code, test code, deployment/config, TestSprite runner/transport, external dependency, or dependency starvation. Verify the LLM hypothesis against request/response evidence and the repository path. Follow [the failure loop](references/failure-loop.md).
+Classify the failure before editing anything: product code, saved test code, stale deployment, application configuration, auth/account capacity, edge/transport, provider/proxy/CAPTCHA, TestSprite runner, dependency starvation, or nondeterminism. Verify the LLM hypothesis against request/response evidence and the repository path. Follow [the failure loop](references/failure-loop.md).
 
 ### 11. Fix the demonstrated layer and preserve the contract
 
 - Product defect: add a native regression, fix the code, pass exact-SHA CI, deploy that SHA, and rerun.
 - Test defect: edit only the incorrect setup/parser/assertion; do not weaken the product contract.
-- Deployment defect: correct the target/config/revision and re-probe before rerunning.
-- External dependency: record the provider evidence and retry only when the dependency is actually recoverable.
+- Deployment defect: correct the target/config/revision, prove the new artifact is live, and only then rerun.
+- Auth/account/proxy/provider gate: record the exact operational evidence and retry only after the resource state changed.
+- Edge timeout: identify the terminating layer; increasing the TestSprite polling timeout does not extend a CDN or gateway request deadline.
+- TestSprite execution defect: preserve the run/request IDs and bounded diagnostics; do not edit product code without a faithful application response.
 - Dependency starvation: fix the failed producer before judging consumers.
 
 Update saved code with optimistic concurrency:
@@ -260,6 +283,8 @@ testsprite --output json test run --all --project "$PROJECT_ID" \
 
 Do not use the batch command when its fixed saved targets or concurrency are unsafe. Re-check the served revision after the run.
 
+Regeneration is not the default fix loop. Once a test expresses the right contract, use optimistic `test code put`, `test rerun` for fast saved-code feedback, and a fresh `test run` for final proof. Regenerate only when the test intent itself is wrong or the public contract deliberately changed.
+
 ## Completion record
 
 Report every remaining test separately; never collapse environmental failures into “code green.”
@@ -270,12 +295,22 @@ Report every remaining test separately; never collapse environmental failures in
 | Target | Public base URL and environment |
 | Revision | Expected SHA and observed deployed SHA |
 | Run | Run ID, fresh/rerun, terminal status, exit code |
+| Test code | Saved code version and whether it was reused, edited, or regenerated |
 | Contract | Exact semantic behavior asserted |
 | Failure | Classification, artifact path, and evidence if non-passing |
 | Fix | Repository regression/commit or environment action |
 | Final gate | Fresh run after deploy, or an explicit unpassed external gate |
 
 Claim only the rung reached. “Native CI is green” and “TestSprite verified production” are different facts.
+
+Use precise completion language:
+
+| State | Allowed claim |
+|---|---|
+| Fresh pass on revision-proven target | TestSprite verified the named contract on that revision |
+| Code + native regression green, old deployment still live | Code fix is ready; production has not received or externally verified it |
+| Faithful run blocked by account/proxy/CAPTCHA/provider | Runtime gate remains; code is neither disproved nor externally verified |
+| Test or TestSprite runner could not execute faithfully | No product verdict |
 
 ## Pitfalls
 
@@ -285,12 +320,14 @@ Claim only the rung reached. “Native CI is green” and “TestSprite verified
 | Test only checks HTTP 200 | Assert body shape and business/source/routing invariants |
 | Key pasted into saved code | Move it to `project credential`; rotate if exposed |
 | Run starts before deployment | Prove target revision first |
+| Old production keeps failing after a code fix | Deploy the fixed artifact; the run is correctly testing old code |
 | Exit 7 triggers another run | Resume the same run with `test wait` |
 | Latest failure is mistaken for a specific run | Download `artifact get <run-id>` |
 | Consumer fails because producer failed | Triage the producer; label consumer as starved |
 | Rerun is reported as release proof | Finish with a fresh `test run` after deploy |
 | `--target-url` is assumed to retarget backend tests | Update saved Python or use environment-specific tests; verify Data Flow |
 | LLM recommendation is applied directly | Reconcile artifact, runtime, and repository evidence |
+| Account/proxy/CAPTCHA failure is called a code regression | Keep it as a runtime gate and verify the typed product response separately |
 
 ## Trigger calibration
 
@@ -303,6 +340,7 @@ Should trigger:
 - “Add TestSprite backend checks to CI and gate the deployed SHA.”
 - “Why is this TestSprite consumer starved after the producer failed?”
 - “Rerun the TestSprite API tests after deploying this fix.”
+- “Did this external API suite find a real regression or only an environment gate?”
 
 Should not trigger:
 
@@ -313,3 +351,4 @@ Should not trigger:
 - “Fuzz this API for security vulnerabilities.”
 - “Validate OpenAPI formatting without calling a deployment.”
 - “Mock the database in pytest.”
+- “Run these backend tests against localhost without a public tunnel or deployment.”
