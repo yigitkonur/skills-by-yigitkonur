@@ -1,6 +1,6 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **46 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **47 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, backend api testing, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
@@ -61,11 +61,12 @@ themed groups for one-shot installs. every skill also installs on its own — se
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 46 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 47 skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
+| **yk-testing** | deep TestSprite backend API verification against deployed services | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | agent-browser, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
@@ -110,6 +111,16 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 - **[audit-agentic-cli](skills/audit-agentic-cli/)** — audit/design a cli for agent consumption: stable json, exit codes, non-interactive flags, repair loops.
 
 `/plugin install yk-mcp@yigitkonur`
+
+---
+
+## 🧪 backend api testing
+
+author, run, diagnose, and release-gate real deployed api tests.
+
+- **[run-testsprite-backend](skills/run-testsprite-backend/)** — repo-first TestSprite backend workflow: managed credentials, semantic Python assertions, streaming/data-flow coverage, immutable failure artifacts, fix loops, and exact-revision release proof.
+
+`/plugin install yk-testing@yigitkonur`
 
 ---
 

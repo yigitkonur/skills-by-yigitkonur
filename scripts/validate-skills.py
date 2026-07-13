@@ -154,13 +154,15 @@ def check_frontmatter(skill_name, skill_dir):
         errors.append("frontmatter missing description")
         return errors
 
-    if not description.startswith("Use if "):
+    accepted_prefixes = ("Use skill if you are ", "Use if ")
+    if not description.startswith(accepted_prefixes):
         errors.append(
-            f'description must start with "Use if " — got: "{description[:60]}..."'
+            'description must start with "Use skill if you are " '
+            f'(legacy "Use if " is also accepted) — got: "{description[:60]}..."'
         )
 
-    if len(description) > 100:
-        errors.append(f"description is {len(description)} chars (max 100)")
+    if len(description.split()) > 30:
+        errors.append(f"description is {len(description.split())} words (max 30)")
 
     return errors
 

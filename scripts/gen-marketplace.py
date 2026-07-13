@@ -76,6 +76,11 @@ GROUPS = {
             "test-by-mcpc-cli",
         ],
     ),
+    "yk-testing": (
+        "testing",
+        "Backend API testing — author, run, diagnose, and release-gate TestSprite cloud tests against real deployed services.",
+        ["run-testsprite-backend"],
+    ),
     "yk-build": (
         "build",
         "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, LicenseSeat (macOS/Swift), Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
