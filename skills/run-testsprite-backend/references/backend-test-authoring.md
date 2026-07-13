@@ -312,11 +312,13 @@ python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
 
 `--allow-module NAME` is an escape hatch only after current official runner documentation proves the module is installed. It does not install anything in TestSprite.
 
+The auditor fails closed on branch-only HTTP calls because it cannot execute arbitrary test code safely. When dynamic branches choose equivalent request variants, choose the URL/payload in the branch and issue one shared request afterward. Keep early-return paths behind a request that already proved the intended API behavior.
+
 ## Authoring checklist
 
 - Public target is real and revision-verifiable.
 - Every `test_*` function is called.
-- Every called test reaches at least one real HTTP request.
+- Every execution path through a called test reaches at least one real HTTP request.
 - Every HTTP call has a timeout.
 - Imports fit the current sandbox.
 - Managed headers supply authentication.
@@ -332,7 +334,7 @@ python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
 
 | Symptom | Likely authoring cause | Fix |
 |---|---|---|
-| Instant pass with no request | Test is uncalled, dead-guarded, or contains no HTTP call | Add a reachable module-scope call and real request; audit again |
+| Instant pass with no request | Test is uncalled, conditionally called, or has a request-free path | Add a direct module-scope call and ensure each path makes a real request; audit again |
 | Import error in cloud | Project/arbitrary package imported | Replace with HTTP and supported modules |
 | Authenticated endpoint returns 401 | Managed headers unused or project credential stale | Consume `__AUTH_HEADERS__`; verify project auth |
 | Run hangs | Missing/oversized timeout or stream terminal not handled | Bound connect/read timeout and terminal condition |

@@ -65,14 +65,27 @@ Do not print `__AUTH_HEADERS__`, `__AUTH_CREDENTIAL__`, cookies, or entire respo
 
 ## Audit historical tests for leaked credentials
 
-List and export each backend test into a restricted temporary location:
+List and export each backend test into a restricted temporary location. The CLI returns IDs in `.items[].id`; fail rather than silently auditing an empty or truncated list:
 
 ```bash
-testsprite --output json test list --project "$PROJECT_ID" \
-  --type backend --max-items 100
-testsprite test code get "$TEST_ID" --out /tmp/testsprite-audit.py
-python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
-  --auth-required /tmp/testsprite-audit.py
+set -euo pipefail
+audit_dir="$(mktemp -d)"
+chmod 700 "$audit_dir"
+trap 'rm -rf "$audit_dir"' EXIT
+
+test_list="$(
+  testsprite --output json test list --project "$PROJECT_ID" \
+    --type backend --max-items 10000
+)"
+jq --exit-status '.items | length > 0' <<<"$test_list" >/dev/null
+jq --exit-status '.nextToken == null' <<<"$test_list" >/dev/null
+
+while IFS= read -r test_id; do
+  code_path="$audit_dir/$test_id.py"
+  testsprite test code get "$test_id" --out "$code_path"
+  python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
+    --auth-required "$code_path"
+done < <(jq --raw-output '.items[].id' <<<"$test_list")
 ```
 
 Resolve `TESTSPRITE_SKILL_DIR` from the loaded skill location rather than the target repository.

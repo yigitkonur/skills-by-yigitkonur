@@ -1,6 +1,6 @@
 # run-testsprite-backend
 
-Build, run, diagnose, and release-gate high-quality TestSprite backend API tests against real deployed services.
+Creating, debugging, or release-gating TestSprite backend API tests against real services.
 
 **Category:** testing
 
