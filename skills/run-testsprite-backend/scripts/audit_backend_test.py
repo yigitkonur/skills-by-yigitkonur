@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import argparse
 import ast
+import importlib.util
 import ipaddress
 import json
 import re
 import sys
+import sysconfig
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
@@ -20,7 +22,8 @@ from urllib.parse import urlparse
 
 HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "request"}
 SUPPORTED_THIRD_PARTY = {"numpy", "pytest", "requests", "scipy"}
-AUTH_KEYS = {"authorization", "x-api-key", "api-key", "apikey"}
+SENSITIVE_HEADER_KEYS = {"authorization", "cookie", "x-api-key", "api-key", "apikey"}
+SENSITIVE_REQUEST_KWARGS = {"auth", "cookies"}
 SECRET_NAMES = re.compile(r"(?:api[_-]?key|access[_-]?token|auth[_-]?token|token|password|secret)$", re.I)
 SECRET_SHAPES = (
     re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}", re.I),
@@ -92,11 +95,20 @@ def dotted_root(node: ast.AST) -> str | None:
     return node.id if isinstance(node, ast.Name) else None
 
 
+def static_truth(value: ast.AST) -> bool | None:
+    """Return the truth of a literal expression, or None when it is dynamic."""
+
+    try:
+        return bool(ast.literal_eval(value))
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return None
+
+
 class ExecutableCallCollector(ast.NodeVisitor):
-    """Collect calls that execute while the module is loaded."""
+    """Collect calls on statically reachable paths in a statement block."""
 
     def __init__(self) -> None:
-        self.calls: set[str] = set()
+        self.calls: list[ast.Call] = []
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
         return
@@ -110,13 +122,61 @@ class ExecutableCallCollector(ast.NodeVisitor):
     def visit_Lambda(self, node: ast.Lambda) -> None:  # noqa: N802
         return
 
+    def visit_If(self, node: ast.If) -> None:  # noqa: N802
+        self.visit(node.test)
+        truth = static_truth(node.test)
+        if truth is True:
+            statements = node.body
+        elif truth is False:
+            statements = node.orelse
+        else:
+            statements = [*node.body, *node.orelse]
+        for statement in statements:
+            self.visit(statement)
+
+    def visit_IfExp(self, node: ast.IfExp) -> None:  # noqa: N802
+        self.visit(node.test)
+        truth = static_truth(node.test)
+        if truth is True:
+            self.visit(node.body)
+        elif truth is False:
+            self.visit(node.orelse)
+        else:
+            self.visit(node.body)
+            self.visit(node.orelse)
+
+    def visit_While(self, node: ast.While) -> None:  # noqa: N802
+        self.visit(node.test)
+        truth = static_truth(node.test)
+        statements = node.orelse if truth is False else [*node.body, *node.orelse]
+        for statement in statements:
+            self.visit(statement)
+
+    def visit_For(self, node: ast.For) -> None:  # noqa: N802
+        self.visit(node.iter)
+        try:
+            empty = len(ast.literal_eval(node.iter)) == 0
+        except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+            empty = False
+        statements = node.orelse if empty else [*node.body, *node.orelse]
+        for statement in statements:
+            self.visit(statement)
+
+    def visit_BoolOp(self, node: ast.BoolOp) -> None:  # noqa: N802
+        for value in node.values:
+            self.visit(value)
+            truth = static_truth(value)
+            if isinstance(node.op, ast.And) and truth is False:
+                break
+            if isinstance(node.op, ast.Or) and truth is True:
+                break
+
     def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
-        if isinstance(node.func, ast.Name):
-            self.calls.add(node.func.id)
+        self.calls.append(node)
         self.generic_visit(node)
 
 
-def executable_calls(statements: list[ast.stmt]) -> set[str]:
+def executable_calls(statements: list[ast.stmt]) -> list[ast.Call]:
     collector = ExecutableCallCollector()
     for statement in statements:
         collector.visit(statement)
@@ -133,7 +193,76 @@ def imported_roots(tree: ast.Module) -> list[tuple[str, int]]:
     return roots
 
 
-def request_aliases(tree: ast.Module) -> tuple[set[str], set[str], set[str]]:
+def path_is_within(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def is_stdlib_module(root: str) -> bool:
+    stdlib_names = getattr(sys, "stdlib_module_names", None)
+    if stdlib_names is not None:
+        return root in stdlib_names
+    if root in STDLIB_FALLBACK:
+        return True
+    try:
+        spec = importlib.util.find_spec(root)
+    except (ImportError, AttributeError, ValueError):
+        return False
+    if spec is None:
+        return False
+    if spec.origin in {"built-in", "frozen"}:
+        return True
+    candidates: list[Path] = []
+    if spec.origin:
+        candidates.append(Path(spec.origin))
+    if spec.submodule_search_locations:
+        candidates.extend(Path(location) for location in spec.submodule_search_locations)
+    paths = sysconfig.get_paths()
+    stdlib_roots = {
+        Path(paths[key])
+        for key in ("stdlib", "platstdlib")
+        if paths.get(key)
+    }
+    third_party_roots = {
+        Path(paths[key])
+        for key in ("purelib", "platlib")
+        if paths.get(key)
+    }
+    return any(
+        any(path_is_within(candidate, root_path) for root_path in stdlib_roots)
+        and not any(path_is_within(candidate, root_path) for root_path in third_party_roots)
+        for candidate in candidates
+    )
+
+
+def bound_names(target: ast.AST | None) -> set[str]:
+    if isinstance(target, ast.Name):
+        return {target.id}
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return {name for element in target.elts for name in bound_names(element)}
+    return set()
+
+
+def creates_session(
+    value: ast.AST,
+    modules: set[str],
+    session_factories: set[str],
+) -> bool:
+    if not isinstance(value, ast.Call):
+        return False
+    if isinstance(value.func, ast.Name):
+        return value.func.id in session_factories
+    return (
+        isinstance(value.func, ast.Attribute)
+        and value.func.attr.lower() == "session"
+        and dotted_root(value.func) in modules
+    )
+
+
+def request_aliases(tree: ast.Module) -> tuple[set[str], set[str], set[str], set[str]]:
     modules = {"requests"}
     sessions: set[str] = set()
     direct_methods: set[str] = set()
@@ -151,22 +280,111 @@ def request_aliases(tree: ast.Module) -> tuple[set[str], set[str], set[str]]:
                     direct_methods.add(local_name)
                 elif imported_name == "Session":
                     session_factories.add(local_name)
+    for node in ast.walk(tree):
         if isinstance(node, (ast.Assign, ast.AnnAssign)):
             value = node.value
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if not isinstance(value, ast.Call):
-                continue
-            creates_session = (
-                isinstance(value.func, ast.Attribute)
-                and value.func.attr == "Session"
-                and dotted_root(value.func) in modules
-            ) or (isinstance(value.func, ast.Name) and value.func.id in session_factories)
-            if not creates_session:
+            if not creates_session(value, modules, session_factories):
                 continue
             for target in targets:
-                if isinstance(target, ast.Name):
-                    sessions.add(target.id)
-    return modules, sessions, direct_methods
+                sessions.update(bound_names(target))
+        elif isinstance(node, (ast.With, ast.AsyncWith)):
+            for item in node.items:
+                if creates_session(item.context_expr, modules, session_factories):
+                    sessions.update(bound_names(item.optional_vars))
+    return modules, sessions, direct_methods, session_factories
+
+
+def is_request_call(
+    node: ast.Call,
+    modules: set[str],
+    sessions: set[str],
+    direct_methods: set[str],
+    session_factories: set[str],
+) -> bool:
+    if isinstance(node.func, ast.Name):
+        return node.func.id in direct_methods
+    if not isinstance(node.func, ast.Attribute) or node.func.attr.lower() not in HTTP_METHODS:
+        return False
+    receiver = node.func.value
+    if isinstance(receiver, ast.Name) and receiver.id in sessions:
+        return True
+    if dotted_root(node.func) in modules:
+        return True
+    return creates_session(receiver, modules, session_factories)
+
+
+def contains_literal_credential(node: ast.AST) -> bool:
+    return any(
+        isinstance(child, ast.Constant)
+        and isinstance(child.value, (str, bytes))
+        and bool(child.value)
+        and (not isinstance(child.value, str) or not is_placeholder(child.value))
+        for child in ast.walk(node)
+    )
+
+
+def is_globals_call(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "globals"
+        and not node.args
+        and not node.keywords
+    )
+
+
+def expression_uses_managed_auth(node: ast.AST, aliases: set[str]) -> bool:
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name) and child.id in aliases:
+            return True
+        if (
+            isinstance(child, ast.Subscript)
+            and is_globals_call(child.value)
+            and isinstance(child.slice, ast.Constant)
+            and child.slice.value == "__AUTH_HEADERS__"
+        ):
+            return True
+        if (
+            isinstance(child, ast.Call)
+            and isinstance(child.func, ast.Attribute)
+            and child.func.attr == "get"
+            and is_globals_call(child.func.value)
+            and child.args
+            and isinstance(child.args[0], ast.Constant)
+            and child.args[0].value == "__AUTH_HEADERS__"
+        ):
+            return True
+    return False
+
+
+def managed_auth_aliases(tree: ast.Module) -> set[str]:
+    aliases = {"__AUTH_HEADERS__"}
+    assignments: list[tuple[list[ast.AST], ast.AST]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            assignments.append((list(node.targets), node.value))
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            assignments.append(([node.target], node.value))
+    changed = True
+    while changed:
+        changed = False
+        for targets, value in assignments:
+            if not expression_uses_managed_auth(value, aliases):
+                continue
+            for target in targets:
+                for name in bound_names(target):
+                    if name not in aliases:
+                        aliases.add(name)
+                        changed = True
+    return aliases
+
+
+def request_uses_managed_auth(node: ast.Call, aliases: set[str]) -> bool:
+    return any(
+        keyword.arg == "headers" and expression_uses_managed_auth(keyword.value, aliases)
+        for keyword in node.keywords
+    )
 
 
 def inspect_url(value: str, line: int, report: Report) -> None:
@@ -229,31 +447,74 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
                 )
     if not tests:
         report.errors.append(Finding("no-tests", "Define at least one top-level test_* function"))
-    called = executable_calls(tree.body)
+    modules, sessions, direct_methods, session_factories = request_aliases(tree)
+    module_calls = executable_calls(tree.body)
+    called = {
+        node.func.id
+        for node in module_calls
+        if isinstance(node.func, ast.Name)
+    }
+    functions = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+    }
+    function_calls = {
+        name: executable_calls(node.body)
+        for name, node in functions.items()
+    }
+    request_memo: dict[str, bool] = {}
+
+    def reaches_request(name: str, visiting: set[str]) -> bool:
+        if name in request_memo:
+            return request_memo[name]
+        if name in visiting:
+            return False
+        next_visiting = visiting | {name}
+        for call in function_calls.get(name, []):
+            if is_request_call(call, modules, sessions, direct_methods, session_factories):
+                request_memo[name] = True
+                return True
+            if (
+                isinstance(call.func, ast.Name)
+                and call.func.id in functions
+                and reaches_request(call.func.id, next_visiting)
+            ):
+                request_memo[name] = True
+                return True
+        request_memo[name] = False
+        return False
+
     for name, line in tests.items():
         if name not in called:
             report.errors.append(Finding("uncalled-test", f"Call {name}() at module scope", line))
+        elif not reaches_request(name, set()):
+            report.errors.append(
+                Finding("no-http-request", f"{name}() does not reach a requests HTTP call", line)
+            )
 
-    stdlib = getattr(sys, "stdlib_module_names", STDLIB_FALLBACK)
-    permitted = set(stdlib) | SUPPORTED_THIRD_PARTY | allowed_modules | {"__future__"}
+    permitted = SUPPORTED_THIRD_PARTY | allowed_modules | {"__future__"}
     for root, line in imported_roots(tree):
-        if root not in permitted:
+        if root not in permitted and not is_stdlib_module(root):
             report.errors.append(
                 Finding("unsupported-import", f"Module {root!r} is not in the documented TestSprite sandbox", line)
             )
 
-    names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
-    managed_auth_refs = {
-        node.value
+    request_calls = [
+        node
         for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str)
-    }
-    if auth_required and "__AUTH_HEADERS__" not in names | managed_auth_refs:
+        if isinstance(node, ast.Call)
+        and is_request_call(node, modules, sessions, direct_methods, session_factories)
+    ]
+    auth_aliases = managed_auth_aliases(tree)
+    if auth_required and not any(request_uses_managed_auth(node, auth_aliases) for node in request_calls):
         report.errors.append(
-            Finding("missing-managed-auth", "Authenticated tests must consume TestSprite-managed __AUTH_HEADERS__")
+            Finding(
+                "missing-managed-auth",
+                "At least one HTTP request must consume TestSprite-managed __AUTH_HEADERS__",
+            )
         )
 
-    modules, sessions, direct_methods = request_aliases(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             inspect_url(node.value, node.lineno, report)
@@ -276,21 +537,22 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
             for key, value in zip(node.keys, node.values):
                 if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
                     continue
-                if key.value.lower() not in AUTH_KEYS:
+                if key.value.lower() not in SENSITIVE_HEADER_KEYS:
                     continue
                 if isinstance(value, ast.Constant) and isinstance(value.value, str) and not is_placeholder(value.value):
                     report.errors.append(
-                        Finding("embedded-secret", "Literal authentication header found; use __AUTH_HEADERS__", node.lineno)
+                        Finding("embedded-secret", "Literal authentication/cookie header found; use managed credentials", node.lineno)
                     )
 
         if not isinstance(node, ast.Call):
             continue
-        is_request = isinstance(node.func, ast.Name) and node.func.id in direct_methods
-        if isinstance(node.func, ast.Attribute):
-            root = dotted_root(node.func)
-            is_request = node.func.attr.lower() in HTTP_METHODS and root in modules | sessions
-        if not is_request:
+        if not is_request_call(node, modules, sessions, direct_methods, session_factories):
             continue
+        for keyword in node.keywords:
+            if keyword.arg in SENSITIVE_REQUEST_KWARGS and contains_literal_credential(keyword.value):
+                report.errors.append(
+                    Finding("embedded-secret", f"Literal {keyword.arg} credential found; use managed credentials", node.lineno)
+                )
         if not any(keyword.arg == "timeout" for keyword in node.keywords):
             report.errors.append(Finding("missing-timeout", "Every HTTP request needs an explicit timeout", node.lineno))
 
@@ -299,10 +561,12 @@ def audit_source(source: str, auth_required: bool, allowed_modules: set[str]) ->
 
 def run_self_test() -> None:
     good = '''
+from pathlib import Path
 import requests
 BASE_URL = "https://staging.acme.com"
 HEADERS = dict(globals().get("__AUTH_HEADERS__", {}))
 def test_health():
+    assert Path("/").is_absolute()
     response = requests.get(f"{BASE_URL}/health", headers=HEADERS, timeout=30)
     assert response.status_code == 200
 test_health()
@@ -332,6 +596,56 @@ def test_fixture(client):
         "test-parameters",
         "uncalled-test",
     } <= codes
+    focused_bad = {
+        "literal-cookie": '''
+import requests
+def test_cookie():
+    requests.get("https://staging.acme.com/me", headers={"Cookie": "session=live-value"}, timeout=30)
+test_cookie()
+''',
+        "literal-basic-auth": '''
+import requests
+def test_basic():
+    requests.get("https://staging.acme.com/me", auth=("user", "live-password"), timeout=30)
+test_basic()
+''',
+        "dead-call": '''
+import requests
+def test_dead():
+    requests.get("https://staging.acme.com/me", timeout=30)
+if False:
+    test_dead()
+''',
+        "no-http": '''
+def test_vacuous():
+    assert True
+test_vacuous()
+''',
+        "chained-session-timeout": '''
+import requests
+def test_session():
+    requests.Session().get("https://staging.acme.com/me")
+test_session()
+''',
+        "docstring-auth": '''
+import requests
+"""Mentioning __AUTH_HEADERS__ here must not satisfy managed authentication."""
+def test_auth():
+    requests.get("https://staging.acme.com/me", timeout=30)
+test_auth()
+''',
+    }
+    expected = {
+        "literal-cookie": "embedded-secret",
+        "literal-basic-auth": "embedded-secret",
+        "dead-call": "uncalled-test",
+        "no-http": "no-http-request",
+        "chained-session-timeout": "missing-timeout",
+        "docstring-auth": "missing-managed-auth",
+    }
+    for name, source in focused_bad.items():
+        report = audit_source(source, auth_required=name == "docstring-auth", allowed_modules=set())
+        assert expected[name] in {finding.code for finding in report.errors}, name
     print("audit_backend_test self-test: ok")
 
 

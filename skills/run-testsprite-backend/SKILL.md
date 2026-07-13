@@ -188,7 +188,7 @@ python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
   --auth-required /tmp/testsprite-profile.py
 ```
 
-It rejects syntax errors, uncalled tests, unsupported imports, missing request timeouts, private/placeholder targets, and likely embedded credentials without printing secret values. Read [backend authoring](references/backend-test-authoring.md) for JSON, SSE, URL, error, and stateful examples.
+It rejects syntax errors, dead/uncalled or request-free tests, unsupported imports, missing request timeouts (including Session calls), private/placeholder targets, and likely embedded credentials or cookies without printing secret values. Read [backend authoring](references/backend-test-authoring.md) for JSON, SSE, URL, error, and stateful examples.
 
 ### 9. Preview shape, then create and run one narrow test
 

@@ -316,6 +316,7 @@ python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
 
 - Public target is real and revision-verifiable.
 - Every `test_*` function is called.
+- Every called test reaches at least one real HTTP request.
 - Every HTTP call has a timeout.
 - Imports fit the current sandbox.
 - Managed headers supply authentication.
@@ -331,7 +332,7 @@ python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
 
 | Symptom | Likely authoring cause | Fix |
 |---|---|---|
-| Instant pass with no request | Test function never called | Add module-scope call and audit |
+| Instant pass with no request | Test is uncalled, dead-guarded, or contains no HTTP call | Add a reachable module-scope call and real request; audit again |
 | Import error in cloud | Project/arbitrary package imported | Replace with HTTP and supported modules |
 | Authenticated endpoint returns 401 | Managed headers unused or project credential stale | Consume `__AUTH_HEADERS__`; verify project auth |
 | Run hangs | Missing/oversized timeout or stream terminal not handled | Bound connect/read timeout and terminal condition |
