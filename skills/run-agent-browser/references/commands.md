@@ -1,424 +1,210 @@
-# Command Reference
+# Current command guide
 
-Practical reference for the `agent-browser` commands used most often by this skill. For quick start and scenario-specific patterns, see `SKILL.md` and the routed references.
-
-## Managed macOS CDP pool commands
-
-Yigit's Mac installs a transparent wrapper at `~/.local/bin/agent-browser`. Plain browser commands lease an exclusive headed Chrome lane; no environment variables or browser flags are required.
+This is a curated routing guide, not an exhaustive frozen command catalog. Refresh syntax from the installed version before guessing:
 
 ```bash
-agent-browser pool status          # Read-only health and ownership for all lanes
-agent-browser pool current         # Current agent's lane, port, and owner ID
-agent-browser pool use general     # Request general profile, port 9222
-agent-browser pool use profound    # Request Profound profile, port 9411
-agent-browser pool use peec        # Request Peec profile, port 9444
-agent-browser pool release         # Close this agent's daemon and release its lease
-agent-browser pool recover         # Reclaim stale owners and restart unhealthy lanes
-agent-browser pool doctor          # Wrapper/version/LaunchAgent/CDP health check
-agent-browser pool real --version  # Explicitly invoke the underlying CLI
+agent-browser skills get core
+agent-browser skills get core --full
+agent-browser COMMAND --help
+agent-browser --version
 ```
 
-Use top-level `agent-browser close` for normal final release. `tab close` does not release the lane. `close --all` is disabled. Explicit `--cdp`, `--auto-connect`, `--profile`, provider, engine, or `connect` commands bypass this wrapper and are not the default on this host.
+The upstream repository's `skills/agent-browser/SKILL.md` is intentionally a discovery stub. The installed `core` skill and command help are version-matched and authoritative.
 
-## Navigation
+## Managed-pool note
+
+On Yigit's Mac, plain browser commands use the headed CDP pool. `agent-browser pool real ...` calls the underlying CLI without pool leasing. Read `managed-cdp-pool.md` before explicit CDP/profile/provider/launch mutation.
+
+## Navigation and inspection
 
 ```bash
-agent-browser open <url>      # Navigate to URL (aliases: goto, navigate)
-                              # Supports: https://, http://, file://, about:, data:
-                              # Auto-prepends https:// if no protocol given
-agent-browser back            # Go back
-agent-browser forward         # Go forward
-agent-browser reload          # Reload page
-agent-browser close           # Close browser (aliases: quit, exit)
-agent-browser connect 9222    # Explicit unmanaged CDP bypass; not needed with the managed pool
+agent-browser open https://example.com     # navigate; first managed open creates a task tab
+agent-browser open                         # unmanaged: launch about:blank for pre-navigation setup
+agent-browser back
+agent-browser forward
+agent-browser reload
+agent-browser snapshot                     # accessibility tree
+agent-browser snapshot -i                  # interactive-first refs
+agent-browser snapshot -i -u               # include link URLs
+agent-browser snapshot -s '#main'           # scope selector
+agent-browser snapshot -c -d 4             # compact, depth-limited
+agent-browser read                          # active rendered DOM as readable text
+agent-browser read https://example.com      # public URL content negotiation/fallback fetch
 ```
 
-## Snapshot (page analysis)
+For a public URL that needs no browser session, prefer:
 
 ```bash
-agent-browser snapshot            # Full accessibility tree
-agent-browser snapshot -i         # Interactive elements only (recommended)
-agent-browser snapshot -c         # Compact output
-agent-browser snapshot -d 3       # Limit depth to 3
-agent-browser snapshot -s "#main" # Scope to CSS selector
+agent-browser pool real read https://example.com
 ```
 
-## Interactions (use @refs from snapshot)
+`read URL` can negotiate Markdown, try `.md`, discover nearby `llms.txt`, and fall back to HTML conversion. Check `read --help` for `--raw`, `--require-md`, `--llms`, `--outline`, `--filter`, and timeout options.
+
+## Interaction
 
 ```bash
-agent-browser click @e1           # Click
-agent-browser click @e1 --new-tab # Click and open in new tab
-agent-browser dblclick @e1        # Double-click
-agent-browser focus @e1           # Focus element
-agent-browser fill @e2 "text"     # Clear and type
-agent-browser type @e2 "text"     # Type without clearing
-agent-browser press Enter         # Press key (alias: key)
-agent-browser press Control+a     # Key combination
-agent-browser keydown Shift       # Hold key down
-agent-browser keyup Shift         # Release key
-agent-browser hover @e1           # Hover
-agent-browser check @e1           # Check checkbox
-agent-browser uncheck @e1         # Uncheck checkbox
-agent-browser select @e1 "value"  # Select dropdown option
-agent-browser select @e1 "a" "b"  # Select multiple options
-agent-browser scroll down 500     # Scroll page (default: down 300px)
-agent-browser scrollintoview @e1  # Scroll element into view
-agent-browser drag @e1 @e2        # Drag and drop
-agent-browser upload @e1 file.pdf # Upload files
-agent-browser download @e1 file.pdf # Click element and save download to a file
+agent-browser click @e1
+agent-browser dblclick @e1
+agent-browser fill @e2 'text'               # replace value
+agent-browser type @e2 'text'               # type through keyboard events
+agent-browser press Enter
+agent-browser hover @e3
+agent-browser focus @e3
+agent-browser check @e4
+agent-browser uncheck @e4
+agent-browser select @e5 value
+agent-browser drag @e1 @e2
+agent-browser upload @e6 ./file.pdf
+agent-browser scroll down 500
+agent-browser scrollintoview @e7
 ```
 
-## Keyboard
+Prefer refs or semantic `find` locators. Use quoted arguments and `--stdin` for complex JavaScript rather than shell-fragile interpolation.
+
+## Semantic finders
 
 ```bash
-agent-browser keyboard type "Hello"        # Type into the currently focused element
-agent-browser keyboard inserttext "Paste"  # Insert text without key events
+agent-browser find role button click --name 'Save'
+agent-browser find label 'Email' fill 'person@example.com'
+agent-browser find text 'Continue' click
+agent-browser find testid submit click
+agent-browser find placeholder 'Search' fill 'query'
 ```
 
-## Get Information
+Use `--exact` when partial matches are ambiguous. Run `find --help` for the current supported locator/action matrix.
+
+## Get and assertions
 
 ```bash
-agent-browser get text @e1        # Get element text
-agent-browser get html @e1        # Get innerHTML
-agent-browser get value @e1       # Get input value
-agent-browser get attr @e1 href   # Get attribute
-agent-browser get title           # Get page title
-agent-browser get url             # Get current URL
-agent-browser get count ".item"   # Count matching elements
-agent-browser get box @e1         # Get bounding box
-agent-browser get styles @e1      # Get computed styles (font, color, bg, etc.)
+agent-browser get url
+agent-browser get title
+agent-browser get text @e1
+agent-browser get value @e2
+agent-browser get attr @e1 href
+agent-browser get count '.row'
+agent-browser is visible @e1
+agent-browser is enabled @e1
+agent-browser is checked @e1
 ```
 
-## Check State
+These are observation commands, not a complete assertion framework. Compare the output to the expected state and report the actual observation.
+
+## Waits
 
 ```bash
-agent-browser is visible @e1      # Check if visible
-agent-browser is enabled @e1      # Check if enabled
-agent-browser is checked @e1      # Check if checked
+agent-browser wait @e1
+agent-browser wait '#spinner' --state hidden
+agent-browser wait --text 'Saved'
+agent-browser wait --url '**/dashboard'
+agent-browser wait --load networkidle
+agent-browser wait --fn 'document.readyState === "complete"'
+agent-browser wait --download ./downloads
+agent-browser wait 500
 ```
 
-## Screenshots and PDF
+Prefer selector/text/URL/load/function waits. A fixed millisecond wait is a last-resort diagnostic.
+
+## Tabs and frames
 
 ```bash
-agent-browser screenshot          # Save to temporary directory
-agent-browser screenshot path.png # Save to specific path
-agent-browser screenshot --full   # Full page
-agent-browser screenshot --annotate # Annotated screenshot with numbered labels
-agent-browser pdf output.pdf      # Save as PDF
+agent-browser tab
+agent-browser tab new --label docs https://docs.example.com
+agent-browser tab docs
+agent-browser tab close docs
+agent-browser frame '#payment-frame'
+agent-browser frame main
 ```
 
-## Video Recording
+Tab IDs are strings like `t1`; positional indexes are rejected. `tab new` opens and switches to the new tab. Snapshot again after every tab or frame switch.
+
+## Screenshots, PDF, errors, and diffs
 
 ```bash
-agent-browser record start ./demo.webm    # Start recording
-agent-browser click @e1                   # Perform actions
-agent-browser record stop                 # Stop and save video
-agent-browser record restart ./take2.webm # Stop current + start new
+agent-browser screenshot ./page.png
+agent-browser screenshot --full ./full.png
+agent-browser screenshot --annotate ./annotated.png
+agent-browser screenshot @e1 ./element.png
+agent-browser pdf ./page.pdf
+agent-browser errors
+agent-browser console
+agent-browser diff snapshot
+agent-browser diff screenshot --baseline ./before.png
 ```
 
-## Wait
+`--full` is screenshot-specific; `--annotate` is also accepted as a global default. Annotated labels correspond to refs from that capture; state changes invalidate them like any other refs.
+
+## Network, storage, cookies, and headers
 
 ```bash
-agent-browser wait @e1                     # Wait for element
-agent-browser wait 2000                    # Wait milliseconds
-agent-browser wait --text "Success"        # Wait for text (or -t)
-agent-browser wait --url "**/dashboard"    # Wait for URL pattern (or -u)
-agent-browser wait --load networkidle      # Wait for network idle (or -l)
-agent-browser wait --fn "window.ready"     # Wait for JS condition (or -f)
-agent-browser wait --download ./file.pdf   # Wait for download and save it
+agent-browser network requests
+agent-browser network requests --clear
+agent-browser network route '**/api/**' --abort
+agent-browser cookies get
+agent-browser cookies set --curl ./protected-cookie-export.txt
+agent-browser storage local get key
+agent-browser storage session get key
+agent-browser set headers '{"X-Test":"value"}'
+agent-browser set offline on
 ```
 
-## Mouse Control
+These surfaces can expose secrets or change traffic. Read `trust-boundaries.md`; use `COMMAND --help` for exact payload shapes.
+
+## Sessions, restore, and auth
 
 ```bash
-agent-browser mouse move 100 200      # Move mouse
-agent-browser mouse down left         # Press button
-agent-browser mouse up left           # Release button
-agent-browser mouse wheel 100         # Scroll wheel
+agent-browser --session task open https://example.com
+agent-browser --session task --restore login-key open https://example.com
+agent-browser session list
+agent-browser session id --scope worktree --prefix qa
+agent-browser auth login service --credential-provider vault --item 'Service account'
+agent-browser state save ./state.json
 ```
 
-## Semantic Locators (alternative to refs)
+State files are credentials. The managed pool normally replaces explicit browser sessions with owner-scoped lane leases; do not prepend `--session` to managed commands.
+
+## Debug and performance
 
 ```bash
-agent-browser find role button click --name "Submit"
-agent-browser find text "Sign In" click
-agent-browser find text "Sign In" click --exact      # Exact match only
-agent-browser find label "Email" fill "user@test.com"
-agent-browser find placeholder "Search" type "query"
-agent-browser find alt "Logo" click
-agent-browser find title "Close" click
-agent-browser find testid "submit-btn" click
-agent-browser find first ".item" click
-agent-browser find last ".item" click
-agent-browser find nth 2 "a" hover
+agent-browser trace start
+agent-browser trace stop ./debug-trace.json
+agent-browser profiler start
+agent-browser profiler stop ./profile.json
+agent-browser record start ./flow.webm https://example.com
+agent-browser record stop
+agent-browser pool real --headed --enable react-devtools open https://example.com
+agent-browser react tree
+agent-browser react inspect COMPONENT_ID
+agent-browser vitals
 ```
 
-## Browser Settings
+`trace` and `profiler` produce Chrome DevTools trace JSON for DevTools or Perfetto, not Playwright trace archives. `record` produces WebM and starts a fresh browser context while preserving cookies/localStorage.
+
+## Batch and JSON
 
 ```bash
-agent-browser set viewport 1920 1080          # Set viewport size
-agent-browser set viewport 1920 1080 2        # 2x retina (same CSS size, higher res screenshots)
-agent-browser set device "iPhone 14"          # Emulate device
-agent-browser set geo 37.7749 -122.4194       # Set geolocation (alias: geolocation)
-agent-browser set offline on                  # Toggle offline mode
-agent-browser set headers '{"X-Key":"v"}'     # Extra HTTP headers
-agent-browser set credentials user pass       # HTTP basic auth (alias: auth)
-agent-browser set media dark                  # Emulate color scheme
-agent-browser set media light reduced-motion  # Light mode + reduced motion
+agent-browser --json snapshot -i
+agent-browser batch --bail \
+  '["open","https://example.com"]' \
+  '["snapshot","-i"]'
 ```
 
-## Cookies and Storage
+Use JSON for machine parsing and `batch` only when no intermediate decision is needed.
+
+## MCP and specialized skills
 
 ```bash
-agent-browser cookies                               # Get all cookies
-agent-browser cookies set session_id "abc123"      # Set cookie
-agent-browser cookies clear                         # Clear cookies
-agent-browser storage local                         # Get all localStorage
-agent-browser storage local get authToken          # Get specific key
-agent-browser storage local set theme "dark"       # Set value
-agent-browser storage local clear                  # Clear all localStorage
-agent-browser storage session get userId           # Read sessionStorage
+agent-browser mcp
+agent-browser mcp --help
+agent-browser skills list
+agent-browser skills get electron
+agent-browser skills get slack
+agent-browser skills get dogfood
+agent-browser skills get vercel-sandbox
+agent-browser skills get agentcore
 ```
 
-## Network
+Use the specialized skill for its runtime, then verify syntax against current CLI help. Do not transplant browser-web assumptions into Electron, Slack, or cloud sandboxes.
 
-```bash
-agent-browser network route <url>              # Intercept requests
-agent-browser network route <url> --abort      # Block requests
-agent-browser network route <url> --body '{}'  # Mock response
-agent-browser network unroute [url]            # Remove routes
-agent-browser network requests                 # View tracked requests
-agent-browser network requests --filter api    # Filter requests
-```
+## Global flags change
 
-## Tabs and Windows
-
-```bash
-agent-browser tab                 # List tabs
-agent-browser tab list            # Explicit tab listing
-agent-browser tab new [url]       # New tab
-agent-browser tab t2              # Switch to tab by target ID
-agent-browser tab close           # Close current tab
-agent-browser tab close t2        # Close tab by target ID
-agent-browser window new          # New window
-```
-
-## Sessions
-
-```bash
-agent-browser session             # Show current session name
-agent-browser session list        # List active sessions
-```
-
-## Frames
-
-```bash
-agent-browser frame "#iframe"     # Switch to iframe
-agent-browser frame main          # Back to main frame
-```
-
-## Dialogs
-
-```bash
-agent-browser dialog accept [text]  # Accept dialog
-agent-browser dialog dismiss        # Dismiss dialog
-```
-
-## JavaScript
-
-```bash
-agent-browser eval "document.title"          # Simple expressions only
-agent-browser eval -b "<base64>"             # Any JavaScript (base64 encoded)
-agent-browser eval --stdin                   # Read script from stdin
-```
-
-Use `-b`/`--base64` or `--stdin` for reliable execution. Shell escaping with nested quotes and special characters is error-prone.
-
-```bash
-# Base64 encode your script, then:
-agent-browser eval -b "ZG9jdW1lbnQucXVlcnlTZWxlY3RvcignW3NyYyo9Il9uZXh0Il0nKQ=="
-
-# Or use stdin with heredoc for multiline scripts:
-cat <<'EOF' | agent-browser eval --stdin
-const links = document.querySelectorAll('a');
-Array.from(links).map(a => a.href);
-EOF
-```
-
-## State Management
-
-```bash
-agent-browser state save auth.json    # Save cookies, storage, auth state
-agent-browser state load auth.json    # Restore saved state
-```
-
-## Diff (Page Comparison)
-
-```bash
-agent-browser diff snapshot                    # Compare current page against last snapshot
-agent-browser diff snapshot --baseline f.txt   # Compare against a saved snapshot file
-agent-browser diff snapshot -s "#main"         # Scope diff to CSS selector
-agent-browser diff screenshot --baseline f.png # Visual pixel diff against baseline image
-agent-browser diff url url1 url2               # Compare two URLs (snapshot diff)
-agent-browser diff url url1 url2 --screenshot  # Compare two URLs (visual diff)
-```
-
-## Global Options
-
-```bash
-agent-browser --session <name> ...        # Isolated browser session
-agent-browser --session <name> --restore ...  # Auto-save/restore cookies+localStorage across runs
-agent-browser --profile <path> ...        # Persistent browser profile directory
-agent-browser --json ...                  # JSON output for parsing
-agent-browser --headed ...                # Show browser window (not headless)
-agent-browser --full ...                  # Full page screenshot (-f)
-agent-browser --annotate ...              # Annotated screenshot labels
-agent-browser --cdp <port> ...           # Explicit CDP connection; bypasses the managed Mac pool
-agent-browser --auto-connect ...         # Auto-discover Chrome; bypasses the managed Mac pool
-agent-browser -p <provider> ...          # Cloud browser provider (--provider): browserbase, browseruse, kernel, ios
-agent-browser --proxy <url> ...          # Use proxy server
-agent-browser --proxy-bypass <hosts>     # Hosts to bypass proxy
-agent-browser --headers <json> ...       # HTTP headers scoped to URL's origin
-agent-browser --executable-path <p>      # Custom browser executable
-agent-browser --extension <path> ...     # Load browser extension (repeatable)
-agent-browser --ignore-https-errors      # Ignore SSL certificate errors
-agent-browser --allow-file-access        # Enable file:// URLs
-agent-browser --native                   # No-op on current versions (native Rust is the default)
-agent-browser --engine <name>            # Browser engine: chrome (default), lightpanda
-agent-browser --color-scheme <mode>      # dark / light / no-preference
-agent-browser --state <path>             # Load storage state from JSON file
-agent-browser --config <path>            # Custom config file
-agent-browser --download-path <dir>      # Default download directory
-agent-browser --content-boundaries       # Wrap output with LLM-safe markers
-agent-browser --max-output <chars>       # Truncate output at N characters
-agent-browser --allowed-domains <list>   # Domain allowlist (comma-separated)
-agent-browser --action-policy <path>     # Action policy JSON file
-agent-browser --confirm-actions <list>   # Actions requiring user confirmation
-agent-browser --confirm-interactive      # Interactive confirmation prompts
-agent-browser --user-agent <string>      # Custom user agent string
-agent-browser --args <flags>             # Extra Chromium flags (e.g. "--disable-gpu")
-agent-browser --debug                    # Enable debug logging
-agent-browser --help                     # Show help (-h)
-agent-browser --version                  # Show version (-V)
-agent-browser <command> --help           # Show detailed help for a command
-```
-
-## Debugging
-
-```bash
-agent-browser --headed open example.com   # Show browser window on unmanaged hosts; managed Mac is already headed
-agent-browser --debug open example.com    # Debug logging to stderr
-agent-browser --cdp 9222 snapshot         # Explicit unmanaged CDP bypass
-agent-browser connect 9222                # Alternative explicit bypass
-agent-browser console                     # View console messages
-agent-browser console --clear             # Clear console
-agent-browser errors                      # View page errors
-agent-browser errors --clear              # Clear errors
-agent-browser highlight @e1               # Highlight element
-agent-browser trace start                 # Start recording trace
-agent-browser trace stop trace.zip        # Stop and save trace
-agent-browser profiler start              # Start Chrome DevTools profiling
-agent-browser profiler stop trace.json    # Stop and save profile
-```
-
-## Maintenance & advanced surface
-
-```bash
-agent-browser install [--with-deps]       # Install Chromium (and OS deps) — run once after npm install
-agent-browser doctor                      # Diagnose daemon/socket/state health
-agent-browser doctor --fix --json         # Auto-heal (prefer this over manual rm of *.pid/*.sock)
-agent-browser upgrade                     # Auto-detect install method (npm/brew/cargo) and update
-agent-browser read [url]                  # Extract readable page content
-agent-browser get cdp-url                 # Print the CDP endpoint for external tooling
-agent-browser batch script.txt --bail --json   # Run a command file, stop on first failure
-agent-browser chat "book the cheapest flight"   # Natural-language / REPL driving
-agent-browser mcp --tools core,state,debug      # Run agent-browser as an MCP server
-```
-
-### Credential vault (avoid passing secrets on the CLI)
-
-```bash
-agent-browser auth save  myapp --password-stdin      # store credentials (pipe the password in)
-agent-browser auth login myapp --url https://app.example.com/login \
-  --username-selector "#email" --password-selector "#pass" --submit-selector "button[type=submit]"
-agent-browser auth list                              # list stored profiles
-agent-browser auth show   myapp                      # profile metadata
-agent-browser auth delete myapp
-```
-
-Prefer `--password-stdin` over any `--password` flag (flags leak via shell history / process listing). Distinct from `set credentials user pass`, which is HTTP Basic auth.
-
-> This reference documents the everyday CLI surface. agent-browser also ships `clipboard`, `stream`, `dashboard`, `react`/`vitals`, `network har`, `plugin`, `skills`, and iOS `device` commands — run `agent-browser --help` or see agent-browser.dev/commands for the full list.
-
-## Common Environment Variables
-
-This list focuses on the variables used elsewhere in this skill. Use `agent-browser --help` for the full surface.
-
-```bash
-AGENT_BROWSER_SESSION="mysession"            # --session default
-AGENT_BROWSER_SESSION_NAME="myapp"           # legacy: old auto-save flag; prefer --session NAME --restore
-AGENT_BROWSER_STATE="/path/state.json"       # --state default
-AGENT_BROWSER_EXECUTABLE_PATH="/path/chrome" # Custom browser path
-AGENT_BROWSER_EXTENSIONS="/ext1,/ext2"       # Comma-separated extension paths
-AGENT_BROWSER_PROVIDER="browserbase"         # Cloud browser provider
-AGENT_BROWSER_PROXY="http://proxy:8080"      # Proxy server URL
-AGENT_BROWSER_PROXY_BYPASS="localhost,*.local"  # Proxy bypass hosts
-AGENT_BROWSER_STREAM_PORT="9223"             # WebSocket streaming port
-AGENT_BROWSER_HEADED="1"                     # Always show browser UI
-AGENT_BROWSER_ANNOTATE="1"                   # Annotated screenshots by default
-AGENT_BROWSER_NATIVE="1"                     # Use native Rust daemon
-AGENT_BROWSER_ENGINE="lightpanda"            # Browser engine
-AGENT_BROWSER_COLOR_SCHEME="dark"            # Color scheme
-AGENT_BROWSER_PROFILE="/path/profile"        # Persistent profile directory
-AGENT_BROWSER_CONFIG="/path/config.json"     # Config file path
-AGENT_BROWSER_DOWNLOAD_PATH="/tmp/downloads" # Default download directory
-AGENT_BROWSER_DEFAULT_TIMEOUT="60000"        # Default Playwright timeout in ms
-AGENT_BROWSER_CONTENT_BOUNDARIES="1"         # LLM-safe output wrapping
-AGENT_BROWSER_MAX_OUTPUT="20000"             # Truncate output chars
-AGENT_BROWSER_ALLOWED_DOMAINS="a.com,b.com"  # Domain allowlist
-AGENT_BROWSER_ACTION_POLICY="policy.json"    # Action policy path
-AGENT_BROWSER_CONFIRM_ACTIONS="click,fill"   # Actions needing confirmation
-AGENT_BROWSER_CONFIRM_INTERACTIVE="1"        # Enable interactive confirmation prompts
-AGENT_BROWSER_USER_AGENT="MyBot/1.0"         # Custom user agent
-AGENT_BROWSER_ARGS="--disable-gpu"           # Extra Chromium flags
-AGENT_BROWSER_DEBUG="1"                      # Debug logging
-AGENT_BROWSER_ENCRYPTION_KEY="secret"        # Encryption key for saved state
-AGENT_BROWSER_STATE_EXPIRE_DAYS="30"         # Auto-expire saved state after N days
-```
-
-## Agent Steering Notes
-
-Hard-won lessons from real-world automation.
-
-### eval: prefer --stdin heredoc over inline quotes
-
-Shell escaping with nested quotes breaks constantly. Use the heredoc pattern:
-
-```bash
-agent-browser eval --stdin <<'EVALEOF'
-const items = document.querySelectorAll('.story-title');
-JSON.stringify(Array.from(items).map(el => el.textContent.trim()).slice(0, 10));
-EVALEOF
-```
-
-Do NOT use inline eval with complex JS -- shell escaping will break.
-
-### get text: strict mode requires exactly one match
-
-CSS selectors in `get text`, `get value`, `is visible` fail when multiple elements match. Use scoped selectors or `eval --stdin` for batch extraction.
-
-### check/uncheck return values differ from other commands
-
-Most commands return a Done message. But `check` and `uncheck` return the new checked state (`true` or `false`).
-
-### snapshot -i shows ONLY interactive elements
-
-Non-interactive text (headings, paragraphs, labels, spans) is invisible in `snapshot -i`. For data extraction, use `get text` or `eval --stdin`. See `snapshot-refs.md` for details.
-
-### diff requires a subcommand
-
-`agent-browser diff` alone fails. Always use: `diff snapshot`, `diff screenshot --baseline`, or `diff url url1 url2`.
-
-### back command exists but is easy to miss
-
-Use `agent-browser back` (browser back button). Do NOT use `go back` -- that is not a valid command.
+Global options evolve. Current notable categories include session/restore, namespace, profile/state, providers, explicit CDP/auto-connect, headed mode, headers/proxy/user-agent/args, JSON/debug, content boundaries/action policy, engine, screenshots, and idle timeout. Verify exact names and types with `agent-browser --help`; do not resurrect removed `--native` or `AGENT_BROWSER_NATIVE` guidance.

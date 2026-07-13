@@ -1,105 +1,87 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_MIN_VERSION="0.17.1"
+DEFAULT_MIN_VERSION="0.31.1"
 
 usage() {
   cat <<'EOF'
 Usage: check-agent-browser-version.sh [minimum-version]
 
-Checks whether agent-browser can run and whether its parsed version is at least
-the requested minimum. Defaults to 0.17.1.
+Checks the installed CLI, version-matched core skill, and optional local CDP
+pool. Defaults to the version used to verify this skill: 0.31.1.
 
-The script uses an installed `agent-browser` binary when available, otherwise
-it tries `npx --no-install agent-browser`. It does not install packages or
-Chromium.
+Uses an installed `agent-browser`, otherwise `npx --no-install`. It never
+installs packages or Chrome.
 EOF
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  usage
-  exit 0
-fi
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then usage; exit 0; fi
 
 MIN_VERSION="${1:-$DEFAULT_MIN_VERSION}"
 MIN_VERSION="${MIN_VERSION#v}"
 MIN_VERSION="${MIN_VERSION#V}"
-
 if [[ ! "$MIN_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
-  echo "minimum parsed:   no ($MIN_VERSION)"
-  echo "minimum version must look like 0.17.1, 0.17, or v0.17.1" >&2
-  exit 0
+  echo "minimum version must look like 0.31.1, 0.31, or v0.31.1" >&2
+  exit 2
 fi
 
 normalize_version() {
-  local raw="$1"
-  local major minor patch
+  local raw="$1" major minor patch
   IFS=. read -r major minor patch <<<"$raw"
   printf '%s.%s.%s' "$major" "${minor:-0}" "${patch:-0}"
 }
 
-MIN_VERSION="$(normalize_version "$MIN_VERSION")"
+version_lt() {
+  local left="$1" right="$2" l1 l2 l3 r1 r2 r3
+  IFS=. read -r l1 l2 l3 <<<"$left"
+  IFS=. read -r r1 r2 r3 <<<"$right"
+  if ((10#$l1 != 10#$r1)); then ((10#$l1 < 10#$r1)); return; fi
+  if ((10#$l2 != 10#$r2)); then ((10#$l2 < 10#$r2)); return; fi
+  ((10#$l3 < 10#$r3))
+}
 
+MIN_VERSION="$(normalize_version "$MIN_VERSION")"
 if command -v agent-browser >/dev/null 2>&1; then
   AB_CMD=(agent-browser)
 else
   AB_CMD=(npx --no-install agent-browser)
 fi
 
-echo "resolved command: ${AB_CMD[*]}"
-echo "minimum version:  ${MIN_VERSION}"
+echo "resolved command:  ${AB_CMD[*]}"
+echo "minimum version:   $MIN_VERSION"
 
-set +e
-VERSION_OUTPUT="$("${AB_CMD[@]}" --version 2>&1)"
-STATUS=$?
-set -e
+VERSION_OUTPUT="$("${AB_CMD[@]}" --version 2>&1)" || {
+  status=$?
+  echo "can run:           no"
+  printf '%s\n' "$VERSION_OUTPUT"
+  exit "$status"
+}
+echo "can run:           yes"
+echo "version output:    $VERSION_OUTPUT"
 
-if [[ $STATUS -ne 0 ]]; then
-  echo "can run:          no"
-  echo "version output:"
-  echo "$VERSION_OUTPUT"
-  exit $STATUS
-fi
-
-echo "can run:          yes"
-echo "version output:   $VERSION_OUTPUT"
-
-VERSION=""
 if [[ "$VERSION_OUTPUT" =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
   VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+else
+  echo "version parsed:    no" >&2
+  exit 1
 fi
-
-if [[ -z "$VERSION" ]]; then
-  echo "version parsed:   no"
-  exit 0
-fi
-
-echo "version parsed:   yes ($VERSION)"
-
-version_lt() {
-  local left="$1"
-  local right="$2"
-  local left_major left_minor left_patch right_major right_minor right_patch
-
-  IFS=. read -r left_major left_minor left_patch <<<"$left"
-  IFS=. read -r right_major right_minor right_patch <<<"$right"
-
-  left_minor="${left_minor:-0}"
-  left_patch="${left_patch:-0}"
-  right_minor="${right_minor:-0}"
-  right_patch="${right_patch:-0}"
-
-  if ((10#$left_major < 10#$right_major)); then return 0; fi
-  if ((10#$left_major > 10#$right_major)); then return 1; fi
-  if ((10#$left_minor < 10#$right_minor)); then return 0; fi
-  if ((10#$left_minor > 10#$right_minor)); then return 1; fi
-  if ((10#$left_patch < 10#$right_patch)); then return 0; fi
-  return 1
-}
+echo "version parsed:    yes ($VERSION)"
 
 if version_lt "$VERSION" "$MIN_VERSION"; then
   echo "minimum satisfied: no"
   exit 1
 fi
-
 echo "minimum satisfied: yes"
+
+if "${AB_CMD[@]}" skills get core >/dev/null 2>&1; then
+  echo "core skill:        available"
+else
+  echo "core skill:        unavailable" >&2
+  exit 1
+fi
+
+if "${AB_CMD[@]}" pool status >/dev/null 2>&1; then
+  echo "managed CDP pool:  available"
+else
+  echo "managed CDP pool:  unavailable (standard CLI mode)"
+fi

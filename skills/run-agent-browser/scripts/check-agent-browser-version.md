@@ -1,19 +1,17 @@
-# check-agent-browser-version.sh
+# `check-agent-browser-version.sh`
 
-Use this helper before browser work when the installed `agent-browser` surface may be stale or missing.
+Use this non-mutating helper before relying on the skill's current command examples:
 
 ```bash
 bash scripts/check-agent-browser-version.sh
-bash scripts/check-agent-browser-version.sh 0.17.1
-bash scripts/check-agent-browser-version.sh v0.17.1
+bash scripts/check-agent-browser-version.sh 0.31.1
 ```
 
-Behavior:
-- uses `agent-browser` when installed
-- otherwise tries `npx --no-install agent-browser`
-- prints the resolved command, raw version output, parsed semver, and minimum-version result
-- exits non-zero only when the command cannot run or the parsed installed version is below the requested minimum
-- accepts minimum versions as `MAJOR`, `MAJOR.MINOR`, `MAJOR.MINOR.PATCH`, or the same forms prefixed with `v`
-- never runs `npm install`, `npx` package installation, or `agent-browser install`
+It verifies that:
 
-If the installed version or minimum version cannot be parsed, inspect the printed output manually before relying on version-gated command examples.
+- the resolved installed CLI runs;
+- its parsed version meets the requested minimum (default `0.31.1`);
+- `agent-browser skills get core` is available;
+- the local managed CDP pool is reported when present.
+
+It uses `npx --no-install` only when no binary is on `PATH`. It never installs a package or Chrome. Pool absence is informational because the upstream CLI remains usable; missing core skill or an older/unparseable CLI is a failure.

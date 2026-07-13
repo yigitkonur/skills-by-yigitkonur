@@ -1,18 +1,20 @@
-# inspect-page.sh
+# `inspect-page.sh`
 
-Use this helper for a repeatable first-pass page inspection before writing custom browser steps or handing capture artifacts to another skill.
+Use this helper only when the user asked for a repeatable capture; ad hoc browser work should remain one command at a time.
 
 ```bash
 bash scripts/inspect-page.sh https://example.com /tmp/example-inspect
 bash scripts/inspect-page.sh --screenshot https://example.com /tmp/example-inspect
 ```
 
-Behavior:
-- opens the URL in an isolated temporary `--session`
-- waits for `networkidle`, with a short fixed wait fallback for pages that never become idle
-- writes final URL, title, `snapshot -i --json`, and human-readable `snapshot -i`
-- writes `screenshot.png` only when `--screenshot` is passed
-- closes only the temporary session it created
-- does not load, save, or persist auth state
+It writes:
 
-Use the JSON snapshot for deterministic ref extraction. Use the text snapshot for quick human inspection. Use screenshots only when visual evidence matters.
+- `final-url.txt`
+- `title.txt`
+- `snapshot-interactive.json`
+- `snapshot-interactive.txt`
+- `page.md`
+- `errors.txt`
+- optional `screenshot.png`
+
+On Yigit's Mac it uses the managed headed-CDP pool, records the task tab, closes only that tab, and releases the lane with exact top-level `agent-browser close`. On hosts without the pool it creates and closes an isolated temporary upstream session. Artifacts may contain private page data; inspect them before sharing or committing.

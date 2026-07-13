@@ -1,473 +1,167 @@
-# Sessions, refs, authentication, and persistence
+# Sessions, tabs, and reference lifecycle
 
-Everything about the live state of a browser context — which session you are in, which tab is active, whether the refs from your last snapshot are still valid, and how to log in once and stay logged in.
+## Refs are observation-scoped handles
 
-**Related:** `commands.md` for flags and subcommands, `safety.md` for sensitive-command policy, `SKILL.md` for the operating transcripts.
-
----
-
-## Part 1 — Snapshot and refs
-
-### How refs work
-
-Traditional approach: pass full DOM/HTML to the model, model emits CSS selector, run action (~3k–5k tokens per step).
-
-agent-browser approach: `snapshot -i` returns a compact accessibility tree with `@e1`, `@e2`, ... refs (~200–400 tokens). Subsequent commands take the ref directly.
+`snapshot` emits accessibility-tree references such as `@e1`. A ref belongs to the page/frame/tab state that produced it.
 
 ```bash
 agent-browser snapshot -i
+agent-browser click @e3
+agent-browser snapshot -i
 ```
 
-### Output format (text mode)
+Invalidate refs after:
 
-```
-Page: Example Site — Home
-URL: https://example.com
+- navigation or reload;
+- a click/submission that changes the page;
+- modal, menu, dialog, or dynamic list changes;
+- tab or frame switch;
+- reconnect, pool recovery, or browser restart.
 
-@e1 [header]
-  @e2 [nav]
-    @e3 [a] "Home"
-    @e4 [a] "Products"
-  @e5 [button] "Sign In"
+Do not manufacture refs, reuse refs from another tab, or write `@ref=e3`.
 
-@e6 [main]
-  @e7 [h1] "Welcome"
-  @e8 [form]
-    @e9  [input type="email"]    placeholder="Email"
-    @e10 [input type="password"] placeholder="Password"
-    @e11 [button type="submit"]  "Log In"
-```
-
-### Ref notation
-
-```
-@e1 [tag type="value"] "text content" placeholder="hint"
-│    │   │             │               │
-│    │   │             │               └─ Other attributes shown
-│    │   │             └─ Visible text
-│    │   └─ Key attributes
-│    └─ HTML tag (or accessibility role)
-└─ Unique ref ID within THIS snapshot
-```
-
-### Ref lifecycle — when refs go stale
-
-Refs are invalid after any of these:
-
-- Page navigation (`open`, click that follows a link, form submission with redirect).
-- SPA route change (URL changed without a hard navigation).
-- Tab switch (`tab N`) — refs are scoped to one tab.
-- Modal opens or closes.
-- Dynamic content loads (AJAX, infinite scroll, dropdown expansion).
-- Any time you have not snapshotted in many steps and the page might have changed.
-
-Symptom of using a stale ref: `Error: ref @eN not found` or wrong element clicked. Cure: `agent-browser snapshot -i`, then retry with the fresh ref.
-
-### Scoped snapshots — for crowded pages
-
-When `snapshot -i` returns 50+ elements, narrow it:
+## Snapshot modes
 
 ```bash
-agent-browser snapshot -i -s "main"
-agent-browser snapshot -i -s "#checkout-form"
-agent-browser snapshot -i -s "[role='dialog']"
+agent-browser snapshot
+agent-browser snapshot -i
+agent-browser snapshot -i -u
+agent-browser snapshot -i -c -d 4
+agent-browser snapshot -s '#main'
 ```
 
-The `-s / --selector` flag takes a CSS selector, not a `@ref`.
+`-i` is interactive-first; current output can retain useful headings/structure, so “interactive only” is too absolute. It still may omit visible noninteractive detail. Use full `snapshot` or `read` for content extraction.
 
-### Other snapshot flags
+`--json` makes snapshot output parseable. Do not parse decorative CLI text when JSON is available.
+
+Annotated screenshots provide a visual ref map:
 
 ```bash
-agent-browser snapshot              # full accessibility tree
-agent-browser snapshot -i           # interactive elements only (default for most work)
-agent-browser snapshot -i -c        # compact (drops empty structural wrappers)
-agent-browser snapshot -i -d 3      # limit depth to 3
-agent-browser snapshot -i --json    # JSON output for machine parsing
+agent-browser screenshot --annotate ./annotated.png
 ```
 
-### `snapshot -i` shows ONLY interactive elements
+The labels are not durable. Re-snapshot after the state changes.
 
-| Element | In `-i`? | Examples |
+## Locator escalation
+
+Use this order:
+
+1. Fresh ref.
+2. Semantic locator by role/label/text/test ID.
+3. Narrow CSS selector.
+4. Small inspected `eval --stdin` computation.
+
+When a ref stops resolving, re-snapshot before changing strategy. A stale ref is not proof that the element disappeared.
+
+## Tabs
+
+```bash
+agent-browser tab
+agent-browser tab new --label app https://example.com
+agent-browser tab app
+agent-browser tab close app
+```
+
+Current tab IDs are stable strings such as `t1`. Positional integers are rejected. `tab new` opens and switches to the new tab. Labels are task-local aliases; create them before using or closing them.
+
+Maintain:
+
+```yaml
+active_tab: t3
+owned_tabs: [t3, t5]
+last_snapshot_tab: t3
+refs_fresh: true
+```
+
+On the managed pool, the first fresh `open URL` becomes a new tab. Record its ID immediately. Never inspect, switch to, or close pre-existing authenticated tabs unless the requested task specifically targets them.
+
+## Frames
+
+One level of iframe content may appear inline in snapshots. When explicit targeting is needed:
+
+```bash
+agent-browser frame '#checkout-frame'
+agent-browser snapshot -i
+agent-browser frame main
+agent-browser snapshot -i
+```
+
+Frame switches invalidate the working refs. Cross-origin restrictions and application behavior still apply.
+
+## Managed pool versus upstream sessions
+
+| Runtime | Isolation/persistence | Cleanup |
 |---|---|---|
-| Links (`<a>`) | yes | Navigation, clickable text |
-| Buttons | yes | Submit, toggle, action |
-| Inputs | yes | Text, checkbox, radio |
-| Textareas | yes | Multi-line |
-| Selects | yes | Dropdowns |
-| Headings, paragraphs, spans, divs | no | Body text, labels, status |
-| Table cells (no link) | no | Data cells |
-| Images | no | Unless they have alt text |
+| Managed pool | Owner-scoped lane lease over persistent headed Chrome profile | Close owned tabs, then exact `agent-browser close` |
+| Upstream named session | Separate agent-browser daemon/session | `agent-browser --session NAME close` |
+| Restore key | Periodically saved auth/session state (default autosave interval currently 30s) | Close session; retain/delete key per task |
+| Explicit profile | Persistent Chrome user-data directory | Close runtime; avoid concurrent reuse |
 
-For non-interactive text use `get text SELECTOR` (single match) or `eval --stdin` (multiple). See `SKILL.md` Scenario C.
+Do not add `--session` to managed-pool commands: it can defeat the wrapper's exact release path. Use named sessions only under intentional unmanaged `pool real` execution or where the pool command is unavailable.
 
-### JSON schema for `snapshot -i --json`
+## Stable unmanaged session IDs
 
-```json
-{
-  "success": true,
-  "data": {
-    "origin": "https://example.com",
-    "refs": {
-      "e1": { "name": "Submit", "role": "button" },
-      "e2": { "name": "Email",  "role": "textbox" }
-    },
-    "snapshot": "- button Submit [ref=e1]..."
-  },
-  "error": null
-}
-```
-
-The refs live at `.data.refs`. There is no `.elements[]` array.
+For scripts that truly need an upstream session, derive a stable non-secret name:
 
 ```bash
-# Get all refs
-agent-browser snapshot -i --json | jq '.data.refs'
-
-# Filter by role
-agent-browser snapshot -i --json | jq '.data.refs | to_entries[] | select(.value.role == "button")'
-
-# Compact list with names
-agent-browser snapshot -i --json | jq '[.data.refs | to_entries[] | {ref: .key, name: .value.name, role: .value.role}]'
+SESSION="$(agent-browser session id --scope worktree --prefix qa)"
+agent-browser --session "$SESSION" open https://example.com
+agent-browser --session "$SESSION" snapshot -i
+agent-browser --session "$SESSION" close
 ```
 
-### Hidden UI components
+Scopes include `worktree`, `cwd`, and `git-root`; verify current help. A stable session enables reconnect, but it is not a lock-free substitute for concurrent agents sharing the same name.
 
-Dropdowns, popovers, accordions, modals, autocompletes, tab panels — their children only enter the DOM after a user action. They will NOT appear in `snapshot -i` until triggered.
+## Restore state
 
-Signs: a button with a chevron, an accordion header, an autocomplete input where you typed nothing yet.
-
-Discovery loop:
+For unmanaged hosts where authenticated continuity matters:
 
 ```bash
-agent-browser snapshot -i           # shows the trigger but no children
-agent-browser click @eN             # the trigger
-agent-browser wait 500              # let it render
-agent-browser snapshot -i           # now the children appear
+agent-browser --session "$SESSION" --restore service-login open https://example.com
 ```
 
-If clicking does nothing, try `hover @eN` then re-snapshot.
+Restore state auto-saves periodically while open and on close according to configured policy. Use a stable session so another command reconnects to the same runtime. Configure check URL/text/function when a stale or wrong account state would be dangerous.
 
-### Selector priority (when refs are not available)
+Restore keys and state files may contain authentication material. Never commit them or print their contents.
 
-1. `@refs` from `snapshot -i` — most stable, lowest tokens.
-2. Semantic locators — `find role button click --name "Submit"`, `find label "Email" fill "..."`. Framework-agnostic.
-3. CSS selectors — used inside `get text`, `is visible`, etc. Strict-mode: exactly one match.
-4. XPath — last resort, brittle.
+## Authentication vault
 
----
+Prefer credential providers or stdin over command-line secrets:
 
-## Part 2 — Sessions
+```bash
+agent-browser auth login service \
+  --credential-provider vault \
+  --item 'Service account'
+```
 
-### Managed Mac: let the wrapper own isolation
+If a provider is unavailable, use `--password-stdin` and keep the secret out of logs. For an existing managed authenticated lane, use the profile rather than exporting credentials.
 
-On Yigit's Mac, plain `agent-browser` commands are already isolated by a transparent headed-CDP pool. The wrapper leases one of `general:9222`, `profound:9411`, or `peec:9444`, derives a unique `--session` and namespace from the calling agent process, and connects to that lane's persistent Chrome profile.
+## Cookie import
+
+For an approved unmanaged transfer, prefer a protected file:
+
+```bash
+agent-browser cookies set --curl ./cookie-export.txt
+```
+
+Treat the file as a credential. Do not paste cookie values into chat, shell arguments, or committed templates.
+
+## Session recovery
+
+Managed:
 
 ```bash
 agent-browser pool status
-agent-browser pool use peec       # only when this task needs Peec's authenticated profile
-agent-browser open https://app.peec.ai
-agent-browser pool current
+agent-browser pool recover
+agent-browser pool doctor
 ```
 
-Do not layer manual `--session`, `--profile`, `--headed`, `--cdp`, or `--auto-connect` flags onto this path. Those flags either conflict with wrapper-managed state or explicitly bypass it. The strategy table below is for hosts where `agent-browser pool status` is not available.
-
-A session is a browser context with its own cookies, storage, IndexedDB, cache, history, and open tabs. agent-browser supports three persistence strategies that are NOT interchangeable:
-
-| Strategy | What persists | Across runs? | Combine with others? | Best for |
-|---|---|---|---|---|
-| (none) default ephemeral | nothing | no | — | one-off tasks, default for everything |
-| `--session NAME` | cookies + storage within one run | no (without `state save`) | yes, with explicit `state save/load` | parallel isolated work in one run (multi-account testing) |
-| `--session NAME --restore` | cookies + localStorage | yes, auto | not with `--profile` | named app/account state across runs |
-| `--profile NAME` (Chrome profile reuse) | cookies + localStorage + extension state (read-only temp copy, **no cache/IndexedDB**) | yes | not with `--state` | reuse an existing Chrome login by profile name (`agent-browser profiles` lists them) |
-| `--profile PATH` (persistent dir) | cookies + localStorage + IndexedDB + service workers + cache (full profile) | yes, native | not with `--state` or `--session` | single-user "always logged in" |
-| `state save FILE` / `state load FILE` | snapshot of cookies + storage to JSON file | yes, manual | with `--session` for explicit imports | portable state files for CI |
-
-Pick exactly one. Mixing them confuses persistence.
-
-### Session command
+Unmanaged:
 
 ```bash
-agent-browser session                       # which session am I in?
-agent-browser session list                  # list all active sessions
-agent-browser session info --json           # daemon / launch / restore status
-agent-browser session id --scope worktree --prefix myapp   # stable, collision-free key (CI, parallel worktrees)
+agent-browser session list
+agent-browser doctor --offline --quick
+agent-browser doctor
 ```
 
-Session ID is set by `--session NAME` or `AGENT_BROWSER_SESSION` (current env var; `AGENT_BROWSER_SESSION_NAME` is the legacy one). Restore/session names must be alphanumeric plus `-`/`_` only — spaces, slashes, and path traversal (`../`) are rejected.
-
-### `--session` (one-run isolation)
-
-```bash
-agent-browser --session auth   open https://app.example.com/login
-agent-browser --session public open https://example.com
-agent-browser --session auth   fill @e1 "user@example.com"
-agent-browser --session public get text body
-```
-
-Each session has independent cookies/storage/history/tabs. Use named sessions when you genuinely need parallel isolated work in the same run (e.g., admin + viewer at the same time). Otherwise stay in the default session.
-
-### `--session NAME --restore` (auto-save/restore across runs)
-
-```bash
-agent-browser --session myapp --restore open  https://app.example.com
-agent-browser --session myapp --restore fill  @e1 "user@example.com"
-agent-browser --session myapp --restore close   # state auto-saved
-
-# A day later:
-agent-browser --session myapp --restore open  https://app.example.com
-# → cookies/localStorage restored; usually still logged in
-```
-
-`--restore` auto-saves and restores cookies + localStorage for the named session under `~/.agent-browser/sessions/`. To guard against a restored-but-expired session, add `--restore-check-text "<logged-in marker>"` (or set `AGENT_BROWSER_RESTORE_CHECK_URL` / `AGENT_BROWSER_RESTORE_CHECK_TEXT` / `AGENT_BROWSER_RESTORE_CHECK_FN`). `AGENT_BROWSER_RESTORE_SAVE` controls auto-save policy (`auto` default / `always` / `never`; a failed restore or failed validation skips the auto-save). Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) before save/login to encrypt at rest.
-
-> Legacy: the `AGENT_BROWSER_SESSION_NAME` env var (and its old `--session-name` alias) was the previous auto-persist mechanism. It still works but is deprecated — prefer `--session NAME --restore`.
-
-### `--profile` (full Chrome persistence)
-
-```bash
-export AGENT_BROWSER_PROFILE="$HOME/.agent-browser/profile"
-agent-browser open https://app.example.com    # authenticated automatically
-```
-
-Or per-command:
-
-```bash
-agent-browser --profile ~/.myapp open https://app.example.com
-```
-
-`--profile` cannot be combined with `--state` or `--session`. The profile manages its own state natively.
-
-Use different paths for different test users:
-
-```bash
-agent-browser --profile ~/.profiles/admin  open https://app.example.com
-agent-browser --profile ~/.profiles/viewer open https://app.example.com
-```
-
-### State files (`state save` / `state load`)
-
-```bash
-agent-browser state save  ./auth-state.json
-agent-browser state load  ./auth-state.json
-
-# Restored-session hygiene (manage saved --restore state):
-agent-browser state list                    # list saved session states
-agent-browser state show  myapp             # inspect one
-agent-browser state rename myapp myapp-old
-agent-browser state clear --all             # wipe all saved states
-agent-browser state clean --older-than 30   # prune states older than N days
-```
-
-The file contains:
-
-```json
-{ "cookies": [...], "localStorage": {...}, "sessionStorage": {...}, "origins": [...] }
-```
-
-Treat state files as secrets — they contain session tokens. Add `*.auth-state.json` to `.gitignore`. Delete after use, or set `AGENT_BROWSER_ENCRYPTION_KEY` for encryption.
-
-### Cleanup
-
-```bash
-agent-browser close                      # close current session
-agent-browser --session auth close       # close a named session
-agent-browser close --all                # unmanaged hosts only; confirm exclusive ownership
-```
-
-Close only sessions you created. If you joined a pre-existing context, leave it.
-
-On the managed Mac, replace that cleanup model with:
-
-```bash
-agent-browser tab                         # inventory tabs
-agent-browser tab close tN                # close only tabs this agent opened
-agent-browser close                       # release only this agent's lane
-```
-
-Never use `close --all`. Do not close pre-existing authenticated tabs. If normal cleanup is interrupted, `agent-browser pool release` releases only the current owner's lease.
-
----
-
-## Part 3 — Tabs and windows
-
-`tab` lists, switches, opens, and closes tabs within the current session/window. `window new` opens a separate browser window.
-
-```bash
-agent-browser tab                       # list (also `tab list`)
-agent-browser tab new                   # open blank new tab; focus does NOT auto-switch
-agent-browser tab new https://docs/...  # open URL in new tab; focus does NOT auto-switch
-agent-browser tab t2                    # switch focus to tab target t2
-agent-browser tab close                 # close current tab
-agent-browser tab close t1              # close tab target t1
-agent-browser click @eN --new-tab       # click a link, force it open in new tab
-agent-browser window new                # open a new browser window
-```
-
-After any `tab new`, `tab N`, `click ... --new-tab`, popup, or window switch:
-
-```bash
-agent-browser tab                       # confirm which tab is active
-agent-browser get url                   # confirm focus
-agent-browser get title
-agent-browser snapshot -i               # refs from the previous tab are gone
-```
-
-Treat every tab change as a navigation event for ref lifecycle. See `SKILL.md` Scenario B.
-
----
-
-## Part 4 — Authentication
-
-### Strategy decision
-
-| Situation | Strategy |
-|---|---|
-| Yigit's managed Mac, ordinary work | plain commands; wrapper automatically leases a headed persistent lane |
-| Yigit's managed Mac, Peec or Profound auth | `pool use peec` / `pool use profound`, then plain commands |
-| One-off scrape, no auth needed | default ephemeral |
-| Single test user, "always logged in" | `--profile PATH` (set `AGENT_BROWSER_PROFILE` globally) |
-| Named app, want auto-resume across runs | `--session NAME` |
-| Already logged in to Chrome on the host | `--auto-connect`, save state once |
-| Multiple credentials managed centrally | `auth save` / `auth login` (auth vault) |
-| Portable state file for CI | `state save FILE` once, `--state FILE` in CI |
-| Manual auth / 2FA on managed Mac | use the visible leased lane and let the human complete the challenge |
-| Manual auth / 2FA elsewhere | `--headed` with `--session NAME --restore`, complete in the window |
-
-### Auth vault (recommended for credential reuse)
-
-Stores credentials encrypted on disk and replays the login flow on demand. The model never sees the password.
-
-```bash
-# Save (password via stdin — never as a CLI arg)
-echo "$PASSWORD" | agent-browser auth save github \
-  --url https://github.com/login \
-  --username user@example.com \
-  --password-stdin
-
-# Use
-agent-browser auth login github       # navigates, fills, submits
-
-# Inspect / clean up
-agent-browser auth list
-agent-browser auth delete github
-```
-
-Set `AGENT_BROWSER_ENCRYPTION_KEY` before save/login to encrypt the vault entries.
-
-### Import auth from your running Chrome
-
-Fastest way to bootstrap. Requires Chrome already logged in to the target site.
-
-```bash
-# Step 1 (one-time): start Chrome with remote debugging
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222
-
-# Step 2: log in normally in that Chrome window
-
-# Step 3: grab the state
-agent-browser --auto-connect state save ./my-auth.json
-
-# Step 4: use it
-agent-browser --state ./my-auth.json open https://app.example.com/dashboard
-```
-
-`--remote-debugging-port` exposes full browser control on localhost — use only on trusted machines.
-
-To make the imported auth auto-persist:
-
-```bash
-agent-browser --session myapp state load ./my-auth.json
-# From now on, state is auto-saved/restored under the name "myapp".
-```
-
-### Basic login flow (manual, when you need to log in once and save)
-
-```bash
-agent-browser open https://app.example.com/login
-agent-browser wait --load networkidle
-agent-browser snapshot -i
-# (refs: @e1=email, @e2=password, @e3=submit)
-agent-browser fill @e1 "user@example.com"
-agent-browser fill @e2 "$APP_PASSWORD"
-agent-browser click @e3
-agent-browser wait --url "**/dashboard"
-agent-browser state save ./auth-state.json
-```
-
-Subsequent runs:
-
-```bash
-agent-browser state load ./auth-state.json
-agent-browser open https://app.example.com/dashboard
-agent-browser get url    # confirm not bounced to /login
-```
-
-### OAuth / SSO
-
-```bash
-agent-browser open https://app.example.com/auth/google
-agent-browser wait --url "**/accounts.google.com**"
-agent-browser snapshot -i
-agent-browser fill @e1 "user@gmail.com"
-agent-browser click @e2
-agent-browser wait 2000
-agent-browser snapshot -i
-agent-browser fill @e3 "$GOOGLE_PASSWORD"
-agent-browser click @e4
-agent-browser wait --url "**/app.example.com**"
-agent-browser state save ./oauth-state.json
-```
-
-### 2FA
-
-On the managed Mac, do not spawn another headed session. Navigate in the already-visible lane, ask the human to complete the second factor in that Chrome window, then continue with plain commands and verify the landing URL/title. The persistent lane profile keeps whatever site session the provider allows; some providers invalidate sessions after a browser restart, so verify auth every time.
-
-On an unmanaged host:
-
-```bash
-# Show the browser so the human can complete the second factor
-agent-browser --headed --session myapp open https://app.example.com/login
-agent-browser --session myapp snapshot -i
-agent-browser --session myapp fill @e1 "user@example.com"
-agent-browser --session myapp fill @e2 "$APP_PASSWORD"
-agent-browser --session myapp click @e3
-
-# Wait for the human; long timeout
-AGENT_BROWSER_DEFAULT_TIMEOUT=120000 agent-browser --session myapp wait --url "**/dashboard"
-# State is auto-saved under "myapp" on close.
-```
-
-### HTTP Basic auth
-
-```bash
-agent-browser set credentials user pass
-agent-browser open https://protected.example.com/api
-```
-
-### Cookie-based auth
-
-```bash
-agent-browser cookies set session_token "abc123xyz" --domain .example.com --path /
-agent-browser open https://app.example.com/dashboard
-```
-
-### Token refresh handling — what to check, not what to script
-
-When loading saved state, always verify it is still valid before assuming you are logged in:
-
-```bash
-agent-browser state load ./auth-state.json
-agent-browser open https://app.example.com/dashboard
-agent-browser get url
-# If it shows /login or /signin — the session expired; re-run the login flow.
-```
-
-If you discover the session is expired mid-task, do the inline login flow once more and `state save` again. Do not paper over expirations with retry loops.
-
-### Security
-
-- Never commit state files. Add `*.auth-state.json` to `.gitignore`.
-- Set `AGENT_BROWSER_ENCRYPTION_KEY` (64-char hex) for at-rest encryption.
-- Pass passwords through env vars, stdin, or the auth vault — never as CLI args.
-- Set `AGENT_BROWSER_STATE_EXPIRE_DAYS` to auto-expire saved state.
-- After a job that used `--profile`, `--session --restore`, or saved state, name explicitly in the output contract what state remains on disk.
+`doctor` can automatically clean stale daemon sidecars. `doctor --fix` is destructive repair and requires intentional authorization. Never start by deleting sockets, PIDs, or Chrome locks manually.

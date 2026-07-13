@@ -1,64 +1,37 @@
-#!/bin/bash
-# Template: Form Automation Workflow
-# Purpose: Fill and submit web forms with validation
-# Usage: ./form-automation.sh <form-url>
-#
-# This template demonstrates the snapshot-interact-verify pattern:
-# 1. Navigate to form
-# 2. Snapshot to get element refs
-# 3. Fill fields using refs
-# 4. Submit and verify result
-#
-# Customize: Update the refs (@e1, @e2, etc.) based on your form's snapshot output
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-FORM_URL="${1:?Usage: $0 <form-url>}"
+# Authorized form submission template. Do not place passwords/tokens in arguments.
+URL="${1:?form URL required}"
+NAME="${2:?name required}"
+EMAIL="${3:?email required}"
+EXPECTED_TEXT="${4:?post-submit confirmation text required}"
+OWNED_TAB=""
 
-echo "Form automation: $FORM_URL"
+cleanup() {
+  if [[ -n "$OWNED_TAB" ]]; then
+    if ! agent-browser tab close "$OWNED_TAB" >/dev/null 2>&1; then
+      agent-browser tab "$OWNED_TAB" >/dev/null 2>&1 || true
+      agent-browser open about:blank >/dev/null 2>&1 || true
+    fi
+  fi
+  agent-browser close >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
 
-# Step 1: Navigate to form
-agent-browser open "$FORM_URL"
-agent-browser wait --load networkidle
+agent-browser pool status
+agent-browser open "$URL"
+agent-browser pool current
+OWNED_TAB="$(agent-browser --json tab | sed -n 's/.*"active":true[^}]*"tabId":"\([^"]*\)".*/\1/p' | head -n 1)"
+[[ -n "$OWNED_TAB" ]] || { echo "Could not determine active task tab" >&2; exit 1; }
 
-# Step 2: Snapshot to discover form elements
-echo ""
-echo "Form structure:"
 agent-browser snapshot -i
+agent-browser find label 'Name' fill "$NAME"
+agent-browser find label 'Email' fill "$EMAIL"
+agent-browser get value 'input[type="email"]'
 
-# Step 3: Fill form fields (customize these refs based on snapshot output)
-#
-# Common field types:
-#   agent-browser fill @e1 "John Doe"           # Text input
-#   agent-browser fill @e2 "user@example.com"   # Email input
-#   agent-browser fill @e3 "SecureP@ss123"      # Password input
-#   agent-browser select @e4 "Option Value"     # Dropdown
-#   agent-browser check @e5                     # Checkbox
-#   agent-browser click @e6                     # Radio button
-#   agent-browser fill @e7 "Multi-line text"   # Textarea
-#   agent-browser upload @e8 /path/to/file.pdf # File upload
-#
-# Uncomment and modify:
-# agent-browser fill @e1 "Test User"
-# agent-browser fill @e2 "test@example.com"
-# agent-browser click @e3  # Submit button
-
-# Step 4: Wait for submission
-# agent-browser wait --load networkidle
-# agent-browser wait --url "**/success"  # Or wait for redirect
-
-# Step 5: Verify result
-echo ""
-echo "Result:"
-agent-browser get url
+# Submission is outward-facing. Run this template only when the user authorized it.
+agent-browser find role button click --name 'Submit'
+agent-browser wait --text "$EXPECTED_TEXT"
 agent-browser snapshot -i
-# If success text is non-interactive, verify it with a single-match selector:
-# agent-browser get text ".flash-success"
-
-# Optional: Capture evidence
-# agent-browser screenshot /tmp/form-result.png
-# echo "Screenshot saved: /tmp/form-result.png"
-
-# Cleanup
-agent-browser close
-echo "Done"
+agent-browser errors
