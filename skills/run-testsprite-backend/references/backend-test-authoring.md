@@ -264,8 +264,12 @@ Adapt event fields and terminal semantics to the real API. Do not copy this pars
 ## Stateful self-contained example
 
 ```python
-resource_id = None
-try:
+import requests
+
+BASE_URL = "https://replace-with-public-target.invalid"
+
+
+def test_resource_lifecycle() -> None:
     created = requests.post(
         f"{BASE_URL}/v1/resources",
         headers=__AUTH_HEADERS__,
@@ -275,21 +279,24 @@ try:
     assert created.status_code == 201
     resource_id = created.json()["id"]
 
-    fetched = requests.get(
-        f"{BASE_URL}/v1/resources/{resource_id}",
-        headers=__AUTH_HEADERS__,
-        timeout=(10, 60),
-    )
-    assert fetched.status_code == 200
-    assert fetched.json().get("id") == resource_id
-finally:
-    if resource_id is not None:
+    try:
+        fetched = requests.get(
+            f"{BASE_URL}/v1/resources/{resource_id}",
+            headers=__AUTH_HEADERS__,
+            timeout=(10, 60),
+        )
+        assert fetched.status_code == 200
+        assert fetched.json().get("id") == resource_id
+    finally:
         deleted = requests.delete(
             f"{BASE_URL}/v1/resources/{resource_id}",
             headers=__AUTH_HEADERS__,
             timeout=(10, 60),
         )
         assert deleted.status_code in {200, 204, 404}
+
+
+test_resource_lifecycle()
 ```
 
 Use a dedicated test tenant and a collision-resistant fixture name if parallel runs are possible. Cleanup must be idempotent.
@@ -300,19 +307,33 @@ Resolve `TESTSPRITE_SKILL_DIR` to the directory containing the loaded `run-tests
 
 ```bash
 python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
-  --auth-required /tmp/testsprite-test.py
+  /tmp/testsprite-test.py
 ```
+
+Add `--auth-required` only when the test's contract requires a successful authenticated request. Omit it for public endpoints and negative authentication tests whose expected result is `401` or `403`.
 
 Use JSON in automation:
 
 ```bash
 python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
-  --auth-required --json /tmp/testsprite-test.py
+  --json /tmp/testsprite-test.py
 ```
 
-`--allow-module NAME` is an escape hatch only after current official runner documentation proves the module is installed. It does not install anything in TestSprite.
+`--allow-module NAME` is an escape hatch only after current official runner documentation proves the module is installed and you inspect its definition-time behavior. It does not install anything in TestSprite, admit reflection/loader modules, or make a non-`requests` HTTP client auditable.
 
 The auditor fails closed on branch-only HTTP calls because it cannot execute arbitrary test code safely. When dynamic branches choose equivalent request variants, choose the URL/payload in the branch and issue one shared request afterward. Keep early-return paths behind a request that already proved the intended API behavior.
+
+The execution proof intentionally accepts a constrained subset rather than pretending to interpret arbitrary Python:
+
+- each called `test_*` function issues its first HTTP request directly as a request expression, assignment, annotation assignment, return value, or inside one `with requests.Session()` block;
+- that request appears before branches, loops, `try`, returns, helper calls, mutation, or other dynamic control flow;
+- every request receiver and argument uses static data expressions, safe constructors, or previously bound values—not helper calls, mutators, process exits, or side-effecting Session constructor arguments;
+- HTTP calls stay in `test_*` functions; helpers parse and assert on responses after the first request;
+- module scope contains only imports, static assignments, function definitions, and direct zero-argument `test_*()` calls;
+- imports name every dependency explicitly and stay inside the auditor's data/parsing-oriented standard-library subset (`from module import *` is rejected); and
+- nested definitions/classes, lambdas, generators, decorators, duplicate definitions, non-static defaults, runtime reflection/loaders, request monkey-patching, and unresolved or local/private target hosts are rejected.
+
+This boundary is deliberate. Put the first create/read request before a `try/finally`, as in the stateful example, then use dynamic cleanup or parsing afterward. Compute safe dynamic values in plain assignments; if their construction needs a helper call, simplify or inline the request fixture so the preflight can prove evaluation reaches HTTP. Keep helper functions at module scope and give defaults only resolved static literals or module constants. On Python 3.9, use `from __future__ import annotations` before PEP 604 unions such as `Response | None`; ordinary `requests.Response`, `list[str]`, and `dict` annotations are accepted directly. Request modules, imported methods, Session constructors/instances, and their methods are immutable: do not alias, rebind, monkey-patch, pass them to helpers, capture them in defaults or class bases, or mutate Session state; use per-request arguments and a `with requests.Session()` block. Runtime reflection and dynamic imports (`globals`, `locals`, `vars`, `sys`, `runpy`, `__loader__`, `__import__`, or import helpers) are rejected except for the exact managed-header lookup. Treat managed header dictionaries as immutable independent copies: use `dict(__AUTH_HEADERS__)` or `{**__AUTH_HEADERS__, "Accept": "application/json"}`, never a simple alias, function default, or mutation with `clear`, `pop`, `update`, or item assignment. Timeouts must be positive finite literals (or a bound static name) and targets must expose a statically verifiable public HTTP(S) hostname plus authority boundary even when their path is dynamic.
 
 ## Authoring checklist
 

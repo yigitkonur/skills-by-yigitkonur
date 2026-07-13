@@ -83,12 +83,13 @@ jq --exit-status '.nextToken == null' <<<"$test_list" >/dev/null
 while IFS= read -r test_id; do
   code_path="$audit_dir/$test_id.py"
   testsprite test code get "$test_id" --out "$code_path"
-  python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" \
-    --auth-required "$code_path"
+  python3 "$TESTSPRITE_SKILL_DIR/scripts/audit_backend_test.py" "$code_path"
 done < <(jq --raw-output '.items[].id' <<<"$test_list")
 ```
 
 Resolve `TESTSPRITE_SKILL_DIR` from the loaded skill location rather than the target repository.
+
+The baseline pass audits every test for request execution, bounded timeouts, reachable targets, and embedded secrets. Repeat it with `--auth-required` only for the test IDs whose declared contract requires authenticated success. Do not apply that flag to public endpoints or intentional missing/invalid-auth tests.
 
 The auditor reports a likely secret without printing it. Also inspect TestSprite-managed failure bundles, shell history, CI logs, and committed history when exposure is suspected.
 
