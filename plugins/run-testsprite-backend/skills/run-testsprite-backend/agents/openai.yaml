@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run TestSprite Backend"
+  short_description: "Run deep TestSprite API verification loops"
+  default_prompt: "Use $run-testsprite-backend to build and run a secure backend API test suite against the deployed revision."

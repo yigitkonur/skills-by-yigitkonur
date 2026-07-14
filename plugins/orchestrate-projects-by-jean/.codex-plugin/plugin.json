@@ -1,0 +1,35 @@
+{
+  "name": "orchestrate-projects-by-jean",
+  "version": "1.0.27",
+  "description": "Use if supervising Jean agents through MCP and Computer Use for monitoring, recovery, or closure.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "orchestrate-projects-by-jean"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "orchestrate-projects-by-jean",
+    "shortDescription": "Use if supervising Jean agents through MCP and Computer Use for monitoring, recovery, or closure.",
+    "longDescription": "Install only the orchestrate-projects-by-jean workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the orchestrate-projects-by-jean skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

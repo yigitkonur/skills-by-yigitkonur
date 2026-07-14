@@ -1,0 +1,35 @@
+{
+  "name": "publish-npm-package",
+  "version": "1.0.27",
+  "description": "Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "publish-npm-package"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "publish-npm-package",
+    "shortDescription": "Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release.",
+    "longDescription": "Install only the publish-npm-package workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the publish-npm-package skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

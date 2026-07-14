@@ -1,0 +1,35 @@
+{
+  "name": "build-mcp-server-sdk-v1",
+  "version": "1.0.27",
+  "description": "Use if building a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-mcp-server-sdk-v1"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-mcp-server-sdk-v1",
+    "shortDescription": "Use if building a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod.",
+    "longDescription": "Install only the build-mcp-server-sdk-v1 workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-mcp-server-sdk-v1 skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

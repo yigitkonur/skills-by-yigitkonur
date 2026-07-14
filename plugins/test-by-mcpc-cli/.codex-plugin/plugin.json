@@ -1,0 +1,35 @@
+{
+  "name": "test-by-mcpc-cli",
+  "version": "1.0.27",
+  "description": "Use if driving the mcpc CLI (0.2.x) to test or smoke-check an MCP server over stdio or HTTP.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "test-by-mcpc-cli"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "test-by-mcpc-cli",
+    "shortDescription": "Use if driving the mcpc CLI (0.2.x) to test or smoke-check an MCP server over stdio or HTTP.",
+    "longDescription": "Install only the test-by-mcpc-cli workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the test-by-mcpc-cli skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

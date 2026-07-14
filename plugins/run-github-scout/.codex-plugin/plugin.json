@@ -1,0 +1,35 @@
+{
+  "name": "run-github-scout",
+  "version": "1.0.27",
+  "description": "Use if discovering GitHub repos, shortlisting candidates, or comparing OSS with repo evidence.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-github-scout"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-github-scout",
+    "shortDescription": "Use if discovering GitHub repos, shortlisting candidates, or comparing OSS with repo evidence.",
+    "longDescription": "Install only the run-github-scout workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-github-scout skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

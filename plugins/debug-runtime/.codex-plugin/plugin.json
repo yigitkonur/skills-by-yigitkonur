@@ -1,0 +1,35 @@
+{
+  "name": "debug-runtime",
+  "version": "1.0.27",
+  "description": "Use if chasing a reproducible runtime bug or repeated failed fixes with a 4-phase root-cause pass.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "debug-runtime"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "debug-runtime",
+    "shortDescription": "Use if chasing a reproducible runtime bug or repeated failed fixes with a 4-phase root-cause pass.",
+    "longDescription": "Install only the debug-runtime workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the debug-runtime skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

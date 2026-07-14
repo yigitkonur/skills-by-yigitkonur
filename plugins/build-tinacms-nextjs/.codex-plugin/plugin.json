@@ -1,0 +1,35 @@
+{
+  "name": "build-tinacms-nextjs",
+  "version": "1.0.27",
+  "description": "Use if building a TinaCMS + Next.js App Router site — tina/config.ts, MDX content, useTina editing.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-tinacms-nextjs"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-tinacms-nextjs",
+    "shortDescription": "Use if building a TinaCMS + Next.js App Router site — tina/config.ts, MDX content, useTina editing.",
+    "longDescription": "Install only the build-tinacms-nextjs workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-tinacms-nextjs skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

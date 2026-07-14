@@ -1,0 +1,35 @@
+{
+  "name": "convert-mcp-sdk-v1-to-v2",
+  "version": "1.0.27",
+  "description": "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "convert-mcp-sdk-v1-to-v2"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "convert-mcp-sdk-v1-to-v2",
+    "shortDescription": "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK.",
+    "longDescription": "Install only the convert-mcp-sdk-v1-to-v2 workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the convert-mcp-sdk-v1-to-v2 skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

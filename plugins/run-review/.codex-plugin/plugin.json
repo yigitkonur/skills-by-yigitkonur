@@ -1,0 +1,35 @@
+{
+  "name": "run-review",
+  "version": "1.0.27",
+  "description": "Use if reviewing a PR/diff, requesting review on your branch, triaging feedback, or delegating.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-review"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-review",
+    "shortDescription": "Use if reviewing a PR/diff, requesting review on your branch, triaging feedback, or delegating.",
+    "longDescription": "Install only the run-review workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-review skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

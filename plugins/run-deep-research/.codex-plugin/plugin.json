@@ -1,0 +1,35 @@
+{
+  "name": "run-deep-research",
+  "version": "1.0.27",
+  "description": "Use if running deep multi-file research over 5+ entities or a market — wave-dispatched corpus.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-deep-research"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-deep-research",
+    "shortDescription": "Use if running deep multi-file research over 5+ entities or a market — wave-dispatched corpus.",
+    "longDescription": "Install only the run-deep-research workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-deep-research skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

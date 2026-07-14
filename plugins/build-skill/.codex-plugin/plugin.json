@@ -1,0 +1,35 @@
+{
+  "name": "build-skill",
+  "version": "1.0.27",
+  "description": "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-skill"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-skill",
+    "shortDescription": "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md.",
+    "longDescription": "Install only the build-skill workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-skill skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

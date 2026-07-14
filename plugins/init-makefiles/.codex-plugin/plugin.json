@@ -1,0 +1,35 @@
+{
+  "name": "init-makefiles",
+  "version": "1.0.27",
+  "description": "Use if scaffolding Makefile targets for dev, tunnels, deploys, R2, Supabase, Railway, Vercel.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "init-makefiles"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "init-makefiles",
+    "shortDescription": "Use if scaffolding Makefile targets for dev, tunnels, deploys, R2, Supabase, Railway, Vercel.",
+    "longDescription": "Install only the init-makefiles workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the init-makefiles skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

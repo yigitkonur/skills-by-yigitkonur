@@ -1,0 +1,35 @@
+{
+  "name": "build-mcp-server-sdk-v2",
+  "version": "1.0.27",
+  "description": "Use if building MCP servers on @modelcontextprotocol/server v2 alpha — split packages, registerTool.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-mcp-server-sdk-v2"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-mcp-server-sdk-v2",
+    "shortDescription": "Use if building MCP servers on @modelcontextprotocol/server v2 alpha — split packages, registerTool.",
+    "longDescription": "Install only the build-mcp-server-sdk-v2 workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-mcp-server-sdk-v2 skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

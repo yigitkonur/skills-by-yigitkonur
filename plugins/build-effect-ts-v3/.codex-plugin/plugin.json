@@ -1,0 +1,35 @@
+{
+  "name": "build-effect-ts-v3",
+  "version": "1.0.27",
+  "description": "Use if building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-effect-ts-v3"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-effect-ts-v3",
+    "shortDescription": "Use if building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream.",
+    "longDescription": "Install only the build-effect-ts-v3 workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-effect-ts-v3 skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

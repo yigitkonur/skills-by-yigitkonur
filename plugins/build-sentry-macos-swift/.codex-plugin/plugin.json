@@ -1,0 +1,35 @@
+{
+  "name": "build-sentry-macos-swift",
+  "version": "1.0.27",
+  "description": "Use if adding or auditing Sentry crash reporting in a macOS/Swift app — dSYM, breadcrumbs, tracing.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-sentry-macos-swift"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-sentry-macos-swift",
+    "shortDescription": "Use if adding or auditing Sentry crash reporting in a macOS/Swift app — dSYM, breadcrumbs, tracing.",
+    "longDescription": "Install only the build-sentry-macos-swift workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-sentry-macos-swift skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

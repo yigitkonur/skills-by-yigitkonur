@@ -1,0 +1,35 @@
+{
+  "name": "mobilerun-control",
+  "version": "1.0.27",
+  "description": "Use if controlling or testing a connected Android phone via the mobilerun CLI — tap, type, swipe.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "mobilerun-control"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "mobilerun-control",
+    "shortDescription": "Use if controlling or testing a connected Android phone via the mobilerun CLI — tap, type, swipe.",
+    "longDescription": "Install only the mobilerun-control workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the mobilerun-control skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

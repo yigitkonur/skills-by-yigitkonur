@@ -1,0 +1,35 @@
+{
+  "name": "build-raycast-script-command",
+  "version": "1.0.27",
+  "description": "Use if authoring or fixing a Raycast Script Command (@raycast.* metadata header) — fields, modes.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-raycast-script-command"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-raycast-script-command",
+    "shortDescription": "Use if authoring or fixing a Raycast Script Command (@raycast.* metadata header) — fields, modes.",
+    "longDescription": "Install only the build-raycast-script-command workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-raycast-script-command skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}
