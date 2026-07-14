@@ -1,6 +1,6 @@
 {
   "name": "audit-agentic-mcp",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Use if auditing or designing an MCP server for agent-readiness — framework, security, context.",
   "author": {
     "name": "Yigit Konur",

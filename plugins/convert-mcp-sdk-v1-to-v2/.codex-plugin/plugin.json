@@ -1,6 +1,6 @@
 {
   "name": "convert-mcp-sdk-v1-to-v2",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK.",
   "author": {
     "name": "Yigit Konur",

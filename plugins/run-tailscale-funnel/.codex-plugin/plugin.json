@@ -1,6 +1,6 @@
 {
   "name": "run-tailscale-funnel",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Use if exposing a local HTTP server at a public .ts.net URL via Tailscale Funnel.",
   "author": {
     "name": "Yigit Konur",

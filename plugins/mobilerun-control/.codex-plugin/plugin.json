@@ -1,6 +1,6 @@
 {
   "name": "mobilerun-control",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Use if controlling or testing a connected Android phone via the mobilerun CLI — tap, type, swipe.",
   "author": {
     "name": "Yigit Konur",

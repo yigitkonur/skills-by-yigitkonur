@@ -1,6 +1,6 @@
 {
   "name": "build-langchain-ts-app",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "Use if building TypeScript apps with langchain/@langchain — agents, RAG, structured output.",
   "author": {
     "name": "Yigit Konur",
