@@ -15,6 +15,570 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"
+    },
+    {
+      "name": "audit-agentic-cli",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-agentic-cli"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "audit-agentic-mcp",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-agentic-mcp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "audit-completion",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-completion"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "audit-skill-by-derailment",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-skill-by-derailment"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "audit-ui-and-save-files",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-ui-and-save-files"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "audit-ux-and-save-files",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-ux-and-save-files"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "audit-ux-laws",
+      "source": {
+        "source": "local",
+        "path": "./plugins/audit-ux-laws"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-chrome-extension",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-chrome-extension"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-clean-mcp-architecture",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-clean-mcp-architecture"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-cloudflare-email-sending",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-cloudflare-email-sending"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-effect-ts-v3",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-effect-ts-v3"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-kernel-ts-sdk",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-kernel-ts-sdk"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-langchain-ts-app",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-langchain-ts-app"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-licenseseat-swift",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-licenseseat-swift"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-mcp-server-sdk-v1",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-mcp-server-sdk-v1"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-mcp-server-sdk-v2",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-mcp-server-sdk-v2"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-mcp-use-agent",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-mcp-use-agent"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-mcp-use-client",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-mcp-use-client"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-mcp-use-server",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-mcp-use-server"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-raycast-script-command",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-raycast-script-command"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-sentry-macos-swift",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-sentry-macos-swift"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-skill",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-skill"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "build-tinacms-nextjs",
+      "source": {
+        "source": "local",
+        "path": "./plugins/build-tinacms-nextjs"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "convert-mcp-sdk-v1-to-v2",
+      "source": {
+        "source": "local",
+        "path": "./plugins/convert-mcp-sdk-v1-to-v2"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "convert-url-to-nextjs",
+      "source": {
+        "source": "local",
+        "path": "./plugins/convert-url-to-nextjs"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "debug-runtime",
+      "source": {
+        "source": "local",
+        "path": "./plugins/debug-runtime"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "deploy-coolify-cloud",
+      "source": {
+        "source": "local",
+        "path": "./plugins/deploy-coolify-cloud"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "init-agent-config",
+      "source": {
+        "source": "local",
+        "path": "./plugins/init-agent-config"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "init-jean-json",
+      "source": {
+        "source": "local",
+        "path": "./plugins/init-jean-json"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "init-makefiles",
+      "source": {
+        "source": "local",
+        "path": "./plugins/init-makefiles"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "mobilerun-control",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mobilerun-control"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "publish-npm-package",
+      "source": {
+        "source": "local",
+        "path": "./plugins/publish-npm-package"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-agent-browser",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-agent-browser"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-aligned-delivery",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-aligned-delivery"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-codex-adversarial-loop",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-codex-adversarial-loop"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-codex-review-loop",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-codex-review-loop"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-deep-research",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-deep-research"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-github-scout",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-github-scout"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-railway",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-railway"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-repo-cleanup",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-repo-cleanup"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-research",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-research"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-review",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-review"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-tailscale-funnel",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-tailscale-funnel"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "run-testsprite-backend",
+      "source": {
+        "source": "local",
+        "path": "./plugins/run-testsprite-backend"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "search-it-bulk-by-codex",
+      "source": {
+        "source": "local",
+        "path": "./plugins/search-it-bulk-by-codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "test-by-mcpc-cli",
+      "source": {
+        "source": "local",
+        "path": "./plugins/test-by-mcpc-cli"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "update-agent-config",
+      "source": {
+        "source": "local",
+        "path": "./plugins/update-agent-config"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
     }
   ]
 }

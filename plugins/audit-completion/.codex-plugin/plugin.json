@@ -1,0 +1,35 @@
+{
+  "name": "audit-completion",
+  "version": "1.0.26",
+  "description": "Use if verifying claimed-done work or auditing session/plan/branch completion with evidence.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "audit-completion"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "audit-completion",
+    "shortDescription": "Use if verifying claimed-done work or auditing session/plan/branch completion with evidence.",
+    "longDescription": "Install only the audit-completion workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the audit-completion skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

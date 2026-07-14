@@ -1,0 +1,35 @@
+{
+  "name": "build-kernel-ts-sdk",
+  "version": "1.0.26",
+  "description": "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-kernel-ts-sdk"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-kernel-ts-sdk",
+    "shortDescription": "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools.",
+    "longDescription": "Install only the build-kernel-ts-sdk workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-kernel-ts-sdk skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

@@ -44,7 +44,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION .claude-plugin/marketplace.json .codex-plugin/plugin.json .agents/plugins/marketplace.json
+          git add VERSION .claude-plugin/marketplace.json .codex-plugin/plugin.json .agents/plugins/marketplace.json plugins/
           if git diff --cached --quiet; then
             echo "nothing to bump"
             exit 0

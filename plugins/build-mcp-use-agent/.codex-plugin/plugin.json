@@ -1,0 +1,35 @@
+{
+  "name": "build-mcp-use-agent",
+  "version": "1.0.26",
+  "description": "Use if building TypeScript mcp-use MCPAgent code where an LLM orchestrates MCP tools (run/stream).",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-mcp-use-agent"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-mcp-use-agent",
+    "shortDescription": "Use if building TypeScript mcp-use MCPAgent code where an LLM orchestrates MCP tools (run/stream).",
+    "longDescription": "Install only the build-mcp-use-agent workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-mcp-use-agent skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

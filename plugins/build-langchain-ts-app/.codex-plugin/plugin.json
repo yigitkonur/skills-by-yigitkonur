@@ -1,0 +1,35 @@
+{
+  "name": "build-langchain-ts-app",
+  "version": "1.0.26",
+  "description": "Use if building TypeScript apps with langchain/@langchain — agents, RAG, structured output.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-langchain-ts-app"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-langchain-ts-app",
+    "shortDescription": "Use if building TypeScript apps with langchain/@langchain — agents, RAG, structured output.",
+    "longDescription": "Install only the build-langchain-ts-app workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-langchain-ts-app skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

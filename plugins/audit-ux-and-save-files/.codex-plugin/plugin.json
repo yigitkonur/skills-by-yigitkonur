@@ -1,0 +1,35 @@
+{
+  "name": "audit-ux-and-save-files",
+  "version": "1.0.26",
+  "description": "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "audit-ux-and-save-files"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "audit-ux-and-save-files",
+    "shortDescription": "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree.",
+    "longDescription": "Install only the audit-ux-and-save-files workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the audit-ux-and-save-files skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

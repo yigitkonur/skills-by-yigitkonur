@@ -1,0 +1,35 @@
+{
+  "name": "run-agent-browser",
+  "version": "1.0.26",
+  "description": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-agent-browser"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-agent-browser",
+    "shortDescription": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
+    "longDescription": "Install only the run-agent-browser workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-agent-browser skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

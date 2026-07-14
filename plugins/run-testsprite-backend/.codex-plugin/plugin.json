@@ -1,0 +1,35 @@
+{
+  "name": "run-testsprite-backend",
+  "version": "1.0.26",
+  "description": "Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-testsprite-backend"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-testsprite-backend",
+    "shortDescription": "Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.",
+    "longDescription": "Install only the run-testsprite-backend workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-testsprite-backend skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

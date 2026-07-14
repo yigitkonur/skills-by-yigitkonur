@@ -36,9 +36,9 @@ add the marketplace once:
 codex plugin marketplace add yigitkonur/skills-by-yigitkonur
 ```
 
-then open `/plugins` in Codex and install `skills-by-yigitkonur@yigitkonur`.
+then open `/plugins` in Codex and install the skill you need, such as `run-review@yigitkonur`; `skills-by-yigitkonur@yigitkonur` installs the full pack.
 
-Codex consumes this repo as one polished all-pack plugin from the repo root. Claude Code gets fine-grained per-skill and themed bundle plugins because its marketplace supports per-entry skill allowlists; Codex gets the full pack through `.codex-plugin/plugin.json` pointing at `./skills/`.
+Codex offers the same per-skill choice: install `run-review@yigitkonur`, `build-mcp-server-sdk-v2@yigitkonur`, or any other skill directly from `/plugins`. `skills-by-yigitkonur@yigitkonur` remains the all-pack option for existing users. Codex packages are generated under `plugins/`, so each install is self-contained; Claude Code also offers its themed `yk-*` bundles.
 
 ### with the `skills` cli
 
@@ -225,8 +225,8 @@ drive a large, ambiguous initiative front-to-back: scored question alignment, th
 
 ## notes
 
-- every enabled skill costs context. that's the whole point of shipping per-skill Claude plugins and small Claude bundles instead of one blob — enable what you use.
-- the plugin paths and the `skills` cli read the same `skills/` files. generated metadata lives in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json), [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json), and [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json); the version comes from [`VERSION`](VERSION) and ci bumps it on every push to `main`.
+- every enabled skill costs context. that's the whole point of shipping per-skill Codex and Claude plugins, plus small Claude bundles, instead of one blob — enable what you use.
+- the plugin paths and the `skills` cli read the canonical `skills/` files. generated metadata lives in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json), [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json), [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json), and the self-contained Codex packages in [`plugins/`](plugins/); the version comes from [`VERSION`](VERSION) and ci bumps it on every push to `main`.
 - naming/taxonomy → [NAMING.md](NAMING.md). structure + contribution checklist → [CONTRIBUTING.md](CONTRIBUTING.md).
 - spec: [agentskills.io/specification](https://agentskills.io/specification). plugin/marketplace docs: [code.claude.com/docs/en/plugin-marketplaces](https://code.claude.com/docs/en/plugin-marketplaces).
 - duplicate skill triggers? known claude code thing ([#27721](https://github.com/anthropics/claude-code/issues/27721)).

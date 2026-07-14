@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Repo Scout - [TOPIC]</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #60a5fa;
+    }
+    body {
+      margin: 0;
+      font: 16px/1.6 system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    h1, h2, h3 { margin: 0 0 12px; }
+    p, ul { margin: 0 0 12px; }
+    .meta { color: var(--muted); font-size: 0.95rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { text-align: left; padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .group { margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>GitHub Repo Scout - [TOPIC]</h1>
+      <p class="meta">Prepared [DATE] · [ROW_COUNT] shortlisted repos</p>
+      <p>[RECOMMENDATION]</p>
+      <p><strong>Search path:</strong> [SEARCH_PATH_NOTE]</p>
+    </section>
+
+    <section class="panel">
+      <h2>Shortlist</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Repo</th>
+            <th>Fit</th>
+            <th>Evidence</th>
+            <th>Signals</th>
+            <th>Caveat / unknown</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ROW_START -->
+          <tr>
+            <td><a href="[REPO_URL]">[REPO_FULL_NAME]</a></td>
+            <td>[FIT]</td>
+            <td>[EVIDENCE]</td>
+            <td>[SIGNALS]</td>
+            <td>[CAVEAT]</td>
+          </tr>
+          <!-- ROW_END -->
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Grouped Notes</h2>
+      <!-- GROUP_START -->
+      <div class="group">
+        <h3>[GROUP_NAME]</h3>
+        <ul>
+          [GROUP_ITEMS]
+        </ul>
+      </div>
+      <!-- GROUP_END -->
+    </section>
+
+    <section class="panel">
+      <h2>Gaps and Caveats</h2>
+      <p>[GAPS_NOTE]</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -10,14 +10,15 @@ This repo is a `skills` CLI pack, a Claude Code plugin marketplace, and a Codex 
 
 **Distribution model:**
 - Plugin marketplace: `/plugin marketplace add yigitkonur/skills-by-yigitkonur`, then `/plugin install <skill>@yigitkonur`, a bundle `yk-*@yigitkonur`, or `yk-everything@yigitkonur`.
-- Codex plugin marketplace: `codex plugin marketplace add yigitkonur/skills-by-yigitkonur`, then install `skills-by-yigitkonur@yigitkonur` from `/plugins`.
+- Codex plugin marketplace: `codex plugin marketplace add yigitkonur/skills-by-yigitkonur`, then install `<skill>@yigitkonur` or the all-pack `skills-by-yigitkonur@yigitkonur` from `/plugins`.
 - `skills` CLI full pack: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur`
 - `skills` CLI single skill: `npx -y skills add -y -g yigitkonur/skills-by-yigitkonur/skills/<skill-name>`
 
 The plugin metadata is **generated** from `skills/` by `scripts/gen-marketplace.py`:
 - `.claude-plugin/marketplace.json`: per-skill plugins + themed `yk-*` bundles + `yk-everything` + `yk-researchers`, all `source: "./"` + `strict: false` + a `skills` allowlist so no files are duplicated.
 - `.codex-plugin/plugin.json`: the root Codex plugin manifest for the all-pack plugin.
-- `.agents/plugins/marketplace.json`: the Codex repo marketplace entry for `skills-by-yigitkonur`.
+- `plugins/<skill>/`: one generated, self-contained Codex plugin package per canonical skill.
+- `.agents/plugins/marketplace.json`: the Codex repo marketplace entries for the all-pack and every individual skill.
 
 Regenerate plugin metadata whenever you add, remove, or rename a skill, and edit the `GROUPS` map in that script to place a new skill in a Claude bundle.
 
@@ -50,6 +51,8 @@ Regenerate plugin metadata whenever you add, remove, or rename a skill, and edit
 │   └── marketplace.json            # Generated — plugin marketplace catalog (do not hand-edit)
 ├── .codex-plugin/
 │   └── plugin.json                 # Generated — Codex all-pack plugin manifest (do not hand-edit)
+├── plugins/
+│   └── <skill>/                    # Generated — self-contained Codex plugin packages (do not hand-edit)
 ├── .github/workflows/
 │   └── version-bump.yml            # CI: patch-bump version on every push to main
 ├── .githooks/

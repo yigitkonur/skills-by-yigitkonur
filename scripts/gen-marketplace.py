@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate plugin metadata from the skills/ tree.
+"""Generate marketplace metadata and self-contained Codex plugins from skills/.
 
 Every skill becomes an individually installable plugin (so users can
 `/plugin install <skill>@yigitkonur` and uninstall it just as easily).
@@ -10,9 +10,11 @@ All plugins share the single skills/ folder at the repo root via
 `source: "./"` + `strict: false` + an explicit `skills` allowlist, so no
 skill files are duplicated (see code.claude.com/docs/en/plugin-marketplaces).
 
-Codex currently consumes this repo as one all-pack plugin from the repo root:
-`.codex-plugin/plugin.json` points at `./skills/`, and
-`.agents/plugins/marketplace.json` exposes the repo root as a Codex plugin.
+Codex gets the same fine-grained install surface through generated plugin
+packages in `plugins/<skill>/`. Each package copies one canonical skill under
+its own `skills/` directory, which Codex requires for plugin discovery. The
+root `skills-by-yigitkonur` entry remains the backwards-compatible all-pack
+plugin.
 
 Run after adding/removing/renaming a skill:
     python3 scripts/gen-marketplace.py            # write plugin metadata
@@ -22,6 +24,7 @@ Run after adding/removing/renaming a skill:
 import importlib.util
 import json
 import os
+import shutil
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +32,7 @@ SKILLS_DIR = os.path.join(REPO_ROOT, "skills")
 CLAUDE_OUT_PATH = os.path.join(REPO_ROOT, ".claude-plugin", "marketplace.json")
 CODEX_MARKETPLACE_OUT_PATH = os.path.join(REPO_ROOT, ".agents", "plugins", "marketplace.json")
 CODEX_MANIFEST_OUT_PATH = os.path.join(REPO_ROOT, ".codex-plugin", "plugin.json")
+CODEX_PLUGINS_DIR = os.path.join(REPO_ROOT, "plugins")
 VERSION_PATH = os.path.join(REPO_ROOT, "VERSION")
 
 MARKETPLACE_NAME = "yigitkonur"
@@ -158,6 +162,14 @@ def all_skills():
     )
 
 
+def skill_categories():
+    return {
+        skill: category
+        for _bundle, (category, _blurb, members) in GROUPS.items()
+        for skill in members
+    }
+
+
 def build_claude_marketplace():
     v = load_validator()
     skills = all_skills()
@@ -229,7 +241,7 @@ def build_claude_marketplace():
         plugins.append(entry)
 
     # 4) one plugin per skill (fine-grained install/uninstall)
-    skill_to_cat = {s: cat for _k, (cat, _b, members) in GROUPS.items() for s in members}
+    skill_to_cat = skill_categories()
     for s in skills:
         plugins.append(
             {
@@ -297,26 +309,74 @@ def build_codex_manifest():
     }
 
 
+def build_codex_skill_manifest(v, skill):
+    """Build a standalone Codex manifest for one canonical skill directory."""
+    description = skill_desc(v, skill)
+    return {
+        "name": skill,
+        "version": version(),
+        "description": description,
+        "author": {
+            "name": "Yigit Konur",
+            "url": "https://github.com/yigitkonur",
+        },
+        "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+        "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+        "license": "MIT",
+        "keywords": ["agent-skills", "codex", skill],
+        "skills": "./skills/",
+        "interface": {
+            "displayName": skill,
+            "shortDescription": description,
+            "longDescription": f"Install only the {skill} workflow from Yigit Konur's curated skills pack.",
+            "developerName": "Yigit Konur",
+            "category": "Productivity",
+            "capabilities": ["Read", "Write", "Interactive"],
+            "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+            "defaultPrompt": [f"Use the {skill} skill for this task."],
+            "brandColor": "#10A37F",
+        },
+    }
+
+
 def build_codex_marketplace():
+    v = load_validator()
+    skills = all_skills()
+    plugins = [
+        {
+            "name": CODEX_PLUGIN_NAME,
+            "source": {
+                "source": "local",
+                "path": "./",
+            },
+            "policy": {
+                "installation": "AVAILABLE",
+                "authentication": "ON_INSTALL",
+            },
+            "category": "Productivity",
+        }
+    ]
+    plugins.extend(
+        {
+            "name": skill,
+            "source": {
+                "source": "local",
+                "path": f"./plugins/{skill}",
+            },
+            "policy": {
+                "installation": "AVAILABLE",
+                "authentication": "ON_INSTALL",
+            },
+            "category": "Productivity",
+        }
+        for skill in skills
+    )
     return {
         "name": MARKETPLACE_NAME,
         "interface": {
             "displayName": "Yigit Konur",
         },
-        "plugins": [
-            {
-                "name": CODEX_PLUGIN_NAME,
-                "source": {
-                    "source": "local",
-                    "path": "./",
-                },
-                "policy": {
-                    "installation": "AVAILABLE",
-                    "authentication": "ON_INSTALL",
-                },
-                "category": "Productivity",
-            }
-        ],
+        "plugins": plugins,
     }
 
 
@@ -330,6 +390,107 @@ def generated_files():
         CODEX_MARKETPLACE_OUT_PATH: render_json(build_codex_marketplace()),
         CODEX_MANIFEST_OUT_PATH: render_json(build_codex_manifest()),
     }
+
+
+def codex_plugin_path(skill):
+    return os.path.join(CODEX_PLUGINS_DIR, skill)
+
+
+def copied_skill_path(skill):
+    return os.path.join(codex_plugin_path(skill), "skills", skill)
+
+
+def files_match(left, right):
+    """Return whether two regular files have identical contents and mode bits."""
+    try:
+        return (
+            os.path.isfile(left)
+            and os.path.isfile(right)
+            and os.stat(left).st_mode & 0o777 == os.stat(right).st_mode & 0o777
+            and open(left, "rb").read() == open(right, "rb").read()
+        )
+    except OSError:
+        return False
+
+
+def skill_tree_matches(skill):
+    """Verify that one generated Codex package exactly mirrors its source skill."""
+    source_root = os.path.join(SKILLS_DIR, skill)
+    target_root = copied_skill_path(skill)
+    if not os.path.isdir(target_root):
+        return False
+
+    for root, dirs, files in os.walk(source_root):
+        relative = os.path.relpath(root, source_root)
+        target_dir = os.path.join(target_root, relative)
+        if not os.path.isdir(target_dir):
+            return False
+        if sorted(dirs) != sorted(
+            entry
+            for entry in os.listdir(target_dir)
+            if os.path.isdir(os.path.join(target_dir, entry))
+        ):
+            return False
+        if sorted(files) != sorted(
+            entry
+            for entry in os.listdir(target_dir)
+            if os.path.isfile(os.path.join(target_dir, entry))
+        ):
+            return False
+        for filename in files:
+            if not files_match(os.path.join(root, filename), os.path.join(target_dir, filename)):
+                return False
+    return True
+
+
+def codex_plugin_packages_are_current():
+    """Check every generated one-skill package without modifying the worktree."""
+    v = load_validator()
+    skills = all_skills()
+    if not os.path.isdir(CODEX_PLUGINS_DIR):
+        return False
+    expected_dirs = set(skills)
+    actual_dirs = {
+        entry
+        for entry in os.listdir(CODEX_PLUGINS_DIR)
+        if os.path.isdir(os.path.join(CODEX_PLUGINS_DIR, entry))
+    }
+    if actual_dirs != expected_dirs:
+        return False
+    for skill in skills:
+        manifest_path = os.path.join(codex_plugin_path(skill), ".codex-plugin", "plugin.json")
+        if not os.path.isfile(manifest_path):
+            return False
+        if open(manifest_path).read() != render_json(build_codex_skill_manifest(v, skill)):
+            return False
+        if not skill_tree_matches(skill):
+            return False
+    return True
+
+
+def write_codex_plugin_packages():
+    """Regenerate each standalone Codex plugin from the canonical skills tree."""
+    v = load_validator()
+    skills = all_skills()
+    os.makedirs(CODEX_PLUGINS_DIR, exist_ok=True)
+    expected_dirs = set(skills)
+    for entry in os.listdir(CODEX_PLUGINS_DIR):
+        path = os.path.join(CODEX_PLUGINS_DIR, entry)
+        if entry not in expected_dirs and os.path.isdir(path):
+            shutil.rmtree(path)
+    for skill in skills:
+        plugin_root = codex_plugin_path(skill)
+        if os.path.isdir(plugin_root):
+            shutil.rmtree(plugin_root)
+        os.makedirs(os.path.join(plugin_root, ".codex-plugin"))
+        with open(os.path.join(plugin_root, ".codex-plugin", "plugin.json"), "w") as f:
+            f.write(render_json(build_codex_skill_manifest(v, skill)))
+        shutil.copytree(
+            os.path.join(SKILLS_DIR, skill),
+            copied_skill_path(skill),
+            copy_function=shutil.copy2,
+        )
+    print(f"wrote {os.path.relpath(CODEX_PLUGINS_DIR, REPO_ROOT)}/ ({len(skills)} Codex plugins)")
 
 
 def main():
@@ -347,6 +508,9 @@ def main():
             for path in stale:
                 print(f"  stale: {path}", file=sys.stderr)
             sys.exit(1)
+        if not codex_plugin_packages_are_current():
+            print("Codex plugin packages are stale — run: python3 scripts/gen-marketplace.py", file=sys.stderr)
+            sys.exit(1)
         print("plugin metadata is up to date")
         return
 
@@ -355,6 +519,7 @@ def main():
         with open(path, "w") as f:
             f.write(rendered)
         print(f"wrote {os.path.relpath(path, REPO_ROOT)}")
+    write_codex_plugin_packages()
 
 
 if __name__ == "__main__":

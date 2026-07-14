@@ -1,0 +1,35 @@
+{
+  "name": "audit-agentic-mcp",
+  "version": "1.0.26",
+  "description": "Use if auditing or designing an MCP server for agent-readiness — framework, security, context.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "audit-agentic-mcp"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "audit-agentic-mcp",
+    "shortDescription": "Use if auditing or designing an MCP server for agent-readiness — framework, security, context.",
+    "longDescription": "Install only the audit-agentic-mcp workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the audit-agentic-mcp skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

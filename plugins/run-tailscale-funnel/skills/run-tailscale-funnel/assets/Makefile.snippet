@@ -1,0 +1,35 @@
+# Copy-paste into your project's Makefile. Adjust SKILL_ROOT if the skill is
+# installed somewhere other than ~/.claude/skills/, or vendor the two scripts
+# into the project under scripts/ and point at those.
+
+SKILL_ROOT  ?= $(HOME)/.claude/skills/run-tailscale-funnel
+LOCAL_PORT  ?= 4321
+FUNNEL_PORT ?= 10000
+
+.PHONY: local local-down
+
+local: ## Expose the local server at a public .ts.net URL via Tailscale Funnel
+	@bash $(SKILL_ROOT)/scripts/funnel-up.sh $(LOCAL_PORT) $(FUNNEL_PORT)
+
+local-down: ## Tear down only this project's Funnel mapping
+	@bash $(SKILL_ROOT)/scripts/funnel-down.sh $(FUNNEL_PORT)
+
+# Usage:
+#
+#   # in one terminal — start the backend (binding to 127.0.0.1):
+#   cd dist && python3 -m http.server 4321 --bind 127.0.0.1
+#
+#   # in another terminal — set up Funnel:
+#   make local
+#
+#   # when done:
+#   make local-down
+#
+# Override defaults per-invocation:
+#
+#   make local LOCAL_PORT=3000              # backend on a different port
+#   make local FUNNEL_PORT=8443             # 10000 is taken; use 8443
+#
+# Valid FUNNEL_PORT values: 443, 8443, 10000 (Tailscale's only Funnel-eligible
+# slots). The script reads `tailscale funnel status` before claiming the slot
+# and refuses to clobber an existing mapping unless explicitly forced.

@@ -1,0 +1,35 @@
+{
+  "name": "build-licenseseat-swift",
+  "version": "1.0.26",
+  "description": "Use if integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "build-licenseseat-swift"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "build-licenseseat-swift",
+    "shortDescription": "Use if integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats.",
+    "longDescription": "Install only the build-licenseseat-swift workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the build-licenseseat-swift skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

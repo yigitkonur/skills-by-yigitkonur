@@ -1,0 +1,35 @@
+{
+  "name": "search-it-bulk-by-codex",
+  "version": "1.0.26",
+  "description": "Use if running many small Codex-native web searches via codex exec with parseable answers.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "search-it-bulk-by-codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "search-it-bulk-by-codex",
+    "shortDescription": "Use if running many small Codex-native web searches via codex exec with parseable answers.",
+    "longDescription": "Install only the search-it-bulk-by-codex workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the search-it-bulk-by-codex skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

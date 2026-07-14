@@ -1,0 +1,35 @@
+{
+  "name": "audit-ux-laws",
+  "version": "1.0.26",
+  "description": "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load).",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "audit-ux-laws"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "audit-ux-laws",
+    "shortDescription": "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load).",
+    "longDescription": "Install only the audit-ux-laws workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the audit-ux-laws skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

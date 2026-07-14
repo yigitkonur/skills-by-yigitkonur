@@ -1,0 +1,15 @@
+{
+  "name": "email-sender",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bearer-authenticated Worker relay for Cloudflare Email Service.",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260620.0",
+    "wrangler": "^4.110.0"
+  }
+}
