@@ -1,64 +1,51 @@
 name: version-bump
 
-# Auto-bump the patch version on every push to main so
-# `/plugin marketplace update` sees a new version and refreshes installed
-# plugins (including newly added skills and the researcher agents).
-
 on:
-  push:
-    branches: [main]
-
-# Don't re-trigger on the bot's own bump commit.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch to bump (must be main)
+        required: true
+        default: main
+      confirm:
+        description: Type bump-version to confirm
+        required: true
 concurrency:
   group: version-bump
   cancel-in-progress: false
-
 permissions:
   contents: write
-
 jobs:
   bump:
+    if: inputs.ref == 'main' && inputs.confirm == 'bump-version'
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && github.actor != 'github-actions[bot]' }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
-      - name: Validate skills (advisory — never blocks the bump)
-        continue-on-error: true
+      - name: Validate skills
         run: python3 scripts/validate-skills.py
-
       - name: Bump patch version and regenerate plugin metadata
         id: bump
         run: |
           python3 scripts/bump-version.py
           echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
-
       - name: Commit and push
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION .claude-plugin/marketplace.json .codex-plugin/plugin.json .agents/plugins/marketplace.json plugins/
-          if git diff --cached --quiet; then
-            echo "nothing to bump"
-            exit 0
-          fi
+          if git diff --cached --quiet; then echo "nothing to bump"; exit 0; fi
           git commit -m "chore(release): v${{ steps.bump.outputs.version }} [skip ci]"
-          # main is unprotected and fleets may push directly; retry over any
-          # concurrent push so the bump always lands.
           for attempt in 1 2 3 4 5; do
-            if git push; then
-              exit 0
-            fi
+            if git push origin HEAD:main; then exit 0; fi
             echo "push rejected (attempt $attempt) — rebasing onto latest main and retrying"
             git pull --rebase origin main
             sleep 3
           done
-          echo "::error::version bump could not be pushed after 5 attempts"
           exit 1

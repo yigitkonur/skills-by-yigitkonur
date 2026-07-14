@@ -24,7 +24,7 @@ Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a 
 
 **Agents:** the internet-researcher subagents live in `subagents/` — deliberately NOT the conventional `agents/` name, because every plugin uses `source: "./"` and Claude Code auto-discovers an `agents/` folder at the plugin root, which would attach the agents to *every* installed skill. Keeping them in `subagents/` means only the entries that explicitly set `"agents": ["./subagents/claude/"]` ship them (`yk-researchers`, `yk-research`, `yk-everything`). Never rename `subagents/` back to `agents/`.
 
-**Versioning:** `VERSION` is the single source of truth; `gen-marketplace.py` stamps it onto every plugin entry, and `.github/workflows/version-bump.yml` patch-bumps it on every push to `main` (commit tagged `[skip ci]` so it doesn't loop) so `/plugin marketplace update` always sees a newer version.
+**Versioning:** `VERSION` is the single source of truth; `gen-marketplace.py` stamps it onto every plugin entry, and `.github/workflows/version-bump.yml` patch-bumps it only after an explicit confirmed manual dispatch; routine pushes do nothing.
 
 ## Repository layout
 
@@ -54,7 +54,7 @@ Regenerate plugin metadata whenever you add, remove, or rename a skill. Place a 
 ├── plugins/
 │   └── <skill>/                    # Generated — self-contained Codex plugin packages (do not hand-edit)
 ├── .github/workflows/
-│   └── version-bump.yml            # CI: patch-bump version on every push to main
+│   └── version-bump.yml            # Manual confirmed patch bump + commit-back
 ├── .githooks/
 │   └── pre-push                    # Blocks push on validation failure
 ├── NAMING.md                       # Intent-verb naming principle, rules, and canonical names
@@ -381,3 +381,7 @@ Before finishing any skill work, verify **all** of the following:
 - **Original, repo-fit output.** Distill patterns from sources — never rename-clone another skill.
 - **Lean is better.** If SKILL.md is growing because of examples or templates, move them to references or cut them.
 - **Test before shipping.** Trigger tests + functional test + validation script.
+
+## Manual automation
+
+Local validator: `python3 scripts/validate-skills.py`. Routine git activity runs no Actions. Authorized version bump: `gh workflow run version-bump.yml -f ref=main -f confirm=bump-version`; it validates, regenerates metadata, and commits back to `main`.
