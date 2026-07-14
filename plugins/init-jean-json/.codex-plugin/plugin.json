@@ -1,6 +1,6 @@
 {
   "name": "init-jean-json",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Use if onboarding a repo to Jean — jean.json and .worktreeinclude setup, run, teardown, ports.",
   "author": {
     "name": "Yigit Konur",

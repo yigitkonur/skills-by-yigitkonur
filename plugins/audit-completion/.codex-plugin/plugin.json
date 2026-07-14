@@ -1,6 +1,6 @@
 {
   "name": "audit-completion",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Use if verifying claimed-done work or auditing session/plan/branch completion with evidence.",
   "author": {
     "name": "Yigit Konur",

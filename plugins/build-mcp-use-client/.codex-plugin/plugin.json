@@ -1,6 +1,6 @@
 {
   "name": "build-mcp-use-client",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Use if writing TypeScript mcp-use MCP client code — MCPClient, MCPSession, useMcp, mcp-use/react.",
   "author": {
     "name": "Yigit Konur",

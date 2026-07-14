@@ -1,6 +1,6 @@
 {
   "name": "build-cloudflare-email-sending",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Use if sending email via Cloudflare Email Service, replacing Resend/SES/Postmark or send_email.",
   "author": {
     "name": "Yigit Konur",

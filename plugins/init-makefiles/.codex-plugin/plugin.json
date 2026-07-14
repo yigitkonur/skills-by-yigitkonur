@@ -1,6 +1,6 @@
 {
   "name": "init-makefiles",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Use if scaffolding Makefile targets for dev, tunnels, deploys, R2, Supabase, Railway, Vercel.",
   "author": {
     "name": "Yigit Konur",

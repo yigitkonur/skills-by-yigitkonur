@@ -1,6 +1,6 @@
 {
   "name": "build-licenseseat-swift",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Use if integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats.",
   "author": {
     "name": "Yigit Konur",
