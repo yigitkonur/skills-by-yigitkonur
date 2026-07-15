@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **48 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, backend api testing, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **49 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, backend api testing, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex gets the complete 48-skill pack; Claude Code gets 47 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
+three ways in. Codex gets the complete 49-skill pack; Claude Code gets 48 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,7 +61,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 47 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 48 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -182,6 +182,7 @@ answer questions and find things with real web evidence. ships the `internet-res
 drive a browser, a phone, or a public tunnel mid-session.
 
 - **[run-agent-browser](skills/run-agent-browser/)** — agent-browser cli: `@ref` snapshots, sessions, forms, extraction, screenshots, headed/stealth, provider runs.
+- **[run-agent-device](skills/run-agent-device/)** — agent-device cli for ios app testing: settle-first snapshot/press/fill loop, evidence capture, cross-layer bug triage, runtime-freshness + fresh-state discipline, fix-and-retest.
 - **[mobilerun-control](skills/mobilerun-control/)** — drive a connected android phone via the mobilerun cli: tap/type/swipe/read by box-center, deterministic multi-step on-device tasks.
 - **[run-tailscale-funnel](skills/run-tailscale-funnel/)** — expose a local http server at a public `.ts.net` url via tailscale funnel for browser nav, mobile testing, webhooks, demos.
 

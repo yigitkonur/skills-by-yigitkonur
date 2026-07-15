@@ -1,0 +1,35 @@
+{
+  "name": "run-agent-device",
+  "version": "1.0.28",
+  "description": "Use if testing or debugging an iOS app via agent-device CLI — simulator flows, evidence, bug triage.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "run-agent-device"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "run-agent-device",
+    "shortDescription": "Use if testing or debugging an iOS app via agent-device CLI — simulator flows, evidence, bug triage.",
+    "longDescription": "Install only the run-agent-device workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the run-agent-device skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

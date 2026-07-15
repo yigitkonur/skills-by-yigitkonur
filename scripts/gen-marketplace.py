@@ -113,8 +113,8 @@ GROUPS = {
     ),
     "yk-automation": (
         "automation",
-        "Live automation — agent-browser CLI, Android device control, Tailscale Funnel public tunnels.",
-        ["run-agent-browser", "mobilerun-control", "run-tailscale-funnel"],
+        "Live automation — agent-browser CLI, iOS app testing via agent-device, Android device control, Tailscale Funnel public tunnels.",
+        ["run-agent-browser", "run-agent-device", "mobilerun-control", "run-tailscale-funnel"],
     ),
     "yk-config": (
         "config",
