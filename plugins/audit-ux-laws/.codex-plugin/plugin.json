@@ -1,6 +1,6 @@
 {
   "name": "audit-ux-laws",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load).",
   "author": {
     "name": "Yigit Konur",

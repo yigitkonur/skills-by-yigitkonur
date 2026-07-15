@@ -1,6 +1,6 @@
 {
   "name": "audit-ui-and-save-files",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "Use if auditing a running web app UI across pages/viewports, saving per-bug findings to a tree.",
   "author": {
     "name": "Yigit Konur",

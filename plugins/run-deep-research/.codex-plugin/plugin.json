@@ -1,6 +1,6 @@
 {
   "name": "run-deep-research",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "Use if running deep multi-file research over 5+ entities or a market — wave-dispatched corpus.",
   "author": {
     "name": "Yigit Konur",

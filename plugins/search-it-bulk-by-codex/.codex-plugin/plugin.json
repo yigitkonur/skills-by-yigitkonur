@@ -1,6 +1,6 @@
 {
   "name": "search-it-bulk-by-codex",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "Use if running many small Codex-native web searches via codex exec with parseable answers.",
   "author": {
     "name": "Yigit Konur",

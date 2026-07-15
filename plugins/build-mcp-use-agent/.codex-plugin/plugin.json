@@ -1,6 +1,6 @@
 {
   "name": "build-mcp-use-agent",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "description": "Use if building TypeScript mcp-use MCPAgent code where an LLM orchestrates MCP tools (run/stream).",
   "author": {
     "name": "Yigit Konur",
