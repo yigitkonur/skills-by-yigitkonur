@@ -1,6 +1,13 @@
 name: version-bump
 
+# Auto-bump the patch version on every push to main so
+# `/plugin marketplace update` sees a new version and refreshes installed
+# plugins (including newly added skills and the researcher agents).
+# Manual dispatch is retained for an on-demand force-bump.
+
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
@@ -17,7 +24,18 @@ permissions:
   contents: write
 jobs:
   bump:
-    if: inputs.ref == 'main' && inputs.confirm == 'bump-version'
+    # On push: run for human commits, but never for the bot's own release
+    # commit — it carries [skip ci] and a github-actions[bot] actor, so this
+    # workflow cannot re-trigger itself (no infinite loop). GITHUB_TOKEN pushes
+    # also do not re-trigger workflows, so this is belt-and-suspenders.
+    # On manual dispatch: keep the explicit confirm gate.
+    if: >-
+      (github.event_name == 'push'
+        && !contains(github.event.head_commit.message, '[skip ci]')
+        && github.actor != 'github-actions[bot]')
+      || (github.event_name == 'workflow_dispatch'
+        && inputs.ref == 'main'
+        && inputs.confirm == 'bump-version')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
