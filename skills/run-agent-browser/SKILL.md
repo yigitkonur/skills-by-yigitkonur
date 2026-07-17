@@ -52,13 +52,18 @@ agent-browser tab close tN          # close only that tab; reset owned final tab
 agent-browser close                 # exact top-level command; releases the lease
 ```
 
-The three persistent, visible Google Chrome lanes are:
+Lanes are a runtime registry, not a hardcoded list — `pool status` shows whatever is currently registered on this machine. The table below is one machine's example state:
 
 | Lane | Port | Intended state |
 |---|---:|---|
 | `general` | 9222 | Generic persistent browsing |
 | `profound` | 9411 | Profound authenticated profile |
 | `peec` | 9444 | Peec authenticated profile |
+| `slot_01`-`slot_10` | 9501-9510 | Plain scratch lanes, no persistent auth — `pool use slot_03`, etc. |
+
+If `pool status` shows no rows at all, no lanes exist yet on this machine: `agent-browser pool create general` (see `references/managed-cdp-pool.md` "Prerequisites" and "Creating and removing lanes" for the one-time supervisor-script setup and full `pool create`/`pool remove` contract).
+
+Under multi-agent load, whatever named lanes exist fill up fast and the wrapper queues for up to 60s per lane before giving up, which reads as a hung command. **If `pool status` shows every named lane `leased`, switch to a free scratch lane (or `pool create` one) instead of waiting** — this is the single biggest fix for "the command is stuck."
 
 The pool gives headed real Chrome and persistent profiles, not an anti-detection guarantee. Read `references/managed-cdp-pool.md` before lane selection, recovery, or bypass work.
 
@@ -81,8 +86,8 @@ Maintain this after every state-changing command:
 
 ```yaml
 runtime: managed-pool | unmanaged | provider | electron
-lane: general | profound | peec | null
-port: 9222 | 9411 | 9444 | null
+lane: general | profound | peec | slot_01..slot_10 | null
+port: 9222 | 9411 | 9444 | 9501-9510 | null
 owner: agent-PID-HASH | null
 active_tab: tN | label
 owned_tabs: [tN]
@@ -186,7 +191,7 @@ Give a bounded browser mission, not a list of guessed refs. Include:
 ```yaml
 target: exact URL/service and user-visible outcome
 runtime: managed-pool | explicit bypass with reason
-lane: general | profound | peec | auto
+lane: general | profound | peec | slot_01..slot_10 | auto
 scope: allowed domains, account/workspace, authorized mutations
 proof: expected URL/text/value plus errors check
 cleanup: close owned tab IDs and release the lane
@@ -218,6 +223,7 @@ Current CLI help wins if a specialized skill contains older syntax.
 | Click covered | Dismiss/interact with named covering element, then snapshot. |
 | Custom input ignores `fill` | `focus`, then `keyboard inserttext` or `keyboard type`. |
 | Pool lease/CDP issue | `pool status` -> `pool recover` -> `pool doctor`. |
+| Command hangs with no output for 60-90s+ | Usually contention, not a bug: the wrapper waits up to 60s per lane. Run `pool status` first — if named lanes are `leased`, switch to a free scratch lane and retry rather than killing and re-running blind; if `pool status` shows no lanes at all, `pool create general` first. An error ending in `daemon may be busy or unresponsive` confirms real contention. |
 | Unmanaged install/daemon issue | `doctor --offline --quick`, then `doctor`; use `--fix` only with destructive-repair authorization. |
 | Unknown command/flag | `skills get core --full`, then `COMMAND --help`; do not guess. |
 
