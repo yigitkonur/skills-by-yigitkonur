@@ -1,6 +1,6 @@
 {
   "name": "test-by-mcpc-cli",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Use if driving the mcpc CLI (0.2.x) to test or smoke-check an MCP server over stdio or HTTP.",
   "author": {
     "name": "Yigit Konur",

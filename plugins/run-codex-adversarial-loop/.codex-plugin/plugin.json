@@ -1,6 +1,6 @@
 {
   "name": "run-codex-adversarial-loop",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Use if fanning out parallel Codex adversarial reviews, verifying findings, fixing in worktrees.",
   "author": {
     "name": "Yigit Konur",

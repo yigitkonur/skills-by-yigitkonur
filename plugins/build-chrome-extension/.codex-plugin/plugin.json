@@ -1,6 +1,6 @@
 {
   "name": "build-chrome-extension",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Use if building or debugging a Chrome MV3 extension — manifest v3, service_worker, content_scripts.",
   "author": {
     "name": "Yigit Konur",

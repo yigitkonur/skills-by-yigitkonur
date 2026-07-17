@@ -1,6 +1,6 @@
 {
   "name": "run-agent-browser",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
   "author": {
     "name": "Yigit Konur",

@@ -1,6 +1,6 @@
 {
   "name": "build-raycast-script-command",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Use if authoring or fixing a Raycast Script Command (@raycast.* metadata header) — fields, modes.",
   "author": {
     "name": "Yigit Konur",

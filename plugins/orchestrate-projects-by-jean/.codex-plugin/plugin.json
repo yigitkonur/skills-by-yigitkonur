@@ -1,6 +1,6 @@
 {
   "name": "orchestrate-projects-by-jean",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "description": "Use if supervising Jean agents through MCP and Computer Use for monitoring, recovery, or closure.",
   "author": {
     "name": "Yigit Konur",
