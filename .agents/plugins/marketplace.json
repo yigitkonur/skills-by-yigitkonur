@@ -593,6 +593,18 @@
       "category": "Productivity"
     },
     {
+      "name": "test-martool-cli",
+      "source": {
+        "source": "local",
+        "path": "./plugins/test-martool-cli"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "update-agent-config",
       "source": {
         "source": "local",

@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **49 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, backend api testing, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **50 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, backend and cli testing, browser/device automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex gets the complete 49-skill pack; Claude Code gets 48 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
+three ways in. Codex gets the complete 50-skill pack; Claude Code gets 49 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,12 +61,12 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 48 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 49 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
 | **yk-mcp** | build/audit/test/convert mcp servers, clients, clis | `/plugin install yk-mcp@yigitkonur` |
-| **yk-testing** | deep TestSprite backend API verification against deployed services | `/plugin install yk-testing@yigitkonur` |
+| **yk-testing** | TestSprite backend API and exhaustive martool CLI verification | `/plugin install yk-testing@yigitkonur` |
 | **yk-build** | chrome, cloudflare email, effect-ts, kernel, langchain, licenseseat, raycast, sentry, tinacms | `/plugin install yk-build@yigitkonur` |
 | **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | agent-browser, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
@@ -114,11 +114,12 @@ build, test, convert, and audit mcp servers, clients, and agent-facing clis.
 
 ---
 
-## 🧪 backend api testing
+## 🧪 backend and cli testing
 
-author, run, diagnose, and release-gate real deployed api tests.
+author, run, diagnose, and release-gate real deployed API tests and exhaustive martool CLI matrices.
 
 - **[run-testsprite-backend](skills/run-testsprite-backend/)** — repo-first TestSprite backend workflow: managed credentials, semantic Python assertions, streaming/data-flow coverage, immutable failure artifacts, fix loops, and exact-revision release proof.
+- **[test-martool-cli](skills/test-martool-cli/)** — combine martool's generated and platform CLI matrices in a source checkout or pinned Coolify container, with exact coverage and zero-provider evidence.
 
 `/plugin install yk-testing@yigitkonur`
 

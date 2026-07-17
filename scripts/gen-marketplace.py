@@ -88,8 +88,8 @@ GROUPS = {
     ),
     "yk-testing": (
         "testing",
-        "Backend API testing — author, run, diagnose, and release-gate TestSprite cloud tests against real deployed services.",
-        ["run-testsprite-backend"],
+        "Backend and CLI testing — release-gate TestSprite APIs and exhaustively verify martool CLI surfaces in source or Coolify.",
+        ["run-testsprite-backend", "test-martool-cli"],
     ),
     "yk-build": (
         "build",

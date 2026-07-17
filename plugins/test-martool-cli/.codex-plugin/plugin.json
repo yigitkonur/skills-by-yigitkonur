@@ -1,0 +1,35 @@
+{
+  "name": "test-martool-cli",
+  "version": "1.0.31",
+  "description": "Use skill if you are exhaustively testing or release-gating martool CLI commands in a source checkout or deployed Coolify container over SSH, without local Docker or provider spend.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "test-martool-cli"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "test-martool-cli",
+    "shortDescription": "Use skill if you are exhaustively testing or release-gating martool CLI commands in a source checkout or deployed Coolify container over SSH, without local Docker or provider spend.",
+    "longDescription": "Install only the test-martool-cli workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the test-martool-cli skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

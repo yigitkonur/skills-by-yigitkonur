@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 48 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 49 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.31",
       "category": "bundle",
       "strict": false,
@@ -64,6 +64,7 @@
         "./skills/run-testsprite-backend",
         "./skills/search-it-bulk-by-codex",
         "./skills/test-by-mcpc-cli",
+        "./skills/test-martool-cli",
         "./skills/update-agent-config"
       ],
       "agents": [
@@ -146,7 +147,7 @@
     {
       "name": "yk-testing",
       "source": "./",
-      "description": "Backend API testing — author, run, diagnose, and release-gate TestSprite cloud tests against real deployed services.",
+      "description": "Backend and CLI testing — release-gate TestSprite APIs and exhaustively verify martool CLI surfaces in source or Coolify.",
       "version": "1.0.31",
       "category": "bundle",
       "tags": [
@@ -154,7 +155,8 @@
       ],
       "strict": false,
       "skills": [
-        "./skills/run-testsprite-backend"
+        "./skills/run-testsprite-backend",
+        "./skills/test-martool-cli"
       ]
     },
     {
@@ -794,6 +796,17 @@
       "strict": false,
       "skills": [
         "./skills/test-by-mcpc-cli"
+      ]
+    },
+    {
+      "name": "test-martool-cli",
+      "source": "./",
+      "description": "Use skill if you are exhaustively testing or release-gating martool CLI commands in a source checkout or deployed Coolify container over SSH, without local Docker or provider spend.",
+      "version": "1.0.31",
+      "category": "testing",
+      "strict": false,
+      "skills": [
+        "./skills/test-martool-cli"
       ]
     },
     {
