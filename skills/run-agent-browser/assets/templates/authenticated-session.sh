@@ -2,16 +2,15 @@
 set -euo pipefail
 
 # Use an existing authenticated headed-CDP lane without exporting credentials.
-# Usage: authenticated-session.sh peec https://app.peec.ai 'Dashboard'
-LANE="${1:?lane required: peec or profound}"
+# Usage: authenticated-session.sh <lane> <url> 'expected signed-in text'
+LANE="${1:?authenticated lane name required, e.g. app1}"
 URL="${2:?URL required}"
 EXPECTED_TEXT="${3:?expected signed-in text required}"
 OWNED_TAB=""
 
-case "$LANE" in
-  peec|profound) ;;
-  *) echo "Authenticated lane must be peec or profound" >&2; exit 2 ;;
-esac
+# `agent-browser pool use "$LANE"` below already validates the lane exists
+# (prints "Unknown CDP lane: ..." and exits non-zero otherwise) — no need to
+# duplicate that with a hardcoded name whitelist here.
 
 cleanup() {
   if [[ -n "$OWNED_TAB" ]]; then

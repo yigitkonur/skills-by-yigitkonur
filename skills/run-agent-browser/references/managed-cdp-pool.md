@@ -110,8 +110,8 @@ Example only — this is what one machine currently has registered. Yours will d
 | Lane | CDP | Profile | Intended use |
 |---|---:|---|---|
 | `general` | 9222 | `~/.agent-browser/real-chrome-cdp-profile` | Generic browsing |
-| `profound` | 9411 | `~/.agent-browser/profound-cdp-profile` | Profound authenticated state |
-| `peec` | 9444 | `~/.agent-browser/peec-solo2-profile` | Peec authenticated state |
+| `app1` | 9411 | `~/.agent-browser/app1-cdp-profile` | Authenticated state for one specific service |
+| `app2` | 9444 | `~/.agent-browser/app2-cdp-profile` | Authenticated state for another specific service |
 | `slot_01`-`slot_10` | 9501-9510 | `~/.agent-browser/slot_NN-cdp-profile` | Plain scratch lanes, no persistent auth |
 
 On this machine, `slot_01`-`slot_10` exist to absorb overflow so agents don't queue on the 3 named lanes under multi-agent load. They carry no persistent authenticated state — pick any lane that shows `free` in `pool status` by number, e.g. `pool use slot_07`. There is nothing special about the name `slot_NN`; it is just this machine's naming convention. Use `agent-browser pool create <any-name>` to add lanes with whatever names and count fit your own workflow.
@@ -149,14 +149,14 @@ Record the lane, port, owner, active tab, and the tab created for the task. A su
 Selection must happen before any browser command:
 
 ```bash
-agent-browser pool use peec
+agent-browser pool use app1
 agent-browser pool current
-agent-browser open https://app.peec.ai
+agent-browser open https://app1.example.com
 ```
 
 If the owner already holds another lane, `pool use` returns that existing lane rather than migrating the lease. Check `pool current`. If it is wrong, close owned tabs, run the exact top-level `agent-browser close`, then select the desired lane before reopening.
 
-Do not select `peec` or `profound` merely because they are free. Persistent authenticated profiles contain user state; use the least-privileged suitable lane — for anonymous/scratch work, prefer any free `slot_01`-`slot_10` over `general`, and `general` over `peec`/`profound`.
+Do not select `app1` or `app2` merely because they are free. Persistent authenticated profiles contain user state; use the least-privileged suitable lane — for anonymous/scratch work, prefer any free `slot_01`-`slot_10` over `general`, and `general` over `app1`/`app2`.
 
 ## Command routing
 
@@ -236,7 +236,7 @@ After recovery, reopen the intended URL and verify it. Do not infer that restore
 
 The wrapper waits up to 60 seconds for a lane before giving up, and that wait produces no output — it just looks stuck. With only 3 named lanes this happens constantly under real multi-agent load; it is the most common source of "the agent is stuck" reports. Work through this order instead of killing and blindly retrying:
 
-1. `agent-browser pool status` first, always. If `general`/`profound`/`peec` show `leased`, that is the entire explanation. Switch to a free `slot_NN` lane (`pool use slot_04`) rather than waiting on a named lane you don't specifically need auth state from. If `pool status` prints only the header with no rows, no lanes are registered yet — `agent-browser pool create general` and retry.
+1. `agent-browser pool status` first, always. If `general`/`app1`/`app2` show `leased`, that is the entire explanation. Switch to a free `slot_NN` lane (`pool use slot_04`) rather than waiting on a named lane you don't specifically need auth state from. If `pool status` prints only the header with no rows, no lanes are registered yet — `agent-browser pool create general` and retry.
 2. If a command still stalls on a `slot_NN` lane, don't block the foreground indefinitely — background it and check back. Genuine contention can legitimately take 60-150s end to end (lane wait + Chrome launch/navigation + CDP round trip), which is normal, not broken.
 3. An explicit error ending in `daemon may be busy or unresponsive` or `Resource temporarily unavailable (os error 35)` confirms real contention, not a syntax or targeting mistake — retry the same command, don't start guessing at flags.
 4. Still stuck after that: `agent-browser pool recover`, then re-verify with `pool status` before retrying the original command.

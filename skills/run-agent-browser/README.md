@@ -8,7 +8,7 @@ Last reconciled against `agent-browser 0.31.1` and upstream commit [`afae698`](h
 
 ## What it adds
 
-- headed persistent Chrome lanes (`general`, `profound`, `peec`, plus scratch `slot_01`-`slot_10`), created/removed at runtime with `pool create`/`pool remove` — nothing is hardcoded, so the same commands work on a fresh machine;
+- headed persistent Chrome lanes (`general`, plus per-service authenticated lanes and scratch `slot_01`-`slot_10`), created/removed at runtime with `pool create`/`pool remove` — nothing is hardcoded, so the same commands work on a fresh machine;
 - automatic per-agent leasing and per-lane serialization;
 - task-owned tab tracking and exact lease cleanup;
 - recovery without deleting Chrome locks or daemon files;

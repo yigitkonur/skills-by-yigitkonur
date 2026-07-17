@@ -34,7 +34,7 @@ agent-browser auth login service --credential-provider vault --item "Service acc
 
 Do not print the environment variable or cookie file. Delete a temporary sensitive export after its intended import if the user authorized creating it and no retention is required.
 
-On managed `peec` or `profound` lanes, use existing profile state. Verify signed-in state through ordinary UI, not by dumping cookies/localStorage. Never browse unrelated account pages to prove authentication.
+On managed authenticated lanes (e.g. `app1`, `app2`), use existing profile state. Verify signed-in state through ordinary UI, not by dumping cookies/localStorage. Never browse unrelated account pages to prove authentication.
 
 ## Outward actions
 
