@@ -1,6 +1,6 @@
 {
   "name": "run-review",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if reviewing a PR/diff, requesting review on your branch, triaging feedback, or delegating.",
   "author": {
     "name": "Yigit Konur",

@@ -1,6 +1,6 @@
 {
   "name": "audit-ux-and-save-files",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree.",
   "author": {
     "name": "Yigit Konur",

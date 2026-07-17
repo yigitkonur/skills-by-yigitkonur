@@ -1,6 +1,6 @@
 {
   "name": "debug-runtime",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if chasing a reproducible runtime bug or repeated failed fixes with a 4-phase root-cause pass.",
   "author": {
     "name": "Yigit Konur",

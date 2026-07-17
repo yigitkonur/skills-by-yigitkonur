@@ -1,6 +1,6 @@
 {
   "name": "update-agent-config",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if auditing AGENTS.md/CLAUDE.md/REVIEW.md for drift after refactors — stale refs, rules.",
   "author": {
     "name": "Yigit Konur",

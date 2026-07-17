@@ -1,6 +1,6 @@
 {
   "name": "build-tinacms-nextjs",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if building a TinaCMS + Next.js App Router site — tina/config.ts, MDX content, useTina editing.",
   "author": {
     "name": "Yigit Konur",

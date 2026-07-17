@@ -1,6 +1,6 @@
 {
   "name": "run-github-scout",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if discovering GitHub repos, shortlisting candidates, or comparing OSS with repo evidence.",
   "author": {
     "name": "Yigit Konur",

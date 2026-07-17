@@ -1,6 +1,6 @@
 {
   "name": "deploy-coolify-cloud",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if deploying/updating a docker-compose service on Coolify Cloud via its API — domains, env.",
   "author": {
     "name": "Yigit Konur",

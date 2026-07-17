@@ -1,6 +1,6 @@
 {
   "name": "run-codex-review-loop",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if running Codex review loops across branches, lenses, comparisons, or convergence rounds.",
   "author": {
     "name": "Yigit Konur",

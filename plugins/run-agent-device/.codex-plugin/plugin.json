@@ -1,6 +1,6 @@
 {
   "name": "run-agent-device",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if testing or debugging an iOS app via agent-device CLI — simulator flows, evidence, bug triage.",
   "author": {
     "name": "Yigit Konur",

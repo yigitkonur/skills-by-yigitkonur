@@ -1,6 +1,6 @@
 {
   "name": "build-effect-ts-v3",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream.",
   "author": {
     "name": "Yigit Konur",

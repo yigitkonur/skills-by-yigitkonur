@@ -1,6 +1,6 @@
 {
   "name": "audit-skill-by-derailment",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "description": "Use if hardening a SKILL.md by running a fresh subagent on a real task and fixing where it snags.",
   "author": {
     "name": "Yigit Konur",
