@@ -62,6 +62,10 @@ Complete *"I want to ___ ___"*. If the natural verb isn't in the registry, the s
 4. **Cross-skill references** — always use canonical repo-local names
 5. **Description** — starts with `Use if`, 100 characters or fewer, describes when to trigger
 
+### Approved compatibility exception
+
+- `herdr` keeps the upstream ecosystem's canonical skill name and the established `/herdr` invocation. Renaming it to `run-herdr` would break existing installs and user muscle memory; all other new tool-control skills still use `run-`.
+
 ## Anti-Patterns
 
 | Anti-pattern | Fix |

@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 49 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 50 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.31",
       "category": "bundle",
       "strict": false,
@@ -44,6 +44,7 @@
         "./skills/convert-url-to-nextjs",
         "./skills/debug-runtime",
         "./skills/deploy-coolify-cloud",
+        "./skills/herdr",
         "./skills/init-agent-config",
         "./skills/init-jean-json",
         "./skills/init-makefiles",
@@ -204,7 +205,7 @@
     {
       "name": "yk-automation",
       "source": "./",
-      "description": "Live automation — agent-browser CLI, iOS app testing via agent-device, Android device control, Tailscale Funnel public tunnels.",
+      "description": "Live automation — Herdr terminal/agent control, browser automation, iOS and Android testing, Tailscale Funnel public tunnels.",
       "version": "1.0.31",
       "category": "bundle",
       "tags": [
@@ -212,6 +213,7 @@
       ],
       "strict": false,
       "skills": [
+        "./skills/herdr",
         "./skills/run-agent-browser",
         "./skills/run-agent-device",
         "./skills/mobilerun-control",
@@ -576,6 +578,17 @@
       "strict": false,
       "skills": [
         "./skills/deploy-coolify-cloud"
+      ]
+    },
+    {
+      "name": "herdr",
+      "source": "./",
+      "description": "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents.",
+      "version": "1.0.31",
+      "category": "automation",
+      "strict": false,
+      "skills": [
+        "./skills/herdr"
       ]
     },
     {

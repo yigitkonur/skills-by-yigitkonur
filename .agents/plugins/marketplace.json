@@ -341,6 +341,18 @@
       "category": "Productivity"
     },
     {
+      "name": "herdr",
+      "source": {
+        "source": "local",
+        "path": "./plugins/herdr"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "init-agent-config",
       "source": {
         "source": "local",

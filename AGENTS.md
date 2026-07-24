@@ -80,7 +80,7 @@ git config core.hooksPath .githooks
 
 ## Naming
 
-Every skill name follows **`verb-object`** in `kebab-case`. The verb is the most important word — users scan by what they want to *do*.
+Every skill name follows **`verb-object`** in `kebab-case`, except an approved compatibility name explicitly listed in `NAMING.md`. The verb is the most important word — users scan by what they want to *do*.
 
 ### Intent verb test
 
@@ -351,7 +351,7 @@ Use the `enhance-skill-by-derailment` workflow: launch a Sonnet subagent with a 
 
 Before finishing any skill work, verify **all** of the following:
 
-- [ ] Directory name is canonical `kebab-case`, starts with an intent verb
+- [ ] Directory name is canonical `kebab-case`, starts with an intent verb, or is an approved compatibility exception in `NAMING.md`
 - [ ] SKILL.md is at `skills/<name>/SKILL.md` (required for Claude Code activation)
 - [ ] Frontmatter `name` exactly matches the directory name
 - [ ] Frontmatter `description` starts with `Use skill if you are`
