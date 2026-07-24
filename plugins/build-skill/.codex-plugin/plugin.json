@@ -1,6 +1,6 @@
 {
   "name": "build-skill",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md.",
   "author": {
     "name": "Yigit Konur",

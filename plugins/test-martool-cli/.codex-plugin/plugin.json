@@ -1,6 +1,6 @@
 {
   "name": "test-martool-cli",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Use skill if you are exhaustively testing or release-gating martool CLI commands in a source checkout or deployed Coolify container over SSH, without local Docker or provider spend.",
   "author": {
     "name": "Yigit Konur",

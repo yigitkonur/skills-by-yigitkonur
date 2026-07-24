@@ -1,6 +1,6 @@
 {
   "name": "run-aligned-delivery",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Use if driving a large ambiguous initiative with scored question alignment before parallel exec.",
   "author": {
     "name": "Yigit Konur",

@@ -1,6 +1,6 @@
 {
   "name": "herdr",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents.",
   "author": {
     "name": "Yigit Konur",

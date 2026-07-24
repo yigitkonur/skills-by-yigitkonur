@@ -1,6 +1,6 @@
 {
   "name": "build-kernel-ts-sdk",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools.",
   "author": {
     "name": "Yigit Konur",

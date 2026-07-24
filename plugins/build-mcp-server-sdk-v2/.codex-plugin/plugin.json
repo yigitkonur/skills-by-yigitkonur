@@ -1,6 +1,6 @@
 {
   "name": "build-mcp-server-sdk-v2",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "description": "Use if building MCP servers on @modelcontextprotocol/server v2 alpha — split packages, registerTool.",
   "author": {
     "name": "Yigit Konur",
