@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Skills for AI coding agents — review, research, UI/UX audit, MCP & framework builders, browser/device automation, config files, publish. Install the whole pack, a themed bundle, a single skill, or just the researcher agents.",
-    "version": "1.0.32"
+    "version": "1.0.33"
   },
   "plugins": [
     {
       "name": "yk-everything",
       "source": "./",
       "description": "Every Claude-compatible skill — all 51 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "strict": false,
       "skills": [
@@ -77,7 +77,7 @@
       "name": "yk-researchers",
       "source": "./",
       "description": "Internet-researcher subagents only (no skills) — api-docs, debug-stuck, tech-choice, shipping-pattern, quick, generic. Fan them out for source-backed answers.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "agents"
@@ -92,7 +92,7 @@
       "name": "yk-review",
       "source": "./",
       "description": "Review & completion — code review, review-feedback triage, done-claim audits, runtime debugging.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "review"
@@ -110,7 +110,7 @@
       "name": "yk-frontend",
       "source": "./",
       "description": "Frontend rebuild & audit — pixel-faithful URL→Next.js, UI/UX/Laws-of-UX audits.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "frontend"
@@ -127,7 +127,7 @@
       "name": "yk-mcp",
       "source": "./",
       "description": "MCP & agent interfaces — build (SDK v1/v2, mcp-use), clean architecture, convert v1→v2, test, and agent-readiness audits for MCP servers and CLIs.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "mcp"
@@ -150,7 +150,7 @@
       "name": "yk-testing",
       "source": "./",
       "description": "Backend and CLI testing — release-gate TestSprite APIs and exhaustively verify martool CLI surfaces in source or Coolify.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "testing"
@@ -165,7 +165,7 @@
       "name": "yk-build",
       "source": "./",
       "description": "App & framework builders — Chrome MV3, Cloudflare Email Service, Effect-TS v3, Kernel SDK, LangChain.js, LicenseSeat (macOS/Swift), Raycast, Sentry (macOS/Swift), TinaCMS+Next.js.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "build"
@@ -187,7 +187,7 @@
       "name": "yk-research",
       "source": "./",
       "description": "Research & discovery — single-question and wave-based corpus research, GitHub repo scouting, bulk Codex search. Bundles the internet-researcher subagents.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "research"
@@ -207,7 +207,7 @@
       "name": "yk-automation",
       "source": "./",
       "description": "Live automation — Herdr terminal/agent control, browser automation, iOS and Android testing, Tailscale Funnel public tunnels.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "automation"
@@ -225,7 +225,7 @@
       "name": "yk-config",
       "source": "./",
       "description": "Instruction & config files — AGENTS.md/CLAUDE.md/REVIEW.md hierarchies, drift audits, scenario Makefiles.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "config"
@@ -242,7 +242,7 @@
       "name": "yk-ops",
       "source": "./",
       "description": "Ops & release — Railway, Coolify Cloud compose deploys, repo cleanup, npm publishing.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "ops"
@@ -259,7 +259,7 @@
       "name": "yk-skills",
       "source": "./",
       "description": "Skill authoring — research-driven skill creation and derailment stress-testing of existing SKILL.md files.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "skills-meta"
@@ -274,7 +274,7 @@
       "name": "yk-writing",
       "source": "./",
       "description": "Writing & editing — multilingual natural-writing diagnosis, evidence-safe rewriting, and publication review for text, Markdown, MDX, and HTML.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "productivity"
@@ -288,7 +288,7 @@
       "name": "yk-delivery",
       "source": "./",
       "description": "Aligned delivery — scored multi-round question alignment, a filename-state spec corpus, and waved parallel subagent orchestration for a large or ambiguous initiative.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "bundle",
       "tags": [
         "delivery"
@@ -302,7 +302,7 @@
       "name": "audit-agentic-cli",
       "source": "./",
       "description": "Use if auditing or designing a CLI for agent/LLM use — JSON output, exit codes, non-interactive.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -313,7 +313,7 @@
       "name": "audit-agentic-mcp",
       "source": "./",
       "description": "Use if auditing or designing an MCP server for agent-readiness — framework, security, context.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -324,7 +324,7 @@
       "name": "audit-completion",
       "source": "./",
       "description": "Use if verifying claimed-done work or auditing session/plan/branch completion with evidence.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "review",
       "strict": false,
       "skills": [
@@ -335,7 +335,7 @@
       "name": "audit-skill-by-derailment",
       "source": "./",
       "description": "Use if hardening a SKILL.md by running a fresh subagent on a real task and fixing where it snags.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "skills-meta",
       "strict": false,
       "skills": [
@@ -346,7 +346,7 @@
       "name": "audit-ui-and-save-files",
       "source": "./",
       "description": "Use if auditing a running web app UI across pages/viewports, saving per-bug findings to a tree.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "frontend",
       "strict": false,
       "skills": [
@@ -357,7 +357,7 @@
       "name": "audit-ux-and-save-files",
       "source": "./",
       "description": "Use if auditing a running app's usability via persona journeys, saving per-issue findings to a tree.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "frontend",
       "strict": false,
       "skills": [
@@ -368,7 +368,7 @@
       "name": "audit-ux-laws",
       "source": "./",
       "description": "Use if building or auditing UI against the 30 Laws of UX (Fitts, Hick, Gestalt, cognitive load).",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "frontend",
       "strict": false,
       "skills": [
@@ -379,7 +379,7 @@
       "name": "build-chrome-extension",
       "source": "./",
       "description": "Use if building or debugging a Chrome MV3 extension — manifest v3, service_worker, content_scripts.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -390,7 +390,7 @@
       "name": "build-clean-mcp-architecture",
       "source": "./",
       "description": "Use if structuring or auditing TypeScript mcp-use/server code for Clean Architecture boundaries.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -401,7 +401,7 @@
       "name": "build-cloudflare-email-sending",
       "source": "./",
       "description": "Use if sending email via Cloudflare Email Service, replacing Resend/SES/Postmark or send_email.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -412,7 +412,7 @@
       "name": "build-effect-ts-v3",
       "source": "./",
       "description": "Use if building TypeScript with Effect-TS v3 — Effect.gen, Layer, Schema, typed errors, Stream.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -423,7 +423,7 @@
       "name": "build-kernel-ts-sdk",
       "source": "./",
       "description": "Use if building browser-automation apps on the Kernel TS SDK (@onkernel/sdk) — browsers, pools.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -434,7 +434,7 @@
       "name": "build-langchain-ts-app",
       "source": "./",
       "description": "Use if building TypeScript apps with langchain/@langchain — agents, RAG, structured output.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -445,7 +445,7 @@
       "name": "build-licenseseat-swift",
       "source": "./",
       "description": "Use if integrating the LicenseSeat Swift SDK into a macOS/Swift app — activation, validation, seats.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -456,7 +456,7 @@
       "name": "build-mcp-server-sdk-v1",
       "source": "./",
       "description": "Use if building a TypeScript MCP server on @modelcontextprotocol/sdk v1.x — single-package, Zod.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -467,7 +467,7 @@
       "name": "build-mcp-server-sdk-v2",
       "source": "./",
       "description": "Use if building MCP servers on @modelcontextprotocol/server v2 alpha — split packages, registerTool.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -478,7 +478,7 @@
       "name": "build-mcp-use-agent",
       "source": "./",
       "description": "Use if building TypeScript mcp-use MCPAgent code where an LLM orchestrates MCP tools (run/stream).",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -489,7 +489,7 @@
       "name": "build-mcp-use-client",
       "source": "./",
       "description": "Use if writing TypeScript mcp-use MCP client code — MCPClient, MCPSession, useMcp, mcp-use/react.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -500,7 +500,7 @@
       "name": "build-mcp-use-server",
       "source": "./",
       "description": "Use if building TypeScript MCP servers with mcp-use/server — server.tool, ctx.auth, transports.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -511,7 +511,7 @@
       "name": "build-raycast-script-command",
       "source": "./",
       "description": "Use if authoring or fixing a Raycast Script Command (@raycast.* metadata header) — fields, modes.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -522,7 +522,7 @@
       "name": "build-sentry-macos-swift",
       "source": "./",
       "description": "Use if adding or auditing Sentry crash reporting in a macOS/Swift app — dSYM, breadcrumbs, tracing.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -533,7 +533,7 @@
       "name": "build-skill",
       "source": "./",
       "description": "Use if creating, redesigning, or merging a Claude skill, with research before writing SKILL.md.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "skills-meta",
       "strict": false,
       "skills": [
@@ -544,7 +544,7 @@
       "name": "build-tinacms-nextjs",
       "source": "./",
       "description": "Use if building a TinaCMS + Next.js App Router site — tina/config.ts, MDX content, useTina editing.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "build",
       "strict": false,
       "skills": [
@@ -555,7 +555,7 @@
       "name": "convert-mcp-sdk-v1-to-v2",
       "source": "./",
       "description": "Use if porting an MCP TypeScript server from @modelcontextprotocol/sdk v1.x to the v2 SDK.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -566,7 +566,7 @@
       "name": "convert-to-natural-writing",
       "source": "./",
       "description": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "productivity",
       "strict": false,
       "skills": [
@@ -577,7 +577,7 @@
       "name": "convert-url-to-nextjs",
       "source": "./",
       "description": "Use if rebuilding a live URL or .html snapshot as a pixel-faithful AS-IS Next.js project.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "frontend",
       "strict": false,
       "skills": [
@@ -588,7 +588,7 @@
       "name": "debug-runtime",
       "source": "./",
       "description": "Use if chasing a reproducible runtime bug or repeated failed fixes with a 4-phase root-cause pass.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "review",
       "strict": false,
       "skills": [
@@ -599,7 +599,7 @@
       "name": "deploy-coolify-cloud",
       "source": "./",
       "description": "Use if deploying/updating a docker-compose service on Coolify Cloud via its API — domains, env.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "ops",
       "strict": false,
       "skills": [
@@ -610,7 +610,7 @@
       "name": "herdr",
       "source": "./",
       "description": "Use skill if you are explicitly asked to control Herdr panes, tabs, workspaces, worktrees, commands, or coding agents.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "automation",
       "strict": false,
       "skills": [
@@ -621,7 +621,7 @@
       "name": "init-agent-config",
       "source": "./",
       "description": "Use if creating, auditing, or migrating CLAUDE.md/AGENTS.md/REVIEW.md instruction files.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "config",
       "strict": false,
       "skills": [
@@ -632,7 +632,7 @@
       "name": "init-jean-json",
       "source": "./",
       "description": "Use if onboarding a repo to Jean — jean.json and .worktreeinclude setup, run, teardown, ports.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "config",
       "strict": false,
       "skills": [
@@ -643,7 +643,7 @@
       "name": "init-makefiles",
       "source": "./",
       "description": "Use if scaffolding Makefile targets for dev, tunnels, deploys, R2, Supabase, Railway, Vercel.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "config",
       "strict": false,
       "skills": [
@@ -654,7 +654,7 @@
       "name": "mobilerun-control",
       "source": "./",
       "description": "Use if controlling or testing a connected Android phone via the mobilerun CLI — tap, type, swipe.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "automation",
       "strict": false,
       "skills": [
@@ -665,7 +665,7 @@
       "name": "publish-npm-package",
       "source": "./",
       "description": "Use if publishing to npm via GitHub Actions — trusted publishing, provenance, semantic-release.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "ops",
       "strict": false,
       "skills": [
@@ -676,7 +676,7 @@
       "name": "run-agent-browser",
       "source": "./",
       "description": "Use if driving agent-browser for Chrome/CDP automation, @ref snapshots, tabs, or verification.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "automation",
       "strict": false,
       "skills": [
@@ -687,7 +687,7 @@
       "name": "run-agent-device",
       "source": "./",
       "description": "Use if testing or debugging an iOS app via agent-device CLI — simulator flows, evidence, bug triage.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "automation",
       "strict": false,
       "skills": [
@@ -698,7 +698,7 @@
       "name": "run-aligned-delivery",
       "source": "./",
       "description": "Use if driving a large ambiguous initiative with scored question alignment before parallel exec.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "delivery",
       "strict": false,
       "skills": [
@@ -709,7 +709,7 @@
       "name": "run-codex-adversarial-loop",
       "source": "./",
       "description": "Use if fanning out parallel Codex adversarial reviews, verifying findings, fixing in worktrees.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "review",
       "strict": false,
       "skills": [
@@ -720,7 +720,7 @@
       "name": "run-codex-review-loop",
       "source": "./",
       "description": "Use if running Codex review loops across branches, lenses, comparisons, or convergence rounds.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "review",
       "strict": false,
       "skills": [
@@ -731,7 +731,7 @@
       "name": "run-deep-research",
       "source": "./",
       "description": "Use if running deep multi-file research over 5+ entities or a market — wave-dispatched corpus.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "research",
       "strict": false,
       "skills": [
@@ -742,7 +742,7 @@
       "name": "run-github-scout",
       "source": "./",
       "description": "Use if discovering GitHub repos, shortlisting candidates, or comparing OSS with repo evidence.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "research",
       "strict": false,
       "skills": [
@@ -753,7 +753,7 @@
       "name": "run-railway",
       "source": "./",
       "description": "Use if running railway CLI — deploys, logs, env vars, link, ssh, db shells, scaling.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "ops",
       "strict": false,
       "skills": [
@@ -764,7 +764,7 @@
       "name": "run-repo-cleanup",
       "source": "./",
       "description": "Use if finishing a project — review and merge every branch/worktree into main, retire dead branches.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "ops",
       "strict": false,
       "skills": [
@@ -775,7 +775,7 @@
       "name": "run-research",
       "source": "./",
       "description": "Use if answering one technical research question with current web + practitioner evidence.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "research",
       "strict": false,
       "skills": [
@@ -786,7 +786,7 @@
       "name": "run-review",
       "source": "./",
       "description": "Use if reviewing a PR/diff, requesting review on your branch, triaging feedback, or delegating.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "review",
       "strict": false,
       "skills": [
@@ -797,7 +797,7 @@
       "name": "run-tailscale-funnel",
       "source": "./",
       "description": "Use if exposing a local HTTP server at a public .ts.net URL via Tailscale Funnel.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "automation",
       "strict": false,
       "skills": [
@@ -808,7 +808,7 @@
       "name": "run-testsprite-backend",
       "source": "./",
       "description": "Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "testing",
       "strict": false,
       "skills": [
@@ -819,7 +819,7 @@
       "name": "search-it-bulk-by-codex",
       "source": "./",
       "description": "Use if running many small Codex-native web searches via codex exec with parseable answers.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "research",
       "strict": false,
       "skills": [
@@ -830,7 +830,7 @@
       "name": "test-by-mcpc-cli",
       "source": "./",
       "description": "Use if driving the mcpc CLI (0.2.x) to test or smoke-check an MCP server over stdio or HTTP.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "mcp",
       "strict": false,
       "skills": [
@@ -841,7 +841,7 @@
       "name": "test-martool-cli",
       "source": "./",
       "description": "Use skill if you are exhaustively testing or release-gating martool CLI commands in a source checkout or deployed Coolify container over SSH, without local Docker or provider spend.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "testing",
       "strict": false,
       "skills": [
@@ -852,7 +852,7 @@
       "name": "update-agent-config",
       "source": "./",
       "description": "Use if auditing AGENTS.md/CLAUDE.md/REVIEW.md for drift after refactors — stale refs, rules.",
-      "version": "1.0.32",
+      "version": "1.0.33",
       "category": "config",
       "strict": false,
       "skills": [
