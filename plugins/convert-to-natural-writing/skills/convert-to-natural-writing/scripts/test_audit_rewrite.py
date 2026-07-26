@@ -50,6 +50,32 @@ class AuditRewriteTests(unittest.TestCase):
             "Read [the guide](https://example.com/start).",
         )
 
+    def test_reference_definitions_and_relative_destinations_are_protected(self) -> None:
+        original = "Read [the guide][docs].\n\n[docs]: <../guides/start_(here).md> \"Start\"\n"
+        revised = "See [our guide][docs].\n\n[docs]: <../guides/finish_(here).md> \"Start\"\n"
+        self.assert_fails_in("markdown-references", original, revised)
+
+    def test_reference_identifier_can_remain_while_visible_label_changes(self) -> None:
+        original = "Read [the old label][docs].\n\n[docs]: /guide\n"
+        revised = "See [the clearer label][docs].\n\n[docs]: /guide\n"
+        self.assert_passes(original, revised)
+
+    def test_reference_titles_are_copy_but_shortcuts_and_footnote_ids_are_protected(self) -> None:
+        original = 'Read [docs] and note [^scope].\n\n[docs]: ../guide.md "Old title"\n[^scope]: Old note.\n'
+        title_and_note_rewrite = (
+            'See [docs] and note [^scope].\n\n[docs]: ../guide.md "Clear title"\n[^scope]: Clear note.\n'
+        )
+        changed_footnote = title_and_note_rewrite.replace("[^scope]", "[^limits]")
+        self.assert_passes(original, title_and_note_rewrite)
+        self.assert_fails_in("markdown-references", original, changed_footnote)
+
+    def test_nested_markdown_destination_is_protected_but_title_is_copy(self) -> None:
+        original = 'Read [the guide](../guides/start_(here).md "Old title").'
+        title_change = 'See [our guide](../guides/start_(here).md "Clear title").'
+        destination_change = 'See [our guide](../guides/finish_(here).md "Clear title").'
+        self.assert_passes(original, title_change)
+        self.assert_fails_in("markdown-destinations", original, destination_change)
+
     def test_numbers_dates_currency_and_units_are_protected(self) -> None:
         original = "On 2026-07-26, 12.5% paid €49 for 10 GB."
         revised = "On 2026-07-27, 12% paid €59 for 20 GB."
@@ -74,6 +100,11 @@ class AuditRewriteTests(unittest.TestCase):
         revised = "Run the command:\n\n```bash\nretry --count 3\n```\n"
         self.assert_passes(original, revised)
 
+    def test_indented_code_is_protected(self) -> None:
+        original = "Run this command:\n\n    deploy --environment staging\n    verify --sha 123\n"
+        revised = "Use these commands:\n\n    deploy --environment production\n    verify --sha 123\n"
+        self.assert_fails_in("indented-code", original, revised)
+
     def test_frontmatter_keys_and_protected_values(self) -> None:
         original = '---\ntitle: "Old title"\nslug: keep-me\ndraft: false\n---\nOld copy.\n'
         title_change = '---\ntitle: "Better title"\nslug: keep-me\ndraft: false\n---\nNew copy.\n'
@@ -82,6 +113,29 @@ class AuditRewriteTests(unittest.TestCase):
         self.assert_passes(original, title_change)
         self.assert_fails_in("frontmatter-protected-values", original, slug_change)
         self.assert_fails_in("frontmatter-keys", original, removed_key)
+
+    def test_frontmatter_sequences_and_noncopy_scalars_are_protected(self) -> None:
+        original = '---\ntitle: "Old"\nauthor: Ada\ntags:\n  - stable\n  - public\n---\nOld copy.\n'
+        revised = '---\ntitle: "Better"\nauthor: Grace\ntags:\n  - changed\n  - public\n---\nNew copy.\n'
+        self.assert_fails_in("frontmatter-protected-values", original, revised)
+
+    def test_nested_frontmatter_copy_fields_can_change_but_object_ids_cannot(self) -> None:
+        original = (
+            "---\nseo:\n  title: Old title\n  description: Old description\nauthors:\n"
+            "  - name: Ada\n    id: author-1\n---\nOld body.\n"
+        )
+        copy_change = (
+            "---\nseo:\n  title: Clear title\n  description: Clear description\nauthors:\n"
+            "  - name: Ada\n    id: author-1\n---\nClear body.\n"
+        )
+        id_change = copy_change.replace("author-1", "author-2")
+        self.assert_passes(original, copy_change)
+        self.assert_fails_in("frontmatter-protected-values", original, id_change)
+
+    def test_frontmatter_copy_block_may_change_without_losing_shape(self) -> None:
+        original = "---\ndescription: >\n  Old generic copy.\nslug: stable\n---\nBody.\n"
+        revised = "---\ndescription: >\n  Clear useful copy.\nslug: stable\n---\nRevised body.\n"
+        self.assert_passes(original, revised)
 
     def test_html_text_and_copy_attributes_may_change(self) -> None:
         original = '<p class="lead"><img src="hero.png" alt="Generic image">Old copy.</p>'
@@ -99,6 +153,98 @@ class AuditRewriteTests(unittest.TestCase):
         original = '<p lang="tr" dir="ltr">Metin.</p>'
         revised = '<p lang="en" dir="rtl">Text.</p>'
         self.assert_fails_in("markup-protected-values", original, revised)
+
+    def test_html_comments_entities_and_raw_text_are_protected(self) -> None:
+        original = '<!-- cms:keep --><p>A&nbsp;B</p><script type="application/ld+json">{"name":"Old"}</script>'
+        changed_comment = original.replace("cms:keep", "cms:drop")
+        changed_entity = original.replace("&nbsp;", "&thinsp;")
+        changed_script = original.replace('"Old"', '"New"')
+        self.assert_fails_in("html-comments", original, changed_comment)
+        self.assert_fails_in("html-entities", original, changed_entity)
+        self.assert_fails_in("html-raw-text", original, changed_script)
+
+    def test_raw_text_isolated_from_mdx_expressions_and_unclosed_comments_are_artifacts(self) -> None:
+        original = '<style>.card { color: red; }</style><p>Old copy.</p>'
+        revised = '<style>.card { color: blue; }</style><p>Clear copy.</p>'
+        report = AUDIT.audit(original, revised)
+        categories = {item["category"] for item in report["differences"]}
+        self.assertIn("html-raw-text", categories, report)
+        self.assertNotIn("brace-expressions", categories, report)
+
+        malformed = AUDIT.audit("<p>Copy.</p>", "<!-- unfinished\n<p>Copy.</p>")
+        self.assertFalse(malformed["pass"], malformed)
+        self.assertTrue(any("unclosed-html-comment" in item for item in malformed["artifacts"]["added"]), malformed)
+
+    def test_mdx_expressions_esm_and_template_directives_are_protected(self) -> None:
+        expression_original = '<Price value={{monthly: prices[locale]}}>{format(price)}</Price>'
+        expression_revised = '<Price value={{annual: prices[locale]}}>{format(total)}</Price>'
+        expression_report = AUDIT.audit(expression_original, expression_revised)
+        expression_categories = {item["category"] for item in expression_report["differences"]}
+        self.assertIn("brace-expressions", expression_categories, expression_report)
+
+        esm_original = 'export const plan = "starter"\n\n# Old\n'
+        esm_revised = 'export const plan = "enterprise"\n\n# New\n'
+        self.assert_fails_in("mdx-esm", esm_original, esm_revised)
+
+        template_original = "Hello {{ customer.name }}. {% if active %}${plan}{% endif %}"
+        template_revised = "Hello {{ account.name }}. {% if trial %}${tier}{% endif %}"
+        self.assert_fails_in("template-directives", template_original, template_revised)
+
+    def test_localized_currency_suffix_and_spacing_are_protected(self) -> None:
+        original = "Plan A: 100\u00a0zł; Plan B: ₺1.250,50; Plan C: ١٢٫٥ د.إ"
+        revised = "Plan A: 100\u00a0kr; Plan B: ₺1.250,50; Plan C: ١٢٫٥ ر.س"
+        self.assert_fails_in("numbers-dates-currency-units", original, revised)
+
+    def test_user_protected_literals_cover_legal_terms_and_names(self) -> None:
+        original = "Offer is void where prohibited. Contact Acme & Co."
+        revised = "Offer is unavailable where prohibited. Contact Acme and Company."
+        report = AUDIT.audit(
+            original,
+            revised,
+            protected_literals=["Offer is void where prohibited.", "Acme & Co."],
+        )
+        self.assertFalse(report["pass"], report)
+        categories = {item["category"] for item in report["differences"]}
+        self.assertIn("user-protected-literals", categories, report)
+
+    def test_user_protected_literal_must_exist_in_original(self) -> None:
+        with self.assertRaisesRegex(ValueError, "not present in original"):
+            AUDIT.audit("Original copy.", "Revised copy.", protected_literals=["Missing invariant"])
+
+    def test_user_protected_literal_preserves_occurrence_count_and_deduplicates_inputs(self) -> None:
+        report = AUDIT.audit("Exact / Exact", "Exact", protected_literals=["Exact", "Exact"])
+        self.assertFalse(report["pass"], report)
+        difference = next(item for item in report["differences"] if item["category"] == "user-protected-literals")
+        self.assertEqual(["Exact"], difference["missing"], report)
+
+    def test_low_signal_and_large_delta_warnings_do_not_claim_failure(self) -> None:
+        low_signal = AUDIT.audit("Plain original prose.", "Clear revised prose.")
+        self.assertTrue(low_signal["pass"], low_signal)
+        self.assertIn("no-deterministic-protections", {item["code"] for item in low_signal["warnings"]})
+
+        empty = AUDIT.audit("", "New prose without protected tokens.")
+        self.assertTrue(empty["pass"], empty)
+        self.assertIn("original-empty", {item["code"] for item in empty["warnings"]})
+
+        large_delta = AUDIT.audit("Keep 2026. Short.", "Keep 2026. " + "Expanded prose. " * 20)
+        self.assertTrue(large_delta["pass"], large_delta)
+        self.assertIn("large-size-delta", {item["code"] for item in large_delta["warnings"]})
+
+    def test_multilingual_assistant_and_prompt_residue_fail(self) -> None:
+        revised = (
+            "İşte yeniden yazılmış sürüm:\n\nMetin.\n\n"
+            "Como modelo de lenguaje de IA, no tengo opiniones personales."
+        )
+        report = AUDIT.audit("Metin.", revised)
+        self.assertFalse(report["pass"], report)
+        self.assertGreaterEqual(len(report["artifacts"]["added"]), 2, report)
+
+    def test_new_unclosed_fence_is_an_artifact(self) -> None:
+        original = "Text.\n\n```txt\nclosed\n```\n"
+        revised = "Text.\n\n```txt\nunclosed\n"
+        report = AUDIT.audit(original, revised)
+        self.assertFalse(report["pass"], report)
+        self.assertTrue(any("unclosed-fence" in item for item in report["artifacts"]["added"]), report)
 
     def test_new_artifact_fails_but_existing_artifact_is_reported(self) -> None:
         added = AUDIT.audit("Ready copy.", "Ready copy. [insert source]")
@@ -142,6 +288,88 @@ class AuditRewriteTests(unittest.TestCase):
             )
             self.assertEqual(1, failed.returncode)
             self.assertTrue(failed.stdout.startswith("FAIL"), failed.stdout)
+
+    def test_cli_protect_and_protect_from(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "original.md"
+            revised = root / "revised.md"
+            protected = root / "protected.txt"
+            original.write_text("Keep Exact Product Name and Legal phrase.", encoding="utf-8")
+            revised.write_text("Keep Product Name and revised phrase.", encoding="utf-8")
+            protected.write_text("# exact literals\nExact Product Name\nLegal phrase\n", encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--json",
+                    "--protect",
+                    "Exact Product Name",
+                    "--protect-from",
+                    str(protected),
+                    str(original),
+                    str(revised),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(1, result.returncode, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertIn("user-protected-literals", {item["category"] for item in payload["differences"]})
+
+    def test_cli_rejects_missing_protected_literal_and_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "original.md"
+            revised = root / "revised.md"
+            original.write_text("Original.", encoding="utf-8")
+            revised.write_text("Revised.", encoding="utf-8")
+            missing_literal = subprocess.run(
+                [sys.executable, str(SCRIPT), "--protect", "Absent", str(original), str(revised)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, missing_literal.returncode)
+            self.assertIn("not present in original", missing_literal.stderr)
+
+            missing_file = subprocess.run(
+                [sys.executable, str(SCRIPT), "--protect-from", str(root / "missing.txt"), str(original), str(revised)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, missing_file.returncode)
+            self.assertIn("cannot read", missing_file.stderr)
+
+    def test_cli_rejects_blank_literal_and_empty_protection_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "original.md"
+            revised = root / "revised.md"
+            empty = root / "empty.txt"
+            original.write_text("Original.", encoding="utf-8")
+            revised.write_text("Revised.", encoding="utf-8")
+            empty.write_text("# comments only\n\n", encoding="utf-8")
+
+            blank = subprocess.run(
+                [sys.executable, str(SCRIPT), "--protect", "  ", str(original), str(revised)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, blank.returncode)
+            self.assertIn("must not be blank", blank.stderr)
+
+            empty_file = subprocess.run(
+                [sys.executable, str(SCRIPT), "--protect-from", str(empty), str(original), str(revised)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(2, empty_file.returncode)
+            self.assertIn("contains no protected literals", empty_file.stderr)
 
 
 if __name__ == "__main__":

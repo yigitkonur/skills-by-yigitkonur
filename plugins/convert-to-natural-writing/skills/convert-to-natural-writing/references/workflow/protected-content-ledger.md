@@ -24,12 +24,13 @@ Record authorization separately. An approved change is not a preservation failur
 Capture exact items before editing:
 
 - absolute and relative URLs;
-- Markdown link and image destinations;
+- Markdown link/image destinations, reference-definition labels, shortcut/collapsed identifiers, and footnote identifiers;
 - email addresses, handles, and phone numbers;
-- inline code and fenced code blocks, including fence language;
+- inline, fenced, and indented code blocks, including fence language;
 - component, variable, API, command, file, and package names;
-- HTML and JSX tag names, attribute names, and protected values;
+- HTML and JSX tag names, attribute names, protected values, comments, entities, and raw-text bodies;
 - frontmatter keys, slugs, IDs, enum values, and required field types;
+- MDX expressions/ESM and template directives such as `{{…}}`, `{%…%}`, and `${…}`;
 - citation identifiers, footnote labels, and anchors;
 - `lang`, `dir`, bidi isolation, and locale routing markers.
 
@@ -57,6 +58,10 @@ Include:
 - feature capabilities and limitations;
 - CTA commitments, eligibility, timing, and conditions;
 - comparisons and their baselines.
+
+Record locale-specific spelling, placement, digits, separators, and spacing as part of the value. `€49`, `49 EUR`, `100 zł`, `₺1.250,50`, and `١٢٫٥ د.إ` are not interchangeable surface variants without locale and product authority.
+
+For exact phrases the generic audit cannot infer—legal wording, approved quotations, product names, UI labels, or defined terms—add repeatable `--protect` literals or a reviewed `--protect-from` file. Treat the supplied list as project evidence, not as permission to skip semantic reconciliation.
 
 ## Force inventory
 
@@ -128,6 +133,8 @@ After each rewrite pass:
 4. Confirm the document still performs the same job.
 5. Record authorized differences and unresolved drift.
 6. Re-run the repository's parser or renderer for structured files.
+
+For a partial rewrite, compare equivalent scopes or reconstruct the complete revised document before running whole-file reconciliation. For a long document edited in chunks, run both section-level checks and a final full-document check.
 
 Do not postpone all reconciliation until the end of a large document. Check section by section to keep drift local and recoverable.
 

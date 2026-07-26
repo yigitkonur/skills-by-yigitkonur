@@ -9,13 +9,14 @@ An objective production artifact is observable without guessing authorship. It i
 Examples include:
 
 - unresolved placeholders such as `TODO`, `TBD`, `[insert source]`, or `{{company_name}}`;
-- assistant chatter such as “Here is the revised version” inside publishable copy;
+- assistant chatter such as “Here is the revised version” inside publishable copy, including equivalent preambles in the document's language;
 - prompt instructions or role text embedded in the output;
 - malformed citation tokens such as `[1]` with no reference or `cite...` residue;
 - broken Markdown fences, links, tags, entities, or frontmatter;
 - copied navigation, cookie notices, or search snippets that do not belong to the document;
 - comments or draft annotations exposed to readers;
 - mixed renderer syntax, such as JSX in a Markdown-only pipeline.
+- unclosed fences, comments, raw-text elements, frontmatter, or template directives introduced by the rewrite.
 
 ## Detection order
 
@@ -46,7 +47,7 @@ lorem ipsum
 example.com when not intentional
 ```
 
-Do not blindly delete matches. `TODO` may be a documented code symbol; template braces may be required runtime syntax. Confirm whether the token belongs to the publication contract.
+Do not blindly delete matches. `TODO` may be a documented code symbol; template braces may be required runtime syntax. Confirm whether the token belongs to the publication contract. In template-backed files, directive preservation belongs in the protected inventory and is not automatically a residue finding.
 
 ## Assistant and prompt residue
 
@@ -57,6 +58,10 @@ Common patterns include:
 - instructions such as “Maintain a professional tone” left in body copy;
 - analysis labels such as “Draft,” “Rationale,” or “Suggested CTA” accidentally pasted into final content;
 - meta-claims such as “This paragraph avoids AI-sounding language.”
+
+Search in the source language and publication context, not only English. Equivalent residue includes localized “here is the rewritten version” preambles and model-role disclaimers such as Turkish “bir yapay zekâ dil modeli olarak,” Spanish “como modelo de lenguaje de IA,” French “en tant que modèle de langage d’IA,” German “als KI-Sprachmodell,” and comparable forms. These phrases are still contextual: an article quoting or analyzing one is not automatically defective.
+
+Compare source and revision. Newly introduced residue is a rewrite failure. Residue already present in the source remains reportable debt, but it must not be misrepresented as newly introduced by the editor.
 
 These are defects when the channel expects only the document. They may be legitimate in an editorial report, so interpret them in context.
 
@@ -79,9 +84,10 @@ Do not “repair” a citation by inventing metadata. Retain the claim as unreso
 | Format | Typical artifacts | Verification |
 | --- | --- | --- |
 | Markdown | Unclosed fences, broken destinations, skipped heading levels | CommonMark-compatible parser and link check |
-| MDX | Unbalanced JSX, brace errors, invalid ESM, prose interpreted as JSX | Project's MDX compiler or build |
-| HTML | Unclosed tags, invalid nesting, duplicated IDs, missing `lang` | HTML validator plus browser render |
+| MDX | Unbalanced JSX, brace errors, invalid ESM, changed expressions, prose interpreted as JSX | Project's MDX compiler or build |
+| HTML | Unclosed comments/tags/raw-text bodies, changed entities, invalid nesting, duplicated IDs, missing `lang` | HTML validator plus browser render |
 | Frontmatter | Duplicate keys, changed key types, broken delimiters | Actual YAML/frontmatter parser |
+| Templates | Unclosed or changed directives, filters, variables, branches, or whitespace controls | Actual template engine with representative data |
 | CMS rich text | Unsupported nodes, missing required fields, leaked editor comments | CMS validation and preview |
 
 ## Renderer mismatch
@@ -138,6 +144,8 @@ Ready action: remove the chatter; hold the claim until the metric and source are
 | Trusting a regex as parser proof | Run the consuming parser, build, or preview. |
 | Fixing prose but leaving assistant preambles | Review the complete publishable boundary. |
 | Removing language or bidi attributes as “noise” | Preserve internationalization structure exactly. |
+| Flagging every `{{…}}` or `${…}` as leaked prompting | Determine whether it is required template syntax and audit it as structure. |
+| Scanning only English assistant phrases | Review localized preambles, role disclaimers, prompt residue, and the target publication boundary. |
 
 ## Completion check
 

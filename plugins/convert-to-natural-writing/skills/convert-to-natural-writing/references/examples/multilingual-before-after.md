@@ -229,10 +229,68 @@ Evidence level: Contextual editorial signal; not an authorship indicator.
 Smallest useful change: Replace the paragraph with the supported product action, evidence, and limitation—or remove it.
 ```
 
+## Example 12: Template-backed MDX and explicit invariants
+
+### Source
+
+```mdx
+---
+title: "Generic renewal notice"
+slug: renewal-policy
+plans:
+  - starter
+  - pro
+---
+
+{% if account.active %}
+<Notice aria-describedby="renewal-terms">It is important to note that Acme Plus may renew at €49.</Notice>
+{% endif %}
+```
+
+### Protected additions
+
+```text
+Exact literal: Acme Plus
+Exact literal: renewal-terms
+Value/force: €49; may renew
+Structure: slug, plans sequence, template branch, component and relationship attribute
+```
+
+### Rewrite
+
+```mdx
+---
+title: "When Acme Plus renews"
+slug: renewal-policy
+plans:
+  - starter
+  - pro
+---
+
+{% if account.active %}
+<Notice aria-describedby="renewal-terms">Acme Plus may renew at €49.</Notice>
+{% endif %}
+```
+
+Run the audit with `--protect "Acme Plus" --protect "renewal-terms"`, then run the repository's frontmatter parser, MDX compiler, and template renderer. A regex-only pass cannot prove that the mixed pipeline renders.
+
+## Example 13: Localized currency is content and format
+
+### Source
+
+> Plan A aylık ₺1.250,50, Plan B ise 100 zł olarak ücretlendirilir.
+
+### Unsafe rewrite
+
+> Plan A aylık ₺1,250.50, Plan B ise 100 zł olarak ücretlendirilir.
+
+The second sentence preserves approximate visual values but silently changes Turkish separators and replaces the non-breaking space before `zł`. Without explicit localization authority, keep `₺1.250,50` and `100 zł` exact while rewriting the surrounding Turkish prose.
+
 ## Completion check
 
 - Each example begins from supplied evidence and a bounded contract.
 - Rewrites preserve exact tokens, factual values, and claim force.
 - Non-English examples are recomposed for locale rather than translated from a fixed English template.
 - Structured examples preserve code, destinations, tags, attributes, and language metadata.
+- Template directives, explicit project literals, localized number forms, and non-breaking spacing remain protected.
 - No example uses detector scores, fabricated biography, fake errors, or invented metrics as a quality strategy.

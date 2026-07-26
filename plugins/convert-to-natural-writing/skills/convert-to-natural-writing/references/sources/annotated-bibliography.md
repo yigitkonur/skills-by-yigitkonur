@@ -156,6 +156,26 @@ This source inspired the diagnosis vocabulary, but the skill requires a reader-i
 - Contribution: precise rules for links, code spans, fenced code, raw HTML, blocks, and whitespace; fenced code contents are literal.
 - Used here: exact inventory of code and destinations plus parser-aware preservation.
 - Limit: consuming projects may use a CommonMark extension or another Markdown dialect.
+- Verified: HTTP 200 on 2026-07-27.
+
+### GitHub Flavored Markdown Specification
+
+- URL: https://github.github.com/gfm/
+- Type: official GitHub Flavored Markdown specification
+- Contribution: defines a CommonMark-based dialect plus tables, task-list items, strikethrough, and autolinks used by many repository publishing surfaces.
+- Used here: the requirement to identify the consuming Markdown dialect and preserve extension syntax instead of assuming one universal parser.
+- Limit: GFM does not define every footnote, directive, shortcode, or CMS extension; the configured renderer remains authoritative.
+- Verified: HTTP 200 on 2026-07-27.
+
+### YAML 1.2.2 Specification
+
+- URL: https://yaml.org/spec/1.2.2/
+- Published: 2021-10-01
+- Type: language specification
+- Contribution: defines mappings, sequences, block and flow collections, scalar styles, anchors, aliases, tags, directives, and multi-document streams.
+- Used here: treating frontmatter as typed data, preserving non-copy scalars/sequences and block-scalar shape, and requiring an actual YAML/frontmatter parser.
+- Limit: static-site frontmatter may implement a subset, schema, or additional delimiter rules; the audit helper is not a YAML parser.
+- Verified: HTTP 200 on 2026-07-27.
 
 ### MDX: What is MDX?
 
@@ -164,6 +184,7 @@ This source inspired the diagnosis vocabulary, but the skill requires a reader-i
 - Contribution: MDX combines Markdown with JSX, expressions, and ESM; prose and executable structure share a file.
 - Used here: protection of component syntax, props, expressions, imports, and delimiter-sensitive regions.
 - Limit: project plugins and MDX versions may add further syntax; the repository compiler is authoritative.
+- Verified: HTTP 200 on 2026-07-27.
 
 ### WHATWG HTML Living Standard
 
@@ -173,6 +194,16 @@ This source inspired the diagnosis vocabulary, but the skill requires a reader-i
 - Contribution: HTML parsing, element/attribute syntax, DOM meaning, and language semantics depend on structure, not visual appearance alone.
 - Used here: tag, attribute, nesting, language, and DOM-preservation rules.
 - Limit: the skill's helper is not an HTML conformance checker; use validators and actual browsers.
+- Verified: HTTP 200 on 2026-07-27.
+
+### Unicode CLDR: Number and currency formatting
+
+- URL: https://unicode.org/reports/tr35/tr35-numbers.html
+- Type: Unicode Technical Standard #35, Numbers; living locale-data specification
+- Contribution: documents locale-dependent decimal/grouping symbols, currency patterns and spacing, compact forms, numbering systems, and unit/number formatting behavior.
+- Used here: preserving prefix/suffix currency forms, locale-specific digits and separators, and ordinary/non-breaking/narrow non-breaking spacing instead of normalizing toward English.
+- Limit: the helper recognizes common written forms but does not embed CLDR data, select a locale, pluralize units, or validate product-specific formatting; use the application's locale formatter.
+- Verified: HTTP 200 on 2026-07-27.
 
 ## Source-selection rules
 

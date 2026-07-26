@@ -160,17 +160,29 @@ Then:
 | --- | --- |
 | Same URL with changed link label | Pass |
 | Changed link destination | Fail |
+| Changed reference definition, shortcut/collapsed ID, relative destination, or footnote ID | Fail |
+| Changed reference title or visible label with stable destination/ID | Pass when copy is in scope |
 | Same number with surrounding rewrite | Pass |
 | Removed percentage or changed currency | Fail |
 | Changed fenced code | Fail |
+| Changed indented code | Fail |
 | Changed prose outside a fence | Pass |
 | Same frontmatter keys and protected values | Pass |
 | Removed frontmatter key | Fail |
+| Changed non-copy scalar or sequence | Fail |
+| Changed authorized `title`/`description` copy with stable frontmatter shape | Pass |
 | Changed tag or attribute name | Fail |
 | Changed visible HTML text only | Pass |
+| Changed HTML comment, entity, `script`, `style`, or `textarea` body | Fail |
+| Changed MDX expression, ESM declaration, or template directive | Fail |
+| Changed localized currency/unit suffix or non-breaking spacing | Fail |
+| Changed repeatable `--protect`/`--protect-from` literal | Fail in `user-protected-literals` |
+| Blank literal, missing/empty protection file, or literal absent from original | Exit `2` with a clear input error |
 | Added `[insert source]` | Fail artifact check |
+| Added multilingual assistant/model residue or an unclosed fence/comment | Fail artifact check |
 | Original already contains `TODO` and revision preserves it | Report existing artifact separately, not newly introduced drift |
-| JSON mode | Valid JSON with deterministic categories and pass status |
+| Empty original, no deterministic inventory, empty revision, or large size delta | Emit structured warning without changing pass status by itself |
+| JSON mode | Valid JSON with deterministic categories, artifacts, warnings, limits, and pass status |
 
 ## Three-run consistency check
 
@@ -191,6 +203,8 @@ Style variation is acceptable. Integrity variation is not.
 - Low locale confidence: perform conservative meaning-preserving edits and require fluent review.
 - Authorized token change: record it rather than weakening the audit globally.
 - Parser unavailable: report deterministic audit only and do not claim render proof.
+- Partial rewrite: compare matching regions or reconstruct both complete documents; reject mismatched-scope conclusions.
+- Generated region: edit the canonical source, regenerate, and prove freshness instead of patching output.
 
 ## Release checklist
 
@@ -199,7 +213,7 @@ Style variation is acceptable. Integrity variation is not.
 - Boundary prompts reframe safely.
 - English and non-English functional fixtures pass.
 - MDX or HTML fixture preserves structure and runs native validation where possible.
-- Audit-helper unit tests, `--help`, and JSON output pass.
+- All 35 or more audit-helper unit tests, `--help`, protected-literal CLI behavior, warning JSON, and exit codes pass.
 - Every reference is routed and the entrypoint remains under 500 lines.
 - Generated canonical and plugin copies match.
 - No detector guarantee, fake anecdote, word blacklist, or universal native-fluency claim remains.

@@ -31,6 +31,7 @@ npx -y skills add -y -g yigitkonur/skills-by-yigitkonur
 - Rewrites toward a warm, natural, casual-professional register while preserving facts and claim strength.
 - Handles pasted prose plus Markdown, MDX, and HTML in any language the active model can edit responsibly.
 - Protects links, code, frontmatter, markup, names, numbers, attribution, uncertainty, and locale identity.
-- Includes a dependency-free audit helper and 15 routed reference guides.
+- Covers partial/long rewrites, templates, generated regions, accessibility copy, localized values, and high-stakes reviewer gates.
+- Includes a dependency-free audit helper with explicit-literal options, structured warnings, 35 focused tests, and 16 routed reference guides.
 
 The skill does not promise detector evasion or universal native fluency. For high-stakes multilingual publication, it names when fluent human review is still required.

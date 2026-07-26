@@ -72,6 +72,7 @@ Choose one mode base, then add only the modifiers needed for the current phase. 
 6. **Worked model:** add `references/examples/multilingual-before-after.md` only when a concrete transformation pattern is needed.
 7. **Source verification:** add `references/sources/annotated-bibliography.md` when a rule, detector claim, or external standard needs provenance.
 8. **Skill verification:** use `references/testing/trigger-and-functional-tests.md` when installing, testing, or revising this skill.
+9. **Hard cases:** add `references/workflow/edge-case-playbook.md` for partial or long rewrites, generated regions, templates, accessibility copy, explicit invariants, parser gaps, or high-stakes content.
 
 ## Workflow
 
@@ -142,7 +143,11 @@ When original and revised files are available, run:
 python3 {baseDir}/scripts/audit-rewrite.py path/to/original.mdx path/to/revised.mdx
 ```
 
-Use `--json` for machine-readable output. The audit checks deterministic token, code, link, frontmatter, and markup inventories plus common production residue. It does not prove factual truth, semantic equivalence, style quality, native fluency, or authorship. Resolve or report every failure; review a clean result semantically.
+Use repeatable `--protect "exact literal"` options for legal phrases, product names, UI labels, quotations, or other invariants the generic inventory cannot infer. Use repeatable `--protect-from path/to/literals.txt` options for newline-delimited lists; blank lines and `#` comments are ignored. Add `--json` for machine-readable output.
+
+The audit checks deterministic values, code, links and references, frontmatter, markup, expressions, templates, localized currency/unit forms, and common production residue. Exit `1` means an inventory mismatch or new artifact; exit `2` means invalid input or invocation. Warnings for sparse inventory, empty input, or a large size delta do not change pass status. Resolve or report every failure and inspect every warning.
+
+The helper does not prove factual truth, semantic equivalence, syntax validity, style quality, native fluency, publication fitness, or authorship. Review a clean result semantically. Use `references/workflow/edge-case-playbook.md` whenever scopes differ, content is generated or template-heavy, explicit literals are needed, or native proof is unavailable.
 
 For Markdown, MDX, or HTML, also follow `references/formats/markdown-mdx-html.md` and run the consuming repository's parser, formatter, build, or renderer when available.
 
@@ -166,6 +171,8 @@ When the user requests a change ledger, group it by substance, voice/locale, sur
 | Locale competence is uncertain | Preserve meaning conservatively, flag confidence, and require fluent review for high-stakes publication. |
 | The audit passes but meaning drifted | Treat it as failure; semantic review outranks token equality. |
 | The audit flags an authorized change | Record the authorization and keep the expected difference visible. |
+| The original/revised scopes differ | Compare equivalent fragments or reconstruct both full documents; never interpret a whole-file mismatch as editorial drift. |
+| A parser or renderer is unavailable | Report deterministic and manual checks only; do not claim structured publication readiness. |
 
 ## Pitfalls
 
@@ -193,6 +200,7 @@ Every reference is a direct leaf. Load it only for the stated decision.
 | `references/workflow/protected-content-ledger.md` | Capturing exact, value, force, document, locale, and structured-content invariants. |
 | `references/workflow/rewrite-passes.md` | Running substance, voice/locale, and rhythm/surface passes with regression checks. |
 | `references/workflow/publication-review.md` | Deciding blockers, warnings, evidence gaps, reviewer ownership, and ready state. |
+| `references/workflow/edge-case-playbook.md` | Handling partial/long rewrites, generated content, templates, accessibility copy, exact literals, high-stakes text, and parser gaps. |
 | `references/voice/warm-casual-professional.md` | Applying the default warm, natural, knowledgeable register without forced intimacy. |
 | `references/voice/multilingual-editing.md` | Editing non-English, mixed-language, localized, low-resource, or culturally sensitive content. |
 | `references/voice/inclusive-language.md` | Editing references to people and identity accurately, specifically, and without imposed labels. |

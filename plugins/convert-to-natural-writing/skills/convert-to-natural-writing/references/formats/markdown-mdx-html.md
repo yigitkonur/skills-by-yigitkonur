@@ -13,10 +13,13 @@ Classify every region before editing:
 | Frontmatter prose value | Editable only if authorized; preserve type and quoting needs |
 | Link/image label | Usually editable |
 | Link/image destination | Exact |
-| Inline or fenced code | Exact |
+| Inline, fenced, or indented code | Exact |
+| Reference/footnote identifier | Exact; definition prose may be editable |
 | HTML/JSX tag and attribute name | Exact |
 | Attribute value | Exact unless explicitly identified as copy |
 | MDX expression or ESM | Exact |
+| Template directive | Exact |
+| HTML comment, entity, or raw-text body | Exact unless explicitly authorized |
 | Comment | Preserve unless removal is in scope |
 | Generated region | Do not hand-edit; follow repository generation workflow |
 
@@ -29,13 +32,15 @@ CommonMark treats fenced code contents as literal. Do not rewrite prose-looking 
 Protect:
 
 - fence marker, length, indentation, and info string;
+- four-space/tab-indented code blocks and their internal blank lines;
 - inline code delimiters and contents;
-- link and image destinations, titles, and reference identifiers;
+- inline and reference link destinations, including relative paths and nested parentheses;
+- reference-definition, collapsed/shortcut-reference, and footnote identifiers;
 - footnote identifiers in dialects that support them;
 - heading anchors when generated from exact text and external links depend on them;
 - HTML blocks and template syntax passed through the renderer.
 
-Markdown syntax can change meaning with whitespace. List indentation, block quotes, hard breaks, and nested fences require parser-aware review.
+Visible link labels, image alt text, reference titles, and footnote prose may be edited when the contract allows it. The structural identifier or destination may not. Markdown syntax can change meaning with whitespace. List indentation, block quotes, hard breaks, nested fences, and extension directives require parser-aware review.
 
 ## Frontmatter
 
@@ -52,9 +57,9 @@ slug: natural-writing
 ---
 ```
 
-Protect keys, types, required fields, dates, enum values, slugs, IDs, and delimiters. A prose value such as `title` or `description` may be rewritten only when scope allows it. Quote a rewritten string if YAML punctuation could change parsing.
+Protect keys, types, required fields, dates, enum values, slugs, IDs, sequences, and delimiters. A named prose value such as `title`, `description`, `summary`, or `excerpt` may be rewritten only when scope allows it. Preserve block-scalar shape, and quote a rewritten string if YAML punctuation could change parsing.
 
-The bundled audit compares frontmatter keys and values conservatively. The repository's frontmatter parser remains authoritative.
+The bundled audit compares non-copy scalars and sequences conservatively while allowing common copy-field values to change. It is not a YAML implementation: anchors, aliases, merge keys, tags, duplicate keys, complex keys, and schema-specific types still require the repository's frontmatter parser.
 
 ## MDX
 
@@ -65,6 +70,7 @@ Protect:
 - `import` and `export` declarations;
 - component names and nesting;
 - braces and expressions;
+- template directives such as `{{…}}`, `{%…%}`, and `${…}` when another engine shares the file;
 - prop names and protected prop values;
 - spread props and comments;
 - code blocks containing JSX examples;
@@ -90,7 +96,8 @@ Protect structural and internationalization semantics:
 - ARIA names and relationships unless accessibility copy is explicitly in scope;
 - `lang`, `dir`, and bidi isolation;
 - entities and whitespace where preformatted behavior matters;
-- embedded `script`, `style`, `pre`, `code`, and template contents.
+- comments and character-reference spelling when exact source representation matters;
+- embedded `script`, `style`, `textarea`, `pre`, `code`, and template contents.
 
 Visible text nodes and human-facing attributes such as `alt`, `title`, `placeholder`, and `aria-label` may be copy, but changes must preserve function and accessibility.
 
@@ -112,7 +119,7 @@ Changing prose must not strip or homogenize language boundaries.
 2. Read repository instructions and generation boundaries.
 3. Inventory frontmatter, destinations, code, tags, attributes, expressions, and language metadata.
 4. Edit only confirmed prose regions.
-5. Run `audit-rewrite.py` for deterministic drift.
+5. Run `audit-rewrite.py` for deterministic drift; add `--protect` or `--protect-from` for project-specific exact literals.
 6. Run formatter/parser/compiler for the file type.
 7. Run the narrowest consuming build or content validation.
 8. Inspect rendered output and links when available.
@@ -129,6 +136,9 @@ The helper intentionally does not implement full CommonMark, YAML, MDX, JSX, or 
 - whether a frontmatter value has the correct domain type;
 - whether a template or CMS accepts the file;
 - whether visible output matches the source.
+- whether equal tag inventories retain the same nesting and order;
+- whether a dialect-specific construct was classified correctly;
+- whether Unicode-normalized or visually equivalent values are operationally equivalent.
 
 Use native tools for those claims.
 
@@ -139,6 +149,8 @@ Use native tools for those claims.
 | Rewriting prose inside code fences | Treat fenced contents as literal unless explicitly in scope. |
 | Changing link labels and destinations together | Protect destinations separately. |
 | Treating MDX as ordinary Markdown | Preserve JSX, expressions, ESM, and whitespace-sensitive boundaries. |
+| Treating a template variable as placeholder residue | Confirm the renderer; protect required directives and render representative data. |
+| Editing `script`, `style`, comments, or entities as visible copy | Treat raw-text and source-control regions as exact unless separately authorized. |
 | Removing `lang` or `dir` as redundant | Preserve internationalization metadata and test rendering. |
 | Trusting a regex audit as a compiler | Run the consuming parser/build and observe output. |
 
