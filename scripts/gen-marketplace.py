@@ -136,6 +136,11 @@ GROUPS = {
         "Skill authoring — research-driven skill creation and derailment stress-testing of existing SKILL.md files.",
         ["build-skill", "audit-skill-by-derailment"],
     ),
+    "yk-writing": (
+        "productivity",
+        "Writing & editing — multilingual natural-writing diagnosis, evidence-safe rewriting, and publication review for text, Markdown, MDX, and HTML.",
+        ["convert-to-natural-writing"],
+    ),
     "yk-delivery": (
         "delivery",
         "Aligned delivery — scored multi-round question alignment, a filename-state spec corpus, and waved parallel subagent orchestration for a large or ambiguous initiative.",

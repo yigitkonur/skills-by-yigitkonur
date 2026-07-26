@@ -1,0 +1,35 @@
+{
+  "name": "convert-to-natural-writing",
+  "version": "1.0.32",
+  "description": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
+  "author": {
+    "name": "Yigit Konur",
+    "url": "https://github.com/yigitkonur"
+  },
+  "homepage": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "repository": "https://github.com/yigitkonur/skills-by-yigitkonur",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "convert-to-natural-writing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "convert-to-natural-writing",
+    "shortDescription": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
+    "longDescription": "Install only the convert-to-natural-writing workflow from Yigit Konur's curated skills pack.",
+    "developerName": "Yigit Konur",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/yigitkonur/skills-by-yigitkonur",
+    "defaultPrompt": [
+      "Use the convert-to-natural-writing skill for this task."
+    ],
+    "brandColor": "#10A37F"
+  }
+}

@@ -305,6 +305,18 @@
       "category": "Productivity"
     },
     {
+      "name": "convert-to-natural-writing",
+      "source": {
+        "source": "local",
+        "path": "./plugins/convert-to-natural-writing"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "convert-url-to-nextjs",
       "source": {
         "source": "local",

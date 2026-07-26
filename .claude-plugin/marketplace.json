@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 50 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 51 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.32",
       "category": "bundle",
       "strict": false,
@@ -41,6 +41,7 @@
         "./skills/build-skill",
         "./skills/build-tinacms-nextjs",
         "./skills/convert-mcp-sdk-v1-to-v2",
+        "./skills/convert-to-natural-writing",
         "./skills/convert-url-to-nextjs",
         "./skills/debug-runtime",
         "./skills/deploy-coolify-cloud",
@@ -267,6 +268,20 @@
       "skills": [
         "./skills/build-skill",
         "./skills/audit-skill-by-derailment"
+      ]
+    },
+    {
+      "name": "yk-writing",
+      "source": "./",
+      "description": "Writing & editing — multilingual natural-writing diagnosis, evidence-safe rewriting, and publication review for text, Markdown, MDX, and HTML.",
+      "version": "1.0.32",
+      "category": "bundle",
+      "tags": [
+        "productivity"
+      ],
+      "strict": false,
+      "skills": [
+        "./skills/convert-to-natural-writing"
       ]
     },
     {
@@ -545,6 +560,17 @@
       "strict": false,
       "skills": [
         "./skills/convert-mcp-sdk-v1-to-v2"
+      ]
+    },
+    {
+      "name": "convert-to-natural-writing",
+      "source": "./",
+      "description": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
+      "version": "1.0.32",
+      "category": "productivity",
+      "strict": false,
+      "skills": [
+        "./skills/convert-to-natural-writing"
       ]
     },
     {

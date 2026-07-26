@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **51 skills** + the internet-researcher agents. review, research, ui/ux audit, mcp & framework builders, backend and cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **52 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, backend and cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex gets the complete 51-skill pack; Claude Code gets 50 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
+three ways in. Codex gets the complete 52-skill pack; Claude Code gets 51 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,7 +61,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 50 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 51 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -73,6 +73,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
 | **yk-ops** | railway, coolify-cloud deploy, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
+| **yk-writing** | multilingual natural-writing diagnosis, rewrite, and publication review | `/plugin install yk-writing@yigitkonur` |
 | **yk-delivery** | scored alignment, spec corpus, waved orchestration for big initiatives | `/plugin install yk-delivery@yigitkonur` |
 
 ---
@@ -212,6 +213,16 @@ deploy, maintain, offload, publish.
 - **[publish-npm-package](skills/publish-npm-package/)** — npm releases via github actions: trusted publishing, `NPM_TOKEN`, provenance, semantic-release, changesets, release-please.
 
 `/plugin install yk-ops@yigitkonur`
+
+---
+
+## ✍️ writing & editing
+
+rewrite supplied content for real readers while preserving evidence, locale, and document structure.
+
+- **[convert-to-natural-writing](skills/convert-to-natural-writing/)** — diagnose, rewrite, and publication-review robotic, generic, or AI-sounding multilingual copy in plain text, Markdown, MDX, or HTML; preserves claims and structure without detector theater or invented personality.
+
+`/plugin install yk-writing@yigitkonur`
 
 ---
 
