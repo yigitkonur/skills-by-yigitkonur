@@ -113,7 +113,7 @@ while True:
             if r.id in seen: emit(f"CI-CHG {r.name}: {state}")
             seen[r.id] = state
 
-    if registered and all(r.status == "completed" for r in runs):
+    if registered and runs and all(r.status == "completed" for r in runs):
         bad = [r for r in runs if r.conclusion in BAD]
         if bad: done(bad[0].conclusion, f"{bad[0].name} — {log_cmd(bad[0])}")
         done("success")
@@ -122,10 +122,13 @@ while True:
     sleep(interval)
 ```
 
-Two details that only surface in live testing:
+Details that only surface in live testing:
 
 - **Key state by run ID, not workflow name.** One commit can have several runs of the same workflow (a push superseding an earlier one). Keyed by name, they overwrite each other and the watcher flaps between states forever.
 - **Keep only the newest run per workflow** when deciding the overall verdict, so a concurrency-cancelled sibling does not turn a green commit red.
+- **Guard the empty list.** `all([])` is `True` in most languages, so `all(completed)` over an empty run list reports success having observed nothing. Require `runs` to be non-empty, as above.
+- **Clamp the registration deadline below the overall deadline.** If `register_deadline >= deadline`, a SHA with no runs reports `timeout` instead of the far more useful `no-run`.
+- **Bound the lookback window.** Providers that list runs by time window (`--since 2h`) silently return nothing for an older SHA, which reads as `no-run` when the runs simply aged out. Make the window an argument and widen it when re-checking an older commit.
 
 ## Reacting to events
 
@@ -133,6 +136,7 @@ Two details that only surface in live testing:
 - **Acknowledge heartbeats silently.** They are liveness, not news.
 - **A verdict is about one SHA.** After pushing a fix, the previous verdict is void.
 - **Green counts only when the run's head SHA equals the local HEAD.** Re-running an unchanged tree proves nothing about the change you just made.
+- **A watcher only knows about workflows that have registered.** When deploy or release workflows are *chained* off a completed run, a watcher armed at push time reports success for the first stage and exits before the dependent ones exist. To confirm what follows, re-check after the first stage completes, or arm a bounded settle-watch scoped to the SHA.
 - **Never claim a result the watcher did not produce.** `probe-dead` and `timeout` are "unknown", not "fine".
 
 ## Local-vs-CI division of labor

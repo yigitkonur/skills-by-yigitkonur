@@ -185,6 +185,8 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Repeated identical durations treated as warm samples | Confirm the attempt counter incremented; a re-read is not a sample. |
 | p95 quoted from a handful of post-change runs | Report median and range with `n`; label small-sample p95 descriptive. |
 | Merging jobs that shared a service container | Give each consumer its own database/namespace, or keep them split. |
+| Watcher reports success having seen zero runs | `all([])` is true; require a non-empty run list before concluding. |
+| Assuming a green first stage means the chain is done | Chained deploy/release runs register later; re-check or settle-watch. |
 
 ## Reference files
 
