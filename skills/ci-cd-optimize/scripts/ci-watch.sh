@@ -27,9 +27,14 @@ if (( $# == 0 )); then
   exit 0
 fi
 SHA_IN="$1"
-# `gh run list --commit` silently returns ZERO results for a short SHA — which the
-# registration deadline would then report as "no-run". Always normalize to 40 chars.
-SHA="$(git rev-parse "$SHA_IN" 2>/dev/null || true)"
+# `gh run list --commit` silently returns ZERO results for a short SHA. Accept a full
+# SHA directly so CI_WATCH_REPO also works outside a local Git checkout; resolve only
+# short SHAs and refs that need repository context.
+if [[ "$SHA_IN" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  SHA="$SHA_IN"
+else
+  SHA="$(git rev-parse "$SHA_IN" 2>/dev/null || true)"
+fi
 if [[ ! "$SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
   echo "CI-DONE probe-dead — could not resolve '${SHA_IN}' to a full 40-char SHA"
   exit 0
