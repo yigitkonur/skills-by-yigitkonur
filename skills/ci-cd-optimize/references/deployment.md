@@ -14,6 +14,10 @@ The artifact that passed validation is the artifact deployed everywhere:
 
 Do not rebuild per environment. Rebuilds introduce dependency, base-image, cache, and timestamp drift.
 
+### The artifact must be self-contained
+
+Splitting build from deploy only works if the artifact carries everything the deploy step needs. Framework build outputs frequently contain **symlinks or relative references into the build workspace** — `node_modules`, a framework cache directory, or a traced-dependency tree. Archiving only the visible output directory produces a package that unpacks fine and then fails at deploy with a missing-file error naming a path nobody deliberately excluded. This hides from every check on the build machine, where the referenced files still exist; it appears only on the clean runner that consumes the artifact. Verify by unpacking into an empty directory on a *different* runner and running the real deploy command; "works when the deploy job also checks out and installs" means the artifact is not self-contained and you are shipping a rebuild in disguise.
+
 ## Safe speed levers
 
 | Bottleneck | Safe optimization |
@@ -42,6 +46,8 @@ Before claiming a deployment is done, verify:
 - readiness/startup probes pass,
 - canary/analysis metrics are inside budget,
 - rollback artifact remains available.
+
+Size a self-verifying deploy's convergence budget to **propagation, not to the deploy call**. Edge and CDN-backed platforms serve the previous revision for tens of seconds after the deploy returns 200; a budget tuned to how long the deploy command takes produces a false red on a deploy that actually succeeded — worse than no check, because it trains everyone to ignore the signal. Set the budget above observed propagation p95, poll with a strict equality check against the expected revision (retry HTTP/malformed-body errors, never treat them as success), and emit both expected and observed revision in the failure line. Distinguish a deploy/migration-step failure (roll back) from a revision-assertion failure that usually means propagation outran the budget (re-query before rolling back).
 
 ## TypeScript status probe sketch
 

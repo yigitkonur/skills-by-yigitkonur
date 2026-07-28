@@ -60,6 +60,8 @@ cache-to: type=registry,ref=ghcr.io/org/app:buildcache,mode=max
 - `mode=min`: smaller cache; usually only final image layers.
 - Cache mounts (`RUN --mount=type=cache`) persist per builder, not automatically across ephemeral builders.
 
+**Measure the export, not just the hit rate.** `mode=max` writes every intermediate layer on *every* build; read the BuildKit step lines (`exporting cache`, `preparing build cache for export`) and apply the standard break-even: `net = uncached build − import − export − transfer`. Choose by purpose — the deploy-artifact job earns `mode=max`; a validate-only job that something else rebuilds earns `mode=min` or write-from-default-branch-only; in a matrix, every cell reads and one canonical job writes. Two layer-cost traps unrelated to caching: `RUN chown -R` over an app tree rewrites every inode into a new layer (use `COPY --chown` instead), and any recursive `RUN` over many files produces a layer that must be written, exported, and pulled. If concurrent stages share a writable cache mount (two `npm ci` stages against one `/root/.npm`), give each a distinct `id=` with `sharing=locked` — parallel mutation corrupts the store mid-build.
+
 ## Multi-platform
 
 Avoid QEMU for compile-heavy stages. TypeScript emits platform-neutral JavaScript, so compile on `$BUILDPLATFORM` and run only final packaging on target platforms. Native modules must be built for the target platform.

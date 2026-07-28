@@ -12,6 +12,7 @@ Use this file when building a baseline, proving a bottleneck, or validating that
 | Critical-path duration | longest dependency chain through the DAG | The only sequence that directly governs wall-clock feedback. |
 | Cache exact-hit rate | exact key hits / cache attempts | Cache-key precision, not necessarily saved time. |
 | Cache saved time | clean path time - (restore + post-hit work) | Whether a cache is worth keeping. |
+| Queue share | Σ queue / (Σ queue + Σ execution) | Whether the bottleneck is capacity rather than work; above ~35 % topology changes are near-futile — see `references/capacity-and-contention.md`. |
 | First-time pass rate | runs green without retry / all runs | Flakiness and reliability. |
 | Cost per successful change | compute + storage / successful changes | Speed improvements that increase total cost may not be wins. |
 | Change failure/rework rate | failed or unplanned recovery deployments / deployments | The effectiveness guardrail after optimization. |
@@ -25,8 +26,19 @@ Use median and p95. CI duration is right-skewed; averages hide cold caches, runn
 3. Record queue, setup, execution, transfer, finalization, and per-job duration.
 4. Record exact cache hit/miss, retry count, artifact names/digests, and run head SHA.
 5. Reject baselines from stale branches, empty diffs, disabled jobs, or different runners.
+6. Record the contention state — how many other jobs competed for the pool. If the arms' queue times differ by more than the effect being measured, the comparison is invalid regardless of commit hygiene (`references/capacity-and-contention.md`).
 
 If a queue-time baseline is unavailable, start with provider run timestamps and job logs. Do not invent missing precision.
+
+## Sampling traps
+
+Each of these produces numbers that look rigorous and are not.
+
+- **A rerun is not always a new sample.** Some providers re-report the original attempt's duration, and some return one record per attempt sharing a run id. Confirm the attempt counter incremented before treating repeated durations as independent samples, and collapse to the highest attempt per id before judging any verdict.
+- **Do not mix event populations.** A manual dispatch that force-enables every gate is not comparable to a path-filtered push run. Report push, PR, and dispatch populations separately and label which one each figure came from.
+- **Do not measure inside your own burst.** Validation runs fired back-to-back contend for the same pool and inflate each other's queue time. Decompose first — `queue = started_at − created_at`, `execution = completed_at − started_at`; a wall-clock delta with flat execution is a scheduling story, not a build story. Space validation runs or sample from ordinary pushes.
+- **Do not quote p95 from a handful of runs.** With 5–10 post-change runs, report median and range with the exact n; a robust p95 needs ~20+ comparable runs. Providers will compute a percentile from n=3 — that is arithmetic, not evidence.
+- **When a change is genuinely neutral on speed, say so.** Inflating queue noise into a win or a loss destroys the credibility of every other number in the report.
 
 ## Critical-path analysis
 

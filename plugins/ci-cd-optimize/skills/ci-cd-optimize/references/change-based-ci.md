@@ -20,6 +20,10 @@ If any step fails, run the full pipeline.
 - Merge queues create a predictive branch; PR-only base/head assumptions may test the wrong change set.
 - Lockfile, CI config, dependency graph, generated-code schema, and shared-global changes usually escalate to full validation.
 
+## The planner must not route itself narrowly
+
+The component that decides what runs is part of the repository; a change to it must escalate to full validation, or a routing bug ships having validated a fraction of the repo. Two observed failures: a rule mapping `.github/**` to "the main lanes" that silently excludes specialized ones, and a planner change mapping only to its own directory's lane — grading its own homework. The classifier is a pure path-to-lane function; pin it with millisecond unit fixtures (specialized workflow → its lane; planner path → every lane; docs-only → no heavy lane; mixed → code wins). Also test renames: `git diff --name-only` prints only the destination, so `src/x.ts → docs/x.md` reads as docs-only while executable source was removed — use `--no-renames` or parse `--name-status` and route both paths.
+
 ## Path filters versus graph-aware affected
 
 Path filters are acceptable for flat repos with no shared package consumers. They are dangerous when a shared library affects multiple apps.

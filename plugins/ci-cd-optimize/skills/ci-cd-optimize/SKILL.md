@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use if diagnosing or optimizing slow CI/CD, or waiting on a pipeline result without stalling, while preserving required checks.
 metadata:
   author: yigitkonur
   version: 1.0.0
@@ -15,6 +15,8 @@ Diagnose slow CI/CD from evidence, optimize the critical path, and prove the pip
 ## Operating loop
 
 ### 1. Frame the target and constraints
+
+For the end-to-end engagement sequence — what to read first, how to mine run history for candidates, how to rank them, and when to stop — read `references/optimization-workflow.md`. The steps below define the loop; that file sequences it.
 
 Identify the exact pipeline, branch/event, current median and p95 time-to-feedback, failure rate, and required gates. Separate these before recommending anything:
 
@@ -39,6 +41,8 @@ Rules:
 
 Prefer the platform's own aggregated history over hand-collected timings when it exists, then verify sample size and window. If the repository runs on Avrea (`runs-on:` labels begin with `avrea-`) and `avr` is installed and authenticated, read `references/avrea/cli-evidence.md` — it returns median/p95, per-job start offsets, flake counts, and cache hit counts directly. Confirm availability with `command -v avr && avr auth status` before depending on it, and fall back to provider-native measurement otherwise.
 
+**Feedback-loop rule:** if the consumer of the result is an agent or unattended process, the watch path is part of the critical path. After any change you validate through CI, arm a SHA-pinned watcher with a registration window, a hard deadline, heartbeats, and an explicit terminal verdict; never rely on a branch-tip or id-less watch as your only signal. Read `references/feedback-loops.md` when choosing the wait path.
+
 For the metric definitions, baseline protocol, and the rule about claiming only the evidence rung you reached, read `references/measurement.md`.
 
 ### 3. Find the critical path
@@ -57,7 +61,7 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor, or is job count at the platform's concurrency ceiling? Compute queue share and read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -69,8 +73,9 @@ Ask in order:
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
-15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+14. Is the wait for the result itself the problem — a blocked session, a watch that never ends, or a green that cannot be trusted? Read `references/feedback-loops.md`.
+15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -84,6 +89,8 @@ Select the smallest reversible change that attacks the measured critical path. E
 - rollback or fallback.
 
 Prefer, in this order: prevent unneeded work → cancel stale work → reuse verified prior work → improve cache correctness → remove artificial dependencies → parallelize independent work → shard slow work by measured duration → reduce transferred bytes → improve runner capacity → move heavy work off the PR path only with a full-run fallback → change provider architecture.
+
+Two steps invert above a concurrency ceiling: parallelizing and sharding both raise job count, and once jobs exceed available slots the surplus queues while re-paying setup. Establish the ceiling and queue share first; when capped, *merging* jobs that share setup is the faster change (`references/capacity-and-contention.md`).
 
 ### 5. Preserve effectiveness
 
@@ -175,6 +182,13 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Coverage off PR path with no fallback | Keep a required scheduled/merge-queue full run. |
 | Remote cache writable by untrusted PRs | Read-only PR cache or isolated cache namespace. |
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
+| Blocking the session on `gh run watch` / a foreground poll | Arm a SHA-pinned, deadline-bounded watcher as a background event stream (`references/feedback-loops.md`). |
+| Trusting `$?` after piping a watcher into `head`/`tail` | The pipeline's status is the last command's. Capture output first, then read the real exit code. |
+| Watcher reports success having seen zero runs | `all([])` is true; require a non-empty run list before concluding. |
+| Treating a concurrency auto-cancel as failure | `cancelled` plus a newer identifier means superseded, not red. |
+| Splitting jobs while at the concurrency ceiling | Establish the ceiling first; when capped, merge jobs that share setup. |
+| Measuring during your own validation burst | Self-inflicted queue contention; decompose queue vs execution and sample from ordinary pushes. |
+| Change-detection logic that routes its own changes narrowly | Escalate planner/CI-config changes to full validation; pin the classifier with unit fixtures. |
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
@@ -184,7 +198,9 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 
 | File | Read when |
 |---|---|
+| `references/optimization-workflow.md` | Starting an engagement: what to read first, mining run history for candidates, ranking improvements, when to stop. |
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
+| `references/feedback-loops.md` | Watching a pipeline without stalling: SHA-pinned watchers, terminal verdicts, false-green traps, agent event tools, and the bundled `scripts/ci-watch.py`. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
@@ -200,6 +216,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/containers.md` | BuildKit, multi-stage Dockerfiles, cache mounts/backends, multi-platform builds, provenance, or image security. |
 | `references/security-gates.md` | Fast but effective SAST, dependency, secret, container, SBOM, provenance, and policy gates. |
 | `references/runners-and-autoscaling.md` | Hosted versus self-hosted, ephemeral runners, queues, spot capacity, ARM/x64/macOS, Kubernetes fleets. |
+| `references/capacity-and-contention.md` | Queue share is high, parallelism stopped paying, before splitting or fanning out jobs, or when A/B arms ran under different pool load. |
 | `references/network-and-artifacts.md` | Checkout depth, sparse/partial clone, LFS, package proxies, artifact compression, uploads, or registry locality. |
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
