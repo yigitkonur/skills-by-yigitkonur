@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use if diagnosing or optimizing slow CI/CD while preserving required checks, or wiring an agent to wait on CI results without hanging.
 metadata:
   author: yigitkonur
   version: 1.0.0
@@ -180,6 +180,11 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
+| Blocking on `gh run watch` or an open-ended poll | Arm a diff-gated watcher with a deadline that always prints a terminal verdict. |
+| Treating a watch `timeout` as pass or as failure | It means no verdict yet — inspect the run, then re-arm with a larger deadline. |
+| Sharding a suite whose cost is real sleeping | Profile per file/test first; make production retry delays injectable. |
+| Deploy verification budget tuned to the deploy call | Size revision convergence to edge propagation, or a good deploy reports red. |
+| Benchmarking during your own burst of validation runs | Separate queue from execution; sample from ordinary pushes. |
 
 ## Reference files
 
