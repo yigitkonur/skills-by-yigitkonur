@@ -61,9 +61,9 @@ never has to work out how to see the cause.
 Provider-agnostic; swap `probe()` for your platform's CLI or API.
 
 ```python
-def watch(repo, sha, branch, deadline, register_by, interval, heartbeat) -> int:
-    start = last_beat = monotonic()
-    seen, errors, registered, settled_once = {}, 0, False, False
+def watch(repo, sha, branch, deadline, register_by, settle_secs, interval, heartbeat) -> int:
+    start = last_beat = all_done_since = monotonic()
+    seen, errors, registered = {}, 0, False
 
     while True:
         elapsed = monotonic() - start
@@ -92,20 +92,24 @@ def watch(repo, sha, branch, deadline, register_by, interval, heartbeat) -> int:
                 emit(f"CI-CHG {r.name}: {seen[r.id]} -> {r.state}")
             seen[r.id] = r.state
 
-        if branch and head_of(branch) != sha:
-            emit("CI-DONE superseded"); return 3
-
         if registered and runs and all(r.done for r in runs):
-            if not settled_once and elapsed < register_by:
-                settled_once = True          # one extra probe catches late registrations
-            else:
-                bad = [r for r in runs if r.conclusion not in OK]
-                if bad:
-                    emit(f"CI-DONE failure — {bad[0].name} — logs: <log-cmd {bad[0].id}>")
-                    return 1
+            bad = [r for r in runs if r.conclusion not in OK]
+            cancelled = any(r.conclusion == "cancelled" for r in runs)
+            try:
+                superseded = branch and head_of(branch) != sha
+            except Exception:
+                superseded = False         # a lookup failure is not supersession
+            if superseded and (cancelled or not bad):
+                emit("CI-DONE superseded"); return 3
+            if bad:
+                emit(f"CI-DONE failure — {bad[0].name} — logs: <log-cmd {bad[0].id}>")
+                return 1
+            # Hold all-green for a settle window so late-registering workflows
+            # (e.g. workflow_run chains) are observed before declaring success.
+            if monotonic() - all_done_since >= settle_secs:
                 emit("CI-DONE success"); return 0
         else:
-            settled_once = False
+            all_done_since = monotonic()
 
         now = monotonic()
         if now - last_beat >= heartbeat:
@@ -115,11 +119,19 @@ def watch(repo, sha, branch, deadline, register_by, interval, heartbeat) -> int:
         sleep(interval)
 ```
 
-Two judgement calls to make explicit for your setup:
+Three judgement calls to make explicit for your setup:
 
 - **`OK` set.** `{success, skipped, neutral}` is a reasonable default — a skipped job is usually an
   intentional route. Verify against your own gating rules.
-- **`cancelled`.** With `cancel-in-progress: true`, superseded runs are cancelled by design.
+- **`settle_secs`.** How long to hold an all-green state before declaring success, to catch
+  late-registering workflows. A single poll interval (~15s) covers pipelines that register seconds
+  apart; `workflow_run` chains register *after* their trigger completes, so give those 60–120s or
+  watch the downstream workflow explicitly.
+- **`cancelled` and supersession.** Check supersession only when a run was cancelled or nothing
+  failed; a completed red run must report `failure` even if the branch moved, because the question
+  "did this SHA pass" matters more than "did the branch move." A `cancelled` run on an *unmoved*
+  branch is a distinct signal — manual cancel or infrastructure — not a test failure, so it is not
+  silently treated as `OK`.
   Check supersession *before* concluding failure (as above) so a correctly retired run is not
   reported red.
 

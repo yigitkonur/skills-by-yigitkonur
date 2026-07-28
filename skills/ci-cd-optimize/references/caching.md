@@ -38,18 +38,14 @@ Key by lockfile, Node version, package-manager version, OS, and architecture. Co
 
 ## Time the uncached path before adding any cache
 
-"Installs are slow" is an assumption until measured. On a runner colocated with a package
-registry proxy, installs already resolve from local storage, so a cache layer on top can add a
-save step and a correctness risk while saving nothing.
+"Installs are slow" is an assumption until measured. On some fleets the package registry is already
+proxied locally, so adding an `actions/cache` layer on top buys nothing and may add a save step.
+One observed A/B on a fixed commit saw ~5s installs both with and without a full `node_modules`
+cache; the safe generalization is narrower than the result: **when the uncached step is already
+seconds, time it first before adding another cache layer.**
 
-One observed A/B on a fixed commit: install took ~5s both with and without a full `node_modules`
-cache, the cached variant paying an extra save step. That single pair does not prove the proxy
-caused it — the generalizable reading is narrower and more useful: **when the uncached step is
-already seconds, no cache layer can help.** Time it first, then decide.
-
-If you do keep a full dependency-tree cache, key it on the manifest **and** the lockfile. Keyed on
-the lockfile alone it can hit after a manifest-only change and silently test a stale tree, which
-is the failure the key-completeness rules above exist to prevent.
+If you keep a full dependency-tree cache, key it on the manifest **and** the lockfile. Keyed on
+the lockfile alone it can hit after a manifest-only change and silently test a stale tree.
 
 ## Restore-key discipline
 
