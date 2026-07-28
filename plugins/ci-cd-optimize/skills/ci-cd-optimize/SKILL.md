@@ -37,6 +37,8 @@ Rules:
 - A cache hit is useful only if restore plus post-hit work beats a clean run.
 - Flaky retry-pass is instability and cost, not proof of reliability.
 
+Prefer the platform's own aggregated history over hand-collected timings when it exists, then verify sample size and window. If the repository runs on Avrea (`runs-on:` labels begin with `avrea-`) and `avr` is installed and authenticated, read `references/avrea/cli-evidence.md` — it returns median/p95, per-job start offsets, flake counts, and cache hit counts directly. Confirm availability with `command -v avr && avr auth status` before depending on it, and fall back to provider-native measurement otherwise.
+
 ### 3. Find the critical path
 
 Build the job DAG from actual dependencies, not stage labels. Optimize jobs with high critical-path rate and high exclusive time. A large total CPU-time reduction on parallel non-critical work may produce zero wall-clock improvement.
@@ -64,6 +66,7 @@ Ask in order:
 10. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
+13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -170,6 +173,8 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
+| Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
+| Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
 
 ## Reference files
 
@@ -196,9 +201,21 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 
+### Optional: Avrea reference kit
+
+Read only when the repository runs on Avrea (`runs-on:` labels start with `avrea-`) or Avrea is being evaluated as a runner change. The core loop above is provider-neutral and does not depend on these files.
+
+| File | Read when |
+|---|---|
+| `references/avrea/cli-evidence.md` | Using the `avr` CLI to build a baseline: median/p95, per-job start offsets, queue time, VM metrics, flake counts, cache hit counts, or driving a run to a terminal state. |
+| `references/avrea/platform-and-runners.md` | Runner labels and sizing, migration from GitHub-hosted runners, A/B shadowing, observability, OTel export, live SSH debugging, or the third-party trust boundary. |
+| `references/avrea/caching.md` | Actions/build/package cache layers, Turborepo or Docker `url_v2` wiring, registry proxy caveats, quota and LRU eviction, or diagnosing cold cache entries. |
+
 ## Guardrails
 
 - Do not recommend vendor-specific flags from memory; verify mutable provider behavior against current official docs when it is load-bearing.
+- Do not assume a CI platform or its CLI is present; probe first (`command -v`, `--version`, auth check) and fall back to provider-native evidence when it is not.
+- Do not run a platform CLI's mutating commands without authorization — cache deletion, run cancel/rerun, org or repository settings, and firewall rules change shared state.
 - Do not ask for approval before a reversible, measured optimization; ask before weakening a gate, changing production deployment behavior, or introducing a shared trust boundary.
 - Do not add a large tool (Bazel, remote execution, self-hosted fleet, commercial TIA) unless the measured bottleneck and operating capacity justify it.
 - Do not bundle generated pipeline templates blindly; produce the smallest config change justified by evidence.

@@ -39,6 +39,8 @@ Build a DAG from declared dependencies. For every job, compute:
 
 Prioritize `critical-path rate × exclusive time`. A job consuming CPU in parallel with a longer job is not the current bottleneck.
 
+Where the platform records per-job start offsets, derive the DAG shape empirically instead of trusting declared dependencies: a gap between a job's `start + duration` and its dependents' start is scheduling and per-job setup overhead, which no amount of in-job optimization removes. On Avrea, `references/avrea/cli-evidence.md` shows how to extract these offsets.
+
 ## Experiment verification
 
 Before changing config, write down:
