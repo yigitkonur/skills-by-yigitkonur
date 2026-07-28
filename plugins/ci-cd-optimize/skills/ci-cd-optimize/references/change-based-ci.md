@@ -65,6 +65,24 @@ jobs:
 
 Ensure the provider reports skipped downstream jobs as successful/skipped in the way branch protection expects.
 
+## The planner must not grade its own homework
+
+The component that decides what runs is itself part of the repository, so a change to the change-detection logic can ship having validated only the lanes that logic happens to name. Two failures, both observed in practice rather than derived:
+
+1. **Config fan-out gaps.** A rule mapping `.github/**` to "the main lanes" silently excludes specialized ones, so editing a specialized workflow never exercises it.
+2. **Self-routing.** A planner change that maps only to its own directory's lane routes only that lane — it grades its own homework.
+
+Guard both with unit fixtures over the classifier. It is a pure path→lane function and costs milliseconds:
+
+```
+classify(['.github/workflows/<specialized>.yml']) -> that lane is true
+classify(['<planner-path>'])                      -> every lane is true   (self-change ⇒ full)
+classify(['docs/x.md'])                           -> no heavy lane
+classify(['src/a.ts', 'docs/a.md'])               -> code wins over docs-only
+```
+
+Also test the **rename** case. Rename detection is on by default and `git diff --name-only` prints only the destination, so moving `src/x.ts` → `docs/x.md` reads as docs-only while executable source was actually removed. Use `--no-renames`, or parse `--name-status` and route both the old and new path.
+
 ## Full-run triggers
 
 Always run the full suite when:

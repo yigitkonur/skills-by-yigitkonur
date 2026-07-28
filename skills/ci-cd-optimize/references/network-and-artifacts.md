@@ -15,9 +15,9 @@ Choose by history need:
 
 Do not combine shallow checkout with merge-base-dependent affected detection. Use event SHAs or full history.
 
-### `filter` overrides `sparse-checkout` — they do not compose
+### Partial clone and sparse checkout can compose
 
-Per the `actions/checkout` README, setting `filter:` (e.g. `blob:none`) **disables** any `sparse-checkout` patterns passed alongside it. A workflow that specifies both silently gets partial-clone behavior and a *full* working tree — the opposite of the intended scoping.
+In `actions/checkout`, an explicit `filter:` (for example, `blob:none`) overrides only the action's **automatic** `blob:none` filter for sparse checkout. It does not disable `sparse-checkout` patterns: the action applies those patterns in a separate step. Combining both inputs can therefore reduce object transfer and working-tree materialization together.
 
 Writing files is often the cost, not fetching them. Audit what the job actually reads before assuming the clone is irreducible. Measured on a 1.6 GiB / 14,044-file repository (2026-07-28):
 

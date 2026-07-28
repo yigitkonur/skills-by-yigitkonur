@@ -28,6 +28,20 @@ Use median and p95. CI duration is right-skewed; averages hide cold caches, runn
 
 If a queue-time baseline is unavailable, start with provider run timestamps and job logs. Do not invent missing precision.
 
+## Sampling traps
+
+These produce numbers that look rigorous and are not. Each one has burned a real migration.
+
+**A rerun is not always a new sample.** Some providers re-report the original attempt's duration for a re-run of the same run. Confirm the attempt counter actually incremented (`run_attempt`, `attempt`, or equivalent) before treating repeated identical durations as independent warm samples. Three identical values to the tenth of a second are a re-read, not a measurement.
+
+**Do not mix event populations.** A manually dispatched run that force-enables every conditional gate is not comparable to a push run that path-filters most of them. Report push, pull-request, and dispatch populations separately and label which one each figure came from.
+
+**Do not measure under self-inflicted contention.** Firing several runs concurrently to "collect samples faster" inflates queue time for all of them. Let the platform drain, then measure. If a sample overlapped other runs, exclude it and say so.
+
+**Do not quote p95 from a handful of runs.** After a change you typically have 5–10 runs. Report median and range at that size, and label any p95 as descriptive with the exact `n`. A robust p95 needs roughly 20+ comparable runs. Providers will happily compute a percentile from `n=3`; that number is arithmetic, not evidence.
+
+**Separate work from wait.** Total job work and wall-clock diverge once provisioning dominates. A change that cuts total work 40% can leave wall-clock flat if the tail is queue time — and that is still worth knowing, because it tells you the next lever is job count or capacity, not in-job optimization.
+
 ## Critical-path analysis
 
 Build a DAG from declared dependencies. For every job, compute:
