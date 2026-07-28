@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "purpose": "Immutable baseline for old-vs-new skill comparison. The old skill is read at this exact commit, never from a moving branch or the working tree.",
+  "repository": "yigitkonur/skills-by-yigitkonur",
+  "baseline_sha": "dd156ebb1e6a97ab608a62a1852d9ffab1d2af56",
+  "baseline_skill_path": "skills/ci-cd-optimize",
+  "baseline_fetch_example": [
+    "git", "show", "dd156ebb1e6a97ab608a62a1852d9ffab1d2af56:skills/ci-cd-optimize/SKILL.md"
+  ],
+  "notes": [
+    "Functional comparisons run the same prompt/model/tools against the baseline skill content and the rebuilt skill content.",
+    "Never point this baseline at HEAD, main, or the working tree: the comparison is only valid against the frozen commit."
+  ]
+}

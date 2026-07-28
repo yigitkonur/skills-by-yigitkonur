@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "purpose": "Frozen synthesis requirements for the ci-cd-optimize rebuild. Each row maps a source (open PR or defect) to its destination and acceptance check. Decisions: adopt (take as-is conceptually), adapt (take with corrections), reject (do not carry forward).",
+  "base_sha": "dd156ebb1e6a97ab608a62a1852d9ffab1d2af56",
+  "frozen_at": "2026-07-28",
+  "pr_rows": [
+    {
+      "id": "pr-74",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/74",
+      "decision": "adapt",
+      "contribution": "Registration deadline, SHA pinning, diff-gated events, heartbeat, bounded API errors, failure log command; path-filter and checkout gotchas.",
+      "destination": ["skills/ci-cd-optimize/scripts/ci-watch.py", "skills/ci-cd-optimize/references/feedback-loops.md", "skills/ci-cd-optimize/references/github-actions.md"],
+      "acceptance": "Watcher implements registration deadline, diff-gated append-only events, heartbeats, bounded probe-error streak, and log hints; checkout filter/sparse composition is stated correctly (they compose; filter does not disable sparse).",
+      "test_ids": ["watch-registration-timeout", "watch-heartbeat", "watch-probe-dead"]
+    },
+    {
+      "id": "pr-75",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/75",
+      "decision": "adopt",
+      "contribution": "Cancellation semantics (superseded only with proven newer tip), reusable-workflow startup_failure/zero-jobs diagnosis, pagination fail-closed, monitor timeout > watcher deadline.",
+      "destination": ["skills/ci-cd-optimize/scripts/ci-watch.py", "skills/ci-cd-optimize/references/feedback-loops.md", "skills/ci-cd-optimize/references/github-actions.md"],
+      "acceptance": "cancelled + proven newer tip => superseded; unproven tip => cancelled; startup_failure with zero jobs surfaces as run-level failure; incomplete enumeration never yields success.",
+      "test_ids": ["watch-superseded-proven", "watch-cancelled-unproven", "watch-startup-failure", "watch-incomplete-enumeration"]
+    },
+    {
+      "id": "pr-76",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/76",
+      "decision": "adapt",
+      "contribution": "Provider-neutral probe architecture, newest-run-per-workflow, settle window for late workflow_run, explicit success allowlists, run-ID state.",
+      "destination": ["skills/ci-cd-optimize/scripts/ci-watch.py", "skills/ci-cd-optimize/references/feedback-loops.md"],
+      "acceptance": "Canonical probe envelope with closed state vocabulary; settle window resets on new units; empty generic probe output is never green.",
+      "test_ids": ["watch-late-sibling", "watch-chained-run", "watch-empty-probe-not-green"]
+    },
+    {
+      "id": "pr-77",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/77",
+      "decision": "adapt",
+      "contribution": "BuildKit mode=max break-even, COPY --chown, planner self-routing, rename detection, per-test profiling before sharding, deployment convergence budgets, registry proxy vs store cache.",
+      "destination": ["skills/ci-cd-optimize/references/containers.md", "skills/ci-cd-optimize/references/change-based-ci.md", "skills/ci-cd-optimize/references/testing-and-flakiness.md", "skills/ci-cd-optimize/references/deployment.md", "skills/ci-cd-optimize/references/caching.md"],
+      "acceptance": "Lessons present in destination references. Its watcher is NOT reused: current head crashes before terminal handling on repo-resolution failure (violates non-silent-exit).",
+      "test_ids": ["watch-repo-resolution-failure"]
+    },
+    {
+      "id": "pr-78",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/78",
+      "decision": "adopt",
+      "contribution": "Engagement sequence (read config/history before touching YAML; one bounded experiment; report disproved hypotheses), differentiated exit codes 0/1/2/3, A/B interleaving under contention.",
+      "destination": ["skills/ci-cd-optimize/references/optimization-workflow.md", "skills/ci-cd-optimize/scripts/ci-watch.py"],
+      "acceptance": "optimization-workflow.md owns the ordered engagement loop; watcher exit codes: success=0, failure/cancelled=1, timeout/no-run/probe-dead=2, superseded=3. Script placement at scripts/ (NOT references/scripts/ as in the PR).",
+      "test_ids": ["watch-exit-codes"]
+    },
+    {
+      "id": "pr-79",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/79",
+      "decision": "adopt",
+      "contribution": "Concise waiting-primitive taxonomy: streamed progress vs single-completion vs blocking gate; TTY redraw output unsuitable for event streams; every watcher needs a deadline and exactly one terminal verdict.",
+      "destination": ["skills/ci-cd-optimize/references/feedback-loops.md"],
+      "acceptance": "feedback-loops.md contains the waiting-primitive selection table and single-terminal-verdict rule.",
+      "test_ids": ["watch-single-terminal-record"]
+    },
+    {
+      "id": "pr-80",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/80",
+      "decision": "adapt",
+      "contribution": "Job-hop cost model (each extra job adds queue+setup), job-level first-red events, supersession detectable before registration, run-ID inclusion for concurrent same-named runs, no silent 50-run truncation.",
+      "destination": ["skills/ci-cd-optimize/references/capacity-and-contention.md", "skills/ci-cd-optimize/scripts/ci-watch.py"],
+      "acceptance": "First-red emitted immediately including on initial snapshot; supersession checked pre-registration; pagination complete; duplicate names disambiguated by IDs.",
+      "test_ids": ["watch-initial-red", "watch-superseded-pre-registration", "watch-pagination", "watch-duplicate-names"]
+    },
+    {
+      "id": "pr-81",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/81",
+      "decision": "adapt",
+      "contribution": "Most hardened watcher: duration validation (nan/inf/zero/negative), refreshed settle timing, explicit state vocabularies, deadline-bounded serial job expansion, branch-tip check before terminal return, error-streak reset on successful empty query.",
+      "destination": ["skills/ci-cd-optimize/scripts/ci-watch.py"],
+      "acceptance": "All listed validations present; implemented as a smaller tested state machine rather than a 490-line copy.",
+      "test_ids": ["watch-invalid-durations", "watch-deadline-bounded-probes", "watch-error-streak-reset"]
+    },
+    {
+      "id": "pr-82",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/82",
+      "decision": "adopt",
+      "contribution": "Fail-closed semantics: incomplete enumeration is not a verdict; --expect-none requires a proven empty result; unit names with '/' parsed correctly; mixture of success+cancelled/skipped is not green; malformed/unknown states fail closed.",
+      "destination": ["skills/ci-cd-optimize/scripts/ci-watch.py", "skills/ci-cd-optimize/references/feedback-loops.md"],
+      "acceptance": "All fail-closed rules implemented and fixture-tested.",
+      "test_ids": ["watch-mixed-not-green", "watch-malformed", "watch-unknown-state", "watch-punctuation-names"]
+    },
+    {
+      "id": "pr-83",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/83",
+      "decision": "adapt",
+      "contribution": "Larger runners can lose end-to-end via fleet queueing; time the uncached path first; platform registry proxies can make dependency caches redundant; genuine failure must not be hidden by later supersession; materialize generators before multi-pass aggregation.",
+      "destination": ["skills/ci-cd-optimize/references/runners-and-autoscaling.md", "skills/ci-cd-optimize/references/caching.md", "skills/ci-cd-optimize/scripts/ci-watch.py"],
+      "acceptance": "Prose lessons landed; watcher aggregates from materialized lists; red-then-branch-moved yields failure not superseded.",
+      "test_ids": ["watch-red-precedes-superseded"]
+    },
+    {
+      "id": "pr-84",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/84",
+      "decision": "adopt",
+      "contribution": "Capacity model with reviewer qualifications: queue share is a diagnostic signal not a gate; observed concurrency is a lower bound not a proven ceiling; merge-don't-split when extra jobs only add queue+setup; A/B under different pool load is not comparable.",
+      "destination": ["skills/ci-cd-optimize/references/capacity-and-contention.md"],
+      "acceptance": "capacity-and-contention.md states both qualifications explicitly and requires repeated saturated observations per pool/class.",
+      "test_ids": []
+    },
+    {
+      "id": "pr-85",
+      "source": "https://github.com/yigitkonur/skills-by-yigitkonur/pull/85",
+      "decision": "reject",
+      "contribution": "Content map only. Broadest rewrite but 11 active unresolved defects at head; every defect becomes a negative requirement below.",
+      "destination": [],
+      "acceptance": "No file copied from the #85 head; all 11 defect rows below pass.",
+      "test_ids": []
+    }
+  ],
+  "defect_rows": [
+    {"id": "d85-1", "defect": "Nonzero custom probe with partial output accepted", "requirement": "Nonzero probe exit invalidates all stdout from that invocation.", "test_ids": ["watch-partial-output-nonzero"]},
+    {"id": "d85-2", "defect": "Concurrent same-named workflow jobs overwrite each other", "requirement": "Keys are (provider, repo, run_id, run_attempt, job_id); names never used as keys.", "test_ids": ["watch-duplicate-names"]},
+    {"id": "d85-3", "defect": "Change-detector example used undefined $BASE/$HEAD (diffed HEAD...HEAD)", "requirement": "Every runnable example defines its variables; change-based-ci examples derive base/head explicitly and fail to full-run on diff error.", "test_ids": ["contract-example-variables"]},
+    {"id": "d85-4", "defect": "Monitor example passed nonexistent --deadline-min flag", "requirement": "All documented watcher invocations use only flags the script actually accepts; contract test greps docs for unknown flags.", "test_ids": ["contract-doc-flags-exist"]},
+    {"id": "d85-5", "defect": "Every non-success verdict exited 1", "requirement": "Exit classes differentiated: 0 success, 1 failure/cancelled, 2 timeout/no-run/probe-dead, 3 superseded.", "test_ids": ["watch-exit-codes"]},
+    {"id": "d85-6", "defect": "Non-positive polling interval not rejected", "requirement": "interval/heartbeat must be finite and > 0; registration/settle >= 0; deadline > 0; nan/inf rejected.", "test_ids": ["watch-invalid-durations"]},
+    {"id": "d85-7", "defect": "Probe+sleep could exceed a short hard deadline", "requirement": "Every subprocess timeout and sleep is bounded by remaining overall time.", "test_ids": ["watch-deadline-bounded-probes", "watch-short-deadline"]},
+    {"id": "d85-8", "defect": "Job key namespace changed when a run completed", "requirement": "Unit keys are stable across active->completed transitions; no spurious re-registration.", "test_ids": ["watch-key-stability"]},
+    {"id": "d85-9", "defect": "Frontmatter description exceeded naming limits", "requirement": "Description starts with the approved prefix and is <= 30 words; enforced by validator and contract test.", "test_ids": ["contract-description"]},
+    {"id": "d85-10", "defect": "Example downgraded actions/checkout@v5 to @v4", "requirement": "Examples do not pin stale action versions; version-sensitive pins carry a verify-current note.", "test_ids": ["contract-no-stale-pins"]},
+    {"id": "d85-11", "defect": "README description did not follow repository derivation rules", "requirement": "README description equals frontmatter description with trigger prefix removed; enforced by contract test.", "test_ids": ["contract-readme-alignment"]}
+  ]
+}

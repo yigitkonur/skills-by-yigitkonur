@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "purpose": "Trigger evaluation corpus for ci-cd-optimize. Labels are frozen before description tuning. Categories: direct-positive, indirect-positive, uncommon-positive, near-miss-negative, simple-negative, competing-negative.",
+  "skill_name": "ci-cd-optimize",
+  "cases": [
+    {"id": "t01", "category": "direct-positive", "should_trigger": true, "query": "Our GitHub Actions CI takes 35 minutes on every PR. Can you figure out why and speed it up without breaking required checks?"},
+    {"id": "t02", "category": "direct-positive", "should_trigger": true, "query": "optimize our ci pipeline, it's way too slow and expensive lately"},
+    {"id": "t03", "category": "direct-positive", "should_trigger": true, "query": "The e2e workflow in .github/workflows/e2e.yml keeps queueing for 10+ minutes before it even starts. Diagnose the queue time."},
+    {"id": "t04", "category": "direct-positive", "should_trigger": true, "query": "Our GitLab CI cache never seems to hit — every job reinstalls node_modules from scratch. Fix the caching."},
+    {"id": "t05", "category": "direct-positive", "should_trigger": true, "query": "CI bill doubled this month. Find what's burning runner minutes in our monorepo pipelines and cut it safely."},
+    {"id": "t06", "category": "direct-positive", "should_trigger": true, "query": "pls audit why buildkite builds got slower after we added the new integration test step"},
+    {"id": "t07", "category": "direct-positive", "should_trigger": true, "query": "Tests are flaky in CI only — retries mask it and the suite takes forever. Investigate and make the pipeline reliable and faster."},
+    {"id": "t08", "category": "direct-positive", "should_trigger": true, "query": "We migrated to avrea runners for GitHub Actions. Measure whether they're actually faster than the old hosted runners for our ci.yml."},
+    {"id": "t09", "category": "indirect-positive", "should_trigger": true, "query": "Every push I wait like 20 min for the checks before I can merge, it used to be 8. Something changed, can you look?"},
+    {"id": "t10", "category": "indirect-positive", "should_trigger": true, "query": "Devs are complaining that draft PRs run the full expensive test matrix. Feels wasteful."},
+    {"id": "t11", "category": "indirect-positive", "should_trigger": true, "query": "After adding the docker build step the feedback loop on PRs got painful. The image rebuilds everything each time."},
+    {"id": "t12", "category": "indirect-positive", "should_trigger": true, "query": "I pushed a fix 5 minutes ago — set something up so you know the moment CI finishes on that exact commit and react if it goes red, without just sleeping."},
+    {"id": "t13", "category": "indirect-positive", "should_trigger": true, "query": "circleci says our workflow ran 40 jobs but wall time barely improved when we added more parallelism. why"},
+    {"id": "t14", "category": "uncommon-positive", "should_trigger": true, "query": "Xcode builds on our macOS CI runners take 50 minutes; simulators, DerivedData, the works. Where do we even start measuring?"},
+    {"id": "t15", "category": "uncommon-positive", "should_trigger": true, "query": "Our self-hosted runner pool saturates every day around 3pm and jobs pile up. Do we resize, add runners, or merge jobs?"},
+    {"id": "t16", "category": "uncommon-positive", "should_trigger": true, "query": "Bazel remote cache is configured but CI is not faster. Verify it's actually being used and whether it's worth keeping."},
+    {"id": "t17", "category": "near-miss-negative", "should_trigger": false, "query": "Write a short glossary entry explaining what a CI/CD pipeline is for our onboarding docs."},
+    {"id": "t18", "category": "near-miss-negative", "should_trigger": false, "query": "Our production API endpoint /search is slow, p95 is 2 seconds. Profile the Node service and optimize the query path."},
+    {"id": "t19", "category": "near-miss-negative", "should_trigger": false, "query": "Compare CircleCI vs GitHub Actions pricing tiers for a 10-person startup and recommend one."},
+    {"id": "t20", "category": "near-miss-negative", "should_trigger": false, "query": "The nightly cron job that syncs our CRM data to the warehouse is timing out. Debug the sync script."},
+    {"id": "t21", "category": "simple-negative", "should_trigger": false, "query": "There's a typo in .github/workflows/ci.yml — the job name says 'biuld'. Fix it."},
+    {"id": "t22", "category": "simple-negative", "should_trigger": false, "query": "Bump actions/setup-node from v4 to v5 in our workflow file."},
+    {"id": "t23", "category": "competing-negative", "should_trigger": false, "competing_skill": "deploy-coolify-cloud", "query": "Deploy the latest main of our compose app to Coolify and verify the health endpoint comes up."},
+    {"id": "t24", "category": "competing-negative", "should_trigger": false, "competing_skill": "run-review", "query": "Review this PR diff for security issues in the new auth middleware before we merge."}
+  ]
+}

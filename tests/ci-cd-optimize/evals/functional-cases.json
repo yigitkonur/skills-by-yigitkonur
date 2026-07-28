@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "purpose": "Functional task corpus comparing the rebuilt skill against the frozen baseline (see baseline.json). Expectations are frozen before inspecting new-skill output. critical=true expectations are release blockers, not averaged scores.",
+  "skill_name": "ci-cd-optimize",
+  "cases": [
+    {
+      "id": "f01",
+      "name": "duplicate-push-pr-runs",
+      "prompt": "Our repo runs the full CI twice for every PR — once for the push event and once for pull_request. 14 minutes each. Fix the duplication without losing coverage on protected branches.",
+      "expectations": [
+        {"text": "Identifies event-level duplication and proposes trigger scoping or concurrency cancellation rather than deleting jobs", "critical": false},
+        {"text": "Preserves required checks on protected branches", "critical": true},
+        {"text": "Does not propose removing tests or gates to save time", "critical": true}
+      ]
+    },
+    {
+      "id": "f02",
+      "name": "queue-dominated-pipeline",
+      "prompt": "ci.yml wall time is 22 min but the jobs' own durations sum to ~9 min of critical path. Figure out where the rest goes and what to do.",
+      "expectations": [
+        {"text": "Separates queue/setup time from execution time and measures per-job created_at->started_at delay", "critical": false},
+        {"text": "Investigates runner pool contention before proposing bigger runners", "critical": false},
+        {"text": "Does not equate summed per-job queue time with wall-clock loss", "critical": false}
+      ]
+    },
+    {
+      "id": "f03",
+      "name": "tiny-jobs-over-ceiling",
+      "prompt": "We split our test suite into 24 shards of ~40 seconds each but CI got slower. Concurrency limit is 8 jobs. What happened and what should we do?",
+      "expectations": [
+        {"text": "Explains that shards above the effective concurrency ceiling serialize and each adds queue+setup overhead", "critical": false},
+        {"text": "Recommends merging shards toward the ceiling with measured per-shard duration", "critical": false}
+      ]
+    },
+    {
+      "id": "f04",
+      "name": "redundant-store-cache",
+      "prompt": "We cache ~/.npm in every job. Our CI provider has a local registry proxy. Install takes 90s with the cache, restore takes 40s. Worth keeping?",
+      "expectations": [
+        {"text": "Proposes measuring cold (no cache) vs warm (cache) vs proxy-only install before deciding", "critical": false},
+        {"text": "Accounts for restore+save overhead in the comparison, not just install time", "critical": false}
+      ]
+    },
+    {
+      "id": "f05",
+      "name": "manifest-only-cache-key",
+      "prompt": "Our cache key is hashFiles('package.json'). Sometimes CI passes with stale dependencies that fail locally after npm install. Diagnose.",
+      "expectations": [
+        {"text": "Identifies that the key must include the lockfile so dependency-tree changes invalidate the cache", "critical": true},
+        {"text": "Flags stale-cache correctness as a trust issue, not only a speed issue", "critical": false}
+      ]
+    },
+    {
+      "id": "f06",
+      "name": "planner-self-routing",
+      "prompt": "We use a changed-files planner job to skip unaffected work. Someone renamed src/core/ to src/kernel/ and CI passed while main broke. Also changes to the planner script itself don't trigger full runs. Fix the selective CI.",
+      "expectations": [
+        {"text": "Planner routes changes to itself and to workflow/config files into full validation", "critical": true},
+        {"text": "Handles renames by considering both old and new paths in the diff", "critical": false},
+        {"text": "Diff/merge-base failure falls back to full run, not to skip", "critical": true}
+      ]
+    },
+    {
+      "id": "f07",
+      "name": "reusable-workflow-startup-failure",
+      "prompt": "Our caller workflow uses a reusable workflow via 'uses:'. Runs show conclusion startup_failure with zero jobs and no logs. How do we debug this?",
+      "expectations": [
+        {"text": "Explains startup_failure produces no job logs and diagnosis goes through workflow-file resolution (ref, path, inputs, permissions)", "critical": false},
+        {"text": "Suggests reducing the caller to a minimal uses: job to isolate resolution", "critical": false}
+      ]
+    },
+    {
+      "id": "f08",
+      "name": "flaky-vs-genuine",
+      "prompt": "test 'checkout flow' fails in ~20% of CI runs, passes on retry. The team wants automatic retries for the whole suite. Advise.",
+      "expectations": [
+        {"text": "Distinguishes flake diagnosis (rerun identical commit, quarantine, ownership) from blanket retries", "critical": false},
+        {"text": "Warns that broad retries mask genuine regressions and instability", "critical": true}
+      ]
+    },
+    {
+      "id": "f09",
+      "name": "immutable-promotion",
+      "prompt": "We build a fresh Docker image in each environment's deploy job (staging rebuild, prod rebuild). Sometimes prod differs from what we tested. Restructure the pipeline.",
+      "expectations": [
+        {"text": "Recommends build-once/promote-by-digest across environments", "critical": true},
+        {"text": "Verification compares the exact artifact digest, not tags", "critical": false}
+      ]
+    },
+    {
+      "id": "f10",
+      "name": "exact-sha-waiting",
+      "prompt": "I just pushed commit 3f2a... to branch feat/x. Watch CI for that exact commit and tell me the moment it reaches a terminal state; if someone pushes over it, say so instead of reporting stale results.",
+      "expectations": [
+        {"text": "Pins the watch to the full commit SHA rather than branch-latest or PR checks", "critical": true},
+        {"text": "Handles supersession (newer tip) as a distinct outcome from failure", "critical": false},
+        {"text": "Does not report success from a run whose head_sha differs from the target", "critical": true}
+      ]
+    },
+    {
+      "id": "f11",
+      "name": "avrea-measurement",
+      "prompt": "We run GitHub Actions on avrea-8cpu runners. Using the avr CLI, build a duration baseline for ci.yml, find the critical-path job, and check whether the runner size is justified.",
+      "expectations": [
+        {"text": "Verifies avr installation/auth/version before use and states the sample window", "critical": false},
+        {"text": "Uses documented commands (workflow view / job list / job metrics) and derives queue time from created_at->started_at", "critical": false},
+        {"text": "Labels undocumented API fields as observed/unstable if used", "critical": false}
+      ]
+    },
+    {
+      "id": "f12",
+      "name": "avrea-unreleased-command",
+      "prompt": "Use the avr CLI to list our workflow artifacts and download the coverage report artifact from the latest run.",
+      "expectations": [
+        {"text": "States that released avr 0.1.6 has no artifact commands and offers gh/provider-native alternatives", "critical": true},
+        {"text": "Does not invent avr subcommands or flags", "critical": true}
+      ]
+    }
+  ]
+}
