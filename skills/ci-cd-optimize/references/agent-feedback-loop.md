@@ -29,11 +29,11 @@ re-litigate these — reproduce them if you doubt them.
 Any watcher you write or adopt must have all six. Missing one reintroduces the hang.
 
 1. **Guaranteed terminal event.** Every code path — success, failure, timeout, no-run,
-   superseded, probe-dead — ends with one parseable line. If the agent can reach a state
-   with no output, the design is wrong.
-2. **Registration deadline.** If no run appears for the pinned commit within N minutes
-   (4 is a reasonable default), emit `no-run` and exit. Never wait on a run that will
-   never exist.
+   probe-dead — ends with one parseable line. If the agent can reach a state with no
+   output, the design is wrong.
+2. **Registration deadline.** Allow N minutes (4 is a reasonable default) for every run
+   on the pinned commit to register before emitting a terminal verdict. If none appears,
+   emit `no-run` and exit; if an early run finishes, keep watching for late registrations.
 3. **Commit pinning, not branch.** Query by the exact SHA. A branch-tip query returns a
    *newer* run and reports a false green for code you did not push. Pinning also catches a
    second failing workflow hiding behind a passing one.
@@ -67,7 +67,7 @@ Reaction policy the agent should follow:
 | `CI-DONE success` | proceed |
 | `CI-DONE failure` | fetch the failing log immediately, fix, re-push, arm a **fresh** watcher |
 | `CI-DONE no-run` | expected for filtered paths; otherwise investigate why nothing registered |
-| `CI-DONE timeout`/`probe-dead`/`superseded` | the watcher gave up safely — re-check manually |
+| `CI-DONE timeout`/`probe-dead` | the watcher gave up safely — re-check manually |
 
 Put the log-fetch command *inside* the failure line. The agent should not have to
 reconstruct it.
@@ -76,7 +76,7 @@ reconstruct it.
 
 ```
 Monitor(
-  command: "<repo>/scripts/ci/watch.sh $(git rev-parse HEAD) 25",
+  command: "<repo>/scripts/ci-watch.sh $(git rev-parse HEAD) 25",
   description: "CI for <sha8>",
   timeout_ms: 1800000
 )
@@ -115,6 +115,6 @@ CI runs.
 
 - Anti-stall mechanism set adapted from `yigitkonur/plugin-ci-watch-unstall` (accessed
   2026-07-28), which documents the hook/skill/harness split and the diff-gating,
-  supersession, and heartbeat behaviors.
+  registration, and heartbeat behaviors.
 - Failure modes in the table above were reproduced directly against GitHub Actions on
   2026-07-28; the short-SHA and zero-run cases were found that way, not from documentation.
