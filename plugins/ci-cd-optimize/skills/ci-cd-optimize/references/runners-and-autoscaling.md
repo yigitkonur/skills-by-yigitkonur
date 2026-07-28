@@ -32,6 +32,13 @@ Keep orchestration/upload capacity warm separately from scale-to-zero workers.
 
 Scale from queued/assigned jobs, job startup latency, and wait percentiles. CPU utilization alone misses jobs waiting for an available runner. Keep the runner manager/controller on persistent on-demand infrastructure.
 
+## Spot capacity
+
+Use spot/preemptible runners only for short, idempotent, retryable, or
+checkpointed jobs. Keep an on-demand fallback and never run the
+controller/manager on spot. Do not use spot for deployment gates where an
+interruption is costly.
+
 ## Capacity and contention before topology work
 
 Parallelizing a pipeline above its effective runner ceiling often makes it look

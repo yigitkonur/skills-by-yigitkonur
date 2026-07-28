@@ -92,11 +92,23 @@ point.
 #!/usr/bin/env bash
 set -uo pipefail
 SHA="${1:-$(git rev-parse HEAD)}"
-DEADLINE=1800; REGISTER=300; HEARTBEAT=150; POLL=10
+DEADLINE="${DEADLINE:-1800}"; REGISTER="${REGISTER:-300}"
+HEARTBEAT="${HEARTBEAT:-150}"; POLL="${POLL:-10}"
 
 # One probe, individually timed out, returning JSON for this SHA only.
 probe() { timeout 25 <provider-cli> list --json ... ; }
-done_with() { echo "CI-DONE $1${2:+ — $2}"; exit 0; }
+done_with() {
+  verdict="$1"
+  echo "CI-DONE $verdict${2:+ — $2}"
+  case "$verdict" in
+    success) exit 0 ;;
+    failure) exit 1 ;;
+    no-run) exit 2 ;;
+    superseded|cancelled) exit 3 ;;
+    timeout) exit 124 ;;
+    *) exit 2 ;;
+  esac
+}
 
 start=$SECONDS
 # Phase 1 — registration, with its own deadline.
@@ -160,9 +172,9 @@ Bash(run_in_background: true,
 that terminates on its own:
 
 ```
-Monitor(command: "scripts/ci-watch.sh <sha> --deadline 1500",
+Monitor(command: "DEADLINE=1500 scripts/ci-watch.sh <sha>",
         description: "CI for <branch>",
-        timeout_ms: 1500000)
+        timeout_ms: 1560000)
 ```
 
 Rules that keep this reliable:

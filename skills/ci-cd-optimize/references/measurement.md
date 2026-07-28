@@ -49,6 +49,9 @@ Before trusting a comparison, actively rule out the three easiest false claims:
    the queue more than the optimization moved execution. Interleave A/B arms, or
    compare execution when pool state is clearly different.
 
+Averages hide the variance that makes CI painful: cold caches, runner
+saturation, flaky retries, and dependency changes. Report the median for the
+typical path and p95 for the tail instead of treating one mean as representative.
 A robust p95 needs a real sample. Roughly 20+ comparable runs is arithmetic,
 not evidence by itself; below that, say you have a small cohort rather than a
 stable tail.

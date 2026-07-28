@@ -54,6 +54,7 @@ CUSTOM_NEUTRAL = {"cancelled", "canceled", "skipped", "manual", "blocked",
                   "not_run", "neutral", "stale"}
 
 PROBE_TIMEOUT = 45      # one wedged request must not freeze the loop
+MAX_RUNS = 1000        # fail closed rather than green an incomplete enumeration
 WARN_STREAK = 3
 DEAD_STREAK = 10
 
@@ -91,18 +92,25 @@ def branch_tip(repo_dir: str, branch: str) -> str | None:
         return None
 
 
-def gh_probe(sha: str, repo: str | None, expand_jobs: bool) -> dict[str, dict]:
+def gh_probe(sha: str, repo: str | None, expand_jobs: bool,
+             deadline_at: float) -> dict[str, dict]:
     """Return {key: {name, state, conclusion, log_cmd}} keyed by run/lane id.
 
     Keyed by id, never by workflow name: two runs of one workflow (re-run,
     workflow_dispatch) would otherwise overwrite each other and the diff-gate
     would flap forever.
     """
-    base = ["gh", "run", "list", "--commit", sha, "--limit", "50",
+    base = ["gh", "run", "list", "--commit", sha, "--limit", str(MAX_RUNS),
             "--json", "databaseId,workflowName,status,conclusion"]
     if repo:
         base += ["--repo", repo]
-    rows = json.loads(run(base) or "[]")
+    remaining = deadline_at - time.monotonic()
+    if remaining <= 0:
+        raise subprocess.TimeoutExpired(base, 0)
+    rows = json.loads(run(base, max(1, min(PROBE_TIMEOUT, int(remaining)))) or "[]")
+    if len(rows) >= MAX_RUNS:
+        raise RuntimeError(f"at least {MAX_RUNS} runs match {sha[:7]}; "
+                           "refusing an incomplete verdict")
     snap: dict[str, dict] = {}
     for r in rows:
         rid = str(r["databaseId"])
@@ -111,30 +119,34 @@ def gh_probe(sha: str, repo: str | None, expand_jobs: bool) -> dict[str, dict]:
         snap[rid] = {"name": r.get("workflowName") or rid, "state": state,
                      "active": (r.get("status") in ACTIVE), "log": log}
         # Run-level conclusion stays unset until every lane ends; expanding
-        # in-flight runs to job level surfaces the first red lane 20 minutes
-        # early. Bounded to active runs so the extra call is not paid per poll
-        # on completed ones.
+        # in-flight runs to job level surfaces the first red lane early. Each
+        # expansion is bounded by the watcher's remaining overall deadline.
         if expand_jobs and r.get("status") in ACTIVE:
+            left = deadline_at - time.monotonic()
+            if left <= 1:
+                break
             try:
                 jr = ["gh", "run", "view", rid, "--json", "jobs"]
                 if repo:
                     jr += ["--repo", repo]
-                for j in json.loads(run(jr)).get("jobs", []):
+                for j in json.loads(run(jr, max(1, min(PROBE_TIMEOUT, int(left))))).get("jobs", []):
                     jid = f"{rid}/{j.get('databaseId', j.get('name'))}"
                     jstate = j.get("conclusion") or j.get("status") or "unknown"
                     snap[jid] = {"name": f"{snap[rid]['name']}:{j.get('name')}",
                                  "state": jstate,
                                  "active": (j.get("status") in ACTIVE),
                                  "log": log}
+            except subprocess.TimeoutExpired:
+                break  # run rows remain authoritative; lane detail is optional
             except Exception:
                 pass  # lane detail is best-effort; the run row still verdicts
     return snap
 
 
-def custom_probe(cmd: str, sha: str) -> tuple[dict[str, dict], str | None]:
+def custom_probe(cmd: str, sha: str, timeout: int) -> tuple[dict[str, dict], str | None]:
     env = dict(os.environ, CI_WATCH_SHA=sha)
     proc = subprocess.run(cmd, shell=True, capture_output=True, text=True,
-                          timeout=PROBE_TIMEOUT, env=env)
+                          timeout=timeout, env=env)
     if proc.returncode != 0:
         raise RuntimeError(f"probe exited {proc.returncode}: "
                            f"{proc.stderr.strip()[:200]}")
@@ -148,13 +160,13 @@ def custom_probe(cmd: str, sha: str) -> tuple[dict[str, dict], str | None]:
             forced = line.split(":", 1)[1].strip().split()[0].lower()
             continue
         # rpartition: unit names legitimately contain ':' (GitLab test:unit).
-        name, _, state = line.rpartition(":")
-        if not name:
-            continue
+        name, separator, state = line.rpartition(":")
+        if not separator or not name.strip() or not state.strip():
+            raise RuntimeError(f"malformed probe line: {line[:200]}")
         token = state.strip().lower().replace("-", "_")
         snap[name.strip()] = {
             "name": name.strip(), "state": token,
-            "active": token not in CUSTOM_SUCCESS | CUSTOM_FAILURE | CUSTOM_NEUTRAL,
+            "active": token in ACTIVE | {"running"},
             "log": "(see provider logs)"}
     return snap, forced
 
@@ -172,9 +184,16 @@ def classify(entry: dict, custom: bool) -> str:
     return "failure"   # unknown *terminal* conclusions are never green
 
 
+class VerdictParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        emit(f"CI-DONE failure -- invalid arguments: {message}")
+        raise SystemExit(EXIT["failure"])
+
+
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = VerdictParser(description=__doc__,
+                      formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("sha", nargs="?", default=None)
     p.add_argument("--repo", help="owner/name for gh; defaults to the checkout's")
     p.add_argument("--branch", help="ref for supersession detection "
@@ -209,6 +228,7 @@ def main() -> int:
             branch = None
 
     start = time.monotonic()
+    deadline_at = start + a.deadline
     seen: dict[str, str] = {}
     prev_keys: frozenset = frozenset()
     stable = False
@@ -223,6 +243,9 @@ def main() -> int:
             return 0
         return EXIT[verdict]
 
+    def bounded_sleep() -> None:
+        time.sleep(max(0, min(a.interval, deadline_at - time.monotonic())))
+
     while True:
         # Re-sample AFTER the probe as well -- a probe can take ~45s and the
         # deadline check must not lag it.
@@ -231,10 +254,16 @@ def main() -> int:
                         "inspect the run; stuck is not slow")
         forced = None
         try:
+            remaining = deadline_at - time.monotonic()
+            if remaining <= 0:
+                return done("timeout", f"not terminal after {a.deadline}s -- "
+                            "inspect the run; stuck is not slow")
             if a.cmd:
-                snap, forced = custom_probe(a.cmd, sha)
+                snap, forced = custom_probe(
+                    a.cmd, sha, max(1, min(PROBE_TIMEOUT, int(remaining))))
             else:
-                snap = gh_probe(sha, a.repo, expand_jobs=True)
+                snap = gh_probe(sha, a.repo, expand_jobs=True,
+                                deadline_at=deadline_at)
             errors = 0
         except Exception as exc:
             errors += 1
@@ -243,7 +272,7 @@ def main() -> int:
             if errors >= DEAD_STREAK:
                 return done("probe-dead",
                             f"{errors} consecutive probe failures: {exc}")
-            time.sleep(a.interval)
+            bounded_sleep()
             continue
 
         if forced:
@@ -252,10 +281,10 @@ def main() -> int:
 
         now = time.monotonic()
         if not snap:
-            if now - start > a.register:
+            if not seen and now - start > a.register:
                 return done("no-run",
                             f"nothing registered for {short} in {a.register}s")
-            time.sleep(a.interval)
+            bounded_sleep()
             continue
 
         if not seen:
@@ -275,7 +304,8 @@ def main() -> int:
         prev_keys = keys
 
         classes = {k: classify(v, bool(a.cmd)) for k, v in snap.items()}
-        run_classes = [c for k, c in classes.items() if "/" not in k]
+        run_classes = (list(classes.values()) if a.cmd else
+                       [c for k, c in classes.items() if "/" not in k])
 
         # Precedence: an explicit red run answers "did this SHA pass" -- it is
         # a failure even if the branch has moved on. Supersession only explains
@@ -289,27 +319,34 @@ def main() -> int:
         if all(c != "active" for c in classes.values()):
             # all([]) is True -- but snap is non-empty here, so a verdict on an
             # empty poll cannot happen.
-            if any(c == "success" for c in run_classes):
-                if a.settle and green_since is None:
-                    green_since = now
-                if green_since is None or now - green_since >= a.settle:
-                    # Two-poll key-set stability: a fast workflow can finish
-                    # before a slower sibling even registers.
-                    if stable:
-                        return done("success", short)
+            all_success = run_classes and all(c == "success" for c in run_classes)
+            if all_success:
+                if now - start >= a.register:
+                    if a.settle and green_since is None:
+                        green_since = now
+                    if green_since is None or now - green_since >= a.settle:
+                        # Two-poll key-set stability catches late siblings after
+                        # the full registration window has elapsed.
+                        if stable:
+                            return done("success", short)
             else:
-                # Only neutral results. Cancelled by a newer push, or by hand?
+                # At least one run is neutral. Cancelled by a newer push, or by
+                # hand? Mixed success/neutral is not an all-green verdict.
                 tip = branch_tip(os.getcwd(), branch) if branch else None
-                if branch and tip is None and not warned_super:
-                    emit("CI-WARN cannot read origin tip; supersession "
-                         "detection is off")
-                    warned_super = True
+                if branch and tip is None:
+                    if not warned_super:
+                        emit("CI-WARN cannot read origin tip; retrying "
+                             "supersession detection")
+                        warned_super = True
+                    bounded_sleep()
+                    continue
                 if tip and tip != sha:
                     return done("superseded",
                                 f"{short} cancelled; {branch} moved to {tip[:7]}")
                 return done("cancelled",
-                            f"only cancelled/neutral results for {short} on an "
-                            "unmoved branch -- not a pass, not a test failure")
+                            f"cancelled/neutral results prevent all-green for "
+                            f"{short} on an unmoved branch -- not a pass, not a "
+                            "test failure")
         else:
             green_since = None   # something went active again; reset settle
 
