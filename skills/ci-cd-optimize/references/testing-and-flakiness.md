@@ -82,6 +82,8 @@ npx jest --listTests | circleci tests run \
 
 Retries are a detection and temporary-confidence mechanism. A retry-pass is still evidence of instability. Track flake rate, rerun count, owner, and age.
 
+To tell a flake from a real break without weakening the test: re-run the *identical* commit before pushing any speculative fix. A pass on the unchanged tree is a flake; a second failure is a real break. Never reach green by relaxing an assertion, adding a retry, or re-running until it passes — that corrupts the check instead of fixing it (`effectiveness-contract.md`). Provider flake counters undercount; they typically only catch a step that succeeded in another run. When an agent surfaces the failure through a watcher, this is the reaction path in `agent-ci-feedback.md`.
+
 ## Coverage
 
 - Choose one coverage engine per suite; do not mix V8 and Istanbul artifacts across shards.

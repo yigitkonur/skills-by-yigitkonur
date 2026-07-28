@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks, or wiring an agent to wait on CI results without hanging.
+description: Use if diagnosing or optimizing slow CI/CD, or wiring an agent to wait on CI results without blocking or hanging — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker, or any pipeline, while preserving the checks that make it worth running.
 metadata:
   author: yigitkonur
   version: 1.0.0
@@ -39,6 +39,8 @@ Rules:
 
 Prefer the platform's own aggregated history over hand-collected timings when it exists, then verify sample size and window. If the repository runs on Avrea (`runs-on:` labels begin with `avrea-`) and `avr` is installed and authenticated, read `references/avrea/cli-evidence.md` — it returns median/p95, per-job start offsets, flake counts, and cache hit counts directly. Confirm availability with `command -v avr && avr auth status` before depending on it, and fall back to provider-native measurement otherwise.
 
+Two sampling traps decide whether the baseline is real: a re-run is not a fresh sample (check the attempt counter), and a run measured under contention is not comparable to one against an idle pool. Before quoting any before/after number, read the sampling discipline in `references/measurement.md` and, when queue time is non-trivial, `references/capacity-and-contention.md`.
+
 For the metric definitions, baseline protocol, and the rule about claiming only the evidence rung you reached, read `references/measurement.md`.
 
 ### 3. Find the critical path
@@ -50,14 +52,14 @@ Apply the performance order before adding compute:
 1. **Do not start it** — duplicate triggers, draft-PR work, irrelevant events, unrelated packages, full checkout, redundant matrices.
 2. **Cancel it when stale** — superseded PR runs, obsolete deployments only when safe, hung tail jobs.
 3. **Reuse previous work** — correct caches, remote task cache, immutable build artifacts, prebuilt toolchains.
-4. **Shorten the critical path** — DAG shape, split long jobs only when setup is amortized, historical test sharding.
+4. **Shorten the critical path** — DAG shape, split long jobs only when setup is amortized *and* capacity allows (`references/capacity-and-contention.md`), historical test sharding.
 5. **Move fewer bytes** — checkout scope, cache size, Docker context/layers, artifact paths/compression.
 6. **Only then add compute** — larger runners, more workers, more capacity after queue and utilization evidence.
 
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor? Compute the queue share first — `references/capacity-and-contention.md` gives the gate and thresholds; `references/runners-and-autoscaling.md` covers the remedies. Past the concurrency ceiling, adding jobs makes wall-clock worse, not better.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -71,11 +73,13 @@ Ask in order:
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
 14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
 15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
-16. Is an agent or unattended process consuming the result — or does waiting for CI itself stall, hang, or report a false verdict? Read `references/agent-ci-feedback.md`.
+16. Is an agent or unattended process consuming the result — or does waiting for CI itself stall, hang, or report a false verdict? Read `references/agent-ci-feedback.md` and use `scripts/ci-watch.py`.
 
 ### 4. Choose one bounded experiment
 
-Select the smallest reversible change that attacks the measured critical path. Every recommendation must state:
+Select the smallest reversible change that attacks the measured critical path. When several candidates compete, rank them in a hypothesis table — `| hypothesis | change | est. saved | effort | risk | on critical path? |` — ordered by (time saved ÷ effort), and discount anything off the critical path heavily: a large CPU-time saving on parallel non-critical work buys zero wall-clock. Keep declined rows with the number that killed them ("typecheck is 6s — a 10× compiler saves nothing that parallelism doesn't already hide"); a decline backed by data prevents the next person from re-litigating it.
+
+Every recommendation must state:
 
 - evidence observed,
 - expected wall-clock impact,
@@ -103,7 +107,9 @@ Use full validation as the safe fallback whenever changed files, merge base, cac
 
 Re-run on the same commit first, then a normal representative commit. Compare median and p95 wall-clock, queue time, cache behavior, first-time pass rate, cost, and failure/rework signals. Confirm the exact run head SHA contains the change and the deployed artifact digest or workflow run is the intended one.
 
-Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence.
+Wait for those runs without blocking: arm a bounded, diff-gated watcher (`references/agent-ci-feedback.md`, `scripts/ci-watch.py`) instead of a foreground watch or an open-ended poll — and treat its `timeout`/`no-run` verdicts as "no answer yet," never as pass or fail.
+
+Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence. Report disproved hypotheses too — an experiment that measured neutral or worse is a result, and silently dropping it invites the next person to retry it.
 
 ## Minimal TypeScript example
 
@@ -182,6 +188,8 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
 | Blocking on `gh run watch` or an open-ended poll | Arm a diff-gated watcher with a deadline that always prints a terminal verdict. |
 | Treating a watch `timeout` as pass or as failure | It means no verdict yet — inspect the run, then re-arm with a larger deadline. |
+| Treating a concurrency auto-cancel as failure | `cancelled` + a newer commit means superseded, not red — evaluate supersession before failure. |
+| Trusting `watch-cmd --exit-status \| head` | A pipeline's `$?` is the last stage's — a failed run reads as exit 0. Check `${PIPESTATUS[0]}` or run unpiped. |
 | Sharding a suite whose cost is real sleeping | Profile per file/test first; make production retry delays injectable. |
 | Deploy verification budget tuned to the deploy call | Size revision convergence to edge propagation, or a good deploy reports red. |
 | Benchmarking during your own burst of validation runs | Separate queue from execution; sample from ordinary pushes. |
@@ -190,8 +198,9 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 
 | File | Read when |
 |---|---|
-| `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
-| `references/agent-ci-feedback.md` | An agent must wait for a CI result without blocking or hanging: watcher contract, terminal verdicts, heartbeats, `timeout`/`no-run` semantics, deadline sizing. |
+| `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, sampling traps, or proving a result. |
+| `references/capacity-and-contention.md` | Queue share exceeds ~15%, a parallelization change measured neutral, or timings must be compared under a shared runner pool. |
+| `references/agent-ci-feedback.md` | An agent must wait for a CI result without blocking or hanging: watcher contract, terminal verdicts, heartbeats, `timeout`/`no-run` semantics, provider probes, deadline sizing. Pairs with `scripts/ci-watch.py`. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |

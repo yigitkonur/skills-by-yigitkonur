@@ -18,6 +18,7 @@ Use this file to make security scanning faster without deleting the control.
 - Use severity thresholds; do not make every informational finding a merge blocker.
 - Keep push protection outside CI so it costs no pipeline time.
 - Share scanner caches through a backend that supports concurrent runners.
+- Keep result-cached build/test graphs and security gates separate: a scan that can be replayed from an unrelated task cache is not a gate, it is a stale assertion. If a scan must run every time, keep it outside the build cache and reason about its cost with `caching.md`.
 - Give inline suppressions an owner and expiry; re-scan aged suppressions.
 
 ## Unsafe shortcuts

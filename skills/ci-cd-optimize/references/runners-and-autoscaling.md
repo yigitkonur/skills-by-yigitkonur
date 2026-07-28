@@ -2,6 +2,8 @@
 
 Use this file when queue time, runner capacity, runner isolation, or fleet cost is the bottleneck.
 
+Before choosing a fleet change, quantify how much of wall-clock is queue versus execution and find the concurrency ceiling — `capacity-and-contention.md` gives the queue-share gate and the empirical ceiling test. Adding capacity is the last step in the performance order; confirm the pipeline is capacity-bound, not execution-bound, first.
+
 ## Decision order
 
 1. **Trust:** does the job run untrusted code?

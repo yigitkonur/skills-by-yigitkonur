@@ -56,6 +56,8 @@ Rules:
 - When the assertion fails, distinguish the two cases before acting: a failure in the deploy/migration step is a real bad ship (roll back); a failure only in the revision assertion usually means propagation outran the budget — re-query the endpoint before rolling back anything.
 - Emit the expected and observed revision in the failure message. "Did not converge" without both values is unactionable.
 
+If an agent is waiting on this verdict in the background, wire the poller like any other CI watcher: bounded deadline, terminal verdict, and explicit `timeout` semantics — see `agent-ci-feedback.md`.
+
 ## TypeScript status probe sketch
 
 ```ts

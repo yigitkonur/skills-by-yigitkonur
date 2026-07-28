@@ -41,6 +41,8 @@ Practical rules:
 - Report the sample size. Two runs per side is an observation; it is not a median, and it is certainly not a p95.
 - When a change is genuinely neutral on speed, say so. "No speedup; the work was correctness" is a valid, honest result — inflating queue noise into a win or a loss destroys the credibility of every other number in the report.
 
+When queue time is a large share of wall-clock, the confound is structural, not just noise: see `capacity-and-contention.md` for the queue-share gate, the concurrency-ceiling test, and interleaved A/B arms for comparing configurations under contention.
+
 ## Critical-path analysis
 
 Build a DAG from declared dependencies. For every job, compute:
