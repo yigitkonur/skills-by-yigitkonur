@@ -69,8 +69,9 @@ Ask in order:
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
-15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+14. Is an agent or developer blocked waiting on CI, hand-rolling a poll loop, or claiming green without checking the run? Read `references/agent-ci-feedback.md`.
+15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -179,6 +180,11 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
+| `mode=max` layer export on a build nothing reuses | Price the export step; read on branches, write from the default branch. |
+| Blocking the session on a foreground `run watch` | Arm a terminating watcher; act on the first failing state change. |
+| Repeated identical durations treated as warm samples | Confirm the attempt counter incremented; a re-read is not a sample. |
+| p95 quoted from a handful of post-change runs | Report median and range with `n`; label small-sample p95 descriptive. |
+| Merging jobs that shared a service container | Give each consumer its own database/namespace, or keep them split. |
 
 ## Reference files
 
@@ -204,6 +210,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
+| `references/agent-ci-feedback.md` | Watching a run without blocking or hanging, terminating watch verdicts, agent push→feedback loops, narrow dispatchable lanes, or the local-vs-CI split. |
 
 ### Optional: Avrea reference kit
 

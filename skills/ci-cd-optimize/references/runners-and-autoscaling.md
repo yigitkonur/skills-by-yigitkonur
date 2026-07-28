@@ -50,6 +50,24 @@ Use spot/preemptible runners only for short, idempotent, retryable, or checkpoin
 - Use bin packing that lets the cluster autoscaler remove cold nodes.
 - Isolate namespaces for multi-tenant workloads.
 
+## When provisioning becomes the bottleneck
+
+Past a certain point, fan-out stops paying. If per-job provisioning is 20–40 s and several jobs do 10–30 s of work, the pipeline is mostly waiting for VMs. Symptoms, straight from per-job start offsets:
+
+- a job whose queue time exceeds its duration (e.g. queue 133 s, work 24 s),
+- total job work falling while wall-clock stays flat,
+- max queue time rising as job count rises.
+
+The lever is **fewer, better-packed jobs**, not a bigger runner — CPU is idle while the VM is being created. Merge jobs that already share setup: same runner class, same dependency install, same service containers, same gating condition. Two DB jobs each booting an identical Postgres container are one job.
+
+Before merging, check what the separation was buying:
+
+- **Rerun granularity.** A merged job means rerunning both halves. Fine when both are short.
+- **Failure attribution.** Keep step names distinct so the failing half is obvious.
+- **Isolation.** This is the one that bites. Jobs that ran in separate VMs may share state once merged — a database, a fixed port, a temp path, a global config. Merging two suites against one Postgres service can fail with "already exists" errors because the first suite created the schema the second one migrates. Give each consumer its own database/namespace, or keep them apart.
+
+Verify the merge with the same before/after evidence as any other change; a consolidation that trades 30 s of queue for a 40 s serial chain is a regression.
+
 ## Sources
 
 - GitHub secure use: https://docs.github.com/en/actions/reference/security/secure-use (accessed 2026-07-28)
