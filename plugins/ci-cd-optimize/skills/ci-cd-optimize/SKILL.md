@@ -39,6 +39,8 @@ Rules:
 
 Prefer the platform's own aggregated history over hand-collected timings when it exists, then verify sample size and window. If the repository runs on Avrea (`runs-on:` labels begin with `avrea-`) and `avr` is installed and authenticated, read `references/avrea/cli-evidence.md` — it returns median/p95, per-job start offsets, flake counts, and cache hit counts directly. Confirm availability with `command -v avr && avr auth status` before depending on it, and fall back to provider-native measurement otherwise.
 
+For the metric definitions, baseline protocol, and the rule about claiming only the evidence rung you reached, read `references/measurement.md`.
+
 ### 3. Find the critical path
 
 Build the job DAG from actual dependencies, not stage labels. Optimize jobs with high critical-path rate and high exclusive time. A large total CPU-time reduction on parallel non-critical work may produce zero wall-clock improvement.
@@ -66,7 +68,9 @@ Ask in order:
 10. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
-13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`.
+13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
+14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -92,7 +96,7 @@ Never claim an optimization if it does any of these:
 - hides failures behind retries, broad `continue-on-error`, or weakened assertions,
 - makes change detection use an unverified merge base.
 
-Use full validation as the safe fallback whenever changed files, merge base, cache correctness, dependency graph completeness, or security scope cannot be proven.
+Use full validation as the safe fallback whenever changed files, merge base, cache correctness, dependency graph completeness, or security scope cannot be proven. When a proposed change is near any of these lines, check it against `references/effectiveness-contract.md` before recommending it.
 
 ### 6. Verify after the change
 
@@ -213,7 +217,7 @@ Read only when the repository runs on Avrea (`runs-on:` labels start with `avrea
 
 ## Guardrails
 
-- Do not recommend vendor-specific flags from memory; verify mutable provider behavior against current official docs when it is load-bearing.
+- Do not recommend vendor-specific flags from memory; verify mutable provider behavior against current official docs when it is load-bearing, and record the check per `references/evidence-and-sources.md`.
 - Do not assume a CI platform or its CLI is present; probe first (`command -v`, `--version`, auth check) and fall back to provider-native evidence when it is not.
 - Do not run a platform CLI's mutating commands without authorization — cache deletion, run cancel/rerun, org or repository settings, and firewall rules change shared state.
 - Do not ask for approval before a reversible, measured optimization; ask before weakening a gate, changing production deployment behavior, or introducing a shared trust boundary.
