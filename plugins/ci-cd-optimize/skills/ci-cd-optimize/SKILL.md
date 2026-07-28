@@ -106,7 +106,7 @@ Re-run on the same commit first, then a normal representative commit. Compare me
 
 Do not wait for those runs in the foreground. Arm a bounded watcher so a red check surfaces the moment it happens instead of at the deadline — `references/agent-feedback-loop.md`, or `scripts/ci-watch.py` directly. Expect to keep working between its events.
 
-Before trusting a watcher, verify it like any other piece of CI infrastructure: make it produce `success`, `failure`, `no-run`, `timeout`, `probe-dead`, and (when relevant) `superseded` on purpose. A watcher only observed succeeding is untested.
+Before trusting a watcher, verify it like any other piece of CI infrastructure: make it produce `success`, `failure`, `cancelled`, `no-run`, `timeout`, `probe-dead`, and (when relevant) `superseded` on purpose. A watcher only observed succeeding is untested.
 
 Making CI automatic surfaces defects that a manual, hand-dispatched pipeline hid — environment leakage between jobs, assertions that drifted from the contract they check, and pre-existing flakes. Treat each as a real finding: root-cause it and verify red-first. Reaching green by adding a retry, widening a threshold, or skipping the check corrupts the measurement instead of fixing the pipeline (`references/effectiveness-contract.md`).
 

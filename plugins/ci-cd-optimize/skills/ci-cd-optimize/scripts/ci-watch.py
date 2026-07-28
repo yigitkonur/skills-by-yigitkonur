@@ -73,7 +73,7 @@ GH_CANCELLED = {"cancelled", "skipped", "stale", "neutral"}
 # substrings: substring matching reports "not_failed" as a failure and never
 # terminates on "skipped".
 CUSTOM_SUCCESS = {"success", "succeeded", "passed", "pass", "ok", "green", "fixed"}
-CUSTOM_FAILURE = {"failed", "failure", "error", "errored", "broken", "red"}
+CUSTOM_FAILURE = {"failed", "failure", "failing_final", "error", "errored", "broken", "red"}
 CUSTOM_CANCELLED = {"cancelled", "canceled", "skipped", "manual", "blocked",
                     "not_run", "neutral", "stale", "timed_out", "timeout"}
 
@@ -249,8 +249,24 @@ def watch(a: argparse.Namespace) -> int:
     polls_since_branch_check = 0
 
     while True:
-        runs = (poll_custom(a.cmd, a.sha, 45) if a.cmd
-                else poll_gh(a.repo, a.sha, 45))
+        now = time.monotonic()
+        if not registered and now >= register_by:
+            if a.expect_none:
+                emit(f"CI-DONE no-run — nothing registered for {a.sha[:9]} — "
+                     "expected (declared path-filtered)")
+                return 0
+            return done("no-run",
+                        f"nothing registered for {a.sha[:9]} in {a.register_min:g}m "
+                        "(path filter? workflow disabled? wrong branch? short SHA?)")
+        if now >= deadline:
+            pending = sum(1 for k, v in seen.items()
+                          if "/" not in k and not classify_custom(v)[0]
+                          and v not in ("completed",))
+            return done("timeout",
+                        f"{a.deadline_min:g}m elapsed, ~{pending} still running")
+        probe_timeout = max(0.1, min(45.0, deadline - now))
+        runs = (poll_custom(a.cmd, a.sha, probe_timeout) if a.cmd
+                else poll_gh(a.repo, a.sha, probe_timeout))
 
         if runs is None:
             err_streak += 1
@@ -282,7 +298,11 @@ def watch(a: argparse.Namespace) -> int:
             if not a.cmd and not a.no_jobs:
                 for r in runs:
                     if not r["terminal"]:
-                        for j in poll_gh_jobs(a.repo, r["key"], 30):
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        for j in poll_gh_jobs(a.repo, r["key"],
+                                             max(0.1, min(30.0, remaining))):
                             jk = j["key"]
                             if seen.get(jk) != j["state"] and j["state"]:
                                 if jk in seen:
@@ -319,7 +339,10 @@ def watch(a: argparse.Namespace) -> int:
                     # infrastructure cancel.
                     names = ", ".join(f"{r['name']} ({r['state']})" for r in stopped)
                     if a.branch and not a.cmd:
-                        tip = head_sha(a.repo, a.branch)
+                        remaining = deadline - time.monotonic()
+                        tip = (head_sha(a.repo, a.branch,
+                                        max(0.1, min(30.0, remaining)))
+                               if remaining > 0 else None)
                         if tip and tip != a.sha:
                             return done("superseded",
                                         f"runs cancelled and {a.branch} moved to "
@@ -336,11 +359,33 @@ def watch(a: argparse.Namespace) -> int:
                             emit(f"CI-SETTLE all green — holding {a.settle_sec:g}s "
                                  "for completion-triggered follow-ups")
                             settle_announced = True
+                    if now >= deadline:
+                        return done("timeout",
+                                    f"{a.deadline_min:g}m elapsed while waiting to settle")
                     if now - green_since < a.settle_sec:
-                        time.sleep(a.interval)
+                        if now >= next_beat:
+                            emit(f"CI-HB   {int((now - started) / 60)}/{a.deadline_min:g}m")
+                            next_beat = now + a.heartbeat_min * 60
+                        wake_at = min(deadline, next_beat, green_since + a.settle_sec)
+                        time.sleep(max(0, min(a.interval, wake_at - now)))
                         continue
-                return done("success",
-                            f"{len(decisive)} workflow(s) green on {a.sha[:9]}")
+                if a.branch and not a.cmd:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return done("timeout",
+                                    f"{a.deadline_min:g}m elapsed before branch verification")
+                    tip = head_sha(a.repo, a.branch,
+                                   max(0.1, min(30.0, remaining)))
+                    if tip is None:
+                        emit("CI-WARN branch tip check failed — withholding green verdict")
+                    elif tip != a.sha:
+                        return done("superseded", f"{a.branch} moved to {tip[:9]}")
+                    else:
+                        return done("success",
+                                    f"{len(decisive)} workflow(s) green on {a.sha[:9]}")
+                else:
+                    return done("success",
+                                f"{len(decisive)} workflow(s) green on {a.sha[:9]}")
             green_since = None
 
             # Mid-flight supersession (opt-in, sparse — the branch probe would
@@ -349,7 +394,10 @@ def watch(a: argparse.Namespace) -> int:
             polls_since_branch_check += 1
             if registered and a.branch and not a.cmd and polls_since_branch_check >= 4:
                 polls_since_branch_check = 0
-                tip = head_sha(a.repo, a.branch)
+                remaining = deadline - time.monotonic()
+                tip = (head_sha(a.repo, a.branch,
+                                max(0.1, min(30.0, remaining)))
+                       if remaining > 0 else None)
                 if tip and tip != a.sha:
                     return done("superseded", f"{a.branch} moved to {tip[:9]}")
 
@@ -372,7 +420,8 @@ def watch(a: argparse.Namespace) -> int:
             emit(f"CI-HB   {int((now - started) / 60)}/{a.deadline_min:g}m")
             next_beat = now + a.heartbeat_min * 60
 
-        time.sleep(a.interval)
+        wake_at = min(deadline, next_beat, register_by if not registered else deadline)
+        time.sleep(max(0, min(a.interval, wake_at - time.monotonic())))
 
 
 def main() -> int:
@@ -400,12 +449,12 @@ def main() -> int:
     if not a.cmd and not re.fullmatch(r"[0-9a-f]{40}", a.sha):
         p.error("--sha must be the full 40-character lowercase SHA in GitHub mode "
                 "(use \"$(git rev-parse HEAD)\")")
-    # If the registration cutoff meets or exceeds the deadline, no-run becomes
+    # If the registration cutoff exceeds the deadline, no-run becomes
     # unreachable and every skipped pipeline misreports as timeout.
-    if a.register_min * 2 > a.deadline_min:
-        a.register_min = a.deadline_min / 2
+    if a.register_min > a.deadline_min:
+        a.register_min = a.deadline_min
         emit(f"CI-WARN register window clamped to {a.register_min:g}m "
-             f"(half of the {a.deadline_min:g}m deadline)")
+             f"(the {a.deadline_min:g}m deadline)")
 
     try:
         return watch(a)

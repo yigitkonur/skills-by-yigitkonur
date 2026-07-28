@@ -137,7 +137,7 @@ Check the real process exit code after each, not the exit of a pipeline you pipe
 
 ## Reacting to a red check
 
-1. Run the exact log command the failure verdict printed. Do not re-derive it.
+1. In built-in GitHub mode, run the exact log command the failure verdict printed. Do not re-derive it. A custom `--cmd` probe cannot supply a provider-specific log command through the `<name>: <state>` contract, so use that provider's CLI or API to fetch logs for the printed failing job name at the pinned `$SHA`.
 2. Reproduce with the narrowest local command. If the failure is CI-only, reproduce the CI condition — job-wide environment variables, a clean checkout, a different working directory, absent secrets.
 3. Fix the cause. Never add a retry, widen a threshold, mock the failure away, or `skip` to reach green; the check measures reality.
 4. Verify red-first: confirm the test fails without the fix and passes with it.
