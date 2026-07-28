@@ -20,6 +20,34 @@ If any step fails, run the full pipeline.
 - Merge queues create a predictive branch; PR-only base/head assumptions may test the wrong change set.
 - Lockfile, CI config, dependency graph, generated-code schema, and shared-global changes usually escalate to full validation.
 
+## The planner must not route itself narrowly
+
+The component that decides what runs is part of the repository. If a change to the
+change-detection logic routes only the lanes that logic happens to name, a routing bug can ship
+having validated a fraction of the repo. Escalate planner, CI-config, and shared CI-helper
+changes to full validation (see "Full-run triggers" below).
+
+Two failures worth testing for explicitly, both observed in practice rather than derived:
+
+1. **Config fan-out gaps.** A rule mapping `.github/**` to "the main lanes" silently excludes
+   specialized ones, so editing a specialized workflow never exercises it.
+2. **Self-routing.** A planner change mapping only to its own directory's lane grades its own
+   homework.
+
+Guard both with unit fixtures over the classifier — it is a pure path-to-lane function and costs
+milliseconds to test:
+
+```
+classify(['.github/workflows/<specialized>.yml']) -> that lane is true
+classify(['<planner-path>'])                      -> every lane is true
+classify(['docs/x.md'])                           -> no heavy lane
+classify(['src/a.ts', 'docs/a.md'])               -> code wins over docs-only
+```
+
+Also test the rename case. Rename detection is on by default, and `git diff --name-only` prints
+only the destination, so moving `src/x.ts` to `docs/x.md` reads as docs-only while executable
+source was removed. Use `--no-renames`, or parse `--name-status` and route both paths.
+
 ## Path filters versus graph-aware affected
 
 Path filters are acceptable for flat repos with no shared package consumers. They are dangerous when a shared library affects multiple apps.

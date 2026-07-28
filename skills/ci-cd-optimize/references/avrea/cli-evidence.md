@@ -96,7 +96,7 @@ avr job list --repo org/app --since 7d -L 200 \
   --json job_name,created_at,started_at,duration_seconds,labels,running_on_avrea
 ```
 
-Observed spreads ranged from 0s to ~167s on the same trigger, with the larger `avrea-ubuntu-latest-16-vcpu` job starting immediately and smaller ones waiting. Confirm the pattern across enough jobs before concluding anything about capacity, and route to `references/runners-and-autoscaling.md` only if queue time is genuinely a dominant p95 contributor.
+Observed queue spreads ranged from 0s to ~167s on the same trigger, but the direction was not stable enough to generalize: in one window the larger `avrea-ubuntu-latest-16-vcpu` job started immediately, and in another it queued much longer than the 2-vCPU class. Treat these examples as proof that **runner-class queueing is fleet- and time-dependent**, not as advice to size up or down. Recompute medians and p95 per class on the repository you are optimizing, then route to `references/capacity-and-contention.md` and `references/runners-and-autoscaling.md` if queue time is genuinely a dominant p95 contributor.
 
 ## Step 6 — right-size from VM metrics
 
@@ -131,7 +131,9 @@ avr workflow run ci.yml --ref my-branch --watch --exit-status
 avr run watch run-xxx --ndjson | jq -c .     # event stream for scripting
 ```
 
-`--exit-status` makes failure and timeout observable instead of silent. Always confirm `head_sha` matches the commit under test before accepting a green:
+`--exit-status` makes failure observable instead of silent. It does not add a watcher deadline, and there is a registration race worth knowing: without a `RUN_ID`, `avr run watch` auto-selects the *latest in-progress* run. Observed on a live repository (2026-07-28): pushing and immediately arming `avr run watch --ndjson --exit-status` printed `No in-progress workflow runs found for these repos.` and exited **0** — before the run had been indexed. An agent reads that as "no problem" and proceeds unverified. Wait for a run matching your exact SHA, then watch that id — or use the bounded watcher contract in `references/feedback-loops.md`, which handles registration, deadline, and supersession uniformly.
+
+Always confirm `head_sha` matches the commit under test before accepting a green:
 
 ```bash
 avr run view run-xxx --json head_sha,conclusion,status,run_attempt

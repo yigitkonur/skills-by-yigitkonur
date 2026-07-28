@@ -28,6 +28,34 @@ Use this file when queue time, runner capacity, runner isolation, or fleet cost 
 
 Keep orchestration/upload capacity warm separately from scale-to-zero workers.
 
+## Queue time varies by runner class — measure it, do not assume
+
+A larger instance class is not automatically faster end-to-end. Scarcity, pool warmth, and
+time-of-day decide whether the bigger class is provisioned sooner or later than the small one,
+and the answer differs per fleet and per hour.
+
+Two real observations from the *same* provider illustrate the spread:
+
+- One window: the 16-vCPU class was provisioned immediately while smaller classes waited.
+- Another window: 16-vCPU jobs waited ~6-7× longer than 2-vCPU jobs (medians over tens of
+  launches), and a job that executed in ~60s spent nearly twice that waiting for its runner.
+
+Neither generalizes. What generalizes is the method:
+
+1. Record `started_at - created_at` per job, grouped by runner label.
+2. Report median and p95 per class (averages hide exactly the skew you are looking for).
+3. Compare the queue penalty of the larger class against the execution gain it buys.
+4. Confirm the job is actually CPU- or memory-bound first — per-core idle ratios and peak versus
+   average utilization, not job duration.
+
+Size up only when utilization proves the job is compute-bound *and* the class's measured queue
+penalty is smaller than the execution gain. When a job is queue-bound, a bigger runner makes it
+slower.
+
+Corollary: fanning many concurrent jobs onto one scarce large label can exhaust that pool and
+serialize your own pipeline. Several of your runs queueing simultaneously on the same big label
+is capacity starvation, not slow CI — reduce job count, spread across labels, or collocate work.
+
 ## Autoscaling signals
 
 Scale from queued/assigned jobs, job startup latency, and wait percentiles. CPU utilization alone misses jobs waiting for an available runner. Keep the runner manager/controller on persistent on-demand infrastructure.
@@ -49,6 +77,24 @@ Use spot/preemptible runners only for short, idempotent, retryable, or checkpoin
 - Set security contexts and least-privilege service accounts.
 - Use bin packing that lets the cluster autoscaler remove cold nodes.
 - Isolate namespaces for multi-tenant workloads.
+
+## When provisioning becomes the bottleneck
+
+Past a certain point, fan-out stops paying. If per-job provisioning is 20–40 s and several jobs do 10–30 s of work, the pipeline is mostly waiting for VMs. Symptoms, straight from per-job start offsets:
+
+- a job whose queue time exceeds its duration (e.g. queue 133 s, work 24 s),
+- total job work falling while wall-clock stays flat,
+- max queue time rising as job count rises.
+
+The lever is **fewer, better-packed jobs**, not a bigger runner — CPU is idle while the VM is being created. Merge jobs that already share setup: same runner class, same dependency install, same service containers, same gating condition. Two DB jobs each booting an identical Postgres container are one job.
+
+Before merging, check what the separation was buying:
+
+- **Rerun granularity.** A merged job means rerunning both halves. Fine when both are short.
+- **Failure attribution.** Keep step names distinct so the failing half is obvious.
+- **Isolation.** This is the one that bites. Jobs that ran in separate VMs may share state once merged — a database, a fixed port, a temp path, a global config. Merging two suites against one Postgres service can fail with "already exists" errors because the first suite created the schema the second one migrates. Give each consumer its own database/namespace, or keep them apart.
+
+Verify the merge with the same before/after evidence as any other change; a consolidation that trades 30 s of queue for a 40 s serial chain is a regression.
 
 ## Sources
 

@@ -14,6 +14,20 @@ The artifact that passed validation is the artifact deployed everywhere:
 
 Do not rebuild per environment. Rebuilds introduce dependency, base-image, cache, and timestamp drift.
 
+### The artifact must be self-contained
+
+Splitting build from deploy only works if the artifact carries everything the deploy step needs. Framework build outputs frequently contain **symlinks or relative references into the build workspace** — `node_modules`, a framework cache directory, or a traced-dependency tree. Archiving only the visible output directory produces a package that unpacks fine and then fails at deploy with a missing-file error naming a path nobody deliberately excluded.
+
+This failure hides from every check that runs on the build machine, because there the referenced files still exist. It only appears on the clean runner that consumes the artifact.
+
+Verify it the way the deploy job will:
+
+1. Unpack the artifact into an empty directory on a different runner — not the one that built it.
+2. Run the real deploy command against it.
+3. Treat "works when the deploy job also checks out the repo and installs dependencies" as a warning, not a pass: if the deploy needs the workspace, the artifact is not self-contained, and you are shipping a rebuild in disguise.
+
+Either dereference the links when archiving, or include the referenced trees explicitly and state which ones. Exclude only caches that the runtime genuinely does not read.
+
 ## Safe speed levers
 
 | Bottleneck | Safe optimization |
@@ -42,6 +56,19 @@ Before claiming a deployment is done, verify:
 - readiness/startup probes pass,
 - canary/analysis metrics are inside budget,
 - rollback artifact remains available.
+
+### Size the convergence budget to propagation, not to the deploy call
+
+A self-verifying deploy — deploy, then poll a `/version`-style endpoint until it reports the pushed revision — is the cheapest guard against a silently stale release. It has one classic defect: **the polling budget is tuned to how long the deploy command takes, not to how long the platform takes to converge.**
+
+Edge and CDN-backed platforms (Cloudflare Workers, Vercel, Fastly, multi-region rollouts) commonly serve the previous revision for tens of seconds after the deploy call returns 200. A 30-second budget produces a **false red on a deploy that actually succeeded** — which is worse than no check, because it trains everyone to ignore the signal and can trigger an unnecessary rollback.
+
+Rules:
+
+- Set the budget well above observed propagation p95 (a 2-minute budget is unremarkable for edge platforms), and keep the per-request timeout short so a hung request does not consume it.
+- Poll with a **strict equality** check against the expected revision. Retry HTTP errors and malformed bodies; never treat them as success.
+- When the assertion fails, distinguish the two cases before acting: a failure in the deploy/migration step is a real bad ship (roll back); a failure only in the revision assertion usually means propagation outran the budget — re-query the endpoint before rolling back anything.
+- Emit the expected and observed revision in the failure message. "Did not converge" without both values is unactionable.
 
 ## TypeScript status probe sketch
 

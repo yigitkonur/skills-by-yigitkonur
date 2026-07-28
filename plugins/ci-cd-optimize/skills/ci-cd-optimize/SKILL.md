@@ -57,7 +57,7 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor, or is parallelism no longer paying because the pool is saturated? Read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -106,16 +106,9 @@ Report only the level actually verified: config review, syntax validation, one C
 
 ### 7. Close the feedback loop
 
-A faster pipeline is worthless if the person or agent who pushed it learns the
-result late, or concludes "green" from a run that never started. Whoever waits
-on CI needs a mechanism that terminates on every path — success, failure,
-timeout, nothing-registered, superseded — and that speaks up on failure rather
-than going quiet. For autonomous agents this is not optional: a blocking
-foreground wait, a success-only log filter, or a vendor `watch` piped into a
-harness are the three standard ways an agent stalls indefinitely. Read
-`references/agent-feedback-loops.md`; `scripts/ci-watch.py` implements the
-contract for GitHub Actions and, via a small probe interface, any other
-provider.
+A faster pipeline is worthless if the person or agent who pushed it learns the result late, or concludes "green" from a run that never started. Whoever waits on CI needs a mechanism that terminates on every path — success, failure, timeout, nothing-registered, superseded, and probe-dead — and that speaks up on failure rather than going quiet. For autonomous agents this is not optional: a blocking foreground wait, a success-only log filter, or a vendor `watch` piped into a harness are the standard ways an agent stalls indefinitely.
+
+Read `references/feedback-loops.md`; `scripts/ci-watch.py` implements the contract for GitHub Actions and, via a small probe interface, any other provider. Use it after any push, dispatch, re-run, or deploy when the result matters.
 
 ## Job topology and the cost of a hop
 
@@ -215,8 +208,8 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
-| Adding a planner or aggregate job "for clarity" | Price the queue hop against the work it does. |
-| Agent blocks on a foreground `watch` after pushing | Arm a bounded background watcher and keep working (`references/agent-feedback-loops.md`). |
+| Adding a planner or aggregate job "for clarity" | Price the queue hop against the work it does; at high queue share, extra jobs make the run slower. |
+| Agent blocks on a foreground `watch` after pushing | Arm a bounded background watcher and keep working (`references/feedback-loops.md`). |
 | Treating a red check as your bug without checking | Diff against the last green commit; re-run the identical commit to expose a flake. |
 | Reading run state without collapsing re-run attempts | Keep the highest attempt per run id, or a stale `attempt=1` failure becomes the verdict. |
 | Declaring green before `workflow_run` follow-ups register | Hold a settle window and re-probe; a deploy triggered on completion does not exist yet at first-green. |
@@ -229,7 +222,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | File | Read when |
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
-| `references/agent-feedback-loops.md` | An agent (or human) must wait on CI without stalling: watcher contract, terminal verdicts, heartbeat/diff-gating, re-run attempts, late follow-up workflows, flake triage. |
+| `references/feedback-loops.md` | An agent (or human) must wait on CI without stalling: watcher contract, terminal verdicts, heartbeat/diff-gating, re-run attempts, late follow-up workflows, flake triage. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
@@ -245,6 +238,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/containers.md` | BuildKit, multi-stage Dockerfiles, cache mounts/backends, multi-platform builds, provenance, or image security. |
 | `references/security-gates.md` | Fast but effective SAST, dependency, secret, container, SBOM, provenance, and policy gates. |
 | `references/runners-and-autoscaling.md` | Hosted versus self-hosted, ephemeral runners, queues, spot capacity, ARM/x64/macOS, Kubernetes fleets. |
+| `references/capacity-and-contention.md` | Queue share is high, parallelism stopped paying off, before splitting or fanning out jobs, or when A/B arms ran under different pool load. |
 | `references/network-and-artifacts.md` | Checkout depth, sparse/partial clone, LFS, package proxies, artifact compression, uploads, or registry locality. |
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
@@ -254,7 +248,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 
 | Script | Use when |
 |---|---|
-| `scripts/ci-watch.py` | Waiting on CI for an exact commit without stalling. GitHub Actions works out of the box (`--sha`); any other provider via `--cmd` with a probe that prints `name: state` lines. stdlib-only Python; see `references/agent-feedback-loops.md`. |
+| `scripts/ci-watch.py` | Waiting on CI for an exact commit without stalling. GitHub Actions works out of the box (`--sha`); any other provider via `--cmd` with a probe that prints `name: state` lines. stdlib-only Python; see `references/feedback-loops.md`. |
 
 ### Optional: Avrea reference kit
 

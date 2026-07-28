@@ -60,6 +60,30 @@ cache-to: type=registry,ref=ghcr.io/org/app:buildcache,mode=max
 - `mode=min`: smaller cache; usually only final image layers.
 - Cache mounts (`RUN --mount=type=cache`) persist per builder, not automatically across ephemeral builders.
 
+**Measure the export, not just the hit rate.** `mode=max` writes every intermediate layer on *every* build, and that write is often invisible until you read the step timings. A real case: a 166 s image job spent 49 s in `preparing build cache for export` plus 52 s writing layers — 101 s of export against ~65 s of actual building. Read the BuildKit step lines (`exporting cache`, `preparing build cache for export`, `writing layer`) and apply the same break-even used for any cache:
+
+```
+net benefit = uncached build − import − export − transfer
+```
+
+Choose by what the job is for:
+
+| Job's purpose | Setting |
+|---|---|
+| Produces the artifact that gets deployed | `mode=max`; the reuse is real |
+| Validates that the image still builds, and something else rebuilds it at deploy time | `mode=min`, or export only from the default branch |
+| Matrix where every cell writes a near-identical cache | every cell reads; one canonical job writes |
+
+Reading cache on branches while writing only from the default branch removes the export cost from the common path without losing the hit.
+
+## Layer cost traps
+
+Slow layers frequently have nothing to do with caching:
+
+- **`RUN chown -R` over the app tree** rewrites every inode into a new layer and can dominate the build (52 s in the case above). Use `COPY --chown=user:group` so ownership is set as the layer is written, and `chown` only the few paths created afterward.
+- Any `RUN` that touches many files (`chmod -R`, `find -exec`, recursive `cp`) produces a large layer that must be written, exported, and pulled. Prefer doing the work at `COPY` time or in the stage that already owns the files.
+- A cache-busting `COPY . .` before dependency install invalidates everything downstream; copy manifests and lockfiles first.
+
 ## Multi-platform
 
 Avoid QEMU for compile-heavy stages. TypeScript emits platform-neutral JavaScript, so compile on `$BUILDPLATFORM` and run only final packaging on target platforms. Native modules must be built for the target platform.

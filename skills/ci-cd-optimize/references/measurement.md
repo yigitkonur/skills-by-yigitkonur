@@ -12,6 +12,7 @@ Use this file when building a baseline, proving a bottleneck, or validating that
 | Critical-path duration | longest dependency chain through the DAG | The only sequence that directly governs wall-clock feedback. |
 | Cache exact-hit rate | exact key hits / cache attempts | Cache-key precision, not necessarily saved time. |
 | Cache saved time | clean path time - (restore + post-hit work) | Whether a cache is worth keeping. |
+| Queue share | Σ queue / (Σ queue + Σ execution) | Whether the bottleneck is capacity rather than work. Above ~35 %, topology changes are near-futile — see `references/capacity-and-contention.md`. |
 | First-time pass rate | runs green without retry / all runs | Flakiness and reliability. |
 | Cost per successful change | compute + storage / successful changes | Speed improvements that increase total cost may not be wins. |
 | Change failure/rework rate | failed or unplanned recovery deployments / deployments | The effectiveness guardrail after optimization. |
@@ -25,8 +26,45 @@ Use median and p95. CI duration is right-skewed; averages hide cold caches, runn
 3. Record queue, setup, execution, transfer, finalization, and per-job duration.
 4. Record exact cache hit/miss, retry count, artifact names/digests, and run head SHA.
 5. Reject baselines from stale branches, empty diffs, disabled jobs, or different runners.
+6. Record the contention state — how many other jobs were competing for the same pool. Two runs of the same commit on the same runner class are not comparable if one had the pool to itself; queue time is the observable proxy. See `references/capacity-and-contention.md`.
 
 If a queue-time baseline is unavailable, start with provider run timestamps and job logs. Do not invent missing precision.
+
+## Separate queue from execution before reporting anything
+
+Total wall clock mixes two independent things: work you control (execution) and capacity you usually do not (provisioning).
+
+Per job:
+
+```
+queue     = started_at - created_at     # runner-acquisition latency
+execution = completed_at - started_at
+```
+
+Note this is *per job*: for a `needs`-gated job, `created_at` is set after its dependencies finish, so this measures time waiting for a runner, not time since the trigger. A multi-stage DAG pays that latency once per stage, which is why a run's total is much larger than any single job's `queue + execution`.
+
+A worked example from six runs of one unchanged pipeline: the longest job's execution stayed within 56–68s every time, while the per-run median queue ranged 16s to 416s. Totals ranged 133s to 596s. Quoting "1.7× faster" from the fast run or "2.6× slower" from the slow one would both be derivable from the data and both meaningless.
+
+Rules:
+
+- If execution is stable and totals swing, say so and report execution as the result.
+- Never quote a multiplier from a single run when queue p95 exceeds execution p50.
+- If queue dominates, the next experiment belongs in `references/capacity-and-contention.md` and `references/runners-and-autoscaling.md` — no in-job optimization moves provisioning time, though reducing job count or avoiding a scarce runner label reduces exposure to it.
+- When waiting on those runs, the queue/execution split is also what distinguishes "slow" from "stuck" — a watcher heartbeat carrying elapsed time makes the difference visible without polling (`references/feedback-loops.md`).
+
+## Sampling traps
+
+These produce numbers that look rigorous and are not. Each one has burned a real migration.
+
+**Do not measure inside your own burst.** Validation runs fired back-to-back contend for the same runner pool and inflate each other's queue time. A worked case: a change set measured 163s against a 100s baseline and looked like a clear regression; splitting the records showed execution flat (13s → 14s) while queue rose 10s → 32–115s because four validation runs had been dispatched in immediate succession. A single run after the pool drained returned 48s. The change was speed-neutral. Space validation runs, or sample from ordinary pushes.
+
+**A rerun is not always a new sample.** Some providers re-report the original attempt's duration for a re-run. Confirm the attempt counter incremented (`run_attempt` or equivalent) before treating repeated identical durations as independent samples. Three identical values to the tenth of a second are a re-read, not a measurement. (Attempt semantics also differ per provider when *watching* runs — see `references/feedback-loops.md`.)
+
+**Do not mix event populations.** A manually dispatched run that force-enables every conditional gate is not comparable to a push run that path-filters most of them. Report push, pull-request, and dispatch populations separately and label which one each figure came from.
+
+**Do not quote p95 from a handful of runs.** After a change you typically have 5–10 runs. Report median and range at that size, and label any p95 as provisional with the exact `n`. A robust p95 needs roughly 20+ comparable runs. Providers will happily compute a percentile from `n=3`; that number is arithmetic, not evidence.
+
+**Report disproved hypotheses too.** An experiment that measured neutral or worse is a result. "No speedup; the work was correctness" is a valid, honest outcome — silently dropping it invites the next person to retry it, and inflating queue noise into a win destroys the credibility of every other number in the report.
 
 ## Critical-path analysis
 
