@@ -55,14 +55,21 @@ def run(cmd, timeout=PROBE_CAP_SEC):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
 
-def gh_json(args, timeout=PROBE_CAP_SEC):
-    out = run(["gh"] + args, timeout)
+def remaining_timeout(deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("watcher deadline reached")
+    return min(PROBE_CAP_SEC, remaining)
+
+
+def gh_json(args, deadline):
+    out = run(["gh"] + args, remaining_timeout(deadline))
     if out.returncode != 0:
         raise RuntimeError((out.stderr.strip() or f"exit {out.returncode}")[:200])
     return json.loads(out.stdout or "[]")
 
 
-def branch_tip(branch, repo, timeout):
+def branch_tip(branch, repo, deadline):
     """Resolve the branch's real tip.
 
     Deliberately NOT `gh run list --branch --limit 1`: that returns the latest
@@ -71,24 +78,25 @@ def branch_tip(branch, repo, timeout):
     is the only correct source.
     """
     if repo:
-        ref = gh_json(["api", f"repos/{repo}/git/ref/heads/{branch}"], timeout)
+        ref = gh_json(["api", f"repos/{repo}/git/ref/heads/{branch}"], deadline)
         return ref.get("object", {}).get("sha", "")
-    out = run(["git", "ls-remote", "origin", f"refs/heads/{branch}"], timeout)
+    out = run(["git", "ls-remote", "origin", f"refs/heads/{branch}"],
+              remaining_timeout(deadline))
     if out.returncode != 0:
         raise RuntimeError((out.stderr.strip() or "git ls-remote failed")[:200])
     return out.stdout.split()[0] if out.stdout.strip() else ""
 
 
-def github_probe(sha, branch, repo, run_limit, timeout):
+def github_probe(sha, branch, repo, run_limit, deadline):
     """Return (state_lines, terminal_or_None) for a pinned GitHub Actions SHA."""
     repo_args = ["--repo", repo] if repo else []
     runs = gh_json(repo_args + [
         "run", "list", "--commit", sha, "--limit", str(run_limit),
         "--json", "databaseId,workflowName,status,conclusion",
-    ], timeout)
+    ], deadline)
     newer = ""
     if branch:
-        tip = branch_tip(branch, repo, timeout)
+        tip = branch_tip(branch, repo, deadline)
         newer = tip if tip and tip != sha else ""
 
     state = set()
@@ -114,8 +122,8 @@ def github_probe(sha, branch, repo, run_limit, timeout):
     return state, None
 
 
-def custom_probe(cmd, timeout):
-    out = run(["bash", "-c", cmd], timeout)
+def custom_probe(cmd, deadline):
+    out = run(["bash", "-c", cmd], remaining_timeout(deadline))
     if out.returncode != 0:
         raise RuntimeError((out.stderr.strip() or out.stdout.strip()
                             or f"exit {out.returncode}")[:200])
@@ -181,14 +189,13 @@ def main():
             emit(f"CI-DONE timeout at {ns.deadline_min:g}m · last state: {last}")
             return 2
 
-        probe_timeout = min(PROBE_CAP_SEC, remaining)
         try:
             if ns.sha:
                 state, terminal = github_probe(
-                    ns.sha, ns.branch, ns.repo, ns.run_limit, probe_timeout
+                    ns.sha, ns.branch, ns.repo, ns.run_limit, deadline
                 )
             else:
-                state, terminal = custom_probe(ns.cmd, probe_timeout)
+                state, terminal = custom_probe(ns.cmd, deadline)
         except Exception as exc:  # noqa: BLE001 — any probe failure is retryable
             errs += 1
             if errs == 3:
