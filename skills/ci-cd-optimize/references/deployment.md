@@ -14,6 +14,19 @@ The artifact that passed validation is the artifact deployed everywhere:
 
 Do not rebuild per environment. Rebuilds introduce dependency, base-image, cache, and timestamp drift.
 
+### The artifact must be self-contained
+
+Framework build outputs often contain symlinks or relative references into
+the build workspace (`node_modules`, framework cache directories,
+traced-dependency trees). Archiving only the visible output directory
+yields a package that unpacks cleanly and fails at deploy with a
+missing-file error — invisible on the build machine, where the referenced
+files still exist. Verify by unpacking the artifact into an empty directory
+on a different runner and running the real deploy command against it. If it
+only "works when the deploy job also checks out and installs", that is a
+rebuild in disguise, not a promoted artifact: dereference links when
+archiving or explicitly include the referenced trees.
+
 ## Safe speed levers
 
 | Bottleneck | Safe optimization |
@@ -47,6 +60,23 @@ Before claiming a deployment is done, verify:
 A deployment timeout is **unknown**, not automatically failed over or safe to
 rebuild. Investigate the exact rollout state first; rebuilds per environment
 reintroduce artifact drift and are not an acceptable "verification" fallback.
+
+### Size the convergence budget to propagation, not the deploy call
+
+Edge/CDN platforms commonly serve the previous revision for tens of seconds
+after the deploy call returns success. A revision-poll budget tuned to the
+deploy command's duration produces false reds on good deploys — worse than
+no check, because it trains people to ignore the signal and can trigger a
+needless rollback.
+
+- Set the budget well above observed propagation p95 (a couple of minutes
+  is unremarkable), with short per-request timeouts.
+- Poll with a strict equality check on the expected revision; retry HTTP
+  errors and malformed bodies — never count them as success.
+- On failure, distinguish a deploy/migration failure (bad ship — roll back)
+  from an assertion-only failure (propagation outran the budget — re-query
+  before rolling back).
+- Emit both the expected and the observed revision in the failure message.
 
 ## TypeScript status probe sketch
 
