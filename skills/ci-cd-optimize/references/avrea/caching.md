@@ -52,7 +52,7 @@ Docker requires the one genuinely mandatory workflow edit in this section:
     cache-to: type=gha,url_v2=https://cache.avrea.com/,mode=max
 ```
 
-`url_v2` is required. Without it, BuildKit talks to GitHub's cache service: on Linux amd64 it silently degrades to the slower upstream cache, and on Linux ARM the build fails. Use `mode=max` for multi-stage Dockerfiles so intermediate stages are exported — the `mode=min` default re-runs the build stage every time. Add `scope=<name>` when a repository builds several images. Also add `.git` to `.dockerignore`: with `COPY . .`, differing timestamps under `.git/` bust the cache on every run even at the same commit.
+`url_v2` is required. Without it, BuildKit talks to GitHub's cache service: on Linux amd64 it silently degrades to the slower upstream cache, and on Linux ARM the build fails. The amd64 fallback is invisible in outcomes — the build succeeds and layers still print `CACHED`; the tell is the log line `exporting to GitHub Actions Cache` in a build running on an Avrea runner, plus import/export step timings (a measured 2.6× delta on the warm build *step* — compare the step, not the job total, since fixed job cost dominates). Use `mode=max` for multi-stage Dockerfiles so intermediate stages are exported — the `mode=min` default re-runs the build stage every time. Add `scope=<name>` when a repository builds several images. Also add `.git` to `.dockerignore`: with `COPY . .`, differing timestamps under `.git/` bust the cache on every run even at the same commit.
 
 Xcode compilation caching requires Xcode 26+ and macOS runners, and covers only your own sources — SwiftPM dependencies still need explicit `actions/cache` on `~/Library/Caches/org.swift.swiftpm/`, as described in `references/swift-xcode.md`.
 
