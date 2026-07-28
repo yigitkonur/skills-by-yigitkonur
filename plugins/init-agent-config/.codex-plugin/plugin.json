@@ -1,6 +1,6 @@
 {
   "name": "init-agent-config",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "description": "Use if creating, auditing, or migrating CLAUDE.md/AGENTS.md/REVIEW.md instruction files.",
   "author": {
     "name": "Yigit Konur",
