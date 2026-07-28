@@ -139,6 +139,24 @@ avr run view run-xxx --json head_sha,conclusion,status,run_attempt
 
 A green run whose `head_sha` is not your commit is a false green, exactly as `references/measurement.md` states.
 
+### Collapse re-run attempts before judging a verdict
+
+`avr run list` returns **one record per attempt** sharing a `platform_run_id` (observed against `avr` 0.1.6, 2026-07-28; `gh run list` collapses attempts and does not need this). After `avr run rerun`, a query for the commit returns both `run_attempt: 1 (completed/failure)` and `run_attempt: 2 (in_progress)`. Reading them naively reports the stale failure; a watcher keyed on `platform_run_id` oscillates between the two. Keep the highest `run_attempt` per id:
+
+```bash
+avr run list --repo org/app --since 6h --limit 100 \
+  --json platform_run_id,run_attempt,workflow,status,conclusion,head_sha \
+  -q 'group_by(.platform_run_id)[] | max_by(.run_attempt)'
+```
+
+This is also the mechanical way to test a suspected flake: `avr run rerun <run-id> --yes` re-runs the *identical* commit, and a pass on attempt 2 with an unchanged tree demonstrates instability rather than a real defect (see `references/agent-feedback-loops.md`).
+
+### Waiting on a run from an agent
+
+`avr run watch --exit-status` is correct for a human at a terminal and for a foreground script. It is **not** a safe way for an autonomous agent to wait: it holds the foreground for the whole run and has no registration deadline, so a commit that triggers nothing (path filters) never returns. Off-TTY it emits NDJSON, which is scriptable — but the surrounding loop still needs its own deadline and a terminal verdict on every path. Use `scripts/ci-watch.py`, or wrap `avr run list` in an equivalent bounded loop.
+
+`avr job ssh` is documented for live debugging, but in practice short jobs terminate before a session can attach — observed twice against `avr` 0.1.6 (2026-07-28) as `No running VM found for this job` on jobs lasting well under a minute. For jobs measured in seconds, prefer `avr job metrics <job-id>` and step timings; reserve SSH for long jobs you can catch mid-flight.
+
 ## Mutating commands — authorization required
 
 `avr cache delete`, `avr run cancel`, `avr run rerun`, `avr settings set`, and `avr firewall *` change shared state. `cache delete --all` discards every cache entry for a repository and will slow the next runs for everyone. Confirm before running any of them, and never pass `--yes` to satisfy a prompt on someone else's behalf.

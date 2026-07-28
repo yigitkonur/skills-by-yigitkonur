@@ -1,11 +1,11 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use if diagnosing or optimizing slow CI/CD, or if an agent must wait on CI without stalling, while preserving required checks.
 metadata:
   author: yigitkonur
-  version: 1.0.0
+  version: 1.1.0
   category: devops
-  tags: [ci-cd, github-actions, gitlab-ci, buildkite, circleci, typescript, swift, xcode, pipeline-performance]
+  tags: [ci-cd, github-actions, gitlab-ci, buildkite, circleci, typescript, swift, xcode, pipeline-performance, agent-feedback, ci-monitoring]
 ---
 
 # CI/CD Optimize
@@ -104,6 +104,42 @@ Re-run on the same commit first, then a normal representative commit. Compare me
 
 Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence.
 
+### 7. Close the feedback loop
+
+A faster pipeline is worthless if the person or agent who pushed it learns the
+result late, or concludes "green" from a run that never started. Whoever waits
+on CI needs a mechanism that terminates on every path — success, failure,
+timeout, nothing-registered, superseded — and that speaks up on failure rather
+than going quiet. For autonomous agents this is not optional: a blocking
+foreground wait, a success-only log filter, or a vendor `watch` piped into a
+harness are the three standard ways an agent stalls indefinitely. Read
+`references/agent-feedback-loops.md`; `scripts/ci-watch.py` implements the
+contract for GitHub Actions and, via a small probe interface, any other
+provider.
+
+## Job topology and the cost of a hop
+
+Splitting work into another job is not free: each job pays its own queue wait,
+VM boot, checkout, and toolchain setup before doing anything useful. Measure
+that overhead in your own pipeline — job `started_at` minus `created_at` is the
+queue component — then compare it against the work the job performs. A
+coordination job that runs for seconds while costing a full queue hop is a net
+loss, and two of them (a matrix planner in front, an aggregate status job
+behind) put that cost on the critical path twice.
+
+Before adding a job, price the hop at your observed queue p50/p95, then prefer
+in-place alternatives:
+
+- A matrix derived purely from inputs or a lockfile can be an inline expression
+  instead of a planner job that downstream jobs must wait for.
+- An aggregate status job exists for branch-protection ergonomics. If nothing
+  actually requires that single check, the run conclusion already aggregates,
+  and a client-side assertion can be stricter — it can verify each expected lane
+  is *present* and successful, which an in-workflow `contains(needs.*.result,
+  'failure')` cannot (a silently missing lane looks fine to it).
+- Conversely, do not merge genuinely parallel long jobs to save a hop; the hop
+  costs seconds, serialization costs minutes.
+
 ## Minimal TypeScript example
 
 ```yaml
@@ -179,12 +215,21 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
+| Adding a planner or aggregate job "for clarity" | Price the queue hop against the work it does. |
+| Agent blocks on a foreground `watch` after pushing | Arm a bounded background watcher and keep working (`references/agent-feedback-loops.md`). |
+| Treating a red check as your bug without checking | Diff against the last green commit; re-run the identical commit to expose a flake. |
+| Reading run state without collapsing re-run attempts | Keep the highest attempt per run id, or a stale `attempt=1` failure becomes the verdict. |
+| Declaring green before `workflow_run` follow-ups register | Hold a settle window and re-probe; a deploy triggered on completion does not exist yet at first-green. |
+| Reading a cold first run on the default branch as a regression | Branch-scoped caches cannot seed the default branch; its first run after a key change is legitimately cold. |
+| Trusting a zeroed cache-hit counter as proof of a miss | Some layers do not report hit telemetry at all; prove reuse with paired same-commit timings instead. |
+| CI toolchain version drifting from local | Pin the package manager (e.g. `packageManager`) so local and CI resolve identically. |
 
 ## Reference files
 
 | File | Read when |
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
+| `references/agent-feedback-loops.md` | An agent (or human) must wait on CI without stalling: watcher contract, terminal verdicts, heartbeat/diff-gating, re-run attempts, late follow-up workflows, flake triage. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
@@ -204,6 +249,12 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
+
+## Bundled scripts
+
+| Script | Use when |
+|---|---|
+| `scripts/ci-watch.py` | Waiting on CI for an exact commit without stalling. GitHub Actions works out of the box (`--sha`); any other provider via `--cmd` with a probe that prints `name: state` lines. stdlib-only Python; see `references/agent-feedback-loops.md`. |
 
 ### Optional: Avrea reference kit
 

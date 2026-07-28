@@ -29,6 +29,8 @@ Scoping mirrors GitHub's model exactly, which is what preserves the trust bounda
 
 Because the semantics are unchanged, the cache-poisoning analysis in `references/caching.md` carries over without modification: an untrusted PR still must not be able to write a cache that trusted branches consume.
 
+One scheduling consequence catches people mid-migration: because a feature branch writes only to its own scope, **caches warmed on a branch cannot seed the default branch**. After changing a cache key (a schema bump, or adding OS/arch/toolchain identity), the first default-branch run is legitimately cold even though the branch runs that validated the change were warm. Verify with the run's own log lines — `Cache not found for input keys: …` followed by `Cache saved with key: …` on the first run, then `Cache restored from key: …` on the next — before reading it as a regression.
+
 ## Build cache
 
 Auto-configured tools: Bazel (HTTP remote cache), ccache, Go (`GOCACHEPROG`, Go 1.24+), Gradle (`HttpBuildCache`), Maven (extension), Nix (binary substituter), Nx (self-hosted remote cache), sccache (WebDAV), Turborepo (remote cache API), Xcode (compilation cache, macOS only).
