@@ -16,21 +16,21 @@ Most CI platforms make you reconstruct percentiles and the job DAG by hand. Avre
 
 ## Scoping and machine-readable output
 
-Every read command shares the same conventions (verified against `avr` 0.1.6):
+Keep syntax and command-surface questions out of this file. This page is the
+workflow. For exact flags, JSON field lists, exit behavior, aliases, and
+mutation classes, read:
 
-- `--repo org/name` or `--repo rep-xxx`; auto-detected from the git remote inside a checkout.
-- `--org` falls back to the configured default (`avr config set org`).
-- `--since` accepts `24h`, `7d`, `30d`, and (for workflow commands) `all`.
-- `--json '?'` lists the available fields, `--json '*'` returns all, or pass a comma-separated subset.
-- `-q/--jq` filters the JSON without an external `jq` binary.
-- Non-TTY stdout switches lists to tab-separated output and `watch` to NDJSON.
+- `references/avrea/cli-core-reference.md` for read-only CI and evidence
+  commands such as `status`, `run`, `job`, `workflow`, `cache`, `log`,
+  `health`, and `repo`
+- `references/avrea/cli-admin-reference.md` for mutating/admin commands such
+  as `auth`, `config`, `settings`, `org`, `firewall`, `audit-events`, and
+  `billing`
+- `references/avrea/cli-auth-and-portability.md` for `AVR_CONFIG_DIR`,
+  `.envrc`, host/org/repo resolution, noninteractive CI usage, and output
+  behavior
 
-Discover fields rather than guessing them:
-
-```bash
-avr run list --json '?'
-avr workflow view ci.yml --json '?'
-```
+This file assumes the version and auth preflight have already passed.
 
 ## Step 1 — orient before measuring
 
@@ -123,21 +123,20 @@ avr run logs run-xxx --follow                # tail an in-progress job
 
 ## Step 8 — drive runs to a terminal state
 
-The project rule "verify the green, never hang on it" has direct support:
+Prefer the exact-SHA watcher from `references/feedback-loops.md` and
+`scripts/ci-watch.py` for any agentic or automated waiting. `avr run watch`
+is still useful, but only after the exact run identity is known:
 
 ```bash
-avr run watch --repo org/app --exit-status   # non-zero if the run failed
-avr workflow run ci.yml --ref my-branch --watch --exit-status
-avr run watch run-xxx --ndjson | jq -c .     # event stream for scripting
-```
-
-`--exit-status` makes failure and timeout observable instead of silent. Always confirm `head_sha` matches the commit under test before accepting a green:
-
-```bash
+avr run watch run-xxx --exit-status --ndjson
 avr run view run-xxx --json head_sha,conclusion,status,run_attempt
 ```
 
-A green run whose `head_sha` is not your commit is a false green, exactly as `references/measurement.md` states.
+Use `avr workflow run ... --watch --exit-status` only when dispatching a
+fresh workflow is itself the intended experiment. A green run whose
+`head_sha` is not the target commit is a false green, exactly as
+`references/measurement.md` states. Auto-selecting the latest in-progress
+run for a repository is a convenience, not exact-commit proof.
 
 ## Mutating commands — authorization required
 

@@ -96,6 +96,82 @@ GitHub's 2026-06-25 changelog announced same-job step concurrency with `backgrou
 - Let one canonical successful job save a shared cache family; make matrix consumers restore-only to avoid upload stampedes.
 - Cache scope and eviction behavior change over time; verify current limits when they are load-bearing.
 
+## Minimal TypeScript workflow shape
+
+A compact PR/push/merge-queue shape combining stale-run cancellation,
+draft gating, change detection, and store caching. Treat it as a shape, not
+a universal template: adapt triggers, runner labels, action versions
+(verify current majors before pinning), file patterns, cache inputs,
+timeouts, and commands from measured evidence.
+
+```yaml
+name: ci
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+  push:
+    branches: [main, 'release/**']
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.filter.outputs.source }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          if ! files=$(git diff --name-only "$BASE...$HEAD"); then
+            echo "diff failed; failing open to full validation" >&2
+            echo "source=true" >> "$GITHUB_OUTPUT"
+          elif grep -qE '^(src|packages|apps|package.json|pnpm-lock.yaml|tsconfig|\.github/)' <<<"$files"; then
+            echo "source=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  verify:
+    needs: changes
+    if: needs.changes.outputs.source == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm exec tsc -b --pretty false
+      - run: corepack pnpm test -- --run
+```
+
+Shape-specific risks to resolve per repository:
+
+- `github.event.before` is zeros on a branch's first push; treat a failed
+  diff as full-run, as above.
+- Workflow/config changes are routed to full validation by including
+  `\.github/` in the pattern; planners must route to themselves.
+- Required-check behavior must stay correct when `verify` is skipped.
+- `cancel-in-progress` must not cancel deployment work where interruption
+  is unsafe.
+
 ## Sources
 
 - Dependency caching: https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching (accessed 2026-07-28)

@@ -49,6 +49,16 @@ npx jest --listTests | circleci tests run \
 
 Retries are a detection and temporary-confidence mechanism. A retry-pass is still evidence of instability. Track flake rate, rerun count, owner, and age.
 
+Interpretation rules:
+
+- A pass on rerun is **not** a clean green. It means the run was unstable and
+  still consumed time and trust.
+- Re-run the **same commit** when classifying a suspected flake; changing the
+  commit at the same time destroys the diagnosis.
+- Blanket suite retries are a last resort and should be reported as a
+  mitigation, not as a fix.
+- Preserve the first failing artifacts and logs even if later attempts pass.
+
 ## Coverage
 
 - Choose one coverage engine per suite; do not mix V8 and Istanbul artifacts across shards.
@@ -58,8 +68,12 @@ Retries are a detection and temporary-confidence mechanism. A retry-pass is stil
 ## Failure behavior
 
 - Use fail-fast between serial stages when downstream cannot succeed.
-- Avoid cancelling every matrix shard on the first failure when full shard signal helps diagnose systemic issues.
+- Avoid cancelling every matrix shard on the first failure when the full
+  shard signal helps diagnose systemic issues.
 - Preserve JUnit/blob/report artifacts on failure.
+- Distinguish "first red, stop the rollout" from "cancel the entire test
+  matrix immediately". Full shard signal often matters more than a few
+  saved minutes once failure is known.
 
 ## Sources
 
