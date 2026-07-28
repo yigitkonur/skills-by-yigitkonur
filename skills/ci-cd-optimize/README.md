@@ -1,6 +1,8 @@
 # ci-cd-optimize
 
-Diagnose or optimize slow CI/CD pipelines by measured bottleneck, not folklore — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker builds, runner queues, deployment paths, and Swift/Xcode CI — while preserving required checks, cache correctness, and exact-artifact verification.
+Diagnose or optimize slow CI/CD pipelines by measured bottleneck, not folklore — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker builds, runner queues, deployment paths, and Swift/Xcode CI — while preserving required checks, cache correctness, exact-artifact verification, and the agent feedback loop that consumes the result.
+
+Includes a provider-neutral CI watcher (`scripts/ci-watch.py`) plus deep references for caching, checkout/artifacts, measurement, runner contention, deployment verification, and non-blocking CI feedback loops.
 
 **Category:** ops
 

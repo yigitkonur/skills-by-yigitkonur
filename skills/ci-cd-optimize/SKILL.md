@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use if diagnosing or optimizing slow CI/CD while preserving required checks, or if an agent must wait on CI/deploy results without hanging.
 metadata:
   author: yigitkonur
   version: 1.0.0
@@ -11,6 +11,21 @@ metadata:
 # CI/CD Optimize
 
 Diagnose slow CI/CD from evidence, optimize the critical path, and prove the pipeline remains effective. Do not make pipelines faster by deleting the checks that make them useful.
+
+This skill covers both halves of the loop:
+- **making the pipeline faster**, and
+- **receiving the result without blocking, hanging, or claiming a false green**.
+
+## Agent mindset
+
+Before proposing a change, answer four questions in order:
+
+1. **What is actually slow?** Split queue, setup, execution, transfer, and finalization before touching YAML.
+2. **What am I really waiting on?** A blocked session can cost more wall-clock than the pipeline itself; if the result-consumption loop is broken, fix that first.
+3. **What evidence would make me wrong?** Name the exact run population, SHA, and metric that could falsify the claim.
+4. **What would this optimization weaken if I were careless?** Required checks, cache trust boundaries, exact-artifact identity, or deployment/migration safety.
+
+If a run is red, investigate *that* run first. If a run is green, verify the SHA before taking credit. If the run is still pending, distinguish provider queue time from your own execution time before changing the workflow.
 
 ## Operating loop
 
@@ -57,19 +72,19 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor, or has job count already crossed the platform's effective concurrency ceiling? Read `references/runners-and-autoscaling.md` and `references/measurement.md` before adding jobs.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
 6. Are tests dominant? Read `references/testing-and-flakiness.md` and `references/integration-environments.md`.
 7. Is Docker/OCI work dominant? Read `references/containers.md`.
 8. Are security scans dominant? Read `references/security-gates.md`.
-9. Is deployment slow or repeated? Read `references/deployment.md`.
+9. Is deployment slow, repeated, or failing only at the revision-convergence check? Read `references/deployment.md`.
 10. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is an agent or developer blocked waiting on CI, hand-rolling a poll loop, or claiming green without checking the run? Read `references/agent-ci-feedback.md`.
+14. Is an agent or developer blocked waiting on CI, hand-rolling a poll loop, or claiming green without checking the run? Read `references/agent-ci-feedback.md` and use the bundled `scripts/ci-watch.py` when a terminating watcher is needed.
 15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
 16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
@@ -83,6 +98,8 @@ Select the smallest reversible change that attacks the measured critical path. E
 - security/trust-boundary risk,
 - cost effect,
 - rollback or fallback.
+
+If the repository is effectively **CI-only** — no trusted local build/test path, parallel worktrees, or a constrained workstation — the feedback loop is part of the critical path. A watch command that can exit before the run registers, hang forever, or report the wrong SHA is not polish to fix later; it is a first-order productivity defect. Read `references/agent-ci-feedback.md` before recommending any provider `watch` subcommand or a custom poll loop.
 
 Prefer, in this order: prevent unneeded work → cancel stale work → reuse verified prior work → improve cache correctness → remove artificial dependencies → parallelize independent work → shard slow work by measured duration → reduce transferred bytes → improve runner capacity → move heavy work off the PR path only with a full-run fallback → change provider architecture.
 
@@ -214,7 +231,12 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 | `references/agent-ci-feedback.md` | Watching a run without blocking or hanging, terminating watch verdicts, agent push→feedback loops, narrow dispatchable lanes, or the local-vs-CI split. |
 
-### Optional: Avrea reference kit
+### Bundled script
+
+| File | Use |
+|---|---|
+| `scripts/ci-watch.py` | A provider-neutral, terminating watcher for CI/deploy feedback loops. Use its built-in GitHub mode (`--sha`, `--branch`, `--repo`) or generic probe mode (`--cmd`). Arm it through a background event tool or run it in the foreground when a script must block on a verdict. |
+
 
 Read only when the repository runs on Avrea (`runs-on:` labels start with `avrea-`) or Avrea is being evaluated as a runner change. The core loop above is provider-neutral and does not depend on these files.
 
