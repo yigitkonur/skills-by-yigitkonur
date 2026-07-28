@@ -161,8 +161,8 @@ class GithubProbe:
         raise ProbeError(f"unknown GitHub run status: {status!r}")
 
     def fetch(self, remaining: float) -> Envelope:
-        fetch_start = time.monotonic()
-        timeout = min(self.probe_timeout, remaining)
+        deadline = time.monotonic() + remaining
+        timeout = min(self.probe_timeout, max(deadline - time.monotonic(), 0.001))
         rc, out = self.runner.run(
             [
                 "gh", "api",
@@ -206,19 +206,24 @@ class GithubProbe:
                     log_hint=hint if state == RED else [],
                 )
             )
-        early_reds = self._expand_job_reds(
-            active_run_ids, remaining - (time.monotonic() - fetch_start)
-        )
+        early_reds = self._expand_job_reds(active_run_ids, deadline)
         branch_tip = None
         tip_error = None
         if self.branch:
+            tip_remaining = deadline - time.monotonic()
+            if tip_remaining <= 0.001:
+                # Tip lookup is auxiliary — no time left cannot invalidate the
+                # complete run enumeration or prove supersession.
+                tip_error = f"branch tip lookup skipped at deadline for {self.branch}"
+                return Envelope(units=units, branch_tip=None,
+                                tip_error=tip_error, early_reds=early_reds)
             rc, out = self.runner.run(
                 [
                     "gh", "api",
                     f"repos/{self.repo}/git/ref/heads/{self.branch}",
                     "--jq", ".object.sha",
                 ],
-                timeout=min(self.probe_timeout, remaining),
+                timeout=min(self.probe_timeout, tip_remaining),
             )
             tip = out.strip().lower()
             if rc == 0 and FULL_SHA.match(tip):
@@ -230,7 +235,7 @@ class GithubProbe:
                         early_reds=early_reds)
 
     def _expand_job_reds(self, active_runs: list[tuple[int, int]],
-                         remaining: float) -> list[Unit]:
+                         deadline: float) -> list[Unit]:
         """Surface already-failed jobs inside still-active runs.
 
         A GitHub run stays in_progress until every job finishes, so run-level
@@ -241,7 +246,10 @@ class GithubProbe:
         """
         reds: list[Unit] = []
         for run_id, attempt in active_runs:
-            budget = remaining - 1.0  # leave headroom for the tip lookup
+            budget = deadline - time.monotonic() - 1.0
+            # Preserve one second for returning to the watcher (and the
+            # optional branch-tip lookup). The serial sum of job lookups can
+            # therefore never outlive the fetch call's overall budget.
             if budget <= 1.0:
                 break
             try:

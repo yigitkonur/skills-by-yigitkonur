@@ -14,6 +14,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parents[1]
@@ -580,6 +581,45 @@ class GithubProbeTests(unittest.TestCase):
         env = probe.fetch(remaining=100.0)
         self.assertEqual(len(env.units), 1)
         self.assertEqual(env.early_reds, [])
+
+    def test_serial_job_expansion_respects_aggregate_deadline(self):
+        rows = "\n".join(
+            json.dumps({"id": run_id, "run_attempt": 1,
+                        "status": "in_progress", "conclusion": None,
+                        "name": f"ci-{run_id}", "html_url": "",
+                        "head_sha": SHA})
+            for run_id in (7, 8)
+        )
+        now = [0.0]
+
+        class TimedRunner:
+            def __init__(self):
+                self.calls = []
+
+            def run(self, argv, timeout, env=None):
+                self.calls.append({"argv": argv, "timeout": timeout})
+                if "/actions/runs?" in argv[2]:
+                    now[0] += 1.0
+                    return 0, rows
+                if "/actions/runs/7/jobs" in argv[2]:
+                    self.first_jobs_timeout = timeout
+                    now[0] += 3.5
+                    return 0, ""
+                self.fail("second job lookup must be skipped at aggregate deadline")
+
+            def fail(self, message):
+                raise AssertionError(message)
+
+        runner = TimedRunner()
+        probe = ci_watch.GithubProbe("o/r", SHA, None, runner,
+                                     probe_timeout=60.0)
+        with patch.object(ci_watch.time, "monotonic",
+                          side_effect=lambda: now[0]):
+            env = probe.fetch(remaining=5.0)
+        self.assertEqual(len(env.units), 2)
+        self.assertEqual(len(runner.calls), 2,
+                         "only enumeration plus first jobs lookup should run")
+        self.assertLessEqual(runner.first_jobs_timeout, 3.0)
 
     def test_completed_runs_get_no_jobs_lookup(self):
         row = json.dumps({"id": 1, "run_attempt": 1, "status": "completed",
