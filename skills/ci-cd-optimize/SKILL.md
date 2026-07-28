@@ -56,7 +56,7 @@ Apply the performance order before adding compute:
 
 Ask in order:
 
-1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
+1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/optimization-workflow.md` first for the engagement order, then `references/github-actions.md` and `references/change-based-ci.md`.
 2. Is queue time the dominant p95 contributor, or is job count already at the platform's concurrency ceiling? Read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`. Above roughly 35 % queue share, reshaping the DAG cannot help and adding jobs makes it worse.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
@@ -178,6 +178,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Comparing a contended run against an uncontended one | Match contention state, interleave A/B arms, compare execution time for in-job changes. |
 | Full suite duplicated in every shard | Split tests by file/timing so each test runs once. |
 | Tiny jobs with heavy setup | Collocate work until separate runner setup is amortized. |
+| Waiting for CI in the foreground | Use a SHA-pinned, deadline-bounded watcher; raw watch commands and log tails stall the session or report stale greens. |
 | Coverage off PR path with no fallback | Keep a required scheduled/merge-queue full run. |
 | Remote cache writable by untrusted PRs | Read-only PR cache or isolated cache namespace. |
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
@@ -191,6 +192,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | File | Read when |
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
+| `references/optimization-workflow.md` | Starting an optimization pass and deciding which reference to read next. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
@@ -209,6 +211,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/capacity-and-contention.md` | Queue share is high, parallelism stopped paying off, before splitting or fanning out jobs, or when A/B arms ran under different pool load. |
 | `references/network-and-artifacts.md` | Checkout depth, sparse/partial clone, LFS, package proxies, artifact compression, uploads, or registry locality. |
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
+| `references/feedback-loops.md` | Waiting on CI/deploy runs without blocking, stale greens, or unbounded watches. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 
