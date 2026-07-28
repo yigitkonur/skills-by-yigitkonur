@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD, or if an agent must wait on CI without stalling, while preserving required checks.
+description: Use skill if you are diagnosing or optimizing slow CI/CD, or if an agent must wait on CI without stalling, while preserving required checks.
 metadata:
   author: yigitkonur
   version: 1.1.0

@@ -2,7 +2,7 @@
 """Watch CI for one exact commit and emit a bounded, diff-gated event stream.
 
 Built for autonomous agents that push and must learn the result without
-stalling. Satisfies the contract in references/agent-feedback-loops.md:
+stalling. Satisfies the contract in references/feedback-loops.md:
 
   - one line per state CHANGE (never re-prints unchanged state)
   - a heartbeat while healthy, so a long queue is never ambiguous
@@ -37,11 +37,25 @@ import subprocess
 import sys
 import time
 
-# States that are terminal AND acceptable. `cancelled` is deliberately absent:
-# it is usually supersession (a newer push cancelled this run), which is a
-# different verdict from a real failure.
+# GitHub states used only in GitHub mode.
 TERMINAL_OK = {"success", "skipped", "neutral"}
 ACTIVE = {"queued", "in_progress", "waiting", "pending", "requested"}
+VERDICTS = {"success", "failure", "cancelled", "timeout", "no-run",
+            "superseded", "probe-dead"}
+
+
+def positive_int(value):
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def nonnegative_int(value):
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return parsed
 
 
 def emit(line):
@@ -59,36 +73,45 @@ def run(cmd, timeout, env=None):
         return 1, ""
 
 
-def probe_gh(sha, timeout, expand_jobs=True):
+def remaining_timeout(deadline_at, cap):
+    return max(0.01, min(cap, deadline_at - time.monotonic()))
+
+
+def probe_gh(sha, deadline_at, probe_cap, expand_jobs=True):
     """Return {name: (state, run_id)} for the exact SHA, or None if unavailable."""
     code, out = run(
-        ["gh", "run", "list", "--commit", sha, "--limit", "50",
-         "--json", "databaseId,name,status,conclusion,attempt"], timeout)
+        ["gh", "api", "--paginate", "--slurp", "-X", "GET",
+         "repos/{owner}/{repo}/actions/runs", "-f", f"head_sha={sha}",
+         "-f", "per_page=100"], remaining_timeout(deadline_at, probe_cap))
     if code != 0:
         return None
     try:
-        runs = json.loads(out or "[]")
-    except json.JSONDecodeError:
+        pages = json.loads(out or "[]")
+        runs = [item for page in pages
+                for item in (page.get("workflow_runs") or [])]
+    except (json.JSONDecodeError, AttributeError, TypeError):
         return None
     # Defensive: some providers return one record per attempt under a shared
-    # id. `gh` already collapses to the latest attempt, but keeping the max
-    # makes the same logic safe if the backing command is swapped out.
+    # id. GitHub's API already returns the latest attempt for each run id.
     latest = {}
     for r in runs:
-        rid = r.get("databaseId")
-        if rid not in latest or (r.get("attempt") or 1) > (latest[rid].get("attempt") or 1):
+        rid = r.get("id")
+        if rid not in latest or (r.get("run_attempt") or 1) > (latest[rid].get("run_attempt") or 1):
             latest[rid] = r
 
     result = {}
     for r in latest.values():
-        rid = r.get("databaseId")
+        rid = r.get("id")
         wf = r.get("name") or "?"
         status = r.get("status") or "unknown"
         # A run-level status stays `in_progress` until every job finishes, so
         # run granularity alone cannot surface an early per-job failure. Expand
         # only in-flight runs: completed ones already carry a conclusion.
         if expand_jobs and status in ACTIVE:
-            jcode, jout = run(["gh", "run", "view", str(rid), "--json", "jobs"], timeout)
+            if time.monotonic() >= deadline_at:
+                return None
+            jcode, jout = run(["gh", "run", "view", str(rid), "--json", "jobs"],
+                              remaining_timeout(deadline_at, probe_cap))
             if jcode == 0:
                 try:
                     jobs = (json.loads(jout or "{}") or {}).get("jobs") or []
@@ -97,7 +120,7 @@ def probe_gh(sha, timeout, expand_jobs=True):
                 if jobs:
                     for j in jobs:
                         jstate = j.get("conclusion") or j.get("status") or "unknown"
-                        result[f"{wf}/{j.get('name', '?')}"] = (jstate, rid)
+                        result[f"{wf}#{rid}/{j.get('name', '?')}"] = (jstate, rid)
                     continue
         result[f"{wf}#{rid}"] = (r.get("conclusion") or status, rid)
     return result
@@ -107,7 +130,7 @@ def probe_cmd(command, timeout, sha):
     """Parse `name: state` lines plus an optional `TERMINAL: <verdict>`."""
     env = dict(os.environ, CI_WATCH_SHA=sha)
     code, out = run(command, timeout, env=env)
-    if code != 0 and not out.strip():
+    if code != 0:
         return None, None
     states, terminal = {}, None
     for raw in out.splitlines():
@@ -115,7 +138,10 @@ def probe_cmd(command, timeout, sha):
         if not line:
             continue
         if line.upper().startswith("TERMINAL:"):
-            terminal = (line.split(":", 1)[1].strip() or "success").lower()
+            verdict = line.split(":", 1)[1].strip().lower()
+            if verdict not in VERDICTS:
+                return None, None
+            terminal = verdict
             continue
         if ":" in line:
             name, state = line.split(":", 1)
@@ -129,18 +155,19 @@ def main():
     ap.add_argument("--sha", required=True, help="exact commit to watch")
     ap.add_argument("--branch", default="", help="retire if this branch moves past --sha")
     ap.add_argument("--cmd", default="", help="custom probe command (non-GitHub providers)")
-    ap.add_argument("--deadline", type=int, default=1800, help="hard stop, seconds")
-    ap.add_argument("--register-deadline", type=int, default=240,
+    ap.add_argument("--deadline", type=positive_int, default=1800, help="hard stop, seconds")
+    ap.add_argument("--register-deadline", type=positive_int, default=240,
                     help="give up waiting for a run to appear, seconds")
-    ap.add_argument("--settle", type=int, default=90,
+    ap.add_argument("--settle", type=nonnegative_int, default=90,
                     help="grace period after all-green for late follow-up workflows")
-    ap.add_argument("--interval", type=int, default=20, help="poll interval, seconds")
-    ap.add_argument("--heartbeat", type=int, default=150, help="heartbeat interval, seconds")
+    ap.add_argument("--interval", type=positive_int, default=20, help="poll interval, seconds")
+    ap.add_argument("--heartbeat", type=positive_int, default=150, help="heartbeat interval, seconds")
     ap.add_argument("--no-expand-jobs", action="store_true",
                     help="GitHub mode: skip per-job expansion of in-progress runs")
     a = ap.parse_args()
 
     start = time.monotonic()
+    deadline_at = start + a.deadline
     last_hb = start
     seen = {}
     registered = False
@@ -156,15 +183,20 @@ def main():
     while True:
         now = time.monotonic()
         elapsed = now - start
-        if elapsed > a.deadline:
+        if now >= deadline_at:
             last = "; ".join(f"{k}:{v}" for k, v in seen.items()) or "none"
             done("timeout", f"{int(elapsed)}s elapsed; last state: {last}")
 
         explicit_terminal = None
         if a.cmd:
-            states, explicit_terminal = probe_cmd(a.cmd, probe_timeout, a.sha)
+            states, explicit_terminal = probe_cmd(
+                a.cmd, remaining_timeout(deadline_at, probe_timeout), a.sha)
         else:
-            states = probe_gh(a.sha, probe_timeout, expand_jobs=not a.no_expand_jobs)
+            states = probe_gh(a.sha, deadline_at, probe_timeout,
+                              expand_jobs=not a.no_expand_jobs)
+
+        if registered and states == {} and not explicit_terminal:
+            states = None
 
         if states is None:
             fail_streak += 1
@@ -172,9 +204,16 @@ def main():
                 emit("CI-WARN probe failing (3 consecutive); still trying")
             if fail_streak >= 10:
                 done("probe-dead", "10 consecutive probe failures; result unknown")
-            time.sleep(a.interval)
+            remaining = deadline_at - time.monotonic()
+            if remaining <= 0:
+                continue
+            time.sleep(min(a.interval, remaining))
             continue
         fail_streak = 0
+        now = time.monotonic()
+        elapsed = now - start
+        if now >= deadline_at:
+            continue
 
         # A probe may report a terminal verdict with no per-unit lines at all
         # (e.g. a deploy API that only answers "done"). Honour it regardless of
@@ -198,17 +237,15 @@ def main():
         elif changes:
             emit("CI-CHG " + " · ".join(changes))
 
-        if not registered and elapsed > a.register_deadline:
-            done("no-run", f"nothing registered for {a.sha[:8]} within "
-                           f"{a.register_deadline}s (path filters may exclude this "
-                           "change, which is not a failure)")
-
-        # Supersession must be evaluated BEFORE calling anything a failure: the
-        # recommended `cancel-in-progress` concurrency pattern cancels this
-        # commit's run when a newer commit lands, and "cancelled" is not a bug
-        # to go fix.
-        if a.branch and registered and not a.cmd:
-            code, out = run(["git", "ls-remote", "origin", f"refs/heads/{a.branch}"], 15)
+        # Supersession must be evaluated before the registration deadline and
+        # before calling a cancelled run a failure. A newer branch tip means the
+        # caller should retire this watcher and arm one for the new SHA.
+        if a.branch and not a.cmd:
+            code, out = run(
+                ["git", "ls-remote", "origin", f"refs/heads/{a.branch}"],
+                remaining_timeout(deadline_at, 15))
+            if time.monotonic() >= deadline_at:
+                continue
             if code != 0 or not out.split():
                 if not supersede_warned:
                     supersede_warned = True
@@ -218,7 +255,15 @@ def main():
                 if not (tip.startswith(a.sha[:12]) or a.sha.startswith(tip[:12])):
                     done("superseded", f"branch {a.branch} moved to {tip[:8]}")
 
-        if registered:
+        if not registered and elapsed > a.register_deadline:
+            done("no-run", f"nothing registered for {a.sha[:8]} within "
+                           f"{a.register_deadline}s (path filters may exclude this "
+                           "change, which is not a failure)")
+
+        # Custom probes own their state vocabulary and completion decision.
+        # Their per-unit states are display-only; only a validated TERMINAL line
+        # can produce a terminal verdict.
+        if registered and not a.cmd:
             pending = [n for n, (s, _) in states.items() if s in ACTIVE]
             if not pending:
                 bad = [(n, s) for n, (s, _) in states.items() if s not in TERMINAL_OK]
@@ -243,7 +288,9 @@ def main():
             last_hb = now
             emit(f"CI-HB {int(elapsed)}s/{a.deadline}s — {len(seen)} run(s) tracked")
 
-        time.sleep(a.interval)
+        remaining = deadline_at - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(a.interval, remaining))
 
 
 if __name__ == "__main__":

@@ -146,7 +146,7 @@ A green run whose `head_sha` is not your commit is a false green, exactly as `re
 `avr run list` returns **one record per attempt** sharing a `platform_run_id` (observed against `avr` 0.1.6, 2026-07-28; `gh run list` collapses attempts and does not need this). After `avr run rerun`, a query for the commit returns both `run_attempt: 1 (completed/failure)` and `run_attempt: 2 (in_progress)`. Reading them naively reports the stale failure; a watcher keyed on `platform_run_id` oscillates between the two. Keep the highest `run_attempt` per id:
 
 ```bash
-avr run list --repo org/app --since 6h --limit 100 \
+avr run list --repo org/app --since 24h --limit 100 \
   --json platform_run_id,run_attempt,workflow,status,conclusion,head_sha \
   -q 'group_by(.platform_run_id)[] | max_by(.run_attempt)'
 ```

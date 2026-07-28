@@ -189,8 +189,15 @@ commit" guarantee, and the harness cannot catch that for you. A minimal probe:
 ```sh
 #!/bin/sh
 # Answers "did the deploy for THIS commit reach the app?"
-state=$(curl -sf "https://api.example.com/deploys?sha=$CI_WATCH_SHA" \
-        | python3 -c 'import sys,json;print(json.load(sys.stdin).get("state","pending"))')
+if ! response=$(curl -sf "https://api.example.com/deploys?sha=$CI_WATCH_SHA"); then
+  echo "probe: deploy API request failed"
+  exit 1
+fi
+if ! state=$(printf '%s' "$response" \
+        | python3 -c 'import sys,json;print(json.load(sys.stdin).get("state","pending"))'); then
+  echo "probe: deploy API returned invalid JSON"
+  exit 1
+fi
 echo "deploy: ${state:-pending}"
 [ "$state" = "live" ] && echo "TERMINAL: success"
 ```

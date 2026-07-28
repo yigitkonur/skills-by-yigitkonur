@@ -15,11 +15,12 @@ Choose by history need:
 
 Do not combine shallow checkout with merge-base-dependent affected detection. Use event SHAs or full history.
 
-### `actions/checkout`: `filter` overrides `sparse-checkout`
+### `actions/checkout`: `filter` changes sparse-checkout's partial-clone filter
 
-Per the action's README, setting `filter:` (e.g. `blob:none`) **disables** any
-`sparse-checkout` patterns you also pass — they do not compose. A workflow that specifies
-both silently gets partial-clone behavior and a full working tree.
+Per the action's README, setting `filter:` (e.g. `blob:none`) overrides the partial-clone
+filter that `sparse-checkout` would otherwise choose implicitly. The sparse-checkout
+patterns still control which paths are materialized, so the two options can compose; use
+both only when the explicit filter is intentional.
 
 Measured on a 1.6 GiB / 14,044-file repository (2026-07-28):
 
