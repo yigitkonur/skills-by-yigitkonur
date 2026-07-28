@@ -2,6 +2,22 @@
 
 Use this file when queue time, runner capacity, runner isolation, or fleet cost is the bottleneck.
 
+## Queue first, hardware second
+
+A larger runner can make a job slower end-to-end if that class has a smaller
+or more contended fleet. Before upgrading hardware, establish:
+
+- the runner label/class of the slow job,
+- median and p95 queue delay for that class,
+- utilization of representative running jobs,
+- whether the job is actually on the critical path,
+- whether smaller structural changes (fewer starts, merged tiny jobs,
+  better cache locality) remove the queueing need entirely.
+
+If queue dominates, the fastest CPU in the world does nothing until the job
+starts. Capacity diagnosis belongs with
+`references/capacity-and-contention.md`.
+
 ## Decision order
 
 1. **Trust:** does the job run untrusted code?
@@ -31,6 +47,10 @@ Keep orchestration/upload capacity warm separately from scale-to-zero workers.
 ## Autoscaling signals
 
 Scale from queued/assigned jobs, job startup latency, and wait percentiles. CPU utilization alone misses jobs waiting for an available runner. Keep the runner manager/controller on persistent on-demand infrastructure.
+
+Measure by **runner pool / label**, not globally. `ubuntu-latest`,
+`macos-14`, GPU, and self-hosted labels can saturate independently. A job's
+pool-local queue p95 is more actionable than a repo-wide average.
 
 ## Spot capacity
 

@@ -41,7 +41,12 @@ Before claiming a deployment is done, verify:
 - provenance/SBOM/signature checks pass where required,
 - readiness/startup probes pass,
 - canary/analysis metrics are inside budget,
-- rollback artifact remains available.
+- rollback artifact remains available,
+- the deployment reached a terminal verdict by observation rather than by an assumed timeout.
+
+A deployment timeout is **unknown**, not automatically failed over or safe to
+rebuild. Investigate the exact rollout state first; rebuilds per environment
+reintroduce artifact drift and are not an acceptable "verification" fallback.
 
 ## TypeScript status probe sketch
 

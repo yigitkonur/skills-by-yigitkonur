@@ -36,6 +36,20 @@ Cache the package-manager store/cache, not blindly `node_modules`:
 
 Key by lockfile, Node version, package-manager version, OS, and architecture. Compare restore time with a clean install; large stores can be slower than a registry fetch on a nearby network.
 
+**Manifest-only keys are a correctness bug, not just a staleness bug.** A key built from `package.json` alone keeps serving the old dependency tree after the lockfile changes; CI can stay green on dependencies that no longer install locally. Any key covering a dependency tree includes the lockfile.
+
+## Prove the cache earns its keep
+
+Measure three timings before keeping or adding a dependency cache:
+
+1. **Cold**: clean run with no cache (delete/miss the entry deliberately once, in an authorized experiment).
+2. **Warm**: restore + post-hit work (install against the restored store) + save/upload at the end.
+3. **Proxy-only**: plain install when the CI platform fronts the registry with a local proxy/mirror — on such platforms a store cache is often redundant and pure overhead.
+
+Keep the cache only if warm beats both alternatives on the critical path. Count the save step: a cache that restores in 40s, saves in 35s, and saves 60s of install is a net loss. Check entry hit counts and last-access where the platform exposes them (`avr cache list` on Avrea; provider UIs elsewhere): large entries with zero or near-zero hits burn quota, slow every save, and should be removed — removal is a shared-state mutation, so gate it.
+
+**Write strategy**: let the default/protected branch produce cache entries and branches consume them (read-on-branch/write-on-default). This keeps untrusted writes out and stops N parallel PRs from racing to save N copies of the same store.
+
 ## Restore-key discipline
 
 Use narrow restore keys from most-specific to less-specific:

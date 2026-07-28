@@ -12,6 +12,19 @@ Use this file for path filters, affected commands, merge-base correctness, merge
 
 If any step fails, run the full pipeline.
 
+## Analyze before editing YAML
+
+Treat selective CI as a correctness problem before a speed problem:
+
+1. Read the current workflow triggers and branch protection / required checks.
+2. Identify the planner/change-detection job, if one exists, and verify whether
+   it can route changes to itself and to workflow/config files.
+3. Decide which event populations are allowed to skip work at all (PR only,
+   never merge queue / release / schedule by default).
+4. Freeze the changed-set algorithm and fallback before proposing path-filter
+   edits. If a single edge case is uncertain, the fallback is full validation.
+
+
 ## Merge-base rules
 
 - Do not compute merge base from a shallow clone unless the needed history is present.
@@ -19,6 +32,10 @@ If any step fails, run the full pipeline.
 - Rebased forks can move or remove the fork point; detect failure and fall back to full validation.
 - Merge queues create a predictive branch; PR-only base/head assumptions may test the wrong change set.
 - Lockfile, CI config, dependency graph, generated-code schema, and shared-global changes usually escalate to full validation.
+- If the planner script, classifier config, or required-check aggregator changes, that change routes to full validation too.
+- Renames need both old and new paths. A rename from `src/core/` to `src/kernel/` can otherwise make the planner think nothing relevant changed.
+- On any diff failure (missing history, bad SHAs, provider glitch), fail open to full validation — never to skip.
+
 
 ## Path filters versus graph-aware affected
 
@@ -32,6 +49,14 @@ Graph-aware affected commands (`nx affected`, Turborepo affected/filter, Bazel r
 - remote/local cache behavior does not mask skipped work.
 
 Package-level affected detection can miss a file outside package roots that feeds a task. Enable task-input-aware filtering when supported; otherwise add explicit escalation paths.
+
+Graph-aware tools still need a proving set:
+
+- task inputs include generated code, schemas, root config, CI files, and lockfiles;
+- planner outputs are fixture-tested against rename, delete, and workflow/config changes;
+- a required-check-safe fallback exists when the graph cannot prove completeness;
+- the merge queue and release paths still run a full or broader defensive suite.
+
 
 ## Required-check pattern
 
@@ -64,6 +89,17 @@ jobs:
 ```
 
 Ensure the provider reports skipped downstream jobs as successful/skipped in the way branch protection expects.
+
+The detector must define every variable it uses. A broken example such as:
+
+```bash
+git diff --name-only "$BASE...$HEAD"
+```
+
+without proving where `BASE` and `HEAD` come from can silently diff the
+wrong range or nothing at all. Prefer explicit provider event SHAs, and on
+any uncertainty run the full path.
+
 
 ## Full-run triggers
 
