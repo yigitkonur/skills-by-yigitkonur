@@ -1,6 +1,6 @@
 {
   "name": "ci-cd-optimize",
-  "version": "1.0.34",
+  "version": "1.0.35",
   "description": "Use if diagnosing or optimizing slow CI/CD while preserving required checks.",
   "author": {
     "name": "Yigit Konur",
