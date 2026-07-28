@@ -14,6 +14,7 @@ answer as success, and missing late-registering workflows.
 - [Custom provider probes](#custom-provider-probes)
 - [Registration races and late workflows](#registration-races-and-late-workflows)
 - [Reacting to results](#reacting-to-results)
+- [Shrinking the loop](#shrinking-the-loop)
 - [Harness wiring](#harness-wiring)
 
 ## Choosing a waiting primitive
@@ -72,6 +73,17 @@ Output is append-only lines, one JSON payload each: `CI-EVENT`
 `CI-RED` (first sight of a red unit, with a ready-to-run log argv),
 `CI-ERR` (deduplicated probe problems), `CI-HB` (liveness while quiet), and
 exactly one `CI-DONE` with the verdict.
+
+`CI-RED` carries a `scope` field: `run` for run-level conclusions, `job`
+when the built-in GitHub probe surfaces an already-failed job inside a
+still-running run. Job reds arrive minutes before the run completes — react
+to them — but they never decide the verdict: the run's own conclusion stays
+authoritative, so a `continue-on-error` job cannot false-red a green run.
+
+The registration window is clamped to the overall deadline. If a complete
+enumeration has proven zero runs when the overall deadline arrives, the
+verdict is `no-run` (or `success` under `--expect-none`), never a
+misleading `timeout`.
 
 ## Verdicts, exit codes, and precedence
 
@@ -136,6 +148,15 @@ Contract:
   Never guess.
 - `log_hint` is an argv array, never a shell string.
 
+### PR gating is a different surface
+
+Required PR checks can include third-party check runs that never appear in
+the Actions runs enumeration, so the built-in probe can report green while
+the PR is still not mergeable. When PR merge is the actual gate, watch that
+surface: build a custom probe over `gh pr checks <pr> --json name,bucket`
+(terminal when nothing is pending) — noting it can also list
+expected-but-unreported checks. Watch whichever surface actually gates you.
+
 ## Registration races and late workflows
 
 Between `git push` and the first visible run there is a window where the
@@ -166,8 +187,31 @@ provider reports nothing. The watcher handles these; know why they exist:
   pipeline's real duration. Never extend the deadline as a reflex.
 - On `probe-dead`, fix the probe/auth/API problem first; you have no
   verdict yet. Re-running the pipeline does not repair a dead probe.
+- On a CI-only failure (passes locally), reproduce the *condition*, not the
+  whole pipeline: job-wide env vars, a clean checkout, a different working
+  directory, absent secrets. Narrow reproduction beats re-running the full
+  run to debug.
 - On identical-SHA rerun requests, remember: a pass-after-retry is a flake
   signal, not a green pipeline (see `testing-and-flakiness.md`).
+
+## Shrinking the loop
+
+When CI is the only verification surface, the full pipeline is often too
+slow a question. Two ways to ask narrower ones:
+
+- **Dispatchable lanes** — a `workflow_dispatch` workflow with a mode input
+  (typecheck-only, build-only, affected-only) answers one question in
+  seconds. Two correctness guards: dispatch only after confirming the remote
+  ref's SHA equals your local HEAD, and correlate the resulting run by head
+  SHA plus dispatch-time window — display-title matching silently attaches
+  to the wrong run.
+- **A separate non-gating workflow** for visible-but-not-blocking checks
+  beats a broad `continue-on-error`, which reports green while hiding a
+  real failure inside a "passing" job.
+
+Keep local checks to instant ones (formatting, lint on changed files, one
+targeted test) and push everything heavy to CI; a cheap local guard for
+whatever CI checks *first* prevents the most common self-inflicted red.
 
 ## Harness wiring
 
@@ -177,7 +221,16 @@ provider reports nothing. The watcher handles these; know why they exist:
 - Streaming (when first-red reaction matters): attach a monitor to the
   watcher's stdout. The output is already line-oriented, diff-gated, and
   rate-bounded — do not add extra filtering that could swallow `CI-DONE`.
+- Never trust the exit code of a pipeline that post-processes the watcher:
+  `ci-watch.py ... | head` reports `head`'s exit 0 even on a hard failure,
+  because a pipeline's status is its last stage's. Capture output first
+  (`out=$(...)`; `code=$?`) or check `${PIPESTATUS[0]}` in bash.
+- Keep `--heartbeat` under the consuming model's prompt-cache TTL (the 120s
+  default sits well below a typical ~5-minute TTL) so long waits stay cheap
+  for an agent session.
 - Always give the outer harness a timeout comfortably larger than
   `--deadline` (deadline + 120s is a good floor) so the watcher, not the
-  harness, decides the verdict. A harness kill produces no `CI-DONE` and
-  must be treated as "no verdict", never as failure or success.
+  harness, decides the verdict. An operator Ctrl-C still emits a final
+  `CI-DONE` (`probe-dead`, reason `interrupted`, exit 2 — no verdict). A
+  harness kill produces no `CI-DONE` and must be treated as "no verdict",
+  never as failure or success.

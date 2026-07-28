@@ -90,8 +90,9 @@ def unit(run_id, state, attempt=1, name=None):
     )
 
 
-def envelope(*units, tip=None, tip_error=None):
-    return ci_watch.Envelope(units=list(units), branch_tip=tip, tip_error=tip_error)
+def envelope(*units, tip=None, tip_error=None, early_reds=()):
+    return ci_watch.Envelope(units=list(units), branch_tip=tip,
+                             tip_error=tip_error, early_reds=list(early_reds))
 
 
 def make_config(**overrides):
@@ -183,6 +184,58 @@ class WatcherScenarioTests(unittest.TestCase):
             [envelope(unit(1, ci_watch.ACTIVE))], deadline=100.0
         )
         self.assertEqual((code, done["verdict"]), (2, "timeout"))
+
+    def test_proven_empty_at_overall_deadline_is_no_run(self):
+        code, _, _, done, _, _ = run_watch(
+            [envelope()], deadline=100.0, registration_deadline=100.0
+        )
+        self.assertEqual((code, done["verdict"]), (2, "no-run"))
+        self.assertEqual(done["reason"], "proven-empty-at-deadline")
+
+    def test_expect_none_honored_at_overall_deadline(self):
+        code, _, _, done, _, _ = run_watch(
+            [envelope()], deadline=100.0, registration_deadline=100.0,
+            expect_none=True,
+        )
+        self.assertEqual((code, done["verdict"]), (0, "success"))
+        self.assertEqual(done["reason"], "expected-no-run-proven-empty")
+
+    def test_early_job_red_announced_once_never_gates_verdict(self):
+        job = ci_watch.Unit(
+            key="github:o/r:1:1:job:9", scope="github:o/r:1", attempt=1,
+            name="lint", state=ci_watch.RED,
+            log_hint=["gh", "run", "view", "--repo", "o/r", "--job", "9",
+                      "--log-failed"],
+        )
+        steps = [
+            envelope(unit(1, ci_watch.ACTIVE), early_reds=[job]),
+            envelope(unit(1, ci_watch.ACTIVE), early_reds=[job]),
+            # continue-on-error: the failed job's run still concludes green.
+            envelope(unit(1, ci_watch.GREEN)),
+        ]
+        code, lines, done_lines, done, _, _ = run_watch(steps)
+        self.assertEqual((code, done["verdict"]), (0, "success"))
+        red_lines = [json.loads(l.split(" ", 1)[1]) for l in lines
+                     if l.startswith("CI-RED ")]
+        self.assertEqual(len(red_lines), 1, "early job red must announce once")
+        self.assertEqual(red_lines[0]["scope"], "job")
+        self.assert_single_done(done_lines)
+
+    def test_interrupt_emits_terminal_record(self):
+        class InterruptingProbe:
+            def fetch(self, remaining):
+                raise KeyboardInterrupt
+
+        out = io.StringIO()
+        watcher = ci_watch.Watcher(make_config(), InterruptingProbe(),
+                                   FakeClock(), out)
+        code = watcher.run()
+        done_lines = [l for l in out.getvalue().splitlines()
+                      if l.startswith("CI-DONE ")]
+        self.assertEqual(len(done_lines), 1)
+        done = json.loads(done_lines[0].split(" ", 1)[1])
+        self.assertEqual((code, done["verdict"], done["reason"]),
+                         (2, "probe-dead", "interrupted"))
 
     def test_red_takes_precedence_at_deadline(self):
         code, _, _, done, _, _ = run_watch(
@@ -435,7 +488,8 @@ class GithubProbeTests(unittest.TestCase):
 
     def test_full_vocabulary_classification(self):
         ndjson = (FIXTURES / "provider-vocabularies.json").read_text()
-        probe, _ = self.make_probe([(0, ndjson)])
+        # The three active runs each trigger one job-expansion lookup.
+        probe, _ = self.make_probe([(0, ndjson), (0, ""), (0, ""), (0, "")])
         env = probe.fetch(remaining=100.0)
         states = {u.name: u.state for u in env.units}
         self.assertEqual(states["vocab-completed-success"], ci_watch.GREEN)
@@ -494,6 +548,48 @@ class GithubProbeTests(unittest.TestCase):
             env.units[0].log_hint,
             ["gh", "run", "view", "42", "--repo", "o/r", "--log-failed"],
         )
+
+    def test_job_expansion_surfaces_failed_job_in_active_run(self):
+        run_row = json.dumps({"id": 7, "run_attempt": 2, "status": "in_progress",
+                              "conclusion": None, "name": "ci",
+                              "html_url": "", "head_sha": SHA})
+        jobs = "\n".join([
+            json.dumps({"id": 91, "name": "lint", "status": "completed",
+                        "conclusion": "failure", "html_url": "u"}),
+            json.dumps({"id": 92, "name": "test", "status": "in_progress",
+                        "conclusion": None}),
+        ])
+        probe, runner = self.make_probe([(0, run_row), (0, jobs)])
+        env = probe.fetch(remaining=100.0)
+        self.assertEqual([u.state for u in env.units], [ci_watch.ACTIVE])
+        self.assertEqual(len(env.early_reds), 1)
+        red = env.early_reds[0]
+        self.assertEqual(red.key, "github:o/r:7:2:job:91")
+        self.assertEqual(red.state, ci_watch.RED)
+        self.assertEqual(
+            red.log_hint,
+            ["gh", "run", "view", "--repo", "o/r", "--job", "91", "--log-failed"],
+        )
+        self.assertIn("/actions/runs/7/jobs", runner.calls[1]["argv"][2])
+
+    def test_job_expansion_failure_never_fails_the_cycle(self):
+        run_row = json.dumps({"id": 7, "run_attempt": 1, "status": "in_progress",
+                              "conclusion": None, "name": "ci",
+                              "html_url": "", "head_sha": SHA})
+        probe, _ = self.make_probe([(0, run_row), (1, "")])
+        env = probe.fetch(remaining=100.0)
+        self.assertEqual(len(env.units), 1)
+        self.assertEqual(env.early_reds, [])
+
+    def test_completed_runs_get_no_jobs_lookup(self):
+        row = json.dumps({"id": 1, "run_attempt": 1, "status": "completed",
+                          "conclusion": "success", "name": "x",
+                          "html_url": "", "head_sha": SHA})
+        probe, runner = self.make_probe([(0, row)])
+        env = probe.fetch(remaining=100.0)
+        self.assertEqual(env.early_reds, [])
+        self.assertEqual(len(runner.calls), 1,
+                         "completed runs must not pay a jobs lookup")
 
 
 PROBE_HELPER = """\
@@ -591,6 +687,14 @@ class CliTests(unittest.TestCase):
 
 
 class ConfigValidationTests(unittest.TestCase):
+    def test_registration_deadline_clamped_to_deadline(self):
+        parser = ci_watch.make_parser()
+        cfg = ci_watch.build_config(
+            parser.parse_args([SHA, "--repo", "o/r", "--deadline", "60"])
+        )
+        self.assertEqual(cfg.registration_deadline, 60.0,
+                         "default 180s registration window must clamp to --deadline")
+
     def test_rejects_non_finite_and_non_positive(self):
         parser = ci_watch.make_parser()
         for argv in (
