@@ -1,7 +1,7 @@
 {
   "name": "ci-cd-optimize",
   "version": "1.0.36",
-  "description": "Use if diagnosing or optimizing slow CI/CD while preserving required checks.",
+  "description": "Use skill if you are diagnosing or optimizing slow CI/CD, runner queues, cache misses, build/test/deploy latency, or an agent has pushed and needs non-stalling CI feedback while preserving required checks.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "ci-cd-optimize",
-    "shortDescription": "Use if diagnosing or optimizing slow CI/CD while preserving required checks.",
+    "shortDescription": "Use skill if you are diagnosing or optimizing slow CI/CD, runner queues, cache misses, build/test/deploy latency, or an agent has pushed and needs non-stalling CI feedback while preserving required checks.",
     "longDescription": "Install only the ci-cd-optimize workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

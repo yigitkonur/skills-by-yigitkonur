@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use skill if you are diagnosing or optimizing slow CI/CD, runner queues, cache misses, build/test/deploy latency, or an agent has pushed and needs non-stalling CI feedback while preserving required checks.
 metadata:
   author: yigitkonur
   version: 1.0.0
@@ -57,21 +57,22 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
-3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
-4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
-5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
-6. Are tests dominant? Read `references/testing-and-flakiness.md` and `references/integration-environments.md`.
-7. Is Docker/OCI work dominant? Read `references/containers.md`.
-8. Are security scans dominant? Read `references/security-gates.md`.
-9. Is deployment slow or repeated? Read `references/deployment.md`.
-10. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
-11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
-12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
-13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is an agent pushing and then waiting on CI — or has a session gone silent after a push? Read `references/agent-feedback-loop.md`.
-15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
-16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+2. Is an agent pushing and then waiting on CI — or has a session gone silent after a push? Read `references/agent-feedback-loop.md` first; the feedback loop itself may be the bottleneck.
+3. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+4. Do the queue numbers suggest a capacity ceiling rather than uniformly slow work? Read `references/capacity-and-contention.md`.
+5. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
+6. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
+7. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
+8. Are tests dominant? Read `references/testing-and-flakiness.md` and `references/integration-environments.md`.
+9. Is Docker/OCI work dominant? Read `references/containers.md`.
+10. Are security scans dominant? Read `references/security-gates.md`.
+11. Is deployment slow or repeated? Read `references/deployment.md`.
+12. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
+13. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
+14. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
+15. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md`, `references/avrea/caching.md`, and `references/avrea/cli-evidence.md`.
+16. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+17. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -105,7 +106,11 @@ Re-run on the same commit first, then a normal representative commit. Compare me
 
 Do not wait for those runs in the foreground. Arm a bounded watcher so a red check surfaces the moment it happens instead of at the deadline — `references/agent-feedback-loop.md`, or `scripts/ci-watch.py` directly. Expect to keep working between its events.
 
+Before trusting a watcher, verify it like any other piece of CI infrastructure: make it produce `success`, `failure`, `no-run`, `timeout`, `probe-dead`, and (when relevant) `superseded` on purpose. A watcher only observed succeeding is untested.
+
 Making CI automatic surfaces defects that a manual, hand-dispatched pipeline hid — environment leakage between jobs, assertions that drifted from the contract they check, and pre-existing flakes. Treat each as a real finding: root-cause it and verify red-first. Reaching green by adding a retry, widening a threshold, or skipping the check corrupts the measurement instead of fixing the pipeline (`references/effectiveness-contract.md`).
+
+If an experiment comes back neutral or worse, report that. A disproved hypothesis is still evidence, and hiding it guarantees the next person retries the same losing move.
 
 Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence.
 
@@ -183,10 +188,13 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Agent blocks on a foreground `run watch` | Arm a bounded watcher that emits per state change and always prints a terminal verdict (`references/agent-feedback-loop.md`). |
-| Watcher greps only for the success marker | Silence then looks identical to "still running". Match failure signatures too. |
+| Trusting `$?` after piping a watcher into `head`/`tail` | Pipeline status comes from the last command; capture the watcher's real exit code directly. |
+| Watching the branch tip instead of the pushed SHA | Pin the commit; a green on the tip can be another commit entirely. |
+| Watcher greps only for the success marker | Silence then looks identical to "still running". Match failure and timeout states too. |
 | Caching a store the platform already proxies | Measure install cold vs warm; a 0-hit cache costs quota and returns nothing. |
 | Sizing a runner by intuition | Read VM CPU/memory/load for the job; a lane bounded by a single-threaded step gains nothing from more cores. |
 | Trusting a green from the branch tip | Pin the pushed SHA; confirm the run's head commit is the commit you pushed. |
+| Queue dominates but the DAG keeps growing | Read `references/capacity-and-contention.md`; above a capacity ceiling, extra jobs repay setup and can make the wall-clock worse. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
 
@@ -215,12 +223,13 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 | `references/agent-feedback-loop.md` | An agent must push and then act on the result: arming a non-stalling watcher, the event/verdict contract, reacting to a red check, or a session that went silent after a push. |
+| `references/capacity-and-contention.md` | Queue share, concurrency ceilings, when more jobs make the wall-clock worse, and when the remediation ladder inverts from "split" to "merge". |
 
 ### Bundled script
 
 | Script | Purpose |
 |---|---|
-| `scripts/ci-watch.py` | Stdlib-only watcher. Emits one line per state change for a pinned commit and always terminates with `CI-DONE success\|failure\|timeout\|no-run\|probe-dead\|superseded`. Built-in GitHub Actions probe (`--sha`, `--repo`); any other provider via `--cmd` printing `<name>: <state>` lines. See `references/agent-feedback-loop.md`. |
+| `scripts/ci-watch.py` | Stdlib-only watcher. Emits one line per state change for a pinned commit and always terminates with `CI-DONE success\|failure\|cancelled\|timeout\|no-run\|probe-dead\|superseded`. Built-in GitHub probe (`--sha`, `--repo`); any other provider via `--cmd` printing `<name>: <state>` lines. See `references/agent-feedback-loop.md`. |
 
 ### Optional: Avrea reference kit
 
