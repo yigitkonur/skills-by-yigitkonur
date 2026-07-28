@@ -16,7 +16,7 @@
 # the grep, so it never exits and never reports the failure.
 #
 # Provider-neutral in shape: to target another CI, keep the event contract and
-# replace only the `gh run list --commit` probe with one that prints
+# replace only the paginated Actions-runs probe with one that prints
 # "<name>: <state>" lines for the pinned identifier.
 #
 # Requires: gh (authenticated) + jq. Override repo with CI_WATCH_REPO=org/name.
@@ -61,8 +61,10 @@ while :; do
   probe_cap=$PROBE_CAP
   [ "$probe_cap" -gt "$remaining" ] && probe_cap=$remaining
 
-  if ! snap=$(timeout "$probe_cap" gh run list --repo "$REPO" --commit "$SHA" --limit 1000 \
-        --json databaseId,workflowName,status,conclusion 2>/dev/null); then
+  if ! snap=$(timeout "$probe_cap" gh api --paginate \
+        "repos/$REPO/actions/runs?head_sha=$SHA&per_page=100" \
+        --jq '.workflow_runs[] | {databaseId: .id, workflowName: .name, status, conclusion}' \
+        2>/dev/null | jq -s '.'); then
     timeout_if_elapsed
     errs=$(( errs + 1 ))
     [ "$errs" -eq 3 ] && emit "CI-ERR probe failing (3x consecutive)"
