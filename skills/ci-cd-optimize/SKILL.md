@@ -69,8 +69,9 @@ Ask in order:
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
-15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+14. Is an agent pushing and then waiting on CI — or has a session gone silent after a push? Read `references/agent-feedback-loop.md`.
+15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -101,6 +102,10 @@ Use full validation as the safe fallback whenever changed files, merge base, cac
 ### 6. Verify after the change
 
 Re-run on the same commit first, then a normal representative commit. Compare median and p95 wall-clock, queue time, cache behavior, first-time pass rate, cost, and failure/rework signals. Confirm the exact run head SHA contains the change and the deployed artifact digest or workflow run is the intended one.
+
+Do not wait for those runs in the foreground. Arm a bounded watcher so a red check surfaces the moment it happens instead of at the deadline — `references/agent-feedback-loop.md`, or `scripts/ci-watch.py` directly. Expect to keep working between its events.
+
+Making CI automatic surfaces defects that a manual, hand-dispatched pipeline hid — environment leakage between jobs, assertions that drifted from the contract they check, and pre-existing flakes. Treat each as a real finding: root-cause it and verify red-first. Reaching green by adding a retry, widening a threshold, or skipping the check corrupts the measurement instead of fixing the pipeline (`references/effectiveness-contract.md`).
 
 Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence.
 
@@ -177,6 +182,11 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
+| Agent blocks on a foreground `run watch` | Arm a bounded watcher that emits per state change and always prints a terminal verdict (`references/agent-feedback-loop.md`). |
+| Watcher greps only for the success marker | Silence then looks identical to "still running". Match failure signatures too. |
+| Caching a store the platform already proxies | Measure install cold vs warm; a 0-hit cache costs quota and returns nothing. |
+| Sizing a runner by intuition | Read VM CPU/memory/load for the job; a lane bounded by a single-threaded step gains nothing from more cores. |
+| Trusting a green from the branch tip | Pin the pushed SHA; confirm the run's head commit is the commit you pushed. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
 
@@ -204,6 +214,13 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
+| `references/agent-feedback-loop.md` | An agent must push and then act on the result: arming a non-stalling watcher, the event/verdict contract, reacting to a red check, or a session that went silent after a push. |
+
+### Bundled script
+
+| Script | Purpose |
+|---|---|
+| `scripts/ci-watch.py` | Stdlib-only watcher. Emits one line per state change for a pinned commit and always terminates with `CI-DONE success\|failure\|timeout\|no-run\|probe-dead\|superseded`. Built-in GitHub Actions probe (`--sha`, `--repo`); any other provider via `--cmd` printing `<name>: <state>` lines. See `references/agent-feedback-loop.md`. |
 
 ### Optional: Avrea reference kit
 

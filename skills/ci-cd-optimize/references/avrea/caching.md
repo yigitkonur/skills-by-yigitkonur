@@ -79,6 +79,23 @@ avr cache list --repo org/app -L 200 --json key,cache_type,size_bytes,hit_count,
 
 Zero hits can also mean the key changes on every run. Check whether the key includes something volatile before deleting anything.
 
+### The package proxy can make a store cache redundant
+
+The Actions store cache and the package proxy solve the same problem for
+dependency installs, and on Avrea the proxy alone is often enough. Measure the
+install step cold and warm before keeping the store cache:
+
+| Observation | Reading |
+|---|---|
+| install is equally fast cold and warm | the proxy is doing the work; the store cache adds bytes, not speed |
+| install is materially slower cold | the store cache is earning its quota |
+
+Measured on a real repository (2026-07-28): a pnpm install took 3.3 s on a cold
+runner and 2.5 s warm, while the 300 MB store entry recorded 0 hits and the
+save step cost ~0 s. Removing `cache: pnpm` freed 1.2 % of the 25 GiB quota and
+cost nothing in wall-clock. The correct default on Avrea is to start without a
+package-store cache and add one only if cold installs measurably hurt.
+
 ## Diagnosing and changing caches
 
 ```bash

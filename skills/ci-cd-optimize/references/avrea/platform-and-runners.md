@@ -41,7 +41,36 @@ Larger runners are the last resort in the performance order, and the measured A/
 2. Confirm it is CPU- or memory-bound via `avr job metrics`.
 3. Confirm the workload is actually parallel — a single-threaded `tsc` or a serial test runner gains nothing from 32 vCPU and costs proportionally more.
 
-ARM is generally cheaper per vCPU, but only choose it when the toolchain and any native dependencies are known to build on ARM64; a cross-architecture surprise costs more than the savings. macOS runners exist in two sizes only, so Swift/Xcode pipelines have limited headroom — see `references/swift-xcode.md` for what to optimize instead.
+### Downsizing is the more common finding
+
+"Start large, then step down" sounds prudent but silently overpays, because the
+step-down half rarely gets measured. `avr job metrics` makes over-provisioning
+obvious: read CPU average against peak, and peak memory against the size's
+allocation.
+
+Measured on a real repository (2026-07-28), the same gate on two sizes:
+
+| | 16 vCPU / 64 GB | 8 vCPU / 32 GB |
+|---|---|---|
+| Gate duration | 159 s | 158 s and 160 s |
+| CPU | avg 58–59 %, peak 98 % | avg 74 %, peak 99 % |
+| Peak memory | 7.4–7.8 GB | 4.0 GB |
+| Rate | $0.032/min | $0.016/min |
+
+The gate was bounded by a test runner that does not scale past a few workers,
+so the extra 8 cores idled and memory was ~8× over-provisioned at the larger
+size. Halving the runner cost nothing in wall-clock and halved the bill. Treat
+"peak memory far below allocation, CPU average well under 100 %, wall-clock flat
+across sizes" as the signature of a job that should shrink.
+
+ARM pricing is provider-specific and must be checked rather than assumed: on
+Avrea's published pricing (checked 2026-07-28) Linux ARM costs about 3× the x64
+rate per vCPU ($0.006 vs $0.002 per vCPU-minute) and caps at 16 vCPU, so ARM is
+a performance choice there, not a cost saving. Choose it only when the toolchain
+and native dependencies are known to build on ARM64, and re-check the rate table
+before relying on it. macOS runners exist in two sizes only, so Swift/Xcode
+pipelines have limited headroom — see `references/swift-xcode.md` for what to
+optimize instead.
 
 ## Observability
 
