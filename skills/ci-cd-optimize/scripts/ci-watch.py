@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -461,10 +462,10 @@ def main() -> int:
                    help="skip job-level expansion of in-flight GitHub runs")
     a = p.parse_args()
 
-    if a.interval <= 0:
-        p.error("--interval must be greater than zero")
-    if a.heartbeat_min <= 0:
-        p.error("--heartbeat-min must be greater than zero")
+    if not math.isfinite(a.interval) or a.interval <= 0:
+        p.error("--interval must be a finite value greater than zero")
+    if not math.isfinite(a.heartbeat_min) or a.heartbeat_min <= 0:
+        p.error("--heartbeat-min must be a finite value greater than zero")
     # `gh run list --commit` silently returns ZERO rows for a short SHA, which
     # the registration deadline would then misreport as no-run. Fail fast.
     if not a.cmd and not re.fullmatch(r"[0-9a-f]{40}", a.sha):
