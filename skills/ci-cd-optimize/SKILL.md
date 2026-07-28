@@ -1,11 +1,11 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use if optimizing slow CI/CD or waiting on a pipeline result without stalling the session.
 metadata:
   author: yigitkonur
   version: 1.0.0
   category: devops
-  tags: [ci-cd, github-actions, gitlab-ci, buildkite, circleci, typescript, swift, xcode, pipeline-performance]
+  tags: [ci-cd, github-actions, gitlab-ci, buildkite, circleci, typescript, swift, xcode, pipeline-performance, ci-monitoring]
 ---
 
 # CI/CD Optimize
@@ -98,7 +98,17 @@ Never claim an optimization if it does any of these:
 
 Use full validation as the safe fallback whenever changed files, merge base, cache correctness, dependency graph completeness, or security scope cannot be proven. When a proposed change is near any of these lines, check it against `references/effectiveness-contract.md` before recommending it.
 
-### 6. Verify after the change
+### 6. Wait for results without stalling
+
+Optimizing means running the pipeline repeatedly, so how you wait is part of the work. Never block
+on a TTY-oriented watcher or an open-ended `sleep` loop, and never filter only for success — a
+crashed run then looks identical to a running one. Use a watcher pinned to the pushed SHA that
+emits one line per state change and always terminates with an explicit verdict (`success` /
+`failure` / `timeout` / `no-run` / `superseded` / `probe-dead`). Read `references/ci-watching.md`
+for the contract, a provider-agnostic implementation, harness wiring, and how to verify the
+watcher's own failure paths.
+
+### 7. Verify after the change
 
 Re-run on the same commit first, then a normal representative commit. Compare median and p95 wall-clock, queue time, cache behavior, first-time pass rate, cost, and failure/rework signals. Confirm the exact run head SHA contains the change and the deployed artifact digest or workflow run is the intended one.
 
@@ -179,6 +189,11 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
+| Assuming a bigger runner class is faster end-to-end | Scarce classes queue longer; measure queue per class before sizing up. |
+| Reporting a wall-clock multiplier when queue dominates | Separate queue from execution; report the part the change controls. |
+| Adding a dependency cache without timing the uncached path | A colocated registry proxy can make it redundant; measure first. |
+| Change-detection logic that routes its own changes narrowly | Planner/CI-config edits escalate to full validation. |
+| Blocking the session on CI, or filtering only for success | Use a SHA-pinned watcher with a guaranteed terminal verdict. |
 
 ## Reference files
 
@@ -203,6 +218,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/network-and-artifacts.md` | Checkout depth, sparse/partial clone, LFS, package proxies, artifact compression, uploads, or registry locality. |
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
+| `references/ci-watching.md` | Waiting on a pipeline result from an agent or script: watcher contract, verdicts, harness wiring, and anti-stall rules. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 
 ### Optional: Avrea reference kit

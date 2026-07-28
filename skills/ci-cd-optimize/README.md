@@ -2,6 +2,8 @@
 
 Diagnose or optimize slow CI/CD pipelines by measured bottleneck, not folklore — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker builds, runner queues, deployment paths, and Swift/Xcode CI — while preserving required checks, cache correctness, and exact-artifact verification.
 
+It also covers **waiting on a pipeline without stalling the session**: a SHA-pinned watcher contract that emits one line per state change and always terminates with an explicit verdict, so an agent never blocks on a hung or never-registered run. See `references/ci-watching.md`.
+
 **Category:** ops
 
 ## Install

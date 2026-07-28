@@ -28,6 +28,37 @@ Use median and p95. CI duration is right-skewed; averages hide cold caches, runn
 
 If a queue-time baseline is unavailable, start with provider run timestamps and job logs. Do not invent missing precision.
 
+## Separate queue from execution before reporting anything
+
+Total wall clock mixes two independent things: work you control (execution) and capacity you
+usually do not (provisioning). When queue variance is high, the total stops being a usable
+measure of an optimization.
+
+Per job:
+
+```
+queue     = started_at - created_at     # runner-acquisition latency
+execution = completed_at - started_at
+```
+
+Note this is *per job*: for a `needs`-gated job, `created_at` is set after its dependencies
+finish, so this measures time waiting for a runner, not time since the trigger. A multi-stage DAG
+pays that latency once per stage, which is why a run's total is much larger than any single
+job's `queue + execution`.
+
+A worked example from six runs of one unchanged pipeline: the longest job's execution stayed
+within 56–68s every time, while the per-run median queue ranged 16s to 416s. Totals ranged 133s
+to 596s. Quoting "1.7× faster" from the fast run or "2.6× slower" from the slow one would both be
+derivable from the data and both meaningless.
+
+Rules:
+
+- If execution is stable and totals swing, say so and report execution as the result.
+- Never quote a multiplier from a single run when queue p95 exceeds execution p50.
+- If queue dominates, the next experiment belongs in `references/runners-and-autoscaling.md`. No
+  in-job optimization moves provisioning time, though reducing job count or avoiding a scarce
+  runner label can reduce exposure to it.
+
 ## Critical-path analysis
 
 Build a DAG from declared dependencies. For every job, compute:
