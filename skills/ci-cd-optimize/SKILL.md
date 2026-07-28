@@ -186,6 +186,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
+| `references/feedback-loops.md` | Waiting on a CI run without blocking or false greens: exact-SHA watching, `scripts/ci-watch.py`, verdicts, and reacting to red. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
 | `references/github-actions.md` | GitHub Actions workflows, caches, concurrency, artifacts, merge queues, required checks, or larger runners. |

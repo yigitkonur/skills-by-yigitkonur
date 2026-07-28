@@ -1,0 +1,2 @@
+{"schema_version": 1, "provider": "example-ci", "repository": "o/r", "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "complete": true, "branch_tip": null,
+ "units": [{"run_id": "r1", "attempt": 1, "name": "build", "state": "green"}, {"run_id": "r2-chained", "attempt": 1, "name": "deploy: preview / e2e", "state": "active"}]}
