@@ -68,9 +68,10 @@ Ask in order:
 10. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
-13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
-15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+13. Is the consumer of these results an agent or unattended session that must not block on CI? Read `references/agent-feedback-loop.md`.
+14. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
+15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -176,6 +177,10 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Remote cache writable by untrusted PRs | Read-only PR cache or isolated cache namespace. |
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
+| Agent blocks in the foreground waiting for CI | Arm a non-blocking watcher on the pinned SHA and keep working. |
+| Watcher greps only for the success marker | A red run looks identical to a running one — emit every terminal state. |
+| Piping a provider `watch` subcommand into a line consumer | Those redraw a TTY block on an interval; pipe it through `cat -A` once to confirm before adopting. |
+| Treating a concurrency auto-cancel as failure | `cancelled` + a newer identifier means superseded, not red. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
@@ -186,6 +191,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
+| `references/agent-feedback-loop.md` | An agent or long-running session must learn a CI verdict without blocking, a watcher hangs or floods, or CI is the only verification surface. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
 | `references/github-actions.md` | GitHub Actions workflows, caches, concurrency, artifacts, merge queues, required checks, or larger runners. |
