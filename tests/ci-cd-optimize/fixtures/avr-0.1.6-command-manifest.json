@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "package": "avr-cli",
+  "executable": "avr",
+  "version": "0.1.6",
+  "release_tag": "v0.1.6",
+  "release_sha": "d1c368547a8ca31fad2ec0513c6a2cfc33e3cb80",
+  "global_flags": [
+    "-V", "--version", "--no-color", "-v", "--verbose", "--links", "--no-links", "-h", "--help"
+  ],
+  "aliases": {
+    "jobs": "job",
+    "repos": "repo",
+    "orgs": "org",
+    "logs": "log",
+    "workflows": "workflow",
+    "login": "auth login",
+    "logout": "auth logout"
+  },
+  "commands": {
+    "status": {"class": "read-only", "subcommands": []},
+    "health": {"class": "read-only", "subcommands": []},
+    "run": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "view": {"class": "read-only"},
+        "logs": {"class": "read-only"},
+        "watch": {"class": "read-only"},
+        "cancel": {"class": "remote-repo-mutation"},
+        "rerun": {"class": "remote-repo-mutation"}
+      }
+    },
+    "job": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "view": {"class": "read-only"},
+        "logs": {"class": "read-only"},
+        "metrics": {"class": "read-only"},
+        "watch": {"class": "read-only"},
+        "ssh": {"class": "live-runner-access"}
+      }
+    },
+    "workflow": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "view": {"class": "read-only"},
+        "run": {"class": "remote-repo-mutation"}
+      }
+    },
+    "cache": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "usage": {"class": "read-only"},
+        "delete": {"class": "remote-repo-mutation"}
+      }
+    },
+    "log": {
+      "class": "read-only",
+      "subcommands": {
+        "search": {"class": "read-only"}
+      }
+    },
+    "auth": {
+      "class": "mixed",
+      "subcommands": {
+        "login": {"class": "local-config-write"},
+        "logout": {"class": "local-config-write"},
+        "switch": {"class": "local-config-write"},
+        "status": {"class": "read-only", "sensitive_flags": ["--show-token"]}
+      }
+    },
+    "config": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "get": {"class": "read-only"},
+        "set": {"class": "local-config-write"},
+        "unset": {"class": "local-config-write"}
+      }
+    },
+    "settings": {
+      "class": "mixed",
+      "subcommands": {
+        "schema": {"class": "read-only"},
+        "list": {"class": "read-only"},
+        "set": {"class": "remote-scope-mutation"},
+        "reset": {"class": "remote-scope-mutation"}
+      }
+    },
+    "repo": {
+      "class": "read-only",
+      "subcommands": {
+        "list": {"class": "read-only"}
+      }
+    },
+    "org": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "create": {"class": "remote-org-mutation"},
+        "members": {"class": "read-only"},
+        "email-domain list": {"class": "read-only"},
+        "email-domain set": {"class": "remote-org-mutation"},
+        "install list": {"class": "read-only"},
+        "install add": {"class": "remote-org-mutation"},
+        "install remove": {"class": "remote-org-mutation"}
+      }
+    },
+    "firewall": {
+      "class": "mixed",
+      "subcommands": {
+        "list": {"class": "read-only"},
+        "show": {"class": "read-only"},
+        "flow-summaries": {"class": "read-only"},
+        "add": {"class": "remote-scope-mutation"},
+        "delete": {"class": "remote-scope-mutation"},
+        "move": {"class": "remote-scope-mutation"},
+        "set-default": {"class": "remote-scope-mutation"}
+      }
+    },
+    "audit-events": {
+      "class": "read-only",
+      "subcommands": {
+        "list": {"class": "read-only"}
+      }
+    },
+    "billing": {
+      "class": "mixed",
+      "subcommands": {
+        "summary": {"class": "read-only"},
+        "settings": {"class": "read-only"},
+        "update-settings": {"class": "financial-mutation"},
+        "invoices list": {"class": "read-only"},
+        "invoices show": {"class": "read-only"},
+        "invoices download": {"class": "local-file-write"},
+        "payment-methods list": {"class": "read-only"},
+        "payment-methods add": {"class": "financial-mutation", "sensitive_flags": ["--number", "--cvc"]},
+        "payment-methods remove": {"class": "financial-mutation"},
+        "payment-methods set-default": {"class": "financial-mutation"}
+      }
+    }
+  },
+  "unreleased_commands": [
+    "vm",
+    "repo public-mirror",
+    "org email-domain claim",
+    "org email-domain verify",
+    "org saml",
+    "firewall flow-summaries --job"
+  ],
+  "known_absent_capabilities": [
+    "artifact list/download/delete",
+    "per-run cost or runner-minute accounting",
+    "direct queue_duration field"
+  ]
+}

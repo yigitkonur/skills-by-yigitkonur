@@ -161,6 +161,9 @@ avr auth status`.
 | File | Read when |
 |---|---|
 | `references/avrea/cli-evidence.md` | Building an Avrea-backed baseline with `avr`: median/p95, start offsets, queue time, VM metrics, flake and cache-hit counts. |
+| `references/avrea/cli-core-reference.md` | Exact `avr` syntax, flags, JSON fields, output behavior, exit codes, and mutation class for released 0.1.6 read/evidence commands. |
+| `references/avrea/cli-admin-reference.md` | Any Avrea command that changes local config, shared CI state, org settings, firewall, billing, cache entries, or opens live SSH. |
+| `references/avrea/cli-auth-and-portability.md` | `AVR_CONFIG_DIR`, `.envrc`, host/org/repo resolution, noninteractive CI usage, pager/JSON behavior, and multi-account portability. |
 | `references/avrea/platform-and-runners.md` | Runner labels/sizing, migration, A/B shadowing, observability, SSH debugging, trust boundary. |
 | `references/avrea/caching.md` | Avrea cache layers, Docker/Turborepo wiring, registry proxy caveats, quota/eviction, cold entries. |
 
