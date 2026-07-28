@@ -4,6 +4,10 @@ Diagnose or optimize slow CI/CD pipelines by measured bottleneck, not folklore â
 
 **Category:** ops
 
+Includes `scripts/ci-watch.sh` â€” a non-blocking GitHub Actions watcher for agents that must
+wait on a pipeline (commit-pinned, diff-gated, always terminates with a verdict). See
+`references/agent-feedback-loop.md`.
+
 ## Install
 
 **As a plugin (easy install / uninstall via `/plugin`):**
