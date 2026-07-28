@@ -41,6 +41,17 @@ Prioritize `critical-path rate × exclusive time`. A job consuming CPU in parall
 
 Where the platform records per-job start offsets, derive the DAG shape empirically instead of trusting declared dependencies: a gap between a job's `start + duration` and its dependents' start is scheduling and per-job setup overhead, which no amount of in-job optimization removes. On Avrea, `references/avrea/cli-evidence.md` shows how to extract these offsets.
 
+
+## Sampling traps
+
+These produce numbers that look rigorous and are not.
+
+- **A rerun is not always a new sample.** Some providers re-report the original attempt's duration. Confirm the attempt counter actually incremented before treating repeated identical durations as independent warm samples.
+- **Do not mix event populations.** A manually dispatched run that force-enables every conditional gate is not comparable to a push run that path-filters most of them. Report push, PR, and dispatch populations separately.
+- **Do not measure under self-inflicted contention.** Firing several runs concurrently to "collect samples faster" inflates queue time for all of them. Let the platform drain, then measure.
+- **Do not quote p95 from a handful of runs.** Below ~20 comparable runs, report median and range and label p95 as descriptive with the exact `n`.
+- **Separate work from wait.** A change can cut total work 40% while wall-clock stays flat because provisioning dominates; that still matters, because it tells you the next lever is job count or capacity, not in-job optimization. See `references/capacity-and-contention.md`.
+
 ## Experiment verification
 
 Before changing config, write down:

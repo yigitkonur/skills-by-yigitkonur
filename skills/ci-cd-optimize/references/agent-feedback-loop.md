@@ -52,8 +52,8 @@ EVENT            MEANING                                   AGENT ACTION
 RUN  <n units>   units registered for this identifier      none — keep working
 CHG  <unit>      a unit changed state                      act on the first failure
 HB   <m/deadline> liveness tick, carries state when stalled acknowledge silently
-DONE <verdict>   terminal: success|failure|timeout|        decide and stop watching
-                 no-run|superseded|probe-dead
+DONE <verdict>   terminal: success|failure|timeout|no-run|  decide and stop watching
+                 superseded|cancelled|probe-dead
 ```
 
 Rules that make it reliable:
@@ -62,7 +62,7 @@ Rules that make it reliable:
 - **Heartbeat interval.** Emit liveness on a quiet interval so the caller can distinguish "waiting" from "wedged." Where the consuming model has a prompt-cache TTL, keep the heartbeat comfortably under it so a long queue does not force a cold re-read of context.
 - **Per-probe timeout.** Cap each probe call so one wedged request cannot freeze the loop.
 - **Error streaks, not error exits.** Transient API failures are normal; retry quietly, warn once after a few consecutive failures, exit `DONE probe-dead` after ~10.
-- **Distinguish cancellation from failure.** A superseding push commonly makes a concurrency group auto-cancel the older run. `cancelled` is *not* red. When every conclusion is in `{success, skipped, neutral, cancelled}` **and** a newer identifier exists, report `DONE superseded` and let the caller arm a fresh watch. Reporting that as failure sends the agent debugging a phantom break — a mistake worth guarding against explicitly, because it looks exactly like a real red.
+- **Distinguish cancellation from failure.** A superseding push commonly makes a concurrency group auto-cancel the older run. `cancelled` is *not* red. The robust rule: if the only non-green conclusions are `cancelled`, the verdict is `cancelled`/`superseded`, never `failure` — regardless of whether you can prove a newer identifier exists. Report `superseded` when you can confirm the ref moved, `cancelled` otherwise, and reserve `failure` for a genuine non-success/non-cancelled conclusion. Reporting a cancellation as failure sends the agent debugging a phantom break, because it looks exactly like a real red. (A first implementation of the bundled watcher got this wrong by requiring a branch argument to reach the supersession branch; without it, every auto-cancel read as failure.)
 - **Aggregate across all runs for the identifier.** After a fast-forward, one commit can carry both a branch run and a default-branch run. A SHA-pinned watch spans both, which is usually correct — the default-branch run is the one that deploys.
 
 ## Arming it
@@ -96,6 +96,7 @@ Prove each exit path against real runs. A watcher that has only been observed su
 | Nothing registers | watch a bogus or path-filtered SHA | `DONE no-run` before the deadline |
 | Deadline | set the deadline to ~0 against a live run | `DONE timeout`, never silence |
 | Superseded | push twice quickly | `DONE superseded`, **not** failure |
+| Cancelled without a known newer ref | cancel a run manually, or watch an auto-cancelled SHA without the branch arg | `DONE cancelled`, **not** failure |
 | Long queue | watch during contention | periodic `HB` carrying state |
 
 The failure test is the one that matters; run it deliberately rather than waiting for a real break. Confirm the remediation command the watcher prints actually surfaces the error, and confirm the exit code is non-zero (beware `| head` masking it — check `${PIPESTATUS[0]}` or run unpiped).
@@ -111,6 +112,26 @@ The failure test is the one that matters; run it deliberately rather than waitin
 A verdict is evidence only for the identifier it names. Confirm the run's head SHA equals what you pushed, and that your change is in that run's diff, before calling it verified. See `effectiveness-contract.md` for why a green on a stale or empty diff is not proof.
 
 ## When CI is the only verification surface
+
+## Choosing the right waiting primitive
+
+| Need | Use |
+|---|---|
+| Many state changes until a known end (CI progress) | A diff-gated streaming watcher like this one. |
+| Exactly one notification ("tell me when it finishes") | A backgrounded command that exits when the condition becomes true. |
+| Arbitrary matches in a growing file/log | `tail -f ... | grep --line-buffered`, but only when the filter covers every terminal state. |
+
+**Coverage rule:** a filter that matches only the success marker is silent through a crash, a hang, and an OOM — and silence is indistinguishable from "still running." Always match every terminal state, or widen the alternation. Also ensure every stage in a pipe flushes per line; `head -N` cannot flush and withholds output until N matches accumulate.
+
+## Size the deadline to queue + convergence, not to the happy-path runtime
+
+Two false-red deadline patterns recur:
+
+1. **Queue delay dominates execution.** A job that executes in 20s can still wait minutes for capacity. Deadline to observed p95 wall-clock, not median execution time.
+2. **The deploy call returns before the environment converges.** CDN/edge/multi-region platforms frequently serve the previous revision for tens of seconds after the deploy API returned success. A deploy watcher budgeted to the upload/build step rather than to revision convergence reports a false failure and trains the agent to ignore the signal.
+
+A `timeout` verdict is not a red build and not a pass. It means you still do not know. Inspect the run, separate queue from execution, then re-arm with a larger deadline if the workflow is still the right one to watch. If timeouts recur while execution stays flat, the bottleneck is queue capacity, not your watcher — route to `references/capacity-and-contention.md`.
+
 
 Teams that push heavy work off the developer machine — several agents, several worktrees, limited local RAM — depend on this loop entirely. Additions that pay for themselves:
 

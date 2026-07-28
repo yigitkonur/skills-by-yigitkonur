@@ -57,7 +57,7 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor, or has job count already crossed a concurrency ceiling? Read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -98,6 +98,10 @@ Never claim an optimization if it does any of these:
 - makes change detection use an unverified merge base.
 
 Use full validation as the safe fallback whenever changed files, merge base, cache correctness, dependency graph completeness, or security scope cannot be proven. When a proposed change is near any of these lines, check it against `references/effectiveness-contract.md` before recommending it.
+
+### 5b. Wait for the result without blocking
+
+When an agent triggers the run and consumes the verdict — the common case for autonomous work and CI-only verification — never block the session on it. Arm a bounded, commit-pinned watcher that emits state changes and always ends in a terminal verdict, then keep working. The bundled `scripts/ci-watch.sh` implements the contract for GitHub Actions; `references/agent-feedback-loop.md` gives the contract, the two patterns that fail (TTY-shaped `run watch`, success-only polling), and how to wire it to a streaming-notification facility such as the Monitor tool.
 
 ### 6. Verify after the change
 
@@ -180,7 +184,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Agent blocks in the foreground waiting for CI | Arm a non-blocking watcher on the pinned SHA and keep working. |
 | Watcher greps only for the success marker | A red run looks identical to a running one — emit every terminal state. |
 | Piping a provider `watch` subcommand into a line consumer | Those redraw a TTY block on an interval; pipe it through `cat -A` once to confirm before adopting. |
-| Treating a concurrency auto-cancel as failure | `cancelled` + a newer identifier means superseded, not red. |
+| Treating a concurrency auto-cancel as failure | If the only non-green conclusions are `cancelled`, it is superseded/cancelled, never red. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
 | Upgrading the whole matrix to bigger runners | Resize only CPU-bound critical-path jobs proven by VM utilization. |
@@ -192,6 +196,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/agent-feedback-loop.md` | An agent or long-running session must learn a CI verdict without blocking, a watcher hangs or floods, or CI is the only verification surface. |
+| `references/capacity-and-contention.md` | Queue share is high, parallelism stopped paying off, before splitting or fanning out jobs, or when A/B arms ran under different pool load. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
 | `references/github-actions.md` | GitHub Actions workflows, caches, concurrency, artifacts, merge queues, required checks, or larger runners. |
@@ -220,6 +225,10 @@ Read only when the repository runs on Avrea (`runs-on:` labels start with `avrea
 | `references/avrea/cli-evidence.md` | Using the `avr` CLI to build a baseline: median/p95, per-job start offsets, queue time, VM metrics, flake counts, cache hit counts, or driving a run to a terminal state. |
 | `references/avrea/platform-and-runners.md` | Runner labels and sizing, migration from GitHub-hosted runners, A/B shadowing, observability, OTel export, live SSH debugging, or the third-party trust boundary. |
 | `references/avrea/caching.md` | Actions/build/package cache layers, Turborepo or Docker `url_v2` wiring, registry proxy caveats, quota and LRU eviction, or diagnosing cold cache entries. |
+
+## Bundled script
+
+`scripts/ci-watch.sh <pinned-sha> [branch] [deadline-min]` is a ready GitHub Actions watcher implementing every requirement in `references/agent-feedback-loop.md`: commit-pinned across all workflows, diff-gated, heartbeating under a typical prompt-cache TTL, and guaranteed to end in `CI-DONE <verdict>` (success, failure, timeout, no-run, superseded, probe-dead). Requires authenticated `gh` and `jq`; set `CI_WATCH_REPO=org/name` or run inside the repo. For another provider, keep the event contract and replace only the probe command.
 
 ## Guardrails
 

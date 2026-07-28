@@ -65,6 +65,15 @@ jobs:
 
 Ensure the provider reports skipped downstream jobs as successful/skipped in the way branch protection expects.
 
+## The planner must not grade its own homework
+
+The component that decides what runs is part of the repository, and a change to it can ship having validated a fraction of the repo. Two failures worth an explicit guard, both seen in practice:
+
+1. **Config fan-out gaps.** A rule mapping `.github/**` (or `.gitlab-ci.yml`, `.circleci/`) to "the main lanes" silently excludes specialized workflows, so editing a specialized one never exercises it.
+2. **Self-routing.** A planner change that maps only to its own directory's lane grades its own homework.
+
+The classifier is a pure path-to-lane function, so guard both cheaply with unit fixtures: assert the lane set for a representative path list, and assert that a change to the planner or to shared CI config escalates to a full run. Any change to the planner, CI config, or a shared CI helper belongs in the full-run list below.
+
 ## Full-run triggers
 
 Always run the full suite when:

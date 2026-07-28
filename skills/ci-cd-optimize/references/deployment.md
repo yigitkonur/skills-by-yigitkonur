@@ -43,6 +43,12 @@ Before claiming a deployment is done, verify:
 - canary/analysis metrics are inside budget,
 - rollback artifact remains available.
 
+## Size the convergence budget to propagation, not to the deploy call
+
+A self-verifying deploy — deploy, then poll a `/version`-style endpoint until it reports the pushed revision — is the cheapest guard against a silently stale release. Its classic defect is that the polling budget gets tuned to how long the deploy command takes, not to how long the platform takes to converge.
+
+Edge- and CDN-backed platforms (Cloudflare Workers, Vercel, Fastly, multi-region rollouts) commonly serve the previous revision for tens of seconds after the deploy call returns success. A budget sized to the upload/build step produces a **false red on a deploy that actually succeeded** — worse than no check, because it trains everyone to ignore the signal and can trigger an unnecessary rollback. Size the convergence poll to observed propagation time, and treat a convergence timeout as "unknown, inspect" rather than "failed, roll back".
+
 ## TypeScript status probe sketch
 
 ```ts
