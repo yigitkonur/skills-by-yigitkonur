@@ -241,6 +241,7 @@ def watch(a: argparse.Namespace) -> int:
 
     seen: dict[str, str] = {}
     registered = False
+    successful_empty_probe = False
     err_streak = 0
     warned_at = 0
     last_keys: frozenset[str] | None = None
@@ -251,13 +252,16 @@ def watch(a: argparse.Namespace) -> int:
     while True:
         now = time.monotonic()
         if not registered and now >= register_by:
-            if a.expect_none:
+            if a.expect_none and successful_empty_probe:
                 emit(f"CI-DONE no-run — nothing registered for {a.sha[:9]} — "
                      "expected (declared path-filtered)")
                 return 0
+            detail = ("probe never returned a successful empty snapshot"
+                      if a.expect_none else
+                      "path filter? workflow disabled? wrong branch? short SHA?")
             return done("no-run",
                         f"nothing registered for {a.sha[:9]} in {a.register_min:g}m "
-                        "(path filter? workflow disabled? wrong branch? short SHA?)")
+                        f"({detail})")
         if now >= deadline:
             pending = sum(1 for k, v in seen.items()
                           if "/" not in k and not classify_custom(v)[0]
@@ -275,11 +279,16 @@ def watch(a: argparse.Namespace) -> int:
                 warned_at = err_streak
             if err_streak >= 10:
                 return done("probe-dead", "10 consecutive probe failures")
-        elif not runs and registered:
-            # A transient empty result after registration is a blip, never a
-            # verdict: `all([])` is True, and treating it as "all terminal and
-            # nothing failed" manufactures a success out of an outage.
-            green_since = None
+        elif not runs:
+            # An empty list is a successful provider response, not another probe
+            # failure. Before registration it proves --expect-none observed the
+            # provider; after registration it remains a transient blip, never a
+            # verdict (`all([])` would otherwise manufacture a success).
+            err_streak = 0
+            if registered:
+                green_since = None
+            else:
+                successful_empty_probe = True
         else:
             err_streak = 0
             if runs and not registered:
@@ -305,9 +314,9 @@ def watch(a: argparse.Namespace) -> int:
                                              max(0.1, min(30.0, remaining))):
                             jk = j["key"]
                             if seen.get(jk) != j["state"] and j["state"]:
-                                if jk in seen:
-                                    emit(f"CI-CHG  {r['name']}/{j['name']}: "
-                                         f"{seen[jk]} -> {j['state']}")
+                                previous = seen.get(jk, "unknown")
+                                emit(f"CI-CHG  {r['name']}/{j['name']}: "
+                                     f"{previous} -> {j['state']}")
                                 seen[jk] = j["state"]
 
             keys = frozenset(r["key"] for r in runs)
@@ -408,13 +417,16 @@ def watch(a: argparse.Namespace) -> int:
 
         now = time.monotonic()   # re-sampled: the probes above can take ~45s
         if not registered and now > register_by:
-            if a.expect_none:
+            if a.expect_none and successful_empty_probe:
                 emit(f"CI-DONE no-run — nothing registered for {a.sha[:9]} — "
                      "expected (declared path-filtered)")
                 return 0
+            detail = ("probe never returned a successful empty snapshot"
+                      if a.expect_none else
+                      "path filter? workflow disabled? wrong branch? short SHA?")
             return done("no-run",
                         f"nothing registered for {a.sha[:9]} in {a.register_min:g}m "
-                        "(path filter? workflow disabled? wrong branch? short SHA?)")
+                        f"({detail})")
         if now > deadline:
             pending = sum(1 for k, v in seen.items()
                           if "/" not in k and not classify_custom(v)[0]
@@ -449,6 +461,10 @@ def main() -> int:
                    help="skip job-level expansion of in-flight GitHub runs")
     a = p.parse_args()
 
+    if a.interval <= 0:
+        p.error("--interval must be greater than zero")
+    if a.heartbeat_min <= 0:
+        p.error("--heartbeat-min must be greater than zero")
     # `gh run list --commit` silently returns ZERO rows for a short SHA, which
     # the registration deadline would then misreport as no-run. Fail fast.
     if not a.cmd and not re.fullmatch(r"[0-9a-f]{40}", a.sha):
