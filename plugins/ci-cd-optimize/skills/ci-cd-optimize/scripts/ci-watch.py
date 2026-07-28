@@ -352,22 +352,27 @@ def watch(a: argparse.Namespace) -> int:
                     return done("cancelled", names + " — not a green result "
                                 "(pass --branch to distinguish supersession)")
                 if a.settle_sec > 0:
-                    now = time.monotonic()
+                    settle_now = time.monotonic()
                     if green_since is None:
-                        green_since = now
+                        green_since = settle_now
                         if not settle_announced:
                             emit(f"CI-SETTLE all green — holding {a.settle_sec:g}s "
                                  "for completion-triggered follow-ups")
                             settle_announced = True
-                    if now >= deadline:
+                    if settle_now >= deadline:
                         return done("timeout",
                                     f"{a.deadline_min:g}m elapsed while waiting to settle")
-                    if now - green_since < a.settle_sec:
-                        if now >= next_beat:
-                            emit(f"CI-HB   {int((now - started) / 60)}/{a.deadline_min:g}m")
-                            next_beat = now + a.heartbeat_min * 60
+                    if settle_now - green_since < a.settle_sec:
+                        if settle_now >= next_beat:
+                            emit(f"CI-HB   {int((settle_now - started) / 60)}/"
+                                 f"{a.deadline_min:g}m")
+                            next_beat = settle_now + a.heartbeat_min * 60
                         wake_at = min(deadline, next_beat, green_since + a.settle_sec)
-                        time.sleep(max(0, min(a.interval, wake_at - now)))
+                        sleep_now = time.monotonic()
+                        if sleep_now >= deadline:
+                            return done("timeout",
+                                        f"{a.deadline_min:g}m elapsed while waiting to settle")
+                        time.sleep(max(0, min(a.interval, wake_at - sleep_now)))
                         continue
                 if a.branch and not a.cmd:
                     remaining = deadline - time.monotonic()
