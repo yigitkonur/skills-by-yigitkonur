@@ -56,9 +56,11 @@ jobs:
             exit 1
           fi
 
-          # Marketplace metadata must keep the stable identity.
+          # Marketplace metadata must keep the stable identity. The root
+          # codex manifest describes the whole pack; the per-plugin manifest
+          # carries the skill identity.
           grep -q '"ci-cd-optimize"' .claude-plugin/marketplace.json
-          grep -q '"ci-cd-optimize"' .codex-plugin/plugin.json
+          grep -q '"ci-cd-optimize"' plugins/ci-cd-optimize/.codex-plugin/plugin.json
 
           # The packaged watcher honours its structured-death contract.
           out=$(python3 "$pkg/scripts/ci-watch.py" deadbeef --repo o/r || true)
