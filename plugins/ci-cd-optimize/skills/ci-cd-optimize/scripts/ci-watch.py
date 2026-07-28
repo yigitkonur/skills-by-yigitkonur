@@ -66,7 +66,7 @@ def emit(line: str) -> None:
     print(line, flush=True)
 
 
-def run(cmd: list[str], timeout: int = PROBE_TIMEOUT) -> str:
+def run(cmd: list[str], timeout: float = PROBE_TIMEOUT) -> str:
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                           check=True).stdout
 
@@ -79,14 +79,14 @@ def full_sha(candidate: str) -> str:
     return run(["git", "rev-parse", candidate]).strip()
 
 
-def branch_tip(repo_dir: str, branch: str) -> str | None:
+def branch_tip(repo_dir: str, branch: str, timeout: float) -> str | None:
     # The remote ref is the only correct source for supersession. The latest
     # *run*'s head SHA is wrong: before the newest push registers, it is an
     # older commit, and a watcher using it reports a commit superseded by its
     # own ancestor.
     try:
         out = run(["git", "-C", repo_dir, "ls-remote", "origin",
-                   f"refs/heads/{branch}"])
+                   f"refs/heads/{branch}"], timeout)
         return out.split()[0] if out.strip() else None
     except Exception:
         return None
@@ -107,7 +107,7 @@ def gh_probe(sha: str, repo: str | None, expand_jobs: bool,
     remaining = deadline_at - time.monotonic()
     if remaining <= 0:
         raise subprocess.TimeoutExpired(base, 0)
-    rows = json.loads(run(base, max(1, min(PROBE_TIMEOUT, int(remaining)))) or "[]")
+    rows = json.loads(run(base, min(PROBE_TIMEOUT, remaining)) or "[]")
     if len(rows) >= MAX_RUNS:
         raise RuntimeError(f"at least {MAX_RUNS} runs match {sha[:7]}; "
                            "refusing an incomplete verdict")
@@ -129,7 +129,7 @@ def gh_probe(sha: str, repo: str | None, expand_jobs: bool,
                 jr = ["gh", "run", "view", rid, "--json", "jobs"]
                 if repo:
                     jr += ["--repo", repo]
-                for j in json.loads(run(jr, max(1, min(PROBE_TIMEOUT, int(left))))).get("jobs", []):
+                for j in json.loads(run(jr, min(PROBE_TIMEOUT, left))).get("jobs", []):
                     jid = f"{rid}/{j.get('databaseId', j.get('name'))}"
                     jstate = j.get("conclusion") or j.get("status") or "unknown"
                     snap[jid] = {"name": f"{snap[rid]['name']}:{j.get('name')}",
@@ -143,7 +143,7 @@ def gh_probe(sha: str, repo: str | None, expand_jobs: bool,
     return snap
 
 
-def custom_probe(cmd: str, sha: str, timeout: int) -> tuple[dict[str, dict], str | None]:
+def custom_probe(cmd: str, sha: str, timeout: float) -> tuple[dict[str, dict], str | None]:
     env = dict(os.environ, CI_WATCH_SHA=sha)
     proc = subprocess.run(cmd, shell=True, capture_output=True, text=True,
                           timeout=timeout, env=env)
@@ -260,7 +260,7 @@ def main() -> int:
                             "inspect the run; stuck is not slow")
             if a.cmd:
                 snap, forced = custom_probe(
-                    a.cmd, sha, max(1, min(PROBE_TIMEOUT, int(remaining))))
+                    a.cmd, sha, min(PROBE_TIMEOUT, remaining))
             else:
                 snap = gh_probe(sha, a.repo, expand_jobs=True,
                                 deadline_at=deadline_at)
@@ -332,7 +332,13 @@ def main() -> int:
             else:
                 # At least one run is neutral. Cancelled by a newer push, or by
                 # hand? Mixed success/neutral is not an all-green verdict.
-                tip = branch_tip(os.getcwd(), branch) if branch else None
+                remaining = deadline_at - time.monotonic()
+                if remaining <= 0:
+                    return done("timeout", f"not terminal after {a.deadline}s -- "
+                                "inspect the run; stuck is not slow")
+                tip = branch_tip(
+                    os.getcwd(), branch,
+                    min(PROBE_TIMEOUT, remaining)) if branch else None
                 if branch and tip is None:
                     if not warned_super:
                         emit("CI-WARN cannot read origin tip; retrying "
@@ -357,7 +363,7 @@ def main() -> int:
             emit(f"CI-HB {mins}/{total}m -- {states}")
             last_beat = now
 
-        time.sleep(a.interval)
+        bounded_sleep()
 
 
 if __name__ == "__main__":
