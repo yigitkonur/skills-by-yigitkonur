@@ -76,32 +76,41 @@ max=$(( DEADLINE_MIN * 60 / 2 ))              # keep no-run reachable before tim
 [ "$GRACE" -gt "$max" ] && GRACE=$max
 
 short="${SHA:0:8}"; deadline=$(( SECONDS + DEADLINE_MIN * 60 ))
-last=""; beat=$SECONDS; seen=false
+last=""; last_runs_error=""; last_branch_error=""; beat=$SECONDS; seen=false
 
 while :; do
-  runs=$(gh run list --commit "$SHA" --limit 20 \
-          --json databaseId,workflowName,status,conclusion 2>/dev/null)
-
-  if [ -z "$runs" ] || [ "$runs" = "[]" ]; then
-    if [ "$seen" = false ] && [ $SECONDS -gt $GRACE ]; then
-      echo "CI-DONE no-run — nothing triggered for $short"; exit 0
-    fi
+  if ! runs=$(gh run list --commit "$SHA" --limit 20 \
+          --json databaseId,workflowName,status,conclusion 2>&1); then
+    error="runs: ${runs//$'\n'/ }"
+    [ "$error" != "$last_runs_error" ] && { echo "CI-ERR $short $error"; last_runs_error="$error"; beat=$SECONDS; }
   else
-    seen=true
-    state=$(jq -r 'sort_by(.workflowName)[] | "\(.workflowName)=\(.status)\(if .conclusion != "" then "/"+.conclusion else "" end)"' <<<"$runs" | paste -sd' ' -)
-    [ "$state" != "$last" ] && { echo "CI-CHG $short $state"; last="$state"; beat=$SECONDS; }
+    last_runs_error=""
+    if [ -z "$runs" ] || [ "$runs" = "[]" ]; then
+      if [ "$seen" = false ] && [ $SECONDS -gt $GRACE ]; then
+        echo "CI-DONE no-run — nothing triggered for $short"; exit 0
+      fi
+    else
+      seen=true
+      state=$(jq -r 'sort_by(.workflowName)[] | "\(.workflowName)=\(.status)\(if .conclusion != "" then "/"+.conclusion else "" end)"' <<<"$runs" | paste -sd' ' -)
+      [ "$state" != "$last" ] && { echo "CI-CHG $short $state"; last="$state"; beat=$SECONDS; }
 
-    if jq -e 'length > 0 and all(.status == "completed")' <<<"$runs" >/dev/null 2>&1; then
-      bad=$(jq -r '[.[] | select(.conclusion | IN("success","skipped","neutral") | not) | .workflowName] | join(", ")' <<<"$runs")
-      if [ -z "$bad" ]; then echo "CI-DONE success — $short"; exit 0; fi
-      id=$(jq -r '[.[] | select(.conclusion=="failure")][0].databaseId // empty' <<<"$runs")
-      echo "CI-DONE failure — $short — $bad${id:+ — gh run view $id --log-failed}"; exit 1
+      if jq -e 'length > 0 and all(.status == "completed")' <<<"$runs" >/dev/null 2>&1; then
+        bad=$(jq -r '[.[] | select(.conclusion | IN("success","skipped","neutral") | not) | .workflowName] | join(", ")' <<<"$runs")
+        if [ -z "$bad" ]; then echo "CI-DONE success — $short"; exit 0; fi
+        id=$(jq -r '[.[] | select(.conclusion=="failure")][0].databaseId // empty' <<<"$runs")
+        echo "CI-DONE failure — $short — $bad${id:+ — gh run view $id --log-failed}"; exit 1
+      fi
     fi
   fi
 
   if [ -n "$BRANCH" ] && [ "$seen" = false ]; then
-    head=$(gh run list --branch "$BRANCH" --limit 1 --json headSha --jq '.[0].headSha // empty' 2>/dev/null)
-    [ -n "$head" ] && [ "$head" != "$SHA" ] && { echo "CI-DONE superseded — $short → ${head:0:8}"; exit 0; }
+    if ! head=$(gh run list --branch "$BRANCH" --limit 1 --json headSha --jq '.[0].headSha // empty' 2>&1); then
+      error="branch: ${head//$'\n'/ }"
+      [ "$error" != "$last_branch_error" ] && { echo "CI-ERR $short $error"; last_branch_error="$error"; beat=$SECONDS; }
+    else
+      last_branch_error=""
+      [ -n "$head" ] && [ "$head" != "$SHA" ] && { echo "CI-DONE superseded — $short → ${head:0:8}"; exit 0; }
+    fi
   fi
 
   [ $SECONDS -ge $deadline ] && { echo "CI-DONE timeout — $short still ${last:-unregistered}"; exit 1; }
