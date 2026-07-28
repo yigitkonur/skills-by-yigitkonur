@@ -28,6 +28,30 @@ vitest run --merge-reports
 
 Vitest distributes by test file by default. A few large files can still dominate; split large files or use provider timing-aware splitting.
 
+## Profile per file before sharding
+
+File-distributing runners (Vitest, Jest) cannot split one slow file, so a
+single dominant file caps the run regardless of `maxWorkers` or shard
+count. Read per-file durations from the reporter first, then per-test
+within the worst file.
+
+Durations clustered at round numbers (8,048 ms, 8,037 ms, 24,063 ms =
+n × 8,000 ms) are real waiting — usually a retry/backoff/poll delay in the
+*code under test*, not in the test. Ranked fixes:
+
+1. Make the delay injectable and lower it only in the test environment,
+   keeping the production value as the default — behavior provably
+   unchanged.
+2. Fake timers — proves less, and sandboxed runtimes handle them poorly.
+3. Split the file — only if the cost is actually spread across tests.
+
+Measured: one file 72.05 s → 9.66 s, project 75.70 s → 14.83 s (5.1×),
+with the executed-test count *rising* 1,866 → 1,868. Always verify the
+count did not fall — a speedup that drops executed tests is a coverage
+regression, not an optimization. Corollary: never shard a suite whose cost
+is concentrated in dead waiting; that pays setup N times to parallelize
+sleep.
+
 ## Jest
 
 Jest `--shard` balances by file count unless a custom sequencer uses historical timings. CircleCI and similar providers can split by JUnit timing metadata:

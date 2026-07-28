@@ -68,6 +68,15 @@ durations (`references/testing-and-flakiness.md` for splitting mechanics),
 or collocate small jobs (lint+typecheck) into one runner until setup is
 amortized.
 
+Before merging jobs, check what the separation was buying:
+
+- **Rerun granularity** — a merged job reruns both halves on any failure.
+- **Failure attribution** — keep distinct step names so the log still says
+  which half broke.
+- **Isolation** — jobs that were safe in separate VMs may collide once they
+  share one: two suites against a single Postgres fail with
+  "already exists", port and temp-path clashes, global config mutation.
+
 ## Per-pool analysis
 
 Never average queue times across runner classes. Pools saturate
@@ -78,6 +87,18 @@ end-to-end time via queueing even when compute gets faster. For each
 runner label: distribution of queue delay (median/p95), utilization while
 queued, and time-of-day pattern. Daily saturation windows (e.g. 15:00
 merges) are a scheduling/capacity-shape problem, not a test problem.
+
+Two attribution traps before blaming the pool:
+
+- **Self-authored `concurrency:` groups show up as queue time.** A deploy
+  group with `cancel-in-progress: false` is an intentional serialization
+  point; its queue delay is correct behavior, not pool saturation.
+- **Where the ceiling is configured differs by provider** (verify current
+  docs): GitHub plan-level total-concurrency limits are raisable via
+  support, larger runners carry a per-runner-type limit set at creation,
+  and the macOS cap is small and shared across runner classes; GitLab
+  Runner's `concurrent` in `config.toml` caps jobs across all registered
+  runners, with per-runner `limit` subordinate to it.
 
 ## Contention-safe A/B comparisons
 

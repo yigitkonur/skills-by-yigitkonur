@@ -53,8 +53,11 @@ VERDICT_EXIT = {
     "superseded": 3,
 }
 
-# Unit classification. Run-level conclusions decide the verdict; job-level
-# data only enriches events (early red detection, log hints).
+# Unit classification. For the built-in GitHub provider, run-level
+# conclusions decide the verdict; job-level reds inside in-flight runs are
+# surfaced early as enrichment only (a continue-on-error job may fail while
+# its run still concludes green). Custom probes choose their own unit
+# granularity — every unit they emit gates the verdict.
 ACTIVE, GREEN, RED, CANCELLED, NEUTRAL = "active", "green", "red", "cancelled", "neutral"
 
 GITHUB_STATUS_ACTIVE = {"queued", "in_progress", "waiting", "requested", "pending"}
@@ -95,6 +98,8 @@ class Envelope:
     units: list[Unit]
     branch_tip: str | None = None  # full sha = proven; None = unknown
     tip_error: str | None = None   # auxiliary failure; never fails the cycle
+    early_reds: list[Unit] = field(default_factory=list)  # job-level reds in
+    # still-active runs; announced via CI-RED but never counted for verdicts
 
 
 class Clock:
@@ -156,6 +161,7 @@ class GithubProbe:
         raise ProbeError(f"unknown GitHub run status: {status!r}")
 
     def fetch(self, remaining: float) -> Envelope:
+        fetch_start = time.monotonic()
         timeout = min(self.probe_timeout, remaining)
         rc, out = self.runner.run(
             [
@@ -168,6 +174,7 @@ class GithubProbe:
         if rc != 0:
             raise ProbeError(f"gh api run enumeration failed (exit {rc})")
         units = []
+        active_run_ids: list[tuple[int, int]] = []  # (run_id, attempt)
         for line in out.splitlines():
             line = line.strip()
             if not line:
@@ -186,6 +193,8 @@ class GithubProbe:
             state = self._classify_run(run)
             scope = f"github:{self.repo}:{run_id}"
             hint = ["gh", "run", "view", str(run_id), "--repo", self.repo, "--log-failed"]
+            if state == ACTIVE:
+                active_run_ids.append((int(run_id), int(attempt)))
             units.append(
                 Unit(
                     key=f"{scope}:{attempt}",
@@ -197,6 +206,9 @@ class GithubProbe:
                     log_hint=hint if state == RED else [],
                 )
             )
+        early_reds = self._expand_job_reds(
+            active_run_ids, remaining - (time.monotonic() - fetch_start)
+        )
         branch_tip = None
         tip_error = None
         if self.branch:
@@ -214,7 +226,63 @@ class GithubProbe:
             else:
                 # Lookup failure cannot prove supersession or cancellation.
                 tip_error = f"branch tip lookup failed for {self.branch} (exit {rc})"
-        return Envelope(units=units, branch_tip=branch_tip, tip_error=tip_error)
+        return Envelope(units=units, branch_tip=branch_tip, tip_error=tip_error,
+                        early_reds=early_reds)
+
+    def _expand_job_reds(self, active_runs: list[tuple[int, int]],
+                         remaining: float) -> list[Unit]:
+        """Surface already-failed jobs inside still-active runs.
+
+        A GitHub run stays in_progress until every job finishes, so run-level
+        polling alone would delay the first CI-RED until run completion. This
+        is enrichment only: failures here never feed the verdict (the run's
+        own conclusion remains authoritative — e.g. continue-on-error), so a
+        failed or partial jobs lookup is skipped, never a ProbeError.
+        """
+        reds: list[Unit] = []
+        for run_id, attempt in active_runs:
+            budget = remaining - 1.0  # leave headroom for the tip lookup
+            if budget <= 1.0:
+                break
+            try:
+                rc, out = self.runner.run(
+                    [
+                        "gh", "api",
+                        f"repos/{self.repo}/actions/runs/{run_id}/jobs?per_page=100",
+                        "--paginate", "--jq", ".jobs[]",
+                    ],
+                    timeout=min(self.probe_timeout, budget),
+                )
+            except ProbeError:
+                continue
+            if rc != 0:
+                continue
+            for line in out.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    job = json.loads(line)
+                except json.JSONDecodeError:
+                    break  # partial job output: drop this run's enrichment
+                job_id = job.get("id")
+                conclusion = job.get("conclusion")
+                if job_id is None or GITHUB_CONCLUSION.get(conclusion) != RED:
+                    continue
+                scope = f"github:{self.repo}:{run_id}"
+                reds.append(
+                    Unit(
+                        key=f"{scope}:{attempt}:job:{job_id}",
+                        scope=scope,
+                        attempt=attempt,
+                        name=str(job.get("name") or job_id),
+                        state=RED,
+                        url=str(job.get("html_url", "")),
+                        log_hint=["gh", "run", "view", "--repo", self.repo,
+                                  "--job", str(job_id), "--log-failed"],
+                    )
+                )
+        return reds
 
 
 class CommandProbe:
@@ -408,7 +476,17 @@ class Watcher:
                 self._emit(
                     "CI-RED",
                     {"key": unit.key, "name": unit.name, "url": unit.url,
-                     "log_hint": unit.log_hint},
+                     "scope": "run", "log_hint": unit.log_hint},
+                )
+        for job in env.early_reds:
+            # Enrichment only: early job reds are announced for fast reaction
+            # but never enter self.units, so they cannot decide the verdict.
+            if job.key not in self.red_announced:
+                self.red_announced.add(job.key)
+                self._emit(
+                    "CI-RED",
+                    {"key": job.key, "name": job.name, "url": job.url,
+                     "scope": "job", "log_hint": job.log_hint},
                 )
         if env.tip_error and env.tip_error != self.last_tip_error:
             self.last_tip_error = env.tip_error
@@ -442,6 +520,10 @@ class Watcher:
     def run(self) -> int:
         try:
             return self._run_inner()
+        except KeyboardInterrupt:
+            # An operator abort is inconclusive, not a verdict about CI; it
+            # still owes the harness its single terminal record.
+            return self._finish("probe-dead", "interrupted")
         except Exception as exc:  # never exit without a terminal record
             return self._finish("probe-dead", f"internal-error: {type(exc).__name__}: {exc}")
 
@@ -462,6 +544,12 @@ class Watcher:
                 if self._all_terminal():
                     verdict, reason = self._evaluate_terminal()
                     return self._finish(verdict, reason)
+                if not self.registered and self.proven_empty:
+                    # A complete enumeration proved zero runs; timeout would
+                    # misreport that as "CI never finished".
+                    if cfg.expect_none:
+                        return self._finish("success", "expected-no-run-proven-empty")
+                    return self._finish("no-run", "proven-empty-at-deadline")
                 return self._finish("timeout", "overall-deadline")
 
             try:
@@ -548,12 +636,19 @@ def build_config(args) -> Config:
         raise ValueError("--repo must be OWNER/REPO")
     if args.max_probe_errors < 1:
         raise ValueError("--max-probe-errors must be >= 1")
+    deadline = _positive(args.deadline, "--deadline")
+    registration_deadline = min(
+        # A registration window past the overall deadline would make no-run
+        # unreachable and misreport skipped pipelines as timeout; clamp it.
+        _positive(args.registration_deadline, "--registration-deadline"),
+        deadline,
+    )
     return Config(
         sha=sha,
         repo=args.repo,
         branch=args.branch,
-        deadline=_positive(args.deadline, "--deadline"),
-        registration_deadline=_positive(args.registration_deadline, "--registration-deadline"),
+        deadline=deadline,
+        registration_deadline=registration_deadline,
         settle_deadline=_non_negative(args.settle_deadline, "--settle-deadline"),
         interval=_positive(args.interval, "--interval"),
         heartbeat=_positive(args.heartbeat, "--heartbeat"),
@@ -580,7 +675,8 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument("--deadline", type=float, default=1800.0,
                         help="hard overall deadline in seconds (default 1800)")
     parser.add_argument("--registration-deadline", type=float, default=180.0,
-                        help="seconds to wait for the first unit (default 180)")
+                        help="seconds to wait for the first unit (default 180; "
+                             "clamped to --deadline)")
     parser.add_argument("--settle-deadline", type=float, default=60.0,
                         help="quiet seconds after all units terminal before success "
                              "(catches late siblings/chained runs; default 60)")

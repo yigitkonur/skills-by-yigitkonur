@@ -65,6 +65,34 @@ jobs:
 
 This avoids the common `push` + `pull_request` duplicate: feature work validates through the PR; main and release branches validate after merge.
 
+## Path filter globbing
+
+`paths`/`paths-ignore` patterns are neither shell globs nor full gitignore
+semantics: `*.md` matches root-level files only, so a workflow ignoring
+`*.md` still runs the full pipeline — and any deploy it gates — for
+`docs/guide.md`. Use `**/*.md` or `docs/**`.
+
+- Verify with a docs-only commit:
+  `gh run list --commit $(git rev-parse HEAD) --json databaseId --jq 'length'`
+  should print 0 — which is exactly what `scripts/ci-watch.py --expect-none`
+  proves mechanically.
+- Keep filters identical across `push` and `pull_request` so the two events
+  agree on what is skippable.
+
+## Reusable workflows (`workflow_call`)
+
+- A callee cannot hold `permissions` the caller lacks; the violation
+  surfaces as a `startup_failure` run with zero jobs (diagnosis in
+  `feedback-loops.md`). Keep the callee's permissions a subset of the
+  caller's, or widen the caller deliberately.
+- `secrets: inherit` forwards every caller secret to the callee. Pass named
+  secrets unless the callee is trusted with the full set.
+- A workflow-level `concurrency` block in the callee evaluates
+  `${{ github.workflow }}` in the caller's context, so different callers
+  can collide in one group and cancel each other. Prefer job-level
+  concurrency in the callee, or build the group from
+  `${{ github.workflow_ref }}`.
+
 ## Job graph and matrix guidance
 
 - Use job-level `if` to avoid runner allocation; step-level `if` still pays checkout/setup before skipping.
@@ -73,6 +101,10 @@ This avoids the common `push` + `pull_request` duplicate: feature work validates
 - Use `fail-fast: false` when every shard's result is diagnostically valuable.
 - Use `fail-fast: true` when early feedback or failed-run cost matters more than full matrix signal.
 - Cap `max-parallel` when registry, artifact, database, or runner capacity is saturated.
+- An aggregate status job reading `needs.*.result` cannot detect a lane
+  that silently never ran; assert from the client side that each expected
+  lane is present and green (the watcher's registered-unit list gives
+  exactly this).
 - Do not multiply runners until test time is split; otherwise every shard repeats setup and full tests.
 - Put tiny planner/status jobs on lightweight runners where the provider offers them; keep build/test jobs on build runners.
 
@@ -85,7 +117,10 @@ GitHub's 2026-06-25 changelog announced same-job step concurrency with `backgrou
 - Omit checkout for jobs that only call an API, promote a digest, or download artifacts.
 - Keep `fetch-depth: 1` unless history is required.
 - Use `fetch-tags: true` for tag-dependent versioning without full history.
-- Use `filter: blob:none` for metadata-heavy analysis; it overrides `sparse-checkout`.
+- Use `filter: blob:none` for metadata-heavy analysis. It replaces the
+  partial-clone filter `sparse-checkout` would pick implicitly; it does not
+  disable the sparse patterns — the two compose (see
+  `network-and-artifacts.md`).
 - Use `sparse-checkout` for a package slice; disable LFS/submodules unless required.
 
 ## Cache notes

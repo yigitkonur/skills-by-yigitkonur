@@ -41,7 +41,9 @@ Larger runners are the last resort in the performance order, and the measured A/
 2. Confirm it is CPU- or memory-bound via `avr job metrics`.
 3. Confirm the workload is actually parallel — a single-threaded `tsc` or a serial test runner gains nothing from 32 vCPU and costs proportionally more.
 
-ARM is generally cheaper per vCPU, but only choose it when the toolchain and any native dependencies are known to build on ARM64; a cross-architecture surprise costs more than the savings. macOS runners exist in two sizes only, so Swift/Xcode pipelines have limited headroom — see `references/swift-xcode.md` for what to optimize instead.
+Downsizing is the more common measured finding: the same gate on 16 vCPU/64 GB and on 8 vCPU/32 GB ran 159 s vs 158–160 s, with peak memory 7.4–7.8 GB vs 4.0 GB — identical wall clock at half the rate. The signature in `avr job metrics`: peak memory far below the allocation, CPU average well under 100%, wall clock flat across sizes → shrink.
+
+On Avrea, ARM is a performance choice, not a cost saving: the published rate table (avrea.com/pricing, checked 2026-07-28) listed Linux ARM at roughly 3× the x64 per-vCPU-minute rate ($0.006 vs $0.002), capped at 16 vCPU — re-check the current table before relying on this. Choose ARM when the deploy target is ARM and the toolchain plus native dependencies are known to build on ARM64; a cross-architecture surprise costs more than any saving. macOS runners exist in two sizes only, so Swift/Xcode pipelines have limited headroom — see `references/swift-xcode.md` for what to optimize instead.
 
 ## Observability
 

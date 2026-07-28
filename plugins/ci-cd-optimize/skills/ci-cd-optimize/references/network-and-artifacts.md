@@ -15,6 +15,25 @@ Choose by history need:
 
 Do not combine shallow checkout with merge-base-dependent affected detection. Use event SHAs or full history.
 
+### Sparse checkout and partial-clone filters compose
+
+Setting `filter:` (e.g. `blob:none`) on `actions/checkout` replaces only the
+partial-clone filter that `sparse-checkout` would pick implicitly; it does
+not disable the sparse patterns — the two compose. Sparse patterns decide
+which files materialize; the filter decides how objects are fetched.
+
+Writing files is often the cost, not fetching. Measured on a 1.6 GiB,
+14,044-file repo: `blob:none` with the full tree checked out took 107 s;
+sparse-excluding a 1,084 MiB asset directory cut it to 45 s; also excluding
+385 MiB of directories the job never reads cut it to 10 s. Audit where the
+bytes live with `git ls-tree -r -l HEAD` aggregated by directory.
+
+When one job occasionally needs an excluded path, restore it from a cache
+keyed by that path's git tree hash (`git rev-parse "HEAD:<path>"`): the key
+is exact and immutable, so it needs no `restore-keys` and can never be
+stale — measured 3 s restore vs 63 s materializing via checkout. Fall back
+to `git sparse-checkout add <path>` on a cache miss.
+
 ## Git LFS
 
 If the build does not need binary assets, skip LFS smudge and hydrate only selected assets:

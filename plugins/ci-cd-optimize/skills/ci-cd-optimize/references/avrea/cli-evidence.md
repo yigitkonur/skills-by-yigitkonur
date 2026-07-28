@@ -138,6 +138,21 @@ fresh workflow is itself the intended experiment. A green run whose
 `references/measurement.md` states. Auto-selecting the latest in-progress
 run for a repository is a convenience, not exact-commit proof.
 
+Attempts need explicit handling: `avr run list` returns one record per
+attempt sharing a `platform_run_id` (unlike `gh run list`, which collapses
+attempts), so a naive read reports the stale attempt-1 failure after a
+green rerun. Collapse to the authoritative attempt:
+
+```bash
+avr run list --repo REPO --json platform_run_id,run_attempt,conclusion,head_sha \
+  -q 'group_by(.platform_run_id)[] | max_by(.run_attempt)'
+```
+
+The same mechanics give the identical-commit flake test from
+`references/testing-and-flakiness.md`: `avr run rerun` (authorization
+gate), then compare the highest attempt against attempt 1 on the same
+commit.
+
 ## Mutating commands — authorization required
 
 `avr cache delete`, `avr run cancel`, `avr run rerun`, `avr settings set`, and `avr firewall *` change shared state. `cache delete --all` discards every cache entry for a repository and will slow the next runs for everyone. Confirm before running any of them, and never pass `--yes` to satisfy a prompt on someone else's behalf.
