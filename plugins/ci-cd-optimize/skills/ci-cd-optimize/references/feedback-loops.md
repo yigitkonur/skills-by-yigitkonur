@@ -46,13 +46,13 @@ A watcher used for CI feedback must satisfy all six:
 Separating **`no-run` from `failure`** matters in any repo with path filters,
 where zero runs is often correct. Give the caller a way to declare that
 expectation (`--expect-none` in the bundled script). Give each verdict a
-**distinct exit code** (e.g. success 0, failure 1, timeout/no-run/probe-dead 2,
+**differentiated exit code** (e.g. success 0, failure 1, timeout/no-run/probe-dead 2,
 superseded 3) so a `watch && deploy` chain cannot proceed on a non-green that was
 never a real pass.
 
-## Two correctness traps when reading run state
+## Three correctness traps when reading run state
 
-Both are silent and both have been observed in practice.
+All are silent and have been observed in practice.
 
 - **The empty-list false green.** `all([])` is true in most languages, so
   `all(runs are green)` over an *empty* run list reports success having observed
@@ -140,7 +140,9 @@ rehearsal caught a false `superseded` that every offline test missed: the
 provider's "latest run for this branch" is **not** the branch tip. When the newest
 push has not registered yet, the previous commit's run looks like the tip and the
 newest commit is reported as superseded by its own ancestor. Resolve the tip from
-the ref (`git ls-remote origin refs/heads/<branch>`).
+the ref: use `gh api` when `--repo owner/name` is supplied so private-repository
+authentication is inherited, or `git ls-remote origin refs/heads/<branch>` in the
+current checkout.
 
 ## Any provider
 

@@ -81,7 +81,7 @@ This avoids the common `push` + `pull_request` duplicate: feature work validates
 - A called workflow cannot hold permissions the caller lacks. If the caller declares `permissions: contents: read` and the callee asks for more, the run fails at **startup** — `conclusion: startup_failure`, zero jobs, no step logs — which reads like an outage rather than a config error. Keep the callee's permissions a subset, or widen the caller deliberately.
 - The same no-logs signature comes from a `uses:` path typo, a missing `on: workflow_call`, an inputs/secrets mismatch, or an unreadable nested reusable workflow. Diagnose by bisecting the caller down to a single `uses:` job, not by reading logs that do not exist.
 - `secrets: inherit` forwards every caller secret; use it deliberately.
-- Job-level `concurrency` belongs in the callee — workflow-level `concurrency` is ignored on the reusable path.
+- Job-level `concurrency` belongs in the callee. Workflow-level concurrency in a reusable workflow evaluates `${{ github.workflow }}` in the caller's context, so caller and callee can collide on the same group and cancel each other unexpectedly.
 
 ## Same-job parallelism (verify before use)
 

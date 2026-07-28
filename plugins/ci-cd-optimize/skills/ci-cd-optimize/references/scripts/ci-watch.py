@@ -31,12 +31,14 @@ EVENTS
   CI-DONE  terminal verdict — always printed exactly once
 
 EXIT CODES: 0 success (or expected no-run) · 1 failure · 2 timeout/no-run/probe-dead
-            · 3 superseded — distinct so `watch && deploy` cannot proceed on a non-verdict
+            · 3 superseded — differentiated so `watch && deploy` cannot proceed on a non-verdict
 
 Python 3 stdlib only.
 """
 import argparse
 import json
+import math
+import re
 import subprocess
 import sys
 import time
@@ -53,14 +55,14 @@ def run(cmd, timeout=PROBE_CAP_SEC):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
 
-def gh_json(args):
-    out = run(["gh"] + args)
+def gh_json(args, timeout=PROBE_CAP_SEC):
+    out = run(["gh"] + args, timeout)
     if out.returncode != 0:
         raise RuntimeError((out.stderr.strip() or f"exit {out.returncode}")[:200])
     return json.loads(out.stdout or "[]")
 
 
-def branch_tip(branch, repo):
+def branch_tip(branch, repo, timeout):
     """Resolve the branch's real tip.
 
     Deliberately NOT `gh run list --branch --limit 1`: that returns the latest
@@ -68,23 +70,25 @@ def branch_tip(branch, repo):
     sha — reporting the newest commit as superseded by its own ancestor. The ref
     is the only correct source.
     """
-    remote = f"https://github.com/{repo}" if repo else "origin"
-    out = run(["git", "ls-remote", remote, f"refs/heads/{branch}"])
+    if repo:
+        ref = gh_json(["api", f"repos/{repo}/git/ref/heads/{branch}"], timeout)
+        return ref.get("object", {}).get("sha", "")
+    out = run(["git", "ls-remote", "origin", f"refs/heads/{branch}"], timeout)
     if out.returncode != 0:
         raise RuntimeError((out.stderr.strip() or "git ls-remote failed")[:200])
     return out.stdout.split()[0] if out.stdout.strip() else ""
 
 
-def github_probe(sha, branch, repo):
+def github_probe(sha, branch, repo, run_limit, timeout):
     """Return (state_lines, terminal_or_None) for a pinned GitHub Actions SHA."""
     repo_args = ["--repo", repo] if repo else []
     runs = gh_json(repo_args + [
-        "run", "list", "--commit", sha,
+        "run", "list", "--commit", sha, "--limit", str(run_limit),
         "--json", "databaseId,workflowName,status,conclusion",
-    ])
+    ], timeout)
     newer = ""
     if branch:
-        tip = branch_tip(branch, repo)
+        tip = branch_tip(branch, repo, timeout)
         newer = tip if tip and tip != sha else ""
 
     state = set()
@@ -110,8 +114,8 @@ def github_probe(sha, branch, repo):
     return state, None
 
 
-def custom_probe(cmd):
-    out = run(["bash", "-c", cmd])
+def custom_probe(cmd, timeout):
+    out = run(["bash", "-c", cmd], timeout)
     if out.returncode != 0:
         raise RuntimeError((out.stderr.strip() or out.stdout.strip()
                             or f"exit {out.returncode}")[:200])
@@ -121,41 +125,70 @@ def custom_probe(cmd):
     return {l for l in lines if not l.startswith("TERMINAL:")}, terminal
 
 
+def sha40(value):
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", value):
+        raise argparse.ArgumentTypeError("must be a full 40-character hexadecimal SHA")
+    return value.lower()
+
+
+def positive_int(value):
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return number
+
+
+def finite_nonnegative(value):
+    number = float(value)
+    if not math.isfinite(number) or number < 0:
+        raise argparse.ArgumentTypeError("must be a finite non-negative number")
+    return number
+
+
 def main():
     ap = argparse.ArgumentParser()
     src = ap.add_mutually_exclusive_group(required=True)
-    src.add_argument("--sha", help="pinned 40-char SHA (GitHub built-in mode)")
+    src.add_argument("--sha", type=sha40,
+                     help="pinned 40-char SHA (GitHub built-in mode)")
     src.add_argument("--cmd", help="custom probe shell command")
     ap.add_argument("--branch", default="", help="enables superseded detection")
     ap.add_argument("--repo", default="", help="owner/name; defaults to cwd's remote")
+    ap.add_argument("--run-limit", type=positive_int, default=1000,
+                    help="maximum GitHub workflow runs to inspect (default: 1000)")
     ap.add_argument("--interval", type=float, default=20)
     ap.add_argument("--deadline-min", type=float, default=20)
     ap.add_argument("--reg-min", type=float, default=3,
                     help="give up if nothing registers within this many minutes")
     ap.add_argument("--expect-none", action="store_true",
                     help="zero runs is the expected outcome (path-filtered push)")
-    ap.add_argument("--settle", type=float, default=0,
+    ap.add_argument("--settle", type=finite_nonnegative, default=0,
                     help="seconds to hold an all-green state before declaring success, "
                          "so late-registering workflow_run follow-ups are observed")
     ap.add_argument("--hb-sec", type=float, default=150, help="0 disables heartbeats")
     ns = ap.parse_args()
 
     t0 = time.monotonic()
+    deadline = t0 + ns.deadline_min * 60
     prev, last_emit, errs = None, t0, 0
     green_since = None
 
     while True:
-        elapsed = time.monotonic() - t0
-        if elapsed > ns.deadline_min * 60:
+        now = time.monotonic()
+        remaining = deadline - now
+        elapsed = now - t0
+        if remaining <= 0:
             last = " · ".join(sorted(prev)) if prev else "nothing registered"
             emit(f"CI-DONE timeout at {ns.deadline_min:g}m · last state: {last}")
             return 2
 
+        probe_timeout = min(PROBE_CAP_SEC, remaining)
         try:
             if ns.sha:
-                state, terminal = github_probe(ns.sha, ns.branch, ns.repo)
+                state, terminal = github_probe(
+                    ns.sha, ns.branch, ns.repo, ns.run_limit, probe_timeout
+                )
             else:
-                state, terminal = custom_probe(ns.cmd)
+                state, terminal = custom_probe(ns.cmd, probe_timeout)
         except Exception as exc:  # noqa: BLE001 — any probe failure is retryable
             errs += 1
             if errs == 3:
@@ -164,7 +197,7 @@ def main():
             if errs >= 10:
                 emit(f"CI-DONE probe-dead after {errs} consecutive errors")
                 return 2
-            time.sleep(ns.interval)
+            time.sleep(min(ns.interval, max(0, deadline - time.monotonic())))
             continue
         errs = 0
 
@@ -174,11 +207,15 @@ def main():
                 if green_since is None:
                     green_since = time.monotonic()
                 if time.monotonic() - green_since < ns.settle:
-                    time.sleep(ns.interval)
+                    time.sleep(min(ns.interval, max(0, deadline - time.monotonic())))
                     continue
             emit(f"CI-DONE {terminal}")
             if first == "success":
                 return 0
+            if first == "no-run":
+                return 0 if ns.expect_none else 2
+            if first in {"timeout", "probe-dead"}:
+                return 2
             return 3 if first == "superseded" else 1
         green_since = None
 
@@ -204,7 +241,7 @@ def main():
             emit(f"CI-HB {elapsed / 60:.0f}/{ns.deadline_min:g}m")
             last_emit = now
 
-        time.sleep(ns.interval)
+        time.sleep(min(ns.interval, max(0, deadline - time.monotonic())))
 
 
 if __name__ == "__main__":

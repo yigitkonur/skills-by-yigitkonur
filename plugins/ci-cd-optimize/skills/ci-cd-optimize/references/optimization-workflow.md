@@ -66,8 +66,8 @@ with an estimate. Cheap sweeps that find most of the usual wins:
 - Toolchain generations: a native-speed compiler, linker, or package manager can beat
   months of YAML tuning; verify current-version claims first
   (`references/evidence-and-sources.md`).
-- Docker: dependency layers ordered after source copies, `mode=max` exports nothing
-  reuses, missing platform cache endpoints (`references/containers.md`).
+- Docker: dependency layers ordered after source copies, local Docker outputs dropping
+  cache metadata, missing platform cache endpoints (`references/containers.md`).
 - Oversized runners: peak CPU/memory far below allocation with flat wall-clock across
   sizes is the downsizing signature (`references/runners-and-autoscaling.md`).
 
