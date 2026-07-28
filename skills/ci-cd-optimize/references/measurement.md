@@ -35,6 +35,8 @@ If a queue-time baseline is unavailable, start with provider run timestamps and 
 - **Separate event populations.** PR runs, push runs, merge-queue runs, and scheduled runs have different caches, filters, and concurrency; baseline and comparison must come from the same population.
 - **Record pool state with every sample.** Runner label, time of day, and whether other runs were queued. Sequential before/after timings under different pool load compare the pool, not the change — interleave per `references/capacity-and-contention.md`.
 - **Your own measurement bursts are contention.** Back-to-back validation runs inflate queue time for every sample including the baseline re-runs.
+- **A robust p95 needs ~20+ comparable runs.** At 5–10 runs report median and range with the exact n instead of quoting a tail percentile the sample cannot support.
+- **`created_at` on a `needs`-gated job is set when its dependencies finish**, so its queue time measures runner acquisition for that stage — paid once per stage hop, not part of the run's initial queue.
 
 ## Critical-path analysis
 

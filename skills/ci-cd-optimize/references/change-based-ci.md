@@ -33,7 +33,7 @@ Treat selective CI as a correctness problem before a speed problem:
 - Merge queues create a predictive branch; PR-only base/head assumptions may test the wrong change set.
 - Lockfile, CI config, dependency graph, generated-code schema, and shared-global changes usually escalate to full validation.
 - If the planner script, classifier config, or required-check aggregator changes, that change routes to full validation too.
-- Renames need both old and new paths. A rename from `src/core/` to `src/kernel/` can otherwise make the planner think nothing relevant changed.
+- Renames need both old and new paths. Git's rename detection is on by default, so `git diff --name-only` prints only the destination path — a move from `src/x.ts` to `docs/x.md` classifies as docs-only while executable source was removed. Use `git diff --name-only --no-renames`, or parse `--name-status` and route both sides of every rename.
 - On any diff failure (missing history, bad SHAs, provider glitch), fail open to full validation — never to skip.
 
 

@@ -25,6 +25,7 @@ Use this file to make security scanning faster without deleting the control.
 - Disabling a scanner because it is slow.
 - Using workflow path filters to imply analyzer scope is reduced when the analyzer still scans everything.
 - Sharing a single-process filesystem cache across parallel scanner jobs.
+- Running a must-always-run scan inside a result-cached task graph (Turborepo/Nx): a scan whose "result" replays from an unrelated task's cache is a stale assertion, not a gate. Keep such scans outside the build cache.
 - Permanent `nosemgrep`, `.trivyignore`, or equivalent suppressions.
 - Generating SBOM/provenance but never verifying it at release/deploy time.
 - Blocking every rule on day one and training developers to bypass gates.

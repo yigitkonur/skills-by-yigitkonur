@@ -36,7 +36,7 @@ Cache the package-manager store/cache, not blindly `node_modules`:
 
 Key by lockfile, Node version, package-manager version, OS, and architecture. Compare restore time with a clean install; large stores can be slower than a registry fetch on a nearby network.
 
-**Manifest-only keys are a correctness bug, not just a staleness bug.** A key built from `package.json` alone keeps serving the old dependency tree after the lockfile changes; CI can stay green on dependencies that no longer install locally. Any key covering a dependency tree includes the lockfile.
+**Manifest-only keys are a correctness bug, not just a staleness bug.** A key built from `package.json` alone keeps serving the old dependency tree after the lockfile changes; CI can stay green on dependencies that no longer install locally. Any key covering a dependency tree includes the lockfile. The inverse bites only without frozen installs: a lockfile-only key can restore a tree that predates a manifest-only change, but `npm ci`/`--frozen-lockfile` fails loudly on a manifest/lockfile desync — so lockfile-only keys are safe under the frozen installs this file already mandates. If an install is not frozen, include the manifest too (`hashFiles('pnpm-lock.yaml', 'package.json')`).
 
 ## Prove the cache earns its keep
 
@@ -49,6 +49,14 @@ Measure three timings before keeping or adding a dependency cache:
 Keep the cache only if warm beats both alternatives on the critical path. Count the save step: a cache that restores in 40s, saves in 35s, and saves 60s of install is a net loss. Check entry hit counts and last-access where the platform exposes them (`avr cache list` on Avrea; provider UIs elsewhere): large entries with zero or near-zero hits burn quota, slow every save, and should be removed — removal is a shared-state mutation, so gate it.
 
 **Write strategy**: let the default/protected branch produce cache entries and branches consume them (read-on-branch/write-on-default). This keeps untrusted writes out and stops N parallel PRs from racing to save N copies of the same store.
+
+**Default-branch cold starts after a key change are normal.** Branch-scoped
+caches cannot seed the default branch, so the first default-branch run
+after a key change (schema bump, added OS/arch/toolchain identity, changed
+restore paths) is legitimately cold even though the branch runs that
+validated the change ran warm. Read that run's own restore-log sequence
+(`Cache not found for input keys:` → `Cache saved`, then `Cache restored`
+on the next run) before calling it a regression.
 
 ## Restore-key discipline
 
