@@ -71,6 +71,7 @@ Ask in order:
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
 14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
 15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+16. Do you need the result of a run you just triggered — push, re-run, dispatch, or deploy? Read `references/watching-runs.md`. Never block on `gh run watch`, `gh pr checks --watch`, or a foreground poll loop: they carry no deadline and hang on checks that never resolve.
 
 ### 4. Choose one bounded experiment
 
@@ -103,6 +104,8 @@ Use full validation as the safe fallback whenever changed files, merge base, cac
 Re-run on the same commit first, then a normal representative commit. Compare median and p95 wall-clock, queue time, cache behavior, first-time pass rate, cost, and failure/rework signals. Confirm the exact run head SHA contains the change and the deployed artifact digest or workflow run is the intended one.
 
 Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence.
+
+Waiting on those runs is itself a step that can stall the work. Trigger, pin the resulting SHA or build id, and watch it with a bounded watcher that always prints a verdict — see `references/watching-runs.md`. A relayed "it went green" is a claim; the evidence is the run's own head SHA and conclusion.
 
 ## Minimal TypeScript example
 
@@ -163,6 +166,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Pitfall | Better move |
 |---|---|
 | Optimizing before measuring | Capture baseline queue/setup/execution/critical path first. |
+| Blocking on `gh run watch` / `--watch` / a foreground poll loop | No deadline; hangs on unresolved checks. Use a bounded watcher that always emits a verdict (`references/watching-runs.md`). |
 | Duplicate `push` and PR runs | Trigger PRs on PR events; trigger main/release pushes only. |
 | Draft PRs start expensive jobs | Keep planner cheap; gate expensive jobs until ready for review. |
 | Caching `node_modules` by default | Cache the package-manager store; measure restore versus install. |
@@ -185,6 +189,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | File | Read when |
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
+| `references/watching-runs.md` | Waiting on a triggered run/deploy without blocking: watcher contract, terminal verdicts, agent-harness monitors, per-provider probes. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
