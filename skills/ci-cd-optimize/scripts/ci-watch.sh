@@ -74,6 +74,10 @@ while :; do
   errs=0
 
   count=$(jq 'length' <<<"$snap")
+  if [ "$count" -ge 1000 ]; then
+    emit "CI-DONE probe-dead — GitHub's 1000-result search ceiling reached; cannot prove the run set is complete"
+    exit 1
+  fi
   state=$(jq -r '.[] | "\(.workflowName): \(.status)\(if .conclusion != "" and .conclusion != null then " -> "+.conclusion else "" end)"' <<<"$snap" | sort)
 
   if [ "$count" -eq 0 ]; then
