@@ -12,6 +12,7 @@ Use this file when building a baseline, proving a bottleneck, or validating that
 | Critical-path duration | longest dependency chain through the DAG | The only sequence that directly governs wall-clock feedback. |
 | Cache exact-hit rate | exact key hits / cache attempts | Cache-key precision, not necessarily saved time. |
 | Cache saved time | clean path time - (restore + post-hit work) | Whether a cache is worth keeping. |
+| Queue share | Σ queue / (Σ queue + Σ execution) | Whether the bottleneck is capacity rather than work. Above ~35 %, topology changes are near-futile — see `references/capacity-and-contention.md`. |
 | First-time pass rate | runs green without retry / all runs | Flakiness and reliability. |
 | Cost per successful change | compute + storage / successful changes | Speed improvements that increase total cost may not be wins. |
 | Change failure/rework rate | failed or unplanned recovery deployments / deployments | The effectiveness guardrail after optimization. |
@@ -25,6 +26,7 @@ Use median and p95. CI duration is right-skewed; averages hide cold caches, runn
 3. Record queue, setup, execution, transfer, finalization, and per-job duration.
 4. Record exact cache hit/miss, retry count, artifact names/digests, and run head SHA.
 5. Reject baselines from stale branches, empty diffs, disabled jobs, or different runners.
+6. Record the contention state — how many other jobs were competing for the same pool. Two runs of the same commit on the same runner class are not comparable if one had the pool to itself. Queue time is the observable proxy: if the arms' queue times differ by more than the effect you are measuring, the comparison is invalid regardless of how clean the commits are.
 
 If a queue-time baseline is unavailable, start with provider run timestamps and job logs. Do not invent missing precision.
 

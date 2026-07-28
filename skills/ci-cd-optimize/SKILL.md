@@ -57,7 +57,7 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor, or is job count already at the platform's concurrency ceiling? Read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`. Above roughly 35 % queue share, reshaping the DAG cannot help and adding jobs makes it worse.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -85,6 +85,8 @@ Select the smallest reversible change that attacks the measured critical path. E
 
 Prefer, in this order: prevent unneeded work → cancel stale work → reuse verified prior work → improve cache correctness → remove artificial dependencies → parallelize independent work → shard slow work by measured duration → reduce transferred bytes → improve runner capacity → move heavy work off the PR path only with a full-run fallback → change provider architecture.
 
+Two steps in that order invert above a concurrency ceiling: "parallelize independent work" and "shard slow work" both raise job count, and once job count exceeds available slots the surplus queues while re-paying setup. Establish the ceiling and the queue share before either. When capped, *merging* jobs that share setup is the faster change — see `references/capacity-and-contention.md`.
+
 ### 5. Preserve effectiveness
 
 Never claim an optimization if it does any of these:
@@ -102,7 +104,9 @@ Use full validation as the safe fallback whenever changed files, merge base, cac
 
 Re-run on the same commit first, then a normal representative commit. Compare median and p95 wall-clock, queue time, cache behavior, first-time pass rate, cost, and failure/rework signals. Confirm the exact run head SHA contains the change and the deployed artifact digest or workflow run is the intended one.
 
-Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence.
+Compare arms in the same contention state. A run against an idle pool and a run against a saturated one are not comparable even on the same commit and runner class, and the difference can exceed the effect you are testing. Interleave arms (A, B, A, B), compare execution time when the change is in-job, and treat any delta smaller than the queue-time spread as noise.
+
+Report only the level actually verified: config review, syntax validation, one CI run, repeated CI runs, or production evidence. Report disproved hypotheses too — an experiment that measured neutral or worse is a result, and silently dropping it invites the next person to retry it.
 
 ## Minimal TypeScript example
 
@@ -170,6 +174,8 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Affected detection on shallow clone | Fetch required history or use event SHAs; otherwise run all. |
 | Artificial `needs` chains | Start independent lint/typecheck/build work together. |
 | More runners without queue evidence | Measure queue p95 and runner utilization before spending. |
+| Splitting jobs while already at the concurrency ceiling | Establish the ceiling first; when capped, merge jobs that share setup instead. |
+| Comparing a contended run against an uncontended one | Match contention state, interleave A/B arms, compare execution time for in-job changes. |
 | Full suite duplicated in every shard | Split tests by file/timing so each test runs once. |
 | Tiny jobs with heavy setup | Collocate work until separate runner setup is amortized. |
 | Coverage off PR path with no fallback | Keep a required scheduled/merge-queue full run. |
@@ -200,6 +206,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/containers.md` | BuildKit, multi-stage Dockerfiles, cache mounts/backends, multi-platform builds, provenance, or image security. |
 | `references/security-gates.md` | Fast but effective SAST, dependency, secret, container, SBOM, provenance, and policy gates. |
 | `references/runners-and-autoscaling.md` | Hosted versus self-hosted, ephemeral runners, queues, spot capacity, ARM/x64/macOS, Kubernetes fleets. |
+| `references/capacity-and-contention.md` | Queue share is high, parallelism stopped paying off, before splitting or fanning out jobs, or when A/B arms ran under different pool load. |
 | `references/network-and-artifacts.md` | Checkout depth, sparse/partial clone, LFS, package proxies, artifact compression, uploads, or registry locality. |
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
