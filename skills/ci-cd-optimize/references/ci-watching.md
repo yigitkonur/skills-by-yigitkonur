@@ -71,7 +71,7 @@ def watch(repo, sha, branch, deadline, register_by, settle_secs, interval, heart
             emit("CI-DONE timeout"); return 2
 
         try:
-            runs = probe(repo, sha)          # ALL runs for this commit
+            runs = list(probe(repo, sha))    # ALL runs for this commit; safely reusable
             errors = 0
         except Exception:
             errors += 1
@@ -94,12 +94,12 @@ def watch(repo, sha, branch, deadline, register_by, settle_secs, interval, heart
 
         if registered and runs and all(r.done for r in runs):
             bad = [r for r in runs if r.conclusion not in OK]
-            cancelled = any(r.conclusion == "cancelled" for r in runs)
+            genuine_failures = [r for r in bad if r.conclusion != "cancelled"]
             try:
                 superseded = branch and head_of(branch) != sha
             except Exception:
                 superseded = False         # a lookup failure is not supersession
-            if superseded and (cancelled or not bad):
+            if superseded and not genuine_failures:
                 emit("CI-DONE superseded"); return 3
             if bad:
                 emit(f"CI-DONE failure — {bad[0].name} — logs: <log-cmd {bad[0].id}>")
