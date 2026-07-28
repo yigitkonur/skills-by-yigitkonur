@@ -16,9 +16,42 @@ Use this file when building a baseline, proving a bottleneck, or validating that
 | Cost per successful change | compute + storage / successful changes | Speed improvements that increase total cost may not be wins. |
 | Change failure/rework rate | failed or unplanned recovery deployments / deployments | The effectiveness guardrail after optimization. |
 
-Use median and p95. CI duration is right-skewed; averages hide cold caches, runner saturation, flaky retries, and dependency changes.
+## Queue versus execution — never collapse them
 
-## Baseline protocol
+A workflow duration can worsen while the work itself stays flat. Split them
+before naming a bottleneck:
+
+- **Queue** = `started_at - created_at`
+- **Execution** = `completed_at - started_at`
+
+This is not bookkeeping trivia. On a measured repository, six comparable runs
+showed execution holding in a narrow band while queue ranged from seconds to
+minutes. Quoting a multiplier from total wall-clock alone would have reported
+both "2.6× slower" and "1.7× faster" for the same configuration, depending on
+which queue sample you chose.
+
+For reusable workflows and `needs`-gated jobs, note the subtlety: `created_at`
+may be set only after dependencies finish. That means a multi-stage DAG pays its
+queue/setup tax once per stage. When the platform exposes per-job start offsets,
+use them to reconstruct the real critical path rather than trusting stage names.
+
+## Sampling traps
+
+Before trusting a comparison, actively rule out the three easiest false claims:
+
+1. **Re-read, not re-run.** Confirm the attempt counter actually changed. Three
+   identical durations to the tenth of a second are usually the same run read
+   three times.
+2. **Mixed populations.** Do not compare `push`, `pull_request`, and
+   `workflow_dispatch` together; those often carry different runners, queues,
+   and job sets.
+3. **Self-inflicted contention.** Bursting several experiments at once can move
+   the queue more than the optimization moved execution. Interleave A/B arms, or
+   compare execution when pool state is clearly different.
+
+A robust p95 needs a real sample. Roughly 20+ comparable runs is arithmetic,
+not evidence by itself; below that, say you have a small cohort rather than a
+stable tail.
 
 1. Pin the exact commit, workflow, event, runner class, and environment.
 2. Run at least three comparable runs when variance is material.

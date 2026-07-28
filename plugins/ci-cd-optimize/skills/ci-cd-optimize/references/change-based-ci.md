@@ -65,9 +65,25 @@ jobs:
 
 Ensure the provider reports skipped downstream jobs as successful/skipped in the way branch protection expects.
 
-## Full-run triggers
+## Planner self-routing and rename traps
 
-Always run the full suite when:
+The component that decides what runs is part of the repository too. Treat it as
+load-bearing code, not as harmless glue.
+
+Two easy ways change-based CI lies to you:
+
+1. **Self-routing planner.** A planner change that routes only to its own lane is
+   grading its own homework. Changes to CI config, planner code, workflow files,
+   or shared routing tables should usually escalate broadly rather than proving
+   only themselves.
+2. **Rename masking.** A move from `src/x.ts` to `docs/x.md` can look
+   documentation-only if you only inspect the destination path. When the source
+   path was executable code, the pipeline must still treat the change as code.
+   Prefer `--name-status` or disable rename detection when classifying if your
+   tool would otherwise hide the removal.
+
+Keep tiny fixture-style tests for the classifier itself. A routing bug is one of
+few CI defects that can silently ship without any red lane at all.
 
 - merge base is missing or suspicious,
 - lockfile or package-manager config changed,

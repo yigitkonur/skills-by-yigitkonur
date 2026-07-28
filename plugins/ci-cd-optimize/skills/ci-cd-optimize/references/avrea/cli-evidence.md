@@ -126,12 +126,46 @@ avr run logs run-xxx --follow                # tail an in-progress job
 The project rule "verify the green, never hang on it" has direct support:
 
 ```bash
-avr run watch --repo org/app --exit-status   # non-zero if the run failed
-avr workflow run ci.yml --ref my-branch --watch --exit-status
-avr run watch run-xxx --ndjson | jq -c .     # event stream for scripting
+avr workflow run ci.yml --ref my-branch --watch --exit-status  # dispatch + watch in one call
+avr run watch run-xxx --exit-status                            # explicit run id
+avr run watch run-xxx --ndjson | jq -c .                       # line-oriented event stream
 ```
 
-`--exit-status` makes failure and timeout observable instead of silent. Always confirm `head_sha` matches the commit under test before accepting a green:
+`--exit-status` makes failure observable instead of silent, and `--ndjson`
+avoids the TTY-redraw problem that breaks line-oriented consumers.
+
+**Do not use the id-less form as your only signal after a push.** With no
+`RUN_ID`, `avr run watch` auto-selects the *latest in-progress* run. Observed on
+a live repository (2026-07-28): pushing and immediately arming
+`avr run watch --repo org/app --ndjson --exit-status` printed
+
+```
+Looking for an in-progress run…
+No in-progress workflow runs found for these repos.
+```
+
+and exited **0** — before the run had been indexed. An agent reads that as "no
+problem" and proceeds unverified. The same shape bites when a concurrency group
+cancels the run you meant to watch, or when another branch's run is newer.
+
+Wait for a run matching your exact SHA, then watch that id:
+
+```bash
+SHA=$(git rev-parse HEAD)
+for _ in $(seq 1 30); do
+  RUN=$(avr run list --repo org/app --limit 20 --json run_id,head_sha \
+        -q --arg s "$SHA" '[.[]|select(.head_sha==$s)][0].run_id // empty')
+  [ -n "$RUN" ] && break; sleep 10
+done
+[ -n "$RUN" ] || { echo "no run registered for $SHA"; exit 1; }
+avr run watch "$RUN" --ndjson --exit-status
+```
+
+For the general contract this satisfies — registration window, terminal verdict
+on every path, heartbeats, and wiring to an agent monitor — read
+`references/ci-feedback-loop.md`.
+
+Always confirm `head_sha` matches the commit under test before accepting a green:
 
 ```bash
 avr run view run-xxx --json head_sha,conclusion,status,run_attempt

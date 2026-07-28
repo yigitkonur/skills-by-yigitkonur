@@ -1,9 +1,9 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD while preserving required checks.
+description: Use skill if you are diagnosing or optimizing slow CI/CD, reducing queue/setup/test/deploy time, migrating runners or caches, or building an agent workflow that waits on CI without stalling.
 metadata:
   author: yigitkonur
-  version: 1.0.0
+  version: 1.1.0
   category: devops
   tags: [ci-cd, github-actions, gitlab-ci, buildkite, circleci, typescript, swift, xcode, pipeline-performance]
 ---
@@ -59,7 +59,7 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor? Read `references/runners-and-autoscaling.md`.
+2. Is queue time the dominant p95 contributor, or does queue share look high enough that topology work may backfire? Read `references/runners-and-autoscaling.md` and `references/measurement.md`.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -168,7 +168,9 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Pitfall | Better move |
 |---|---|
 | Optimizing before measuring | Capture baseline queue/setup/execution/critical path first. |
-| Duplicate `push` and PR runs | Trigger PRs on PR events; trigger main/release pushes only. |
+| Branch-tip or id-less watch used as the only signal | Pin the exact SHA, wait for registration, then watch the explicit run id or a SHA-pinned script. |
+| Success-only watch filter | Emit every terminal verdict; silence must never read as green. |
+| Queue-dominated wall clock reported as a speed regression | Split queue from execution before naming the bottleneck. |
 | Draft PRs start expensive jobs | Keep planner cheap; gate expensive jobs until ready for review. |
 | Caching `node_modules` by default | Cache the package-manager store; measure restore versus install. |
 | Workflow path filter blocks required checks | Run a cheap change-detection job and condition expensive jobs. |
@@ -210,6 +212,12 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 | `references/ci-feedback-loop.md` | Watching a run without hanging: registration races, non-TTY watchers, terminal verdicts, agent monitor wiring, and verifying the watcher's own failure paths. |
+
+## Bundled script
+
+| Path | Use when |
+|---|---|
+| `scripts/ci-watch.py` | You need a concrete SHA-pinned watcher for GitHub Actions or a provider-neutral probe contract to adapt for another CI system. Read `references/ci-feedback-loop.md` first so you know what the script guarantees and what its verdicts mean. |
 
 ### Optional: Avrea reference kit
 

@@ -556,7 +556,7 @@
     {
       "name": "ci-cd-optimize",
       "source": "./",
-      "description": "Use if diagnosing or optimizing slow CI/CD while preserving required checks.",
+      "description": "Use skill if you are diagnosing or optimizing slow CI/CD, reducing queue/setup/test/deploy time, migrating runners or caches, or building an agent workflow that waits on CI without stalling.",
       "version": "1.0.36",
       "category": "ops",
       "strict": false,

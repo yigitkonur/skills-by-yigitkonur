@@ -34,9 +34,28 @@ Cache the package-manager store/cache, not blindly `node_modules`:
 | Yarn modern | `yarn install --immutable` | Yarn global cache or committed Zero-Install cache |
 | Bun | `bun ci` | Bun install cache |
 
-Key by lockfile, Node version, package-manager version, OS, and architecture. Compare restore time with a clean install; large stores can be slower than a registry fetch on a nearby network.
+## Package proxy versus store cache
 
-## Restore-key discipline
+A fast install does not prove the local package-manager store is helping. On
+runner platforms with a colocated registry proxy, a "cold" install can still be
+LAN-fast because the proxy, not the local store, is doing the work.
+
+Use this break-even test before keeping a large dependency-store cache:
+
+1. Compare a true cold run against a warm run on the same lockfile.
+2. Measure **install time**, not just cache hit counts.
+3. Compare that with the restore/save/archive cost of the store cache itself.
+
+If the install time is essentially unchanged cold and warm, the local store
+archive may only be moving bytes around. Remove it and keep the proxy.
+
+## Manifest-only changes are not safe on lockfile keys alone
+
+For package-tree caches, key on the manifest **and** the lockfile. A
+manifest-only change can still change what should be installed or tested even
+when the lockfile stays constant. A cache keyed only on the lockfile can then
+restore a stale dependency tree and make the run look green for the wrong input
+set.
 
 Use narrow restore keys from most-specific to less-specific:
 
