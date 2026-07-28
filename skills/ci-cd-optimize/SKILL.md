@@ -39,6 +39,8 @@ Rules:
 
 Prefer the platform's own aggregated history over hand-collected timings when it exists, then verify sample size and window. If the repository runs on Avrea (`runs-on:` labels begin with `avrea-`) and `avr` is installed and authenticated, read `references/avrea/cli-evidence.md` — it returns median/p95, per-job start offsets, flake counts, and cache hit counts directly. Confirm availability with `command -v avr && avr auth status` before depending on it, and fall back to provider-native measurement otherwise.
 
+**Feedback loop rule:** after any change you validate through CI, arm a watcher that is pinned to the exact pushed SHA and that always terminates with an explicit verdict. Never rely on a branch-tip or "latest in-progress" watch as your only signal; registration races make them report "nothing running" before the provider has indexed your commit. Read `references/ci-feedback-loop.md` when choosing or implementing the watch path (Monitor vs one-shot background wait, registration deadline, terminal verdicts, failure-first reaction policy).
+
 For the metric definitions, baseline protocol, and the rule about claiming only the evidence rung you reached, read `references/measurement.md`.
 
 ### 3. Find the critical path
@@ -71,6 +73,7 @@ Ask in order:
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
 14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
 15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+16. Is the *feedback loop* itself the bottleneck — watches that hang, return nothing, or need a human to babysit them, especially in a CI-only workflow with no local build? Read `references/ci-feedback-loop.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -82,6 +85,8 @@ Select the smallest reversible change that attacks the measured critical path. E
 - security/trust-boundary risk,
 - cost effect,
 - rollback or fallback.
+
+**If the repository is CI-only (no trusted local build/test path), optimizing the feedback loop is mandatory work, not polish.** A watch command that can exit before your run registers, or wait forever with no terminal verdict, leaves the agent blind to the result and turns every CI cycle into manual babysitting. Read `references/ci-feedback-loop.md` before you recommend a provider watch command or wire one into the Monitor tool.
 
 Prefer, in this order: prevent unneeded work → cancel stale work → reuse verified prior work → improve cache correctness → remove artificial dependencies → parallelize independent work → shard slow work by measured duration → reduce transferred bytes → improve runner capacity → move heavy work off the PR path only with a full-run fallback → change provider architecture.
 
@@ -204,6 +209,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
+| `references/ci-feedback-loop.md` | Watching a run without hanging: registration races, non-TTY watchers, terminal verdicts, agent monitor wiring, and verifying the watcher's own failure paths. |
 
 ### Optional: Avrea reference kit
 
