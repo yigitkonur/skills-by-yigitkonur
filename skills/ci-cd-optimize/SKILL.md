@@ -228,7 +228,7 @@ Read only when the repository runs on Avrea (`runs-on:` labels start with `avrea
 
 ## Bundled script
 
-`scripts/ci-watch.sh <pinned-sha> [branch] [deadline-min]` is a ready GitHub Actions watcher implementing every requirement in `references/agent-feedback-loop.md`: commit-pinned across all workflows, diff-gated, heartbeating under a typical prompt-cache TTL, and guaranteed to end in `CI-DONE <verdict>` (success, failure, timeout, no-run, superseded, probe-dead). Requires authenticated `gh` and `jq`; set `CI_WATCH_REPO=org/name` or run inside the repo. For another provider, keep the event contract and replace only the probe command.
+`scripts/ci-watch.sh <pinned-sha> [branch] [deadline-min]` is a ready GitHub Actions watcher implementing every requirement in `references/agent-feedback-loop.md`: commit-pinned across all workflows, diff-gated, heartbeating under a typical prompt-cache TTL, and guaranteed to end in `CI-DONE <verdict>` (success, failure, timeout, no-run, superseded, cancelled, probe-dead). Requires authenticated `gh` and `jq`; set `CI_WATCH_REPO=org/name` or run inside the repo. For another provider, keep the event contract and replace only the probe command.
 
 ## Guardrails
 

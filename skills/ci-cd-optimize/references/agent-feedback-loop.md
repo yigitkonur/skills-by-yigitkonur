@@ -73,7 +73,7 @@ Attach the watcher to a background/event-streaming facility rather than the fore
 Monitor(
   command: "bash scripts/ci-watch.sh <pinned-sha> <branch> 15",
   description: "CI for <branch> <short-sha>",
-  timeout_ms: 900000
+  timeout_ms: 960000
 )
 ```
 

@@ -34,25 +34,40 @@ PROBE_CAP="${CI_WATCH_PROBE_CAP:-45}" # per-probe timeout
 [ -n "$REPO" ] || { echo "CI-DONE probe-dead — set CI_WATCH_REPO=org/name"; exit 1; }
 
 start=$SECONDS
+deadline_sec=$(( ${DEADLINE_MIN%.*} * 60 ))
 prev=""
 registered=0
 last_emit=$SECONDS
 errs=0
 emit() { printf '%s\n' "$*"; last_emit=$SECONDS; }
-
-while :; do
+timeout_if_elapsed() {
   elapsed=$(( SECONDS - start ))
-  if [ "$elapsed" -gt $(( ${DEADLINE_MIN%.*} * 60 )) ]; then
+  if [ "$elapsed" -ge "$deadline_sec" ]; then
     emit "CI-DONE timeout at ${DEADLINE_MIN}m — last: ${prev:-nothing registered}"
     exit 124
   fi
+}
+bounded_sleep() {
+  timeout_if_elapsed
+  remaining=$(( deadline_sec - elapsed ))
+  sleep_for=$INTERVAL
+  [ "$sleep_for" -gt "$remaining" ] && sleep_for=$remaining
+  sleep "$sleep_for"
+}
 
-  if ! snap=$(timeout "$PROBE_CAP" gh run list --repo "$REPO" --commit "$SHA" \
+while :; do
+  timeout_if_elapsed
+  remaining=$(( deadline_sec - elapsed ))
+  probe_cap=$PROBE_CAP
+  [ "$probe_cap" -gt "$remaining" ] && probe_cap=$remaining
+
+  if ! snap=$(timeout "$probe_cap" gh run list --repo "$REPO" --commit "$SHA" --limit 1000 \
         --json databaseId,workflowName,status,conclusion 2>/dev/null); then
+    timeout_if_elapsed
     errs=$(( errs + 1 ))
     [ "$errs" -eq 3 ] && emit "CI-ERR probe failing (3x consecutive)"
     [ "$errs" -ge 10 ] && { emit "CI-DONE probe-dead after 10 consecutive errors"; exit 1; }
-    sleep "$INTERVAL"; continue
+    bounded_sleep; continue
   fi
   errs=0
 
@@ -64,7 +79,7 @@ while :; do
       emit "CI-DONE no-run — nothing registered for ${SHA:0:9} in ${REG_MIN}m (path filter? wrong sha? docs-only push?)"
       exit 1
     fi
-    sleep "$INTERVAL"; continue
+    bounded_sleep; continue
   fi
 
   if [ "$registered" -eq 0 ]; then
@@ -105,7 +120,7 @@ while :; do
       fi
       exit 0
     fi
-    id=$(jq -r '[.[] | select(.conclusion=="failure")][0].databaseId // empty' <<<"$snap")
+    id=$(jq -r '[.[] | select((.conclusion // "") | IN("success","skipped","neutral","cancelled") | not)][0].databaseId // empty' <<<"$snap")
     emit "CI-DONE failure — ${genuine}${id:+ — gh run view $id --repo $REPO --log-failed}"
     exit 1
   fi
@@ -113,5 +128,5 @@ while :; do
   if [ "$HB_SEC" -gt 0 ] && [ $(( SECONDS - last_emit )) -ge "$HB_SEC" ]; then
     emit "CI-HB $(( elapsed / 60 ))/${DEADLINE_MIN}m · $(tr '\n' '|' <<<"$prev" | sed 's/|$//; s/|/ · /g')"
   fi
-  sleep "$INTERVAL"
+  bounded_sleep
 done

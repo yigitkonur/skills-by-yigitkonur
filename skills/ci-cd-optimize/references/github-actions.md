@@ -81,7 +81,7 @@ This avoids the common `push` + `pull_request` duplicate: feature work validates
 - A called workflow cannot hold permissions the caller lacks. If the caller declares `permissions: contents: read` and the callee asks for anything more, the run fails at **startup** — `conclusion: startup_failure` with **zero jobs created and no step logs**, which reads like an outage rather than a config error. Keep the callee's `permissions` a subset of the caller's, or widen the caller deliberately.
 - Other startup-stage failures with the same signature: a path typo in `uses:`, a missing `on: workflow_call`, an inputs/secrets mismatch, or an unreadable nested reusable workflow. Diagnose by bisecting — reduce the caller to a single `uses:` job and push, rather than reading logs that do not exist.
 - Use `secrets: inherit` deliberately; it forwards every caller secret to the callee.
-- Job-level `concurrency` belongs in the callee. A workflow-level `concurrency` block is ignored for the reusable path, so per-surface queueing must be declared on the job.
+- Job-level `concurrency` belongs in the callee. A workflow-level `concurrency` block is evaluated in the callee's context, but its group name can collide with the caller's when using `github.workflow` dynamically; prefer job-level concurrency for reliable per-surface queueing.
 
 ## Same-job parallelism (verify before use)
 
