@@ -62,6 +62,10 @@ EXIT = {"success": 0, "failure": 1, "no-run": 2, "probe-dead": 2,
         "superseded": 3, "cancelled": 3, "timeout": 124}
 
 
+class IncompleteEnumeration(RuntimeError):
+    """The provider result cap prevents a complete, trustworthy verdict."""
+
+
 def emit(line: str) -> None:
     print(line, flush=True)
 
@@ -109,8 +113,9 @@ def gh_probe(sha: str, repo: str | None, expand_jobs: bool,
         raise subprocess.TimeoutExpired(base, 0)
     rows = json.loads(run(base, min(PROBE_TIMEOUT, remaining)) or "[]")
     if len(rows) >= MAX_RUNS:
-        raise RuntimeError(f"at least {MAX_RUNS} runs match {sha[:7]}; "
-                           "refusing an incomplete verdict")
+        raise IncompleteEnumeration(
+            f"at least {MAX_RUNS} runs match {sha[:7]}; "
+            "refusing an incomplete verdict")
     snap: dict[str, dict] = {}
     for r in rows:
         rid = str(r["databaseId"])
@@ -265,6 +270,8 @@ def main() -> int:
                 snap = gh_probe(sha, a.repo, expand_jobs=True,
                                 deadline_at=deadline_at)
             errors = 0
+        except IncompleteEnumeration as exc:
+            return done("failure", f"incomplete run enumeration: {exc}")
         except Exception as exc:
             errors += 1
             if errors == WARN_STREAK:
