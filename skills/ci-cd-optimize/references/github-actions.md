@@ -18,7 +18,32 @@ Use this file when the measured bottleneck lives in a GitHub Actions workflow.
 | Artifact transfer | upload/download duration, sizes | Current artifact actions, targeted paths, correct compression. |
 | Queue p95 | run wait time, runner class | Right-size or scale only after queue/utilization evidence. |
 | Required check pending | branch protection + skipped workflow | Replace workflow-level path skip with job conditions. |
+| Docs edits still build | `paths-ignore` uses `*.md` | `*.md` matches ROOT level only — add `docs/**` and `**/*.md`. |
 | Merge queue wrong/no run | triggers | Add `merge_group`; verify affected semantics. |
+
+## Path filter globbing
+
+GitHub's `paths`/`paths-ignore` patterns are not shell globs and not fully gitignore
+semantics. The trap that costs the most: **`*.md` matches root-level files only.** A repo
+that ignores `*.md` still runs the full pipeline for `docs/guide.md`.
+
+```yaml
+paths-ignore:
+  - '*.md'          # root README.md only
+  - '**/*.md'       # every markdown file, any depth   <- what you meant
+  - 'docs/**'       # whole directory regardless of extension
+```
+
+Verify rather than assume — push a docs-only commit and check that zero runs registered:
+
+```bash
+gh run list --commit "$(git rev-parse HEAD)" --json databaseId --jq 'length'   # expect 0
+```
+
+Observed cost of getting this wrong: a markdown-only commit triggered a full CI **and a
+production deploy** because the new guide lived at `docs/CI-CD.md` while the filter said
+`*.md`. Keep `paths-ignore` identical across `push` and `pull_request`, or the two events
+disagree about what is worth building.
 
 ## Security defaults
 

@@ -66,8 +66,9 @@ Ask in order:
 8. Are security scans dominant? Read `references/security-gates.md`.
 9. Is deployment slow or repeated? Read `references/deployment.md`.
 10. Is it a Swift/Xcode pipeline? Read `references/swift-xcode.md`.
-11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
-12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
+11. Is an agent going to *wait* on this pipeline? Read `references/agent-feedback-loop.md` — a blocked session costs more wall-clock than most optimizations return.
+12. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
+13. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
 14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
 15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
@@ -175,6 +176,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Coverage off PR path with no fallback | Keep a required scheduled/merge-queue full run. |
 | Remote cache writable by untrusted PRs | Read-only PR cache or isolated cache namespace. |
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
+| Agent blocks on `run watch` or a poll loop | Arm an out-of-band watcher that always emits a terminal verdict. |
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
@@ -203,6 +205,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | `references/network-and-artifacts.md` | Checkout depth, sparse/partial clone, LFS, package proxies, artifact compression, uploads, or registry locality. |
 | `references/deployment.md` | Immutable artifacts, build-once-deploy-many, canary/blue-green, migrations, previews, rollback, and exact-artifact verification. |
 | `references/swift-xcode.md` | Swift/Xcode builds, SwiftPM, test plans, simulator sharding, macOS runners, xcresult, or DerivedData. |
+| `references/agent-feedback-loop.md` | An agent must wait on a pipeline it triggered: non-blocking watch, event contract, anti-stall requirements, Monitor-tool wiring. |
 | `references/evidence-and-sources.md` | Checking claims, dated source ledger, research method, or refreshing stale vendor behavior. |
 
 ### Optional: Avrea reference kit
@@ -214,6 +217,14 @@ Read only when the repository runs on Avrea (`runs-on:` labels start with `avrea
 | `references/avrea/cli-evidence.md` | Using the `avr` CLI to build a baseline: median/p95, per-job start offsets, queue time, VM metrics, flake counts, cache hit counts, or driving a run to a terminal state. |
 | `references/avrea/platform-and-runners.md` | Runner labels and sizing, migration from GitHub-hosted runners, A/B shadowing, observability, OTel export, live SSH debugging, or the third-party trust boundary. |
 | `references/avrea/caching.md` | Actions/build/package cache layers, Turborepo or Docker `url_v2` wiring, registry proxy caveats, quota and LRU eviction, or diagnosing cold cache entries. |
+
+## Bundled script
+
+`scripts/ci-watch.sh <sha> [max-minutes]` is a ready GitHub Actions watcher implementing
+every requirement in `references/agent-feedback-loop.md`: commit-pinned, diff-gated,
+heartbeating, and guaranteed to end in `CI-DONE <verdict>`. Requires `gh` (authenticated)
+and `jq`; override the repo with `CI_WATCH_REPO=org/name`. For other providers, keep the
+event contract and replace only the probe command.
 
 ## Guardrails
 
