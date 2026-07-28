@@ -28,6 +28,39 @@ vitest run --merge-reports
 
 Vitest distributes by test file by default. A few large files can still dominate; split large files or use provider timing-aware splitting.
 
+## Profile per file and per test before sharding
+
+Suite-level totals hide the actual bottleneck. Because Vitest and Jest distribute by **file**, a single slow file caps the whole project no matter how many workers you add — raising `maxWorkers` cannot split one file.
+
+Get per-file durations from the runner's own reporter output before touching concurrency:
+
+```
+✓ src/services/scheduler.test.ts (155 tests) 72054ms   ← 72s
+  Test Files  100 passed (100)
+  Duration    75.70s                                        ← one file is 95% of the run
+```
+
+Then read the slowest individual tests. **Durations clustered at a suspiciously round number are the tell.** Tests taking 8,048 / 8,037 / 24,063 ms are not "slow tests"; they are `n × 8000 ms` of real waiting.
+
+### Real sleeps in production code are the usual culprit
+
+The wait is frequently *not* in the test — it is a retry/backoff/poll delay in the code under test:
+
+```ts
+const RETRY_DELAY_MS = 8_000;                // production: wait for a warming dependency
+await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+```
+
+Every test that exercises that path burns 8s of wall-clock. Ranked fixes:
+
+1. **Make the delay injectable and lower it in the test environment** — smallest change, keeps attempt count, ordering, and guard conditions identical. Parse it from config/env with the production value as the default so production behavior is provably unchanged.
+2. **Fake timers**, when the runtime supports them — riskier, since the test now proves less about real scheduling, and some sandboxed runtimes (workerd, some browser pools) handle them poorly.
+3. **Split the file** — mechanical but large, and it only helps if the cost is spread across many tests rather than concentrated in a few sleeps.
+
+Measured example: injecting the delay took one file from 72.05s → 9.66s and the project from 75.70s → 14.83s (5.1×), with the test count *rising* 1866 → 1868. Verify that last part — a speedup that reduces the number of executed tests is a coverage regression wearing a stopwatch.
+
+Do not shard a suite whose cost is concentrated in dead waiting. You would pay setup N times to parallelize sleep.
+
 ## Jest
 
 Jest `--shard` balances by file count unless a custom sequencer uses historical timings. CircleCI and similar providers can split by JUnit timing metadata:

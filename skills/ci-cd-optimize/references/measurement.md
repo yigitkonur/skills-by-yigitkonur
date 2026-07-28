@@ -28,6 +28,19 @@ Use median and p95. CI duration is right-skewed; averages hide cold caches, runn
 
 If a queue-time baseline is unavailable, start with provider run timestamps and job logs. Do not invent missing precision.
 
+## Do not measure inside your own burst
+
+Validation runs fired back-to-back contend for the same runner pool and inflate each other's queue time. Wall-clock measured under self-inflicted contention is not a regression signal, and reporting it as one is a false finding.
+
+A worked case: a change set measured 163s against a 100s baseline and looked like a clear regression. Splitting the job records showed **execution was flat** (warm verify 13s → 14s; secret scan 7s → 8s) while **queue rose from 10s to 32–115s** because four validation runs had been dispatched in immediate succession. A single run taken once the pool drained returned 48s. The change had no effect on speed in either direction.
+
+Practical rules:
+
+- Always decompose before concluding: `queue = started_at − created_at`, `execution = completed_at − started_at`. A wall-clock delta with flat execution is a scheduling story, not a build story.
+- Space validation runs, or take timing samples from ordinary pushes rather than from your own test batch.
+- Report the sample size. Two runs per side is an observation; it is not a median, and it is certainly not a p95.
+- When a change is genuinely neutral on speed, say so. "No speedup; the work was correctness" is a valid, honest result — inflating queue noise into a win or a loss destroys the credibility of every other number in the report.
+
 ## Critical-path analysis
 
 Build a DAG from declared dependencies. For every job, compute:

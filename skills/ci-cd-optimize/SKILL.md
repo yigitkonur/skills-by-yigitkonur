@@ -71,6 +71,7 @@ Ask in order:
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
 14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
 15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+16. Is an agent or unattended process consuming the result — or does waiting for CI itself stall, hang, or report a false verdict? Read `references/agent-ci-feedback.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -185,6 +186,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | File | Read when |
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
+| `references/agent-ci-feedback.md` | An agent must wait for a CI result without blocking or hanging: watcher contract, terminal verdicts, heartbeats, `timeout`/`no-run` semantics, deadline sizing. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
