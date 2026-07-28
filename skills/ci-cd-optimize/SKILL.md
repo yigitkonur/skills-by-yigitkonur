@@ -69,8 +69,9 @@ Ask in order:
 11. Is the provider config itself the issue? Route to `references/github-actions.md`, `references/gitlab-ci.md`, `references/circleci.md`, or `references/buildkite.md`.
 12. Is the build graph/cache correctness itself suspect? Read `references/bazel-and-remote-execution.md`.
 13. Does the repository already run on Avrea, or is runner hardware the measured bottleneck? Read `references/avrea/platform-and-runners.md` and `references/avrea/caching.md`; for building the baseline with the `avr` CLI, read `references/avrea/cli-evidence.md`.
-14. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
-15. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
+14. Is the wait for the result itself the problem — a blocked session, a watch that never ends, or a green that cannot be trusted? Read `references/feedback-loops.md`.
+15. Is the proposed speedup about to weaken a required check, a trust boundary, or artifact identity? Read `references/effectiveness-contract.md` before recommending it.
+16. Is a load-bearing claim about vendor behavior unverified, or is a cited source stale? Read `references/evidence-and-sources.md`.
 
 ### 4. Choose one bounded experiment
 
@@ -175,6 +176,8 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | Coverage off PR path with no fallback | Keep a required scheduled/merge-queue full run. |
 | Remote cache writable by untrusted PRs | Read-only PR cache or isolated cache namespace. |
 | Retrying flakes forever | Bound retries, quarantine, assign ownership, track flake rate. |
+| Blocking the session on `gh run watch` / a foreground poll | Arm a SHA-pinned, deadline-bounded watcher as a background event stream (`references/feedback-loops.md`). |
+| Trusting `$?` after piping a watcher into `head`/`tail` | The pipeline's status is the last command's. Capture output first, then read the real exit code. |
 | Rebuilding deploy artifacts per environment | Build once; promote the same immutable digest. |
 | Artifact upload on every success | Upload exact outputs; diagnostics on failure; summaries for small values. |
 | Large cache entries with zero hits | Check hit counts; cold entries consume quota and slow every save. |
@@ -185,6 +188,7 @@ Treat this as a shape, not a universal template. Adapt cache, affected detection
 | File | Read when |
 |---|---|
 | `references/measurement.md` | Building the baseline, percentiles, critical path, telemetry, or proving a result. |
+| `references/feedback-loops.md` | Watching a pipeline without stalling: SHA-pinned watchers, terminal verdicts, false-green traps, agent event tools, and the bundled `scripts/ci-watch.py`. |
 | `references/effectiveness-contract.md` | Deciding whether a proposed speedup weakens validation, security, or artifact identity. |
 | `references/caching.md` | Any dependency/build cache design, restore-key, cache-hit, cache-poisoning, or transfer-cost question. |
 | `references/change-based-ci.md` | Path filters, affected commands, merge queues, merge-base correctness, or full-run fallback rules. |
