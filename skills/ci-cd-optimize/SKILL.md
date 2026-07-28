@@ -57,7 +57,7 @@ Apply the performance order before adding compute:
 Ask in order:
 
 1. Is the pipeline starting duplicate, stale, draft-only, or unrelated work? Read `references/optimization-workflow.md` first for the engagement order, then `references/github-actions.md` and `references/change-based-ci.md`.
-2. Is queue time the dominant p95 contributor, or is job count already at the platform's concurrency ceiling? Read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`. Above roughly 35 % queue share, reshaping the DAG cannot help and adding jobs makes it worse.
+2. Is queue time the dominant p95 contributor, or is job count already at the platform's concurrency ceiling? Read `references/capacity-and-contention.md` first, then `references/runners-and-autoscaling.md`. Treat aggregate queue share as a saturation signal, then correlate it with critical-path queue delay and run-level wall-clock impact before reshaping the DAG.
 3. Is setup or dependency restore dominant? Read `references/typescript-toolchain.md` and `references/caching.md`.
 4. Is checkout, cache, Docker context, or artifact transfer dominant? Read `references/network-and-artifacts.md`.
 5. Is the pipeline running work unrelated to this change? Read `references/change-based-ci.md` and `references/monorepos.md`.
@@ -85,7 +85,7 @@ Select the smallest reversible change that attacks the measured critical path. E
 
 Prefer, in this order: prevent unneeded work → cancel stale work → reuse verified prior work → improve cache correctness → remove artificial dependencies → parallelize independent work → shard slow work by measured duration → reduce transferred bytes → improve runner capacity → move heavy work off the PR path only with a full-run fallback → change provider architecture.
 
-Two steps in that order invert above a concurrency ceiling: "parallelize independent work" and "shard slow work" both raise job count, and once job count exceeds available slots the surplus queues while re-paying setup. Establish the ceiling and the queue share before either. When capped, *merging* jobs that share setup is the faster change — see `references/capacity-and-contention.md`.
+Two steps in that order invert above a concurrency ceiling: "parallelize independent work" and "shard slow work" both raise job count, and once job count exceeds available slots the surplus queues while re-paying setup. Establish saturation per runner class or pool and measure its critical-path impact before either. When capped, consider *merging* jobs that share setup only after confirming the merged DAG shortens wall-clock — see `references/capacity-and-contention.md`.
 
 ### 5. Preserve effectiveness
 

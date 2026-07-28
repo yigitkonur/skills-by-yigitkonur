@@ -36,6 +36,19 @@ Cache the package-manager store/cache, not blindly `node_modules`:
 
 Key by lockfile, Node version, package-manager version, OS, and architecture. Compare restore time with a clean install; large stores can be slower than a registry fetch on a nearby network.
 
+### When the platform already proxies the registry
+
+Several CI providers run a pull-through registry proxy on the runner network and point the package manager at it automatically. Where that exists, a large store cache can be redundant: the packages already come from colocated storage, so the cache pays restore and save cost to avoid a fetch that was never slow.
+
+Test it directly rather than reasoning about it:
+
+1. Find a run where the store cache missed (a new lockfile hash, or a first run on a branch).
+2. Compare its install step against a warm-cache run.
+
+If install is roughly the same in both, the proxy is doing the work and the cache is only buying you its own overhead. If the cold install is materially slower, keep the cache. Do not infer either way from cache hit counts alone — a cache can report a high hit rate while saving nothing, which is the failure mode this whole file exists to prevent.
+
+Report the numbers when you remove a cache, because "we deleted the cache" reads as a regression to anyone who does not see the break-even.
+
 ## Restore-key discipline
 
 Use narrow restore keys from most-specific to less-specific:

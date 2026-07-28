@@ -12,7 +12,7 @@ Use this file when building a baseline, proving a bottleneck, or validating that
 | Critical-path duration | longest dependency chain through the DAG | The only sequence that directly governs wall-clock feedback. |
 | Cache exact-hit rate | exact key hits / cache attempts | Cache-key precision, not necessarily saved time. |
 | Cache saved time | clean path time - (restore + post-hit work) | Whether a cache is worth keeping. |
-| Queue share | Σ queue / (Σ queue + Σ execution) | Whether the bottleneck is capacity rather than work. Above ~35 %, topology changes are near-futile — see `references/capacity-and-contention.md`. |
+| Aggregate queue share | Σ queue / (Σ queue + Σ execution) | A saturation signal, not wall-clock share. Correlate it with critical-path queue delay and run duration — see `references/capacity-and-contention.md`. |
 | First-time pass rate | runs green without retry / all runs | Flakiness and reliability. |
 | Cost per successful change | compute + storage / successful changes | Speed improvements that increase total cost may not be wins. |
 | Change failure/rework rate | failed or unplanned recovery deployments / deployments | The effectiveness guardrail after optimization. |
