@@ -9,6 +9,19 @@ Optimizing pipeline seconds is wasted if the agent then blocks for twenty
 minutes on a broken watch, or worse, silently concludes "no news, must be fine."
 The feedback loop is part of the critical path.
 
+## Fast triage
+
+| Symptom | Most likely cause | Go to |
+|---|---|---|
+| Watch returns instantly, reports nothing running | Registration race — armed before the run was indexed | Failure mode 1 |
+| Watch prints a garbled blob, or nothing, then exits 0 | Non-TTY redraw output | Failure mode 2 |
+| Watch never returns; harness timeout kills it | No deadline of its own | Failure mode 3 |
+| Run failed but the agent proceeded as if green | Success-only filter; silence read as success | Failure mode 4 |
+| Monitor stays armed long after the run ended | Unbounded command (`tail -f`, `while true`) | Wiring it to an agent monitor |
+| Monitor auto-stopped mid-run | Output volume; every line became a notification | Wiring it to an agent monitor |
+| Green reported for someone else's commit | Branch-tip watch instead of SHA-pinned | The contract |
+| Old run reports failure right after you re-push | Concurrency cancellation, not a real failure | `superseded` verdict |
+
 ## The four failure modes
 
 Each is common, each has been observed in practice, and each is silent.
@@ -199,3 +212,29 @@ trusting it — the same standard applied to any other gate:
 
 Until those paths are exercised, "the watcher works" is a config-review claim,
 not a verified one.
+
+## Distinguishing "slow" from "stuck"
+
+Long waits are not automatically a defect. Before treating a slow run as a
+problem, split the wall clock:
+
+- **Queue time** (created → started) is provider capacity. On a measured
+  repository it ranged 10s–193s within a single hour on identical config, while
+  execution held steady at 11–13s. Nothing in the workflow file changes that.
+- **Execution time** (started → completed) is yours to optimize.
+
+A watcher that heartbeats with elapsed time lets an agent tell the difference
+without polling. Report the two separately; presenting a queue-dominated wall
+clock as a regression sends the next optimization round after the wrong target.
+
+## Sources
+
+- Failure taxonomy and the diff-gated / guaranteed-exit design are modeled on
+  `yigitkonur/plugin-ci-watch-unstall` (README, accessed 2026-07-28), which
+  documents the same `gh run watch` non-TTY and no-deadline problems.
+- Registration-race behavior, `--ndjson` output shape, and the queue-vs-execution
+  spread were observed directly against `avr` 0.1.6 on a live repository
+  (2026-07-28); the id-less watch exiting 0 with "No in-progress workflow runs
+  found" is a reproduced observation, not a vendor-documented behavior.
+- `zsh` readonly `status` and pipe-buffering pitfalls were hit and fixed while
+  building the reference implementation above.
