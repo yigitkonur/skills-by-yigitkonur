@@ -1,12 +1,12 @@
 # skills-by-yigitkonur
 
-skills for ai coding agents — one pack, **52 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, backend and cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
+skills for ai coding agents — one pack, **53 skills** + the internet-researcher agents. review, research, writing, ui/ux audit, mcp & framework builders, backend and cli testing, browser/device/terminal automation, config files, publish. install what you need, skip the rest. no monolith.
 
 > used to be two repos (a main pack + a `-secondary` b-side). they're one now. the old secondary repo is gone — everything lives here.
 
 ## install
 
-three ways in. Codex gets the complete 52-skill pack; Claude Code gets 51 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
+three ways in. Codex gets the complete 53-skill pack; Claude Code gets 52 Claude-compatible skills and intentionally excludes the Codex-only Jean orchestrator.
 
 ### as claude code plugins (the good way — toggle on/off via `/plugin`)
 
@@ -61,7 +61,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 
 | bundle | what's in it | install |
 |---|---|---|
-| **yk-everything** | all 51 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
+| **yk-everything** | all 52 Claude-compatible skills + researcher agents | `/plugin install yk-everything@yigitkonur` |
 | **yk-researchers** | internet-researcher agents only, no skills | `/plugin install yk-researchers@yigitkonur` |
 | **yk-review** | review, codex-review-loop, codex adversarial loop, completion audit, runtime debug | `/plugin install yk-review@yigitkonur` |
 | **yk-frontend** | url→next.js, ui/ux/laws-of-ux audits | `/plugin install yk-frontend@yigitkonur` |
@@ -71,7 +71,7 @@ Claude Code themed groups for one-shot installs. every Claude-compatible skill a
 | **yk-research** | research, deep-research, github-scout, bulk-search (+ agents) | `/plugin install yk-research@yigitkonur` |
 | **yk-automation** | herdr terminal/agent control, browser automation, android control, tailscale funnel | `/plugin install yk-automation@yigitkonur` |
 | **yk-config** | agents/claude/review files, drift audit, makefiles | `/plugin install yk-config@yigitkonur` |
-| **yk-ops** | railway, coolify-cloud deploy, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
+| **yk-ops** | railway, coolify-cloud deploy, ci/cd optimization, repo-cleanup, npm publish | `/plugin install yk-ops@yigitkonur` |
 | **yk-skills** | build-skill, derailment stress-test | `/plugin install yk-skills@yigitkonur` |
 | **yk-writing** | multilingual natural-writing diagnosis, rewrite, and publication review | `/plugin install yk-writing@yigitkonur` |
 | **yk-delivery** | scored alignment, spec corpus, waved orchestration for big initiatives | `/plugin install yk-delivery@yigitkonur` |
@@ -209,6 +209,7 @@ deploy, maintain, offload, publish.
 
 - **[run-railway](skills/run-railway/)** — railway cli: deploys, logs, env vars, link, ssh, db shells, scaling, installed-vs-docs version-drift routing.
 - **[deploy-coolify-cloud](skills/deploy-coolify-cloud/)** — deploy/update docker-compose services on coolify cloud via the api: verified create/patch/urls-domain/env-var contracts, base64 compose, custom domains + TLS, cross-service networking, and box-level deploy verification.
+- **[ci-cd-optimize](skills/ci-cd-optimize/)** — diagnose or optimize slow CI/CD by measured bottleneck — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker builds, runner queues, deployment paths, and Swift/Xcode CI — while preserving required checks, cache correctness, and exact-artifact verification.
 - **[run-repo-cleanup](skills/run-repo-cleanup/)** — finish a project: review + merge every live branch and worktree into main locally (no prs), retire dangling branches, sweep junk to a gitignored trash.
 - **[publish-npm-package](skills/publish-npm-package/)** — npm releases via github actions: trusted publishing, `NPM_TOKEN`, provenance, semantic-release, changesets, release-please.
 

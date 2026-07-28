@@ -12,7 +12,7 @@
     {
       "name": "yk-everything",
       "source": "./",
-      "description": "Every Claude-compatible skill — all 51 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
+      "description": "Every Claude-compatible skill — all 52 skills plus the internet-researcher agents. Heaviest context cost; prefer a themed bundle or single skill.",
       "version": "1.0.34",
       "category": "bundle",
       "strict": false,
@@ -40,6 +40,7 @@
         "./skills/build-sentry-macos-swift",
         "./skills/build-skill",
         "./skills/build-tinacms-nextjs",
+        "./skills/ci-cd-optimize",
         "./skills/convert-mcp-sdk-v1-to-v2",
         "./skills/convert-to-natural-writing",
         "./skills/convert-url-to-nextjs",
@@ -241,7 +242,7 @@
     {
       "name": "yk-ops",
       "source": "./",
-      "description": "Ops & release — Railway, Coolify Cloud compose deploys, repo cleanup, npm publishing.",
+      "description": "Ops & release — Railway, Coolify Cloud compose deploys, CI/CD optimization, repo cleanup, npm publishing.",
       "version": "1.0.34",
       "category": "bundle",
       "tags": [
@@ -251,6 +252,7 @@
       "skills": [
         "./skills/run-railway",
         "./skills/deploy-coolify-cloud",
+        "./skills/ci-cd-optimize",
         "./skills/run-repo-cleanup",
         "./skills/publish-npm-package"
       ]
@@ -549,6 +551,17 @@
       "strict": false,
       "skills": [
         "./skills/build-tinacms-nextjs"
+      ]
+    },
+    {
+      "name": "ci-cd-optimize",
+      "source": "./",
+      "description": "Use if diagnosing or optimizing slow CI/CD while preserving required checks.",
+      "version": "1.0.34",
+      "category": "ops",
+      "strict": false,
+      "skills": [
+        "./skills/ci-cd-optimize"
       ]
     },
     {

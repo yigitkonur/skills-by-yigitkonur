@@ -293,6 +293,18 @@
       "category": "Productivity"
     },
     {
+      "name": "ci-cd-optimize",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ci-cd-optimize"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "convert-mcp-sdk-v1-to-v2",
       "source": {
         "source": "local",
