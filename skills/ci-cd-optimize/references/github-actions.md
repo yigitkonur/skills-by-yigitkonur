@@ -76,6 +76,13 @@ This avoids the common `push` + `pull_request` duplicate: feature work validates
 - Do not multiply runners until test time is split; otherwise every shard repeats setup and full tests.
 - Put tiny planner/status jobs on lightweight runners where the provider offers them; keep build/test jobs on build runners.
 
+## Reusable workflows (`workflow_call`)
+
+- A called workflow cannot hold permissions the caller lacks. If the caller declares `permissions: contents: read` and the callee asks for anything more, the run fails at **startup** — `conclusion: startup_failure` with **zero jobs created and no step logs**, which reads like an outage rather than a config error. Keep the callee's `permissions` a subset of the caller's, or widen the caller deliberately.
+- Other startup-stage failures with the same signature: a path typo in `uses:`, a missing `on: workflow_call`, an inputs/secrets mismatch, or an unreadable nested reusable workflow. Diagnose by bisecting — reduce the caller to a single `uses:` job and push, rather than reading logs that do not exist.
+- Use `secrets: inherit` deliberately; it forwards every caller secret to the callee.
+- Job-level `concurrency` belongs in the callee. A workflow-level `concurrency` block is ignored for the reusable path, so per-surface queueing must be declared on the job.
+
 ## Same-job parallelism (verify before use)
 
 GitHub's 2026-06-25 changelog announced same-job step concurrency with `background: true` and related `parallel`/`wait`/`wait-all`/`cancel` keywords, but the stable workflow-syntax page fetched on 2026-07-28 still says steps execute in order and does not document those keys. Treat this as provider-version-gated: verify the current official syntax docs before emitting it. Prefer job-level parallelism for CPU-bound work and same-job concurrency only for I/O-bound tasks that share setup.
