@@ -1,6 +1,6 @@
 {
   "name": "ci-cd-optimize",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "description": "Use skill if you are diagnosing or optimizing slow, flaky, queued, expensive, or cache-inefficient CI/CD pipelines, or waiting on remote runs, while preserving required checks, security gates, and exact-commit verification.",
   "author": {
     "name": "Yigit Konur",
