@@ -146,7 +146,7 @@ A long wait is not automatically a defect. Before treating a slow run as a probl
 - **Queue time** (created → started) is provider capacity, not your workflow. Measured on one repository it ranged 10 s–193 s within a single hour on identical config, while execution held at 11–13 s. Nothing in the YAML changes that.
 - **Execution time** (started → completed) is yours to optimize.
 
-Report the two separately. Presenting a queue-dominated wall clock as a regression sends the next optimization round after the wrong target. See `references/measurement.md` for the decomposition and `references/capacity-and-contention.md` for when queue share means the whole topology question is moot.
+Report the two separately. Presenting a queue-dominated wall clock as a regression sends the next optimization round after the wrong target. See `references/measurement.md` for the decomposition and `references/runners-and-autoscaling.md` for when queue share means the whole topology question is moot.
 
 ## Local-vs-CI division of labor
 

@@ -40,6 +40,7 @@ import json
 import subprocess
 import sys
 import time
+from urllib.parse import quote
 
 PROBE_CAP_SEC = 45
 # States that count as green. Every other completed conclusion is a failure unless
@@ -62,36 +63,35 @@ def gh_json(args):
     return json.loads(out.stdout or "[]")
 
 
-def branch_tip(branch, repo):
-    """Resolve the branch's real tip from the ref.
-
-    Deliberately NOT `gh run list --branch --limit 1`: that returns the latest
-    RUN, which — for a branch whose newest push has not registered yet — is an
-    OLDER sha, so the newest commit would be reported as superseded by its own
-    ancestor. The ref is the only correct source of "what is the tip now".
-    """
-    remote = f"https://github.com/{repo}" if repo else "origin"
-    out = run(["git", "ls-remote", remote, f"refs/heads/{branch}"])
+def resolve_repo(repo):
+    """Resolve one authenticated repository slug for every GitHub query."""
+    if repo:
+        return repo
+    out = run(["gh", "repo", "view", "--json", "nameWithOwner",
+               "--jq", ".nameWithOwner"])
     if out.returncode != 0:
-        raise RuntimeError((out.stderr.strip() or "git ls-remote failed")[:200])
-    return out.stdout.split()[0] if out.stdout.strip() else ""
+        raise RuntimeError((out.stderr.strip() or "cannot resolve repository")[:200])
+    return out.stdout.strip()
+
+
+def branch_tip(branch, repo):
+    """Resolve the branch's real tip through the same authenticated repository."""
+    data = gh_json(["api", f"repos/{repo}/branches/{quote(branch, safe='')}"])
+    return data["commit"]["sha"]
 
 
 def github_runs(sha, repo):
-    """Fetch every Actions run for a SHA, following all API pages."""
-    if repo:
-        slug = repo
-    else:
-        out = run(["gh", "repo", "view", "--json", "nameWithOwner",
-                   "--jq", ".nameWithOwner"])
-        if out.returncode != 0:
-            raise RuntimeError((out.stderr.strip() or "cannot resolve repository")[:200])
-        slug = out.stdout.strip()
+    """Fetch the newest attempt per workflow for a SHA, following all pages."""
     pages = gh_json([
         "api", "--paginate", "--slurp",
-        f"repos/{slug}/actions/runs?head_sha={sha}&per_page=100",
+        f"repos/{repo}/actions/runs?head_sha={sha}&per_page=100",
     ])
-    return [item for page in pages for item in page.get("workflow_runs", [])]
+    newest = {}
+    for run_data in (item for page in pages for item in page.get("workflow_runs", [])):
+        key = run_data["workflow_id"]
+        if key not in newest or run_data["id"] > newest[key]["id"]:
+            newest[key] = run_data
+    return list(newest.values())
 
 
 def github_probe(sha, branch, repo):
@@ -116,10 +116,10 @@ def github_probe(sha, branch, repo):
                       if (r.get("conclusion") or "") not in OK_CONCLUSIONS})
         if not bad:
             return state, f"success ({len(runs)} runs for {sha[:9]})"
-        failed = next((r for r in runs if r.get("conclusion") == "failure"), None)
-        hint = (f" — logs: gh run view {failed['id']}"
-                + (f" --repo {repo}" if repo else "")
-                + " --log-failed") if failed else ""
+        non_green = next((r for r in runs
+                          if (r.get("conclusion") or "") not in OK_CONCLUSIONS), None)
+        hint = (f" — logs: gh run view {non_green['id']} --repo {repo} --log-failed"
+                if non_green else "")
         return state, f"failure — {', '.join(bad)}{hint}"
 
     return state, None
@@ -154,9 +154,12 @@ def main():
                     help="recheck this long before reporting GitHub success")
     ns = ap.parse_args()
 
-    # A registration deadline longer than the overall deadline makes `no-run`
-    # unreachable and every skipped pipeline reports `timeout` instead.
-    reg_sec = min(ns.reg_min * 60, max(30, ns.deadline_min * 60 - 30))
+    overall_sec = ns.deadline_min * 60
+    if overall_sec <= 0:
+        ap.error("--deadline-min must be greater than zero")
+    # Keep `no-run` reachable even for sub-30-second watches.
+    reg_sec = min(ns.reg_min * 60, overall_sec / 2)
+    repo = resolve_repo(ns.repo) if ns.sha else ""
 
     t0 = time.monotonic()
     deadline = t0 + ns.deadline_min * 60
@@ -175,7 +178,7 @@ def main():
 
         try:
             if ns.sha:
-                state, terminal = github_probe(ns.sha, ns.branch, ns.repo)
+                state, terminal = github_probe(ns.sha, ns.branch, repo)
             else:
                 state, terminal = custom_probe(ns.cmd)
         except Exception as exc:  # noqa: BLE001 — any probe failure is retryable

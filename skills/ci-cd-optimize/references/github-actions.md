@@ -52,7 +52,7 @@ Rules:
 
 - Keep the callee's `permissions` a subset of the caller's, or widen the caller deliberately.
 - Use `secrets: inherit` only when you truly mean to forward **every** caller secret.
-- Put per-surface `concurrency` on the **job** inside the callee; a workflow-level block is ignored on the reusable path.
+- Give reusable workflows a concurrency group that cannot collide with their callers. Inside a called workflow, `${{ github.workflow }}` resolves to the caller's workflow name; use `${{ github.workflow_ref }}` or a stable callee-specific group prefix, at workflow or job level as appropriate.
 
 ## Security defaults
 
