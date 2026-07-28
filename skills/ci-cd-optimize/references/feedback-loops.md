@@ -89,6 +89,7 @@ Distinct exit codes matter: `watch && deploy` must not proceed on a
 |---|---|---|---|
 | `success` | every run for the SHA is green | proceed; claim only this SHA | 0 |
 | `failure` | a run went red | fetch that job's failing logs now, fix, re-push, arm a fresh watch | 1 |
+| `cancelled` | all non-green terminal units were cancelled | check for supersession; re-arm on the newer SHA or investigate the cancellation | 1 |
 | `timeout` | not terminal within the deadline | inspect; stuck, not slow. Re-arm with a larger deadline | 2 |
 | `no-run` | nothing registered for the SHA | wrong ref, path filter, failed push — actionable, not a hang | 2 |
 | `probe-dead` | repeated API/CLI failures | check auth, network, rate limits; the result is unknown | 2 |
@@ -199,7 +200,11 @@ if ! state=$(printf '%s' "$response" \
   exit 1
 fi
 echo "deploy: ${state:-pending}"
-[ "$state" = "live" ] && echo "TERMINAL: success"
+case "$state" in
+  live) echo "TERMINAL: success" ;;
+  failed|error|cancelled) echo "TERMINAL: failure" ;;
+esac
+exit 0
 ```
 
 For provider CLIs, keep the loop and swap the probe: GitHub PR-gate checks via
