@@ -1,6 +1,6 @@
 ---
 name: ci-cd-optimize
-description: Use if diagnosing or optimizing slow CI/CD, or wiring an agent to wait on CI results without blocking or hanging — GitHub Actions, GitLab CI, CircleCI, Buildkite, monorepos, Docker, or any pipeline, while preserving the checks that make it worth running.
+description: Use skill if you are diagnosing slow CI/CD or wiring an agent to wait on CI results without blocking.
 metadata:
   author: yigitkonur
   version: 1.0.0

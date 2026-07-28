@@ -69,13 +69,13 @@ When one workflow triggers another on completion (`workflow_run`: deploy-after-b
 
 The two most misreported are `timeout` and `no-run`; both mean *you still do not know*. A verdict is evidence only for the identifier it names — a green on a stale or empty diff proves nothing (`effectiveness-contract.md`).
 
-Distinct exit codes matter because callers chain on them: `watch && deploy` must not proceed on `superseded` or `timeout`. The bundled script uses 0 for success, 124 for timeout (the GNU `timeout` convention), 1 otherwise.
+Distinct exit codes matter because callers chain on them. The bundled script uses 0 for `success`, `superseded`, or an explicit `--expect-none` success; 124 for `timeout` (the GNU `timeout` convention); and 1 for `failure`, `cancelled`, `no-run`, or `probe-dead`. Because `superseded` and `success` share exit 0, `watch && deploy` is unsafe: callers must parse the `CI-DONE` verdict and proceed only on `success`.
 
 Watch run-level status for cost, but expand in-flight runs to **job level** when early reaction matters: run status stays `in_progress` until every job finishes, so an already-failed lane is invisible at run granularity.
 
 ## Provider probes
 
-The contract is provider-neutral; only the probe changes. The generic mode of `scripts/ci-watch.py` accepts any command that prints `<name>: <state>` lines and one `TERMINAL: <verdict>` line when finished — the watcher never guesses a verdict for a custom probe.
+The contract is provider-neutral; only the probe changes. The generic mode of `scripts/ci-watch.py` accepts any command that prints `<name>: <state>` lines and one `TERMINAL: <verdict>` line when finished — the verdict must be one of the table entries above. A `success` verdict requires at least one registered unit unless the watcher was explicitly armed with `--expect-none`; the watcher never guesses a verdict for a custom probe.
 
 | Provider | Probe | Notes |
 |---|---|---|

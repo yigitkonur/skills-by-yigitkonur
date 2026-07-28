@@ -38,6 +38,7 @@ Design notes (each guards against a failure observed in real use):
 """
 
 import argparse
+import re
 import subprocess
 import sys
 import time
@@ -45,6 +46,10 @@ import time
 GH_SUCCESS = {"success"}
 GH_NEUTRAL = {"skipped", "neutral"}
 GH_CANCELLED = {"cancelled", "stale"}
+TERMINAL_VERDICTS = {
+    "success", "failure", "cancelled", "timeout", "no-run", "superseded", "probe-dead",
+}
+TERMINAL_EXIT_CODES = {"success": 0, "superseded": 0, "timeout": 124}
 # Everything else (failure, timed_out, startup_failure, action_required, unknown) = red.
 
 HEARTBEAT_SECS = 150  # under a typical 5-minute prompt-cache TTL: a quiet run stays warm
@@ -101,7 +106,7 @@ def probe_github(repo, sha, timeout):
         if len(parts) != 5:
             continue
         run_id, name, status, conclusion, created = parts
-        runs[run_id] = {"name": name, "status": status,
+        runs[run_id] = {"id": run_id, "name": name, "status": status,
                         "conclusion": conclusion, "created": created}
     return runs
 
@@ -115,7 +120,8 @@ def probe_custom(cmd, timeout):
     for line in out.splitlines():
         line = line.strip()
         if line.startswith("TERMINAL:"):
-            terminal = line.split(":", 1)[1].strip().split()[0].lower()
+            fields = line.split(":", 1)[1].strip().split()
+            terminal = fields[0].lower() if fields else ""
         elif ":" in line:
             name, state = line.split(":", 1)
             runs[name.strip()] = {"name": name.strip(), "status": state.strip(),
@@ -171,9 +177,9 @@ def main():
     if not a.cmd and not (a.repo and a.sha):
         emit("CI-DONE probe-dead — need --repo and --sha, or --cmd")
         return 1
-    if a.sha and len(a.sha) != 40:
-        emit("CI-DONE probe-dead — pass the full 40-char SHA "
-             "(short SHAs silently match zero runs)")
+    if a.sha and not re.fullmatch(r"[0-9a-fA-F]{40}", a.sha):
+        emit("CI-DONE probe-dead — pass the full 40-character hexadecimal SHA "
+             "(short or malformed SHAs silently match zero runs)")
         return 1
 
     deadline = a.deadline_min * 60
@@ -212,6 +218,7 @@ def main():
         else:
             err_streak = 0
 
+            was_registered = registered
             if runs and not registered:
                 registered = True
                 names = " · ".join(
@@ -222,22 +229,31 @@ def main():
             for run_id, r in runs.items():
                 state = r["conclusion"] or r["status"]
                 if seen.get(run_id) != state:
-                    if run_id in seen:
+                    if run_id in seen or was_registered:
                         emit(f"CI-CHG {r['name']}: {state}")
                     seen[run_id] = state
 
             if terminal is not None:
+                if terminal not in TERMINAL_VERDICTS:
+                    emit(f"CI-DONE probe-dead — invalid terminal verdict: "
+                         f"{terminal or '<empty>'}")
+                    return 1
+                if terminal == "success" and not registered and not a.expect_none:
+                    emit("CI-DONE probe-dead — probe declared success without any "
+                         "registered units (use --expect-none if zero units are valid)")
+                    return 1
                 emit(f"CI-DONE {terminal} — declared by probe")
-                return 0 if terminal == "success" else 1
+                return TERMINAL_EXIT_CODES.get(terminal, 1)
 
             if registered and not a.cmd:
                 verdict, detail = classify(runs)
                 if verdict == "failure":
-                    first = detail.split(",")[0].split(":")[0]
+                    failed = next(
+                        r for r in newest_per_workflow(runs).values()
+                        if r["conclusion"] not in GH_SUCCESS | GH_NEUTRAL | GH_CANCELLED
+                    )
                     emit(f"CI-DONE failure — {detail} — logs: gh run view "
-                         f"--repo {a.repo} $(gh run list --repo {a.repo} "
-                         f"--commit {a.sha} -w '{first}' --json databaseId "
-                         f"--jq '.[0].databaseId') --log-failed")
+                         f"--repo {a.repo} {failed['id']} --log-failed")
                     return 1
                 if verdict == "cancelled":
                     # Supersession BEFORE calling this red: a newer tip means the
