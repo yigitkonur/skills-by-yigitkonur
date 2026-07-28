@@ -1,0 +1,67 @@
+name: ci-cd-optimize validation
+
+# Non-mutating branch/PR validation for the ci-cd-optimize skill and its
+# shared packaging. Never bumps versions, never commits back, never writes
+# to the repository. Release mutation stays exclusively in version-bump.yml.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-optimize-validation-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Structural validation (all skills)
+        run: python3 scripts/validate-skills.py
+
+      - name: Generated-state freshness
+        run: python3 scripts/gen-marketplace.py --check
+
+      - name: Eval corpora schema
+        run: python3 tests/ci-cd-optimize/evals/run-evals.py validate
+
+      - name: Deterministic test suites
+        run: python3 -m unittest discover -s tests/ci-cd-optimize -p 'test_*.py' -v
+
+      - name: Packaged mirror smoke checks
+        run: |
+          set -euo pipefail
+          pkg="plugins/ci-cd-optimize/skills/ci-cd-optimize"
+
+          test -f "$pkg/SKILL.md"
+          grep -q '^name: ci-cd-optimize$' "$pkg/SKILL.md"
+
+          test -x "$pkg/scripts/ci-watch.py"
+          python3 "$pkg/scripts/ci-watch.py" --help >/dev/null
+
+          # Development data must never ship in the package.
+          if find "$pkg" -type d \( -name evals -o -name __pycache__ -o -name tests \) | grep -q .; then
+            echo "packaged skill contains development directories" >&2
+            exit 1
+          fi
+
+          # Marketplace metadata must keep the stable identity.
+          grep -q '"ci-cd-optimize"' .claude-plugin/marketplace.json
+          grep -q '"ci-cd-optimize"' .codex-plugin/plugin.json
+
+          # The packaged watcher honours its structured-death contract.
+          out=$(python3 "$pkg/scripts/ci-watch.py" deadbeef --repo o/r || true)
+          grep -q '"verdict": "probe-dead"' <<<"$out"
+
+          echo "packaged mirror smoke checks passed"
