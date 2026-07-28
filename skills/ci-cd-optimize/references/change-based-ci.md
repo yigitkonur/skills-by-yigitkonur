@@ -69,12 +69,18 @@ jobs:
     outputs:
       source: ${{ steps.detect.outputs.source }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: detect
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
         run: |
-          if git diff --name-only "$BASE...$HEAD" | grep -qE '^(src|packages|package.json|pnpm-lock.yaml)'; then
+          if ! files=$(git diff --name-only "$BASE...$HEAD"); then
+            echo "diff failed; failing open to full validation" >&2
+            echo source=true >> "$GITHUB_OUTPUT"
+          elif grep -qE '^(src|packages|package.json|pnpm-lock.yaml)' <<<"$files"; then
             echo source=true >> "$GITHUB_OUTPUT"
           else
             echo source=false >> "$GITHUB_OUTPUT"

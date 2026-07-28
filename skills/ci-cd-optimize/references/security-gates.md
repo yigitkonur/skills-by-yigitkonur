@@ -38,7 +38,7 @@ security:
     contents: read
     security-events: write
   steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
     - name: Dependency review
       if: github.event_name == 'pull_request'
       uses: actions/dependency-review-action@v4
