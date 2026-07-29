@@ -1,7 +1,8 @@
 # run-research
 
-Answering one technical research question with current web evidence, Reddit
-practitioner experience, and source-backed markdown synthesis.
+Answer one technical research question with adaptive planning, current web and
+practitioner evidence, quotation-grounded resumable extraction, and deliberate
+stopping.
 
 The skill itself lives at `skills/run-research/SKILL.md`.
 

@@ -1,7 +1,7 @@
 {
   "name": "run-research",
   "version": "1.0.41",
-  "description": "Use if answering one technical research question with current web + practitioner evidence.",
+  "description": "Use skill if you are researching one current technical question with source-grounded web evidence. Do not use for five-plus-entity corpora, GitHub-repository discovery, local-only answers, or web-forbidden requests.",
   "author": {
     "name": "Yigit Konur",
     "url": "https://github.com/yigitkonur"
@@ -17,7 +17,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "run-research",
-    "shortDescription": "Use if answering one technical research question with current web + practitioner evidence.",
+    "shortDescription": "Use skill if you are researching one current technical question with source-grounded web evidence. Do not use for five-plus-entity corpora, GitHub-repository discovery, local-only answers, or web-forbidden requests.",
     "longDescription": "Install only the run-research workflow from Yigit Konur's curated skills pack.",
     "developerName": "Yigit Konur",
     "category": "Productivity",

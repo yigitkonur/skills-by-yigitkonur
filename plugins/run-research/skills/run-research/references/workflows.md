@@ -1,451 +1,245 @@
-# Research workflows
+# Adaptive research workflows
 
-Workflows are recipes — patterns for common research scenarios. Each fits
-the **Plan → Reconnoiter → Triage → Capture → Synthesize** template,
-names the exact tool call at every step, and ends with explicit stop
-criteria.
+Use these as call-shape recipes, not fixed call counts. Let extracted gaps and
+the session review determine whether another round has enough expected value.
 
-Use the decision worksheet first. The right workflow saves rounds.
+For every sequence below, an `extract-evidence` result with
+`continuation.required: true` inserts an extraction-continuation loop before
+review or synthesis:
 
----
-
-## Decision worksheet
-
-Four yes/no questions route to the right workflow:
-
-1. **Is this an active production incident or sub-30-minute fact check?**
-   - Yes → Workflow 5 (Production incident) or Workflow 4 (Fact check).
-     Skip `get-research-consultancy`.
-   - No → continue.
-
-2. **Choosing between options or making a design decision?**
-   - Comparing tools → Workflow 2 (Library comparison).
-   - Choosing a pattern → Workflow 3 (Architecture decision).
-   - Otherwise → continue.
-
-3. **Diagnosing a failure?**
-   - Bug across versions → Workflow 1 (Bug investigation).
-   - Performance degradation → Workflow 7 (Performance investigation).
-   - Otherwise → continue.
-
-4. **What kind of mapping?**
-   - Security exposure → Workflow 6 (Security audit).
-   - State of an ecosystem, market, vendor category, or 5+ entities →
-     redirect to `run-deep-research`.
-
-Every workflow except 4 and 5 starts with `get-research-consultancy`.
-
----
-
-## Workflow 1: Bug investigation across versions
-
-**When to use.** A library throws an error that prior versions did not.
-Production app cannot easily downgrade. Need root cause + fix or
-workaround.
-
-**Plan.**
-
-```
-goal: "Investigate why <library> v<X.Y.Z> throws '<exact error text>'
-on <runtime>+ when prior v<A.B.C> worked. User context: production app,
-can't easily downgrade. Done = root cause + fix or workaround. Skip:
-basic getting-started. Freshness: last 12 months. Quote discipline:
-stacktraces verbatim."
+```text
+extract-evidence -> exact continuation.next_call in same conversation/session
+                -> repeat until settled or caller budget is exhausted
 ```
 
-**Reconnoiter.** `web-search` with exact-error queries — these
-typically return high-CONSENSUS GitHub issues that should land in the
-URL pool for round 2.
+Pending work is a non-error partial result. Preserve completed findings and do
+not call a pending requirement `not-found`. See `resumable-extraction.md`.
 
-```
-keywords: [
-  '"<exact error text>" "<library>" site:github.com/<org>/<repo>/issues',
-  '"<library>" "node 20" OR "node 21" breaking change',
-  'site:github.com/<org>/<repo>/pull "<error text>"',
-  'site:reddit.com/r/node/comments "<library>" "<error text>"',
-  '"<library>" CHANGELOG "v<X.Y>"',
-  'site:stackoverflow.com "<library>" "<error text>"',
-  ... (~10 more across source classes)
-]
+## 1. Known public URL
+
+Sequence:
+
+```text
+extract-evidence -> required continuation loop -> optional review-research -> synthesize
 ```
 
-**Triage.** Sort by CONSENSUS. Pick top 3–5 GitHub issues, top 2–3
-changelog entries, top 1–2 Reddit threads.
+Call the URL directly with one to five checkable requirements. Skip planning
+and search. Review is useful only if the caller wants the server to assess this
+trace or suggest corroboration; it may reasonably say the single source is not
+independent enough.
 
-**Capture.** Two parallel calls:
+Stop after the source answers the narrow question, or report the explicit
+not-found/gated/fetch limitation.
 
-- `scrape-link` on GitHub issues + changelog (≤5 URLs):
-  ```
-  Page type hint: github-thread or changelog.
-  extract:
-  - exact error text verbatim
-  - affected version ranges verbatim
-  - maintainer decisions with date
-  - accepted-fix commit hash if any
-  - workarounds with code samples
-  - resolved-in version
+## 2. Quick current fact
 
-  Discipline: Quote stacktraces verbatim. List Not found with reason.
-  ```
-- `scrape-link` on Reddit threads (auto-routes through the Reddit API
-  for full threaded comments):
-  ```
-  extract: verbatim quotes with author + score | recurring workaround
-  reports | affected version reports
-  ```
+Sequence:
 
-**Synthesize.** Diagnosis with evidence chain. Before/after fix code.
-Caveats. Fallback. Start with immediate stabilization (what to deploy
-in 15 minutes) if production-affecting.
-
-**Stop criteria.** The fix is verified by ≥2 independent sources
-(maintainer + practitioner), or the gap is documented as unresolvable
-from available evidence.
-
----
-
-## Workflow 2: Library / tool comparison
-
-**When to use.** Choosing between two or more tools for a defined use
-case over a defined time horizon. The Claude Code vs OpenAI Codex CLI
-research from this skill's authoring session is the canonical example
-— see the worked goal in `prompting.md`.
-
-**Plan.**
-
-```
-goal: "Decide between <A> and <B> for <use case> over the next <N>
-months. User context: <stack, budget, OS, preferences>. Done = (1)
-feature matrix limited to facets that materially affect day-to-day work,
-(2) personal 'pick X if Y else Z' recommendation, (3) lock-in /
-switching cost list per tool. Already known: <basics>. What to learn:
-non-obvious differentiators, limit asymmetry under sustained use, recent
-regressions / postmortems / pricing changes. Skip: enterprise SSO, SOC2,
-multi-tenant. Freshness: last 90 days; >6mo as historical only.
-Quote discipline: every numeric/versioned/priced claim verbatim."
+```text
+web-search (2-5 exact queries) -> extract-evidence (2-3 sources)
+-> required continuation loop -> synthesize
 ```
 
-**Reconnoiter.** Naturally two orthogonal keyword clusters. Fan out
-twice in parallel:
+Prefer an official current source plus one independent corroborator. Use exact
+version, plan, price, date, API, or error terms. Skip planning unless the
+question expands.
 
-- `web-search` (20–30 keywords across vendor docs, GitHub repos,
-  changelogs, blogs, HN, comparison posts).
-- `web-search` (10–15 Reddit-permalink keywords with negative-signal:
-  "switched from", "regret", "limit", "broke", "migration").
+Stop when the fact is grounded at the stakes-appropriate source level. A
+routine documentation fact can need one authoritative source; contested price,
+security, or compatibility facts need more.
 
-Expect persistence to file. Plan a subagent triage step from the start.
+## 3. Broad comparison or architecture decision
 
-**Triage.** Subagent reads both URL lists, returns top 8–15 URLs
-deduplicated by facet:
+Sequence:
 
-- Vendor docs / overview pages
-- Sandbox / permissions / sub-features pages
-- Pricing / plans pages
-- Changelog / postmortems
-- Comparative blog posts (HN-discussed, recent)
-- Reddit comparison threads (switcher experiences, rate-limit reports)
-
-**Capture.** Three parallel calls:
-
-- `scrape-link` on vendor A docs (≤5 URLs):
-  ```
-  extract: features by facet | sandbox/permissions verbatim | pricing
-  tiers verbatim | install commands | recent changelog headlines verbatim.
-  Discipline: preserve config keys, command syntax, version strings.
-  List Not found with reason.
-  ```
-- `scrape-link` on vendor B docs (same shape).
-- `scrape-link` on Reddit comparison threads (≤5 threads):
-  ```
-  extract: verbatim quotes with author + score | agreement reasons |
-  dissent reasons | migration drivers
-  ```
-  Reddit threading is the evidence — the Reddit API fetches full
-  threaded comments before extraction, so vote-weighted dissent and
-  switcher quotes are preserved rather than compressed away.
-
-If the vendor-docs `scrape-link` call times out, split per the
-`failure-modes.md` playbook.
-
-**Synthesize.** Feature matrix with verbatim quotes per cell. "Pick X if
-Y else Z" recommendation. Lock-in / switching costs. Mark inference vs
-evidence. Surface contradictions (the Claude Code vs Codex session
-surfaced "Codex is hands-off" vs "Codex asks for approval constantly" as
-a `## Contradictions` finding — both quotes verbatim, the contradiction
-itself revealed a Windows-only bug).
-
-**Stop criteria.** Every comparison axis closed with ≥2 source quotes
-(one vendor, one practitioner). Recommendation has explicit conditions
-that would flip it.
-
----
-
-## Workflow 3: Architecture decision research
-
-**When to use.** Choosing between architectural patterns at a defined
-team size and scale.
-
-**Plan.**
-
-```
-goal: "Decide between <pattern A> and <pattern B> for <component> at
-<scale> with <team size>. User context: <team, codebase, incumbent>.
-Done = decision memo with tradeoff matrix and 6-month risk projection.
-Known: both work in principle. What to learn: real adoption stories at
-<scale>, regrets, hidden operational costs, migration friction. Skip:
-tutorials. Freshness: last 24 months for adoption; latest for
-benchmarks. Quote discipline: production-incident reports verbatim."
+```text
+plan-research
+-> first-round web-search
+-> authority-diverse extract-evidence calls
+-> required continuation loops
+-> review-research
+-> selected advisory next call or synthesis
 ```
 
-**Reconnoiter.** Two orthogonal keyword clusters.
+The objective should name user constraints and reversal conditions. Keep
+official capability, pricing, failure/maintenance, and practitioner evidence in
+separate clusters. Execute at most the selected first wave, not all query ideas.
 
-- `web-search` (15–20 keywords): `martinfowler.com`, `microservices.io`,
-  vendor docs, "case study", "post-mortem", "at scale", "failure modes".
-- `web-search` (7–10 Reddit-permalink keywords): r/ExperiencedDevs,
-  r/softwarearchitecture, "regret went back to", "hidden operational
-  cost", "<pattern> at <team-size> team".
+Extract the same decision-critical fields across options, but do not force
+symmetry when a source genuinely lacks an answer. Review after the first
+evidence round. Stop on complete high/medium coverage with no unresolved
+conflict, or state the critical blocked gap.
 
-**Triage.** Sort both lists by CONSENSUS; pick the top URLs across
-source classes, checking the brief's `gaps_to_watch` for anything still
-uncovered.
+## 4. Version-specific bug
 
-**Capture.**
+Planning is optional. Start with exact-error and exact-version queries:
 
-- `scrape-link` on authoritative architecture pages (≤5 URLs):
-  ```
-  extract: decision criteria | trade-offs | scale thresholds | when
-  NOT to use | team size recommendations | cost analysis | author's
-  recommendation logic.
-  Discipline: preserve recommendation logic verbatim.
-  ```
-- `scrape-link` on Reddit threads from r/ExperiencedDevs and similar
-  (≤5 threads):
-  ```
-  extract: verbatim quotes with author + score | regret narratives |
-  hidden operational costs | migration friction reports
-  ```
-
-**Synthesize.** Trade-off matrix with cited sources per cell.
-Recommendation with confidence level. Conditions that would flip the
-decision. Reversibility analysis.
-
-**Stop criteria.** Every brief `gaps_to_watch` item closed. Decision
-includes explicit reversal conditions.
-
----
-
-## Workflow 4: Fact check / claim verification
-
-**When to use.** Verify a single claim against primary sources. Skip
-`get-research-consultancy` — overhead outweighs value for sub-5-call
-sessions.
-
-**Plan.** Inline (no `get-research-consultancy` call):
-
-> Verify "<exact claim>" against the primary source. Need quoted text,
-> URL, scrape date, or confirmation that the claim cannot be substantiated.
-
-**Reconnoiter.** `web-search` (3–5 keywords):
-
-```
-keywords: [
-  '<claim> site:<official-source>',
-  'site:<official-source> "<key phrase from claim>"',
-  '<topic> deprecated OR removed OR changed <year>',
-  '<claim> CHANGELOG OR "release notes"'
-]
+```json
+{
+  "queries": [
+    "\"exact error text\" package-name 4.2 site:github.com/issues",
+    "package-name 4.1 4.2 breaking change release notes",
+    "site:github.com/org/repo/pulls \"exact symbol\""
+  ]
+}
 ```
 
-**Triage.** Top 2–3 URLs by CONSENSUS.
+Extract issue/PR chronology, maintainer statements, affected/fixed versions,
+commit/release, workaround, and environment. Add practitioner evidence only to
+test field behavior.
 
-**Capture.** `scrape-link` (≤3 URLs):
+Conflicting version ranges require another authoritative verification round.
+Do not collapse “reported fixed” and “released fixed” into one fact.
 
-```
-extract: current status of <claim> verbatim | version | date | changes
-since <original claim date> | caveats.
-Discipline: only verbatim primary-source quotes count.
-```
+## 5. Migration
 
-**Synthesize.** One paragraph. Quoted text + URL + scrape date, OR
-explicit "claim cannot be substantiated from primary sources".
+Plan separate authority lenses:
 
-**Stop criteria.** Two tool calls answered the question, OR the claim
-is contested — escalate to one Reddit-permalink `web-search` call to
-gather dissent.
+- official supported path and compatibility matrix;
+- repository issues and actual breaking changes;
+- field failures, rollback paths, and hidden operational cost.
 
-This workflow is intentionally short. Most fact checks need 2 tool
-calls, not 10.
+Search official/repository/community probes, then extract concrete steps and
+preconditions. Review should prioritize an unresolved rollback or data-loss
+risk above convenience gaps.
 
----
+The synthesis must distinguish vendor-supported procedure from practitioner
+workarounds and say which migration conditions remain unverified.
 
-## Workflow 5: Production incident research
+## 6. Pricing or quota
 
-**When to use.** Live incident. Speed is everything. Minimum viable
-research.
+Plan only if several plans/products or contract conditions matter. Otherwise
+use quick-fact routing.
 
-**Plan.** No `get-research-consultancy`. Latency matters more than
-tailoring.
+Evidence requirements should request:
 
-**Reconnoiter.** `web-search` (3 focused keywords):
+- source date or visible effective date;
+- currency and region;
+- billing interval;
+- included quota and unit;
+- overage/rate-limit behavior;
+- tax, eligibility, exclusions, and future-tense announcements.
 
-```
-keywords: [
-  '"<exact error>" "<stack>" fix',
-  '"<service>" "<symptom>" production fix',
-  'site:stackoverflow.com "<error code>" "<framework>"'
-]
-```
+Prefer current official pricing and terms. Treat cached articles and search
+snippets as leads only. Mark historical prices as historical; never merge them
+with current claims.
 
-**Triage.** Top 2–3 URLs. Read.
+## 7. Security advisory or CVE
 
-**Capture.** `scrape-link` on top 2–3 URLs:
+Use a plan when exposure depends on several packages, platforms, or authority
+classes. Keep vendor/advisory, repository fix, and field exploitation separate.
 
-```
-extract: root cause | fix steps | workarounds | error text verbatim
-```
+Extract exact CVE, CVSS, CWE/CPE where present, affected and fixed ranges,
+mitigation, advisory authority, and publication/update dates. High/medium
+security gaps cannot become ready without authoritative evidence.
 
-**Synthesize.** Most plausible fix. Apply.
+Do not infer exploitability from severity alone. If advisories conflict, search
+for the most current vendor or coordinating-authority update.
 
-**If first fix does not work:** one more `web-search` (2–3
-Reddit-permalink keywords with negative signal), one more `scrape-link`
-on top 1–2 permalinks. Stop after 5 minutes regardless — escalate to
-human.
+## 8. Product launch and reception
 
-**Stop criteria.** Symptom resolved, OR 5 tool calls reached without
-resolution → escalate.
+Plan at least two branches:
 
----
+- shipped facts from official announcements, docs, releases, or repositories;
+- observed reception from attributed practitioner sources.
 
-## Workflow 6: Security advisory audit
+Keep future promises separate from shipped behavior. Search practitioner
+sources after the product terms and versions are known. Extract attributed
+experiences, environments, and dates; do not turn engagement into population
+sentiment.
 
-**When to use.** Auditing a dependency tree against known CVEs and
-practices. Pre-release security gate.
+## 9. Reddit/forum sentiment
 
-**Plan.**
+Discover actual post permalinks with targeted queries, then pass them to
+`extract-evidence`. Requirements should ask for attributable positions,
+reasons, dissent, environment, and observed outcome.
 
-```
-goal: "Audit <dependency tree or library> against current CVEs and
-security advisories. User context: <pre-release / ongoing audit>.
-Done = list of unpatched CVEs, severity, mitigation status, plus
-practitioner-confirmed exploit patterns. Skip: speculative advisories.
-Freshness: published in last 18 months. Quote discipline: CVE-IDs,
-CVSS scores, affected ranges verbatim."
-```
+Report:
 
-**Reconnoiter.** Two rounds.
+- number of comments actually fetched/classified when available;
+- attributed original quotations and permalinks/IDs;
+- recurring themes as counts within that sample;
+- sampling and recency limitations.
 
-- `web-search` (7–10 keywords): NVD, MITRE, OWASP, Snyk, vendor security
-  advisories, GitHub security advisories.
-- Second round: `web-search` (5–7 Reddit-permalink keywords) targeting
-  r/netsec, r/AskNetsec, r/cybersecurity for real-world exploit
-  experience.
+Never invent population percentages or call a small thread “community
+consensus.”
 
-**Triage.** All top-CONSENSUS URLs across both rounds. Security claims
-need ≥3-source verification.
+## 10. Academic synthesis
 
-**Capture.**
+Plan clusters around claim, method, dataset/sample, baselines, numeric results,
+limitations, and replication/contradiction. Search papers, proceedings,
+repositories, datasets, and credible replications as separate authority
+classes.
 
-- `scrape-link` on advisories (≤5 URLs):
-  ```
-  Page type hint: cve.
-  extract: CVE-ID verbatim | CVSS score verbatim | affected version
-  ranges verbatim | patched versions verbatim | mitigation steps |
-  exploit availability if stated.
-  Discipline: never paraphrase impact statements.
-  ```
-- `scrape-link` on r/netsec threads (≤5 permalinks):
-  ```
-  extract: verbatim quotes with author + score | reported exploit
-  experience | mitigation reports | dissent on severity
-  ```
+Extract exact claims and results with method context. Do not compare numbers
+whose datasets or evaluation protocols differ without saying so. Review should
+favor missing methodological comparability over adding more topical papers.
 
-**Synthesize.** Prioritized findings table: CVE-ID, severity, affected
-range, fix, exploit observed in wild (yes/no/unknown). Mark inference
-vs evidence sharply for security work.
+## 11. Long document
 
-**Stop criteria.** Every relevant CVE has 3-source confirmation
-(advisory + practitioner + at least one independent analysis). Security
-claims with single-source backing must be flagged as preliminary.
+Call `extract-evidence` directly if the URL is known. Write focused requirements
+that provide lexical and structural selection signals. Read `covered_ranges`,
+`omitted_ranges`, and completeness.
 
----
+Long sources are more likely to cross the response budget. Follow the exact
+same-session continuation until settled when time permits. Cached accepted
+content can let later calls resume extraction without another provider fetch;
+the extracted findings themselves are never cached.
 
-## Workflow 7: Performance investigation
+A finding does not imply the entire document was examined. If omitted ranges
+could change a high-priority answer, keep the requirement partial and narrow a
+follow-up requirement instead of claiming full coverage.
 
-**When to use.** Comparing approaches at a defined workload and scale.
+## 12. Non-English source
 
-**Plan.**
+Use normal routing. Require original-language quotations as canonical evidence.
+Treat `translation_en` as generated assistance, not a replacement quote.
 
-```
-goal: "Compare <approach A> vs <approach B> for <workload> at <scale>.
-User context: <component, p99 target, budget>. Done = benchmark summary
-with cited numbers + recommendation + caveats. Known: both work
-correctly. What to learn: numbers from production, not synthetic
-benchmarks. Skip: marketing claims. Freshness: last 18 months.
-Quote discipline: every benchmark number verbatim with workload spec."
-```
+If a term is ambiguous, include the original term in follow-up queries and use
+an authoritative bilingual/technical source rather than silently choosing a
+translation.
 
-**Reconnoiter.** Mostly vendor/blog keywords; Reddit for war stories.
+## 13. Contradictory sources
 
-- `web-search` (15–20 keywords): vendor docs, benchmark posts,
-  conference talks, profiling guides.
-- `web-search` (7–10 Reddit-permalink keywords): r/programming,
-  r/<language>, "p99 latency", "memory bloat", "saved <%> by switching".
+Do not ask the review model to choose truth by style. Extract both sides with
+verified quotations, dates, versions, and source roles. Search for a resolver
+that changes the information state: current release note, maintainer decision,
+official terms, or coordinating advisory.
 
-**Triage.** Benchmarks with disclosed methodology > marketing
-comparisons.
+If no resolver exists, stop with an explicit contradiction and the variable
+that may explain it.
 
-**Capture.**
+## 14. Provider or model outage
 
-- `scrape-link` on benchmark posts (≤5 URLs):
-  ```
-  extract: results with verbatim numbers | methodology | hardware specs
-  | versions tested | workload spec | caveats | author's verdict.
-  Discipline: every benchmark number verbatim with workload spec.
-  Reject any benchmark without disclosed methodology (note in Not found).
-  ```
-- `scrape-link` on Reddit threads (≤5 permalinks):
-  ```
-  extract: verbatim quotes with author + score | reported numbers |
-  workload context | migration outcome
-  ```
+- sibling URL/query failures do not cancel successful work;
+- search zero-results are valid statuses, not automatic tool errors;
+- a planning outage returns a concise degraded plan;
+- a review-model outage uses deterministic review and only retained validated
+  continuation material;
+- a response-budget cutoff returns pending sources and an exact non-error
+  extraction continuation;
+- total extraction failure is not raw-content success.
 
-**Synthesize.** Benchmark summary table. Recommendation conditional on
-workload match. Explicit caveats where benchmarks did not match the
-user's scale.
+Continue through surviving provider paths when useful. Stop as blocked when the
+missing capability is required for a critical gap.
 
-**Stop criteria.** Every numeric claim sourced. Recommendation includes
-the workload conditions under which it holds.
+## 15. Stateless or expired session
 
----
+Primary tools still work. `review-research` returns unavailable history and no
+invented strategic next call. An extraction result can still contain its own
+required `continuation.next_call`; execute it in the same available transport
+scope when affordable. If `resume_available` is false, the call is valid but
+may repeat retrieval. Continue manually from outputs in host context, or begin
+a new plan if a new retained trace is useful.
 
-## Redirect: landscape and corpus requests
+Never assume state from another conversation, transport session, process, or
+replica.
 
-Do not run ecosystem landscape scans in `run-research`. Requests such as
-"state of X", "market map", "category landscape", "compare 8 vendors",
-"build an evidence pack", or "research alternatives to X" are
-corpus-shaped. Use `run-deep-research`.
+## 16. Diminishing returns
 
-If the user asks one narrow technical question inside a landscape, such
-as "is library A still maintained enough for production use?", keep that
-as `run-research` and answer only that question.
+After each round, ask whether it added a new candidate source or verified
+finding. Two consecutive zero-yield rounds are a stop condition. At the round
+cap, a critical gap is blocked; low-priority residual limitations can accompany
+a ready answer.
 
----
-
-## Adapting workflows
-
-Workflows are starting points. Adapt based on what each step reveals.
-
-| What you find | What to do |
-|---|---|
-| Search returns excellent, clear results | Skip further rounds — scrape and conclude |
-| Search returns nothing relevant | Broaden terms; try Reddit-permalink keywords; see `failure-modes.md` |
-| Reddit threads all 3+ years old | Results may be stale — verify against current official docs |
-| Sources contradict each other | See `synthesis.md` for resolution patterns |
-| All sources agree | High confidence — stop researching |
-| First fix does not work | Run a second targeted round with what you learned |
-| `scrape-link` `## Not found` lists items the brief flagged in `gaps_to_watch` | Round 2 must close those specific gaps before stopping |
-| `scrape-link` `## Contradictions` surfaces unannounced | The disagreement may BE the answer — surface it in synthesis |
-
-The most common mistake is over-researching a question that was answered
-in step 2. The second most common mistake is under-researching a
-question that deserved the full loop.
+Do not rephrase executed queries to create the appearance of progress.
