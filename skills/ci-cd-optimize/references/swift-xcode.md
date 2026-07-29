@@ -30,6 +30,49 @@ Fix hotspots by splitting expressions and adding type annotations; do not guess 
 - Benchmark explicit modules rather than assuming they help, especially multi-project workspaces and targets with differing compiler options.
 - Xcode compilation caching can help clean and branch-switch builds; measure cold and cached-clean separately.
 
+## Deterministic dependency resolution
+
+SwiftPM's default fetch is a full git clone per dependency, history included,
+repeated on every fresh runner — and before it can clone anything it explores
+the version space to pick versions. Both costs are avoidable, and the
+exploration is usually the larger one.
+
+Commit `Package.resolved` and resolve from it in CI:
+
+```bash
+swift package resolve --force-resolved-versions
+```
+
+The flag is documented as "Only use versions from the `Package.resolved` file
+and fail resolution if it is out-of-date" — the same loud-on-drift contract
+`npm ci` gives, which is what makes it safe to depend on. The aliases
+`--disable-automatic-resolution` and `--only-use-versions-from-resolved-file`
+are the same option. For Xcode projects, the equivalent is
+`xcodebuild -disableAutomaticPackageResolution` (single dash), documented as
+preventing packages from resolving to versions other than those recorded in
+`Package.resolved`.
+
+Committing the file pins versions for a leaf project — an app or any package
+not consumed as a dependency. It does **not** pin anything for consumers of a
+library, so a library's committed lockfile is not a reproducibility guarantee
+for downstream builds.
+
+**Registry-sourced pins look different.** Where a provider resolves public
+packages through a Swift package registry (SE-0292) instead of git, a pin
+records a registry identity and integrity `checksum` rather than a repository
+URL and `revision`, so the first registry-backed resolve rewrites
+`Package.resolved`. Expect that diff, decide deliberately whether the
+repository keeps git-form pins, and include *whether registry resolution is
+active* in your SwiftPM cache key — the same project can otherwise produce two
+legitimately different resolved files.
+
+Measured on Avrea (vapor, 28-package graph, fresh runner): plain git with no
+lockfile 23s, registry with no lockfile 11s, registry plus committed lockfile
+and `--force-resolved-versions` 4s. The transport change is real, but most of
+the remaining win is skipping version exploration — which costs nothing to
+adopt and works on any provider. See `references/avrea/caching.md` for the
+provider-specific behavior.
+
 ## SwiftPM and DerivedData caching
 
 Cache SwiftPM state by:
@@ -38,6 +81,7 @@ Cache SwiftPM state by:
 - Swift/Xcode version,
 - OS/architecture,
 - cache namespace,
+- whether registry resolution is active,
 - relevant project configuration.
 
 Save caches even after test failure when the cache is still valid. Raw DerivedData restore can fail to produce incremental hits because Xcode tracks high-resolution timestamps; use tooling that restores file mtimes or accept clean-build semantics.
@@ -83,6 +127,10 @@ xcodebuild test-without-building \
 - Explicit modules: https://developer.apple.com/documentation/xcode/building-your-project-with-explicit-module-dependencies (accessed 2026-07-28)
 - Incremental builds: https://developer.apple.com/documentation/xcode/improving-the-speed-of-incremental-builds (accessed 2026-07-28)
 - Xcode 26 release notes: https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes (accessed 2026-07-28)
+- `swift package resolve` options: https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/packageresolve/ (accessed 2026-07-29)
+- Resolving package versions: https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/resolvingpackageversions/ (accessed 2026-07-29)
+- SE-0292 Package Registry Service: https://github.com/apple/swift-evolution/blob/main/proposals/0292-package-registry-service.md (accessed 2026-07-29)
+- Adding package dependencies (Xcode): https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app (accessed 2026-07-29)
 - Swift compiler performance: https://github.com/swiftlang/swift/blob/main/docs/CompilerPerformance.md (accessed 2026-07-28)
 - Library evolution: https://swift.org/blog/library-evolution/ (accessed 2026-07-28)
 - xcresulttool: https://keith.github.io/xcode-man-pages/xcresulttool.1.html (accessed 2026-07-28)

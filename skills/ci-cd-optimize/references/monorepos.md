@@ -22,6 +22,8 @@ Requirements:
 
 Nx lockfile changes can mark every project affected; treat that as a safe escalation, not a bug to bypass.
 
+Some CI providers host a colocated Nx remote cache that needs no wiring at all (Avrea does, for Nx 20.8+ — see `references/avrea/caching.md`). Convenient, but it does not change the trust analysis below: a zero-config shared cache is still a shared cache.
+
 ## Turborepo pattern
 
 ```json

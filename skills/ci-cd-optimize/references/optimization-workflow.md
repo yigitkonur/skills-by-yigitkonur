@@ -30,10 +30,7 @@ Sketch the real job DAG from `needs`/dependencies, not from stage names.
 Note triggers, path filters, concurrency groups, matrices, caches, runner
 labels, timeouts, and permissions.
 
-**4. Inventory what already exists.** Existing caches and their hit
-history, existing change detection, existing sharding, runner pools and
-their labels, and any prior optimization attempts in git history. Removing
-a broken optimization is often the best first experiment.
+**4. Inventory what already exists — and what does not.** Existing caches and their hit history, existing change detection, existing sharding, runner pools and their labels, and any prior optimization attempts in git history. Removing a broken optimization is often the best first experiment. But a service with no delivery pipeline, a production artifact pushed by hand, or a required gate that has never existed is a bigger finding than shaving seconds off an adjacent path: absence outranks tuning. Report it before optimizing what remains.
 
 ## Phase B — Measure and rank
 
