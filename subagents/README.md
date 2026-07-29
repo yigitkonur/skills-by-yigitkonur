@@ -79,39 +79,44 @@ grep -qxF '.agent-docs/' .gitignore 2>/dev/null || printf '\n.agent-docs/\n' >> 
 |---|---|---|
 | Tool calls | max 50, typical <10 | max 500, typical <100 |
 | Search calls | max 10, typical 1-2 | max 1000, typical <30 |
-| URL visits / scrapes | max 5, typical 1-2 | max 250, typical <20 |
+| URL visits / extractions | max 5, typical 1-2 | max 250, typical <20 |
 | Search rounds | max 2, typical 1 | max 8, typical 2-4 |
 
 ### Search thinking (taught, not recipe-baked)
 
-> Before every search call, decide which **source class** holds the highest-quality answer for this exact question, and re-pose the query to retrieve THAT class. Pack 5-15 keywords per recon call, each targeting a different class.
+> Before every search call, decide which **source class** holds the highest-quality answer for this exact question, and re-pose the query to retrieve THAT class. Pack 5-15 complete queries per recon call, each targeting a different class.
 
 Source classes (uniform across all agents):
 
 1. **Vendor authoritative documents** — official docs, changelogs, release notes, RFCs, advisories.
 2. **Project-internal trackers** — maintainer issues, PRs, commits.
-3. **Practitioner forums** — Reddit, HN, dev blogs from named teams. Always scraped raw to preserve vote weighting + per-comment attribution.
+3. **Practitioner forums** — Reddit, HN, dev blogs from named teams. Ask for attribution inside the evidence requirement to preserve vote weighting and per-comment quotes.
 4. **Registry metadata** — npm/PyPI/crates timelines, repo cadence, download trends.
 5. **Vendor status pages + community megathreads** — real-time regression confirmation. Fast path for "it worked yesterday".
 6. **Source-of-truth artifacts** — OSS code, leaked sourcemaps, extension source dumps.
 
 No `site:URL` recipe templates in the agent bodies. Each agent has ONE illustrative bad-vs-good rewrite — not a four-row table.
 
-### Tool selection (research-powerpack only — both runtimes)
+### Tool selection (Research Powerpack only — both runtimes)
 
-The entire suite is built on the `mcp__research-powerpack__*` toolset. Both runtimes (Claude Code, Codex CLI) have research-powerpack configured and use it exclusively. No native WebSearch, WebFetch, exa, context7, firecrawl, or shell-based search/scrape is referenced anywhere in the agent bodies.
+The entire suite is built on the Research Powerpack MCP server. Both runtimes (Claude Code, Codex CLI) have it configured and use it exclusively. No native WebSearch, WebFetch, exa, context7, firecrawl, or shell-based search/scrape is referenced anywhere in the agent bodies.
 
-Three tools, one ladder:
+Client-generated MCP prefixes depend on the alias each install registers (`mcp__mcp-researchpowerpack__web-search`, `mcp__research-mcp__web-search`, ...), so the agent bodies match on canonical tool names instead of hard-coding a namespace.
 
-- `get-research-consultancy` — **Call FIRST every session.** Returns a goal-tailored brief: goal class, primary branch (web / reddit / both), exact first-call sequence (only `web-search`/`scrape-link` steps), 25-50 keyword seeds, iteration hints, gap warnings, stop criteria. The single most under-used tool in the kit.
-- `web-search` — Fan out 1-50 keywords in parallel. Ranked, de-duplicated, CTR-aggregated URL list — no LLM classification or synthesis. Use for discovery, Reddit permalink hunting via `site:reddit.com/r/<sub>/comments` keywords, or when output is destined for a file or sub-agent. Fire multiple calls across 2-4 rounds.
-- `scrape-link` — Fetch ≤5 URLs per call (≤7 extract facets) with per-page LLM extraction; `extract` is required. The `extract` parameter (pipe-separated shape) is the most precise instrument the suite has. **Always for Reddit / HN / forum threads too** — Reddit permalinks auto-route through the Reddit API for full threaded comments before extraction, so use a quote-preserving `extract` there.
+Four tools, one ladder:
 
-If a research-powerpack tool is unavailable in a session, agents return `blocked` with the missing-tool name. No fallbacks to non-powerpack alternatives are permitted by the agent prompts.
+- `plan-research` — the planner, worth calling first on anything non-trivial. One `objective` string in; decision-critical clusters, checkable evidence requirements, query ideas (100 global ceiling, never a quota), a first wave of at most 12, reserves, gaps, budgets, and stop conditions out. The single most under-used tool in the kit.
+- `web-search` — discovery. 1-50 *complete* `queries` in parallel; ranked, canonicalized sources with query lineage out. `evidence_status` is always `leads-only`, so titles and snippets never become citations. Reddit permalink hunting is a `site:reddit.com/r/<sub>/comments` query, not a separate mode.
+- `extract-evidence` — the only tool that produces evidence. Up to 20 `urls` against up to 20 checkable `evidence_requirements`; findings come back with exact quotations and code-derived locators, and a fetched source that genuinely lacks the answer returns `not-found` as useful negative evidence. Reddit permalinks auto-route through the Reddit API for full threaded comments, so attribution belongs inside a requirement rather than a facet string.
+- `review-research` — advisory checkpoint, no arguments. Reads only the server's retained same-session trace and returns `ready`, `continue`, or `blocked` plus at most three scored next calls. It cannot see the host conversation and never executes work.
+
+Two behaviors apply across every agent: `structuredContent` is canonical (the Markdown beside it is a shortened rendering), and a `continuation.required: true` result from `extract-evidence` must be finished by invoking its exact `continuation.next_call` in the same session — pending sources are unfinished work, not `not-found`.
+
+If a Research Powerpack tool is unavailable in a session, agents return `blocked` with the missing tool name. No fallbacks to non-powerpack alternatives are permitted by the agent prompts.
 
 ### Quote discipline
 
-Every numeric, versioned, priced, or behavior claim cites a verbatim quote with access date.
+Every numeric, versioned, priced, or behavior claim cites an `extract-evidence` quotation with access date. Search leads, planner output, and review prose are never citations.
 
 ### Output contract
 

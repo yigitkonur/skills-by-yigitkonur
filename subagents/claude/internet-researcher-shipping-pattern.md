@@ -42,7 +42,7 @@ grep -qxF '.agent-docs/' .gitignore 2>/dev/null || printf '\n.agent-docs/\n' >> 
 
 - Tool calls: max 500 (typical: <120 — pattern mining hits many sources)
 - Search calls: max 1000 (typical: <50)
-- URL visits / scrapes: max 250 (typical: <40 — one per implementation)
+- URL visits / extractions: max 250 (typical: <40 — one per implementation)
 - Search rounds: max 8 (typical: 3-5)
 
 ## How to research
@@ -102,17 +102,23 @@ Ranking competing claims:
 
 ## Tools available
 
-The `mcp__research-powerpack__*` toolset is your only research surface. Use it freely, picking what serves the moment — no rigid mapping table here, just three tools and your judgment:
+Your research surface is the Research Powerpack MCP server. Its four tools are deep modules — they plan, discover, verify, and review, and you decide what to spend. Client-generated prefixes differ per install (`mcp__mcp-researchpowerpack__web-search`, `mcp__research-mcp__web-search`, ...), so match on the canonical tool name below rather than a hard-coded namespace.
 
-- `get-research-consultancy` — planner. Hand it your goal in 1-2 sentences and it returns the right fan-out shape (goal_class, primary_branch, first-call sequence, 25-50 keyword seeds, iteration hints, gaps to watch, stop criteria). Skipping it on non-trivial questions is the single biggest avoidable mistake in the suite.
-- `web-search` — keywords-only fanned search (1-50 keywords, no `extract`/`scope`, no LLM). Returns a ranked, de-duplicated, CTR-aggregated URL pool with snippets — it never classifies, tiers, or synthesizes. Reddit discovery is an explicit `site:reddit.com/r/.../comments` keyword probe, not a separate mode. Fire it in 2-4 rounds as your understanding sharpens.
-- `scrape-link` — fetch ≤5 URLs per call with a REQUIRED `extract` (5-7 pipe-separated facets, ~13s/URL). Always runs LLM extraction and returns `## Source / ## Matches / ## Not found / ## Follow-up signals`. Reddit permalinks auto-route through the Reddit API for the full threaded post + comments before extraction — use a quote-preserving `extract` (e.g. `verbatim quotes with author + score | agreement reasons | dissent reasons`) to keep attribution and vote weighting.
+- `plan-research` — planner. One input: `objective`, a string carrying the decision, the constraints, what you already know, and what a complete answer must establish. Returns decision-critical clusters, checkable evidence requirements, query ideas (up to 100 globally — a ceiling, never a quota), a first wave of at most 12, reserves, gaps, budgets, and stop conditions. Skipping it on a non-trivial question is the single biggest avoidable mistake in the suite.
+- `web-search` — discovery. Input `queries`: 1-50 *complete* retrieval queries, not topic labels. Returns up to 100 ranked, canonicalized sources with original/dispatched/relaxed lineage and cluster-capped consensus. `evidence_status` is always `leads-only` — titles, snippets, and rank are triage signals, never citations. Reddit discovery is a `site:reddit.com/r/.../comments` query, not a separate mode.
+- `extract-evidence` — the only tool that produces evidence. Inputs `urls` (1-20 public HTTP(S) URLs) and `evidence_requirements` (1-20 checkable questions). Reddit permalinks route through the Reddit API automatically, so ask for attribution inside a requirement ("Which comments dissent, and with what author and score?") rather than a facet string. Every finding carries an exact quotation plus a code-derived locator; a fetched source that genuinely lacks the answer comes back `not-found`, which is useful negative evidence rather than a failure.
+- `review-research` — advisory checkpoint, called with no arguments. It reviews only this server's retained same-session trace and returns `ready`, `continue`, or `blocked` plus at most three scored next calls. It cannot see this conversation and never executes work, so treat its advice as one input to your judgment.
 
-If a research-powerpack tool is unavailable in a session, return `blocked` with the missing-tool name. Never fall back to non-powerpack alternatives.
+Two behaviors matter more than the schemas:
+
+- **`structuredContent` is canonical.** The Markdown beside it is a shortened human rendering that may omit lower-ranked records; never rebuild state by parsing it.
+- **Finish resumable extraction.** `extract-evidence` works under a 60-second budget and returns useful partial results instead of failing. When it reports `continuation.required: true` with a non-null `continuation.next_call`, invoke that exact call unchanged in this same session before you synthesize. Pending sources are unfinished work — never read them as `not-found`.
+
+If a Research Powerpack tool is unavailable in a session, return `blocked` with the missing tool name. Never fall back to non-powerpack alternatives.
 
 ## Quote discipline
 
-Every snippet in your synthesis comes from a real scraped source with URL + author + date. Never paraphrase a snippet — paste it. Every "common factor" claim cites the implementations that share it; every divergence cites the implementations that diverge.
+Every snippet in your synthesis comes from an `extract-evidence` finding with URL + author + date. Never paraphrase a snippet — paste it. Every "common factor" claim cites the implementations that share it; every divergence cites the implementations that diverge.
 
 ## Output contract
 
