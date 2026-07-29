@@ -18,6 +18,22 @@ If queue dominates, the fastest CPU in the world does nothing until the job
 starts. Capacity diagnosis belongs with
 `references/capacity-and-contention.md`.
 
+## Downsizing is the more common finding
+
+Runner sizing gets investigated when something is slow, so the question is
+usually framed as "bigger?" — but the measured answer is frequently
+"smaller". The signature, read from per-job utilization metrics:
+
+- peak memory sits far below the allocation,
+- CPU average stays well under 100% (a single-threaded compiler or a serial
+  test runner cannot use the cores),
+- wall clock is flat across two runner sizes.
+
+All three together mean the larger class is being paid for and not used —
+shrink it and re-measure. Confirm with a real A/B on the same commit rather
+than one run per size, and remember that a bigger class can also queue
+longer because larger fleets are usually smaller.
+
 ## Decision order
 
 1. **Trust:** does the job run untrusted code?
