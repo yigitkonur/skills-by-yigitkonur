@@ -1,6 +1,6 @@
 {
   "name": "convert-to-natural-writing",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "description": "Use skill if you are humanizing or rewriting AI-sounding, robotic, or generic text, Markdown, MDX, or HTML into natural multilingual copy; not translation-only, proofreading-only, or authorship scoring.",
   "author": {
     "name": "Yigit Konur",

@@ -1,6 +1,6 @@
 {
   "name": "run-testsprite-backend",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "description": "Use if you are creating, maintaining, debugging, securing, or release-gating TestSprite backend API tests against real deployed services; not frontend, load, fuzz, or local-only testing.",
   "author": {
     "name": "Yigit Konur",
