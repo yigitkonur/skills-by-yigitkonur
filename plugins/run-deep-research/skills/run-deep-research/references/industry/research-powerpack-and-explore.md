@@ -12,11 +12,19 @@ Tool names vary by runtime. Verify the available tool names before Phase 1 and r
 
 | Portable API | What it does | Use for |
 |---|---|---|
-| `get-research-consultancy` | Goal-tailored planning brief: goal_class, primary_branch, first_call_sequence (web-search/scrape-link steps only), keyword_seeds, gaps, stop criteria. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
-| `web-search` | Keywords-only ranked, de-duplicated, CTR-aggregated (CONSENSUS) URL list. Never calls an LLM, never tiers/classifies/synthesizes. Reddit discovery is a `site:reddit.com/r/.../comments` keyword probe, not a parameter. | Broad URL harvesting; Reddit permalink discovery; subagent triage; gap-driven follow-ups (expect multiple calls across 2-4 rounds) |
-| `scrape-link` | Structured page extraction (always LLM-driven; `extract` is required) with `## Source`, `## Matches`, `## Not found`, `## Follow-up signals`, and sometimes `## Contradictions` sections. Reddit permalinks route through the Reddit API (full threaded fetch) before the same extraction runs on top. | Docs/blog extraction; fact checks; source-backed synthesis; Reddit/practitioner capture |
+| `plan-research` | Takes one `objective` string and returns a plan: decision-critical clusters, checkable evidence requirements, query ideas (≤100 global, ≤25 per cluster — ceilings, not quotas), a first wave of ≤12 queries, source-selection signals, reserves, gaps, budgets, and stop conditions. | Phase 1 discovery; Phase 4 entity-deep-dive starts |
+| `web-search` | Takes `queries`: 1-50 complete retrieval queries. Returns up to 100 ranked, canonicalized sources with original/dispatched/relaxed lineage and cluster-capped consensus. `evidence_status` is always `leads-only`. Reddit discovery is a `site:reddit.com/r/.../comments` query, not a parameter. | Broad URL harvesting; Reddit permalink discovery; subagent triage; gap-driven follow-ups (expect multiple calls across 2-4 rounds) |
+| `extract-evidence` | Takes `urls` (≤20) and `evidence_requirements` (≤20 checkable questions). Returns per-requirement status (`answered`, `partial`, `not-found`, `conflicting`) with exact quotations and code-derived locators, plus coverage, contradictions, and continuation state. Reddit permalinks route through the Reddit API (full threaded fetch) automatically. | Docs/blog extraction; fact checks; source-backed synthesis; Reddit/practitioner capture |
+| `review-research` | No arguments. Reviews only the server's retained same-session trace and returns `ready`, `continue`, or `blocked` plus ≤3 scored next calls. | End-of-round check inside a single research task, before it reports back |
 
-There is no raw/smart split anymore — `web-search` and `scrape-link` are each a single tool. Use `web-search` when you need a ranked URL pool and haven't decided what to read yet; use `scrape-link` (with a well-chosen `extract`) whenever you need actual page content, quotes, or Reddit thread analysis. Tiering, gap analysis, and follow-up-search suggestions are no longer tool output — the agent does that synthesis itself across search rounds.
+Search and extraction are separate stages, and only extraction produces
+evidence. Use `web-search` when you need a ranked URL pool and haven't decided
+what to read; use `extract-evidence` with explicit requirements whenever you
+need actual content, quotations, or Reddit thread analysis. Two contract rules
+travel with every corpus task: a search title or snippet is never a citation,
+and a result carrying `continuation.required: true` must be finished by invoking
+its exact `continuation.next_call` in the same session before the task writes
+its files. Tiering and gap analysis remain the agent's own synthesis work.
 
 ### Web-capable research agents and local-corpus Explore
 
@@ -30,9 +38,10 @@ When the MCP is unavailable:
 
 | Lost capability | Fallback |
 |---|---|
-| `get-research-consultancy` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
+| `plan-research` | Web-capable research agents, one per sub-question, running `WebSearch` + `WebFetch` |
 | `web-search` | `WebSearch` direct |
-| `scrape-link` | `WebFetch` to the page + manual extraction, OR `curl` |
+| `extract-evidence` | `WebFetch` to the page + manual quoting, OR `curl` — and record that quotations are no longer server-verified |
+| `review-research` | Orchestrator reviews the round personally against the charter's stop conditions |
 
 State the fallback explicitly in the workflow. Do not silently degrade.
 
@@ -40,15 +49,15 @@ State the fallback explicitly in the workflow. Do not silently degrade.
 
 ```
 Need: discover entities in a category
-├── Have: research-powerpack MCP
-│   └── Use: get-research-consultancy with sub-question brief
+├── Have: Research Power Pack MCP
+│   └── Use: plan-research with a sub-question-rich objective
 └── Have: only base tools
     └── Use: web-capable research agents, one per sub-question
 
 Need: research one entity in depth (Phase 4)
-├── Have: research-powerpack MCP
-│   ├── Initial broad pass: get-research-consultancy per entity
-│   └── Targeted gap-filling: web-search + scrape-link
+├── Have: Research Power Pack MCP
+│   ├── Initial broad pass: plan-research per entity
+│   └── Targeted gap-filling: web-search + extract-evidence
 └── Have: only base tools
     └── One web-capable research agent per entity, dispatched in waves
 
@@ -56,20 +65,20 @@ Need: cross-reference inside the growing corpus
 └── Always: local-corpus Explore (read-only inside the corpus folder)
 
 Need: extract a candidate list from a category review page
-├── Have: scrape-link → use directly
+├── Have: extract-evidence → use directly
 └── Have: only base tools → WebFetch + parse
 ```
 
-## Pattern A: discovery via get-research-consultancy
+## Pattern A: discovery via plan-research
 
 Phase 1, full-MCP path.
 
 ```
-get-research-consultancy:
-  goal: |
+plan-research:
+  objective: |
     # Discovery brief: [topic-slug] category
 
-    ## Goal
+    ## Decision
     Discover entities (products, projects, vendors) in the [topic] category.
     Output a candidate list with name, URL, vendor/maintainer, one-line description,
     apparent tier (incumbent / challenger / niche / adjacent), and which sub-question
@@ -88,12 +97,15 @@ get-research-consultancy:
     - Flag adjacent solutions vs. direct competitors
     - Cap candidate count at ~30; tier the long-tail as "discovered-only"
 
-    ## Hand-back format
-    Markdown table with columns: name | url | vendor | tier-candidate | status | surfaced-by | notes
-    Plus a short narrative section: in-scope rationale, out-of-scope boundary rule, watch-list
+    ## Completion standard
+    A candidate table (name | url | vendor | tier-candidate | status | surfaced-by | notes)
+    plus in-scope rationale, out-of-scope boundary rule, and watch-list
 ```
 
-The MCP returns a research output file or summary. Capture it into `_meta/discovered-entities.md`.
+The plan comes back as clusters, requirements, and a bounded first wave of
+queries. Execute that first wave with `web-search`, extract the surviving
+candidates with `extract-evidence`, and capture the result into
+`_meta/discovered-entities.md`. The idea bank is a ceiling — do not search all of it.
 
 ## Pattern B: discovery via web-capable research agents (no MCP)
 
@@ -142,13 +154,13 @@ Return a markdown table of candidates plus a short narrative on:
 Report under 500 words.
 ```
 
-## Pattern C: per-entity research via get-research-consultancy
+## Pattern C: per-entity research via plan-research
 
-Phase 4, full-MCP path. One MCP call per `core` entity (parallelizable in waves).
+Phase 4, full-MCP path. One planning call per `core` entity (parallelizable in waves).
 
 ```
-get-research-consultancy:
-  goal: |
+plan-research:
+  objective: |
     # Entity research: [entity-slug] in [topic-slug] corpus
 
     ## Goal
@@ -192,18 +204,21 @@ Phase 4 or 5, when the orchestrator needs a specific fact:
 
 ```
 web-search:
-  keywords:
+  queries:
     - "site:browserbase.com pricing browser minutes"
     - "site:reddit.com/r/*/comments Anchor Browser Browserbase migration OR switched"
 ```
 
-Then extract the facts from whichever URLs the search surfaced:
+Then verify the facts against whichever URLs the search surfaced:
 
 ```
-scrape-link:
+extract-evidence:
   urls:
     - "[pricing page URL from the search above]"
-  extract: "pricing plans | native units | overages | enterprise gating"
+  evidence_requirements:
+    - "What are the published plan names and prices?"
+    - "What is the native billing unit, and what does an overage cost?"
+    - "Which capabilities are gated behind an enterprise or sales-contact tier?"
 ```
 
 Use this when:
@@ -211,20 +226,29 @@ Use this when:
 - A claim needs cross-validation
 - A practitioner anecdote needs sourcing
 
-## Pattern E: candidate-list extraction via scrape-link
+A `not-found` on a fetched page is a real answer: record "not published as of
+[date]" rather than leaving the pack section blank or filling it from a snippet.
+
+## Pattern E: candidate-list extraction via extract-evidence
 
 Phase 1 supplement. Useful when a category-review site lists 30 entities you want to harvest:
 
 ```
-scrape-link:
+extract-evidence:
   urls:
     - "https://www.g2.com/categories/[category]/products"
-  extract: "listed products | vendor URLs | category labels | pagination signals"
+  evidence_requirements:
+    - "Which products are listed on this page, with their vendor URLs?"
+    - "What category labels are applied to each listing?"
+    - "Is there pagination, and what does it indicate about total count?"
 
-scrape-link:
+extract-evidence:
   urls:
     - "https://github.com/[curated-list-repo]"
-  extract: "listed projects | maintainer | last-update signal | readme description"
+  evidence_requirements:
+    - "Which projects are listed, with maintainer and repository URL?"
+    - "What last-update signal does the page show per project?"
+    - "How does the README describe each project in one line?"
 ```
 
 Filter the returned links for plausible entity homepages, then status-check each via WebFetch.
@@ -246,12 +270,14 @@ When dispatching multiple agents in parallel (Phase 1 discovery, Phase 4 entity 
 A typical Phase 4 sequence for one entity:
 
 ```
-1. get-research-consultancy → broad evidence pack draft
-2. Read the draft; identify gaps (missing pricing scenario, missing Reddit signal)
-3. web-search → fill specific gaps (fire a round of ranked-URL searches)
-4. scrape-link → extract from the URLs that matter, harvesting related pages if needed
-5. Local Explore → cross-reference inside the corpus to avoid duplicating cross-product files
-6. Write or refine the entity-pack files
+1. plan-research → clusters, requirements, bounded first-wave queries
+2. web-search → run that first wave; triage the ranked leads
+3. extract-evidence → verify the selected URLs against the plan's requirements
+4. finish any continuation.next_call exactly, then read what came back and name the gaps
+5. web-search + extract-evidence → fill specific gaps (pricing scenario, Reddit signal)
+6. review-research → confirm coverage or take one scored next call
+7. Local Explore → cross-reference inside the corpus to avoid duplicating cross-product files
+8. Write or refine the entity-pack files
 ```
 
 ## Tool-availability check
@@ -260,7 +286,7 @@ Before Phase 1, run a one-line probe:
 
 ```
 # Check MCP availability
-Probe: which Research Power Pack tools are available (`get-research-consultancy`, `web-search`, `scrape-link`), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
+Probe: which Research Power Pack tools are available (`plan-research`, `web-search`, `extract-evidence`, `review-research`), and which fallbacks are available (`WebSearch`, `WebFetch`, `curl`)?
 ```
 
 Capture the result in `_meta/methodology-and-source-policy.md` so the corpus records which tools were used (and which fallbacks).
@@ -269,10 +295,11 @@ Capture the result in `_meta/methodology-and-source-policy.md` so the corpus rec
 
 | Failure | Cause | Recovery |
 |---|---|---|
-| MCP returns sparse results | Brief too generic | Add concrete sub-questions and required source mix |
-| MCP times out on a long brief | Single brief too broad | Split into 2-3 briefs run sequentially or in parallel |
+| Plan returns generic clusters | Objective too vague | Restate the decision, constraints, and completion standard in the `objective` |
+| A source comes back `pending` | The 60-second extraction budget closed | Invoke the exact `continuation.next_call`; never record pending as `not-found` |
+| Requirement comes back `conflicting` | Sources genuinely disagree | Record both verified quotations in the pack; resolve in cross-synthesis, not silently |
 | Parallel research agents overlap | Write scopes not disjoint | Re-dispatch with explicit "you own only [path]" |
-| Agent returns 200 lines of unsourced prose | Brief didn't require source URLs per claim | Re-brief with "every claim cites a URL or local file" |
+| Agent returns 200 lines of unsourced prose | Brief didn't require verified quotations per claim | Re-brief with "every claim cites an `extract-evidence` quotation or a local file" |
 | One slow agent blocks the wave | Sequential read of agent results | Process completed agents as they return; don't gate on the last one |
 | Same fact arrives 3 times | No de-duplication step | Add an explicit "check existing pack before writing" step in the brief |
 
@@ -280,8 +307,8 @@ Capture the result in `_meta/methodology-and-source-policy.md` so the corpus rec
 
 The cloud-browsers corpus (293 files, 12 entities) used:
 
-- **Phase 1:** 1 `get-research-consultancy` call for category discovery, plus 5 `web-search` follow-ups per gap → 25 candidates → tiered to 12 core
-- **Phase 4:** 12 parallel `get-research-consultancy` calls (2 waves of 6 each), 1 per `core` entity. Average ~30 follow-up `web-search` calls across all entities for gap-filling
+- **Phase 1:** 1 planning call for category discovery, plus 5 `web-search` follow-ups per gap → 25 candidates → tiered to 12 core
+- **Phase 4:** 12 parallel planning calls (2 waves of 6 each), 1 per `core` entity. Average ~30 follow-up `web-search` calls across all entities for gap-filling, each promising lead verified with `extract-evidence`
 - **Phase 5:** 10 cross-criterion comparison agents (one per criterion folder), each a parallel Explore run reading completed entity packs locally
 - **Phase 6:** 12 profile pages written by orchestrator personally (no agent delegation)
 

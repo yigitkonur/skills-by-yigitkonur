@@ -29,25 +29,29 @@ vocabulary and curated alternative lists, then map findings back to
 GitHub repo names — not to produce a shortlist yourself.
 
 Use the `run-research` skill if it is available. The skill drives the
-3-tool toolkit (the `get-research-consultancy` planner + `web-search` +
-`scrape-link`) with built-in discipline:
+four-tool toolkit (`plan-research` + `web-search` + `extract-evidence` +
+`review-research`) with built-in discipline:
 
-1. First call: invoke `get-research-consultancy` with a tight goal
-   paragraph naming the topic, the use case (you are scouting GitHub
-   repos for `{INTERPRETED_NEED}`), known unknowns to skip, freshness
-   window (last 12 months for category drift), and quote discipline
-   (project names verbatim).
-2. Toolkit shape: `web-search` for URL pool discovery (including
-   Reddit permalink hunting via `site:reddit.com/r/.../comments`
-   keyword probes — it never classifies or synthesizes), `scrape-link`
-   for docs, curated lists, and Reddit threads alike, always with a
-   defined `extract` (use a quote-preserving `extract` for Reddit/HN
-   threads — permalinks auto-route through the Reddit API for full
-   threaded comments before extraction).
-3. Operational caps: `scrape-link` ≤ 5 URLs and ≤ 7 facets per
-   call; `web-search` >25 keywords per call risks persistence.
-4. Citation discipline: snippets are NOT evidence; only scraped
-   content is citable.
+1. Route the first call: for a narrow naming question, start with
+   `web-search`. If the category is genuinely fuzzy, invoke
+   `plan-research` with a tight `objective` naming the topic, the use
+   case (you are scouting GitHub repos for `{INTERPRETED_NEED}`), known
+   facts to skip, freshness window (last 12 months for category drift),
+   and the completion standard (project names quoted verbatim).
+2. Toolkit shape: `web-search` takes complete `queries` for lead
+   discovery (including Reddit permalink hunting via
+   `site:reddit.com/r/.../comments` queries); `extract-evidence` takes
+   `urls` plus checkable `evidence_requirements` for docs, curated
+   lists, and Reddit threads alike (permalinks auto-route through the
+   Reddit API for full threaded comments, so put attribution in the
+   requirement).
+3. Operational caps: `extract-evidence` accepts ≤20 URLs and ≤20
+   requirements per call under a 60-second budget — finish any
+   `continuation.required` result with its exact
+   `continuation.next_call`. Keep `web-search` to a handful of complete
+   queries per round.
+4. Citation discipline: search leads are NOT evidence; only a verified
+   `extract-evidence` quotation is citable.
 
 If `run-research` is unavailable, fall back to built-in `WebSearch`
 and `WebFetch` directly, with the same shape — discover names, then

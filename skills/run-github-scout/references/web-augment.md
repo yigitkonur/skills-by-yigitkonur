@@ -17,7 +17,7 @@ replacement for filtering on GitHub.
 
 | Capability | What to do |
 |---|---|
-| `run-research` skill available | Preferred path. Invoke `run-research` with a tight goal scoped to "learn category vocabulary and curated lists for `<topic>`". The skill drives the 3-tool toolkit (the `get-research-consultancy` planner + `web-search` + `scrape-link`) with built-in discipline. |
+| `run-research` skill available | Preferred path. Invoke `run-research` with a tight objective scoped to "learn category vocabulary and curated lists for `<topic>`". The skill drives the four-tool toolkit (`plan-research` + `web-search` + `extract-evidence` + `review-research`) with built-in discipline. |
 | Built-in `WebSearch` / `WebFetch` only | Lighter fallback. Search for category language, comparison posts, Reddit threads, and `site:github.com` results directly. |
 | No web tooling available | Stay GitHub-only. Widen the category phrasing instead, or accept the limitation explicitly. |
 
@@ -33,22 +33,28 @@ Reach for `run-research` when ONE of these is true:
   would surface project names not visible in GitHub search.
 
 When you invoke `run-research` for this purpose, scope it tightly. The
-goal paragraph should look like:
+objective paragraph should look like:
 
 > Discover category vocabulary and curated alternative lists for
 > `<topic>` so I can return to GitHub search with better names and
 > known projects. User context: I am scouting GitHub repos for
 > `<concrete need>`. Done = a list of category-name candidates,
 > 3-7 commonly-cited project names, and (if surfaced) one or two
-> curated awesome-style lists worth scraping. Skip: deep
+> curated awesome-style lists worth reading. Skip: deep
 > per-product evaluation, pricing, in-depth reviews. Freshness:
-> last 12 months for category drift. Quote discipline: project
-> names verbatim from sources.
+> last 12 months for category drift. Completion standard: project
+> names quoted verbatim from sources.
 
-The skill returns naming clues; you return to GitHub to verify and
-filter. **Web results are leads, not the final shortlist.** Convert
-useful names or categories back into GitHub repo searches and filter
-there.
+For a narrow naming question you can skip planning and go straight to
+`web-search` with two or three complete queries, then `extract-evidence`
+on the one or two lists worth reading, with requirements like "Which
+project names does this list include, with repository URLs?".
+
+Search output is `leads-only` and a curated list is only evidence once
+`extract-evidence` has quoted it. The skill returns naming clues; you
+return to GitHub to verify and filter. **Web results are leads, not the
+final shortlist.** Convert useful names or categories back into GitHub
+repo searches and filter there.
 
 For light naming clues where invoking `run-research` is overkill,
 built-in `WebSearch` is sufficient. Use it the same way: discover

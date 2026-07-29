@@ -69,46 +69,52 @@ Each sub-question surfaces a different candidate cluster. Five sub-questions ret
 
 ### With Research Power Pack (preferred)
 
-Verify available tool names before searching and record them in `_meta/methodology-and-source-policy.md`. Use `get-research-consultancy` with a research brief that names the sub-questions. The tool runs multi-source discovery and returns a consolidated candidate list or search plan.
+Verify available tool names before searching and record them in `_meta/methodology-and-source-policy.md`. Use `plan-research` with an objective that names the sub-questions. It returns clusters, checkable evidence requirements, and a bounded first wave of queries to execute.
 
 ```
-get-research-consultancy:
-  goal: |
+plan-research:
+  objective: |
     Discover entities in the [topic] category. Decompose into these sub-questions:
     1. [sub-question 1]
     2. [sub-question 2]
     ...
-    Return a candidate list with: name, vendor/maintainer, URL, one-line description,
-    apparent tier (incumbent / challenger / niche / adjacent), and the sub-question(s)
-    that surfaced it.
+    A complete answer is a candidate list with: name, vendor/maintainer, URL,
+    one-line description, apparent tier (incumbent / challenger / niche / adjacent),
+    and the sub-question(s) that surfaced it.
 ```
 
-For targeted follow-ups on specific candidates, use `web-search` to harvest a ranked URL pool (Reddit discovery via an explicit `site:reddit.com/r/.../comments` keyword probe), then `scrape-link` to extract from the URLs that matter:
+For targeted follow-ups on specific candidates, use `web-search` to harvest a ranked lead pool (Reddit discovery via an explicit `site:reddit.com/r/.../comments` query), then `extract-evidence` to verify the URLs that matter:
 
 ```
 web-search:
-  keywords:
+  queries:
     - "[candidate name] alternatives 2025"
     - "[candidate name] vs [known competitor]"
     - "site:reddit.com/r/*/comments [candidate name] [category] alternatives OR switched"
 ```
 
-Then extract from the harvested URLs:
+Then verify against the harvested URLs:
 
 ```
-scrape-link:
+extract-evidence:
   urls:
     - "[top candidate-alternatives URL from the search above]"
-  extract: "direct competitors | adjacent alternatives | source quality | recency"
+  evidence_requirements:
+    - "Which direct competitors does this source name?"
+    - "Which alternatives does it treat as adjacent rather than direct?"
+    - "What does it say about its own recency or last update?"
 ```
 
-For extracting candidate lists from category review pages:
+For harvesting candidate lists from category review pages:
 
 ```
-scrape-link:
+extract-evidence:
   urls:
     - "https://example-review-site.com/[category]"
-  extract: "listed entities | vendor URLs | category labels | access notes"
+  evidence_requirements:
+    - "Which entities are listed, with vendor URLs?"
+    - "What category labels are applied?"
+    - "What access or paywall notes appear on the listing?"
 ```
 
 ### Fallback path (no MCP)

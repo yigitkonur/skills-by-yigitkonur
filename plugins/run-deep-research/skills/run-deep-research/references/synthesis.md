@@ -68,16 +68,17 @@ them.
 
 ## Citation discipline
 
-The hard rule: **only scraped page content is evidence.** Search
-snippets (from `web-search`) are leads, not citations — `web-search`
-never runs an LLM and never synthesizes; it only returns a ranked
-URL pool. Only `scrape-link` output is citable.
+The hard rule: **only verified extracted evidence counts.** Search
+results (from `web-search`) carry `evidence_status: leads-only` — a
+title or snippet is a pointer, never a citation. Only an
+`extract-evidence` finding, whose quotation the server matched against
+the fetched source, is citable.
 
 For each non-trivial claim in any corpus file, capture:
 
-- The verbatim quote.
+- The verbatim quote, as returned by `extract-evidence`.
 - The URL.
-- The scrape date.
+- The capture date.
 - Source-specific attribution: Reddit username + score + date;
   GitHub issue number + maintainer handle; blog author + date;
   CVE-ID + CVSS score.
@@ -97,14 +98,15 @@ Non-compliant:
 - "According to <Vendor>, X is supported." (no quote, no URL)
 - "Reddit consensus is..." (no attribution, no source)
 - "The docs say X." (no quote, no URL)
-- A URL alone with no quote — implies the page was read; verify
-  or re-scrape.
+- A URL alone with no quote — implies the page was read; verify it
+  with `extract-evidence` or drop the claim.
 
 ## Inference vs evidence
 
 Claims fall in three categories:
 
-- **Direct evidence.** A verbatim scraped quote supports the claim.
+- **Direct evidence.** A verified `extract-evidence` quotation
+  supports the claim.
 - **Aggregate evidence.** Multiple sources agree; cite ≥3 with
   quotes.
 - **Inference.** The claim is reasonable but no source states it
@@ -114,26 +116,33 @@ Claims fall in three categories:
 Never blend. Inference paragraphs should look visibly different
 from evidence paragraphs.
 
-## The scrape-link output sections as synthesis aids
+## The extract-evidence result as a synthesis aid
 
 Every Wave 2 subagent's run-research session produces structured
-output sections from `scrape-link` (the only tool that runs LLM
-extraction). The orchestrator can use these directly:
+`extract-evidence` results — the only tool that yields evidence. Read
+the JSON `structuredContent`, not the shortened Markdown, and use
+these fields directly:
 
-- **`## Matches`** populates the claims ledger. Each claim with
-  verbatim quote becomes a row in `<entity-slug>/09-sources.md`.
-- **`## Not found`** flags evidence gaps. Every "insufficient
-  evidence" entry in the corpus should link back to a `## Not
-  found` line — they are the same thing, captured in the corpus.
-- **`## Follow-up signals`** could seed a Wave 4 promoted research
-  if the unscraped URLs are decision-flipping.
-- **`## Contradictions`** surfaces disagreements within a single
-  page or across the call. These must be surfaced in synthesis;
-  silent picking is a failure.
+- **`answered` / `partial` requirements** populate the claims ledger.
+  Each finding's quotation and locator becomes a row in
+  `<entity-slug>/09-sources.md`.
+- **`not-found` requirements** flag evidence gaps on a page that was
+  actually read. Every "insufficient evidence" entry in the corpus
+  should trace back to one — they are the same thing, captured in the
+  corpus.
+- **`follow_up_signals`** can seed a Wave 4 promoted research pack
+  when the unread URLs are decision-flipping.
+- **`contradictions`** surfaces disagreements between verified
+  findings. These must appear in synthesis; silent picking is a
+  failure.
+- **`continuation.pending_sources`** is unfinished work, not absence
+  of evidence. The subagent must finish the exact
+  `continuation.next_call`, or report the remainder as an explicit
+  limitation.
 
-Wave 3 synthesizers should look for `## Contradictions` sections in
-per-entity Wave 2 outputs. The contradictions tell the synthesizer
-where deciders will face trade-offs.
+Wave 3 synthesizers should look for `contradictions` in per-entity
+Wave 2 outputs. The contradictions tell the synthesizer where
+deciders will face trade-offs.
 
 ## Resolving contradictions
 
@@ -151,9 +160,10 @@ disagree:
   behavior; community reveals actual behavior. Trust community for
   "does it work in practice"; trust docs for "how is it supposed
   to work".
-- **Smart-search synthesis vs scraped facts.** Always trust scraped
-  pages (via `scrape-link`) over an LLM planner's reasoning for
-  specific facts.
+- **Planner reasoning vs verified facts.** Always trust an
+  `extract-evidence` quotation over `plan-research` or
+  `review-research` prose for a specific fact; planning and review
+  output are strategy, not evidence.
 - **Nobody agrees.** The answer is genuinely context-dependent.
   Do not force one recommendation; name the variables that
   determine which is best.
@@ -337,11 +347,13 @@ Before declaring the corpus complete:
 - [ ] Version-specific claims checked against changelog.
 - [ ] Sources actually independent (not citing each other).
 - [ ] Recency appropriate for the domain.
-- [ ] Any LLM-planner reasoning (from `get-research-consultancy`)
-      about specific facts verified against pages actually scraped
-      via `scrape-link`.
-- [ ] `## Not found` sections from Wave 2 are reflected in the
+- [ ] Any planner or review reasoning (from `plan-research` /
+      `review-research`) about specific facts verified against pages
+      actually read via `extract-evidence`.
+- [ ] `not-found` requirements from Wave 2 are reflected in the
       pack's "insufficient evidence" entries.
+- [ ] Every required extraction continuation was finished, or the
+      remainder is recorded as an explicit limitation.
 - [ ] Every numeric / versioned / priced claim has a verbatim
       quote.
 

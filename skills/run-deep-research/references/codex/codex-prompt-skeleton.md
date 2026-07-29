@@ -113,31 +113,35 @@ wave:
 
 Use the run-research discipline for every web/Reddit call.
 
-1. First call: invoke `get-research-consultancy` (if available) or its
-   fallback with a goal paragraph naming — topic, your specific use case
-   (research <X> for the corpus's decider), known unknowns to skip,
+1. First call: invoke `plan-research` (if available) or its fallback
+   with an `objective` paragraph naming — topic, your specific use case
+   (research <X> for the corpus's decider), known facts to skip,
    what NOT to research, freshness window (default: weight last 90
-   days), quote discipline (every numeric/versioned/priced claim cites
-   a verbatim quote).
+   days), and the completion standard (every numeric/versioned/priced
+   claim carries a verified quotation).
 
-2. Toolkit: 3 tools plus the planner — no raw/smart split anymore.
-   - web-search: keywords-only ranked, de-duplicated, CTR-aggregated
-     URL pool; never calls an LLM, never tiers or synthesizes. Reddit
-     discovery is a `site:reddit.com/r/.../comments` keyword probe, not
-     a parameter.
-   - scrape-link: keywords → `urls` + a required `extract` string;
-     always runs LLM extraction. Reddit permalinks are auto-detected and
-     routed through the Reddit API (full threaded fetch) before the same
-     extraction runs on top. Output: `## Source` / `## Matches` /
-     `## Not found` / `## Follow-up signals` (and sometimes
-     `## Contradictions`) (≤5 URLs, 5-7 facets per call)
+2. Toolkit: four tools — planner, discovery, evidence, review.
+   - web-search: `queries` only (complete retrieval queries). Returns
+     ranked, canonicalized leads with query lineage; `evidence_status`
+     is always `leads-only`. Reddit discovery is a
+     `site:reddit.com/r/.../comments` query, not a parameter.
+   - extract-evidence: `urls` (≤20) + `evidence_requirements` (≤20
+     checkable questions). Returns per-requirement status with exact
+     quotations and locators, plus coverage, contradictions, and
+     continuation state. Reddit permalinks are auto-detected and routed
+     through the Reddit API (full threaded fetch), so put attribution
+     in the requirement itself.
+   - review-research: no arguments; advisory `ready` / `continue` /
+     `blocked` on this session's retained trace.
 
 3. Parallel dispatch: fire two web-search calls in one turn when
    scopes differ (web + reddit). The reconnaissance round runs in
    roughly the time of one call.
 
-4. Multi-round: 2-4 search rounds is normal. Harvest follow-up signals
-   and not-found sections to seed round 2.
+4. Multi-round: 2-4 search rounds is normal. Read `follow_up_signals`
+   and unresolved requirements to seed round 2, and finish any
+   `continuation.required` result with its exact `continuation.next_call`
+   before synthesizing.
 
 5. Citation discipline: snippets are NOT evidence. Only scraped page
    content is citable. Every numeric / versioned / priced claim cites

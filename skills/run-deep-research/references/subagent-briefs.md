@@ -42,64 +42,72 @@ You have the `run-research` skill available. Use it to drive every
 web/Reddit research call in this mission. Its discipline is
 non-negotiable for this brief.
 
-1. **First call**: invoke `get-research-consultancy` with a goal paragraph
+1. **First call**: invoke `plan-research` with an `objective` paragraph
    that names — topic, your specific use case (research <X> for
-   <decider> in this corpus), known unknowns to skip, what NOT to
-   research, freshness window (default: weight last 90 days), quote
-   discipline (every numeric/versioned/priced claim cites a verbatim
-   quote).
+   <decider> in this corpus), known facts to skip, what NOT to
+   research, freshness window (default: weight last 90 days), and the
+   completion standard (every numeric/versioned/priced claim carries a
+   verified quotation).
 
-2. **Toolkit shape**: 3 tools — the planner plus one search tool and
-   one extraction tool. There is no raw/smart split; each tool has a
-   single fixed contract.
-   - `get-research-consultancy`: goal-tailored brief — primary
-     branch, keyword seeds, iteration hints, gaps to watch, stop
-     criteria. Call this first, once per mission.
-   - `web-search`: `keywords` only (1-50), never calls an LLM. Returns
-     a ranked, de-duplicated, CTR-aggregated URL pool — no synthesis,
-     no tiering, no `## Gaps`/`## Synthesis` sections. Use it for
-     every reconnaissance round, including Reddit discovery via
-     explicit `site:reddit.com/r/.../comments` keyword probes fed
-     into the same tool (there is no separate reddit scope param).
-   - `scrape-link`: `urls` plus a REQUIRED `extract` string (pipe-
-     separated facets). Always runs LLM extraction and returns
-     `## Source` / `## Matches` / `## Not found` / `## Follow-up
-     signals` (and sometimes `## Contradictions`). Reddit permalinks
-     auto-route through the Reddit API (full threaded post +
-     comments) before extraction — use a quote-preserving `extract`
-     for sentiment/threading work. Hard caps: ~5 URLs and 5-7 facets
-     per call (~13s per URL).
+2. **Toolkit shape**: 4 tools — a planner, a discovery tool, an
+   evidence tool, and an advisory review. Each has one fixed contract.
+   - `plan-research`: one `objective` string in; clusters, checkable
+     evidence requirements, query ideas (≤100 global / ≤25 per
+     cluster — ceilings, not quotas), a first wave of ≤12 queries,
+     source signals, gaps, and stop conditions out. Call it first,
+     once per mission.
+   - `web-search`: `queries` only (1-50 complete retrieval queries).
+     Returns ranked, canonicalized sources with query lineage;
+     `evidence_status` is always `leads-only`. Use it for every
+     reconnaissance round, including Reddit discovery via explicit
+     `site:reddit.com/r/.../comments` queries fed into the same tool.
+   - `extract-evidence`: `urls` (≤20) plus `evidence_requirements`
+     (≤20 checkable questions). Returns per-requirement status
+     (`answered` / `partial` / `not-found` / `conflicting`) with exact
+     quotations and code-derived locators, plus coverage,
+     contradictions, and continuation state. Reddit permalinks
+     auto-route through the Reddit API (full threaded post + comments)
+     — put attribution in the requirement itself for sentiment work.
+   - `review-research`: no arguments; reviews this session's retained
+     trace and returns `ready` / `continue` / `blocked` plus ≤3
+     scored next calls. Advisory only.
 
 3. **Parallel dispatch**: fire two `web-search` calls in one
    turn when scopes differ (e.g. open web + a `site:reddit.com/
-   r/.../comments` probe set). The reconnaissance round runs in
+   r/.../comments` query set). The reconnaissance round runs in
    roughly the time of one call. This is the canonical pattern, not
    an exotic move.
 
-4. **Multi-round**: 2-4 search rounds is normal. Harvest
-   `## Follow-up signals` (from `scrape-link`) to seed round 2 with
-   refined `web-search` keyword probes. Single-call sessions are
-   under-researched.
+4. **Multi-round**: 2-4 search rounds is normal. Read
+   `follow_up_signals` and unresolved requirements from
+   `extract-evidence` to seed round 2 with refined `web-search`
+   queries. Single-call sessions are under-researched.
 
-5. **Citation discipline**: snippets are NOT evidence. Only scraped
-   page content (via `scrape-link`) is citable. Every numeric /
-   versioned / priced claim cites a verbatim quote with URL and
-   scrape date.
+5. **Citation discipline**: search leads are NOT evidence. Only a
+   verified `extract-evidence` finding — exact quotation plus locator
+   — is citable. Every numeric / versioned / priced claim cites one,
+   with URL and capture date.
 
-6. **`## Not found` is mandatory reading**: it tells you which
-   gaps to chase next round. Never skip a `## Not found` section.
+6. **Unfinished work is mandatory reading**: `not-found` requirements
+   tell you which gaps to chase next round, and a
+   `continuation.required: true` result must be finished by invoking
+   its exact `continuation.next_call` in this same session before you
+   write files. Never record a pending source as `not-found`.
 
-7. **Operational thresholds**: `scrape-link` ≤ 5 URLs and ≤ 7
-   facets per call (going wider risks timing out). `web-search`
-   fans out cleanly across 2-4 parallel calls per round; beyond
-   that, plan for persistence and subagent-extract from the
-   persisted file.
+7. **Operational thresholds**: `extract-evidence` accepts ≤20 URLs
+   and ≤20 requirements per call under a 60-second budget — a wide
+   call returns partial results plus a continuation rather than
+   failing. `web-search` fans out cleanly across 2-4 parallel calls
+   per round; beyond that, plan for persistence and subagent-extract
+   from the persisted file.
 
 8. **For full discipline**, the run-research skill's references
    are at:
    - `tools.md` — tool API plus operational thresholds
-   - `prompting.md` — goal/extract writing (highest-leverage
-     section)
+   - `resumable-extraction.md` — continuation and pending-source
+     semantics
+   - `prompting.md` — objective/query/requirement writing
+     (highest-leverage section)
    - `workflows.md` — workflow templates per question type
    - `synthesis.md` — citation, contradiction, output formats
    - `failure-modes.md` — provider cascade, timeout, persistence
@@ -265,10 +273,10 @@ You own this mission end-to-end.
 <paste the run-research integration block verbatim>
 
 Adapt: freshness window = "weight last 12 months for category
-shifts". Tool steering: `web-search` keyword probes for "decision
-axes deciders compare on for <topic>; native primitives per axis;
-not feature lists; not marketing"; `scrape-link` with a matching
-`extract` on 2-3 authoritative analyses.
+shifts". Tool steering: `web-search` queries for the decision axes
+deciders compare on for <topic> and the native primitive behind each;
+`extract-evidence` on 2-3 authoritative analyses with one requirement
+per axis question.
 
 [DEFINITION OF DONE]
 
@@ -361,7 +369,7 @@ judgment; adapt your approach as you learn more.
 [RESEARCH METHODOLOGY]
 <paste the run-research integration block verbatim>
 
-Adapt the goal paragraph for `get-research-consultancy`:
+Adapt the `objective` paragraph for `plan-research`:
 - Topic: <entity name>.
 - Use case: research <entity> on every axis in this catalog for
   <decider use case>; focus on <decision-flipping axes>; treat
@@ -374,11 +382,11 @@ Adapt the goal paragraph for `get-research-consultancy`:
   cites a verbatim scraped quote.
 
 Tool steering: parallel `web-search` calls (open web + explicit
-`site:reddit.com/r/.../comments` probes) for reconnaissance;
-`scrape-link` with a facet-rich `extract` on docs/changelog/pricing
-pages (≤5 URLs and 5-7 facets per call); `scrape-link` with a
-quote-preserving `extract` on Reddit threads for sentiment (≤5
-threads per call).
+`site:reddit.com/r/.../comments` queries) for reconnaissance;
+`extract-evidence` on docs/changelog/pricing pages with one checkable
+requirement per axis; `extract-evidence` on Reddit threads with
+attribution requirements for sentiment. Finish every required
+continuation before reporting back.
 
 [DEFINITION OF DONE]
 
