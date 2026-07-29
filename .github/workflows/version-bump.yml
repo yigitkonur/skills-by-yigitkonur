@@ -8,6 +8,9 @@ name: version-bump
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.agents/**'
+      - '.claude/**'
   workflow_dispatch:
     inputs:
       ref:

@@ -7,7 +7,13 @@ name: ci-cd-optimize validation
 on:
   push:
     branches: ['**']
+    paths-ignore:
+      - '.agents/**'
+      - '.claude/**'
   pull_request:
+    paths-ignore:
+      - '.agents/**'
+      - '.claude/**'
   workflow_dispatch:
 
 permissions:
