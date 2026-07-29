@@ -359,6 +359,63 @@
      "reason": "conflict with the frozen fail-closed contract; deliberate first-wave rejections stand"
     }
    ]
+  },
+  {
+   "id": "audit-2026-07-29-c",
+   "purpose": "Avrea changelog wave (features through 2026-07-28) plus the final PR-closure determination for #74-#85.",
+   "verified": "All changelog claims re-verified 2026-07-29 against docs.avrea.com, avrea.com/pricing and swift.org rather than the changelog text alone. avr-cli still 0.1.6 on PyPI and GitHub, so the pinned command manifest and quarantine are unchanged.",
+   "corrections": [
+    {
+     "file": "references/avrea/platform-and-runners.md",
+     "was": "macOS 2 GB RAM per vCPU",
+     "now": "3 GB/vCPU (24/48 GB at 8/16 vCPU) per pricing page and M5 Max announcement; runners doc is stale and the conflict is documented in place"
+    },
+    {
+     "file": "references/avrea/caching.md",
+     "was": "SwiftPM dependencies still need explicit actions/cache",
+     "now": "public version-pinned packages resolve via the Swift Package Registry on Xcode 26+; manual cache still covers private, branch-pinned and older-Xcode cases"
+    }
+   ],
+   "added": [
+    "Ubuntu 26.04 labels both architectures, no version premium, avrea-ubuntu-latest still 24.04",
+    "Swift Package Registry: default on Xcode 26+, Package.resolved rewritten to registry identities+checksums, opt-out cache.swift-registry.enabled, older-Xcode git fallback, published vapor benchmark 23s/11s/4s",
+    "Nx hosted remote cache zero-config (Nx 20.8+) with shared-cache trust boundary retained",
+    "Gradle mavenCentral()-only rewrite, .NET Linux NuGet proxy, Go build cache on Windows",
+    "cache write convergence, verified-before-reuse, pre-warmed index, end-to-end integrity checks",
+    "M5 Max backs macOS and Linux ARM (explains ARM at 3x x64 rate)",
+    "static IP egress and SAML SSO marked Enterprise-only",
+    "swift-xcode.md: --force-resolved-versions / xcodebuild -disableAutomaticPackageResolution, SE-0292 registry vs git pin shape, registry state in the SwiftPM cache key",
+    "settings-key guard: manifest settings_keys_snapshot + settings_keys_post_snapshot, enforced by test_avr_reference.py"
+   ],
+   "pr_residuals_closed": [
+    {
+     "item": "absence outranks tuning - a missing pipeline or hand-pushed artifact is the bigger finding",
+     "raised_by": [
+      "pr-78",
+      "pr-84"
+     ],
+     "destination": "references/optimization-workflow.md"
+    },
+    {
+     "item": "downsizing signature stated provider-neutrally (was reachable only via the optional Avrea kit)",
+     "raised_by": [
+      "pr-78",
+      "pr-81",
+      "pr-85"
+     ],
+     "destination": "references/runners-and-autoscaling.md"
+    }
+   ],
+   "pr_closure_determination": {
+    "verdict": "All 12 PRs (#74-#85) are safe to close without merging; no content is lost.",
+    "basis": [
+     "Every unresolved reviewer finding is fixed or structurally impossible in the landed design: pr-77 resolve_repo traceback (no repo resolution exists; --repo is required and validated inside the structured-death path), pr-77 stale git ls-remote doc (zero occurrences in the skill), pr-80 registration-deadline clamp (fixed v1.0.39, 3 tests), pr-81 math.isfinite on all durations (all seven flags), pr-76 unreachable superseded (two emission paths, 5 tests), pr-76 BAD= overwrite and missing REPO= env (no shell implementation exists).",
+     "All 11 d85 defects verified fixed with real backing tests.",
+     "The audit-2026-07-28-b wave was verified present in every file it names; packaged mirror byte-identical to source.",
+     "The last two prose residuals are closed by this wave (see pr_residuals_closed)."
+    ],
+    "note": "Closing the PRs is a repository-owner action and was deliberately not performed by this wave."
+   }
   }
  ]
 }

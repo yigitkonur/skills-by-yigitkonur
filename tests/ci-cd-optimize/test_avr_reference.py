@@ -23,6 +23,27 @@ def slug(command: str) -> str:
     return command.replace(" ", " ").strip()
 
 
+def fenced_blocks(text: str) -> list[str]:
+    """Fenced code blocks, paired by scanning lines.
+
+    A regex with an optional language tag lets a *closing* fence open a new
+    match, so prose between blocks gets captured as if it were code. That is
+    harmless for the negative assertions below, but a positive extraction
+    needs real pairing.
+    """
+    blocks, current, inside = [], [], False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            if inside:
+                blocks.append("\n".join(current))
+                current = []
+            inside = not inside
+            continue
+        if inside:
+            current.append(line)
+    return blocks
+
+
 class AvrReferenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -132,6 +153,55 @@ class AvrReferenceTests(unittest.TestCase):
         self.assertIn("firewall flow-summaries --job", combined)
         for block in re.findall(r"```(?:bash)?\n(.*?)```", combined, re.S):
             self.assertNotIn("flow-summaries --job", block)
+
+    # Settings keys are server-defined, so a released CLI cannot vouch for them.
+    # Anything outside the pinned `avr settings schema` snapshot must be marked
+    # for re-verification rather than presented as established fact.
+    def _documented_settings_keys(self):
+        docs = {
+            "cli-core-reference.md": self.core,
+            "cli-admin-reference.md": self.admin,
+            "cli-auth-and-portability.md": self.auth,
+            "cli-evidence.md": self.evidence,
+            "platform-and-runners.md": (AVREA_DIR / "platform-and-runners.md").read_text(),
+            "caching.md": (AVREA_DIR / "caching.md").read_text(),
+        }
+        found = []
+        for name, text in docs.items():
+            for block in fenced_blocks(text):
+                for key in re.findall(r"avr settings (?:set|reset)\s+([a-z0-9.\-]+)", block):
+                    found.append((name, text, key))
+        return found
+
+    def test_settings_keys_are_snapshot_verified_or_flagged(self):
+        snapshot = set(self.manifest["settings_keys_snapshot"]["keys"])
+        post = {entry["key"]: entry for entry in self.manifest["settings_keys_post_snapshot"]}
+        found = self._documented_settings_keys()
+        self.assertTrue(found, "expected at least one runnable `avr settings` example")
+        for name, text, key in found:
+            if key in snapshot:
+                continue
+            self.assertIn(key, post,
+                          f"{name}: settings key {key} is neither in the 0.1.6 schema "
+                          f"snapshot nor recorded as a post-snapshot key")
+            # The doc must tell the reader to re-verify a post-snapshot key.
+            self.assertRegex(
+                text, r"settings\s+schema",
+                f"{name}: post-snapshot key {key} must carry an `avr settings schema` caveat")
+
+    def test_post_snapshot_keys_are_not_claimed_as_verified(self):
+        for entry in self.manifest["settings_keys_post_snapshot"]:
+            key = entry["key"]
+            for name, text in (("platform-and-runners.md",
+                                (AVREA_DIR / "platform-and-runners.md").read_text()),
+                               ("caching.md", (AVREA_DIR / "caching.md").read_text())):
+                if key not in text:
+                    continue
+                window_start = max(text.index(key) - 600, 0)
+                window = text[window_start:text.index(key) + 600]
+                self.assertRegex(
+                    window, r"newer than|confirm it with|re-run `avr settings\s+schema`",
+                    f"{name}: {key} must be marked as needing verification, not stated flatly")
 
 
 if __name__ == "__main__":
