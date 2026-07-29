@@ -4,9 +4,9 @@
 
 ```bash
 mcpc connect https://research.yigitkonur.com/mcp @research
-mcpc @research tools-call search-reddit '{"queries":["OpenAI MCP"]}'
+mcpc @research tools-call web-search '{"queries":["OpenAI MCP"]}'
 mcpc @research tools-call args-tool city:=Paris enabled:=true
-printf '%s' '{"queries":["OpenAI MCP"]}' | mcpc @research tools-call search-reddit
+printf '%s' '{"queries":["OpenAI MCP"]}' | mcpc @research tools-call web-search
 ```
 
 ## Supported argument shapes
@@ -32,7 +32,7 @@ Use a single inline JSON document when you want to send the full argument payloa
 Do not mix it with `key:=value` pairs.
 
 ```bash
-mcpc @research tools-call search-reddit '{"queries":["OpenAI MCP"]}'
+mcpc @research tools-call web-search '{"queries":["OpenAI MCP"]}'
 ```
 
 ### stdin JSON

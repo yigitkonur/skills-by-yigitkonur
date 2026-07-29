@@ -142,7 +142,7 @@ mcpc --json @everything-http tools-list | jq '.[] | {name, taskSupport: (.execut
 ### 6. Exercise the capability you care about
 
 ```bash
-mcpc --json @research tools-call search-reddit '{"queries":["OpenAI MCP"]}'
+mcpc --json @research tools-call web-search '{"queries":["OpenAI MCP"]}'
 mcpc @everything-http prompts-get args-prompt city:=Paris state:=Texas
 mcpc @everything-http resources-read demo://resource/static/document/features.md
 mcpc @everything-http logging-set-level debug

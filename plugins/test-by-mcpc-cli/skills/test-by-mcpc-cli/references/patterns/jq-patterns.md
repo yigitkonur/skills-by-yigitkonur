@@ -14,15 +14,15 @@ mcpc --json | jq '.profiles[] | select(.serverUrl == "https://mcp.example.com/mc
 
 ```bash
 mcpc --json @research-test tools-list | jq '.[].name'
-mcpc --json @research-test tools-get search-reddit | jq '.inputSchema.required'
+mcpc --json @research-test tools-get web-search | jq '.inputSchema.required'
 mcpc --json @research-test tools-list | jq '.[] | select(.execution.taskSupport == "forbidden") | .name'
 ```
 
 ## Tool results
 
 ```bash
-mcpc --json @research-test tools-call search-reddit '{"queries":["OpenAI MCP"]}' | jq '.isError // false'
-mcpc --json @research-test tools-call search-reddit '{"queries":["OpenAI MCP"]}' | jq -r '.content[]?.text? // empty'
+mcpc --json @research-test tools-call web-search '{"queries":["OpenAI MCP"]}' | jq '.isError // false'
+mcpc --json @research-test tools-call web-search '{"queries":["OpenAI MCP"]}' | jq -r '.content[]?.text? // empty'
 ```
 
 ## Grep output

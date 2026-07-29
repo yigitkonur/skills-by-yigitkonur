@@ -6,7 +6,7 @@ Use native `grep` first, then JSON filtering.
 
 ```bash
 mcpc grep search
-mcpc @research-test grep reddit
+mcpc @research-test grep evidence
 mcpc grep config --tools --prompts
 ```
 

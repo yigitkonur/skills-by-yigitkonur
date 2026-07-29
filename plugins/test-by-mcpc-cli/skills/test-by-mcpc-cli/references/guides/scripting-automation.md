@@ -7,7 +7,7 @@ Do not assume it applies to interactive flows such as `login` or `shell`.
 
 ```bash
 set -euo pipefail
-RESULT=$(mcpc --json @research-test tools-call search-reddit '{"queries":["OpenAI MCP"]}')
+RESULT=$(mcpc --json @research-test tools-call web-search '{"queries":["OpenAI MCP"]}')
 printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 ```
 

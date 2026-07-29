@@ -15,7 +15,7 @@ mcpc "$SESSION" help
 mcpc "$SESSION" grep search
 mcpc "$SESSION" tools-list --full
 mcpc "$SESSION" resources-list
-mcpc --json "$SESSION" tools-call search-reddit '{"queries":["OpenAI MCP"]}' | jq '.isError // false'
+mcpc --json "$SESSION" tools-call web-search '{"queries":["OpenAI MCP"]}' | jq '.isError // false'
 mcpc close "$SESSION"
 ```
 
@@ -113,7 +113,7 @@ trap cleanup EXIT
 
 mcpc connect "$TARGET" "$SESSION" --no-profile
 mcpc --json "$SESSION" tools-list | jq -e 'length > 0' >/dev/null
-RESULT=$(mcpc --json "$SESSION" tools-call search-reddit '{"queries":["OpenAI MCP"]}')
+RESULT=$(mcpc --json "$SESSION" tools-call web-search '{"queries":["OpenAI MCP"]}')
 printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 ```
 

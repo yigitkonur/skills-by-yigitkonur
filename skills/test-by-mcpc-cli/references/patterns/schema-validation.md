@@ -5,8 +5,8 @@
 ## Current commands that matter
 
 ```bash
-mcpc @research-test tools-get search-reddit --schema ./tool-schema.json
-mcpc @research-test tools-call search-reddit '{"queries":["OpenAI MCP"]}' --schema ./result-schema.json
+mcpc @research-test tools-get web-search --schema ./tool-schema.json
+mcpc @research-test tools-call web-search '{"queries":["OpenAI MCP"]}' --schema ./result-schema.json
 mcpc @everything-http prompts-get args-prompt city:=Paris --schema ./prompt-schema.json
 ```
 

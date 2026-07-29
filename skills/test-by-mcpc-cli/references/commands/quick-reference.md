@@ -138,7 +138,7 @@ mcpc x402 remove
 |---|---|---|
 | `key:=value` | `city:=Paris` | simple scalars or quoted JSON literals |
 | inline JSON | `'{"queries":["OpenAI MCP"]}'` | full object payload |
-| stdin JSON | `printf '%s' '{"queries":["OpenAI MCP"]}' | mcpc @s tools-call search-reddit` | scripting pipelines |
+| stdin JSON | `printf '%s' '{"queries":["OpenAI MCP"]}' | mcpc @s tools-call web-search` | scripting pipelines |
 
 If a tool expects an array or object, send a JSON literal.
 `queries:=OpenAI` is still a string, not `['OpenAI']`.

@@ -20,26 +20,26 @@ Do not dump every saved session unless reuse or cleanup is the actual question.
 ## Recipe: assert a tool exists
 
 ```bash
-mcpc --json @research-test tools-list | jq -e '.[] | select(.name == "search-reddit")' >/dev/null
+mcpc --json @research-test tools-list | jq -e '.[] | select(.name == "web-search")' >/dev/null
 ```
 
 ## Recipe: assert the tool schema includes an array field
 
 ```bash
-mcpc --json @research-test tools-get search-reddit | jq -e '.inputSchema.properties.queries.type == "array"' >/dev/null
+mcpc --json @research-test tools-get web-search | jq -e '.inputSchema.properties.queries.type == "array"' >/dev/null
 ```
 
 ## Recipe: assert a tool call did not return `isError`
 
 ```bash
-RESULT=$(mcpc --json @research-test tools-call search-reddit '{"queries":["OpenAI MCP"]}')
+RESULT=$(mcpc --json @research-test tools-call web-search '{"queries":["OpenAI MCP"]}')
 printf '%s' "$RESULT" | jq -e '.isError != true' >/dev/null
 ```
 
 ## Recipe: assert a validation failure still exits `0`
 
 ```bash
-BAD=$(mcpc --json @research-test tools-call search-reddit queries:=OpenAI)
+BAD=$(mcpc --json @research-test tools-call web-search queries:=OpenAI)
 printf '%s' "$BAD" | jq -e '.isError == true' >/dev/null
 ```
 
