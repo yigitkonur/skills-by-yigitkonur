@@ -1,99 +1,71 @@
 # Connection Settings
 
-Each Inspector connection is configured from the dashboard's **Connect** form. Most fields persist to `localStorage` and survive reloads.
+*Read this when configuring how the Inspector connects to a server (Direct, Auto, Via Proxy, OAuth, timeouts).*
 
-## Connection types
+## Connection mode: Auto, Direct, or Via Proxy
 
-| Type | Behavior | Use when |
-|---|---|---|
-| **Direct** | Browser → server, no intermediary. Default. | Local dev, public endpoints, anywhere CORS is open. |
-| **Via Proxy** | Browser → `/inspector/api/proxy` → server. | Corporate proxies, CORS-blocked endpoints, network policy requires intermediary. |
-| **Auto-Switch** | Try Direct, fall back to Via Proxy on failure. | Unsure which works; multi-environment setups. |
+Most servers work with just a transport type and URL. Choose a connection mode when the browser cannot reach the server directly or when you want to test specific connection paths.
 
-Toggle Auto-Switch from the **Connection Type** dropdown in the form.
+### Auto (default)
 
-## Transport
+The Inspector tries a direct browser connection first, then falls back to the configured Inspector proxy if direct access fails because of CORS or network policy.
 
-The inspector negotiates transport automatically from the URL scheme but exposes an explicit override in the form:
+**Use Auto when:** You want the Inspector to handle connection failures gracefully.
 
-| Transport | URL scheme | Notes |
-|---|---|---|
-| `http` (Streamable HTTP) | `http://` / `https://` | Default for HTTP endpoints. |
-| `sse` | `http://` / `https://` | Older SSE-only servers. |
+### Direct
 
-Saved as `transportType` in the connection JSON.
+The browser reaches the server directly without a proxy.
 
-## Server display name
+**Use Direct when:** The server is local, public, or reachable from your browser.
 
-Each saved connection has an editable **display name** (alias) shown in the dashboard, server list, header, command palette, and server picker. Edit from the connection form.
+**Avoid Direct when:** The browser is blocked by CORS or network policy.
 
-Changing **only** the display name updates labels everywhere **without** disconnecting or clearing tokens. Connection-affecting fields (URL, headers, OAuth, transport) trigger a reconnect on save.
+### Via Proxy
 
-## Advanced timeouts
+All requests go through the Inspector's built-in proxy.
 
-| Field | Default | Meaning |
-|---|---|---|
-| Request Timeout | `10000` ms | Max time for a single RPC. |
-| Maximum Total Timeout | `60000` ms | Max time for a full operation including retries and progress. |
-| Reset Timeout on Progress | `true` | Resets request timer when the server sends a progress notification. |
-| Inspector Proxy Address | `${origin}/inspector/api/proxy` | Endpoint for Via Proxy mode. Override only if mounted at a non-default path. |
+**Use Via Proxy when:** The browser cannot reach the server directly because of CORS, network policy, or firewall rules.
 
-## OAuth 2.0
+**Avoid Via Proxy when:** The server works directly; proxying adds complexity.
 
-For servers that require OAuth, click **Authentication** in the connection form.
+## Name saved servers
 
-### Setup
-
-1. Enter **Client ID**.
-2. Enter **Scope** (space-separated).
-3. **Save**.
-
-### Flow
-
-The inspector enters states in this order:
-
-| State | What it means |
-|---|---|
-| Connecting | Initial connection attempt |
-| Pending Auth | Server returned 401 + auth URL; waiting for user to start flow |
-| Authenticating | OAuth flow in progress (popup or redirect) |
-| Ready | Authenticated, connected |
-| Failed | Auth or connection failed; surfaced as toast with error reason |
-
-When state hits **Pending Auth**, click **Authenticate** on the server card. The flow opens in the **current tab** (single-tab redirect; v3.0.1+) and returns to the inspector with `sessionStorage`-restored config so auto-reconnect works without `?autoConnect`. If a popup blocker bites, use the **open auth page** fallback link.
-
-Tokens persist to `localStorage` keyed by server ID.
+Set a display name for each saved server. Changing only the name updates labels in the dashboard, server list, header, and command palette without reconnecting the server or clearing auth tokens.
 
 ## Custom headers
 
-Add HTTP headers attached to every request to the MCP server.
+Add custom headers only when the server requires them (bearer tokens, API keys, version headers).
 
-1. Click **Custom Headers** in the connection form.
-2. **Add** → enter name + value.
-3. **Save**.
+**Important:** Header values are runtime-only and are intentionally not saved after a reload. Supply them again at runtime. Prefer OAuth when the server supports it.
 
-Common headers:
+## Configure OAuth
 
-| Header | Use |
-|---|---|
-| `Authorization: Bearer <token>` | API tokens |
-| `X-API-Key: <key>` | Custom auth |
-| `X-API-Version: v2` | Versioning |
-| `X-Request-ID: <uuid>` | Tracing |
+By default, the Inspector uses Dynamic Client Registration (DCR), so no credentials are needed. Use the Authentication dialog when:
 
-Values are masked behind a dot pattern by default; click the eye icon to reveal.
+- The upstream auth server doesn't expose `registration_endpoint` (common for proxy-mode servers fronting Slack, WorkOS, or GitHub).
+- You want to use a pre-registered OAuth client instead of DCR.
 
-## Configuration import / export
+| Field | When to set it |
+| --- | --- |
+| Client ID | Use a pre-registered OAuth client instead of DCR. |
+| Client Secret | Use a confidential client (switches token endpoint auth away from `none`). |
+| Scope | Request a provider-specific space-separated scope list. |
 
-### Copy Config
+When a server requires OAuth, the connection enters `pending_auth`. Click **Authenticate**, complete the provider flow, and return to the Inspector.
 
-Export the current connection as JSON to clipboard. Schema:
+**Security:** Browser OAuth session values are encrypted at rest with AES-256-GCM. The non-extractable origin key is kept in IndexedDB, and versioned ciphertext remains in localStorage.
+
+## Copy and paste configuration
+
+Use **Copy Config** to export the current connection form as JSON. Paste JSON into the URL field of another Inspector instance to populate the form.
+
+Example configuration:
 
 ```json
 {
   "url": "https://mcp.example.com/mcp",
   "transportType": "http",
-  "connectionType": "Direct",
+  "connectionMode": "auto",
   "headers": {
     "Authorization": "Bearer token123"
   },
@@ -102,28 +74,21 @@ Export the current connection as JSON to clipboard. Schema:
   "maxTotalTimeout": 60000,
   "oauth": {
     "clientId": "your-client-id",
+    "clientSecret": "your-client-secret",
     "scope": "read write"
   }
 }
 ```
 
-### Paste Config
+**Warning:** Remove secrets (OAuth tokens, API keys) before sharing exported configurations.
 
-Paste a copied JSON config into the **URL** field. The form auto-populates every setting. Use this to share configs across teammates or instances; pair with secure-channel handoff for tokens.
+## Tune timeouts for long-running tools
 
-## Connection status indicators
+Use timeout settings only when a valid tool call or resource read needs more time than the defaults.
 
-| Indicator | Meaning |
-|---|---|
-| Green | Connected, ready |
-| Yellow | Connecting or authenticating |
-| Red | Connection failed |
-| Gray | Disconnected |
+| Setting | Default | Use when |
+| --- | --- | --- |
+| Request timeout | 10000 ms | A tool call takes longer than 10 seconds. |
+| Maximum total timeout | 60000 ms | Retries or progress updates might extend beyond 60 seconds. |
 
-Hover for detailed status.
-
-## See also
-
-- `02-cli.md` — passing connection settings via CLI flags.
-- `04-url-parameters.md` — driving connection state via URL.
-- `11-protocol-toggle-and-csp-mode.md` — widget-specific debug toggles.
+If a request times out, first confirm the server eventually responds. Then raise the timeout to match the expected tool runtime.
