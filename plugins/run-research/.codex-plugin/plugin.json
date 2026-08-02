@@ -1,6 +1,6 @@
 {
   "name": "run-research",
-  "version": "1.0.42",
+  "version": "1.0.43",
   "description": "Use skill if you are researching one current technical question with source-grounded web evidence. Do not use for five-plus-entity corpora, GitHub-repository discovery, local-only answers, or web-forbidden requests.",
   "author": {
     "name": "Yigit Konur",
