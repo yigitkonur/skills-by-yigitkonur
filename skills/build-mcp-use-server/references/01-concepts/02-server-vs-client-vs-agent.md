@@ -1,49 +1,65 @@
 # Server vs Client vs Agent
 
-`mcp-use` ships three distinct halves of the MCP architecture. Knowing which half you're working on tells you which skill to use.
+*Read this when you need to understand the scope boundaries of the three build-mcp-use-* skills.*
 
-## Server
+## Three domains
 
-You write a server when you have **capabilities to expose** — a database, an API wrapper, a file system, a render pipeline, anything an LLM-driven host might invoke.
+| Domain | Package | Skill | You build |
+|--------|---------|-------|-----------|
+| **Server** | `mcp-use` | `build-mcp-use-server` | MCP endpoints: tools, resources, prompts, OAuth |
+| **Client** | `@mcp-use/client` | `build-mcp-use-client` | MCP connections: call tools, read resources, list prompts |
+| **Agent** | `@mcp-use/agent` | `build-mcp-use-agent` | Multi-step workflows: planning, tool-calling loops, reasoning |
 
-- API: `import { MCPServer } from "mcp-use/server"`
-- Primitives: tools, resources, prompts, MCP Apps widgets
-- Transports: stdio (Claude Desktop, Cursor), Streamable HTTP (web hosts), serverless handlers
-- This skill covers everything server-side.
+## Server (this skill)
 
-## Client
+**What:** MCPServer instance listening at an HTTP endpoint; serves tools, resources, prompts; handles OAuth; may render views in ChatGPT.
 
-You write a client when you have an app that **needs to call out** to MCP servers — a custom IDE plugin, a backoffice tool, a script.
+**Scope:**
+- `MCPServer` constructor and configuration
+- Tool registration with Zod schemas
+- Resource and prompt registration
+- OAuth provider setup
+- MCP Apps views
+- Transport selection (Node.js, Next.js, Cloudflare, Vercel, etc.)
+- Deployment to cloud platforms
 
-- API: `import { MCPClient } from "mcp-use/client"`
-- Primitives: connect/disconnect, list tools/resources/prompts, invoke them, subscribe to notifications
-- Use cases: anything other than a stock MCP host (Claude Desktop, ChatGPT, Cursor) consuming MCP servers programmatically.
-- Skill: **`build-mcp-use-client`** (separate skill; this skill does not cover client SDK usage).
+**Not included:**
+- How to *use* a server from a client application (see `build-mcp-use-client`)
+- Multi-server orchestration or aggregation (see `build-mcp-use-agent`)
 
-## Agent
+## Client (sister skill)
 
-You write an agent when you have an LLM that should **orchestrate multiple MCP servers** — picking tools, chaining calls, planning multi-step actions.
+**What:** Code that calls a remote MCP server: initializes a session, lists tools, calls tools, reads resources.
 
-- API: `import { MCPAgent } from "mcp-use/agent"`
-- Primitives: LLM provider, tool selection, planner loop, observability
-- Use cases: AI assistants that use MCP servers as a tool layer.
-- Skill: **`build-mcp-use-agent`** (separate skill).
+**Scope:**
+- `@mcp-use/client` for connecting to servers
+- Calling tools and handling responses
+- Subscriptions and notifications
+- Error handling and retry logic
 
-## Routing decisions
+**Not included:**
+- How to *build* a server (this skill)
+- Agent-level orchestration across multiple servers
 
-| User goal | Skill |
-|---|---|
-| "Build an MCP server / extend my mcp-use server / add a widget" | this skill |
-| "Connect my app to an MCP server / list and call tools programmatically" | `build-mcp-use-client` |
-| "Build an LLM agent that uses MCP servers as tools" | `build-mcp-use-agent` |
-| "Build a server with raw `@modelcontextprotocol/sdk` (no `mcp-use`)" | `build-mcp-server-sdk-v1` or `build-mcp-server-sdk-v2` |
+## Agent (sister skill)
 
-## Mixed cases
+**What:** High-level automation that reasons, plans, and calls tools across one or more MCP servers.
 
-If the user is building both halves (e.g. an `mcp-use` server *and* a custom client that calls it), start with this skill for the server half and route to the appropriate sibling for the client half. Don't try to teach the other halves from inside this skill.
+**Scope:**
+- `@mcp-use/agent` for multi-step workflows
+- LLM-driven planning and tool selection
+- Context management across rounds
+- Fallback and error recovery
 
-## Read next
+**Not included:**
+- How to build individual servers
+- How to connect to individual servers (that's client scope)
 
-- `07-this-skill-vs-build-mcp-use-client.md` — disambiguation when the line is fuzzy.
+## Cross-domain interactions
 
-**Canonical doc:** https://manufact.com/docs/typescript/getting-started/welcome
+A single application can be all three:
+- **Server** is a tool provider (this skill)
+- **Client** connects to a downstream server
+- **Agent** orchestrates the flow
+
+Example: Your server calls another MCP server's tools via a client SDK, coordinated by agent logic.

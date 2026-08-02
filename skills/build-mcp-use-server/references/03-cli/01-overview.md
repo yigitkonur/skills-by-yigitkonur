@@ -1,80 +1,59 @@
-# `@mcp-use/cli` Overview
+# CLI Overview
 
-The build, dev, and deploy tool for `mcp-use` servers. Wraps TypeScript compilation, widget bundling, HMR, type generation, Inspector embedding, and Manufact Cloud deploys behind a single binary.
+*Read this to understand the command inventory and which command to use for each task.*
 
-## Install
-
-```bash
-npx -y @mcp-use/cli <command>          # No install needed
-npm install --save-dev @mcp-use/cli    # Project devDependency (recommended)
-npm install -g @mcp-use/cli            # Global (rarely needed)
-```
-
-`mcp-use@1.26.0` exposes the `mcp-use` binary and imports `@mcp-use/cli@3.1.2` internally. Scaffolded projects depend on `mcp-use`; installing `@mcp-use/cli` directly is only needed when you want the CLI package without the full framework dependency.
-
-## Commands
-
-| Command | One-line description | Reference |
-|---|---|---|
-| `create-mcp-use-app` | Scaffold a new project (separate npm package) | `02-create-mcp-use-app.md` |
-| `mcp-use dev` | Run dev server with HMR + Inspector + type-gen | `03-mcp-use-dev.md` |
-| `mcp-use build` | Compile TS and bundle widgets to `dist/` | `04-mcp-use-build.md` |
-| `mcp-use start` | Run the built server from `dist/` | `05-mcp-use-start.md` |
-| `mcp-use deploy` | Deploy to Manufact Cloud | `06-mcp-use-deploy.md` |
-| `mcp-use generate-types` | Regenerate `.mcp-use/tool-registry.d.ts` from Zod schemas | `07-mcp-use-generate-types.md` |
-| `mcp-use org list` | List orgs you belong to | `08-mcp-use-org-list-and-switch.md` |
-| `mcp-use org switch` | Interactively switch active org for `deploy` | `08-mcp-use-org-list-and-switch.md` |
-| `mcp-use org current` | Show the active org | `08-mcp-use-org-list-and-switch.md` |
-| `mcp-use login` | Authenticate via device-code flow | `13-device-flow-login.md` |
-| `mcp-use whoami` | Print the active session | `13-device-flow-login.md` |
-| `mcp-use logout` | Drop credentials | `13-device-flow-login.md` |
-| `mcp-use skills add` / `install` | Install AI agent skills into the project | — |
-
-Additional shipped command groups in `@mcp-use/cli@3.1.2`:
-
-| Command group | Purpose |
-|---|---|
-| `mcp-use client ...` | Terminal MCP client: connect, sessions, tools, resources, prompts, interactive REPL. |
-| `mcp-use deployments ...` | List, inspect, restart, delete, stop/start, and view logs for cloud deployments. |
-| `mcp-use servers ...` | List, inspect, delete cloud servers; `servers env ...` manages server env vars. |
-
-`mcp-use introspect`, `mcp-use serve`, and `mcp-use generate-docs` are not commands in the `mcp-use@1.26.0` installed CLI dependency. Files `09` through `11` are intentional tombstones so agents do not reintroduce those names; read `../00-version-drift.md` and re-verify against the installed CLI before removing them.
-
-For the full flag matrix in one place, see `12-flag-reference.md`. For env vars the CLI itself reads, see `14-environment-variables.md`.
-
-## Help anywhere
+The `mcp-use` CLI (v4.x beta) provides commands for local development, cloud authentication, deployment, and client testing. The binary is installed via:
 
 ```bash
-mcp-use --help
-mcp-use <command> --help
-npx @mcp-use/cli <command> --help
+npm install -g @mcp-use/cli@4.0.0-beta.15
+# or invoked directly:
+npx @mcp-use/cli@4.0.0-beta.15 dev
 ```
 
-`--help` reflects the live binary — authoritative when this skill lags behind a CLI release.
+## Command Inventory
 
-## Typical lifecycle
+| Command | Purpose | When to use |
+|---------|---------|------------|
+| **`dev`** | Start dev server with HMR, Inspector, tunnel | Active development; testing tools/views locally |
+| **`build`** | Build server + views into `.mcp-use/build/` | Before production deployment or local testing of prod build |
+| **`typecheck`** | Refresh `.mcp-use/mcp-env.d.ts`, run TypeScript | CI/CD or local type safety check |
+| **`start`** | Serve production build from `.mcp-use/build/` | Production testing or local start after build |
+| **`login`** | Authenticate with Manufact Cloud | Enable cloud deploy/org/servers commands |
+| **`logout`** | Clear local cloud credentials | Sign out of cloud CLI |
+| **`whoami`** | Show authenticated user and active org | Verify login status |
+| **`org`** | Manage active organization | Select/list orgs (exact subcommands vary) |
+| **`servers`** | Manage cloud servers and env vars | Configure cloud deployments |
+| **`deployments`** | Manage cloud deployments and logs | View/manage active deployments |
+| **`deploy`** | Deploy to Manufact Cloud | Ship server to cloud (GitHub or upload) |
+| **`client`** | Connect to and invoke MCP servers | Test server from CLI; save connections; run tools/prompts |
+| **`screenshot`** | Capture view screenshot | Test MCP Apps widgets without browser |
 
-```bash
-npx create-mcp-use-app@latest my-server   # scaffold
-cd my-server
-npm run dev                                # mcp-use dev
-npm run build                              # mcp-use build
-npm run start                              # mcp-use start
-mcp-use login                              # one-time
-npm run deploy                             # mcp-use deploy
-```
+## Global Flags
 
-## Output artifacts
+- `--help, -h` — Show help for any command
+- `--version, -v` — Print CLI version
+- `--path <directory>` — Project root (default: current directory)
 
-| File | Created by | Purpose |
-|---|---|---|
-| `dist/` | `mcp-use build` | Compiled server + widget bundles |
-| `dist/mcp-use.json` | `mcp-use build` | Build manifest — entry point, widget schemas, build ID, tunnel config |
-| `.mcp-use/tool-registry.d.ts` | `mcp-use generate-types` (and `dev`) | Tool argument / return types |
-| `~/.mcp-use/cli-sessions.json` | `mcp-use client` | Persists terminal client sessions |
-| `.mcp-use/project.json` | `mcp-use deploy` | Links local project to a cloud deployment for stable URLs |
-| `~/.mcp-use/config.json` | `mcp-use login` | User-scope auth credentials |
+## Key Defaults
 
-`.mcp-use/` is auto-added to `.gitignore`.
+- **Port:** `$PORT` env var, then flag `--port`, then fallback `3000`
+- **Host:** `$HOST` env var, then flag `--host`, then fallback `127.0.0.1` (localhost-only by default for security)
+- **Views directory:** `views/` or `<mcp-dir>/views/`
+- **Build output:** `.mcp-use/build/`
+- **Inspector mount (dev):** Automatically at `/mcp/inspector`; disable with `--no-inspector`
 
-**Canonical doc:** https://manufact.com/docs/typescript/server/cli-reference
+## Removed in v4.x (v2 CLI)
+
+These commands do **not** exist in v4.0.0-beta.15. Files `04-07` and `09-13` below document why they are absent and point to migration paths:
+
+- `mcp-use generate-types` — merged into `typecheck`
+- `mcp-use introspect` — use Inspector instead
+- `mcp-use serve` — use `start` instead
+- `mcp-use generate-docs` — not shipped
+
+## Next Steps
+
+- **Local development:** read `03-mcp-use-dev.md`
+- **Production build:** read `04-mcp-use-build-and-typecheck.md`
+- **Cloud deployment:** read `06-mcp-use-deploy-and-cloud.md`
+- **All flags reference:** read `09-flag-reference.md`

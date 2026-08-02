@@ -1,6 +1,8 @@
 # Tool Anti-Patterns
 
-Tight catalog of what not to do. Each entry is a do-X-not-Y rule with the underlying reason.
+*Read this when reviewing your tools for common pitfalls.*
+
+Vendor guardrails and patterns to avoid when designing and implementing tools.
 
 ## Schema design
 

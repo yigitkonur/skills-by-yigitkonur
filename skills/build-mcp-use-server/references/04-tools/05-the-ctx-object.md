@@ -1,62 +1,96 @@
-# The `ctx` Object
+# The `ctx` Object (RequestContext)
 
-The handler signature is `async (args, ctx) => result`. `args` is the validated, typed input. `ctx` is the per-call context — session state, client identity, logging, and the advanced MCP capabilities (sampling, elicitation, progress).
+*Read this when you need context methods and capabilities in your tool handler.*
+
+The handler signature is `async (input, ctx) => result`. `input` is the validated, typed arguments. `ctx: RequestContext<TUser, HasOAuth, TEnv>` is the per-request context.
 
 ```typescript
-async (args, ctx) => {
-  await ctx.log("info", "starting");
+async (input, ctx) => {
+  await ctx.sendLog("info", "Starting");
   const { name } = ctx.client.info();
-  // ...
+  if (ctx.client.supportsViews()) {
+    // Send a view-compatible response
+  }
+  return { content: [...] };
 }
 ```
 
-## Surface at a glance
+## Full Surface
 
-| Property | Purpose | Deep dive |
+**RequestClientContext methods:**
+
+| Method | Signature | Purpose |
 |---|---|---|
-| `ctx.session` | Session object (`sessionId`) when the call is associated with a session. | `10-sessions/` |
-| `ctx.client` | Client identity and capabilities. | `16-client-introspection/` |
-| `ctx.auth` | Authenticated user (OAuth). | `11-auth/` |
-| `ctx.log(level, msg)` | Send log messages to the client. | `15-logging/` |
-| `ctx.reportProgress?.(loaded, total, msg)` | Progress updates for long-running tools when a progress token is present. | `14-notifications/` |
-| `ctx.elicit(prompt, schema)` | Request user input mid-execution. | `12-elicitation/` |
-| `ctx.sample(request)` | Request LLM completion from the client. | `13-sampling/` |
-| `ctx.sendNotification(method, params)` | Custom server-to-client notification. | `14-notifications/` |
+| `can(capability)` | `(capability: string) => boolean` | Check if client declares a top-level capability (e.g., `"elicitation"`, `"roots"`) |
+| `capabilities()` | `() => ClientCapabilities` | Get shallow copy of all advertised capabilities |
+| `extension(id)` | `(id: string) => Record<string, unknown> \| undefined` | Get extension settings by namespaced ID (e.g., `"io.modelcontextprotocol/ui"`) |
+| `info()` | `() => Partial<Implementation>` | Get client name/version; partial for v1 compat |
+| `user()` | `() => UserContext \| undefined` | Get OpenAI-specific end-user hints (locale, userAgent, location, etc.) — unverified client-reported data |
+| `supportsViews()` | `() => boolean` | Check if client declares `io.modelcontextprotocol/ui` extension with MCP App MIME type |
 
-## `ctx.client`
+**RequestContextBase fields:**
 
-Stable session-level data plus capability checks. All values come from the MCP `initialize` handshake unless noted.
+| Field | Type | Purpose |
+|---|---|---|
+| `signal` | `AbortSignal` | Aborted when client cancels or connection drops |
+| `request` | `HonoRequest \| undefined` | Hono request; raw Web Request via `request.raw` |
+| `client` | `RequestClientContext` | Capability queries (see methods above) |
+| `inputResponses` | `Record<string, unknown> \| undefined` | Client responses to `input_required` elicitation (on retry round) |
+| `requestState` | `RequestStateAccessor` | Opaque state codec (from `createRequestStateCodec`) for round-trip validation |
+| `sendNotification` | `(method: string, params?: Record<string, unknown>) => Promise<void>` | Send one-way notification on this request's response stream |
+| `reportProgress` | `(progress: number, total?: number, message?: string) => Promise<boolean>` | Report progress; returns `true` if delivered, `false` if not requested |
+| `sendLog` | `(level: "debug" \| "info" \| "notice" \| "warning" \| "error" \| "critical" \| "alert" \| "emergency", data: unknown, logger?: string) => Promise<void>` | Send log message to client |
 
-| Method | Returns |
-|---|---|
-| `ctx.client.info()` | `{ name, version }` of the client (e.g. `"ChatGPT", "1.0.0"`). |
-| `ctx.client.can("sampling")` | `true`/`false` for a named capability. |
-| `ctx.client.supportsApps()` | `true` if the client is MCP Apps / ChatGPT compatible. |
-| `ctx.client.extension(id)` | Returns extension metadata by ID, or `undefined`. |
-| `ctx.client.user()` | Per-invocation `UserContext` from `params._meta`, or `undefined`. Client-reported and unverified — never use for access control. |
+**OAuthAuth fields (when OAuth configured):**
+
+| Field | Type | Purpose |
+|---|---|---|
+| `user` | `TUser` | Authenticated user (provider-specific shape) |
+| `payload` | `Record<string, unknown>` | Verified access-token claims or introspection data |
+| `accessToken` | `string` | Raw bearer token for downstream requests |
+| `scopes` | `string[]` | OAuth scopes granted to token |
+| `permissions` | `string[]` | Provider-normalized permissions |
+| `clientId` | `string \| undefined` | OAuth client ID from `client_id` or `azp` claim |
+| `expiresAt` | `number` | Unix time (seconds) access-token expires |
+| `resource` | `URL \| undefined` | Resource audience token authorizes |
+
+## Usage Examples
+
+Check capabilities before acting:
 
 ```typescript
-const { name, version } = ctx.client.info();
-if (ctx.client.can("sampling")) {
-  const reply = await ctx.sample({ messages: [...], maxTokens: 200 });
+if (ctx.client.supportsViews()) {
+  // Shape response for View-capable client
+  return {
+    content: [...],
+    structuredContent: { /* matches outputSchema */ },
+  };
 }
 ```
 
-For verified identity, use `ctx.auth` (requires OAuth).
-
-## `ctx.log`
-
-Send structured log messages to the client during handler execution.
+Log during execution:
 
 ```typescript
-await ctx.log("info", "Processing started");
-await ctx.log("debug", `Item ${i} of ${total}`);
-await ctx.log("error", "Database unavailable");
+await ctx.sendLog("info", `Processing ${input.count} items`);
+await ctx.sendLog("warning", "Request approaching timeout");
 ```
 
-Levels (ascending severity): `debug`, `info`, `notice`, `warning`, `error`, `critical`, `alert`, `emergency`. Optional third arg is a logger name string.
+Access authenticated user:
 
-## `ctx.reportProgress`
+```typescript
+if (ctx.auth) {
+  const { user, permissions } = ctx.auth;
+  // user shape depends on OAuth provider
+}
+```
+
+Report progress:
+
+```typescript
+for (let i = 0; i < total; i++) {
+  const sent = await ctx.reportProgress(i, total, `Item ${i}/${total}`);
+  if (!sent) console.log("No progress token supplied");
+}
 
 For long-running tools, report progress against a total. Only effective when the client passed a progress token.
 

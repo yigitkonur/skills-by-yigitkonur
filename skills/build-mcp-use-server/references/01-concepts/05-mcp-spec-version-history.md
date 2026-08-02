@@ -1,36 +1,57 @@
-# MCP spec version history
+# MCP Spec Version History
 
-The Model Context Protocol has evolved through several versions. `mcp-use` always targets the current spec while preserving backward compatibility for older clients.
+*Read this when you need to understand which MCP protocol features are available in a given v2 release.*
 
-## Spec milestones
+## Separate axes: MCP protocol vs mcp-use framework
 
-| Spec date | Notable changes |
-|---|---|
-| **2024-11-05** | First public spec. Tools, resources, prompts, sampling, stdio + SSE transports. |
-| **2025-03-26** | Streamable HTTP introduced as a replacement for SSE. Sessions, progress tokens. Elicitation added. |
-| **2025-06-18** | Resource templates, structured content (`structuredContent`), tool annotations, `_meta` field. |
-| **2025-11-25** | MCP Apps protocol (widgets) standardized. `text/html;profile=mcp-app` MIME. |
-| **2026-03-04** | DCR (Dynamic Client Registration) for OAuth becomes the default. ChatGPT Apps SDK protocol distinct from MCP Apps. |
+**MCP protocol spec** versions (governed by `@modelcontextprotocol/sdk`):
+- **v2.0.0** (2025+) — current standard MCP protocol (what mcp-use v2 implements)
 
-## How `mcp-use` handles version differences
+**mcp-use package** versions (independent):
+- **v2.0.0-beta.66** (shipped; dist-tag `beta`) — the v2 framework shipping now
+- **v1.34.5** (shipped; dist-tag `latest`) — v1 end-of-life
 
-- The server advertises the spec version it implements via `initialize` capabilities.
-- Clients negotiate down to a shared version. `mcp-use` accepts older clients gracefully.
-- Features that require newer spec versions are guarded — e.g. `ctx.client.can("elicitation")` returns `false` for clients below 2025-03-26.
+This skill teaches MCP **protocol** features as shipped in `@modelcontextprotocol/server@2.0.0`. MCP protocol versions are not the same as mcp-use package versions.
 
-## When you'll hit version issues
+## MCP protocol 2.0.0 features
 
-- **Older client + newer feature** → guard with `ctx.client.can(...)` (`16-client-introspection/03`) and supply a fallback. Don't crash.
-- **Streamable HTTP rejected** → client wants SSE alias (`09-transports/06`).
-- **Widget MIME unrecognized** → host predates MCP Apps; route to a non-widget tool path or set `widget` config to optional.
+| Feature | Protocol support | mcp-use v2 support | Notes |
+|---------|------------------|-------------------|-------|
+| Tools + schemas | v2.0.0 | ✅ Native | Definition-first API; Standard Schema (Zod v4, etc.) |
+| Resources | v2.0.0 | ✅ Native | Static + URI templates; completion callbacks |
+| Prompts | v2.0.0 | ✅ Native | Completable arguments; message templates |
+| Elicitation (input_required) | v2.0.0 | ✅ Native | Form mode; request-state codec for round-tripping |
+| Sampling (LLM generation) | v2.0.0 | ❌ **Removed** | Host generates instead; server provides tools |
+| Streamable HTTP | v2.0.0 | ✅ Primary | Fetch API handler; stateless per-request |
+| Stdio | v2.0.0 | ❌ **Removed** | Use HTTP or raw SDK only |
+| Resource subscriptions | v2.0.0 | ✅ Native | `server.notifyResourceUpdated(uri)` |
+| Progress tokens | v2.0.0 | ✅ Native | `await ctx.reportProgress(current, total)` |
+| MCP Apps views | v2.0.0 | ✅ Native | React components in `views/<name>/view.tsx`; `text/html;profile=mcp-app` MIME |
+| Structured content | v2.0.0 | ✅ Native | `structuredContent` field for tool results |
 
-## Migrating between mcp-use versions
+## Capability detection
 
-See `28-migration/`:
+Query client capabilities at runtime:
 
-- `02-mcp-use-v1-to-v2.md`
-- `03-sse-to-streamable-http.md`
-- `04-appssdk-to-mcpapps.md`
-- `05-dcr-vs-proxy-mode-shift.md`
+```typescript
+ctx.client.can("elicitation")       // Form-mode or URL-mode input
+ctx.client.supportsViews()           // MCP Apps views supported
+ctx.client.extension("io.example")   // Custom extension presence
+```
 
-**Canonical doc:** https://manufact.com/docs/typescript/changelog/changelog
+## Version skew handling
+
+Clients using older protocol versions may connect. Degrade gracefully:
+
+```typescript
+if (!ctx.client.can("elicitation")) {
+  return { content: [{ type: "text", text: "Unsupported" }] };
+}
+// Proceed with elicitation-dependent flow
+```
+
+See `16-client-introspection/02-capabilities.md` for the full surface.
+
+## Migration between mcp-use versions
+
+See cluster `28-migration/` for v1→v2 paths and deprecated-feature removals.

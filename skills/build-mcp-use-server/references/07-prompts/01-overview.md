@@ -1,22 +1,28 @@
 # Prompts Overview
 
-A **prompt** is a reusable instruction template the user invokes — code review workflows, debug sessions, structured analyses. Prompts produce one or more chat messages, optionally seeded by user-supplied arguments.
+*Read this when you need to expose reusable instruction templates that users invoke with optional parameters, producing chat messages.*
 
-## When to use a prompt
+## What is a prompt
 
-| You expose | Primitive |
+A prompt is a reusable instruction template the user invokes by name — code review workflows, structured analyses, diagnostic guides. Prompts accept optional arguments and return one or more LLM chat messages.
+
+| You need to expose | Use |
 |---|---|
-| A reusable LLM instruction with optional parameters | Prompt |
-| Read-only data | Resource |
-| An action with side effects | Tool |
+| Reusable LLM instruction with optional parameters | Prompt |
+| Read-only data to fetch and display | Resource |
+| Action with side effects, driven by LLM | Tool |
 
-Prompts are **invoked by the user**, not selected autonomously by the LLM. Tools are LLM-driven; prompts are user-driven.
+Prompts are **user-invoked**, not automatically selected by the LLM. Tools are LLM-driven; prompts are user-driven.
 
-## API
+---
+
+## Registration
 
 ```typescript
+import { MCPServer } from "mcp-use";
 import { z } from "zod";
-import { text } from "mcp-use/server";
+
+const server = new MCPServer({ name: "my-server", version: "1.0.0" });
 
 server.prompt(
   {
@@ -24,61 +30,98 @@ server.prompt(
     description: "Review code for bugs and improvements",
     schema: z.object({
       code: z.string().describe("Source code to review"),
-      language: z.string().default("typescript").describe("Programming language"),
+      language: z.string().default("typescript"),
     }),
   },
-  async ({ code, language }) =>
-    text(`Review this ${language} code for bugs and improvements:\n\n\`\`\`${language}\n${code}\n\`\`\``),
+  async ({ code, language }, ctx) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Review this ${language} code for bugs and improvements:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+      },
+    }],
+  })
 );
 ```
+
+---
+
+## PromptDefinition fields
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `name` | `string` | (required) | Unique identifier within the server |
+| `title` | `string \| undefined` | (inferred from `name`) | Human-readable display name |
+| `description` | `string \| undefined` | `undefined` | Shown to users in prompt pickers |
+| `schema` | `StandardSchemaWithJSON \| undefined` | `undefined` | Zod v4 / Standard Schema for arguments; fields wrapped with `completable()` gain autocomplete |
+
+---
+
+## Callback signature
+
+```typescript
+type PromptCallback<TInput, TUser, HasOAuth, TEnv> = 
+  (params: TInput, ctx: RequestContext<TUser, HasOAuth, TEnv>) 
+    => GetPromptResult | CallToolResult | Promise<GetPromptResult | CallToolResult>
+```
+
+**GetPromptResult (preferred):**
+```typescript
+{
+  messages: PromptMessage[]
+  // where PromptMessage = { role: "user" | "assistant", content: ContentBlock | ContentBlock[] }
+}
+```
+
+---
+
+## Static vs template prompts
+
+| Kind | Has `schema`? | Use when |
+|---|---|---|
+| Static | No | Fixed instructions, no variation |
+| Template | Yes | Behavior depends on user-supplied arguments |
+
+See `02-static-prompts.md` and `03-prompt-templates.md`.
+
+---
+
+## Completable arguments
+
+Fields in the prompt's `schema` can be wrapped with `completable()` to provide autocomplete suggestions:
+
+```typescript
+import { completable } from "mcp-use";
+
+schema: z.object({
+  language: completable(
+    z.string(),
+    ["python", "typescript", "go", "rust"]
+  ),
+})
+```
+
+See `04-completable-arguments.md` for static lists and dynamic callbacks.
+
+---
 
 ## Wire protocol
 
 | JSON-RPC method | Purpose |
 |---|---|
 | `prompts/list` | Enumerate available prompts |
-| `prompts/get` | Render a prompt with the user-supplied arguments |
+| `prompts/get` | Render a prompt with user-supplied arguments |
 | `notifications/prompts/list_changed` | Server-pushed notification of registry change |
-| `completion/complete` | Argument autocompletion (see `04-completable-arguments.md`) |
+| `completion/complete` | Argument autocompletion (v2-compatible; see `04-completable-arguments.md`) |
 
-## Definition fields
-
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `name` | `string` | yes | Unique identifier within the server |
-| `title` | `string` | no | Human display label; falls back to `name` |
-| `description` | `string` | no | Shown to users in prompt pickers |
-| `schema` | `z.ZodObject` | no | Zod schema for argument validation |
-| `args` | `InputDefinition[]` | no | **Deprecated.** Use `schema` instead |
-| `cb` | `PromptCallback` | no | Inline handler (alternative to second argument) |
-
-A prompt without a `schema` takes no arguments — fixed text:
-
-```typescript
-server.prompt(
-  { name: "summarize-logs", description: "Summarize recent logs" },
-  async () => text("Retrieve the recent logs and summarize errors, warnings, and unusual patterns."),
-);
-```
-
-A prompt with a `schema` accepts validated arguments — the server rejects bad input before your handler runs.
-
-## Static vs template
-
-| Kind | Definition | Use when |
-|---|---|---|
-| Static | No `schema` | Fixed instructions, no variation |
-| Template | `schema: z.object({...})` | Behavior depends on user-supplied arguments |
-
-See `02-static-prompts.md` and `03-prompt-templates.md`.
+---
 
 ## Cluster map
 
 | File | Topic |
 |---|---|
-| `02-static-prompts.md` | Fixed-text prompts |
-| `03-prompt-templates.md` | Argument schemas, multi-message construction, response helpers |
-| `04-completable-arguments.md` | `completable()` for prompt arguments — single canonical home |
-| `05-prompt-engineering.md` | Anti-patterns, few-shot, prompt vs tool decision |
-
-**Canonical doc:** https://manufact.com/docs/typescript/server/prompts
+| `02-static-prompts.md` | Fixed-text prompts without arguments |
+| `03-prompt-templates.md` | Argument schemas, multi-message construction |
+| `04-completable-arguments.md` | `completable()` for argument autocomplete |
+| `05-prompt-engineering.md` | Prompt content guidance, prompt vs tool decision |

@@ -1,72 +1,145 @@
 # Static Prompts
 
+*Read this when you need a fixed-text prompt without user-supplied arguments.*
+
 A static prompt has **no arguments** — register it without a `schema`. The handler returns the same content every time.
+
+---
 
 ## Registration
 
 ```typescript
-import { text } from "mcp-use/server";
+import { MCPServer } from "mcp-use";
+
+const server = new MCPServer({ name: "example", version: "1.0.0" });
 
 server.prompt(
-  { name: "summarize-logs", description: "Summarize recent application logs" },
-  async () => text("Retrieve the recent logs and summarize errors, warnings, and unusual patterns."),
+  {
+    name: "summarize-logs",
+    description: "Summarize recent application logs",
+  },
+  async (params, ctx) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: "Retrieve the recent logs and summarize errors, warnings, and unusual patterns.",
+      },
+    }],
+  })
 );
 ```
 
-## When to use
+---
 
-| Use static when | Use a template instead when |
+## When to use static
+
+| Use static when | Use a template instead |
 |---|---|
 | Instructions are fixed | Behavior varies per call |
-| There is no per-user context to inject | The user picks language, dialect, focus area |
-| The prompt is a canned workflow | Arguments toggle behavior or set constraints |
+| No per-user/per-request context to inject | User picks language, focus area, or sets constraints |
+| Canned workflow — always the same prompt | Arguments toggle behavior or set parameters |
 
-If you find yourself writing branching logic inside a static prompt, you actually want a template — see `03-prompt-templates.md`.
+If you find yourself branching logic inside a static prompt, you need a template — see `03-prompt-templates.md`.
+
+---
 
 ## Embedding resource references
 
-Prompts often reference resource URIs by name in the prompt text. Smart clients (Claude, Cursor) resolve these and provide the content to the LLM:
+Prompts often reference resource URIs by name in the text. Smart clients (Claude, Cursor) resolve these and provide the content to the LLM:
 
 ```typescript
 server.prompt(
-  { name: "review-config", description: "Review the current application configuration" },
-  async () =>
-    text(
-      "Review the configuration at config://app. Flag any non-default values, deprecated keys, or insecure settings."
-    ),
+  {
+    name: "review-config",
+    description: "Review the current application configuration",
+  },
+  async (params, ctx) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: "Review the configuration at config://app. Flag any non-default values, deprecated keys, or insecure settings.",
+      },
+    }],
+  })
 );
 ```
 
 The user invokes the prompt; the client fetches `config://app` via `resources/read` and includes it in the LLM context.
 
+---
+
 ## Multi-message static prompts
 
-Use the `{ messages: [] }` return shape to seed a system + user pair:
+Use multiple messages to seed a system + user pair:
 
 ```typescript
 server.prompt(
-  { name: "incident-triage", description: "Open a structured incident triage" },
-  async () => ({
+  {
+    name: "incident-triage",
+    description: "Open a structured incident triage",
+  },
+  async (params, ctx) => ({
     messages: [
-      { role: "system", content: "You are an on-call SRE. Be concise; lead with severity." },
-      { role: "user", content: "Open a triage. List the questions you need answered first." },
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: "You are an on-call SRE. Be concise; lead with severity. Open a triage. List the questions you need answered first.",
+        },
+      },
     ],
-  }),
+  })
 );
 ```
 
-The shape is the same as the template version — see `03-prompt-templates.md` for the full message format.
+See `03-prompt-templates.md` for the full message and content block structure.
+
+---
+
+## Return shape
+
+Prefer `GetPromptResult`:
+
+```typescript
+{
+  messages: PromptMessage[]
+  // where PromptMessage = {
+  //   role: "user" | "assistant"
+  //   content: ContentBlock | ContentBlock[]
+  // }
+}
+```
+
+Where `ContentBlock` is:
+```typescript
+{ type: "text", text: string } 
+| { type: "image", data: string, mimeType: string }
+| { type: "resource", uri: string, mimeType?: string, text?: string, blob?: Uint8Array }
+```
+
+---
 
 ## Notifying changes
 
-If you register or remove a static prompt at runtime, notify clients:
+If you register or remove a static prompt at runtime, notify clients to refresh:
 
 ```typescript
 server.prompt(
-  { name: "new-canned-workflow", description: "Newly added" },
-  async () => text("..."),
+  {
+    name: "new-workflow",
+    description: "Newly added",
+  },
+  async (params, ctx) => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: "..." },
+    }],
+  })
 );
-await server.sendPromptsListChanged();
+
+await server.notifyPromptsChanged();
 ```
 
 Clients re-issue `prompts/list` and refresh their UI.

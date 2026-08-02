@@ -1,113 +1,112 @@
-# WorkOS
+# OAuth Provider: WorkOS
 
-Enterprise SSO via WorkOS AuthKit. DCR-direct — clients register with WorkOS, the server only verifies tokens.
+*Read this when integrating WorkOS for enterprise SSO and authentication.*
 
-## Prerequisites
+## Import & Factory
 
-1. Sign up at the [WorkOS Dashboard](https://dashboard.workos.com/), create a project.
-2. **Connect → Configuration** — enable **Dynamic Client Registration**.
-3. **Configuration → Redirects** — add MCP client redirect URIs:
-   - `http://localhost:*/oauth/callback`  (dev — Inspector, mcpc)
-   - `https://your-app.example.com/oauth/callback`  (prod)
+```typescript
+import { oauthWorkOSProvider } from "mcp-use/oauth/workos";
 
-## Environment variables
+const oauth = oauthWorkOSProvider({
+  subdomain: "example.authkit.app",
+});
+```
+
+## Required Options
+
+| Option | Type | Example | Notes |
+|--------|------|---------|-------|
+| `subdomain` | `string` | `"example.authkit.app"` | WorkOS AuthKit subdomain (scheme optional) |
+
+## Optional Options
+
+```typescript
+oauthWorkOSProvider({
+  subdomain: "...",
+  resource?: string \| URL,             // Full MCP endpoint URL
+  requiredScopes?: readonly string[],   // Required by bearer gate
+  scopesSupported?: readonly string[],  // Advertised to clients
+  resourceName?: string,                // Display name
+  serviceDocumentationUrl?: URL,        // Documentation link
+})
+```
+
+## User Type
+
+```typescript
+type WorkOSOAuthUser = {
+  id: string;                 // WorkOS subject ID
+  email?: string;
+  emailVerified?: boolean;
+  name?: string;
+  preferredUsername?: string;
+  firstName?: string;
+  lastName?: string;
+  picture?: string;
+  roles: string[];            // From access token (non-nil, may be empty)
+  organizationId?: string;    // Active WorkOS organization
+  sessionId?: string;         // WorkOS session ID
+};
+```
+
+Access in tools:
+
+```typescript
+async (input, ctx) => {
+  const userId = ctx.auth.user.id;
+  const org = ctx.auth.user.organizationId;
+  const roles = ctx.auth.user.roles;
+}
+```
+
+## Environment Variables
 
 ```bash
-MCP_USE_OAUTH_WORKOS_SUBDOMAIN=your-company.authkit.app  # required, full AuthKit domain
+# .env
+WORKOS_SUBDOMAIN=example.authkit.app
 ```
 
-`apiKey` and `clientId` are not part of OAuth config — store them in any env var if your tool handlers call the WorkOS Management API.
+```typescript
+const oauth = oauthWorkOSProvider({
+  subdomain: process.env.WORKOS_SUBDOMAIN!,
+});
+```
 
-## Server config
+## Gotchas
 
-```ts
-import { MCPServer, oauthWorkOSProvider } from 'mcp-use/server'
+1. **Subdomain only**: Pass just the subdomain (e.g., `example.authkit.app`), not a full URL. The scheme is inferred.
 
-// Zero-config
+2. **No clientId/clientSecret needed**: WorkOS AuthKit uses subdomain-based registration; no manual client credentials required.
+
+3. **Organization context**: If user is not in an organization, `organizationId` is undefined. Check before using.
+
+4. **Roles array**: Always present but may be empty. Use `roles.includes(...)` to check.
+
+## Typical Setup
+
+```typescript
+import { MCPServer, oauthWorkOSProvider } from "mcp-use";
+import { z } from "zod";
+
 const server = new MCPServer({
-  name: 'my-server',
-  version: '1.0.0',
-  oauth: oauthWorkOSProvider(),
-})
+  name: "workos-server",
+  oauth: oauthWorkOSProvider({
+    subdomain: process.env.WORKOS_SUBDOMAIN!,
+  }),
+});
 
-await server.listen(3000)
-```
-
-Explicit config:
-
-```ts
-oauth: oauthWorkOSProvider({
-  subdomain: 'your-company.authkit.app',
-  verifyJwt: process.env.NODE_ENV === 'production',
-  scopesSupported: ['email', 'offline_access', 'openid', 'profile'],
-})
-```
-
-## Multi-tenant filtering
-
-WorkOS tokens include `organization_id` (custom claim). Use it to scope data:
-
-```ts
-server.tool(
-  { name: 'get-documents' },
-  async (_args, ctx) => {
-    const orgId = ctx.auth.user.organization_id as string | undefined
+server.tool({
+  name: "org-users",
+  description: "List users in organization",
+  inputSchema: z.object({}),
+  async (input, ctx) => {
+    const orgId = ctx.auth.user.organizationId;
     if (!orgId) {
-      return { content: [{ type: 'text', text: 'Organization context required' }], isError: true }
+      return { isError: true, content: [{ type: "text", text: "No organization" }] };
     }
-    const docs = await db.documents.findMany({ where: { organizationId: orgId } })
-    return { content: [{ type: 'text', text: JSON.stringify(docs) }] }
-  }
-)
+    return { content: [{ type: "text", text: `Org: ${orgId}` }] };
+  },
+});
+
+await server.listen(3000);
 ```
-
-`ctx.auth.user.organization_id` and `ctx.auth.user.roles` are typed as `unknown` — narrow before use.
-
-## User profile claims
-
-```ts
-server.tool(
-  { name: 'get-profile' },
-  async (_args, ctx) => ({
-    content: [{ type: 'text', text: JSON.stringify({
-      userId: ctx.auth.user.userId,
-      email: ctx.auth.user.email,
-      name: ctx.auth.user.name,
-      organizationId: ctx.auth.user.organization_id,
-      roles: ctx.auth.user.roles,
-      scopes: ctx.auth.scopes,
-    }) }],
-  })
-)
-```
-
-## Calling the WorkOS Management API
-
-For directory sync, audit logs, etc., import the SDK and read your API key from env:
-
-```ts
-import { WorkOS } from '@workos-inc/node'
-const workos = new WorkOS(process.env.WORKOS_API_KEY!)
-
-server.tool(
-  { name: 'list-team' },
-  async (_args, ctx) => {
-    const orgId = ctx.auth.user.organization_id as string
-    const { data } = await workos.directorySync.listUsers({ directory: orgId })
-    return { content: [{ type: 'text', text: JSON.stringify(data) }] }
-  }
-)
-```
-
-## Anti-patterns
-
-- Don't try to set `clientId` for first-class DCR — WorkOS issues a per-client `client_id` automatically.
-- Don't read `organization_id` without narrowing — it is `unknown` on `payload`.
-- Don't use a non-AuthKit WorkOS deployment with `oauthWorkOSProvider` — only AuthKit exposes the necessary OAuth endpoints.
-
-## Cross-references
-
-- Decision matrix: `../01-overview-decision-matrix.md`
-- Permission guards: `../04-permission-guards.md`
-- Canonical: https://manufact.com/docs/typescript/server/authentication/providers/workos
-- WorkOS AuthKit MCP guide: https://workos.com/docs/authkit/mcp

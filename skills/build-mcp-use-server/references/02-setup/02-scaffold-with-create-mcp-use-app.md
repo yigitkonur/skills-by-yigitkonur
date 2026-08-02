@@ -1,76 +1,111 @@
-# Scaffold with `create-mcp-use-app`
+# Scaffold with create-mcp-use-app
 
-Use the scaffolder to get a working server with HMR, the Inspector, and example tools/resources/widgets pre-wired.
+*Read this to generate a complete v2 project from template.*
 
-## Run
+The `create-mcp-use-app@2.0.0-beta.14` scaffolder generates a ready-to-run MCP server with optional React views. Three templates cover the most common shapes.
+
+## Command
 
 ```bash
-npx create-mcp-use-app@latest my-mcp-server
-cd my-mcp-server
-npm install
+npm create mcp-use-app@2.0.0-beta.14 my-project --template mcp-server --install
+# or with npx
+npx create-mcp-use-app@2.0.0-beta.14 my-project --template mcp-server --install
+```
+
+Omit `--install` to skip npm install (run manually later).
+
+## Templates
+
+| Template | Use when | Includes |
+|----------|----------|----------|
+| **`mcp-server`** | Building tools, resources, or prompts without UI | `index.ts`, tools + prompts demo (weather tool, code-review prompt), `tsconfig.json`, `package.json` with scripts |
+| **`mcp-apps`** | Building interactive React views bound to tools | Same as `mcp-server` + `views/` folder, `react`, `react-dom`, prebuilt view example |
+| **`blank`** | Minimal starting point; add incrementally | Empty `MCPServer`, no tools or views; `index.ts` only |
+
+Select with `--template <name>` or `-t <name>`.
+
+## Generated file tree (mcp-server template)
+
+```
+my-project/
+├── index.ts                  # MCPServer instance + tool/prompt registration
+├── mcp-env.d.ts              # Generated type bridge (refresh via `mcp-use typecheck`)
+├── package.json              # Scripts: dev, build, typecheck, start, deploy
+├── tsconfig.json             # ESM + source maps, NodeNext module
+├── .gitignore
+└── README.md
+```
+
+**With `mcp-apps` template:** Add `views/` folder with React component examples.
+
+## Key script additions
+
+All templates add to `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "mcp-use dev",
+    "build": "mcp-use build",
+    "typecheck": "mcp-use typecheck",
+    "start": "mcp-use start",
+    "deploy": "mcp-use deploy"
+  }
+}
+```
+
+Run immediately after scaffold:
+
+```bash
+npm run dev          # Start dev server + Inspector at http://localhost:3000/mcp/inspector
+npm run typecheck    # Refresh mcp-env.d.ts + tsc --noEmit
+npm run build        # Build to `.mcp-use/build/`
+npm run start        # Serve production build
+npm run deploy       # Deploy to Manufact Cloud
+```
+
+## First run
+
+After scaffold, the server listens at `http://localhost:3000/mcp`:
+
+```bash
 npm run dev
+# Opens Inspector automatically at http://localhost:3000/mcp/inspector
 ```
 
-Alternative package managers:
+In another terminal:
 
 ```bash
-pnpm create mcp-use-app@latest my-mcp-server
-yarn create mcp-use-app@latest my-mcp-server
+npx @mcp-use/cli@4.0.0-beta.15 client connect local http://localhost:3000/mcp
+npx @mcp-use/cli@4.0.0-beta.15 client local tools list
 ```
 
-The dev server boots at `http://localhost:3000` with the Inspector at `/inspector` and the MCP endpoint at `/mcp`.
+## Package manager selection
 
-## What gets generated
-
-The default (`starter`) template produces:
-
-```
-my-mcp-server/
-├── resources/                     # React widgets (MCP Apps + ChatGPT)
-│   └── product-search-result/
-│       ├── widget.tsx             # Widget entry point
-│       ├── components/            # Sub-components
-│       └── types.ts
-├── public/                        # Static assets (icons, favicon)
-│   ├── icon.svg
-│   └── favicon.ico
-├── index.ts                       # MCP server entry point (root, not src/)
-├── package.json
-├── tsconfig.json
-├── README.md
-└── .mcp-use/                      # Auto-populated on dev/build
-    └── tool-registry.d.ts
-```
-
-The entry file is `index.ts` at the project root — not `src/server.ts`. `npm run dev` resolves the entry from this default.
-
-## What it includes out of the box
-
-- `mcp-use`, `zod`, `@mcp-use/cli` already installed.
-- A pre-configured `MCPServer` with `name`, `title`, `icons`, `websiteUrl` derived from the project name.
-- Example tool and resource registrations.
-- An example React widget exposed as a tool (when widgets are enabled by the template).
-- HMR for tools, resources, prompts, and widgets.
-- Auto-launched MCP Inspector in the browser.
-
-## Useful flags
+Pass `--npm`, `--pnpm`, or `--bun` to force a specific manager (auto-detected by default):
 
 ```bash
-npx create-mcp-use-app@latest my-server --template starter
-npx create-mcp-use-app@latest my-server --template mcp-apps --no-skills
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --pnpm --install
 ```
 
-See `03-template-flags.md` for the full template matrix.
+## Skills integration (Claude Code / Codex / Cursor)
 
-## Where to look next
+Scaffold with `--skills` to auto-install the mcp-apps-builder skill into `.claude/agents/skills/` (Claude Code), `.cursor/extensions/skills/` (Cursor), or `.codex/agents/skills/` (Codex):
 
-| Goal | Read |
-|---|---|
-| Pick a different template | `03-template-flags.md` |
-| Skip scaffolder, write a stdio server | `04-manual-stdio-server.md` |
-| Skip scaffolder, write an HTTP server | `05-manual-http-server.md` |
-| Add MCP to an app you already own | `06-add-to-existing-app.md` |
-| Wire scripts in `package.json` | `07-package-scripts.md` |
-| Configure `tsconfig.json` and types | `08-tsconfig-and-types.md` |
-| Write your first tool | `04-tools/01-overview.md` |
-| Verify the scaffold builds | `npm run build && npx mcp-use generate-types` |
+```bash
+npm create mcp-use-app@2.0.0-beta.14 my-server --template mcp-apps --skills --install
+```
+
+Requires git. Telemetry (anonymous, silent) reports: event=install, source=mcp-use, skills=mcp-apps-builder, agents=<detected>.
+
+## Lockfile & reproducibility
+
+Commit `package-lock.json` (npm), `pnpm-lock.yaml` (pnpm), or `bun.lockb` (bun). CI uses exact pinned versions.
+
+## Next steps
+
+1. Start dev: `npm run dev`
+2. Open Inspector: http://localhost:3000/mcp/inspector
+3. Add first tool: Edit `index.ts`, see `references/04-tools/01-overview.md`
+4. Add React view (mcp-apps only): Create `views/my-view/view.tsx`, see `references/18-mcp-apps/`
+5. Deploy: `npm run deploy` (requires GitHub + login)

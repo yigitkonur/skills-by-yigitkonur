@@ -1,47 +1,105 @@
-# Canonical Anchor: `mcp-use/mcp-multi-server-hub`
+# Canonical Example: Proxy Gateway with Multi-Tenant Auth
 
-Reference implementation for gateway composition. Mirror the pattern, not nonexistent `src/` paths: the example app is rooted at `index.ts`.
+*The canonical example for the 17-advanced cluster, referenced by other clusters. End-to-end proxy gateway with bearer token passthrough and resource URIs.*
 
----
+## Complete server
 
-## Repo
+```typescript
+import { MCPServer } from "mcp-use";
 
-`mcp-use/mcp-multi-server-hub` (GitHub)
+const server = new MCPServer({
+  name: "multi-api-gateway",
+  version: "1.0.0",
+  baseUrl: process.env.MCP_URL || "http://localhost:3000",
+});
 
-A worked example of a gateway built on `MCPServer`:
+// Proxy two upstream servers with independent auth
+await server.proxy({
+  users: {
+    url: process.env.USERS_API_URL || "https://users.example.com/mcp",
+    authToken: process.env.USERS_API_TOKEN,
+    timeout: 5000,
+  },
+  billing: {
+    url: process.env.BILLING_API_URL || "https://billing.example.com/mcp",
+    authToken: process.env.BILLING_API_TOKEN,
+    timeout: 5000,
+  },
+});
 
-- Defines `PROXY_CONFIG` and calls `await server.proxy(PROXY_CONFIG)` when entries are present.
-- Adds Hono middleware with `server.use(async (c, next) => ...)`.
-- Adds MCP operation middleware with `server.use("mcp:tools/call", ...)`.
-- Exposes local tools (`hub-status`, `hub-config-example`, `audit-log`) beside proxied tools.
-- Serves a dashboard widget from `resources/hub-dashboard/widget.tsx`.
+// Local health tool
+server.tool(
+  { name: "gateway_health" },
+  async () => ({
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({ status: "ok", upstreams: 2 }),
+      },
+    ],
+  })
+);
 
----
+await server.listen(process.env.PORT || 3000);
+```
 
-## Load-Bearing Files
+## Environment
 
-Read these first when adapting the pattern:
+```bash
+# .env
+USERS_API_URL=https://users.example.com/mcp
+USERS_API_TOKEN=sk-users-xxx
 
-| File | What it shows |
-|---|---|
-| `index.ts` | `MCPServer` constructor, Hono middleware, MCP operation middleware, `PROXY_CONFIG`, conditional `await server.proxy(PROXY_CONFIG)`, local tools, and `server.listen()`. |
-| `resources/hub-dashboard/widget.tsx` | Dashboard widget rendered by the `hub-status` tool. |
-| `resources/hub-dashboard/types.ts` | Shared props/types for the dashboard widget. |
-| `resources/styles.css` | Widget stylesheet loaded by the resource UI. |
+BILLING_API_URL=https://billing.example.com/mcp
+BILLING_API_TOKEN=sk-billing-yyy
 
----
+PORT=3000
+MCP_URL=http://localhost:3000
+```
 
-## What to Mirror
+## Calling the gateway
 
-1. **Async proxy registration at startup.** The example awaits `server.proxy(PROXY_CONFIG)` before registering the always-local hub tools.
-2. **Two middleware layers.** Use Hono `server.use(...)` for HTTP concerns and `server.use("mcp:tools/call", ...)` for MCP operation audit/rate-limit logic.
-3. **Audit the tool call name.** The example reads `ctx.params.name` in MCP operation middleware.
-4. **Keep local tools available.** Gateway tools coexist with proxied tools and can expose status/config/audit data.
+Clients connect to `http://localhost:3000/mcp` and see:
 
----
+- `users_listUsers`, `users_getUserById` (from upstream `users` server)
+- `billing_getInvoices`, `billing_createInvoice` (from upstream `billing` server)
+- `gateway_health` (local tool)
 
-## See Also
+Each upstream tool is namespaced with its config key. Static resources use `mcp-use-proxy://users/...` URIs.
 
-- **Proxy mechanics** → `01-server-proxy-and-gateway.md`
-- **Per-user upstream auth** → `02-session-based-proxy.md`
-- **Hono middleware and custom routes** → `../08-server-config/05-middleware-and-custom-routes.md`
+## Features demonstrated
+
+1. **Multi-upstream proxy** — two independent upstreams (lines 12–25)
+2. **Bearer auth passthrough** — tokens read from env (lines 15, 20)
+3. **Timeout config** — 5-second connection timeout (lines 16, 21)
+4. **Local tools** — gateway-specific tools alongside proxied (lines 28–37)
+5. **Port + base URL** — environment-driven config (lines 39)
+
+## Testing with inspector
+
+```bash
+npm run dev
+# Inspector: http://localhost:3000/mcp/inspector
+# Tools tab shows: users_*, billing_*, gateway_health
+```
+
+## Testing with curl
+
+```bash
+# Call a proxied tool via gateway
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": { "name": "users_listUsers", "arguments": {} }
+  }'
+```
+
+## Key constraints
+
+- **Call proxy() before listen()** — introspection happens at startup
+- **No OAuth bridge** — tokens are static; refresh in your app if needed
+- **Namespace collision prevention** — use distinct upstream keys to avoid tool name conflicts
+- **No resource template forwarding** — static resources only (subscriptions not supported)

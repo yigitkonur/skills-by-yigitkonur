@@ -1,93 +1,68 @@
-# List Changed Events
+# List-Changed Events
 
-When the set of tools, resources, or prompts changes at runtime — added, removed, or schema-changed — emit a `list_changed` notification so connected clients re-fetch the lists.
+*Read this when signaling that tools, prompts, or resources changed between requests.*
 
-## The three helpers
+Send server-level notifications when capabilities are added, removed, or modified. Use these **outside** tool callbacks to notify clients that cached lists are stale.
 
-```typescript
-await server.sendToolsListChanged();
-await server.sendResourcesListChanged();
-await server.sendPromptsListChanged();
-```
-
-These are convenience methods. Equivalent long-form calls:
+## Server Methods
 
 ```typescript
-await server.sendNotification("notifications/tools/list_changed");
-await server.sendNotification("notifications/resources/list_changed");
-await server.sendNotification("notifications/prompts/list_changed");
+await server.notifyToolsChanged(): Promise<void>
+await server.notifyPromptsChanged(): Promise<void>
+await server.notifyResourcesChanged(): Promise<void>
+await server.notifyResourceUpdated(uri: string): Promise<void>
 ```
 
-| Method | When to call | Typical trigger |
-|---|---|---|
-| `server.sendToolsListChanged()` | Tool list changed | Adding/removing tools, swapping schemas |
-| `server.sendResourcesListChanged()` | Resource list changed | Publishing new resource URIs, removing stale ones |
-| `server.sendPromptsListChanged()` | Prompt list changed | Dynamic prompt templates added/removed |
-
-## When NOT to emit
-
-| Situation | Don't emit |
-|---|---|
-| Resource content changed (same URI) | Use `server.notifyResourceUpdated(uri)` instead |
-| Tool's runtime behavior changed (same schema) | No notification — clients refetch only on `list_changed` |
-| Initial registration during boot | No runtime change happened; clients fetch the initial list with `tools/list`, `resources/list`, or `prompts/list` |
-
-The distinction matters:
-
-| Change | API |
-|---|---|
-| Resource **content** changed (same URI) | `server.notifyResourceUpdated(uri)` (see `../06-resources/`) |
-| Resource **list** changed (URI added/removed) | `server.sendResourcesListChanged()` |
-
-## Dev-mode HMR
-
-`mcp-use dev` already wires `list_changed` to file changes. When you edit a tool/resource/prompt file, the dev server reloads it and emits the appropriate `list_changed` for connected clients. You only call these helpers manually in production code that mutates the registry at runtime.
-
-## Debounce / coalesce
-
-Multiple registry changes in quick succession (e.g., a batch import) should coalesce into one notification:
+## Usage
 
 ```typescript
-let pending = false;
+// Dynamically register a tool after server startup
+export const deploymentTools = new Map<string, ToolRef>();
 
-async function scheduleToolsListChanged(server: MCPServer) {
-  if (pending) return;
-  pending = true;
-  setTimeout(async () => {
-    pending = false;
-    await server.sendToolsListChanged();
-  }, 200);
-}
+server.post("/api/deploy", async (c) => {
+  const { toolName } = await c.req.json();
+
+  // Register new tool
+  deploymentTools.set(
+    toolName,
+    server.tool(
+      { name: toolName, description: "Dynamic tool" },
+      async (params, ctx) => ({ content: [{ type: "text", text: "OK" }] })
+    )
+  );
+
+  // Notify clients
+  await server.notifyToolsChanged();
+
+  return c.json({ ok: true });
+});
+
+// Resource updated
+server.post("/api/config/update", async (c) => {
+  const { newValue } = await c.req.json();
+  state.config = newValue;
+
+  // Notify clients with active subscriptions
+  await server.notifyResourceUpdated("config://app");
+
+  return c.json({ ok: true });
+});
 ```
 
-Call that helper from the code path that mutates your registry. mcp-use does not expose `tool:registered` / `tool:removed` event hooks.
+## Key points
 
-## Anti-pattern: spamming list_changed
+- **Server-level only.** These methods are on `server`, not `ctx`. Call them outside request handlers.
+- **Stateless delivery.** Notifications are sent only to clients with an active `subscriptions/listen` request for that type. If no client is listening, the notification is lost.
+- **Client must re-sync.** After receiving `resourceUpdated(uri)`, clients re-read that resource. They do not cache; each notification triggers a new fetch.
+- **No backlog.** Clients connecting after a notification fires do not receive past events. They query normally and get the current state.
 
-```typescript
-// BAD — N events for N registrations
-for (const tool of newTools) {
-  server.tool(tool.definition, tool.handler);
-  await server.sendToolsListChanged();
-}
+## When to use each
 
-// GOOD — one event after the batch
-for (const tool of newTools) {
-  server.tool(tool.definition, tool.handler);
-}
-await server.sendToolsListChanged();
-```
+| Method | Scenario |
+|--------|----------|
+| `notifyToolsChanged()` | New tool registered, old tool removed, or tool description changed |
+| `notifyPromptsChanged()` | New prompt added/removed or prompt args changed |
+| `notifyResourcesChanged()` | Resource list structure changed (not content) |
+| `notifyResourceUpdated(uri)` | Specific resource content changed; clients re-read this URI |
 
-## Stateless caveat
-
-Like all notifications, `list_changed` requires stateful transport. Stateless servers should never need this anyway — they don't dynamically register at runtime. See `06-when-notifications-fail.md`.
-
-## Client behavior
-
-On receiving `notifications/tools/list_changed`, a well-behaved client:
-
-1. Re-fetches `tools/list`.
-2. Updates its cached registry.
-3. Re-renders any UI listing the tools.
-
-There is no `params` payload — the notification is a pure signal.
+See also: `references/06-resources/06-subscriptions-listen.md` for the client-side subscription workflow.

@@ -1,84 +1,116 @@
 # Elicitation Overview
 
-`ctx.elicit()` pauses tool execution to ask the connected user for structured input. The client renders a form (or routes the user to a URL); mcp-use validates the response server-side against your Zod schema before returning to the handler.
+*Read this when a tool needs structured user input before proceeding.*
 
-Use when a tool cannot proceed without user-supplied data: confirmations, missing parameters, OAuth handoffs, irreversible-action approvals.
+Elicitation is a multi-round interaction: your tool returns `InputRequiredResult` with a form or URL, the client collects user input, then re-calls your tool with `ctx.inputResponses`. The handler re-runs using the client's responses to complete the work.
+
+Use when a tool cannot proceed without user data: confirmations, missing parameters, OAuth handoffs, multi-step workflows.
+
+## How it works
+
+1. Callback returns `InputRequiredResult` with form schema or URL
+2. Client prompts user with form or redirects to URL
+3. User submits → client re-calls your tool with input data
+4. Your handler re-runs with `ctx.inputResponses` populated
+5. Complete the work or return another `InputRequiredResult` for multi-round flows
 
 ## Two modes
 
-| Mode | Trigger | Renders as | Use for |
+| Mode | API | Renders as | Use for |
 |---|---|---|---|
-| **Form** | Pass a Zod schema as the second arg | In-client form | Structured fields, confirmations, preferences |
-| **URL** | Pass a URL string as the second arg | Browser redirect with callback | OAuth, secrets, payments, external approval |
+| **Form** | `inputRequired.elicit({ schema, ... })` | In-client form | Structured fields, confirmations, preferences |
+| **URL** | `inputRequired.elicitUrl(url)` | Browser redirect with callback | OAuth, secrets, payments, external approval |
 
-Mode is detected automatically from the second argument's type. There is no `mode` flag.
-
-→ Form-mode details: `02-form-mode.md`
-→ URL-mode details: `03-url-mode.md`
+> Documented but not shipped in 2.0.0-beta.66 — verify against your installed version.
 
 ## Required capability gate
 
-Elicitation is opt-in per client. Always guard:
+Elicitation is opt-in per client. Always check before returning an elicitation result:
 
 ```typescript
-import { error } from "mcp-use/server";
+import { inputRequired } from "mcp-use";
 
-if (!ctx.client.can("elicitation")) {
-  return error("This client does not support elicitation.");
-}
-```
-
-`ctx.client.*` API is documented in `../16-client-introspection/03-can-capabilities.md`.
-
-## Three response actions
-
-Every `ctx.elicit()` result has an `action` field. Handle all three or the tool will hang on non-accept paths.
-
-| Action | Meaning | `result.data` |
-|---|---|---|
-| `accept` | User submitted the form (or completed URL flow) | Present, validated |
-| `decline` | User explicitly refused | `undefined` |
-| `cancel` | User dismissed the prompt | `undefined` |
-
-```typescript
-switch (result.action) {
-  case "accept":  return text(`Got: ${result.data.value}`);
-  case "decline": return text("User declined.");
-  case "cancel":  return text("Cancelled.");
-}
-```
-
-## Minimal example
-
-```typescript
-import { MCPServer, text, error } from "mcp-use/server";
-import { z } from "zod";
-
-const server = new MCPServer({ name: "feedback-server", version: "1.0.0" });
-
-server.tool(
-  { name: "collect-feedback", description: "Collect user feedback." },
-  async (_args, ctx) => {
-    if (!ctx.client.can("elicitation")) return error("Elicitation not supported.");
-
-    const result = await ctx.elicit(
-      "Please share your feedback",
-      z.object({
-        rating: z.number().min(1).max(5).describe("Rating from 1 to 5"),
-        comment: z.string().max(500).optional().describe("Optional comment"),
-      })
-    );
-
-    if (result.action !== "accept") return text("Feedback skipped.");
-    return text(`Thanks! You rated us ${result.data.rating}/5.`);
+export const confirmBooking = server.tool(
+  { name: "book-flight", description: "Book a flight." },
+  async (params, ctx) => {
+    if (!ctx.client.capabilities().elicitation?.form) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Client does not support elicitation" }],
+      };
+    }
+    // Safe to use elicitation; see 02-form-mode.md for full example
   }
 );
 ```
 
+## Status field semantics
+
+On re-entry, check `response.status` to branch:
+
+| Status | Meaning | `response.data` |
+|---|---|---|
+| `"required"` | Client is prompting; return the result as-is | (N/A) |
+| `"accept"` | User submitted data; validation passed | Present, typed to schema |
+| `"cancel"` | User dismissed or declined | `undefined` |
+
+```typescript
+if (response.status === "accept") {
+  // Client input is validated; safe to use response.data
+  return { content: [...], structuredContent: { success: true } };
+} else if (response.status === "required") {
+  // Client is still prompting; return the result to send back to client
+  return response.result;
+} else {
+  // User cancelled
+  return { content: [{ type: "text", text: "Cancelled." }] };
+}
+```
+
+## Stable key for state tracking
+
+Always provide a stable `key` (string) to track multi-round flows:
+
+```typescript
+const response = await ctx.elicit("confirm-booking", {
+  schema: z.object({ confirmAllDetails: z.boolean() }),
+});
+```
+
+The key is returned in `response.result` and must be the same across re-runs.
+
+## Handling re-entry
+
+Your handler re-runs on each retry. Keep re-entry idempotent:
+
+```typescript
+export const transfer = server.tool(
+  { name: "transfer-funds", ... },
+  async (params, ctx) => {
+    // First call: params only
+    if (!ctx.inputResponses) {
+      return inputRequired.elicit("confirm-xfer", { schema: confirmSchema });
+    }
+    
+    // Re-entry: ctx.inputResponses contains user data
+    const { amount, confirmDetails } = ctx.inputResponses;
+    if (!confirmDetails) {
+      return { isError: true, content: [...] };
+    }
+    
+    // Side effects only after validation
+    await transferFunds(params.toAccount, amount);
+    return { content: [...], structuredContent: { success: true } };
+  }
+);
+```
+
+Side effects and external calls must **not run** on the first call (when requesting elicitation). They run only after the client has collected and validated input.
+
 ## Related
 
-- Sampling (LLM completions from the client): `../13-sampling/01-overview.md`
-- Combining elicitation + sampling: `04-multi-step-workflows.md`
+- Form mode details: `02-form-mode.md`
+- URL mode details: `03-url-mode.md`
+- Multi-round and state: `04-multi-round-and-request-state.md`
 - Anti-patterns: `05-anti-patterns.md`
-
-**Canonical doc:** https://manufact.com/docs/typescript/server/elicitation
+- Migrating v1 `ctx.elicit()`: `../28-migration/02-v1-to-v2-overview.md`

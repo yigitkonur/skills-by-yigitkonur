@@ -1,75 +1,43 @@
 # Inspector Overview
 
-The MCP Inspector is a browser-based testing UI for MCP servers. Connect to one or many servers, exercise tools, browse resources and prompts, run a chat session against a connected LLM, and observe raw JSON-RPC traffic — all without writing a client.
+*Read this when you want to understand how the Inspector works and how it auto-mounts in mcp-use.*
 
-## Hosted vs self-hosted vs auto-mounted
+The Inspector is an interactive developer tool for testing and debugging MCP servers. It lets you connect to a server, call tools with typed inputs, inspect resources and prompts, try chat, preview MCP Apps widgets, and copy client setup commands.
 
-| Form | URL | When to use |
-|---|---|---|
-| Hosted | `https://inspector.mcp-use.com/` | Quick-start, no install. Connect to any reachable MCP server URL. |
-| CLI | `npx @mcp-use/inspector` | Local one-shot debugging. Auto-opens browser. See `02-cli.md`. |
-| Auto-mounted (mcp-use) | `http://localhost:<port>/inspector` | Default when running `mcp-use dev` or `MCPServer.listen()`. See `08-integration.md`. |
-| Self-hosted (Docker) | `http://your-host:8080/` | Air-gapped, enterprise, custom domain. See `10-self-hosting.md`. |
+## Two invocation modes
 
-All four are the same UI built from the same package; the running mode controls only how it is served.
+### Auto-mounted in `mcp-use dev`
 
-## Dashboard
+When you run `npm run dev` in an mcp-use project, the Inspector is pre-built and supplied by `mcp-use`. It mounts automatically at two URLs on your local listener:
 
-The dashboard is the entry view. Two panes:
+| URL | Purpose |
+| --- | --- |
+| `http://localhost:3000/mcp` | MCP endpoint for the server |
+| `http://localhost:3000/mcp/inspector` | Inspector UI |
 
-- **Connected Servers** (left) — saved connections with status indicator (green / yellow / red / gray). Buttons per server: Inspect, Disconnect, Remove.
-- **Connect** (right) — form for new connections: transport, URL, connection type, authentication, custom headers.
+The default port is 3000; it may vary if that port is in use. No separate dependency or installation is needed — it ships with mcp-use.
 
-Connections are saved to browser `localStorage` and auto-reconnect on reload. **Clear All** wipes them.
+Use `mcp-use dev --no-inspector` when you need a headless dev run without the Inspector UI.
 
-## Server Detail View
+### Standalone: `npx @mcp-use/inspector`
 
-Click **Inspect** on a connected server to open its tabbed view. Tabs:
+Run the Inspector standalone on any port without an mcp-use server:
 
-| Tab | Purpose |
-|---|---|
-| Tools | List, inspect schema, execute tools. Save executions as named saved requests. |
-| Resources | Browse static and template resources. Read content. |
-| Prompts | List prompts, fill argument templates, render. |
-| Chat | BYOK LLM chat (Anthropic / OpenAI / Google) with tool-calling visualization. |
-| Sampling | Test server-initiated sampling requests. |
-| Elicitation | Render and respond to server-initiated input requests (SEP-1330). |
-| Notifications | Stream of server notifications. |
-| Playground | Free-form raw JSON-RPC sandbox. |
+```bash
+npx @mcp-use/inspector
+```
 
-The active tab is reflected in the URL as `?tab=…`, so refreshes and shared links restore the view. Server display names are editable from the connection form and update labels everywhere without disconnecting.
+This starts the Inspector server on port 8080 (default) and opens it in your browser. The Inspector can then connect to any publicly reachable or local MCP server you provide.
 
-## Key features
+Use `--port <port>` to pick a different port, and `--no-open` to skip opening the browser.
 
-- **Multi-server**: connect to many MCP servers simultaneously.
-- **OAuth**: full flow with single-tab redirect, popup fallback, secure token storage.
-- **Saved Requests**: persist tool calls with arguments for replay.
-- **Command Palette** (`Cmd/Ctrl+K`): fuzzy-search tools, prompts, resources, saved requests, servers, "Open in Client" actions, docs links. See `06-command-palette.md`.
-- **RPC Logging**: bottom-of-sidebar panel that streams every JSON-RPC frame with direction, method, timestamp, and expandable payload. See `07-rpc-logging.md`.
-- **Add to Client**: header button that hands the current server config to Cursor / VS Code / Claude Desktop / Claude Code / Gemini CLI / Codex CLI via deep link, `.mcpb` file, or copied CLI command.
-- **OpenAI Apps SDK**: full widget rendering with `window.openai` emulation. See `09-debugging-chatgpt-apps.md`.
-- **Embedded mode**: render the inspector inside an iframe with reduced chrome via `?embedded=true`. See `04-url-parameters.md`.
-- **Persistency**: connections, headers, OAuth tokens, request timeouts, saved requests, console-proxy preference — all in `localStorage`.
+## Core workflow
 
-## Connection types
+1. **Connect** — Open the Inspector and add a server by URL (e.g., `http://localhost:3000/mcp`).
+2. **Test tools** — Open the Tools tab, select a tool, fill the form, and run it to verify schema and response shape.
+3. **Inspect resources and prompts** — Check what the server exposes in the Resources and Prompts tabs.
+4. **Debug widgets** — When a tool returns an MCP Apps widget, inspect the widget data, test layout and display modes, and verify CSP (Content Security Policy) before using it in a production host.
+5. **Chat** — Use the Chat tab to test how an LLM calls your tools in a conversation.
+6. **Copy setup** — Use the Add to Client dropdown to install or copy setup commands for Claude Desktop, Cursor, VS Code, Claude Code, and other clients.
 
-- **Direct** — browser talks directly to the MCP endpoint. Default. Use for local dev and public endpoints.
-- **Via Proxy** — traffic routed through `/inspector/api/proxy`. Use behind corporate proxies or when CORS blocks direct.
-- **Auto-Switch** — try Direct first, fall back to Via Proxy automatically.
-
-Detail in `03-connection-settings.md`.
-
-## When to reach for the Inspector
-
-- A new server: smoke-test tools, resources, prompts before wiring a real client.
-- A failing tool: inspect the request payload, response, and any error in RPC Logging.
-- An OAuth-protected server: drive the auth flow once and inspect with persisted tokens.
-- A widget-bearing tool: render the widget, switch protocols, simulate device/locale/CSP. See `11-protocol-toggle-and-csp-mode.md` and `12-device-and-locale-panels.md`.
-- An LLM integration: validate tool selection and argument shape from the Chat tab before shipping.
-
-## When not to
-
-- Headless CI assertions — use `mcpc` or programmatic curl scripts instead. The Inspector is interactive.
-- Long-running load tests — it is a debugger, not a load tool.
-
-**Canonical doc:** [https://manufact.com/docs/inspector](https://manufact.com/docs/inspector)
+See `references/22-validate/01-inspector-walkthrough.md` for a guided walkthrough.

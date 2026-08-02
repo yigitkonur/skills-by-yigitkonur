@@ -1,59 +1,59 @@
-# Deployment Decision Matrix
+# Deployment Platform Decision Matrix
 
-Pick a target by what your server actually needs — sessions, OAuth, widgets, runtime, control over the box.
+*Read this when choosing a deployment platform for your mcp-use v2 server.*
 
----
+Use this matrix to pick the right platform. All platforms support the stateless, Fetch-API-based mcp-use v2 server model; differences lie in build strategy, asset handling, and Node API availability.
 
-## 1. Quick choose
+| Platform | Runtime | Build | Assets | Edge | Free | Best For |
+|----------|---------|-------|--------|------|------|----------|
+| **Manufact Cloud** | Node | Auto-detect; `--no-github` upload | Filesystem | No | Hobby | Quickest deploy; managed; preview URLs |
+| **Vercel (Next.js)** | Node | `withMcpUse()`; integrated | Filesystem | No | Yes | Existing Next.js; tightly integrated |
+| **Vercel (Functions)** | Node | Manual; catch-all + assets | Bundled | No | Yes | Non-Next on Vercel |
+| **Cloudflare Workers** | Edge (V8) | Build + static binding | Static binding | Yes | Yes | Global low-latency; existing Workers |
+| **Google Cloud Run** | Node | Docker build; gcloud deploy | Filesystem | No | Free quota | GCP ecosystem; auth via Cloud IAM |
+| **Supabase Edge Functions** | Edge (Deno) | Build + static_files config | Co-located | Yes | Yes | Existing Supabase; no Docker |
+| **Deno Deploy** | Edge (Deno) | Build + external CDN | External CDN | Yes | Free | Deno community; global edge |
+| **Hono** | Node or Edge | Mount `server.fetch` at route | Runtime-dependent | Optional | Varies | Framework flexibility |
+| **Bun** | Node | npm scripts; auto-detected | Filesystem | No | Free | Experimental speed; local dev |
+| **Railway** | Node | Auto-detect GitHub | Filesystem | No | Free trial | Minimal config; GitHub push-to-deploy |
 
-- **Just ship it** → Manufact Cloud (`platforms/01-mcp-use-cloud.md`).
-- **Already on GCP** → Cloud Run (`platforms/03-google-cloud-run.md`).
-- **Already on Supabase** → Supabase Edge Functions (`platforms/02-supabase.md`).
-- **Want a long-running container with disks** → Fly.io (`platforms/05-fly.md`).
-- **Stateless, low traffic, free tier** → Vercel or Cloudflare Workers (`platforms/04-vercel.md`, `platforms/06-cloudflare-workers.md`).
-- **Deno first** → Deno Deploy (`platforms/07-deno-deploy.md`).
-- **Self-hosted box** → Docker (`03-docker.md`).
+## Quick Start
 
----
+**Fastest first deploy?** → Manufact Cloud + `mcp-use deploy`.
 
-## 2. Capability matrix
+**Next.js already deployed?** → Vercel with `withMcpUse()` wrapper.
 
-| Need                         | Manufact Cloud | Cloud Run     | Supabase Edge | Fly.io       | Vercel/Netlify | Cloudflare Workers | Deno Deploy   | Docker (self) |
-|------------------------------|----------------|---------------|---------------|--------------|----------------|--------------------|---------------|---------------|
-| Setup effort                 | Minimal        | Moderate      | Moderate      | Low          | Low            | Low                | Minimal       | High          |
-| Sessions (in-process)        | Yes            | Yes + Redis   | Stateless     | Yes          | No             | No (KV needed)     | No (KV needed)| Yes           |
-| Built-in OAuth               | Yes            | IAM only      | Anon key      | Manual       | Manual         | Manual             | Manual        | Manual        |
-| Widget assets served         | Native         | Manual        | Storage CDN   | Manual       | No             | Manual             | Manual        | Manual        |
-| Stateful tools (notifications, sampling, elicit) | Yes | Yes + Redis | No (Deno stateless) | Yes | No  | No                 | No            | Yes           |
-| WebSocket / SSE long-poll    | Yes            | Yes           | Limited       | Yes          | No             | Limited            | Yes           | Yes           |
-| Cold starts                  | Managed        | Configurable  | ~50 ms        | Configurable | Yes            | None               | None          | None          |
-| Runtime                      | Node           | Node (any)    | Deno          | Node (any)   | Node           | Workers (V8)       | Deno          | Node (any)    |
-| Custom domains               | CNAME          | Yes           | Yes           | Yes          | Yes            | Yes                | Yes           | Yes           |
+**Global, edge-only?** → Cloudflare Workers or Supabase Edge.
 
----
+**GCP ecosystem?** → Google Cloud Run.
 
-## 3. Pick by feature requirement
+**No framework vendor lock-in?** → Hono or Railway.
 
-| Requirement                           | Pick                                             |
-|---------------------------------------|--------------------------------------------------|
-| Need `RedisSessionStore`              | Manufact Cloud, Cloud Run, Fly.io, Docker        |
-| Multi-replica with sticky sessions    | Cloud Run + Redis, Fly.io                        |
-| Built-in OAuth provider routing       | Manufact Cloud                                    |
-| Hosted widgets out of the box         | Manufact Cloud                                    |
-| Lowest latency global edge            | Cloudflare Workers                                |
-| Strict regional pinning               | Cloud Run, Fly.io                                 |
-| Free tier viable for stateless tools  | Vercel, Cloudflare Workers                        |
-| Existing Supabase backend             | Supabase Edge                                     |
-| Need full Node APIs (`fs`, `child_process`) | Manufact Cloud, Cloud Run, Fly.io, Docker  |
+## Build & Asset Patterns
 
----
+**Filesystem pattern** (Node: Manufact, Vercel, Railway, Bun, Cloud Run):
+- Deploy `.mcp-use/build/` alongside server
+- Server reads Views from disk; serves at same public origin
+- Build: `MCP_URL=https://api.example.com/mcp npm run build`
 
-## 4. Disqualifiers
+**Co-located static pattern** (Workers, Supabase, Deno):
+- Platform static binding or config includes generated Views
+- Route `/mcp/_mcp-use/*` to assets; other requests to `server.fetch`
+- Build: `MCP_URL=... MCP_ASSETS_URL=... npm run build`
 
-- **Stateless platform + stateful MCP feature:** notifications, sampling, elicitation, and progress all require a session store. Vercel/Netlify, Cloudflare Workers, Deno Deploy without external KV cannot host these reliably. Pick a stateful target or accept stateless mode.
-- **Edge runtime + Node-only deps:** Workers/Deno cannot run packages depending on Node `fs`, `net`, native modules. Audit before committing.
-- **Single-instance state in a multi-replica deploy:** the in-memory session store is per-process. Multi-replica without `RedisSessionStore` will lose sessions on the wrong shard.
+**External CDN pattern** (any platform with external storage):
+- Views on separate CDN (e.g., S3, Cloudflare R2)
+- Build: `MCP_URL=... MCP_ASSETS_URL=https://cdn.example.com/assets mcp-use build`
 
----
+## After Deploy
 
-**Canonical doc:** https://manufact.com/docs/typescript/server/deployment/mcp-use
+Verify rendered View with the screenshot command:
+
+```bash
+npx --yes mcp-use@beta screenshot \
+  --mcp https://your-deployed-url/mcp \
+  --tool <tool-name> \
+  --output deployed-view.png
+```
+
+This confirms Views render correctly and assets load from the live endpoint.

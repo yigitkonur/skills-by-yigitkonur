@@ -1,102 +1,146 @@
-# CORS and allowedOrigins
+# CORS and Origin Validation
 
-This file is the single source for CORS and `allowedOrigins`. Other clusters link here.
+*Read this to configure cross-origin access and understand Origin-header protection for sandboxed view iframes.*
 
-CORS and `allowedOrigins` are different mechanisms:
+## CORS: Response Headers for Browser Requests
 
-| Mechanism | Protects against | Where the check runs | Affects |
-|---|---|---|---|
-| `cors` | Cross-origin browser requests | Server CORS preflight + response headers | Browser-initiated fetch |
-| `allowedOrigins` | DNS rebinding attacks | Server `Host` header validation | All HTTP requests |
-
-Set both for any HTTP server reachable from a browser.
-
-## CORS
-
-By default, CORS is permissive (`origin: '*'`). Setting `cors` **replaces** the default entirely — no merge. Always include `mcp-session-id` in `exposeHeaders` if you override.
-
-### Default values
+CORS (Cross-Origin Resource Sharing) tells browsers whether a request from origin A may read the response from origin B. **CORS is off by default in v2** (no CORS headers sent). Enable it only when you need browser clients on other origins to make requests.
 
 ```typescript
-{
-  origin: '*',
-  allowMethods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: [
-    'Content-Type', 'Accept', 'Authorization',
-    'mcp-protocol-version', 'mcp-session-id',
-    'X-Proxy-Token', 'X-Target-URL',
-  ],
-  exposeHeaders: ['mcp-session-id'],
-}
-```
+// CORS off (default)
+new MCPServer({ name: "api", version: "1.0.0" });
+// → No CORS headers; browsers block cross-origin requests
 
-### Custom CORS
+// CORS on with defaults
+new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  cors: {},  // Enables CORS; reflects request Origin
+});
 
-```typescript
-const server = new MCPServer({
-  name: 'my-server',
-  version: '1.0.0',
+// CORS with explicit configuration
+new MCPServer({
+  name: "api",
+  version: "1.0.0",
   cors: {
-    origin: ['https://app.example.com'],
-    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'mcp-protocol-version', 'mcp-session-id'],
-    exposeHeaders: ['mcp-session-id'],
+    origin: "https://app.example.com",
+    credentials: true,
   },
-})
+});
 ```
 
-## allowedOrigins
+## CORS Configuration Options
 
-`allowedOrigins` enables `Host` header validation against DNS rebinding. Accepts full URLs and normalizes to hostnames. Applies globally to all routes.
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `enabled` | `boolean` | `true` (when `cors` is set) | Set to `false` to disable CORS headers. |
+| `origin` | `string \| string[] \| function` | Reflects request `Origin` header | Single origin, array of origins, or callback returning origin or `null` to reject. `"*"` requires explicit opt-in (not default). |
+| `methods` | `string[]` | `["GET", "HEAD", "POST", "OPTIONS"]` | Allowed HTTP methods. |
+| `allowedHeaders` | `string[]` | Common MCP + JSON headers | Headers the browser may send in the request. |
+| `credentials` | `boolean` | `false` | When `true`, allows `Authorization` header and cookies. Required for bearer tokens. |
 
-| Value | Behavior |
-|---|---|
-| Not set / `undefined` | No validation — all `Host` values accepted |
-| `[]` | Same as not set |
-| `['https://app.example.com']` | `Host` header must match a configured hostname |
+## Origin Validation: Request-Side Access Control
+
+Origin validation controls whether the server **accepts** a request based on its `Origin` header, independent of CORS response headers. **Origin validation is ON for non-GET/HEAD requests when `allowedOrigins` is set.**
+
+```typescript
+// Origin validation off (default)
+new MCPServer({ name: "api", version: "1.0.0" });
+// → No Origin header check; all POST requests accepted
+
+// Origin validation on
+new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  allowedOrigins: ["https://app.example.com"],
+});
+// → POST/PUT/DELETE requests from other origins rejected with 403
+```
+
+## Localhost-Class Protection
+
+When you bind to `127.0.0.1`, `localhost`, or `::1`, **localhost-class origins are automatically allowed**. You can add extra hosts without losing local access.
+
+```typescript
+// Local development: localhost origins auto-allowed
+await server.listen(3000);  // binds 127.0.0.1:3000
+// POST from http://localhost:3000 → allowed (localhost)
+// POST from http://other-machine:3000 → rejected (not localhost)
+
+// Public deployment with extra origin
+new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  allowedOrigins: ["https://app.example.com"],
+});
+// POST from https://app.example.com → allowed (in allowedOrigins)
+// POST from https://other.com → rejected
+// POST with no Origin header → allowed (non-browser clients)
+```
+
+## View Iframes & Origin Validation
+
+MCP Apps (views) are sandboxed iframes. When a view makes a POST request to the MCP server, the browser includes an `Origin` header. Origin validation must allow this.
+
+**Important:** Sandboxed view iframes **send `Origin: null`** on same-origin GET requests (asset loads). **POST requests (MCP wire) send the true origin.** Origin validation only checks non-GET/HEAD, so asset GETs are never blocked by Origin validation.
+
+```typescript
+// View iframe scenario
+// View loaded from: https://api.example.com/mcp/_mcp-use/views/chart/
+// Asset GET (iframe fetches CSS): Origin: null → always allowed
+// MCP POST (iframe calls tool): Origin: https://api.example.com → validated
+
+new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  allowedOrigins: ["https://api.example.com"],
+  cors: {
+    origin: "https://api.example.com",
+    credentials: true,
+  },
+});
+// ✓ View iframe POSTs accepted
+```
+
+## No Origin Header
+
+Non-browser MCP clients (CLI, SDKs, scripts) don't send an `Origin` header. **These requests always pass Origin validation, regardless of `allowedOrigins`.** Use bearer token authentication to protect tool/resource access if needed.
+
+## Pair CORS with allowedOrigins
+
+CORS headers allow the browser to read the response; `allowedOrigins` decides if the server accepts the request. Both should match:
+
+```typescript
+new MCPServer({
+  name: "api",
+  version: "1.0.0",
+  allowedOrigins: ["https://app.example.com"],
+  cors: {
+    origin: "https://app.example.com",  // Must match allowedOrigins
+    methods: ["GET", "HEAD", "POST", "OPTIONS"],
+    credentials: true,
+  },
+});
+```
+
+Mismatches: `allowedOrigins` too strict → server rejects valid requests. `cors.origin` too loose → browser blocks response even if server accepts it. Both must agree on allowed origins.
+
+## Example: Public Server with Multiple View Hosts
 
 ```typescript
 const server = new MCPServer({
-  name: 'my-server',
-  version: '1.0.0',
-  allowedOrigins: ['https://app.example.com', 'https://admin.example.com'],
-})
-
-// Or load from env:
-const flexServer = new MCPServer({
-  name: 'my-server',
-  version: '1.0.0',
-  allowedOrigins: process.env.ALLOWED_ORIGINS?.split(','),
-})
+  name: "api",
+  version: "1.0.0",
+  host: "0.0.0.0",  // Public bind
+  allowedOrigins: [
+    "https://chat.openai.com",  // ChatGPT
+    "https://claude.ai",        // Claude
+  ],
+  cors: {
+    origin: ["https://chat.openai.com", "https://claude.ai"],
+    methods: ["GET", "HEAD", "POST", "OPTIONS"],
+  },
+});
 ```
 
-When the `Host` header does not match, the server returns `403 Forbidden` with a JSON-RPC error.
-
-## When `allowedOrigins` is required
-
-| Scenario | Set it? |
-|---|---|
-| Public HTTP server reachable from a browser | Required |
-| Localhost dev server with a browser-based client (Inspector, widget host) | Required |
-| Localhost dev server with a CLI client only | Optional |
-| stdio server | N/A (no HTTP transport) |
-| Behind a reverse proxy with strict origin filtering | Belt-and-suspenders — set anyway |
-
-See `04-dns-rebinding-protection.md` for the attack model and load-from-env patterns.
-
-## Common values
-
-| Deployment | Pattern |
-|---|---|
-| Reverse-proxied production | `['https://app.example.com']` |
-| Multiple trusted fronts | `['https://app.example.com', 'https://admin.example.com']` |
-| Internal staging | `['https://staging.example.net']` |
-| Local dev with browser host | `['http://localhost:3000']` |
-
-## Loading from env
-
-`mcp-use` does not read `ALLOWED_ORIGINS` automatically. The canonical docs use it as an app-level convention:
-
-| Variable | Effect when you wire it into config |
-|---|---|
-| `ALLOWED_ORIGINS` | Comma-separated list fed to `allowedOrigins` |
+See `references/08-server-config/04-dns-rebinding-and-host-validation.md` for Host-header validation complementing Origin validation.

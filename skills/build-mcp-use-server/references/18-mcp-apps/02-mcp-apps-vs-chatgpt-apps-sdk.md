@@ -1,56 +1,62 @@
-# MCP Apps vs ChatGPT Apps SDK
+# MCP Apps vs. ChatGPT Apps SDK
 
-Two protocols target the same widget concept. mcp-use lets you author once and ship to both — but you should know which is which.
+*Read this when building a server that must support both ChatGPT and MCP Apps hosts.*
 
-## Side-by-side
+The MCP Apps spec and ChatGPT's Apps SDK are two separate but compatible implementations. The mcp-use framework emits both protocols from a single server definition, so your Views work in ChatGPT, Claude, and any MCP Apps host.
 
-| Feature | MCP Apps (open standard) | ChatGPT Apps SDK (OpenAI) |
-|---|---|---|
-| Spec | SEP-1865 (MCP extension) | OpenAI proprietary |
-| Communication | JSON-RPC 2.0 over `postMessage` | `window.openai.*` global |
-| MIME type | `text/html;profile=mcp-app` | `text/html+skybridge` |
-| Architecture | Double-iframe sandbox | Single iframe |
-| CSP keys | **camelCase** (`connectDomains`) | **snake_case** (`connect_domains`) |
-| Metadata namespace | Standard `_meta.ui.*` | `openai/*` prefixed keys |
-| State persistence | `ui/update-model-context` JSON-RPC | `window.openai.setWidgetState()` |
-| Theme source | `postMessage` event | `window.openai.theme` |
-| Follow-up | `ui/message` JSON-RPC | `window.openai.sendFollowUpMessage()` |
-| Clients | Claude, Goose, MCP Inspector, etc. | ChatGPT |
+## One Server, Two Protocols
 
-## Registration types in mcp-use
+| Aspect | MCP Apps spec | ChatGPT Apps SDK | mcp-use Abstraction |
+|-|-|-|-|
+| **Wire protocol** | MCP (tools, resources, prompts, notifications) | ChatGPT custom extensions + window.openai API | Single tool def + auto-translation |
+| **Result format** | `{ content: [...], structuredContent, _meta.ui }` | `window.openai.setWidgetState()` calls | Merged output from single handler |
+| **View registration** | Tool `view: { name }` + auto-generated resource | Apps SDK metadata on tool result | Same tool definition, both emitted |
+| **State persistence** | View-lifetime or request-scoped | ChatGPT restores `window.openai.widgetState.modelContent` across invocations | `useViewState()` hook handles both |
+| **Hook compatibility** | `useToolContext`, `useCallTool`, `useSendFollowUp` | Apps SDK functions wrapped by mcp-use hooks | Identical hook surface |
+
+## Mcp-use Auto-Translation
+
+When you define a tool with a `view` field, mcp-use generates:
+
+1. **Standard MCP Apps** — tool result carries `text/html;profile=mcp-app` resource + CSP metadata.
+2. **ChatGPT metadata** — MCP Apps metadata auto-translates to ChatGPT Apps SDK fields (e.g., `_meta.ui.visibility` → `widgetState` hints).
+
+Views written using mcp-use hooks (`useToolContext`, `useViewState`, etc.) work on both platforms. You never hand-roll ChatGPT-specific code.
+
+## ChatGPT Legacy Protocol (Do Not Hand-Roll)
+
+ChatGPT has an older protocol layer (`window.openai.widgetState`, `text/html+skybridge` MIME) used before Apps SDK standardization. **Never implement this yourself.** The mcp-use framework handles it transparently via the legacy layer; direct `window.openai` calls are anti-patterns (covered in `anti-patterns.md`).
+
+See `02-legacy-window-openai-and-skybridge.md` for reference only — mcp-use abstracts this entirely.
+
+## Platform-Specific Behavior
+
+| Behavior | MCP Apps | ChatGPT | How mcp-use Handles It |
+|-|-|-|-|
+| Model-visible state | `useViewState()` persists for request lifetime | Restores across View invocations | `useViewState()` detects host and stores accordingly |
+| Follow-up messages | `useSendFollowUp()` sent to conversation | Sent to same thread | Hook abstracts both |
+| File picker | `useFiles()` uses `files` capability | ChatGPT file UI | Hook checks capability, delegates |
+| Display mode | `useDisplayMode()` advisory; host decides | Display-mode hints | Hook polls both via unified `useHostContext()` |
+
+## Migration from Apps SDK to MCP Apps
+
+If you built with the Apps SDK, the mcp-use v2 approach subsumes it:
+
+- **Apps SDK Views** (`view.tsx` with `window.openai` calls) → **mcp-use Views** (hooks-based, no `window.openai`)
+- **Apps SDK tooling** (manual metadata) → **mcp-use tooling** (tool `view: { name }` field, auto-metadata)
+- **No Apps SDK NPM package** → imports from `mcp-use/react`
+
+All three (Apps SDK, MCP Apps spec, mcp-use framework) interoperate via the mcp-use translation layer. Write once for mcp-use; it ships both protocols.
+
+## Capability Detection
+
+Both platforms advertise their capabilities via `useHostContext().availableCapabilities`:
 
 ```typescript
-server.uiResource({ type: "mcpApps", ... });   // Recommended — dual-protocol
-server.uiResource({ type: "appsSdk", ... });   // DEPRECATED — ChatGPT only
-server.uiResource({ type: "rawHtml", ... });   // Plain HTML, no MCP Apps protocol
-server.uiResource({ type: "remoteDom", ... }); // Remote DOM
+const { availableCapabilities } = useHostContext();
+if (availableCapabilities.includes("message")) {
+  await useSendFollowUp({ prompt: "..." });
+}
 ```
 
-| Type | ChatGPT | MCP Apps clients | Status |
-|---|---|---|---|
-| `mcpApps` | Yes | Yes | **Recommended** |
-| `appsSdk` | Yes | No | **Deprecated** |
-
-Use `type: "mcpApps"` for all new work. The server emits both MIME types and metadata variants automatically; the same widget code runs in both hosts.
-
-## Why `useWidget` exists
-
-Without an abstraction, the same widget must branch on `"openai" in window` to pick a transport. `useWidget` from `mcp-use/react` detects the host once, picks the right bridge, and exposes a single API — props, theme, `callTool`, `setState`, follow-up messages — that works in both. Widget code stays identical.
-
-Direct access to `window.openai` is the wrong default — see `chatgpt-apps/02-window-openai-api.md`.
-
-## CSP is the most visible difference
-
-The same widget is allowed to call the same APIs in both protocols, but the CSP fields are spelled differently. mcp-use generates both spellings from a single camelCase config. Details in `server-surface/05-csp-metadata.md` and `chatgpt-apps/04-csp-format-differences.md`.
-
-## Decision
-
-- **New widget?** `type: "mcpApps"`.
-- **Existing `appsSdk` registration?** Migrate. Code in the widget itself usually does **not** need to change — start with the registration. See `../28-migration/04-appssdk-to-mcpapps.md`.
-- **Need ChatGPT-only behavior?** Stay on `mcpApps` and pass ChatGPT-specific keys (`widgetDescription`, `widgetAccessible`) in the same `metadata` object — the adapter routes them.
-
-## Cross-references
-
-- Server-side dual emission: `chatgpt-apps/05-dual-protocol-via-mcpapps.md`.
-- Runtime detection inside the widget: `chatgpt-apps/07-runtime-detection.md`.
-- The `appsSdk` deprecation: `chatgpt-apps/06-deprecation-of-appssdk.md`.
+Query capabilities before using platform-specific APIs. See `05-host-capability-detection.md`.

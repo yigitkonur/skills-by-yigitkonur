@@ -1,65 +1,34 @@
-# Sessions Overview
+# Sessions in v2: Stateless Truth
 
-A **session** is a server-side record of one client's negotiated state — protocol version, capabilities, log level, progress token, last-used timestamp — keyed by the `Mcp-Session-Id` header. Sessions exist only when the server runs in **stateful mode**.
+*Read this when understanding state management and scaling.*
 
-## When a session exists
+## The v2 fact: No session stores shipped
 
-| Mode | Sessions | SSE | Notifications | Use for |
-|---|---|---|---|---|
-| **Stateful** | yes | yes | yes | Long-lived clients, sampling, subscriptions |
-| **Stateless** | no | no | no | Edge runtimes, serverless, simple HTTP APIs |
+mcp-use v2.0.0-beta.66 **does not export session stores** (`InMemorySessionStore`, `RedisSessionStore`, `FileSystemSessionStore`). The beta docs describe these APIs, but they are **not in the shipped package**.
 
-Auto-detection (default — leave `stateless` unset):
+v2 is **stateless by default**: every HTTP request is independent; no server-side session affinity, no carry-over between requests, no persistent connection.
 
-- Deno → defaults to stateless. Edge/serverless handlers should set `stateless: true`.
-- Node.js → per-request based on `Accept`:
-  - `application/json, text/event-stream` → stateful.
-  - `application/json` only → stateless.
+### Why stateless?
 
-Force a mode explicitly:
+1. **Horizontal scaling:** Requests can route to any instance; no sticky sessions required.
+2. **Serverless/edge compatibility:** Instances may be killed or spun up on every request.
+3. **Simplicity:** No session cleanup, no TTL management, no store failures.
 
-```typescript
-new MCPServer({ name: "x", version: "1.0.0", stateless: false }) // always stateful
-new MCPServer({ name: "x", version: "1.0.0", stateless: true })  // always stateless
-```
+### Session store docs (not shipped)
 
-Stateless mode skips the session store entirely. There is no `ctx.session.sessionId`, no SSE, no server→client notifications. If a request is self-contained and you do not need per-client continuation, stateless wins.
+Beta docs at `/tmp/mcp-use-beta/docs/typescript/server/session-management/` describe:
+- `InMemorySessionStore` for in-process sessions
+- `RedisSessionStore` + `RedisStreamManager` for distributed sessions
+- `FileSystemSessionStore` for restart persistence
 
-## What lives in a session
+These are **planned features** for a future v2 release, not beta.66.
 
-- Protocol version
-- Client capabilities and `clientInfo`
-- Negotiated features via client capabilities (sampling, elicitation, roots, logging)
-- Log level
-- Current tool-call `progressToken` when one is available
-- Last-used timestamp (drives idle expiry)
+> Documented but not shipped in 2.0.0-beta.66 — verify against your installed version.
 
-Tool handlers see only the session ID at `ctx.session?.sessionId`; read capabilities from `ctx.client.*`. Treat session IDs as **opaque**. Do not put business payloads in the session store — use your own database keyed by user/conversation ID.
+See `02-session-storage-roadmap.md` for what is planned.
 
-## Pick a session store
+## Cross-cluster references
 
-| Scenario | Store | Stream manager |
-|---|---|---|
-| Local dev, prototyping | `FileSystemSessionStore` (auto in dev) | `InMemoryStreamManager` |
-| Single-instance prod, restart-loss OK | `InMemorySessionStore` | `InMemoryStreamManager` |
-| Single VM needing restart persistence | `FileSystemSessionStore` | `InMemoryStreamManager` |
-| Multi-instance prod, metadata persistence only | `RedisSessionStore` | `InMemoryStreamManager` |
-| Multi-instance prod with notifications/sampling/subscriptions | `RedisSessionStore` | `RedisStreamManager` |
-| Edge / serverless | none (`stateless: true`) | none |
-
-Rule: **put `RedisStreamManager` only on top of `RedisSessionStore`.** Mixing distributed streams with in-process sessions is an architectural bug — clients reconnect and find the stream but lose the session.
-
-## Cluster contents
-
-- `02-lifecycle.md` — initialize → use → expire → 404 re-init.
-- `03-stream-manager.md` — in-process SSE fan-out (default).
-- `04-distributed-stream-manager-redis.md` — Redis Pub/Sub fan-out for multi-instance.
-- `05-retention-and-cleanup.md` — `sessionIdleTimeoutMs` and per-store TTL.
-- `06-multi-tenant-and-chatgpt.md` — `ctx.client.user()` for ChatGPT-style shared sessions.
-- `stores/01-overview.md` — store decision tree.
-- `stores/02-memory.md` — `InMemorySessionStore`.
-- `stores/03-filesystem.md` — `FileSystemSessionStore`.
-- `stores/04-redis.md` — `RedisSessionStore`.
-- `stores/05-custom-store.md` — implementing a custom `SessionStore`.
-
-**Canonical doc:** https://manufact.com/docs/typescript/server/session-management
+- State codec for round-trip validation: `../09-transports/03-stateless-and-request-state.md`
+- External state patterns: `03-state-patterns-without-sessions.md`
+- Scaling without session affinity: `04-multi-instance-and-scaling.md`

@@ -1,74 +1,66 @@
 # Pre-Deploy Checklist
 
-Run through this before every production deploy. Skipping items is the most common cause of post-deploy outages.
+*Read this before every production deploy.*
 
----
+Skip these and you will have post-deploy outages. Work through all sections.
 
-## 1. Configuration
+## 1. Build & Types
 
-- [ ] All env vars documented in a `.env.example` and set in the target platform's secret manager.
-- [ ] `NODE_ENV=production` is set.
-- [ ] `PORT` is read from env (`process.env.PORT`), not hardcoded.
-- [ ] `baseUrl` is set explicitly when widgets are involved (default to `MCP_URL` env). Resolution order: `baseUrl` config → `MCP_URL` env → `http://{host}:{port}`.
+- [ ] `npm run build` succeeds locally with no unhandled errors.
+- [ ] `.mcp-use/build/` exists with Views subdirectory (if using views).
+- [ ] `npm run typecheck` passes; types current (run after tool registration changes).
 
-## 2. Security
+## 2. Configuration
 
-- [ ] `cors` is configured with explicit origins (no `"*"` in production).
-- [ ] `allowedOrigins` is set to the production hostnames (DNS rebinding protection).
-- [ ] `mcp-session-id` is in both `allowHeaders` and `exposeHeaders`.
-- [ ] No secrets in code or in `dist/`. `.env` is in `.gitignore`.
-- [ ] OAuth provider configured if the server is publicly addressable.
-- [ ] Zod validation on every tool input. No untyped `any` reaching tool bodies.
+- [ ] All environment variables documented in `.env.example` (no actual secrets in repo).
+- [ ] Environment variables set in platform's secret manager (deploy flags or platform dashboard).
+- [ ] `NODE_ENV=production` set at deploy time, not hardcoded.
+- [ ] `PORT` read from `process.env.PORT`, not hardcoded.
 
-## 3. Reliability
+## 3. Security
 
-- [ ] `SIGTERM` and `SIGINT` handlers call `await server.close()` with a hard 10-second timeout.
-- [ ] Cleanup order: server → connection pools → external clients → process exit.
-- [ ] For multi-replica deploys: `RedisSessionStore` configured. In-memory store is single-replica only.
-- [ ] Health endpoint registered explicitly (`server.get("/health", ...)`) before `listen()` — otherwise the Inspector catch-all serves HTML on `GET /health` (see `27-troubleshooting/01-error-catalog.md`).
+- [ ] No hardcoded secrets, API keys, or database URLs in source code.
+- [ ] `.env*` files in `.gitignore` (except `.env.example`).
+- [ ] Zod validation on every tool input schema; no `z.any()`.
+- [ ] OAuth provider configured if server is publicly accessible.
+- [ ] CORS configured with explicit origins (no `"*"` in production).
 
-## 4. Compatibility
+## 4. Server Code
 
-- [ ] `mcp-use` at the version you intend (`npm ls mcp-use`).
-- [ ] `zod@^4.0.0` declared explicitly in your own `package.json` (`peerDependency` since v1.21.5).
-- [ ] `tsconfig.json` has `"module": "node16"`, `"moduleResolution": "node16"`, `"target": "ES2022"`.
-- [ ] `package.json` has `"type": "module"` if your code uses ESM `import`.
+- [ ] Server entry exports `default` (for Node: `export default server.fetch`).
+- [ ] Server does NOT call `listen()` if deploying to serverless/edge (Vercel, Cloudflare, Supabase).
+- [ ] Server DOES call `listen()` if deploying to Node-based platform (Manufact, Cloud Run, Railway).
+- [ ] Health endpoint registered before `listen()` if needed: `server.get("/health", (c) => c.json({ status: "ok" }))`.
 
-## 5. Build
+## 5. Staging Smoke Test
 
-- [ ] `npm run build` (or `mcp-use build`) succeeds locally with no warnings you don't understand.
-- [ ] `dist/mcp-use.json` exists. Without it, `mcp-use deploy` and `mcp-use start` cannot locate the entry.
-- [ ] Generated types are current: `mcp-use generate-types` after every tool registration change.
-- [ ] Widget builds succeed (if applicable). `dist/resources/widgets/` populated.
+Before production deploy:
 
-## 6. Pre-deploy validation against staging
+- [ ] Deploy to staging environment first (separate service/app/project).
+- [ ] Inspector connects and lists all tools.
+- [ ] One tool called end-to-end; result correct.
+- [ ] Views render (if applicable): `npx mcp-use@beta screenshot --mcp <staging-url>/mcp --tool <name> --output test.png`.
+- [ ] No CSP violations or 404s in browser console.
 
-- [ ] Deploy to a staging URL first (separate Manufact Cloud project, separate Cloud Run service, separate Fly app).
-- [ ] Run the Inspector against the staging URL — every tool callable, schemas correct.
-- [ ] `curl -i {url}/health` returns JSON, not HTML.
-- [ ] OAuth flow exercised end-to-end if applicable.
-- [ ] If using widgets: open in the Inspector, confirm no CSP violations in the browser console.
-- [ ] Smoke-test from the production client config (Claude Desktop, Codex, etc.) with the staging URL.
+## 6. Git (if using GitHub deploy)
 
-## 7. Git hygiene (Manufact Cloud and similar GitHub-detecting platforms)
+- [ ] `git status` clean; all changes committed.
+- [ ] Latest commit pushed to origin (not just local).
+- [ ] Platform has GitHub App access (check one-time during first deploy).
 
-- [ ] All changes committed: `git status` is clean.
-- [ ] Pushed to the remote: `git log @{u}..HEAD` is empty.
-- [ ] `.mcp-use/project.json` tracked in git: `!.mcp-use/project.json` in `.gitignore`. Without this, redeploys assign new subdomains and break custom domains.
+## 7. Post-Deploy Verification
 
-## 8. Post-deploy verification
+After platform reports success:
 
-After the deploy succeeds:
-
-1. `curl -s {url}/health | jq .` — should be JSON with `status: "ok"`.
-2. Connect with the Inspector — verify capability list, tool list, callable.
-3. Call one tool end-to-end.
-4. Update production client configs.
-5. If a custom domain is configured: verify it still resolves to the new deployment.
+- [ ] Health endpoint responds: `curl -s <deployed-url>/mcp/health | jq .`
+- [ ] Inspector connects and lists tools.
+- [ ] One full tool call succeeds.
+- [ ] If Views used: screenshot from live endpoint shows rendered content (not broken links).
+- [ ] Production client configurations updated with new URL if it changed.
 
 ---
 
 See also:
-- `03-docker.md` for the production Dockerfile.
-- `26-anti-patterns/` for what to avoid.
-- `27-troubleshooting/01-error-catalog.md` for known failure modes by symptom.
+- `03-docker.md` for production Dockerfile patterns.
+- `references/24-production/` for hardening and scaling guidance.
+- `references/27-troubleshooting/01-error-catalog.md` for debugging.

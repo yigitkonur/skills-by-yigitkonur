@@ -1,43 +1,47 @@
-# This skill vs neighbors
+# This Skill vs build-mcp-use-client
 
-When you're not sure which mcp-use skill applies, decide by what the user is **building**, not what they're talking about.
+*Read this when you're building both a server and a client, or you're unsure which skill applies.*
 
-## Decision table
+## Clear-cut boundaries
 
-| The user wants to… | Skill |
-|---|---|
-| Write `server.tool(...)`, `server.resource(...)`, `server.prompt(...)`, `server.uiResource(...)` | **this skill** |
-| Add OAuth to a server, configure CORS, choose a session store, deploy a server | **this skill** |
-| Build an MCP Apps widget, an interactive React UI that renders inside ChatGPT or another host | **this skill** (`18-mcp-apps/`) |
-| Connect a custom app to an existing MCP server: list tools, call tools, subscribe to resources | `build-mcp-use-client` |
-| Build an LLM agent that picks among MCP servers and orchestrates calls | `build-mcp-use-agent` |
-| Use the raw `@modelcontextprotocol/sdk` directly (no `mcp-use`) | `build-mcp-server-sdk-v1` (single-package SDK) or `build-mcp-server-sdk-v2` (split-package SDK) |
+| Goal | Skill |
+|------|-------|
+| Write tools, resources, prompts with `server.tool(...)`, `server.resource(...)`, `server.prompt(...)` | **this skill** |
+| Configure OAuth, CORS, basePath, host validation | **this skill** |
+| Deploy to Node, Next.js, Vercel, Cloudflare, Deno, Cloud Run, Railway | **this skill** |
+| Build MCP Apps views (React components) that render tool results | **this skill** (`18-mcp-apps/`) |
+| Connect an app to a server: list/call tools, read resources, subscribe | `build-mcp-use-client` |
+| Build an LLM agent that plans and orchestrates multiple servers | `build-mcp-use-agent` |
+| Use raw `@modelcontextprotocol/sdk` directly (no framework) | `build-mcp-server-sdk-v2` |
 
-## Fuzzy cases
+## Fuzzy boundaries
 
-### "I'm building a widget"
+### "I'm building a view"
 
-If they mean a React UI that an MCP server hosts and a ChatGPT/MCP Apps client renders → **this skill, cluster 18**.
+If it's a React component at `views/<name>/view.tsx` that your server hosts and ChatGPT renders → **this skill, `18-mcp-apps/`**.
 
-If they mean a client that *consumes* widgets from a server → that's still client-side rendering work, but the rendering is provided by `mcp-use/react`. The widget runtime is shared. The **server** part (registering the widget, defining its tool, declaring CSP) is this skill. The **client** part (mounting the React tree, providing host context) belongs in either this skill (if the client is a stock host with built-in support) or `build-mcp-use-client` (if they're hand-rolling a host).
+If it's a standalone React app that *consumes* widgets from a remote MCP server → probably `build-mcp-use-client`, but check if your app is also an MCP server (both roles).
 
 ### "I'm building both a server and a client"
 
-Start in this skill for the server. Switch to `build-mcp-use-client` once the server is shipped.
+Start in **this skill** for the server side. Once the server ships, route to **`build-mcp-use-client`** for client-side work (connection, tool calling, state management on the client).
 
-### "I'm using `MCPAgent` to call my own server"
+They're independent skills because the server and client are independent codebases.
 
-Server build → this skill. Agent build → `build-mcp-use-agent`. Both can ship from the same monorepo.
+### "I have a Next.js app that acts as a server AND calls another server"
 
-## What this skill does NOT cover
+- **Server logic** (tool registration, OAuth setup) → this skill + `19-nextjs-drop-in/`
+- **Client logic** (calling downstream MCP servers) → `build-mcp-use-client` (or copy code examples into same monorepo)
 
-- Writing `MCPClient` code (other than what's needed to test a server).
-- Writing `MCPAgent` planner loops.
-- Choosing an LLM provider.
-- Front-end frameworks for hosting MCP UIs outside of the MCP Apps widget runtime.
+Both can coexist in one Next.js app.
 
-## Legacy migration note
+## This skill does NOT cover
 
-The legacy skill `build-mcp-use-apps-widgets` was merged into this skill. Cluster `18-mcp-apps/` carries everything that was in `build-mcp-use-apps-widgets`. If you find a reference to `build-mcp-use-apps-widgets` in another skill, update it to `build-mcp-use-server` (or to `build-mcp-use-server/skills/build-mcp-use-server/references/18-mcp-apps/` if it pointed at a specific file).
+- `@mcp-use/client` SDK usage (other than test clients in examples)
+- LLM agent orchestration or multi-server planning
+- Custom host development (embedding MCP in an Electron app, for example)
+- Raw SDK usage (use `build-mcp-server-sdk-v2` instead)
 
-**Canonical doc:** https://manufact.com/docs/typescript/getting-started/welcome
+## Cross-reference conventions
+
+When this skill references `build-mcp-use-client`, it uses the canonical sister name. When the client skill references this skill, it uses `build-mcp-use-server`.

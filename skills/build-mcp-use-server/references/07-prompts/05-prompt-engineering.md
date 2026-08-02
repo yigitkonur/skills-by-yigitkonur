@@ -1,42 +1,58 @@
-# Prompt Engineering
+# Prompt Engineering Guidance
+
+*Read this when crafting prompt content, deciding between prompts and tools, or naming your prompts.*
 
 Prompts are the LLM-facing surface. Treat them like API contracts: small, named, parameterized, and stable.
 
+---
+
 ## Prompt vs tool
 
-| You want the LLM to | Use |
+| LLM should | Use |
 |---|---|
-| **Do** something with side effects | Tool |
-| **Read** data | Resource |
-| **Think** in a particular way | Prompt |
+| **Think** in a particular way (reason, analyze, decide) | Prompt (user-invoked instruction) |
+| **Do** something with side effects (call an API, write data) | Tool (LLM-driven execution) |
+| **Read** static or slowly-changing data | Resource (pre-fetched context) |
 
-Prompts shape *how the model reasons*. Tools execute. Resources supply context. If your "prompt" is fetching data and acting on it, you actually want a tool that takes the same arguments and returns a structured result.
+Prompts shape *how the model reasons*. Tools execute deterministically. Resources supply context. If your "prompt" is fetching data and acting on it, you want a tool — tools take parameters, execute code, and return structured results.
+
+---
 
 ## Best practices
 
-1. **Reusable templates only.** If a prompt only ever runs once, it doesn't need to exist — paste the text into your usage instead.
-2. **Minimal arguments.** Each argument adds friction in the picker UI. Cap at 3–5; collapse related toggles into a single enum.
-3. **Always `.describe()` arguments.** This is the only label users see in the picker.
-4. **Use enums for choices.** Free strings invite typos; enums document the allowed set.
-5. **Reference resources by URI.** Mention `users://{id}`, `config://app` — clients fetch them and include in context.
-6. **System + user split for non-trivial flows.** Use `{ messages: [...] }` instead of stuffing role-mixing into a single string.
-7. **Prompt arguments, not branches.** If your handler has if/else picking between three completely different texts, that is three different prompts.
+1. **Reusable templates only.** If a prompt runs once, don't register it — paste the text into a tool description instead.
+
+2. **Minimal arguments.** Each argument adds friction to the picker UI. Aim for 3–5 max; collapse related toggles into a single enum.
+
+3. **Always `.describe()` arguments.** This is the only label users see in the picker when browsing arguments.
+
+4. **Use enums for choices.** Free strings invite typos; enums document the valid set and guide the model.
+
+5. **Reference resources by URI.** Mention `users://{id}`, `config://app` in prompt text — clients fetch them and include in context.
+
+6. **System + user split for non-trivial flows.** Use `{ messages: [...] }` with separate roles instead of cramming role-mixing into a single string.
+
+7. **Prompt arguments, not branches.** If your handler has if/else picking between three different texts, that's three different prompts.
+
+---
 
 ## Anti-patterns
 
 | Anti-pattern | Fix |
 |---|---|
 | One prompt with 12 optional arguments | Split into 2–3 focused prompts |
-| Free-text `style: z.string()` | `style: z.enum(["concise", "detailed"])` |
-| Prompt that fetches and writes data | That's a tool |
-| Prompt body changes based on time of day | Move that branching into a tool |
-| Resource content embedded inline as a giant string | Reference the resource URI; let the client fetch |
+| Free-text `style: z.string()` | Use `style: z.enum(["concise", "detailed"])` |
+| Prompt that fetches data and writes back | That should be a tool |
+| Prompt behavior changes based on time | Move branching into a tool; prompts stay static |
+| Resource content baked into prompt as giant string | Reference the resource URI; let the client fetch it |
 | Prompt named `do-thing` with no description | Always supply `description` — pickers depend on it |
 | Schema arguments without `.describe()` | Add `.describe(...)` to every field |
 
-## Few-shot patterns
+---
 
-Embed examples in `system` content. Keep them short and structurally identical to the expected output:
+## Few-shot examples
+
+Embed examples in system content. Keep them short and structurally identical to expected output:
 
 ```typescript
 server.prompt(
@@ -45,74 +61,100 @@ server.prompt(
     description: "Categorize a GitHub issue title",
     schema: z.object({ title: z.string() }),
   },
-  async ({ title }) => ({
-    messages: [
-      {
-        role: "system",
-        content: `Classify the issue title as one of: bug | feature | chore | question.
+  async ({ title }, ctx) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Classify this issue title as one of: bug | feature | chore | question.
+
 Examples:
-"App crashes on launch" -> bug
-"Add dark mode" -> feature
-"Update README typos" -> chore
-"How do I configure X?" -> question
+- "App crashes on launch" -> bug
+- "Add dark mode" -> feature
+- "Update README typos" -> chore
+- "How do I configure X?" -> question
+
+Issue: ${title}
 Respond with the single label only.`,
       },
-      { role: "user", content: title },
-    ],
-  }),
+    }],
+  })
 );
 ```
 
-## Multi-turn seeds
+---
 
-Use multi-message returns to set the *shape* of the conversation, not to pre-bake the answer:
+## Multi-turn conversation seeds
+
+Use multi-message returns to set the *shape* of the conversation, not to pre-answer the question:
 
 ```typescript
 server.prompt(
   {
     name: "debug-session",
+    description: "Start a debugging workflow",
     schema: z.object({ error: z.string() }),
   },
-  async ({ error }) => ({
+  async ({ error }, ctx) => ({
     messages: [
-      { role: "system", content: "You are a senior SRE. Lead with the most likely cause." },
-      { role: "user", content: `Error: ${error}` },
-      { role: "assistant", content: "Likely causes, ranked. Then I'll ask one diagnostic question." },
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Error: ${error}\n\nLead with the most likely cause, ranked. Then ask one diagnostic question.`,
+        },
+      },
     ],
-  }),
+  })
 );
 ```
 
-The seeded `assistant` message acts as a structural commitment — the model continues in that shape.
+The seeded structure acts as a commitment — the model continues in that shape.
+
+---
 
 ## Naming
 
-Use `verb-object` — `code-review`, `analyze-config`, `debug-session`. Same convention as tool names. The prompt name appears in client UI; users scan by verb.
+Use `verb-object` — `code-review`, `analyze-config`, `debug-session`. Same convention as tools. The prompt name appears in client UI; users scan by the verb.
 
-| Bad | Good |
+| Poor | Good |
 |---|---|
 | `prompt1` | `analyze-config` |
 | `helper` | `debug-session` |
 | `do_review_code` | `code-review` |
 | `MyAwesomePrompt` | `code-review` |
 
+---
+
 ## Validation order
 
-The server validates arguments against the Zod schema **before** calling your handler. You never need to revalidate inside the handler — invalid input is rejected upstream.
+The server validates arguments against the schema **before** calling your handler. You never revalidate inside the handler — invalid input is rejected upstream.
 
 If validation succeeds but the resolved values are semantically invalid (e.g., user not found, project archived), throw from the handler. The client surfaces the error.
 
+---
+
 ## Performance
 
-Prompts are cheap — they return text. Don't fetch data inside the prompt handler unless you genuinely need it for the seed; instead, reference resource URIs in the prompt text and let the client fetch them lazily.
+Prompts are cheap — they return text. Don't fetch data inside the prompt handler unless you genuinely need it for the seed. Instead, reference resource URIs in the prompt text and let the client fetch them lazily:
 
 ```typescript
 // Wasteful — refetches every time the prompt is opened
-async ({ userId }) => {
-  const user = await db.getUser(userId); // unnecessary
-  return text(`Analyze user: ${JSON.stringify(user)}`);
+async ({ userId }, ctx) => {
+  const user = await db.getUser(userId); // unnecessary!
+  return {
+    messages: [{
+      role: "user",
+      content: { type: "text", text: `Analyze user: ${JSON.stringify(user)}` },
+    }],
+  };
 }
 
 // Lean — client fetches the resource only if needed
-async ({ userId }) => text(`Analyze the user at users://${userId}.`);
+async ({ userId }, ctx) => ({
+  messages: [{
+    role: "user",
+    content: { type: "text", text: `Analyze the user at users://${userId}.` },
+  }],
+});
 ```

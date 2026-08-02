@@ -1,111 +1,160 @@
-# `completable()` — Argument Autocomplete
+# Completable Arguments
 
-This is the canonical home for `completable()`. In `mcp-use@1.26.0`, use it for prompt arguments. Resource template variable completion uses `callbacks.complete` instead.
+*Read this when you need to provide autocomplete suggestions for prompt arguments or resource template variables.*
 
 ## What it does
 
-`completable()` wraps a Zod type so the server provides prompt argument suggestions to the client during the `completion/complete` flow. The user gets typeahead on the argument; the schema still validates final input the same way.
+`completable()` wraps a schema field (Zod, ArkType, Valibot, etc.) so the server provides argument suggestions to clients during the `completion/complete` flow. The user gets typeahead on the argument; validation works the same way.
 
-## Signature
+---
 
-```typescript
-import { completable } from "mcp-use/server";
+## Static completion (fixed list)
 
-completable(zodType, valuesOrCallback)
-```
-
-| `valuesOrCallback` | Behavior |
-|---|---|
-| Primitive array | Static list — server filters case-insensitively by prefix |
-| `(value, context?) => Promise<T[]> \| T[]` | Dynamic — your callback returns suggestions |
-
-## List-based completion
-
-Use a static array when the valid values are known and small:
+Use a static array when values are known and small:
 
 ```typescript
+import { MCPServer, completable } from "mcp-use";
 import { z } from "zod";
-import { completable } from "mcp-use/server";
+
+const server = new MCPServer({ name: "example", version: "1.0.0" });
 
 server.prompt(
   {
     name: "code-review",
     description: "Review code with language completion",
     schema: z.object({
-      language: completable(z.string(), ["python", "javascript", "typescript", "java", "cpp"]),
-      code: z.string().describe("The code to review"),
+      language: completable(
+        z.string().describe("Programming language"),
+        ["python", "typescript", "go", "rust", "java"]
+      ),
+      code: z.string().describe("Code to review"),
     }),
   },
-  async ({ language, code }) => text(`Review this ${language} code: ${code}`),
+  async ({ language, code }, ctx) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Review this ${language} code:\n\`\`\`${language}\n${code}\n\`\`\``,
+      },
+    }],
+  })
 );
 ```
 
-The server applies **case-insensitive prefix filtering** automatically. You do not need to filter the list yourself.
+The server applies **case-insensitive prefix filtering** automatically. Do not filter the list yourself.
 
-## Callback-based completion
+---
 
-Use a callback for dynamic values — DB lookups, API calls, values that depend on already-resolved arguments:
+## Dynamic completion (callback)
+
+Use a callback for values that depend on DB lookups, API calls, or already-resolved arguments:
 
 ```typescript
 server.prompt(
   {
     name: "analyze-project",
-    description: "Analyze a project with dynamic completion",
+    description: "Analyze a project",
     schema: z.object({
-      userId: z.string(),
-      projectId: completable(z.string(), async (value, context) => {
-        const userId = context?.arguments?.userId;
-        const projects = await fetchUserProjects(userId);
-        return projects.filter((p) => p.id.startsWith(value)).map((p) => p.id);
-      }),
+      userId: z.string().describe("User ID"),
+      projectId: completable(
+        z.string().describe("Project ID"),
+        async (value, context) => {
+          // Fetch projects for the user
+          const userId = context?.arguments?.userId as string | undefined;
+          if (!userId) return [];
+          
+          const projects = await db.query(
+            "SELECT id, name FROM projects WHERE user_id = ?",
+            [userId]
+          );
+          
+          // Filter by current partial input
+          return projects
+            .filter((p) => p.id.startsWith(value))
+            .map((p) => p.id);
+        }
+      ),
     }),
   },
-  async ({ projectId }) => text(`Analyzing project ${projectId}...`),
+  async ({ projectId }, ctx) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Analyze project ${projectId}`,
+      },
+    }],
+  })
 );
 ```
 
-The callback receives:
+Callback receives:
 
-| Argument | Description |
-|---|---|
-| `value` | The current partial input the user has typed |
-| `context.arguments` | Map of already-resolved argument values for this invocation |
+| Argument | Type | Purpose |
+|---|---|---|
+| `value` | `string` | Current partial input the user has typed |
+| `context.arguments` | `Record<string, unknown> \| undefined` | Already-resolved argument values for this prompt invocation |
 
-Use `context.arguments` to chain completions — the second argument's suggestions can depend on the first argument's value.
+Use `context.arguments` to chain completions — a later field's suggestions can depend on an earlier field's value.
 
-## Tool schemas
+---
 
-Do not teach `completable()` for `server.tool()` schemas in this skill. The published `mcp-use@1.26.0` completion helper is documented for prompts and resource templates, and the MCP completion refs wired by the package are prompt refs and resource-template refs, not tool refs.
-
-## URI template completion is different
-
-Resource template variable completion uses `callbacks.complete` on the **template definition**, not `completable()`:
+## Signature
 
 ```typescript
-server.resourceTemplate(
-  {
-    name: "user",
-    uriTemplate: "users://{userId}",
-    callbacks: {
-      complete: { userId: ["user-1", "user-2", "user-3"] },
-    },
-  },
-  async (uri, { userId }) => object(await db.getUser(userId)),
-);
+import { completable } from "mcp-use";
+
+completable<T extends StandardSchemaV1>(
+  schema: T,
+  complete: string[] | number[] | boolean[] | CompletionCallback
+): ReturnType<typeof sdkCompletable<T>>
 ```
 
-See `../06-resources/03-resource-templates.md`. Same prefix-filter semantics, different surface.
+| Parameter | Type | Purpose |
+|---|---|---|
+| `schema` | Zod / ArkType / Valibot | The field schema (any Standard Schema v1) |
+| `complete` | Array or Callback | Static values or dynamic suggestion function |
 
-## Decision matrix
+---
+
+## Important rules
+
+- **Apply refinements to the schema, not the completable result.** Zod refinements (`.describe()`, `.default()`, etc.) that clone the schema will drop the completion marker if applied after `completable()`:
+
+```typescript
+// ✓ Correct
+language: completable(
+  z.string().describe("Language"),
+  ["python", "typescript"]
+)
+
+// ✗ Wrong (describe after completable loses completion)
+language: completable(z.string(), [...]).describe("Language")
+```
+
+- **`.optional()` is an exception** — the SDK unwraps optionals when looking for completions, so it's safe:
+
+```typescript
+language: completable(z.string(), ["python", "typescript"]).optional()
+```
+
+- **Limit results to ~100 items** — clients may clip large suggestion lists.
+- **All suggestions must be strings** — no objects or complex types.
+
+---
+
+## Use for prompts only
+
+`completable()` works for prompt schemas. For resource template variable completion, use the separate `complete` field on the template definition instead (see `references/06-resources/03-resource-templates.md`).
 
 | You want completion for | Use |
 |---|---|
 | Prompt argument | `completable()` in the prompt schema |
-| Resource URI template variable | `callbacks.complete` on the template definition |
+| Resource URI template variable | `complete` on the template definition |
 
-## Filtering rules
+---
 
-- Static lists: server applies case-insensitive prefix filter on the user's partial input
-- Callback returns: server passes the user's partial as `value`; you return the already-filtered list
-- Don't return more than ~100 suggestions — clients clip the list
-- Suggestions must be `string[]` — no objects, no labels
+## v2 Note
+
+In v2, the completable function requires `StandardSchemaV1` (the base Standard Schema spec), not the full `StandardSchemaWithJSON`. The prompt schema itself is `StandardSchemaWithJSON`, but individual completable fields use the lighter standard. This is automatic and transparent when you call `completable(z.string(), ...)`.
